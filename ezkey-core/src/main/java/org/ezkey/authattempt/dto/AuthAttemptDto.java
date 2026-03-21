@@ -36,6 +36,8 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  * @param expiresAt timestamp when the authentication attempt expires
  * @param contextTitle optional short title describing the action requiring approval
  * @param contextMessage optional descriptive message explaining the approval request
+ * @param demoMitmSignatureEnabled when true, attempt was created with demo MITM opt-in (see Auth
+ *     API demo settings)
  * @author Ezkey contributors
  * @since 2025
  */
@@ -103,4 +105,15 @@ public record AuthAttemptDto(
             description = "Descriptive approval message (null if no context provided)",
             example = "Authorize payment batch #1497 to Acme Corp for $1,400",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        String contextMessage) {}
+        String contextMessage,
+    /**
+     * True when the attempt was created with demo MITM simulation requested (tampering applies only
+     * if Auth API {@code ezkey.demo.mitm-signature-enabled} is true).
+     */
+    @Schema(
+            description =
+                "Demo MITM opt-in at creation time (Pending tampering only when Auth API demo flag"
+                    + " is on)",
+            example = "false",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        Boolean demoMitmSignatureEnabled) {}

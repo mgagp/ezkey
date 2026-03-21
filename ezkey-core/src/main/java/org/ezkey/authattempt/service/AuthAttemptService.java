@@ -383,6 +383,8 @@ public class AuthAttemptService {
     // Propagate optional contextual authentication fields
     authAttempt.setContextTitle(authRequest.getContextTitle());
     authAttempt.setContextMessage(authRequest.getContextMessage());
+    authAttempt.setDemoMitmSignatureEnabled(
+        Boolean.TRUE.equals(authRequest.getDemoMitmSignatureRequested()));
 
     int ttlSeconds = ezkeyCoreProperties.getAuthAttempt().getTtlSeconds();
     authAttempt.setCreatedAt(OffsetDateTime.now());

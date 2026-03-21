@@ -31,7 +31,12 @@ import {
   useReactivate,
   useRevoke,
 } from '@/generated/admin-api/enrollments/enrollments';
-import type { AuthAttemptDto, AuthAttemptDtoAuthAttemptStatus, EnrollmentResponseDto } from '@/generated/admin-api/model';
+import type {
+  AuthAttemptCreateRequestDto,
+  AuthAttemptDto,
+  AuthAttemptDtoAuthAttemptStatus,
+  EnrollmentResponseDto,
+} from '@/generated/admin-api/model';
 
 // ── Local types (not yet in OpenAPI spec) ────────────────────────────────────
 
@@ -98,6 +103,7 @@ function TestAuthDialog({
   );
   const [contextTitle, setContextTitle] = useState('');
   const [contextMessage, setContextMessage] = useState('');
+  const [demoMitmSignatureRequested, setDemoMitmSignatureRequested] = useState(false);
   const [createdAttempt, setCreatedAttempt] = useState<AuthAttemptCreateResponse | null>(null);
   const [isFinal, setIsFinal] = useState(false);
   const [doneReason, setDoneReason] = useState<DoneReason | null>(null);
@@ -165,6 +171,7 @@ function TestAuthDialog({
     setChallengeRequested(enrollment.authAttemptChallengeRequired ?? false);
     setContextTitle('');
     setContextMessage('');
+    setDemoMitmSignatureRequested(false);
     setCreatedAttempt(null);
     setIsFinal(false);
     setDoneReason(null);
@@ -253,6 +260,21 @@ function TestAuthDialog({
             )}
           </div>
 
+          {isDemoMode && sessionDemoOn && (
+            <label className="flex items-start gap-3 cursor-pointer select-none p-3 border-2 border-dashed border-warning/50 bg-warning/5 hover:border-warning/70 transition-colors">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 accent-warning"
+                checked={demoMitmSignatureRequested}
+                onChange={(e) => setDemoMitmSignatureRequested(e.target.checked)}
+              />
+              <div>
+                <p className="text-sm font-bold">{t('testAuth.demoMitmLabel')}</p>
+                <p className="text-xs text-fg-muted mt-0.5">{t('testAuth.demoMitmHint')}</p>
+              </div>
+            </label>
+          )}
+
           {createMutation.isError && (
             <Alert variant="error">
               {getApiErrorMessage(createMutation.error, t('testAuth.errorCreateAttempt'))}
@@ -264,17 +286,15 @@ function TestAuthDialog({
             <Button
               isLoading={createMutation.isPending}
               onClick={() => {
-                const data: {
-                  enrollmentId: number;
-                  challengeRequested: boolean;
-                  contextTitle?: string;
-                  contextMessage?: string;
-                } = {
+                const data: AuthAttemptCreateRequestDto = {
                   enrollmentId: enrollment.enrollmentId,
                   challengeRequested,
                 };
                 if (contextTitle.trim()) data.contextTitle = contextTitle.trim();
                 if (contextMessage.trim()) data.contextMessage = contextMessage.trim();
+                if (isDemoMode && sessionDemoOn && demoMitmSignatureRequested) {
+                  data.demoMitmSignatureRequested = true;
+                }
                 createMutation.mutate({ data });
               }}
               className="gap-1.5"
@@ -289,6 +309,9 @@ function TestAuthDialog({
       {/* ── Step 2: Live ── */}
       {step === 'live' && createdAttempt && (
         <div className="space-y-4">
+          {liveStatus?.demoMitmSignatureEnabled && (
+            <Alert variant="warning">{t('testAuth.demoMitmLiveHint')}</Alert>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="border-2 border-fg/30 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
@@ -337,16 +360,28 @@ function TestAuthDialog({
             )}
           </div>
 
-          <div className="flex justify-end pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              isLoading={cancelMutation.isPending}
-              onClick={() => cancelMutation.mutate({ id: createdAttempt!.authAttemptId! })}
-              className="gap-1 text-error hover:bg-error/10 border border-error/30 hover:border-error"
-            >
-              {t('testAuth.cancelAttempt')}
-            </Button>
+          <div className="space-y-3 pt-2">
+            <p className="text-xs text-fg-muted leading-relaxed">{t('testAuth.abandonHint')}</p>
+            <div className="flex justify-end gap-2 flex-wrap">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClose}
+                disabled={cancelMutation.isPending}
+                className="border border-fg/30 hover:border-fg/50 hover:bg-fg/5"
+              >
+                {t('testAuth.abandon')}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                isLoading={cancelMutation.isPending}
+                onClick={() => cancelMutation.mutate({ id: createdAttempt!.authAttemptId! })}
+                className="gap-1 border border-error/30 text-error hover:border-error hover:bg-error/10"
+              >
+                {t('testAuth.cancelAttempt')}
+              </Button>
+            </div>
           </div>
         </div>
       )}

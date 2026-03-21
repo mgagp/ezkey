@@ -49,6 +49,8 @@ import jakarta.validation.constraints.Size;
  *     200 chars). Example: "Payment Approval", "Deploy Confirmation".
  * @param contextMessage Optional descriptive message for the approver (max 2 000 chars). Example:
  *     "Authorize payment batch #1497 to Acme Corp for $1,400".
+ * @param demoMitmSignatureRequested Optional demo-only: opt into simulated MITM on Pending when
+ *     Auth API demo MITM is enabled
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.authattempt.domain.AuthAttemptCreateRequest
@@ -59,7 +61,8 @@ import jakarta.validation.constraints.Size;
         "Request to create an auth attempt. Provide enrollmentId OR userIdentifier. "
             + "When userIdentifier is used with admin token, integrationId is required. "
             + "Optional context fields (contextTitle, contextMessage) attach business context "
-            + "visible to the approver on the mobile device.")
+            + "visible to the approver on the mobile device. Optional demoMitmSignatureRequested "
+            + "flags the attempt for tampered Pending responses in demo mode.")
 public record AuthAttemptCreateRequestDto(
     @Schema(
             description =
@@ -113,4 +116,12 @@ public record AuthAttemptCreateRequestDto(
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Size(max = 2000, message = "contextMessage must not exceed 2000 characters")
         @JsonProperty("contextMessage")
-        String contextMessage) {}
+        String contextMessage,
+    @Schema(
+            description =
+                "Demo only: when true, this attempt is flagged for simulated MITM (tampered Pending"
+                    + " body after signing) if Auth API ezkey.demo.mitm-signature-enabled is true.",
+            example = "false",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @JsonProperty("demoMitmSignatureRequested")
+        Boolean demoMitmSignatureRequested) {}

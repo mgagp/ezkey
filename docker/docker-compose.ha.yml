@@ -165,6 +165,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ezkey
       # Add instance identifier for logging
       EZKEY_INSTANCE_ID: auth-api-1
+      # Demo MITM global gate (same as single-node stack; docs/DEMO_MITM_SIGNATURE.md).
+      EZKEY_DEMO_MITM_SIGNATURE_ENABLED: ${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
     # Internal port only, not exposed to host (accessed via HAProxy)
@@ -199,6 +201,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ezkey
       # Add instance identifier for logging
       EZKEY_INSTANCE_ID: auth-api-2
+      EZKEY_DEMO_MITM_SIGNATURE_ENABLED: ${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}
     volumes:
       - encryption-secrets-ha:/etc/ezkey
     # Internal port only, not exposed to host (accessed via HAProxy)

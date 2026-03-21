@@ -94,7 +94,7 @@
     "lastNamePlaceholder": "Dupont",
     "emailLabel": "E-mail",
     "emailOptional": "(optionnel)",
-    "emailPlaceholder": "marie@garageducoin.com",
+    "emailPlaceholder": "marie@garageducoin.ca",
     "cancel": "Annuler",
     "submit": "Créer l'admin",
     "errorCreate": "Échec de la création de l'administrateur.",

@@ -8,6 +8,7 @@ import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { AuthAttemptStatusBadge } from '@/components/feature/auth-attempt-status-badge';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -84,6 +85,11 @@ function AttemptDetailDialog({
             ? <span className="font-mono font-bold">{String(attempt.authAttemptChallenge).padStart(2, '0')}</span>
             : <span className="text-fg-muted">—</span>}
         </InfoRow>
+        {attempt.demoMitmSignatureEnabled && (
+          <InfoRow label={t('detail.labelDemoMitm')}>
+            <Badge variant="warning">{t('detail.demoMitmOn')}</Badge>
+          </InfoRow>
+        )}
         <InfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(attempt.createdAt)}</span></InfoRow>
         <InfoRow label={t('detail.labelExpires')}><span className="text-fg-muted">{formatDate(attempt.expiresAt)}</span></InfoRow>
         {attempt.authAttemptProofToken && (

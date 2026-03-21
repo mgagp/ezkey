@@ -236,6 +236,8 @@ public class M2mAuthAttemptController {
       createRequest.setChallengeRequested(request.challengeRequested());
       createRequest.setContextTitle(request.contextTitle());
       createRequest.setContextMessage(request.contextMessage());
+      createRequest.setDemoMitmSignatureRequested(
+          Boolean.TRUE.equals(request.demoMitmSignatureRequested()));
 
       AuthAttemptCreateResponse response = authAttemptService.create(createRequest);
 

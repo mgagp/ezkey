@@ -29,13 +29,13 @@ export const tenantDemoPresets: TenantDemoPreset[] = [
     label: 'Garage du coin',
     values: {
       tenantName: 'Garage du coin',
-      tenantDescription: 'Porsche, Mercedes, Audi',
+      tenantDescription: 'Porsche, Mercedes, Audi — région de Montréal',
       organizationName: 'Garage du coin (Porsche, Mercedes, Audi)',
-      organizationDomain: 'garageducoin.com',
-      countryCode: 'FR',
-      timezone: 'Europe/Paris',
+      organizationDomain: 'garageducoin.ca',
+      countryCode: 'CA',
+      timezone: 'America/Montreal',
       primaryContactName: 'Oscar Dupont',
-      primaryContactEmail: 'oscar@garageducoin.com',
+      primaryContactEmail: 'oscar@garageducoin.ca',
     },
   },
   {
@@ -106,7 +106,7 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
     label: 'Marie Dupont — iPhone',
     values: {
       name: 'Marie Dupont — iPhone 15',
-      contactEmail: 'user@garageducoin.com',
+      contactEmail: 'user@garageducoin.ca',
       userIdentifier: 'marie.dupont',
       authAttemptChallengeRequired: false,
     },
@@ -116,7 +116,7 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
     label: 'Jean Martin — Android',
     values: {
       name: 'Jean Martin — Android',
-      contactEmail: 'jean.martin@garageducoin.com',
+      contactEmail: 'jean.martin@garageducoin.ca',
       userIdentifier: 'jean.martin',
       authAttemptChallengeRequired: true,
     },
@@ -144,7 +144,7 @@ export const adminDemoPresets: AdminDemoPreset[] = [
     isGlobal: true,
     values: {
       username: 'marie.dupont',
-      email: 'marie@garageducoin.com',
+      email: 'marie@garageducoin.ca',
       firstName: 'Marie',
       lastName: 'Dupont',
     },
@@ -155,7 +155,7 @@ export const adminDemoPresets: AdminDemoPreset[] = [
     isGlobal: false,
     values: {
       username: 'jean.martin',
-      email: 'jean.martin@garageducoin.com',
+      email: 'jean.martin@garageducoin.ca',
       firstName: 'Jean',
       lastName: 'Martin',
     },
@@ -201,19 +201,20 @@ export const authContextDemoPresets: AuthContextDemoPreset[] = [
     label: 'Garage — Ordre de réparation',
     contextTitle: 'Validation ordre de réparation',
     contextMessage:
-      'Autoriser l’ordre de réparation #2847 — Porsche Cayenne, freins et distribution. Devis 2 340 € TTC.',
+      'Autoriser l’ordre de réparation #2847 — Porsche Cayenne, freins et distribution. Devis 2 340 $ CAD (taxes incluses).',
   },
   {
     id: 'garage-payment',
     label: 'Garage — Paiement fournisseur',
     contextTitle: 'Paiement fournisseur',
     contextMessage:
-      'Valider le virement de 8 500 € à Pièces Auto France pour la commande CMD-2025-089 (Garage du coin).',
+      'Valider le virement de 8 500 $ CAD à Pièces Méga-Pneus (Montréal) pour la commande CMD-2025-089 (Garage du coin).',
   },
   {
     id: 'document-signature',
     label: 'Signature document',
     contextTitle: 'Signature de document',
-    contextMessage: 'Approuver la signature du contrat NDA avec partenaire Acme Corp (Garage du coin).',
+    contextMessage:
+      'Approuver la signature du contrat NDA avec le partenaire Acme Corp — opérations au Québec (Garage du coin).',
   },
 ];

@@ -64,6 +64,12 @@ public class AuthAttemptCreateRequest {
   private String contextMessage;
 
   /**
+   * When true, persists {@code demo_mitm_signature_enabled} on the attempt. Tampering applies only
+   * if Auth API {@code ezkey.demo.mitm-signature-enabled} is also true.
+   */
+  private Boolean demoMitmSignatureRequested;
+
+  /**
    * Gets the enrollment ID for this authentication attempt.
    *
    * @return the enrollment ID
@@ -133,5 +139,23 @@ public class AuthAttemptCreateRequest {
    */
   public void setContextMessage(String contextMessage) {
     this.contextMessage = contextMessage;
+  }
+
+  /**
+   * Whether the client requested demo MITM simulation for this attempt (stored on the row).
+   *
+   * @return true when the operator requested demo tampering for this attempt
+   */
+  public Boolean getDemoMitmSignatureRequested() {
+    return demoMitmSignatureRequested;
+  }
+
+  /**
+   * Sets whether demo MITM simulation is requested for this attempt.
+   *
+   * @param demoMitmSignatureRequested true to flag the attempt for tampered Pending in demo mode
+   */
+  public void setDemoMitmSignatureRequested(Boolean demoMitmSignatureRequested) {
+    this.demoMitmSignatureRequested = demoMitmSignatureRequested;
   }
 }

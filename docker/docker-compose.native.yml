@@ -97,6 +97,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ezkey
+      # Same as docker-compose.yml auth-api — demo Pending MITM simulation (default on for clean-start --native).
+      EZKEY_DEMO_MITM_SIGNATURE_ENABLED: ${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}
     volumes:
       - encryption-secrets-native:/etc/ezkey
     ports:

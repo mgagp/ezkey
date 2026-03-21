@@ -1,6 +1,10 @@
 # Ezkey Tests - Clean Start Script (PowerShell)
 # Performs a clean startup of the Docker stack for testing.
 # Usage: .\clean-start.ps1 [-Native] [-Ha] [-MvnBootstrap] [-Jmx] [-ProdSafe]
+#
+# Optional environment for Docker Compose (auth-api):
+#   $env:EZKEY_DEMO_MITM_SIGNATURE_ENABLED = 'true'|'false'  — maps to ezkey.demo.mitm-signature-enabled.
+#   Default when unset: true (demo-friendly), except -ProdSafe defaults to false. See docs/DEMO_MITM_SIGNATURE.md.
 
 param(
     [switch]$Native,
@@ -180,6 +184,17 @@ Set-Location $ProjectRoot
 $previousProfiles = $env:SPRING_PROFILES_ACTIVE
 $env:SPRING_PROFILES_ACTIVE = $springProfiles
 
+$previousDemoMitm = $env:EZKEY_DEMO_MITM_SIGNATURE_ENABLED
+if ($ProdSafe) {
+    if ([string]::IsNullOrEmpty($env:EZKEY_DEMO_MITM_SIGNATURE_ENABLED)) {
+        $env:EZKEY_DEMO_MITM_SIGNATURE_ENABLED = "false"
+    }
+} else {
+    if ([string]::IsNullOrEmpty($env:EZKEY_DEMO_MITM_SIGNATURE_ENABLED)) {
+        $env:EZKEY_DEMO_MITM_SIGNATURE_ENABLED = "true"
+    }
+}
+
 if ($Ha) {
     $startHaScript = Join-Path $DockerDir "start-ha.ps1"
     if (Test-Path $startHaScript) {
@@ -209,7 +224,9 @@ if ($Ha) {
     }
 }
 
+$demoMitmUsedForSummary = $env:EZKEY_DEMO_MITM_SIGNATURE_ENABLED
 $env:SPRING_PROFILES_ACTIVE = $previousProfiles
+$env:EZKEY_DEMO_MITM_SIGNATURE_ENABLED = $previousDemoMitm
 
 Write-Host ""
 
@@ -282,6 +299,11 @@ if ($Ha) {
     Write-Host "  - Images: Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"
 } else {
     Write-Host "  - Docker stack: Running with profiles ($springProfiles)"
+}
+if (-not $ProdSafe) {
+    Write-Host "  - Auth API demo MITM: EZKEY_DEMO_MITM_SIGNATURE_ENABLED=$demoMitmUsedForSummary (Pending tamper when attempt is flagged; see docs/DEMO_MITM_SIGNATURE.md)"
+} else {
+    Write-Host "  - Auth API demo MITM: EZKEY_DEMO_MITM_SIGNATURE_ENABLED=$demoMitmUsedForSummary (-ProdSafe defaults false unless you pre-set the variable)"
 }
 if ($MvnBootstrap) {
     Write-Host "  - Bootstrap credentials: Extracted to .ezkey-test/bootstrap-credentials.json"

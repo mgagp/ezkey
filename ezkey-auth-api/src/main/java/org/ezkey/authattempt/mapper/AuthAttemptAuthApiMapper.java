@@ -71,7 +71,10 @@ import org.mapstruct.ReportingPolicy;
  * @see AuthAttemptRespondRequest
  * @see AuthAttemptRespondResponse
  */
-@Mapper(unmappedTargetPolicy = ReportingPolicy.WARN, componentModel = "spring")
+@Mapper(
+    unmappedTargetPolicy = ReportingPolicy.WARN,
+    unmappedSourcePolicy = ReportingPolicy.IGNORE,
+    componentModel = "spring")
 public interface AuthAttemptAuthApiMapper {
 
   /**

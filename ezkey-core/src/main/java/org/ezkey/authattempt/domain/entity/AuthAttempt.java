@@ -95,6 +95,13 @@ public class AuthAttempt implements Reencryptable {
   @Column(name = "context_message", length = 2000)
   private String contextMessage;
 
+  /**
+   * When true and Auth API {@code ezkey.demo.mitm-signature-enabled} is on, the Pending response
+   * body is altered after signing (presentation-only simulated MITM).
+   */
+  @Column(name = "demo_mitm_signature_enabled", nullable = false)
+  private boolean demoMitmSignatureEnabled = false;
+
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
@@ -365,6 +372,25 @@ public class AuthAttempt implements Reencryptable {
    */
   public void setContextMessage(String contextMessage) {
     this.contextMessage = contextMessage;
+  }
+
+  /**
+   * Whether this attempt is opted into demo MITM simulation (no effect unless Auth API demo flag is
+   * enabled).
+   *
+   * @return true when the attempt should receive a tampered Pending body in demo mode
+   */
+  public boolean isDemoMitmSignatureEnabled() {
+    return demoMitmSignatureEnabled;
+  }
+
+  /**
+   * Sets the demo MITM simulation flag (typically set at creation from API request).
+   *
+   * @param demoMitmSignatureEnabled whether to enable tampered Pending in demo mode
+   */
+  public void setDemoMitmSignatureEnabled(boolean demoMitmSignatureEnabled) {
+    this.demoMitmSignatureEnabled = demoMitmSignatureEnabled;
   }
 
   /**

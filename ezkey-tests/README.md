@@ -580,8 +580,10 @@ String adminToken = bootstrapService.ensureAdminToken();
 - `./clean-start.ps1 -ProdSafe -Jmx`
 
 **Common options:**
-- `--prod-safe`: start with production-safe docker profile only (rate limits enabled, minimal Actuator exposure)
+- `--prod-safe`: start with production-safe docker profile only (rate limits enabled, minimal Actuator exposure). Also defaults **Auth API demo MITM** to off (`EZKEY_DEMO_MITM_SIGNATURE_ENABLED=false`) unless you pre-set the variable.
 - `--jmx`: enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
+
+**Demo MITM (Pending signature mismatch demo):** By default, `docker-compose.yml` and `clean-start` enable `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` for the Auth API so a flagged auth attempt can receive a tampered Pending body. See [docs/DEMO_MITM_SIGNATURE.md](../docs/DEMO_MITM_SIGNATURE.md).
 
 **Examples:**
 - Production-safe stack:

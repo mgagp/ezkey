@@ -17,6 +17,12 @@
 #   --jmx: Enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
 #   --prod-safe: Start using production-safe Spring profile only (docker). Disables docker-dev and docker-test.
 #
+# Optional environment (passed to Docker Compose for auth-api):
+#   EZKEY_DEMO_MITM_SIGNATURE_ENABLED  Maps to ezkey.demo.mitm-signature-enabled. When true, Auth API may
+#     tamper Pending JSON after signing for attempts flagged at creation (Admin UI demo checkbox).
+#     Default for this script: true (demo-friendly). With --prod-safe: default false unless you set this
+#     explicitly before running. See docs/DEMO_MITM_SIGNATURE.md.
+#
 # Prerequisites:
 #   - Docker and Docker Compose installed and running
 #   - Maven installed (only if --mvn-bootstrap is used)
@@ -91,6 +97,14 @@ fi
 # Export JMX flag so docker/start.sh and docker/start.ps1 can include JMX override.
 if [ -n "$ENABLE_JMX" ]; then
     export EZKEY_ENABLE_JMX=true
+fi
+
+# Auth API demo MITM (simulated Pending tamper): default ON for local demo / clean start.
+# --prod-safe defaults OFF so the stack behaves closer to production unless overridden.
+if [ -n "$PROD_SAFE" ]; then
+    export EZKEY_DEMO_MITM_SIGNATURE_ENABLED="${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-false}"
+else
+    export EZKEY_DEMO_MITM_SIGNATURE_ENABLED="${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}"
 fi
 
 echo "=========================================="
@@ -331,6 +345,11 @@ elif [ -n "$WITH_PROXY" ]; then
     echo "  - Direct ports still available: Admin 9080, Auth 8080, M2M 7080"
 else
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES})"
+fi
+if [ -z "$PROD_SAFE" ]; then
+    echo "  - Auth API demo MITM: EZKEY_DEMO_MITM_SIGNATURE_ENABLED=${EZKEY_DEMO_MITM_SIGNATURE_ENABLED} (Pending tamper when attempt is flagged)"
+else
+    echo "  - Auth API demo MITM: EZKEY_DEMO_MITM_SIGNATURE_ENABLED=${EZKEY_DEMO_MITM_SIGNATURE_ENABLED} (use false for prod-like; override before running if needed)"
 fi
 if [ -n "$MVN_BOOTSTRAP" ]; then
     echo "  - Bootstrap credentials: Extracted to .ezkey-test/bootstrap-credentials.json"

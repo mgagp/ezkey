@@ -104,6 +104,18 @@ public class AuthAttemptPendingResponse {
   private String contextMessage;
 
   /**
+   * When true, demo simulated MITM altered the pending JSON after signing; used only to enrich Auth
+   * API audit logs (not exposed on the mobile JSON DTO).
+   */
+  private boolean demoMitmTamperApplied;
+
+  /**
+   * Operator-facing audit text for the demo MITM row (business narrative, no cryptographic values).
+   * Set only when {@link #demoMitmTamperApplied} is true.
+   */
+  private String demoMitmPendingAuditNarrative;
+
+  /**
    * Gets the unique identifier of the authentication attempt.
    *
    * @return the authentication attempt ID
@@ -228,5 +240,41 @@ public class AuthAttemptPendingResponse {
    */
   public void setContextMessage(String contextMessage) {
     this.contextMessage = contextMessage;
+  }
+
+  /**
+   * Whether demo MITM tampering was applied to the pending JSON body after signing.
+   *
+   * @return true when the simulated tamper ran (audit narrative only)
+   */
+  public boolean isDemoMitmTamperApplied() {
+    return demoMitmTamperApplied;
+  }
+
+  /**
+   * Sets whether demo MITM tampering was applied.
+   *
+   * @param demoMitmTamperApplied true when tamper ran
+   */
+  public void setDemoMitmTamperApplied(boolean demoMitmTamperApplied) {
+    this.demoMitmTamperApplied = demoMitmTamperApplied;
+  }
+
+  /**
+   * Audit narrative for the demo MITM scenario (plain language for operators).
+   *
+   * @return narrative text, or null if not applicable
+   */
+  public String getDemoMitmPendingAuditNarrative() {
+    return demoMitmPendingAuditNarrative;
+  }
+
+  /**
+   * Sets the audit narrative for the demo MITM scenario.
+   *
+   * @param demoMitmPendingAuditNarrative operator-facing text for {@code eventDetails}
+   */
+  public void setDemoMitmPendingAuditNarrative(String demoMitmPendingAuditNarrative) {
+    this.demoMitmPendingAuditNarrative = demoMitmPendingAuditNarrative;
   }
 }

@@ -128,7 +128,7 @@ class AuthAttemptControllerOwnershipTest {
                 1, null, 120, OffsetDateTime.now().plusSeconds(120), null, null));
 
     AuthAttemptCreateRequestDto request =
-        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null);
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null, null);
 
     // Act
     ResponseEntity<?> response = controller.create(request, null);
@@ -160,7 +160,7 @@ class AuthAttemptControllerOwnershipTest {
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
 
     AuthAttemptCreateRequestDto request =
-        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null);
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null, null);
 
     // Act & Assert
     assertThrows(
@@ -189,7 +189,7 @@ class AuthAttemptControllerOwnershipTest {
     when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
 
     AuthAttemptCreateRequestDto request =
-        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null);
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null, null);
 
     // Act & Assert
     assertThrows(
@@ -225,7 +225,7 @@ class AuthAttemptControllerOwnershipTest {
                 1, null, 120, OffsetDateTime.now().plusSeconds(120), null, null));
 
     AuthAttemptCreateRequestDto request =
-        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null);
+        new AuthAttemptCreateRequestDto(enrollmentId, null, null, false, null, null, null);
 
     // Act
     ResponseEntity<?> response = controller.create(request, null);
