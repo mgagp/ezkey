@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the implementation of the API Keys authentication system for Ezkey, enabling machine-to-machine (M2M) authentication for integrated applications.
+This document summarizes the implementation of the API Keys authentication system for Ezkey, enabling machine-to-machine authentication for integrated applications (Integration API credentials).
 
 **Implementation Date:** October 2025  
 **Status:** ✅ Complete and Functional

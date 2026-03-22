@@ -21,7 +21,7 @@ import java.time.OffsetDateTime;
  * authentication attempt state, a calculated status string, and metadata about whether the
  * operation completed or timed out.
  *
- * <p>Shared across admin-api and m2m-api.
+ * <p>Shared across admin-api and integration-api.
  *
  * <p><b>Calculated Status Values:</b>
  *

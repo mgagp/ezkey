@@ -76,8 +76,8 @@ curl -X POST http://localhost:8082/actuator/refresh
 | Property | Default | Description |
 |----------|---------|-------------|
 | `ezkey.admin.api.url` | `http://localhost:9080` | Admin API URL (use `http://admin-api:9080` in Docker) |
-| `ezkey.integration.key` | (required) | Integration key for M2M authentication (e.g., `ezkey_ikey_xxx`) |
-| `ezkey.secret.key` | (required) | Secret key for M2M authentication (e.g., `ezkey_skey_xxx`) |
+| `ezkey.integration.key` | (required) | Integration key for API key authentication (e.g., `ezkey_ikey_xxx`) |
+| `ezkey.secret.key` | (required) | Secret key for API key authentication (e.g., `ezkey_skey_xxx`) |
 | `ezkey.users.file` | `data/acme-users.json` | Path to users mapping file |
 | `ezkey.users.file.check-interval` | `5` | Hot-reload check interval in seconds (0 to disable) |
 
@@ -119,7 +119,7 @@ The file is hot-reloadable - changes are detected and reloaded automatically (if
 
 ## Architecture
 
-- **Backend-side authentication**: Server calls Admin API using API Key M2M authentication
+- **Backend-side authentication**: Server calls Admin API using API key (machine-to-machine) authentication
 - **HTTP session**: Secure server-side session management
 - **User mapping**: External JSON file maps usernames to enrollment IDs
 - **Hot-reload**: Users file changes detected and reloaded automatically

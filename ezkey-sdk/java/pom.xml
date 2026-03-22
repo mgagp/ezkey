@@ -14,7 +14,7 @@
 
   <artifactId>ezkey-sdk</artifactId>
   <name>Ezkey Java SDK</name>
-  <description>Minimal zero-dependency Java SDK for Ezkey M2M authentication</description>
+  <description>Minimal zero-dependency Java SDK for Ezkey API key (machine-to-machine) authentication</description>
 
   <properties>
     <!-- SDK targets Java 17 for maximum compatibility while supporting records -->

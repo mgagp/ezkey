@@ -52,6 +52,6 @@
     "newAdmin": "New Admin",
     "newAdminDesc": "Add a tenant admin",
     "newApiKey": "New API Key",
-    "newApiKeyDesc": "Create M2M credentials"
+    "newApiKeyDesc": "Create Integration API credentials"
   }
 }

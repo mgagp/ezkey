@@ -79,7 +79,7 @@ Content-Type: application/json
 
 The context fields are **echoed back** in the response for confirmation.
 
-### By user identifier (M2M / API key)
+### By user identifier (Integration API / API key)
 
 ```http
 POST /api/v1/auth-attempts

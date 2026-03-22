@@ -4,11 +4,18 @@
 
 Renommer entièrement le module M2M en **Integration API** : vocation (intégration ↔ Ezkey), cohérence avec Admin API / Auth API, intuition pour les développeurs. **Renommage complet** incluant la **table partitionnée** `ezkey_audit_log` et l’axe de sous-partitions (`_m2m` / `M2M_API` → `_integration` / `INTEGRATION_API`).
 
+### Contrainte Flyway (full development)
+
+- **Aucune installation Ezkey en production** pour ce chantier : pas d’historique Flyway à préserver sur des bases déjà migrées.
+- **Règle :** **modifier les migrations existantes** (éditer les fichiers `V*__*.sql` concernés) plutôt que d’ajouter une nouvelle migration pour le renommage M2M → Integration API.
+- **Validation :** clean start + BD neuve ; Flyway rejoue toute la chaîne depuis zéro.
+- **À l’approche d’une première prod :** reprendre la discipline habituelle Flyway (ne plus réécrire les `V*` déjà appliquées ; nouvelles migrations incrémentales uniquement).
+
 ---
 
 ## 1. Table partitionnée et axe de sous-partitions (BD)
 
-**Contexte :** Mode full développement, aucune installation en production. Les tests à court terme = clean start + BD flambant neuf. On peut donc **réviser les migrations existantes** (V6, V24, V25) : le seul impact est le nom interne de la partition ; pas de migration de données ni nouvelle migration Flyway.
+**Contexte :** Aligné avec la contrainte ci-dessus — on **révise** V6, V24, V25 (et tout autre `V*` qui référence encore `M2M_API` ou `_m2m` dans le dépôt au moment de l’implémentation). Pas de migration de données ni fichier `Vnn__...` supplémentaire dédié à ce renommage.
 
 La table **ezkey_audit_log** est partitionnée en deux niveaux :
 
@@ -95,4 +102,4 @@ La table **ezkey_audit_log** est partitionnée en deux niveaux :
 | CHECK `api_name` | `('ADMIN_API','AUTH_API','M2M_API')` | `('ADMIN_API','AUTH_API','INTEGRATION_API')` |
 | Fonction `create_monthly_partition` | crée _admin, _auth, _m2m | crée _admin, _auth, _integration |
 
-**Stratégie :** Révision directe de V6, V24, V25 (mode dev uniquement, clean start, BD neuve). Aucune nouvelle migration ni migration de données.
+**Stratégie :** Révision directe des migrations existantes (au minimum V6, V24, V25 ; voir aussi recherche `M2M_API` / `_m2m` sous `db/migration/`). Aucune nouvelle migration Flyway pour ce renommage ; pas de migration de données. Voir **Contrainte Flyway (full development)** en tête du document.

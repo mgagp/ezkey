@@ -36,7 +36,7 @@
     },
     {
       "name": "API Keys",
-      "description": "API key management for machine-to-machine (M2M) authentication"
+      "description": "API key management for machine-to-machine (Integration API) authentication"
     },
     {
       "name": "Administrator Provisioning",
@@ -3638,7 +3638,7 @@
               "enum": [
                 "ADMIN_API",
                 "AUTH_API",
-                "M2M_API"
+                "INTEGRATION_API"
               ]
             }
           },
@@ -6413,7 +6413,7 @@
             "enum": [
               "ADMIN_API",
               "AUTH_API",
-              "M2M_API"
+              "INTEGRATION_API"
             ]
           },
           "ipAddress": {

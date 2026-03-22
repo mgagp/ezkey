@@ -74,6 +74,7 @@ graph LR
 - **Multi-Module Architecture**: Separated APIs for different use cases
 - **Admin API**: Passwordless-only management interface ("eating our own dogfood"), with cryptographic authentication, recovery codes, rate limiting, and multi-tenant administration
 - **Authentication API**: Mobile-focused API for device authentication
+- **Integration API**: API key–authenticated auth attempt lifecycle (create / wait / cancel) for integrated backends (port 7080)
 - **Wait API**: Synchronous polling for authentication completion
 - **Mobile Application**: Cross-platform mobile app for end users
 - **Secure**: Cryptographic key-based authentication with signature validation
@@ -138,6 +139,7 @@ ezkey/
 ├── ezkey-migration/         # Database migration application (Flyway)
 ├── ezkey-admin-api/         # Administration API (port 9080)
 ├── ezkey-auth-api/          # Authentication API (port 8080)
+├── ezkey-integration-api/   # Integration API — API key auth attempts (port 7080)
 ├── ezkey-crypto-api/        # Crypto API for testing and integration (port 8080)
 ├── ezkey-cli-python/        # Python CLI for interacting with APIs
 ├── ezkey_mobile/            # Mobile application
@@ -597,7 +599,7 @@ cd ezkey_mobile
 - `GET /api/v1/auth-attempts/{id}` - Get auth attempt status
 - `GET /api/v1/auth-attempts/{id}/wait` - **Wait for authentication completion**
 
-#### API Keys (M2M Authentication)
+#### API Keys (machine-to-machine / Integration API credentials)
 - `POST /api/v1/api-keys` - Create new API key pair
 - `GET /api/v1/api-keys/integration/{id}` - List keys for integration
 - `GET /api/v1/api-keys/{id}` - Get API key details

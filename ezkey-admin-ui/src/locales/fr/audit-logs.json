@@ -23,7 +23,7 @@
     "filterApiAll": "Toutes les API",
     "filterApiAdmin": "API Admin",
     "filterApiAuth": "API Auth",
-    "filterApiM2m": "API M2M",
+    "filterApiIntegration": "API d'intégration",
     "dateRangeFull": "Toute la période",
     "refresh": "Actualiser",
     "hint": "Lecture seule · Périmètre tenant · HMAC = chaîne intacte pour cette entrée.",

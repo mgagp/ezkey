@@ -117,14 +117,14 @@ function Show-Status {
     }
 
     try {
-        Invoke-DockerCompose @("-f", $ComposeFile, "exec", "-T", "m2m-api", "curl", "-sf", "http://localhost:7081/actuator/health") | Out-Null
+        Invoke-DockerCompose @("-f", $ComposeFile, "exec", "-T", "integration-api", "curl", "-sf", "http://localhost:7081/actuator/health") | Out-Null
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "  M2M API: Healthy"
+            Write-Host "  Integration API: Healthy"
         } else {
-            Write-Host "  M2M API: Unhealthy"
+            Write-Host "  Integration API: Unhealthy"
         }
     } catch {
-        Write-Host "  M2M API: Not available (optional service)"
+        Write-Host "  Integration API: Not available (optional service)"
     }
 
     try {

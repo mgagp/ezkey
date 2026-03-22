@@ -15,7 +15,7 @@
 # For local IDE: Use http://localhost:9080
 ezkey.admin.api.url=http://admin-api:9080
 
-# API Key credentials for M2M authentication
+# API Key credentials for machine-to-machine (Integration API) authentication
 # IMPORTANT: Set these after creating an integration via Admin API and generating an API key
 #
 # Steps to get API key credentials:

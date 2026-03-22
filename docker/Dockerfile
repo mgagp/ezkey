@@ -13,7 +13,7 @@ COPY ezkey-core/pom.xml ./ezkey-core/pom.xml
 COPY ezkey-migration/pom.xml ./ezkey-migration/pom.xml
 COPY ezkey-admin-api/pom.xml ./ezkey-admin-api/pom.xml
 COPY ezkey-auth-api/pom.xml ./ezkey-auth-api/pom.xml
-COPY ezkey-m2m-api/pom.xml ./ezkey-m2m-api/pom.xml
+COPY ezkey-integration-api/pom.xml ./ezkey-integration-api/pom.xml
 COPY ezkey-crypto-api/pom.xml ./ezkey-crypto-api/pom.xml
 COPY ezkey-sdk/java/pom.xml ./ezkey-sdk/java/pom.xml
 COPY ezkey-demo-device/pom.xml ./ezkey-demo-device/pom.xml
@@ -28,7 +28,7 @@ COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "📦 Downloading Maven dependencies (using BuildKit cache)..." && \
     mvn dependency:go-offline -Pno-checkstyle -B \
-        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-m2m-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
+        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
         -am || true && \
     echo "✅ Dependencies cached in BuildKit cache"
 
@@ -40,8 +40,8 @@ COPY ezkey-admin-api/src ./ezkey-admin-api/src
 COPY ezkey-admin-api/config ./ezkey-admin-api/config
 COPY ezkey-auth-api/src ./ezkey-auth-api/src
 COPY ezkey-auth-api/config ./ezkey-auth-api/config
-COPY ezkey-m2m-api/src ./ezkey-m2m-api/src
-COPY ezkey-m2m-api/config ./ezkey-m2m-api/config
+COPY ezkey-integration-api/src ./ezkey-integration-api/src
+COPY ezkey-integration-api/config ./ezkey-integration-api/config
 COPY ezkey-crypto-api/src ./ezkey-crypto-api/src
 COPY ezkey-crypto-api/config ./ezkey-crypto-api/config
 COPY ezkey-sdk/java/src ./ezkey-sdk/java/src
@@ -57,7 +57,7 @@ COPY ezkey-demo-app-acme/config ./ezkey-demo-app-acme/config
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔨 Building all modules (using cached dependencies)..." && \
     mvn clean package -DskipTests -Pno-checkstyle -B \
-        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-m2m-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
+        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
         -am && \
     echo "✅ Build completed successfully"
 
@@ -113,9 +113,9 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
 # ============================================
-# Stage 5: Runtime image for m2m-api service
+# Stage 5: Runtime image for integration-api service
 # ============================================
-FROM eclipse-temurin:25-jre-alpine AS m2m-api
+FROM eclipse-temurin:25-jre-alpine AS integration-api
 # Create non-root user and pre-create all required directories with correct ownership at build time
 RUN apk add --no-cache curl && \
     addgroup -S spring && adduser -S spring -G spring && \
@@ -124,8 +124,8 @@ RUN apk add --no-cache curl && \
     chmod 755 /etc/ezkey/keysets && \
     chown -R spring:spring /app /etc/ezkey
 WORKDIR /app
-COPY --chown=spring:spring --from=build /build/ezkey-m2m-api/target/*.jar app.jar
-COPY --chown=spring:spring --from=build /build/ezkey-m2m-api/config ./config
+COPY --chown=spring:spring --from=build /build/ezkey-integration-api/target/*.jar app.jar
+COPY --chown=spring:spring --from=build /build/ezkey-integration-api/config ./config
 USER spring:spring
 EXPOSE 7080
 EXPOSE 7081

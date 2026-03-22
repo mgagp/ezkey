@@ -105,7 +105,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/api-keys")
 @Tag(
     name = "API Keys",
-    description = "API key management for machine-to-machine (M2M) authentication")
+    description = "API key management for machine-to-machine (Integration API) authentication")
 public class ApiKeyController {
 
   private static final Logger logger = LoggerFactory.getLogger(ApiKeyController.class);

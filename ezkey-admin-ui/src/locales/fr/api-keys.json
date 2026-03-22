@@ -10,7 +10,7 @@
     "refresh": "Actualiser",
     "newApiKey": "Nouvelle clé API",
     "hint": "Max 5 clés actives par intégration. Les clés secrètes ne sont affichées qu'à la création et ne peuvent pas être récupérées.",
-    "emptyMessage": "Aucune clé API trouvée. Créez votre première clé pour activer l'accès M2M.",
+    "emptyMessage": "Aucune clé API trouvée. Créez votre première clé pour activer l'accès à l'API d'intégration.",
     "columns": {
       "id": "ID",
       "integration": "Intégration",

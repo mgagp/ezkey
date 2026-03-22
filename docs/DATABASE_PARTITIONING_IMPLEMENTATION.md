@@ -26,9 +26,9 @@ This document summarizes the implementation of database table partitioning for E
 
 #### 2. ezkey_audit_log
 
-- **Partitioning Strategy:** Composite: RANGE by `created_at` (monthly), then LIST by `api_name` per month (ADMIN_API, AUTH_API, M2M_API)
+- **Partitioning Strategy:** Composite: RANGE by `created_at` (monthly), then LIST by `api_name` per month (ADMIN_API, AUTH_API, INTEGRATION_API)
 - **Migration:** V24__partition_audit_log_by_month.sql
-- **Partition Naming:** `ezkey_audit_log_YYYY_MM` (monthly parent), then `ezkey_audit_log_YYYY_MM_admin`, `_auth`, `_m2m` (sub-partitions)
+- **Partition Naming:** `ezkey_audit_log_YYYY_MM` (monthly parent), then `ezkey_audit_log_YYYY_MM_admin`, `_auth`, `_integration` (sub-partitions)
 - **Indexes Created:**
   - `idx_audit_log_event_type` - for event type queries
   - `idx_audit_log_status` - for status queries
@@ -68,7 +68,7 @@ This document summarizes the implementation of database table partitioning for E
 - Uses SECURITY DEFINER function (no DDL privileges needed)
 - Idempotent - function checks if partition exists before creating
 - For `ezkey_auth_attempt`: creates one monthly partition
-- For `ezkey_audit_log`: creates one monthly partition plus three LIST(api_name) sub-partitions (_admin, _auth, _m2m)
+- For `ezkey_audit_log`: creates one monthly partition plus three LIST(api_name) sub-partitions (_admin, _auth, _integration)
 
 **Configuration Properties:**
 ```properties
@@ -102,7 +102,7 @@ ezkey.database.partition.scheduler.cron=0 0 1 * * ?
 ### V24: Partition ezkey_audit_log (composite)
 
 1. ✅ Created partitioned table structure (RANGE by created_at)
-2. ✅ Created initial monthly partitions for current month and next month, each with LIST(api_name) sub-partitions (_admin, _auth, _m2m)
+2. ✅ Created initial monthly partitions for current month and next month, each with LIST(api_name) sub-partitions (_admin, _auth, _integration)
 3. ✅ Created indexes on partitioned table (propagated to all sub-partitions)
 
 ---
@@ -129,7 +129,7 @@ SELECT
 FROM pg_tables
 WHERE tablename LIKE 'ezkey_audit_log_%'
 ORDER BY tablename;
--- Expect: ezkey_audit_log_YYYY_MM, ezkey_audit_log_YYYY_MM_admin, _auth, _m2m per month
+-- Expect: ezkey_audit_log_YYYY_MM, ezkey_audit_log_YYYY_MM_admin, _auth, _integration per month
 ```
 
 ### 2. Verify Partition Pruning
@@ -202,7 +202,7 @@ FOR VALUES FROM ('2025-03-01') TO ('2025-04-01')
 PARTITION BY LIST (api_name);
 CREATE TABLE ezkey_audit_log_2025_03_admin PARTITION OF ezkey_audit_log_2025_03 FOR VALUES IN ('ADMIN_API');
 CREATE TABLE ezkey_audit_log_2025_03_auth PARTITION OF ezkey_audit_log_2025_03 FOR VALUES IN ('AUTH_API');
-CREATE TABLE ezkey_audit_log_2025_03_m2m PARTITION OF ezkey_audit_log_2025_03 FOR VALUES IN ('M2M_API');
+CREATE TABLE ezkey_audit_log_2025_03_integration PARTITION OF ezkey_audit_log_2025_03 FOR VALUES IN ('INTEGRATION_API');
 ```
 
 ### Archiving Old Partitions
@@ -314,7 +314,7 @@ ezkey.database.partition.scheduler.enabled=false
 
 ### Sub-Partitioning
 
-- **ezkey_audit_log:** ✅ Implemented. Each month is sub-partitioned by LIST(api_name) into _admin, _auth, _m2m for partition pruning when filtering by API.
+- **ezkey_audit_log:** ✅ Implemented. Each month is sub-partitioned by LIST(api_name) into _admin, _auth, _integration for partition pruning when filtering by API.
 - **ezkey_auth_attempt:** Sub-partition by `enrollment_id` (hash) only if >100M records/month; not needed initially.
 
 ### Tenant-Based Partitioning

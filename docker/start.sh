@@ -88,7 +88,7 @@ fi
 # Optional: Caddy reverse proxy for trusted-proxy E2E (client IP from X-Forwarded-For).
 if [ -n "$WITH_PROXY" ]; then
     COMPOSE_ARGS="${COMPOSE_ARGS} -f ${SCRIPT_DIR}/docker-compose.with-proxy.yml"
-    echo "🔧 Trusted-proxy mode: Caddy in front of APIs (Admin: 19080, Auth: 18080, M2M: 17080)"
+    echo "🔧 Trusted-proxy mode: Caddy in front of APIs (Admin: 19080, Auth: 18080, Integration API: 17080)"
     if [ -z "${EZKEY_TRUSTED_PROXIES:-}" ]; then
         export EZKEY_TRUSTED_PROXIES="172.16.0.0/12,10.0.0.0/8"
     fi
@@ -312,7 +312,7 @@ echo "📋 Service URLs:"
 if [ -n "$WITH_PROXY" ]; then
     echo "  - Admin API (via Caddy): http://localhost:19080"
     echo "  - Auth API (via Caddy):  http://localhost:18080"
-    echo "  - M2M API (via Caddy):   http://localhost:17080"
+    echo "  - Integration API (via Caddy): http://localhost:17080"
     echo "  - Admin API (direct):    http://localhost:9080"
     echo "  - Auth API (direct):    http://localhost:8080"
 else

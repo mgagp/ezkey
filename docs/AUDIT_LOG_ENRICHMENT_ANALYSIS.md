@@ -123,7 +123,7 @@ The phased implementation from the **Audit Log Enrichment Phases** plan has been
 | **adminId** | Admin API, Bearer auth | When the caller is authenticated with a Bearer token, `AdminPrincipal` is in `SecurityContext`; `adminId` is set on the audit log. When the caller uses an API key, `adminId` remains null (no admin actor). |
 | **adminId** | Admin API, login/logout | For `ADMIN_LOGIN` and `ADMIN_LOGOUT`, `adminId` is set when the admin is known (from login response or from token resolution before logout). |
 | **integrationId** | Auth API | For enrollment bind/verify and auth attempt pending/respond, `integrationId` is set from the enrollment (or auth attempt → enrollment) already in context. |
-| **integrationId** | M2M API | For auth attempt create/wait/cancel, `integrationId` is set from the enrollment or API key context. |
+| **integrationId** | Integration API | For auth attempt create/wait/cancel, `integrationId` is set from the enrollment or API key context. |
 | **integrationId** | Admin API AuthAttemptController | For `AUTH_ATTEMPT_CREATED` and `AUTH_ATTEMPT_CANCELLED`, `integrationId` is derived from the enrollment (via `resolveIntegrationIdFromEnrollment` / `resolveIntegrationIdFromAuthAttempt`). |
 | **tenantId** | All | Unchanged: set where already resolved for visibility and filtering. |
 | **enrollmentId** | All | Set when the audited entity or action involves an enrollment (already in place; reinforced where needed for consistency). |
@@ -135,7 +135,7 @@ The phased implementation from the **Audit Log Enrichment Phases** plan has been
 | Phase 1a | adminId on IntegrationController, EnrollmentController, TenantController | ✅ Done |
 | Phase 1b | adminId on AuthAttemptController, ApiKeyController, AdminProvisioningController | ✅ Done |
 | Phase 1c | adminId on AdminAuthController login/logout | ✅ Done |
-| Phase 2 | integrationId on Auth API and M2M API audit events | ✅ Done |
+| Phase 2 | integrationId on Auth API and Integration API audit events | ✅ Done |
 | Phase 2b | integrationId on Admin API AuthAttemptController | ✅ Done |
 | Phase 3 | Verification: AuditLogTenantVisibilityTest, EnrollmentControllerAuditTest (adminId assertions) | ✅ Done |
 | Phase 4 | Documentation (this section) | ✅ Done |

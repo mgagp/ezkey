@@ -1182,7 +1182,7 @@ export default function AuditLogsPage() {
               <option value="">{t('list.filterApiAll')}</option>
               <option value="ADMIN_API">{t('list.filterApiAdmin')}</option>
               <option value="AUTH_API">{t('list.filterApiAuth')}</option>
-              <option value="M2M_API">{t('list.filterApiM2m')}</option>
+              <option value="INTEGRATION_API">{t('list.filterApiIntegration')}</option>
             </Select>
           </div>
           <DateRangeFilter value={dateRange} onChange={setDateRange} showClear={true} emptyOptionLabel={t('list.dateRangeFull')} />

@@ -118,11 +118,11 @@ function show_status() {
         echo "  ❌ Auth API: Unhealthy"
     fi
 
-    # Check M2M API
-    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T m2m-api curl -sf http://localhost:7081/actuator/health > /dev/null 2>&1; then
-        echo "  ✅ M2M API: Healthy"
+    # Check Integration API
+    if ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" exec -T integration-api curl -sf http://localhost:7081/actuator/health > /dev/null 2>&1; then
+        echo "  ✅ Integration API: Healthy"
     else
-        echo "  ❌ M2M API: Unhealthy"
+        echo "  ❌ Integration API: Unhealthy"
     fi
 
     # Check Crypto API

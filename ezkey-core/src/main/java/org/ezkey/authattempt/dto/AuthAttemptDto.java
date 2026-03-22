@@ -18,9 +18,9 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
 /**
  * Data Transfer Object representing the state of an authentication attempt.
  *
- * <p>This record is shared across all API modules (admin-api, m2m-api) to expose authentication
- * attempt data at API boundaries. It provides a clean, immutable view of the attempt without
- * exposing internal domain or persistence details.
+ * <p>This record is shared across all API modules (admin-api, integration-api) to expose
+ * authentication attempt data at API boundaries. It provides a clean, immutable view of the attempt
+ * without exposing internal domain or persistence details.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *

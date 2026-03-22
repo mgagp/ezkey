@@ -13,7 +13,7 @@
 
 ## Overview
 
-Ezkey API Keys provide machine-to-machine (M2M) authentication for integrated applications, enabling server-to-server API calls without the login/logout overhead required for human administrators.
+Ezkey API Keys provide machine-to-machine authentication for integrated applications (Integration API credentials), enabling server-to-server API calls without the login/logout overhead required for human administrators.
 
 ### Key Concepts
 
@@ -477,11 +477,11 @@ stringData:
 
 **Current Limits (per API key, per instance):**
 - **Admin API:** Create auth attempt: 10 requests/minute; wait and cancel: 20 requests/minute
-- **M2M API:** Higher defaults (e.g. 100 create/min, 200 wait/min) for dedicated M2M workloads
+- **Integration API:** Higher defaults (e.g. 100 create/min, 200 wait/min) for dedicated integration workloads
 - Limits are per instance (no distributed coordination); see [ENDPOINT.md](ENDPOINT.md) for details
 - Returns 429 Too Many Requests when exceeded
 
-**Tuning for M2M:** If your server or CI/CD needs higher throughput, you can raise the Admin API limits in configuration (e.g. `ezkey.api-key.rate-limit.create-auth-attempt.requests=30` or 60 per minute). For dedicated M2M traffic, prefer the M2M API (port 7080), which uses higher defaults.
+**Tuning for machine-to-machine traffic:** If your server or CI/CD needs higher throughput, you can raise the Admin API limits in configuration (e.g. `ezkey.api-key.rate-limit.create-auth-attempt.requests=30` or 60 per minute). For dedicated integration traffic, prefer the Integration API (port 7080), which uses higher defaults.
 
 **Monitoring:**
 ```bash
@@ -894,7 +894,7 @@ curl -X DELETE http://localhost:9080/api/v1/api-keys/42 \
 | **Lifetime** | Long-lived (days/months) | 24 hours |
 | **Login Required** | No | Yes |
 | **Rotation** | Manual or auto-expiration | Automatic on login |
-| **Rate Limit** | 10 create/min, 20 wait/min (Admin API); higher on M2M API | 5/minute (login) |
+| **Rate Limit** | 10 create/min, 20 wait/min (Admin API); higher on Integration API | 5/minute (login) |
 | **Ideal For** | Server applications | Interactive sessions |
 
 ---

@@ -22,7 +22,7 @@ import jakarta.validation.constraints.NotNull;
  * polling interval used internally by the service. Providing sensible defaults allows callers to
  * omit either or both parameters for typical use-cases.
  *
- * <p>Shared across admin-api and m2m-api.
+ * <p>Shared across admin-api and integration-api.
  *
  * <p><b>Defaults:</b> {@code timeout = 30} seconds, {@code polling = 2} seconds.
  *

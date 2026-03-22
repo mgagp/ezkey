@@ -29,6 +29,6 @@ public enum ApiName {
   /** Auth API (port 8080) - mobile device operations. */
   AUTH_API,
 
-  /** M2M API (port 7080) - machine-to-machine integration operations. */
-  M2M_API
+  /** Integration API (port 7080) - API key authentication for integrated applications. */
+  INTEGRATION_API
 }

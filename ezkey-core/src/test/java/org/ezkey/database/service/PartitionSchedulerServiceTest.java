@@ -33,7 +33,7 @@ import org.springframework.test.util.ReflectionTestUtils;
  *
  * <p>Verifies that the scheduler invokes create_monthly_partition for both ezkey_auth_attempt and
  * ezkey_audit_log with correct partition names. For ezkey_audit_log the function creates the
- * monthly partition plus LIST(api_name) sub-partitions (_admin, _auth, _m2m).
+ * monthly partition plus LIST(api_name) sub-partitions (_admin, _auth, _integration).
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Partition scheduler service")

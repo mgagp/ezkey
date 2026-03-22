@@ -341,8 +341,8 @@ elif [ -n "$WITH_PROXY" ]; then
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (Caddy reverse proxy)"
     echo "  - Admin API (via Caddy): http://localhost:19080"
     echo "  - Auth API (via Caddy):  http://localhost:18080"
-    echo "  - M2M API (via Caddy):   http://localhost:17080"
-    echo "  - Direct ports still available: Admin 9080, Auth 8080, M2M 7080"
+    echo "  - Integration API (via Caddy): http://localhost:17080"
+    echo "  - Direct ports still available: Admin 9080, Auth 8080, Integration API 7080"
 else
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES})"
 fi

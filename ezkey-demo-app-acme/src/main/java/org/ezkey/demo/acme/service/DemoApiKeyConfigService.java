@@ -16,7 +16,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Holds API key credentials (integration key + secret key) for demo app M2M authentication.
+ * Holds API key credentials (integration key + secret key) for demo app Integration API
+ * authentication.
  *
  * <p><b>Demo only:</b> Credentials are held in memory and are not persisted. At startup, values are
  * loaded from {@link AcmeProperties}. Callers can apply a runtime override via {@link

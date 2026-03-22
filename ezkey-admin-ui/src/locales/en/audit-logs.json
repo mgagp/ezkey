@@ -23,7 +23,7 @@
     "filterApiAll": "All APIs",
     "filterApiAdmin": "Admin API",
     "filterApiAuth": "Auth API",
-    "filterApiM2m": "M2M API",
+    "filterApiIntegration": "Integration API",
     "dateRangeFull": "Full range",
     "refresh": "Refresh",
     "hint": "Read-only · Tenant-scoped · HMAC = tamper-evident chain intact for that entry.",

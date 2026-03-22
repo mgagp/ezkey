@@ -68,7 +68,7 @@ If the configured key file does not exist at startup, `AuditHmacService` auto-ge
 
 ### Key Sharing in HA Deployments
 
-All application instances (admin-api, auth-api, m2m-api) **must share the same HMAC key file**. In Docker, this is a shared volume mount; in Kubernetes, a shared Secret.
+All application instances (admin-api, auth-api, integration-api) **must share the same HMAC key file**. In Docker, this is a shared volume mount; in Kubernetes, a shared Secret.
 
 The key must be identical across instances because:
 - Any instance may write audit entries

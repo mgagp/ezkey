@@ -1,13 +1,13 @@
-# Trusted-proxy override: adds Caddy in front of Admin, Auth, and M2M APIs.
+# Trusted-proxy override: adds Caddy in front of Admin, Auth, and Integration APIs.
 # Use with: ./docker/start.sh --with-proxy
 #
 # Host ports via Caddy (client IP from X-Forwarded-For when EZKEY_TRUSTED_PROXIES is set):
 #   - Admin API:  http://localhost:19080
 #   - Auth API:   http://localhost:18080
-#   - M2M API:   http://localhost:17080
+#   - Integration API: http://localhost:17080
 #
 # Direct ports (unchanged) still work for health checks and internal use:
-#   - Admin API: 9080, Auth API: 8080, M2M API: 7080
+#   - Admin API: 9080, Auth API: 8080, Integration API: 7080
 
 services:
   admin-api:
@@ -18,7 +18,7 @@ services:
     environment:
       EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8}
 
-  m2m-api:
+  integration-api:
     environment:
       EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8}
 
@@ -37,7 +37,7 @@ services:
         condition: service_healthy
       auth-api:
         condition: service_healthy
-      m2m-api:
+      integration-api:
         condition: service_healthy
     networks:
       - ezkey-network

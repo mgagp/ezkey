@@ -37,7 +37,7 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Ezkey SDK for M2M authentication -->
+        <!-- Ezkey SDK for API key (machine-to-machine) authentication -->
         <dependency>
             <groupId>org.ezkey</groupId>
             <artifactId>ezkey-sdk</artifactId>

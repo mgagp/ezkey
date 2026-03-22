@@ -21,7 +21,7 @@ import java.time.OffsetDateTime;
  * user and subsequently poll for the result. The {@code authAttemptId} is the key field used to
  * track and interact with this attempt via the wait and cancel endpoints.
  *
- * <p>Shared across admin-api and m2m-api.
+ * <p>Shared across admin-api and integration-api.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *

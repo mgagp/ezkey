@@ -3,10 +3,10 @@
 -- ============================================================================
 -- Description: Converts ezkey_audit_log table to composite partitioning:
 --              RANGE (created_at) by month, then LIST (api_name) per month
---              with sub-partitions ADMIN_API, AUTH_API, M2M_API.
+--              with sub-partitions ADMIN_API, AUTH_API, INTEGRATION_API.
 --
 -- Context: High-volume table with three distinct event streams (Admin API,
---          Auth API, M2M API). Sub-partitioning by api_name enables partition
+--          Auth API, Integration API). Sub-partitioning by api_name enables partition
 --          pruning when filtering by API and natural segregation of traffic.
 --
 -- Development Mode: This migration assumes an empty or non-existent table.
@@ -38,7 +38,7 @@ CREATE TABLE ezkey_audit_log (
     event_status VARCHAR(20) NOT NULL CHECK (event_status IN ('SUCCESS', 'FAILURE', 'ERROR')),
 
     -- API identification
-    api_name VARCHAR(50) NOT NULL CHECK (api_name IN ('ADMIN_API', 'AUTH_API', 'M2M_API')),
+    api_name VARCHAR(50) NOT NULL CHECK (api_name IN ('ADMIN_API', 'AUTH_API', 'INTEGRATION_API')),
 
     -- Network information
     ip_address VARCHAR(45),
@@ -68,7 +68,7 @@ CREATE TABLE ezkey_audit_log (
 
 -- Add table-level comment
 COMMENT ON TABLE ezkey_audit_log IS
-'Comprehensive audit logging with composite partitioning: RANGE (created_at) by month, LIST (api_name) per month (ADMIN_API, AUTH_API, M2M_API). Enables partition pruning by date and API for security monitoring, forensic analysis, and SOC2 compliance.';
+'Comprehensive audit logging with composite partitioning: RANGE (created_at) by month, LIST (api_name) per month (ADMIN_API, AUTH_API, INTEGRATION_API). Enables partition pruning by date and API for security monitoring, forensic analysis, and SOC2 compliance.';
 
 -- Add column-level comments (same as original, with partitioning note)
 COMMENT ON COLUMN ezkey_audit_log.audit_log_id IS
@@ -80,7 +80,7 @@ COMMENT ON COLUMN ezkey_audit_log.event_action IS
 COMMENT ON COLUMN ezkey_audit_log.event_status IS
 'Result status of the event - SUCCESS (completed successfully), FAILURE (failed validation), ERROR (unexpected error)';
 COMMENT ON COLUMN ezkey_audit_log.api_name IS
-'API where the event originated - ADMIN_API (port 9080), AUTH_API (port 8080), or M2M_API (port 7080)';
+'API where the event originated - ADMIN_API (port 9080), AUTH_API (port 8080), or INTEGRATION_API (port 7080)';
 COMMENT ON COLUMN ezkey_audit_log.ip_address IS
 'Client IP address extracted from request headers (CF-Connecting-IP, X-Forwarded-For, X-Real-IP) - used for security monitoring';
 COMMENT ON COLUMN ezkey_audit_log.user_agent IS
@@ -130,7 +130,7 @@ BEGIN
     );
     EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''ADMIN_API'')', month_partition_name || '_admin', month_partition_name);
     EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''AUTH_API'')', month_partition_name || '_auth', month_partition_name);
-    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''M2M_API'')', month_partition_name || '_m2m', month_partition_name);
+    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''INTEGRATION_API'')', month_partition_name || '_integration', month_partition_name);
 
     -- Next month (pre-create for seamless transition)
     month_partition_name := 'ezkey_audit_log_' || TO_CHAR(next_month_start, 'YYYY_MM');
@@ -142,7 +142,7 @@ BEGIN
     );
     EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''ADMIN_API'')', month_partition_name || '_admin', month_partition_name);
     EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''AUTH_API'')', month_partition_name || '_auth', month_partition_name);
-    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''M2M_API'')', month_partition_name || '_m2m', month_partition_name);
+    EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''INTEGRATION_API'')', month_partition_name || '_integration', month_partition_name);
 END $$;
 
 -- ============================================================================
@@ -202,7 +202,7 @@ WHERE event_type IN ('REENCRYPTION_STARTED', 'REENCRYPTION_COMPLETED', 'REENCRYP
 -- Migration Complete
 -- ============================================================================
 -- ezkey_audit_log is now composite partitioned: RANGE (created_at) by month,
--- each month partition is LIST (api_name) with sub-partitions _admin, _auth, _m2m.
+-- each month partition is LIST (api_name) with sub-partitions _admin, _auth, _integration.
 --
 -- Next Steps:
 -- 1. Partition scheduler creates future months via create_monthly_partition (with sub-partitions)

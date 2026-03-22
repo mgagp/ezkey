@@ -5,8 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * SDK: EzkeyClient
- * Description: Main entry point for the Ezkey Java SDK. Provides M2M authentication operations
- *              using the Ezkey Admin API with API key credentials.
+ * Description: Main entry point for the Ezkey Java SDK. Provides API key (machine-to-machine)
+ *              authentication operations using the Ezkey Admin API with API key credentials.
  */
 
 package org.ezkey.sdk;
@@ -26,8 +26,8 @@ import java.util.Objects;
 /**
  * Main entry point for the Ezkey Java SDK.
  *
- * <p>Provides M2M (machine-to-machine) authentication operations against the Ezkey Admin API using
- * API key credentials (integration key + secret key) transmitted via HTTP Basic Auth.
+ * <p>Provides machine-to-machine authentication operations against the Ezkey Admin API using API
+ * key credentials (integration key + secret key) transmitted via HTTP Basic Auth.
  *
  * <p>This client is <strong>immutable</strong>, <strong>thread-safe</strong>, and designed to be
  * created once and reused. It uses {@link java.net.http.HttpClient} internally with zero external
@@ -164,7 +164,7 @@ public final class EzkeyClient {
   }
 
   // ---------------------------------------------------------------------------
-  // M2M Authentication Operations
+  // API key (machine-to-machine) authentication operations
   // ---------------------------------------------------------------------------
 
   /**

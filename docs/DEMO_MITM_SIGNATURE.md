@@ -7,7 +7,7 @@ This feature is intended for **presentations and security training**, not produc
 1. **Global gate (Auth API):** `ezkey.demo.mitm-signature-enabled` (Spring property).  
    Environment variable: **`EZKEY_DEMO_MITM_SIGNATURE_ENABLED`** (`true` / `false`, relaxed binding).
 
-2. **Per-attempt flag:** When creating an auth attempt via Admin API or M2M API, pass  
+2. **Per-attempt flag:** When creating an auth attempt via Admin API or Integration API, pass  
    `"demoMitmSignatureRequested": true`. This persists `demo_mitm_signature_enabled` on the row.  
    In Admin UI, use the demo checkbox (requires `VITE_DEMO_MODE` and session demo mode).
 

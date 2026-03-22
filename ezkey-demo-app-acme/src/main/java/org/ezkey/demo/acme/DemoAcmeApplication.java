@@ -22,7 +22,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  * Main Spring Boot application for ACME demo.
  *
  * <p>This application demonstrates EZKey passwordless login integration using backend-side
- * authentication with API Key M2M communication.
+ * authentication with API key (machine-to-machine) communication.
  *
  * <p><b>Demo Purpose:</b> Provides a realistic demonstration of EZKey integration for developers.
  * Shows how an external application can leverage EZKey's API to implement secure passwordless
@@ -37,8 +37,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  *   <li><b>Port:</b> 8082
  * </ul>
  *
- * <p><b>Integration:</b> Communicates with ezkey-admin-api (port 9080) using API Key M2M
- * authentication to create auth attempts and wait for device approval.
+ * <p><b>Integration:</b> Communicates with ezkey-admin-api (port 9080) using API key authentication
+ * to create auth attempts and wait for device approval.
  *
  * @author Ezkey contributors
  * @since 2025

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Demo application for EZKey passwordless login. Demonstrates backend-side authentication using API Key M2M communication with Admin API.
+Demo application for EZKey passwordless login. Demonstrates backend-side authentication using API key (machine-to-machine) communication with Admin API.
 
 ## Key Files
 
@@ -23,7 +23,7 @@ Demo application for EZKey passwordless login. Demonstrates backend-side authent
 - **Mode**: Backend-side (server calls Admin API via Ezkey SDK)
 - **Port**: 8082
 - **Auth**: HTTP session (server-side)
-- **API Key**: M2M authentication via EzkeyClient (from EzkeyClientProvider); credentials from config or "Apply API Key" dialog
+- **API Key**: API key authentication via EzkeyClient (from EzkeyClientProvider); credentials from config or "Apply API Key" dialog
 - **User Mapping**: External JSON file (`data/acme-users.json`) with hot-reload
 
 ## Login Flow
@@ -53,7 +53,7 @@ Properties can be hot-reloaded via Actuator `/refresh` endpoint (see Hot-Reload 
 ezkey.admin.api.url=http://admin-api:9080  # Docker
 ezkey.admin.api.url=http://localhost:9080  # IDE
 
-# API Key credentials for M2M authentication
+# API Key credentials for Integration API (machine-to-machine) authentication
 # Format: Authorization: Basic base64(integrationKey:secretKey)
 ezkey.integration.key=${EZKEY_INTEGRATION_KEY:}
 ezkey.secret.key=${EZKEY_SECRET_KEY:}

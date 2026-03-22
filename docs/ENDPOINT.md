@@ -1068,7 +1068,7 @@ Both APIs use different validation logic (admin tenant vs integration tenant), w
 
 ### **Overview**
 
-API Keys provide machine-to-machine (M2M) authentication for integrated applications, enabling server-to-server API calls without the login/logout overhead required for human administrators.
+API Keys provide machine-to-machine authentication for integrated applications (Integration API credentials), enabling server-to-server API calls without the login/logout overhead required for human administrators.
 
 **Use Cases:**
 - Backend servers calling Ezkey Admin API
@@ -1292,8 +1292,8 @@ Content-Type: application/json
 ```
 
 **Rate Limiting:**
-- Create auth attempt: 10 requests per minute per API key (Admin API); M2M API uses higher defaults (e.g. 100/min)
-- Wait and cancel: 20 requests per minute per API key (Admin API); M2M API uses higher defaults (e.g. 200/min)
+- Create auth attempt: 10 requests per minute per API key (Admin API); Integration API uses higher defaults (e.g. 100/min)
+- Wait and cancel: 20 requests per minute per API key (Admin API); Integration API uses higher defaults (e.g. 200/min)
 - Limits are per instance (no distributed coordination); higher than admin login (designed for server usage)
 - Returns 429 Too Many Requests when limit exceeded
 
@@ -1430,7 +1430,7 @@ Authorization: Bearer ezkey_admin_token...
 **Notes:**
 - Only attempts in `PENDING` or `READ` status can be cancelled
 - Attempts that are already in a final state (`ACCEPTED`, `REJECTED`, `INVALID`, `EXPIRED`) cannot be cancelled
-- Supports both Bearer token (admin) and API key (M2M) authentication
+- Supports both Bearer token (admin) and API key (Integration API) authentication
 - All cancellation operations are audited for security monitoring
 
 ---

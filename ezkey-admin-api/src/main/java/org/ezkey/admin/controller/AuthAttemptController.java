@@ -583,8 +583,9 @@ public class AuthAttemptController {
    * or navigates away), the client application can call this endpoint to immediately mark the
    * attempt as expired, allowing any waiting threads to terminate promptly.
    *
-   * <p><b>Security:</b> This endpoint supports both Bearer token (admin) and API key (M2M)
-   * authentication. Access control ensures that users can only cancel attempts they have access to.
+   * <p><b>Security:</b> This endpoint supports both Bearer token (admin) and API key (Integration
+   * API) authentication. Access control ensures that users can only cancel attempts they have
+   * access to.
    *
    * @param id the authentication attempt ID to cancel
    * @param httpRequest the HTTP request for audit logging

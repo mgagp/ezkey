@@ -30,7 +30,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * authentication methods:
  *
  * <ul>
- *   <li><b>API Keys:</b> HTTP Basic Auth for machine-to-machine (M2M) authentication
+ *   <li><b>API Keys:</b> HTTP Basic Auth for machine-to-machine (Integration API) authentication
  *   <li><b>Bearer Tokens:</b> Token-based authentication for human administrators
  *   <li><b>Rate Limiting:</b> Protection against brute force attacks
  * </ul>
@@ -74,7 +74,7 @@ public class SecurityConfig {
    * <p>This configuration supports multiple authentication methods:
    *
    * <ul>
-   *   <li><b>API Keys:</b> HTTP Basic Auth for M2M authentication
+   *   <li><b>API Keys:</b> HTTP Basic Auth for Integration API (API key) authentication
    *   <li><b>Bearer Tokens:</b> Token-based authentication for admins
    * </ul>
    *

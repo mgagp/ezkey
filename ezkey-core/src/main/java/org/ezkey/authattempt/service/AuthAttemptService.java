@@ -320,7 +320,7 @@ public class AuthAttemptService {
 
     // Security gate: reject auth attempts for inactive or non-verified enrollments.
     // This covers enrollments that have been administratively deactivated or revoked.
-    // Logged at WARN because an M2M caller using a known enrollmentId against a revoked
+    // Logged at WARN because an Integration API caller using a known enrollmentId against a revoked
     // enrollment is a security-relevant event (stale integration or suspicious probe).
     if (!Boolean.TRUE.equals(enrollment.getActive())) {
       logger.warn(

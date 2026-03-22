@@ -26,7 +26,7 @@ CREATE TABLE ezkey_audit_log (
     event_status VARCHAR(20) NOT NULL CHECK (event_status IN ('SUCCESS', 'FAILURE', 'ERROR')),
 
     -- API identification
-    api_name VARCHAR(50) NOT NULL CHECK (api_name IN ('ADMIN_API', 'AUTH_API', 'M2M_API')),
+    api_name VARCHAR(50) NOT NULL CHECK (api_name IN ('ADMIN_API', 'AUTH_API', 'INTEGRATION_API')),
 
     -- Network information
     ip_address VARCHAR(45),
@@ -59,7 +59,7 @@ COMMENT ON COLUMN ezkey_audit_log.audit_log_id IS 'Primary key - unique identifi
 COMMENT ON COLUMN ezkey_audit_log.event_type IS 'Type of event being audited (e.g., ADMIN_LOGIN, ENROLLMENT_CREATED, AUTH_ATTEMPT_CREATED)';
 COMMENT ON COLUMN ezkey_audit_log.event_action IS 'Specific action taken (e.g., login_attempt, enrollment_deletion, device_binding)';
 COMMENT ON COLUMN ezkey_audit_log.event_status IS 'Result status of the event - SUCCESS (completed successfully), FAILURE (failed validation), ERROR (unexpected error)';
-COMMENT ON COLUMN ezkey_audit_log.api_name IS 'API where the event originated - ADMIN_API (port 9080), AUTH_API (port 8080), or M2M_API (port 7080)';
+COMMENT ON COLUMN ezkey_audit_log.api_name IS 'API where the event originated - ADMIN_API (port 9080), AUTH_API (port 8080), or INTEGRATION_API (port 7080)';
 COMMENT ON COLUMN ezkey_audit_log.ip_address IS 'Client IP address extracted from request headers (CF-Connecting-IP, X-Forwarded-For, X-Real-IP) - used for security monitoring';
 COMMENT ON COLUMN ezkey_audit_log.user_agent IS 'User agent string from HTTP request - helps identify device types and potential security issues';
 COMMENT ON COLUMN ezkey_audit_log.admin_id IS 'Foreign key to admin user involved in the event - SET NULL on admin deletion to preserve audit trail';

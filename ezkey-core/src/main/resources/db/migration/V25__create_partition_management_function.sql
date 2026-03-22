@@ -61,8 +61,8 @@ BEGIN
         );
         EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''ADMIN_API'')', p_partition_name || '_admin', p_partition_name);
         EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''AUTH_API'')', p_partition_name || '_auth', p_partition_name);
-        EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''M2M_API'')', p_partition_name || '_m2m', p_partition_name);
-        RAISE NOTICE 'Created partition % and sub-partitions _admin, _auth, _m2m for table ezkey_audit_log', p_partition_name;
+        EXECUTE format('CREATE TABLE %I PARTITION OF %I FOR VALUES IN (''INTEGRATION_API'')', p_partition_name || '_integration', p_partition_name);
+        RAISE NOTICE 'Created partition % and sub-partitions _admin, _auth, _integration for table ezkey_audit_log', p_partition_name;
     ELSE
         -- ezkey_auth_attempt: single monthly partition
         EXECUTE format(
@@ -100,7 +100,7 @@ REVOKE EXECUTE ON FUNCTION create_monthly_partition(TEXT, TEXT, TIMESTAMPTZ, TIM
 -- ============================================================================
 
 COMMENT ON FUNCTION create_monthly_partition IS 
-'Creates monthly partition for ezkey_auth_attempt (single partition) or ezkey_audit_log (monthly partition plus LIST(api_name) sub-partitions _admin, _auth, _m2m). '
+'Creates monthly partition for ezkey_auth_attempt (single partition) or ezkey_audit_log (monthly partition plus LIST(api_name) sub-partitions _admin, _auth, _integration). '
 'Executes with owner privileges via SECURITY DEFINER. Idempotent - returns BOOLEAN: true if created, false if already existed.';
 
 -- ============================================================================

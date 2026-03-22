@@ -10,7 +10,7 @@
     "refresh": "Refresh",
     "newApiKey": "New API Key",
     "hint": "Max 5 active keys per integration. Secret keys are shown only at creation and cannot be retrieved later.",
-    "emptyMessage": "No API keys found. Create your first key to enable M2M access.",
+    "emptyMessage": "No API keys found. Create your first key to enable Integration API access.",
     "columns": {
       "id": "ID",
       "integration": "Integration",

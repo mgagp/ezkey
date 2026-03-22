@@ -23,8 +23,8 @@ import org.springframework.stereotype.Component;
  * secret key. This allows runtime credential changes (via the demo "Apply API Key" dialog) to take
  * effect without restart.
  *
- * <p>The Ezkey SDK {@link EzkeyClient} remains the single source for M2M API calls; this provider
- * merely decides which credentials to use when constructing it.
+ * <p>The Ezkey SDK {@link EzkeyClient} remains the single source for Admin API calls with API key;
+ * this provider merely decides which credentials to use when constructing it.
  *
  * @author Ezkey contributors
  * @since 2025

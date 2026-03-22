@@ -639,7 +639,7 @@ graph TB
         A5 --> A6[Logout<br/>Revoke Token]
     end
     
-    subgraph "API Keys (M2M)"
+    subgraph "API Keys (Integration API)"
         B1[Admin Creates Key] --> B2[Save Credentials<br/>No expiration]
         B2 --> B3[Direct API Calls<br/>No login]
         B3 --> B4[Long-lived<br/>Until revoked]
