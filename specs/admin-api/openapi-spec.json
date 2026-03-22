@@ -2510,7 +2510,7 @@
           "Enrollments"
         ],
         "summary": "Partially update enrollment metadata",
-        "description": "Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired). Only active VERIFIED enrollments. Include version from GET for optimistic locking.",
+        "description": "Updates enrollment metadata (name, contactEmail, expiresAt, authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments. Include version from GET for optimistic locking.",
         "operationId": "update",
         "parameters": [
           {
@@ -5548,6 +5548,12 @@
             "type": "boolean",
             "description": "Whether authentication attempts require challenge",
             "example": false
+          },
+          "userIdentifier": {
+            "type": "string",
+            "description": "Optional user identifier from the integrating application",
+            "maxLength": 255,
+            "minLength": 0
           }
         }
       },

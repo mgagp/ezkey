@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, Eye, EyeOff, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, Pencil, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
@@ -19,7 +19,7 @@ import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
-import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
+import { ApiError, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
@@ -30,12 +30,14 @@ import {
   useGetById,
   useReactivate,
   useRevoke,
+  useUpdate,
 } from '@/generated/admin-api/enrollments/enrollments';
 import type {
   AuthAttemptCreateRequestDto,
   AuthAttemptDto,
   AuthAttemptDtoAuthAttemptStatus,
   EnrollmentResponseDto,
+  EnrollmentUpdateRequestDto,
 } from '@/generated/admin-api/model';
 
 // ── Local types (not yet in OpenAPI spec) ────────────────────────────────────
@@ -46,6 +48,16 @@ interface AuthAttemptCreateResponse {
   authAttemptChallenge?: number;
   timeoutSeconds: number;
   expiresAt: string;
+}
+
+// ── ISO datetime-local (for invitation expiresAt PATCH) ───────────────────────
+
+function isoToDatetimeLocal(iso: string | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // ── Info row helper ──────────────────────────────────────────────────────────
@@ -436,6 +448,12 @@ export default function EnrollmentDetailPage() {
   const [lifecycleConfirm, setLifecycleConfirm] = useState<'deactivate' | 'reactivate' | null>(null);
   const [lifecycleReason, setLifecycleReason] = useState('');
   const [testAuthOpen, setTestAuthOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editUserId, setEditUserId] = useState('');
+  const [editChallenge, setEditChallenge] = useState(false);
+  const [editExpiresLocal, setEditExpiresLocal] = useState('');
 
   const { toast } = useToast();
   const { lookup } = useIntegrations();
@@ -491,6 +509,57 @@ export default function EnrollmentDetailPage() {
       },
     },
   });
+
+  const updateMutation = useUpdate({
+    mutation: {
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetByIdQueryKey(enrollmentId) });
+        void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+        toast(t('detail.toastUpdated'));
+        setEditOpen(false);
+      },
+      onError: (err) => {
+        if (err instanceof ApiError && err.status === 409) {
+          void queryClient.invalidateQueries({ queryKey: getGetByIdQueryKey(enrollmentId) });
+        }
+      },
+    },
+  });
+
+  const openEditMetadata = () => {
+    if (!enrollment) return;
+    setEditName(enrollment.enrollmentName ?? '');
+    setEditEmail(enrollment.contactEmail ?? '');
+    setEditUserId(enrollment.userIdentifier ?? '');
+    setEditChallenge(Boolean(enrollment.authAttemptChallengeRequired));
+    setEditExpiresLocal(isoToDatetimeLocal(enrollment.expiresAt));
+    setEditOpen(true);
+  };
+
+  const handleSaveMetadata = () => {
+    if (!enrollment?.enrollmentId) return;
+    const name = editName.trim();
+    if (!name) return;
+    const data: EnrollmentUpdateRequestDto = {
+      version: enrollment.version,
+      enrollmentName: name,
+      authAttemptChallengeRequired: editChallenge,
+      userIdentifier: editUserId.trim(),
+    };
+    const email = editEmail.trim();
+    if (email) {
+      data.contactEmail = email;
+    }
+    if (editExpiresLocal) {
+      data.expiresAt = new Date(editExpiresLocal).toISOString();
+    }
+    updateMutation.mutate({ id: enrollment.enrollmentId, data });
+  };
+
+  const canEditMetadata =
+    enrollment != null &&
+    enrollment.enrollmentStatus === 'VERIFIED' &&
+    enrollment.enrollmentActive === true;
 
   // Revoke blob URL on unmount or when QR is hidden
   useEffect(() => {
@@ -575,18 +644,32 @@ export default function EnrollmentDetailPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-2">
                 <CardTitle>{t('detail.enrollmentInfo')}</CardTitle>
-                {relatedDetails.hasAnyFk && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={relatedDetails.expand}
-                    disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
-                  >
-                    {relatedDetails.isExpanded && relatedDetails.isLoading
-                      ? t('common:buttons.loading')
-                      : t('common:detail.moreDetails')}
-                  </Button>
-                )}
+                <div className="flex flex-wrap items-center gap-2 justify-end">
+                  {canEditMetadata && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={openEditMetadata}
+                      className="gap-1.5"
+                    >
+                      <Pencil className="size-3.5" />
+                      {t('detail.editMetadata')}
+                    </Button>
+                  )}
+                  {relatedDetails.hasAnyFk && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={relatedDetails.expand}
+                      disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
+                    >
+                      {relatedDetails.isExpanded && relatedDetails.isLoading
+                        ? t('common:buttons.loading')
+                        : t('common:detail.moreDetails')}
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <dl className="space-y-3">
@@ -634,6 +717,11 @@ export default function EnrollmentDetailPage() {
                   )}
                   {enrollment.lastUsedAt && (
                     <InfoRow label={t('detail.infoLastUsed')}><span className="text-fg-muted">{formatDate(enrollment.lastUsedAt)}</span></InfoRow>
+                  )}
+                  {enrollment.expiresAt && (
+                    <InfoRow label={t('detail.infoExpiresAt')}>
+                      <span className="text-fg-muted">{formatDate(enrollment.expiresAt)}</span>
+                    </InfoRow>
                   )}
 
                 </dl>
@@ -983,6 +1071,101 @@ export default function EnrollmentDetailPage() {
                   {t('lifecycleDialog.reactivate')}
                 </>
               )}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={editOpen}
+        onClose={() => {
+          if (!updateMutation.isPending) setEditOpen(false);
+        }}
+        title={t('detail.editDialogTitle')}
+        size="md"
+        dismissible={false}
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-name">{t('detail.editName')}</Label>
+            <Input
+              id="edit-name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="border-2 border-fg/30"
+              maxLength={255}
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-email">{t('detail.editContactEmail')}</Label>
+            <Input
+              id="edit-email"
+              type="email"
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+              className="border-2 border-fg/30"
+              maxLength={255}
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-user-id">{t('detail.editUserIdentifier')}</Label>
+            <Input
+              id="edit-user-id"
+              value={editUserId}
+              onChange={(e) => setEditUserId(e.target.value)}
+              className="border-2 border-fg/30"
+              maxLength={255}
+              autoComplete="off"
+            />
+          </div>
+          <label className="flex items-start gap-3 cursor-pointer select-none p-3 border-2 border-fg/20">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 accent-accent"
+              checked={editChallenge}
+              onChange={(e) => setEditChallenge(e.target.checked)}
+            />
+            <span className="text-sm font-bold">{t('detail.editChallengeRequired')}</span>
+          </label>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-expires">{t('detail.editExpiresAt')}</Label>
+            <p className="text-xs text-fg-muted">{t('detail.editExpiresHint')}</p>
+            <Input
+              id="edit-expires"
+              type="datetime-local"
+              value={editExpiresLocal}
+              onChange={(e) => setEditExpiresLocal(e.target.value)}
+              className="border-2 border-fg/30"
+            />
+          </div>
+          {updateMutation.isError && (
+            <Alert variant="error">
+              {getApiErrorMessage(
+                updateMutation.error,
+                updateMutation.error instanceof ApiError && updateMutation.error.status === 409
+                  ? t('detail.errorConflict')
+                  : t('detail.errorUpdate'),
+              )}
+            </Alert>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditOpen(false)}
+              disabled={updateMutation.isPending}
+            >
+              {t('detail.editCancel')}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveMetadata}
+              isLoading={updateMutation.isPending}
+              disabled={!editName.trim()}
+            >
+              {t('detail.editSave')}
             </Button>
           </div>
         </div>

@@ -1000,7 +1000,13 @@ Authorization: Bearer ezkey_admin_token...
 
 #### **PATCH /api/v1/enrollments/{id}** (Partial Update of Enrollment Metadata)
 
-Partially updates enrollment metadata. Only non-null fields in the request body are applied. Supports `enrollmentName`, `contactEmail`, `expiresAt`, `authAttemptChallengeRequired`. Only active, non-revoked VERIFIED enrollments can be updated. Include `version` from the GET response for optimistic locking.
+Partially updates enrollment metadata. Only non-null fields in the request body are applied. Supports `enrollmentName`, `contactEmail`, `expiresAt`, `authAttemptChallengeRequired`, `userIdentifier`. Only active, non-revoked VERIFIED enrollments can be updated. Include `version` from the GET response for optimistic locking.
+
+Omitted fields are left unchanged. Sending `null` for optional fields does **not** clear them (use a dedicated API pattern only if clearing is added in the future).
+
+**Semantics — `expiresAt`:** This field governs the **pending invitation window** (creation → bind → verify). It is **not** a post-verification “MFA valid until” lifetime for the whole enrollment; after `VERIFIED`, ongoing authentication does not use this field as an automatic cutoff (a separate product concept may be introduced later).
+
+**Audit (SOC 2):** On success, `ENROLLMENT_UPDATED` stores structured JSON in `event_details` with `enrollment_id`, `integration_id`, and a `changes` array listing each modified field with `previous` and `new` values.
 
 **Request:**
 ```http
@@ -1013,7 +1019,8 @@ Content-Type: application/json
   "enrollmentName": "John's iPhone",
   "contactEmail": "john@example.com",
   "expiresAt": "2026-12-31T23:59:59Z",
-  "authAttemptChallengeRequired": false
+  "authAttemptChallengeRequired": false,
+  "userIdentifier": "app-user-12345"
 }
 ```
 
@@ -1028,7 +1035,8 @@ Content-Type: application/json
 
 **Constraints:**
 - `enrollmentName`: must be unique per integration for VERIFIED status
-- `expiresAt`: must be in the future if provided; null = no expiration
+- `expiresAt`: must be in the future if provided; semantics are invitation/bind/verify only (see above)
+- `userIdentifier`: optional; trimmed; empty string after trim clears to null
 - Only VERIFIED and active enrollments can be updated
 
 #### **DELETE /api/v1/enrollments/{id}** (Delete Enrollment)

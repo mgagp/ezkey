@@ -27,6 +27,7 @@ import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.EnrollmentRevocationService;
+import org.ezkey.admin.service.EnrollmentUpdateOutcome;
 import org.ezkey.admin.service.EnrollmentUpdateService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
@@ -293,8 +294,9 @@ public class EnrollmentController {
    * Partially updates an enrollment's metadata.
    *
    * <p>Only non-null fields in the request body are applied. Supports enrollmentName, contactEmail,
-   * expiresAt, authAttemptChallengeRequired. Only active, non-revoked VERIFIED enrollments can be
-   * updated. Include {@code version} from the GET response for optimistic locking.
+   * expiresAt, authAttemptChallengeRequired, userIdentifier. Only active, non-revoked VERIFIED
+   * enrollments can be updated. Include {@code version} from the GET response for optimistic
+   * locking.
    *
    * @param id the enrollment ID to update
    * @param request the partial update request
@@ -305,8 +307,8 @@ public class EnrollmentController {
       summary = "Partially update enrollment metadata",
       description =
           "Updates enrollment metadata (name, contactEmail, expiresAt,"
-              + " authAttemptChallengeRequired). Only active VERIFIED enrollments. Include version"
-              + " from GET for optimistic locking.")
+              + " authAttemptChallengeRequired, userIdentifier). Only active VERIFIED enrollments."
+              + " Include version from GET for optimistic locking.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Enrollment updated successfully"),
@@ -337,7 +339,8 @@ public class EnrollmentController {
     }
 
     try {
-      Enrollment updated = enrollmentUpdateService.updateEnrollment(id, request);
+      EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(id, request);
+      Enrollment updated = outcome.enrollment();
       EnrollmentResponseDto response = enrollmentMapper.toResponse(updated);
       Integer tenantId = resolveTenantId(updated.getIntegrationId());
 
@@ -351,7 +354,7 @@ public class EnrollmentController {
               .adminId(principal != null ? principal.adminId() : null)
               .enrollmentId(id)
               .integrationId(updated.getIntegrationId())
-              .eventDetails("Enrollment name: " + updated.getEnrollmentName())
+              .eventDetails(outcome.auditEventDetailsJson())
               .build());
 
       return ResponseEntity.ok(response);

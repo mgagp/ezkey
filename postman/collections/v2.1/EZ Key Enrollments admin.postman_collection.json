@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a27de4d0-ef4f-458a-997e-a4f67b89bd49",
     "name": "EZ Key Enrollments admin",
-    "description": "Collection for enrollment management operations in the Admin API.\n\n## Endpoints\n\n- **Search Enrollments**: Retrieve enrollments with filters and pagination\n- **Create Enrollment**: Create a new enrollment that can be bound to a mobile device\n- **Get Enrollment**: Get details of a specific enrollment by ID\n- **Get QR Code**: Generate QR code image for enrollment binding\n- **Delete Enrollment**: Remove an enrollment from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all enrollments across all tenants\n- **TenantAdmin**: Can only access enrollments for integrations within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only enrollments for their tenant's integrations)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessEnrollment()`\n- **Integration Access Check**: Enrollment creation validates that the admin has access to the integration (via `AccessControlService.canAccessIntegration()`)\n\n## Enrollment Lifecycle\n\n1. **Create**: Admin creates enrollment with integration ID and name (optional: contactEmail, userIdentifier). When `ezkey.enrollment.pending-expiration-days` is set, the enrollment gets an optional `expiresAt` (pending phase only).\n2. **QR Code**: Generate QR code for easy mobile device binding\n3. **Binding**: Mobile device binds to enrollment (via auth API). Bind is rejected with 400 if the enrollment's `expiresAt` has passed.\n4. **Verification**: Mobile device verifies enrollment (via auth API). Verify is rejected with 400 if the enrollment's `expiresAt` has passed.\n5. **Active**: Enrollment becomes active and can be used for authentication\n\n## Pending Expiration (Optional)\n\n- **expiresAt**: When the server has `ezkey.enrollment.pending-expiration-days` configured, new enrollments get `expiresAt = createdAt + T`. Null when no expiration policy.\n- **Status EXPIRED**: Pending enrollments (CREATED or BOUND) past `expiresAt` are marked EXPIRED; bind/verify then return 400. A scheduled job (configurable cron) also marks expired pending enrollments and emits ENROLLMENT_EXPIRED audit events.\n\n## Audit & Contact Fields (Phase 1 & 2)\n\nEnrollments carry enriched data for normative (SOC 2) and operational purposes:\n- **verifiedAt**: When device completed verification\n- **createdByAdminId**: Admin who created (null when via API key)\n- **lastUsedAt**: Last successful authentication\n- **contactEmail**: Optional end-user contact\n- **userIdentifier**: Optional app user reference (enables future auth by userIdentifier)\n\n## QR Code Format\n\nThe QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`\n\nThis allows the mobile app to automatically populate enrollment credentials when scanning the QR code, eliminating manual entry and reducing errors.",
+    "description": "Collection for enrollment management operations in the Admin API.\n\n## Endpoints\n\n- **Search Enrollments**: Retrieve enrollments with filters and pagination\n- **Create Enrollment**: Create a new enrollment that can be bound to a mobile device\n- **Get Enrollment**: Get details of a specific enrollment by ID\n- **Patch Enrollment**: Partially update metadata (VERIFIED + active); set `enrollmentVersion` from GET\n- **Get QR Code**: Generate QR code image for enrollment binding\n- **Delete Enrollment**: Remove an enrollment from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all enrollments across all tenants\n- **TenantAdmin**: Can only access enrollments for integrations within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only enrollments for their tenant's integrations)\n- **Access Validation**: Individual resource access is validated via `AccessControlService.canAccessEnrollment()`\n- **Integration Access Check**: Enrollment creation validates that the admin has access to the integration (via `AccessControlService.canAccessIntegration()`)\n\n## Enrollment Lifecycle\n\n1. **Create**: Admin creates enrollment with integration ID and name (optional: contactEmail, userIdentifier). When `ezkey.enrollment.pending-expiration-days` is set, the enrollment gets an optional `expiresAt` (pending phase only).\n2. **QR Code**: Generate QR code for easy mobile device binding\n3. **Binding**: Mobile device binds to enrollment (via auth API). Bind is rejected with 400 if the enrollment's `expiresAt` has passed.\n4. **Verification**: Mobile device verifies enrollment (via auth API). Verify is rejected with 400 if the enrollment's `expiresAt` has passed.\n5. **Active**: Enrollment becomes active and can be used for authentication\n\n## Pending Expiration (Optional)\n\n- **expiresAt**: When the server has `ezkey.enrollment.pending-expiration-days` configured, new enrollments get `expiresAt = createdAt + T`. Null when no expiration policy.\n- **Status EXPIRED**: Pending enrollments (CREATED or BOUND) past `expiresAt` are marked EXPIRED; bind/verify then return 400. A scheduled job (configurable cron) also marks expired pending enrollments and emits ENROLLMENT_EXPIRED audit events.\n\n## Audit & Contact Fields (Phase 1 & 2)\n\nEnrollments carry enriched data for normative (SOC 2) and operational purposes:\n- **verifiedAt**: When device completed verification\n- **createdByAdminId**: Admin who created (null when via API key)\n- **lastUsedAt**: Last successful authentication\n- **contactEmail**: Optional end-user contact\n- **userIdentifier**: Optional app user reference (enables future auth by userIdentifier)\n\n## QR Code Format\n\nThe QR code contains enrollment credentials in the format: `enrollmentId|enrollmentProofToken`\n\nThis allows the mobile app to automatically populate enrollment credentials when scanning the QR code, eliminating manual entry and reducing errors.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -242,6 +242,9 @@
               "if (pm.response.code === 200) {",
               "    var jsonData = pm.response.json();",
               "    pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);",
+              "    if (jsonData.version !== undefined && jsonData.version !== null) {",
+              "        pm.environment.set(\"enrollmentVersion\", jsonData.version);",
+              "    }",
               "    pm.environment.set(\"enrollmentChallenge\", jsonData.enrollmentChallenge);",
               "    pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);",
               "    ",
@@ -295,6 +298,65 @@
           ]
         },
         "description": "Retrieves details of a specific enrollment by its ID for administrative purposes.\n\n**Path Parameters:**\n- `id` (required): Enrollment ID to retrieve\n\n**Response (200 OK):**\n- `enrollmentId`: Unique identifier for the enrollment\n- `integrationId`: Integration identifier this enrollment belongs to\n- `enrollmentName`: Human-readable name for the enrollment\n- `enrollmentStatus`: Enrollment lifecycle status (CREATED, BOUND, VERIFIED, INVALID, REVOKED, EXPIRED)\n- `enrollmentActive`: Flag indicating if the enrollment is currently active\n- `enrollmentChallenge`: Challenge value for enrollment verification\n- `enrollmentProofToken`: Unique code for enrollment verification\n- `authAttemptChallengeRequired`: Flag indicating if authentication attempts require challenge\n- `integrationPublicKey`: Public key for integration communication\n- `devicePublicKey`: Public key for the device (null if not bound)\n- `verifiedAt`: When enrollment was verified (null if not yet verified)\n- `createdByAdminId`: Admin who created (null when via API key)\n- `lastUsedAt`: Last successful authentication (null if never used)\n- `contactEmail`: Optional contact for end-user (null if not provided)\n- `userIdentifier`: Optional user identifier from integrating app (null if not provided)\n- `expiresAt`: Optional expiration for pending phase (ISO-8601); set when ezkey.enrollment.pending-expiration-days is configured; null otherwise\n\n**Status Codes:**\n- 200: Enrollment found\n- 401: Unauthorized - admin token required\n- 404: Enrollment not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "patch (partial update)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200, 400, 403, 404, or 409\", function () {",
+              "    pm.expect([200, 400, 403, 404, 409]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"enrollmentVersion\", jsonData.version);",
+              "    pm.test(\"Response has version\", function () {",
+              "        pm.expect(jsonData).to.have.property('version');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"version\": {{enrollmentVersion}},\r\n    \"enrollmentName\": \"Updated Device Name\",\r\n    \"contactEmail\": \"owner@example.com\",\r\n    \"authAttemptChallengeRequired\": false,\r\n    \"userIdentifier\": \"app-user-001\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/enrollments/:id",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{enrollmentId}}",
+              "description": "VERIFIED enrollment ID (run get first to set enrollmentVersion)"
+            }
+          ]
+        },
+        "description": "Partially updates enrollment metadata. Only non-null fields are applied. Requires a **VERIFIED** and **active** enrollment.\n\n**Run `get` first** to populate `enrollmentId` and copy `version` into environment as `enrollmentVersion` (or set manually from GET response).\n\n**Body fields (all optional except include only what you change):**\n- `version`: from GET — optimistic locking (409 if stale)\n- `enrollmentName`, `contactEmail`, `expiresAt` (future ISO-8601; invitation window semantics), `authAttemptChallengeRequired`, `userIdentifier`\n\n**Note:** `expiresAt` in PATCH refers to the pending invitation window, not a separate post-verify lifetime.\n\n**Audit:** Success writes structured JSON in audit `event_details` with a `changes` array (previous/new per field)."
       },
       "response": []
     },

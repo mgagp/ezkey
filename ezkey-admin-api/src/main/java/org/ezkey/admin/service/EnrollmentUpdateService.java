@@ -11,8 +11,13 @@
 package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto;
+import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -27,7 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Service for partial update of enrollment metadata.
  *
  * <p>Implements PATCH semantics for enrollment metadata: enrollmentName, contactEmail, expiresAt,
- * authAttemptChallengeRequired. Only active, non-revoked VERIFIED enrollments can be updated.
+ * authAttemptChallengeRequired, userIdentifier. Only active, non-revoked VERIFIED enrollments can
+ * be updated.
  *
  * <p><b>Constraints:</b>
  *
@@ -71,14 +77,15 @@ public class EnrollmentUpdateService {
    *
    * @param enrollmentId the enrollment ID to update
    * @param request the partial update request
-   * @return the updated enrollment entity
+   * @return outcome with updated entity and JSON for audit {@code event_details}
    * @throws ResourceNotFoundException if enrollment not found
    * @throws IllegalArgumentException if enrollment is not updatable (revoked, inactive) or
    *     validation fails (name uniqueness, expiresAt in past)
    * @throws ObjectOptimisticLockingFailureException if version mismatch (stale)
    */
   @Transactional
-  public Enrollment updateEnrollment(Integer enrollmentId, EnrollmentUpdateRequestDto request) {
+  public EnrollmentUpdateOutcome updateEnrollment(
+      Integer enrollmentId, EnrollmentUpdateRequestDto request) {
     Enrollment enrollment =
         enrollmentRepository
             .findById(enrollmentId)
@@ -104,6 +111,12 @@ public class EnrollmentUpdateService {
     if (request.version() != null && !request.version().equals(enrollment.getVersion())) {
       throw new ObjectOptimisticLockingFailureException(Enrollment.class, enrollmentId);
     }
+
+    String previousName = enrollment.getEnrollmentName();
+    String previousContactEmail = enrollment.getContactEmail();
+    OffsetDateTime previousExpiresAt = enrollment.getExpiresAt();
+    Boolean previousChallengeRequired = enrollment.getAuthAttemptChallengeRequired();
+    String previousUserIdentifier = enrollment.getUserIdentifier();
 
     // Validate and apply enrollmentName (uniqueness per integration for VERIFIED)
     if (request.enrollmentName() != null) {
@@ -142,11 +155,87 @@ public class EnrollmentUpdateService {
       enrollment.setAuthAttemptChallengeRequired(request.authAttemptChallengeRequired());
     }
 
+    if (request.userIdentifier() != null) {
+      String trimmed = request.userIdentifier().trim();
+      enrollment.setUserIdentifier(trimmed.isEmpty() ? null : trimmed);
+    }
+
     enrollment = enrollmentRepository.save(enrollment);
     logger.info(
         "Enrollment {} metadata updated (integrationId: {})",
         enrollmentId,
         enrollment.getIntegrationId());
-    return enrollment;
+
+    String auditJson =
+        buildAuditEventDetailsJson(
+            enrollmentId,
+            enrollment.getIntegrationId(),
+            request,
+            previousName,
+            previousContactEmail,
+            previousExpiresAt,
+            previousChallengeRequired,
+            previousUserIdentifier,
+            enrollment);
+
+    return new EnrollmentUpdateOutcome(enrollment, auditJson);
+  }
+
+  private static String buildAuditEventDetailsJson(
+      Integer enrollmentId,
+      Integer integrationId,
+      EnrollmentUpdateRequestDto request,
+      String previousName,
+      String previousContactEmail,
+      OffsetDateTime previousExpiresAt,
+      Boolean previousChallengeRequired,
+      String previousUserIdentifier,
+      Enrollment updated) {
+
+    AuditDetailsBuilder builder = AuditDetailsBuilder.builder();
+    builder.custom("enrollment_id", enrollmentId);
+    builder.custom("integration_id", integrationId);
+
+    List<Map<String, Object>> changes = new ArrayList<>();
+
+    if (request.enrollmentName() != null
+        && !Objects.equals(previousName, updated.getEnrollmentName())) {
+      changes.add(changeEntry("enrollmentName", previousName, updated.getEnrollmentName()));
+    }
+    if (request.contactEmail() != null
+        && !Objects.equals(previousContactEmail, updated.getContactEmail())) {
+      changes.add(changeEntry("contactEmail", previousContactEmail, updated.getContactEmail()));
+    }
+    if (request.expiresAt() != null && !Objects.equals(previousExpiresAt, updated.getExpiresAt())) {
+      changes.add(
+          changeEntry(
+              "expiresAt",
+              previousExpiresAt != null ? previousExpiresAt.toString() : null,
+              updated.getExpiresAt() != null ? updated.getExpiresAt().toString() : null));
+    }
+    if (request.authAttemptChallengeRequired() != null
+        && !Objects.equals(previousChallengeRequired, updated.getAuthAttemptChallengeRequired())) {
+      changes.add(
+          changeEntry(
+              "authAttemptChallengeRequired",
+              previousChallengeRequired,
+              updated.getAuthAttemptChallengeRequired()));
+    }
+    if (request.userIdentifier() != null
+        && !Objects.equals(previousUserIdentifier, updated.getUserIdentifier())) {
+      changes.add(
+          changeEntry("userIdentifier", previousUserIdentifier, updated.getUserIdentifier()));
+    }
+
+    builder.custom("changes", changes);
+    return builder.toJson();
+  }
+
+  private static Map<String, Object> changeEntry(String field, Object previous, Object newValue) {
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("field", field);
+    row.put("previous", previous);
+    row.put("new", newValue);
+    return row;
   }
 }

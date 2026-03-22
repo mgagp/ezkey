@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
  *
  * <ul>
  *   <li>Happy path: partial update returns 200 with updated fields
+ *   <li>PATCH with {@code userIdentifier} serializes and persists (contract smoke)
  *   <li>Optimistic locking: stale version returns 409 Conflict
  * </ul>
  *
@@ -126,6 +127,57 @@ public class EnrollmentUpdateSecurityTest extends AbstractSecurityTest {
 
     assertThat(patchResponse.getStatusCode()).isEqualTo(200);
     assertThat(patchResponse.jsonPath().getString("enrollmentName")).isEqualTo(newName);
+    assertThat(patchResponse.jsonPath().getLong("version")).isGreaterThan(version);
+  }
+
+  @Test
+  @DisplayName("PATCH enrollment - userIdentifier returns 200 with updated field")
+  void patchEnrollment_userIdentifier_returns200() {
+    String adminToken;
+    try {
+      adminToken = authTokenManager.getAdminToken();
+    } catch (IllegalStateException e) {
+      Assumptions.assumeTrue(false, "Admin token not available. Run bootstrap-init first.");
+      return;
+    }
+
+    Integer enrollmentId = findVerifiedEnrollmentId(adminToken);
+    Assumptions.assumeTrue(
+        enrollmentId != null, "No VERIFIED enrollment found. Bootstrap creates one for admin 1.");
+
+    configureForAdminApi(dockerStackConfig);
+
+    Response getResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .when()
+            .get("/enrollments/" + enrollmentId)
+            .then()
+            .extract()
+            .response();
+
+    Assumptions.assumeTrue(
+        getResponse.getStatusCode() == 200, "Enrollment " + enrollmentId + " not found");
+    Long version = getResponse.jsonPath().getLong("version");
+    Assumptions.assumeTrue(version != null, "Enrollment response missing version field");
+
+    String newUserId = "patch-api-" + System.currentTimeMillis();
+    Map<String, Object> patchBody = Map.of("version", version, "userIdentifier", newUserId);
+
+    Response patchResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .body(patchBody)
+            .when()
+            .patch("/enrollments/" + enrollmentId)
+            .then()
+            .extract()
+            .response();
+
+    assertThat(patchResponse.getStatusCode()).isEqualTo(200);
+    assertThat(patchResponse.jsonPath().getString("userIdentifier")).isEqualTo(newUserId);
     assertThat(patchResponse.jsonPath().getLong("version")).isGreaterThan(version);
   }
 

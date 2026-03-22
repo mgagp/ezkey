@@ -35,6 +35,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for {@link EnrollmentUpdateService}.
@@ -45,6 +47,8 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Enrollment Update Service Tests")
 class EnrollmentUpdateServiceTest {
+
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Mock private EnrollmentRepository enrollmentRepository;
 
@@ -66,9 +70,18 @@ class EnrollmentUpdateServiceTest {
     enrollment.setRevokedAt(null);
   }
 
+  private static JsonNode changeForField(JsonNode changesArray, String field) {
+    for (JsonNode entry : changesArray) {
+      if (field.equals(entry.path("field").asString())) {
+        return entry;
+      }
+    }
+    throw new AssertionError("No change entry for field: " + field);
+  }
+
   @Test
   @DisplayName("updateEnrollment - happy path applies non-null fields")
-  void updateEnrollment_happyPath_appliesNonNullFields() {
+  void updateEnrollment_happyPath_appliesNonNullFields() throws Exception {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatusAndEnrollmentIdNot(
             eq(10), eq("New Name"), eq(EnrollmentStatus.VERIFIED), eq(1)))
@@ -76,14 +89,56 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, "New Name", "new@example.com", null, true);
+        new EnrollmentUpdateRequestDto(0L, "New Name", "new@example.com", null, true, null);
 
-    Enrollment result = enrollmentUpdateService.updateEnrollment(1, request);
+    EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(1, request);
 
-    assertThat(result.getEnrollmentName()).isEqualTo("New Name");
-    assertThat(result.getContactEmail()).isEqualTo("new@example.com");
-    assertThat(result.getAuthAttemptChallengeRequired()).isTrue();
+    assertThat(outcome.enrollment().getEnrollmentName()).isEqualTo("New Name");
+    assertThat(outcome.enrollment().getContactEmail()).isEqualTo("new@example.com");
+    assertThat(outcome.enrollment().getAuthAttemptChallengeRequired()).isTrue();
+
+    JsonNode root = objectMapper.readTree(outcome.auditEventDetailsJson());
+    assertThat(root.get("enrollment_id").asInt()).isEqualTo(1);
+    assertThat(root.get("integration_id").asInt()).isEqualTo(10);
+    JsonNode changes = root.get("changes");
+    assertThat(changes.isArray()).isTrue();
+    assertThat(changes.size()).isEqualTo(3);
+    assertThat(changeForField(changes, "enrollmentName").path("previous").asString())
+        .isEqualTo("Original Name");
+    assertThat(changeForField(changes, "enrollmentName").path("new").asString())
+        .isEqualTo("New Name");
+    assertThat(changeForField(changes, "contactEmail").path("previous").asString())
+        .isEqualTo("original@example.com");
+    assertThat(changeForField(changes, "contactEmail").path("new").asString())
+        .isEqualTo("new@example.com");
+    assertThat(changeForField(changes, "authAttemptChallengeRequired").get("previous").asBoolean())
+        .isFalse();
+    assertThat(changeForField(changes, "authAttemptChallengeRequired").get("new").asBoolean())
+        .isTrue();
     verify(enrollmentRepository).save(enrollment);
+  }
+
+  @Test
+  @DisplayName("updateEnrollment - applies userIdentifier and audit lists change")
+  void updateEnrollment_userIdentifier_auditContainsField() throws Exception {
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(0L, null, null, null, null, "app-user-99");
+
+    EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(1, request);
+
+    assertThat(outcome.enrollment().getUserIdentifier()).isEqualTo("app-user-99");
+
+    JsonNode root = objectMapper.readTree(outcome.auditEventDetailsJson());
+    assertThat(root.get("enrollment_id").asInt()).isEqualTo(1);
+    assertThat(root.get("integration_id").asInt()).isEqualTo(10);
+    JsonNode changes = root.get("changes");
+    assertThat(changes.size()).isEqualTo(1);
+    JsonNode userIdChange = changeForField(changes, "userIdentifier");
+    assertThat(userIdChange.get("previous").isNull()).isTrue();
+    assertThat(userIdChange.path("new").asString()).isEqualTo("app-user-99");
   }
 
   @Test
@@ -92,7 +147,7 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(99L, "New Name", null, null, null);
+        new EnrollmentUpdateRequestDto(99L, "New Name", null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(ObjectOptimisticLockingFailureException.class);
@@ -105,7 +160,7 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.findById(999)).thenReturn(Optional.empty());
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(null, "New Name", null, null, null);
+        new EnrollmentUpdateRequestDto(null, "New Name", null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(999, request))
         .isInstanceOf(ResourceNotFoundException.class)
@@ -120,7 +175,7 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, "New Name", null, null, null);
+        new EnrollmentUpdateRequestDto(0L, "New Name", null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class)
@@ -134,7 +189,7 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, "New Name", null, null, null);
+        new EnrollmentUpdateRequestDto(0L, "New Name", null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class)
@@ -152,7 +207,7 @@ class EnrollmentUpdateServiceTest {
         .thenReturn(List.of(other));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, "Existing Name", null, null, null);
+        new EnrollmentUpdateRequestDto(0L, "Existing Name", null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class)
@@ -165,7 +220,8 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
     OffsetDateTime past = OffsetDateTime.now().minusDays(1);
 
-    EnrollmentUpdateRequestDto request = new EnrollmentUpdateRequestDto(0L, null, null, past, null);
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(0L, null, null, past, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class)

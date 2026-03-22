@@ -28,9 +28,10 @@ import java.time.OffsetDateTime;
  *   <li>enrollmentName: Typo correction, device renamed (must be unique per integration for
  *       VERIFIED)
  *   <li>contactEmail: Contact info correction
- *   <li>expiresAt: Extend or shorten enrollment lifetime (must be in future if provided; null = no
- *       expiration)
+ *   <li>expiresAt: Pending invitation window only (bind/verify); must be in future if provided
  *   <li>authAttemptChallengeRequired: Security preference toggle per enrollment
+ *   <li>userIdentifier: Optional app user reference (correlation); unique per integration where
+ *       enforced by policy
  * </ul>
  *
  * <p><b>Optimistic Locking:</b> Include {@code version} from the GET response to prevent concurrent
@@ -48,6 +49,7 @@ import java.time.OffsetDateTime;
  * @param contactEmail new contact email for the end-user
  * @param expiresAt new expiration timestamp (must be in future; null = no expiration)
  * @param authAttemptChallengeRequired whether auth attempts require challenge
+ * @param userIdentifier optional integrating-app user reference
  * @author Ezkey contributors
  * @since 2025
  */
@@ -82,4 +84,9 @@ public record EnrollmentUpdateRequestDto(
             description = "Whether authentication attempts require challenge",
             example = "false",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        Boolean authAttemptChallengeRequired) {}
+        Boolean authAttemptChallengeRequired,
+    @Schema(
+            description = "Optional user identifier from the integrating application",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Size(max = 255, message = "User identifier must not exceed 255 characters")
+        String userIdentifier) {}
