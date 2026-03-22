@@ -6,6 +6,12 @@ For full product and technical context, read **PRD.md**, **README.md**, and **do
 
 ---
 
+## Maven and formatting (before any build)
+
+After implementing or changing Java (or other Spotless-covered) code, **always run `mvn spotless:apply` from the repository root before** `mvn compile`, `mvn test`, or `mvn clean install`. This prevents Checkstyle and formatter drift from failing the build. See `.cursor/rules/maven-build.mdc` for the full workflow.
+
+---
+
 ## Project values (analysis and design)
 
 - **Simplicity and pragmatism**: 80–20 rule — target ~80% of the value with ~20% of the complexity. Prefer the simplest solution that meets the need.

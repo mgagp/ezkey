@@ -35,10 +35,6 @@
       "description": "Encryption key lifecycle management and rotation operations"
     },
     {
-      "name": "API Keys",
-      "description": "API key management for machine-to-machine (Integration API) authentication"
-    },
-    {
       "name": "Administrator Provisioning",
       "description": "Administrator provisioning API"
     },
@@ -57,6 +53,10 @@
     {
       "name": "Auth Attempts",
       "description": "Authentication attempt management API"
+    },
+    {
+      "name": "API Keys",
+      "description": "API key management for machine-to-machine (Integration API) authentication"
     },
     {
       "name": "Integrations",

@@ -1,22 +1,35 @@
 ---
-description: Maven build and compile workflow to avoid Checkstyle resolution issues
-globs: "**/pom.xml"
+description: Mandatory Spotless-before-Maven workflow for agents (avoids Checkstyle/format drift)
 alwaysApply: true
 ---
 
-# Maven build — Spotless then compile
+# Maven build — Spotless first, always
 
-To avoid Checkstyle plugin resolution or quality-gate failures when building or testing:
+Generated or hand-edited code often does not match Spotless/Checkstyle until formatted. **Skipping `spotless:apply` before `mvn` is the most common cause of avoidable Checkstyle failures.**
 
-1. **From the project root**, run Spotless first:
+## Mandatory order (agents and humans)
+
+When you have **implemented or changed** code that is validated with Maven (tasks, plans, features, refactors):
+
+1. **From the repository root**, run **first**:
    - `mvn spotless:apply`
-2. **Then** compile or run tests, e.g.:
+2. **Only after that**, run compile, tests, or install, for example:
    - `mvn compile`
    - `mvn test -pl 'ezkey-admin-api,!ezkey-tests'` (exclude functional tests)
    - `mvn clean install`
 
-**Excluding functional tests:** To run the build (and unit tests) without the functional test module, exclude `ezkey-tests`:
-   - `mvn clean install -pl '!ezkey-tests'`
-   - Or with tests skipped: `mvn clean install -DskipTests -pl '!ezkey-tests'`
+Do **not** run `mvn compile`, `mvn test`, or `mvn clean install` to verify Java changes until Step 1 has been applied from the **project root**, unless you are only re-running after Spotless already left the tree clean.
 
-This order ensures formatting is applied before Checkstyle runs and avoids "artifact descriptor could not be resolved" or similar issues when building a single module (e.g. `-pl ezkey-admin-api`) without a full reactor build.
+This order applies to **every** validation build after substantive edits, not only full-reactor builds.
+
+## Excluding functional tests
+
+To run the build (and unit tests) without the functional test module, exclude `ezkey-tests`:
+
+- `mvn clean install -pl '!ezkey-tests'`
+- Or with tests skipped: `mvn clean install -DskipTests -pl '!ezkey-tests'`
+
+## Why this order
+
+- Spotless fixes formatting so Checkstyle and formatter rules pass.
+- Running Spotless before Checkstyle avoids "artifact descriptor could not be resolved" or similar issues when building a single module (e.g. `-pl ezkey-admin-api`) without a full reactor build, when combined with the project’s quality gates.
