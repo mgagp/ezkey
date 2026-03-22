@@ -177,8 +177,14 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .extract()
               .response();
 
-      // Response contains "result" field (APPROVED, DENIED, etc.), not "success"
-      assertThat(respondResponse.jsonPath().getString("result")).isEqualTo("APPROVED");
+      // Response contains authAttemptResult (APPROVED, DENIED, etc.) and integration signature
+      assertThat(respondResponse.jsonPath().getString("authAttemptResult")).isEqualTo("APPROVED");
+      assertThat(
+              respondResponse
+                  .jsonPath()
+                  .getString("authAttemptProofTokenResultSignedByIntegration"))
+          .isNotNull()
+          .isNotEmpty();
 
       // Step 5: Verify completion via Admin API
       configureForAdminApi(dockerStackConfig);

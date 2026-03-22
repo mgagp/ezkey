@@ -32,4 +32,13 @@ export const env = {
    * .env and rebuild native app to enable (react-native-config).
    */
   pendingAuthDebugPanel: parseBool(Config.EZKEY_PENDING_AUTH_DEBUG_PANEL, false),
+  /**
+   * Lab / demo: show the Respond MITM simulator (toggle that sends JSON decision mismatched to the
+   * device signature). Defaults **on** when unset. Falls back to legacy `EZKEY_DEMO_MITM_NARRATIVE_PANEL`
+   * if the new key is absent. Set to false to hide. Rebuild native app after .env changes.
+   */
+  labRespondMitmSimulator: parseBool(
+    Config.EZKEY_LAB_RESPOND_MITM_SIMULATOR ?? Config.EZKEY_DEMO_MITM_NARRATIVE_PANEL,
+    true,
+  ),
 };

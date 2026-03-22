@@ -1,6 +1,8 @@
 # Pending crypto diagnostics (Auth API ↔ mobile)
 
-When debugging **integration signature verification** on the mobile pending flow, compare **INFO** lines from the Auth API with the **Debug (for support)** box on the device. All SHA-256 values are over **UTF-8** bytes of the **exact string** (lowercase hex, 64 characters).
+When debugging **integration signature verification** on the mobile pending flow, compare **DEBUG** lines from the Auth API (see below) with the **Debug (for support)** box on the device. All SHA-256 values are over **UTF-8** bytes of the **exact string** (lowercase hex, 64 characters).
+
+**Enable API lines:** set log level for `org.ezkey.authattempt.service.AuthAttemptPendingService` to `DEBUG` (e.g. in `application.properties`: `logging.level.org.ezkey.authattempt.service.AuthAttemptPendingService=DEBUG`). These diagnostics are not emitted at INFO (to keep default Auth API logs readable).
 
 ## 1. Canonical payload
 

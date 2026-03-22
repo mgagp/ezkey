@@ -45,6 +45,20 @@ public final class AuthAttemptPayloadUtil {
     return proofToken + SEP + acceptedStr;
   }
 
+  /**
+   * Payload the integration signs for the Respond HTTP response. Must match backend
+   * AuthAttemptSignaturePayload.buildRespondResultPayload (proofToken|authAttemptId|result|message;
+   * NFC on message). See docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md.
+   */
+  public static String buildRespondResultPayload(
+      String proofToken, Integer authAttemptId, String resultName, String message) {
+    String pt = proofToken != null ? proofToken : "";
+    String idStr = authAttemptId != null ? String.valueOf(authAttemptId) : "";
+    String res = resultName != null ? resultName : "";
+    String msg = nfcOrEmpty(message);
+    return pt + SEP + idStr + SEP + res + SEP + msg;
+  }
+
   private static String nfcOrEmpty(String s) {
     if (s == null) {
       return "";

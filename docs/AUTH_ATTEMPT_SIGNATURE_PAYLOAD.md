@@ -39,6 +39,21 @@ Clients must build this exact string (with NFC for title/message), then verify t
 
 The backend rebuilds this payload from the stored proof token and the request’s `authAttemptAccepted`, then verifies the device signature. If verification fails, the respond request is rejected.
 
+## Respond HTTP response (integration signs)
+
+After processing the respond request, the Auth API returns a JSON body that includes an **integration** signature so the mobile can detect MITM tampering on the result shown to the user.
+
+**Payload to sign:** `{proofToken}|{authAttemptId}|{result}|{message}`
+
+- **proofToken**: The same `authAttemptProofToken` from Pending (empty string `""` if the server could not associate a token, e.g. some error paths).
+- **authAttemptId**: Decimal string of the attempt id (empty string if null).
+- **result**: The authentication outcome enum name: `APPROVED`, `DENIED`, `FAILED`, or `EXPIRED` (same as JSON `authAttemptResult`).
+- **message**: User-facing text; NFC-normalized; null becomes `""`.
+
+**Example:** `abc123token|456|APPROVED|Auth attempt completed`
+
+The backend signs this string with the enrollment’s integration private key. The JSON field `authAttemptProofTokenResultSignedByIntegration` carries the Base64 signature. Clients verify using the integration public key (same as for Pending). If verification fails, do not trust the displayed outcome.
+
 ## Implementation references
 
 - **Java (backend, demo device)**: `org.ezkey.authattempt.service.AuthAttemptSignaturePayload` (ezkey-core). Use `Normalizer.normalize(s, Normalizer.Form.NFC)` for non-null context strings.

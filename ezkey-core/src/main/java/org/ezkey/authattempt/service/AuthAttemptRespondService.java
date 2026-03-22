@@ -121,18 +121,10 @@ public class AuthAttemptRespondService {
       // Step 5: Update attempt status
       updateAttemptStatus(authAttempt, enrollment, request);
 
-      // Step 6: Build and return response
-      return buildResponse(request, authAttempt);
+      // Step 6: Build and return response (integration-signed result payload)
+      return buildResponse(request, authAttempt, enrollment);
     } catch (IllegalArgumentException e) {
-      // Return FAILED response for validation errors
-      // Try to get authAttempt for audit logging if available
-      AuthAttemptRespondResponse response =
-          new AuthAttemptRespondResponse(AuthenticationResult.FAILED, e.getMessage());
-      if (authAttempt != null) {
-        response.setAuthAttemptId(authAttempt.getAuthAttemptId());
-        response.setCreatedAt(authAttempt.getCreatedAt());
-      }
-      return response;
+      return buildFailedResponse(request, authAttempt, e);
     }
   }
 
@@ -312,19 +304,18 @@ public class AuthAttemptRespondService {
   }
 
   /**
-   * Builds the authentication response with the appropriate result.
-   *
-   * <p>This method creates a response indicating whether the authentication was approved or denied
-   * based on the user's decision.
+   * Builds the authentication response with the appropriate result and integration signature over
+   * the canonical Respond result payload.
    *
    * @param request the authentication response request
-   * @return the authentication response with result and message
+   * @param authAttempt the updated attempt
+   * @param enrollment enrollment (integration private key for signing)
+   * @return the authentication response with result, message, and signature
    */
   private AuthAttemptRespondResponse buildResponse(
-      AuthAttemptRespondRequest request, AuthAttempt authAttempt) {
+      AuthAttemptRespondRequest request, AuthAttempt authAttempt, Enrollment enrollment) {
     AuthAttemptRespondResponse response = new AuthAttemptRespondResponse();
 
-    // Set result based on user's choice
     if (Boolean.TRUE.equals(request.getAuthAttemptAccepted())) {
       response.setResult(AuthenticationResult.APPROVED);
     } else {
@@ -332,7 +323,52 @@ public class AuthAttemptRespondService {
     }
     response.setMessage("Auth attempt completed");
     response.setAuthAttemptId(authAttempt.getAuthAttemptId());
-    response.setCreatedAt(authAttempt.getCreatedAt()); // Required for FK to partitioned table
+    response.setCreatedAt(authAttempt.getCreatedAt());
+    attachRespondResultSignature(response, enrollment, authAttempt.getAuthAttemptProofToken());
     return response;
+  }
+
+  /**
+   * Builds a FAILED result for validation errors and signs when the integration key can be resolved
+   * from the attempt's enrollment.
+   */
+  private AuthAttemptRespondResponse buildFailedResponse(
+      AuthAttemptRespondRequest request, AuthAttempt authAttempt, IllegalArgumentException e) {
+    AuthAttemptRespondResponse response =
+        new AuthAttemptRespondResponse(AuthenticationResult.FAILED, e.getMessage());
+    if (authAttempt != null) {
+      response.setAuthAttemptId(authAttempt.getAuthAttemptId());
+      response.setCreatedAt(authAttempt.getCreatedAt());
+      String proofToken =
+          authAttempt.getAuthAttemptProofToken() != null
+              ? authAttempt.getAuthAttemptProofToken()
+              : "";
+      enrollmentRepository
+          .findById(authAttempt.getEnrollmentId())
+          .ifPresent(enrollment -> attachRespondResultSignature(response, enrollment, proofToken));
+    } else {
+      response.setAuthAttemptId(request.getAuthAttemptId());
+    }
+    return response;
+  }
+
+  /**
+   * Signs {@code proofToken|authAttemptId|result|message} with the integration private key. Skips
+   * signing if the key is missing.
+   */
+  private void attachRespondResultSignature(
+      AuthAttemptRespondResponse response, Enrollment enrollment, String proofToken) {
+    if (enrollment == null) {
+      return;
+    }
+    String privateKey = enrollment.getIntegrationPrivateKey();
+    if (privateKey == null || privateKey.isBlank()) {
+      return;
+    }
+    String payload =
+        AuthAttemptSignaturePayload.buildRespondResultPayload(
+            proofToken, response.getAuthAttemptId(), response.getResult(), response.getMessage());
+    String signature = signatureService.generateSignature(payload, privateKey);
+    response.setAuthAttemptProofTokenResultSignedByIntegration(signature);
   }
 }

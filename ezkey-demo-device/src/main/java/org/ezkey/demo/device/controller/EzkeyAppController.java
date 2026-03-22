@@ -461,33 +461,62 @@ public class EzkeyAppController {
       if (respondResponse != null) {
         logger.info("Auth response submitted successfully: {}", respondResponse);
 
-        // Determine result based on the API response result field
-        String result = respondResponse.getResult().getValue();
+        String resultPayload =
+            AuthAttemptPayloadUtil.buildRespondResultPayload(
+                authAttemptProofToken,
+                respondResponse.getAuthAttemptId(),
+                respondResponse.getAuthAttemptResult() != null
+                    ? respondResponse.getAuthAttemptResult().getValue()
+                    : null,
+                respondResponse.getAuthAttemptMessage());
+        String respondSig = respondResponse.getAuthAttemptProofTokenResultSignedByIntegration();
+        if (respondSig == null || respondSig.isBlank()) {
+          model.addAttribute("success", false);
+          model.addAttribute("denied", false);
+          model.addAttribute("failed", true);
+          model.addAttribute(
+              "message",
+              "Authentication response was not signed by the integration (missing signature).");
+          return "phone/ezkey/auth_result";
+        }
+        boolean respondSignatureValid =
+            cryptoService.validateSignature(resultPayload, respondSig, rec.integrationPublicKey());
+        if (!respondSignatureValid) {
+          model.addAttribute("success", false);
+          model.addAttribute("denied", false);
+          model.addAttribute("failed", true);
+          model.addAttribute(
+              "message", "Could not verify authentication result signature (possible tampering).");
+          return "phone/ezkey/auth_result";
+        }
+
+        // Determine result based on the API response
+        String result = respondResponse.getAuthAttemptResult().getValue();
         if ("APPROVED".equals(result)) {
           // Authentication was successful
           model.addAttribute("success", true);
           model.addAttribute("denied", false);
           model.addAttribute("failed", false);
-          model.addAttribute("message", respondResponse.getMessage());
+          model.addAttribute("message", respondResponse.getAuthAttemptMessage());
         } else if ("DENIED".equals(result)) {
           // Authentication was denied by user
           model.addAttribute("success", false);
           model.addAttribute("denied", true);
           model.addAttribute("failed", false);
-          model.addAttribute("message", respondResponse.getMessage());
+          model.addAttribute("message", respondResponse.getAuthAttemptMessage());
         } else if ("FAILED".equals(result)) {
           // Technical error occurred
           model.addAttribute("success", false);
           model.addAttribute("denied", false);
           model.addAttribute("failed", true);
-          model.addAttribute("message", respondResponse.getMessage());
+          model.addAttribute("message", respondResponse.getAuthAttemptMessage());
         } else if ("EXPIRED".equals(result)) {
           // Authentication attempt expired
           model.addAttribute("success", false);
           model.addAttribute("denied", false);
           model.addAttribute("failed", false);
           model.addAttribute("expired", true);
-          model.addAttribute("message", respondResponse.getMessage());
+          model.addAttribute("message", respondResponse.getAuthAttemptMessage());
         } else {
           // Unknown result - treat as failed
           model.addAttribute("success", false);

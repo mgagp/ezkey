@@ -20,6 +20,7 @@ import org.ezkey.authattempt.dto.AuthAttemptPendingResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 /**
@@ -120,6 +121,8 @@ public interface AuthAttemptAuthApiMapper {
    * @param response the domain respond response
    * @return the corresponding mobile response DTO
    */
+  @Mapping(target = "authAttemptResult", source = "result")
+  @Mapping(target = "authAttemptMessage", source = "message")
   AuthAttemptRespondResponseDto toAuthAttemptRespondResponseDto(
       AuthAttemptRespondResponse response);
 

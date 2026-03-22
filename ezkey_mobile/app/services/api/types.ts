@@ -62,7 +62,8 @@ export type PendingAuthResponse = {
   contextMessage?: string;
 };
 
-export type AuthAttemptDecision = 'APPROVED' | 'DENIED' | 'REJECTED' | 'FAILED' | 'EXPIRED';
+/** Values returned by Auth API for Respond authAttemptResult. */
+export type AuthAttemptDecision = 'APPROVED' | 'DENIED' | 'FAILED' | 'EXPIRED';
 
 export type RespondAuthRequest = {
   authAttemptId: string | number;
@@ -71,7 +72,14 @@ export type RespondAuthRequest = {
   authAttemptChallengeResponse?: string | number;
 };
 
+/**
+ * Respond HTTP response (Auth API). Matches Auth API AuthAttemptRespondResponseDto; integration signs
+ * authAttemptProofTokenResultSignedByIntegration over the canonical result payload (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md).
+ */
 export type RespondAuthResponse = {
-  result: AuthAttemptDecision;
-  message?: string;
+  authAttemptId: number;
+  authAttemptResult: AuthAttemptDecision;
+  authAttemptMessage: string;
+  /** Base64 ECDSA signature; null only if the server could not sign (e.g. integration key unavailable). */
+  authAttemptProofTokenResultSignedByIntegration: string | null;
 };

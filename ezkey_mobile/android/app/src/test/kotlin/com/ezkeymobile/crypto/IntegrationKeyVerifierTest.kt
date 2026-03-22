@@ -188,4 +188,45 @@ class IntegrationKeyVerifierTest {
       assertTrue(valid)
     }
   }
+
+  /**
+   * Optional golden triples (integration public key + exact UTF-8 payload + Base64 signature).
+   * Populate after a functional run or from Postman (steps 4 / 7) — see
+   * `android/app/src/test/resources/fixtures/README.md`. If any file is missing, tests no-op
+   * so CI stays green; locally, with fixtures present, these assert the full ECDSA chain matches
+   * the Auth API and TS payload builders.
+   */
+  @Nested
+  @DisplayName("Golden fixtures (optional)")
+  inner class GoldenFixtures {
+
+    private fun readOptionalFixture(name: String): String? {
+      val cl =
+          requireNotNull(IntegrationKeyVerifierTest::class.java.classLoader) {
+            "classLoader unavailable"
+          }
+      val url = cl.getResource("fixtures/$name") ?: return null
+      val text = url.readText().trim()
+      return text.takeIf { it.isNotEmpty() }
+    }
+
+    @Test
+    @DisplayName("verifies Pending integration signature when pending_payload + pending_signature fixtures exist")
+    fun verifyPendingWhenFixturesPresent() {
+      val key = readOptionalFixture("integration_public_key_base64.txt") ?: return
+      val payload = readOptionalFixture("pending_payload_utf8.txt") ?: return
+      val sig = readOptionalFixture("pending_signature_base64.txt") ?: return
+      assertTrue(IntegrationKeyVerifier.verify(payload, sig, key))
+    }
+
+    @Test
+    @DisplayName(
+        "verifies Respond result integration signature when respond_result fixtures exist")
+    fun verifyRespondResultWhenFixturesPresent() {
+      val key = readOptionalFixture("integration_public_key_base64.txt") ?: return
+      val payload = readOptionalFixture("respond_result_payload_utf8.txt") ?: return
+      val sig = readOptionalFixture("respond_result_signature_base64.txt") ?: return
+      assertTrue(IntegrationKeyVerifier.verify(payload, sig, key))
+    }
+  }
 }

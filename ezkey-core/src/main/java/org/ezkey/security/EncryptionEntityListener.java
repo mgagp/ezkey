@@ -258,13 +258,11 @@ public class EncryptionEntityListener implements ApplicationContextAware {
   }
 
   /**
-   * DEBUG-only diagnostics for {@code integrationPrivateKey} encryption.
+   * DEBUG-only, <b>redacted</b> diagnostics for {@code integrationPrivateKey} encryption state.
    *
-   * <p><b>Local development only:</b> logs full transient and persistent field values (private key
-   * material). Do not use this verbosity in shared or production environments.
-   *
-   * <p>Enable {@code logging.level.org.ezkey.security.EncryptionEntityListener=DEBUG} during Clean
-   * Start to trace state at flush time.
+   * <p>Never logs key material. Enable {@code
+   * logging.level.org.ezkey.security.EncryptionEntityListener=DEBUG} only when troubleshooting
+   * encrypt-at-flush behaviour.
    */
   private void logIntegrationPrivateKeyDiagnostics(
       Object entity,
@@ -287,22 +285,21 @@ public class EncryptionEntityListener implements ApplicationContextAware {
     boolean persistentLooksEncrypted =
         service != null && persistent != null && service.isEncrypted(persistent);
     boolean transientPresent = plaintextFromTransient != null && !plaintextFromTransient.isBlank();
+    int persistentLen = persistent != null ? persistent.length() : 0;
 
     logger.debug(
-        "EncryptionEntityListener diagnostic [integrationPrivateKey] phase={} enrollmentId={} "
-            + "entityClass={} transientPresent={} transientCharLength={} persistentPresent={} "
-            + "persistentLooksEncrypted={} encryptionAvailable={} "
-            + "transientIntegrationPrivateKey={} persistentEncryptedIntegrationPrivateKey={}",
+        "EncryptionEntityListener [integrationPrivateKey] phase={} enrollmentId={} entityClass={}"
+            + " transientPresent={} transientCharLength={} persistentPresent={}"
+            + " persistentCharLength={} persistentLooksEncrypted={} encryptionAvailable={}",
         phase,
         enrollment.getEnrollmentId(),
         entity.getClass().getName(),
         transientPresent,
         plaintextFromTransient != null ? plaintextFromTransient.length() : 0,
         persistent != null,
+        persistentLen,
         persistentLooksEncrypted,
-        encryptionAvailable,
-        plaintextFromTransient,
-        persistent);
+        encryptionAvailable);
   }
 
   /**

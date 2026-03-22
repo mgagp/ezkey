@@ -9,6 +9,7 @@ package org.ezkey.authattempt.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.ezkey.authattempt.domain.AuthenticationResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,35 @@ class AuthAttemptSignaturePayloadTest {
     void accepted_false() {
       String payload = AuthAttemptSignaturePayload.buildRespondPayload("token", false);
       assertThat(payload).isEqualTo("token|false");
+    }
+  }
+
+  @Nested
+  @DisplayName("buildRespondResultPayload")
+  class BuildRespondResultPayload {
+
+    @Test
+    void approved_with_all_fields() {
+      String payload =
+          AuthAttemptSignaturePayload.buildRespondResultPayload(
+              "pt", 99, AuthenticationResult.APPROVED, "Done");
+      assertThat(payload).isEqualTo("pt|99|APPROVED|Done");
+    }
+
+    @Test
+    void failed_empty_proof_token_and_null_id_use_empty_segments() {
+      String payload =
+          AuthAttemptSignaturePayload.buildRespondResultPayload(
+              null, null, AuthenticationResult.FAILED, "Auth attempt record not found");
+      assertThat(payload).isEqualTo("||FAILED|Auth attempt record not found");
+    }
+
+    @Test
+    void nfc_normalizes_message() {
+      String payload =
+          AuthAttemptSignaturePayload.buildRespondResultPayload(
+              "", 1, AuthenticationResult.DENIED, "café");
+      assertThat(payload).isEqualTo("|1|DENIED|café");
     }
   }
 

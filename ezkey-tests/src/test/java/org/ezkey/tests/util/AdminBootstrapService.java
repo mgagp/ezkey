@@ -1039,7 +1039,7 @@ public class AdminBootstrapService {
 
     assertThat(respondResponse.getStatusCode()).isEqualTo(200);
 
-    String result = respondResponse.jsonPath().getString("result");
+    String result = respondResponse.jsonPath().getString("authAttemptResult");
     log.info("   Result: {}", result);
     assertThat(result).isEqualTo("APPROVED");
     log.info("   ✅ Auth attempt approved");

@@ -36,3 +36,20 @@ export function buildRespondPayload(proofToken: string, accepted: boolean): stri
   const acceptedStr = accepted ? TRUE : FALSE;
   return `${proofToken}${SEP}${acceptedStr}`;
 }
+
+/**
+ * Builds the payload the integration signs for the Respond HTTP response body.
+ * Format: proofToken|authAttemptId|result|message (NFC on message; null proof token and id use "").
+ */
+export function buildRespondResultPayload(
+  proofToken: string | null | undefined,
+  authAttemptId: string | number | null | undefined,
+  result: string | null | undefined,
+  message: string | null | undefined,
+): string {
+  const pt = proofToken != null ? String(proofToken) : '';
+  const idStr = authAttemptId != null ? String(authAttemptId) : '';
+  const res = result != null ? result : '';
+  const msg = nfcOrEmpty(message);
+  return `${pt}${SEP}${idStr}${SEP}${res}${SEP}${msg}`;
+}

@@ -271,8 +271,9 @@ public class AuthAttemptPendingService {
             authAttempt.getContextTitle(),
             authAttempt.getContextMessage());
     // Diagnostic: SHA-256 (hex) of UTF-8 bytes — must match mobile pendingPayload
-    // (buildPendingPayload).
-    logger.info(
+    // (buildPendingPayload). DEBUG only: avoid noisy INFO on every poll (see
+    // docs/PENDING_PAYLOAD_DIAGNOSTIC.md).
+    logger.debug(
         "PENDING_PAYLOAD_DIAG enrollmentId={} authAttemptId={} payloadLen={}"
             + " payloadSha256Utf8Hex={}",
         enrollment.getEnrollmentId(),
@@ -285,7 +286,7 @@ public class AuthAttemptPendingService {
 
     // Same string the client receives in JSON (Base64 DER) — hash UTF-8 bytes for bit-equality
     // check.
-    logger.info(
+    logger.debug(
         "PENDING_SIGNATURE_DIAG enrollmentId={} authAttemptId={} signatureLen={}"
             + " signatureSha256Utf8Hex={}",
         enrollment.getEnrollmentId(),
@@ -297,7 +298,7 @@ public class AuthAttemptPendingService {
     String normalizedPublicKey =
         signatureService.normalizeIntegrationPublicKeyToBase64(
             enrollment.getIntegrationPublicKey());
-    logger.info(
+    logger.debug(
         "PENDING_INTEGRATION_PUBLIC_KEY_DIAG enrollmentId={} authAttemptId={} keyLen={}"
             + " integrationPublicKeySha256Utf8Hex={}",
         enrollment.getEnrollmentId(),

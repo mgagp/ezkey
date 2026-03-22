@@ -50,9 +50,9 @@ Ezkey uses a **one-time proof token** system to ensure the integrity and securit
 - **The token can only be read once** (by the PENDING request)
 
 **Step 2 - RESPOND**:
-- The mobile device **signs** the `authAttemptProofToken` (in clear) with its private key
-- This signature proves that the device has received the original token
-- **Enhanced security**: impossible to replay an attempt without having the original token
+- The mobile device **signs** the canonical payload `authAttemptProofToken|accepted` with its private key (not the raw token alone)
+- The Auth API **returns** an integration-signed response: `proofToken|authAttemptId|result|message` — verify with the integration public key (see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`)
+- **Enhanced security**: impossible to replay an attempt without having the original token; outcome shown to the user is integrity-protected
 
 #### **⚠️ Critical Points for Developers**
 
@@ -166,14 +166,18 @@ Content-Type: application/json
 ```
 
 **Response**
-- **200 OK** + validation result
+- **200 OK** + validation result (integration-signed; verify `authAttemptProofTokenResultSignedByIntegration` with the integration public key)
 - **429 Too Many Requests** when rate limit is exceeded (same `authAttemptId` or same client IP when body cannot be parsed); response includes a `Retry-After` header (seconds).
 ```json
 {
-  "result": "APPROVED",
-  "message": "Authentication approved"
+  "authAttemptId": 123,
+  "authAttemptResult": "APPROVED",
+  "authAttemptMessage": "Auth attempt completed",
+  "authAttemptProofTokenResultSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
 ```
+
+Canonical signed payload format: see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md` (Respond HTTP response).
 
 ### c) Enrollment process (device binding)
 

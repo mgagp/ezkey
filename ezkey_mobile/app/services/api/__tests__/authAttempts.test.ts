@@ -93,8 +93,10 @@ describe('authAttemptsApi', () => {
       authAttemptChallengeResponse: '123456',
     };
     const responseData: RespondAuthResponse = {
-      result: 'APPROVED',
-      message: 'Authentication approved',
+      authAttemptId: 123,
+      authAttemptResult: 'APPROVED',
+      authAttemptMessage: 'Authentication approved',
+      authAttemptProofTokenResultSignedByIntegration: 'c2lnLWJ5dGVz',
     };
     mockedPost.mockResolvedValueOnce({
       data: responseData,
@@ -122,8 +124,10 @@ describe('authAttemptsApi', () => {
       authAttemptProofTokenSignedByDevice: 'signed',
     };
     const responseData: RespondAuthResponse = {
-      result: 'REJECTED',
-      message: 'Denied by user',
+      authAttemptId: 789,
+      authAttemptResult: 'DENIED',
+      authAttemptMessage: 'Denied by user',
+      authAttemptProofTokenResultSignedByIntegration: 'c2lnLWJ5dGVz',
     };
     mockedPost.mockResolvedValueOnce({
       data: responseData,

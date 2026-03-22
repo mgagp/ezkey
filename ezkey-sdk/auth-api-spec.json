@@ -473,9 +473,15 @@
         "type": "object",
         "description": "Response DTO for authentication attempt submissions",
         "properties": {
-          "result": {
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Authentication attempt identifier",
+            "example": 123
+          },
+          "authAttemptResult": {
             "type": "string",
-            "description": "The authentication result",
+            "description": "Authentication result",
             "enum": [
               "APPROVED",
               "DENIED",
@@ -484,15 +490,21 @@
             ],
             "example": "APPROVED"
           },
-          "message": {
+          "authAttemptMessage": {
             "type": "string",
             "description": "Success confirmation or error details for user feedback",
-            "example": "Authentication approved"
+            "example": "Auth attempt completed"
+          },
+          "authAttemptProofTokenResultSignedByIntegration": {
+            "type": "string",
+            "description": "Integration signature over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
+            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
           }
         },
         "required": [
-          "message",
-          "result"
+          "authAttemptId",
+          "authAttemptMessage",
+          "authAttemptResult"
         ]
       },
       "AuthAttemptPendingRequestDto": {

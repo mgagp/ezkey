@@ -89,6 +89,14 @@ public class AuthAttemptRespondResponse {
   private OffsetDateTime createdAt;
 
   /**
+   * Integration ECDSA signature (Base64) over the canonical Respond result payload. See {@link
+   * org.ezkey.authattempt.service.AuthAttemptSignaturePayload#buildRespondResultPayload} and {@code
+   * docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md}. Null when the integration private key could not be
+   * used (e.g. attempt id unknown).
+   */
+  private String authAttemptProofTokenResultSignedByIntegration;
+
+  /**
    * Default constructor.
    *
    * <p>Creates an empty response object. The result and message should be set explicitly using the
@@ -195,6 +203,26 @@ public class AuthAttemptRespondResponse {
    */
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  /**
+   * Gets the integration signature over the Respond result payload.
+   *
+   * @return Base64-encoded signature, or null if not generated
+   */
+  public String getAuthAttemptProofTokenResultSignedByIntegration() {
+    return authAttemptProofTokenResultSignedByIntegration;
+  }
+
+  /**
+   * Sets the integration signature over the Respond result payload.
+   *
+   * @param authAttemptProofTokenResultSignedByIntegration Base64-encoded signature, or null
+   */
+  public void setAuthAttemptProofTokenResultSignedByIntegration(
+      String authAttemptProofTokenResultSignedByIntegration) {
+    this.authAttemptProofTokenResultSignedByIntegration =
+        authAttemptProofTokenResultSignedByIntegration;
   }
 
   /**

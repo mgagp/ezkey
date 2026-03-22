@@ -17,21 +17,9 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * Response DTO for authentication attempt submissions in auth API.
  *
  * <p>This DTO represents the response data returned to mobile devices after they submit their
- * authentication attempt response. It provides clear, unambiguous feedback on the authentication
- * result.
- *
- * <p><b>Usage Context:</b> Returned by auth-api when mobile devices submit authentication
- * responses. Provides immediate feedback on the authentication result.
- *
- * <p><b>Response Handling:</b> The mobile app should check the result field to determine the
- * authentication outcome. The message field provides additional context for user feedback.
- *
- * <p><b>Fields:</b>
- *
- * <ul>
- *   <li><b>result:</b> The authentication result (APPROVED, DENIED, FAILED, EXPIRED)
- *   <li><b>message:</b> Additional information or error details
- * </ul>
+ * authentication attempt response. The integration signs {@code
+ * authAttemptProofTokenResultSignedByIntegration} over the canonical payload (see
+ * docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) so the outcome cannot be tampered with in transit.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -45,26 +33,39 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 @Schema(description = "Response DTO for authentication attempt submissions")
 public record AuthAttemptRespondResponseDto(
     /**
-     * The authentication result indicating the outcome of the authentication attempt.
-     *
-     * <p>Provides clear, unambiguous states: - APPROVED: User approved the authentication - DENIED:
-     * User denied the authentication - FAILED: Technical error occurred
+     * Identifier of the authentication attempt. Present for correlation and for verifying the
+     * integration signature.
      */
     @Schema(
-            description = "The authentication result",
+            description = "Authentication attempt identifier",
+            example = "123",
+            requiredMode = RequiredMode.REQUIRED)
+        Integer authAttemptId,
+
+    /** The authentication result indicating the outcome of the attempt. */
+    @Schema(
+            description = "Authentication result",
             example = "APPROVED",
             allowableValues = {"APPROVED", "DENIED", "FAILED", "EXPIRED"},
             requiredMode = RequiredMode.REQUIRED)
-        String result,
+        String authAttemptResult,
 
-    /**
-     * Additional message providing context about the authentication result.
-     *
-     * <p>Contains success confirmation or detailed error information for user feedback. Mobile apps
-     * can display this message to inform users about the authentication attempt status.
-     */
+    /** Human-readable message (included in the signed payload; NFC-normalized on the server). */
     @Schema(
             description = "Success confirmation or error details for user feedback",
-            example = "Authentication approved",
+            example = "Auth attempt completed",
             requiredMode = RequiredMode.REQUIRED)
-        String message) {}
+        String authAttemptMessage,
+
+    /**
+     * Integration ECDSA signature (Base64) over the canonical Respond result payload. Null only
+     * when the server could not sign (e.g. integration key unavailable).
+     */
+    @Schema(
+            description =
+                "Integration signature over proofToken|authAttemptId|result|message (see"
+                    + " AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
+            example =
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String authAttemptProofTokenResultSignedByIntegration) {}

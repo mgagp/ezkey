@@ -11,6 +11,7 @@
 package org.ezkey.authattempt.service;
 
 import java.text.Normalizer;
+import org.ezkey.authattempt.domain.AuthenticationResult;
 
 /**
  * Builds canonical signature payloads for auth attempt Pending and Respond flows.
@@ -59,6 +60,29 @@ public final class AuthAttemptSignaturePayload {
   public static String buildRespondPayload(String proofToken, boolean accepted) {
     String acceptedStr = accepted ? TRUE : FALSE;
     return proofToken + SEP + acceptedStr;
+  }
+
+  /**
+   * Builds the payload signed by the integration when returning the Respond HTTP response.
+   *
+   * <p>Format: {@code proofToken|authAttemptId|result|message}. Use empty string for a null proof
+   * token (e.g. attempt not found). {@code authAttemptId} is the decimal string or empty when null.
+   * {@code result} is {@link AuthenticationResult#name()}. {@code message} is NFC-normalized
+   * user-facing text (null becomes "").
+   *
+   * @param proofToken the auth attempt proof token, or null to use empty string
+   * @param authAttemptId the attempt id, or null to use empty string
+   * @param result the authentication result enum, or null to use empty string for the segment
+   * @param message user-facing message (NFC-normalized; null becomes "")
+   * @return the canonical payload string (UTF-8)
+   */
+  public static String buildRespondResultPayload(
+      String proofToken, Integer authAttemptId, AuthenticationResult result, String message) {
+    String pt = proofToken != null ? proofToken : "";
+    String idStr = authAttemptId != null ? String.valueOf(authAttemptId) : "";
+    String res = result != null ? result.name() : "";
+    String msg = nfcOrEmpty(message);
+    return pt + SEP + idStr + SEP + res + SEP + msg;
   }
 
   /**

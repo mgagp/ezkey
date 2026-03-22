@@ -171,12 +171,17 @@ class AuthAttemptControllerTest {
     respondResponse = new AuthAttemptRespondResponse();
     respondResponse.setResult(AuthenticationResult.APPROVED);
     respondResponse.setMessage("Authentication approved");
+    respondResponse.setAuthAttemptId(456);
+    respondResponse.setAuthAttemptProofTokenResultSignedByIntegration(
+        "dGVzdC1zaWduYXR1cmU="); // arbitrary base64 for tests
 
     // Using record constructor for AuthAttemptRespondResponseDto
     respondResponseDto =
         new AuthAttemptRespondResponseDto(
-            "APPROVED", // result
-            "Authentication approved" // message
+            456, // authAttemptId
+            "APPROVED", // authAttemptResult
+            "Authentication approved", // authAttemptMessage
+            "dGVzdC1zaWduYXR1cmU=" // authAttemptProofTokenResultSignedByIntegration
             );
   }
 
