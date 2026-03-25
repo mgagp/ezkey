@@ -235,6 +235,7 @@ public class AuditLifecycleService {
             .eventStatus(EventStatus.SUCCESS)
             .apiName(ApiName.ADMIN_API)
             .eventDetails(eventDetails)
+            .reason(request.justification())
             .build();
     auditLogService.log(metaEntry);
 
@@ -462,6 +463,7 @@ public class AuditLifecycleService {
             .eventStatus(EventStatus.SUCCESS)
             .apiName(ApiName.ADMIN_API)
             .eventDetails(eventDetails)
+            .reason(request.justification())
             .build();
     auditLogService.log(metaEntry);
 

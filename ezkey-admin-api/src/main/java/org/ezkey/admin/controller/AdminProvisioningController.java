@@ -891,6 +891,10 @@ public class AdminProvisioningController {
   })
   public ResponseEntity<Void> activateAdmin(
       @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
+      @Parameter(description = "Audit justification for the activation (min 10 characters)")
+          @RequestParam(required = false)
+          @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+          String reason,
       Authentication auth,
       HttpServletRequest httpRequest) {
     ClientContext context = ClientContext.from(httpRequest);
@@ -910,6 +914,7 @@ public class AdminProvisioningController {
               .eventStatus(EventStatus.SUCCESS)
               .adminId(principal.adminId())
               .targetAdminId(id)
+              .reason(reason)
               .eventDetails("Admin ID: " + id)
               .build());
       return ResponseEntity.noContent().build();

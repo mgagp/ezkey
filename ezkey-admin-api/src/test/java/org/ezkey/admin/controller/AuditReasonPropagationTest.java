@@ -16,8 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,6 +31,7 @@ import org.ezkey.admin.exception.EnrollmentLinkedAsAdminMfaException;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.EnrollmentRevocationService;
 import org.ezkey.admin.service.EnrollmentUpdateService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
@@ -67,9 +70,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
  * Unit tests verifying that the optional {@code reason} justification field is correctly propagated
  * to {@link AuditLog} entries for SOC 2 CC6.3 / CC8.1 compliance.
  *
- * <p>Tests cover three controllers that accept a {@code reason} query parameter on mutating
- * operations: {@link ApiKeyController}, {@link EnrollmentController}, and {@link
- * EncryptionKeyController}.
+ * <p>Tests cover controllers that propagate a {@code reason} (query or body) into {@link AuditLog}:
+ * {@link ApiKeyController}, {@link EnrollmentController}, {@link EncryptionKeyController}, and
+ * {@link AdminProvisioningController} (admin activate).
  *
  * <p>No Spring context is loaded — controllers are instantiated directly to keep tests fast and
  * independent of infrastructure concerns.
@@ -100,6 +103,7 @@ class AuditReasonPropagationTest {
   @Mock private EnrollmentAdminMapper enrollmentMapper;
   @Mock private QrCodeGeneratorService qrCodeGeneratorService;
   @Mock private QrCodePayloadService qrCodePayloadService;
+  @Mock private AdminProvisioningService provisioningService;
   @Mock private EnrollmentRepository enrollmentRepository;
   @Mock private IntegrationRepository integrationRepository;
   @Mock private EnrollmentRevocationService enrollmentRevocationService;
@@ -318,6 +322,51 @@ class AuditReasonPropagationTest {
     assertEquals(EventType.KEY_INTRODUCED, logged.getEventType());
     assertEquals(EventStatus.SUCCESS, logged.getEventStatus());
     assertEquals("Annual key rotation policy", logged.getReason());
+  }
+
+  // -------------------------------------------------------------------------
+  // AdminProvisioningController – activateAdmin
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("activateAdmin() with reason – AuditLog.reason is populated")
+  void activateAdmin_withReason_propagatesReasonToAuditLog() {
+    Authentication auth = mock(Authentication.class);
+    when(auth.getPrincipal()).thenReturn(new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
+    doNothing().when(provisioningService).activateAdmin(eq(2), any(AdminPrincipal.class));
+
+    AdminProvisioningController controller =
+        new AdminProvisioningController(
+            provisioningService, qrCodeGeneratorService, qrCodePayloadService, auditLogService);
+
+    controller.activateAdmin(2, "Ten chars min", auth, httpRequest);
+
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(1)).log(captor.capture());
+
+    AuditLog logged = captor.getValue();
+    assertEquals(EventType.ADMIN_ACTIVATED, logged.getEventType());
+    assertEquals(EventStatus.SUCCESS, logged.getEventStatus());
+    assertEquals("Ten chars min", logged.getReason());
+  }
+
+  @Test
+  @DisplayName("activateAdmin() without reason – AuditLog.reason is null")
+  void activateAdmin_withoutReason_auditReasonIsNull() {
+    Authentication auth = mock(Authentication.class);
+    when(auth.getPrincipal()).thenReturn(new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
+    doNothing().when(provisioningService).activateAdmin(eq(2), any(AdminPrincipal.class));
+
+    AdminProvisioningController controller =
+        new AdminProvisioningController(
+            provisioningService, qrCodeGeneratorService, qrCodePayloadService, auditLogService);
+
+    controller.activateAdmin(2, null, auth, httpRequest);
+
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(1)).log(captor.capture());
+
+    assertNull(captor.getValue().getReason());
   }
 
   // -------------------------------------------------------------------------

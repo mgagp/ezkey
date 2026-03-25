@@ -59,6 +59,12 @@ public class DeviceCryptoService {
     }
   }
 
+  /**
+   * EC P-256 device key material encoded as standard Base64 (PKCS#8 private, SPKI public).
+   *
+   * @param base64PrivateKey PKCS#8 private key, Base64-encoded
+   * @param base64PublicKey X.509/SPKI public key, Base64-encoded
+   */
   public record ECP256DeviceKeyPair(String base64PrivateKey, String base64PublicKey) {}
 
   /**
