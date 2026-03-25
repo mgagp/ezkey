@@ -34,6 +34,7 @@
       "status": "Status",
       "api": "API",
       "admin": "Admin",
+      "reason": "Reason",
       "hmac": "HMAC",
       "time": "Time"
     },
@@ -174,6 +175,7 @@
     "labelAuthAttempt": "Auth Attempt",
     "labelIpAddress": "IP Address",
     "labelUserAgent": "User Agent",
+    "labelReason": "Reason",
     "labelDetails": "Details",
     "labelError": "Error",
     "labelCreated": "Created",

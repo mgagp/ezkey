@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/context/auth-context';
+import { HelpProvider } from '@/context/help-context';
 import type { ReactNode } from 'react';
 
 const LoginPage = lazy(() => import('@/pages/login'));
@@ -41,10 +42,20 @@ function SuspensePage({ children }: { children: ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
 }
 
+function RootLayout() {
+  return (
+    <HelpProvider>
+      <Outlet />
+    </HelpProvider>
+  );
+}
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    children: [
   // Public
   {
     path: '/login',
@@ -196,5 +207,7 @@ export const router = createBrowserRouter([
         <NotFoundPage />
       </SuspensePage>
     ),
+  },
+    ],
   },
 ]);

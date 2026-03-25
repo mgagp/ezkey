@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, KeyRound, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -22,12 +22,11 @@ import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
+import { fetchApi, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import {
   listAdmins,
-  useActivateAdmin,
   useCreateGlobalAdmin,
   useCreateTenantAdmin,
   useDeactivateAdmin,
@@ -294,18 +293,29 @@ function AdminDetailDialog({
     tenantId: adm?.tenantId ?? undefined,
   });
 
-  const activateMutation = useActivateAdmin({
-    mutation: {
-      onSuccess: () => {
-        toast(t('detail.toastActivated', { username: adm!.username }), 'success');
-        void queryClient.invalidateQueries({ queryKey: ['admins'] });
-        void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
-      },
-      onError: (e) => toast(getApiErrorMessage(e, t('detail.errorActivate')), 'error'),
+  const [activateReason, setActivateReason] = useState('');
+
+  const activateMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: number; reason?: string }) => {
+      const trimmed = reason?.trim();
+      const qs =
+        trimmed != null && trimmed.length >= 10
+          ? `?reason=${encodeURIComponent(trimmed)}`
+          : '';
+      await fetchApi(`/api/v1/admins/${id}/activate${qs}`, { method: 'POST' });
     },
+    onSuccess: () => {
+      toast(t('detail.toastActivated', { username: adm!.username }), 'success');
+      setActivateReason('');
+      void queryClient.invalidateQueries({ queryKey: ['admins'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
+    },
+    onError: (e: unknown) => toast(getApiErrorMessage(e, t('detail.errorActivate')), 'error'),
   });
 
   if (!adm) return null;
+
+  const activateReasonInvalid = activateReason.length > 0 && activateReason.length < 10;
 
   const fullName = [adm.firstName, adm.lastName].filter(Boolean).join(' ');
 
@@ -396,16 +406,38 @@ function AdminDetailDialog({
             )}
 
             {isGlobalAdmin && !adm.active && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="gap-1.5 text-success border-success/30 hover:bg-success/10"
-                isLoading={activateMutation.isPending}
-                onClick={() => activateMutation.mutate({ id: adm!.adminId! })}
-              >
-                <Power className="size-3.5" />
-                {t('detail.activate')}
-              </Button>
+              <div className="w-full space-y-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="activate-admin-reason">
+                    {t('deactivate.reasonLabel')}{' '}
+                    <span className="text-fg-muted font-normal">{t('deactivate.reasonHint')}</span>
+                  </Label>
+                  <Input
+                    id="activate-admin-reason"
+                    value={activateReason}
+                    onChange={(e) => setActivateReason(e.target.value)}
+                    placeholder={t('detail.activateReasonPlaceholder')}
+                  />
+                  <DemoReasonBadges onSelect={setActivateReason} />
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5 text-success border-success/30 hover:bg-success/10"
+                  isLoading={activateMutation.isPending}
+                  disabled={activateReasonInvalid}
+                  onClick={() =>
+                    activateMutation.mutate({
+                      id: adm!.adminId!,
+                      reason:
+                        activateReason.trim().length >= 10 ? activateReason.trim() : undefined,
+                    })
+                  }
+                >
+                  <Power className="size-3.5" />
+                  {t('detail.activate')}
+                </Button>
+              </div>
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
-import { LogOut } from 'lucide-react';
+import { CircleHelp, LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/auth-context';
+import { useHelp } from '@/context/help-context';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -13,8 +14,9 @@ interface HeaderProps {
 }
 
 export function Header({ title }: HeaderProps) {
-  const { t, i18n } = useTranslation(['layout', 'common']);
+  const { t, i18n } = useTranslation(['layout', 'common', 'help']);
   const { session, logout } = useAuth();
+  const { openHelp } = useHelp();
   const { sessionDemoOn } = useDemoModeSession();
   const navigate = useNavigate();
 
@@ -44,6 +46,15 @@ export function Header({ title }: HeaderProps) {
         )}
       </div>
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={openHelp}
+          className="p-1.5 hover:bg-fg/10 transition-colors"
+          aria-label={t('help:drawer.openHelp')}
+          title={t('help:drawer.openHelp')}
+        >
+          <CircleHelp className="size-4" />
+        </button>
         <div className="flex items-center gap-1 border-r-2 border-fg/20 pr-3 mr-1">
           <button
             type="button"

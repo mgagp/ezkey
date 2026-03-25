@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Plus, RefreshCw, Search } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
+import { HelpInlineButton } from '@/components/help/help-inline-button';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Badge } from '@/components/ui/badge';
@@ -183,6 +184,7 @@ export default function IntegrationsPage() {
 
         {/* Filter bar */}
         <div className="flex gap-3 items-center flex-wrap">
+          <HelpInlineButton className="p-1.5 hover:bg-fg/10 shrink-0 text-fg-muted hover:text-fg" />
           <div className="flex-1 min-w-52 relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-fg-muted pointer-events-none" />
             <Input

@@ -8,6 +8,7 @@ import enAuditLogs from '@/locales/en/audit-logs.json';
 import enEncryptionKeys from '@/locales/en/encryption-keys.json';
 import enAuthAttempts from '@/locales/en/auth-attempts.json';
 import enCommon from '@/locales/en/common.json';
+import enHelp from '@/locales/en/help.json';
 import enDashboard from '@/locales/en/dashboard.json';
 import enEnrollments from '@/locales/en/enrollments.json';
 import enIntegrations from '@/locales/en/integrations.json';
@@ -20,6 +21,7 @@ import frAuditLogs from '@/locales/fr/audit-logs.json';
 import frEncryptionKeys from '@/locales/fr/encryption-keys.json';
 import frAuthAttempts from '@/locales/fr/auth-attempts.json';
 import frCommon from '@/locales/fr/common.json';
+import frHelp from '@/locales/fr/help.json';
 import frDashboard from '@/locales/fr/dashboard.json';
 import frEnrollments from '@/locales/fr/enrollments.json';
 import frIntegrations from '@/locales/fr/integrations.json';
@@ -41,6 +43,7 @@ i18n
         'encryption-keys': enEncryptionKeys as Record<string, unknown>,
         'auth-attempts': enAuthAttempts as Record<string, unknown>,
         common: enCommon as Record<string, unknown>,
+        help: enHelp as Record<string, unknown>,
         dashboard: enDashboard as Record<string, unknown>,
         enrollments: enEnrollments as Record<string, unknown>,
         integrations: enIntegrations as Record<string, unknown>,
@@ -55,6 +58,7 @@ i18n
         'encryption-keys': frEncryptionKeys as Record<string, unknown>,
         'auth-attempts': frAuthAttempts as Record<string, unknown>,
         common: frCommon as Record<string, unknown>,
+        help: frHelp as Record<string, unknown>,
         dashboard: frDashboard as Record<string, unknown>,
         enrollments: frEnrollments as Record<string, unknown>,
         integrations: frIntegrations as Record<string, unknown>,
@@ -65,7 +69,7 @@ i18n
     },
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['admins', 'api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'enrollments', 'integrations', 'layout', 'login', 'tenants'],
+    ns: ['admins', 'api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'enrollments', 'help', 'integrations', 'layout', 'login', 'tenants'],
     interpolation: {
       escapeValue: false,
     },

@@ -1,0 +1,45 @@
+{
+  "drawer": {
+    "badge": "Help",
+    "close": "Close help",
+    "openHelp": "Open contextual help",
+    "shortcutHint": "Press ? to open help (when not typing in a field)."
+  },
+  "demo": {
+    "sectionTitle": "Demo mode"
+  },
+  "topics": {
+    "default": {
+      "title": "Help",
+      "summary": "Contextual help for this screen is not expanded yet.",
+      "body": "Use the sidebar to reach Dashboard, Integrations, Enrollments, and other areas. Your role (Global vs Tenant admin) controls which items appear.\n\nPress ? anytime to open this panel.",
+      "demoExtra": ""
+    },
+    "login": {
+      "title": "Signing in",
+      "summary": "EZKey Admin uses passwordless approval on your enrolled device.",
+      "body": "Enter your admin username and submit. Approve the request in the EZKey mobile app when prompted. If you enabled “challenge code”, a two-digit code may appear here and on the device — they must match.\n\nSessions use a bearer token stored for this browser tab only.",
+      "demoExtra": ""
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "summary": "High-level counts and recent activity for your instance.",
+      "body": "Cards summarize integrations, enrollments, admins, and recent audit events. Pending authentication attempts show how many approvals are waiting across integrations you can see.\n\nTimestamps use your selected language for formatting.",
+      "globalContext": "As a Global Admin, you see instance-wide metrics and can open tenant-scoped lists from here.",
+      "tenantContext": "As a Tenant (or Integration) Admin, counts are limited to your tenant and integrations you manage.",
+      "demoExtra": "Demo mode adds sample presets on some create forms and a badge in the header. It is removed from production builds."
+    },
+    "integrations": {
+      "title": "Integrations",
+      "summary": "Applications protected by EZKey MFA for a tenant.",
+      "body": "Each integration has a stable code, display name, and optional description. Create a new integration when onboarding an app; open a row to see keys, settings, and enrollments.\n\nUse search and filters to find integrations in large lists.",
+      "demoExtra": "With demo mode on, “Fill demo” presets appear in the create dialog to speed up local testing."
+    },
+    "integration-detail": {
+      "title": "Integration detail",
+      "summary": "One integration’s configuration and related objects.",
+      "body": "Review identifiers, status, and cryptographic material as exposed by your role. From here you can manage enrollments and related resources depending on permissions.\n\nTreat API and key material according to your organization’s policy.",
+      "demoExtra": ""
+    }
+  }
+}

@@ -4,7 +4,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
+import { CircleHelp } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
+import { useHelp } from '@/context/help-context';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,9 +26,10 @@ interface WaitingData {
 }
 
 export default function LoginPage() {
-  const { t, i18n } = useTranslation(['login', 'common', 'layout']);
+  const { t, i18n } = useTranslation(['login', 'common', 'layout', 'help']);
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
+  const { openHelp } = useHelp();
 
   const loginSchema = useMemo(
     () =>
@@ -179,7 +182,17 @@ export default function LoginPage() {
       <div className="w-full max-w-sm border border-[#3076DF] p-6">
         <div className="relative">
           {/* Language selector — no header when unauthenticated */}
-          <div className="absolute top-0 right-0 flex items-center gap-1 text-sm">
+          <div className="absolute top-0 right-0 flex items-center gap-2 text-sm">
+          <button
+            type="button"
+            onClick={openHelp}
+            className="p-1 hover:bg-fg/10 transition-colors"
+            aria-label={t('help:drawer.openHelp')}
+            title={t('help:drawer.openHelp')}
+          >
+            <CircleHelp className="size-4 text-sidebar-bg" />
+          </button>
+          <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setLanguage('en')}
@@ -197,6 +210,7 @@ export default function LoginPage() {
           >
             FR
           </button>
+          </div>
         </div>
 
         {/* Brand header */}

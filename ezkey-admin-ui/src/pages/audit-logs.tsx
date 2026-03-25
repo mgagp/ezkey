@@ -130,6 +130,11 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
           {log.authAttemptId && <InfoRow label={t('detail.labelAuthAttempt')}><span className="font-mono">#{log.authAttemptId}</span></InfoRow>}
         {log.ipAddress && <InfoRow label={t('detail.labelIpAddress')}><span className="font-mono text-xs">{log.ipAddress}</span></InfoRow>}
         {log.userAgent && <InfoRow label={t('detail.labelUserAgent')}><span className="text-xs text-fg-muted">{log.userAgent}</span></InfoRow>}
+        {log.reason && (
+          <InfoRow label={t('detail.labelReason')}>
+            <pre className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 whitespace-pre-wrap">{log.reason}</pre>
+          </InfoRow>
+        )}
         {log.eventDetails && (
           <InfoRow label={t('detail.labelDetails')}>
             <pre className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 whitespace-pre-wrap">{log.eventDetails}</pre>
@@ -1124,6 +1129,18 @@ export default function AuditLogsPage() {
       header: t('list.columns.admin'),
       key: 'adminId',
       render: (r) => r.adminId ? <span className="font-mono text-xs">#{r.adminId}</span> : <span className="text-fg-muted">—</span>,
+    },
+    {
+      header: t('list.columns.reason'),
+      key: 'reason',
+      render: (r) =>
+        r.reason ? (
+          <Tooltip content={r.reason}>
+            <span className="text-xs line-clamp-2 max-w-[10rem] inline-block align-top">{r.reason}</span>
+          </Tooltip>
+        ) : (
+          <span className="text-fg-muted">—</span>
+        ),
     },
     {
       header: t('list.columns.hmac'),

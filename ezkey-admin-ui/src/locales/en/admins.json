@@ -66,6 +66,7 @@
     "credentials": "Credentials",
     "deactivate": "Deactivate",
     "activate": "Activate",
+    "activateReasonPlaceholder": "Optional justification for reactivation…",
     "close": "Close",
     "toastActivated": "Admin \"{{username}}\" activated.",
     "errorActivate": "Activation failed"

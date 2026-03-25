@@ -1,0 +1,45 @@
+{
+  "drawer": {
+    "badge": "Aide",
+    "close": "Fermer l’aide",
+    "openHelp": "Ouvrir l’aide contextuelle",
+    "shortcutHint": "Appuyez sur ? pour ouvrir l’aide (lorsque vous ne tapez pas dans un champ)."
+  },
+  "demo": {
+    "sectionTitle": "Mode démo"
+  },
+  "topics": {
+    "default": {
+      "title": "Aide",
+      "summary": "L’aide détaillée pour cet écran n’est pas encore rédigée.",
+      "body": "Utilisez la barre latérale pour accéder au tableau de bord, aux intégrations, aux inscriptions et aux autres sections. Votre rôle (admin global vs admin locataire) détermine les entrées visibles.\n\nAppuyez sur ? à tout moment pour ouvrir ce panneau.",
+      "demoExtra": ""
+    },
+    "login": {
+      "title": "Connexion",
+      "summary": "La console admin EZKey utilise une approbation sans mot de passe sur l’appareil inscrit.",
+      "body": "Saisissez votre nom d’utilisateur administrateur et validez. Approuvez la demande dans l’application mobile EZKey lorsque c’est demandé. Si le « code défi » est activé, un code à deux chiffres peut s’afficher ici et sur l’appareil — ils doivent correspondre.\n\nLa session utilise un jeton porteur stocké uniquement pour cet onglet du navigateur.",
+      "demoExtra": ""
+    },
+    "dashboard": {
+      "title": "Tableau de bord",
+      "summary": "Vue d’ensemble des volumes et de l’activité récente pour votre instance.",
+      "body": "Les cartes résument les intégrations, les inscriptions, les administrateurs et les événements d’audit récents. Les tentatives d’authentification en attente indiquent combien d’approbations attendent sur les intégrations visibles pour vous.\n\nLes horodatages respectent la langue sélectionnée pour le format.",
+      "globalContext": "En tant qu’administrateur global, vous voyez des métriques à l’échelle de l’instance et pouvez ouvrir les listes par locataire à partir d’ici.",
+      "tenantContext": "En tant qu’administrateur de locataire (ou d’intégration), les totaux sont limités à votre locataire et aux intégrations que vous gérez.",
+      "demoExtra": "Le mode démo ajoute des préréglages sur certains formulaires de création et un badge dans l’en-tête. Il est retiré des builds de production."
+    },
+    "integrations": {
+      "title": "Intégrations",
+      "summary": "Applications protégées par l’AMF EZKey pour un locataire.",
+      "body": "Chaque intégration a un code stable, un nom d’affichage et une description facultative. Créez une intégration lors de l’embarquement d’une application ; ouvrez une ligne pour voir les clés, les paramètres et les inscriptions.\n\nUtilisez la recherche et les filtres pour parcourir de longues listes.",
+      "demoExtra": "Avec le mode démo activé, des préréglages « Remplir la démo » apparaissent dans la boîte de dialogue de création pour accélérer les tests locaux."
+    },
+    "integration-detail": {
+      "title": "Détail d’intégration",
+      "summary": "Configuration d’une intégration et objets liés.",
+      "body": "Consultez les identifiants, le statut et le matériel cryptographique exposé selon votre rôle. Depuis cet écran vous pouvez gérer les inscriptions et d’autres ressources selon les permissions.\n\nTraitez les clés et API conformément à la politique de votre organisation.",
+      "demoExtra": ""
+    }
+  }
+}
