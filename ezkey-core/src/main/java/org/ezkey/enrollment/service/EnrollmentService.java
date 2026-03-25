@@ -29,7 +29,7 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
-import org.ezkey.signature.ECP256KeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -397,9 +397,9 @@ public class EnrollmentService {
             ? request.getUserIdentifier().trim()
             : null);
     enrollment.setCreatedByAdminId(request.getCreatedByAdminId());
-    ECP256KeyPair integrationKeys = signatureService.generateECP256KeyPair();
+    Ed25519KeyPair integrationKeys = signatureService.generateEd25519KeyPair();
     enrollment.setIntegrationPrivateKey(integrationKeys.base64PrivateKey());
-    enrollment.setIntegrationPublicKey(integrationKeys.base64PublicKey());
+    enrollment.setIntegrationPublicKey(integrationKeys.base64UrlPublicKey());
     enrollment.setDevicePublicKey(null);
     enrollment.setEnrollmentChallenge(
         signatureService.generateSecureChallenge(6)); // 6 digits for enrollment

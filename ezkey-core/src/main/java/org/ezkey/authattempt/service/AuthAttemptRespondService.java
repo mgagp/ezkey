@@ -368,7 +368,7 @@ public class AuthAttemptRespondService {
     String payload =
         AuthAttemptSignaturePayload.buildRespondResultPayload(
             proofToken, response.getAuthAttemptId(), response.getResult(), response.getMessage());
-    String signature = signatureService.generateSignature(payload, privateKey);
+    String signature = signatureService.signIntegrationPayload(payload, privateKey);
     response.setAuthAttemptProofTokenResultSignedByIntegration(signature);
   }
 }

@@ -11,6 +11,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 
 ### 🛠️ Development
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development guide, OpenAPI documentation, and testing strategy
+- **[plan/operational-churn-ezkey.plan.md](plan/operational-churn-ezkey.plan.md)** - Operational churn tests strategy (sustained background activity, JUnit; formal load testing deferred)
 
 ### 📊 Monitoring & Operations
 - **[monitoring/](monitoring/)** - Grafana dashboards, monitoring setup, and operational guides

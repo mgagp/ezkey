@@ -172,16 +172,16 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
-   * Verifies an ECDSA-SHA256 signature over the given data using the provided public key.
+   * Verifies an Ed25519 signature over the given data using the integration public key.
    *
-   * Used to verify the integration signature on the Pending response payload (proofToken|
-   * challengeRequired|contextTitle|contextMessage). Public key must be Base64 X.509; signature
-   * Base64 ASN.1 DER.
+   * Used for integration-signed fields on Pending and Respond (see `AUTH_ATTEMPT_SIGNATURE_PAYLOAD`).
+   * Public key is raw 32 bytes (Base64URL without padding on the wire); signature is raw 64 bytes
+   * (Base64URL without padding). {@link IntegrationKeyVerifier} accepts Base64URL or standard Base64.
    *
    * @param data The exact payload that was signed (UTF-8).
-   * @param signatureBase64 Base64-encoded ECDSA signature.
-   * @param publicKeyBase64 Base64-encoded X.509 public key.
-   * @param promise Promise resolved with true if signature is valid, false otherwise.
+   * @param signatureBase64 Base64-encoded raw Ed25519 signature.
+   * @param publicKeyBase64 Base64-encoded raw Ed25519 public key.
+   * @param promise Promise resolved with true if the signature is valid, false otherwise.
    * @since 2025
    */
   @ReactMethod

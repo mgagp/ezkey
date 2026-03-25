@@ -69,6 +69,12 @@ public class EnrollmentBindResponse {
   private String integrationPublicKey;
 
   /**
+   * Algorithm for {@link #integrationPublicKey} material (e.g. {@code ed25519} for raw 32-byte
+   * keys, Base64URL without padding).
+   */
+  private String integrationKeyAlgorithm;
+
+  /**
    * The enrollment proof token that needs to be signed by the device.
    *
    * <p>Contains the challenge data that the mobile device must sign with its private key to
@@ -162,6 +168,24 @@ public class EnrollmentBindResponse {
    */
   public void setIntegrationPublicKey(String integrationPublicKey) {
     this.integrationPublicKey = integrationPublicKey;
+  }
+
+  /**
+   * Gets the integration key algorithm identifier.
+   *
+   * @return algorithm name (e.g. ed25519)
+   */
+  public String getIntegrationKeyAlgorithm() {
+    return integrationKeyAlgorithm;
+  }
+
+  /**
+   * Sets the integration key algorithm identifier.
+   *
+   * @param integrationKeyAlgorithm the algorithm name
+   */
+  public void setIntegrationKeyAlgorithm(String integrationKeyAlgorithm) {
+    this.integrationKeyAlgorithm = integrationKeyAlgorithm;
   }
 
   /**

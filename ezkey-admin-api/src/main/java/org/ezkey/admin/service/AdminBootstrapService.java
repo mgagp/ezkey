@@ -25,7 +25,7 @@ import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
-import org.ezkey.signature.ECP256KeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -315,9 +315,9 @@ public class AdminBootstrapService {
                         "Initial global admin not found: "
                             + initialGlobalAdminProperties.getUsername()));
 
-    // Generate EC P-256 key pair for enrollment
-    logger.info("🔐 Generating EC P-256 key pair for Global Admin Enrollment...");
-    ECP256KeyPair keyPair = signatureService.generateECP256KeyPair();
+    // Generate Ed25519 key pair for integration signing (enrollment)
+    logger.info("🔐 Generating Ed25519 key pair for Global Admin Enrollment...");
+    Ed25519KeyPair keyPair = signatureService.generateEd25519KeyPair();
 
     // Generate enrollment proof token
     String enrollmentProofToken = signatureService.generateProofToken();
@@ -343,7 +343,7 @@ public class AdminBootstrapService {
     globalAdminEnrollment.setEnrollmentProofToken(enrollmentProofToken);
     globalAdminEnrollment.setEnrollmentChallenge(enrollmentChallenge);
     globalAdminEnrollment.setAuthAttemptChallengeRequired(false);
-    globalAdminEnrollment.setIntegrationPublicKey(keyPair.base64PublicKey());
+    globalAdminEnrollment.setIntegrationPublicKey(keyPair.base64UrlPublicKey());
     globalAdminEnrollment.setIntegrationPrivateKey(keyPair.base64PrivateKey());
     globalAdminEnrollment.setCreatedAt(OffsetDateTime.now());
 

@@ -33,6 +33,7 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  *
  * @param enrollmentId The enrollment ID that was bound to the mobile device
  * @param integrationPublicKey The integration's public key for cryptographic verification
+ * @param integrationKeyAlgorithm Algorithm for the integration public key (e.g. ed25519)
  * @param enrollmentProofToken The enrollment proof token to be signed by the device
  * @param integrationName The display name of the integration
  * @param integrationDescription The description of the integration
@@ -59,6 +60,13 @@ public record EnrollmentBindResponseDto(
             example = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
             requiredMode = RequiredMode.REQUIRED)
         String integrationPublicKey,
+    @Schema(
+            description =
+                "Algorithm for integrationPublicKey (ed25519: raw 32-byte key, Base64URL no"
+                    + " padding)",
+            example = "ed25519",
+            requiredMode = RequiredMode.REQUIRED)
+        String integrationKeyAlgorithm,
     @Schema(
             description = "Enrollment proof token to be signed by the device",
             example = "eyJhbGciOiJSUzI1NiJ9...",

@@ -18,6 +18,7 @@ import jakarta.validation.Valid;
 import org.ezkey.crypto.dto.DecryptRequestDto;
 import org.ezkey.crypto.dto.DecryptResponseDto;
 import org.ezkey.crypto.dto.ECP256KeyPairResponseDto;
+import org.ezkey.crypto.dto.Ed25519KeyPairResponseDto;
 import org.ezkey.crypto.dto.EncryptRequestDto;
 import org.ezkey.crypto.dto.EncryptResponseDto;
 import org.ezkey.crypto.dto.HashTokenRequestDto;
@@ -30,6 +31,7 @@ import org.ezkey.crypto.dto.ValidateSignatureResponseDto;
 import org.ezkey.security.EncryptionService;
 import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.ECP256KeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,6 +118,24 @@ public class CryptoController {
   }
 
   @Operation(
+      summary = "Generate Ed25519 integration key pair",
+      description =
+          "Generates a new Ed25519 key pair for integration signing. Private key is PKCS#8 Base64;"
+              + " public key is raw 32 bytes as Base64URL (no padding).")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Ed25519 key pair generated successfully"),
+        @ApiResponse(responseCode = "500", description = "Key generation failed")
+      })
+  @GetMapping("/integration-keypair")
+  public ResponseEntity<Ed25519KeyPairResponseDto> generateIntegrationKeyPair() {
+    Ed25519KeyPair keyPair = signatureService.generateEd25519KeyPair();
+    var response =
+        new Ed25519KeyPairResponseDto(keyPair.base64PrivateKey(), keyPair.base64UrlPublicKey());
+    return ResponseEntity.ok(response);
+  }
+
+  @Operation(
       summary = "Sign data with private key",
       description =
           "Signs the provided data using EC P-256 ECDSA-SHA256 signature "
@@ -131,8 +151,7 @@ public class CryptoController {
   @PostMapping("/sign")
   public ResponseEntity<SignDataResponseDto> signData(
       @Valid @RequestBody SignDataRequestDto request) {
-    String signature =
-        signatureService.generateSignature(request.getData(), request.getPrivateKey());
+    String signature = signatureService.signEcdsaSha256(request.getData(), request.getPrivateKey());
     var response = new SignDataResponseDto(signature, request.getData(), "EC_P256");
     return ResponseEntity.ok(response);
   }

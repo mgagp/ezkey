@@ -129,10 +129,20 @@ class EnrollmentControllerTest {
     bindResponse.setEnrollmentId(123);
     bindResponse.setEnrollmentProofToken("test-proof-token");
     bindResponse.setIntegrationPublicKey("test-public-key");
+    bindResponse.setIntegrationKeyAlgorithm("ed25519");
 
     bindResponseDto =
         new EnrollmentBindResponseDto(
-            123, "test-public-key", "test-proof-token", null, null, null, null, null, null);
+            123,
+            "test-public-key",
+            "ed25519",
+            "test-proof-token",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
 
     // Setup verify request test data
     verifyRequestDto =

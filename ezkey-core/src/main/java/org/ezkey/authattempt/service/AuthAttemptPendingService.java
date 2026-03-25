@@ -281,10 +281,11 @@ public class AuthAttemptPendingService {
         payload.length(),
         sha256HexUtf8(payload));
     String signature =
-        signatureService.generateSignature(payload, enrollment.getIntegrationPrivateKey());
+        signatureService.signIntegrationPayload(payload, enrollment.getIntegrationPrivateKey());
     response.setAuthAttemptProofTokenSignedByIntegration(signature);
 
-    // Same string the client receives in JSON (Base64 DER) — hash UTF-8 bytes for bit-equality
+    // Same string the client receives in JSON (Base64URL Ed25519) — hash UTF-8 bytes for
+    // bit-equality
     // check.
     logger.debug(
         "PENDING_SIGNATURE_DIAG enrollmentId={} authAttemptId={} signatureLen={}"
@@ -306,12 +307,10 @@ public class AuthAttemptPendingService {
         normalizedPublicKey != null ? normalizedPublicKey.length() : 0,
         sha256HexUtf8(normalizedPublicKey));
 
-    // Same verification path as Android (JCA SHA256withECDSA). If this fails, the mobile app will
-    // also fail — usually indicates private/public key mismatch or corrupted enrollment keys.
-    if (!signatureService.validateSignatureWithJcaSha256WithEcdsa(
-        payload, signature, normalizedPublicKey)) {
+    // Same verification path as mobile (Ed25519). If this fails, the mobile app will also fail.
+    if (!signatureService.verifyIntegrationSignature(payload, signature, normalizedPublicKey)) {
       logger.error(
-          "Pending integration signature failed JCA self-verification (same algorithm as mobile). "
+          "Pending integration signature failed self-verification (Ed25519). "
               + "enrollmentId={} authAttemptId={}",
           enrollment.getEnrollmentId(),
           authAttempt.getAuthAttemptId());

@@ -33,7 +33,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
-import org.ezkey.signature.ECP256KeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -77,7 +77,7 @@ class EnrollmentUniquenessTest {
 
   private Integration testIntegration;
   private EnrollmentCreateRequest createRequest;
-  private ECP256KeyPair testKeyPair;
+  private Ed25519KeyPair testKeyPair;
 
   @BeforeEach
   void setUp() {
@@ -92,14 +92,14 @@ class EnrollmentUniquenessTest {
     createRequest.setName("Test Enrollment");
 
     // Setup test key pair
-    testKeyPair = new ECP256KeyPair("base64PrivateKey", "base64PublicKey");
+    testKeyPair = new Ed25519KeyPair("base64PrivateKey", "base64UrlPublicKey");
 
     // Mock integration repository
     when(integrationRepository.findById(1)).thenReturn(Optional.of(testIntegration));
 
     // Mock signature service
     when(signatureService.generateProofToken()).thenReturn("test-proof-token");
-    when(signatureService.generateECP256KeyPair()).thenReturn(testKeyPair);
+    when(signatureService.generateEd25519KeyPair()).thenReturn(testKeyPair);
     when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
 
     // No pending expiration for these tests (current behavior)

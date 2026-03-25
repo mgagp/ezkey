@@ -1,12 +1,12 @@
 # Crypto test fixtures (golden vectors)
 
-These files are **optional**. When present, `IntegrationKeyVerifierTest` runs ECDSA-SHA256 verification against the **exact** UTF-8 payload and Base64 signature the Auth API produced — this is the regression net for the cryptographic chain (Pending + Respond result).
+These files are **optional**. When present, `IntegrationKeyVerifierTest` runs **Ed25519** verification against the **exact** UTF-8 payload and Base64(Base64URL) signature the Auth API produced — regression coverage for the integration signing chain (Pending + Respond result).
 
 ## Required for optional golden tests
 
 | File | Contents |
 |------|----------|
-| `integration_public_key_base64.txt` | One line: integration public key (SubjectPublicKeyInfo Base64) for the enrollment under test. |
+| `integration_public_key_base64.txt` | One line: integration public key (**raw 32 bytes**, Base64URL without padding, as returned by bind). |
 
 **Populate from DB** (Docker Postgres running):
 
@@ -21,7 +21,7 @@ These files are **optional**. When present, `IntegrationKeyVerifierTest` runs EC
 | File | Contents |
 |------|----------|
 | `pending_payload_utf8.txt` | Exact canonical string: `proofToken|challengeRequired|contextTitle|contextMessage` with `true`/`false`, Unicode **NFC** on title and message (must match `buildPendingPayload` / server). |
-| `pending_signature_base64.txt` | Value of `authAttemptProofTokenSignedByIntegration` from the Pending **200** JSON (Base64 ECDSA). |
+| `pending_signature_base64.txt` | Value of `authAttemptProofTokenSignedByIntegration` from the Pending **200** JSON (raw Ed25519, typically Base64URL). |
 
 **How to capture:** After a successful functional Pending call, copy the payload string your client builds (or from Auth API debug / Crypto API validate `data` field in Postman step 4) and the signature field from JSON. One line per file, no extra quotes.
 
@@ -30,7 +30,7 @@ These files are **optional**. When present, `IntegrationKeyVerifierTest` runs EC
 | File | Contents |
 |------|----------|
 | `respond_result_payload_utf8.txt` | Exact string: `proofToken|authAttemptId|authAttemptResult|authAttemptMessage` with NFC on message (must match `buildRespondResultPayload` / server). |
-| `respond_result_signature_base64.txt` | Value of `authAttemptProofTokenResultSignedByIntegration` from the Respond **200** JSON. |
+| `respond_result_signature_base64.txt` | Value of `authAttemptProofTokenResultSignedByIntegration` from the Respond **200** JSON (raw Ed25519). |
 
 **How to capture:** Same idea as Pending — Postman collection step **7** `data` body (`respondResultPayload`) and the signature from step **6** / **6b**, or export from logs after a real approve/deny.
 

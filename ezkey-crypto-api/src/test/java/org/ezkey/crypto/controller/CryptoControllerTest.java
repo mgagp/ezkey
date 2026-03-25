@@ -84,7 +84,7 @@ class CryptoControllerTest {
 
   @Test
   void testSignDataEndpoint() throws Exception {
-    when(signatureService.generateSignature(anyString(), anyString())).thenReturn("test-signature");
+    when(signatureService.signEcdsaSha256(anyString(), anyString())).thenReturn("test-signature");
 
     String requestBody =
         """

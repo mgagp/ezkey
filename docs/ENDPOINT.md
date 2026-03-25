@@ -203,12 +203,15 @@ Content-Type: application/json
 {
   "enrollmentId": 456,
   "enrollmentProofToken": "abc123-def456-ghi789",
-  "integrationPublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "integrationPublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "integrationKeyAlgorithm": "ed25519",
   "integrationName": "Acme Bank",
   "integrationDescription": "Acme Bank provides secure online banking services.",
   "enrollmentName": "John's iPhone"
 }
 ```
+
+`integrationPublicKey` is the **raw 32-byte** Ed25519 public key, **Base64URL without padding** (43 characters). `integrationKeyAlgorithm` is always `ed25519` for this wire format. Device keys in verify requests remain **EC P-256** SPKI (standard Base64).
 
 ### d) Enrollment verification
 

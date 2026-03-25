@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
 import java.util.Set;
-import org.ezkey.config.EzkeyCoreProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,9 +58,7 @@ class SignatureServiceTest {
   /** Setup test data before each test method. */
   @BeforeEach
   void setUp() throws Exception {
-    // Initialize signature service with default configuration
-    EzkeyCoreProperties ezkeyCoreProperties = new EzkeyCoreProperties();
-    signatureService = new SignatureService(ezkeyCoreProperties);
+    signatureService = new SignatureService();
 
     // Generate EC P-256 key pair for testing via service API
     ECP256KeyPair ecp256KeyPair = signatureService.generateECP256KeyPair();
@@ -160,15 +157,14 @@ class SignatureServiceTest {
   }
 
   /**
-   * Mobile Android verifies integration signatures with JCA {@code SHA256withECDSA} (see
-   * IntegrationKeyVerifier). Backend signs with BouncyCastle ECDSASigner. This test locks
-   * interoperability: the same signature must verify with standard JCA.
+   * Device signatures use ECDSA P-256; backend signs with JDK {@code Signature} and low-S
+   * normalization. This test locks interoperability with JCA verify (same path as Conscrypt on
+   * Android for device keys).
    */
   @Test
-  @DisplayName(
-      "BouncyCastle-generated signature verifies with JCA SHA256withECDSA (Android parity)")
-  void testBouncyCastleSignatureVerifiesWithJcaSha256WithEcdsa() {
-    String signature = signatureService.generateSignature(testData, base64PrivateKey);
+  @DisplayName("JDK ECDSA signature verifies with JCA SHA256withECDSA (device / Android parity)")
+  void testJdkEcdsaSignatureVerifiesWithJcaSha256WithEcdsa() {
+    String signature = signatureService.signEcdsaSha256(testData, base64PrivateKey);
     assertTrue(
         signatureService.validateSignatureWithJcaSha256WithEcdsa(
             testData, signature, base64PublicKey),
@@ -176,14 +172,14 @@ class SignatureServiceTest {
   }
 
   /**
-   * Same as {@link #testBouncyCastleSignatureVerifiesWithJcaSha256WithEcdsa()} using a canonical
-   * Pending payload shape (proofToken|challenge|title|message).
+   * Same as {@link #testJdkEcdsaSignatureVerifiesWithJcaSha256WithEcdsa()} using a canonical device
+   * payload shape.
    */
   @Test
-  @DisplayName("JCA verifies BC signature for canonical pending payload string")
+  @DisplayName("JCA verifies JDK ECDSA signature for canonical payload string")
   void testJcaVerifiesPendingPayloadShape() {
     String pendingPayload = "abc123proof|false||";
-    String signature = signatureService.generateSignature(pendingPayload, base64PrivateKey);
+    String signature = signatureService.signEcdsaSha256(pendingPayload, base64PrivateKey);
     assertTrue(
         signatureService.validateSignatureWithJcaSha256WithEcdsa(
             pendingPayload, signature, base64PublicKey));
@@ -196,7 +192,7 @@ class SignatureServiceTest {
     // (Setup done in @BeforeEach)
 
     // Act
-    String signature = signatureService.generateSignature(testData, base64PrivateKey);
+    String signature = signatureService.signEcdsaSha256(testData, base64PrivateKey);
     boolean isValid = signatureService.validateSignature(testData, signature, base64PublicKey);
 
     // Assert
@@ -207,7 +203,7 @@ class SignatureServiceTest {
   @DisplayName("Should reject signature for modified data")
   void testSignatureValidationWithModifiedData() throws Exception {
     // Arrange
-    String signature = signatureService.generateSignature(testData, base64PrivateKey);
+    String signature = signatureService.signEcdsaSha256(testData, base64PrivateKey);
     String modifiedData = "Modified data for test";
 
     // Act
@@ -239,7 +235,7 @@ class SignatureServiceTest {
     String emptyData = "";
 
     // Act
-    String signature = signatureService.generateSignature(emptyData, base64PrivateKey);
+    String signature = signatureService.signEcdsaSha256(emptyData, base64PrivateKey);
     boolean isValid = signatureService.validateSignature(emptyData, signature, base64PublicKey);
 
     // Assert
@@ -257,7 +253,7 @@ class SignatureServiceTest {
     String largeDataString = largeData.toString();
 
     // Act
-    String signature = signatureService.generateSignature(largeDataString, base64PrivateKey);
+    String signature = signatureService.signEcdsaSha256(largeDataString, base64PrivateKey);
     boolean isValid =
         signatureService.validateSignature(largeDataString, signature, base64PublicKey);
 
@@ -273,8 +269,8 @@ class SignatureServiceTest {
     String data2 = "Second test data";
 
     // Act
-    String signature1 = signatureService.generateSignature(data1, base64PrivateKey);
-    String signature2 = signatureService.generateSignature(data2, base64PrivateKey);
+    String signature1 = signatureService.signEcdsaSha256(data1, base64PrivateKey);
+    String signature2 = signatureService.signEcdsaSha256(data2, base64PrivateKey);
 
     // Assert
     assertFalse(signature1.equals(signature2), "Signatures should differ for different data");
@@ -287,8 +283,8 @@ class SignatureServiceTest {
     String data = "Identical data for consistency test";
 
     // Act
-    String signature1 = signatureService.generateSignature(data, base64PrivateKey);
-    String signature2 = signatureService.generateSignature(data, base64PrivateKey);
+    String signature1 = signatureService.signEcdsaSha256(data, base64PrivateKey);
+    String signature2 = signatureService.signEcdsaSha256(data, base64PrivateKey);
 
     // Assert
     // ECDSA uses a random nonce (k) for each signature, so signatures will differ
@@ -318,9 +314,19 @@ class SignatureServiceTest {
         pair.base64PublicKey() != null && !pair.base64PublicKey().isEmpty(),
         "Public key must be present");
     // Quick sanity: produced keys can sign/verify
-    String sig = signatureService.generateSignature("data", pair.base64PrivateKey());
+    String sig = signatureService.signEcdsaSha256("data", pair.base64PrivateKey());
     assertTrue(
         signatureService.validateSignature("data", sig, pair.base64PublicKey()),
         "Generated keys should work for sign/verify");
+  }
+
+  @Test
+  @DisplayName("Ed25519 integration sign and verify round-trip (Base64URL)")
+  void testEd25519IntegrationRoundTrip() {
+    Ed25519KeyPair pair = signatureService.generateEd25519KeyPair();
+    String payload = "proof|true|Title|Message";
+    String sig = signatureService.signIntegrationPayload(payload, pair.base64PrivateKey());
+    assertTrue(
+        signatureService.verifyIntegrationSignature(payload, sig, pair.base64UrlPublicKey()));
   }
 }

@@ -71,13 +71,6 @@
 			<version>0.2.6</version>
 		</dependency>
 
-		<!-- Cryptography: BouncyCastle for Ed25519 signatures -->
-		<dependency>
-			<groupId>org.bouncycastle</groupId>
-			<artifactId>bcprov-jdk18on</artifactId>
-			<version>1.78.1</version>
-		</dependency>
-
 		<!-- Testing -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

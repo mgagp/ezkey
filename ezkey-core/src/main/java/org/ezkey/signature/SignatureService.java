@@ -5,328 +5,178 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Service: SignatureService
- * Description: Cryptographic signature service providing digital signature generation and validation.
+ * Description: Cryptographic signature service (JDK-only: Ed25519 for integration, EC P-256 for device).
  */
-
 package org.ezkey.signature;
 
-import java.io.ByteArrayInputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
-import java.security.cert.CertificateFactory;
+import java.security.interfaces.ECPrivateKey;
+import java.security.spec.ECGenParameterSpec;
+import java.security.spec.NamedParameterSpec;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
-import org.bouncycastle.asn1.ASN1EncodableVector;
-import org.bouncycastle.asn1.ASN1Integer;
-import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DERSequence;
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
-import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
-import org.bouncycastle.asn1.x9.X9ECParameters;
-import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
-import org.bouncycastle.crypto.ec.CustomNamedCurves;
-import org.bouncycastle.crypto.generators.ECKeyPairGenerator;
-import org.bouncycastle.crypto.params.ECDomainParameters;
-import org.bouncycastle.crypto.params.ECKeyGenerationParameters;
-import org.bouncycastle.crypto.params.ECPrivateKeyParameters;
-import org.bouncycastle.crypto.params.ECPublicKeyParameters;
-import org.bouncycastle.crypto.signers.ECDSASigner;
-import org.bouncycastle.crypto.util.PrivateKeyFactory;
-import org.bouncycastle.crypto.util.PrivateKeyInfoFactory;
-import org.bouncycastle.crypto.util.PublicKeyFactory;
-import org.bouncycastle.crypto.util.SubjectPublicKeyInfoFactory;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.ezkey.config.EzkeyCoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Cryptographic signature service providing digital signature generation and validation.
- *
- * <p>This service is a fundamental component of the Ezkey security architecture, implementing EC
- * P-256 (secp256r1) digital signatures with ECDSA-SHA256. It provides the cryptographic foundation
- * for ensuring data integrity, authenticity, and non-repudiation across the Ezkey platform.
- *
- * <p><b>Cryptographic Implementation:</b>
- *
- * <ul>
- *   <li><b>Algorithm:</b> EC P-256 (secp256r1) with ECDSA-SHA256
- *   <li><b>Key Format:</b> PKCS#8 private key, X.509 public key (standard formats)
- *   <li><b>Encoding:</b> Base64 for key and signature representation
- *   <li><b>Security Level:</b> Production-grade cryptographic strength (equivalent to RSA-3072)
- * </ul>
- *
- * <p><b>Security Applications:</b>
- *
- * <ul>
- *   <li><b>Authentication:</b> Verifying the origin of messages and requests
- *   <li><b>Integrity:</b> Ensuring data has not been tampered with
- *   <li><b>Non-repudiation:</b> Providing proof of message origin
- *   <li><b>Trust:</b> Establishing secure communication channels
- * </ul>
- *
- * <p><b>Usage Context:</b> This service is used throughout the Ezkey platform for securing API
- * communications, validating enrollment requests, and ensuring the integrity of authentication
- * attempts. It forms the cryptographic backbone that enables secure MFA and passkey operations.
- * This implementation is compatible with mobile applications using native hardware-backed EC P-256
- * keys.
- *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- *
- * <p><b>License:</b> MIT
- *
- * <p><b>Security Level:</b> Production-grade cryptographic implementation
+ * Cryptographic signature service: <strong>Ed25519</strong> for per-enrollment integration keys
+ * (minimal wire format: raw 32-byte public key and 64-byte signatures as Base64URL without padding)
+ * and <strong>EC P-256 (secp256r1) ECDSA-SHA256</strong> for device keys (PKCS#8 / SPKI Base64, DER
+ * signatures). Implemented with the JDK only (no Bouncy Castle).
  *
  * @author Ezkey contributors
  * @since 2025
- * @see org.bouncycastle.crypto.signers.ECDSASigner
- * @see org.bouncycastle.crypto.params.ECPrivateKeyParameters
- * @see org.bouncycastle.crypto.params.ECPublicKeyParameters
  */
 @Service
 public class SignatureService {
 
   private static final Logger logger = LoggerFactory.getLogger(SignatureService.class);
 
-  private static final int PROOF_TOKEN_RANDOM_BYTES = 32; // 256 bits
+  private static final int PROOF_TOKEN_RANDOM_BYTES = 32;
 
-  private static final int PROOF_TOKEN_SALT_BYTES = 16; // 128 bits
+  private static final int PROOF_TOKEN_SALT_BYTES = 16;
 
-  /**
-   * Gets EC P-256 domain parameters (secp256r1).
-   *
-   * @return EC domain parameters for secp256r1 curve
-   * @throws IllegalStateException if curve parameters cannot be obtained
-   */
-  private static ECDomainParameters getECP256DomainParameters() {
-    // Try CustomNamedCurves first (optimized implementation)
-    X9ECParameters ecParams = CustomNamedCurves.getByName("secp256r1");
-    if (ecParams == null) {
-      // Fallback: use standard curve (should always be available)
-      // secp256r1 is a standard NIST curve, should be in CustomNamedCurves
-      throw new IllegalStateException(
-          "Failed to get EC P-256 domain parameters. "
-              + "BouncyCastle EC curve 'secp256r1' not available. "
-              + "Please ensure BouncyCastle is properly configured.");
-    }
-    return new ECDomainParameters(
-        ecParams.getCurve(), ecParams.getG(), ecParams.getN(), ecParams.getH(), ecParams.getSeed());
-  }
+  private static final int ED25519_PUBLIC_KEY_BYTES = 32;
 
-  // Reuse a single SecureRandom instance
+  private static final int ED25519_SIGNATURE_BYTES = 64;
+
   private final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
 
-  private final EzkeyCoreProperties ezkeyCoreProperties;
+  public SignatureService() {}
 
-  static {
-    // Register BouncyCastle provider if not already registered
-    if (java.security.Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
-      java.security.Security.addProvider(new BouncyCastleProvider());
+  /**
+   * Generates an Ed25519 key pair for integration signing. Private key is PKCS#8 (standard Base64);
+   * public key is raw 32 bytes (Base64URL without padding).
+   */
+  public Ed25519KeyPair generateEd25519KeyPair() {
+    try {
+      KeyPairGenerator kpg = KeyPairGenerator.getInstance("Ed25519");
+      kpg.initialize(NamedParameterSpec.ED25519);
+      KeyPair kp = kpg.generateKeyPair();
+      String priv = Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded());
+      byte[] spki = kp.getPublic().getEncoded();
+      byte[] raw = Arrays.copyOfRange(spki, spki.length - 32, spki.length);
+      String pub = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+      return new Ed25519KeyPair(priv, pub);
+    } catch (Exception e) {
+      throw new RuntimeException("Ed25519 key pair generation failed", e);
     }
   }
 
   /**
-   * Constructs the signature service with configuration properties.
-   *
-   * @param ezkeyCoreProperties the ezkey core configuration properties
+   * Signs UTF-8 data with an Ed25519 PKCS#8 private key (standard Base64). Returns Base64URL
+   * without padding over the raw 64-byte signature.
    */
-  public SignatureService(EzkeyCoreProperties ezkeyCoreProperties) {
-    this.ezkeyCoreProperties = ezkeyCoreProperties;
-  }
-
-  /**
-   * Generates a digital signature for the provided data using EC P-256 private key.
-   *
-   * <p>This method creates a cryptographically secure digital signature that can be used to verify
-   * the authenticity and integrity of the original data. The signature is generated using EC P-256
-   * with ECDSA-SHA256, providing production-grade security compatible with mobile hardware-backed
-   * keys.
-   *
-   * <p><b>Cryptographic Process:</b>
-   *
-   * <ol>
-   *   <li>Decode the Base64-encoded private key (PKCS#8 format)
-   *   <li>Create EC P-256 private key parameters
-   *   <li>Initialize ECDSA signer with SHA-256 digest
-   *   <li>Sign the data bytes
-   *   <li>Encode signature as ASN.1 DER format
-   *   <li>Return Base64-encoded signature
-   * </ol>
-   *
-   * <p><b>Security Considerations:</b>
-   *
-   * <ul>
-   *   <li>Private keys must be securely stored and managed
-   *   <li>Input data should be validated before signing
-   *   <li>Generated signatures should be transmitted securely
-   * </ul>
-   *
-   * @param data the data to be signed (typically JSON payload or message content)
-   * @param base64PrivateKey the Base64-encoded EC P-256 private key (PKCS#8 format)
-   * @return Base64-encoded digital signature (ASN.1 DER encoded ECDSA signature)
-   * @throws RuntimeException if signature generation fails due to cryptographic errors
-   * @see org.bouncycastle.crypto.params.ECPrivateKeyParameters
-   * @see org.bouncycastle.crypto.signers.ECDSASigner
-   */
-  public String generateSignature(String data, String base64PrivateKey) {
+  public String signIntegrationPayload(String data, String base64Pkcs8PrivateKey) {
     Objects.requireNonNull(data, "Data cannot be null");
-    Objects.requireNonNull(base64PrivateKey, "Private key cannot be null");
+    Objects.requireNonNull(base64Pkcs8PrivateKey, "Private key cannot be null");
     try {
-      byte[] keyBytes = Base64.getDecoder().decode(base64PrivateKey);
-      ECPrivateKeyParameters privateKeyParams =
-          (ECPrivateKeyParameters) PrivateKeyFactory.createKey(keyBytes);
-
-      ECDSASigner signer = new ECDSASigner();
-      signer.init(true, privateKeyParams);
-
-      byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-      // Hash the data with SHA-256 before signing (ECDSA requires hashed input)
-      java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-      byte[] hash = digest.digest(dataBytes);
-
-      BigInteger[] signature = signer.generateSignature(hash);
-
-      // Low-S normalization (BIP-62 style): Conscrypt/Android SHA256withECDSA may reject
-      // "high-S" signatures that OpenJDK still accepts when verifying the same (r,s) pair.
-      ECDomainParameters domainParams = privateKeyParams.getParameters();
-      BigInteger n = domainParams.getN();
-      BigInteger r = signature[0];
-      BigInteger s = normalizeEcdsaSToLowS(signature[1], n);
-
-      // Encode signature as ASN.1 DER format
-      byte[] derSignature = encodeDERSignature(r, s);
-      return Base64.getEncoder().encodeToString(derSignature);
+      byte[] pkcs8 = Base64.getDecoder().decode(base64Pkcs8PrivateKey);
+      PrivateKey privateKey =
+          KeyFactory.getInstance("Ed25519").generatePrivate(new PKCS8EncodedKeySpec(pkcs8));
+      Signature sig = Signature.getInstance("Ed25519");
+      sig.initSign(privateKey);
+      sig.update(data.getBytes(StandardCharsets.UTF_8));
+      byte[] signature = sig.sign();
+      return Base64.getUrlEncoder().withoutPadding().encodeToString(signature);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to generate signature", e);
+      throw new RuntimeException("Failed to sign integration payload", e);
     }
   }
 
   /**
-   * Validates a digital signature against the provided data using EC P-256 public key.
-   *
-   * <p>This method verifies the authenticity and integrity of data by validating its associated
-   * digital signature. It confirms that the data was signed by the holder of the corresponding
-   * private key and has not been altered since signing.
-   *
-   * <p><b>Cryptographic Process:</b>
-   *
-   * <ol>
-   *   <li>Decode the Base64-encoded public key (X.509 format)
-   *   <li>Create EC P-256 public key parameters
-   *   <li>Decode signature from ASN.1 DER format
-   *   <li>Hash the data with SHA-256
-   *   <li>Verify the signature against the hash
-   *   <li>Return verification result
-   * </ol>
-   *
-   * <p><b>Security Behavior:</b>
-   *
-   * <ul>
-   *   <li>Returns <code>false</code> for any cryptographic errors (fail-secure)
-   *   <li>Validates both signature format and cryptographic correctness
-   *   <li>Ensures data integrity and authenticity verification
-   * </ul>
-   *
-   * @param data the original data that was signed
-   * @param signatureBase64 the Base64-encoded digital signature to validate (ASN.1 DER encoded)
-   * @param base64PublicKey the Base64-encoded EC P-256 public key (X.509 format)
-   * @return <code>true</code> if the signature is valid, <code>false</code> otherwise
-   * @see org.bouncycastle.crypto.params.ECPublicKeyParameters
-   * @see org.bouncycastle.crypto.signers.ECDSASigner
+   * Verifies an Ed25519 signature over exact UTF-8 data. Public key and signature are Base64URL
+   * without padding (raw 32- and 64-byte values). Accepts standard Base64 for decoding if needed.
    */
-  /**
-   * Normalizes an integration public key to Base64-encoded X.509 SubjectPublicKeyInfo.
-   *
-   * <p>Clients (demo device, mobile) expect SubjectPublicKeyInfo only. Some enrollments may have
-   * been stored with a full X.509 certificate or legacy format. This method ensures the bind
-   * response always returns the format that {@link #validateSignature} and client
-   * PublicKeyFactory.createKey() accept.
-   *
-   * @param base64PublicKey the value from the enrollment (SubjectPublicKeyInfo or certificate,
-   *     Base64)
-   * @return Base64-encoded SubjectPublicKeyInfo, or the original string if normalization fails
-   */
-  public String normalizeIntegrationPublicKeyToBase64(String base64PublicKey) {
-    if (base64PublicKey == null || base64PublicKey.isBlank()) {
-      return base64PublicKey;
-    }
-    String trimmed = base64PublicKey.replaceAll("\\s", "");
-    byte[] keyBytes;
+  public boolean verifyIntegrationSignature(
+      String data, String signatureBase64Url, String publicKeyBase64Url) {
     try {
-      keyBytes = Base64.getDecoder().decode(trimmed);
-    } catch (IllegalArgumentException e) {
-      logger.warn("Integration public key is not valid Base64; returning as-is");
-      return trimmed;
-    }
-    try {
-      // Already SubjectPublicKeyInfo if PublicKeyFactory accepts it
-      PublicKeyFactory.createKey(keyBytes);
-      return trimmed;
-    } catch (Exception e) {
-      // Try as X.509 certificate (e.g. legacy or migrated data)
-      try {
-        CertificateFactory cf = CertificateFactory.getInstance("X.509");
-        java.security.cert.Certificate cert =
-            cf.generateCertificate(new ByteArrayInputStream(keyBytes));
-        byte[] subjectPublicKeyInfo = cert.getPublicKey().getEncoded();
-        return Base64.getEncoder().encodeToString(subjectPublicKeyInfo);
-      } catch (Exception e2) {
-        logger.warn(
-            "Could not normalize integration public key (not SubjectPublicKeyInfo nor X.509 cert);"
-                + " returning as-is");
-        return trimmed;
-      }
-    }
-  }
-
-  public boolean validateSignature(String data, String signatureBase64, String base64PublicKey) {
-    try {
-      byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
-      // Handle X.509 encoded public keys (standard format from mobile)
-      ECPublicKeyParameters publicKeyParams =
-          (ECPublicKeyParameters) PublicKeyFactory.createKey(keyBytes);
-
-      byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
-      BigInteger[] signature = decodeDERSignature(signatureBytes);
-      if (signature == null) {
-        logger.warn("Invalid signature format: failed to decode ASN.1 DER");
+      byte[] pubRaw = decodeFlexibleBase64ToBytes(publicKeyBase64Url);
+      byte[] sigRaw = decodeFlexibleBase64ToBytes(signatureBase64Url);
+      if (pubRaw == null
+          || sigRaw == null
+          || pubRaw.length != ED25519_PUBLIC_KEY_BYTES
+          || sigRaw.length != ED25519_SIGNATURE_BYTES) {
         return false;
       }
-
-      ECDSASigner verifier = new ECDSASigner();
-      verifier.init(false, publicKeyParams);
-
-      byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-      // Hash the data with SHA-256 before verification (ECDSA requires hashed input)
-      java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-      byte[] hash = digest.digest(dataBytes);
-
-      return verifier.verifySignature(hash, signature[0], signature[1]);
+      byte[] spki = Ed25519SpkiBytes.rawPublicKeyToSpki(pubRaw);
+      PublicKey publicKey =
+          KeyFactory.getInstance("Ed25519").generatePublic(new X509EncodedKeySpec(spki));
+      Signature verifier = Signature.getInstance("Ed25519");
+      verifier.initVerify(publicKey);
+      verifier.update(data.getBytes(StandardCharsets.UTF_8));
+      return verifier.verify(sigRaw);
     } catch (Exception e) {
-      logger.debug("Signature validation failed", e);
+      logger.debug("Ed25519 integration signature verification failed", e);
       return false;
     }
   }
 
   /**
-   * Verifies an ECDSA-SHA256 signature using JCA {@code SHA256withECDSA}.
-   *
-   * <p>Android mobile uses the same algorithm in {@code IntegrationKeyVerifier} (standard {@link
-   * Signature} API). Backend signing uses BouncyCastle {@link ECDSASigner}; this method confirms
-   * interoperability with the mobile verifier.
-   *
-   * @param data UTF-8 payload that was signed
-   * @param signatureBase64 Base64-encoded ASN.1 DER signature
-   * @param base64PublicKey Base64-encoded SubjectPublicKeyInfo (same as bind response)
-   * @return true if JCA accepts the signature
+   * Normalizes integration public key material to canonical Base64URL (no padding) over 32 raw
+   * bytes. Accepts PEM-style wrappers; strips whitespace. If the value is not decodable to 32
+   * bytes, returns trimmed input (fail-soft for logging).
    */
-  public boolean validateSignatureWithJcaSha256WithEcdsa(
-      String data, String signatureBase64, String base64PublicKey) {
+  public String normalizeIntegrationPublicKeyToBase64(String base64PublicKey) {
+    if (base64PublicKey == null || base64PublicKey.isBlank()) {
+      return base64PublicKey;
+    }
+    String trimmed = stripPemAndWhitespace(base64PublicKey);
+    byte[] raw = decodeFlexibleBase64ToBytes(trimmed);
+    if (raw != null && raw.length == ED25519_PUBLIC_KEY_BYTES) {
+      return Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+    }
+    logger.warn("Integration public key is not 32 bytes after decode; returning trimmed string");
+    return trimmed;
+  }
+
+  /**
+   * Signs UTF-8 data with an EC P-256 PKCS#8 private key. Returns standard Base64 over DER ECDSA
+   * signature, with {@code s} normalized to low-S for Conscrypt/Android parity.
+   */
+  public String signEcdsaSha256(String data, String base64Pkcs8PrivateKey) {
+    Objects.requireNonNull(data, "Data cannot be null");
+    Objects.requireNonNull(base64Pkcs8PrivateKey, "Private key cannot be null");
+    try {
+      byte[] pkcs8 = Base64.getDecoder().decode(base64Pkcs8PrivateKey);
+      PrivateKey privateKey =
+          KeyFactory.getInstance("EC").generatePrivate(new PKCS8EncodedKeySpec(pkcs8));
+      Signature sig = Signature.getInstance("SHA256withECDSA");
+      sig.initSign(privateKey);
+      sig.update(data.getBytes(StandardCharsets.UTF_8));
+      byte[] der = sig.sign();
+      ECPrivateKey ecPriv = (ECPrivateKey) privateKey;
+      BigInteger n = ecPriv.getParams().getOrder();
+      BigInteger[] rs = EcdsaDerCodec.decodeSignature(der);
+      if (rs == null) {
+        throw new IllegalStateException("Invalid ECDSA DER from provider");
+      }
+      BigInteger s = normalizeEcdsaSToLowS(rs[1], n);
+      if (!s.equals(rs[1])) {
+        der = EcdsaDerCodec.encodeSignature(rs[0], s);
+      }
+      return Base64.getEncoder().encodeToString(der);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to generate ECDSA signature", e);
+    }
+  }
+
+  /**
+   * Verifies ECDSA-SHA256 (DER) over UTF-8 data using an EC P-256 X.509 public key (standard Base64
+   * SPKI).
+   */
+  public boolean validateSignature(String data, String signatureBase64, String base64PublicKey) {
     try {
       byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
       PublicKey publicKey =
@@ -336,162 +186,86 @@ public class SignatureService {
       verifier.update(data.getBytes(StandardCharsets.UTF_8));
       return verifier.verify(Base64.getDecoder().decode(signatureBase64));
     } catch (Exception e) {
-      logger.debug("JCA signature validation failed", e);
+      logger.debug("ECDSA signature validation failed", e);
       return false;
     }
   }
 
   /**
-   * Generates a new EC P-256 key pair and returns it as Base64-encoded strings.
-   *
-   * <p>The generated private key is in PKCS#8 format and the public key is in X.509 format
-   * (SubjectPublicKeyInfo). Keys are generated using BouncyCastle's EC P-256 implementation with
-   * secp256r1 curve and encoded with Base64 for storage/transmission.
-   *
-   * @return an immutable {@link ECP256KeyPair} containing Base64-encoded keys
-   * @throws RuntimeException if key generation fails due to cryptographic errors
+   * Verifies ECDSA-SHA256 using JCA (same path as Android Conscrypt). Retained for tests and
+   * diagnostics.
    */
+  public boolean validateSignatureWithJcaSha256WithEcdsa(
+      String data, String signatureBase64, String base64PublicKey) {
+    return validateSignature(data, signatureBase64, base64PublicKey);
+  }
+
+  /** Generates an EC P-256 key pair (PKCS#8 private, SPKI public), standard Base64. */
   public ECP256KeyPair generateECP256KeyPair() {
     try {
-      ECKeyPairGenerator keyGen = new ECKeyPairGenerator();
-      ECDomainParameters domainParams = getECP256DomainParameters();
-      keyGen.init(new ECKeyGenerationParameters(domainParams, secureRandom));
-      AsymmetricCipherKeyPair keyPair = keyGen.generateKeyPair();
-      ECPrivateKeyParameters privateKey = (ECPrivateKeyParameters) keyPair.getPrivate();
-      ECPublicKeyParameters publicKey = (ECPublicKeyParameters) keyPair.getPublic();
-
-      // Encode private key as PKCS#8
-      PrivateKeyInfo privateKeyInfo = PrivateKeyInfoFactory.createPrivateKeyInfo(privateKey);
-      String privateKeyBase64 = Base64.getEncoder().encodeToString(privateKeyInfo.getEncoded());
-
-      // Encode public key as X.509 SubjectPublicKeyInfo
-      SubjectPublicKeyInfo publicKeyInfo =
-          SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(publicKey);
-
-      String publicKeyBase64 = Base64.getEncoder().encodeToString(publicKeyInfo.getEncoded());
-
-      return new ECP256KeyPair(privateKeyBase64, publicKeyBase64);
+      KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+      kpg.initialize(new ECGenParameterSpec("secp256r1"));
+      KeyPair kp = kpg.generateKeyPair();
+      String priv = Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded());
+      String pub = Base64.getEncoder().encodeToString(kp.getPublic().getEncoded());
+      return new ECP256KeyPair(priv, pub);
     } catch (Exception e) {
       throw new RuntimeException("EC P-256 key pair generation failed", e);
     }
   }
 
-  /**
-   * Returns {@code s} if it lies in the lower half of the curve order; otherwise {@code n - s}.
-   *
-   * <p>ECDSA signatures are malleable: (r, s) and (r, n-s) are both valid. BouncyCastle's signer
-   * may emit either; Android's {@code Signature.verify} with Conscrypt is stricter and rejects some
-   * high-S signatures that the JVM accepts. Normalizing to low-S matches common cross-platform
-   * behavior (e.g. Bitcoin BIP 62) and aligns with mobile verification.
-   *
-   * @param s the s component from {@link ECDSASigner#generateSignature}
-   * @param n the curve order
-   * @return s in the range (0, n/2] (standard low-S representation)
-   */
   private static BigInteger normalizeEcdsaSToLowS(BigInteger s, BigInteger n) {
-    BigInteger halfN = n.shiftRight(1); // floor(n/2)
+    BigInteger halfN = n.shiftRight(1);
     if (s.compareTo(halfN) > 0) {
       return n.subtract(s);
     }
     return s;
   }
 
-  /**
-   * Encodes an ECDSA signature (r, s) as ASN.1 DER format.
-   *
-   * @param r the r component of the signature
-   * @param s the s component of the signature
-   * @return ASN.1 DER encoded signature bytes
-   * @throws RuntimeException if encoding fails
-   */
-  private byte[] encodeDERSignature(BigInteger r, BigInteger s) {
-    try {
-      ASN1EncodableVector v = new ASN1EncodableVector();
-      v.add(new ASN1Integer(r));
-      v.add(new ASN1Integer(s));
-      return new DERSequence(v).getEncoded();
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to encode DER signature", e);
+  private static String stripPemAndWhitespace(String input) {
+    if (input.contains("-----BEGIN")) {
+      StringBuilder sb = new StringBuilder();
+      for (String line : input.lines().toList()) {
+        if (!line.isBlank() && !line.startsWith("-----")) {
+          sb.append(line.trim());
+        }
+      }
+      return sb.toString();
     }
+    return input.replaceAll("\\s", "");
   }
 
-  /**
-   * Decodes an ASN.1 DER encoded ECDSA signature to (r, s) components.
-   *
-   * @param derSignature ASN.1 DER encoded signature bytes
-   * @return array containing [r, s] components, or null if decoding fails
-   */
-  private BigInteger[] decodeDERSignature(byte[] derSignature) {
-    try {
-      ASN1Sequence seq = ASN1Sequence.getInstance(derSignature);
-      if (seq.size() != 2) {
-        return null;
-      }
-      BigInteger r = ASN1Integer.getInstance(seq.getObjectAt(0)).getValue();
-      BigInteger s = ASN1Integer.getInstance(seq.getObjectAt(1)).getValue();
-      return new BigInteger[] {r, s};
-    } catch (Exception e) {
-      logger.debug("Failed to decode DER signature", e);
+  /** Decodes Base64URL (no padding) or standard Base64 to bytes; returns null on failure. */
+  static byte[] decodeFlexibleBase64ToBytes(String value) {
+    if (value == null || value.isBlank()) {
       return null;
     }
+    String t = stripPemAndWhitespace(value);
+    try {
+      return Base64.getUrlDecoder().decode(t);
+    } catch (IllegalArgumentException e1) {
+      try {
+        return Base64.getDecoder().decode(t);
+      } catch (IllegalArgumentException e2) {
+        return null;
+      }
+    }
   }
 
-  /**
-   * Generates a cryptographically secure challenge number for enrollment and authentication.
-   *
-   * <p>This method creates a cryptographically secure random challenge number suitable for use in
-   * MFA scenarios where security is paramount. Unlike standard Random generators, this method uses
-   * SecureRandom to ensure the challenge cannot be predicted by attackers.
-   *
-   * <p><b>Security Properties:</b>
-   *
-   * <ul>
-   *   <li>Uses {@link java.security.SecureRandom} for cryptographic strength
-   *   <li>Generates numbers in the range appropriate for the specified digit count
-   *   <li>Ensures minimum digit requirements (no leading zeros in multi-digit challenges)
-   *   <li>Suitable for MFA challenge-response authentication flows
-   * </ul>
-   *
-   * @param digits the number of digits for the challenge (minimum 1, maximum 6)
-   * @return a cryptographically secure random challenge number
-   * @throws IllegalArgumentException if digits is outside the valid range
-   * @since 2025
-   */
   public Integer generateSecureChallenge(int digits) {
     if (digits < 1 || digits > 6) {
       throw new IllegalArgumentException(
           "Challenge digits must be between 1 and 6, got: " + digits);
     }
     try {
-      // Calculate the range for the specified number of digits
       int minValue = (int) Math.pow(10, digits - 1);
       int maxValue = (int) Math.pow(10, digits) - 1;
-
-      // For 1 digit, minValue would be 1, for 2 digits minValue is 10, etc.
-      // Generate secure random number in the range [minValue, maxValue]
       return minValue + secureRandom.nextInt(maxValue - minValue + 1);
     } catch (Exception e) {
       throw new RuntimeException("Failed to generate secure challenge", e);
     }
   }
 
-  /**
-   * Generates a cryptographically secure proof token for signature operations.
-   *
-   * <p>This method creates a random, unpredictable token suitable for use as a payload to be signed
-   * in authentication or enrollment flows. The token is composed of:
-   *
-   * <ul>
-   *   <li>256 bits (32 bytes) of cryptographically secure random data
-   *   <li>128 bits (16 bytes) of random salt
-   * </ul>
-   *
-   * The result is encoded as a Base64 URL-safe string (without padding), concatenating the random
-   * bytes and salt, separated by a period ('.'). Uniqueness and anti-replay are enforced by the
-   * stored hash and one-time use semantics; no timestamp is included.
-   *
-   * @return a Base64 URL-safe encoded proof token string (format: randomPart.saltPart)
-   */
   public String generateProofToken() {
     try {
       byte[] randomBytes = new byte[PROOF_TOKEN_RANDOM_BYTES];

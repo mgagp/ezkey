@@ -393,6 +393,11 @@
             "description": "Integration's public key for cryptographic verification",
             "example": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
           },
+          "integrationKeyAlgorithm": {
+            "type": "string",
+            "description": "Algorithm for integrationPublicKey (ed25519: raw 32-byte key, Base64URL no padding)",
+            "example": "ed25519"
+          },
           "enrollmentProofToken": {
             "type": "string",
             "description": "Enrollment proof token to be signed by the device",
@@ -433,6 +438,7 @@
         "required": [
           "enrollmentId",
           "enrollmentProofToken",
+          "integrationKeyAlgorithm",
           "integrationPublicKey"
         ]
       },

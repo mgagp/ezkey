@@ -80,7 +80,7 @@ class AuthAttemptRespondServiceTest {
     when(authAttemptRepository.findNewerAttemptByEnrollmentId(any(), any()))
         .thenReturn(Optional.empty());
     when(signatureService.validateSignature(any(), any(), eq(DEVICE_PUBLIC_KEY))).thenReturn(true);
-    when(signatureService.generateSignature(any(), eq(INTEGRATION_PRIVATE_KEY)))
+    when(signatureService.signIntegrationPayload(any(), eq(INTEGRATION_PRIVATE_KEY)))
         .thenReturn("signed-result-b64");
 
     AuthAttemptRespondRequest request = new AuthAttemptRespondRequest();
@@ -96,7 +96,7 @@ class AuthAttemptRespondServiceTest {
 
     ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
     verify(signatureService)
-        .generateSignature(payloadCaptor.capture(), eq(INTEGRATION_PRIVATE_KEY));
+        .signIntegrationPayload(payloadCaptor.capture(), eq(INTEGRATION_PRIVATE_KEY));
     String expectedPayload =
         AuthAttemptSignaturePayload.buildRespondResultPayload(
             "proof-token-xyz", 42, AuthenticationResult.APPROVED, "Auth attempt completed");

@@ -125,9 +125,8 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation "com.google.mlkit:barcode-scanning:17.2.0"
 
-    // TEMPORARY (stabilization): required to parse legacy EC public keys encoded with explicit
-    // parameters. Remove after backend normalization to portable SPKI named-curve (secp256r1).
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    // Ed25519 integration signing verification on older API levels (JCA parity with Auth API JDK path).
+    implementation 'org.conscrypt:conscrypt-android:2.5.3'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

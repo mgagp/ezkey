@@ -29,7 +29,7 @@ import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
-import org.ezkey.signature.ECP256KeyPair;
+import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -427,8 +427,8 @@ public class AdminProvisioningService {
       AdminRecoveryService.RecoveryCodesResult recoveryCodes) {
     logger.debug("Creating enrollment for admin: {}", admin.getUsername());
 
-    // Generate EC P-256 key pair for enrollment
-    ECP256KeyPair keyPair = signatureService.generateECP256KeyPair();
+    // Generate Ed25519 key pair for integration signing (enrollment)
+    Ed25519KeyPair keyPair = signatureService.generateEd25519KeyPair();
 
     // Generate enrollment proof token
     String enrollmentProofToken = signatureService.generateProofToken();
@@ -499,7 +499,7 @@ public class AdminProvisioningService {
     enrollment.setEnrollmentProofToken(enrollmentProofToken);
     enrollment.setEnrollmentChallenge(enrollmentChallenge);
     enrollment.setAuthAttemptChallengeRequired(false);
-    enrollment.setIntegrationPublicKey(keyPair.base64PublicKey());
+    enrollment.setIntegrationPublicKey(keyPair.base64UrlPublicKey());
     enrollment.setIntegrationPrivateKey(keyPair.base64PrivateKey());
     enrollment.setCreatedAt(OffsetDateTime.now());
 

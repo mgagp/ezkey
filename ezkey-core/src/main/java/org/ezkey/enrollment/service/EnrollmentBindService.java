@@ -318,6 +318,7 @@ public class EnrollmentBindService {
         signatureService.normalizeIntegrationPublicKeyToBase64(
             enrollment.getIntegrationPublicKey());
     response.setIntegrationPublicKey(normalizedIntegrationPublicKey);
+    response.setIntegrationKeyAlgorithm("ed25519");
     response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
     response.setIntegrationName(integrationName);
     response.setIntegrationDescription(integrationDescription);
