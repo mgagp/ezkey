@@ -18,12 +18,20 @@ export interface DashboardEnrollmentStats {
   created: number;
 }
 
-/** Auth attempt counts in the last 24 hours for dashboard overview. */
+/** Auth attempt counts and terminal-outcome rates in the last 24 hours (dashboard). */
 export interface DashboardAuth24hStats {
   total: number;
+  pending?: number;
+  readCount?: number;
   accepted: number;
   rejected: number;
-  failureRatePct: number;
+  invalid: number;
+  expired: number;
+  terminalTotal: number;
+  successRatePct: number | null;
+  invalidRatePct: number | null;
+  expiredRatePct: number | null;
+  rejectedRatePct: number | null;
 }
 
 /** Single recent audit log entry for dashboard recent activity. */

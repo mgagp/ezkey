@@ -1994,6 +1994,17 @@
               "format": "int32"
             },
             "example": 1
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Audit justification for the activation (min 10 characters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
           }
         ],
         "responses": {

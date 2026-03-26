@@ -612,7 +612,7 @@ class ApiClient:
     Get dashboard statistics (counts for all resources).
 
     Returns:
-        Dict with keys: integrations, enrollments, auth_attempts_24h, auth_failed_24h
+        Dict with keys: integrations, enrollments, auth_attempts_24h, auth_failed_24h (legacy aggregate)
     """
     stats = {
         "integrations": 0,
@@ -673,7 +673,11 @@ class ApiClient:
         "enrollments_invalid": 0,
         "auth_total_24h": 0,
         "auth_accepted_24h": 0,
-        "auth_failed_24h": 0,
+        "auth_rejected_24h": 0,
+        "auth_invalid_24h": 0,
+        "auth_expired_24h": 0,
+        "auth_terminal_24h": 0,
+        "auth_success_rate_pct": None,
         "auth_pending_24h": 0
     }
 
@@ -774,11 +778,29 @@ class ApiClient:
     if self.last_auth_error:
       return None
 
-    status["auth_failed_24h"] = (
+    rej_n = (
         self._extract_total_elements(auth_rejected_resp)
-        + self._extract_total_elements(auth_invalid_resp)
-        + self._extract_total_elements(auth_expired_resp)
+        if auth_rejected_resp
+        else 0
     )
+    inv_n = (
+        self._extract_total_elements(auth_invalid_resp)
+        if auth_invalid_resp
+        else 0
+    )
+    exp_n = (
+        self._extract_total_elements(auth_expired_resp)
+        if auth_expired_resp
+        else 0
+    )
+    status["auth_rejected_24h"] = rej_n
+    status["auth_invalid_24h"] = inv_n
+    status["auth_expired_24h"] = exp_n
+    acc_n = status["auth_accepted_24h"]
+    term = acc_n + rej_n + inv_n + exp_n
+    status["auth_terminal_24h"] = term
+    if term > 0:
+      status["auth_success_rate_pct"] = float(round(100.0 * acc_n / term))
 
     pending_over_5m_resp = self.get_auth_attempts_list(
         size=1,

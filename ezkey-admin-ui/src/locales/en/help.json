@@ -25,6 +25,7 @@
       "title": "Dashboard",
       "summary": "High-level counts and recent activity for your instance.",
       "body": "Cards summarize integrations, enrollments, admins, and recent audit events. Pending authentication attempts show how many approvals are waiting across integrations you can see.\n\nTimestamps use your selected language for formatting.",
+      "authHealth": "Auth health (24h): the headline is the success rate among completed attempts only (accepted, rejected, invalid, expired). Pending or in-flight attempts are excluded from that percentage. Badges count invalid signatures, expirations, and explicit user denials—useful to spot integration or crypto problems versus users tapping deny.",
       "globalContext": "As a Global Admin, you see instance-wide metrics and can open tenant-scoped lists from here.",
       "tenantContext": "As a Tenant (or Integration) Admin, counts are limited to your tenant and integrations you manage.",
       "demoExtra": "Demo mode adds sample presets on some create forms and a badge in the header. It is removed from production builds."

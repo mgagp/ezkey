@@ -23,7 +23,7 @@ The Admin API exposes:
 - **`GET /api/v1/dashboard/overview`** — single endpoint used by the Admin UI. Returns `DashboardOverviewDto`:
   - **integrations:** `{ total, active, inactive }`
   - **enrollments:** `{ total, verified, bound, created }` (no `invalid` in DTO)
-  - **auth24h:** `{ total, accepted, rejected, failureRatePct }` (no `pending` in this DTO)
+  - **auth24h:** `{ total, pending, readCount, accepted, rejected, invalid, expired, terminalTotal, successRatePct, invalidRatePct, expiredRatePct, rejectedRatePct }` (rates are vs terminal outcomes; `successRatePct` null if no terminal outcomes)
   - **recentActivity:** list of `DashboardRecentActivityItemDto` (audit-derived, same idea as TUI’s activity)
   - **alerts:** (Global Admin only) e.g. `AUDIT_CHAIN_GAP_PENDING`
 

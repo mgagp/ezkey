@@ -25,6 +25,7 @@
       "title": "Tableau de bord",
       "summary": "Vue d’ensemble des volumes et de l’activité récente pour votre instance.",
       "body": "Les cartes résument les intégrations, les inscriptions, les administrateurs et les événements d’audit récents. Les tentatives d’authentification en attente indiquent combien d’approbations attendent sur les intégrations visibles pour vous.\n\nLes horodatages respectent la langue sélectionnée pour le format.",
+      "authHealth": "Santé auth. (24h) : le grand chiffre est le taux de réussite parmi les tentatives terminées uniquement (acceptées, refusées, invalides, expirées). Les tentatives encore en attente ou en cours sur l’appareil sont exclues du pourcentage. Les pastilles comptent les signatures invalides, les expirations et les refus explicites — utile pour distinguer un problème d’intégration ou de chiffrement d’un refus utilisateur.",
       "globalContext": "En tant qu’administrateur global, vous voyez des métriques à l’échelle de l’instance et pouvez ouvrir les listes par locataire à partir d’ici.",
       "tenantContext": "En tant qu’administrateur de locataire (ou d’intégration), les totaux sont limités à votre locataire et aux intégrations que vous gérez.",
       "demoExtra": "Le mode démo ajoute des préréglages sur certains formulaires de création et un badge dans l’en-tête. Il est retiré des builds de production."

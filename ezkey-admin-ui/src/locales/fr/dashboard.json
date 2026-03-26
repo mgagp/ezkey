@@ -12,7 +12,12 @@
     "integrations": "Intégrations",
     "enrollments": "Enrôlements",
     "authAttempts24h": "Tentatives d'auth. (24h)",
-    "failureRate24h": "Taux d'échec (24h)",
+    "authHealth24h": "Santé auth. (24h)",
+    "noTerminalOutcomes": "Aucune tentative terminée dans cette fenêtre",
+    "terminalOutcomesHint": "Sur {{count}} tentatives terminées (dénominateur des %)",
+    "invalid": "invalides",
+    "expired": "expirées",
+    "denied": "refus (utilisateur)",
     "active": "actives",
     "inactive": "inactives",
     "verified": "vérifiés",
@@ -20,10 +25,7 @@
     "created": "créés",
     "accepted": "acceptées",
     "rejected": "refusées",
-    "pending": "en attente",
-    "healthy": "Sain",
-    "monitorClosely": "Surveiller",
-    "actionRequired": "Action requise"
+    "pending": "en attente"
   },
   "auditChain": {
     "title": "Alertes chaîne d'audit",

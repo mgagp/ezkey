@@ -103,6 +103,12 @@ export function HelpDrawer({
           </p>
           <div className="whitespace-pre-wrap">{t(`${base}.body`)}</div>
 
+          {topicId === 'dashboard' && (
+            <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg-muted">
+              {t('topics.dashboard.authHealth')}
+            </p>
+          )}
+
           {topicId === 'dashboard' && isGlobalAdmin && (
             <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
               {t('topics.dashboard.globalContext')}

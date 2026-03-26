@@ -34,9 +34,12 @@ class StatusPanel(Static):
   enrollments_invalid = reactive(0)
   auth_total_24h = reactive(0)
   auth_accepted_24h = reactive(0)
-  auth_failed_24h = reactive(0)
+  auth_rejected_24h = reactive(0)
+  auth_invalid_24h = reactive(0)
+  auth_expired_24h = reactive(0)
+  auth_terminal_24h = reactive(0)
   auth_pending_24h = reactive(0)
-  auth_failure_rate = reactive(0.0)
+  auth_success_rate_pct = reactive(-1.0)
 
   DEFAULT_CSS = """
   StatusPanel {
@@ -45,6 +48,12 @@ class StatusPanel(Static):
       height: auto;
   }
   """
+
+  def _format_success_rate(self) -> str:
+    """Human-readable success % from API, or n/a when no terminal outcomes."""
+    if self.auth_success_rate_pct < 0:
+      return "n/a"
+    return f"{self.auth_success_rate_pct:.0f}% success (terminal)"
 
   def render(self) -> str:
     """Render the status panel."""
@@ -56,9 +65,11 @@ class StatusPanel(Static):
         f"  (VER {self.enrollments_verified} / BND {self.enrollments_bound}"
         f" / CRT {self.enrollments_created} / INV {self.enrollments_invalid})\n"
         f"Auth Attempts (24h): {self.auth_total_24h}"
-        f"  (ACC {self.auth_accepted_24h} / FAIL {self.auth_failed_24h}"
-        f" / PEND {self.auth_pending_24h})\n"
-        f"Failure rate: {self.auth_failure_rate:.1f}%"
+        f"  (ACC {self.auth_accepted_24h} / PEND {self.auth_pending_24h})\n"
+        f"Auth health (24h): "
+        f"{self._format_success_rate()}"
+        f"  terminal {self.auth_terminal_24h}"
+        f"  (INV {self.auth_invalid_24h} / EXP {self.auth_expired_24h} / DENY {self.auth_rejected_24h})"
     )
 
   def update_stats(self, stats: dict) -> None:
@@ -77,12 +88,19 @@ class StatusPanel(Static):
     self.enrollments_invalid = stats.get("enrollments_invalid", 0) or 0
     self.auth_total_24h = stats.get("auth_total_24h", 0) or 0
     self.auth_accepted_24h = stats.get("auth_accepted_24h", 0) or 0
-    self.auth_failed_24h = stats.get("auth_failed_24h", 0) or 0
+    self.auth_rejected_24h = stats.get("auth_rejected_24h", 0) or 0
+    self.auth_invalid_24h = stats.get("auth_invalid_24h", 0) or 0
+    self.auth_expired_24h = stats.get("auth_expired_24h", 0) or 0
+    self.auth_terminal_24h = stats.get("auth_terminal_24h", 0) or 0
     self.auth_pending_24h = stats.get("auth_pending_24h", 0) or 0
-    if self.auth_total_24h > 0:
-      self.auth_failure_rate = (self.auth_failed_24h / self.auth_total_24h) * 100
+    sr = stats.get("auth_success_rate_pct")
+    if sr is None:
+      self.auth_success_rate_pct = -1.0
     else:
-      self.auth_failure_rate = 0.0
+      try:
+        self.auth_success_rate_pct = float(sr)
+      except (TypeError, ValueError):
+        self.auth_success_rate_pct = -1.0
 
 
 class HighlightsPanel(Static):
@@ -346,7 +364,11 @@ class HomeScreen(Screen):
         "enrollments_invalid": 0,
         "auth_total_24h": 0,
         "auth_accepted_24h": 0,
-        "auth_failed_24h": 0,
+        "auth_rejected_24h": 0,
+        "auth_invalid_24h": 0,
+        "auth_expired_24h": 0,
+        "auth_terminal_24h": 0,
+        "auth_success_rate_pct": None,
         "auth_pending_24h": 0,
     }
     actions: Dict[str, Any] = {
@@ -378,7 +400,12 @@ class HomeScreen(Screen):
     if isinstance(auth, dict):
       status["auth_total_24h"] = int(auth.get("total") or 0)
       status["auth_accepted_24h"] = int(auth.get("accepted") or 0)
-      status["auth_failed_24h"] = int(auth.get("rejected") or 0)
+      status["auth_rejected_24h"] = int(auth.get("rejected") or 0)
+      status["auth_invalid_24h"] = int(auth.get("invalid") or 0)
+      status["auth_expired_24h"] = int(auth.get("expired") or 0)
+      status["auth_terminal_24h"] = int(auth.get("terminalTotal") or 0)
+      sr = auth.get("successRatePct")
+      status["auth_success_rate_pct"] = sr if sr is None else float(sr)
     status["auth_pending_24h"] = pending_count
 
     actions["pending_over_5m"] = pending_count

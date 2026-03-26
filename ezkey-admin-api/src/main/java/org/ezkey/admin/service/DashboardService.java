@@ -29,7 +29,7 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.integrity.AuditChainCheckpointRepository;
 import org.ezkey.audit.service.AuditLogService;
-import org.ezkey.authattempt.domain.AuthAttemptStatus;
+import org.ezkey.authattempt.domain.AuthAttemptDashboard24hStats;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.service.EnrollmentService;
@@ -108,7 +108,7 @@ public class DashboardService {
         CompletableFuture.supplyAsync(() -> buildEnrollmentStats(tenantId, pageOne));
 
     CompletableFuture<DashboardAuth24hStatsDto> auth24hFuture =
-        CompletableFuture.supplyAsync(() -> buildAuth24hStats(tenantId, since24h, pageOne));
+        CompletableFuture.supplyAsync(() -> buildAuth24hStats(tenantId, since24h));
 
     CompletableFuture<List<DashboardRecentActivityItemDto>> recentActivityFuture =
         CompletableFuture.supplyAsync(
@@ -171,24 +171,22 @@ public class DashboardService {
     return new DashboardEnrollmentStatsDto(total, verified, bound, created);
   }
 
-  private DashboardAuth24hStatsDto buildAuth24hStats(
-      Integer tenantId, OffsetDateTime since24h, PageRequest pageOne) {
-    long total =
-        authAttemptService
-            .findByFilters(null, null, null, since24h, null, tenantId, pageOne)
-            .getTotalElements();
-    long accepted =
-        authAttemptService
-            .findByFilters(
-                AuthAttemptStatus.ACCEPTED, null, null, since24h, null, tenantId, pageOne)
-            .getTotalElements();
-    long rejected =
-        authAttemptService
-            .findByFilters(
-                AuthAttemptStatus.REJECTED, null, null, since24h, null, tenantId, pageOne)
-            .getTotalElements();
-    int failureRatePct = total > 0 ? (int) Math.round((rejected * 100.0) / total) : 0;
-    return new DashboardAuth24hStatsDto(total, accepted, rejected, failureRatePct);
+  private DashboardAuth24hStatsDto buildAuth24hStats(Integer tenantId, OffsetDateTime since24h) {
+    AuthAttemptDashboard24hStats s = authAttemptService.aggregateDashboard24h(since24h, tenantId);
+    DashboardAuth24hStatsDto dto = new DashboardAuth24hStatsDto();
+    dto.setTotal(s.total());
+    dto.setPending(s.pending());
+    dto.setReadCount(s.readCount());
+    dto.setAccepted(s.accepted());
+    dto.setRejected(s.rejected());
+    dto.setInvalid(s.invalid());
+    dto.setExpired(s.expired());
+    dto.setTerminalTotal(s.terminalTotal());
+    dto.setSuccessRatePct(s.successRatePct());
+    dto.setInvalidRatePct(s.invalidRatePct());
+    dto.setExpiredRatePct(s.expiredRatePct());
+    dto.setRejectedRatePct(s.rejectedRatePct());
+    return dto;
   }
 
   private List<DashboardRecentActivityItemDto> buildRecentActivity(

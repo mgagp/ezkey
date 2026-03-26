@@ -53,9 +53,9 @@ public class DashboardController {
   @Operation(
       summary = "Get dashboard overview",
       description =
-          "Returns aggregated stats (integrations, enrollments, auth 24h), recent activity, and "
-              + "for Global Admin only: instance-level alerts (e.g. audit chain gap pending). "
-              + "Designed for 60s refresh interval.")
+          "Returns aggregated stats (integrations, enrollments, auth 24h terminal-outcome health),"
+              + " recent activity, and for Global Admin only: instance-level alerts (e.g. audit"
+              + " chain gap pending). Designed for 60s refresh interval.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Dashboard overview"),

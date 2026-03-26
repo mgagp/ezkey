@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
-import { AlertTriangle, FileText, Key, Puzzle, RefreshCw, ShieldCheck, TrendingUp, Users } from 'lucide-react';
+import { Activity, AlertTriangle, FileText, Key, Puzzle, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
@@ -129,7 +129,11 @@ export default function DashboardPage() {
   const authTotal = overview?.auth24h?.total;
   const authAccepted = overview?.auth24h?.accepted;
   const authRejected = overview?.auth24h?.rejected;
-  const failureRate = overview?.auth24h?.failureRatePct;
+  const successRate = overview?.auth24h?.successRatePct;
+  const terminalTotal = overview?.auth24h?.terminalTotal;
+  const invalidCount = overview?.auth24h?.invalid;
+  const expiredCount = overview?.auth24h?.expired;
+  const rejectedDenyCount = overview?.auth24h?.rejected;
   const authPending = pendingResponse?.count;
 
   const recentLogs = overview?.recentActivity ?? [];
@@ -266,18 +270,35 @@ export default function DashboardPage() {
             </div>
           </StatCard>
 
-          <StatCard title={t('dashboard:stats.failureRate24h')} icon={TrendingUp} isLoading={overviewLoading}>
+          <StatCard title={t('dashboard:stats.authHealth24h')} icon={Activity} isLoading={overviewLoading}>
             <p className={`text-4xl font-black ${
-              failureRate === undefined ? 'text-fg'
-              : failureRate > 20 ? 'text-error'
-              : failureRate > 10 ? 'text-warning'
+              successRate == null ? 'text-fg'
+              : successRate < 70 ? 'text-error'
+              : successRate < 90 ? 'text-warning'
               : 'text-success'
             }`}>
-              {failureRate !== undefined ? `${failureRate}%` : <StatNum value={undefined} isLoading={overviewLoading} />}
+              {successRate != null
+                ? `${successRate}%`
+                : <StatNum value={undefined} isLoading={overviewLoading} />}
             </p>
             <p className="text-xs text-fg-muted mt-2 font-medium">
-              {failureRate === undefined ? '' : failureRate <= 5 ? t('dashboard:stats.healthy') : failureRate <= 15 ? t('dashboard:stats.monitorClosely') : t('dashboard:stats.actionRequired')}
+              {successRate == null && !overviewLoading
+                ? t('dashboard:stats.noTerminalOutcomes')
+                : terminalTotal != null && terminalTotal > 0
+                  ? t('dashboard:stats.terminalOutcomesHint', { count: terminalTotal })
+                  : ''}
             </p>
+            <div className="flex gap-1 mt-2 flex-wrap">
+              <Badge variant={(invalidCount ?? 0) > 0 ? 'error' : 'muted'}>
+                <StatNum value={invalidCount} isLoading={overviewLoading} /> {t('dashboard:stats.invalid')}
+              </Badge>
+              <Badge variant={(expiredCount ?? 0) > 0 ? 'warning' : 'muted'}>
+                <StatNum value={expiredCount} isLoading={overviewLoading} /> {t('dashboard:stats.expired')}
+              </Badge>
+              <Badge variant={(rejectedDenyCount ?? 0) > 0 ? 'warning' : 'muted'}>
+                <StatNum value={rejectedDenyCount} isLoading={overviewLoading} /> {t('dashboard:stats.denied')}
+              </Badge>
+            </div>
           </StatCard>
         </div>
 

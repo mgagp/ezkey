@@ -12,12 +12,19 @@ package org.ezkey.authattempt.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Tuple;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
+import org.ezkey.authattempt.domain.AuthAttemptDashboard24hStats;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
 import org.ezkey.authattempt.domain.AuthAttemptRespondRequest;
@@ -231,73 +238,114 @@ public class AuthAttemptService {
 
     Specification<AuthAttempt> spec =
         (root, query, cb) -> {
-          List<Predicate> predicates = new ArrayList<>();
-
-          if (status != null) {
-            predicates.add(cb.equal(root.get("authAttemptStatus"), status));
-          }
-
-          if (enrollmentId != null) {
-            predicates.add(cb.equal(root.get("enrollmentId"), enrollmentId));
-          }
-
-          if (integrationId != null) {
-            // Join with Enrollment to filter by integrationId
-            // Assuming AuthAttempt has a relationship to Enrollment or we subquery
-            // Since AuthAttempt entity only has enrollmentId (Integer) and no @ManyToOne
-            // relationship defined in the code I saw earlier, we must use a subquery
-            // or rely on the repository to have added the relationship.
-            // Let's check AuthAttempt entity again. It has enrollmentId field.
-            // If no relationship, we use a subquery.
-
-            // Subquery: enrollmentId IN
-            // (SELECT e.enrollmentId FROM Enrollment e WHERE e.integrationId = :integrationId)
-            var subquery = query.subquery(Integer.class);
-            var enrollmentRoot = subquery.from(Enrollment.class);
-            subquery.select(enrollmentRoot.get("enrollmentId"));
-            subquery.where(cb.equal(enrollmentRoot.get("integrationId"), integrationId));
-
-            predicates.add(root.get("enrollmentId").in(subquery));
-          }
-
-          if (createdAfter != null) {
-            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), createdAfter));
-          }
-
-          if (createdBefore != null) {
-            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
-          }
-
-          // Tenant scoping: filter by enrollment's integration's tenant if tenantId is provided
-          // Since AuthAttempt doesn't have direct JPA relations, we use nested subqueries:
-          // AuthAttempt.enrollmentId -> Enrollment.integrationId -> Integration.tenant.tenantId
-          if (tenantId != null) {
-            // Subquery 1: Get integrationIds for the tenant
-            var integrationSubquery = query.subquery(Integer.class);
-            var integrationRoot = integrationSubquery.from(Integration.class);
-            integrationSubquery.select(integrationRoot.get("id"));
-            integrationSubquery.where(
-                cb.equal(integrationRoot.get("tenant").get("tenantId"), tenantId));
-
-            // Subquery 2: Get enrollmentIds for those integrations
-            var enrollmentSubquery = query.subquery(Integer.class);
-            var enrollmentRoot = enrollmentSubquery.from(Enrollment.class);
-            enrollmentSubquery.select(enrollmentRoot.get("enrollmentId"));
-            enrollmentSubquery.where(enrollmentRoot.get("integrationId").in(integrationSubquery));
-
-            // Filter AuthAttempts by enrollmentId in the subquery
-            predicates.add(root.get("enrollmentId").in(enrollmentSubquery));
-          }
-
-          // Force ordering by createdAt DESC if not specified in pageable
+          Predicate predicate =
+              buildAuthAttemptFilterPredicate(
+                  root,
+                  query,
+                  cb,
+                  status,
+                  enrollmentId,
+                  integrationId,
+                  createdAfter,
+                  createdBefore,
+                  tenantId);
           if (pageable.getSort().isUnsorted()) {
             query.orderBy(cb.desc(root.get("createdAt")));
           }
-
-          return cb.and(predicates.toArray(new Predicate[0]));
+          return predicate;
         };
 
     return authAttemptRepository.findAll(spec, pageable);
+  }
+
+  /**
+   * Aggregates auth attempt row counts by status for a dashboard view (e.g. last 24 hours).
+   *
+   * <p>Uses a single grouped query with the same tenant and time filters as {@link #findByFilters}.
+   * Percentages are derived in {@link AuthAttemptDashboard24hStats}.
+   *
+   * @param createdAfter inclusive lower bound on {@code createdAt} (typically now minus 24 hours)
+   * @param tenantId optional tenant scope; null means all tenants (Global Admin)
+   * @return counts and terminal-outcome rates for the scope
+   */
+  @Transactional(readOnly = true)
+  public AuthAttemptDashboard24hStats aggregateDashboard24h(
+      OffsetDateTime createdAfter, Integer tenantId) {
+    CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+    CriteriaQuery<Tuple> cq = cb.createTupleQuery();
+    Root<AuthAttempt> root = cq.from(AuthAttempt.class);
+    cq.multiselect(root.get("authAttemptStatus"), cb.count(root));
+    cq.where(
+        buildAuthAttemptFilterPredicate(
+            root, cq, cb, null, null, null, createdAfter, null, tenantId));
+    cq.groupBy(root.get("authAttemptStatus"));
+    List<Tuple> tuples = entityManager.createQuery(cq).getResultList();
+
+    Map<AuthAttemptStatus, Long> counts = new EnumMap<>(AuthAttemptStatus.class);
+    for (AuthAttemptStatus s : AuthAttemptStatus.values()) {
+      counts.put(s, 0L);
+    }
+    for (Tuple tuple : tuples) {
+      AuthAttemptStatus status = (AuthAttemptStatus) tuple.get(0);
+      long cnt = (Long) tuple.get(1);
+      counts.put(status, cnt);
+    }
+    return AuthAttemptDashboard24hStats.fromStatusCounts(counts);
+  }
+
+  private Predicate buildAuthAttemptFilterPredicate(
+      Root<AuthAttempt> root,
+      CriteriaQuery<?> query,
+      CriteriaBuilder cb,
+      AuthAttemptStatus status,
+      Integer enrollmentId,
+      Integer integrationId,
+      OffsetDateTime createdAfter,
+      OffsetDateTime createdBefore,
+      Integer tenantId) {
+
+    List<Predicate> predicates = new ArrayList<>();
+
+    if (status != null) {
+      predicates.add(cb.equal(root.get("authAttemptStatus"), status));
+    }
+
+    if (enrollmentId != null) {
+      predicates.add(cb.equal(root.get("enrollmentId"), enrollmentId));
+    }
+
+    if (integrationId != null) {
+      var subquery = query.subquery(Integer.class);
+      var enrollmentRoot = subquery.from(Enrollment.class);
+      subquery.select(enrollmentRoot.get("enrollmentId"));
+      subquery.where(cb.equal(enrollmentRoot.get("integrationId"), integrationId));
+
+      predicates.add(root.get("enrollmentId").in(subquery));
+    }
+
+    if (createdAfter != null) {
+      predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), createdAfter));
+    }
+
+    if (createdBefore != null) {
+      predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
+    }
+
+    if (tenantId != null) {
+      var integrationSubquery = query.subquery(Integer.class);
+      var integrationRoot = integrationSubquery.from(Integration.class);
+      integrationSubquery.select(integrationRoot.get("id"));
+      integrationSubquery.where(cb.equal(integrationRoot.get("tenant").get("tenantId"), tenantId));
+
+      var enrollmentSubquery = query.subquery(Integer.class);
+      var enrollmentRoot = enrollmentSubquery.from(Enrollment.class);
+      enrollmentSubquery.select(enrollmentRoot.get("enrollmentId"));
+      enrollmentSubquery.where(enrollmentRoot.get("integrationId").in(integrationSubquery));
+
+      predicates.add(root.get("enrollmentId").in(enrollmentSubquery));
+    }
+
+    return cb.and(predicates.toArray(new Predicate[0]));
   }
 
   /**
