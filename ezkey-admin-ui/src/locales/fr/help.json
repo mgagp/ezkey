@@ -41,6 +41,14 @@
       "summary": "Configuration d’une intégration et objets liés.",
       "body": "Consultez les identifiants, le statut et le matériel cryptographique exposé selon votre rôle. Depuis cet écran vous pouvez gérer les inscriptions et d’autres ressources selon les permissions.\n\nTraitez les clés et API conformément à la politique de votre organisation.",
       "demoExtra": ""
+    },
+    "encryption-keys": {
+      "title": "Clés de chiffrement",
+      "summary": "Clés AES à l’échelle de l’instance pour les données au repos et les lots de ré-encryption.",
+      "body": "La clé PRIMARY chiffre les nouvelles données. Les clés plus anciennes restent ENABLED tant qu’il existe des lignes qui les utilisent encore.\n\nUn lot de ré-encryption correspond à une colonne de table et une ancienne clé : il déplace le texte chiffré vers la PRIMARY actuelle. « Créer les lots » met seulement en file d’attente ; « Déclencher la ré-encryption complète » crée et traite les lots en une fois ; « Reprendre » relance un lot en attente ou en échec. « Re-chiffrer » sur une clé cible une ancienne clé précise.\n\nLe traitement planifié crée et traite aussi des lots — les lignes créées tard dans un cycle peuvent attendre le cycle suivant sauf déclenchement ou reprise manuelle.",
+      "globalOps": "En tant qu’administrateur global vous gérez les clés pour toute l’instance. Les administrateurs de locataire n’utilisent pas cet écran.",
+      "developerContext": "Le texte chiffré utilise le préfixe ENC:keyId:… pour compter les lignes par clé. Les cibles sont définies dans le code (entités Reencryptable). Pour la sémantique complète des points de terminaison et les diagrammes, voir docs/REENCRYPTION_OPERATIONS.md dans le dépôt.",
+      "demoExtra": ""
     }
   }
 }

@@ -24,6 +24,7 @@ import { Select } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { HelpInlineButton } from '@/components/help/help-inline-button';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useToast } from '@/context/toast-context';
@@ -463,16 +464,18 @@ function ReencryptionBatchesSection() {
       key: 'actions',
       render: (r) =>
         r.status === 'FAILED' || r.status === 'PENDING' ? (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="gap-1 py-0.5 px-2"
-            onClick={(e) => { e.stopPropagation(); resumeMutation.mutate({ batchId: r.batchId! }); }}
-            disabled={resumeMutation.isPending}
-          >
-            <Play className="size-3" />
-            {t('batchesSection.resume')}
-          </Button>
+          <Tooltip content={t('batchesSection.helpResume')}>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="gap-1 py-0.5 px-2"
+              onClick={(e) => { e.stopPropagation(); resumeMutation.mutate({ batchId: r.batchId! }); }}
+              disabled={resumeMutation.isPending}
+            >
+              <Play className="size-3" />
+              {t('batchesSection.resume')}
+            </Button>
+          </Tooltip>
         ) : null,
     },
   ];
@@ -484,12 +487,28 @@ function ReencryptionBatchesSection() {
         className="w-full flex items-center justify-between p-4 text-left hover:bg-fg/5 transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
-        <div className="flex items-center gap-2">
-          <RotateCcw className="size-4 text-accent" />
+        <div className="flex items-center gap-2 min-w-0">
+          <RotateCcw className="size-4 text-accent shrink-0" />
           <h2 className="font-black text-sm uppercase tracking-wider">{t('batchesSection.title')}</h2>
           {batches.length > 0 && <Badge variant="muted">{batches.length}</Badge>}
+          <span
+            className="inline-flex shrink-0"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <ContextHelp
+              title={t('batchesSection.sectionHelpTitle')}
+              content={
+                <Trans
+                  i18nKey="encryption-keys:batchesSection.sectionHelpContent"
+                  components={{ strong: <strong /> }}
+                />
+              }
+              ariaLabel={t('common:help.ariaLabel', { title: t('batchesSection.sectionHelpTitle') })}
+            />
+          </span>
         </div>
-        {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        {expanded ? <ChevronUp className="size-4 shrink-0" /> : <ChevronDown className="size-4 shrink-0" />}
       </button>
 
       {expanded && (
@@ -505,26 +524,30 @@ function ReencryptionBatchesSection() {
               </Select>
             </div>
             <div className="flex gap-2 ml-auto">
-              <Button
-                size="sm"
-                variant="secondary"
-                className="gap-1.5"
-                onClick={() => createBatchesMutation.mutate()}
-                disabled={createBatchesMutation.isPending}
-              >
-                <ListPlus className="size-3.5" />
-                {createBatchesMutation.isPending ? t('batchesSection.creating') : t('batchesSection.createBatches')}
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="gap-1.5"
-                onClick={() => triggerMutation.mutate()}
-                disabled={triggerMutation.isPending}
-              >
-                <RefreshCw className="size-3.5" />
-                {triggerMutation.isPending ? t('batchesSection.triggering') : t('batchesSection.triggerFull')}
-              </Button>
+              <Tooltip content={t('batchesSection.helpCreateBatches')}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="gap-1.5"
+                  onClick={() => createBatchesMutation.mutate()}
+                  disabled={createBatchesMutation.isPending}
+                >
+                  <ListPlus className="size-3.5" />
+                  {createBatchesMutation.isPending ? t('batchesSection.creating') : t('batchesSection.createBatches')}
+                </Button>
+              </Tooltip>
+              <Tooltip content={t('batchesSection.helpTriggerFull')}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="gap-1.5"
+                  onClick={() => triggerMutation.mutate()}
+                  disabled={triggerMutation.isPending}
+                >
+                  <RefreshCw className="size-3.5" />
+                  {triggerMutation.isPending ? t('batchesSection.triggering') : t('batchesSection.triggerFull')}
+                </Button>
+              </Tooltip>
             </div>
           </div>
 
@@ -658,6 +681,7 @@ export default function EncryptionKeysPage() {
       <div className="space-y-4">
         {/* Filter bar */}
         <div className="flex gap-3 items-center flex-wrap">
+          <HelpInlineButton className="p-1.5 hover:bg-fg/10 shrink-0 text-fg-muted hover:text-fg" />
           <div className="flex items-center gap-1.5">
             <p className="text-xs text-fg-muted">
               {t('list.sectionIntro')}

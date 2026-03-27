@@ -41,6 +41,14 @@
       "summary": "One integration’s configuration and related objects.",
       "body": "Review identifiers, status, and cryptographic material as exposed by your role. From here you can manage enrollments and related resources depending on permissions.\n\nTreat API and key material according to your organization’s policy.",
       "demoExtra": ""
+    },
+    "encryption-keys": {
+      "title": "Encryption keys",
+      "summary": "Instance-wide AES keys for data at rest and re-encryption batches.",
+      "body": "The PRIMARY key encrypts new data. Older keys stay ENABLED until every row that used them is migrated to a newer key.\n\nA re-encryption batch is one job per table column and old key: it moves ciphertext to the current PRIMARY. “Create batches” only queues work; “Trigger full re-encryption” creates and processes batches in one step; “Resume” retries a pending or failed batch. Per-key “Re-encrypt” targets one old key.\n\nThe scheduled job also creates and processes batches—new rows created late in a run may wait for the next run unless you trigger or resume manually.",
+      "globalOps": "As a Global Admin you manage keys for the whole instance. Tenant admins do not use this screen.",
+      "developerContext": "Ciphertext uses the ENC:keyId:… prefix so the system can count rows per key. Discoverable targets are defined in code (Reencryptable entities). For full endpoint semantics and diagrams, see docs/REENCRYPTION_OPERATIONS.md in the repository.",
+      "demoExtra": ""
     }
   }
 }

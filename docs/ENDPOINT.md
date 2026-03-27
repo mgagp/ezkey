@@ -1509,8 +1509,9 @@ Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys a
 **GET    /api/v1/encryption-keys/primary**           // Get current primary key
 **GET    /api/v1/encryption-keys/{keyId}**           // Get key details
 **POST   /api/v1/encryption-keys/rotate**            // Manually trigger key rotation
-**GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches
+**GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches (full list, not paginated)
 **POST   /api/v1/encryption-keys/reencryption-batches/{batchId}/resume** // Resume failed batch
+**POST   /api/v1/encryption-keys/reencrypt/create-batches** // Create re-encryption batches without processing
 
 #### List encryption keys
 
@@ -1557,6 +1558,8 @@ Authorization: Bearer ezkey_admin_token...
 }
 ```
 
+**Semantics note (QA):** `batchesCreated` is the **size of the batch set processed in this request** (pending and resumable batches after `createBatchesForOldKeys()` runs), not necessarily “only rows inserted in this call.” See `ReencryptionService.triggerFullReencryption()` and [REENCRYPTION_OPERATIONS.md](./REENCRYPTION_OPERATIONS.md).
+
 **Error Responses:**
 - **400 Bad Request**: Encryption not available or re-encryption disabled
 - **500 Internal Server Error**: Re-encryption processing failed
@@ -1569,7 +1572,38 @@ Authorization: Bearer ezkey_admin_token...
 
 ---
 
-#### b) Trigger Re-encryption for Specific Key
+#### b) Create re-encryption batches (no processing)
+
+**POST /api/v1/encryption-keys/reencrypt/create-batches**
+
+Creates re-encryption batch rows for all applicable old keys and targets (same discovery logic as the scheduled job’s `createBatchesForOldKeys`) but **does not** run cryptographic re-encryption. Use to prepare work for the next scheduler run or to inspect the queue without load.
+
+**Request:**
+```http
+POST /api/v1/encryption-keys/reencrypt/create-batches
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Response (200 OK):**
+```json
+{
+  "batchesCreated": 3,
+  "message": "Created 3 re-encryption batches"
+}
+```
+
+The `batchesCreated` field is the **net new batch rows** created in this call (count after minus count before).
+
+**Error Responses:**
+- **500 Internal Server Error**: Batch creation failed
+
+**Security Considerations:**
+- Requires ADMIN role
+- Audited as manual batch creation
+
+---
+
+#### c) Trigger Re-encryption for Specific Key
 
 **POST /api/v1/encryption-keys/{keyId}/reencrypt**
 

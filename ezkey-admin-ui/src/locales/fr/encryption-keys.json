@@ -99,6 +99,11 @@
   },
   "batchesSection": {
     "title": "Lots de re-chiffrement",
+    "sectionHelpTitle": "Lots de re-chiffrement",
+    "sectionHelpContent": "Chaque ligne est une tâche de migration : une colonne encore chiffrée avec une <strong>ancienne</strong> clé est migrée vers la <strong>PRIMARY actuelle</strong>. <strong>Créer des lots</strong> n’insère que des lignes de file (pas encore de crypto)—le traitement planifié ou <strong>Déclencher le complet</strong> les exécute. <strong>Reprendre</strong> lance le traitement pour ce lot.",
+    "helpCreateBatches": "Crée des lignes de lot pour chaque ancienne clé et colonne chiffrée applicable. Ne re-chiffre pas—pour le prochain cycle planifié ou pour inspection.",
+    "helpTriggerFull": "Crée les lots manquants puis traite immédiatement tous les lots en attente ou reprises (charge élevée—tests ou urgences).",
+    "helpResume": "Exécute le traitement pour ce lot (en attente ou en échec). Équivalent à POST …/reencryption-batches/{id}/resume.",
     "filterAll": "Tous les statuts",
     "filterPending": "En attente",
     "filterInProgress": "En cours",

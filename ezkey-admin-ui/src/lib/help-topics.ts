@@ -7,7 +7,8 @@ export type HelpTopicId =
   | 'login'
   | 'dashboard'
   | 'integrations'
-  | 'integration-detail';
+  | 'integration-detail'
+  | 'encryption-keys';
 
 /**
  * Resolves the active help topic from the current pathname. Extend as new screens receive authored help.
@@ -18,5 +19,6 @@ export function resolveHelpTopicId(pathname: string): HelpTopicId {
   if (path === '/dashboard' || path === '/') return 'dashboard';
   if (path === '/integrations') return 'integrations';
   if (path.startsWith('/integrations/')) return 'integration-detail';
+  if (path === '/encryption-keys') return 'encryption-keys';
   return 'default';
 }
