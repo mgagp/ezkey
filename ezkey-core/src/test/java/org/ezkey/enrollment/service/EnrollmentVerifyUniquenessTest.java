@@ -27,6 +27,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -119,9 +120,10 @@ class EnrollmentVerifyUniquenessTest {
 
     // Act & Assert
     // The exception will be thrown during validateUniqueness (Step 6)
-    IllegalStateException exception =
+    EnrollmentVerifyStateConflictException exception =
         assertThrows(
-            IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+            EnrollmentVerifyStateConflictException.class,
+            () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
         exception.getMessage().contains("verified enrollment with the same name"),
@@ -165,7 +167,9 @@ class EnrollmentVerifyUniquenessTest {
         .thenReturn(List.of(existingVerified));
 
     // Act & Assert
-    assertThrows(IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+    assertThrows(
+        EnrollmentVerifyStateConflictException.class,
+        () -> enrollmentVerifyService.verify(verifyRequest));
 
     // Verify existing enrollment was never modified
     verify(enrollmentRepository, never()).save(existingVerified);
@@ -248,9 +252,10 @@ class EnrollmentVerifyUniquenessTest {
         .thenReturn(List.of(existingInactiveVerified));
 
     // Act & Assert
-    IllegalStateException exception =
+    EnrollmentVerifyStateConflictException exception =
         assertThrows(
-            IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+            EnrollmentVerifyStateConflictException.class,
+            () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
         exception.getMessage().contains("verified enrollment with the same name"),
@@ -285,9 +290,10 @@ class EnrollmentVerifyUniquenessTest {
         .thenReturn(List.of(existingVerified));
 
     // Act
-    IllegalStateException exception =
+    EnrollmentVerifyStateConflictException exception =
         assertThrows(
-            IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+            EnrollmentVerifyStateConflictException.class,
+            () -> enrollmentVerifyService.verify(verifyRequest));
 
     // Assert
     String errorMessage = exception.getMessage();

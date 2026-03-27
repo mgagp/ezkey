@@ -1,3 +1,10 @@
+---
+name: ""
+overview: ""
+todos: []
+isProject: false
+---
+
 # Admin UI — Tagline and global vs tenant positioning
 
 ## Overview
@@ -10,10 +17,12 @@ Analysis of the admin UI tagline/description origin (tenant UI heritage), concep
 
 Two user-facing strings act as "descriptions" of the interface:
 
-| Location | Key | EN value | When shown |
-|----------|-----|----------|------------|
+
+| Location                  | Key                                                           | EN value                                        | When shown                                |
+| ------------------------- | ------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------- |
 | **Sidebar** (under brand) | `layout.tagline.globalAdmin` / `tenantAdmin` / `adminConsole` | "Global Admin", "Tenant Admin", "Admin Console" | After login, based on `session.adminType` |
-| **Login page** | `login.tagline` | "Passwordless · Secure · Simple" | Before auth (same for everyone) |
+| **Login page**            | `login.tagline`                                               | "Passwordless · Secure · Simple"                | Before auth (same for everyone)           |
+
 
 **Origin of the sidebar tagline**
 
@@ -48,7 +57,7 @@ Current behaviour: `getAdminTaglineKey(session?.adminType)` in [sidebar.tsx](ezk
 
 ## 4. Agreed action: Auth attempts hint (role-aware)
 
-**Current string (FR)**  
+**Current string (FR)**
 "Lecture seule — vue des tentatives d'authentification dans le périmètre du tenant."
 
 **Key**: `list.hintReadOnly` in [auth-attempts.json](ezkey-admin-ui/src/locales/en/auth-attempts.json) (EN) and [auth-attempts.json](ezkey-admin-ui/src/locales/fr/auth-attempts.json) (FR).
@@ -58,13 +67,12 @@ Current behaviour: `getAdminTaglineKey(session?.adminType)` in [sidebar.tsx](ezk
 **Correction to implement**:
 
 1. **Locales**: Add a second key for Global Admin and keep the current one for Tenant Admin (or use a single key with a parameter). Recommended: two keys for clarity.
-   - **EN** ([ezkey-admin-ui/src/locales/en/auth-attempts.json](ezkey-admin-ui/src/locales/en/auth-attempts.json)):
-     - Keep `list.hintReadOnly` for Tenant Admin: "Read-only — tenant-scoped view of authentication attempts."
-     - Add `list.hintReadOnlyGlobal`: "Read-only — view of authentication attempts (instance-wide or by tenant)."
-   - **FR** ([ezkey-admin-ui/src/locales/fr/auth-attempts.json](ezkey-admin-ui/src/locales/fr/auth-attempts.json)):
-     - Keep `list.hintReadOnly` for Tenant Admin: "Lecture seule — vue des tentatives d'authentification dans le périmètre du tenant."
-     - Add `list.hintReadOnlyGlobal`: "Lecture seule — vue des tentatives d'authentification (instance ou par tenant)."
-
+  - **EN** ([ezkey-admin-ui/src/locales/en/auth-attempts.json](ezkey-admin-ui/src/locales/en/auth-attempts.json)):
+    - Keep `list.hintReadOnly` for Tenant Admin: "Read-only — tenant-scoped view of authentication attempts."
+    - Add `list.hintReadOnlyGlobal`: "Read-only — view of authentication attempts (instance-wide or by tenant)."
+  - **FR** ([ezkey-admin-ui/src/locales/fr/auth-attempts.json](ezkey-admin-ui/src/locales/fr/auth-attempts.json)):
+    - Keep `list.hintReadOnly` for Tenant Admin: "Lecture seule — vue des tentatives d'authentification dans le périmètre du tenant."
+    - Add `list.hintReadOnlyGlobal`: "Lecture seule — vue des tentatives d'authentification (instance ou par tenant)."
 2. **Page** ([ezkey-admin-ui/src/pages/auth-attempts.tsx](ezkey-admin-ui/src/pages/auth-attempts.tsx)): Where the hint is rendered (around line 192), use `session?.adminType === 'GLOBAL_ADMIN' ? t('list.hintReadOnlyGlobal') : t('list.hintReadOnly')` (with `useAuth()` and the same `useTranslation('auth-attempts')` namespace already in use).
 
 **Verification**: Log in as Tenant Admin → hint shows tenant-scoped wording. Log in as Global Admin → hint shows instance-wide wording.
@@ -95,3 +103,6 @@ flowchart LR
   Dynamic --> TA[Tenant Admin]
   session["session.adminType"] --> Dynamic
 ```
+
+
+

@@ -24,6 +24,7 @@ import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -115,12 +116,12 @@ class AuthAttemptServiceDeviceProofTokenTest {
 
     // Mock the specialized service to throw exception for duplicate token
     when(pendingService.pending(any(AuthAttemptPendingRequest.class)))
-        .thenThrow(new IllegalArgumentException("Authentication request failed"));
+        .thenThrow(new AuthAttemptRequestFailedException("Authentication request failed"));
 
     // Act & Assert
-    IllegalArgumentException exception =
+    AuthAttemptRequestFailedException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            AuthAttemptRequestFailedException.class,
             () -> {
               authAttemptService.pending(request);
             });
@@ -180,12 +181,12 @@ class AuthAttemptServiceDeviceProofTokenTest {
 
     // Mock the specialized service to throw exception for invalid signature
     when(pendingService.pending(any(AuthAttemptPendingRequest.class)))
-        .thenThrow(new IllegalArgumentException("Authentication request failed"));
+        .thenThrow(new AuthAttemptRequestFailedException("Authentication request failed"));
 
     // Act & Assert
-    IllegalArgumentException exception =
+    AuthAttemptRequestFailedException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            AuthAttemptRequestFailedException.class,
             () -> {
               authAttemptService.pending(request);
             });
@@ -212,12 +213,12 @@ class AuthAttemptServiceDeviceProofTokenTest {
 
     // Mock the specialized service to throw exception for invalid enrollment proof token
     when(pendingService.pending(any(AuthAttemptPendingRequest.class)))
-        .thenThrow(new IllegalArgumentException("Authentication request failed"));
+        .thenThrow(new AuthAttemptRequestFailedException("Authentication request failed"));
 
     // Act & Assert
-    IllegalArgumentException exception =
+    AuthAttemptRequestFailedException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            AuthAttemptRequestFailedException.class,
             () -> {
               authAttemptService.pending(request);
             });
@@ -249,12 +250,12 @@ class AuthAttemptServiceDeviceProofTokenTest {
 
     // Mock the specialized service to throw exception for enrollment ID mismatch
     when(pendingService.pending(any(AuthAttemptPendingRequest.class)))
-        .thenThrow(new IllegalArgumentException("Authentication request failed"));
+        .thenThrow(new AuthAttemptRequestFailedException("Authentication request failed"));
 
     // Act & Assert
-    IllegalArgumentException exception =
+    AuthAttemptRequestFailedException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            AuthAttemptRequestFailedException.class,
             () -> {
               authAttemptService.pending(request);
             });

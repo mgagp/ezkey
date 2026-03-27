@@ -22,6 +22,8 @@ import org.ezkey.config.EzkeyDemoProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.NoPendingAuthAttemptException;
+import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
@@ -42,7 +44,12 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li><b>Read-Once Guarantee:</b> Each authentication attempt can only be read once
  *   <li><b>Enrollment Proof Token Validation:</b> Prevents enumeration attacks
  *   <li><b>Device Signature Validation:</b> Ensures legitimate device access
- *   <li><b>Anti-Replay Protection:</b> Prevents reuse of device proof tokens
+ *   <li><b>Device Proof Token Uniqueness (on claim):</b> Once a {@code PENDING} attempt is
+ *       successfully claimed, the device proof token is persisted on {@link AuthAttempt} and must
+ *       not be reused on a later claim. If there is no pending attempt (HTTP 204 from the auth
+ *       API), no row is updated and the same signed device proof token may be used on subsequent
+ *       polls—this is authenticated polling without a state change, not a gap in cryptographic
+ *       verification.
  * </ul>
  *
  * <p><b>Transaction Management:</b> This service uses Spring's declarative transaction management
@@ -97,10 +104,14 @@ public class AuthAttemptPendingService {
    * validates the request completely before locking the authentication attempt to ensure that each
    * authentication attempt can only be read once by a legitimate device.
    *
+   * <p>If {@link NoPendingAuthAttemptException} is thrown (no {@code PENDING} row), the device
+   * proof token is not persisted; the client may repeat the same signed {@code deviceProofToken} on
+   * later polls until an attempt is claimed.
+   *
    * @param request the pending request with enrollment proof token
    * @return the pending authentication response with proof token
-   * @throws IllegalArgumentException if enrollment proof token is invalid
-   * @throws IllegalStateException if the authentication attempt is already processed
+   * @throws AuthAttemptRequestFailedException if enrollment proof token is invalid
+   * @throws AuthAttemptStateConflictException if the authentication attempt is already processed
    * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
    */
   public AuthAttemptPendingResponse pending(final AuthAttemptPendingRequest request) {
@@ -125,7 +136,7 @@ public class AuthAttemptPendingService {
    *
    * @param request the pending request containing enrollment proof token and ID
    * @return the validated enrollment
-   * @throws IllegalArgumentException if enrollment validation fails
+   * @throws AuthAttemptRequestFailedException if enrollment validation fails
    */
   private Enrollment validateEnrollment(AuthAttemptPendingRequest request) {
     // Find enrollment by proof token instead of ID
@@ -133,7 +144,7 @@ public class AuthAttemptPendingService {
 
     if (proofTokenHash == null) {
       logger.warn("Missing enrollment proof token");
-      throw new IllegalArgumentException("Authentication request failed");
+      throw new AuthAttemptRequestFailedException("Authentication request failed");
     }
 
     Enrollment enrollment =
@@ -142,7 +153,7 @@ public class AuthAttemptPendingService {
             .orElseThrow(
                 () -> {
                   logger.warn("Invalid enrollment proof token provided");
-                  return new IllegalArgumentException("Authentication request failed");
+                  return new AuthAttemptRequestFailedException("Authentication request failed");
                 });
 
     // Validate that the provided enrollment ID matches the proof token
@@ -150,29 +161,31 @@ public class AuthAttemptPendingService {
       logger.warn(
           "Enrollment ID mismatch with proof token for enrollment: {}",
           enrollment.getEnrollmentId());
-      throw new IllegalArgumentException("Authentication request failed");
+      throw new AuthAttemptRequestFailedException("Authentication request failed");
     }
 
     return enrollment;
   }
 
   /**
-   * Validates the device signature and proof token uniqueness.
+   * Validates the device signature and checks device proof token uniqueness against persisted
+   * attempts.
    *
-   * <p>This method ensures that the device signature is valid and that the device proof token has
-   * not been used before to prevent replay attacks.
+   * <p>The signature proves possession of the device key. The uniqueness check consults only hashes
+   * already stored on {@link AuthAttempt} rows after a prior successful claim; it does not apply to
+   * empty polls (no pending attempt), where nothing is persisted.
    *
    * @param request the pending request containing device signature and proof token
    * @param enrollment the validated enrollment containing device public key
-   * @throws IllegalArgumentException if signature validation fails
-   * @throws IllegalStateException if device public key is missing
+   * @throws AuthAttemptRequestFailedException if signature validation fails
+   * @throws AuthAttemptStateConflictException if device public key is missing
    */
   private void validateDeviceSignature(AuthAttemptPendingRequest request, Enrollment enrollment) {
     // Validate device public key
     String devicePublicKey = enrollment.getDevicePublicKey();
     if (devicePublicKey == null) {
       logger.warn("Device public key missing for enrollment: {}", request.getEnrollmentId());
-      throw new IllegalStateException("Authentication request failed");
+      throw new AuthAttemptStateConflictException("Authentication request failed");
     }
 
     // Validate signature
@@ -181,7 +194,7 @@ public class AuthAttemptPendingService {
             request.getDeviceProofToken(), request.getDeviceProofTokenSigned(), devicePublicKey);
     if (!isValid) {
       logger.warn("Invalid signature for enrollment: {}", request.getEnrollmentId());
-      throw new IllegalArgumentException("Authentication request failed");
+      throw new AuthAttemptRequestFailedException("Authentication request failed");
     }
 
     // Check device proof token uniqueness
@@ -190,7 +203,7 @@ public class AuthAttemptPendingService {
     if (deviceProofTokenHash != null
         && authAttemptRepository.existsByDeviceProofTokenHash(deviceProofTokenHash)) {
       logger.warn("Device proof token already used for enrollment: {}", request.getEnrollmentId());
-      throw new IllegalArgumentException("Authentication request failed");
+      throw new AuthAttemptRequestFailedException("Authentication request failed");
     }
   }
 
@@ -203,7 +216,7 @@ public class AuthAttemptPendingService {
    * @param request the pending request
    * @return the claimed authentication attempt
    * @throws NoPendingAuthAttemptException if no pending attempt is found
-   * @throws IllegalStateException if the attempt is already processed
+   * @throws AuthAttemptStateConflictException if the attempt is already processed
    */
   private AuthAttempt claimPendingAttempt(AuthAttemptPendingRequest request) {
     // Find valid (non-expired) pending auth attempt
@@ -224,7 +237,7 @@ public class AuthAttemptPendingService {
           "Auth attempt already processed: {} with status {}",
           authAttempt.getAuthAttemptId(),
           authAttempt.getAuthAttemptStatus());
-      throw new IllegalStateException("Authentication request failed");
+      throw new AuthAttemptStateConflictException("Authentication request failed");
     }
 
     // Record the device proof token to ensure unicity and update status to READ

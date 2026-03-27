@@ -3,192 +3,256 @@
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
- *
- * Class: GlobalExceptionHandler
- * Description: Centralized exception handling for the Ezkey Auth REST API.
  */
 
 package org.ezkey.exception;
 
-import org.ezkey.dto.ErrorResponseDto;
+import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
+import org.ezkey.exception.auth.EnrollmentBindingFailedException;
+import org.ezkey.exception.auth.EnrollmentIntegrationNotFoundException;
+import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
+import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
+import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
+import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 /**
- * Global exception handler for the Ezkey Auth REST API.
- *
- * <p>This class provides centralized exception handling for all controllers in the Ezkey Auth API,
- * ensuring consistent error responses across the entire application. It intercepts exceptions
- * thrown by controller methods and converts them into standardized HTTP responses with appropriate
- * status codes.
- *
- * <p>The handler supports multiple exception types:
- *
- * <ul>
- *   <li><b>ResourceNotFoundException:</b> Returns HTTP 404 with detailed error information
- *   <li><b>ValidationException:</b> Returns HTTP 400 with validation error details
- *   <li><b>IllegalArgumentException:</b> Returns HTTP 400 with argument error details
- *   <li><b>RuntimeException:</b> Returns HTTP 500 with generic error information
- *   <li><b>Exception:</b> Catches all other exceptions and returns HTTP 500
- * </ul>
- *
- * <p><b>Error Response Format:</b> All error responses follow a consistent JSON structure with:
- *
- * <ul>
- *   <li><b>timestamp:</b> When the error occurred
- *   <li><b>status:</b> HTTP status code
- *   <li><b>error:</b> Error type description
- *   <li><b>message:</b> Detailed error message
- *   <li><b>path:</b> API endpoint where the error occurred
- * </ul>
- *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
- *
- * <p><b>License:</b> MIT
- *
- * @author Ezkey contributors
- * @since 2025
- * @see org.springframework.web.bind.annotation.RestControllerAdvice
- * @see org.springframework.web.bind.annotation.ExceptionHandler
- * @see ErrorResponseDto
+ * Centralized RFC 9457 exception handling for the Auth API. Raw exception messages are logged
+ * server-side and never copied to {@link ProblemDetail#getDetail()} for security-sensitive flows.
  */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+@Order(100)
+public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
 
-  /**
-   * Handles ResourceNotFoundException and returns HTTP 404.
-   *
-   * <p>This method catches ResourceNotFoundException instances and converts them into standardized
-   * HTTP 404 Not Found responses with detailed error information.
-   *
-   * @param ex the ResourceNotFoundException that was thrown
-   * @param request the web request that caused the exception
-   * @return ResponseEntity containing error details and HTTP 404 status
-   */
-  @ExceptionHandler(ResourceNotFoundException.class)
-  public ResponseEntity<ErrorResponseDto> handleResourceNotFoundException(
-      ResourceNotFoundException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "RESOURCE_NOT_FOUND",
-            ex.getMessage(),
-            request.getDescription(false).replace("uri=", ""));
+  private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+  private static String pathFrom(WebRequest request) {
+    return request.getDescription(false).replace("uri=", "");
   }
 
-  /**
-   * Handles NoPendingAuthAttemptException and returns HTTP 204.
-   *
-   * <p>This method catches NoPendingAuthAttemptException instances and returns HTTP 204 No Content,
-   * as this represents a normal state in MFA systems where no pending authentication attempts are
-   * available.
-   *
-   * @param ex the NoPendingAuthAttemptException that was thrown
-   * @param request the web request that caused the exception
-   * @return ResponseEntity with HTTP 204 No Content status
-   */
   @ExceptionHandler(NoPendingAuthAttemptException.class)
   public ResponseEntity<Void> handleNoPendingAuthAttempt(
       NoPendingAuthAttemptException ex, WebRequest request) {
+    LOG.debug("No pending auth attempt: {}", request.getDescription(false));
     return ResponseEntity.noContent().build();
   }
 
-  /**
-   * Handles IllegalStateException and returns HTTP 409.
-   *
-   * <p>This method catches IllegalStateException instances and converts them into standardized HTTP
-   * 409 Conflict responses, as these represent state conflicts in the authentication or enrollment
-   * process.
-   *
-   * @param ex the IllegalStateException that was thrown
-   * @param request the web request that caused the exception
-   * @return ResponseEntity containing error details and HTTP 409 status
-   */
-  @ExceptionHandler(IllegalStateException.class)
-  public ResponseEntity<ErrorResponseDto> handleIllegalStateException(
-      IllegalStateException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "CONFLICT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
+  @ExceptionHandler(EnrollmentBindingFailedException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentBindingFailed(
+      EnrollmentBindingFailedException ex, WebRequest request) {
+    LOG.warn("Enrollment bind rejected: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AuthApiProblemCatalog.TYPE_ENROLLMENT_BINDING_FAILED,
+        AuthApiProblemCatalog.TITLE_BAD_REQUEST,
+        AuthApiProblemCatalog.DETAIL_ENROLLMENT_BINDING_FAILED,
+        pathFrom(request));
+  }
 
-    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+  @ExceptionHandler(EnrollmentInvitationExpiredException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentInvitationExpired(
+      EnrollmentInvitationExpiredException ex, WebRequest request) {
+    LOG.warn("Enrollment invitation expired: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AuthApiProblemCatalog.TYPE_ENROLLMENT_INVITATION_EXPIRED,
+        AuthApiProblemCatalog.TITLE_BAD_REQUEST,
+        AuthApiProblemCatalog.DETAIL_ENROLLMENT_INVITATION_EXPIRED,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(EnrollmentNotAvailableAfterLockException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentNotAvailableAfterLock(
+      EnrollmentNotAvailableAfterLockException ex, WebRequest request) {
+    LOG.warn("Enrollment not available after lock: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AuthApiProblemCatalog.TYPE_ENROLLMENT_NOT_AVAILABLE,
+        AuthApiProblemCatalog.TITLE_BAD_REQUEST,
+        AuthApiProblemCatalog.DETAIL_ENROLLMENT_NOT_AVAILABLE,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(EnrollmentIntegrationNotFoundException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentIntegrationNotFound(
+      EnrollmentIntegrationNotFoundException ex, WebRequest request) {
+    LOG.error("Enrollment integration missing: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.NOT_FOUND,
+        AuthApiProblemCatalog.TYPE_ENROLLMENT_INTEGRATION_NOT_FOUND,
+        AuthApiProblemCatalog.TITLE_RESOURCE_NOT_FOUND,
+        AuthApiProblemCatalog.DETAIL_ENROLLMENT_INTEGRATION_NOT_FOUND,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(EnrollmentAlreadyBoundException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentAlreadyBound(
+      EnrollmentAlreadyBoundException ex, WebRequest request) {
+    LOG.warn("Enrollment already bound: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.CONFLICT,
+        AuthApiProblemCatalog.TYPE_ENROLLMENT_ALREADY_BOUND,
+        AuthApiProblemCatalog.TITLE_CONFLICT,
+        AuthApiProblemCatalog.DETAIL_ENROLLMENT_ALREADY_BOUND,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(EnrollmentVerifyFailedException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentVerifyFailed(
+      EnrollmentVerifyFailedException ex, WebRequest request) {
+    LOG.warn("Enrollment verify failed: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AuthApiProblemCatalog.TYPE_ENROLLMENT_VERIFY_FAILED,
+        AuthApiProblemCatalog.TITLE_BAD_REQUEST,
+        AuthApiProblemCatalog.DETAIL_ENROLLMENT_VERIFY_FAILED,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(EnrollmentVerifyStateConflictException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentVerifyStateConflict(
+      EnrollmentVerifyStateConflictException ex, WebRequest request) {
+    LOG.warn("Enrollment verify conflict: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.CONFLICT,
+        AuthApiProblemCatalog.TYPE_ENROLLMENT_STATE_CONFLICT,
+        AuthApiProblemCatalog.TITLE_CONFLICT,
+        AuthApiProblemCatalog.DETAIL_ENROLLMENT_STATE_CONFLICT,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(AuthAttemptRequestFailedException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptRequestFailed(
+      AuthAttemptRequestFailedException ex, WebRequest request) {
+    LOG.warn("Auth attempt request failed: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_BINDING_FAILED,
+        AuthApiProblemCatalog.TITLE_BAD_REQUEST,
+        AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_FAILED,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(AuthAttemptStateConflictException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptStateConflict(
+      AuthAttemptStateConflictException ex, WebRequest request) {
+    LOG.warn("Auth attempt state conflict: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.CONFLICT,
+        AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT,
+        AuthApiProblemCatalog.TITLE_CONFLICT,
+        AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(ResourceNotFoundException.class)
+  public ResponseEntity<ProblemDetail> handleResourceNotFound(
+      ResourceNotFoundException ex, WebRequest request) {
+    LOG.warn("Resource not found (detail redacted for client)");
+    return problemResponse(
+        HttpStatus.NOT_FOUND,
+        AuthApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
+        AuthApiProblemCatalog.TITLE_RESOURCE_NOT_FOUND,
+        AuthApiProblemCatalog.DETAIL_RESOURCE_NOT_FOUND,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ProblemDetail> handleMethodArgumentNotValid(
+      MethodArgumentNotValidException ex, WebRequest request) {
+    LOG.warn("Validation failed: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AuthApiProblemCatalog.TYPE_VALIDATION_FAILED,
+        AuthApiProblemCatalog.TITLE_VALIDATION_FAILED,
+        AuthApiProblemCatalog.DETAIL_VALIDATION_FAILED,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException ex, WebRequest request) {
+    LOG.warn("Unreadable message: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AuthApiProblemCatalog.TYPE_INVALID_REQUEST_BODY,
+        AuthApiProblemCatalog.TITLE_BAD_REQUEST,
+        AuthApiProblemCatalog.DETAIL_INVALID_JSON,
+        pathFrom(request));
   }
 
   /**
-   * Handles IllegalArgumentException and returns HTTP 400.
-   *
-   * <p>This method catches IllegalArgumentException instances and converts them into standardized
-   * HTTP 400 Bad Request responses with argument error details.
-   *
-   * @param ex the IllegalArgumentException that was thrown
-   * @param request the web request that caused the exception
-   * @return ResponseEntity containing error details and HTTP 400 status
+   * Legacy fallback for code paths still throwing generic {@link IllegalArgumentException}. More
+   * specific types (e.g. {@link AuthAttemptRequestFailedException}) use dedicated handlers above.
    */
   @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<ErrorResponseDto> handleIllegalArgumentException(
+  public ResponseEntity<ProblemDetail> handleLegacyIllegalArgument(
       IllegalArgumentException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "INVALID_ARGUMENT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    LOG.warn("Illegal argument (legacy): {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AuthApiProblemCatalog.TYPE_VALIDATION_FAILED,
+        AuthApiProblemCatalog.TITLE_BAD_REQUEST,
+        AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_FAILED,
+        pathFrom(request));
   }
 
   /**
-   * Handles RuntimeException and returns HTTP 500.
-   *
-   * <p>This method catches RuntimeException instances and converts them into standardized HTTP 500
-   * Internal Server Error responses with error details.
-   *
-   * @param ex the RuntimeException that was thrown
-   * @param request the web request that caused the exception
-   * @return ResponseEntity containing error details and HTTP 500 status
+   * Legacy fallback for generic {@link IllegalStateException}. {@link
+   * AuthAttemptStateConflictException} uses the dedicated handler above.
    */
+  @ExceptionHandler(IllegalStateException.class)
+  public ResponseEntity<ProblemDetail> handleLegacyIllegalState(
+      IllegalStateException ex, WebRequest request) {
+    LOG.warn("Illegal state (legacy): {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.CONFLICT,
+        AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT,
+        AuthApiProblemCatalog.TITLE_CONFLICT,
+        AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT,
+        pathFrom(request));
+  }
+
   @ExceptionHandler(RuntimeException.class)
-  public ResponseEntity<ErrorResponseDto> handleRuntimeException(
+  public ResponseEntity<ProblemDetail> handleRuntimeException(
       RuntimeException ex, WebRequest request) {
-    // Exclude actuator endpoints from global exception handling
-    String path = request.getDescription(false).replace("uri=", "");
+    String path = pathFrom(request);
     if (path != null && path.startsWith("/actuator/")) {
-      // Return null to let Spring Boot handle actuator exceptions with its default handler
       return null;
     }
-
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto("INTERNAL_ERROR", "An unexpected error occurred", path);
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    LOG.error("Unexpected runtime error", ex);
+    return problemResponse(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        AuthApiProblemCatalog.TYPE_INTERNAL_ERROR,
+        AuthApiProblemCatalog.TITLE_INTERNAL_ERROR,
+        AuthApiProblemCatalog.DETAIL_INTERNAL,
+        path);
   }
 
-  /**
-   * Handles all other exceptions and returns HTTP 500.
-   *
-   * <p>This method serves as a catch-all for any exceptions not handled by more specific exception
-   * handlers. It ensures that all exceptions result in a consistent error response.
-   *
-   * <p><b>Note:</b> Actuator endpoints are excluded from this handler to allow Spring Boot to
-   * handle actuator exceptions properly.
-   *
-   * @param ex the Exception that was thrown
-   * @param request the web request that caused the exception
-   * @return ResponseEntity containing error details and HTTP 500 status
-   */
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<ErrorResponseDto> handleGenericException(Exception ex, WebRequest request) {
-    // Exclude actuator endpoints from global exception handling
-    String path = request.getDescription(false).replace("uri=", "");
+  public ResponseEntity<ProblemDetail> handleGenericException(Exception ex, WebRequest request) {
+    String path = pathFrom(request);
     if (path != null && path.startsWith("/actuator/")) {
-      // Return null to let Spring Boot handle actuator exceptions with its default handler
       return null;
     }
-
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto("INTERNAL_SERVER_ERROR", "An unexpected error occurred", path);
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    LOG.error("Unhandled exception", ex);
+    return problemResponse(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        AuthApiProblemCatalog.TYPE_INTERNAL_ERROR,
+        AuthApiProblemCatalog.TITLE_INTERNAL_ERROR,
+        AuthApiProblemCatalog.DETAIL_INTERNAL,
+        path);
   }
 }

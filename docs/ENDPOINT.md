@@ -106,6 +106,14 @@ yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
 
 ## 1. Auth API Endpoints (mobile)
 
+### Error responses (RFC 9457)
+
+HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem Details (`Content-Type: application/problem+json`). The JSON body includes `type` (URI identifying the problem category), `title`, `status`, `detail` (operator-safe text; do not rely on it for security-sensitive branching), and extension properties `path` and `timestamp`. Clients should branch on **`type`** and HTTP status.
+
+**204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
+
+**200 OK** on `POST /api/v1/auth-attempts/respond` may still return a business-level `FAILED` result in the JSON body for some validation paths (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). HTTP-level failures use Problem Details as above.
+
 ### a) Retrieve pending request
 
 **POST /api/v1/auth-attempts/pending**
@@ -113,6 +121,7 @@ yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
 - **Description**: The mobile device queries the backend to check if there is a pending authentication request for its enrollment. The body contains a cryptographic signature proving the authenticity of the request and an enrollment proof token for secure enrollment identification.
 - **Why POST?**: The crypto signature is transmitted in the body, which is not possible with GET.
 - **Security Enhancement**: This endpoint now uses enrollmentProofToken in the request body instead of enrollmentId in the URL path to prevent enumeration attacks.
+- **Device proof token and 204 responses**: A successful cryptographic signature is still required on every request. When there is **no** pending attempt (**204 No Content**), the server does **not** store the `deviceProofToken`; the mobile client may send the **same** signed `deviceProofToken` on subsequent polls until a pending request exists and is claimed (**200 OK**). At that point the token is recorded and must not be reused for another claimed attempt. Volume abuse is mitigated by **rate limiting** (and infrastructure controls), not by requiring a fresh random on every empty poll.
 
 **Request**
 ```http
@@ -241,8 +250,8 @@ Content-Type: application/json
 ```
 
 **Error responses**
-- **400 Bad Request**: Invalid verification data. For example, wrong `challengeResponse` returns message "Invalid challenge response". The enrollment is then invalidated; a subsequent verify call for the same enrollment will return 409.
-- **409 Conflict**: Enrollment not in a state that allows verification. If the enrollment was invalidated due to a previous failed verification attempt (e.g. wrong challenge), the message states that the enrollment was invalidated due to a previous failed verification attempt.
+
+See **Error responses (RFC 9457)** above. Verification failures return **400** or **409** with stable `type` URIs under `https://ezkey.io/problems/auth/`. Wrong `challengeResponse` invalidates the enrollment; a subsequent verify call for the same enrollment may return **409**.
 
 ---
 

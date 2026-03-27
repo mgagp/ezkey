@@ -82,7 +82,9 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li><b>Cryptographic Validation:</b> Verifies device and integration signatures using Ed25519
  *   <li><b>Enrollment Proof Tokens:</b> Prevents enumeration attacks through secure token-based
  *       identification
- *   <li><b>Anti-Replay Protection:</b> Ensures device proof tokens are used only once
+ *   <li><b>Device proof token uniqueness (on claim):</b> Once a pending attempt is claimed, the
+ *       device proof token is stored and must not be reused across attempts; empty polls do not
+ *       persist the token (see {@link AuthAttemptPendingService})
  *   <li><b>Challenge-Based Security:</b> Implements configurable numeric challenges for additional
  *       verification
  * </ul>

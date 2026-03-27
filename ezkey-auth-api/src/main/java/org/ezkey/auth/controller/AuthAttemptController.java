@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.NoSuchElementException;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -36,11 +35,13 @@ import org.ezkey.authattempt.mapper.AuthAttemptAuthApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -214,7 +215,7 @@ public class AuthAttemptController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "429",
             description = "Rate limit exceeded",
@@ -230,35 +231,29 @@ public class AuthAttemptController {
             httpRequest, trustedProxyProperties != null ? trustedProxyProperties.getCidrs() : null);
     String userAgent = AuditHelper.extractUserAgent(httpRequest);
 
-    try {
-      AuthAttemptPendingResponse response =
-          authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
+    AuthAttemptPendingResponse response =
+        authAttemptService.pending(authAttemptMapper.toAuthAttemptPendingRequest(request));
 
-      Integer pendingTenantId = resolveTenantIdForAudit(response.getAuthAttemptId());
-      Integer pendingAuthAttemptId = response.getAuthAttemptId();
-      boolean demoMitm = response.isDemoMitmTamperApplied();
-      auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.AUTH_ATTEMPT_PENDING)
-              .eventAction(
-                  demoMitm ? "auth_attempt_pending_demo_mitm" : "auth_attempt_pending_found")
-              .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.AUTH_API)
-              .ipAddress(clientIp)
-              .userAgent(userAgent)
-              .authAttemptId(pendingAuthAttemptId)
-              .authAttemptCreatedAt(response.getCreatedAt())
-              .enrollmentId(resolveEnrollmentIdFromAuthAttempt(pendingAuthAttemptId))
-              .integrationId(resolveIntegrationIdFromAuthAttempt(pendingAuthAttemptId))
-              .tenantId(pendingTenantId)
-              .eventDetails(demoMitmPendingAuditDetails(response))
-              .build());
+    Integer pendingTenantId = resolveTenantIdForAudit(response.getAuthAttemptId());
+    Integer pendingAuthAttemptId = response.getAuthAttemptId();
+    boolean demoMitm = response.isDemoMitmTamperApplied();
+    auditLogService.log(
+        AuditLog.builder()
+            .eventType(EventType.AUTH_ATTEMPT_PENDING)
+            .eventAction(demoMitm ? "auth_attempt_pending_demo_mitm" : "auth_attempt_pending_found")
+            .eventStatus(EventStatus.SUCCESS)
+            .apiName(ApiName.AUTH_API)
+            .ipAddress(clientIp)
+            .userAgent(userAgent)
+            .authAttemptId(pendingAuthAttemptId)
+            .authAttemptCreatedAt(response.getCreatedAt())
+            .enrollmentId(resolveEnrollmentIdFromAuthAttempt(pendingAuthAttemptId))
+            .integrationId(resolveIntegrationIdFromAuthAttempt(pendingAuthAttemptId))
+            .tenantId(pendingTenantId)
+            .eventDetails(demoMitmPendingAuditDetails(response))
+            .build());
 
-      return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
-    } catch (NoSuchElementException e) {
-      LOG.debug("No pending authentication attempts found");
-      return ResponseEntity.noContent().build();
-    }
+    return ResponseEntity.ok(authAttemptMapper.toAuthAttemptPendingResponseDto(response));
   }
 
   /**
@@ -298,7 +293,7 @@ public class AuthAttemptController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
             description = "Authentication attempt state conflict",
@@ -306,7 +301,7 @@ public class AuthAttemptController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "500",
             description = "Internal server error",
@@ -314,7 +309,7 @@ public class AuthAttemptController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
+                            implementation = ProblemDetail.class)))
       })
   public ResponseEntity<AuthAttemptRespondResponseDto> respond(
       @Valid @RequestBody final AuthAttemptRespondRequestDto request,
@@ -370,11 +365,24 @@ public class AuthAttemptController {
               .enrollmentId(resolveEnrollmentIdFromAuthAttempt(request.authAttemptId()))
               .integrationId(resolveIntegrationIdFromAuthAttempt(request.authAttemptId()))
               .tenantId(respondTenantId)
-              .errorMessage(e.getMessage())
+              .errorMessage(auditErrorSummary(e))
               .build());
 
       throw e;
     }
+  }
+
+  /**
+   * Audit-safe error summary: exception type only (no message that could contain sensitive hints).
+   */
+  private static String auditErrorSummary(Exception e) {
+    if (e == null) {
+      return null;
+    }
+    if (e instanceof AuthAttemptStateConflictException) {
+      return "AuthAttemptStateConflictException";
+    }
+    return e.getClass().getSimpleName();
   }
 
   /**

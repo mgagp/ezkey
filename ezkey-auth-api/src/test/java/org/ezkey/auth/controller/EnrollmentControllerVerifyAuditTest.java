@@ -37,6 +37,8 @@ import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
+import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -133,7 +135,7 @@ class EnrollmentControllerVerifyAuditTest {
 
     when(enrollmentService.verify(verifyRequest))
         .thenThrow(
-            new IllegalStateException(
+            new EnrollmentVerifyStateConflictException(
                 "A verified enrollment with the same name already exists for this integration."));
 
     when(enrollmentRepository.findById(200)).thenReturn(Optional.of(attemptedEnrollment));
@@ -144,7 +146,7 @@ class EnrollmentControllerVerifyAuditTest {
     // Act
     try {
       enrollmentController.verify(requestDto, httpRequest);
-    } catch (IllegalStateException e) {
+    } catch (EnrollmentVerifyStateConflictException e) {
       // Expected
     }
 
@@ -168,17 +170,18 @@ class EnrollmentControllerVerifyAuditTest {
 
   @Test
   @DisplayName(
-      "verify() - Should log enrollment_verify_failed when service throws IllegalArgumentException")
+      "verify() - Should log enrollment_verify_failed when service throws"
+          + " EnrollmentVerifyFailedException")
   void verify_WhenInvalidChallenge_ShouldLogEnrollmentVerifyFailed() {
-    // Arrange: service throws IllegalArgumentException (e.g. invalid challenge response)
+    // Arrange: service throws EnrollmentVerifyFailedException (e.g. invalid challenge response)
     when(enrollmentService.verify(verifyRequest))
-        .thenThrow(new IllegalArgumentException("Invalid challenge response"));
+        .thenThrow(new EnrollmentVerifyFailedException("Invalid challenge response"));
     when(enrollmentRepository.findById(200)).thenReturn(Optional.of(attemptedEnrollment));
 
     // Act
     try {
       enrollmentController.verify(requestDto, httpRequest);
-    } catch (IllegalArgumentException e) {
+    } catch (EnrollmentVerifyFailedException e) {
       // Expected
     }
 

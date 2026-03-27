@@ -17,6 +17,8 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
+import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
@@ -92,8 +94,10 @@ public class EnrollmentVerifyService {
    *
    * @param request the verify request containing device keys and signatures
    * @return the verify response confirming successful enrollment
-   * @throws IllegalArgumentException if validation fails (signature, uniqueness, or challenge)
-   * @throws IllegalStateException if enrollment is in invalid state or already processed
+   * @throws EnrollmentVerifyFailedException if validation fails (signature, uniqueness, or
+   *     challenge)
+   * @throws EnrollmentVerifyStateConflictException if enrollment is in invalid state or already
+   *     processed
    */
   public EnrollmentVerifyResponse verify(EnrollmentVerifyRequest request) {
     logger.info(
@@ -132,7 +136,8 @@ public class EnrollmentVerifyService {
    *
    * @param request the verify request
    * @return the validated enrollment
-   * @throws IllegalStateException if enrollment is not found or in invalid state
+   * @throws EnrollmentVerifyStateConflictException if enrollment is not found or in invalid state
+   * @throws EnrollmentVerifyFailedException if invitation expired
    */
   private Enrollment validateEnrollmentState(EnrollmentVerifyRequest request) {
     logger.debug(
@@ -146,7 +151,8 @@ public class EnrollmentVerifyService {
                   logger.warn(
                       "Validation failed: Enrollment not found for ID: {}",
                       request.getEnrollmentId());
-                  return new IllegalStateException("Enrollment already verified");
+                  return new EnrollmentVerifyStateConflictException(
+                      "Enrollment not available for verification");
                 });
 
     logger.debug(
@@ -157,7 +163,7 @@ public class EnrollmentVerifyService {
           "Validation failed: Enrollment already verified - ID: {}, Status: {}",
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
-      throw new IllegalStateException("Enrollment verification failed");
+      throw new EnrollmentVerifyStateConflictException("Enrollment verification failed");
     }
 
     logger.debug("Enrollment status validation passed: Status is not VERIFIED");
@@ -169,7 +175,7 @@ public class EnrollmentVerifyService {
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new IllegalStateException(message);
+      throw new EnrollmentVerifyStateConflictException(message);
     }
 
     // Reject if pending enrollment has expired (expires_at in the past)
@@ -192,7 +198,7 @@ public class EnrollmentVerifyService {
             enrollment.getEnrollmentId(),
             e.getMessage());
       }
-      throw new IllegalArgumentException("Enrollment invitation has expired");
+      throw new EnrollmentVerifyFailedException("Enrollment invitation has expired");
     }
 
     logger.debug("Enrollment status validation passed: Status is BOUND");
@@ -207,7 +213,7 @@ public class EnrollmentVerifyService {
    *
    * @param request the verify request containing device signature
    * @param enrollment the enrollment containing proof token
-   * @throws IllegalArgumentException if signature validation fails
+   * @throws EnrollmentVerifyFailedException if signature validation fails
    */
   private void validateSignature(EnrollmentVerifyRequest request, Enrollment enrollment) {
     logger.debug("Step 2: Validating signature for enrollment ID: {}", request.getEnrollmentId());
@@ -223,7 +229,7 @@ public class EnrollmentVerifyService {
           "Validation failed: Invalid bind proof token signature for enrollment ID: {}",
           request.getEnrollmentId());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new IllegalArgumentException("Invalid bind proof token signature");
+      throw new EnrollmentVerifyFailedException("Invalid bind proof token signature");
     }
 
     logger.debug("Signature validation passed for enrollment ID: {}", request.getEnrollmentId());
@@ -237,7 +243,7 @@ public class EnrollmentVerifyService {
    * uniqueness independent of encryption format.
    *
    * @param request the verify request containing device public key
-   * @throws IllegalArgumentException if device public key is already used
+   * @throws EnrollmentVerifyFailedException if device public key is already used
    */
   private void validateDeviceKeyUniqueness(EnrollmentVerifyRequest request) {
     logger.debug(
@@ -254,7 +260,7 @@ public class EnrollmentVerifyService {
           request.getEnrollmentId(),
           devicePublicKeyHash);
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new IllegalArgumentException("Enrollment verification failed");
+      throw new EnrollmentVerifyFailedException("Enrollment verification failed");
     }
 
     logger.debug(
@@ -270,7 +276,7 @@ public class EnrollmentVerifyService {
    *
    * @param request the verify request containing challenge response
    * @param enrollment the enrollment containing expected challenge
-   * @throws IllegalArgumentException if challenge response is invalid
+   * @throws EnrollmentVerifyFailedException if challenge response is invalid
    */
   private void validateChallengeResponse(EnrollmentVerifyRequest request, Enrollment enrollment) {
     logger.debug(
@@ -284,7 +290,7 @@ public class EnrollmentVerifyService {
           enrollment.getEnrollmentChallenge(),
           request.getChallengeResponse());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new IllegalArgumentException("Invalid challenge response");
+      throw new EnrollmentVerifyFailedException("Invalid challenge response");
     }
 
     logger.debug(
@@ -300,7 +306,7 @@ public class EnrollmentVerifyService {
    * @param request the verify request
    * @param snapshot the enrollment snapshot from pre-checks
    * @return the locked enrollment
-   * @throws IllegalStateException if enrollment is not found or in invalid state
+   * @throws EnrollmentVerifyStateConflictException if enrollment is not found or in invalid state
    */
   private Enrollment acquireLockAndValidate(EnrollmentVerifyRequest request, Enrollment snapshot) {
     logger.debug("Step 5: Acquiring lock for enrollment ID: {}", request.getEnrollmentId());
@@ -313,7 +319,7 @@ public class EnrollmentVerifyService {
           "Validation failed: Enrollment not found or already verified after lock acquisition for"
               + " ID: {}",
           request.getEnrollmentId());
-      throw new IllegalStateException("Enrollment already verified");
+      throw new EnrollmentVerifyStateConflictException("Enrollment already verified");
     }
 
     logger.debug("Lock acquired successfully for enrollment ID: {}", enrollment.getEnrollmentId());
@@ -325,7 +331,7 @@ public class EnrollmentVerifyService {
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new IllegalStateException(message);
+      throw new EnrollmentVerifyStateConflictException(message);
     }
 
     logger.debug("Post-lock status validation passed: Status is BOUND");
@@ -340,7 +346,7 @@ public class EnrollmentVerifyService {
           "Validation failed: Enrollment state changed between snapshot and lock - ID: {}",
           request.getEnrollmentId());
       enrollmentTxHelper.markInvalidAndClear(request.getEnrollmentId());
-      throw new IllegalStateException("Enrollment state changed");
+      throw new EnrollmentVerifyStateConflictException("Enrollment state changed");
     }
 
     logger.debug(
@@ -356,8 +362,8 @@ public class EnrollmentVerifyService {
    * process if a duplicate VERIFIED enrollment exists.
    *
    * @param enrollment the enrollment being verified
-   * @throws IllegalStateException if a VERIFIED enrollment already exists with the same integration
-   *     and name
+   * @throws EnrollmentVerifyStateConflictException if a VERIFIED enrollment already exists with the
+   *     same integration and name
    */
   private void validateUniqueness(Enrollment enrollment) {
     logger.debug(
@@ -381,7 +387,7 @@ public class EnrollmentVerifyService {
           existing.getEnrollmentId(),
           enrollment.getIntegrationId(),
           enrollment.getEnrollmentName());
-      throw new IllegalStateException(
+      throw new EnrollmentVerifyStateConflictException(
           "A verified enrollment with the same name already exists for this integration. To replace"
               + " an enrollment, use the recovery process: POST /api/v1/admin/auth/recover with a"
               + " recovery code, then POST /api/v1/admin/enrollments/reset to reset the existing"

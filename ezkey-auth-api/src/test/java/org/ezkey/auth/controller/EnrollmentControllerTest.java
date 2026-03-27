@@ -29,6 +29,11 @@ import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.GlobalExceptionHandler;
+import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
+import org.ezkey.exception.auth.EnrollmentBindingFailedException;
+import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
+import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -74,7 +79,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @WebMvcTest(controllers = EnrollmentController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({SecurityConfig.class, TrustedProxyConfig.class})
+@Import({SecurityConfig.class, TrustedProxyConfig.class, GlobalExceptionHandler.class})
 @DisplayName("Enrollment Controller Critical Tests")
 class EnrollmentControllerTest {
 
@@ -193,7 +198,7 @@ class EnrollmentControllerTest {
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);
     when(enrollmentService.bind(any(EnrollmentBindRequest.class)))
-        .thenThrow(new IllegalArgumentException("Invalid enrollment ID"));
+        .thenThrow(new EnrollmentBindingFailedException("Invalid enrollment ID"));
 
     String json = objectMapper.writeValueAsString(invalidRequestDto);
 
@@ -214,7 +219,7 @@ class EnrollmentControllerTest {
     when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
         .thenReturn(bindRequest);
     when(enrollmentService.bind(any(EnrollmentBindRequest.class)))
-        .thenThrow(new IllegalStateException("Enrollment already bound"));
+        .thenThrow(new EnrollmentAlreadyBoundException("Enrollment already bound"));
 
     String json = objectMapper.writeValueAsString(bindRequestDto);
 
@@ -283,7 +288,7 @@ class EnrollmentControllerTest {
     when(enrollmentMapper.toEnrollmentVerifyRequest(any(EnrollmentVerifyRequestDto.class)))
         .thenReturn(verifyRequest);
     when(enrollmentService.verify(any(EnrollmentVerifyRequest.class)))
-        .thenThrow(new IllegalArgumentException("Invalid cryptographic data"));
+        .thenThrow(new EnrollmentVerifyFailedException("Invalid cryptographic data"));
 
     String json = objectMapper.writeValueAsString(verifyRequestDto);
 
@@ -303,7 +308,7 @@ class EnrollmentControllerTest {
     when(enrollmentMapper.toEnrollmentVerifyRequest(any(EnrollmentVerifyRequestDto.class)))
         .thenReturn(verifyRequest);
     when(enrollmentService.verify(any(EnrollmentVerifyRequest.class)))
-        .thenThrow(new IllegalStateException("Enrollment not in bind state"));
+        .thenThrow(new EnrollmentVerifyStateConflictException("Enrollment not in bind state"));
 
     String json = objectMapper.writeValueAsString(verifyRequestDto);
 

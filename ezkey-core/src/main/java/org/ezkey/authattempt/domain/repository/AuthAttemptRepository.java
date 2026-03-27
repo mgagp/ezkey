@@ -196,10 +196,11 @@ public interface AuthAttemptRepository
   boolean existsByEnrollmentId(Integer enrollmentId);
 
   /**
-   * Checks if a device proof token already exists in any authorization attempt using its hash.
+   * Checks if a device proof token hash already exists on a persisted {@code AuthAttempt} row.
    *
-   * <p>This method is used to ensure device proof token uniqueness across all authorization
-   * attempts to prevent replay attacks.
+   * <p>Used when validating pending polls: a hash appears only after a pending attempt has been
+   * claimed and the device proof token recorded. Empty polls (no pending attempt) do not write a
+   * row, so the same device proof token may be sent again until a claim occurs.
    *
    * @param deviceProofTokenHash the SHA-256 hash of the device proof token to check
    * @return true if the device proof token hash already exists, false otherwise

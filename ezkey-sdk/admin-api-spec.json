@@ -3334,7 +3334,7 @@
           "Dashboard"
         ],
         "summary": "Get dashboard overview",
-        "description": "Returns aggregated stats (integrations, enrollments, auth 24h), recent activity, and for Global Admin only: instance-level alerts (e.g. audit chain gap pending). Designed for 60s refresh interval.",
+        "description": "Returns aggregated stats (integrations, enrollments, auth 24h terminal-outcome health), recent activity, and for Global Admin only: instance-level alerts (e.g. audit chain gap pending). Designed for 60s refresh interval.",
         "operationId": "getOverview",
         "responses": {
           "200": {
@@ -6144,23 +6144,67 @@
       },
       "DashboardAuth24hStatsDto": {
         "type": "object",
-        "description": "Auth attempt counts in the last 24 hours for dashboard overview",
+        "description": "Auth attempt counts and terminal-outcome rates in the last 24h (dashboard)",
         "properties": {
           "total": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "All attempts created in the rolling 24h window"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Attempts still pending on the device"
+          },
+          "readCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Attempts claimed by the device (read) but not yet completed"
           },
           "accepted": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "User approved"
           },
           "rejected": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "User explicitly denied"
           },
-          "failureRatePct": {
+          "invalid": {
             "type": "integer",
-            "format": "int32"
+            "format": "int64",
+            "description": "Cryptographic validation failed"
+          },
+          "expired": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Timed out or superseded"
+          },
+          "terminalTotal": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Terminal outcomes: accepted + rejected + invalid + expired (denominator for rate fields)"
+          },
+          "successRatePct": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Accepted as % of terminal outcomes; null if terminalTotal is 0"
+          },
+          "invalidRatePct": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Invalid as % of terminal outcomes; null if terminalTotal is 0"
+          },
+          "expiredRatePct": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Expired as % of terminal outcomes; null if terminalTotal is 0"
+          },
+          "rejectedRatePct": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Rejected as % of terminal outcomes; null if terminalTotal is 0"
           }
         }
       },

@@ -74,7 +74,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -84,7 +84,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -94,7 +94,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -136,7 +136,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -146,7 +146,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -156,7 +156,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -198,7 +198,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -208,7 +208,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -218,7 +218,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -263,7 +263,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -325,37 +325,32 @@
           "active"
         ]
       },
-      "ErrorResponseDto": {
+      "ProblemDetail": {
         "type": "object",
-        "description": "Standardized error response for all API errors",
         "properties": {
-          "code": {
+          "type": {
             "type": "string",
-            "description": "Error code identifier for categorizing the error type",
-            "example": "RESOURCE_NOT_FOUND"
+            "format": "uri"
           },
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message describing what went wrong",
-            "example": "The requested resource was not found"
+          "title": {
+            "type": "string"
           },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the error occurred",
-            "example": "2025-10-15T14:30:00+00:00"
+          "status": {
+            "type": "integer",
+            "format": "int32"
           },
-          "path": {
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
             "type": "string",
-            "description": "Request path that caused the error",
-            "example": "/api/v1/auth-attempts/123"
+            "format": "uri"
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": {}
           }
-        },
-        "required": [
-          "code",
-          "message",
-          "timestamp"
-        ]
+        }
       },
       "EnrollmentBindRequestDto": {
         "type": "object",

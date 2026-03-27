@@ -9,6 +9,11 @@ This file is intended for coding agents working in `ezkey-auth-api/`.
 - Auth-API is consumed by **mobile devices** (React Native). Never break the
   `EnrollmentBindResponseDto` or `AuthAttemptPendingResponseDto` contracts without coordinating
   with mobile clients.
+- **Errors:** HTTP **4xx/5xx** use **RFC 9457** `ProblemDetail` (`application/problem+json`). Map named
+  exceptions in `GlobalExceptionHandler` with **safe** `detail`/`title` strings from
+  `AuthApiProblemCatalog` — never copy `Throwable#getMessage()` to the client for security-sensitive
+  flows. OpenAPI references `ProblemDetail`; generated specs under `specs/` are produced by the
+  maintainer (`scripts/update-specs.sh` after a clean start).
 
 ## Module responsibilities
 
@@ -78,6 +83,10 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
   The `findAndLockUnreadById` native query enforces this with `SELECT FOR NO KEY UPDATE`.
 - Device public keys are uniqueness-checked by SHA-256 hash (`Enrollment.devicePublicKeyHash`)
   to prevent replay attacks across enrollments.
+- **Pending endpoint**: Each request must present a valid signature over `deviceProofToken`. The
+  device proof token is **persisted only when a pending attempt is claimed** (200). On **204** (no
+  pending), nothing is stored—the same signed token may be reused on later polls until a claim
+  occurs; see `AuthAttemptPendingService` Javadoc and `docs/ENDPOINT.md`.
 - **Respond endpoint**: One failed validation (invalid signature, wrong challenge, or missing device
   key) marks the auth attempt as **INVALID** immediately. There is no failure counter or N-attempts
   retry; this is intentional (strict security posture). Rate limiting on `POST /api/v1/auth-attempts/respond`

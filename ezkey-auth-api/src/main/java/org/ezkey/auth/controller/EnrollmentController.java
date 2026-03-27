@@ -34,8 +34,12 @@ import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.auth.EnrollmentBindingFailedException;
+import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
+import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -174,7 +178,7 @@ public class EnrollmentController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
             description = "Enrollment already bound or proof token already used",
@@ -182,7 +186,7 @@ public class EnrollmentController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "500",
             description = "Internal server error",
@@ -190,7 +194,7 @@ public class EnrollmentController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
+                            implementation = ProblemDetail.class)))
       })
   public ResponseEntity<EnrollmentBindResponseDto> bind(
       @RequestBody EnrollmentBindRequestDto request, HttpServletRequest httpRequest) {
@@ -220,7 +224,8 @@ public class EnrollmentController {
               .errorMessage("Enrollment ID and enrollment proof token are required")
               .build());
 
-      throw new IllegalArgumentException("Enrollment ID and enrollment proof token are required");
+      throw new EnrollmentBindingFailedException(
+          "Enrollment ID and enrollment proof token are required");
     }
 
     Integer auditTenantId = resolveTenantIdForAudit(request.enrollmentId());
@@ -296,7 +301,7 @@ public class EnrollmentController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
             description = "Enrollment state conflict or already verified",
@@ -304,7 +309,7 @@ public class EnrollmentController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "500",
             description = "Internal server error",
@@ -312,7 +317,7 @@ public class EnrollmentController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
+                            implementation = ProblemDetail.class)))
       })
   public ResponseEntity<EnrollmentVerifyResponseDto> verify(
       @RequestBody EnrollmentVerifyRequestDto req, HttpServletRequest httpRequest) {
@@ -342,7 +347,7 @@ public class EnrollmentController {
               .build());
 
       return ResponseEntity.ok(enrollmentMapper.toEnrollmentVerifyResponseDto(response));
-    } catch (IllegalStateException e) {
+    } catch (EnrollmentVerifyStateConflictException e) {
       if (e.getMessage() != null
           && e.getMessage().contains("verified enrollment with the same name")) {
         Enrollment attemptedEnrollment =
@@ -403,7 +408,7 @@ public class EnrollmentController {
       }
 
       throw e;
-    } catch (IllegalArgumentException e) {
+    } catch (EnrollmentVerifyFailedException e) {
       // Log verification failure (invalid challenge, invalid signature, duplicate device key,
       // etc.).
       // AuditLogService.log() uses REQUIRES_NEW so the audit commits independently; the service

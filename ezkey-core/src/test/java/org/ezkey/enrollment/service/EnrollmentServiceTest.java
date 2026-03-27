@@ -35,6 +35,12 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
+import org.ezkey.exception.auth.EnrollmentBindingFailedException;
+import org.ezkey.exception.auth.EnrollmentIntegrationNotFoundException;
+import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
+import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
+import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.Ed25519KeyPair;
@@ -288,11 +294,12 @@ class EnrollmentServiceTest {
   void bind_WhenEnrollmentNotFound_ShouldDelegateException() {
     // Arrange
     when(bindService.bind(bindRequest))
-        .thenThrow(new IllegalArgumentException("Enrollment binding failed"));
+        .thenThrow(new EnrollmentBindingFailedException("Enrollment binding failed"));
 
     // Act & Assert
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> enrollmentService.bind(bindRequest));
+    EnrollmentBindingFailedException exception =
+        assertThrows(
+            EnrollmentBindingFailedException.class, () -> enrollmentService.bind(bindRequest));
 
     assertEquals("Enrollment binding failed", exception.getMessage());
 
@@ -301,15 +308,16 @@ class EnrollmentServiceTest {
   }
 
   @Test
-  @DisplayName("bind() - Should delegate IllegalStateException from bindService")
+  @DisplayName("bind() - Should delegate EnrollmentAlreadyBoundException from bindService")
   void bind_WhenEnrollmentAlreadyBound_ShouldDelegateException() {
     // Arrange
     when(bindService.bind(bindRequest))
-        .thenThrow(new IllegalStateException("Enrollment already bound by a device"));
+        .thenThrow(new EnrollmentAlreadyBoundException("Enrollment already bound by a device"));
 
     // Act & Assert
-    IllegalStateException exception =
-        assertThrows(IllegalStateException.class, () -> enrollmentService.bind(bindRequest));
+    EnrollmentAlreadyBoundException exception =
+        assertThrows(
+            EnrollmentAlreadyBoundException.class, () -> enrollmentService.bind(bindRequest));
 
     assertEquals("Enrollment already bound by a device", exception.getMessage());
 
@@ -318,32 +326,38 @@ class EnrollmentServiceTest {
   }
 
   @Test
-  @DisplayName("bind() - Should delegate IllegalStateException from bindService")
+  @DisplayName("bind() - Should delegate EnrollmentIntegrationNotFoundException from bindService")
   void bind_WhenIntegrationNotFound_ShouldDelegateException() {
     // Arrange
     when(bindService.bind(bindRequest))
-        .thenThrow(new IllegalStateException("Enrollment binding failed"));
+        .thenThrow(
+            new EnrollmentIntegrationNotFoundException("Integration not found for enrollment"));
 
     // Act & Assert
-    IllegalStateException exception =
-        assertThrows(IllegalStateException.class, () -> enrollmentService.bind(bindRequest));
+    EnrollmentIntegrationNotFoundException exception =
+        assertThrows(
+            EnrollmentIntegrationNotFoundException.class,
+            () -> enrollmentService.bind(bindRequest));
 
-    assertEquals("Enrollment binding failed", exception.getMessage());
+    assertEquals("Integration not found for enrollment", exception.getMessage());
 
     // Verify delegation
     verify(bindService, times(1)).bind(bindRequest);
   }
 
   @Test
-  @DisplayName("bind() - Should delegate IllegalArgumentException from bindService")
+  @DisplayName("bind() - Should delegate EnrollmentNotAvailableAfterLockException from bindService")
   void bind_WhenLockAcquisitionFails_ShouldDelegateException() {
     // Arrange
     when(bindService.bind(bindRequest))
-        .thenThrow(new IllegalArgumentException("Enrollment not found or already bound"));
+        .thenThrow(
+            new EnrollmentNotAvailableAfterLockException("Enrollment not found or already bound"));
 
     // Act & Assert
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> enrollmentService.bind(bindRequest));
+    EnrollmentNotAvailableAfterLockException exception =
+        assertThrows(
+            EnrollmentNotAvailableAfterLockException.class,
+            () -> enrollmentService.bind(bindRequest));
 
     assertEquals("Enrollment not found or already bound", exception.getMessage());
 
@@ -373,15 +387,18 @@ class EnrollmentServiceTest {
   }
 
   @Test
-  @DisplayName("verify() - Should delegate IllegalStateException from verifyService")
+  @DisplayName(
+      "verify() - Should delegate EnrollmentVerifyStateConflictException from verifyService")
   void verify_WhenEnrollmentAlreadyVerified_ShouldDelegateException() {
     // Arrange
     when(verifyService.verify(verifyRequest))
-        .thenThrow(new IllegalStateException("Enrollment already verified"));
+        .thenThrow(new EnrollmentVerifyStateConflictException("Enrollment already verified"));
 
     // Act & Assert
-    IllegalStateException exception =
-        assertThrows(IllegalStateException.class, () -> enrollmentService.verify(verifyRequest));
+    EnrollmentVerifyStateConflictException exception =
+        assertThrows(
+            EnrollmentVerifyStateConflictException.class,
+            () -> enrollmentService.verify(verifyRequest));
 
     assertEquals("Enrollment already verified", exception.getMessage());
 
@@ -390,15 +407,20 @@ class EnrollmentServiceTest {
   }
 
   @Test
-  @DisplayName("verify() - Should delegate IllegalStateException from verifyService")
+  @DisplayName(
+      "verify() - Should delegate EnrollmentVerifyStateConflictException from verifyService")
   void verify_WhenEnrollmentNotBound_ShouldDelegateException() {
     // Arrange
     when(verifyService.verify(verifyRequest))
-        .thenThrow(new IllegalStateException("Enrollment must be bound before verification"));
+        .thenThrow(
+            new EnrollmentVerifyStateConflictException(
+                "Enrollment must be bound before verification"));
 
     // Act & Assert
-    IllegalStateException exception =
-        assertThrows(IllegalStateException.class, () -> enrollmentService.verify(verifyRequest));
+    EnrollmentVerifyStateConflictException exception =
+        assertThrows(
+            EnrollmentVerifyStateConflictException.class,
+            () -> enrollmentService.verify(verifyRequest));
 
     assertEquals("Enrollment must be bound before verification", exception.getMessage());
 
@@ -407,15 +429,16 @@ class EnrollmentServiceTest {
   }
 
   @Test
-  @DisplayName("verify() - Should delegate IllegalArgumentException from verifyService")
+  @DisplayName("verify() - Should delegate EnrollmentVerifyFailedException from verifyService")
   void verify_WhenSignatureValidationFails_ShouldThrowIllegalArgumentException() {
     // Arrange
     when(verifyService.verify(verifyRequest))
-        .thenThrow(new IllegalArgumentException("Invalid bind proof token signature"));
+        .thenThrow(new EnrollmentVerifyFailedException("Invalid bind proof token signature"));
 
     // Act & Assert
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> enrollmentService.verify(verifyRequest));
+    EnrollmentVerifyFailedException exception =
+        assertThrows(
+            EnrollmentVerifyFailedException.class, () -> enrollmentService.verify(verifyRequest));
 
     assertEquals("Invalid bind proof token signature", exception.getMessage());
 
@@ -424,15 +447,16 @@ class EnrollmentServiceTest {
   }
 
   @Test
-  @DisplayName("verify() - Should delegate IllegalArgumentException from verifyService")
+  @DisplayName("verify() - Should delegate EnrollmentVerifyFailedException from verifyService")
   void verify_WhenChallengeResponseInvalid_ShouldThrowIllegalArgumentException() {
     // Arrange
     when(verifyService.verify(verifyRequest))
-        .thenThrow(new IllegalArgumentException("Invalid bind proof token signature"));
+        .thenThrow(new EnrollmentVerifyFailedException("Invalid bind proof token signature"));
 
     // Act & Assert
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> enrollmentService.verify(verifyRequest));
+    EnrollmentVerifyFailedException exception =
+        assertThrows(
+            EnrollmentVerifyFailedException.class, () -> enrollmentService.verify(verifyRequest));
 
     assertEquals("Invalid bind proof token signature", exception.getMessage());
 
@@ -441,15 +465,18 @@ class EnrollmentServiceTest {
   }
 
   @Test
-  @DisplayName("verify() - Should delegate IllegalStateException from verifyService")
+  @DisplayName(
+      "verify() - Should delegate EnrollmentVerifyStateConflictException from verifyService")
   void verify_WhenLockAcquisitionFails_ShouldThrowIllegalStateException() {
     // Arrange
     when(verifyService.verify(verifyRequest))
-        .thenThrow(new IllegalStateException("Enrollment already verified"));
+        .thenThrow(new EnrollmentVerifyStateConflictException("Enrollment already verified"));
 
     // Act & Assert
-    IllegalStateException exception =
-        assertThrows(IllegalStateException.class, () -> enrollmentService.verify(verifyRequest));
+    EnrollmentVerifyStateConflictException exception =
+        assertThrows(
+            EnrollmentVerifyStateConflictException.class,
+            () -> enrollmentService.verify(verifyRequest));
 
     assertEquals("Enrollment already verified", exception.getMessage());
 
@@ -458,15 +485,16 @@ class EnrollmentServiceTest {
   }
 
   @Test
-  @DisplayName("verify() - Should delegate IllegalArgumentException from verifyService")
+  @DisplayName("verify() - Should delegate EnrollmentVerifyFailedException from verifyService")
   void verify_WhenDevicePublicKeyAlreadyUsed_ShouldThrowIllegalArgumentException() {
     // Arrange
     when(verifyService.verify(verifyRequest))
-        .thenThrow(new IllegalArgumentException("Invalid bind proof token signature"));
+        .thenThrow(new EnrollmentVerifyFailedException("Invalid bind proof token signature"));
 
     // Act & Assert
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> enrollmentService.verify(verifyRequest));
+    EnrollmentVerifyFailedException exception =
+        assertThrows(
+            EnrollmentVerifyFailedException.class, () -> enrollmentService.verify(verifyRequest));
 
     assertEquals("Invalid bind proof token signature", exception.getMessage());
 

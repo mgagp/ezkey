@@ -21,6 +21,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -76,9 +77,10 @@ class EnrollmentVerifyServiceTest {
 
     when(enrollmentRepository.findById(100)).thenReturn(Optional.of(enrollment));
 
-    IllegalStateException exception =
+    EnrollmentVerifyStateConflictException exception =
         assertThrows(
-            IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+            EnrollmentVerifyStateConflictException.class,
+            () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
         exception.getMessage().contains("Enrollment must be bound before verification"),
@@ -98,9 +100,10 @@ class EnrollmentVerifyServiceTest {
 
     when(enrollmentRepository.findById(100)).thenReturn(Optional.of(enrollment));
 
-    IllegalStateException exception =
+    EnrollmentVerifyStateConflictException exception =
         assertThrows(
-            IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+            EnrollmentVerifyStateConflictException.class,
+            () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
         exception.getMessage().contains("invalidated"),
@@ -123,9 +126,10 @@ class EnrollmentVerifyServiceTest {
 
     when(enrollmentRepository.findById(100)).thenReturn(Optional.of(enrollment));
 
-    IllegalStateException exception =
+    EnrollmentVerifyStateConflictException exception =
         assertThrows(
-            IllegalStateException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+            EnrollmentVerifyStateConflictException.class,
+            () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
         exception.getMessage().contains("revoked"),

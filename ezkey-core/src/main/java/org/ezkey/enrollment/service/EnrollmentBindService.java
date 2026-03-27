@@ -17,6 +17,11 @@ import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
+import org.ezkey.exception.auth.EnrollmentBindingFailedException;
+import org.ezkey.exception.auth.EnrollmentIntegrationNotFoundException;
+import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
+import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
@@ -103,8 +108,9 @@ public class EnrollmentBindService {
    *
    * @param request the bind request
    * @return the bind response
-   * @throws IllegalArgumentException if validation fails (with secure error messages)
-   * @throws IllegalStateException if the enrollment is already processed
+   * @throws EnrollmentBindingFailedException if validation fails (secure messages; not exposed to
+   *     clients verbatim)
+   * @throws EnrollmentAlreadyBoundException if the enrollment is already processed
    */
   public EnrollmentBindResponse bind(EnrollmentBindRequest request) {
     logger.info(
@@ -136,7 +142,9 @@ public class EnrollmentBindService {
    *
    * @param request the bind request containing enrollment proof token and ID
    * @return the validated enrollment
-   * @throws IllegalArgumentException if enrollment validation fails
+   * @throws EnrollmentBindingFailedException if enrollment validation fails
+   * @throws EnrollmentAlreadyBoundException if enrollment is not in CREATED state
+   * @throws EnrollmentInvitationExpiredException if the invitation has expired
    */
   private Enrollment validateEnrollment(EnrollmentBindRequest request) {
     logger.debug(
@@ -149,7 +157,7 @@ public class EnrollmentBindService {
       logger.warn(
           "Validation failed: Missing or blank enrollment proof token for ID: {}",
           request.getEnrollmentId());
-      throw new IllegalArgumentException("Enrollment binding failed");
+      throw new EnrollmentBindingFailedException("Enrollment binding failed");
     }
 
     Enrollment enrollment =
@@ -162,7 +170,7 @@ public class EnrollmentBindService {
       logger.warn(
           "Validation failed: Enrollment not found or invalid proof token for ID: {}",
           request.getEnrollmentId());
-      throw new IllegalArgumentException("Enrollment binding failed");
+      throw new EnrollmentBindingFailedException("Enrollment binding failed");
     }
 
     logger.debug(
@@ -177,7 +185,7 @@ public class EnrollmentBindService {
           "Validation failed: Enrollment already processed - ID: {}, Status: {}",
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
-      throw new IllegalStateException("Enrollment already bound by a device");
+      throw new EnrollmentAlreadyBoundException("Enrollment already bound by a device");
     }
 
     // Reject if pending enrollment has expired (expires_at in the past)
@@ -200,7 +208,7 @@ public class EnrollmentBindService {
             enrollment.getEnrollmentId(),
             e.getMessage());
       }
-      throw new IllegalArgumentException("Enrollment invitation has expired");
+      throw new EnrollmentInvitationExpiredException("Enrollment invitation has expired");
     }
 
     logger.debug("Enrollment status validation passed: Status is CREATED");
@@ -212,7 +220,7 @@ public class EnrollmentBindService {
    *
    * @param integrationId the integration ID
    * @return the integration entity
-   * @throws IllegalStateException if integration is not found
+   * @throws EnrollmentIntegrationNotFoundException if integration is not found
    */
   private Integration loadIntegration(Integer integrationId) {
     logger.debug("Step 2: Loading integration for ID: {}", integrationId);
@@ -220,7 +228,7 @@ public class EnrollmentBindService {
     Optional<Integration> integrationOpt = integrationRepository.findById(integrationId);
     if (integrationOpt.isEmpty()) {
       logger.warn("Validation failed: Integration not found for integration ID: {}", integrationId);
-      throw new IllegalStateException("Enrollment binding failed");
+      throw new EnrollmentIntegrationNotFoundException("Integration not found for enrollment");
     }
 
     Integration integration = integrationOpt.get();
@@ -236,8 +244,9 @@ public class EnrollmentBindService {
    *
    * @param request the bind request
    * @return the locked enrollment
-   * @throws IllegalArgumentException if enrollment is not found or already bound
-   * @throws IllegalStateException if enrollment is in invalid state
+   * @throws EnrollmentNotAvailableAfterLockException if enrollment is not found or already bound
+   * @throws EnrollmentBindingFailedException if proof token mismatch after lock
+   * @throws EnrollmentAlreadyBoundException if enrollment is in invalid state
    */
   private Enrollment acquireLockAndValidate(EnrollmentBindRequest request) {
     logger.debug("Step 4: Acquiring lock for enrollment ID: {}", request.getEnrollmentId());
@@ -250,7 +259,7 @@ public class EnrollmentBindService {
           "Validation failed: Enrollment not found or already bound after lock acquisition for ID:"
               + " {}",
           request.getEnrollmentId());
-      throw new IllegalArgumentException("Enrollment not found or already bound");
+      throw new EnrollmentNotAvailableAfterLockException("Enrollment not found or already bound");
     }
 
     // Additional validation: ensure the proof token still matches after lock
@@ -258,7 +267,7 @@ public class EnrollmentBindService {
       logger.warn(
           "Validation failed: Proof token mismatch after lock acquisition for ID: {}",
           request.getEnrollmentId());
-      throw new IllegalArgumentException("Enrollment binding failed");
+      throw new EnrollmentBindingFailedException("Enrollment binding failed");
     }
 
     logger.debug("Lock acquired successfully for enrollment ID: {}", enrollment.getEnrollmentId());
@@ -268,7 +277,7 @@ public class EnrollmentBindService {
           "Validation failed: Enrollment already processed after lock - ID: {}, Status: {}",
           enrollment.getEnrollmentId(),
           enrollment.getStatus());
-      throw new IllegalStateException("Enrollment already bound by a device");
+      throw new EnrollmentAlreadyBoundException("Enrollment already bound by a device");
     }
 
     logger.debug("Post-lock status validation passed: Status is CREATED");

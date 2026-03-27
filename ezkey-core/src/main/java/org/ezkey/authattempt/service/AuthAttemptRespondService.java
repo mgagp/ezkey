@@ -20,6 +20,8 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +67,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthAttemptRespondService {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthAttemptRespondService.class);
+
+  /**
+   * Client-visible message for FAILED results. Must not echo internal exception messages (IDs,
+   * signature hints).
+   */
+  private static final String RESPOND_FAILURE_CLIENT_MESSAGE =
+      "The response could not be processed.";
 
   private final AuthAttemptRepository authAttemptRepository;
 
@@ -141,13 +150,13 @@ public class AuthAttemptRespondService {
     Optional<AuthAttempt> authAttemptOpt =
         authAttemptRepository.findById(request.getAuthAttemptId());
     if (authAttemptOpt.isEmpty()) {
-      throw new IllegalArgumentException("Auth attempt record not found");
+      throw new AuthAttemptRequestFailedException("Auth attempt record not found");
     }
     AuthAttempt authAttempt = authAttemptOpt.get();
 
     // Check if in READ status (device has claimed the attempt)
     if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ) {
-      throw new IllegalArgumentException("Auth attempt not read by device");
+      throw new AuthAttemptRequestFailedException("Auth attempt not read by device");
     }
     // Check if superseded by a newer authentication attempt for the same enrollment
     Optional<AuthAttempt> newerAttempt =
@@ -159,12 +168,13 @@ public class AuthAttemptRespondService {
           authAttempt.getAuthAttemptId(),
           newerAttempt.get().getAuthAttemptId(),
           authAttempt.getEnrollmentId());
-      throw new IllegalStateException("Authentication attempt superseded by newer request");
+      throw new AuthAttemptStateConflictException(
+          "Authentication attempt superseded by newer request");
     }
     // Check if expired
     OffsetDateTime now = OffsetDateTime.now();
     if (authAttempt.getExpiresAt() != null && now.isAfter(authAttempt.getExpiresAt())) {
-      throw new IllegalStateException("Authentication attempt expired");
+      throw new AuthAttemptStateConflictException("Authentication attempt expired");
     }
     return authAttempt;
   }
@@ -182,14 +192,15 @@ public class AuthAttemptRespondService {
     Enrollment enrollment =
         enrollmentRepository
             .findById(authAttempt.getEnrollmentId())
-            .orElseThrow(() -> new IllegalArgumentException("Enrollment record not found"));
+            .orElseThrow(
+                () -> new AuthAttemptRequestFailedException("Enrollment record not found"));
 
     // Validate device public key
     String devicePublicKey = enrollment.getDevicePublicKey();
     if (devicePublicKey == null) {
       // Use TxHelper to commit INVALID status before throwing exception
       authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
-      throw new IllegalArgumentException("Device public key not found");
+      throw new AuthAttemptRequestFailedException("Device public key not found");
     }
     return enrollment;
   }
@@ -218,7 +229,7 @@ public class AuthAttemptRespondService {
             enrollment.getDevicePublicKey());
     if (!isValid) {
       authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
-      throw new IllegalArgumentException("Invalid signature for auth attempt code");
+      throw new AuthAttemptRequestFailedException("Invalid signature for auth attempt code");
     }
   }
 
@@ -273,7 +284,7 @@ public class AuthAttemptRespondService {
             authAttempt.getAuthAttemptId(),
             authAttempt.getAuthAttemptChallenge(),
             request.getAuthAttemptChallengeResponse());
-        throw new IllegalArgumentException("Challenge value mismatch");
+        throw new AuthAttemptRequestFailedException("Challenge value mismatch");
       }
       logger.debug(
           "✅ Challenge validated successfully for authAttemptId: {}",
@@ -335,7 +346,7 @@ public class AuthAttemptRespondService {
   private AuthAttemptRespondResponse buildFailedResponse(
       AuthAttemptRespondRequest request, AuthAttempt authAttempt, IllegalArgumentException e) {
     AuthAttemptRespondResponse response =
-        new AuthAttemptRespondResponse(AuthenticationResult.FAILED, e.getMessage());
+        new AuthAttemptRespondResponse(AuthenticationResult.FAILED, RESPOND_FAILURE_CLIENT_MESSAGE);
     if (authAttempt != null) {
       response.setAuthAttemptId(authAttempt.getAuthAttemptId());
       response.setCreatedAt(authAttempt.getCreatedAt());

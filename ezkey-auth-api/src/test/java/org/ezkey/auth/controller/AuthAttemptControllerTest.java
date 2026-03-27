@@ -34,7 +34,10 @@ import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptAuthApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.exception.GlobalExceptionHandler;
 import org.ezkey.exception.NoPendingAuthAttemptException;
+import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -82,7 +85,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @WebMvcTest(controllers = AuthAttemptController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({SecurityConfig.class, TrustedProxyConfig.class})
+@Import({SecurityConfig.class, TrustedProxyConfig.class, GlobalExceptionHandler.class})
 @DisplayName("AuthAttempt Controller Critical Tests")
 class AuthAttemptControllerTest {
 
@@ -274,7 +277,7 @@ class AuthAttemptControllerTest {
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
     when(authAttemptService.pending(any(AuthAttemptPendingRequest.class)))
-        .thenThrow(new IllegalArgumentException("Invalid enrollment or signature"));
+        .thenThrow(new AuthAttemptRequestFailedException("Invalid enrollment or signature"));
 
     String json = objectMapper.writeValueAsString(pendingRequestDto);
 
@@ -294,7 +297,7 @@ class AuthAttemptControllerTest {
     when(authAttemptMapper.toAuthAttemptPendingRequest(any(AuthAttemptPendingRequestDto.class)))
         .thenReturn(pendingRequest);
     when(authAttemptService.pending(any(AuthAttemptPendingRequest.class)))
-        .thenThrow(new IllegalStateException("Auth attempt already read"));
+        .thenThrow(new AuthAttemptStateConflictException("Auth attempt already read"));
 
     String json = objectMapper.writeValueAsString(pendingRequestDto);
 
@@ -342,7 +345,7 @@ class AuthAttemptControllerTest {
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
     when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
-        .thenThrow(new IllegalArgumentException("Invalid signature or response data"));
+        .thenThrow(new AuthAttemptRequestFailedException("Invalid signature or response data"));
 
     String json = objectMapper.writeValueAsString(respondRequestDto);
 
@@ -362,7 +365,7 @@ class AuthAttemptControllerTest {
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);
     when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
-        .thenThrow(new IllegalStateException("Auth attempt already responded"));
+        .thenThrow(new AuthAttemptStateConflictException("Auth attempt already responded"));
 
     String json = objectMapper.writeValueAsString(respondRequestDto);
 
