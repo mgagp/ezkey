@@ -149,7 +149,7 @@ public class AdminAuthController {
    *   <li><b>408 Request Timeout:</b>
    *       <ul>
    *         <li>{@code https://ezkey.io/problems/authentication/auth-timeout} - No device response
-   *             within 5-minute timeout window
+   *             within the wait window (aligned with auth attempt TTL, maximum 300 seconds)
    *       </ul>
    * </ul>
    *
@@ -236,7 +236,8 @@ public class AdminAuthController {
         @ApiResponse(
             responseCode = "408",
             description =
-                "Request Timeout - No device response within 5 minutes. "
+                "Request Timeout - No device response within the wait window (aligned with auth"
+                    + " attempt TTL, maximum 300 seconds). "
                     + "Returns RFC 9457 ProblemDetail: type='...auth-timeout'"),
         @ApiResponse(
             responseCode = "429",
@@ -380,10 +381,13 @@ public class AdminAuthController {
    * <p><b>Polling Behavior:</b>
    *
    * <ul>
-   *   <li>Blocks for up to 5 minutes waiting for device response
-   *   <li>Polls device every 2 seconds
+   *   <li>Blocks for up to the configured wait window (remaining attempt lifetime plus slack,
+   *       capped at 300 seconds — same cap as {@link
+   *       org.ezkey.authattempt.service.AuthAttemptWaitService})
+   *   <li>Polls the database every 2 seconds
    *   <li>Returns immediately when device responds (approved, rejected, expired)
-   *   <li>Returns timeout if no response within 5 minutes
+   *   <li>Returns HTTP 408 if no response within that window (if {@code ttl-seconds} exceeds 300,
+   *       408 may occur while the attempt row is still valid)
    * </ul>
    *
    * <p><b>Security (Challenge Flow):</b>
@@ -411,7 +415,7 @@ public class AdminAuthController {
    *   <li><b>408 Request Timeout:</b>
    *       <ul>
    *         <li>{@code https://ezkey.io/problems/authentication/auth-timeout} - No device response
-   *             within 5-minute timeout
+   *             within the wait window (maximum 300 seconds)
    *       </ul>
    * </ul>
    *
@@ -427,8 +431,8 @@ public class AdminAuthController {
   @Operation(
       summary = "Wait for passwordless authentication device response",
       description =
-          "Polls device for passwordless authentication response in two-call flows. "
-              + "Blocks for up to 5 minutes waiting for device approval. "
+          "Polls for passwordless authentication completion in two-call flows. "
+              + "Blocks for up to the wait window aligned with auth attempt TTL (capped at 300s). "
               + "Supports both challenge-based (with display code) and non-blocking flows. "
               + "Errors follow RFC 9457 Problem Details format.")
   @ApiResponses(
@@ -450,7 +454,7 @@ public class AdminAuthController {
         @ApiResponse(
             responseCode = "408",
             description =
-                "Request Timeout - No device response within 5-minute window. "
+                "Request Timeout - No device response within the wait window (max 300 seconds). "
                     + "Returns RFC 9457 ProblemDetail: type='...auth-timeout'"),
         @ApiResponse(responseCode = "500", description = "Internal Server Error")
       })

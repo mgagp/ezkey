@@ -325,6 +325,8 @@ Content-Type: application/json
 }
 ```
 
+**Pending `expiresAt`:** Matches the stored authentication attempt’s expiry (`ezkey.core.auth-attempt.ttl-seconds`, default 120 seconds). Use it for countdown timers; it is not a fixed five-minute window.
+
 **Failure Responses:**
 ```json
 // 400 Bad Request - No enrollment
@@ -417,7 +419,7 @@ Content-Type: application/json
 
 **Security Notes:**
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
-- Blocking call (up to 5 minutes timeout)
+- Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database.
 - Device must enter matching challenge code before approval
 - Invalid challenge on device marks attempt as INVALID
 

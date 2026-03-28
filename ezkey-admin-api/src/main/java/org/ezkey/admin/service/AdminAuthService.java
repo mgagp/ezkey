@@ -236,7 +236,7 @@ public class AdminAuthService {
           admin.getUsername(),
           admin.getAdminType().name(),
           message,
-          OffsetDateTime.now().plusMinutes(5));
+          attemptResponse.getExpiresAt());
     } else if (Boolean.TRUE.equals(request.nonBlocking())) {
       // NO CHALLENGE + NON-BLOCKING MODE: Return immediately with authAttemptId
       // Client will poll /passwordless-wait and display countdown based on expiresAt
@@ -254,14 +254,14 @@ public class AdminAuthService {
           admin.getUsername(),
           admin.getAdminType().name(),
           message,
-          OffsetDateTime.now().plusMinutes(5));
+          attemptResponse.getExpiresAt());
     } else {
       // NO CHALLENGE + BLOCKING MODE: Block and wait (original behavior, backward
       // compatible)
       logger.info("⏳ Passwordless (no challenge): waiting for device response...");
 
-      // 5 min timeout, 2s polling interval
-      AuthAttemptWaitRequest waitReq = new AuthAttemptWaitRequest(300, 2);
+      AuthAttemptWaitRequest waitReq =
+          AdminAuthAttemptWaitRequestFactory.forNewAttempt(attemptResponse.getTimeoutSeconds());
       AuthAttemptWaitResponse waitResp =
           authAttemptService.waitForResponse(attemptResponse.getAuthAttemptId(), waitReq);
 
@@ -308,40 +308,18 @@ public class AdminAuthService {
   }
 
   /**
-   * Wait for passwordless authentication completion with challenge verification.
+   * Waits for passwordless authentication completion (two-step flow).
    *
-   * <p>This method is used in the two-step passwordless flow when challenge verification is
-   * required. It validates the challengeCode to prevent enumeration attacks, then waits for device
-   * approval.
-   *
-   * <p><b>Security:</b> The challengeCode must match the auth attempt's challenge to prevent
-   * attackers from enumerating authAttemptId values and hijacking authentication attempts.
-   *
-   * @param authAttemptId the auth attempt ID from the login response
-   * @param challengeCode the challenge code from the login response (proof of legitimacy)
-   * @return AdminLoginResponseDto with bearer token if accepted
-   * @throws IllegalArgumentException if auth attempt is invalid
-   * @throws AuthenticationException if authentication fails or challenge is incorrect
-   */
-  /**
-   * Waits for passwordless authentication completion.
-   *
-   * <p>Supports two flows:
-   *
-   * <ul>
-   *   <li><b>Challenge Flow:</b> When challengeCode is provided (non-null), verifies the code
-   *       against stored challenge to prevent enumeration attacks, then waits for device response.
-   *   <li><b>Non-Blocking Flow:</b> When challengeCode is null, skips challenge verification
-   *       (already skipped in login response) and waits for device response using polling.
-   * </ul>
-   *
-   * <p>This method handles both asynchronous authentication modes transparently using the same
-   * endpoint.
+   * <p>Supports challenge mode (validates {@code challengeCode} against the stored challenge to
+   * prevent enumeration) and non-blocking mode ({@code challengeCode} null). Uses a wait window
+   * aligned with the persisted attempt expiry (see {@link AdminAuthAttemptWaitRequestFactory}).
    *
    * @param authAttemptId the authentication attempt ID
-   * @param challengeCode the challenge code (optional - null for non-blocking flow, required for
-   *     challenge flow)
+   * @param challengeCode the challenge code from the login response when challenge mode; null for
+   *     non-blocking flow
    * @return authentication response with token on success
+   * @throws IllegalArgumentException if auth attempt is not found
+   * @throws org.ezkey.admin.exception.AdminAuthenticationException if challenge code is invalid
    */
   public AdminLoginResponseDto waitForPasswordlessAuth(
       Integer authAttemptId, Integer challengeCode) {
@@ -378,8 +356,9 @@ public class AdminAuthService {
             .orElseThrow(
                 () -> new IllegalArgumentException("Admin not found for this auth attempt"));
 
-    // 4. Wait for device response
-    AuthAttemptWaitRequest waitReq = new AuthAttemptWaitRequest(300, 2); // 5 min, 2s polling
+    // 4. Wait for device response (timeout aligned with persisted expiresAt, capped at 300s)
+    AuthAttemptWaitRequest waitReq =
+        AdminAuthAttemptWaitRequestFactory.forLoadedAttempt(authAttempt);
     AuthAttemptWaitResponse waitResp = authAttemptService.waitForResponse(authAttemptId, waitReq);
 
     // 5. Process response

@@ -2232,7 +2232,7 @@
           "Admin Authentication"
         ],
         "summary": "Wait for passwordless authentication device response",
-        "description": "Polls device for passwordless authentication response in two-call flows. Blocks for up to 5 minutes waiting for device approval. Supports both challenge-based (with display code) and non-blocking flows. Errors follow RFC 9457 Problem Details format.",
+        "description": "Polls for passwordless authentication completion in two-call flows. Blocks for up to the wait window aligned with auth attempt TTL (capped at 300s). Supports both challenge-based (with display code) and non-blocking flows. Errors follow RFC 9457 Problem Details format.",
         "operationId": "passwordlessWait",
         "requestBody": {
           "content": {
@@ -2276,7 +2276,7 @@
             }
           },
           "408": {
-            "description": "Request Timeout - No device response within 5-minute window. Returns RFC 9457 ProblemDetail: type='...auth-timeout'",
+            "description": "Request Timeout - No device response within the wait window (max 300 seconds). Returns RFC 9457 ProblemDetail: type='...auth-timeout'",
             "content": {
               "*/*": {
                 "schema": {
@@ -2381,7 +2381,7 @@
             }
           },
           "408": {
-            "description": "Request Timeout - No device response within 5 minutes. Returns RFC 9457 ProblemDetail: type='...auth-timeout'",
+            "description": "Request Timeout - No device response within the wait window (aligned with auth attempt TTL, maximum 300 seconds). Returns RFC 9457 ProblemDetail: type='...auth-timeout'",
             "content": {
               "*/*": {
                 "schema": {
@@ -5584,7 +5584,7 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time",
-            "description": "Token expiration timestamp (with timezone)",
+            "description": "Expiration timestamp (UTC). When authentication succeeded: bearer token expiry. When status is pending (two-step passwordless): authentication attempt expiry — matches the persisted attempt and core setting ezkey.core.auth-attempt.ttl-seconds (not a fixed duration).",
             "example": "2025-10-15T14:30:00+01:00"
           },
           "authAttemptId": {

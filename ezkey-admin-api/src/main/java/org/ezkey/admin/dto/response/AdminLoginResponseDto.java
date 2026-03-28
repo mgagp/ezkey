@@ -40,7 +40,9 @@ import java.time.OffsetDateTime;
  * @param token bearer token for authenticated API requests
  * @param adminType type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)
  * @param username administrator username
- * @param expiresAt token expiration timestamp
+ * @param expiresAt when successful: admin bearer token expiry; when {@code status=pending}: auth
+ *     attempt expiry (same instant as stored on the attempt, driven by {@code
+ *     ezkey.core.auth-attempt.ttl-seconds})
  * @param authAttemptId authentication attempt ID for two-step flow
  * @param challengeCode 6-digit challenge code for device verification
  */
@@ -69,7 +71,11 @@ public record AdminLoginResponseDto(
         String adminType,
     @Schema(description = "Administrator username", example = "admin") String username,
     @Schema(
-            description = "Token expiration timestamp (with timezone)",
+            description =
+                "Expiration timestamp (UTC). When authentication succeeded: bearer token expiry."
+                    + " When status is pending (two-step passwordless): authentication attempt"
+                    + " expiry — matches the persisted attempt and core setting"
+                    + " ezkey.core.auth-attempt.ttl-seconds (not a fixed duration).",
             example = "2025-10-15T14:30:00+01:00")
         OffsetDateTime expiresAt,
     @Schema(description = "Authentication attempt ID for two-step flow", example = "123")
