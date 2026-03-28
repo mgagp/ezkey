@@ -25,7 +25,10 @@
     "created": "created",
     "accepted": "accepted",
     "rejected": "rejected",
-    "pending": "pending"
+    "pending": "pending",
+    "authAttempts24hHint": "Badges sum to this total (attempts created in the window).",
+    "inProgress": "in progress",
+    "inProgressHelp": "Pending plus read (claimed), not yet finished — same 24h window as the total."
   },
   "auditChain": {
     "title": "Audit chain alerts",

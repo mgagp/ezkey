@@ -25,7 +25,10 @@
     "created": "créés",
     "accepted": "acceptées",
     "rejected": "refusées",
-    "pending": "en attente"
+    "pending": "en attente",
+    "authAttempts24hHint": "Les pastilles totalisent ce chiffre (tentatives créées dans la fenêtre).",
+    "inProgress": "en cours",
+    "inProgressHelp": "En attente + lues (prises en charge), pas encore terminées — même fenêtre 24 h que le total."
   },
   "auditChain": {
     "title": "Alertes chaîne d'audit",

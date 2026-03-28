@@ -13,11 +13,9 @@ import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { formatCountdown, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
-import { useGetPendingCount } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import type { DashboardOverviewDto } from '@/generated/admin-api/model';
 
 const REFRESH_INTERVAL_OVERVIEW_MS = 60_000;
-const REFRESH_INTERVAL_PENDING_MS = 10_000;
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 
@@ -89,17 +87,6 @@ export default function DashboardPage() {
     },
   });
 
-  const {
-    data: pendingResponse,
-    isLoading: pendingLoading,
-    refetch: pendingRefetch,
-  } = useGetPendingCount<{ count: number }>({
-    query: {
-      staleTime: REFRESH_INTERVAL_PENDING_MS,
-      refetchInterval: REFRESH_INTERVAL_PENDING_MS,
-    },
-  });
-
   const [secondsUntilNext, setSecondsUntilNext] = useState(0);
   useEffect(() => {
     if (overviewUpdatedAt == null || overviewUpdatedAt <= 0) return;
@@ -129,12 +116,15 @@ export default function DashboardPage() {
   const authTotal = overview?.auth24h?.total;
   const authAccepted = overview?.auth24h?.accepted;
   const authRejected = overview?.auth24h?.rejected;
+  const authPending24h = overview?.auth24h?.pending;
+  const authRead24h = overview?.auth24h?.readCount;
+  const authInFlight24h = (authPending24h ?? 0) + (authRead24h ?? 0);
+  const authInvalid = overview?.auth24h?.invalid;
   const successRate = overview?.auth24h?.successRatePct;
   const terminalTotal = overview?.auth24h?.terminalTotal;
   const invalidCount = overview?.auth24h?.invalid;
   const expiredCount = overview?.auth24h?.expired;
   const rejectedDenyCount = overview?.auth24h?.rejected;
-  const authPending = pendingResponse?.count;
 
   const recentLogs = overview?.recentActivity ?? [];
   const alerts = overview?.alerts ?? [];
@@ -167,7 +157,6 @@ export default function DashboardPage() {
               disabled={overviewFetching}
               onClick={() => {
                 overviewRefetch();
-                pendingRefetch();
               }}
               className="size-8 p-0 shrink-0"
             >
@@ -261,12 +250,23 @@ export default function DashboardPage() {
             <p className="text-4xl font-black text-fg">
               <StatNum value={authTotal} isLoading={overviewLoading} />
             </p>
+            <p className="text-xs text-fg-muted mt-2 font-medium">
+              {t('dashboard:stats.authAttempts24hHint')}
+            </p>
             <div className="flex gap-1 mt-2 flex-wrap">
+              <Tooltip content={t('dashboard:stats.inProgressHelp')}>
+                <Badge variant={authInFlight24h > 0 ? 'warning' : 'muted'}>
+                  <StatNum value={authInFlight24h} isLoading={overviewLoading} /> {t('dashboard:stats.inProgress')}
+                </Badge>
+              </Tooltip>
               <Badge variant="success"><StatNum value={authAccepted} isLoading={overviewLoading} /> {t('dashboard:stats.accepted')}</Badge>
               <Badge variant="error"><StatNum value={authRejected} isLoading={overviewLoading} /> {t('dashboard:stats.rejected')}</Badge>
-              {(authPending ?? 0) > 0 && (
-                <Badge variant="warning"><StatNum value={authPending} isLoading={pendingLoading} /> {t('dashboard:stats.pending')}</Badge>
-              )}
+              <Badge variant={(authInvalid ?? 0) > 0 ? 'error' : 'muted'}>
+                <StatNum value={authInvalid} isLoading={overviewLoading} /> {t('dashboard:stats.invalid')}
+              </Badge>
+              <Badge variant={(expiredCount ?? 0) > 0 ? 'warning' : 'muted'}>
+                <StatNum value={expiredCount} isLoading={overviewLoading} /> {t('dashboard:stats.expired')}
+              </Badge>
             </div>
           </StatCard>
 
