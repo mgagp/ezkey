@@ -159,6 +159,8 @@ After a mutation that changes the current entity on a **detail** page (e.g. deac
 4. One long-running `POST /api/v1/admin/auth/passwordless-wait` — resolves when device responds
 5. `AbortController` + `finalStatusRef` guard against race conditions on success/expiry
 
+The login form also offers an optional **pin toggle** beside the username field (tooltip + `aria-pressed`) for remembering the username on this device — see `last-username-pref.ts` and `login.tsx`.
+
 ### Role-based feature gating
 
 ```ts
@@ -269,7 +271,7 @@ Use **start.sh** to build and run the Admin UI in Docker:
 - **i18n**: All user-facing text must use translation keys via `useTranslation()` and `t('key')` (or `t('namespace:key')`). Supported locales: `en`, `fr`. Add new strings to `src/locales/en/*.json` and `src/locales/fr/*.json`. Language selector is in the header (EN | FR); preference is stored in `localStorage` under `ezkey-admin-ui-lang`.
 - Strict TypeScript — no `any`, no non-null assertions (`!`) in app code
 - No axios — always `api.*` from `@/lib/api-client`
-- Token in `sessionStorage` only (never `localStorage`)
+- Token in `sessionStorage` only (never `localStorage`). Optional **remember username** on the login page may store the username string in `localStorage` (`ezkey_admin_username_pref`); see `docs/admin-ui-security.md`.
 - `nonBlocking: true` always on login requests
 - Challenge codes always zero-padded to 2 digits via `formatChallengeCode()`
 - Every authenticated page wrapped in `<AppShell title="...">`

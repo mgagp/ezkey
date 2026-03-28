@@ -4,6 +4,8 @@
   "form": {
     "username": "Username",
     "usernamePlaceholder": "your.username",
+    "rememberUsernameTooltipOn": "Remember username on this device — On",
+    "rememberUsernameTooltipOff": "Remember username on this device — Off",
     "requireChallengeCode": "Require challenge code",
     "submit": "Login with EZKey"
   },

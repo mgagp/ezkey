@@ -4,6 +4,8 @@
   "form": {
     "username": "Nom d'utilisateur",
     "usernamePlaceholder": "votre.nom",
+    "rememberUsernameTooltipOn": "Mémoriser le nom d'utilisateur sur cet appareil — Activé",
+    "rememberUsernameTooltipOff": "Mémoriser le nom d'utilisateur sur cet appareil — Désactivé",
     "requireChallengeCode": "Exiger un code défi",
     "submit": "Connexion avec EZKey"
   },

@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { CircleHelp } from 'lucide-react';
+import { CircleHelp, Pin, PinOff } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useHelp } from '@/context/help-context';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tooltip } from '@/components/ui/tooltip';
 import { I18N_STORAGE_KEY } from '@/i18n';
 import { getApiErrorMessage } from '@/lib/api-client';
-import { formatChallengeCode, formatCountdown } from '@/lib/utils';
+import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
+import { cn, formatChallengeCode, formatCountdown } from '@/lib/utils';
 import { login as loginApi, passwordlessWait } from '@/generated/admin-api/admin-authentication/admin-authentication';
 import type { AdminLoginResponseDto } from '@/generated/admin-api/model';
 
@@ -35,6 +37,7 @@ export default function LoginPage() {
     () =>
       z.object({
         username: z.string().min(3, t('login:validation.minLength')).max(50),
+        rememberUsername: z.boolean(),
         challengeRequested: z.boolean(),
       }),
     [t],
@@ -50,9 +53,18 @@ export default function LoginPage() {
   const finalStatusRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
+  const loginDefaults = useMemo(() => {
+    const pref = readUsernamePref();
+    return {
+      username: pref?.username ?? '',
+      rememberUsername: pref?.rememberUsername ?? false,
+      challengeRequested: false,
+    };
+  }, []);
+
+  const { register, control, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { challengeRequested: false },
+    defaultValues: loginDefaults,
   });
 
   // Redirect if already authenticated
@@ -140,6 +152,7 @@ export default function LoginPage() {
         nonBlocking: true,
       }) as unknown as AdminLoginResponseDto;
       if (result.authAttemptId && result.expiresAt) {
+        persistUsernamePref(formData.username, formData.rememberUsername);
         setWaitingData({
           authAttemptId: result.authAttemptId,
           challengeCode: result.challengeCode ?? null,
@@ -237,14 +250,49 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               <div>
                 <Label htmlFor="username">{t('login:form.username')}</Label>
-                <Input
-                  id="username"
-                  autoFocus
-                  autoComplete="username"
-                  placeholder={t('login:form.usernamePlaceholder')}
-                  error={errors.username?.message}
-                  {...register('username')}
-                />
+                <div className="flex gap-2 items-start">
+                  <div className="flex-1 min-w-0">
+                    <Input
+                      id="username"
+                      autoFocus
+                      autoComplete="username"
+                      placeholder={t('login:form.usernamePlaceholder')}
+                      error={errors.username?.message}
+                      {...register('username')}
+                    />
+                  </div>
+                  <Controller
+                    name="rememberUsername"
+                    control={control}
+                    render={({ field }) => {
+                      const rememberLabel = field.value
+                        ? t('login:form.rememberUsernameTooltipOn')
+                        : t('login:form.rememberUsernameTooltipOff');
+                      return (
+                        <Tooltip content={rememberLabel} position="top">
+                          <button
+                            type="button"
+                            className={cn(
+                              'flex shrink-0 items-center justify-center size-10 border-2 border-fg bg-surface',
+                              'hover:bg-bg transition-colors focus:outline-none focus:shadow-accent focus:border-accent',
+                              field.value && 'border-accent bg-accent/15 text-accent',
+                              !field.value && 'text-fg-muted',
+                            )}
+                            aria-pressed={field.value}
+                            aria-label={rememberLabel}
+                            onClick={() => field.onChange(!field.value)}
+                          >
+                            {field.value ? (
+                              <Pin className="size-5" strokeWidth={2} aria-hidden />
+                            ) : (
+                              <PinOff className="size-5" strokeWidth={2} aria-hidden />
+                            )}
+                          </button>
+                        </Tooltip>
+                      );
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="flex items-center gap-2.5">

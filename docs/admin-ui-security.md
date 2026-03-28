@@ -12,6 +12,11 @@ This document implements the operational guidance from the security hardening pl
 | **Transport** | `Authorization: Bearer` on API requests (`ezkey-admin-ui/src/lib/api-client.ts`). |
 | **Cookies** | No session cookie today; login response returns the token in JSON. |
 
+**Last username preference (optional)**
+
+- If the user enables **remember username** via the **pin toggle** next to the username field on the login screen, the UI stores the **username string** in **`localStorage`** (key `ezkey_admin_username_pref`). This is a **non-secret identifier** only; it does not grant access without completing passwordless authentication. Tokens are **not** stored in `localStorage`.
+- If the user leaves the option off, any previously saved username preference is removed when a login attempt successfully starts (same moment the in-app flow moves to device approval).
+
 **Implications**
 
 - **XSS**: Any script running in the page origin can read `sessionStorage`. **CSP** and safe rendering (React, no unsafe HTML) are the primary mitigations. **HttpOnly cookies** (future) reduce token theft via XSS if combined with a correct backend and deployment model.
