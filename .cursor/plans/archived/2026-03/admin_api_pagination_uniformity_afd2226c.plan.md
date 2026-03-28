@@ -1,8 +1,24 @@
 ---
+status: archived
+archived_date: 2026-03-27
+completion_status: fully_implemented
 name: Admin API pagination uniformity
 overview: Analysis of whether EZKey should standardize all Admin list/search APIs on server-side pagination, with industry practice, trade-offs, and—if adopted—a phased implementation plan (backend then UI).
 todos: []
 isProject: false
+---
+
+# Archived plan — Admin API pagination uniformity
+
+**This plan has been fully implemented and archived for historical reference.**
+
+**Archived:** 2026-03-27  
+**Status:** Fully implemented and validated.
+
+**Completion note:** All Admin list/search endpoints described in the implementation plan now use Spring Data `Page` responses and the Admin UI uses `usePaginatedFromOrval` where applicable. Initial work covered tenants, API keys, and encryption keys; **re-encryption batches** pagination was completed in a separate follow-up change (`GET /api/v1/encryption-keys/reencryption-batches` with `Pageable`, `EncryptionKeyController.listBatches`, and the batches section in [encryption-keys.tsx](ezkey-admin-ui/src/pages/encryption-keys.tsx)).
+
+The **“Current state (summary)”** table below is intentionally preserved as a **pre-migration snapshot** from when the plan was written; it does not describe the system today.
+
 ---
 
 # Admin API Pagination Uniformity — Analysis and Plan

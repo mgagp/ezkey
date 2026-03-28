@@ -12,6 +12,29 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2026-03 - Admin API pagination uniformity
+
+**Completion Date:** March 27, 2026  
+**Status:** ✅ **FULLY IMPLEMENTED AND VALIDATED**
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-03/admin_api_pagination_uniformity_afd2226c.plan.md** | Standardize Admin list/search APIs on server-side pagination (`Page`, `page`/`size`/`sort`); align Admin UI on `usePaginatedFromOrval` | Completed |
+
+**What was implemented:**
+
+- Tenants, API keys, encryption keys, and re-encryption batches list endpoints return Spring Data `Page` responses; Admin UI uses `usePaginatedFromOrval` + `DataTable` + `Pagination` for those screens.
+- Re-encryption batches pagination was completed in a follow-up change after the main plan (same uniformity goal).
+
+**Code references (illustrative):**
+
+- [TenantController.java](ezkey-admin-api/src/main/java/org/ezkey/admin/controller/TenantController.java), [ApiKeyController.java](ezkey-admin-api/src/main/java/org/ezkey/admin/controller/ApiKeyController.java), [EncryptionKeyController.java](ezkey-admin-api/src/main/java/org/ezkey/admin/controller/EncryptionKeyController.java) (`listKeys`, `listBatches`)
+- [tenants.tsx](ezkey-admin-ui/src/pages/tenants.tsx), [api-keys.tsx](ezkey-admin-ui/src/pages/api-keys.tsx), [encryption-keys.tsx](ezkey-admin-ui/src/pages/encryption-keys.tsx)
+
+The archived plan file preserves the original analysis and phased plan; the “current state” table at the top of that document is a **historical pre-migration snapshot**.
+
+---
+
 ### 2025-03 - Admin UI Garage du coin placeholders
 
 **Completion Date:** March 8, 2025
