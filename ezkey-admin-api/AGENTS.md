@@ -11,7 +11,7 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
 ## Where the “truth” lives
 
 - **Migrations (Flyway)**: `ezkey-core/src/main/resources/db/migration/`
-  - Initial global admin + system tenant are created in `V3__create_system_tenant_and_admin_zero.sql`.
+  - Initial global admin + system tenant are created in `V1__core_domain_and_multi_tenant.sql` (consolidated migrations).
 - **Initial global admin identity (SOC 2)**: `org.ezkey.admin.service.InitialGlobalAdminService`
 - **Admin MFA bootstrap** (system integration + enrollment + recovery codes):
   `org.ezkey.admin.service.AdminBootstrapService`
