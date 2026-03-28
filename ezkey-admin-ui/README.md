@@ -53,35 +53,11 @@ The token is validated on every read (expiration check). Any 401 response from t
 
 See `AGENTS.md` for detailed conventions, patterns, and design rules used throughout the codebase.
 
-## Security Notes
+## Security
 
-### Token storage
+- **Token storage**: The bearer token is stored in `sessionStorage` (never `localStorage`). It is tab-isolated and cleared when the tab closes. The app uses React JSX throughout (no `dangerouslySetInnerHTML` for app content).
+- **Operational detail**: **`npm run dev`** (Vite) does not apply the same browser headers as production. **CSP and security headers** are enforced in the **Docker + Caddy** path (`./start.sh` — see `docker/Caddyfile`).
 
-The bearer token is stored in `sessionStorage` (never `localStorage`). This means:
+Canonical documentation (workflows, CSP, split UI/API, mkcert, future HttpOnly cookies, `clean-start` + Caddy defaults):
 
-- The token is tab-isolated and cleared automatically when the tab is closed
-- Bearer tokens in `Authorization` headers are immune to CSRF attacks
-- The app uses React JSX rendering throughout (no `dangerouslySetInnerHTML`), which neutralizes most XSS injection vectors
-
-### Content Security Policy (CSP) — production recommendation
-
-Before deploying to production, configure a strict CSP on the reverse proxy serving the app. This is the most impactful defense against XSS-based token theft, as it prevents injected scripts from exfiltrating data even if a supply-chain compromise occurs.
-
-Recommended CSP for the nginx/Caddy/reverse proxy config:
-
-```
-Content-Security-Policy:
-  default-src 'self';
-  script-src 'self';
-  connect-src 'self' https://<admin-api-domain>;
-  img-src 'self' data: blob:;
-  style-src 'self' 'unsafe-inline';
-  frame-ancestors 'none';
-```
-
-Key directives:
-- `script-src 'self'` — blocks inline scripts and third-party script injection
-- `connect-src 'self' <api>` — prevents token exfiltration to attacker-controlled domains
-- `frame-ancestors 'none'` — protects against clickjacking
-
-> In development, CSP is not enforced. The meta-tag approach can be used for local testing if needed.
+- [`docs/admin-ui-security.md`](../docs/admin-ui-security.md)

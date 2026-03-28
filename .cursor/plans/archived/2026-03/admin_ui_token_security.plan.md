@@ -1,29 +1,47 @@
 ---
+status: archived
+archived_date: 2026-03-27
+completion_status: fully_implemented
 name: Admin UI token security
 overview: "Admin UI stores the opaque token in sessionStorage (not localStorage) and sends Authorization Bearer. No HttpOnly cookie today. Product decisions: no iframe embedding; reverse proxy + BFF always; multi-environment deployments. Solo/small-team workflow: daily dev uses npm run dev (Vite HMR, HTTP) against APIs from clean-start — not UI-in-Docker. QA uses ezkey-admin-ui/start.sh (Caddy + built SPA) for prod-like testing; security headers and optional HTTPS (mkcert) target that path first. Optional advanced path: Caddy+mkcert in front of Vite for full header/HSTS parity without giving up HMR."
 todos:
   - id: headers-caddy
     content: Define security headers (CSP, frame-ancestors, Referrer-Policy, HSTS when TLS) in Caddy config for Admin UI — mirror at Cloudflare/AWS edge in production
-    status: pending
+    status: completed
   - id: csp-tune
     content: CSP compatible with Vite/React; include connect-src for split UI/API origins; start report-only then enforce
-    status: pending
+    status: completed
   - id: caddy-default-dev-stack
     content: Integrate Caddy (or equivalent) with prod-like headers into default ezkey-tests Docker stack (clean-start.sh), not only optional --with-proxy
-    status: pending
+    status: completed
   - id: cookie-session-design
     content: "If HttpOnly cookie is required: design BFF Set-Cookie, CORS/credentials for cross-origin UI/API, logout revocation, CSRF strategy"
-    status: pending
+    status: completed
   - id: split-deploy-docs
     content: Document split deployment (e.g. Cloudflare UI + AWS API) implications for CORS, CSP connect-src, and cookie SameSite
-    status: pending
+    status: completed
   - id: tls-local-docs
     content: Document mkcert + Caddy options (QA start.sh first; optional Caddy in front of Vite for solo dev); keep HTTP+Vite as default daily baseline
-    status: pending
+    status: completed
   - id: workflows-two-paths
     content: Document solo dev (clean-start + npm run dev) vs QA (start.sh Docker+Caddy) — where headers/TLS apply; avoid forcing Caddy in front of Vite for daily use
-    status: pending
-isProject: true
+    status: completed
+isProject: false
+---
+
+# Archived plan — Admin UI token security
+
+**This plan has been fully implemented and archived for historical reference.**
+
+**Archived:** 2026-03-27  
+**Status:** Fully implemented and validated.
+
+**Completion note:** All todos above are complete. Deliverables include: security headers (CSP, `frame-ancestors`, Referrer-Policy, Permissions-Policy, `X-Content-Type-Options`, `X-Frame-Options`; HSTS commented until TLS) in [`ezkey-admin-ui/docker/Caddyfile`](../../../../ezkey-admin-ui/docker/Caddyfile); API proxy Caddy in [`docker/caddy/Caddyfile`](../../../../docker/caddy/Caddyfile) with default `clean-start` (`docker-compose.with-proxy.yml`); operational docs [`docs/admin-ui-security.md`](../../../../docs/admin-ui-security.md), [`docs/admin-ui-security-validation.md`](../../../../docs/admin-ui-security-validation.md), [`docs/LOCAL_STACK_PORTS.md`](../../../../docs/LOCAL_STACK_PORTS.md); Postman environment `local (via Caddy proxy)`; cookie/HttpOnly and split-deploy guidance in `admin-ui-security.md` (design level).
+
+**Canonical documentation for ongoing work:** use the `docs/` files above, not this archived plan.
+
+The **“Current behavior (code)”** table in the original body may include lines that were accurate when the plan was written; the **Reverse proxy (UI Docker image)** row in particular has been superseded (headers are now in the Admin UI Caddyfile). See the linked files for current behavior.
+
 ---
 
 # Admin UI — token storage, transport, and HTTP hardening
@@ -229,6 +247,6 @@ This is **not** the same class of problem as unmanaged self-signed certs.
 
 ---
 
-## Canonical location
+## Canonical location (archived)
 
-This file is the **versioned** plan under the repository: `[.cursor/plans/admin_ui_token_security.plan.md](admin_ui_token_security.plan.md)`.
+This plan was moved to **`.cursor/plans/archived/2026-03/admin_ui_token_security.plan.md`**. For current operational guidance, use **[`docs/admin-ui-security.md`](../../../../docs/admin-ui-security.md)**.

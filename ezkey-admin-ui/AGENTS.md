@@ -224,6 +224,13 @@ Use **start.sh** to build and run the Admin UI in Docker:
 - **Automated:** After a local `npm run build`, run `./scripts/assert-no-demo-in-build.sh` to grep `dist/` for demo-only strings; use in CI for the production build path.
 - **Visual:** With `./start.sh -production`, open the UI and confirm: no "Demo" badge in header, no "Fill demo" in create dialogs, no Ctrl+click behavior on the sidebar brand.
 
+## Security (headers, workflows, deployment)
+
+- **Daily dev:** `npm run dev` — Vite HMR; **not** the same HTTP header surface as Caddy.
+- **QA / prod-like:** `./start.sh` — **Caddy** (`docker/Caddyfile`) enforces **CSP** and other headers on the built SPA.
+- **Full write-up** (two-path model, `clean-start` + Caddy default, split UI/API, mkcert, future HttpOnly cookies): [`docs/admin-ui-security.md`](../docs/admin-ui-security.md)
+- **How to validate** (DevTools, `curl`, first-session checklist): [`docs/admin-ui-security-validation.md`](../docs/admin-ui-security-validation.md)
+
 ## Developer/Demo mode
 
 - **Dev-only:** When `VITE_DEMO_MODE=true` (e.g. in `.env.development`), the UI can show "Fill demo" controls in create dialogs (tenant, integration, enrollment, admin) and allow Ctrl+click on the sidebar brand to toggle a session-level demo indicator.

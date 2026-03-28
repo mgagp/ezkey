@@ -9,11 +9,12 @@
 # 5. Extracts bootstrap credentials
 # 6. Initializes admin token
 #
-# Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--with-proxy] [--jmx] [--prod-safe]
+# Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--prod-safe]
 #   --native: Use native compiled images instead of JVM images (requires pre-built native images)
 #   --ha: Use HA stack with 2 instances of each API behind HAProxy load balancers
 #   --mvn-bootstrap: Enable Maven-based bootstrap steps (default: disabled, Docker bootstrap-init handles this)
-#   --with-proxy: Add Caddy reverse proxy; EZKEY_TRUSTED_PROXIES set so tests can use ports 19080/18080/17080 (trusted proxy path)
+#   --no-proxy: Do not start Caddy in front of APIs (default: Caddy is enabled for prod-like security headers on the proxy path)
+#   --with-proxy: Same as default — Caddy reverse proxy; EZKEY_TRUSTED_PROXIES set so tests can use ports 19080/18080/17080 (trusted proxy path)
 #   --jmx: Enable JMX port publishing for VisualVM (DEV ONLY; unauthenticated, non-SSL)
 #   --prod-safe: Start using production-safe Spring profile only (docker). Disables docker-dev and docker-test.
 #
@@ -39,7 +40,8 @@ TEST_STATE_DIR="${SCRIPT_DIR}/.ezkey-test"
 NATIVE_MODE=""
 HA_MODE=""
 MVN_BOOTSTRAP=""
-WITH_PROXY=""
+# Default: include Caddy (docker-compose.with-proxy.yml) so the dev stack matches security-hardened proxy behavior.
+WITH_PROXY="--with-proxy"
 ENABLE_JMX=""
 PROD_SAFE=""
 SPRING_PROFILES=""
@@ -59,6 +61,9 @@ for arg in "$@"; do
         --with-proxy)
             WITH_PROXY="--with-proxy"
             ;;
+        --no-proxy)
+            WITH_PROXY=""
+            ;;
         --jmx)
             ENABLE_JMX="true"
             ;;
@@ -67,7 +72,7 @@ for arg in "$@"; do
             ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--with-proxy] [--jmx] [--prod-safe]"
+            echo "Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--prod-safe]"
             exit 1
             ;;
     esac
@@ -409,7 +414,7 @@ else
     if [ -z "$NATIVE_MODE" ]; then
         echo "  - Start with native images: ./clean-start.sh --native"
         echo "  - Start with HA stack: ./clean-start.sh --ha"
-        echo "  - Start with Caddy proxy (trusted proxy tests): ./clean-start.sh --with-proxy"
+        echo "  - Caddy in front of APIs is default (security headers on proxy); opt out: ./clean-start.sh --no-proxy"
     fi
 fi
 echo ""

@@ -1,17 +1,44 @@
+# Admin UI — static SPA + /api/* reverse proxy to Admin API on the Docker host.
+# Security headers: OWASP-oriented baseline (CSP, frame denial, referrer, permissions).
+# HSTS: only send over HTTPS — add a tls { } block (e.g. mkcert) and uncomment the @https header block below.
+{
+	# Optional: enable debug logging while tuning CSP
+	# debug
+}
+
 :8080 {
-    root * /usr/share/caddy
+	encode gzip
 
-    encode gzip
+	# API: minimal response headers (JSON; CSP not required for fetch parsing)
+	handle /api/* {
+		reverse_proxy host.docker.internal:9080
+		header {
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "strict-origin-when-cross-origin"
+		}
+	}
 
-    # Proxy all /api/* requests to the admin-api running on the Docker host
-    # Mirrors exactly what the Vite dev server proxy does in development mode
-    handle /api/* {
-        reverse_proxy host.docker.internal:9080
-    }
+	# SPA: full browser security headers + CSP (enforced). Paths are same-origin; API via /api/* above.
+	handle {
+		header {
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "strict-origin-when-cross-origin"
+			Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+			# Enforced CSP — tuned for Vite production build (scripts/styles from same origin only).
+			# If you add split UI/API origins, extend connect-src (see docs/admin-ui-security.md).
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+			# Optional: duplicate policy in report-only mode to surface violations in DevTools without changing enforcement.
+			# Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		}
+		# HSTS only when TLS is terminated here (HTTPS). Uncomment when using tls { } / mkcert.
+		# @https {
+		# 	protocol https
+		# }
+		# header @https Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
-    # Serve the SPA: fall back to index.html for client-side routes (React Router)
-    handle {
-        try_files {path} /index.html
-        file_server
-    }
+		try_files {path} /index.html
+		file_server
+	}
 }

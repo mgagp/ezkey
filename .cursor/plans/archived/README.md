@@ -12,6 +12,25 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2026-03 - Admin UI token security (HTTP hardening)
+
+**Completion Date:** March 27, 2026  
+**Status:** ✅ **FULLY IMPLEMENTED AND VALIDATED**
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-03/admin_ui_token_security.plan.md** | sessionStorage + Bearer transport; Caddy headers (Admin UI + API proxy); clean-start default proxy; docs (split deploy, mkcert, two-path dev/QA); HttpOnly cookie design sketch | ✅ Completed |
+
+**What was implemented:**
+
+- Admin UI: CSP and baseline security headers in `ezkey-admin-ui/docker/Caddyfile` (Path B / `start.sh`); HSTS gated on TLS (mkcert path documented).
+- Dev stack: Caddy in front of APIs by default in `ezkey-tests/clean-start.sh` (`docker/caddy/Caddyfile`, ports 19080/18080/17080).
+- Documentation: `docs/admin-ui-security.md`, `docs/admin-ui-security-validation.md`, `docs/LOCAL_STACK_PORTS.md`; Postman `local (via Caddy proxy)` environment.
+
+**Canonical reference going forward:** [`docs/admin-ui-security.md`](../../../docs/admin-ui-security.md) — not the archived plan file.
+
+---
+
 ### 2026-03 - Admin API pagination uniformity
 
 **Completion Date:** March 27, 2026  

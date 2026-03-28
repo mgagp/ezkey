@@ -11,6 +11,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 
 ### 🛠️ Development
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development guide, OpenAPI documentation, and testing strategy
+- **[LOCAL_STACK_PORTS.md](LOCAL_STACK_PORTS.md)** - Local clean-start: direct API ports vs Caddy proxy ports (`19xxx`/`18xxx`/`17xxx`), Postman environments, demos
 - **[plan/operational-churn-ezkey.plan.md](plan/operational-churn-ezkey.plan.md)** - Operational churn tests strategy (sustained background activity, JUnit; formal load testing deferred)
 
 ### 📊 Monitoring & Operations
@@ -22,6 +23,8 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - **[MAINTENANCE.md](MAINTENANCE.md)** - Documentation maintenance guidelines and standards
 
 ### 🔒 Security & Compliance
+- **[admin-ui-security.md](admin-ui-security.md)** - Admin UI token handling, Caddy headers / CSP, workflows (Vite vs Docker QA), split deployment, mkcert
+- **[admin-ui-security-validation.md](admin-ui-security-validation.md)** - Developer checklist: how to test headers, token storage, Path A vs B, `curl` / DevTools / Postman
 - **[../SECURITY.md](../SECURITY.md)** - Security policy and vulnerability disclosure
 - **[SOC2_PREPARATION.md](SOC2_PREPARATION.md)** - SOC2 compliance preparation roadmap
 - **[SOC2_QUICK_START.md](SOC2_QUICK_START.md)** - Quick wins for first 30 days of SOC2 preparation
