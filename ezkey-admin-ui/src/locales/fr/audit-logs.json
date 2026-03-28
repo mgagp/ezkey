@@ -39,7 +39,12 @@
       "time": "Heure"
     },
     "viewDetails": "Voir les détails",
-    "hmacTooltip": "Code d'authentification de message (HMAC) ; garantit l'intégrité de l'entrée."
+    "hmacTooltip": "Code d'authentification de message (HMAC) ; garantit l'intégrité de l'entrée.",
+    "columnTooltips": {
+      "event": "Type d'événement — catégorie d'opération (que s'est-il passé ?). Ouvrez une ligne pour l'action et le détail.",
+      "status": "Résultat de l'étape : réussite, échec attendu (règles ou fin MFA), ou erreur (traitement inattendu).",
+      "api": "API Ezkey qui a enregistré cette entrée (Admin, Auth ou Integration)."
+    }
   },
   "eventType": {
     "ADMIN_LOGIN": "Connexion admin",
@@ -96,7 +101,15 @@
   },
   "eventAction": {
     "login_success": "Connexion réussie",
-    "login_pending": "Connexion en attente",
+    "login_pending": "Connexion en attente (historique)",
+    "login_mfa_requested": "Demande MFA créée",
+    "login_mfa_session_issued": "Session MFA délivrée",
+    "login_mfa_expired": "Tentative MFA expirée",
+    "login_mfa_rejected": "Tentative MFA refusée",
+    "login_mfa_timeout": "Délai MFA dépassé",
+    "login_mfa_invalid_signature": "Signature MFA invalide",
+    "login_mfa_invalid_challenge": "Défi MFA invalide",
+    "login_mfa_error": "Erreur de traitement MFA",
     "login_failure": "Échec de connexion",
     "logout_success": "Déconnexion réussie",
     "recovery_code_used": "Code de récupération utilisé",

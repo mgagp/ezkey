@@ -17,8 +17,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
+import java.util.Optional;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.dto.AdminAuthAuditContext;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
@@ -291,10 +293,13 @@ public class AdminAuthController {
 
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context, EventType.ADMIN_LOGIN, AdminAuditConstants.LOGIN_PENDING, adminTenantId)
+                  context,
+                  EventType.ADMIN_LOGIN,
+                  AdminAuditConstants.LOGIN_MFA_REQUESTED,
+                  adminTenantId)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(resolveAdminId(request.username()))
-              .eventDetails("Username: " + request.username() + ", Challenge required")
+              .eventDetails("Username: " + request.username() + ", MFA request created")
               .build());
 
       return ResponseEntity.ok(response);
@@ -420,6 +425,7 @@ public class AdminAuthController {
    * </ul>
    *
    * @param request the wait request containing authAttemptId and optional challengeCode
+   * @param httpRequest the HTTP servlet request for audit logging (client IP, user agent)
    * @return ResponseEntity with bearer token on success (HTTP 200)
    * @throws AdminAuthenticationException (401) if challenge code is invalid
    * @throws AdminAuthenticationExpiredException (400) if auth attempt is superseded or expired
@@ -460,17 +466,102 @@ public class AdminAuthController {
       })
   @PostMapping("/passwordless-wait")
   public ResponseEntity<AdminLoginResponseDto> passwordlessWait(
-      @Valid @RequestBody AdminPasswordlessWaitRequestDto request) {
+      @Valid @RequestBody AdminPasswordlessWaitRequestDto request, HttpServletRequest httpRequest) {
 
     logger.info("🔐 Passwordless wait request for authAttemptId: {}", request.authAttemptId());
 
-    // Call service - will throw specific exceptions on error (caught by
-    // GlobalExceptionHandler)
-    AdminLoginResponseDto response =
-        authService.waitForPasswordlessAuth(request.authAttemptId(), request.challengeCode());
+    ClientContext context = ClientContext.from(httpRequest);
+    Optional<AdminAuthAuditContext> auditCtx =
+        authService.findAuditContextForAuthAttempt(request.authAttemptId());
 
-    logger.info("✅ Passwordless authentication successful");
-    return ResponseEntity.ok(response);
+    try {
+      AdminLoginResponseDto response =
+          authService.waitForPasswordlessAuth(request.authAttemptId(), request.challengeCode());
+
+      auditCtx.ifPresent(
+          ctx ->
+              auditLogService.log(
+                  AuditHelper.createAdminAudit(
+                          context,
+                          EventType.ADMIN_LOGIN,
+                          AdminAuditConstants.LOGIN_MFA_SESSION_ISSUED,
+                          ctx.tenantId())
+                      .eventStatus(EventStatus.SUCCESS)
+                      .adminId(ctx.adminId())
+                      .eventDetails("Username: " + ctx.username())
+                      .build()));
+
+      logger.info("✅ Passwordless authentication successful");
+      return ResponseEntity.ok(response);
+    } catch (AdminAuthenticationExpiredException e) {
+      logPasswordlessMfaFailure(
+          auditCtx, context, AdminAuditConstants.LOGIN_MFA_EXPIRED, e.getMessage());
+      throw e;
+    } catch (AdminAuthenticationRejectedException e) {
+      logPasswordlessMfaFailure(
+          auditCtx, context, AdminAuditConstants.LOGIN_MFA_REJECTED, e.getMessage());
+      throw e;
+    } catch (AdminAuthenticationTimeoutException e) {
+      logPasswordlessMfaFailure(
+          auditCtx, context, AdminAuditConstants.LOGIN_MFA_TIMEOUT, e.getMessage());
+      throw e;
+    } catch (AdminDeviceSignatureInvalidException e) {
+      logPasswordlessMfaFailure(
+          auditCtx, context, AdminAuditConstants.LOGIN_MFA_INVALID_SIGNATURE, e.getMessage());
+      throw e;
+    } catch (AdminAuthenticationException e) {
+      if (e.getMessage() != null && e.getMessage().contains("Invalid challenge")) {
+        logPasswordlessMfaFailure(
+            auditCtx, context, AdminAuditConstants.LOGIN_MFA_INVALID_CHALLENGE, e.getMessage());
+      } else {
+        logPasswordlessMfaUnexpected(
+            auditCtx, context, AdminAuditConstants.LOGIN_MFA_ERROR, e.getMessage());
+      }
+      throw e;
+    } catch (IllegalArgumentException e) {
+      logPasswordlessMfaUnexpected(
+          auditCtx, context, AdminAuditConstants.LOGIN_MFA_ERROR, e.getMessage());
+      throw e;
+    }
+  }
+
+  private void logPasswordlessMfaFailure(
+      Optional<AdminAuthAuditContext> auditCtx,
+      ClientContext context,
+      String action,
+      String message) {
+    auditCtx.ifPresentOrElse(
+        ctx ->
+            auditLogService.log(
+                AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, action, ctx.tenantId())
+                    .eventStatus(EventStatus.FAILURE)
+                    .adminId(ctx.adminId())
+                    .errorMessage(message)
+                    .build()),
+        () ->
+            auditLogService.log(
+                AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, action, null)
+                    .eventStatus(EventStatus.FAILURE)
+                    .errorMessage(message)
+                    .build()));
+  }
+
+  private void logPasswordlessMfaUnexpected(
+      Optional<AdminAuthAuditContext> auditCtx,
+      ClientContext context,
+      String action,
+      String message) {
+    auditCtx.ifPresentOrElse(
+        ctx ->
+            auditLogService.log(
+                AuditHelper.createAdminAudit(context, EventType.ADMIN_LOGIN, action, ctx.tenantId())
+                    .eventStatus(EventStatus.ERROR)
+                    .adminId(ctx.adminId())
+                    .errorMessage(message)
+                    .build()),
+        () ->
+            auditLogService.log(
+                AuditHelper.logError(context, EventType.ADMIN_LOGIN, action, message)));
   }
 
   /**

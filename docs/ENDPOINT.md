@@ -327,6 +327,8 @@ Content-Type: application/json
 
 **Pending `expiresAt`:** Matches the stored authentication attempt’s expiry (`ezkey.core.auth-attempt.ttl-seconds`, default 120 seconds). Use it for countdown timers; it is not a fixed five-minute window.
 
+**Audit (pending):** When `status` is `pending`, Ezkey records `event_action` `login_mfa_requested` with **SUCCESS** (MFA request created — not a full session yet). Legacy rows may show `login_pending`; see [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md).
+
 **Failure Responses:**
 ```json
 // 400 Bad Request - No enrollment
@@ -441,6 +443,8 @@ Errors use `Content-Type: application/problem+json` (or JSON with the same field
 ```
 
 The client should use `detail` (then `title`) for user-facing messages, not assume a transport failure.
+
+**Audit:** Each call to `/passwordless-wait` that reaches a terminal outcome writes an `ADMIN_LOGIN` audit row with a distinct `event_action` (for example `login_mfa_session_issued`, `login_mfa_expired`, `login_mfa_rejected`). See [AUDIT_ADMIN_LOGIN_ACTIONS.md](AUDIT_ADMIN_LOGIN_ACTIONS.md) for the full list and SIEM notes.
 
 **Security Notes:**
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)

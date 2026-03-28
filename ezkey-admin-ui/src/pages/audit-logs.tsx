@@ -1109,6 +1109,7 @@ export default function AuditLogsPage() {
     { header: t('list.columns.id'), key: 'auditLogId', className: 'w-14', sortKey: 'auditLogId', render: (r) => <span className="font-mono text-xs">{r.auditLogId}</span> },
     {
       header: t('list.columns.event'),
+      headerTooltip: t('list.columnTooltips.event'),
       key: 'eventType',
       sortKey: 'eventType',
       render: (r) => (
@@ -1117,9 +1118,16 @@ export default function AuditLogsPage() {
         </span>
       ),
     },
-    { header: t('list.columns.status'), key: 'eventStatus', sortKey: 'eventStatus', render: (r) => <EventStatusBadge status={r.eventStatus} /> },
+    {
+      header: t('list.columns.status'),
+      headerTooltip: t('list.columnTooltips.status'),
+      key: 'eventStatus',
+      sortKey: 'eventStatus',
+      render: (r) => <EventStatusBadge status={r.eventStatus} />,
+    },
     {
       header: t('list.columns.api'),
+      headerTooltip: t('list.columnTooltips.api'),
       key: 'apiName',
       render: (r) => r.apiName
         ? <Badge variant="muted">{r.apiName.replace('_API', '')}</Badge>

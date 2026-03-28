@@ -55,8 +55,36 @@ public final class AdminAuditConstants {
   /** Audit action for successful admin login. */
   public static final String LOGIN_SUCCESS = "login_success";
 
-  /** Audit action for pending admin login (challenge required, waiting for device). */
+  /**
+   * Legacy audit action for pending admin login (challenge / non-blocking MFA request created).
+   *
+   * <p>New rows use {@link #LOGIN_MFA_REQUESTED}; this string remains for historical rows.
+   */
   public static final String LOGIN_PENDING = "login_pending";
+
+  /** Audit action when an MFA request was created and the client must call /passwordless-wait. */
+  public static final String LOGIN_MFA_REQUESTED = "login_mfa_requested";
+
+  /** Audit action when /passwordless-wait completed and a bearer session was issued. */
+  public static final String LOGIN_MFA_SESSION_ISSUED = "login_mfa_session_issued";
+
+  /** Audit action when the auth attempt expired before approval (including superseded). */
+  public static final String LOGIN_MFA_EXPIRED = "login_mfa_expired";
+
+  /** Audit action when the device explicitly rejected the authentication request. */
+  public static final String LOGIN_MFA_REJECTED = "login_mfa_rejected";
+
+  /** Audit action when no device response was received within the wait window. */
+  public static final String LOGIN_MFA_TIMEOUT = "login_mfa_timeout";
+
+  /** Audit action when device signature validation failed on /passwordless-wait. */
+  public static final String LOGIN_MFA_INVALID_SIGNATURE = "login_mfa_invalid_signature";
+
+  /** Audit action when the challenge code did not match (challenge flow). */
+  public static final String LOGIN_MFA_INVALID_CHALLENGE = "login_mfa_invalid_challenge";
+
+  /** Audit action for unexpected errors during /passwordless-wait. */
+  public static final String LOGIN_MFA_ERROR = "login_mfa_error";
 
   /** Audit action for failed admin login (invalid credentials, etc.). */
   public static final String LOGIN_FAILURE = "login_failure";

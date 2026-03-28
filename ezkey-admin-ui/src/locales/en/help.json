@@ -49,6 +49,16 @@
       "globalOps": "As a Global Admin you manage keys for the whole instance. Tenant admins do not use this screen.",
       "developerContext": "Ciphertext uses the ENC:keyId:… prefix so the system can count rows per key. Discoverable targets are defined in code (Reencryptable entities). For full endpoint semantics and diagrams, see docs/REENCRYPTION_OPERATIONS.md in the repository.",
       "demoExtra": ""
+    },
+    "audit-logs": {
+      "title": "Audit logs",
+      "summary": "A read-only trail of security-relevant actions and outcomes across Ezkey. Use it to see who did what, whether the step succeeded, and to support investigations.",
+      "body": "Each row is an immutable record: Ezkey does not rewrite history after the fact. Events come from the Admin API and related services (the API column shows the source).\n\nUse filters—event type, status, API name, and date range—to narrow the list. Open a row for identifiers (admin, integration, enrollment, auth attempt) when present, and for extra detail or error text.\n\nYour role determines which events you can see: Global Admins have broader visibility; Tenant Admins see activity tied to their tenant where policies allow.",
+      "eventTypeVsStatus": "Two columns work together:\n\n• Event type — the category of operation (for example admin login, enrollment created, API key revoked). It answers “what kind of event is this?”\n\n• Status — how that operation finished for the audited step. Success means the step completed as intended. Failure means an expected outcome stopped the flow (validation, policy, or a normal terminal result such as an expired or rejected MFA attempt). Error means something unexpected went wrong while processing the request and may warrant investigation.\n\nFor automation and exports: Failure is the usual status for “expected” denials and terminal MFA outcomes; Error points to unexpected processing failures—correlate with server logs if needed. The event action value is the stable field for filters and SIEM rules.",
+      "statusLegend": "Success — the audited step completed successfully.\nFailure — the step did not complete in the expected success path; details often appear in the row or error message.\nError — unexpected failure; treat as worth reviewing in logs or support.",
+      "mfaAndLogin": "Passwordless admin sign-in can take two steps. The first step may only create an MFA request on your enrolled device: a Success status there means the request was accepted by the server, not that you already hold a session. A separate entry shows when a session is issued or when the attempt ended without a session (for example expired, rejected, or timed out), once those outcomes are recorded for the wait step.",
+      "integrityNote": "Chain checkpoints, seal archive, and declare gap are advanced integrity operations. Use the inline help (?) next to each section on this page for how and when to use them.",
+      "demoExtra": ""
     }
   }
 }

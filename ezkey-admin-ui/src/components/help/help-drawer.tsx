@@ -131,6 +131,23 @@ export function HelpDrawer({
             </p>
           )}
 
+          {topicId === 'audit-logs' && (
+            <>
+              <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
+                {t('topics.audit-logs.eventTypeVsStatus')}
+              </p>
+              <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg-muted">
+                {t('topics.audit-logs.statusLegend')}
+              </p>
+              <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
+                {t('topics.audit-logs.mfaAndLogin')}
+              </p>
+              <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg-muted text-sm">
+                {t('topics.audit-logs.integrityNote')}
+              </p>
+            </>
+          )}
+
           {showDemoExtra && demoExtraText.trim() !== '' && (
             <div className="border-2 border-accent bg-accent/10 p-3 shadow-[3px_3px_0_0_var(--color-accent-dark)]">
               <p className="text-[10px] font-black uppercase tracking-widest text-accent-dark mb-2">

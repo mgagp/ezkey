@@ -11,8 +11,10 @@
 package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
+import org.ezkey.admin.dto.AdminAuthAuditContext;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.exception.AdminAccountInactiveException;
@@ -503,6 +505,34 @@ public class AdminAuthService {
 
     return new AdminLoginResponseDto(
         plainToken, admin.getAdminType().name(), admin.getUsername(), token.getExpiresAt());
+  }
+
+  /**
+   * Resolves username, admin id, and tenant id for audit logging for an auth attempt, when the
+   * attempt exists and is linked to an admin enrollment.
+   *
+   * @param authAttemptId the authentication attempt id
+   * @return context if resolvable; empty if the attempt or admin link is missing
+   */
+  @Transactional(readOnly = true)
+  public Optional<AdminAuthAuditContext> findAuditContextForAuthAttempt(Integer authAttemptId) {
+    if (authAttemptId == null) {
+      return Optional.empty();
+    }
+    return authAttemptRepository
+        .findById(authAttemptId)
+        .flatMap(
+            attempt ->
+                adminRepository
+                    .findByMfaEnrollmentEnrollmentId(attempt.getEnrollmentId())
+                    .map(
+                        admin ->
+                            new AdminAuthAuditContext(
+                                admin.getUsername(),
+                                admin.getAdminId(),
+                                admin.getTenant() != null
+                                    ? admin.getTenant().getTenantId()
+                                    : null)));
   }
 
   /**

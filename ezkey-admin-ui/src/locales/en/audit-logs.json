@@ -39,7 +39,12 @@
       "time": "Time"
     },
     "viewDetails": "View details",
-    "hmacTooltip": "Hash-based message authentication code; ensures entry tamper-evidence."
+    "hmacTooltip": "Hash-based message authentication code; ensures entry tamper-evidence.",
+    "columnTooltips": {
+      "event": "Event type — the category of operation (what happened). Open a row for the action string and full detail.",
+      "status": "How the step finished: Success, Failure (expected rules or terminal MFA outcomes), or Error (unexpected processing).",
+      "api": "Which Ezkey API recorded this entry (Admin, Auth, or Integration)."
+    }
   },
   "eventType": {
     "ADMIN_LOGIN": "Admin Login",
@@ -96,7 +101,15 @@
   },
   "eventAction": {
     "login_success": "Login success",
-    "login_pending": "Login pending",
+    "login_pending": "Login pending (legacy)",
+    "login_mfa_requested": "MFA request created",
+    "login_mfa_session_issued": "MFA session issued",
+    "login_mfa_expired": "MFA attempt expired",
+    "login_mfa_rejected": "MFA attempt rejected",
+    "login_mfa_timeout": "MFA wait timed out",
+    "login_mfa_invalid_signature": "MFA invalid signature",
+    "login_mfa_invalid_challenge": "MFA invalid challenge",
+    "login_mfa_error": "MFA processing error",
     "login_failure": "Login failed",
     "logout_success": "Logout success",
     "recovery_code_used": "Recovery code used",

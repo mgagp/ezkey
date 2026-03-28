@@ -10,6 +10,8 @@ export default defineConfig(({ mode }) => ({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // Avoid two React copies (breaks context) when dependencies resolve differently per chunk.
+    dedupe: ['react', 'react-dom'],
   },
   define:
     mode === 'production'
