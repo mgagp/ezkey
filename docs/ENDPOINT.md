@@ -417,6 +417,31 @@ Content-Type: application/json
 }
 ```
 
+**Failure Responses (RFC 9457 Problem Details):**
+
+Errors use `Content-Type: application/problem+json` (or JSON with the same fields). Common cases for `/passwordless-wait`:
+
+| HTTP | Problem `type` (URI suffix) | Typical `title` |
+|------|-----------------------------|-----------------|
+| 400 | `.../authentication/auth-rejected` | Authentication Rejected |
+| 400 | `.../authentication/auth-expired` | Authentication Expired |
+| 400 | `.../authentication/invalid-signature` | Invalid Signature |
+| 401 | `.../authentication/invalid-credentials` (or similar) | Invalid challenge or credentials |
+| 408 | `.../authentication/auth-timeout` | Authentication Timeout |
+
+**Example (device denied):**
+```json
+{
+  "type": "https://ezkey.io/problems/authentication/auth-rejected",
+  "title": "Authentication Rejected",
+  "status": 400,
+  "detail": "Device rejected the authentication request",
+  "instance": "/api/v1/admin/auth/passwordless-wait"
+}
+```
+
+The client should use `detail` (then `title`) for user-facing messages, not assume a transport failure.
+
 **Security Notes:**
 - `challengeCode` prevents enumeration attacks (proof of legitimate login initiation)
 - Blocking HTTP call: the server waits up to the minimum of 300 seconds and (remaining attempt lifetime + small slack). If `ezkey.core.auth-attempt.ttl-seconds` is set above 300 (max 600), the wait may return HTTP 408 while the attempt row is still valid in the database.

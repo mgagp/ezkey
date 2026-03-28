@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip } from '@/components/ui/tooltip';
 import { I18N_STORAGE_KEY } from '@/i18n';
 import { getApiErrorMessage } from '@/lib/api-client';
+import { mapPasswordlessWaitError } from '@/lib/map-passwordless-wait-error';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
 import { cn, formatChallengeCode, formatCountdown } from '@/lib/utils';
 import { login as loginApi, passwordlessWait } from '@/generated/admin-api/admin-authentication/admin-authentication';
@@ -131,9 +132,35 @@ export default function LoginPage() {
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
         if (finalStatusRef.current !== null) return;
-        finalStatusRef.current = 'ERROR';
-        setLoginState('error');
-        setErrorMessage(t('login:states.error.connectionLost'));
+
+        const mapped = mapPasswordlessWaitError(
+          err,
+          t('login:states.error.messageFallback'),
+          t('login:states.error.connectionLost'),
+        );
+
+        switch (mapped.outcome) {
+          case 'rejected':
+            finalStatusRef.current = 'REJECTED';
+            setLoginState('rejected');
+            setErrorMessage(null);
+            break;
+          case 'expired':
+            finalStatusRef.current = 'EXPIRED';
+            setLoginState('expired');
+            setErrorMessage(null);
+            break;
+          case 'error':
+            finalStatusRef.current = 'ERROR';
+            setLoginState('error');
+            setErrorMessage(mapped.message);
+            break;
+          case 'connectionLost':
+            finalStatusRef.current = 'ERROR';
+            setLoginState('error');
+            setErrorMessage(mapped.message);
+            break;
+        }
       }
     };
 

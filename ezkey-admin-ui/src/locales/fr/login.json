@@ -3,7 +3,7 @@
   "tagline": "Sans mot de passe · Sécurisé · Simple",
   "form": {
     "username": "Nom d'utilisateur",
-    "usernamePlaceholder": "votre.nom",
+    "usernamePlaceholder": "votre nom d'utilisateur",
     "rememberUsernameTooltipOn": "Mémoriser le nom d'utilisateur sur cet appareil — Activé",
     "rememberUsernameTooltipOff": "Mémoriser le nom d'utilisateur sur cet appareil — Désactivé",
     "requireChallengeCode": "Exiger un code défi",
