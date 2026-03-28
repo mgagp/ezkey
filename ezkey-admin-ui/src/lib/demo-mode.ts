@@ -52,6 +52,20 @@ export const tenantDemoPresets: TenantDemoPreset[] = [
       primaryContactEmail: 'jane.smith@acme.example.com',
     },
   },
+  {
+    id: 'intercube',
+    label: 'InterCube',
+    values: {
+      tenantName: 'InterCube',
+      tenantDescription: 'Raccorder les facettes métier — intégrations et contextes en prise (démo)',
+      organizationName: 'InterCube',
+      organizationDomain: 'intercube.example.com',
+      countryCode: 'CA',
+      timezone: 'America/Montreal',
+      primaryContactName: 'Julien Facette',
+      primaryContactEmail: 'julien.facette@intercube.example.com',
+    },
+  },
 ];
 
 // ── Integration create form (CreateFormValues in integrations.tsx) ───────────────
@@ -83,6 +97,15 @@ export const integrationDemoPresets: IntegrationDemoPreset[] = [
       code: 'internal-tools',
       name: 'Internal Tools',
       description: 'Internal applications and dashboards',
+    },
+  },
+  {
+    id: 'facet-portal',
+    label: 'Facette Portal',
+    values: {
+      code: 'facet-portal',
+      name: 'Facette Portal',
+      description: 'Portail transversal des facettes métier (démo InterCube)',
     },
   },
 ];
@@ -119,6 +142,16 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
       contactEmail: 'jean.martin@garageducoin.ca',
       userIdentifier: 'jean.martin',
       authAttemptChallengeRequired: true,
+    },
+  },
+  {
+    id: 'julien-intercube',
+    label: 'Julien Facette — iPhone',
+    values: {
+      name: 'Julien Facette — iPhone 15',
+      contactEmail: 'julien.facette@intercube.example.com',
+      userIdentifier: 'julien.facette',
+      authAttemptChallengeRequired: false,
     },
   },
 ];
@@ -160,6 +193,17 @@ export const adminDemoPresets: AdminDemoPreset[] = [
       lastName: 'Martin',
     },
   },
+  {
+    id: 'intercube-tenant-admin',
+    label: 'Tenant Admin (Julien Facette)',
+    isGlobal: false,
+    values: {
+      username: 'julien.facette',
+      email: 'julien.facette@intercube.example.com',
+      firstName: 'Julien',
+      lastName: 'Facette',
+    },
+  },
 ];
 
 // ── Reason field (min 10 chars): quick-select presets for demo ─────────────────
@@ -183,7 +227,7 @@ export const reasonDemoPresets: ReasonDemoPreset[] = [
 ];
 
 // ── Test Auth dialog: optional context (title + message) for demo ─────────────
-// Used when testing authentication with contextual approval (e.g. Garage du coin).
+// Used when testing authentication with contextual approval (Garage + InterCube presets).
 
 export interface AuthContextDemoPreset {
   id: string;
@@ -211,10 +255,10 @@ export const authContextDemoPresets: AuthContextDemoPreset[] = [
       'Valider le virement de 8 500 $ CAD à Pièces Méga-Pneus (Montréal) pour la commande CMD-2025-089 (Garage du coin).',
   },
   {
-    id: 'document-signature',
-    label: 'Signature document',
-    contextTitle: 'Signature de document',
+    id: 'intercube-sync',
+    label: 'InterCube — Sync multi-facettes',
+    contextTitle: 'Synchronisation des facettes',
     contextMessage:
-      'Approuver la signature du contrat NDA avec le partenaire Acme Corp — opérations au Québec (Garage du coin).',
+      'Approuver la publication du contexte sécurisé sur le portail transversal — cycle multi-facettes (InterCube, démo).',
   },
 ];
