@@ -101,16 +101,33 @@ public class AuthTokenManager {
    *   <li>Automatic bootstrap via AdminBootstrapService (if dependencies set)
    * </ol>
    *
-   * <p>Note: Cached tokens are validated before being returned to ensure they haven't been
-   * invalidated by token rotation or other operations.
+   * <p>Note: Tokens are validated before being returned. In-memory cache is re-checked each call so
+   * that rotation on login (see {@code ezkey.admin.token.rotation-on-login}) or other invalidation
+   * is detected — otherwise long-running tests would keep using a stale bearer token after a UI
+   * login.
    *
    * @return Admin bearer token
    * @throws IllegalStateException if token cannot be obtained
    */
   public String getAdminToken() {
-    // Priority 1: Environment variable
+    // Priority 1: In-memory token (from env or prior bootstrap) — must revalidate: rotation on
+    // login deactivates older tokens while this JVM may still hold the previous string.
     if (adminToken != null && !adminToken.isEmpty()) {
-      return adminToken;
+      if (isTokenValid(adminToken)) {
+        return adminToken;
+      }
+      log.info(
+          "In-memory admin token is no longer valid (e.g. token rotation on another login);"
+              + " re-acquiring");
+      adminToken = null;
+      try {
+        Path tokenPath = Path.of(TOKEN_FILE_PATH);
+        if (Files.exists(tokenPath)) {
+          Files.delete(tokenPath);
+        }
+      } catch (IOException e) {
+        log.warn("Failed to delete stale admin token file: {}", e.getMessage());
+      }
     }
 
     // Priority 2: Load from cache file and validate
@@ -163,6 +180,17 @@ public class AuthTokenManager {
    * @param token Admin bearer token to validate
    * @return true if token is valid, false otherwise
    */
+  /**
+   * Returns whether the given bearer token is accepted by the Admin API (e.g. for operational churn
+   * peer global admin state loaded from disk).
+   *
+   * @param token bearer token to check
+   * @return true if GET /integrations succeeds with 200
+   */
+  public boolean isAdminTokenValid(String token) {
+    return isTokenValid(token);
+  }
+
   private boolean isTokenValid(String token) {
     try {
       RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);

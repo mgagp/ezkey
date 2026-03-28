@@ -338,4 +338,20 @@ public final class TestTags {
    * </pre>
    */
   public static final String ELECTIVE = "elective";
+
+  /**
+   * Sustained operational churn: long-running, production-like loops (tenant lifecycle,
+   * enrollments, auth batches). Excluded from default and all-tests Surefire runs; invoked
+   * explicitly via the operational-churn-tests profile or -Dgroups=operational-churn. See
+   * docs/plan/operational-churn-ezkey.plan.md.
+   */
+  public static final String OPERATIONAL_CHURN = "operational-churn";
+
+  /**
+   * One-shot provisioning of the peer Global Admin for operational churn (writes {@code
+   * .ezkey-test/operational-churn-global-admin.json}). Excluded from default Surefire runs; use the
+   * {@code operational-churn-init} Maven profile. See
+   * docs/plan/operational-churn-strategy-and-implementation.md.
+   */
+  public static final String OPERATIONAL_CHURN_INIT = "operational-churn-init";
 }

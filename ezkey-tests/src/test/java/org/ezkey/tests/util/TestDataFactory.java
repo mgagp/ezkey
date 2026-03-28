@@ -106,6 +106,22 @@ public class TestDataFactory {
    * @return Enrollment ID
    */
   public Integer createEnrollment(Integer integrationId, String name, Boolean challengeRequired) {
+    return createEnrollment(
+        integrationId, name, challengeRequired, authTokenManager.getAdminToken());
+  }
+
+  /**
+   * Creates a test enrollment using an explicit admin bearer token (e.g. Tenant Admin for
+   * operational churn).
+   *
+   * @param integrationId Integration ID
+   * @param name Enrollment name
+   * @param challengeRequired Whether challenge is required
+   * @param bearerToken Admin API bearer token
+   * @return Enrollment ID
+   */
+  public Integer createEnrollment(
+      Integer integrationId, String name, Boolean challengeRequired, String bearerToken) {
     log.debug("Creating enrollment: {} for integration: {}", name, integrationId);
 
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
@@ -119,7 +135,7 @@ public class TestDataFactory {
     Response response =
         given()
             .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .header("Authorization", "Bearer " + bearerToken)
             .body(request)
             .when()
             .post("/enrollments")
@@ -152,6 +168,19 @@ public class TestDataFactory {
    * @return Auth attempt ID
    */
   public Integer createAuthAttempt(Integer enrollmentId, Boolean challengeRequested) {
+    return createAuthAttempt(enrollmentId, challengeRequested, authTokenManager.getAdminToken());
+  }
+
+  /**
+   * Creates a test auth attempt using an explicit admin bearer token.
+   *
+   * @param enrollmentId Enrollment ID
+   * @param challengeRequested Whether challenge is requested
+   * @param bearerToken Admin API bearer token
+   * @return Auth attempt ID
+   */
+  public Integer createAuthAttempt(
+      Integer enrollmentId, Boolean challengeRequested, String bearerToken) {
     log.debug("Creating auth attempt for enrollment: {}", enrollmentId);
 
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
@@ -163,7 +192,7 @@ public class TestDataFactory {
     Response response =
         given()
             .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+            .header("Authorization", "Bearer " + bearerToken)
             .body(request)
             .when()
             .post("/auth-attempts")

@@ -84,8 +84,8 @@
           <includes>
             <include>**/*Test.java</include>
           </includes>
-          <!-- Default: exclude slow, time-dependent, and elective tests -->
-          <excludedGroups>slow,time-dependent,elective</excludedGroups>
+          <!-- Default: exclude slow, time-dependent, elective, operational churn, and churn init -->
+          <excludedGroups>slow,time-dependent,elective,operational-churn,operational-churn-init</excludedGroups>
         </configuration>
       </plugin>
     </plugins>
@@ -119,6 +119,14 @@
     Ad-hoc filtering (without profiles):
       mvn test -pl ezkey-tests -Dgroups="encryption"
       mvn test -pl ezkey-tests -DexcludedGroups="time-dependent"
+
+    operational-churn-tests:
+      mvn test -pl ezkey-tests -P operational-churn-tests
+      Or: ./ezkey-tests/scripts/run-operational-churn.sh (see docs/plan/operational-churn-ezkey.plan.md)
+
+    operational-churn-init (once per environment — peer Global Admin + state file):
+      mvn test -pl ezkey-tests -P operational-churn-init
+      Or: ./ezkey-tests/scripts/run-operational-churn.sh with the init flag
   -->
   <profiles>
     <!-- Slow tests only (nightly, pre-release) -->
@@ -149,7 +157,7 @@
             <configuration>
               <!-- No groups filter = run all standard tests; elective always excluded -->
               <groups combine.self="override"></groups>
-              <excludedGroups>elective</excludedGroups>
+              <excludedGroups>elective,operational-churn,operational-churn-init</excludedGroups>
             </configuration>
           </plugin>
         </plugins>
@@ -200,6 +208,42 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
               <groups>encryption</groups>
+              <excludedGroups combine.self="override"></excludedGroups>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Operational churn: sustained tenant + enrollment + auth loops (manual / QA; not default CI) -->
+    <profile>
+      <id>operational-churn-tests</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <groups>operational-churn</groups>
+              <excludedGroups combine.self="override"></excludedGroups>
+              <forkCount>1</forkCount>
+              <reuseForks>false</reuseForks>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- One-shot: provision peer Global Admin for operational churn (writes .ezkey-test state file) -->
+    <profile>
+      <id>operational-churn-init</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <groups>operational-churn-init</groups>
               <excludedGroups combine.self="override"></excludedGroups>
             </configuration>
           </plugin>
