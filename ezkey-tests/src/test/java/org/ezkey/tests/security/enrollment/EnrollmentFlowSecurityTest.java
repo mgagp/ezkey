@@ -235,8 +235,9 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
               .response();
 
       assertThat(verifyResponse.getStatusCode()).isEqualTo(400);
-      assertThat(verifyResponse.jsonPath().getString("message"))
-          .contains("Invalid challenge response");
+      // RFC 9457 ProblemDetail: generic safe detail (specific reason is not echoed to clients).
+      assertThat(verifyResponse.jsonPath().getString("type")).endsWith("/enrollment-verify-failed");
+      assertThat(verifyResponse.jsonPath().getString("detail")).isNotBlank();
 
       // Assert audit log contains enrollment_verify_failed for this enrollment
       configureForAdminApi(dockerStackConfig);
@@ -355,11 +356,8 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
               .response();
 
       assertThat(retryResponse.getStatusCode()).isEqualTo(409);
-      String message = retryResponse.jsonPath().getString("message");
-      assertThat(message)
-          .as("Message should state enrollment was invalidated, not 'must be bound'")
-          .contains("invalidated")
-          .contains("previous failed verification");
+      assertThat(retryResponse.jsonPath().getString("type")).endsWith("/enrollment-state-conflict");
+      assertThat(retryResponse.jsonPath().getString("detail")).isNotBlank();
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");

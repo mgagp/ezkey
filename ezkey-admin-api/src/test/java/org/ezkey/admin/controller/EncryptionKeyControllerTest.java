@@ -17,12 +17,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.security.KeyRotationService;
 import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
+import org.ezkey.security.domain.entity.ReencryptionBatch;
+import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +57,7 @@ import org.springframework.http.ResponseEntity;
  * @since 2025
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("EncryptionKeyController listKeys Tests")
+@DisplayName("EncryptionKeyController listKeys and listBatches Tests")
 @SuppressWarnings("unchecked")
 class EncryptionKeyControllerTest {
 
@@ -68,6 +71,7 @@ class EncryptionKeyControllerTest {
 
   private EncryptionKey key1;
   private EncryptionKey key2;
+  private ReencryptionBatch batch1;
 
   @BeforeEach
   void setUp() {
@@ -84,6 +88,13 @@ class EncryptionKeyControllerTest {
     key2 = new EncryptionKey(101L, KeyStatus.ENABLED, "AES256_GCM", now.minusDays(1), "SYSTEM");
     key2.setRecordsEncrypted(100L);
     key2.setRecordsReencrypted(50L);
+
+    batch1 =
+        new ReencryptionBatch(
+            "ezkey_enrollment", "integration_private_key", key2, key1, 10, "SYSTEM");
+    batch1.setBatchId(1);
+    batch1.setStatus(BatchStatus.PENDING);
+    batch1.setProgressPct(BigDecimal.ZERO);
   }
 
   @Test
@@ -160,5 +171,62 @@ class EncryptionKeyControllerTest {
     assertNotNull(response.getBody());
     assertEquals(0, response.getBody().getTotalElements());
     assertEquals(0, response.getBody().getContent().size());
+  }
+
+  @Test
+  @DisplayName("listBatches returns paginated page with content and metadata")
+  void listBatchesReturnsPaginatedPage() {
+    Pageable pageable = PageRequest.of(0, 20);
+    Page<ReencryptionBatch> repoPage = new PageImpl<>(java.util.List.of(batch1), pageable, 1);
+
+    when(batchRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(repoPage);
+
+    ResponseEntity<Page<EncryptionKeyController.ReencryptionBatchResponse>> response =
+        controller.listBatches(null, null, null, null, null, null, null, pageable);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertNotNull(response.getBody());
+    Page<EncryptionKeyController.ReencryptionBatchResponse> body = response.getBody();
+    assertNotNull(body);
+    assertEquals(1, body.getTotalElements());
+    assertEquals(1, body.getContent().size());
+    assertEquals(1, body.getContent().get(0).batchId());
+    assertEquals("PENDING", body.getContent().get(0).status());
+    assertEquals("ezkey_enrollment", body.getContent().get(0).targetTable());
+    verify(batchRepository).findAll(any(Specification.class), eq(pageable));
+  }
+
+  @Test
+  @DisplayName("listBatches passes status filter to repository")
+  void listBatchesPassesStatusFilter() {
+    Pageable pageable = PageRequest.of(0, 20);
+    Page<ReencryptionBatch> repoPage = new PageImpl<>(java.util.List.of(batch1), pageable, 1);
+
+    when(batchRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(repoPage);
+
+    ResponseEntity<Page<EncryptionKeyController.ReencryptionBatchResponse>> response =
+        controller.listBatches("PENDING", null, null, null, null, null, null, pageable);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertNotNull(response.getBody());
+    assertEquals(1, response.getBody().getContent().size());
+    verify(batchRepository).findAll(any(Specification.class), eq(pageable));
+  }
+
+  @Test
+  @DisplayName("listBatches ignores invalid status enum")
+  void listBatchesInvalidStatusIgnored() {
+    Pageable pageable = PageRequest.of(0, 20);
+    Page<ReencryptionBatch> repoPage = new PageImpl<>(java.util.List.of(batch1), pageable, 1);
+
+    when(batchRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(repoPage);
+
+    ResponseEntity<Page<EncryptionKeyController.ReencryptionBatchResponse>> response =
+        controller.listBatches("NOT_A_STATUS", null, null, null, null, null, null, pageable);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertNotNull(response.getBody());
+    assertEquals(1, response.getBody().getContent().size());
+    verify(batchRepository).findAll(any(Specification.class), eq(pageable));
   }
 }

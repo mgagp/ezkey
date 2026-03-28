@@ -1509,7 +1509,7 @@ Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys a
 **GET    /api/v1/encryption-keys/primary**           // Get current primary key
 **GET    /api/v1/encryption-keys/{keyId}**           // Get key details
 **POST   /api/v1/encryption-keys/rotate**            // Manually trigger key rotation
-**GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches (full list, not paginated)
+**GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches (paginated, optional filters)
 **POST   /api/v1/encryption-keys/reencryption-batches/{batchId}/resume** // Resume failed batch
 **POST   /api/v1/encryption-keys/reencrypt/create-batches** // Create re-encryption batches without processing
 
@@ -1526,6 +1526,53 @@ Lists encryption keys with server-side pagination and optional filter by status.
 - `keyStatus` (optional): Filter by key status. Values: `PRIMARY`, `ENABLED`, `DISABLED`, `PENDING`. Omit for all keys.
 
 **Response (200 OK):** Paginated. Body has `content` (array of encryption key objects) and `page` (object with `size`, `number`, `totalElements`, `totalPages`).
+
+#### List re-encryption batches
+
+**GET /api/v1/encryption-keys/reencryption-batches**
+
+Lists re-encryption batch rows with server-side pagination and optional filters (aligned with other admin list endpoints).
+
+**Query parameters:**
+- `page` (optional, default 0): Zero-based page index.
+- `size` (optional, default 20): Page size.
+- `sort` (optional, default `createdAt,DESC`): Sort property and direction (e.g. `batchId,asc`, `status,desc`, `targetTable`, `targetColumn`, `createdAt`, `startedAt`, `completedAt`, `progressPct`, `recordsTotal`, `recordsDone`, `oldKey.keyId`, `newKey.keyId`).
+- `status` (optional): Filter by batch status (`PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`, `PAUSED`). Omit for all. Invalid values are ignored (same behavior as `keyStatus` on list keys).
+- `targetTable` (optional): Exact match on target table name (trimmed).
+- `targetColumn` (optional): Exact match on target column name (trimmed).
+- `oldKeyId` (optional): Filter by old encryption key id (`oldKey.keyId`).
+- `newKeyId` (optional): Filter by new encryption key id (`newKey.keyId`).
+- `createdAfter` (optional): Inclusive lower bound on `createdAt` (ISO-8601 instant).
+- `createdBefore` (optional): Inclusive upper bound on `createdAt` (ISO-8601 instant).
+
+**Response (200 OK):** Paginated. Body has `content` (array of batch objects) and `page` (object with `size`, `number`, `totalElements`, `totalPages`).
+
+Example:
+
+```json
+{
+  "content": [
+    {
+      "batchId": 1,
+      "status": "COMPLETED",
+      "targetTable": "ezkey_enrollment",
+      "targetColumn": "device_public_key",
+      "oldKeyId": 2,
+      "newKeyId": 3,
+      "progressPct": 100,
+      "recordsTotal": 10,
+      "recordsDone": 10,
+      "recordsFailed": 0
+    }
+  ],
+  "page": {
+    "size": 20,
+    "number": 0,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
 
 ### Re-encryption Trigger Endpoints
 

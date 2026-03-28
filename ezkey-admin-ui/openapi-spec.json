@@ -3254,18 +3254,123 @@
           "Encryption Keys"
         ],
         "summary": "List re-encryption batches",
-        "description": "Returns all re-encryption batches with their status and progress",
+        "description": "Returns re-encryption batches with pagination and optional filters. Use page, size, sort (default sort createdAt,DESC). Optional filters: status (PENDING, IN_PROGRESS, COMPLETED, FAILED, PAUSED), targetTable, targetColumn, oldKeyId, newKeyId, createdAfter, createdBefore (ISO-8601, inclusive bounds on createdAt). Sortable: batchId, status, targetTable, targetColumn, createdAt, startedAt, completedAt, progressPct, recordsTotal, recordsDone, oldKey.keyId, newKey.keyId.",
         "operationId": "listBatches",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by batch status (PENDING, IN_PROGRESS, COMPLETED, FAILED, PAUSED); omit for all",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetTable",
+            "in": "query",
+            "description": "Filter by target table name (exact match)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetColumn",
+            "in": "query",
+            "description": "Filter by target column name (exact match)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "oldKeyId",
+            "in": "query",
+            "description": "Filter by old encryption key id",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "newKeyId",
+            "in": "query",
+            "description": "Filter by new encryption key id",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "Inclusive lower bound on createdAt (ISO-8601); aligns with Admin UI date range",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "createdBefore",
+            "in": "query",
+            "description": "Inclusive upper bound on createdAt (ISO-8601); aligns with Admin UI date range",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Batches retrieved successfully",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ReencryptionBatchResponse"
-                  }
+                  "$ref": "#/components/schemas/PagedModelReencryptionBatchResponse"
                 }
               }
             }
@@ -3275,10 +3380,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ReencryptionBatchResponse"
-                  }
+                  "$ref": "#/components/schemas/PagedModelReencryptionBatchResponse"
                 }
               }
             }
@@ -6052,6 +6154,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/EncryptionKeyResponse"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "PagedModelReencryptionBatchResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReencryptionBatchResponse"
             }
           },
           "page": {

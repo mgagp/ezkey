@@ -24,7 +24,7 @@ The batch list is a **work queue** plus **historical rows** (completed batches a
 | `POST /api/v1/encryption-keys/reencrypt/create-batches` | Yes (`createBatchesForOldKeys`) | No | All ENABLED non-PRIMARY keys × targets with data |
 | `POST /api/v1/encryption-keys/reencrypt/trigger` | Yes (same helper), then processes | Yes (`processBatch` per batch) | Pending + resumable batches after creation |
 | `POST /api/v1/encryption-keys/{keyId}/reencrypt` | Yes, then processes | Yes | One old key only |
-| `GET /api/v1/encryption-keys/reencryption-batches` | — | — | Lists all batch rows (monitoring) |
+| `GET /api/v1/encryption-keys/reencryption-batches` | — | — | Lists batch rows (monitoring); paginated with optional filters |
 | `POST /api/v1/encryption-keys/reencryption-batches/{batchId}/resume` | — | Yes (that batch) | One batch |
 
 ---
@@ -81,7 +81,8 @@ Therefore, **batches created in step 2 are not necessarily processed in the same
 
 - **Active work** (pending / in-progress / failed) stays a **small** number: bounded by **targets × old keys with remaining data** (today: four targets).
 - **Total rows** in `ezkey_reencryption_batch` can **grow over time** because completed batches are not deleted by default; growth tracks **rotation history**, not tenant or user volume.
-- **Server-side pagination** for `GET .../reencryption-batches` is a **consistency / UX** choice, not a scaling requirement for typical deployments. See product priorities if harmonizing all admin lists.
+- **`GET .../reencryption-batches`** returns a **paged** body (`content` + `page`) with standard `page`, `size`, `sort`, plus optional filters: `status`, `targetTable`, `targetColumn`, `oldKeyId`, `newKeyId`, and **inclusive** `createdAfter` / `createdBefore` on `createdAt` (ISO-8601). The Admin UI encryption keys page uses the same contract (filters, sort, total count in the section header).
+- **Completion note (initiative):** Re-encryption batch list pagination and filters shipped; no further action unless archival or purge of old batch rows is required later.
 
 ---
 

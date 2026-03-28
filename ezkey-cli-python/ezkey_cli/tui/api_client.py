@@ -486,9 +486,38 @@ class ApiClient:
     """Trigger manual encryption key rotation."""
     return self._post("/api/v1/encryption-keys/rotate", data={})
 
-  def get_reencryption_batches(self) -> Optional[List[Dict[str, Any]]]:
-    """List all re-encryption batches."""
-    return self._get("/api/v1/encryption-keys/reencryption-batches")
+  def get_reencryption_batches(
+      self,
+      params: Optional[Dict[str, Any]] = None,
+  ) -> Optional[Dict[str, Any]]:
+    """List re-encryption batches (paginated Spring Page JSON: content + page)."""
+    return self._get("/api/v1/encryption-keys/reencryption-batches", params=params)
+
+  def get_reencryption_batch(self, batch_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Fetch a single re-encryption batch by id.
+
+    The Admin API only exposes a list endpoint; this walks pages until the batch is found.
+    """
+    page = 0
+    size = 100
+    while True:
+      data = self._get(
+          "/api/v1/encryption-keys/reencryption-batches",
+          params={"page": page, "size": size, "sort": "batchId,asc"},
+      )
+      if not data or not isinstance(data, dict):
+        return None
+      for row in data.get("content") or []:
+        if row.get("batchId") == batch_id:
+          return row
+      page_info = data.get("page") or {}
+      total_pages = page_info.get("totalPages")
+      if total_pages is None:
+        return None
+      page += 1
+      if page >= total_pages:
+        return None
 
   def resume_reencryption_batch(self, batch_id: int) -> Optional[Dict[str, Any]]:
     """Resume a failed or paused re-encryption batch."""

@@ -18,9 +18,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Size;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.ApiName;
@@ -35,6 +35,7 @@ import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
+import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.slf4j.Logger;
@@ -274,24 +275,99 @@ public class EncryptionKeyController {
   }
 
   /**
-   * List all re-encryption batches.
+   * List re-encryption batches with pagination and optional filters.
    *
-   * @return list of re-encryption batches
+   * @param status optional filter by batch status (invalid values ignored)
+   * @param targetTable optional exact match on target table name
+   * @param targetColumn optional exact match on target column name
+   * @param oldKeyId optional filter by old encryption key id
+   * @param newKeyId optional filter by new encryption key id
+   * @param createdAfter optional inclusive lower bound on {@code createdAt} (ISO-8601)
+   * @param createdBefore optional inclusive upper bound on {@code createdAt} (ISO-8601)
+   * @param pageable pagination and sort
+   * @return page of batch rows
    */
   @Operation(
       summary = "List re-encryption batches",
-      description = "Returns all re-encryption batches with their status and progress")
+      description =
+          "Returns re-encryption batches with pagination and optional filters. Use page, size, sort"
+              + " (default sort createdAt,DESC). Optional filters: status (PENDING, IN_PROGRESS,"
+              + " COMPLETED, FAILED, PAUSED), targetTable, targetColumn, oldKeyId, newKeyId,"
+              + " createdAfter, createdBefore (ISO-8601, inclusive bounds on createdAt). Sortable:"
+              + " batchId, status, targetTable, targetColumn, createdAt, startedAt, completedAt,"
+              + " progressPct, recordsTotal, recordsDone, oldKey.keyId, newKey.keyId.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Batches retrieved successfully"),
     @ApiResponse(responseCode = "500", description = "Internal server error")
   })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/reencryption-batches")
-  public ResponseEntity<List<ReencryptionBatchResponse>> listBatches() {
-    List<ReencryptionBatch> batches = batchRepository.findAll();
-    List<ReencryptionBatchResponse> responses =
-        batches.stream().map(this::toBatchResponse).collect(Collectors.toList());
-    return ResponseEntity.ok(responses);
+  public ResponseEntity<Page<ReencryptionBatchResponse>> listBatches(
+      @Parameter(
+              description =
+                  "Filter by batch status (PENDING, IN_PROGRESS, COMPLETED, FAILED, PAUSED); omit"
+                      + " for all")
+          @RequestParam(required = false)
+          String status,
+      @Parameter(description = "Filter by target table name (exact match)")
+          @RequestParam(required = false)
+          String targetTable,
+      @Parameter(description = "Filter by target column name (exact match)")
+          @RequestParam(required = false)
+          String targetColumn,
+      @Parameter(description = "Filter by old encryption key id") @RequestParam(required = false)
+          Long oldKeyId,
+      @Parameter(description = "Filter by new encryption key id") @RequestParam(required = false)
+          Long newKeyId,
+      @Parameter(
+              description =
+                  "Inclusive lower bound on createdAt (ISO-8601); aligns with Admin UI date range")
+          @RequestParam(required = false)
+          OffsetDateTime createdAfter,
+      @Parameter(
+              description =
+                  "Inclusive upper bound on createdAt (ISO-8601); aligns with Admin UI date range")
+          @RequestParam(required = false)
+          OffsetDateTime createdBefore,
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+
+    Specification<ReencryptionBatch> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          if (status != null && !status.isBlank()) {
+            try {
+              BatchStatus batchStatus = BatchStatus.valueOf(status.trim().toUpperCase());
+              predicates.add(cb.equal(root.get("status"), batchStatus));
+            } catch (IllegalArgumentException ignored) {
+              // Invalid enum: ignore filter (same as listKeys keyStatus)
+            }
+          }
+          if (targetTable != null && !targetTable.isBlank()) {
+            predicates.add(cb.equal(root.get("targetTable"), targetTable.trim()));
+          }
+          if (targetColumn != null && !targetColumn.isBlank()) {
+            predicates.add(cb.equal(root.get("targetColumn"), targetColumn.trim()));
+          }
+          if (oldKeyId != null) {
+            predicates.add(cb.equal(root.join("oldKey").get("keyId"), oldKeyId));
+          }
+          if (newKeyId != null) {
+            predicates.add(cb.equal(root.join("newKey").get("keyId"), newKeyId));
+          }
+          if (createdAfter != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), createdAfter));
+          }
+          if (createdBefore != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), createdBefore));
+          }
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+    Page<ReencryptionBatchResponse> page =
+        batchRepository.findAll(spec, pageable).map(this::toBatchResponse);
+    return ResponseEntity.ok(page);
   }
 
   /**

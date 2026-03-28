@@ -140,13 +140,18 @@ class ReencryptionBatchesScreen(Screen):
       self.app.push_screen(ReencryptionBatchDetailScreen(batch_id))
 
   def _load_batches(self) -> None:
-    """Load batches from API."""
+    """Load batches from API (server-side pagination)."""
     api_client = self.app.api_client
     if not api_client:
       self._set_status("No API client available")
       return
 
-    response = api_client.get_reencryption_batches()
+    params = {
+        "page": self.current_page,
+        "size": self.page_size,
+        "sort": "createdAt,desc",
+    }
+    response = api_client.get_reencryption_batches(params)
     if not response:
       log.warning("No re-encryption batches response")
       self._set_status("Failed to load batches")
@@ -158,23 +163,30 @@ class ReencryptionBatchesScreen(Screen):
 
     self._set_status("")
 
-    if isinstance(response, list):
+    if isinstance(response, dict) and "content" in response:
+      self.all_batches = response.get("content") or []
+      page_info = response.get("page") or {}
+      self.total_elements = page_info.get("totalElements", 0)
+      tp = page_info.get("totalPages")
+      self.total_pages = tp if tp is not None else 0
+      if page_info.get("number") is not None:
+        self.current_page = page_info.get("number", self.current_page)
+    elif isinstance(response, list):
       self.all_batches = response
+      self.total_elements = len(self.all_batches)
+      self.total_pages = max(1, math.ceil(self.total_elements / self.page_size))
+      if self.current_page >= self.total_pages:
+        self.current_page = max(self.total_pages - 1, 0)
     else:
       self.all_batches = []
-
-    self.total_elements = len(self.all_batches)
-    self.total_pages = max(1, math.ceil(self.total_elements / self.page_size))
-    if self.current_page >= self.total_pages:
-      self.current_page = max(self.total_pages - 1, 0)
+      self.total_elements = 0
+      self.total_pages = 0
 
     self._render_page()
 
   def _render_page(self) -> None:
-    """Render current page of batches."""
-    start = self.current_page * self.page_size
-    end = start + self.page_size
-    page_items = self.all_batches[start:end]
+    """Render current page of batches (already one server page in all_batches)."""
+    page_items = self.all_batches
 
     table = self.query_one("#table", DataTable)
     table.clear()
@@ -208,8 +220,9 @@ class ReencryptionBatchesScreen(Screen):
       )
 
     page_label = self.query_one("#page_info", Label)
+    denom = max(self.total_pages, 1)
     page_label.update(
-        f"Page {self.current_page + 1} / {max(self.total_pages, 1)} · Total {self.total_elements}"
+        f"Page {self.current_page + 1} / {denom} · Total {self.total_elements}"
     )
 
   def _set_status(self, message: str) -> None:
@@ -291,25 +304,25 @@ class ReencryptionBatchesScreen(Screen):
     """Go to next page."""
     if self.total_pages and self.current_page + 1 < self.total_pages:
       self.current_page += 1
-      self._render_page()
+      self._load_batches()
 
   def action_prev_page(self) -> None:
     """Go to previous page."""
     if self.current_page > 0:
       self.current_page -= 1
-      self._render_page()
+      self._load_batches()
 
   def action_first_page(self) -> None:
     """Go to first page."""
     if self.current_page != 0:
       self.current_page = 0
-      self._render_page()
+      self._load_batches()
 
   def action_last_page(self) -> None:
     """Go to last page."""
     if self.total_pages and self.current_page + 1 < self.total_pages:
       self.current_page = self.total_pages - 1
-      self._render_page()
+      self._load_batches()
 
   def action_increase_page_size(self) -> None:
     """Increase page size and persist."""
@@ -317,6 +330,7 @@ class ReencryptionBatchesScreen(Screen):
     self.page_size = max(1, self.page_size + 5)
     self._cap_page_size_to_viewport()
     self._persist_page_size()
+    self.current_page = 0
     self._load_batches()
 
   def action_decrease_page_size(self) -> None:
@@ -324,6 +338,7 @@ class ReencryptionBatchesScreen(Screen):
     self.page_size_mode = "manual"
     self.page_size = max(5, self.page_size - 5)
     self._persist_page_size()
+    self.current_page = 0
     self._load_batches()
 
   def action_quit(self) -> None:

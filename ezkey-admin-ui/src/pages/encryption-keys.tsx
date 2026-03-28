@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -21,19 +21,22 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
+import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { HelpInlineButton } from '@/components/help/help-inline-button';
 import { getApiErrorMessage } from '@/lib/api-client';
+import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
+import { useDebounce } from '@/hooks/use-debounce';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import {
   listKeys,
+  listBatches,
   useCreateBatches,
   useGetKey,
-  useListBatches,
   useResumeBatch,
   useRotateKey,
   useTriggerFullReencryption,
@@ -43,6 +46,7 @@ import type {
   EncryptionKeyResponse,
   KeyRotationResponse,
   PagedModelEncryptionKeyResponse,
+  PagedModelReencryptionBatchResponse,
   ReencryptionBatchResponse,
   ReencryptionTriggerResponse,
   ReencryptionKeyResponse,
@@ -67,6 +71,7 @@ function BatchStatusBadge({ status }: { status?: string }) {
   if (status === 'IN_PROGRESS' || status === 'PROCESSING') return <Tooltip content={t('batchStatus.helpInProgress')}><Badge variant="warning">{t('batchStatus.labelInProgress')}</Badge></Tooltip>;
   if (status === 'FAILED') return <Tooltip content={t('batchStatus.helpFailed')}><Badge variant="error">{t('batchStatus.labelFailed')}</Badge></Tooltip>;
   if (status === 'PENDING') return <Tooltip content={t('batchStatus.helpPending')}><Badge variant="muted">{t('batchStatus.labelPending')}</Badge></Tooltip>;
+  if (status === 'PAUSED') return <Tooltip content={t('batchStatus.helpPaused')}><Badge variant="warning">{t('batchStatus.labelPaused')}</Badge></Tooltip>;
   return <Badge variant="muted">{status ?? '—'}</Badge>;
 }
 
@@ -384,17 +389,82 @@ function ReencryptionBatchesSection() {
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [targetTableInput, setTargetTableInput] = useState('');
+  const [targetColumnInput, setTargetColumnInput] = useState('');
+  const [oldKeyIdInput, setOldKeyIdInput] = useState('');
+  const [newKeyIdInput, setNewKeyIdInput] = useState('');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [selectedBatch, setSelectedBatch] = useState<ReencryptionBatchResponse | null>(null);
+  const [headerTotal, setHeaderTotal] = useState(0);
 
-  const { data: batchesData, isLoading } = useListBatches({
-    query: { enabled: expanded },
+  const debouncedTable = useDebounce(targetTableInput, 400);
+  const debouncedColumn = useDebounce(targetColumnInput, 400);
+  const debouncedOldKey = useDebounce(oldKeyIdInput, 400);
+  const debouncedNewKey = useDebounce(newKeyIdInput, 400);
+
+  const apiDateParams =
+    dateRange.from && dateRange.to
+      ? dateRangeToApiParams(dateRange.from, dateRange.to)
+      : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
+
+  function parseKeyId(s: string): number | undefined {
+    const t = s.trim();
+    if (!t) return undefined;
+    const n = parseInt(t, 10);
+    return Number.isFinite(n) ? n : undefined;
+  }
+
+  const { data, pagination, isLoading } = usePaginatedFromOrval<
+    ReencryptionBatchResponse,
+    {
+      status?: string;
+      targetTable?: string;
+      targetColumn?: string;
+      oldKeyId?: number;
+      newKeyId?: number;
+      createdAfter?: string;
+      createdBefore?: string;
+    }
+  >({
+    queryKey: [
+      'reencryption-batches',
+      statusFilter,
+      debouncedTable,
+      debouncedColumn,
+      debouncedOldKey,
+      debouncedNewKey,
+      dateRange.from,
+      dateRange.to,
+    ],
+    baseParams: {
+      status: statusFilter || undefined,
+      targetTable: debouncedTable.trim() || undefined,
+      targetColumn: debouncedColumn.trim() || undefined,
+      oldKeyId: parseKeyId(debouncedOldKey),
+      newKeyId: parseKeyId(debouncedNewKey),
+      createdAfter: apiDateParams.createdAfter,
+      createdBefore: apiDateParams.createdBefore,
+    },
+    fetchPage: (params) => listBatches(params) as Promise<PagedModelReencryptionBatchResponse>,
+    defaultSort: 'createdAt,DESC',
+    defaultSize: 20,
+    enabled: expanded,
   });
-  const batches = (batchesData as ReencryptionBatchResponse[] | undefined) ?? [];
 
-  const filteredBatches = useMemo(() => {
-    if (!statusFilter) return batches;
-    return batches.filter((b) => b.status === statusFilter);
-  }, [batches, statusFilter]);
+  useEffect(() => {
+    if (expanded) {
+      setHeaderTotal(pagination.totalElements);
+    }
+  }, [expanded, pagination.totalElements]);
+
+  const hasFilters = Boolean(
+    statusFilter
+    || debouncedTable.trim()
+    || debouncedColumn.trim()
+    || parseKeyId(debouncedOldKey) != null
+    || parseKeyId(debouncedNewKey) != null
+    || (dateRange.from && dateRange.to),
+  );
 
   const triggerMutation = useTriggerFullReencryption({
     mutation: {
@@ -430,9 +500,25 @@ function ReencryptionBatchesSection() {
   });
 
   const batchColumns: ColumnDef<ReencryptionBatchResponse>[] = [
-    { header: t('batchesSection.columnsId'), key: 'batchId', className: 'w-14', render: (r) => <span className="font-mono text-xs">{r.batchId}</span> },
-    { header: t('batchesSection.columnsTable'), key: 'targetTable', render: (r) => <span className="font-mono text-xs">{r.targetTable}</span> },
-    { header: t('batchesSection.columnsColumn'), key: 'targetColumn', render: (r) => <span className="font-mono text-xs">{r.targetColumn}</span> },
+    {
+      header: t('batchesSection.columnsId'),
+      key: 'batchId',
+      className: 'w-14',
+      sortKey: 'batchId',
+      render: (r) => <span className="font-mono text-xs">{r.batchId}</span>,
+    },
+    {
+      header: t('batchesSection.columnsTable'),
+      key: 'targetTable',
+      sortKey: 'targetTable',
+      render: (r) => <span className="font-mono text-xs">{r.targetTable}</span>,
+    },
+    {
+      header: t('batchesSection.columnsColumn'),
+      key: 'targetColumn',
+      sortKey: 'targetColumn',
+      render: (r) => <span className="font-mono text-xs">{r.targetColumn}</span>,
+    },
     {
       header: t('batchesSection.columnsKeys'),
       key: 'keys',
@@ -442,11 +528,17 @@ function ReencryptionBatchesSection() {
         </span>
       ),
     },
-    { header: t('batchesSection.columnsStatus'), key: 'status', render: (r) => <BatchStatusBadge status={r.status} /> },
+    {
+      header: t('batchesSection.columnsStatus'),
+      key: 'status',
+      sortKey: 'status',
+      render: (r) => <BatchStatusBadge status={r.status} />,
+    },
     {
       header: t('batchesSection.columnsProgress'),
       key: 'progress',
       className: 'w-32',
+      sortKey: 'progressPct',
       render: (r) => <ProgressBar pct={r.progressPct} />,
     },
     {
@@ -463,7 +555,7 @@ function ReencryptionBatchesSection() {
       header: '',
       key: 'actions',
       render: (r) =>
-        r.status === 'FAILED' || r.status === 'PENDING' ? (
+        r.status === 'FAILED' || r.status === 'PENDING' || r.status === 'PAUSED' ? (
           <Tooltip content={t('batchesSection.helpResume')}>
             <Button
               size="sm"
@@ -490,7 +582,7 @@ function ReencryptionBatchesSection() {
         <div className="flex items-center gap-2 min-w-0">
           <RotateCcw className="size-4 text-accent shrink-0" />
           <h2 className="font-black text-sm uppercase tracking-wider">{t('batchesSection.title')}</h2>
-          {batches.length > 0 && <Badge variant="muted">{batches.length}</Badge>}
+          {headerTotal > 0 && <Badge variant="muted">{headerTotal}</Badge>}
           <span
             className="inline-flex shrink-0"
             onClick={(e) => e.stopPropagation()}
@@ -499,10 +591,20 @@ function ReencryptionBatchesSection() {
             <ContextHelp
               title={t('batchesSection.sectionHelpTitle')}
               content={
-                <Trans
-                  i18nKey="encryption-keys:batchesSection.sectionHelpContent"
-                  components={{ strong: <strong /> }}
-                />
+                <div className="space-y-3">
+                  <p>
+                    <Trans
+                      i18nKey="encryption-keys:batchesSection.sectionHelpContent"
+                      components={{ strong: <strong /> }}
+                    />
+                  </p>
+                  <p>
+                    <Trans
+                      i18nKey="encryption-keys:batchesSection.sectionHelpFilters"
+                      components={{ strong: <strong /> }}
+                    />
+                  </p>
+                </div>
               }
               ariaLabel={t('common:help.ariaLabel', { title: t('batchesSection.sectionHelpTitle') })}
             />
@@ -513,60 +615,125 @@ function ReencryptionBatchesSection() {
 
       {expanded && (
         <div className="border-t-2 border-fg/20 p-4 space-y-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-40">
-              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="">{t('batchesSection.filterAll')}</option>
-                <option value="PENDING">{t('batchStatus.labelPending')}</option>
-                <option value="IN_PROGRESS">{t('batchStatus.labelInProgress')}</option>
-                <option value="COMPLETED">{t('batchStatus.labelCompleted')}</option>
-                <option value="FAILED">{t('batchStatus.labelFailed')}</option>
-              </Select>
+          {/*
+            Two rows: (1) common filters + primary actions stay on one band so buttons do not wrap
+            under many fields; (2) precise filters (table/column/key ids) for power users.
+          */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-end gap-2 justify-between gap-y-2">
+              <div className="flex flex-wrap items-end gap-2 min-w-0">
+                <div className="w-40">
+                  <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="">{t('batchesSection.filterAll')}</option>
+                    <option value="PENDING">{t('batchStatus.labelPending')}</option>
+                    <option value="IN_PROGRESS">{t('batchStatus.labelInProgress')}</option>
+                    <option value="COMPLETED">{t('batchStatus.labelCompleted')}</option>
+                    <option value="FAILED">{t('batchStatus.labelFailed')}</option>
+                    <option value="PAUSED">{t('batchStatus.labelPaused')}</option>
+                  </Select>
+                </div>
+                <DateRangeFilter
+                  value={dateRange}
+                  onChange={setDateRange}
+                  showClear={true}
+                  emptyOptionLabel={t('batchesSection.dateRangeFull')}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <Tooltip content={t('batchesSection.helpCreateBatches')}>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    className="gap-1.5"
+                    onClick={() => createBatchesMutation.mutate()}
+                    disabled={createBatchesMutation.isPending}
+                  >
+                    <ListPlus className="size-3.5" />
+                    {createBatchesMutation.isPending ? t('batchesSection.creating') : t('batchesSection.createBatches')}
+                  </Button>
+                </Tooltip>
+                <Tooltip content={t('batchesSection.helpTriggerFull')}>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    className="gap-1.5"
+                    onClick={() => triggerMutation.mutate()}
+                    disabled={triggerMutation.isPending}
+                  >
+                    <RefreshCw className="size-3.5" />
+                    {triggerMutation.isPending ? t('batchesSection.triggering') : t('batchesSection.triggerFull')}
+                  </Button>
+                </Tooltip>
+              </div>
             </div>
-            <div className="flex gap-2 ml-auto">
-              <Tooltip content={t('batchesSection.helpCreateBatches')}>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="gap-1.5"
-                  onClick={() => createBatchesMutation.mutate()}
-                  disabled={createBatchesMutation.isPending}
-                >
-                  <ListPlus className="size-3.5" />
-                  {createBatchesMutation.isPending ? t('batchesSection.creating') : t('batchesSection.createBatches')}
-                </Button>
-              </Tooltip>
-              <Tooltip content={t('batchesSection.helpTriggerFull')}>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="gap-1.5"
-                  onClick={() => triggerMutation.mutate()}
-                  disabled={triggerMutation.isPending}
-                >
-                  <RefreshCw className="size-3.5" />
-                  {triggerMutation.isPending ? t('batchesSection.triggering') : t('batchesSection.triggerFull')}
-                </Button>
-              </Tooltip>
+
+            <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-fg/15">
+              <div className="w-36">
+                <Tooltip content={t('batchesSection.tooltipTargetTable')}>
+                  <div className="w-full">
+                    <Input
+                      placeholder={t('batchesSection.placeholderTargetTable')}
+                      value={targetTableInput}
+                      onChange={(e) => setTargetTableInput(e.target.value)}
+                      className="text-xs"
+                    />
+                  </div>
+                </Tooltip>
+              </div>
+              <div className="w-36">
+                <Tooltip content={t('batchesSection.tooltipTargetColumn')}>
+                  <div className="w-full">
+                    <Input
+                      placeholder={t('batchesSection.placeholderTargetColumn')}
+                      value={targetColumnInput}
+                      onChange={(e) => setTargetColumnInput(e.target.value)}
+                      className="text-xs"
+                    />
+                  </div>
+                </Tooltip>
+              </div>
+              <div className="w-24">
+                <Tooltip content={t('batchesSection.tooltipOldKeyId')}>
+                  <div className="w-full">
+                    <Input
+                      placeholder={t('batchesSection.placeholderOldKeyId')}
+                      value={oldKeyIdInput}
+                      onChange={(e) => setOldKeyIdInput(e.target.value)}
+                      type="number"
+                      min={1}
+                      className="text-xs"
+                    />
+                  </div>
+                </Tooltip>
+              </div>
+              <div className="w-24">
+                <Tooltip content={t('batchesSection.tooltipNewKeyId')}>
+                  <div className="w-full">
+                    <Input
+                      placeholder={t('batchesSection.placeholderNewKeyId')}
+                      value={newKeyIdInput}
+                      onChange={(e) => setNewKeyIdInput(e.target.value)}
+                      type="number"
+                      min={1}
+                      className="text-xs"
+                    />
+                  </div>
+                </Tooltip>
+              </div>
             </div>
           </div>
 
-          <DataTable
+          <PaginatedTable
             columns={batchColumns}
-            data={filteredBatches}
+            data={data}
             isLoading={isLoading}
             onRowClick={(row) => setSelectedBatch(row)}
             keyExtractor={(r, i) => r.batchId ?? i}
-            emptyMessage={statusFilter ? t('batchesSection.emptyFiltered') : t('batchesSection.emptyAll')}
+            emptyMessage={hasFilters ? t('batchesSection.emptyFiltered') : t('batchesSection.emptyAll')}
+            currentSort={pagination.sort}
+            onSort={pagination.setSort}
+            pagination={pagination}
           />
-          {!isLoading && filteredBatches.length > 0 && (
-            <p className="text-xs text-fg-muted">
-              {filteredBatches.length === 1
-                ? t('batchesSection.batchCount', { count: filteredBatches.length })
-                : t('batchesSection.batchCountPlural', { count: filteredBatches.length })}
-              {statusFilter && ` ${t('batchesSection.filteredFrom', { total: batches.length })}`}
-            </p>
-          )}
         </div>
       )}
 
@@ -581,6 +748,7 @@ type KeyStatusFilter = 'all' | 'PRIMARY' | 'ENABLED' | 'DISABLED' | 'PENDING';
 
 export default function EncryptionKeysPage() {
   const { t } = useTranslation('encryption-keys');
+  const queryClient = useQueryClient();
   const [selectedKeyId, setSelectedKeyId] = useState<number | null>(null);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [reencryptTarget, setReencryptTarget] = useState<EncryptionKeyResponse | null>(null);
@@ -709,7 +877,15 @@ export default function EncryptionKeysPage() {
               <option value="PENDING">{t('list.filterStatusPending')}</option>
             </Select>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              void refetch();
+              void queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+            }}
+            className="gap-1.5"
+          >
             <RefreshCw className="size-3.5" />
             {t('list.refresh')}
           </Button>

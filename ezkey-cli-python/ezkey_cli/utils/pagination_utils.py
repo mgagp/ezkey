@@ -21,6 +21,21 @@ SORTABLE_FIELDS = {
     'enrollment': ['enrollmentId', 'enrollmentName', 'createdAt', 'integrationId', 'status'],
     'integration': ['id', 'createdAt', 'active'],
     'admin': ['id', 'createdAt', 'username', 'role'],  # To be confirmed with controller
+    'reencryption-batch': [
+        'batchId',
+        'status',
+        'targetTable',
+        'targetColumn',
+        'createdAt',
+        'startedAt',
+        'completedAt',
+        'progressPct',
+        'recordsTotal',
+        'recordsDone',
+        'recordsFailed',
+        'oldKey.keyId',
+        'newKey.keyId',
+    ],
 }
 
 

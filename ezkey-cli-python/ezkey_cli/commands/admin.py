@@ -1671,17 +1671,43 @@ def create_reencryption_batches(ctx):
 
 
 @reencrypt_group.command('batches')
+@click.option('--status', type=str,
+              help='Filter by batch status (PENDING, IN_PROGRESS, COMPLETED, FAILED, PAUSED)')
+@click.option('--target-table', type=str, help='Exact match on target table name')
+@click.option('--target-column', type=str, help='Exact match on target column name')
+@click.option('--old-key-id', type=int, help='Filter by old encryption key id')
+@click.option('--new-key-id', type=int, help='Filter by new encryption key id')
+@click.option('--created-after', type=str,
+              help='Inclusive lower bound on createdAt (ISO-8601, e.g. 2025-01-31T00:00:00Z)')
+@click.option('--created-before', type=str,
+              help='Inclusive upper bound on createdAt (ISO-8601, e.g. 2025-01-31T23:59:59Z)')
+@click.option('--page', type=int, default=0, help='Page number (0-based, default: 0)')
+@click.option('--size', type=int, default=20, help='Results per page (default: 20)')
+@click.option('--sort', type=str, default='createdAt,desc',
+              help='Sort by field (field,asc|desc, default: createdAt,desc)')
+@click.option('--summary', is_flag=True, help='Show pagination metadata')
 @click.pass_context
-def list_reencryption_batches(ctx):
+def list_reencryption_batches(
+    ctx,
+    status,
+    target_table,
+    target_column,
+    old_key_id,
+    new_key_id,
+    created_after,
+    created_before,
+    page,
+    size,
+    sort,
+    summary,
+):
     """
-    List all re-encryption batches with their status and progress.
+    List re-encryption batches with server-side pagination and optional filters.
 
-    Returns all re-encryption batches showing:
-    - Status (PENDING, PROCESSING, COMPLETED, FAILED, PAUSED)
-    - Progress percentage
-    - Record counts (total, done, failed, skipped)
-    - Timestamps (started, completed)
-    - Error messages (if failed)
+    Response body matches other admin lists: content (array) and page (metadata).
+
+    Sortable fields include batchId, status, targetTable, targetColumn, createdAt,
+    startedAt, completedAt, progressPct, recordsTotal, recordsDone, oldKey.keyId, newKey.keyId.
     """
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -1693,11 +1719,42 @@ def list_reencryption_batches(ctx):
         OutputUtils.error("Admin URL not configured. Use 'ezkey configure set --admin-url <url>'")
         return
 
-    url = f"{admin_url}/api/v1/encryption-keys/reencryption-batches"
-    OutputUtils.verbose(f"GET {url}", verbose)
+    try:
+        validate_pagination_options(page, size, sort, 'reencryption-batch')
 
-    response = http_client.get(url)
-    OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+        query_params = build_pagination_params(page, size, sort)
+        if status:
+            query_params['status'] = status
+        if target_table:
+            query_params['targetTable'] = target_table
+        if target_column:
+            query_params['targetColumn'] = target_column
+        if old_key_id is not None:
+            query_params['oldKeyId'] = old_key_id
+        if new_key_id is not None:
+            query_params['newKeyId'] = new_key_id
+        if created_after:
+            query_params['createdAfter'] = created_after
+        if created_before:
+            query_params['createdBefore'] = created_before
+
+        url = f"{admin_url}/api/v1/encryption-keys/reencryption-batches"
+        OutputUtils.verbose(f"GET {url}", verbose)
+        OutputUtils.verbose(f"Params: {query_params}", verbose)
+
+        response = http_client.get(url, params=query_params)
+
+        if summary and response.success and response.data:
+            display_page_summary(response.data, verbose=verbose)
+
+        OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
+
+    except (ValueError, click.BadParameter) as e:
+        OutputUtils.error(str(e))
+        ctx.exit(1)
+    except Exception as e:
+        OutputUtils.error(f"Failed to list re-encryption batches: {str(e)}")
+        ctx.exit(1)
 
 
 @reencrypt_group.command('resume')

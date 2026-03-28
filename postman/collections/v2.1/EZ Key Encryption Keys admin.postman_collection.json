@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "51d43447-bb57-44de-bfc6-8c0d25af7318",
     "name": "EZ Key Encryption Keys admin",
-    "description": "Collection for encryption key management and rotation operations in the Admin API.\n\n## Endpoints\n\n- **List Keys**: Get all encryption keys\n- **Get Primary Key**: Get current primary encryption key\n- **Get Key by ID**: Get specific encryption key details\n- **Rotate Key**: Manually trigger key rotation\n- **List Re-encryption Batches**: Get all re-encryption batches\n- **Resume Batch**: Resume a failed or paused re-encryption batch\n- **Trigger Full Re-encryption**: Manually trigger full re-encryption process\n- **Trigger Re-encryption for Key**: Trigger re-encryption for a specific key\n- **Create Re-encryption Batches**: Create batches without processing\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.",
+    "description": "Collection for encryption key management and rotation operations in the Admin API.\n\n## Endpoints\n\n- **List Keys**: Get encryption keys (paginated)\n- **Get Primary Key**: Get current primary encryption key\n- **Get Key by ID**: Get specific encryption key details\n- **Rotate Key**: Manually trigger key rotation\n- **List Re-encryption Batches**: Get re-encryption batches (paginated; optional filters)\n- **Resume Batch**: Resume a failed or paused re-encryption batch\n- **Trigger Full Re-encryption**: Manually trigger full re-encryption process\n- **Trigger Re-encryption for Key**: Trigger re-encryption for a specific key\n- **Create Re-encryption Batches**: Create batches without processing\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -239,15 +239,20 @@
               "    pm.response.to.have.status(200);",
               "});",
               "",
-              "pm.test(\"Response is an array\", function () {",
+              "pm.test(\"Response has content and page\", function () {",
               "    var jsonData = pm.response.json();",
-              "    pm.expect(jsonData).to.be.an('array');",
+              "    pm.expect(jsonData).to.have.property('content');",
+              "    pm.expect(jsonData).to.have.property('page');",
+              "    pm.expect(jsonData.content).to.be.an('array');",
+              "    pm.expect(jsonData.page).to.have.property('totalElements');",
+              "    pm.expect(jsonData.page).to.have.property('totalPages');",
               "});",
               "",
               "if (pm.response.code === 200) {",
               "    var jsonData = pm.response.json();",
-              "    if (jsonData.length > 0) {",
-              "        var failedBatch = jsonData.find(b => b.status === 'FAILED' || b.status === 'PAUSED');",
+              "    var rows = jsonData.content || [];",
+              "    if (rows.length > 0) {",
+              "        var failedBatch = rows.find(b => b.status === 'FAILED' || b.status === 'PAUSED');",
               "        if (failedBatch) {",
               "            pm.environment.set(\"reencryptionBatchId\", failedBatch.batchId);",
               "        }",
@@ -263,7 +268,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url_admin_api}}/api/v1/encryption-keys/reencryption-batches",
+          "raw": "{{base_url_admin_api}}/api/v1/encryption-keys/reencryption-batches?page=0&size=20&sort=createdAt,desc",
           "host": [
             "{{base_url_admin_api}}"
           ],
@@ -272,9 +277,68 @@
             "v1",
             "encryption-keys",
             "reencryption-batches"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Zero-based page index"
+            },
+            {
+              "key": "size",
+              "value": "20",
+              "description": "Page size"
+            },
+            {
+              "key": "sort",
+              "value": "createdAt,desc",
+              "description": "Sort (e.g. batchId,asc, status,desc, targetTable)"
+            },
+            {
+              "key": "status",
+              "value": "",
+              "description": "Optional: PENDING, IN_PROGRESS, COMPLETED, FAILED, PAUSED",
+              "disabled": true
+            },
+            {
+              "key": "targetTable",
+              "value": "",
+              "description": "Optional exact match on target table",
+              "disabled": true
+            },
+            {
+              "key": "targetColumn",
+              "value": "",
+              "description": "Optional exact match on target column",
+              "disabled": true
+            },
+            {
+              "key": "oldKeyId",
+              "value": "",
+              "description": "Optional filter on old key id",
+              "disabled": true
+            },
+            {
+              "key": "newKeyId",
+              "value": "",
+              "description": "Optional filter on new key id",
+              "disabled": true
+            },
+            {
+              "key": "createdAfter",
+              "value": "",
+              "description": "Optional inclusive lower bound on createdAt (ISO-8601)",
+              "disabled": true
+            },
+            {
+              "key": "createdBefore",
+              "value": "",
+              "description": "Optional inclusive upper bound on createdAt (ISO-8601)",
+              "disabled": true
+            }
           ]
         },
-        "description": "Returns all re-encryption batches with their status, progress, and statistics. Use this to monitor the progress of data re-encryption after key rotation."
+        "description": "Returns re-encryption batches with server-side pagination. Response has content (array) and page (size, number, totalElements, totalPages). Optional query params filter by status, target table/column, old/new key id, and createdAt range."
       },
       "response": []
     },

@@ -75,20 +75,12 @@ class ReencryptionBatchDetailScreen(Screen):
       self._show_error("No API client available")
       return
 
-    response = api_client.get_reencryption_batches()
-    if not response:
+    batch = api_client.get_reencryption_batch(self.batch_id)
+    if not batch:
       if api_client.last_auth_error and hasattr(self.app, "handle_auth_error"):
         self.app.handle_auth_error()
         return
-      self._show_error(f"Failed to load batch {self.batch_id}")
-      return
-
-    batch = None
-    if isinstance(response, list):
-      batch = next((b for b in response if b.get("batchId") == self.batch_id), None)
-
-    if not batch:
-      self._show_error(f"Batch {self.batch_id} not found")
+      self._show_error(f"Batch {self.batch_id} not found or failed to load")
       return
 
     self.batch_data = batch

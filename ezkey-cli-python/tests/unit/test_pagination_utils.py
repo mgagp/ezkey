@@ -225,7 +225,14 @@ class TestSortableFieldsConfiguration:
 
     def test_all_entity_types_defined(self):
         """Test all expected entity types have sortable fields defined."""
-        expected_types = ['audit-log', 'auth-attempt', 'enrollment', 'integration', 'admin']
+        expected_types = [
+            'audit-log',
+            'auth-attempt',
+            'enrollment',
+            'integration',
+            'admin',
+            'reencryption-batch',
+        ]
         for entity_type in expected_types:
             assert entity_type in SORTABLE_FIELDS
             assert len(SORTABLE_FIELDS[entity_type]) > 0

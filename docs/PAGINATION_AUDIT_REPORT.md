@@ -43,7 +43,7 @@ This is the primary administration API where pagination is most critical for ope
 | Controller | Endpoint | Method | Current Return Type | Priority |
 |------------|----------|--------|---------------------|----------|
 | `EncryptionKeyController` | `GET /api/v1/encryption-keys` | `listKeys()` | `List<EncryptionKeyResponse>` | 🟢 Low |
-| `EncryptionKeyController` | `GET /api/v1/encryption-keys/reencryption-batches` | `listBatches()` | `List<ReencryptionBatchResponse>` | 🟢 Low |
+| `EncryptionKeyController` | `GET /api/v1/encryption-keys/reencryption-batches` | `listBatches()` | `Page<ReencryptionBatchResponse>` + filters | ✅ Done |
 | `ApiKeyController` | `GET /api/v1/api-keys/integration/{integrationId}` | `listApiKeys()` | `List<ApiKeyResponseDto>` | 🟢 Low |
 
 #### ✅ Single Resource Endpoints (No Pagination Needed)

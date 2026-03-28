@@ -217,7 +217,7 @@ This file will be in UTF-8 without BOM.
 2. GET `/api/v1/encryption-keys/primary` - Get current primary key
 3. GET `/api/v1/encryption-keys/{keyId}` - Get key by ID (Long type)
 4. POST `/api/v1/encryption-keys/rotate` - Manually trigger key rotation
-5. GET `/api/v1/encryption-keys/reencryption-batches` - List all re-encryption batches
+5. GET `/api/v1/encryption-keys/reencryption-batches` - List re-encryption batches (paginated; optional filters: status, targetTable, targetColumn, oldKeyId, newKeyId, createdAfter, createdBefore)
 6. POST `/api/v1/encryption-keys/reencryption-batches/{batchId}/resume` - Resume batch (Integer type)
 7. POST `/api/v1/encryption-keys/reencrypt/trigger` - Trigger full re-encryption
 8. POST `/api/v1/encryption-keys/{keyId}/reencrypt` - Trigger re-encryption for specific key (Long type)
@@ -250,7 +250,7 @@ This file will be in UTF-8 without BOM.
    - ✅ Calls POST `/api/v1/encryption-keys/reencrypt/create-batches` - aligned
 
 7. `batches` command:
-   - ✅ Calls GET `/api/v1/encryption-keys/reencryption-batches` - aligned
+   - ✅ Calls GET `/api/v1/encryption-keys/reencryption-batches` with pagination (`--page`, `--size`, `--sort`) and the same optional filters as the API (`--status`, `--target-table`, `--target-column`, `--old-key-id`, `--new-key-id`, `--created-after`, `--created-before`); `--summary` shows page metadata - aligned
 
 8. `resume` command:
    - ✅ `--batch-id` (required, type int) calls POST `/reencryption-batches/{batchId}/resume` - aligned

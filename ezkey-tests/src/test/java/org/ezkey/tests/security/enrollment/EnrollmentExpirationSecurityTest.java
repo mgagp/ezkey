@@ -189,8 +189,10 @@ public class EnrollmentExpirationSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    String body = verifyResponse.getBody().asString();
-    assertThat(body).containsIgnoringCase("expired");
+    // Auth API returns RFC 9457 ProblemDetail with safe generic detail (no "expired" in body).
+    assertThat(verifyResponse.jsonPath().getInt("status")).isEqualTo(400);
+    assertThat(verifyResponse.jsonPath().getString("type")).endsWith("/enrollment-verify-failed");
+    assertThat(verifyResponse.jsonPath().getString("detail")).isNotBlank();
 
     // Status may be EXPIRED (if persisted) or BOUND (transaction rolled back)
     String status = db.getEnrollmentStatus(enrollmentId);
