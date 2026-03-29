@@ -10,6 +10,7 @@
 
 package org.ezkey.enrollment.domain.repository;
 
+import jakarta.persistence.LockModeType;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +18,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
@@ -74,6 +76,14 @@ public interface EnrollmentRepository
    * @return true if at least one enrollment exists for the integration, false otherwise
    */
   boolean existsByIntegrationId(Integer integrationId);
+
+  /**
+   * Loads an enrollment with a pessimistic write lock for re-encryption persistence so concurrent
+   * {@code version} bumps cannot win the race between read and write on the same row.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT e FROM Enrollment e WHERE e.enrollmentId = :id")
+  Optional<Enrollment> findByIdForReencryptionUpdate(@Param("id") Integer id);
 
   /**
    * Finds and locks a CREATED enrollment by ID for secure binding.

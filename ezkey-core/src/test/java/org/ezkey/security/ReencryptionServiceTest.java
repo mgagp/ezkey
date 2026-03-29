@@ -18,18 +18,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
@@ -47,11 +49,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Critical unit tests for ReencryptionService.
@@ -92,8 +94,9 @@ class ReencryptionServiceTest {
   @Mock private AuthAttemptRepository authAttemptRepository;
   @Mock private TinkProperties properties;
   @Mock private AuditLogService auditLogService;
+  @Mock private EntityManager entityManager;
 
-  @InjectMocks private ReencryptionService service;
+  private ReencryptionService service;
 
   private EncryptionKey oldKey;
   private EncryptionKey newKey;
@@ -102,6 +105,20 @@ class ReencryptionServiceTest {
 
   @BeforeEach
   void setUp() {
+    service =
+        new ReencryptionService(
+            encryptionService,
+            keyManager,
+            keyRepository,
+            batchRepository,
+            enrollmentRepository,
+            authAttemptRepository,
+            properties,
+            auditLogService,
+            entityManager,
+            null);
+    ReflectionTestUtils.setField(service, "self", service);
+
     // Setup encryption keys
     oldKey = new EncryptionKey();
     oldKey.setKeyId(1111111111L);
@@ -140,6 +157,7 @@ class ReencryptionServiceTest {
     lenient().when(keyManager.isInitialized()).thenReturn(true);
     lenient().when(keyManager.getCurrentPrimaryKeyId()).thenReturn(2222222222L);
     lenient().when(keyRepository.findById(2222222222L)).thenReturn(java.util.Optional.of(newKey));
+    lenient().when(batchRepository.findById(1)).thenReturn(Optional.of(batch));
   }
 
   // ===== PRIORITY 1: reencryptRecord() Tests =====
@@ -315,7 +333,11 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionService.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
-    when(enrollmentRepository.saveAll(anyList()))
+    when(enrollmentRepository.findByIdForReencryptionUpdate(1))
+        .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
+    when(enrollmentRepository.findByIdForReencryptionUpdate(2))
+        .thenAnswer(inv -> Optional.of(createMockEnrollment(2, "ENC:1111111111:data2")));
+    when(enrollmentRepository.save(any(Enrollment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
@@ -327,7 +349,7 @@ class ReencryptionServiceTest {
     assertEquals(0, batch.getRecordsSkipped());
     assertEquals(new BigDecimal("100.00"), batch.getProgressPct());
     verify(batchRepository, atLeast(1)).save(batch);
-    verify(enrollmentRepository).saveAll(anyList()); // Verify batch save
+    verify(enrollmentRepository, times(2)).save(any(Enrollment.class));
   }
 
   @Test
@@ -346,7 +368,9 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionService.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
-    when(enrollmentRepository.saveAll(anyList()))
+    when(enrollmentRepository.findByIdForReencryptionUpdate(1))
+        .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data")));
+    when(enrollmentRepository.save(any(Enrollment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(keyRepository.save(any(EncryptionKey.class))).thenReturn(oldKey);
 
@@ -380,9 +404,13 @@ class ReencryptionServiceTest {
     when(encryptionService.encrypt("plaintext1")).thenReturn("ENC:2222222222:reencrypted1");
     when(encryptionService.decrypt("ENC:1111111111:data2"))
         .thenThrow(new RuntimeException("Decryption failed"));
-    // Note: saveAll() may not be called if no records are successfully re-encrypted
+    when(enrollmentRepository.findByIdForReencryptionUpdate(1))
+        .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
+    when(enrollmentRepository.findByIdForReencryptionUpdate(2))
+        .thenAnswer(inv -> Optional.of(createMockEnrollment(2, "ENC:1111111111:data2")));
+    // Note: save() may not be called if no records are successfully re-encrypted
     lenient()
-        .when(enrollmentRepository.saveAll(anyList()))
+        .when(enrollmentRepository.save(any(Enrollment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
@@ -413,7 +441,11 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionService.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
-    when(enrollmentRepository.saveAll(anyList()))
+    when(enrollmentRepository.findByIdForReencryptionUpdate(10))
+        .thenAnswer(inv -> Optional.of(createMockEnrollment(10, "ENC:1111111111:data1")));
+    when(enrollmentRepository.findByIdForReencryptionUpdate(20))
+        .thenAnswer(inv -> Optional.of(createMockEnrollment(20, "ENC:1111111111:data2")));
+    when(enrollmentRepository.save(any(Enrollment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act
@@ -440,7 +472,10 @@ class ReencryptionServiceTest {
 
     when(encryptionService.decrypt("ENC:1111111111:data1")).thenReturn("plaintext1");
     when(encryptionService.encrypt("plaintext1")).thenReturn("ENC:2222222222:reencrypted1");
-    when(enrollmentRepository.saveAll(anyList()))
+    when(enrollmentRepository.findByIdForReencryptionUpdate(1))
+        .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
+    lenient()
+        .when(enrollmentRepository.save(any(Enrollment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     // Act

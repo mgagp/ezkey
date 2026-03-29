@@ -10,6 +10,7 @@
 
 package org.ezkey.security;
 
+import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -35,8 +36,10 @@ import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -84,6 +87,13 @@ public class ReencryptionService {
   private final AuthAttemptRepository authAttemptRepository;
   private final TinkProperties properties;
   private final AuditLogService auditLogService;
+  private final EntityManager entityManager;
+
+  /**
+   * Self-reference for Spring proxy so {@link #processBatchInternal(ReencryptionBatch)} runs in
+   * {@link Propagation#REQUIRES_NEW} (avoids one huge persistence context across all batches).
+   */
+  private final ReencryptionService self;
 
   public ReencryptionService(
       EncryptionService encryptionService,
@@ -93,7 +103,9 @@ public class ReencryptionService {
       EnrollmentRepository enrollmentRepository,
       AuthAttemptRepository authAttemptRepository,
       TinkProperties properties,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      EntityManager entityManager,
+      @Lazy ReencryptionService self) {
     this.encryptionService = encryptionService;
     this.keyManager = keyManager;
     this.keyRepository = keyRepository;
@@ -102,6 +114,8 @@ public class ReencryptionService {
     this.authAttemptRepository = authAttemptRepository;
     this.properties = properties;
     this.auditLogService = auditLogService;
+    this.entityManager = entityManager;
+    this.self = self;
   }
 
   /**
@@ -148,8 +162,8 @@ public class ReencryptionService {
       List<ReencryptionBatch> batchesToProcess = batchRepository.findBatchesEligibleForResume();
       batchesToProcess.addAll(batchRepository.findByStatus(BatchStatus.PENDING));
 
-      // Also create new batches for old keys that need re-encryption
-      createBatchesForOldKeys();
+      // Also create new batches for old keys that need re-encryption (via proxy: REQUIRES_NEW)
+      self.createBatchesForOldKeys();
 
       // Process batches
       for (ReencryptionBatch batch : batchesToProcess) {
@@ -166,7 +180,7 @@ public class ReencryptionService {
         }
 
         try {
-          processBatch(batch);
+          self.processBatchInternal(batch);
           batchesProcessed++;
         } catch (Exception e) {
           logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
@@ -200,8 +214,14 @@ public class ReencryptionService {
    * <p>For each ENABLED key older than rotation threshold, creates batches for all tables/columns
    * that contain encrypted data. Targets are discovered dynamically from entities implementing
    * Reencryptable.
+   *
+   * <p>Uses {@link Propagation#REQUIRES_NEW} so this work commits before {@link
+   * #processBatchInternal(ReencryptionBatch)} runs in a separate transaction. An outer
+   * {@code @Transactional} that creates batch rows then calls {@code REQUIRES_NEW} processing would
+   * otherwise leave those inserts invisible to the inner transaction ("Re-encryption batch not
+   * found").
    */
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void createBatchesForOldKeys() {
     // Get current primary key from keyset Tink (source of truth for SOC2 compliance)
     EncryptionKey primaryKey = getPrimaryKeyFromKeyset();
@@ -318,12 +338,32 @@ public class ReencryptionService {
   }
 
   /**
-   * Process a single re-encryption batch.
+   * Processes a single re-encryption batch. Delegates to {@link #processBatchInternal} in a new
+   * transaction so each batch gets a fresh persistence context (reduces optimistic-lock conflicts
+   * when other requests update the same rows during long full re-encryption runs).
    *
-   * @param batch the batch to process
+   * @param batch the batch to process (typically loaded in the caller's transaction; the inner
+   *     method reloads by id)
    */
-  @Transactional
   public void processBatch(ReencryptionBatch batch) {
+    self.processBatchInternal(batch);
+  }
+
+  /**
+   * Runs the actual batch work in a new transaction.
+   *
+   * @param batchRef batch identity from the caller (reloaded from the database here)
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void processBatchInternal(ReencryptionBatch batchRef) {
+    ReencryptionBatch batch =
+        batchRepository
+            .findById(batchRef.getBatchId())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Re-encryption batch not found: " + batchRef.getBatchId()));
+
     logger.info(
         "Processing re-encryption batch {} ({}.{})",
         batch.getBatchId(),
@@ -357,43 +397,63 @@ public class ReencryptionService {
         break; // No more records
       }
 
-      // Collect modified records for batch save (optimize N+1 problem)
-      List<Enrollment> modifiedEnrollments = new java.util.ArrayList<>();
-      List<AuthAttempt> modifiedAuthAttempts = new java.util.ArrayList<>();
+      // IDs that still need ciphertext migration (read-only candidate check here — actual
+      // reencryptRecord runs only inside persist* after pessimistic row lock to avoid dirty managed
+      // entities in this transaction flushing before the locked save).
+      List<Integer> pendingEnrollmentIds = new java.util.ArrayList<>();
+      List<Integer> pendingAuthAttemptIds = new java.util.ArrayList<>();
 
       for (Reencryptable record : records) {
         try {
-          ReencryptResult result = reencryptRecord(batch, record);
           // Always update lastRecordId to ensure we don't reprocess the same record
-          // This prevents infinite loops and ensures all records are processed
           lastRecordId = record.getEntityId();
 
-          if (result.reencrypted()) {
-            recordsDone++;
-            // Collect modified record for batch save
-            if (result.modifiedRecord() instanceof Enrollment e) {
-              modifiedEnrollments.add(e);
-            } else if (result.modifiedRecord() instanceof AuthAttempt a) {
-              modifiedAuthAttempts.add(a);
-            }
-          } else {
+          if (!isCandidateForReencryption(batch, record)) {
             recordsSkipped++;
+            continue;
           }
-        } catch (Exception e) {
+          if (record instanceof Enrollment e) {
+            if (e.getEnrollmentId() != null) {
+              pendingEnrollmentIds.add(e.getEnrollmentId());
+            }
+          } else if (record instanceof AuthAttempt a) {
+            if (a.getAuthAttemptId() != null) {
+              pendingAuthAttemptIds.add(a.getAuthAttemptId());
+            }
+          }
+        } catch (Exception ex) {
           logger.warn(
-              "Failed to re-encrypt record in batch {}: {}", batch.getBatchId(), e.getMessage());
+              "Failed to classify record in batch {}: {}", batch.getBatchId(), ex.getMessage());
           recordsFailed++;
-          // Still update lastRecordId even on failure to avoid reprocessing
           lastRecordId = record.getEntityId();
         }
       }
 
-      // Batch save all modified records (optimize N+1 problem)
-      if (!modifiedEnrollments.isEmpty()) {
-        enrollmentRepository.saveAll(modifiedEnrollments);
+      for (Integer enrollmentId : pendingEnrollmentIds) {
+        try {
+          self.persistEnrollmentReencryption(batch, enrollmentId);
+          recordsDone++;
+        } catch (Exception ex) {
+          logger.warn(
+              "Failed to persist re-encrypted enrollment {} in batch {}: {}",
+              enrollmentId,
+              batch.getBatchId(),
+              ex.getMessage());
+          recordsFailed++;
+        }
       }
-      if (!modifiedAuthAttempts.isEmpty()) {
-        authAttemptRepository.saveAll(modifiedAuthAttempts);
+      for (Integer authAttemptId : pendingAuthAttemptIds) {
+        try {
+          self.persistAuthAttemptReencryption(batch, authAttemptId);
+          recordsDone++;
+        } catch (Exception ex) {
+          logger.warn(
+              "Failed to persist re-encrypted auth attempt {} in batch {}: {}",
+              authAttemptId,
+              batch.getBatchId(),
+              ex.getMessage());
+          recordsFailed++;
+        }
       }
 
       // Update batch progress
@@ -499,6 +559,49 @@ public class ReencryptionService {
   }
 
   /**
+   * Loads the row with a pessimistic write lock (blocks concurrent {@code version} bumps), then
+   * re-encrypts and persists in a new transaction so a failed flush does not poison the batch
+   * transaction.
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void persistEnrollmentReencryption(ReencryptionBatch batch, Integer enrollmentId) {
+    Enrollment e =
+        enrollmentRepository
+            .findByIdForReencryptionUpdate(enrollmentId)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Enrollment not found for re-encryption persistence: " + enrollmentId));
+    ReencryptResult result = reencryptRecord(batch, e);
+    if (!result.reencrypted()) {
+      return;
+    }
+    enrollmentRepository.save(e);
+    entityManager.flush();
+  }
+
+  /**
+   * Same as {@link #persistEnrollmentReencryption(ReencryptionBatch, Integer)} for auth attempt
+   * rows.
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void persistAuthAttemptReencryption(ReencryptionBatch batch, Integer authAttemptId) {
+    AuthAttempt a =
+        authAttemptRepository
+            .findByIdForReencryptionUpdate(authAttemptId)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "AuthAttempt not found for re-encryption persistence: " + authAttemptId));
+    ReencryptResult result = reencryptRecord(batch, a);
+    if (!result.reencrypted()) {
+      return;
+    }
+    authAttemptRepository.save(a);
+    entityManager.flush();
+  }
+
+  /**
    * Result of re-encryption operation.
    *
    * <p>Package-private for testing purposes.
@@ -509,21 +612,15 @@ public class ReencryptionService {
   record ReencryptResult(boolean reencrypted, Reencryptable modifiedRecord) {}
 
   /**
-   * Re-encrypt a single record.
-   *
-   * <p>Note: This method modifies the record in memory but does NOT save it. The caller is
-   * responsible for batch saving all modified records using saveAll() to optimize N+1 queries.
-   *
-   * @param batch the batch
-   * @param record the record to re-encrypt
-   * @return ReencryptResult indicating if re-encrypted and the modified record
+   * Read-only gate: true if this row's target column still holds ciphertext for the batch old key
+   * and should be migrated. Does not mutate the entity (safe to run on fetch-scoped entities in the
+   * batch transaction).
    */
-  private ReencryptResult reencryptRecord(ReencryptionBatch batch, Reencryptable record) {
+  private boolean isCandidateForReencryption(ReencryptionBatch batch, Reencryptable record) {
     String column = batch.getTargetColumn();
     String oldKeyPrefix = "ENC:" + batch.getOldKey().getKeyId() + ":";
     String newKeyPrefix = "ENC:" + batch.getNewKey().getKeyId() + ":";
 
-    // Get encrypted fields from record
     Map<String, String> encryptedFields = record.getEncryptedFields();
     String encryptedValue = encryptedFields.get(column);
 
@@ -533,7 +630,7 @@ public class ReencryptionService {
           record.getEntityId(),
           record.getTableName(),
           column);
-      return new ReencryptResult(false, null); // Skip - field is null
+      return false;
     }
 
     if (!encryptedValue.startsWith(oldKeyPrefix)) {
@@ -545,18 +642,41 @@ public class ReencryptionService {
           column,
           oldKeyPrefix,
           encryptedValue.length() > 20 ? encryptedValue.substring(0, 20) + "..." : encryptedValue);
-      return new ReencryptResult(false, null); // Skip - not encrypted with old key
+      return false;
     }
 
-    // Check if already encrypted with new key
     if (encryptedValue.startsWith(newKeyPrefix)) {
       logger.debug(
           "Skipping record {} ({}): already encrypted with new key {}",
           record.getEntityId(),
           record.getTableName(),
           batch.getNewKey().getKeyId());
-      return new ReencryptResult(false, null); // Skip - already encrypted with new key
+      return false;
     }
+
+    return true;
+  }
+
+  /**
+   * Re-encrypt a single record.
+   *
+   * <p>Note: This method modifies the record in memory but does NOT save it. The caller persists
+   * modified rows via {@link #persistEnrollmentReencryption(ReencryptionBatch, Integer)} / {@link
+   * #persistAuthAttemptReencryption(ReencryptionBatch, Integer)} (pessimistic row lock then persist
+   * in {@code REQUIRES_NEW}).
+   *
+   * @param batch the batch
+   * @param record the record to re-encrypt
+   * @return ReencryptResult indicating if re-encrypted and the modified record
+   */
+  private ReencryptResult reencryptRecord(ReencryptionBatch batch, Reencryptable record) {
+    if (!isCandidateForReencryption(batch, record)) {
+      return new ReencryptResult(false, null);
+    }
+
+    String column = batch.getTargetColumn();
+    Map<String, String> encryptedFields = record.getEncryptedFields();
+    String encryptedValue = encryptedFields.get(column);
 
     // Decrypt with old key, encrypt with new key
     String plaintext = encryptionService.decrypt(encryptedValue);
@@ -588,12 +708,13 @@ public class ReencryptionService {
    * @param errorMessage error message
    */
   private void markBatchFailed(ReencryptionBatch batch, String errorMessage) {
-    batch.setStatus(BatchStatus.FAILED);
-    batch.setErrorMessage(errorMessage);
-    batch.setErrorCount(batch.getErrorCount() + 1);
-    batch.setRetryCount(batch.getRetryCount() + 1);
-    batch.setCompletedAt(OffsetDateTime.now());
-    batchRepository.save(batch);
+    ReencryptionBatch managed = batchRepository.findById(batch.getBatchId()).orElse(batch);
+    managed.setStatus(BatchStatus.FAILED);
+    managed.setErrorMessage(errorMessage);
+    managed.setErrorCount(managed.getErrorCount() + 1);
+    managed.setRetryCount(managed.getRetryCount() + 1);
+    managed.setCompletedAt(OffsetDateTime.now());
+    batchRepository.save(managed);
 
     auditLogService.log(
         AuditLog.builder()
@@ -604,9 +725,9 @@ public class ReencryptionService {
             .ipAddress("127.0.0.1")
             .eventDetails(
                 AuditDetailsBuilder.builder()
-                    .reencryptionBatchId(batch.getBatchId())
+                    .reencryptionBatchId(managed.getBatchId())
                     .errorSummary(errorMessage)
-                    .retryCount(batch.getRetryCount())
+                    .retryCount(managed.getRetryCount())
                     .toJson())
             .errorMessage(errorMessage)
             .build());
@@ -629,7 +750,6 @@ public class ReencryptionService {
    * @return summary containing number of batches created and processed
    * @throws IllegalStateException if encryption is not available or re-encryption is disabled
    */
-  @Transactional
   public ReencryptionSummary triggerFullReencryption() {
     if (!encryptionService.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
@@ -637,8 +757,8 @@ public class ReencryptionService {
 
     logger.info("🔄 Manual full re-encryption triggered");
 
-    // Create batches for all old keys
-    createBatchesForOldKeys();
+    // Create batches for all old keys (must commit before REQUIRES_NEW processBatchInternal)
+    self.createBatchesForOldKeys();
 
     // Find all batches that need processing
     List<ReencryptionBatch> batchesToProcess = batchRepository.findBatchesEligibleForResume();
@@ -651,10 +771,17 @@ public class ReencryptionService {
     // Process all batches
     for (ReencryptionBatch batch : batchesToProcess) {
       try {
-        processBatch(batch);
-        if (batch.getStatus() == BatchStatus.COMPLETED) {
+        self.processBatchInternal(batch);
+        ReencryptionBatch refreshed =
+            batchRepository
+                .findById(batch.getBatchId())
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            "Re-encryption batch missing after processing: " + batch.getBatchId()));
+        if (refreshed.getStatus() == BatchStatus.COMPLETED) {
           batchesProcessed++;
-        } else if (batch.getStatus() == BatchStatus.FAILED) {
+        } else if (refreshed.getStatus() == BatchStatus.FAILED) {
           batchesFailed++;
         }
       } catch (Exception e) {
@@ -693,7 +820,6 @@ public class ReencryptionService {
    * @throws IllegalArgumentException if key not found or key is PRIMARY
    * @throws IllegalStateException if encryption is not available
    */
-  @Transactional
   public ReencryptionSummary triggerReencryptionForKey(Long keyId) {
     if (!encryptionService.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
@@ -785,10 +911,17 @@ public class ReencryptionService {
 
       // Process batch immediately
       try {
-        processBatch(batch);
-        if (batch.getStatus() == BatchStatus.COMPLETED) {
+        self.processBatchInternal(batch);
+        ReencryptionBatch refreshed =
+            batchRepository
+                .findById(batch.getBatchId())
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            "Re-encryption batch missing after processing: " + batch.getBatchId()));
+        if (refreshed.getStatus() == BatchStatus.COMPLETED) {
           batchesProcessed++;
-        } else if (batch.getStatus() == BatchStatus.FAILED) {
+        } else if (refreshed.getStatus() == BatchStatus.FAILED) {
           batchesFailed++;
         }
       } catch (Exception e) {

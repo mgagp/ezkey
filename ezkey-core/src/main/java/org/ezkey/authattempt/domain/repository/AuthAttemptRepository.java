@@ -10,12 +10,14 @@
 
 package org.ezkey.authattempt.domain.repository;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
@@ -50,6 +52,14 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AuthAttemptRepository
     extends JpaRepository<AuthAttempt, Integer>, JpaSpecificationExecutor<AuthAttempt> {
+
+  /**
+   * Loads an auth attempt with a pessimistic write lock for re-encryption persistence (see {@link
+   * EnrollmentRepository#findByIdForReencryptionUpdate(Integer)}).
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT a FROM AuthAttempt a WHERE a.authAttemptId = :id")
+  Optional<AuthAttempt> findByIdForReencryptionUpdate(@Param("id") Integer id);
 
   /**
    * Finds the most recent authorization attempt for a given enrollment ID.

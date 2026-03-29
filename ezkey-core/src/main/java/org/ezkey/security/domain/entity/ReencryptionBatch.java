@@ -99,7 +99,10 @@ public class ReencryptionBatch {
   /**
    * Total number of records that need to be re-encrypted.
    *
-   * <p>Counted at batch creation time.
+   * <p>Primarily set from a count at batch creation time. Under concurrent traffic, additional rows
+   * may still be written with the old key while a batch runs; {@link #updateProgress(int, int,
+   * int)} may increase this field so it never falls below the sum of done, failed, and skipped
+   * counters, satisfying database invariants.
    */
   @Column(name = "records_total", nullable = false)
   private Integer recordsTotal;
@@ -273,6 +276,10 @@ public class ReencryptionBatch {
   /**
    * Update progress and recalculate percentage.
    *
+   * <p>If actual work ({@code done + failed + skipped}) exceeds the initial total (e.g. new rows
+   * encrypted with the old key during the run), {@code records_total} is raised so the batch row
+   * satisfies {@code chk_reencryption_batch_records} and {@code chk_reencryption_batch_progress}.
+   *
    * @param done number of records done
    * @param failed number of records failed
    * @param skipped number of records skipped
@@ -281,6 +288,9 @@ public class ReencryptionBatch {
     this.recordsDone = done;
     this.recordsFailed = failed;
     this.recordsSkipped = skipped;
+    int processed = done + failed + skipped;
+    int previousTotal = recordsTotal != null ? recordsTotal : 0;
+    this.recordsTotal = Math.max(previousTotal, processed);
     if (recordsTotal > 0) {
       double pct = ((double) recordsDone / recordsTotal) * 100.0;
       this.progressPct = BigDecimal.valueOf(pct).setScale(2, java.math.RoundingMode.HALF_UP);
