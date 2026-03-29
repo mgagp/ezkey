@@ -4,6 +4,10 @@
 
 A comprehensive event audit logging system has been implemented across all Ezkey APIs to support security monitoring, forensic analysis, and future SOC2 certification requirements.
 
+## Related specifications
+
+- **[Admin recovery audit trail (recovery code + enrollment reset)](SPEC_ADMIN_RECOVERY_AUDIT_TRAIL.md)** — Draft spec for structured `event_details`, correlation between recover and reset, and SOC2-oriented visibility.
+
 ## What Has Been Implemented
 
 ### ✅ Database Infrastructure

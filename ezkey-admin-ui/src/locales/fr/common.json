@@ -33,6 +33,12 @@
     "daysAgo_one": "Il y a 1 j",
     "daysAgo_other": "Il y a {{count}} j"
   },
+  "detailNav": {
+    "prevEntry": "Entrée précédente",
+    "nextEntry": "Entrée suivante",
+    "keyboardHintShort": "← →",
+    "endOfPageMore": "Fin de cette page — utilisez la pagination sous la liste pour plus de résultats."
+  },
   "detail": {
     "moreDetails": "Plus de détails",
     "relatedContext": "Contexte associé",

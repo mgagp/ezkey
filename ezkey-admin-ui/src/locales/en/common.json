@@ -33,6 +33,12 @@
     "daysAgo_one": "1 d ago",
     "daysAgo_other": "{{count}}d ago"
   },
+  "detailNav": {
+    "prevEntry": "Previous entry",
+    "nextEntry": "Next entry",
+    "keyboardHintShort": "← →",
+    "endOfPageMore": "End of this page — use pagination below the list for more results."
+  },
   "detail": {
     "moreDetails": "More details",
     "relatedContext": "Related context",

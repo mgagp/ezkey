@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
@@ -16,7 +16,9 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
+import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getApiErrorMessage } from '@/lib/api-client';
@@ -50,8 +52,34 @@ import type {
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 
-function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | null; onClose: () => void }) {
+function AuditLogDetailDialog({
+  log,
+  onClose,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
+  showNav,
+  showEndOfPageHint,
+}: {
+  log: AuditLogResponseDto | null;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  hasPrev: boolean;
+  hasNext: boolean;
+  showNav: boolean;
+  showEndOfPageHint: boolean;
+}) {
   const { t } = useTranslation('audit-logs');
+  const { t: tc } = useTranslation('common');
+
+  useDetailNavigation(log !== null && showNav, {
+    hasPrev: hasPrev && showNav,
+    hasNext: hasNext && showNav,
+    onPrev,
+    onNext,
+  });
 
   const relatedDetails = useExpandableRelatedDetails({
     adminId: log?.adminId ?? undefined,
@@ -63,18 +91,38 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
 
   function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
     return (
-      <div className="flex gap-4">
+      <div className="flex gap-4 min-w-0">
         <dt className="w-36 font-black uppercase text-[10px] tracking-wider text-fg-muted pt-0.5 shrink-0">{label}</dt>
-        <dd className="text-sm break-all">{children}</dd>
+        <dd className="min-w-0 flex-1 text-sm break-all">{children}</dd>
       </div>
     );
   }
 
   return (
-    <Dialog open={log !== null} onClose={onClose} title={t('detail.title', { id: log.auditLogId })} size="lg">
+    <Dialog
+      open={log !== null}
+      onClose={onClose}
+      title={t('detail.title', { id: log.auditLogId })}
+      size="lg-wide"
+      headerActions={
+        showNav ? (
+          <DetailDialogHeaderNav
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onPrev={onPrev}
+            onNext={onNext}
+          />
+        ) : undefined
+      }
+    >
       <div className="space-y-4">
-        {relatedDetails.hasAnyFk && (
-          <div className="flex justify-end">
+        {showEndOfPageHint && (
+          <p className="text-xs text-fg-muted italic border border-fg/20 bg-fg/[0.03] px-3 py-2">
+            {tc('detailNav.endOfPageMore')}
+          </p>
+        )}
+        <div className="flex justify-end items-start min-h-[2.25rem]">
+          {relatedDetails.hasAnyFk ? (
             <Button
               variant="secondary"
               size="sm"
@@ -85,8 +133,20 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
                 ? t('common:buttons.loading')
                 : t('common:detail.moreDetails')}
             </Button>
-          </div>
-        )}
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="invisible pointer-events-none"
+              tabIndex={-1}
+              aria-hidden
+              disabled
+            >
+              {t('common:detail.moreDetails')}
+            </Button>
+          )}
+        </div>
         <dl className="space-y-2.5">
           <InfoRow label={t('detail.labelId')}><span className="font-mono">{log.auditLogId}</span></InfoRow>
           <InfoRow label={t('detail.labelEventType')}>
@@ -96,8 +156,20 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
             )}
           </InfoRow>
           <InfoRow label={t('detail.labelStatus')}><EventStatusBadge status={log.eventStatus} /></InfoRow>
-          {log.apiName && <InfoRow label={t('detail.labelApi')}><Badge variant="muted">{log.apiName.replace('_API', '')}</Badge></InfoRow>}
-          {log.adminId && <InfoRow label={t('detail.labelAdminId')}><span className="font-mono">#{log.adminId}</span></InfoRow>}
+          <InfoRow label={t('detail.labelApi')}>
+            {log.apiName ? (
+              <Badge variant="muted">{log.apiName.replace('_API', '')}</Badge>
+            ) : (
+              <span className="text-fg-muted">—</span>
+            )}
+          </InfoRow>
+          <InfoRow label={t('detail.labelAdminId')}>
+            {log.adminId != null ? (
+              <span className="font-mono">#{log.adminId}</span>
+            ) : (
+              <span className="text-fg-muted">—</span>
+            )}
+          </InfoRow>
           {relatedDetails.isExpanded && relatedDetails.admin && (
             <InfoRow label={t('common:detail.relatedAdmin')}>
               <span className="font-medium">
@@ -105,7 +177,13 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
               </span>
             </InfoRow>
           )}
-          {log.integrationId && <InfoRow label={t('detail.labelIntegration')}><span className="font-mono">#{log.integrationId}</span></InfoRow>}
+          <InfoRow label={t('detail.labelIntegration')}>
+            {log.integrationId != null ? (
+              <span className="font-mono">#{log.integrationId}</span>
+            ) : (
+              <span className="text-fg-muted">—</span>
+            )}
+          </InfoRow>
           {relatedDetails.isExpanded && relatedDetails.integration && (
             <InfoRow label={t('common:detail.relatedIntegration')}>
               <Link
@@ -116,7 +194,13 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
               </Link>
             </InfoRow>
           )}
-          {log.enrollmentId && <InfoRow label={t('detail.labelEnrollment')}><span className="font-mono">#{log.enrollmentId}</span></InfoRow>}
+          <InfoRow label={t('detail.labelEnrollment')}>
+            {log.enrollmentId != null ? (
+              <span className="font-mono">#{log.enrollmentId}</span>
+            ) : (
+              <span className="text-fg-muted">—</span>
+            )}
+          </InfoRow>
           {relatedDetails.isExpanded && relatedDetails.enrollment && (
             <InfoRow label={t('common:detail.relatedEnrollment')}>
               <Link
@@ -127,38 +211,62 @@ function AuditLogDetailDialog({ log, onClose }: { log: AuditLogResponseDto | nul
               </Link>
             </InfoRow>
           )}
-          {log.authAttemptId && <InfoRow label={t('detail.labelAuthAttempt')}><span className="font-mono">#{log.authAttemptId}</span></InfoRow>}
-        {log.ipAddress && <InfoRow label={t('detail.labelIpAddress')}><span className="font-mono text-xs">{log.ipAddress}</span></InfoRow>}
-        {log.userAgent && <InfoRow label={t('detail.labelUserAgent')}><span className="text-xs text-fg-muted">{log.userAgent}</span></InfoRow>}
-        {log.reason && (
+          <InfoRow label={t('detail.labelAuthAttempt')}>
+            {log.authAttemptId != null ? (
+              <span className="font-mono">#{log.authAttemptId}</span>
+            ) : (
+              <span className="text-fg-muted">—</span>
+            )}
+          </InfoRow>
+          <InfoRow label={t('detail.labelIpAddress')}>
+            {log.ipAddress ? (
+              <span className="font-mono text-xs">{log.ipAddress}</span>
+            ) : (
+              <span className="text-fg-muted">—</span>
+            )}
+          </InfoRow>
+          <InfoRow label={t('detail.labelUserAgent')}>
+            <pre className="font-mono text-xs leading-snug text-fg-muted bg-fg/5 p-2 border border-fg/10 whitespace-pre-wrap break-words min-h-[3.25rem] max-w-full">
+              {log.userAgent?.trim() ? log.userAgent : '—'}
+            </pre>
+          </InfoRow>
           <InfoRow label={t('detail.labelReason')}>
-            <pre className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 whitespace-pre-wrap">{log.reason}</pre>
+            <pre className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 whitespace-pre-wrap border border-fg/10">
+              {log.reason?.trim() ? log.reason : '—'}
+            </pre>
           </InfoRow>
-        )}
-        {log.eventDetails && (
           <InfoRow label={t('detail.labelDetails')}>
-            <pre className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 whitespace-pre-wrap">{log.eventDetails}</pre>
+            <pre className="text-xs leading-normal bg-fg/5 p-2 overflow-auto max-h-32 min-h-[5.5rem] whitespace-pre-wrap border border-fg/10">
+              {log.eventDetails?.trim() ? log.eventDetails : '—'}
+            </pre>
           </InfoRow>
-        )}
-        {log.errorMessage && (
           <InfoRow label={t('detail.labelError')}>
-            <span className="text-xs text-error">{log.errorMessage}</span>
-          </InfoRow>
-        )}
-        <InfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(log.createdAt ?? '')}</span></InfoRow>
-        <InfoRow label={t('detail.labelHmacIntegrity')}>
-          {log.entryHmac ? (
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-success" />
-              <span className="text-xs text-success font-bold">{t('detail.chainIntact')}</span>
+            <div className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 border border-fg/10">
+              {log.errorMessage ? (
+                <span className="text-error">{log.errorMessage}</span>
+              ) : (
+                <span className="text-fg-muted">—</span>
+              )}
             </div>
-          ) : (
-            <span className="text-xs text-fg-muted">{t('detail.notAvailable')}</span>
-          )}
-        </InfoRow>
-          {log.instanceId && (
-            <InfoRow label={t('detail.labelInstance')}><span className="font-mono text-xs text-fg-muted">{log.instanceId}</span></InfoRow>
-          )}
+          </InfoRow>
+          <InfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(log.createdAt ?? '')}</span></InfoRow>
+          <InfoRow label={t('detail.labelHmacIntegrity')}>
+            {log.entryHmac ? (
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="size-3.5 text-success" />
+                <span className="text-xs text-success font-bold">{t('detail.chainIntact')}</span>
+              </div>
+            ) : (
+              <span className="text-xs text-fg-muted">{t('detail.notAvailable')}</span>
+            )}
+          </InfoRow>
+          <InfoRow label={t('detail.labelInstance')}>
+            {log.instanceId ? (
+              <span className="font-mono text-xs text-fg-muted">{log.instanceId}</span>
+            ) : (
+              <span className="text-fg-muted">—</span>
+            )}
+          </InfoRow>
         </dl>
         <div className="flex justify-end pt-4">
           <Button onClick={onClose}>{t('detail.close')}</Button>
@@ -1080,7 +1188,7 @@ export default function AuditLogsPage() {
   const [eventStatusFilter, setEventStatusFilter] = useState('');
   const [apiNameFilter, setApiNameFilter] = useState('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
-  const [selectedLog, setSelectedLog] = useState<AuditLogResponseDto | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const listApiDateParams =
     dateRange.from && dateRange.to
@@ -1104,6 +1212,33 @@ export default function AuditLogsPage() {
     },
     fetchPage: (params) => getAuditLogs(params as GetAuditLogsParams) as Promise<PagedModelAuditLogResponseDto>,
   });
+
+  const selectedLog = selectedIndex !== null ? data[selectedIndex] ?? null : null;
+  const showRowNav = data.length > 1;
+  const hasPrev = selectedIndex !== null && selectedIndex > 0;
+  const hasNext = selectedIndex !== null && selectedIndex < data.length - 1;
+  const showEndOfPageHint =
+    selectedIndex !== null &&
+    data.length > 0 &&
+    selectedIndex === data.length - 1 &&
+    !pagination.isLast;
+
+  const goPrevLog = useCallback(() => {
+    setSelectedIndex((i) => (i !== null && i > 0 ? i - 1 : i));
+  }, []);
+
+  const goNextLog = useCallback(() => {
+    setSelectedIndex((i) => {
+      if (i === null) return i;
+      return i < data.length - 1 ? i + 1 : i;
+    });
+  }, [data.length]);
+
+  useEffect(() => {
+    if (selectedIndex !== null && (selectedIndex >= data.length || data.length === 0)) {
+      setSelectedIndex(null);
+    }
+  }, [selectedIndex, data.length]);
 
   const columns: ColumnDef<AuditLogResponseDto>[] = [
     { header: t('list.columns.id'), key: 'auditLogId', className: 'w-14', sortKey: 'auditLogId', render: (r) => <span className="font-mono text-xs">{r.auditLogId}</span> },
@@ -1171,7 +1306,11 @@ export default function AuditLogsPage() {
             variant="ghost"
             size="sm"
             className="p-1"
-            onClick={(e) => { e.stopPropagation(); setSelectedLog(r); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const idx = data.findIndex((x) => x.auditLogId === r.auditLogId);
+              setSelectedIndex(idx >= 0 ? idx : null);
+            }}
           >
             <Info className="size-3.5" />
           </Button>
@@ -1226,7 +1365,10 @@ export default function AuditLogsPage() {
             columns={columns}
             data={data}
             isLoading={isLoading}
-            onRowClick={(row) => setSelectedLog(row)}
+            onRowClick={(row) => {
+              const idx = data.findIndex((r) => r.auditLogId === row.auditLogId);
+              setSelectedIndex(idx >= 0 ? idx : null);
+            }}
             keyExtractor={(r, i) => r.auditLogId ?? i}
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
@@ -1239,7 +1381,16 @@ export default function AuditLogsPage() {
       {/* Integrity panel — visible only for GLOBAL_ADMIN */}
       {isGlobalAdmin && <IntegrityPanel />}
 
-      <AuditLogDetailDialog log={selectedLog} onClose={() => setSelectedLog(null)} />
+      <AuditLogDetailDialog
+        log={selectedLog}
+        onClose={() => setSelectedIndex(null)}
+        onPrev={goPrevLog}
+        onNext={goNextLog}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        showNav={showRowNav}
+        showEndOfPageHint={showEndOfPageHint}
+      />
     </AppShell>
   );
 }

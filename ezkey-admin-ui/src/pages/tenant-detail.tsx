@@ -20,7 +20,9 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/context/toast-context';
+import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import { ApiError } from '@/lib/api-client';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
@@ -320,6 +322,12 @@ export default function TenantDetailPage() {
   const navigate = useNavigate();
   const tenantId = Number(id);
 
+  const { nav: tenantListNav, goPrev: goPrevTenant, goNext: goNextTenant, showEndOfPageHint: showTenantListEndHint } =
+    useListDetailPageNavigation({
+      currentId: tenantId,
+      pathPrefix: '/tenants',
+    });
+
   const [editOpen, setEditOpen] = useState(false);
   const [toggleOpen, setToggleOpen] = useState(false);
 
@@ -347,6 +355,17 @@ export default function TenantDetailPage() {
   return (
     <AppShell
       title={tenant?.tenantName ?? t('detail.fallbackTitle')}
+      detailNav={
+        tenantListNav ? (
+          <DetailPageNav
+            hasPrev={tenantListNav.prevId !== undefined}
+            hasNext={tenantListNav.nextId !== undefined}
+            onPrev={goPrevTenant}
+            onNext={goNextTenant}
+            showEndOfPageHint={showTenantListEndHint}
+          />
+        ) : undefined
+      }
       breadcrumb={[{ label: t('detail.breadcrumbTenants'), path: '/tenants' }]}
     >
       <div className="space-y-6">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -29,7 +29,9 @@ import { HelpInlineButton } from '@/components/help/help-inline-button';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
+import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useDebounce } from '@/hooks/use-debounce';
+import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { useToast } from '@/context/toast-context';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import {
@@ -187,16 +189,36 @@ function KeyDetailDialog({
   keyId,
   onClose,
   onReencrypt,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
+  showNav,
+  showEndOfPageHint,
 }: {
   keyId: number | null;
   onClose: () => void;
   onReencrypt: (key: EncryptionKeyResponse) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  hasPrev: boolean;
+  hasNext: boolean;
+  showNav: boolean;
+  showEndOfPageHint: boolean;
 }) {
   const { t } = useTranslation('encryption-keys');
+  const { t: tc } = useTranslation('common');
   const { data: rawKey, isLoading } = useGetKey(keyId ?? 0, {
     query: { enabled: keyId != null },
   });
   const keyData = rawKey as EncryptionKeyResponse | undefined;
+
+  useDetailNavigation(keyId !== null && showNav, {
+    hasPrev: hasPrev && showNav,
+    hasNext: hasNext && showNav,
+    onPrev,
+    onNext,
+  });
 
   if (keyId === null) return null;
 
@@ -210,7 +232,27 @@ function KeyDetailDialog({
   }
 
   return (
-    <Dialog open={keyId !== null} onClose={onClose} title={t('keyDetail.title', { id: keyId })} size="md">
+    <Dialog
+      open={keyId !== null}
+      onClose={onClose}
+      title={t('keyDetail.title', { id: keyId })}
+      size="md"
+      headerActions={
+        showNav ? (
+          <DetailDialogHeaderNav
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onPrev={onPrev}
+            onNext={onNext}
+          />
+        ) : undefined
+      }
+    >
+      {showEndOfPageHint && (
+        <p className="text-xs text-fg-muted italic border border-fg/20 bg-fg/[0.03] px-3 py-2 mb-4">
+          {tc('detailNav.endOfPageMore')}
+        </p>
+      )}
       {isLoading || !keyData ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="size-5 animate-spin text-fg-muted" />
@@ -253,11 +295,32 @@ function KeyDetailDialog({
 function BatchDetailDialog({
   batch,
   onClose,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
+  showNav,
+  showEndOfPageHint,
 }: {
   batch: ReencryptionBatchResponse | null;
   onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  hasPrev: boolean;
+  hasNext: boolean;
+  showNav: boolean;
+  showEndOfPageHint: boolean;
 }) {
   const { t } = useTranslation('encryption-keys');
+  const { t: tc } = useTranslation('common');
+
+  useDetailNavigation(batch !== null && showNav, {
+    hasPrev: hasPrev && showNav,
+    hasNext: hasNext && showNav,
+    onPrev,
+    onNext,
+  });
+
   if (!batch) return null;
 
   function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -270,7 +333,27 @@ function BatchDetailDialog({
   }
 
   return (
-    <Dialog open={batch !== null} onClose={onClose} title={t('batchDetail.title', { id: batch.batchId })} size="md">
+    <Dialog
+      open={batch !== null}
+      onClose={onClose}
+      title={t('batchDetail.title', { id: batch.batchId })}
+      size="md"
+      headerActions={
+        showNav ? (
+          <DetailDialogHeaderNav
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onPrev={onPrev}
+            onNext={onNext}
+          />
+        ) : undefined
+      }
+    >
+      {showEndOfPageHint && (
+        <p className="text-xs text-fg-muted italic border border-fg/20 bg-fg/[0.03] px-3 py-2 mb-4">
+          {tc('detailNav.endOfPageMore')}
+        </p>
+      )}
       <dl className="space-y-2.5">
         <Row label={t('batchDetail.labelBatchId')}><span className="font-mono">{batch.batchId}</span></Row>
         <Row label={t('batchDetail.labelStatus')}><BatchStatusBadge status={batch.status} /></Row>
@@ -394,7 +477,7 @@ function ReencryptionBatchesSection() {
   const [oldKeyIdInput, setOldKeyIdInput] = useState('');
   const [newKeyIdInput, setNewKeyIdInput] = useState('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
-  const [selectedBatch, setSelectedBatch] = useState<ReencryptionBatchResponse | null>(null);
+  const [selectedBatchIndex, setSelectedBatchIndex] = useState<number | null>(null);
   const [headerTotal, setHeaderTotal] = useState(0);
 
   const debouncedTable = useDebounce(targetTableInput, 400);
@@ -450,6 +533,33 @@ function ReencryptionBatchesSection() {
     defaultSize: 20,
     enabled: expanded,
   });
+
+  const selectedBatch = selectedBatchIndex !== null ? data[selectedBatchIndex] ?? null : null;
+  const showBatchRowNav = data.length > 1;
+  const batchHasPrev = selectedBatchIndex !== null && selectedBatchIndex > 0;
+  const batchHasNext = selectedBatchIndex !== null && selectedBatchIndex < data.length - 1;
+  const showBatchEndOfPageHint =
+    selectedBatchIndex !== null &&
+    data.length > 0 &&
+    selectedBatchIndex === data.length - 1 &&
+    !pagination.isLast;
+
+  const goPrevBatch = useCallback(() => {
+    setSelectedBatchIndex((i) => (i !== null && i > 0 ? i - 1 : i));
+  }, []);
+
+  const goNextBatch = useCallback(() => {
+    setSelectedBatchIndex((i) => {
+      if (i === null) return i;
+      return i < data.length - 1 ? i + 1 : i;
+    });
+  }, [data.length]);
+
+  useEffect(() => {
+    if (selectedBatchIndex !== null && (selectedBatchIndex >= data.length || data.length === 0)) {
+      setSelectedBatchIndex(null);
+    }
+  }, [selectedBatchIndex, data.length]);
 
   useEffect(() => {
     if (expanded) {
@@ -727,7 +837,10 @@ function ReencryptionBatchesSection() {
             columns={batchColumns}
             data={data}
             isLoading={isLoading}
-            onRowClick={(row) => setSelectedBatch(row)}
+            onRowClick={(row) => {
+              const idx = data.findIndex((r) => r.batchId === row.batchId);
+              setSelectedBatchIndex(idx >= 0 ? idx : null);
+            }}
             keyExtractor={(r, i) => r.batchId ?? i}
             emptyMessage={hasFilters ? t('batchesSection.emptyFiltered') : t('batchesSection.emptyAll')}
             currentSort={pagination.sort}
@@ -737,7 +850,16 @@ function ReencryptionBatchesSection() {
         </div>
       )}
 
-      <BatchDetailDialog batch={selectedBatch} onClose={() => setSelectedBatch(null)} />
+      <BatchDetailDialog
+        batch={selectedBatch}
+        onClose={() => setSelectedBatchIndex(null)}
+        onPrev={goPrevBatch}
+        onNext={goNextBatch}
+        hasPrev={batchHasPrev}
+        hasNext={batchHasNext}
+        showNav={showBatchRowNav}
+        showEndOfPageHint={showBatchEndOfPageHint}
+      />
     </div>
   );
 }
@@ -749,7 +871,7 @@ type KeyStatusFilter = 'all' | 'PRIMARY' | 'ENABLED' | 'DISABLED' | 'PENDING';
 export default function EncryptionKeysPage() {
   const { t } = useTranslation('encryption-keys');
   const queryClient = useQueryClient();
-  const [selectedKeyId, setSelectedKeyId] = useState<number | null>(null);
+  const [selectedKeyIndex, setSelectedKeyIndex] = useState<number | null>(null);
   const [rotateOpen, setRotateOpen] = useState(false);
   const [reencryptTarget, setReencryptTarget] = useState<EncryptionKeyResponse | null>(null);
   const [keyStatusFilter, setKeyStatusFilter] = useState<KeyStatusFilter>('all');
@@ -767,6 +889,33 @@ export default function EncryptionKeysPage() {
     defaultSort: 'introducedAt,DESC',
     defaultSize: 20,
   });
+
+  const selectedKeyId = selectedKeyIndex !== null ? data[selectedKeyIndex]?.keyId ?? null : null;
+  const showKeyRowNav = data.length > 1;
+  const keyHasPrev = selectedKeyIndex !== null && selectedKeyIndex > 0;
+  const keyHasNext = selectedKeyIndex !== null && selectedKeyIndex < data.length - 1;
+  const showKeyEndOfPageHint =
+    selectedKeyIndex !== null &&
+    data.length > 0 &&
+    selectedKeyIndex === data.length - 1 &&
+    !pagination.isLast;
+
+  const goPrevKey = useCallback(() => {
+    setSelectedKeyIndex((i) => (i !== null && i > 0 ? i - 1 : i));
+  }, []);
+
+  const goNextKey = useCallback(() => {
+    setSelectedKeyIndex((i) => {
+      if (i === null) return i;
+      return i < data.length - 1 ? i + 1 : i;
+    });
+  }, [data.length]);
+
+  useEffect(() => {
+    if (selectedKeyIndex !== null && (selectedKeyIndex >= data.length || data.length === 0)) {
+      setSelectedKeyIndex(null);
+    }
+  }, [selectedKeyIndex, data.length]);
 
   const columns: ColumnDef<EncryptionKeyResponse>[] = [
     {
@@ -901,7 +1050,10 @@ export default function EncryptionKeysPage() {
             columns={columns}
             data={data}
             isLoading={isLoading}
-            onRowClick={(row) => setSelectedKeyId(row.keyId ?? null)}
+            onRowClick={(row) => {
+              const idx = data.findIndex((r) => r.keyId === row.keyId);
+              setSelectedKeyIndex(idx >= 0 ? idx : null);
+            }}
             keyExtractor={(r, i) => r.keyId ?? i}
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
@@ -916,8 +1068,14 @@ export default function EncryptionKeysPage() {
 
       <KeyDetailDialog
         keyId={selectedKeyId}
-        onClose={() => setSelectedKeyId(null)}
+        onClose={() => setSelectedKeyIndex(null)}
         onReencrypt={(key) => setReencryptTarget(key)}
+        onPrev={goPrevKey}
+        onNext={goNextKey}
+        hasPrev={keyHasPrev}
+        hasNext={keyHasNext}
+        showNav={showKeyRowNav}
+        showEndOfPageHint={showKeyEndOfPageHint}
       />
       <RotateKeyDialog open={rotateOpen} onClose={() => setRotateOpen(false)} />
       <ReencryptKeyDialog keyData={reencryptTarget} onClose={() => setReencryptTarget(null)} />

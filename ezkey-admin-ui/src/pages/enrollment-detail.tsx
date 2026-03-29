@@ -17,7 +17,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
+import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
+import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { ApiError, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
@@ -438,6 +440,12 @@ export default function EnrollmentDetailPage() {
   const queryClient = useQueryClient();
   const enrollmentId = Number(id);
 
+  const { nav: enrollmentListNav, goPrev: goPrevEnrollment, goNext: goNextEnrollment, showEndOfPageHint: showEnrollmentListEndHint } =
+    useListDetailPageNavigation({
+      currentId: enrollmentId,
+      pathPrefix: '/enrollments',
+    });
+
   const [tokenVisible, setTokenVisible] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
@@ -599,6 +607,17 @@ export default function EnrollmentDetailPage() {
   return (
     <AppShell
       title={enrollment?.enrollmentName ?? t('detail.fallbackTitle')}
+      detailNav={
+        enrollmentListNav ? (
+          <DetailPageNav
+            hasPrev={enrollmentListNav.prevId !== undefined}
+            hasNext={enrollmentListNav.nextId !== undefined}
+            onPrev={goPrevEnrollment}
+            onNext={goNextEnrollment}
+            showEndOfPageHint={showEnrollmentListEndHint}
+          />
+        ) : undefined
+      }
       breadcrumb={[
         { label: t('detail.breadcrumbEnrollments'), path: '/enrollments' },
         ...(enrollment?.integrationId

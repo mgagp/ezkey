@@ -22,7 +22,10 @@ import { getIntegrationName } from '@/hooks/use-integrations';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { isDemoMode } from '@/lib/demo-mode';
+import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
+import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
+import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import {
   deactivateAllEnrollments,
   delete1,
@@ -144,6 +147,12 @@ export default function IntegrationDetailPage() {
   const { toast } = useToast();
   const integrationId = Number(id);
 
+  const { nav: integrationListNav, goPrev: goPrevIntegration, goNext: goNextIntegration, showEndOfPageHint: showIntegrationListEndHint } =
+    useListDetailPageNavigation({
+      currentId: integrationId,
+      pathPrefix: '/integrations',
+    });
+
   const [dangerAction, setDangerAction] = useState<'revoke-all' | 'deactivate-all' | 'reactivate-all' | 'delete' | null>(null);
 
   const { data: integration, isLoading } = useQuery({
@@ -177,6 +186,17 @@ export default function IntegrationDetailPage() {
   return (
     <AppShell
       title={isLoading ? t('detail.fallbackTitle') : name}
+      detailNav={
+        integrationListNav ? (
+          <DetailPageNav
+            hasPrev={integrationListNav.prevId !== undefined}
+            hasNext={integrationListNav.nextId !== undefined}
+            onPrev={goPrevIntegration}
+            onNext={goNextIntegration}
+            showEndOfPageHint={showIntegrationListEndHint}
+          />
+        ) : undefined
+      }
       breadcrumb={[{ label: t('detail.breadcrumbIntegrations'), path: '/integrations' }]}
     >
       <div className="space-y-6">
@@ -291,7 +311,10 @@ export default function IntegrationDetailPage() {
             columns={enrollmentColumns}
             data={enrollments}
             isLoading={loadingEnr}
-            onRowClick={(row) => navigate(`/enrollments/${row.enrollmentId}`)}
+            onRowClick={(row) => {
+              const st = buildListDetailNavState(enrollments, (r) => r.enrollmentId ?? 0, row, !enrPagination.isLast);
+              navigate(`/enrollments/${row.enrollmentId}`, { state: st ?? undefined });
+            }}
             keyExtractor={(row, i) => row.enrollmentId ?? i}
             emptyMessage={t('detail.enrollmentsEmpty')}
             currentSort={enrPagination.sort}

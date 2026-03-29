@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw, Shield } from 'lucide-react';
@@ -12,7 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
+import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { useIntegrations } from '@/hooks/use-integrations';
@@ -26,11 +28,31 @@ import type { AuthAttemptDto, PagedModelAuthAttemptDto, Search2Params } from '@/
 function AttemptDetailDialog({
   attempt,
   onClose,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
+  showNav,
+  showEndOfPageHint,
 }: {
   attempt: AuthAttemptDto | null;
   onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  hasPrev: boolean;
+  hasNext: boolean;
+  showNav: boolean;
+  showEndOfPageHint: boolean;
 }) {
   const { t } = useTranslation('auth-attempts');
+  const { t: tc } = useTranslation('common');
+
+  useDetailNavigation(attempt !== null && showNav, {
+    hasPrev: hasPrev && showNav,
+    hasNext: hasNext && showNav,
+    onPrev,
+    onNext,
+  });
 
   const relatedDetails = useExpandableRelatedDetails({
     enrollmentId: attempt?.enrollmentId ?? undefined,
@@ -48,8 +70,28 @@ function AttemptDetailDialog({
   }
 
   return (
-    <Dialog open={attempt !== null} onClose={onClose} title={t('detail.title', { id: attempt.authAttemptId })} size="md">
+    <Dialog
+      open={attempt !== null}
+      onClose={onClose}
+      title={t('detail.title', { id: attempt.authAttemptId })}
+      size="md"
+      headerActions={
+        showNav ? (
+          <DetailDialogHeaderNav
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onPrev={onPrev}
+            onNext={onNext}
+          />
+        ) : undefined
+      }
+    >
       <div className="space-y-4">
+        {showEndOfPageHint && (
+          <p className="text-xs text-fg-muted italic border border-fg/20 bg-fg/[0.03] px-3 py-2">
+            {tc('detailNav.endOfPageMore')}
+          </p>
+        )}
         {relatedDetails.hasAnyFk && (
           <div className="flex justify-end">
             <Button
@@ -115,7 +157,7 @@ export default function AuthAttemptsPage() {
   const [enrollmentIdInput, setEnrollmentIdInput] = useState('');
   const [integrationFilter, setIntegrationFilter] = useState('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
-  const [selectedAttempt, setSelectedAttempt] = useState<AuthAttemptDto | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const debouncedEnrollmentId = useDebounce(enrollmentIdInput, 400);
   const { list: integrations, lookup } = useIntegrations();
@@ -142,6 +184,33 @@ export default function AuthAttemptsPage() {
     },
     fetchPage: (params) => search2(params as Search2Params) as Promise<PagedModelAuthAttemptDto>,
   });
+
+  const selectedAttempt = selectedIndex !== null ? data[selectedIndex] ?? null : null;
+  const showRowNav = data.length > 1;
+  const hasPrev = selectedIndex !== null && selectedIndex > 0;
+  const hasNext = selectedIndex !== null && selectedIndex < data.length - 1;
+  const showEndOfPageHint =
+    selectedIndex !== null &&
+    data.length > 0 &&
+    selectedIndex === data.length - 1 &&
+    !pagination.isLast;
+
+  const goPrevAttempt = useCallback(() => {
+    setSelectedIndex((i) => (i !== null && i > 0 ? i - 1 : i));
+  }, []);
+
+  const goNextAttempt = useCallback(() => {
+    setSelectedIndex((i) => {
+      if (i === null) return i;
+      return i < data.length - 1 ? i + 1 : i;
+    });
+  }, [data.length]);
+
+  useEffect(() => {
+    if (selectedIndex !== null && (selectedIndex >= data.length || data.length === 0)) {
+      setSelectedIndex(null);
+    }
+  }, [selectedIndex, data.length]);
 
   const columns: ColumnDef<AuthAttemptDto>[] = [
     { header: t('list.columns.id'), key: 'authAttemptId', className: 'w-14', sortKey: 'authAttemptId', render: (r) => <span className="font-mono text-xs">{r.authAttemptId}</span> },
@@ -236,7 +305,10 @@ export default function AuthAttemptsPage() {
             columns={columns}
             data={data}
             isLoading={isLoading}
-            onRowClick={(row) => setSelectedAttempt(row)}
+            onRowClick={(row) => {
+              const idx = data.findIndex((r) => r.authAttemptId === row.authAttemptId);
+              setSelectedIndex(idx >= 0 ? idx : null);
+            }}
             keyExtractor={(r) => r.authAttemptId}
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
@@ -248,7 +320,13 @@ export default function AuthAttemptsPage() {
 
       <AttemptDetailDialog
         attempt={selectedAttempt}
-        onClose={() => setSelectedAttempt(null)}
+        onClose={() => setSelectedIndex(null)}
+        onPrev={goPrevAttempt}
+        onNext={goNextAttempt}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        showNav={showRowNav}
+        showEndOfPageHint={showEndOfPageHint}
       />
     </AppShell>
   );

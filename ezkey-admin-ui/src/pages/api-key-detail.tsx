@@ -17,7 +17,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/toast-context';
+import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
+import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { ApiError } from '@/lib/api-client';
 import { parseAndValidateIpWhitelist } from '@/lib/ip-whitelist-validation';
@@ -185,6 +187,12 @@ export default function ApiKeyDetailPage() {
   const navigate = useNavigate();
   const keyId = Number(id);
 
+  const { nav: apiKeyListNav, goPrev: goPrevApiKey, goNext: goNextApiKey, showEndOfPageHint: showApiKeyListEndHint } =
+    useListDetailPageNavigation({
+      currentId: keyId,
+      pathPrefix: '/api-keys',
+    });
+
   const { lookup } = useIntegrations();
 
   const [editOpen, setEditOpen] = useState(false);
@@ -216,6 +224,17 @@ export default function ApiKeyDetailPage() {
   return (
     <AppShell
       title={isLoading ? t('detail.fallbackTitle') : t('detail.title', { id: apiKey?.apiKeyId ?? '?' })}
+      detailNav={
+        apiKeyListNav ? (
+          <DetailPageNav
+            hasPrev={apiKeyListNav.prevId !== undefined}
+            hasNext={apiKeyListNav.nextId !== undefined}
+            onPrev={goPrevApiKey}
+            onNext={goNextApiKey}
+            showEndOfPageHint={showApiKeyListEndHint}
+          />
+        ) : undefined
+      }
       breadcrumb={[{ label: t('detail.breadcrumb'), path: '/api-keys' }]}
     >
       {isLoading && (

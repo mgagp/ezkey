@@ -24,6 +24,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ApiError } from '@/lib/api-client';
 import { parseAndValidateIpWhitelist } from '@/lib/ip-whitelist-validation';
+import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import {
   getGetApiKeyQueryKey,
@@ -623,7 +624,10 @@ export default function ApiKeysPage() {
             isLoading={isLoading}
             keyExtractor={(r, i) => r.apiKeyId ?? i}
             emptyMessage={t('list.emptyMessage')}
-            onRowClick={(row) => navigate(`/api-keys/${row.apiKeyId}`)}
+            onRowClick={(row) => {
+              const st = buildListDetailNavState(data, (r) => r.apiKeyId ?? 0, row, !pagination.isLast);
+              navigate(`/api-keys/${row.apiKeyId}`, { state: st ?? undefined });
+            }}
             currentSort={pagination.sort}
             onSort={pagination.setSort}
             pagination={pagination}

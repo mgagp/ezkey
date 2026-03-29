@@ -26,6 +26,7 @@ import { ApiError } from '@/lib/api-client';
 import { isDemoMode, tenantDemoPresets } from '@/lib/demo-mode';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
+import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import { useCreateTenant, listTenants } from '@/generated/admin-api/tenants/tenants';
 import type { PagedModelTenantResponseDto, TenantResponseDto } from '@/generated/admin-api/model';
@@ -319,7 +320,10 @@ export default function TenantsPage() {
             columns={columns}
             data={data}
             isLoading={isLoading}
-            onRowClick={(row) => navigate(`/tenants/${row.tenantId}`)}
+            onRowClick={(row) => {
+              const st = buildListDetailNavState(data, (r) => r.tenantId ?? 0, row, !pagination.isLast);
+              navigate(`/tenants/${row.tenantId}`, { state: st ?? undefined });
+            }}
             keyExtractor={(r, i) => r.tenantId ?? i}
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}

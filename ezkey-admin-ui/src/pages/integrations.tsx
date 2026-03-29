@@ -23,6 +23,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { ApiError } from '@/lib/api-client';
 import { integrationDemoPresets, isDemoMode } from '@/lib/demo-mode';
+import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import { create, search } from '@/generated/admin-api/integrations/integrations';
 import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
@@ -220,7 +221,10 @@ export default function IntegrationsPage() {
             columns={columns}
             data={data}
             isLoading={isLoading}
-            onRowClick={(row) => navigate(`/integrations/${row.id}`)}
+            onRowClick={(row) => {
+              const st = buildListDetailNavState(data, (r) => r.id ?? 0, row, !pagination.isLast);
+              navigate(`/integrations/${row.id}`, { state: st ?? undefined });
+            }}
             keyExtractor={(row, i) => row.id ?? i}
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}

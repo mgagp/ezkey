@@ -23,6 +23,7 @@ import { useIntegrations } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ApiError, fetchBlobUrl } from '@/lib/api-client';
 import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
+import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import { create1, search1 } from '@/generated/admin-api/enrollments/enrollments';
 import type {
@@ -421,7 +422,10 @@ export default function EnrollmentsPage() {
             columns={columns}
             data={data}
             isLoading={isLoading}
-            onRowClick={(row) => navigate(`/enrollments/${row.enrollmentId}`)}
+            onRowClick={(row) => {
+              const st = buildListDetailNavState(data, (r) => r.enrollmentId ?? 0, row, !pagination.isLast);
+              navigate(`/enrollments/${row.enrollmentId}`, { state: st ?? undefined });
+            }}
             keyExtractor={(row, i) => row.enrollmentId ?? i}
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}

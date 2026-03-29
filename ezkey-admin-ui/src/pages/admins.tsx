@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,7 +20,9 @@ import { Select } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
+import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
+import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { fetchApi, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
@@ -270,13 +272,33 @@ function AdminDetailDialog({
   onClose,
   onShowCredentials,
   onRequestDeactivate,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
+  showNav,
+  showEndOfPageHint,
 }: {
   admin: AdminResponseDto | null;
   onClose: () => void;
   onShowCredentials: (id: number, username: string) => void;
   onRequestDeactivate?: (admin: AdminResponseDto) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  hasPrev: boolean;
+  hasNext: boolean;
+  showNav: boolean;
+  showEndOfPageHint: boolean;
 }) {
   const { t } = useTranslation('admins');
+  const { t: tc } = useTranslation('common');
+
+  useDetailNavigation(admin !== null && showNav, {
+    hasPrev: hasPrev && showNav,
+    hasNext: hasNext && showNav,
+    onPrev,
+    onNext,
+  });
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const queryClient = useQueryClient();
@@ -330,8 +352,28 @@ function AdminDetailDialog({
   }
 
   return (
-    <Dialog open={admin !== null} onClose={onClose} title={t('detail.title', { username: adm.username })} size="lg">
+    <Dialog
+      open={admin !== null}
+      onClose={onClose}
+      title={t('detail.title', { username: adm.username })}
+      size="lg"
+      headerActions={
+        showNav ? (
+          <DetailDialogHeaderNav
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onPrev={onPrev}
+            onNext={onNext}
+          />
+        ) : undefined
+      }
+    >
       <div className="space-y-5">
+        {showEndOfPageHint && (
+          <p className="text-xs text-fg-muted italic border border-fg/20 bg-fg/[0.03] px-3 py-2">
+            {tc('detailNav.endOfPageMore')}
+          </p>
+        )}
         {relatedDetails.hasAnyFk && (
           <div className="flex justify-end">
             <Button
@@ -800,7 +842,7 @@ export default function AdminsPage() {
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState<AdminResponseDto | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [onboardingTarget, setOnboardingTarget] = useState<{ id: number; username: string } | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<AdminResponseDto | null>(null);
 
@@ -809,6 +851,33 @@ export default function AdminsPage() {
     baseParams: {},
     fetchPage: (params) => listAdmins(params) as Promise<PagedModelAdminResponseDto>,
   });
+
+  const selectedAdmin = selectedIndex !== null ? data[selectedIndex] ?? null : null;
+  const showRowNav = data.length > 1;
+  const hasPrev = selectedIndex !== null && selectedIndex > 0;
+  const hasNext = selectedIndex !== null && selectedIndex < data.length - 1;
+  const showEndOfPageHint =
+    selectedIndex !== null &&
+    data.length > 0 &&
+    selectedIndex === data.length - 1 &&
+    !pagination.isLast;
+
+  const goPrevAdmin = useCallback(() => {
+    setSelectedIndex((i) => (i !== null && i > 0 ? i - 1 : i));
+  }, []);
+
+  const goNextAdmin = useCallback(() => {
+    setSelectedIndex((i) => {
+      if (i === null) return i;
+      return i < data.length - 1 ? i + 1 : i;
+    });
+  }, [data.length]);
+
+  useEffect(() => {
+    if (selectedIndex !== null && (selectedIndex >= data.length || data.length === 0)) {
+      setSelectedIndex(null);
+    }
+  }, [selectedIndex, data.length]);
 
   const columns: ColumnDef<AdminResponseDto>[] = [
     { header: t('list.columns.id'), key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
@@ -877,7 +946,10 @@ export default function AdminsPage() {
             columns={columns}
             data={data}
             isLoading={isLoading}
-            onRowClick={(row) => setSelectedAdmin(row)}
+            onRowClick={(row) => {
+              const idx = data.findIndex((r) => r.adminId === row.adminId);
+              setSelectedIndex(idx >= 0 ? idx : null);
+            }}
             keyExtractor={(r, i) => r.adminId ?? i}
             emptyMessage={t('list.emptyMessage')}
             currentSort={pagination.sort}
@@ -889,15 +961,21 @@ export default function AdminsPage() {
 
       <AdminDetailDialog
         admin={selectedAdmin}
-        onClose={() => setSelectedAdmin(null)}
+        onClose={() => setSelectedIndex(null)}
         onShowCredentials={(id, username) => {
-          setSelectedAdmin(null);
+          setSelectedIndex(null);
           setOnboardingTarget({ id, username });
         }}
         onRequestDeactivate={(a) => {
-          setSelectedAdmin(null);
+          setSelectedIndex(null);
           setDeactivateTarget(a);
         }}
+        onPrev={goPrevAdmin}
+        onNext={goNextAdmin}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        showNav={showRowNav}
+        showEndOfPageHint={showEndOfPageHint}
       />
       <CreateAdminDialog
         open={createOpen}

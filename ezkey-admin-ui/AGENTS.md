@@ -192,7 +192,7 @@ prevents stale data from a previous user appearing on the next login.
 
 ### Dialog (modal) — dismissible
 
-The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (default `true`). When `dismissible={false}`, backdrop click and Escape do **not** close the dialog; only the close button (X) and explicit actions (Cancel, Submit, Done) do.
+The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (default `true`). When `dismissible={false}`, backdrop click and Escape do **not** close the dialog; only the close button (X) and explicit actions (Cancel, Submit, Done) do. Optional `size`: `sm` | `md` | `lg` | `lg-wide` (the last is ~26.5% wider than `lg`, for content-heavy read-only modals such as audit log detail).
 
 - **Use `dismissible={false}`** for any dialog that contains a **form** (create/edit) or **critical state** (e.g. secret shown once, live test in progress). This prevents accidental data loss when the user clicks outside.
 - **Leave default** (`dismissible` unspecified) for read-only detail dialogs and simple confirmations (yes/no, no form fields).
