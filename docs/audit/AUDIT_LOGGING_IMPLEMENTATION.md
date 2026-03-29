@@ -6,7 +6,7 @@ A comprehensive event audit logging system has been implemented across all Ezkey
 
 ## Related specifications
 
-- **[Admin recovery audit trail (recovery code + enrollment reset)](SPEC_ADMIN_RECOVERY_AUDIT_TRAIL.md)** — Draft spec for structured `event_details`, correlation between recover and reset, and SOC2-oriented visibility.
+- **[Admin recovery audit trail (recovery code + enrollment reset)](../../.cursor/plans/archived/2026-03/SPEC_ADMIN_RECOVERY_AUDIT_TRAIL.md)** — Implemented and tested; archived design spec (structured `event_details`, correlation, SOC2-oriented visibility).
 
 ## What Has Been Implemented
 
@@ -31,7 +31,7 @@ Features:
 
 ### ✅ Event Classification
 
-Event Types: ADMIN_LOGIN, ADMIN_LOGOUT, ADMIN_RECOVERY_USE, ENROLLMENT_CREATED, ENROLLMENT_DELETED, ENROLLMENT_BIND, ENROLLMENT_VERIFY, AUTH_ATTEMPT_CREATED, AUTH_ATTEMPT_PENDING, AUTH_ATTEMPT_RESPOND, SYSTEM_ERROR
+Event Types: ADMIN_LOGIN, ADMIN_LOGOUT, ADMIN_RECOVERY_USE, ADMIN_RECOVERY_ENROLLMENT_RESET, ENROLLMENT_CREATED, ENROLLMENT_DELETED, ENROLLMENT_BIND, ENROLLMENT_VERIFY, AUTH_ATTEMPT_CREATED, AUTH_ATTEMPT_PENDING, AUTH_ATTEMPT_RESPOND, SYSTEM_ERROR
 
 Event Statuses: SUCCESS, FAILURE, ERROR
 

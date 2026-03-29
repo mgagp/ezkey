@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import org.ezkey.admin.audit.RecoveryAuditDetails;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
@@ -647,6 +648,15 @@ public class AdminAuthController {
       Integer recoveryTenantId =
           admin != null && admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
 
+      String recoveryDetailsJson =
+          RecoveryAuditDetails.recoveryCodeValidatedSuccess(
+              request.username(),
+              admin != null ? admin.getAdminId() : null,
+              recoveryTenantId,
+              codesRemaining,
+              mfaEnrollmentId,
+              RecoveryAuditDetails.recoveryTokenFingerprint(recoveryToken));
+
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -655,8 +665,7 @@ public class AdminAuthController {
                   recoveryTenantId)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(admin != null ? admin.getAdminId() : null)
-              .eventDetails(
-                  "Username: " + request.username() + ", Codes remaining: " + codesRemaining)
+              .eventDetails(recoveryDetailsJson)
               .build());
 
       return ResponseEntity.ok(response);
@@ -671,13 +680,23 @@ public class AdminAuthController {
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
       Integer failTenantId = resolveAdminTenantId(request.username());
+      Integer failAdminId = resolveAdminId(request.username());
       auditLogService.log(
-          AuditHelper.logFailure(
-              context,
-              EventType.ADMIN_RECOVERY_USE,
-              AdminAuditConstants.RECOVERY_CODE_FAILED,
-              e.getMessage(),
-              failTenantId));
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_USE,
+                  AdminAuditConstants.RECOVERY_CODE_FAILED,
+                  failTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .adminId(failAdminId)
+              .eventDetails(
+                  RecoveryAuditDetails.recoveryCodeRejected(
+                      request.username(),
+                      failTenantId,
+                      RecoveryAuditDetails.recoveryRejectionReasonCode(e.getMessage()),
+                      e.getMessage()))
+              .build());
 
       return ResponseEntity.status(403)
           .body(new AdminRecoveryResponseDto("Recovery failed: " + e.getMessage()));
@@ -686,13 +705,20 @@ public class AdminAuthController {
       logger.error("❌ Recovery error for admin: {} - {}", request.username(), e.getMessage(), e);
 
       Integer errorTenantId = resolveAdminTenantId(request.username());
+      Integer errorAdminId = resolveAdminId(request.username());
       auditLogService.log(
-          AuditHelper.logError(
-              context,
-              EventType.ADMIN_RECOVERY_USE,
-              AdminAuditConstants.RECOVERY_ERROR,
-              e.getMessage(),
-              errorTenantId));
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_USE,
+                  AdminAuditConstants.RECOVERY_ERROR,
+                  errorTenantId)
+              .eventStatus(EventStatus.ERROR)
+              .errorMessage(e.getMessage())
+              .adminId(errorAdminId)
+              .eventDetails(
+                  RecoveryAuditDetails.recoveryUnexpectedError(
+                      request.username(), errorTenantId, e.getClass().getSimpleName()))
+              .build());
 
       return ResponseEntity.status(500)
           .body(new AdminRecoveryResponseDto("An error occurred during recovery"));

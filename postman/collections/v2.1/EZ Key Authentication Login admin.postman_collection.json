@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "0863688c-d169-4283-b0d1-0fc8912dc73d",
     "name": "EZ Key Authentication Login admin",
-    "description": "Collection for administrator passwordless authentication and recovery operations in the Admin API.\n\n## Endpoints\n\n- **Login**: Passwordless authentication for administrators (single-call or two-call flow)\n- **Passwordless Wait**: Wait for device approval in two-step authentication flow\n- **Recover**: Emergency access using single-use recovery code\n- **Enrollment Reset**: Reset enrollment after recovery (unbind old device, generate new credentials)\n- **Logout**: Invalidate bearer token and end session\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Login Response Fields\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN)\n- `tenantId`: Tenant ID (null for GlobalAdmin, tenantId for TenantAdmin)\n- These fields are automatically extracted and saved to environment variables\n\n## Authentication Modes\n\n### Single-Call Mode (Convenient)\n- Set `challengeRequested: false` in login request\n- Endpoint blocks until device approves (HTTP wait window follows auth attempt TTL: `ezkey.core.auth-attempt.ttl-seconds`, plus small slack, capped at 300 seconds)\n- Returns bearer token directly\n\n### Two-Call Mode (More Secure)\n- Set `challengeRequested: true` in login request\n- Returns `authAttemptId` and `challengeCode` immediately\n- User enters challenge code on device\n- Call `/passwordless-wait` to get bearer token\n\n## Recovery Flow\n\n1. Use recovery code via `/recover` endpoint\n2. Receive temporary recovery token (30 minutes validity)\n3. Use recovery token to reset enrollment via `/enrollments/reset`\n4. Bind new device with new enrollment credentials\n5. Resume normal passwordless login\n\n## Security Notes\n\n- **Passwordless-only**: No passwords stored or transmitted\n- **Rate limiting**: 5 requests per minute per IP address\n- **Recovery codes**: 10 single-use codes per admin, BCrypt hashed\n- **Recovery token**: 30 minutes validity, enrollment reset only\n- **Challenge code**: Prevents enumeration attacks in two-step flow",
+    "description": "Collection for administrator passwordless authentication and recovery operations in the Admin API.\n\n## Endpoints\n\n- **Login**: Passwordless authentication for administrators (single-call or two-call flow)\n- **Passwordless Wait**: Wait for device approval in two-step authentication flow\n- **Recover**: Emergency access using single-use recovery code\n- **Enrollment Reset**: Reset enrollment after recovery (unbind old device, generate new credentials)\n- **Logout**: Invalidate bearer token and end session\n\n## Audit (server-side)\n\nRecovery and enrollment-reset operations are recorded in the admin audit log (e.g. `ADMIN_RECOVERY_USE`, `ADMIN_RECOVERY_ENROLLMENT_RESET`). Correlation uses structured JSON in `event_details` (including `recovery_token_fingerprint`); nothing extra is returned in these HTTP responses.\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Login Response Fields\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN)\n- `tenantId`: Tenant ID (null for GlobalAdmin, tenantId for TenantAdmin)\n- These fields are automatically extracted and saved to environment variables\n\n## Authentication Modes\n\n### Single-Call Mode (Convenient)\n- Set `challengeRequested: false` in login request\n- Endpoint blocks until device approves (HTTP wait window follows auth attempt TTL: `ezkey.core.auth-attempt.ttl-seconds`, plus small slack, capped at 300 seconds)\n- Returns bearer token directly\n\n### Two-Call Mode (More Secure)\n- Set `challengeRequested: true` in login request\n- Returns `authAttemptId` and `challengeCode` immediately\n- User enters challenge code on device\n- Call `/passwordless-wait` to get bearer token\n\n## Recovery Flow\n\n1. Use recovery code via `/recover` endpoint\n2. Receive temporary recovery token (30 minutes validity)\n3. Use recovery token to reset enrollment via `/enrollments/reset`\n4. Bind new device with new enrollment credentials\n5. Resume normal passwordless login\n\n## Security Notes\n\n- **Passwordless-only**: No passwords stored or transmitted\n- **Rate limiting**: 5 requests per minute per IP address\n- **Recovery codes**: 10 single-use codes per admin, BCrypt hashed\n- **Recovery token**: 30 minutes validity, enrollment reset only\n- **Challenge code**: Prevents enumeration attacks in two-step flow",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -253,6 +253,10 @@
               "        pm.expect(jsonData).to.have.property('codesRemaining');",
               "    });",
               "    ",
+              "    if (jsonData.enrollmentId !== undefined && jsonData.enrollmentId !== null) {",
+              "        pm.environment.set(\"mfaEnrollmentId\", jsonData.enrollmentId);",
+              "    }",
+              "    ",
               "    pm.test(\"Recovery successful\", function () {",
               "        pm.expect(jsonData.success).to.be.true;",
               "    });",
@@ -289,7 +293,7 @@
             "recover"
           ]
         },
-        "description": "Emergency access using a single-use recovery code. This endpoint allows administrators who have lost access to their enrolled device to regain access.\n\n**Security Features:**\n- Single-use recovery codes (removed from array after use)\n- BCrypt hashed storage\n- Limited token (30 min validity, enrollment binding only)\n- Rate limited to prevent brute force\n- Audit logged as critical security event\n\n**Request Body:**\n- `username` (required): Administrator username\n- `recoveryCode` (required): Single-use recovery code (32 digits in 8 groups of 4: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX)\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `recoveryToken`: Temporary recovery token (30 minutes validity)\n- `expiresAt`: Token expiration timestamp\n- `codesRemaining`: Number of recovery codes remaining after this use\n- `message`: \"Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately.\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: \"Recovery failed: Invalid recovery code\"\n\n**Status Codes:**\n- 200: Recovery successful, temporary token issued\n- 400: Validation error (invalid recovery code format)\n- 403: Recovery failed (invalid or expired recovery code)\n- 429: Rate limit exceeded (3 attempts per 15 minutes per IP)\n- 500: Internal server error"
+        "description": "Emergency access using a single-use recovery code. This endpoint allows administrators who have lost access to their enrolled device to regain access.\n\n**Security Features:**\n- Single-use recovery codes (removed from array after use)\n- BCrypt hashed storage\n- Limited token (30 min validity, enrollment binding only)\n- Rate limited to prevent brute force\n- Audit logged (`ADMIN_RECOVERY_USE`, structured `event_details` JSON on the server)\n\n**Request Body:**\n- `username` (required): Administrator username\n- `recoveryCode` (required): Single-use recovery code (32 digits in 8 groups of 4: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX)\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `recoveryToken`: Temporary recovery token (30 minutes validity)\n- `expiresAt`: Token expiration timestamp\n- `codesRemaining`: Number of recovery codes remaining after this use\n- `enrollmentId`: MFA enrollment ID to use as `enrollmentId` in `POST /api/v1/admin/enrollments/reset` (when the admin has an MFA enrollment)\n- `message`: \"Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately.\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: \"Recovery failed: …\"\n\n**Status Codes:**\n- 200: Recovery successful, temporary token issued\n- 400: Validation error (invalid recovery code format)\n- 403: Recovery failed (invalid or expired recovery code)\n- 429: Rate limit exceeded (3 attempts per 15 minutes per IP)\n- 500: Internal server error"
       },
       "response": []
     },
@@ -297,11 +301,24 @@
       "name": "enrollments reset",
       "event": [
         {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "if (!pm.environment.get(\"mfaEnrollmentId\")) {",
+              "    pm.environment.set(\"mfaEnrollmentId\", \"1\");",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 200 or 400\", function () {",
-              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 200, 400, or 403\", function () {",
+              "    pm.expect([200, 400, 403]).to.include(pm.response.code);",
               "});",
               "",
               "if (pm.response.code === 200) {",
@@ -343,7 +360,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"enrollmentId\": 1\r\n}",
+          "raw": "{\r\n  \"enrollmentId\": {{mfaEnrollmentId}}\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -363,7 +380,7 @@
             "reset"
           ]
         },
-        "description": "Resets enrollment after using recovery code. This unbinds the old device and generates new enrollment credentials for binding a replacement device.\n\n**Prerequisites:**\n- Must have valid recovery token (obtained via `/recover` endpoint)\n- Recovery token expires after 30 minutes or after use\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to reset\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `enrollmentId`: The enrollment ID (same as before, but credentials are new)\n- `enrollmentProofToken`: New enrollment proof token for binding\n- `enrollmentChallenge`: New enrollment challenge code for verification\n- `integrationId`: Integration ID for reference\n- `message`: \"Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.\"\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description\n\n**Status Codes:**\n- 200: Enrollment reset successfully\n- 400: Invalid request or enrollment not found\n- 401: Unauthorized - invalid or expired recovery token\n- 500: Internal server error\n\n**Usage Flow:**\n1. Use recovery code to get recovery token\n2. Reset enrollment (unbinds old device)\n3. Bind new device with new credentials\n4. Resume normal passwordless login"
+        "description": "Resets enrollment after using recovery code. This unbinds the old device and generates new enrollment credentials for binding a replacement device.\n\n**Prerequisites:**\n- Must have valid recovery token (obtained via `/recover` endpoint)\n- Recovery token expires after 30 minutes or after use\n- Set environment variable `mfaEnrollmentId` from the `/recover` response (`enrollmentId`), or set it manually before calling this request\n\n**Request Body:**\n- `enrollmentId` (required): MFA enrollment ID (must match the value returned by `/recover` for this admin)\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `enrollmentId`: The enrollment ID (same as before, but credentials are new)\n- `enrollmentProofToken`: New enrollment proof token for binding\n- `enrollmentChallenge`: New enrollment challenge code for verification\n- `integrationId`: Integration ID for reference\n- `message`: \"Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.\"\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description (e.g. enrollment not found)\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: e.g. invalid recovery token, wrong enrollment for this admin, or invalid token type\n\n**Audit:** Success and failures are recorded (`ADMIN_RECOVERY_ENROLLMENT_RESET`); `event_details` is JSON on the server (not in this response).\n\n**Status Codes:**\n- 200: Enrollment reset successfully\n- 400: Invalid request or enrollment not found\n- 403: Authentication failed (invalid/expired recovery token, wrong token type, or permission)\n- 429: Rate limit exceeded for enrollment reset\n- 500: Internal server error\n\n**Usage Flow:**\n1. Use recovery code to get recovery token and `enrollmentId`\n2. Reset enrollment (unbinds old device)\n3. Bind new device with new credentials\n4. Resume normal passwordless login"
       },
       "response": []
     },

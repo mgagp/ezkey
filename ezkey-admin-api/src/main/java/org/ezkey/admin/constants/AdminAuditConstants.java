@@ -105,6 +105,15 @@ public final class AdminAuditConstants {
   /** Audit action for unexpected error during recovery. */
   public static final String RECOVERY_ERROR = "recovery_error";
 
+  /** Audit action when enrollment reset via recovery token completed successfully. */
+  public static final String ENROLLMENT_RESET_VIA_RECOVERY = "enrollment_reset_via_recovery";
+
+  /**
+   * Audit action when enrollment reset via recovery token failed (expected or validation errors).
+   */
+  public static final String ENROLLMENT_RESET_VIA_RECOVERY_FAILED =
+      "enrollment_reset_via_recovery_failed";
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Enrollment Management Actions
   // ═══════════════════════════════════════════════════════════════════════════

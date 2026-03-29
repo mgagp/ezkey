@@ -29,6 +29,11 @@ public enum EventType {
   ADMIN_LOGOUT,
   ADMIN_PASSWORD_CHANGE,
   ADMIN_RECOVERY_USE,
+  /**
+   * MFA enrollment reset completed using a recovery token (device unbound, new bind credentials
+   * issued). Distinct from {@link #ADMIN_RECOVERY_USE} (recovery code / recovery token issuance).
+   */
+  ADMIN_RECOVERY_ENROLLMENT_RESET,
   ADMIN_CREATED, // New administrator provisioned (global or tenant)
   ADMIN_PROFILE_UPDATED, // Administrator profile fields updated (firstName, lastName, email,
   // challengeRequired)

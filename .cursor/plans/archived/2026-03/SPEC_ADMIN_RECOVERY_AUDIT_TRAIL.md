@@ -1,6 +1,7 @@
 # Specification: Admin recovery audit trail (recovery code + enrollment reset)
 
-**Status:** Draft for review  
+**Status:** Archived — **fully implemented and tested** (see §13).  
+**Former location:** `docs/audit/SPEC_ADMIN_RECOVERY_AUDIT_TRAIL.md` (moved here March 2026).  
 **Audience:** Engineering, Security, Operations (SOC / SIEM), Compliance  
 **Scope:** `POST /api/v1/admin/auth/recover`, `POST /api/v1/admin/enrollments/reset`, persisted `audit_log` rows, Admin UI audit presentation.
 
@@ -90,7 +91,7 @@ Serialization: single JSON object string in `audit_log.event_details`, UTF-8, va
 
 - **HTTP:** `POST /api/v1/admin/auth/recover` — success path.
 - **`EventType`:** `ADMIN_RECOVERY_USE` (unchanged).
-- **`event_action`:** `recovery_code_used` (retain for backward compatibility; treat as “recovery token issued after code consumption”).
+- **`event_action`:** `recovery_code_used` (unchanged name; semantics: recovery token issued after code consumption).
 - **`EventStatus`:** `SUCCESS`.
 - **`admin_id`:** Set to the subject administrator.
 - **`tenant_id`:** As today (tenant admin) or `null` (global admin).
@@ -152,14 +153,8 @@ Serialization: single JSON object string in `audit_log.event_details`, UTF-8, va
 ### 6.4 Step B — Enrollment reset via recovery token (new audit)
 
 - **HTTP:** `POST /api/v1/admin/enrollments/reset` — success path.
-- **`EventType`:** **Option 1 (recommended):** add `ADMIN_RECOVERY_ENROLLMENT_RESET` to `EventType` enum for clear SIEM filtering **or** **Option 2:** reuse `ADMIN_RECOVERY_USE` with a distinct `event_action` only.  
-  **Recommendation:** **Option 1** — new `EventType` so dashboards can separate “credential recovery” from “enrollment state change” while still being part of the same product flow.
-
-If Option 2 is chosen for a smaller change set, use:
-
-- **`EventType`:** `ADMIN_RECOVERY_USE`
-- **`event_action`:** `enrollment_reset_via_recovery`
-
+- **`EventType`:** `ADMIN_RECOVERY_ENROLLMENT_RESET` (new enum value; see §11.1 for rationale and alternative).
+- **`event_action`:** `enrollment_reset_via_recovery`.
 - **`EventStatus`:** `SUCCESS`.
 - **`admin_id`:** Subject administrator (from validated recovery token).
 
@@ -189,8 +184,9 @@ If Option 2 is chosen for a smaller change set, use:
 
 ### 6.5 Step B — Enrollment reset failed (auth or validation)
 
+- **`EventType`:** `ADMIN_RECOVERY_ENROLLMENT_RESET` (same as §6.4).
 - **`EventStatus`:** `FAILURE` or `ERROR` as appropriate.
-- **`event_action`:** `enrollment_reset_via_recovery_failed` (new constant) or the same `event_action` as success with `FAILURE` (prefer **distinct** action for query clarity).
+- **`event_action`:** `enrollment_reset_via_recovery_failed` (distinct from success for SIEM clarity).
 
 **`event_details` (JSON):**
 
@@ -217,7 +213,7 @@ When the token is missing or not a recovery token, `recovery_token_fingerprint` 
 - **Controllers:** `AdminAuthController.recover` — replace string `event_details` with JSON built via `AuditDetailsBuilder` (or a dedicated small builder for recovery to avoid key typos).
 - **Controllers:** `AdminEnrollmentController.resetEnrollment` — inject `AuditLogService` and emit §6.4 / §6.5 after validation boundaries used today (success after `resetEnrollment`; failures in existing `catch` branches with safe messages).
 - **Core constants:** Extend `AdminAuditConstants` with new `event_action` strings; document them in `AUDIT_ADMIN_LOGIN_ACTIONS.md` (or equivalent) if present.
-- **EventType enum:** If adding `ADMIN_RECOVERY_ENROLLMENT_RESET`, update:
+- **EventType enum:** Add `ADMIN_RECOVERY_ENROLLMENT_RESET` (§6.4, §6.5) and update:
   - Admin API OpenAPI **only via code generation workflow** (maintainer runs spec update scripts),
   - Admin UI generated types / audit filters / i18n (`eventType.*`, `eventAction.*`),
   - Any allowlists that enumerate `EventType` values.
@@ -228,7 +224,7 @@ When the token is missing or not a recovery token, `recovery_token_fingerprint` 
 
 - **Audit log list / detail:** Display `event_details` as formatted JSON or key-value when content parses as JSON (existing patterns for other events).
 - **i18n:** Add English and French labels for any new `EventType` and `event_action` values.
-- **Filters:** Ensure new `EventType` (if any) appears in filter dropdowns driven from the same source as other types.
+- **Filters:** Ensure the new `EventType` appears in filter dropdowns driven from the same source as other types.
 
 ---
 
@@ -243,23 +239,88 @@ When the token is missing or not a recovery token, `recovery_token_fingerprint` 
 
 ## 10. Rollout and backward compatibility
 
-- Existing rows keep legacy string `event_details`; reporting tools SHOULD tolerate **either** legacy strings or JSON for `ADMIN_RECOVERY_USE` / `recovery_code_used`.
-- New writes use JSON only for the events touched by this spec.
-- SIEM rules SHOULD key on `event_action` and structured fields when `schema_version` is present.
+Ezkey **does not yet have production deployments**; the product is in **full development**. There is **no requirement** to preserve legacy `event_details` string formats, dual-write reporting, or migration of historical audit rows for this change. Implement **JSON-only** `event_details` for all recovery-related events defined in this spec, without maintaining parallel plain-string variants.
 
 ---
 
-## 11. Open points for review
+## 11. Open points for review — decision guide
 
-1. **Enum choice:** New `EventType` `ADMIN_RECOVERY_ENROLLMENT_RESET` vs reusing `ADMIN_RECOVERY_USE` — product and SIEM preference.
-2. **Fingerprint length:** 16 hex chars vs 12 vs full 64 — trade-off between collision resistance and column width (16 is acceptable for operational correlation).
-3. **Optional API surface:** Whether to expose `recovery_token_fingerprint` or a `recovery_correlation_id` in REST responses for **support tickets** (not required for audit storage if fingerprint is internal-only).
+This section explains each open decision, compares options, and states **recommended defaults** so stakeholders can confirm or override before implementation.
+
+### 11.1 `EventType` for enrollment reset: new value vs reuse of `ADMIN_RECOVERY_USE`
+
+**What we are deciding:** Step A (recovery code → token) and Step B (enrollment reset) are two different security meanings: **credential / break-glass use** vs **MFA enrollment state change** (device unbound, new proof material). The audit system exposes both `event_type` and `event_action`; we must choose whether Step B gets its own top-level type.
+
+| Option | Description | Pros | Cons |
+|--------|-------------|------|------|
+| **A — New `EventType`** (e.g. `ADMIN_RECOVERY_ENROLLMENT_RESET`) | Step B rows use the new enum value; Step A stays `ADMIN_RECOVERY_USE`. | Clear SIEM and UI filters (“show only enrollment resets”); aligns with other enrollment-adjacent events; avoids overloading one type with two meanings. | Slightly more churn: `EventType` enum, OpenAPI/UI/i18n allowlists. |
+| **B — Reuse `ADMIN_RECOVERY_USE`** | Only `event_action` differs (e.g. `enrollment_reset_via_recovery`). | Smaller schema change; one bucket for “anything in the recovery funnel”. | Harder to report “enrollment changes” without parsing `event_action`; mixes credential events with infrastructure state change. |
+
+**Recommended default:** **Option A** — add `ADMIN_RECOVERY_ENROLLMENT_RESET` for Step B success/failure audits. Reserve `ADMIN_RECOVERY_USE` for Step A and recovery failures tied to code validation.
+
+---
+
+### 11.2 Length of `recovery_token_fingerprint` (truncated SHA-256 hex)
+
+**What we are deciding:** The fingerprint correlates Step A and Step B without storing the token. It is a prefix of `hex(SHA-256(token))`.
+
+| Length (hex) | Bits (approx.) | Comment |
+|--------------|----------------|---------|
+| **12** | 48 | Short; still very unlikely to collide across unrelated sessions; fine if display width matters. |
+| **16** | 64 | **Balanced default:** strong operational correlation, compact in JSON and logs. |
+| **64** | 256 | Full hash; maximum redundancy; no practical gain for correlation if the token is already high-entropy and single-use. |
+
+**Recommended default:** **16 hex characters** (as in §4.1). Use the same length everywhere (recover + reset) for join queries.
+
+---
+
+### 11.3 Exposing correlation in REST APIs (`recovery_token_fingerprint` or `recovery_correlation_id`)
+
+**What we are deciding:** Audits will contain the fingerprint internally. Whether **clients** (Admin UI, support scripts) receive an explicit correlation field in HTTP responses.
+
+| Option | Description | Pros | Cons |
+|--------|-------------|------|------|
+| **A — Audit only** | Fingerprint appears only in `audit_log.event_details`. API responses unchanged. | Minimal surface; no new fields to document or misuse; correlation is operator/SIEM concern. | Support must use audit UI or DB/API for audits to tie steps together. |
+| **B — Expose fingerprint in API** | e.g. add `recoveryTokenFingerprint` to recover (and optionally echo on reset). | Easier for ticket notes (“same fingerprint as row X”); optional client-side display during dev. | New contract; risk of confusion with security-sensitive data if mislabeled (still not secret, but must be documented clearly). |
+| **C — Separate UUID `recovery_correlation_id`** | Issued at recover time; stored in audit and returned to client; repeated on reset request/response. | Human-friendly opaque ID; no derivation from token in the API layer. | Requires generation, storage, and possibly passing the ID on reset (header or body), i.e. larger implementation. |
+
+**Recommended default:** **Option A** — keep correlation **internal to audit and server-side logging** for the first implementation. Revisit **Option B** or **C** only if product/support explicitly needs correlation outside the audit store.
+
+---
+
+### 11.4 Decisions (confirmed)
+
+| Topic | Decision |
+|--------|----------|
+| §11.1 EventType | **Option A** — `ADMIN_RECOVERY_ENROLLMENT_RESET` for Step B (success and failure) |
+| §11.2 Fingerprint | **16** hex characters (`recovery_token_fingerprint`) |
+| §11.3 API exposure | **Option A** — correlation fields **audit-only**; no new REST response fields |
 
 ---
 
 ## 12. References
 
-- `ezkey-admin-api` — `AdminAuthController.recover`, `AdminEnrollmentController.resetEnrollment`
+- `ezkey-admin-api` — `AdminAuthController.recover`, `AdminEnrollmentController.resetEnrollment`, `RecoveryAuditDetails`
 - `ezkey-core` — `EventType`, `AuditDetailsBuilder`, audit persistence rules
-- `docs/audit/AUDIT_LOGGING_IMPLEMENTATION.md` (if present) — general audit architecture
-- `ezkey-admin-ui` — `src/locales/en/audit-logs.json`, audit log pages
+- [Audit logging implementation](../../../../docs/audit/AUDIT_LOGGING_IMPLEMENTATION.md) — general audit architecture
+- `ezkey-admin-ui` — `src/locales/en/audit-logs.json`, `src/lib/audit-event-type.ts`, audit log pages
+- Postman — `postman/collections/v2.1/EZ Key Authentication Login admin.postman_collection.json`, `EZ Key Audit Logs admin.postman_collection.json`
+
+---
+
+## 13. Implementation completion
+
+This specification is **fully implemented and tested** in the repository.
+
+| Area | Delivered |
+|------|-----------|
+| Structured audit JSON | `org.ezkey.admin.audit.RecoveryAuditDetails` (fingerprint + `AuditDetailsBuilder`) |
+| Recover | `AdminAuthController` — success, `recovery_code_failed`, `recovery_error` with JSON `event_details` |
+| Reset | `AdminEnrollmentController` — `EventType.ADMIN_RECOVERY_ENROLLMENT_RESET`, success and failure paths |
+| Core | `EventType.ADMIN_RECOVERY_ENROLLMENT_RESET`; `AdminAuditConstants.ENROLLMENT_RESET_VIA_RECOVERY` / `_FAILED` |
+| Unit tests | `RecoveryAuditDetailsTest` |
+| Build | `mvn test -pl ezkey-admin-api -am` (and Spotless) passing at time of archive |
+| Admin UI | i18n EN/FR and `audit-event-type.ts` for new type and actions |
+| Postman | Auth login + Audit logs collections updated for `enrollmentId`, status codes, audit event types |
+
+**OpenAPI:** Generated specs under `specs/` are refreshed by the maintainer via `scripts/update-specs.sh` after a clean API run; not a blocker for this audit-only contract (no new public DTO fields for correlation).
