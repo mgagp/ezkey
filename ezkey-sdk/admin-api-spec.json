@@ -1192,7 +1192,7 @@
           "Encryption Keys"
         ],
         "summary": "Manually trigger key rotation",
-        "description": "Immediately rotates the encryption key, creating a new primary key",
+        "description": "Introduces a new encryption key (typically PENDING until the sync window elapses, then promoted to PRIMARY).",
         "operationId": "rotateKey",
         "parameters": [
           {
@@ -1213,6 +1213,16 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/KeyRotationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A PENDING encryption key already exists; wait for promotion or use immediate promotion",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -5516,6 +5526,10 @@
             "format": "date-time"
           },
           "codesRemaining": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enrollmentId": {
             "type": "integer",
             "format": "int32"
           }
