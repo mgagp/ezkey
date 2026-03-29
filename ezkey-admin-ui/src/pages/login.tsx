@@ -229,9 +229,21 @@ export default function LoginPage() {
     window.localStorage.setItem(I18N_STORAGE_KEY, lng);
   };
 
+  const recoveryLayout = authFlow === 'recovery';
+
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-sm border border-[#3076DF] p-6">
+    <div
+      className={cn(
+        'min-h-screen bg-bg flex justify-center p-4',
+        recoveryLayout ? 'items-start py-6 sm:py-10' : 'items-center',
+      )}
+    >
+      <div
+        className={cn(
+          'w-full border border-[#3076DF] p-4 sm:p-6',
+          recoveryLayout ? 'max-w-4xl' : 'max-w-sm',
+        )}
+      >
         <div className="relative">
           {/* Language selector — no header when unauthenticated */}
           <div className="absolute top-0 right-0 flex items-center gap-2 text-sm">
@@ -265,8 +277,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Brand header */}
-        <div className="mb-8 text-center">
+        {/* Brand header — tighter when recovery so bind-after-reset fits common viewports */}
+        <div className={cn('text-center', recoveryLayout ? 'mb-4 sm:mb-6' : 'mb-8')}>
           <img
             src="/logo.svg"
             alt=""
@@ -281,9 +293,13 @@ export default function LoginPage() {
           <p className="text-sm text-fg-muted mt-1">{t('login:tagline')}</p>
         </div>
 
-        {/* Main card */}
-        <div className="bg-surface border-2 border-sidebar-bg shadow-brutal-lg p-6">
-
+        {/* Main card — wider padding when recovery so bind-after-reset fits without excessive scroll */}
+        <div
+          className={cn(
+            'bg-surface border-2 border-sidebar-bg shadow-brutal-lg',
+            recoveryLayout ? 'p-4 sm:p-6' : 'p-6',
+          )}
+        >
           {authFlow === 'recovery' && (
             <LoginRecoverySection
               initialUsername={recoveryUsernamePrefill}

@@ -126,6 +126,9 @@ function OnboardingDialog({
           <Alert variant="info">
             {t('onboarding.alertShare')}
           </Alert>
+          <p className="text-xs text-fg-muted leading-relaxed border-l-2 border-fg/25 pl-3 py-0.5">
+            {t('onboarding.previewNotice')}
+          </p>
 
           {/* Proof Token */}
           <div className="space-y-1.5">
@@ -503,6 +506,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   const { toast } = useToast();
   const { sessionDemoOn } = useDemoModeSession();
   const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningShape | null>(null);
+  const [recoveryCodesCopied, setRecoveryCodesCopied] = useState(false);
   const [isGlobalType, setIsGlobalType] = useState(defaultGlobal);
 
   const [tenantFilter, setTenantFilter] = useState('');
@@ -564,6 +568,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
       reset(defaultFormValues);
       setTenantFilter('');
       setCreatedAdmin(null);
+      setRecoveryCodesCopied(false);
       setIsGlobalType(defaultGlobal);
     }
   }, [open, defaultGlobal, reset]);
@@ -647,9 +652,22 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
     },
   };
 
+  const handleCopyAllRecoveryCodes = async () => {
+    const codes = createdAdmin?.recoveryCodes;
+    if (codes == null || codes.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(codes.join('\n'));
+      setRecoveryCodesCopied(true);
+      setTimeout(() => setRecoveryCodesCopied(false), 2000);
+    } catch {
+      /* ignore clipboard API errors */
+    }
+  };
+
   const handleClose = () => {
     reset();
     setCreatedAdmin(null);
+    setRecoveryCodesCopied(false);
     setIsGlobalType(defaultGlobal);
     setTenantFilter('');
     createMutation.reset();
@@ -686,6 +704,16 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
                 {t('create.recoveryCodesTitle')}
               </p>
               <p className="text-xs text-fg-muted">{t('create.recoveryCodesHint')}</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void handleCopyAllRecoveryCodes()}
+                className="gap-1.5"
+              >
+                {recoveryCodesCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+                {recoveryCodesCopied ? t('onboarding.copied') : t('create.copyAllRecoveryCodes')}
+              </Button>
               <ul className="font-mono text-xs space-y-1 break-all max-h-48 overflow-y-auto border-2 border-fg/20 p-2 bg-surface">
                 {createdAdmin.recoveryCodes.map((code) => (
                   <li key={code}>{code}</li>

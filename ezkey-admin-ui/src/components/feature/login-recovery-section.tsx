@@ -51,6 +51,7 @@ export function LoginRecoverySection({
   const [submitting, setSubmitting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
+  const [enrollmentIdCopied, setEnrollmentIdCopied] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
@@ -221,6 +222,18 @@ export function LoginRecoverySection({
     }
   };
 
+  const handleCopyEnrollmentId = async () => {
+    const id = resetResult?.enrollmentId;
+    if (id == null) return;
+    try {
+      await navigator.clipboard.writeText(String(id));
+      setEnrollmentIdCopied(true);
+      setTimeout(() => setEnrollmentIdCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const handleCancelRecovery = () => {
     clearRecoverySession();
     setSession(null);
@@ -241,68 +254,104 @@ export function LoginRecoverySection({
 
   if (step === 'afterReset' && resetResult?.enrollmentProofToken != null) {
     return (
-      <div className="space-y-4">
-        <Alert variant="success" title={t('login:recovery.resetSuccessTitle')}>
-          {t('login:recovery.resetSuccessBody')}
-        </Alert>
-        <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-            {t('login:recovery.qrTitle')}
+      <div className="flex flex-col gap-4">
+        {/* 1. Status + framing */}
+        <section className="space-y-3">
+          <Alert variant="success" title={t('login:recovery.resetSuccessTitle')}>
+            {t('login:recovery.resetSuccessBody')}
+          </Alert>
+          <p className="text-xs text-fg-muted leading-snug border-l-2 border-fg/25 pl-3 py-0.5">
+            {t('login:recovery.previewNotice')}
           </p>
-          {qrLoading && (
-            <p className="text-sm text-fg-muted">{t('login:recovery.qrLoading')}</p>
-          )}
-          {qrError && (
-            <Alert variant="warning" title={t('login:recovery.qrErrorTitle')}>
-              {t('login:recovery.qrErrorBody')}
-            </Alert>
-          )}
-          {qrDataUrl != null && !qrLoading && (
-            <div className="flex flex-col items-center gap-2 border-2 border-fg p-4 bg-bg">
-              <img
-                src={qrDataUrl}
-                alt={t('login:recovery.qrCodeAlt')}
-                className="mx-auto max-h-[min(300px,70vw)] w-auto max-w-full"
-                width={300}
-                height={300}
-              />
-              <p className="text-center text-xs text-fg-muted">{t('login:recovery.qrHint')}</p>
-            </div>
-          )}
-        </div>
-        <div className="border-2 border-fg/30 p-3 bg-bg">
-          <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
-            {t('login:recovery.bindingChallenge')}
-          </p>
-          <p className="font-mono text-2xl font-black tracking-widest">
-            {String(resetResult.enrollmentChallenge ?? '')}
-          </p>
-        </div>
-        <details className="rounded border-2 border-fg/30 bg-bg p-3 text-sm open:border-fg/50">
-          <summary className="cursor-pointer font-semibold text-fg outline-none">
-            {t('login:recovery.manualEntry')}
-          </summary>
-          <p className="mt-2 text-xs text-fg-muted">{t('login:recovery.manualEntryHint')}</p>
-          <div className="mt-3 space-y-1.5">
+        </section>
+
+        {/* 2. Bind credentials: QR + challenge / manual (side by side from md+) */}
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 md:items-start">
+          <div className="space-y-2 min-w-0 md:max-w-[280px] md:justify-self-center">
             <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-              {t('login:recovery.enrollmentProofToken')}
+              {t('login:recovery.qrTitle')}
             </p>
-            <div className="border-2 border-fg p-3 font-mono text-xs break-all bg-bg leading-relaxed">
-              {String(resetResult.enrollmentProofToken)}
-            </div>
-            <Button variant="secondary" size="sm" onClick={handleCopyToken} className="gap-1.5">
-              {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-              {tokenCopied ? t('login:recovery.copied') : t('login:recovery.copyToken')}
-            </Button>
+            {qrLoading && (
+              <p className="text-sm text-fg-muted">{t('login:recovery.qrLoading')}</p>
+            )}
+            {qrError && (
+              <Alert variant="warning" title={t('login:recovery.qrErrorTitle')}>
+                {t('login:recovery.qrErrorBody')}
+              </Alert>
+            )}
+            {qrDataUrl != null && !qrLoading && (
+              <div className="flex flex-col items-stretch gap-2 border-2 border-fg p-3 bg-bg">
+                <img
+                  src={qrDataUrl}
+                  alt={t('login:recovery.qrCodeAlt')}
+                  className="mx-auto w-48 h-48 max-w-full object-contain"
+                  width={192}
+                  height={192}
+                />
+                <p className="text-center text-xs text-fg-muted leading-snug">{t('login:recovery.qrHint')}</p>
+              </div>
+            )}
           </div>
-        </details>
-        {resetResult.integrationId != null && (
-          <p className="text-xs text-fg-muted">
-            {t('login:recovery.integrationId', { id: resetResult.integrationId })}
-          </p>
-        )}
-        <p className="text-xs text-fg-muted">{t('login:recovery.thenPasswordless')}</p>
-        <Button className="w-full" onClick={handleDoneAfterReset}>
+
+          <div className="space-y-3 min-w-0 flex flex-col">
+            <div className="border-2 border-fg/30 p-3 bg-bg">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
+                {t('login:recovery.bindingChallenge')}
+              </p>
+              <p className="font-mono text-3xl font-black tracking-widest tabular-nums">
+                {String(resetResult.enrollmentChallenge ?? '')}
+              </p>
+            </div>
+
+            <details className="rounded border-2 border-fg/30 bg-bg p-3 text-sm open:border-fg/50">
+              <summary className="cursor-pointer font-semibold text-fg outline-none">
+                {t('login:recovery.manualEntry')}
+              </summary>
+              <p className="mt-2 text-xs text-fg-muted leading-snug">{t('login:recovery.manualEntryHint')}</p>
+              <div className="mt-3 space-y-4">
+                {resetResult.enrollmentId != null && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+                      {t('login:recovery.enrollmentIdLabel')}
+                    </p>
+                    <div className="border-2 border-fg p-2 font-mono text-sm tabular-nums bg-bg">
+                      {String(resetResult.enrollmentId)}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void handleCopyEnrollmentId()}
+                      className="gap-1.5"
+                    >
+                      {enrollmentIdCopied ? (
+                        <Check className="size-3.5 text-success" />
+                      ) : (
+                        <Copy className="size-3.5" />
+                      )}
+                      {enrollmentIdCopied ? t('login:recovery.copied') : t('login:recovery.copyEnrollmentId')}
+                    </Button>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+                    {t('login:recovery.enrollmentProofToken')}
+                  </p>
+                  <div className="border-2 border-fg p-2 font-mono text-[11px] break-all bg-bg leading-relaxed max-h-32 overflow-y-auto">
+                    {String(resetResult.enrollmentProofToken)}
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={handleCopyToken} className="gap-1.5">
+                    {tokenCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+                    {tokenCopied ? t('login:recovery.copied') : t('login:recovery.copyToken')}
+                  </Button>
+                </div>
+              </div>
+            </details>
+            <p className="text-xs text-fg-muted leading-snug">{t('login:recovery.thenPasswordless')}</p>
+          </div>
+        </section>
+
+        <Button className="w-full shrink-0" onClick={handleDoneAfterReset}>
           {t('login:recovery.backToLogin')}
         </Button>
       </div>
