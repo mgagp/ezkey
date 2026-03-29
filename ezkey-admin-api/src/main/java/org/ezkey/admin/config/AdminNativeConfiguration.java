@@ -191,7 +191,8 @@ public class AdminNativeConfiguration {
           .registerType(org.ezkey.exception.ResourceNotFoundException.class)
           .registerType(org.ezkey.exception.RateLimitExceededException.class)
           .registerType(org.ezkey.exception.NoPendingAuthAttemptException.class)
-          .registerType(org.ezkey.admin.exception.AuthenticationException.class);
+          .registerType(org.ezkey.admin.exception.AuthenticationException.class)
+          .registerType(org.ezkey.security.exception.PendingEncryptionKeyExistsException.class);
 
       // Register AuditLog DTOs for reflection
       hints.reflection().registerType(AuditLogResponseDto.class);

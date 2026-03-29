@@ -8,6 +8,7 @@
 
 :8080 {
 	encode gzip
+	root * /usr/share/caddy
 
 	# API: minimal response headers (JSON; CSP not required for fetch parsing)
 	handle /api/* {

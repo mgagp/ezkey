@@ -38,5 +38,43 @@
       "serverUnreachable": "Could not reach the server. Is the Admin API running?"
     }
   },
-  "footer": "Powered by {{brand}} — Eat Your Own Dog Food"
+  "footer": "Powered by {{brand}} — Eat Your Own Dog Food",
+  "recovery": {
+    "useRecoveryLink": "Lost your device? Use a recovery code",
+    "intro": "Emergency access: enter your username and one single-use recovery code. This starts a limited recovery flow (reset MFA enrollment), not a full console session.",
+    "recoveryCodeLabel": "Recovery code",
+    "recoveryCodePlaceholder": "XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX",
+    "recoveryCodeHint": "32 digits in eight groups. You may paste digits only; dashes are added automatically.",
+    "submitRecover": "Continue with recovery code",
+    "backToPasswordless": "Back to passwordless login",
+    "recoverFailed": "Recovery failed. Check your username and code.",
+    "resetFailed": "Could not reset enrollment. Try again or use another recovery code.",
+    "tokenExpired": "Recovery session expired. Enter your details again.",
+    "tokenActiveTitle": "Recovery session active",
+    "tokenActiveBody": "{{count}} recovery code(s) remaining for {{username}}. Reset your MFA enrollment to unbind the lost device and get new bind credentials.",
+    "recoveryTokenExpires": "Recovery session time remaining",
+    "resetEnrollment": "Reset MFA enrollment",
+    "cancelRecovery": "Cancel recovery",
+    "resetSuccessTitle": "Enrollment reset",
+    "resetSuccessBody": "Your old device is unbound. Scan the QR code with the EZKey mobile app to bind your replacement device, or use manual entry below. Then sign in with passwordless login.",
+    "qrTitle": "Bind with QR code",
+    "qrLoading": "Generating QR code…",
+    "qrHint": "Open EZKey on your phone and scan this code to continue enrollment.",
+    "qrCodeAlt": "Enrollment binding QR code",
+    "qrErrorTitle": "Could not build QR image",
+    "qrErrorBody": "Use the binding challenge and manual enrollment proof token below, or try refreshing the page.",
+    "manualEntry": "Manual entry (proof token)",
+    "manualEntryHint": "Use this if you cannot scan the QR code. Same payload as the QR; keep it confidential.",
+    "enrollmentProofToken": "Enrollment proof token",
+    "bindingChallenge": "Binding challenge",
+    "integrationId": "Integration ID: {{id}}",
+    "copyToken": "Copy token",
+    "copied": "Copied",
+    "thenPasswordless": "After binding your device, return here and use “Login with EZKey” as usual.",
+    "backToLogin": "Back to login",
+    "validation": {
+      "codeRequired": "Enter a recovery code",
+      "codeFormat": "Use 32 digits in the format XXXX-XXXX-…-XXXX (digits only is fine when pasting)"
+    }
+  }
 }

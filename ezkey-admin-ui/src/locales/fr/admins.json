@@ -75,6 +75,8 @@
     "titleGlobal": "Nouvel admin global",
     "titleTenant": "Nouvel admin tenant",
     "successMessage": "Administrateur {{username}} créé avec succès.",
+    "recoveryCodesTitle": "Codes de récupération (enregistrer maintenant — usage unique chacun)",
+    "recoveryCodesHint": "Chaque code ne fonctionne qu'une fois. Ils ne pourront plus être affichés depuis cette console après la fermeture de cette boîte.",
     "successHint": "Utilisez le bouton Identifiants dans la liste pour récupérer le jeton d'intégration et le QR code à partager avec le nouvel admin.",
     "done": "Terminé",
     "fillDemo": "Remplir démo :",

@@ -24,6 +24,7 @@ import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
+import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.DependsOn;
@@ -452,6 +453,7 @@ public class KeyRotationService {
    *
    * @param createdBy identifier of who/what triggered the rotation (SYSTEM or admin username)
    * @return the new key ID (will be PRIMARY after sync window expires)
+   * @throws PendingEncryptionKeyExistsException if a PENDING key already exists (default workflow)
    * @throws Exception if rotation fails
    */
   @Transactional
@@ -465,6 +467,8 @@ public class KeyRotationService {
    * @param createdBy identifier of who/what triggered the rotation
    * @param immediatePromotion if true, promotes to PRIMARY immediately (skip sync window)
    * @return the new key ID
+   * @throws PendingEncryptionKeyExistsException if {@code immediatePromotion} is false and a
+   *     PENDING key already exists
    * @throws Exception if rotation fails
    */
   @Transactional
@@ -481,7 +485,9 @@ public class KeyRotationService {
           "⚠️  A PENDING key already exists (key ID: {}). Cannot introduce another key until "
               + "the pending key is promoted. Use immediate promotion or wait for sync window.",
           pendingKeys.isEmpty() ? "unknown" : Long.toUnsignedString(pendingKeys.get(0).getKeyId()));
-      throw new IllegalStateException(
+      Long pendingKeyId = pendingKeys.isEmpty() ? null : pendingKeys.get(0).getKeyId();
+      throw new PendingEncryptionKeyExistsException(
+          pendingKeyId,
           "A PENDING key already exists. Wait for it to be promoted or use immediate promotion.");
     }
 

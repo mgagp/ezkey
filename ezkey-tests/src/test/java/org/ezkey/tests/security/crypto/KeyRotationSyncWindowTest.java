@@ -109,10 +109,10 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    // Check if rotation was successful or if there's already a pending key
-    if (rotateResponse.getStatusCode() == 400) {
-      String message = rotateResponse.jsonPath().getString("message");
-      if (message != null && message.contains("PENDING key already exists")) {
+    // Check if rotation was successful or if there's already a pending key (409 + ProblemDetail)
+    if (rotateResponse.getStatusCode() == 409) {
+      String detail = rotateResponse.jsonPath().getString("detail");
+      if (detail != null && detail.contains("PENDING key already exists")) {
         log.warn("PENDING key already exists. Test may need clean state.");
         org.junit.jupiter.api.Assumptions.assumeTrue(
             false, "PENDING key already exists. Run with clean state.");

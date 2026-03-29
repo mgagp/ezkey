@@ -475,9 +475,12 @@ Content-Type: application/json
   "recoveryToken": "ezkey_recovery_abc123...",
   "expiresAt": "2025-10-04T10:30:00Z",
   "codesRemaining": 9,
+  "enrollmentId": 123,
   "message": "Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately."
 }
 ```
+
+The `enrollmentId` is the administrator’s MFA enrollment to pass to `POST /api/v1/admin/enrollments/reset` (with the recovery token as bearer). See [ADMIN_UI_RECOVERY.md](ADMIN_UI_RECOVERY.md).
 
 **Failure Response (403 Forbidden):**
 ```json
@@ -676,9 +679,8 @@ Activates a previously deactivated tenant: sets `active = true`. Idempotent if t
 Administrator provisioning endpoints allow GlobalAdmins and TenantAdmins to create peer administrators with proper limits enforcement and secure onboarding credential management.
 
 **Security Pattern:**
-- Creation endpoints return only basic admin information (no sensitive credentials)
-- Sensitive credentials (enrollmentProofToken, enrollmentChallenge) are retrieved via separate GET endpoint
-- Follows the same security pattern as the enrollment API for consistency
+- Creation endpoints return basic admin information plus **one-time plain recovery codes** (`recoveryCodes`). Enrollment proof token and challenge are **not** in this response; they are retrieved via GET `/api/v1/admins/{id}/onboarding`.
+- Follows the same split as the enrollment API: bind credentials via a dedicated retrieval path; recovery codes are shown once at creation.
 
 **Multi-Tenancy:**
 - **GlobalAdmin**: Can create GlobalAdmins and TenantAdmins for any tenant
@@ -718,11 +720,15 @@ Content-Type: application/json
   "adminType": "GLOBAL_ADMIN",
   "tenantId": null,
   "enrollmentId": 123,
-  "createdAt": "2025-12-26T14:30:00Z"
+  "createdAt": "2025-12-26T14:30:00Z",
+  "recoveryCodes": [
+    "4743-8097-0426-5914-7438-4180-8010-5825",
+    "..."
+  ]
 }
 ```
 
-**Note:** Sensitive onboarding credentials are NOT returned in this response. Use GET /api/v1/admins/{id}/onboarding to retrieve them.
+**Note:** `recoveryCodes` are plain text, single-use, and **shown only in this response**; save them immediately. Enrollment proof token and challenge are **not** returned here — use `GET /api/v1/admins/{id}/onboarding` for bind credentials.
 
 **Status Codes:**
 - 201: Global administrator created successfully
@@ -765,11 +771,15 @@ Content-Type: application/json
   "adminType": "TENANT_ADMIN",
   "tenantId": 2,
   "enrollmentId": 124,
-  "createdAt": "2025-12-26T14:35:00Z"
+  "createdAt": "2025-12-26T14:35:00Z",
+  "recoveryCodes": [
+    "4743-8097-0426-5914-7438-4180-8010-5825",
+    "..."
+  ]
 }
 ```
 
-**Note:** Sensitive onboarding credentials are NOT returned in this response. Use GET /api/v1/admins/{id}/onboarding to retrieve them.
+**Note:** Same as global admin: save `recoveryCodes` immediately; onboarding token/challenge via `GET /api/v1/admins/{id}/onboarding`.
 
 **Status Codes:**
 - 201: Tenant administrator created successfully
@@ -807,9 +817,9 @@ Authorization: Bearer ezkey_admin_token...
 ```
 
 **Note on Recovery Codes:**
-- Recovery codes are stored as BCrypt hashes and cannot be retrieved in plain text after initial provisioning
-- Recovery codes must be saved immediately during admin creation (they are returned in ProvisioningResult at service layer)
-- This endpoint returns `recoveryCodes: null` because they cannot be retrieved after initial provisioning
+- Recovery codes are stored as BCrypt hashes at rest and cannot be retrieved in plain text after initial provisioning
+- Plain codes are returned **once** in the **create** response (`POST /api/v1/admins/global` or `/tenant`); operators must save them then
+- This GET returns `recoveryCodes: null` because they cannot be listed again after provisioning
 
 **Status Codes:**
 - 200: Onboarding credentials retrieved successfully
@@ -1543,6 +1553,17 @@ Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys a
 **GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches (paginated, optional filters)
 **POST   /api/v1/encryption-keys/reencryption-batches/{batchId}/resume** // Resume failed batch
 **POST   /api/v1/encryption-keys/reencrypt/create-batches** // Create re-encryption batches without processing
+
+#### Manual key rotation
+
+**POST /api/v1/encryption-keys/rotate**
+
+Optional query parameter: `reason` (10–500 characters) for audit.
+
+**Responses:**
+- **200 OK:** Body includes `newPrimaryKeyId` and success message (new key is often `PENDING` until the sync window elapses).
+- **409 Conflict:** RFC 9457 `ProblemDetail` (`type`, `title`, `status`, `detail`, `path`) when a `PENDING` key already exists and another introduction is not allowed yet.
+- **500 Internal Server Error:** Unexpected failure; body may include a legacy error payload for this endpoint.
 
 #### List encryption keys
 

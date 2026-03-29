@@ -65,17 +65,24 @@ function messageFromProblemBody(status: number, body: unknown): { message: strin
 interface FetchOptions extends RequestInit {
   /** When false, the Authorization header is omitted (used for login calls). */
   requireAuth?: boolean;
+  /**
+   * When set, sends this value as Bearer token (e.g. recovery token for enrollment reset).
+   * Takes precedence over session token when {@link requireAuth} is true.
+   */
+  bearerToken?: string;
 }
 
 export async function fetchApi<T>(path: string, options: FetchOptions = {}): Promise<T> {
-  const { requireAuth = true, headers: extraHeaders, ...init } = options;
+  const { requireAuth = true, bearerToken, headers: extraHeaders, ...init } = options;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(extraHeaders as Record<string, string> | undefined),
   };
 
-  if (requireAuth) {
+  if (bearerToken) {
+    headers['Authorization'] = `Bearer ${bearerToken}`;
+  } else if (requireAuth) {
     const token = getToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
@@ -83,9 +90,15 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
   const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
 
   if (response.status === 401) {
-    clearSession();
-    window.location.replace('/login');
-    throw new ApiError(401, null, 'Session expired. Please log in again.');
+    if (!bearerToken) {
+      clearSession();
+      window.location.replace('/login');
+    }
+    throw new ApiError(
+      401,
+      null,
+      bearerToken ? 'Request unauthorized.' : 'Session expired. Please log in again.',
+    );
   }
 
   const contentType = response.headers.get('content-type') ?? '';

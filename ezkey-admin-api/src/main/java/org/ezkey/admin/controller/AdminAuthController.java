@@ -624,11 +624,17 @@ public class AdminAuthController {
       int codesRemaining =
           admin != null && admin.getRecoveryCodes() != null ? admin.getRecoveryCodes().length : 0;
 
+      Integer mfaEnrollmentId =
+          admin != null && admin.getMfaEnrollment() != null
+              ? admin.getMfaEnrollment().getEnrollmentId()
+              : null;
+
       AdminRecoveryResponseDto response =
           new AdminRecoveryResponseDto(
               recoveryToken,
               OffsetDateTime.now().plusMinutes(recoveryProperties.getTempTokenDurationMinutes()),
-              codesRemaining);
+              codesRemaining,
+              mfaEnrollmentId);
 
       logger.warn(
           "✅ Recovery successful for admin: {} ({} codes remaining)",

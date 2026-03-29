@@ -16,6 +16,8 @@ import { I18N_STORAGE_KEY } from '@/i18n';
 import { getApiErrorMessage } from '@/lib/api-client';
 import { mapPasswordlessWaitError } from '@/lib/map-passwordless-wait-error';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
+import { LoginRecoverySection } from '@/components/feature/login-recovery-section';
+import { getRecoverySession } from '@/lib/recovery-session';
 import { cn, formatChallengeCode, formatCountdown } from '@/lib/utils';
 import { login as loginApi, passwordlessWait } from '@/generated/admin-api/admin-authentication/admin-authentication';
 import type { AdminLoginResponseDto } from '@/generated/admin-api/model';
@@ -63,15 +65,25 @@ export default function LoginPage() {
     };
   }, []);
 
-  const { register, control, handleSubmit, formState: { errors } } = useForm<LoginForm>({
+  const { register, control, handleSubmit, watch, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: loginDefaults,
   });
+
+  /** Passwordless vs recovery funnel (recovery is not a full admin session). */
+  const [authFlow, setAuthFlow] = useState<'passwordless' | 'recovery'>('passwordless');
+  const [recoveryUsernamePrefill, setRecoveryUsernamePrefill] = useState('');
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) navigate('/dashboard', { replace: true });
   }, [isAuthenticated, navigate]);
+
+  // Resume in-progress recovery (temporary recovery token) after refresh
+  useEffect(() => {
+    if (isAuthenticated) return;
+    if (getRecoverySession()) setAuthFlow('recovery');
+  }, [isAuthenticated]);
 
   // Countdown timer — driven by server expiresAt
   useEffect(() => {
@@ -272,8 +284,15 @@ export default function LoginPage() {
         {/* Main card */}
         <div className="bg-surface border-2 border-sidebar-bg shadow-brutal-lg p-6">
 
+          {authFlow === 'recovery' && (
+            <LoginRecoverySection
+              initialUsername={recoveryUsernamePrefill}
+              onBackToPasswordless={() => setAuthFlow('passwordless')}
+            />
+          )}
+
           {/* ── Idle / Submitting ── Login Form */}
-          {(loginState === 'idle' || loginState === 'submitting') && (
+          {authFlow === 'passwordless' && (loginState === 'idle' || loginState === 'submitting') && (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               <div>
                 <Label htmlFor="username">{t('login:form.username')}</Label>
@@ -340,11 +359,24 @@ export default function LoginPage() {
               <Button type="submit" size="lg" className="w-full" isLoading={loginState === 'submitting'}>
                 {t('login:form.submit')}
               </Button>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  className="text-sm text-fg-muted hover:text-accent underline underline-offset-2"
+                  onClick={() => {
+                    setRecoveryUsernamePrefill(watch('username').trim());
+                    setAuthFlow('recovery');
+                  }}
+                >
+                  {t('login:recovery.useRecoveryLink')}
+                </button>
+              </div>
             </form>
           )}
 
           {/* ── Waiting ── Countdown + challenge */}
-          {loginState === 'waiting' && waitingData && (
+          {authFlow === 'passwordless' && loginState === 'waiting' && waitingData && (
             <div className="text-center space-y-5">
               <div className="space-y-2">
                 <p className="text-xs font-black uppercase tracking-widest text-fg-muted">
@@ -388,7 +420,7 @@ export default function LoginPage() {
           )}
 
           {/* ── Rejected ── */}
-          {loginState === 'rejected' && (
+          {authFlow === 'passwordless' && loginState === 'rejected' && (
             <div className="space-y-4">
               <Alert variant="error" title={t('login:states.rejected.title')}>
                 {t('login:states.rejected.message')}
@@ -400,7 +432,7 @@ export default function LoginPage() {
           )}
 
           {/* ── Expired ── */}
-          {loginState === 'expired' && (
+          {authFlow === 'passwordless' && loginState === 'expired' && (
             <div className="space-y-4">
               <Alert variant="error" title={t('login:states.expired.title')}>
                 {t('login:states.expired.message')}
@@ -412,7 +444,7 @@ export default function LoginPage() {
           )}
 
           {/* ── Error ── */}
-          {loginState === 'error' && (
+          {authFlow === 'passwordless' && loginState === 'error' && (
             <div className="space-y-4">
               <Alert variant="error" title={t('login:states.error.title')}>
                 {errorMessage ?? t('login:states.error.messageFallback')}

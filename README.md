@@ -555,6 +555,7 @@ cd ezkey_mobile
 - **[Architecture & Security](docs/ARCHITECTURE.md)** - System architecture, security design, and cryptographic implementation
 - **[Development Guide](docs/DEVELOPMENT.md)** - Development workflow, OpenAPI documentation, and testing strategy
 - **[API Endpoints](docs/ENDPOINT.md)** - Detailed API reference and specifications
+- **[Admin UI recovery funnel](docs/ADMIN_UI_RECOVERY.md)** - Recovery codes, recovery token, and MFA reset semantics for operators
 - **[API Keys Guide](docs/API_KEYS_GUIDE.md)** - Complete guide for machine-to-machine authentication
 - **[API Keys - How It Works](docs/API_KEYS_HOW_IT_WORKS.md)** - Visual explanation with 15 Mermaid diagrams
 - **[Cryptographic Implementation](docs/CRYPTO.md)** - Security and crypto details

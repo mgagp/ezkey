@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.OffsetDateTime;
@@ -23,6 +24,7 @@ import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
+import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -367,8 +369,8 @@ class KeyRotationServiceIntegrationTest {
     keyRepository.save(pendingKey);
 
     // Act & Assert - Should throw exception when trying to introduce another key
-    org.junit.jupiter.api.Assertions.assertThrows(
-        IllegalStateException.class,
+    assertThrows(
+        PendingEncryptionKeyExistsException.class,
         () -> keyRotationService.introduceNewKey("TEST_USER"),
         "Should reject new key when PENDING key exists");
   }

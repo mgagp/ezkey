@@ -13,6 +13,7 @@ package org.ezkey.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
+import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -35,6 +36,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *       tenant
  *   <li><b>IntegrationHasEnrollmentsException (409):</b> Integration cannot be deleted because it
  *       has one or more enrollments
+ *   <li><b>PendingEncryptionKeyExistsException (409):</b> A new encryption key cannot be introduced
+ *       while a PENDING key already exists
  * </ul>
  *
  * <p><b>Response Format:</b> All responses conform to RFC 9457 (Problem Details for HTTP APIs) with
@@ -81,11 +84,36 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * @see ExceptionHandlerBase
  * @see IntegrationCodeAlreadyExistsException
  * @see IntegrationHasEnrollmentsException
+ * @see PendingEncryptionKeyExistsException
  */
 @RestControllerAdvice
 @Component
 @Order(80)
 public class DomainExceptionHandler extends ExceptionHandlerBase {
+
+  /**
+   * Handles PendingEncryptionKeyExistsException and returns HTTP 409 Conflict.
+   *
+   * <p>Triggered when key introduction is rejected because a PENDING encryption key already exists.
+   *
+   * <p><b>HTTP Status:</b> 409 Conflict
+   *
+   * <p><b>Response Format:</b> RFC 9457 ProblemDetail
+   *
+   * @param ex the PendingEncryptionKeyExistsException that was thrown
+   * @param request the HTTP servlet request for path extraction
+   * @return ResponseEntity containing ProblemDetail and HTTP 409 status
+   */
+  @ExceptionHandler(PendingEncryptionKeyExistsException.class)
+  public ResponseEntity<ProblemDetail> handlePendingEncryptionKeyExistsException(
+      PendingEncryptionKeyExistsException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/pending-encryption-key-exists",
+        "Pending Encryption Key Exists",
+        request);
+  }
 
   /**
    * Handles IntegrationHasEnrollmentsException and returns HTTP 409 Conflict.

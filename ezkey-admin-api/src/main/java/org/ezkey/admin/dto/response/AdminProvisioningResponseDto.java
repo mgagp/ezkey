@@ -12,18 +12,17 @@ package org.ezkey.admin.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
- * Response DTO for administrator provisioning (without sensitive credentials).
+ * Response DTO for administrator provisioning.
  *
- * <p>This DTO contains basic information about the newly created administrator. Sensitive
- * onboarding credentials (enrollment proof token, challenge code, recovery codes) are NOT included
- * in this response for security reasons. They must be retrieved separately via GET
- * /api/v1/admins/{id}/onboarding endpoint.
+ * <p>This DTO contains basic information about the newly created administrator. Enrollment proof
+ * token and challenge are still retrieved via GET /api/v1/admins/{id}/onboarding.
  *
- * <p><b>Security Note:</b> This follows the same pattern as the enrollment API, where sensitive
- * credentials are separated from the creation response. This prevents credentials from appearing in
- * logs and provides better control over credential access.
+ * <p><b>Recovery codes:</b> Plain recovery codes are included once in this response at creation
+ * time only (same moment as provisioning). They cannot be retrieved later from the API. Clients
+ * must display them immediately and instruct the operator to store them securely.
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
  *
@@ -44,9 +43,8 @@ import java.time.OffsetDateTime;
  */
 @Schema(
     description =
-        "Response DTO containing administrator provisioning information (without sensitive"
-            + " credentials). Use GET /api/v1/admins/{id}/onboarding to retrieve onboarding"
-            + " credentials.")
+        "Response DTO for administrator provisioning. Recovery codes are present once at"
+            + " creation; enrollment token/challenge via GET /api/v1/admins/{id}/onboarding.")
 public record AdminProvisioningResponseDto(
     @Schema(description = "Unique identifier for the administrator", example = "1") Integer adminId,
     @Schema(description = "Username for the administrator", example = "john.doe") String username,
@@ -68,4 +66,9 @@ public record AdminProvisioningResponseDto(
     @Schema(
             description = "Timestamp when the administrator was created",
             example = "2025-10-15T14:30:00Z")
-        OffsetDateTime createdAt) {}
+        OffsetDateTime createdAt,
+    @Schema(
+            description =
+                "Single-use recovery codes (plain text). Shown once at creation; save securely."
+                    + " Null if none are available.")
+        List<String> recoveryCodes) {}

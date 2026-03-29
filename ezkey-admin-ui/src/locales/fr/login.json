@@ -38,5 +38,43 @@
       "serverUnreachable": "Impossible de joindre le serveur. L'API Admin est-elle démarrée ?"
     }
   },
-  "footer": "Propulsé par {{brand}} — Eat Your Own Dog Food"
+  "footer": "Propulsé par {{brand}} — Eat Your Own Dog Food",
+  "recovery": {
+    "useRecoveryLink": "Appareil perdu ? Utiliser un code de récupération",
+    "intro": "Accès d'urgence : saisissez votre nom d'utilisateur et un code de récupération à usage unique. Cela lance un flux limité (réinitialisation de l'inscription MFA), pas une session console complète.",
+    "recoveryCodeLabel": "Code de récupération",
+    "recoveryCodePlaceholder": "XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX",
+    "recoveryCodeHint": "32 chiffres en huit groupes. Vous pouvez coller uniquement les chiffres ; les tirets sont ajoutés automatiquement.",
+    "submitRecover": "Continuer avec le code de récupération",
+    "backToPasswordless": "Retour à la connexion sans mot de passe",
+    "recoverFailed": "Échec de la récupération. Vérifiez le nom d'utilisateur et le code.",
+    "resetFailed": "Impossible de réinitialiser l'inscription. Réessayez ou utilisez un autre code.",
+    "tokenExpired": "Session de récupération expirée. Saisissez à nouveau vos informations.",
+    "tokenActiveTitle": "Session de récupération active",
+    "tokenActiveBody": "{{count}} code(s) de récupération restant(s) pour {{username}}. Réinitialisez votre inscription MFA pour délier l'appareil perdu et obtenir de nouveaux identifiants de liaison.",
+    "recoveryTokenExpires": "Temps restant pour la session de récupération",
+    "resetEnrollment": "Réinitialiser l'inscription MFA",
+    "cancelRecovery": "Annuler la récupération",
+    "resetSuccessTitle": "Inscription réinitialisée",
+    "resetSuccessBody": "L'ancien appareil est délié. Scannez le code QR avec l'application mobile EZKey pour lier le nouvel appareil, ou utilisez la saisie manuelle ci-dessous. Connectez-vous ensuite sans mot de passe comme d'habitude.",
+    "qrTitle": "Liaison par code QR",
+    "qrLoading": "Génération du code QR…",
+    "qrHint": "Ouvrez EZKey sur votre téléphone et scannez ce code pour poursuivre l'inscription.",
+    "qrCodeAlt": "Code QR de liaison d'inscription",
+    "qrErrorTitle": "Impossible de générer le code QR",
+    "qrErrorBody": "Utilisez le défi de liaison et le jeton de preuve manuel ci-dessous, ou rechargez la page.",
+    "manualEntry": "Saisie manuelle (jeton de preuve)",
+    "manualEntryHint": "À utiliser si vous ne pouvez pas scanner le QR. Même contenu que le QR ; gardez-le confidentiel.",
+    "enrollmentProofToken": "Jeton de preuve d'inscription",
+    "bindingChallenge": "Défi de liaison",
+    "integrationId": "ID d'intégration : {{id}}",
+    "copyToken": "Copier le jeton",
+    "copied": "Copié",
+    "thenPasswordless": "Après la liaison de l'appareil, revenez ici et utilisez « Connexion avec EZKey » comme d'habitude.",
+    "backToLogin": "Retour à la connexion",
+    "validation": {
+      "codeRequired": "Saisissez un code de récupération",
+      "codeFormat": "Utilisez 32 chiffres au format XXXX-XXXX-…-XXXX (les chiffres seuls suffisent au collage)"
+    }
+  }
 }

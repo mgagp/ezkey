@@ -55,6 +55,7 @@ import org.ezkey.security.KeyRotationService;
 import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
+import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -321,6 +322,38 @@ class AuditReasonPropagationTest {
     AuditLog logged = captor.getValue();
     assertEquals(EventType.KEY_INTRODUCED, logged.getEventType());
     assertEquals(EventStatus.SUCCESS, logged.getEventStatus());
+    assertEquals("Annual key rotation policy", logged.getReason());
+  }
+
+  @Test
+  @DisplayName(
+      "rotateKey() when PENDING key exists — KEY_INTRODUCED FAILURE audit, propagates exception")
+  void rotateKey_whenPendingKeyExists_logsFailureAuditAndPropagates() throws Exception {
+    EncryptionKeyController controller =
+        new EncryptionKeyController(
+            encryptionKeyRepository,
+            reencryptionBatchRepository,
+            rotationService,
+            reencryptionService,
+            auditLogService);
+
+    when(rotationService.introduceNewKey("ADMIN_MANUAL"))
+        .thenThrow(
+            new PendingEncryptionKeyExistsException(
+                99L,
+                "A PENDING key already exists. Wait for it to be promoted or use immediate"
+                    + " promotion."));
+
+    assertThrows(
+        PendingEncryptionKeyExistsException.class,
+        () -> controller.rotateKey("Annual key rotation policy", httpRequest));
+
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(1)).log(captor.capture());
+
+    AuditLog logged = captor.getValue();
+    assertEquals(EventType.KEY_INTRODUCED, logged.getEventType());
+    assertEquals(EventStatus.FAILURE, logged.getEventStatus());
     assertEquals("Annual key rotation policy", logged.getReason());
   }
 

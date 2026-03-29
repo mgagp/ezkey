@@ -38,6 +38,7 @@ import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
+import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springdoc.core.annotations.ParameterObject;
@@ -227,9 +228,21 @@ public class EncryptionKeyController {
    */
   @Operation(
       summary = "Manually trigger key rotation",
-      description = "Immediately rotates the encryption key, creating a new primary key")
+      description =
+          "Introduces a new encryption key (typically PENDING until the sync window elapses, then"
+              + " promoted to PRIMARY).")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Key rotation completed successfully"),
+    @ApiResponse(
+        responseCode = "409",
+        description =
+            "A PENDING encryption key already exists; wait for promotion or use immediate"
+                + " promotion",
+        content =
+            @io.swagger.v3.oas.annotations.media.Content(
+                schema =
+                    @io.swagger.v3.oas.annotations.media.Schema(
+                        implementation = org.springframework.http.ProblemDetail.class))),
     @ApiResponse(responseCode = "500", description = "Key rotation failed")
   })
   @PreAuthorize("hasRole('ADMIN')")
@@ -254,6 +267,25 @@ public class EncryptionKeyController {
               .build());
       return ResponseEntity.ok(
           new KeyRotationResponse(newPrimaryKeyId, "Key rotation completed successfully"));
+    } catch (PendingEncryptionKeyExistsException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.KEY_INTRODUCED,
+                  AdminAuditConstants.ENCRYPTION_KEY_ROTATION_MANUAL)
+              .eventStatus(EventStatus.FAILURE)
+              .reason(reason)
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .custom(
+                          "pending_key_id",
+                          e.getPendingKeyId() != null
+                              ? Long.toUnsignedString(e.getPendingKeyId())
+                              : "unknown")
+                      .toJson())
+              .build());
+      throw e;
     } catch (Exception e) {
       logger.error("Manual key rotation failed", e);
       auditLogService.log(
@@ -262,7 +294,7 @@ public class EncryptionKeyController {
               .eventAction("manual_key_rotation")
               .eventStatus(EventStatus.ERROR)
               .apiName(ApiName.ADMIN_API)
-              .ipAddress("127.0.0.1")
+              .ipAddress(context.clientIp())
               .eventDetails(
                   AuditDetailsBuilder.builder()
                       .errorSummary("Manual key rotation failed: " + e.getMessage())

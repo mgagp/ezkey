@@ -48,9 +48,10 @@ interface AdminOnboardingShape {
   enrollmentChallenge?: number;
 }
 
-/** UI-facing shape for create admin response (API returns CreateGlobalAdmin201). */
+/** UI-facing shape for create admin response (API returns provisioning DTO with optional recovery codes). */
 interface AdminProvisioningShape {
   username?: string;
+  recoveryCodes?: string[];
 }
 
 // ── Admin type badge ───────────────────────────────────────────────────────────
@@ -561,10 +562,23 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
     toast(t('create.toastCreated', { type: typeLabel, username: admin.username }));
   };
 
+  const mapProvisioningResponse = (data: unknown): AdminProvisioningShape => {
+    const r = data as Record<string, unknown>;
+    const codes = r.recoveryCodes;
+    const recoveryCodes =
+      Array.isArray(codes) && codes.every((c) => typeof c === 'string')
+        ? (codes as string[])
+        : undefined;
+    return {
+      username: typeof r.username === 'string' ? r.username : undefined,
+      recoveryCodes,
+    };
+  };
+
   const createGlobalMutation = useCreateGlobalAdmin({
     mutation: {
       onSuccess: (data) => {
-        onCreated(data as unknown as AdminProvisioningShape, true);
+        onCreated(mapProvisioningResponse(data), true);
       },
     },
   });
@@ -572,7 +586,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
   const createTenantMutation = useCreateTenantAdmin({
     mutation: {
       onSuccess: (data) => {
-        onCreated(data as unknown as AdminProvisioningShape, false);
+        onCreated(mapProvisioningResponse(data), false);
       },
     },
   });
@@ -624,6 +638,19 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
           <Alert variant="success">
             {t('create.successMessage', { username: String(createdAdmin.username ?? '') })}
           </Alert>
+          {createdAdmin.recoveryCodes != null && createdAdmin.recoveryCodes.length > 0 && (
+            <div className="space-y-2 border-2 border-accent/40 bg-bg p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+                {t('create.recoveryCodesTitle')}
+              </p>
+              <p className="text-xs text-fg-muted">{t('create.recoveryCodesHint')}</p>
+              <ul className="font-mono text-xs space-y-1 break-all max-h-48 overflow-y-auto border-2 border-fg/20 p-2 bg-surface">
+                {createdAdmin.recoveryCodes.map((code) => (
+                  <li key={code}>{code}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className="text-sm text-fg-muted">
             {t('create.successHint')}
           </p>

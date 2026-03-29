@@ -471,6 +471,38 @@ public class ReencryptionService {
       }
     }
 
+    // Reconcile when the loop exits with empty fetch but counters lag: rows may already be on the
+    // new key (e.g. concurrent activity). If nothing remains encrypted with the old key, count the
+    // gap as skipped so the batch can complete.
+    int accounted = recordsDone + recordsFailed + recordsSkipped;
+    if (accounted < batch.getRecordsTotal()) {
+      int stillWithOldKey =
+          countRecordsEncryptedWithKey(
+              batch.getTargetTable(), batch.getTargetColumn(), batch.getOldKey().getKeyId());
+      if (stillWithOldKey == 0) {
+        int gap = batch.getRecordsTotal() - accounted;
+        recordsSkipped += gap;
+        logger.info(
+            "Re-encryption batch {} reconciliation: {} record(s) already migrated outside this"
+                + " batch (accounted {} of {}); counted as skipped",
+            batch.getBatchId(),
+            gap,
+            accounted,
+            batch.getRecordsTotal());
+        batch.updateProgress(recordsDone, recordsFailed, recordsSkipped);
+        batch.setLastBatchAt(OffsetDateTime.now());
+        batchRepository.save(batch);
+      } else {
+        logger.warn(
+            "Re-encryption batch {} may be stalled: fetch returned no rows but {} row(s) still"
+                + " encrypted with old key (accounted {} of {})",
+            batch.getBatchId(),
+            stillWithOldKey,
+            accounted,
+            batch.getRecordsTotal());
+      }
+    }
+
     // Mark batch as completed if all records processed
     if (recordsDone + recordsFailed + recordsSkipped >= batch.getRecordsTotal()) {
       batch.setStatus(BatchStatus.COMPLETED);

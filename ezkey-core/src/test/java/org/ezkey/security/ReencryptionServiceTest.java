@@ -303,9 +303,14 @@ class ReencryptionServiceTest {
   void processBatch_ShouldTransitionPendingToInProgress() {
     // Arrange
     batch.setStatus(BatchStatus.PENDING);
+    batch.setRecordsTotal(1);
     when(batchRepository.save(any(ReencryptionBatch.class))).thenReturn(batch);
     when(enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(anyString(), any(), anyInt()))
         .thenReturn(List.of());
+    // Count says old-key ciphertext still exists, but fetch returned nothing: do not reconcile away
+    // the gap or the batch would complete in one shot (reconciliation + completion).
+    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike("ENC:1111111111:%"))
+        .thenReturn(1);
 
     // Act
     service.processBatch(batch);
@@ -383,6 +388,35 @@ class ReencryptionServiceTest {
     assertEquals(1, batch.getRecordsDone());
     verify(keyRepository).save(oldKey); // Statistics updated
     verify(auditLogService).log(any()); // Audit log emitted
+  }
+
+  @Test
+  @DisplayName(
+      "processBatch() - Should complete when fetch empty but no ciphertext left on old key"
+          + " (reconcile)")
+  void processBatch_ShouldCompleteWhenExternallyMigrated_Reconciliation() {
+    batch.setStatus(BatchStatus.PENDING);
+    batch.setRecordsTotal(5);
+    batch.setRecordsDone(0);
+    batch.setRecordsFailed(0);
+    batch.setRecordsSkipped(0);
+
+    when(batchRepository.save(any(ReencryptionBatch.class))).thenReturn(batch);
+    when(enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(anyString(), any(), anyInt()))
+        .thenReturn(List.of());
+    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike("ENC:1111111111:%"))
+        .thenReturn(0);
+    when(keyRepository.save(any(EncryptionKey.class))).thenReturn(oldKey);
+
+    service.processBatch(batch);
+
+    assertEquals(BatchStatus.COMPLETED, batch.getStatus());
+    assertEquals(0, batch.getRecordsDone());
+    assertEquals(5, batch.getRecordsSkipped());
+    // Progress percentage reflects recordsDone only (skipped rows do not raise pct).
+    assertEquals(new BigDecimal("0.00"), batch.getProgressPct());
+    verify(keyRepository).save(oldKey);
+    verify(auditLogService).log(any());
   }
 
   @Test

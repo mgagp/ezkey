@@ -75,6 +75,8 @@
     "titleGlobal": "New Global Admin",
     "titleTenant": "New Tenant Admin",
     "successMessage": "Admin {{username}} created successfully.",
+    "recoveryCodesTitle": "Recovery codes (save now — single use each)",
+    "recoveryCodesHint": "Each code works once. They cannot be shown again from this console after you close this dialog.",
     "successHint": "Use the Credentials button in the list to retrieve the onboarding token and QR code to share with the new admin.",
     "done": "Done",
     "fillDemo": "Fill demo:",

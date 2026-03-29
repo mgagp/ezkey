@@ -28,6 +28,7 @@ import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
@@ -453,6 +454,8 @@ public class IntegrationController {
 
     service.delete(id);
 
+    // Do not set integration_id on the audit row: the FK targets ezkey_integration, which no
+    // longer contains this id after delete. Persist the identifier in event_details instead.
     auditLogService.log(
         AuditHelper.createAdminAudit(
                 context,
@@ -461,7 +464,8 @@ public class IntegrationController {
                 tenantId)
             .eventStatus(EventStatus.SUCCESS)
             .adminId(currentAdmin.getAdminId())
-            .integrationId(id)
+            .eventDetails(
+                AuditDetailsBuilder.builder().custom("deleted_integration_id", id).toJson())
             .reason(reason)
             .build());
 

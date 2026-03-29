@@ -31,6 +31,8 @@ import java.time.OffsetDateTime;
  * @param recoveryToken temporary recovery token for limited access (30 minutes validity)
  * @param expiresAt recovery token expiration timestamp
  * @param codesRemaining number of recovery codes remaining after this use
+ * @param enrollmentId MFA enrollment ID to use with POST /api/v1/admin/enrollments/reset (null on
+ *     error)
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AdminRecoveryResponseDto(
@@ -38,7 +40,8 @@ public record AdminRecoveryResponseDto(
     String message,
     String recoveryToken,
     OffsetDateTime expiresAt,
-    Integer codesRemaining) {
+    Integer codesRemaining,
+    Integer enrollmentId) {
 
   /**
    * Constructor for successful recovery response.
@@ -46,15 +49,20 @@ public record AdminRecoveryResponseDto(
    * @param recoveryToken the temporary recovery token
    * @param expiresAt the token expiration time
    * @param codesRemaining number of codes remaining
+   * @param enrollmentId MFA enrollment ID for the reset step
    */
   public AdminRecoveryResponseDto(
-      String recoveryToken, OffsetDateTime expiresAt, Integer codesRemaining) {
+      String recoveryToken,
+      OffsetDateTime expiresAt,
+      Integer codesRemaining,
+      Integer enrollmentId) {
     this(
         true,
         "Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately.",
         recoveryToken,
         expiresAt,
-        codesRemaining);
+        codesRemaining,
+        enrollmentId);
   }
 
   /**
@@ -63,7 +71,7 @@ public record AdminRecoveryResponseDto(
    * @param message the error message
    */
   public AdminRecoveryResponseDto(String message) {
-    this(false, message, null, null, null);
+    this(false, message, null, null, null, null);
   }
 
   /**
@@ -72,11 +80,15 @@ public record AdminRecoveryResponseDto(
    * @param recoveryToken the temporary recovery token
    * @param expiresAt the token expiration time
    * @param codesRemaining number of codes remaining
+   * @param enrollmentId MFA enrollment ID for reset
    * @return a success response
    */
   public static AdminRecoveryResponseDto success(
-      String recoveryToken, OffsetDateTime expiresAt, Integer codesRemaining) {
-    return new AdminRecoveryResponseDto(recoveryToken, expiresAt, codesRemaining);
+      String recoveryToken,
+      OffsetDateTime expiresAt,
+      Integer codesRemaining,
+      Integer enrollmentId) {
+    return new AdminRecoveryResponseDto(recoveryToken, expiresAt, codesRemaining, enrollmentId);
   }
 
   /**
@@ -96,7 +108,8 @@ public record AdminRecoveryResponseDto(
    */
   @Override
   public String toString() {
-    return "AdminRecoveryResponseDto[success=%s, recoveryToken=%s, codesRemaining=%s]"
-        .formatted(success, recoveryToken != null ? "[PROTECTED]" : "null", codesRemaining);
+    return "AdminRecoveryResponseDto[success=%s, recoveryToken=%s, codesRemaining=%s, enrollmentId=%s]"
+        .formatted(
+            success, recoveryToken != null ? "[PROTECTED]" : "null", codesRemaining, enrollmentId);
   }
 }

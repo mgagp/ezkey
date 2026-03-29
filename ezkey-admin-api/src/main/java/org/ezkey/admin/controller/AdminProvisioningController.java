@@ -203,7 +203,8 @@ public class AdminProvisioningController {
               result.admin().getAdminType().name(),
               result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
               result.enrollment().getEnrollmentId(),
-              result.admin().getCreatedAt());
+              result.admin().getCreatedAt(),
+              result.recoveryCodes());
 
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -312,7 +313,8 @@ public class AdminProvisioningController {
               result.admin().getAdminType().name(),
               result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
               result.enrollment().getEnrollmentId(),
-              result.admin().getCreatedAt());
+              result.admin().getCreatedAt(),
+              result.recoveryCodes());
 
       auditLogService.log(
           AuditHelper.createAdminAudit(
