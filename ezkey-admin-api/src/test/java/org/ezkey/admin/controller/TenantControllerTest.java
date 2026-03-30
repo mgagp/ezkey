@@ -14,11 +14,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.ezkey.admin.dto.request.TenantActivateRequestDto;
+import org.ezkey.admin.dto.request.TenantDeactivateRequestDto;
 import org.ezkey.admin.dto.response.TenantResponseDto;
 import org.ezkey.admin.mapper.TenantMapper;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -69,6 +75,7 @@ class TenantControllerTest {
   @Mock private TenantService tenantService;
   @Mock private TenantMapper tenantMapper;
   @Mock private AuditLogService auditLogService;
+  @Mock private HttpServletRequest httpRequest;
 
   private TenantController controller;
 
@@ -257,6 +264,91 @@ class TenantControllerTest {
 
       assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
       // Repository is not called when principal is not GlobalAdmin
+    }
+  }
+
+  @Nested
+  @DisplayName("Tenant activate / deactivate (audit on state change only)")
+  class TenantToggleAuditGating {
+
+    private static final String LONG_REASON =
+        "Operational justification for audit trail (min ten chars).";
+
+    @BeforeEach
+    void setGlobalAdminAuth() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      SecurityContextHolder.getContext()
+          .setAuthentication(
+              new UsernamePasswordAuthenticationToken(
+                  principal,
+                  null,
+                  List.of(
+                      new SimpleGrantedAuthority("ROLE_ADMIN"),
+                      new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN"))));
+    }
+
+    @Test
+    @DisplayName("activateTenant does not log audit when service returns false (idempotent)")
+    void activateNoAuditWhenNoStateChange() {
+      when(tenantService.activateTenant(eq(2), isA(AdminPrincipal.class))).thenReturn(false);
+
+      ResponseEntity<Void> response =
+          controller.activateTenant(
+              2,
+              new TenantActivateRequestDto(LONG_REASON),
+              SecurityContextHolder.getContext().getAuthentication(),
+              httpRequest);
+
+      assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+      verify(auditLogService, never()).log(any());
+    }
+
+    @Test
+    @DisplayName("activateTenant logs audit when service returns true")
+    void activateLogsAuditWhenStateChanges() {
+      when(tenantService.activateTenant(eq(2), isA(AdminPrincipal.class))).thenReturn(true);
+
+      ResponseEntity<Void> response =
+          controller.activateTenant(
+              2,
+              new TenantActivateRequestDto(LONG_REASON),
+              SecurityContextHolder.getContext().getAuthentication(),
+              httpRequest);
+
+      assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+      verify(auditLogService, times(1)).log(any());
+    }
+
+    @Test
+    @DisplayName("deactivateTenant does not log audit when service returns false (idempotent)")
+    void deactivateNoAuditWhenNoStateChange() {
+      when(tenantService.deactivateTenant(eq(2), isA(AdminPrincipal.class))).thenReturn(false);
+
+      ResponseEntity<Void> response =
+          controller.deactivateTenant(
+              2,
+              new TenantDeactivateRequestDto(LONG_REASON),
+              SecurityContextHolder.getContext().getAuthentication(),
+              httpRequest);
+
+      assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+      verify(auditLogService, never()).log(any());
+    }
+
+    @Test
+    @DisplayName("deactivateTenant logs audit when service returns true")
+    void deactivateLogsAuditWhenStateChanges() {
+      when(tenantService.deactivateTenant(eq(2), isA(AdminPrincipal.class))).thenReturn(true);
+
+      ResponseEntity<Void> response =
+          controller.deactivateTenant(
+              2,
+              new TenantDeactivateRequestDto(LONG_REASON),
+              SecurityContextHolder.getContext().getAuthentication(),
+              httpRequest);
+
+      assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+      verify(auditLogService, times(1)).log(any());
     }
   }
 }

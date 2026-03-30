@@ -377,7 +377,7 @@
         },
         "responses": {
           "204": {
-            "description": "Tenant deactivated successfully"
+            "description": "Success (no content). An audit entry is recorded only when the tenant was active and is now deactivated; idempotent calls when already inactive do not add an audit event."
           },
           "400": {
             "description": "Bad request - cannot deactivate the system tenant (RFC 9457 ProblemDetail)"
@@ -423,7 +423,7 @@
         },
         "responses": {
           "204": {
-            "description": "Tenant activated successfully"
+            "description": "Success (no content). An audit entry is recorded only when the tenant was inactive and is now activated; idempotent calls when already active do not add an audit event."
           },
           "404": {
             "description": "Tenant not found"

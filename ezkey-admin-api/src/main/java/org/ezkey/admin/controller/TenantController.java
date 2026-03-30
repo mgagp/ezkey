@@ -355,7 +355,12 @@ public class TenantController {
           "Deactivates a tenant and revokes all active admin tokens for that tenant. GlobalAdmin"
               + " only. The system tenant cannot be deactivated.")
   @ApiResponses({
-    @ApiResponse(responseCode = "204", description = "Tenant deactivated successfully"),
+    @ApiResponse(
+        responseCode = "204",
+        description =
+            "Success (no content). An audit entry is recorded only when the tenant was active and"
+                + " is now deactivated; idempotent calls when already inactive do not add an audit"
+                + " event."),
     @ApiResponse(
         responseCode = "400",
         description = "Bad request - cannot deactivate the system tenant (RFC 9457 ProblemDetail)"),
@@ -373,17 +378,19 @@ public class TenantController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    tenantService.deactivateTenant(id, principal);
+    boolean stateChanged = tenantService.deactivateTenant(id, principal);
 
-    String reason = body != null ? body.reason() : null;
-    auditLogService.log(
-        AuditHelper.createAdminAudit(
-                context, EventType.TENANT_DEACTIVATED, AdminAuditConstants.TENANT_DEACTIVATED, id)
-            .eventStatus(EventStatus.SUCCESS)
-            .adminId(principal.adminId())
-            .reason(reason)
-            .eventDetails("Tenant ID: " + id)
-            .build());
+    if (stateChanged) {
+      String reason = body != null ? body.reason() : null;
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context, EventType.TENANT_DEACTIVATED, AdminAuditConstants.TENANT_DEACTIVATED, id)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
+              .reason(reason)
+              .eventDetails("Tenant ID: " + id)
+              .build());
+    }
 
     return ResponseEntity.noContent().build();
   }
@@ -409,7 +416,12 @@ public class TenantController {
           "Activates a previously deactivated tenant. GlobalAdmin only. Idempotent if already"
               + " active.")
   @ApiResponses({
-    @ApiResponse(responseCode = "204", description = "Tenant activated successfully"),
+    @ApiResponse(
+        responseCode = "204",
+        description =
+            "Success (no content). An audit entry is recorded only when the tenant was inactive"
+                + " and is now activated; idempotent calls when already active do not add an audit"
+                + " event."),
     @ApiResponse(responseCode = "404", description = "Tenant not found"),
     @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
   })
@@ -424,17 +436,19 @@ public class TenantController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    tenantService.activateTenant(id, principal);
+    boolean stateChanged = tenantService.activateTenant(id, principal);
 
-    String reason = body != null ? body.reason() : null;
-    auditLogService.log(
-        AuditHelper.createAdminAudit(
-                context, EventType.TENANT_ACTIVATED, AdminAuditConstants.TENANT_ACTIVATED, id)
-            .eventStatus(EventStatus.SUCCESS)
-            .adminId(principal.adminId())
-            .reason(reason)
-            .eventDetails("Tenant ID: " + id)
-            .build());
+    if (stateChanged) {
+      String reason = body != null ? body.reason() : null;
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context, EventType.TENANT_ACTIVATED, AdminAuditConstants.TENANT_ACTIVATED, id)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
+              .reason(reason)
+              .eventDetails("Tenant ID: " + id)
+              .build());
+    }
 
     return ResponseEntity.noContent().build();
   }

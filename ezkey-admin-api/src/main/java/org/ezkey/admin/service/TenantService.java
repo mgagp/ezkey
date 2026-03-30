@@ -94,7 +94,7 @@ public class TenantService {
    * <ol>
    *   <li>Validates the tenant exists
    *   <li>Prevents deactivation of the system tenant (safety check)
-   *   <li>If already inactive, returns silently (idempotent)
+   *   <li>If already inactive, returns {@code false} (idempotent no-op)
    *   <li>Sets {@code active = false} on the tenant
    *   <li>Revokes all active admin tokens for the tenant
    * </ol>
@@ -110,11 +110,13 @@ public class TenantService {
    *
    * @param tenantId the ID of the tenant to deactivate
    * @param principal the admin principal performing the deactivation
+   * @return {@code true} if the tenant was deactivated (state changed), {@code false} if already
+   *     inactive (idempotent no-op)
    * @throws ResourceNotFoundException if the tenant is not found
    * @throws TenantNotAllowedException if attempting to deactivate the system tenant
    */
   @Transactional
-  public void deactivateTenant(Integer tenantId, AdminPrincipal principal) {
+  public boolean deactivateTenant(Integer tenantId, AdminPrincipal principal) {
     Tenant tenant =
         tenantRepository
             .findById(tenantId)
@@ -132,7 +134,7 @@ public class TenantService {
     // Idempotent: already inactive
     if (!tenant.getActive()) {
       logger.info("Tenant {} is already inactive", tenantId);
-      return;
+      return false;
     }
 
     // Deactivate the tenant
@@ -157,6 +159,7 @@ public class TenantService {
         tenantId,
         principal.adminId(),
         tokensRevoked);
+    return true;
   }
 
   /**
@@ -259,10 +262,12 @@ public class TenantService {
    *
    * @param tenantId the ID of the tenant to activate
    * @param principal the admin principal performing the activation
+   * @return {@code true} if the tenant was activated (state changed), {@code false} if already
+   *     active (idempotent no-op)
    * @throws ResourceNotFoundException if the tenant is not found
    */
   @Transactional
-  public void activateTenant(Integer tenantId, AdminPrincipal principal) {
+  public boolean activateTenant(Integer tenantId, AdminPrincipal principal) {
     Tenant tenant =
         tenantRepository
             .findById(tenantId)
@@ -270,7 +275,7 @@ public class TenantService {
 
     if (tenant.getActive()) {
       logger.info("Tenant {} is already active", tenantId);
-      return;
+      return false;
     }
 
     tenant.setActive(true);
@@ -286,6 +291,7 @@ public class TenantService {
         tenant.getTenantName(),
         tenantId,
         principal.adminId());
+    return true;
   }
 
   /**

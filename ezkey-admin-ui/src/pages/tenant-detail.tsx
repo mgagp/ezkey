@@ -295,7 +295,11 @@ function ToggleActiveDialog({
               if (isActive) deactivateMutation.mutate({ id: tenant.tenantId!, data: body });
               else activateMutation.mutate({ id: tenant.tenantId!, data: body });
             }}
-            disabled={reason.length > 0 && reason.length < 10}
+            disabled={
+              mutation.isPending
+              || mutation.isSuccess
+              || (reason.length > 0 && reason.length < 10)
+            }
           >
             {isActive ? <PowerOff className="size-3.5 mr-1.5" /> : <Power className="size-3.5 mr-1.5" />}
             {isActive ? t('toggle.deactivate') : t('toggle.activate')}

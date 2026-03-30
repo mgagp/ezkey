@@ -101,9 +101,10 @@ class TenantServiceTest {
       when(tokenRepository.deactivateAllTokensForTenant(2)).thenReturn(3);
 
       // Act
-      tenantService.deactivateTenant(2, globalAdminPrincipal);
+      boolean changed = tenantService.deactivateTenant(2, globalAdminPrincipal);
 
       // Assert
+      assertTrue(changed);
       assertFalse(tenant.getActive());
       assertNotNull(tenant.getDeactivatedAt());
       assertEquals(actor, tenant.getDeactivatedByAdmin());
@@ -151,9 +152,10 @@ class TenantServiceTest {
       when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
 
       // Act
-      tenantService.deactivateTenant(2, globalAdminPrincipal);
+      boolean changed = tenantService.deactivateTenant(2, globalAdminPrincipal);
 
       // Assert
+      assertFalse(changed);
       verify(tenantRepository, never()).save(any());
       verify(tokenRepository, never()).deactivateAllTokensForTenant(any());
     }
@@ -185,9 +187,10 @@ class TenantServiceTest {
       when(tokenRepository.deactivateAllTokensForTenant(2)).thenReturn(5);
 
       // Act
-      tenantService.deactivateTenant(2, globalAdminPrincipal);
+      boolean changed = tenantService.deactivateTenant(2, globalAdminPrincipal);
 
       // Assert
+      assertTrue(changed);
       verify(tokenRepository).deactivateAllTokensForTenant(2);
     }
   }
@@ -216,9 +219,10 @@ class TenantServiceTest {
       when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
       // Act
-      tenantService.activateTenant(2, globalAdminPrincipal);
+      boolean changed = tenantService.activateTenant(2, globalAdminPrincipal);
 
       // Assert
+      assertTrue(changed);
       assertTrue(tenant.getActive());
       assertNotNull(tenant.getUpdatedAt());
       assertEquals(actor, tenant.getUpdatedByAdmin());
@@ -240,9 +244,10 @@ class TenantServiceTest {
       when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
 
       // Act
-      tenantService.activateTenant(2, globalAdminPrincipal);
+      boolean changed = tenantService.activateTenant(2, globalAdminPrincipal);
 
       // Assert
+      assertFalse(changed);
       verify(tenantRepository, never()).save(any());
     }
 
