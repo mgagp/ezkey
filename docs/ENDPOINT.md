@@ -1051,11 +1051,13 @@ GET /api/v1/enrollments/123
 Authorization: Bearer ezkey_admin_token...
 ```
 
+**Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), cryptographic material references (`integrationPublicKey`, `devicePublicKey`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
+
 #### **PATCH /api/v1/enrollments/{id}** (Partial Update of Enrollment Metadata)
 
-Partially updates enrollment metadata. Only non-null fields in the request body are applied. Supports `enrollmentName`, `contactEmail`, `expiresAt`, `authAttemptChallengeRequired`, `userIdentifier`. Only active, non-revoked VERIFIED enrollments can be updated. Include `version` from the GET response for optimistic locking.
+Partially updates enrollment metadata. Only non-null fields in the request body are applied. Supports `enrollmentName`, `contactEmail`, `expiresAt`, `authAttemptChallengeRequired`, `userIdentifier`, `clearContactEmail`, and `clearExpiresAt`. Only active, non-revoked VERIFIED enrollments can be updated. Include `version` from the GET response for optimistic locking.
 
-Omitted fields are left unchanged. Sending `null` for optional fields does **not** clear them (use a dedicated API pattern only if clearing is added in the future).
+Omitted fields are left unchanged. Sending `null` for optional fields does **not** clear them. To clear optional `contactEmail` or `expiresAt`, set **`clearContactEmail`: true** or **`clearExpiresAt`: true** respectively (or send an empty `contactEmail` after trim to clear email). When `clearContactEmail` is true, any `contactEmail` value in the same request is ignored for the stored value. If `expiresAt` is non-null in the same request, it wins and **`clearExpiresAt` is ignored**.
 
 **Semantics — `expiresAt`:** This field governs the **pending invitation window** (creation → bind → verify). It is **not** a post-verification “MFA valid until” lifetime for the whole enrollment; after `VERIFIED`, ongoing authentication does not use this field as an automatic cutoff (a separate product concept may be introduced later).
 
@@ -1071,7 +1073,9 @@ Content-Type: application/json
   "version": 0,
   "enrollmentName": "John's iPhone",
   "contactEmail": "john@example.com",
+  "clearContactEmail": false,
   "expiresAt": "2026-12-31T23:59:59Z",
+  "clearExpiresAt": false,
   "authAttemptChallengeRequired": false,
   "userIdentifier": "app-user-12345"
 }

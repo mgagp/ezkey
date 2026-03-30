@@ -344,11 +344,22 @@ export default function EnrollmentsPage() {
   const columns: ColumnDef<EnrollmentResponseDto>[] = [
     { header: t('list.columns.id'), key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
     { header: t('list.columns.name'), key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
-    { header: t('list.columns.status'), key: 'enrollmentStatus', sortKey: 'enrollmentStatus', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
-    { header: t('list.columns.active'), key: 'enrollmentActive', sortKey: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? t('list.activeYes') : t('list.activeNo')}</Badge> },
+    {
+      header: t('list.columns.userIdentifier'),
+      key: 'userIdentifier',
+      sortKey: 'userIdentifier',
+      render: (r) => (
+        <span className="text-xs text-fg-muted max-w-[10rem] truncate block" title={r.userIdentifier ?? undefined}>
+          {r.userIdentifier ?? '—'}
+        </span>
+      ),
+    },
+    { header: t('list.columns.status'), key: 'enrollmentStatus', sortKey: 'status', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
+    { header: t('list.columns.active'), key: 'enrollmentActive', sortKey: 'active', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? t('list.activeYes') : t('list.activeNo')}</Badge> },
     {
       header: t('list.columns.integration'),
       key: 'integrationId',
+      sortKey: 'integrationId',
       render: (r) => {
         const integration = integrations.find((i) => i.id === r.integrationId);
         return (
@@ -358,8 +369,10 @@ export default function EnrollmentsPage() {
         );
       },
     },
-    { header: t('list.columns.challenge'), key: 'authAttemptChallengeRequired', render: (r) => <Badge variant={r.authAttemptChallengeRequired ? 'warning' : 'muted'}>{r.authAttemptChallengeRequired ? t('list.activeYes') : t('list.activeNo')}</Badge> },
-    { header: t('list.columns.verified'), key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
+    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.createdAt ? formatDate(r.createdAt) : '—'}</span> },
+    { header: t('list.columns.lastUsed'), key: 'lastUsedAt', sortKey: 'lastUsedAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}</span> },
+    { header: t('list.columns.verified'), key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
+    { header: t('list.columns.challenge'), key: 'authAttemptChallengeRequired', sortKey: 'authAttemptChallengeRequired', render: (r) => <Badge variant={r.authAttemptChallengeRequired ? 'warning' : 'muted'}>{r.authAttemptChallengeRequired ? t('list.activeYes') : t('list.activeNo')}</Badge> },
   ];
 
   return (
@@ -385,6 +398,8 @@ export default function EnrollmentsPage() {
               <option value="BOUND">{t('list.filterStatusBound')}</option>
               <option value="VERIFIED">{t('list.filterStatusVerified')}</option>
               <option value="INVALID">{t('list.filterStatusInvalid')}</option>
+              <option value="REVOKED">{t('list.filterStatusRevoked')}</option>
+              <option value="EXPIRED">{t('list.filterStatusExpired')}</option>
             </Select>
           </div>
 

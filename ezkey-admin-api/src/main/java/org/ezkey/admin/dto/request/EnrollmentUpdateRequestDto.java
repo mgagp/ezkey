@@ -12,7 +12,6 @@ package org.ezkey.admin.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 
@@ -50,6 +49,10 @@ import java.time.OffsetDateTime;
  * @param expiresAt new expiration timestamp (must be in future; null = no expiration)
  * @param authAttemptChallengeRequired whether auth attempts require challenge
  * @param userIdentifier optional integrating-app user reference
+ * @param clearContactEmail when true, clears {@code contactEmail}; takes precedence over {@code
+ *     contactEmail}
+ * @param clearExpiresAt when true, clears {@code expiresAt}; ignored when {@code expiresAt} is
+ *     non-null (new expiry wins)
  * @author Ezkey contributors
  * @since 2025
  */
@@ -69,10 +72,11 @@ public record EnrollmentUpdateRequestDto(
         @Size(max = 255, message = "Enrollment name must not exceed 255 characters")
         String enrollmentName,
     @Schema(
-            description = "Optional contact email for the end-user",
+            description =
+                "Optional contact email for the end-user (validated when non-blank; use"
+                    + " clearContactEmail to remove)",
             example = "john@example.com",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        @Email(message = "Invalid email format")
         @Size(max = 255, message = "Contact email must not exceed 255 characters")
         String contactEmail,
     @Schema(
@@ -89,4 +93,16 @@ public record EnrollmentUpdateRequestDto(
             description = "Optional user identifier from the integrating application",
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Size(max = 255, message = "User identifier must not exceed 255 characters")
-        String userIdentifier) {}
+        String userIdentifier,
+    @Schema(
+            description =
+                "When true, clears contact email. Takes precedence over contactEmail in the same"
+                    + " request.",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        Boolean clearContactEmail,
+    @Schema(
+            description =
+                "When true, clears invitation expiry (expiresAt). Ignored if expiresAt is set to a"
+                    + " non-null instant in the same request.",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        Boolean clearExpiresAt) {}

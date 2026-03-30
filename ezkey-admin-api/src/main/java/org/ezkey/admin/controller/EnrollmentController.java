@@ -178,10 +178,12 @@ public class EnrollmentController {
    *   <li>Use <code>?sort=field,direction</code> for sorting (e.g., <code>?sort=enrollmentId,asc
    *       </code> or <code>?sort=createdAt,desc</code>)
    *   <li>Default: page=0, size=20, sort=createdAt,DESC
-   *   <li>Sortable fields: enrollmentId, enrollmentName, createdAt, integrationId, status
+   *   <li>Sortable fields: enrollmentId, enrollmentName, userIdentifier, createdAt, integrationId,
+   *       status, active, verifiedAt, lastUsedAt, authAttemptChallengeRequired
    * </ul>
    *
-   * @param status optional filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)
+   * @param status optional filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID, REVOKED,
+   *     EXPIRED)
    * @param integrationId optional filter by integration ID
    * @param enrollmentName optional filter by enrollment name (partial match, case-insensitive)
    * @param active optional filter by active flag
@@ -207,7 +209,10 @@ public class EnrollmentController {
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
   public ResponseEntity<Page<EnrollmentResponseDto>> search(
-      @Parameter(description = "Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)")
+      @Parameter(
+              description =
+                  "Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID, REVOKED,"
+                      + " EXPIRED)")
           @RequestParam(required = false)
           EnrollmentStatus status,
       @Parameter(description = "Filter by integration ID") @RequestParam(required = false)
@@ -341,7 +346,13 @@ public class EnrollmentController {
     try {
       EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(id, request);
       Enrollment updated = outcome.enrollment();
-      EnrollmentResponseDto response = enrollmentMapper.toResponse(updated);
+      Integer integrationIdForResponse = updated.getIntegrationId();
+      var integrationForResponse =
+          integrationIdForResponse != null
+              ? integrationRepository.findById(integrationIdForResponse)
+              : java.util.Optional.<Integration>empty();
+      EnrollmentResponseDto response =
+          enrollmentMapper.toResponseWithIntegration(updated, integrationForResponse.orElse(null));
       Integer tenantId = resolveTenantId(updated.getIntegrationId());
 
       auditLogService.log(

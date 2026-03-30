@@ -115,10 +115,15 @@ public interface EnrollmentAdminMapper {
         base.devicePublicKey(),
         base.verifiedAt(),
         base.expiresAt(),
+        base.createdAt(),
         base.createdByAdminId(),
         base.lastUsedAt(),
         base.contactEmail(),
         base.userIdentifier(),
+        base.deactivatedAt(),
+        base.deactivatedByAdminId(),
+        base.revokedAt(),
+        base.revokedByAdminId(),
         name,
         isSystem);
   }

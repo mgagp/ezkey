@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -58,6 +59,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class EnrollmentUpdateService {
 
   private static final Logger logger = LoggerFactory.getLogger(EnrollmentUpdateService.class);
+
+  /**
+   * Practical email shape check for non-blank contact emails (Bean Validation {@code @Email} is
+   * applied in service so PATCH can accept clears without failing validation on absent fields).
+   */
+  private static final Pattern CONTACT_EMAIL_PATTERN =
+      Pattern.compile("^[\\w.+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
 
   private final EnrollmentRepository enrollmentRepository;
 
@@ -135,12 +143,22 @@ public class EnrollmentUpdateService {
       enrollment.setEnrollmentName(request.enrollmentName());
     }
 
-    // Validate and apply contactEmail
-    if (request.contactEmail() != null) {
-      enrollment.setContactEmail(request.contactEmail());
+    // Apply contactEmail (clear flag, explicit blank, or new value)
+    if (Boolean.TRUE.equals(request.clearContactEmail())) {
+      enrollment.setContactEmail(null);
+    } else if (request.contactEmail() != null) {
+      String trimmed = request.contactEmail().trim();
+      if (trimmed.isEmpty()) {
+        enrollment.setContactEmail(null);
+      } else {
+        if (!isValidContactEmail(trimmed)) {
+          throw new IllegalArgumentException("Invalid email format");
+        }
+        enrollment.setContactEmail(trimmed);
+      }
     }
 
-    // Validate and apply expiresAt (must be in future if provided)
+    // Apply expiresAt: non-null instant wins; else optional clear
     if (request.expiresAt() != null) {
       OffsetDateTime now = OffsetDateTime.now();
       if (!request.expiresAt().isAfter(now)) {
@@ -148,6 +166,8 @@ public class EnrollmentUpdateService {
             "expiresAt must be in the future. Got: " + request.expiresAt());
       }
       enrollment.setExpiresAt(request.expiresAt());
+    } else if (Boolean.TRUE.equals(request.clearExpiresAt())) {
+      enrollment.setExpiresAt(null);
     }
 
     // Apply authAttemptChallengeRequired
@@ -202,11 +222,14 @@ public class EnrollmentUpdateService {
         && !Objects.equals(previousName, updated.getEnrollmentName())) {
       changes.add(changeEntry("enrollmentName", previousName, updated.getEnrollmentName()));
     }
-    if (request.contactEmail() != null
-        && !Objects.equals(previousContactEmail, updated.getContactEmail())) {
+    boolean contactEmailTouched =
+        Boolean.TRUE.equals(request.clearContactEmail()) || request.contactEmail() != null;
+    if (contactEmailTouched && !Objects.equals(previousContactEmail, updated.getContactEmail())) {
       changes.add(changeEntry("contactEmail", previousContactEmail, updated.getContactEmail()));
     }
-    if (request.expiresAt() != null && !Objects.equals(previousExpiresAt, updated.getExpiresAt())) {
+    boolean expiresAtTouched =
+        request.expiresAt() != null || Boolean.TRUE.equals(request.clearExpiresAt());
+    if (expiresAtTouched && !Objects.equals(previousExpiresAt, updated.getExpiresAt())) {
       changes.add(
           changeEntry(
               "expiresAt",
@@ -229,6 +252,10 @@ public class EnrollmentUpdateService {
 
     builder.custom("changes", changes);
     return builder.toJson();
+  }
+
+  private static boolean isValidContactEmail(String email) {
+    return email != null && email.length() <= 255 && CONTACT_EMAIL_PATTERN.matcher(email).matches();
   }
 
   private static Map<String, Object> changeEntry(String field, Object previous, Object newValue) {

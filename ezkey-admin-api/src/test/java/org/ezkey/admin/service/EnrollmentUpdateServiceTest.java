@@ -89,7 +89,8 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, "New Name", "new@example.com", null, true, null);
+        new EnrollmentUpdateRequestDto(
+            0L, "New Name", "new@example.com", null, true, null, null, null);
 
     EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(1, request);
 
@@ -125,7 +126,7 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, null, null, null, null, "app-user-99");
+        new EnrollmentUpdateRequestDto(0L, null, null, null, null, "app-user-99", null, null);
 
     EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(1, request);
 
@@ -147,7 +148,7 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(99L, "New Name", null, null, null, null);
+        new EnrollmentUpdateRequestDto(99L, "New Name", null, null, null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(ObjectOptimisticLockingFailureException.class);
@@ -160,7 +161,7 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.findById(999)).thenReturn(Optional.empty());
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(null, "New Name", null, null, null, null);
+        new EnrollmentUpdateRequestDto(null, "New Name", null, null, null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(999, request))
         .isInstanceOf(ResourceNotFoundException.class)
@@ -175,7 +176,7 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, "New Name", null, null, null, null);
+        new EnrollmentUpdateRequestDto(0L, "New Name", null, null, null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class)
@@ -189,7 +190,7 @@ class EnrollmentUpdateServiceTest {
     when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, "New Name", null, null, null, null);
+        new EnrollmentUpdateRequestDto(0L, "New Name", null, null, null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class)
@@ -207,7 +208,7 @@ class EnrollmentUpdateServiceTest {
         .thenReturn(List.of(other));
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, "Existing Name", null, null, null, null);
+        new EnrollmentUpdateRequestDto(0L, "Existing Name", null, null, null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class)
@@ -221,10 +222,64 @@ class EnrollmentUpdateServiceTest {
     OffsetDateTime past = OffsetDateTime.now().minusDays(1);
 
     EnrollmentUpdateRequestDto request =
-        new EnrollmentUpdateRequestDto(0L, null, null, past, null, null);
+        new EnrollmentUpdateRequestDto(0L, null, null, past, null, null, null, null);
 
     assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("future");
+  }
+
+  @Test
+  @DisplayName("updateEnrollment - clearContactEmail clears contact email")
+  void updateEnrollment_clearContactEmail_clears() throws Exception {
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(0L, null, null, null, null, null, true, null);
+
+    EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(1, request);
+
+    assertThat(outcome.enrollment().getContactEmail()).isNull();
+    JsonNode root = objectMapper.readTree(outcome.auditEventDetailsJson());
+    JsonNode changes = root.get("changes");
+    assertThat(changes.size()).isEqualTo(1);
+    assertThat(changeForField(changes, "contactEmail").path("previous").asString())
+        .isEqualTo("original@example.com");
+    assertThat(changeForField(changes, "contactEmail").get("new").isNull()).isTrue();
+  }
+
+  @Test
+  @DisplayName("updateEnrollment - clearExpiresAt clears expiresAt")
+  void updateEnrollment_clearExpiresAt_clears() throws Exception {
+    enrollment.setExpiresAt(OffsetDateTime.now().plusDays(7));
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(0L, null, null, null, null, null, null, true);
+
+    EnrollmentUpdateOutcome outcome = enrollmentUpdateService.updateEnrollment(1, request);
+
+    assertThat(outcome.enrollment().getExpiresAt()).isNull();
+    JsonNode root = objectMapper.readTree(outcome.auditEventDetailsJson());
+    JsonNode changes = root.get("changes");
+    assertThat(changes.size()).isEqualTo(1);
+    assertThat(changeForField(changes, "expiresAt").path("previous").asString()).isNotBlank();
+    assertThat(changeForField(changes, "expiresAt").get("new").isNull()).isTrue();
+  }
+
+  @Test
+  @DisplayName("updateEnrollment - invalid contact email throws IllegalArgumentException")
+  void updateEnrollment_invalidEmail_throws400() {
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
+
+    EnrollmentUpdateRequestDto request =
+        new EnrollmentUpdateRequestDto(0L, null, "not-an-email", null, null, null, null, null);
+
+    assertThatThrownBy(() -> enrollmentUpdateService.updateEnrollment(1, request))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid email");
+    verify(enrollmentRepository, never()).save(any());
   }
 }

@@ -127,6 +127,8 @@ public record EnrollmentResponseDto(
             description =
                 "Optional expiration for pending enrollment (CREATED/BOUND); null = no expiration")
         java.time.OffsetDateTime expiresAt,
+    @Schema(description = "When the enrollment row was created (audit / sorting)")
+        java.time.OffsetDateTime createdAt,
     @Schema(description = "Admin who created this enrollment (null when via API key)")
         Integer createdByAdminId,
     @Schema(description = "When enrollment was last used for successful authentication")
@@ -134,6 +136,16 @@ public record EnrollmentResponseDto(
     @Schema(description = "Optional contact email for the end-user") String contactEmail,
     @Schema(description = "Optional user identifier from the integrating application")
         String userIdentifier,
+    @Schema(
+            description =
+                "When the enrollment was deactivated (reversible soft-disable); null if never")
+        java.time.OffsetDateTime deactivatedAt,
+    @Schema(description = "Admin who deactivated this enrollment; null if never deactivated")
+        Integer deactivatedByAdminId,
+    @Schema(description = "When the enrollment was permanently revoked; null if never")
+        java.time.OffsetDateTime revokedAt,
+    @Schema(description = "Admin who revoked this enrollment; null if never revoked")
+        Integer revokedByAdminId,
     @Schema(
             description =
                 "Display name for the enrollment's integration (e.g. Ezkey System); populated on"

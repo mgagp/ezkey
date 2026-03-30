@@ -462,6 +462,8 @@ export default function EnrollmentDetailPage() {
   const [editUserId, setEditUserId] = useState('');
   const [editChallenge, setEditChallenge] = useState(false);
   const [editExpiresLocal, setEditExpiresLocal] = useState('');
+  const [editClearEmail, setEditClearEmail] = useState(false);
+  const [editClearExpires, setEditClearExpires] = useState(false);
 
   const { toast } = useToast();
   const { lookup } = useIntegrations();
@@ -541,6 +543,8 @@ export default function EnrollmentDetailPage() {
     setEditUserId(enrollment.userIdentifier ?? '');
     setEditChallenge(Boolean(enrollment.authAttemptChallengeRequired));
     setEditExpiresLocal(isoToDatetimeLocal(enrollment.expiresAt));
+    setEditClearEmail(false);
+    setEditClearExpires(false);
     setEditOpen(true);
   };
 
@@ -554,11 +558,17 @@ export default function EnrollmentDetailPage() {
       authAttemptChallengeRequired: editChallenge,
       userIdentifier: editUserId.trim(),
     };
-    const email = editEmail.trim();
-    if (email) {
-      data.contactEmail = email;
+    if (editClearEmail) {
+      data.clearContactEmail = true;
+    } else {
+      const email = editEmail.trim();
+      if (email) {
+        data.contactEmail = email;
+      }
     }
-    if (editExpiresLocal) {
+    if (editClearExpires) {
+      data.clearExpiresAt = true;
+    } else if (editExpiresLocal) {
       data.expiresAt = new Date(editExpiresLocal).toISOString();
     }
     updateMutation.mutate({ id: enrollment.enrollmentId, data });
@@ -623,10 +633,10 @@ export default function EnrollmentDetailPage() {
         ...(enrollment?.integrationId
           ? [{
               label:
-                (enrollment as { integrationName?: string }).integrationName ??
+                enrollment.integrationName ??
                 lookup.get(enrollment.integrationId) ??
                 `Integration #${enrollment.integrationId}`,
-              ...((enrollment as { isSystemIntegration?: boolean }).isSystemIntegration
+              ...(enrollment.isSystemIntegration
                 ? {}
                 : { path: `/integrations/${enrollment.integrationId}` }),
             }]
@@ -659,6 +669,7 @@ export default function EnrollmentDetailPage() {
         {enrollment && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
+            <div className="space-y-4">
             {/* Info Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-2">
@@ -705,13 +716,14 @@ export default function EnrollmentDetailPage() {
                       const displayName =
                         relatedDetails.isExpanded && relatedDetails.integration
                           ? `${getIntegrationName(relatedDetails.integration)} (ID ${relatedDetails.integration.id})`
-                          : (enrollment as { integrationName?: string }).integrationName ??
-                              lookup.get(enrollment.integrationId!) ??
+                          : enrollment.integrationName ??
+                              lookup.get(enrollment.integrationId ?? 0) ??
                               `#${enrollment.integrationId ?? '?'}`;
-                      return (enrollment as { isSystemIntegration?: boolean }).isSystemIntegration ? (
+                      return enrollment.isSystemIntegration ? (
                         <span className="font-medium">{displayName}</span>
                       ) : (
                         <button
+                          type="button"
                           className="font-mono text-sm text-accent hover:underline"
                           onClick={() => navigate(`/integrations/${enrollment.integrationId}`)}
                         >
@@ -725,27 +737,75 @@ export default function EnrollmentDetailPage() {
                       {enrollment.authAttemptChallengeRequired ? t('detail.challengeRequired') : t('detail.challengeNotRequired')}
                     </Badge>
                   </InfoRow>
-                  {enrollment.contactEmail && (
-                    <InfoRow label={t('detail.infoContactEmail')}>{enrollment.contactEmail}</InfoRow>
+                  <InfoRow label={t('detail.infoContactEmail')}>
+                    <span className="text-fg-muted">{enrollment.contactEmail ?? '—'}</span>
+                  </InfoRow>
+                  <InfoRow label={t('detail.infoUserId')}>
+                    <span className="text-fg-muted break-all">{enrollment.userIdentifier ?? '—'}</span>
+                  </InfoRow>
+                  <InfoRow label={t('detail.infoCreated')}>
+                    <span className="text-fg-muted">{enrollment.createdAt ? formatDate(enrollment.createdAt) : '—'}</span>
+                  </InfoRow>
+                  {enrollment.createdByAdminId != null && (
+                    <InfoRow label={t('detail.infoCreatedByAdmin')}>
+                      <span className="font-mono text-fg-muted">{enrollment.createdByAdminId}</span>
+                    </InfoRow>
                   )}
-                  {enrollment.userIdentifier && (
-                    <InfoRow label={t('detail.infoUserId')}>{enrollment.userIdentifier}</InfoRow>
+                  <InfoRow label={t('detail.infoVersion')}>
+                    <span className="font-mono text-fg-muted">{enrollment.version ?? '—'}</span>
+                  </InfoRow>
+                  <InfoRow label={t('detail.infoVerified')}>
+                    <span className="text-fg-muted">{enrollment.verifiedAt ? formatDate(enrollment.verifiedAt) : '—'}</span>
+                  </InfoRow>
+                  <InfoRow label={t('detail.infoLastUsed')}>
+                    <span className="text-fg-muted">{enrollment.lastUsedAt ? formatDate(enrollment.lastUsedAt) : '—'}</span>
+                  </InfoRow>
+                  <InfoRow label={t('detail.infoExpiresAt')}>
+                    <span className="text-fg-muted">{enrollment.expiresAt ? formatDate(enrollment.expiresAt) : '—'}</span>
+                  </InfoRow>
+                  {enrollment.deactivatedAt && (
+                    <InfoRow label={t('detail.infoDeactivated')}>
+                      <span className="text-fg-muted">
+                        {formatDate(enrollment.deactivatedAt)}
+                        {enrollment.deactivatedByAdminId != null && (
+                          <span className="ml-1">{t('detail.infoByAdmin', { id: enrollment.deactivatedByAdminId })}</span>
+                        )}
+                      </span>
+                    </InfoRow>
                   )}
-                  {enrollment.verifiedAt && (
-                    <InfoRow label={t('detail.infoVerified')}><span className="text-fg-muted">{formatDate(enrollment.verifiedAt)}</span></InfoRow>
-                  )}
-                  {enrollment.lastUsedAt && (
-                    <InfoRow label={t('detail.infoLastUsed')}><span className="text-fg-muted">{formatDate(enrollment.lastUsedAt)}</span></InfoRow>
-                  )}
-                  {enrollment.expiresAt && (
-                    <InfoRow label={t('detail.infoExpiresAt')}>
-                      <span className="text-fg-muted">{formatDate(enrollment.expiresAt)}</span>
+                  {enrollment.revokedAt && (
+                    <InfoRow label={t('detail.infoRevoked')}>
+                      <span className="text-fg-muted">
+                        {formatDate(enrollment.revokedAt)}
+                        {enrollment.revokedByAdminId != null && (
+                          <span className="ml-1">{t('detail.infoByAdmin', { id: enrollment.revokedByAdminId })}</span>
+                        )}
+                      </span>
                     </InfoRow>
                   )}
 
                 </dl>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('detail.cryptoCardTitle')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <InfoRow label={t('detail.infoIntegrationPublicKey')}>
+                  <span className="font-mono text-xs break-all text-fg-muted max-h-28 overflow-y-auto block">
+                    {enrollment.integrationPublicKey ?? '—'}
+                  </span>
+                </InfoRow>
+                <InfoRow label={t('detail.infoDevicePublicKey')}>
+                  <span className="font-mono text-xs break-all text-fg-muted max-h-28 overflow-y-auto block">
+                    {enrollment.devicePublicKey ?? '—'}
+                  </span>
+                </InfoRow>
+              </CardContent>
+            </Card>
+            </div>
 
             {/* Token + QR + Danger */}
             <div className="space-y-4">
@@ -1126,7 +1186,20 @@ export default function EnrollmentDetailPage() {
               className="border-2 border-fg/30"
               maxLength={255}
               autoComplete="off"
+              disabled={editClearEmail}
             />
+            <label className="flex items-start gap-3 cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 accent-accent"
+                checked={editClearEmail}
+                onChange={(e) => {
+                  setEditClearEmail(e.target.checked);
+                  if (e.target.checked) setEditEmail('');
+                }}
+              />
+              <span className="text-xs text-fg-muted">{t('detail.editClearContactEmail')}</span>
+            </label>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="edit-user-id">{t('detail.editUserIdentifier')}</Label>
@@ -1157,7 +1230,20 @@ export default function EnrollmentDetailPage() {
               value={editExpiresLocal}
               onChange={(e) => setEditExpiresLocal(e.target.value)}
               className="border-2 border-fg/30"
+              disabled={editClearExpires}
             />
+            <label className="flex items-start gap-3 cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 accent-accent"
+                checked={editClearExpires}
+                onChange={(e) => {
+                  setEditClearExpires(e.target.checked);
+                  if (e.target.checked) setEditExpiresLocal('');
+                }}
+              />
+              <span className="text-xs text-fg-muted">{t('detail.editClearExpiresAt')}</span>
+            </label>
           </div>
           {updateMutation.isError && (
             <Alert variant="error">

@@ -784,7 +784,7 @@
           {
             "name": "status",
             "in": "query",
-            "description": "Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID)",
+            "description": "Filter by enrollment status (CREATED, BOUND, VERIFIED, INVALID, REVOKED, EXPIRED)",
             "required": false,
             "schema": {
               "type": "string",
@@ -5661,8 +5661,7 @@
           },
           "contactEmail": {
             "type": "string",
-            "format": "email",
-            "description": "Optional contact email for the end-user",
+            "description": "Optional contact email for the end-user (validated when non-blank; use clearContactEmail to remove)",
             "example": "john@example.com",
             "maxLength": 255,
             "minLength": 0
@@ -5682,6 +5681,14 @@
             "description": "Optional user identifier from the integrating application",
             "maxLength": 255,
             "minLength": 0
+          },
+          "clearContactEmail": {
+            "type": "boolean",
+            "description": "When true, clears contact email. Takes precedence over contactEmail in the same request."
+          },
+          "clearExpiresAt": {
+            "type": "boolean",
+            "description": "When true, clears invitation expiry (expiresAt). Ignored if expiresAt is set to a non-null instant in the same request."
           }
         }
       },
@@ -5764,6 +5771,11 @@
             "format": "date-time",
             "description": "Optional expiration for pending enrollment (CREATED/BOUND); null = no expiration"
           },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the enrollment row was created (audit / sorting)"
+          },
           "createdByAdminId": {
             "type": "integer",
             "format": "int32",
@@ -5781,6 +5793,26 @@
           "userIdentifier": {
             "type": "string",
             "description": "Optional user identifier from the integrating application"
+          },
+          "deactivatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the enrollment was deactivated (reversible soft-disable); null if never"
+          },
+          "deactivatedByAdminId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Admin who deactivated this enrollment; null if never deactivated"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the enrollment was permanently revoked; null if never"
+          },
+          "revokedByAdminId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Admin who revoked this enrollment; null if never revoked"
           },
           "integrationName": {
             "type": "string",
