@@ -54,6 +54,10 @@ public enum AuthAttemptStatus {
   /**
    * Device has claimed the authentication attempt and is processing it. The device has successfully
    * read the authentication request.
+   *
+   * <p>This state is transient: if the user does not approve or deny before {@code expires_at}, a
+   * scheduled job ({@link org.ezkey.authattempt.service.AuthAttemptExpiryScheduler}) persists
+   * {@link #EXPIRED} so the row does not remain {@code READ} indefinitely.
    */
   READ,
 

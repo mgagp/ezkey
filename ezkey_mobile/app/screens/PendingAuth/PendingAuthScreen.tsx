@@ -8,6 +8,9 @@
  * Description: React Native screen orchestrating the device-side pending and respond flows.
  * Security Context: Embeds the polling model, proof token usage, and read-once semantics described in
  *                   docs/features/AUTH_SECURITY.md to keep user actions intentional and replay resistant.
+ * UX: Approve and Deny only — there is no mobile "cancel" API; leaving the screen without responding
+ *     relies on server-side TTL expiry (see Auth API / Admin batch expiry). Do not add a Cancel
+ *     button that implies a distinct server action without an endpoint.
  * @since 2025
  */
 

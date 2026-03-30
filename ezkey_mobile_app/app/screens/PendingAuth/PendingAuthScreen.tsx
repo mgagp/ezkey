@@ -1,3 +1,6 @@
+/**
+ * Pending auth: Approve/Deny only. No mobile cancel API — navigating away relies on server TTL expiry.
+ */
 import React, {useCallback, useEffect, useState} from 'react';
 import {
   View,

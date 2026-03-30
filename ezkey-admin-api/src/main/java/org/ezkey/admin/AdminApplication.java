@@ -28,6 +28,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *   <li>Re-encryption batch processing (ReencryptionService)
  *   <li>Audit log cleanup
  *   <li>Database partition creation (PartitionSchedulerService)
+ *   <li>Authentication attempt TTL persistence ({@link
+ *       org.ezkey.authattempt.service.AuthAttemptExpiryScheduler})
  * </ul>
  *
  * Scheduled tasks are configured via {@link org.springframework.scheduling.annotation.Scheduled}

@@ -11,6 +11,7 @@
 package org.ezkey.authattempt.domain.repository;
 
 import jakarta.persistence.LockModeType;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
@@ -269,6 +270,27 @@ public interface AuthAttemptRepository
   int updateStatusForMultipleAttempts(
       @Param("authAttemptIds") List<Integer> authAttemptIds,
       @Param("newStatus") AuthAttemptStatus newStatus);
+
+  /**
+   * Marks non-terminal authentication attempts as {@link AuthAttemptStatus#EXPIRED} when their
+   * {@code expiresAt} is in the past.
+   *
+   * <p>Used by {@link org.ezkey.authattempt.service.AuthAttemptExpiryScheduler} so rows reflect
+   * real-world expiry instead of staying indefinitely in {@code PENDING} or {@code READ}.
+   *
+   * @param statuses statuses to update (typically {@code PENDING} and {@code READ})
+   * @param now current time; rows with {@code expiresAt} strictly before this are expired
+   * @param expiredStatus target status ({@link AuthAttemptStatus#EXPIRED})
+   * @return number of rows updated
+   */
+  @Modifying
+  @Query(
+      "UPDATE AuthAttempt a SET a.authAttemptStatus = :expiredStatus WHERE a.authAttemptStatus IN"
+          + " (:statuses) AND a.expiresAt < :now")
+  int expireAttemptsPastDeadline(
+      @Param("statuses") List<AuthAttemptStatus> statuses,
+      @Param("now") OffsetDateTime now,
+      @Param("expiredStatus") AuthAttemptStatus expiredStatus);
 
   /**
    * Counts auth attempts with encrypted auth attempt proof token matching the prefix pattern.

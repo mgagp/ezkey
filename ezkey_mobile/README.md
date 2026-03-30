@@ -96,6 +96,30 @@ yarn android:assemble:release
 yarn android:bundle:release
 ```
 
+### Install on your phone (standalone Android build)
+
+The Android **debug** build is configured to **embed the JavaScript bundle in the APK** (`debuggableVariants = []` in `android/app/build.gradle`), so you can use the app on a physical device **without** running Metro on your machine.
+
+1. On the phone, enable **Developer options → USB debugging** and connect via USB (accept the computer’s RSA prompt when prompted).
+2. Confirm the device is visible:
+   ```bash
+   adb devices
+   ```
+3. From `ezkey_mobile/`, install the debug APK on the connected device:
+   ```bash
+   yarn android:install:debug
+   ```
+   On Windows, if Gradle fails with a JDK version error, set `JAVA_HOME` to Android Studio’s bundled JBR (JDK 17), then run the command again — see [Android build troubleshooting](#android-build-troubleshooting).
+
+**Alternative — build the APK, then push to the phone**
+
+```bash
+yarn android:assemble:debug
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+`-r` replaces an existing install. Copy the APK to another machine or share it if you prefer to install without a USB cable (same `adb install` over Wi‑Fi debugging works once paired).
+
 ### Quality gates
 
 ```bash
