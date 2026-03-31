@@ -19,7 +19,7 @@ Cross-platform companion app for Ezkey MFA: enrollment via QR, secure key manage
 | HTTP | Axios (shared client, timeouts, error handling) |
 | Camera / QR | react-native-vision-camera + custom frame processor |
 | Secure Storage | react-native-keychain |
-| Crypto | Native modules (EzkeyCryptoModule) — EC P-256, hardware-backed (Keystore / Secure Enclave) |
+| Crypto | Native modules (EzkeyCryptoModule) — EC P-256, Android Keystore today, iOS secure-hardware-backed parity still in progress |
 | Config | react-native-config (.env) |
 | Package Manager | Yarn 4 (Berry) |
 
@@ -28,7 +28,7 @@ Cross-platform companion app for Ezkey MFA: enrollment via QR, secure key manage
 ## Project Values (Mobile-Specific)
 
 1. **Extremely simple, voluntarily minimalist** — The app must stay lightweight. Avoid feature creep, unnecessary screens, or complex flows. Every screen and interaction should justify its existence.
-2. **Security first** — Proof tokens and keys are handled in memory or secure storage only. Native crypto uses hardware-backed storage; never compromise on this.
+2. **Security first** — Proof tokens and keys are handled in memory or secure storage only. Native crypto must use the platform keystore path; describe Android as `StrongBox when available`, not as a universal hardware guarantee.
 3. **Pull-based model** — Polling for auth attempts is user-initiated only. No background polling that could enable enumeration or replay.
 4. **Pragmatic UX** — Focus on the core flows: enroll, list enrollments, approve/deny. No decorative complexity.
 
@@ -45,7 +45,7 @@ Cross-platform companion app for Ezkey MFA: enrollment via QR, secure key manage
 - All new/updated content **in English**.
 - Never break Auth API contracts (`EnrollmentBindResponseDto`, `AuthAttemptPendingResponseDto`) without coordinating with backend.
 - Proof tokens: read-once semantics; never cache in plaintext outside secure storage.
-- EC P-256 keys: generated per enrollment in hardware-backed storage; private keys non-extractable.
+- EC P-256 keys: generated per enrollment through the native keystore path; for Android, prefer `Android Keystore` and `StrongBox when available` wording.
 
 ---
 

@@ -6,7 +6,7 @@
  *
  * Module: cryptoService
  * Description: Factory-backed facade that abstracts native cryptographic primitives for enrollment and authentication.
- * Security Context: Uses EC P-256 with hardware-backed storage as described in docs/MOBILE_CRYPTO_REFERENCE.md.
+ * Security Context: Uses EC P-256 with native platform keystore integration as described in docs/MOBILE_CRYPTO_REFERENCE.md.
  * @since 2025
  */
 
@@ -16,7 +16,7 @@ import {isNativeCryptoLinked, nativeCrypto} from './nativeCrypto';
 /**
  * Provides a uniform cryptographic interface across platforms.
  *
- * Uses EC P-256 (Elliptic Curve P-256) with hardware-backed storage.
+ * Uses EC P-256 (Elliptic Curve P-256) with native platform keystore integration.
  * Requires native crypto module - no fallbacks or mocks.
  *
  * @since 2025
@@ -26,7 +26,7 @@ class CryptoService {
    * Builds a crypto service using the native EC P-256 implementation.
    *
    * **Security Policy**: The application requires the native crypto module to function.
-   * This ensures hardware-backed keys are always used.
+   * This ensures keys are created and used through the supported native platform APIs.
    *
    * @return Crypto service instance backed by native implementation.
    * @throws Error if native module unavailable or platform not supported.
@@ -37,7 +37,7 @@ class CryptoService {
     if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
       throw new Error(
         'CRITICAL: Mobile platform required for secure crypto operations. ' +
-        'Ezkey requires Android or iOS for hardware-backed key storage.',
+        'Ezkey requires Android or iOS for native secure key storage.',
       );
     }
 
@@ -45,7 +45,7 @@ class CryptoService {
     if (!isNativeCryptoLinked) {
       throw new Error(
         'CRITICAL: Native crypto module not available. ' +
-        'Application cannot function securely without hardware-backed keys. ' +
+        'Application cannot function securely without native secure key storage. ' +
         'Please ensure the native module is properly linked.',
       );
     }
@@ -77,7 +77,7 @@ class CryptoService {
   /**
    * Ensures an EC P-256 key pair exists for the given enrollment, generating it if necessary.
    *
-   * The key pair is stored in hardware-backed storage (StrongBox/Secure Enclave).
+   * The key pair is stored through the native platform keystore integration.
    * Each enrollment gets its own key pair.
    *
    * @param enrollmentId The enrollment ID to ensure the key pair for.
@@ -91,7 +91,7 @@ class CryptoService {
   /**
    * Retrieves the EC P-256 public key for a given enrollment ID.
    *
-   * The public key is stored in hardware-backed storage and encoded as X.509 SubjectPublicKeyInfo.
+   * The public key is derived from the native key entry and encoded as X.509 SubjectPublicKeyInfo.
    *
    * @param enrollmentId The enrollment ID to get the public key for.
    * @return Base64-encoded X.509 public key (ASN.1 DER format).

@@ -20,7 +20,7 @@ const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
 /**
  * Local representation of enrollment records including proof tokens.
  *
- * With EC P-256, device keys are stored directly in hardware-backed storage per enrollment,
+ * With EC P-256, device keys are stored through the native platform keystore path per enrollment,
  * so no device alias needs to be stored.
  *
  * @since 2025
@@ -93,7 +93,7 @@ class EnrollmentStorage {
   /**
    * Adds or updates an enrollment record.
    *
-   * With EC P-256, device keys are stored in hardware-backed storage per enrollment,
+   * With EC P-256, device keys are stored through the native platform keystore path per enrollment,
    * so no device alias needs to be stored.
    *
    * @param record Enrollment payload to persist.

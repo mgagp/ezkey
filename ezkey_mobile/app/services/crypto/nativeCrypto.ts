@@ -6,7 +6,7 @@
  *
  * Module: nativeCrypto
  * Description: Bridge to the Android/iOS native crypto module implementing EC P-256 key management.
- * Security Context: Ensures the React Native layer invokes the hardware-backed implementations as described in docs/MOBILE_CRYPTO_REFERENCE.md.
+ * Security Context: Ensures the React Native layer invokes the native platform keystore implementations described in docs/MOBILE_CRYPTO_REFERENCE.md.
  * @since 2025
  */
 
@@ -54,7 +54,7 @@ export const isNativeCryptoLinked = Boolean(EzkeyCryptoModule);
 /**
  * Delegate exposing the native crypto module through a stable interface.
  *
- * Uses EC P-256 (Elliptic Curve P-256) with hardware-backed storage.
+ * Uses EC P-256 (Elliptic Curve P-256) through the native platform keystore integration.
  *
  * @since 2025
  */
