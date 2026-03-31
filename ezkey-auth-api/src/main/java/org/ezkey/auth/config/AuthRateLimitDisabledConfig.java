@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  *
@@ -31,7 +31,7 @@ import org.springframework.context.annotation.Configuration;
  * rate limiting so test suites can run without hitting limits. The log makes it explicit that this
  * is voluntary and not a misconfiguration.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

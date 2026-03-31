@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -40,7 +40,7 @@ import org.ezkey.audit.domain.EventType;
  * <p><b>Database Table:</b> ezkey_audit_log (composite: RANGE created_at by month, LIST api_name
  * per month)
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

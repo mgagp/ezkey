@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors Licensed under the MIT License.
  *
@@ -15,7 +15,7 @@ package org.ezkey.audit.domain;
  *
  * <p>Identifies which API originated an audit event for security monitoring and analysis.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

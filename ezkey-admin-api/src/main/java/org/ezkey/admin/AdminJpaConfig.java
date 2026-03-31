@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -50,7 +50,7 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
  * to the entire admin API module. It ensures that all JPA repositories and entities are properly
  * scanned and registered for dependency injection and persistence operations.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

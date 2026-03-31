@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  *
@@ -33,7 +33,7 @@ import org.springframework.context.annotation.Configuration;
  * <p><b>Dependencies:</b> Requires RateLimitProperties for configuration and Bucket4j libraries for
  * rate limiting implementation.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

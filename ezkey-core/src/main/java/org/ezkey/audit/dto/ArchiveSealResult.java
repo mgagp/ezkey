@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -20,7 +20,7 @@ import java.time.OffsetDateTime;
  * in the Git archive manifest so that the archived period can be independently verified and linked
  * back to the live chain.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

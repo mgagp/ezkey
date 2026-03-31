@@ -1,6 +1,6 @@
 /**
  * Ezkey Admin API
- * Administration API for Ezkey - Open Source MFA/Passkey Alternative  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts  The API follows REST conventions and uses DTOs for all requests and responses.
+ * Administration API for Ezkey - Open Source Cryptographic MFA Platform  This API enables administrative management of Ezkey\'s main entities: - **Integrations**: Applications or systems protected by MFA - **Enrollments**: Associations between users, devices and integrations - **Auth Attempts**: MFA authentication attempts  The API follows REST conventions and uses DTOs for all requests and responses.
  *
  * The version of the OpenAPI document: 1.0.0
  * Contact: contributors@ezkey.org

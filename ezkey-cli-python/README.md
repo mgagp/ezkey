@@ -1,6 +1,6 @@
 # Ezkey CLI (Python)
 
-**Command line interface for Ezkey - Open Source MFA/Passkey Alternative**
+**Command line interface for Ezkey - Open Source Cryptographic MFA Platform**
 
 ## Overview
 

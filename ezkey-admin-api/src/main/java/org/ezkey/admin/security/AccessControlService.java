@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -46,7 +46,7 @@ import org.springframework.stereotype.Service;
  * <p><b>Integration Scope:</b> API keys are associated with a specific integration and can only
  * access auth attempts that belong to enrollments of that integration.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

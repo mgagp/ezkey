@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Ezkey Admin API",
-    "description": "Administration API for Ezkey - Open Source MFA/Passkey Alternative\n\nThis API enables administrative management of Ezkey's main entities:\n- **Integrations**: Applications or systems protected by MFA\n- **Enrollments**: Associations between users, devices and integrations\n- **Auth Attempts**: MFA authentication attempts\n- **Admin Management**: Administrator authentication,\n                        enrollment recovery, and admin operations\n\nThe API follows REST conventions and uses DTOs for all requests and responses.\n",
+    "description": "Administration API for Ezkey - Open Source Cryptographic MFA Platform\n\nThis API enables administrative management of Ezkey's main entities:\n- **Integrations**: Applications or systems protected by MFA\n- **Enrollments**: Associations between users, devices and integrations\n- **Auth Attempts**: MFA authentication attempts\n- **Admin Management**: Administrator authentication,\n                        enrollment recovery, and admin operations\n\nEzkey is intentionally distinct from FIDO2/WebAuthn and follows its own\ncryptographic MFA model. The API uses REST conventions and DTOs for all\nrequests and responses.\n",
     "contact": {
       "name": "Ezkey Team",
       "url": "https://ezkey.org",

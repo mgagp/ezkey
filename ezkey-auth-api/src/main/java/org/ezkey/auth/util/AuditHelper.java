@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  *
@@ -23,7 +23,7 @@ import org.ezkey.audit.util.ClientIpResolver;
  * such as IP addresses and user agents. Uses {@link ClientIpResolver} when a trusted-proxy list is
  * provided so that proxy headers are only trusted when the connection is from a configured proxy.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

@@ -46,8 +46,8 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
  * <p><b>Security Features (Passwordless-Only):</b>
  *
  * <ul>
- *   <li><b>Passwordless Authentication:</b> Cryptographic authentication via Ezkey enrollment
- *       using Ezkey's own passwordless model
+ *   <li><b>Passwordless Authentication:</b> Cryptographic authentication via Ezkey enrollment using
+ *       Ezkey's own passwordless model
  *   <li><b>Recovery Codes:</b> Emergency access via single-use BCrypt-hashed recovery codes
  *   <li><b>Token Management:</b> Bearer tokens for API authentication
  *   <li><b>Audit Trail:</b> Login tracking and enrollment management

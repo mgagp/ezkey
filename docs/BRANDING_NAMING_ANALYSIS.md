@@ -280,10 +280,11 @@ Maintaining "ezkey" as internal identifier while using "EasyKey" publicly:
 ### Documentation Examples
 
 ```markdown
-# EasyKey - Open Source MFA/Passkey Alternative
+# EasyKey - Open Source Cryptographic MFA Platform
 
-EasyKey (internal code identifier: EZ) is a pragmatic, open-source 
-alternative to complex passkey implementations.
+EasyKey (internal code identifier: EZ) is a pragmatic, open-source
+cryptographic MFA platform with an approach intentionally distinct from
+FIDO2/WebAuthn and passkey protocols.
 
 ## Installation
 

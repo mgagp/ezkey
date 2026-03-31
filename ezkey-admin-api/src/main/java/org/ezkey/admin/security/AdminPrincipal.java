@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -32,7 +32,7 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
  * <p><b>Usage:</b> This principal is used by AccessControlService to make scope-aware authorization
  * decisions. For example, a TENANT_ADMIN can only access resources within their tenant.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

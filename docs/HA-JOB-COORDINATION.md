@@ -170,7 +170,7 @@ Create `ShedLockConfig.java` in `ezkey-core`:
 
 ```java
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License.

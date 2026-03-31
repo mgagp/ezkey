@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  *
@@ -32,7 +32,7 @@ import org.springframework.util.StreamUtils;
  * (pending) for the bucket key, then pass the request to the controller which reads the body again.
  * This wrapper ensures the body is only consumed once from the underlying stream.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

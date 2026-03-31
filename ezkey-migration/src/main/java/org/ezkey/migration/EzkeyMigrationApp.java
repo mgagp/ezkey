@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  *
@@ -57,7 +57,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * <p><b>Important:</b> Flyway's automatic migration on startup is disabled. All Flyway operations
  * are controlled by the {@link FlywayCommandRunner} to allow command-line parameter handling.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

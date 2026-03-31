@@ -1677,7 +1677,7 @@ public class EzkeyAdminController {
         title = "Ezkey Admin API",
         version = "1.0.0",
         description = """
-            Administration API for Ezkey - Open Source MFA/Passkey Alternative
+            Administration API for Ezkey - Open Source Cryptographic MFA Platform
             
             This API enables administrative management of Ezkey's main entities:
             - **Integrations**: Applications or systems protected by MFA
@@ -2056,7 +2056,7 @@ ezkey.security.token-cleanup-interval=3600
  * </p>
  *
  * <p>
- * <b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  * </p>
  * <p>
  * <b>License:</b> MIT

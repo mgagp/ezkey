@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -19,7 +19,7 @@ package org.ezkey.integration.api.constants;
  * <p><b>Naming Convention:</b> Constants are grouped by feature area and follow the pattern {@code
  * {FEATURE}_{RESULT}}, e.g. {@code AUTH_ATTEMPT_CREATED}, {@code AUTH_ATTEMPT_CREATION_FAILED}.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *

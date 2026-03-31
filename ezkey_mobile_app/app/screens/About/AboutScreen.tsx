@@ -30,7 +30,8 @@ export const AboutScreen: React.FC = () => {
       <Text style={styles.title}>ezkey Authenticator</Text>
       <Text style={styles.version}>Version {APP_VERSION}</Text>
       <Text style={styles.description}>
-        ezkey is an open-source MFA and passkey alternative. This app lets you
+        ezkey is an open-source cryptographic MFA platform, intentionally
+        distinct from FIDO2/WebAuthn and passkey protocols. This app lets you
         enroll devices and approve sign-in requests from your admin console.
       </Text>
       <TouchableOpacity style={styles.linkButton} onPress={openProject}>
