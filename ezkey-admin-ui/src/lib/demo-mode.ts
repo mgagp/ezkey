@@ -4,7 +4,30 @@
  * by isDemoMode are stripped from production builds via vite define.
  */
 
+import type { TFunction } from 'i18next';
+
 export const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+
+/** Tenant preset id whose label and display strings come from the `demo` i18n namespace. */
+export const UNICORN_FARM_TENANT_PRESET_ID = 'unicorn-farm';
+
+/**
+ * Applies locale-specific strings for presets that support i18n (e.g. Unicorn Farm FR/EN).
+ * Garage du coin and ACME Corp presets are returned unchanged.
+ */
+export function resolveTenantDemoPresetForLocale(preset: TenantDemoPreset, t: TFunction): TenantDemoPreset {
+  if (preset.id !== UNICORN_FARM_TENANT_PRESET_ID) return preset;
+  return {
+    ...preset,
+    label: t('tenantPresets.unicornFarm.label', { ns: 'demo' }),
+    values: {
+      ...preset.values,
+      tenantName: t('tenantPresets.unicornFarm.tenantName', { ns: 'demo' }),
+      tenantDescription: t('tenantPresets.unicornFarm.tenantDescription', { ns: 'demo' }),
+      organizationName: t('tenantPresets.unicornFarm.organizationName', { ns: 'demo' }),
+    },
+  };
+}
 
 // ── Tenant create form (CreateFormValues in tenants.tsx) ────────────────────────
 
@@ -34,7 +57,7 @@ export const tenantDemoPresets: TenantDemoPreset[] = [
       organizationDomain: 'garageducoin.ca',
       countryCode: 'CA',
       timezone: 'America/Montreal',
-      primaryContactName: 'Oscar Dupont',
+      primaryContactName: 'Oscar Boulon',
       primaryContactEmail: 'oscar@garageducoin.ca',
     },
   },
@@ -53,17 +76,18 @@ export const tenantDemoPresets: TenantDemoPreset[] = [
     },
   },
   {
-    id: 'intercube',
-    label: 'InterCube',
+    id: 'unicorn-farm',
+    label: 'La Ferme des Licornes',
     values: {
-      tenantName: 'InterCube',
-      tenantDescription: 'Raccorder les facettes métier — intégrations et contextes en prise (démo)',
-      organizationName: 'InterCube',
-      organizationDomain: 'intercube.example.com',
+      tenantName: 'La Ferme des Licornes',
+      tenantDescription:
+        'Élevage, formation et expériences licornes — chaque unité gère ses activités',
+      organizationName: 'La Ferme des Licornes',
+      organizationDomain: 'fermedeslicornes.example.com',
       countryCode: 'CA',
       timezone: 'America/Montreal',
-      primaryContactName: 'Julien Facette',
-      primaryContactEmail: 'julien.facette@intercube.example.com',
+      primaryContactName: 'Élodie Martin',
+      primaryContactEmail: 'elodie.martin@fermedeslicornes.example.com',
     },
   },
 ];
@@ -100,15 +124,56 @@ export const integrationDemoPresets: IntegrationDemoPreset[] = [
     },
   },
   {
-    id: 'facet-portal',
-    label: 'Facette Portal',
+    id: 'unicorn-ride-booking',
+    label: 'Unicorn Ride Booking',
     values: {
-      code: 'facet-portal',
-      name: 'Facette Portal',
-      description: 'Portail transversal des facettes métier (démo InterCube)',
+      code: 'unicorn-ride-booking',
+      name: 'Unicorn Ride Booking',
+      description: 'Customer-facing app for booking unicorn ride experiences',
+    },
+  },
+  {
+    id: 'unicorn-breeding-care',
+    label: 'Unicorn Breeding & Care',
+    values: {
+      code: 'unicorn-breeding-care',
+      name: 'Unicorn Breeding & Care System',
+      description: 'Internal system for caretakers — health, training, and availability',
     },
   },
 ];
+
+/**
+ * Applies locale-specific strings for Unicorn Farm integration presets; other presets unchanged.
+ */
+export function resolveIntegrationDemoPresetForLocale(
+  preset: IntegrationDemoPreset,
+  t: TFunction,
+): IntegrationDemoPreset {
+  if (preset.id === 'unicorn-ride-booking') {
+    return {
+      ...preset,
+      label: t('integrationPresets.unicornRideBooking.label', { ns: 'demo' }),
+      values: {
+        ...preset.values,
+        name: t('integrationPresets.unicornRideBooking.name', { ns: 'demo' }),
+        description: t('integrationPresets.unicornRideBooking.description', { ns: 'demo' }),
+      },
+    };
+  }
+  if (preset.id === 'unicorn-breeding-care') {
+    return {
+      ...preset,
+      label: t('integrationPresets.unicornBreedingCare.label', { ns: 'demo' }),
+      values: {
+        ...preset.values,
+        name: t('integrationPresets.unicornBreedingCare.name', { ns: 'demo' }),
+        description: t('integrationPresets.unicornBreedingCare.description', { ns: 'demo' }),
+      },
+    };
+  }
+  return preset;
+}
 
 // ── Enrollment create form: partial (integrationId stays from form/context) ───────
 
@@ -145,13 +210,43 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
     },
   },
   {
-    id: 'julien-intercube',
-    label: 'Julien Facette — iPhone',
+    id: 'oscar',
+    label: 'Oscar Boulon — iPhone (Garage du coin)',
     values: {
-      name: 'Julien Facette — iPhone 15',
-      contactEmail: 'julien.facette@intercube.example.com',
-      userIdentifier: 'julien.facette',
+      name: 'Oscar Boulon — iPhone 15',
+      contactEmail: 'oscar@garageducoin.ca',
+      userIdentifier: 'oscar.boulon',
       authAttemptChallengeRequired: false,
+    },
+  },
+  {
+    id: 'big-bird',
+    label: 'Big Bird — iPhone (Sesame Street)',
+    values: {
+      name: 'Big Bird — iPhone 15',
+      contactEmail: 'big.bird@garageducoin.ca',
+      userIdentifier: 'big.bird',
+      authAttemptChallengeRequired: false,
+    },
+  },
+  {
+    id: 'elodie-unicorn',
+    label: 'Élodie Martin — iPhone (soins)',
+    values: {
+      name: 'Élodie Martin — iPhone 15',
+      contactEmail: 'elodie.martin@fermedeslicornes.example.com',
+      userIdentifier: 'elodie.martin',
+      authAttemptChallengeRequired: false,
+    },
+  },
+  {
+    id: 'lucas-unicorn',
+    label: 'Lucas Tremblay — Android (guide)',
+    values: {
+      name: 'Lucas Tremblay — Android',
+      contactEmail: 'lucas.tremblay@fermedeslicornes.example.com',
+      userIdentifier: 'lucas.tremblay',
+      authAttemptChallengeRequired: true,
     },
   },
 ];
@@ -194,14 +289,14 @@ export const adminDemoPresets: AdminDemoPreset[] = [
     },
   },
   {
-    id: 'intercube-tenant-admin',
-    label: 'Tenant Admin (Julien Facette)',
+    id: 'unicorn-tenant-admin',
+    label: 'Tenant Admin (Lucas Tremblay)',
     isGlobal: false,
     values: {
-      username: 'julien.facette',
-      email: 'julien.facette@intercube.example.com',
-      firstName: 'Julien',
-      lastName: 'Facette',
+      username: 'lucas.tremblay',
+      email: 'lucas.tremblay@fermedeslicornes.example.com',
+      firstName: 'Lucas',
+      lastName: 'Tremblay',
     },
   },
 ];
@@ -227,7 +322,7 @@ export const reasonDemoPresets: ReasonDemoPreset[] = [
 ];
 
 // ── Test Auth dialog: optional context (title + message) for demo ─────────────
-// Used when testing authentication with contextual approval (Garage + InterCube presets).
+// Used when testing authentication with contextual approval (Garage + Unicorn Farm presets).
 
 export interface AuthContextDemoPreset {
   id: string;
@@ -255,10 +350,10 @@ export const authContextDemoPresets: AuthContextDemoPreset[] = [
       'Valider le virement de 8 500 $ CAD à Pièces Méga-Pneus (Montréal) pour la commande CMD-2025-089 (Garage du coin).',
   },
   {
-    id: 'intercube-sync',
-    label: 'InterCube — Sync multi-facettes',
-    contextTitle: 'Synchronisation des facettes',
+    id: 'unicorn-ride-approval',
+    label: 'Ferme — Réservation visite',
+    contextTitle: 'Validation réservation expérience',
     contextMessage:
-      'Approuver la publication du contexte sécurisé sur le portail transversal — cycle multi-facettes (InterCube, démo).',
+      'Autoriser la réservation VISIT-2026-042 — balade à dos de licorne, créneau 14h30, 2 visiteurs (La Ferme des Licornes).',
   },
 ];

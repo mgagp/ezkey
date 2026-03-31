@@ -30,7 +30,7 @@ src/
   lib/
     api-client.ts       Fetch wrapper: injects Bearer, handles 401 → /login, parses RFC 9457 ProblemDetail, getApiErrorMessage()
     auth.ts             sessionStorage session management (AuthSession)
-    demo-mode.ts        Dev-only: isDemoMode flag and demo presets for create forms (stripped in production)
+    demo-mode.ts        Dev-only: isDemoMode flag and demo presets for create forms (stripped in production); locale-specific preset copy lives in `locales/*/demo.json` (e.g. Unicorn Farm FR/EN)
     query-client.ts     TanStack QueryClient — staleTime 30s, 1 retry, refetchOnWindowFocus false
     query-keys.ts       Canonical query key prefixes for list/entity caches (invalidateQueries)
     utils.ts            cn(), formatDate(), formatCountdown(), formatChallengeCode(), formatRelativeTime()

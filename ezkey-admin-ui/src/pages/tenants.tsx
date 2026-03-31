@@ -23,7 +23,7 @@ import { useToast } from '@/context/toast-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ApiError } from '@/lib/api-client';
-import { isDemoMode, tenantDemoPresets } from '@/lib/demo-mode';
+import { isDemoMode, resolveTenantDemoPresetForLocale, tenantDemoPresets } from '@/lib/demo-mode';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
@@ -34,7 +34,11 @@ import type { PagedModelTenantResponseDto, TenantResponseDto } from '@/generated
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
 function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useTranslation('tenants');
+  const { t, i18n } = useTranslation(['tenants', 'demo']);
+  const tenantPresetsForLocale = useMemo(
+    () => tenantDemoPresets.map((preset) => resolveTenantDemoPresetForLocale(preset, t)),
+    [t, i18n.language],
+  );
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { sessionDemoOn } = useDemoModeSession();
@@ -107,7 +111,7 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
         {isDemoMode && sessionDemoOn && (
           <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
             <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">{t('create.fillDemo')}</span>
-            {tenantDemoPresets.map((preset) => (
+            {tenantPresetsForLocale.map((preset) => (
               <Button
                 key={preset.id}
                 type="button"

@@ -1,0 +1,22 @@
+{
+  "tenantPresets": {
+    "unicornFarm": {
+      "label": "Unicorn Farm",
+      "tenantName": "Unicorn Farm",
+      "tenantDescription": "Breeding, training, and immersive unicorn experiences — each unit manages its own activities",
+      "organizationName": "Unicorn Farm"
+    }
+  },
+  "integrationPresets": {
+    "unicornRideBooking": {
+      "label": "Unicorn Ride Booking",
+      "name": "Unicorn Ride Booking",
+      "description": "Customer-facing app for booking unicorn ride experiences"
+    },
+    "unicornBreedingCare": {
+      "label": "Unicorn Breeding & Care",
+      "name": "Unicorn Breeding & Care System",
+      "description": "Internal system for caretakers — health, training, and availability"
+    }
+  }
+}

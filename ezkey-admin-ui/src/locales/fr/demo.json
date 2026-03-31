@@ -1,0 +1,22 @@
+{
+  "tenantPresets": {
+    "unicornFarm": {
+      "label": "La Ferme des Licornes",
+      "tenantName": "La Ferme des Licornes",
+      "tenantDescription": "Élevage, formation et expériences licornes — chaque unité gère ses activités",
+      "organizationName": "La Ferme des Licornes"
+    }
+  },
+  "integrationPresets": {
+    "unicornRideBooking": {
+      "label": "Réservation balades licorne",
+      "name": "Réservation de balades à dos de licorne",
+      "description": "Application visiteurs pour réserver une expérience de balade à dos de licorne"
+    },
+    "unicornBreedingCare": {
+      "label": "Élevage et soins des licornes",
+      "name": "Gestion de l'élevage de licornes",
+      "description": "Système interne pour les soigneurs : santé, entraînement et disponibilité des licornes"
+    }
+  }
+}

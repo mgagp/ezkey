@@ -22,7 +22,7 @@ import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { useDebounce } from '@/hooks/use-debounce';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { ApiError } from '@/lib/api-client';
-import { integrationDemoPresets, isDemoMode } from '@/lib/demo-mode';
+import { integrationDemoPresets, isDemoMode, resolveIntegrationDemoPresetForLocale } from '@/lib/demo-mode';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import { create, search } from '@/generated/admin-api/integrations/integrations';
@@ -31,7 +31,11 @@ import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, Integra
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
 function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useTranslation('integrations');
+  const { t, i18n } = useTranslation(['integrations', 'demo']);
+  const integrationPresetsForLocale = useMemo(
+    () => integrationDemoPresets.map((preset) => resolveIntegrationDemoPresetForLocale(preset, t)),
+    [t, i18n.language],
+  );
   const queryClient = useQueryClient();
   const { sessionDemoOn } = useDemoModeSession();
 
@@ -85,7 +89,7 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
         {isDemoMode && sessionDemoOn && (
           <div className="flex flex-wrap items-center gap-2 p-2 border-2 border-accent/30 bg-accent/5">
             <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">{t('create.fillDemo')}</span>
-            {integrationDemoPresets.map((preset) => (
+            {integrationPresetsForLocale.map((preset) => (
               <Button
                 key={preset.id}
                 type="button"
