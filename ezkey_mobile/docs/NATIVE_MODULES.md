@@ -1,5 +1,5 @@
 <!--
-  Ezkey - Open Source MFA/Passkey Alternative
+  Ezkey - Open Source Cryptographic MFA Platform
   Copyright (c) 2025 Ezkey contributors
   Licensed under the MIT License. See LICENSE file in the project root for full license information.
 -->
@@ -12,8 +12,8 @@
 
 | Module | Platform | Responsibility | Entry Point |
 |--------|----------|----------------|-------------|
-| `EzkeyCryptoModule` | Android (Kotlin) | EC P-256 key management with hardware-backed storage (StrongBox), signing | `android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt` |
-| `EzkeyCryptoModule` | iOS (Swift) | Secure Enclave-backed EC P-256 operations (to be implemented) | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.swift` |
+| `EzkeyCryptoModule` | Android (Kotlin) | EC P-256 key management via `Android Keystore`, with `StrongBox` requested when available | `android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt` |
+| `EzkeyCryptoModule` | iOS (Swift) | Native secure-hardware-backed EC P-256 parity is not yet complete | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.swift` |
 | `EzkeyCryptoPackage` | Android (Kotlin) | Registers crypto module with React Native | `android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoPackage.kt` |
 | `EzkeyQrFrameProcessorPlugin` | Android (Kotlin) | Decodes QR payloads via Vision Camera frame processors | `android/app/src/main/java/com/ezkeymobile/qr/EzkeyQrFrameProcessorPlugin.kt` |
 | `EzkeyCryptoModuleBridge` | iOS (Objective-C) | Exposes Swift crypto module to React Native bridge | `ios/EzkeyMobile/Crypto/EzkeyCryptoModuleBridge.m` |
@@ -34,17 +34,17 @@ sequenceDiagram
 ```
 
 - JavaScript calls are issued through `app/services/crypto/nativeCrypto.ts`.
-- Android uses Android Keystore (`AndroidKeyStore`) with StrongBox when available; one EC P-256 key pair generated per enrollment, non-extractable.
-- iOS implementation deferred to 2026; will use Secure Enclave with CryptoKit for EC P-256 operations.
+- Android uses `Android Keystore` (`AndroidKeyStore`) and requests `StrongBox` when available; one EC P-256 key pair is generated per enrollment, and private key material is not exposed to application code.
+- iOS native secure-hardware-backed EC P-256 support is not yet at parity with the Android path and should be described as planned / in progress rather than assumed.
 - QR scanning is Android-only today; iOS uses JS-based fallbacks until a Swift counterpart is implemented.
 
 ## Security Alignment
 
 - EC P-256 key format matches [`docs/CRYPTO.md`](../../docs/CRYPTO.md): PKCS#8 private key, X.509 public key, ECDSA-SHA256 signatures in ASN.1 DER format, Base64 transport.
-- Per-enrollment EC P-256 key pairs stored directly in hardware-backed storage (StrongBox/Secure Enclave), non-extractable.
+- In the current Android implementation, per-enrollment EC P-256 key pairs are generated through `Android Keystore`; `StrongBox` remains conditional on device support.
 - Enrollment key pairs generated natively by platform keystore (no manual derivation needed).
 - Enrollment and authentication payloads follow [`docs/features/AUTH_SECURITY.md`](../../docs/features/AUTH_SECURITY.md) to prevent proof-token reuse and enumeration.
-- Native modules never persist sensitive payloads; EC P-256 private keys are non-extractable and remain in hardware-backed storage throughout their lifecycle.
+- Native modules never persist sensitive payloads; in the current Android implementation, EC P-256 private key material remains inside the platform keystore throughout its lifecycle.
 - Error messages are intentionally generic in production to avoid leaking device state; detailed logs are limited to development builds.
 
 ## iOS Documentation Guidance

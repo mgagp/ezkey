@@ -1,12 +1,12 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Module: EnrollmentWizardScreen
  * Description: Guided enrollment experience that walks the user through QR scanning, challenge verification, and secure key generation.
- * Security Context: Implements the enrollment safeguards described in docs/features/AUTH_SECURITY.md by ensuring proof tokens are captured via QR, challenges are enforced, and Ed25519 keys follow docs/CRYPTO.md.
+ * Security Context: Implements the enrollment safeguards described in docs/features/AUTH_SECURITY.md by ensuring proof tokens are captured via QR, challenges are enforced, and device keys follow docs/CRYPTO.md.
  * @since 2025
  */
 

@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -47,7 +47,7 @@ import org.springframework.context.annotation.Configuration;
  *   <li><b>OpenAPI YAML:</b> http://localhost:9080/api-docs.yaml
  * </ul>
  *
- * <p><b>Project :</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project :</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License :</b> MIT
  *
@@ -64,7 +64,7 @@ import org.springframework.context.annotation.Configuration;
             version = "1.0.0",
             description =
                 """
-                Administration API for Ezkey - Open Source MFA/Passkey Alternative
+                Administration API for Ezkey - Open Source Cryptographic MFA Platform
 
                 This API enables administrative management of Ezkey's main entities:
                 - **Integrations**: Applications or systems protected by MFA
@@ -73,7 +73,9 @@ import org.springframework.context.annotation.Configuration;
                 - **Admin Management**: Administrator authentication,
                                         enrollment recovery, and admin operations
 
-                The API follows REST conventions and uses DTOs for all requests and responses.
+                Ezkey is intentionally distinct from FIDO2/WebAuthn and follows its own
+                cryptographic MFA model. The API uses REST conventions and DTOs for all
+                requests and responses.
                 """,
             contact =
                 @Contact(

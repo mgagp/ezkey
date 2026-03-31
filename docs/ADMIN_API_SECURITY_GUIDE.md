@@ -3,7 +3,7 @@
 **Version:** 2.0 (Passwordless)  
 **Last Updated:** October 13, 2025  
 **Audience:** Developers integrating Ezkey  
-**Status:** Production Ready
+**Status:** Pre-release guidance
 
 ---
 
@@ -23,13 +23,13 @@
 
 ## Overview
 
-The Ezkey Admin API implements **passwordless-only authentication** - a revolutionary approach that eliminates passwords entirely. Ezkey "eats its own dogfood" by using its own cryptographic authentication system for admin access.
+The Ezkey Admin API implements **passwordless-only authentication** and eliminates passwords entirely. Ezkey "eats its own dogfood" by using its own cryptographic authentication system for admin access.
 
 ### Key Security Features
 
 - ✅ **No passwords stored** - Nothing to steal, phish, or guess
-- ✅ **Device-bound credentials** - Private keys never leave the device
-- ✅ **Cryptographic signatures** - FIDO2-like authentication
+- ✅ **Device-bound credentials** - Private key material remains on the device
+- ✅ **Cryptographic signatures** - Ezkey's own passwordless authentication model
 - ✅ **Recovery codes** - 106-bit entropy emergency access (paranoia-level)
 - ✅ **Bearer token management** - 24-hour tokens with rotation
 - ✅ **Rate limiting** - IP-based protection against brute force
@@ -868,9 +868,9 @@ Ezkey Admin API demonstrates **passwordless authentication done right**:
 1. **Security by Default:** No passwords = no password attacks
 2. **User Friendly:** Device approval is intuitive
 3. **Enterprise Ready:** Recovery codes, rate limiting, audit trail
-4. **Future Proof:** Aligned with FIDO2/WebAuthn standards
+4. **Intentional Scope:** Built around Ezkey's own passwordless model, not FIDO2/WebAuthn
 
-**The future is passwordless. Ezkey leads the way.** 🚀
+**The future is passwordless. Ezkey takes a deliberately simpler path.**
 
 ---
 

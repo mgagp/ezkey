@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -25,7 +25,7 @@ import org.springframework.context.annotation.Configuration;
  *
  * <p>Exposes a Swagger UI with HTTP Basic (API key) security scheme pre-configured.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *
@@ -48,7 +48,8 @@ public class OpenApiConfig {
                 .title("Ezkey Integration API")
                 .description(
                     "Integration API for auth attempt lifecycle operations (create / wait / cancel)"
-                        + " authenticated via API key (machine-to-machine).")
+                        + " authenticated via API key (machine-to-machine). Ezkey is intentionally"
+                        + " distinct from FIDO2/WebAuthn and uses its own cryptographic MFA model.")
                 .version("1.0.0")
                 .contact(
                     new Contact().name("Ezkey Contributors").url("https://github.com/ezkey/ezkey"))

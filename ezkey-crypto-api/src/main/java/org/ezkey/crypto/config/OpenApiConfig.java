@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
@@ -43,7 +43,7 @@ import org.springframework.context.annotation.Configuration;
  * production environments as it has no authentication and provides access to sensitive
  * cryptographic operations.
  *
- * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
  *
@@ -60,7 +60,7 @@ import org.springframework.context.annotation.Configuration;
             version = "1.0.0",
             description =
                 """
-                Cryptographic utility API for Ezkey - Open Source MFA/Passkey Alternative
+                Cryptographic utility API for Ezkey - Open Source Cryptographic MFA Platform
 
                 This API exposes cryptographic primitives as REST endpoints for development
                 and testing purposes only:

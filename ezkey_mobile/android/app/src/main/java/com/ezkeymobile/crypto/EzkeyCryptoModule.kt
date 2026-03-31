@@ -1,12 +1,12 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * File: EzkeyCryptoModule.kt
  * Description: Android native module exposing EC P-256 key management and signing operations to React Native.
- * Security Context: Implements EC P-256 with hardware-backed storage (StrongBox) as described in docs/MOBILE_CRYPTO_REFERENCE.md.
+ * Security Context: Implements EC P-256 through Android Keystore, requesting StrongBox when available, as described in docs/MOBILE_CRYPTO_REFERENCE.md.
  * @since 2025
  */
 
@@ -31,7 +31,7 @@ import java.security.spec.ECGenParameterSpec
 /**
  * React Native module providing EC P-256 key generation, retrieval, signing, and deletion.
  *
- * Uses Android Keystore with StrongBox support for hardware-backed key storage.
+ * Uses Android Keystore and requests StrongBox on supported devices.
  *
  * @since 2025
  */
@@ -49,7 +49,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
    * Generates an EC P-256 key pair for a specific enrollment.
    *
    * The key pair is stored in Android Keystore with StrongBox preference when available.
-   * Each enrollment gets its own key pair stored securely in hardware-backed storage.
+   * Each enrollment gets its own key pair through the platform keystore.
    *
    * @param enrollmentId The enrollment ID to generate the key pair for.
    * @param promise Promise resolved with true when the key pair already exists or after generation.

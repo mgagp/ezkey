@@ -1,10 +1,10 @@
-# Ezkey - Open Source MFA/Passkey Alternative
+# Ezkey - Open Source Cryptographic MFA Platform
 
 <img src="logo.svg" alt="Ezkey Logo" width="200">
 
 ## Overview
 
-Ezkey is a pragmatic, open-source alternative to complex passkey implementations. It provides a simple and secure MFA solution that can be easily integrated into any application through a modern multi-module architecture.
+Ezkey is a pragmatic, open-source cryptographic MFA platform. It provides a simple and secure authentication approach that can be integrated into applications through a modern multi-module architecture, while remaining intentionally distinct from FIDO2/WebAuthn and passkey protocols.
 
 ### Why Ezkey?
 
@@ -17,7 +17,7 @@ graph LR
         D[Limited Control]
     end
 
-    subgraph "Passkeys"
+    subgraph "Passkey Ecosystem"
         E[Browser Dependencies]
         F[Complex Integration]
         G[Limited Support]
@@ -39,9 +39,9 @@ graph LR
     style M fill:#e8f5e8
 ```
 
-### Comparison Matrix
+### Reference Comparison
 
-| Feature | Traditional MFA | Passkeys | Ezkey |
+| Feature | Traditional MFA | Passkeys (reference) | Ezkey |
 |---------|----------------|----------|-------|
 | **Setup Complexity** | High | High | Low |
 | **Integration Effort** | Medium | High | Low |
@@ -57,7 +57,7 @@ graph LR
 
 - [Overview](#overview)
   - [Why Ezkey?](#why-ezkey)
-  - [Comparison Matrix](#comparison-matrix)
+  - [Reference Comparison](#reference-comparison)
 - [Features](#features)
 - [Security Design](#-security-design)
 - [Architecture](#architecture)
@@ -916,7 +916,7 @@ See our [Security Policy](SECURITY.md) for full details on:
 
 ### Security Features
 
-- **EC P-256** cryptographic authentication (production-grade, native mobile hardware support)
+- **EC P-256** cryptographic authentication with native mobile platform keystore integration
 - **One-time proof tokens** to prevent replay attacks
 - **Signature validation** on all authentication attempts
 - **API Keys** for secure machine-to-machine authentication

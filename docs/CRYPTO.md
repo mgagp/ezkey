@@ -6,7 +6,7 @@ Ezkey uses **two** distinct signing contexts:
 
 | Role | Algorithm | Wire / storage | Backend |
 |------|-----------|----------------|---------|
-| **Device** (per enrollment, hardware-backed) | **EC P-256 (secp256r1)**, **ECDSA-SHA256** | PKCS#8 private, X.509 SPKI public (standard Base64); signatures **ASN.1 DER** (standard Base64) | JDK `java.security` |
+| **Device** (per enrollment, platform-keystore-backed) | **EC P-256 (secp256r1)**, **ECDSA-SHA256** | PKCS#8 private, X.509 SPKI public (standard Base64); signatures **ASN.1 DER** (standard Base64) | JDK `java.security` |
 | **Integration** (per enrollment, server-held) | **Ed25519** | PKCS#8 private (standard Base64); public key **raw 32 bytes**; signature **raw 64 bytes**; JSON fields use **Base64URL without padding** for public key and signatures | JDK `java.security` only (no Bouncy Castle) |
 
 The mobile app verifies **integration** signatures with **Ed25519** (`IntegrationKeyVerifier` on Android uses JCA `Signature.getInstance("Ed25519")` with **Conscrypt** registered for consistent behaviour across API levels). **Device** signing and verification remain **EC P-256** via Android Keystore / platform APIs.
@@ -19,7 +19,7 @@ The mobile app verifies **integration** signatures with **Ed25519** (`Integratio
 - **Private key**: PKCS#8 DER, standard Base64.
 - **Public key**: X.509 SubjectPublicKeyInfo (SPKI), standard Base64.
 - **Signature**: `SHA256withECDSA`, ASN.1 DER, standard Base64.
-- **Mobile**: Keys live in Android Keystore (StrongBox when available) or iOS Secure Enclave; private keys are non-extractable.
+- **Mobile**: In the current Android implementation, keys live in Android Keystore with StrongBox requested when available. Private key material is not exposed to application code. iOS secure-hardware integration should be documented conservatively until the native path reaches feature parity.
 
 ### Signing and verification (device)
 

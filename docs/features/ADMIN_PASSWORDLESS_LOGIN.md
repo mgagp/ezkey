@@ -174,7 +174,7 @@ This document analyzes the feasibility and security implications of implementing
 3. **Simplified UX:** No need to manage temp tokens, auth attempt IDs
 4. **Eat Our Own Dogfood:** Proves confidence in Ezkey's security model
 5. **Superior Security:** Cryptographic authentication > passwords
-6. **FIDO2/WebAuthn Compatible:** Aligns with modern passwordless standards
+6. **Intentional Alternative:** Uses Ezkey's own passwordless model rather than FIDO2/WebAuthn
 
 ---
 
@@ -294,7 +294,7 @@ ezkey.admin.auth.passwordless.mode=opt-in  # or enforced
 - ✅ Device binding via public key
 
 **A02:2021 – Cryptographic Failures**
-- ✅ RSA-2048 signatures (industry standard)
+- ✅ Asymmetric cryptographic signatures
 - ✅ No password hashing vulnerabilities
 - ✅ Strong random proof token generation
 
@@ -319,8 +319,8 @@ ezkey.admin.auth.passwordless.mode=opt-in  # or enforced
 | Requirement | Password + MFA | Passwordless Ezkey |
 |-------------|----------------|-------------------|
 | **AAL1** | ✅ Single-factor | ✅ Cryptographic |
-| **AAL2** | ✅ Two-factor | ✅ **Exceeds:** Cryptographic device-bound auth |
-| **AAL3** | ⚠️ Hardware token needed | ✅ **Device with biometric = AAL3 candidate** |
+| **AAL2** | ✅ Two-factor | ⚠️ Candidate only - requires a scope-limited, formal assessment |
+| **AAL3** | ⚠️ Hardware token needed | ❌ Not claimed |
 
 **Key Compliance Points:**
 - ✅ Verifier impersonation resistance (cryptographic signatures)
@@ -328,17 +328,17 @@ ezkey.admin.auth.passwordless.mode=opt-in  # or enforced
 - ✅ Phishing resistance (no shared secrets)
 - ✅ Authenticator binding (device public key)
 
-### 4.4 FIDO2 / WebAuthn Alignment
+### 4.4 Contrast with FIDO2 / WebAuthn
 
-Ezkey passwordless admin flow aligns with FIDO2/WebAuthn principles:
+Ezkey passwordless admin flow shares some high-level passwordless ideas with FIDO2/WebAuthn, but it is intentionally a different architecture and should not be presented as FIDO2/WebAuthn-equivalent:
 
-| FIDO2 Principle | Ezkey Implementation |
-|-----------------|---------------------|
-| **Public Key Cryptography** | ✅ RSA-2048 signatures |
-| **Attestation** | ✅ Enrollment proof token |
-| **Origin Binding** | ⚠️ Could add origin verification |
-| **Phishing Resistance** | ✅ No shared secrets |
-| **User Verification** | ✅ Device biometric (mobile app) |
+| Topic | Ezkey Position |
+|-------|----------------|
+| **Public key cryptography** | ✅ Uses asymmetric cryptography for passwordless flows |
+| **FIDO2/WebAuthn protocol** | ❌ Not implemented |
+| **Attestation chain** | ❌ Not claimed |
+| **Origin binding** | ❌ Not part of the Ezkey model |
+| **Passwordless UX category** | ✅ Same broad problem space, different trade-offs |
 
 ---
 
@@ -779,7 +779,7 @@ NOTIFY auth_attempt_updates, '<authAttemptId>';
 | **Security** | 🟢 **High** - Eliminates password vulnerabilities |
 | **User Experience** | 🟢 **High** - Single-click login on mobile |
 | **Dogfooding** | 🟢 **High** - Proves confidence in Ezkey security |
-| **Compliance** | 🟢 **High** - Exceeds OWASP, NIST, FIDO2 standards |
+| **Compliance** | 🟡 Requires careful, scope-limited wording; do not claim FIDO2 equivalence |
 | **Implementation** | 🟢 **Low** - 3-5 days, backward compatible |
 | **Risk** | 🟢 **Low** - Isolated new feature, fallback available |
 

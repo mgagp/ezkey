@@ -7,7 +7,7 @@
 - **Stack**: React Native 0.76 + TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
 - **Primary Flows**: Enrollment via QR, secure key generation, pending authentication approvals/denials, challenge handling
 - **APIs Consumed**: `auth-api` endpoints documented in [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)
-- **Security Alignment**: Mirrors the guarantees detailed in [`docs/CRYPTO.md`](../docs/CRYPTO.md) and [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md)
+- **Security Alignment**: Tracks the current guarantees and constraints documented in [`docs/CRYPTO.md`](../docs/CRYPTO.md) and [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md)
 
 ## Core Capabilities
 
@@ -15,14 +15,14 @@
 - Local enrollment catalogue with enrollment metadata storage, detail views, and pending-auth shortcuts
 - Manual, user-driven polling for authentication attempts followed by approve/deny flows
 - Shared Axios client with deterministic timeouts and error handling suitable for mobile networks
-- Native crypto bridge (Kotlin/Swift) that exposes EC P-256 key management with hardware-backed storage (Android Keystore StrongBox, iOS Secure Enclave)
+- Native crypto bridge (Kotlin/Swift) for EC P-256 key management, with the current Android implementation using `Android Keystore` and requesting `StrongBox` when available
 
 ## Security Posture
 
 - Proof tokens and signatures are always handled in memory; sensitive values are stored via secure storage abstractions only
 - Enrollment and authentication requests follow the pull-based model that avoids background polling to prevent enumeration or replay
-- Device credentials use EC P-256 (ECDSA-SHA256) as specified in [`docs/CRYPTO.md`](../docs/CRYPTO.md): PKCS#8 private key, X.509 public key, hardware-backed in platform keystore
-- Per-enrollment EC P-256 key pairs generated natively in hardware-backed storage (Android Keystore StrongBox, iOS Secure Enclave); private keys are non-extractable
+- Device credentials use EC P-256 (ECDSA-SHA256) as specified in [`docs/CRYPTO.md`](../docs/CRYPTO.md): PKCS#8 private key, X.509 public key, and platform-keystore integration
+- In the current Android implementation, each enrollment gets an EC P-256 key pair generated through `Android Keystore`; `StrongBox` is requested when available, and private key material is not exposed to application code
 - Client-side documentation references the backend security analysis in [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md) to keep UI logic aligned with server-side guarantees
 
 ## Project Structure
@@ -155,7 +155,7 @@ yarn android
 
 ## Native Modules Summary
 
-- `EzkeyCryptoModule` (Kotlin/Swift) exposes EC P-256 key generation, retrieval, and signing with hardware-backed storage (Android Keystore, iOS Secure Enclave)
+- `EzkeyCryptoModule` exposes EC P-256 key generation, retrieval, and signing; Android currently uses `Android Keystore`, while iOS native secure-hardware support is still being aligned
 - `EzkeyQrFrameProcessorPlugin` (Kotlin) feeds `react-native-vision-camera` with decoded QR payloads
 - iOS bridges live under `ios/EzkeyMobile/` and should adopt Xcode Quick Help (`///`) comments referencing the same security docs noted above
 - Detailed design notes live in [`docs/NATIVE_MODULES.md`](docs/NATIVE_MODULES.md) *(created in this revision)*

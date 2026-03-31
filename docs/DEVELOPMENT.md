@@ -55,7 +55,7 @@ This section covers the complete OpenAPI (Swagger) documentation strategy for Ez
     info = @Info(
         title = "Ezkey API",
         version = "1.0.0",
-        description = "REST API for Ezkey - Open Source MFA/Passkey Alternative",
+        description = "REST API for Ezkey - Open Source Cryptographic MFA Platform",
         contact = @Contact(
             name = "Ezkey Team",
             email = "contributors@ezkey.org",

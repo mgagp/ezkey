@@ -19,7 +19,7 @@
 
 ### Background
 
-Passkeys have been promoted for years by major tech players (Google, Microsoft, Amazon, Meta, etc.) as the future of passwordless authentication. However, integrating passkey-based MFA remains surprisingly complex for most organizations, especially small and medium businesses (SMBs).
+Passkeys have been promoted for years by major tech players (Google, Microsoft, Amazon, Meta, etc.) as a major reference point for passwordless authentication. However, their integration model remains surprisingly complex for many organizations, especially small and medium businesses (SMBs).
 
 ### Vision Statement
 
@@ -29,7 +29,7 @@ Passkeys have been promoted for years by major tech players (Google, Microsoft, 
 
 - **Complexity**: Existing MFA solutions are overly complex for most use cases
 - **Vendor Lock-in**: Proprietary solutions create dependency and cost concerns
-- **Integration Overhead**: Current passkey implementations require significant development effort
+- **Integration Overhead**: Many modern passwordless approaches, including passkeys, require significant development effort
 - **Limited Control**: Organizations lack control over their authentication infrastructure
 
 ### Solution Overview
@@ -157,6 +157,7 @@ On first startup, Ezkey automatically creates:
 
 ### 🚀 Proprietary Protocol
 - **Not FIDO2/WebAuthn**: Proprietary protocol optimized for simplicity
+- **Intentional Contrast**: Ezkey deliberately avoids the certification, attestation, and protocol scope of FIDO2/WebAuthn
 - **Compensated by Openness**: Full source code and documentation available
 - **Optimized for Synchronous Flows**: Designed for real-time authentication
 
@@ -336,9 +337,9 @@ graph TB
 - **Anti-Replay**: Prevents replay of authentication attempts
 
 #### Cryptographic Implementation
-- **EC P-256**: Production-grade cryptographic signatures for all operations (PKCS#8/X.509 keys, ASN.1 DER signatures)
-- **Device Keys**: Each device generates unique EC P-256 key pairs (mobile: hardware-backed via Android Keystore/iOS Secure Enclave)
-- **Integration Keys**: Each integration has its own EC P-256 key pair (backend: direct generation using BouncyCastle)
+- **EC P-256**: Cryptographic signatures for device operations (PKCS#8/X.509 keys, ASN.1 DER signatures)
+- **Device Keys**: Each device generates unique EC P-256 key pairs (current mobile target: Android Keystore with StrongBox when available; iOS secure-hardware integration remains platform-specific and should be described conservatively)
+- **Integration Keys**: Each integration has its own Ed25519 key pair on the backend (JDK `java.security`, no BouncyCastle dependency required)
 - **Mutual Authentication**: Both backend and mobile cryptographically verify each other's authenticity
 - **Signature Validation**: All requests validated cryptographically
 

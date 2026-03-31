@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document outlines the implementation of a flexible cryptographic architecture for Ezkey using the Factory Pattern, enabling smooth transitions between different crypto providers (Java Crypto, Google Tink, Bouncy Castle) while maintaining backward compatibility and supporting hardware-level security for mobile devices.
+This document outlines the implementation of a flexible cryptographic architecture for Ezkey using the Factory Pattern, enabling smooth transitions between different crypto providers (Java Crypto, Google Tink, Bouncy Castle) while maintaining backward compatibility and improving mobile keystore integration.
 
 **Status**: Implementation Plan  
 **Date**: October 2025  
@@ -1600,7 +1600,7 @@ class BatteryOptimizedCryptoService {
 
 #### **✅ Hardware Security**
 - **Mobile Integration**: Android Keystore and StrongBox support
-- **Hardware-Level Security**: Same level as passkeys
+- **Hardware Integration**: Better use of platform keystore capabilities on supported mobile devices
 - **Performance**: Hardware-accelerated operations
 
 #### **✅ Maintainability**

@@ -1,5 +1,5 @@
 /*
- * Ezkey - Open Source MFA/Passkey Alternative
+ * Ezkey - Open Source Cryptographic MFA Platform
  *
  * Copyright (c) 2025 Ezkey contributors
  *
@@ -47,7 +47,7 @@ import org.springframework.context.annotation.Configuration;
  *   <li><b>OpenAPI YAML:</b> http://localhost:8080/api-docs.yaml
  * </ul>
  *
- * <p><b>Project :</b> Ezkey - Open Source MFA/Passkey Alternative
+ * <p><b>Project :</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License :</b> MIT
  *
@@ -64,7 +64,7 @@ import org.springframework.context.annotation.Configuration;
             version = "1.0.0",
             description =
                 """
-                Authentication API for Ezkey - Open Source MFA/Passkey Alternative
+                Authentication API for Ezkey - Open Source Cryptographic MFA Platform
 
                 This API enables mobile device authentication operations:
                 - **Enrollments**: Device binding and verification for user accounts
@@ -72,7 +72,9 @@ import org.springframework.context.annotation.Configuration;
 
                 The API follows a pull-based model where mobile devices poll for pending
                 authentication requests and submit cryptographic signatures for validation.
-                All operations use DTOs for requests and responses with comprehensive validation.
+                Ezkey is intentionally distinct from FIDO2/WebAuthn and uses its own
+                cryptographic MFA model. All operations use DTOs for requests and responses
+                with comprehensive validation.
                 """,
             contact =
                 @Contact(
