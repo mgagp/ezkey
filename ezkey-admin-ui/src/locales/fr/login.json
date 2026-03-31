@@ -1,6 +1,7 @@
 {
   "title": "Console d'administration",
   "tagline": "Sans mot de passe · Sécurisé · Simple",
+  "instanceSubtitle": "{{name}}",
   "form": {
     "username": "Nom d'utilisateur",
     "usernamePlaceholder": "votre nom d'utilisateur",

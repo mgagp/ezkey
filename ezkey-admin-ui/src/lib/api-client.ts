@@ -151,6 +151,10 @@ export const api = {
   get: <T>(path: string): Promise<T> =>
     fetchApi<T>(path, { method: 'GET' }),
 
+  /** GET without Bearer (public endpoints, e.g. instance info on login page). */
+  getPublic: <T>(path: string): Promise<T> =>
+    fetchApi<T>(path, { method: 'GET', requireAuth: false }),
+
   post: <T>(path: string, body: unknown, requireAuth = true): Promise<T> =>
     fetchApi<T>(path, { method: 'POST', body: JSON.stringify(body), requireAuth }),
 

@@ -64,12 +64,14 @@ yarn install
 
 ### Configure environment
 
-Create `.env` inside `ezkey_mobile/`:
+Create `.env` inside `ezkey_mobile/` (see `.env.example`):
 
 ```
-EZKEY_API_BASE_URL=https://goateed-katalina-monsoonal.ngrok-free.dev
+EZKEY_API_BASE_URL=http://127.0.0.1:8080
 EZKEY_REQUEST_TIMEOUT=10000
 ```
+
+**QR-first enrollment (recommended):** On the Admin API, set `ezkey.qr.auth-base-url` to the **public** Auth API base URL (scheme + host + port). Enrollment QR codes then include `authUrl` in the JSON, and the app uses that URL for bind/verify without relying on a fixed tunnel in `.env`. In Docker, map this with `EZKEY_QR_AUTH_BASE_URL` on the `admin-api` service (see `docker/docker-compose.yml`). `GET /api/v1/public/instance-info` exposes the same value as `authApiPublicBaseUrl` for operators.
 
 > Run setup commands from Git Bash (or another POSIX-compatible shell) when working on Windows to avoid path issues.
 

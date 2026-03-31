@@ -25,6 +25,7 @@ import org.springframework.stereotype.Component;
  * <pre>
  * ezkey.organization.name=Acme Corporation
  * ezkey.organization.description=Acme Corp Ezkey MFA Instance
+ * ezkey.organization.about-url=https://www.example.com/about-ezkey
  * </pre>
  *
  * <p><b>Project:</b> Ezkey - Open Source MFA/Passkey Alternative
@@ -47,11 +48,21 @@ public class OrganizationProperties {
   private String name = "Ezkey System";
 
   /**
-   * Description of the organization or this Ezkey instance.
+   * Short description of this Ezkey deployment for operators and public metadata (e.g. login shell,
+   * About).
    *
-   * <p>Provides additional context about the organization or the purpose of this Ezkey instance.
+   * <p>Intended to describe the <em>installation</em> in its context (e.g. on-prem or hosted MFA
+   * for your organization), not the technical role of the system tenant or who is logged in.
+   * Customers typically override this via configuration.
    */
-  private String description = "Default system tenant for global administrators";
+  private String description = "Ezkey MFA instance for your organization";
+
+  /**
+   * Optional URL for "About" / learn more in the Admin UI (e.g. page describing this instance).
+   *
+   * <p>Not a secret; exposed via {@code GET /api/v1/public/instance-info}.
+   */
+  private String aboutUrl;
 
   /**
    * Gets the organization name.
@@ -87,5 +98,23 @@ public class OrganizationProperties {
    */
   public void setDescription(String description) {
     this.description = description;
+  }
+
+  /**
+   * Gets the optional About / learn more URL.
+   *
+   * @return URL or null if not configured
+   */
+  public String getAboutUrl() {
+    return aboutUrl;
+  }
+
+  /**
+   * Sets the optional About / learn more URL.
+   *
+   * @param aboutUrl URL or null
+   */
+  public void setAboutUrl(String aboutUrl) {
+    this.aboutUrl = aboutUrl;
   }
 }

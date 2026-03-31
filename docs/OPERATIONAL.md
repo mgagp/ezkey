@@ -143,7 +143,15 @@ On first startup, Ezkey automatically initializes the admin authentication syste
 # application.properties - Admin API
 ezkey.organization.name=Acme Corporation
 ezkey.organization.description=Acme Corp Ezkey MFA Instance
+ezkey.organization.about-url=https://www.example.com/about-ezkey
 ```
+
+**Docker (optional env vars, mapped in `application-docker.properties`):**
+
+| Variable | Maps to | Purpose |
+| -------- | ------- | ------- |
+| `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | Optional “About / learn more” link in Admin UI |
+| `EZKEY_QR_AUTH_BASE_URL` | `ezkey.qr.auth-base-url` | Public Auth API base URL embedded as `authUrl` in enrollment QR JSON and returned as `authApiPublicBaseUrl` from `GET /api/v1/public/instance-info` |
 
 **Use Cases:**
 - **Single Organization**: Default "Ezkey System" for internal use

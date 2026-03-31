@@ -92,7 +92,7 @@ Ezkey uses Flyway for database schema versioning and migration management. Migra
 - **DROPPED:** `ezkey_admin_temp_tokens` table (no longer needed)
 
 **Data Created:**
-- System tenant "Ezkey System" (for global administrators)
+- System tenant "Ezkey System" (default description: deployment-oriented MFA instance blurb; hosts global administrators)
 - Initial global admin account (username: `admin` placeholder, passwordless-ready)
 - Updated admin hierarchy constraint (allows GLOBAL_ADMIN to have tenant_id)
 

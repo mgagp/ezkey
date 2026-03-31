@@ -81,6 +81,9 @@ logs/
 # ==========================
 # Fichiers de configuration spécifiques à l'environnement
 
+# Docker Compose local overrides (e.g. EZKEY_QR_AUTH_BASE_URL for ngrok)
+docker/.env
+
 # Scripts spécifiques à l'utilisateur
 ezkey-demo-device/data/enrollments/*.json
 plan_doc.md

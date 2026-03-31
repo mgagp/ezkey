@@ -1,6 +1,10 @@
 import Config from 'react-native-config';
 
-const fallbackBaseUrl = 'https://goateed-katalina-monsoonal.ngrok-free.dev';
+/**
+ * When EZKEY_API_BASE_URL is unset: local Auth API (emulator loopback). Enrollment QR JSON
+ * includes authUrl when the server sets ezkey.qr.auth-base-url — then that URL is used instead.
+ */
+const fallbackBaseUrl = 'http://127.0.0.1:8080';
 const fallbackTimeoutMs = 10000;
 
 const parseNumber = (value: string | undefined, fallback: number) => {
@@ -23,8 +27,13 @@ const parseBool = (value: string | undefined, fallback: boolean) => {
   return v === '1' || v === 'true' || v === 'yes';
 };
 
+const resolvedApiBaseUrl = (): string => {
+  const raw = Config.EZKEY_API_BASE_URL?.trim();
+  return raw && raw.length > 0 ? raw : fallbackBaseUrl;
+};
+
 export const env = {
-  apiBaseUrl: Config.EZKEY_API_BASE_URL ?? fallbackBaseUrl,
+  apiBaseUrl: resolvedApiBaseUrl(),
   requestTimeoutMs: parseNumber(Config.EZKEY_REQUEST_TIMEOUT, fallbackTimeoutMs),
   /**
    * When true, the Pending authentication error screen shows the technical "Debug (for support)"

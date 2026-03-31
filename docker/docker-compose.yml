@@ -67,7 +67,11 @@ services:
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
       MANAGEMENT_SERVER_PORT: 9081
       EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: "0 */20 * * * ?"
-      #EZKEY_QR_AUTH_BASE_URL: https://goateed-katalina-monsoonal.ngrok-free.dev
+      # Public Auth API base URL for enrollment QR authUrl + GET /api/v1/public/instance-info.
+      # Set when phones reach Auth API via tunnel or public hostname (not http://auth-api:8080).
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      # Optional "About / learn more" link (maps to ezkey.organization.about-url).
+      EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
     volumes:
       - encryption-secrets:/etc/ezkey
       - bootstrap-artifacts:/var/lib/ezkey/bootstrap

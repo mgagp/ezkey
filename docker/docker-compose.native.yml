@@ -66,6 +66,8 @@ services:
       EZKEY_ADMIN_INITIAL_EMAIL: admin@ezkey.local
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
       EZKEY_ADMIN_INITIAL_LAST_NAME: Docker
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
     volumes:
       - encryption-secrets-native:/etc/ezkey
     ports:

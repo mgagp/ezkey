@@ -71,7 +71,7 @@ public class EzkeyAppController {
 
   private static final Logger logger = LoggerFactory.getLogger(EzkeyAppController.class);
 
-  private static final String UNKNOWN_TENANT_NAME = "Ezkey System";
+  private static final String UNKNOWN_TENANT_NAME = "Unknown tenant";
 
   private final AuthApiService authApiService;
 

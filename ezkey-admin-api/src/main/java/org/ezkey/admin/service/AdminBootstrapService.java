@@ -77,6 +77,9 @@ public class AdminBootstrapService {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminBootstrapService.class);
 
+  /** Stable code for the single system integration (lookup uses {@code isSystemIntegration}). */
+  private static final String SYSTEM_INTEGRATION_CODE = "ezkey-system";
+
   private final IntegrationRepository integrationRepository;
 
   private final EnrollmentRepository enrollmentRepository;
@@ -170,17 +173,20 @@ public class AdminBootstrapService {
   @Transactional
   private void doBootstrapAdminMfa() {
     try {
+      syncSystemTenantFromOrganization();
+
       // 1. Check if System Integration already exists
       Optional<Integration> existingIntegration =
           integrationRepository.findByIsSystemIntegrationAndActiveTrue(true);
 
       if (existingIntegration.isPresent()) {
-        logger.info(
-            "✅ System Integration already exists (ID: {})", existingIntegration.get().getId());
+        Integration existing = existingIntegration.get();
+        syncSystemIntegrationFromOrganization(existing);
+        logger.info("✅ System Integration already exists (ID: {})", existing.getId());
 
         // Check enrollment if auto-enrollment enabled
         if (mfaProperties.getBootstrap().isAutoEnrollment()) {
-          checkAndCreateGlobalAdminEnrollment(existingIntegration.get());
+          checkAndCreateGlobalAdminEnrollment(existing);
         }
         return;
       }
@@ -197,6 +203,55 @@ public class AdminBootstrapService {
     } catch (Exception e) {
       logger.error("❌ Failed to bootstrap admin MFA: {}", e.getMessage(), e);
       throw new RuntimeException("Admin MFA bootstrap failed", e);
+    }
+  }
+
+  /**
+   * Updates system tenant display name and description from {@link OrganizationProperties} when
+   * they differ (idempotent on each startup).
+   */
+  private void syncSystemTenantFromOrganization() {
+    Tenant tenant =
+        tenantRepository
+            .findByIsSystemTenantTrue()
+            .orElseThrow(() -> new RuntimeException("System tenant not found"));
+    String name = organizationProperties.getName();
+    String desc = organizationProperties.getDescription();
+    boolean changed = false;
+    if (name != null && !name.isBlank()) {
+      String stripped = name.strip();
+      if (!stripped.equals(tenant.getTenantName())) {
+        tenant.setTenantName(stripped);
+        changed = true;
+      }
+    }
+    if (desc != null && !desc.isBlank()) {
+      String stripped = desc.strip();
+      if (!stripped.equals(tenant.getTenantDescription())) {
+        tenant.setTenantDescription(stripped);
+        changed = true;
+      }
+    }
+    if (changed) {
+      tenantRepository.save(tenant);
+      logger.info(
+          "✅ System tenant display name/description synced from organization configuration");
+    }
+  }
+
+  /**
+   * Updates system integration display name from {@link OrganizationProperties} when it differs.
+   */
+  private void syncSystemIntegrationFromOrganization(Integration integration) {
+    String name = organizationProperties.getName();
+    if (name == null || name.isBlank()) {
+      return;
+    }
+    String stripped = name.strip();
+    if (!stripped.equals(integration.getName())) {
+      integration.setName(stripped);
+      integrationRepository.save(integration);
+      logger.info("✅ System integration display name synced from organization configuration");
     }
   }
 
@@ -229,8 +284,8 @@ public class AdminBootstrapService {
 
     // Create System Integration
     Integration systemIntegration = new Integration();
-    systemIntegration.setCode("ezkey-system"); // Unique system integration code
-    systemIntegration.setName("Ezkey System");
+    systemIntegration.setCode(SYSTEM_INTEGRATION_CODE);
+    systemIntegration.setName(organizationProperties.getName());
     systemIntegration.setActive(true);
     systemIntegration.setCreatedAt(OffsetDateTime.now());
     systemIntegration.setTenant(systemTenant);
@@ -413,7 +468,7 @@ public class AdminBootstrapService {
     logger.warn(separator);
     logger.warn("");
     logger.warn("✅ Global Admin Created: {} ({}) - {}", username, email, fullName);
-    logger.warn("✅ System Integration created: Ezkey System Admin");
+    logger.warn("✅ System Integration created: {} Admin", organizationProperties.getName().strip());
     logger.warn("✅ Global Admin Enrollment created: {}", enrollment.getEnrollmentName());
     logger.warn("");
     logger.warn("🔐 ENROLLMENT CREDENTIALS:");

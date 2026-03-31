@@ -12,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.SystemTenantTestConstants;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -68,14 +69,20 @@ class IntegrationServiceTest {
   private EzkeyAdmin createTestGlobalAdmin() {
     EzkeyAdmin admin = new EzkeyAdmin("testadmin", AdminType.GLOBAL_ADMIN);
     admin.setAdminId(1);
-    Tenant systemTenant = new Tenant("Ezkey System", "System tenant");
+    Tenant systemTenant =
+        new Tenant(
+            SystemTenantTestConstants.DEFAULT_SYSTEM_TENANT_NAME,
+            SystemTenantTestConstants.DEFAULT_SYSTEM_TENANT_DESCRIPTION);
     systemTenant.setTenantId(1);
     admin.setTenant(systemTenant);
     return admin;
   }
 
   private Tenant createSystemTenant() {
-    Tenant tenant = new Tenant("Ezkey System", "System tenant");
+    Tenant tenant =
+        new Tenant(
+            SystemTenantTestConstants.DEFAULT_SYSTEM_TENANT_NAME,
+            SystemTenantTestConstants.DEFAULT_SYSTEM_TENANT_DESCRIPTION);
     tenant.setTenantId(1);
     return tenant;
   }

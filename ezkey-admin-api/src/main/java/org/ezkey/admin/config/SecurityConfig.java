@@ -105,6 +105,9 @@ public class SecurityConfig {
                     // Allow public access to API documentation
                     .requestMatchers("/swagger-ui/**", "/api-docs/**")
                     .permitAll()
+                    // Public instance metadata (login shell, operators)
+                    .requestMatchers("/api/v1/public/**")
+                    .permitAll()
                     // Require authentication for all other endpoints
                     .anyRequest()
                     .authenticated())

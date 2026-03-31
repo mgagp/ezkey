@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import org.ezkey.admin.AdminTestConstants;
 import org.ezkey.admin.dto.request.TenantUpdateRequestDto;
 import org.ezkey.admin.exception.TenantInactiveException;
 import org.ezkey.admin.exception.TenantNotAllowedException;
@@ -120,7 +121,7 @@ class TenantServiceTest {
       // Arrange
       Tenant systemTenant = new Tenant();
       systemTenant.setTenantId(1);
-      systemTenant.setTenantName("Ezkey System");
+      systemTenant.setTenantName(AdminTestConstants.DEFAULT_SYSTEM_TENANT_NAME);
       systemTenant.setActive(true);
       systemTenant.setIsSystemTenant(true);
       systemTenant.setCreatedAt(OffsetDateTime.now());
@@ -398,7 +399,7 @@ class TenantServiceTest {
       // Arrange
       Tenant systemTenant = new Tenant();
       systemTenant.setTenantId(1);
-      systemTenant.setTenantName("Ezkey System");
+      systemTenant.setTenantName(AdminTestConstants.DEFAULT_SYSTEM_TENANT_NAME);
       systemTenant.setActive(true);
       systemTenant.setIsSystemTenant(true);
       systemTenant.setCreatedAt(OffsetDateTime.now());

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, KeyRound, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
@@ -498,7 +498,18 @@ function AdminDetailDialog({
 
 // ── Create admin dialog ────────────────────────────────────────────────────────
 
-function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boolean; onClose: () => void; defaultGlobal?: boolean }) {
+function CreateAdminDialog({
+  open,
+  onClose,
+  defaultGlobal = false,
+  defaultTenantId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  defaultGlobal?: boolean;
+  /** When set (e.g. from tenant detail deep link), opens tenant-admin flow with this tenant pre-selected. */
+  defaultTenantId?: number | null;
+}) {
   const { t } = useTranslation('admins');
   const { session } = useAuth();
   const callerIsGlobal = session?.adminType === 'GLOBAL_ADMIN';
@@ -564,14 +575,18 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
 
   // Fresh state each time the dialog opens
   useEffect(() => {
-    if (open) {
-      reset(defaultFormValues);
-      setTenantFilter('');
-      setCreatedAdmin(null);
-      setRecoveryCodesCopied(false);
+    if (!open) return;
+    reset(defaultFormValues);
+    setTenantFilter('');
+    setCreatedAdmin(null);
+    setRecoveryCodesCopied(false);
+    if (defaultTenantId != null && defaultTenantId > 0) {
+      setIsGlobalType(false);
+      setValue('tenantId', String(defaultTenantId));
+    } else {
       setIsGlobalType(defaultGlobal);
     }
-  }, [open, defaultGlobal, reset]);
+  }, [open, defaultGlobal, defaultTenantId, reset, setValue]);
 
   const watchedTenantId = watch('tenantId');
   const tenantAdminNeedsTenant = callerIsGlobal && !isGlobalType;
@@ -668,7 +683,7 @@ function CreateAdminDialog({ open, onClose, defaultGlobal = false }: { open: boo
     reset();
     setCreatedAdmin(null);
     setRecoveryCodesCopied(false);
-    setIsGlobalType(defaultGlobal);
+    setIsGlobalType(defaultTenantId != null && defaultTenantId > 0 ? false : defaultGlobal);
     setTenantFilter('');
     createMutation.reset();
     onClose();
@@ -868,6 +883,14 @@ export default function AdminsPage() {
   const { t } = useTranslation('admins');
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const defaultTenantIdFromUrl = useMemo(() => {
+    const flag = searchParams.get('createTenantAdmin');
+    if (flag !== '1' && flag !== 'true') return null;
+    const n = Number(searchParams.get('tenantId'));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [searchParams]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -906,6 +929,23 @@ export default function AdminsPage() {
       setSelectedIndex(null);
     }
   }, [selectedIndex, data.length]);
+
+  /** Open create dialog when arriving from tenant detail (?tenantId=&createTenantAdmin=1). */
+  useEffect(() => {
+    if (defaultTenantIdFromUrl != null) {
+      setCreateOpen(true);
+    }
+  }, [defaultTenantIdFromUrl]);
+
+  const handleCloseCreateDialog = () => {
+    setCreateOpen(false);
+    if (searchParams.has('createTenantAdmin') || searchParams.has('tenantId')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('createTenantAdmin');
+      next.delete('tenantId');
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   const columns: ColumnDef<AdminResponseDto>[] = [
     { header: t('list.columns.id'), key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
@@ -963,7 +1003,11 @@ export default function AdminsPage() {
               {t('list.refresh')}
             </Button>
           </div>
-          <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
+          <Button
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            className="gap-1.5"
+          >
             <Plus className="size-3.5" />
             {t('list.newAdmin')}
           </Button>
@@ -1007,8 +1051,9 @@ export default function AdminsPage() {
       />
       <CreateAdminDialog
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        defaultGlobal={isGlobalAdmin}
+        onClose={handleCloseCreateDialog}
+        defaultGlobal={defaultTenantIdFromUrl != null ? false : isGlobalAdmin}
+        defaultTenantId={defaultTenantIdFromUrl}
       />
       <OnboardingDialog
         open={onboardingTarget !== null}

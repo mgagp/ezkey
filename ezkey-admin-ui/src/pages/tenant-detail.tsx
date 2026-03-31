@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Edit, Power, PowerOff } from 'lucide-react';
+import { Edit, Power, PowerOff, UserPlus } from 'lucide-react';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
@@ -444,6 +444,19 @@ export default function TenantDetailPage() {
                       >
                         <Edit className="size-3.5" />
                         {t('detail.editTenant')}
+                      </Button>
+                    )}
+                    {!tenant.isSystemTenant && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="w-full justify-start gap-2"
+                        onClick={() =>
+                          navigate(`/admins?tenantId=${tenant.tenantId}&createTenantAdmin=1`)
+                        }
+                      >
+                        <UserPlus className="size-3.5" />
+                        {t('detail.addTenantAdmin')}
                       </Button>
                     )}
                     <Button

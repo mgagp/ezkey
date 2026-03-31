@@ -1,6 +1,7 @@
 {
   "title": "Admin Console",
   "tagline": "Passwordless · Secure · Simple",
+  "instanceSubtitle": "{{name}}",
   "form": {
     "username": "Username",
     "usernamePlaceholder": "your.username",

@@ -34,6 +34,7 @@ import {BindEnrollmentResponse, EnrollmentStatus} from '../../services/api/types
 import {cryptoService} from '../../services/crypto';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
+import {env} from '../../config/env';
 import {validateAuthUrl} from '../../utils/urlValidation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentWizard'>;
@@ -295,6 +296,15 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         setBindError('Enrollment ID and proof token are required.');
         return;
       }
+      const urlForBind =
+        (override?.authUrl !== undefined ? override.authUrl : authUrl)?.trim() || undefined;
+      const hasGlobalBase = Boolean(env.apiBaseUrl?.trim());
+      if (!urlForBind && !hasGlobalBase) {
+        setBindError(
+          'No Auth API URL: scan a QR that includes authUrl (set ezkey.qr.auth-base-url on the server), or set EZKEY_API_BASE_URL in .env and rebuild.',
+        );
+        return;
+      }
       setBindError(undefined);
       setIsBinding(true);
       setDraft(undefined);
@@ -307,11 +317,14 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           enrollmentProofToken,
           language: language ?? previous.language,
         }));
-        const response = await enrollmentsApi.bind({
-          enrollmentId,
-          enrollmentProofToken,
-          language,
-        }, authUrl);
+        const response = await enrollmentsApi.bind(
+          {
+            enrollmentId,
+            enrollmentProofToken,
+            language,
+          },
+          urlForBind,
+        );
         const nextDraft = buildDraft(response, {enrollmentId, enrollmentProofToken, language});
         setDraft(nextDraft);
         setStepIndex(() => {

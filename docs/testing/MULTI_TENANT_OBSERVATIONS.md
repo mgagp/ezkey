@@ -805,9 +805,9 @@ Lors de tests exploratoires, un GlobalAdmin a créé un TenantAdmin avec `tenant
 **Analyse du code:**
 
 1. **System Tenant (tenant_id = 1, "Ezkey System")**:
-   - Créé dans la migration V3
-   - Description: `"System tenant for global administrators"`
-   - Commentaire: `"System tenant (Ezkey System) hosts global administrators"`
+   - Créé dans la migration V1
+   - Description (seed): `"Ezkey MFA instance for your organization"` (alignée sur le défaut `ezkey.organization.description`)
+   - Commentaire (table `ezkey_tenant`): texte décrivant l’isolement multi-tenant et le rôle du tenant système
    - **Objectif**: Représenter l'organisation qui héberge l'instance Ezkey
    - **Contenu attendu**: Uniquement des GlobalAdmins
 
@@ -837,7 +837,7 @@ Lors de tests exploratoires, un GlobalAdmin a créé un TenantAdmin avec `tenant
    - Risque de contournement des restrictions de sécurité
 
 3. **Cohérence avec la documentation**:
-   - La migration V3 spécifie: "System tenant (Ezkey System) hosts global administrators"
+   - La migration V1 documente le tenant système comme représentant l’organisation pour cette instance Ezkey
    - Le document `ADMIN_ZERO_OPTION_B_IMPLEMENTATION.md` indique:
      - System Tenant = Organization hosting the instance
      - Application Tenants = Departments/divisions within the organization

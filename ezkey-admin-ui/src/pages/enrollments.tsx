@@ -157,6 +157,10 @@ function EnrollmentCreateDialog({
             {t('create.successMessage', { name: createdEnrollmentName ?? 'created' })}
           </Alert>
 
+          <p className="text-xs text-fg-muted leading-relaxed border-l-2 border-fg/25 pl-3 py-0.5">
+            {t('create.previewNotice')}
+          </p>
+
           <div className="space-y-3">
             <p className="text-xs font-black uppercase tracking-widest text-fg-muted">
               {t('create.qrHint')}

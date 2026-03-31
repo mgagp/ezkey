@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/context/auth-context';
 import { useDemoModeSession } from '@/context/demo-mode-context';
+import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
 import { isDemoMode } from '@/lib/demo-mode';
 import { cn } from '@/lib/utils';
 import { Dialog } from '@/components/ui/dialog';
@@ -56,11 +57,16 @@ function getAdminTaglineKey(adminType: string | undefined): string {
   return 'tagline.adminConsole';
 }
 
+function getAboutProductIntroKey(adminType: string | undefined): 'about.productIntroGlobal' | 'about.productIntroTenant' {
+  return adminType === 'GLOBAL_ADMIN' ? 'about.productIntroGlobal' : 'about.productIntroTenant';
+}
+
 export function Sidebar() {
   const { t } = useTranslation('layout');
   const { pathname } = useLocation();
   const { session } = useAuth();
   const { toggleSessionDemo } = useDemoModeSession();
+  const { data: publicInstanceInfo } = usePublicInstanceInfo();
   const [aboutOpen, setAboutOpen] = useState(false);
 
   const visibleItems = navItems.filter(
@@ -106,6 +112,11 @@ export function Sidebar() {
             <p className="text-sm font-bold text-sidebar-fg mt-0.5 leading-tight">
               {t(getAdminTaglineKey(session?.adminType))}
             </p>
+            {publicInstanceInfo?.instanceName ? (
+              <p className="text-[10px] font-semibold text-sidebar-fg/80 mt-1 leading-tight">
+                {publicInstanceInfo.instanceName}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -148,13 +159,26 @@ export function Sidebar() {
         <p className="text-[10px] text-sidebar-fg/25 font-mono tracking-wide">v0.1.0</p>
       </div>
 
-      <Dialog open={aboutOpen} onClose={() => setAboutOpen(false)} title={t('about.title')} size="sm">
+      <Dialog open={aboutOpen} onClose={() => setAboutOpen(false)} title={t('about.title')} size="md">
         <div className="space-y-4 text-sm text-fg">
           <img src="/logo.svg" alt="" className="mx-auto" width={64} height={64} />
-          <p>{t('about.description')}</p>
-          <p>
+          {publicInstanceInfo?.instanceName?.trim() ? (
+            <p className="font-semibold text-center text-fg">{publicInstanceInfo.instanceName}</p>
+          ) : null}
+          {publicInstanceInfo?.instanceDescription?.trim() ? (
+            <p className="text-center text-xs text-fg-muted leading-relaxed">
+              {publicInstanceInfo.instanceDescription}
+            </p>
+          ) : null}
+          <div
+            className="border-2 border-[#3076df] bg-bg/40 p-3"
+            aria-label={t('about.productSummary')}
+          >
+            <p className="text-xs leading-relaxed">{t(getAboutProductIntroKey(session?.adminType))}</p>
+          </div>
+          <p className="text-center">
             <a
-              href="https://github.com/your-org/ezkey"
+              href={publicInstanceInfo?.aboutUrl?.trim() || t('about.learnMoreDefaultUrl')}
               target="_blank"
               rel="noopener noreferrer"
               className="underline text-sidebar-bg hover:opacity-80"

@@ -18,7 +18,8 @@
   },
   "header": {
     "signedInAs": "Signed in as",
-    "demoBadge": "Demo"
+    "demoBadge": "Demo",
+    "instanceContext": "This Ezkey instance"
   },
   "sidebar": {
     "demoModeTitle": "Ctrl+click to toggle demo mode",
@@ -26,8 +27,11 @@
   },
   "about": {
     "title": "About EZKey",
-    "description": "EZKey is a passwordless, device-bound authentication platform. This admin console lets you manage tenants, integrations, enrollments, and API keys.",
-    "learnMore": "Learn more"
+    "productSummary": "What this console is for",
+    "productIntroTenant": "Your day-to-day workspace for this organization's passwordless MFA: integrations, enrollments, authentication activity, and API keys.",
+    "productIntroGlobal": "Instance-level administration for IT: tenant provisioning, encryption keys, and oversight across the organization. You also manage integrations, enrollments, and authentication the same way tenant administrators do.",
+    "learnMore": "Learn more",
+    "learnMoreDefaultUrl": "https://github.com/your-org/ezkey"
   },
   "demoQuickReason": "Quick reason (demo):"
 }

@@ -352,18 +352,20 @@ DROP TABLE IF EXISTS ezkey_admin_temp_tokens;
 -- STEP 2: Create System Tenant
 -- ============================================================================
 
--- System tenant represents the organization hosting this Ezkey instance
+-- System tenant represents the organization hosting this Ezkey instance.
+-- Initial description matches the default for ezkey.organization.description (deployment context,
+-- not operator role). Bootstrap may sync name/description from configuration on startup.
 -- Note: is_system_tenant flag will be added by migration V27
 INSERT INTO ezkey_tenant (tenant_name, tenant_description, created_at, active) 
 VALUES (
     'Ezkey System', 
-    'System tenant for global administrators', 
+    'Ezkey MFA instance for your organization', 
     CURRENT_TIMESTAMP, 
     true
 );
 
 COMMENT ON TABLE ezkey_tenant IS
-'Multi-tenant isolation. System tenant (Ezkey System) hosts global administrators.';
+'Multi-tenant isolation. The system tenant (Ezkey System) represents the organization for this Ezkey instance; it hosts global administrators.';
 
 -- ============================================================================
 -- STEP 3: Create Initial Global Administrator (Passwordless-Only Schema)

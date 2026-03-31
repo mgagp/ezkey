@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { logout as logoutApi } from '@/generated/admin-api/admin-authentication/admin-authentication';
 import { I18N_STORAGE_KEY } from '@/i18n';
 import { isDemoMode } from '@/lib/demo-mode';
+import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
 
 interface HeaderProps {
   title: string;
@@ -19,6 +20,7 @@ export function Header({ title }: HeaderProps) {
   const { openHelp } = useHelp();
   const { sessionDemoOn } = useDemoModeSession();
   const navigate = useNavigate();
+  const { data: publicInstanceInfo } = usePublicInstanceInfo();
 
   const handleLogout = async () => {
     try {
@@ -35,17 +37,38 @@ export function Header({ title }: HeaderProps) {
     window.localStorage.setItem(I18N_STORAGE_KEY, lng);
   };
 
+  const showInstanceBanner =
+    publicInstanceInfo &&
+    (publicInstanceInfo.instanceName?.trim() || publicInstanceInfo.instanceDescription?.trim());
+
   return (
-    <header className="h-13 shrink-0 border-b-2 border-fg bg-surface flex items-center justify-between px-6">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xs font-black uppercase tracking-[0.2em] text-fg">{title}</h1>
+    <header className="h-13 shrink-0 border-b-2 border-fg bg-surface flex items-center gap-4 px-4 sm:px-6 min-h-13">
+      <div className="flex items-center gap-3 shrink-0 min-w-0">
+        <h1 className="text-xs font-black uppercase tracking-[0.2em] text-fg truncate">{title}</h1>
         {isDemoMode && sessionDemoOn && (
-          <span className="text-[10px] px-2 py-0.5 bg-accent text-surface font-black uppercase tracking-widest rounded-sm">
+          <span className="text-[10px] px-2 py-0.5 bg-accent text-surface font-black uppercase tracking-widest rounded-sm shrink-0">
             {t('layout:header.demoBadge')}
           </span>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      {showInstanceBanner && (
+        <div
+          className="flex-1 min-w-0 flex flex-col items-center justify-center text-center px-2 border-x-2 border-fg/15"
+          aria-label={t('layout:header.instanceContext')}
+        >
+          {publicInstanceInfo?.instanceName?.trim() ? (
+            <p className="text-xs font-bold text-fg leading-tight truncate max-w-full">
+              {publicInstanceInfo.instanceName}
+            </p>
+          ) : null}
+          {publicInstanceInfo?.instanceDescription?.trim() ? (
+            <p className="text-[10px] text-fg-muted leading-snug line-clamp-2 max-w-2xl mt-0.5">
+              {publicInstanceInfo.instanceDescription}
+            </p>
+          ) : null}
+        </div>
+      )}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
         <button
           type="button"
           onClick={openHelp}

@@ -257,6 +257,34 @@ See **Error responses (RFC 9457)** above. Verification failures return **400** o
 
 ## 2. Admin API Endpoints (internal)
 
+### Public instance metadata (unauthenticated)
+
+**Base path:** `GET http://localhost:9080/api/v1/public/instance-info` (no `Authorization` header).
+
+Returns read-only JSON for the Admin UI login shell and operators:
+
+| Field | Source | Notes |
+| ----- | ------ | ----- |
+| `authApiPublicBaseUrl` | `ezkey.qr.auth-base-url` | Same value embedded as `authUrl` in enrollment QR JSON; `null` when unset |
+| `instanceName` | `ezkey.organization.name` | Instance / organization display name |
+| `instanceDescription` | `ezkey.organization.description` | Human-facing blurb for this **deployment** (not the logged-in role); may appear on login / About |
+| `aboutUrl` | `ezkey.organization.about-url` | Optional link for “Learn more”; `null` when unset |
+
+**Example (200 OK):**
+
+```json
+{
+  "authApiPublicBaseUrl": "https://auth.example.com:8080",
+  "instanceName": "Acme Corporation",
+  "instanceDescription": "Acme Corp Ezkey MFA Instance",
+  "aboutUrl": "https://www.example.com/about-ezkey"
+}
+```
+
+See also: enrollment QR JSON and `authUrl` (same property as `ezkey.qr.auth-base-url` on the Admin API); search this file for `ezkey.qr.auth-base-url`.
+
+**Postman:** `postman/collections/v2.1/EZ Key Public admin.postman_collection.json` (no Bearer token; uses `{{base_url_admin_api}}`).
+
 ### Admin Authentication (Passwordless-Only)
 
 Base URL: `http://localhost:9080/api/v1/admin/auth`

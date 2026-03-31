@@ -809,6 +809,15 @@ export default function EnrollmentDetailPage() {
 
             {/* Token + QR + Danger */}
             <div className="space-y-4">
+              {(
+                (enrollment.enrollmentProofToken != null && enrollment.enrollmentProofToken !== '') ||
+                enrollment.enrollmentStatus === 'CREATED' ||
+                enrollment.enrollmentStatus === 'BOUND'
+              ) && (
+                <p className="text-xs text-fg-muted leading-relaxed border-l-2 border-fg/25 pl-3 py-0.5">
+                  {t('detail.credentialsPreviewNotice')}
+                </p>
+              )}
 
               {/* Proof Token */}
               <Card>

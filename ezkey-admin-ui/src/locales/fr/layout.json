@@ -18,7 +18,8 @@
   },
   "header": {
     "signedInAs": "Connecté en tant que",
-    "demoBadge": "Démo"
+    "demoBadge": "Démo",
+    "instanceContext": "Instance Ezkey"
   },
   "sidebar": {
     "demoModeTitle": "Ctrl+clic pour basculer le mode démo",
@@ -26,8 +27,11 @@
   },
   "about": {
     "title": "À propos de EZKey",
-    "description": "EZKey est une plateforme d'authentification sans mot de passe, liée à l'appareil. Cette console d'administration permet de gérer les tenants, intégrations, enrôlements et clés API.",
-    "learnMore": "En savoir plus"
+    "productSummary": "Rôle de cette console",
+    "productIntroTenant": "Votre espace de travail au quotidien pour l'authentification sans mot de passe de votre organisation : intégrations, enrôlements, activité d'authentification et clés API.",
+    "productIntroGlobal": "Administration de l'instance pour les équipes TI : création de tenants, clés de chiffrement et supervision globale. Vous utilisez aussi les mêmes écrans d'intégrations, d'enrôlements et d'authentification que les administrateurs tenant.",
+    "learnMore": "En savoir plus",
+    "learnMoreDefaultUrl": "https://github.com/your-org/ezkey"
   },
   "demoQuickReason": "Raison rapide (démo) :"
 }

@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { CircleHelp, Pin, PinOff } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useHelp } from '@/context/help-context';
+import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
   const { openHelp } = useHelp();
+  const { data: publicInstanceInfo } = usePublicInstanceInfo();
 
   const loginSchema = useMemo(
     () =>
@@ -291,6 +293,11 @@ export default function LoginPage() {
           </p>
           <h1 className="text-3xl font-black text-sidebar-bg tracking-tight">{t('login:title')}</h1>
           <p className="text-sm text-fg-muted mt-1">{t('login:tagline')}</p>
+          {publicInstanceInfo?.instanceName ? (
+            <p className="text-xs font-semibold text-sidebar-bg/90 mt-2 tracking-tight">
+              {t('login:instanceSubtitle', { name: publicInstanceInfo.instanceName })}
+            </p>
+          ) : null}
         </div>
 
         {/* Main card — wider padding when recovery so bind-after-reset fits without excessive scroll */}

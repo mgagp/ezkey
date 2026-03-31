@@ -65,6 +65,7 @@
     "actions": "Actions",
     "dangerZone": "Zone de danger",
     "editTenant": "Modifier le tenant",
+    "addTenantAdmin": "Ajouter un administrateur tenant",
     "viewIntegrations": "Voir les intégrations",
     "deactivateWarning": "Désactiver un tenant rendra toutes ses intégrations, enrôlements et comptes admin inaccessibles.",
     "activateWarning": "Ce tenant est actuellement inactif. Le réactiver rétablira l'accès à toutes les ressources.",
