@@ -1,8 +1,8 @@
 # GitHub Copilot Instructions for Ezkey Project
 
 ## Project Context
-This is a multi-module Spring Boot project providing an open-source MFA/Passkey alternative.
-For overall product requirements and functional constraints, always refer to the top-level file `PRD.txt`.
+This is a multi-module Spring Boot project providing an open-source cryptographic MFA platform with a backend-first trust model.
+For overall product requirements and functional constraints, always refer to the top-level file `PRD.md`.
 For build, setup, and project organization, refer to `README.md`.
 
 ## Code Style
@@ -152,7 +152,7 @@ src/main/java/org/ezkey/{domain}/
 
 ### Code Generation
 - When generating code, respect existing package structure
-- Always check `PRD.txt` to ensure new code aligns with product requirements
+- Always check `PRD.md` to ensure new code aligns with product requirements
 - Always check `README.md` for project structure, build, and conventions
 - When asked for changes, show full modified classes instead of just snippets
 - Ensure that code compiles and follows project conventions

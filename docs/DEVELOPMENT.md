@@ -11,12 +11,12 @@
 ## OpenAPI Documentation
 
 ### Overview
-This section covers the complete OpenAPI (Swagger) documentation strategy for Ezkey REST APIs across all controllers.
+This document covers the development workflow and documentation practices for Ezkey's backend-first cryptographic MFA platform.
 
 ### Current State
-- **Controllers Identified**: 3 main controllers with 21 endpoints total
-- **Dependencies**: SpringDoc OpenAPI UI already configured (version 2.5.0)
-- **Status**: Basic configuration in place, needs comprehensive documentation
+- **OpenAPI support**: SpringDoc-based API documentation is part of the development workflow.
+- **Scope**: Admin, mobile, and integration-facing API surfaces evolve over time and should be documented from the codebase rather than maintained as fixed counts here.
+- **Status**: Treat this guide as workflow guidance, not as an authoritative inventory of current endpoints.
 
 ### Controllers and Endpoints
 

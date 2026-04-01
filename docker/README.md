@@ -1,6 +1,8 @@
-# EZ Key Docker Deployment
+# Ezkey Docker Deployment
 
-This directory contains Docker configuration files and scripts to run the complete EZ Key stack in containers.
+This directory contains Docker configuration files and scripts to run the complete Ezkey stack in containers.
+
+If you are following the main project quick start, use `./ezkey-tests/clean-start.sh` from the repository root. This document covers the lower-level Docker entrypoints for developers who want direct control over the stack.
 
 ## Quick Start (5-Minute Setup)
 
@@ -14,28 +16,14 @@ This directory contains Docker configuration files and scripts to run the comple
 
 **Default Mode (Spring Boot JVM):**
 ```bash
-# Linux/Mac
 ./docker/start.sh
-
-# Windows (PowerShell)
-# From a PowerShell prompt in the repo root (recommended):
-powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1
-# Or run directly from PowerShell:
-.\docker\start.ps1
 ```
 
-Voir aussi: [docs/windows-power-shell.md](../docs/windows-power-shell.md) — explication du choix PowerShell pour Windows.
+On Windows, use Bash as well, for example through Git Bash.
 
 **Native Mode (GraalVM Native Images):**
 ```bash
-# Linux/Mac
 ./docker/start.sh --native
-
-# Windows (PowerShell)
-# From a PowerShell prompt in the repo root (recommended):
-powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1 --native
-# Or run directly from PowerShell:
-.\docker\start.ps1 --native
 ```
 
 **Note**: Native mode requires pre-built native images. Build them first:
@@ -725,7 +713,8 @@ For production deployment, consider:
 
 ## Additional Resources
 
-- [Main README](../README.md) - Project overview and documentation
+- [Main README](../README.md) - Project overview and primary quick start
+- [Functional Tests README](../ezkey-tests/README.md) - Recommended clean-start workflow
 - [API Endpoints](../docs/ENDPOINT.md) - Detailed API reference
 - [Architecture](../docs/ARCHITECTURE.md) - System architecture documentation
 

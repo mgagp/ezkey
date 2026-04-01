@@ -2,7 +2,7 @@
 
 For agents working anywhere in the repo. For module-specific conventions and patterns, see the `AGENTS.md` in each module (e.g. `ezkey-admin-ui/AGENTS.md`, `ezkey-admin-api/AGENTS.md`).
 
-For full product and technical context, read **PRD.md**, **README.md**, and **docs/ENDPOINT.md** at the start of a new session.
+For full product and technical context, read **PRD.md**, **README.md**, **docs/PROJECT_POSITIONING.md**, and **docs/ENDPOINT.md** at the start of a new session.
 
 ---
 

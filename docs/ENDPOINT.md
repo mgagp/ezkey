@@ -2,11 +2,14 @@
 
 ## General Context
 
-Ezkey separates its backend APIs into two applications:
-- **admin-api** (internal): management of authentication requests (CRUD), accessible only to the organization.
-- **auth-api** (external, mobile): consumption of authentication requests by the Ezkey mobile application.
+Ezkey exposes multiple backend surfaces with distinct responsibilities:
+- **admin-api**: operator-facing and administrative workflows.
+- **auth-api**: mobile enrollment and authentication workflows.
+- **integration-api**: machine-to-machine workflows for integrated backends.
 
-The interaction model is **pull**: the mobile device fetches the request to validate (pending) by providing a cryptographic signature in the body, ensuring the authenticity of the request.
+This API reference documents the Ezkey protocol surfaces as they exist today. Ezkey should be understood as its own cryptographic MFA approach, not as a FIDO2/WebAuthn compatibility layer.
+
+The interaction model remains **pull-based** on the mobile side: the device fetches the request to validate (`pending`) by providing a cryptographic signature in the body, ensuring authenticity before a response is accepted.
 
 ---
 

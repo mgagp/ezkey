@@ -1,10 +1,11 @@
 # 📚 Ezkey Documentation
 
-Welcome to the centralized documentation for the Ezkey project - an open-source MFA/Passkey alternative designed for developers and organizations.
+Welcome to the centralized documentation for the Ezkey project - an open-source cryptographic MFA platform designed for developers and organizations.
 
 ## 📋 Table of Contents
 
 ### 🏗️ Architecture & Design
+- **[PROJECT_POSITIONING.md](PROJECT_POSITIONING.md)** - Strategic positioning, project philosophy, and backend-first security thesis
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture, security design, and cryptographic implementation
 - **[CRYPTO.md](CRYPTO.md)** - Detailed cryptographic specifications and implementation details
 - **[ENDPOINT.md](ENDPOINT.md)** - API endpoint documentation and specifications
@@ -35,10 +36,10 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 ## 🚀 Quick Start
 
 ### For Developers
-1. **Start Here**: Read [ARCHITECTURE.md](ARCHITECTURE.md) for system overview
-2. **Development Setup**: Follow [DEVELOPMENT.md](DEVELOPMENT.md) for development environment
-3. **API Reference**: Check [ENDPOINT.md](ENDPOINT.md) for API specifications
-4. **Cryptography**: Review [CRYPTO.md](CRYPTO.md) for security implementation
+1. **Start Here**: Read [../README.md](../README.md) for the short project overview and recommended quick start
+2. **Architecture**: Read [ARCHITECTURE.md](ARCHITECTURE.md) for the system view
+3. **Development Setup**: Follow [DEVELOPMENT.md](DEVELOPMENT.md) for development workflow
+4. **API Reference**: Check [ENDPOINT.md](ENDPOINT.md) for API specifications
 
 ### For System Administrators
 1. **Architecture**: Review [ARCHITECTURE.md](ARCHITECTURE.md) for deployment planning
@@ -178,10 +179,10 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 
 ## 🎯 Project Vision
 
-**Ezkey** is an open-source, pragmatic, developer-first MFA/Passkey alternative that provides:
+**Ezkey** is an open-source, pragmatic, developer-first cryptographic MFA platform built as a distinct alternative to browser-centric authentication models:
 
 - **🔒 Security**: Production-grade cryptographic signatures and secure authentication
-- **🌍 Interoperability**: Cross-platform compatibility with multiple programming languages
+- **🌍 Developer Reach**: API-first integration across different stacks and deployment contexts
 - **⚡ Simplicity**: Easy integration and developer-friendly APIs
 - **🔧 Flexibility**: Configurable and extensible architecture
 - **📈 Scalability**: Designed for both small applications and enterprise deployments
@@ -373,4 +374,4 @@ This project is licensed under the MIT License - see the [LICENSE](../LICENSE) f
 
 ---
 
-*Last updated: January 2025 | Ezkey v1.0+ | Documentation maintained by the Ezkey team*
+*Documentation maintained with the Ezkey project sources.*
