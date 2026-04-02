@@ -16,10 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -367,7 +367,7 @@ class AuditReasonPropagationTest {
   void activateAdmin_withReason_propagatesReasonToAuditLog() {
     Authentication auth = mock(Authentication.class);
     when(auth.getPrincipal()).thenReturn(new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
-    doNothing().when(provisioningService).activateAdmin(eq(2), any(AdminPrincipal.class));
+    when(provisioningService.activateAdmin(eq(2), any(AdminPrincipal.class))).thenReturn(true);
 
     AdminProvisioningController controller =
         new AdminProvisioningController(
@@ -389,7 +389,7 @@ class AuditReasonPropagationTest {
   void activateAdmin_withoutReason_auditReasonIsNull() {
     Authentication auth = mock(Authentication.class);
     when(auth.getPrincipal()).thenReturn(new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
-    doNothing().when(provisioningService).activateAdmin(eq(2), any(AdminPrincipal.class));
+    when(provisioningService.activateAdmin(eq(2), any(AdminPrincipal.class))).thenReturn(true);
 
     AdminProvisioningController controller =
         new AdminProvisioningController(
@@ -401,6 +401,22 @@ class AuditReasonPropagationTest {
     verify(auditLogService, times(1)).log(captor.capture());
 
     assertNull(captor.getValue().getReason());
+  }
+
+  @Test
+  @DisplayName("activateAdmin() no-op - success audit is skipped")
+  void activateAdmin_noOp_skipsSuccessAudit() {
+    Authentication auth = mock(Authentication.class);
+    when(auth.getPrincipal()).thenReturn(new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
+    when(provisioningService.activateAdmin(eq(2), any(AdminPrincipal.class))).thenReturn(false);
+
+    AdminProvisioningController controller =
+        new AdminProvisioningController(
+            provisioningService, qrCodeGeneratorService, qrCodePayloadService, auditLogService);
+
+    controller.activateAdmin(2, "Ten chars min", auth, httpRequest);
+
+    verify(auditLogService, never()).log(any());
   }
 
   // -------------------------------------------------------------------------

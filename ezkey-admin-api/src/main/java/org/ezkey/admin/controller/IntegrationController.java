@@ -20,10 +20,12 @@ import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.dto.response.BulkEnrollmentOperationResultDto;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.EnrollmentRevocationService;
+import org.ezkey.admin.service.EnrollmentRevocationService.BulkEnrollmentOperationResult;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -556,7 +558,7 @@ public class IntegrationController {
    * @param id the integration ID whose enrollments should be bulk-revoked
    * @param reason optional justification (min 10, max 500 characters when provided)
    * @param httpRequest the HTTP request
-   * @return 204 No Content on success
+   * @return 200 OK with a compact result summary
    */
   @Operation(
       summary = "Bulk-revoke all enrollments for an integration",
@@ -566,7 +568,9 @@ public class IntegrationController {
               + " Cannot be applied to system integrations.")
   @ApiResponses(
       value = {
-        @ApiResponse(responseCode = "204", description = "All enrollments revoked successfully"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk revocation completed successfully with result summary"),
         @ApiResponse(responseCode = "400", description = "Invalid parameters"),
         @ApiResponse(
             responseCode = "403",
@@ -576,7 +580,7 @@ public class IntegrationController {
       })
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/{id}/enrollments/revoke-all")
-  public ResponseEntity<Void> revokeAllEnrollments(
+  public ResponseEntity<BulkEnrollmentOperationResultDto> revokeAllEnrollments(
       @Parameter(description = "Integration ID", example = "5") @PathVariable("id") Integer id,
       @Parameter(
               description =
@@ -595,8 +599,12 @@ public class IntegrationController {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     Integer tenantId = extractTenantId(auth);
 
-    enrollmentRevocationService.revokeAllByIntegration(id, principal, reason, context, tenantId);
-    return ResponseEntity.noContent().build();
+    BulkEnrollmentOperationResult result =
+        enrollmentRevocationService.revokeAllByIntegration(
+            id, principal, reason, context, tenantId);
+    return ResponseEntity.ok(
+        new BulkEnrollmentOperationResultDto(
+            result.affectedCount(), result.skippedCount(), result.noOp()));
   }
 
   /**
@@ -610,7 +618,7 @@ public class IntegrationController {
    * @param id the integration ID whose enrollments should be bulk-deactivated
    * @param reason optional justification (max 500 characters)
    * @param httpRequest the HTTP request
-   * @return 204 No Content on success
+   * @return 200 OK with a compact result summary
    */
   @Operation(
       summary = "Bulk-deactivate all enrollments for an integration",
@@ -621,8 +629,8 @@ public class IntegrationController {
   @ApiResponses(
       value = {
         @ApiResponse(
-            responseCode = "204",
-            description = "All enrollments deactivated successfully"),
+            responseCode = "200",
+            description = "Bulk deactivation completed successfully with result summary"),
         @ApiResponse(
             responseCode = "403",
             description = "Access denied or system integration guard triggered"),
@@ -631,7 +639,7 @@ public class IntegrationController {
       })
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/{id}/enrollments/deactivate-all")
-  public ResponseEntity<Void> deactivateAllEnrollments(
+  public ResponseEntity<BulkEnrollmentOperationResultDto> deactivateAllEnrollments(
       @Parameter(description = "Integration ID", example = "5") @PathVariable("id") Integer id,
       @Parameter(description = "Optional justification for bulk deactivation")
           @RequestParam(required = false)
@@ -648,9 +656,12 @@ public class IntegrationController {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     Integer tenantId = extractTenantId(auth);
 
-    enrollmentRevocationService.deactivateAllByIntegration(
-        id, principal, reason, context, tenantId);
-    return ResponseEntity.noContent().build();
+    BulkEnrollmentOperationResult result =
+        enrollmentRevocationService.deactivateAllByIntegration(
+            id, principal, reason, context, tenantId);
+    return ResponseEntity.ok(
+        new BulkEnrollmentOperationResultDto(
+            result.affectedCount(), result.skippedCount(), result.noOp()));
   }
 
   /**
@@ -662,7 +673,7 @@ public class IntegrationController {
    * @param id the integration ID whose enrollments should be bulk-reactivated
    * @param reason optional justification (max 500 characters)
    * @param httpRequest the HTTP request
-   * @return 204 No Content on success
+   * @return 200 OK with a compact result summary
    */
   @Operation(
       summary = "Bulk-reactivate all enrollments for an integration",
@@ -672,15 +683,15 @@ public class IntegrationController {
   @ApiResponses(
       value = {
         @ApiResponse(
-            responseCode = "204",
-            description = "All enrollments reactivated successfully"),
+            responseCode = "200",
+            description = "Bulk reactivation completed successfully with result summary"),
         @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "Integration not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/{id}/enrollments/reactivate-all")
-  public ResponseEntity<Void> reactivateAllEnrollments(
+  public ResponseEntity<BulkEnrollmentOperationResultDto> reactivateAllEnrollments(
       @Parameter(description = "Integration ID", example = "5") @PathVariable("id") Integer id,
       @Parameter(description = "Optional justification for bulk reactivation")
           @RequestParam(required = false)
@@ -697,9 +708,12 @@ public class IntegrationController {
     AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
     Integer tenantId = extractTenantId(auth);
 
-    enrollmentRevocationService.reactivateAllByIntegration(
-        id, principal, reason, context, tenantId);
-    return ResponseEntity.noContent().build();
+    BulkEnrollmentOperationResult result =
+        enrollmentRevocationService.reactivateAllByIntegration(
+            id, principal, reason, context, tenantId);
+    return ResponseEntity.ok(
+        new BulkEnrollmentOperationResultDto(
+            result.affectedCount(), result.skippedCount(), result.noOp()));
   }
 
   /**

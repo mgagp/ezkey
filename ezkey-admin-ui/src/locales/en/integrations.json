@@ -94,9 +94,12 @@
       "deleteDescription": "Are you sure you want to permanently delete integration \"{{name}}\"? This action cannot be undone.",
       "deleteConfirm": "Yes, Delete Integration"
     },
-    "toastDeactivated": "All enrollments deactivated.",
-    "toastReactivated": "All enrollments reactivated.",
-    "toastRevoked": "All enrollments permanently revoked.",
+    "toastDeactivated": "{{count}} enrollment(s) deactivated.",
+    "toastDeactivatedNoOp": "No active enrollments needed deactivation.",
+    "toastReactivated": "{{count}} enrollment(s) reactivated.",
+    "toastReactivatedNoOp": "No inactive enrollments needed reactivation.",
+    "toastRevoked": "{{count}} enrollment(s) permanently revoked.",
+    "toastRevokedNoOp": "No active enrollments needed revocation.",
     "toastDeleted": "Integration deleted.",
     "errorFailed": "Failed.",
     "errorDeleteFailed": "Failed to delete."

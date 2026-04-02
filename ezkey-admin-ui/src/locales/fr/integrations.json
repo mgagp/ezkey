@@ -94,9 +94,12 @@
       "deleteDescription": "Voulez-vous vraiment supprimer définitivement l'intégration « {{name}} » ? Cette action est irréversible.",
       "deleteConfirm": "Oui, supprimer l'intégration"
     },
-    "toastDeactivated": "Tous les enrôlements ont été désactivés.",
-    "toastReactivated": "Tous les enrôlements ont été réactivés.",
-    "toastRevoked": "Tous les enrôlements ont été révoqués définitivement.",
+    "toastDeactivated": "{{count}} enrôlement(s) ont été désactivés.",
+    "toastDeactivatedNoOp": "Aucun enrôlement actif ne nécessitait une désactivation.",
+    "toastReactivated": "{{count}} enrôlement(s) ont été réactivés.",
+    "toastReactivatedNoOp": "Aucun enrôlement inactif ne nécessitait une réactivation.",
+    "toastRevoked": "{{count}} enrôlement(s) ont été révoqués définitivement.",
+    "toastRevokedNoOp": "Aucun enrôlement actif ne nécessitait une révocation.",
     "toastDeleted": "Intégration supprimée.",
     "errorFailed": "Échec.",
     "errorDeleteFailed": "Échec de la suppression."

@@ -242,13 +242,16 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 204 (all revoked) or 403 (system integration guard)\", function () {",
-              "    pm.expect([204, 403, 404]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 200 (summary) or 403 (system integration guard)\", function () {",
+              "    pm.expect([200, 403, 404]).to.include(pm.response.code);",
               "});",
               "",
-              "if (pm.response.code === 204) {",
-              "    pm.test(\"Bulk revocation successful - no content\", function () {",
-              "        pm.expect(pm.response.body).to.be.empty;",
+              "if (pm.response.code === 200) {",
+              "    pm.test(\"Bulk revocation returns summary\", function () {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData).to.have.property('affectedCount');",
+              "        pm.expect(jsonData).to.have.property('skippedCount');",
+              "        pm.expect(jsonData).to.have.property('noOp');",
               "    });",
               "}",
               "",
@@ -296,7 +299,7 @@
             }
           ]
         },
-        "description": "Bulk-revokes all active VERIFIED enrollments for an integration.\n\n**Use case:** Incident response — when an integration's API key is compromised, all associated enrollments should be immediately revoked.\n\n**Guards:**\n- Cannot be applied to **system integrations** (`is_system_integration=true`) — would cause complete admin lockout (403 with `system-integration-revocation` problem detail)\n- Calling admin's own enrollment is **skipped** (self-guard) rather than throwing\n- Tenant Admins can only bulk-revoke enrollments in their tenant's integrations\n\n**Effects:**\n- All active VERIFIED enrollments for the integration transition to `REVOKED`\n- Bearer tokens for any admin enrollments found are immediately invalidated\n- Audit log entry created with count of revoked enrollments\n\n**Status Codes:**\n- 204: All enrollments revoked\n- 400: Missing or invalid `reason`\n- 403: Access denied or system integration guard\n- 404: Integration not found\n- 500: Internal server error"
+        "description": "Bulk-revokes all active VERIFIED enrollments for an integration.\n\n**Use case:** Incident response — when an integration's API key is compromised, all associated enrollments should be immediately revoked.\n\n**Guards:**\n- Cannot be applied to **system integrations** (`is_system_integration=true`) — would cause complete admin lockout (403 with `system-integration-revocation` problem detail)\n- Calling admin's own enrollment is **skipped** (self-guard) rather than throwing\n- Tenant Admins can only bulk-revoke enrollments in their tenant's integrations\n\n**Effects:**\n- All active VERIFIED enrollments for the integration transition to `REVOKED`\n- Bearer tokens for any admin enrollments found are immediately invalidated\n- Returns an execution summary with `affectedCount`, `skippedCount`, and `noOp`\n- A successful no-op does not emit a success audit row for this routine admin action\n\n**Status Codes:**\n- 200: Bulk revocation completed with result summary\n- 400: Missing or invalid `reason`\n- 403: Access denied or system integration guard\n- 404: Integration not found\n- 500: Internal server error"
       },
       "response": []
     },
@@ -307,13 +310,16 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 204 (all deactivated) or 403 (system integration guard)\", function () {",
-              "    pm.expect([204, 403, 404]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 200 (summary) or 403 (system integration guard)\", function () {",
+              "    pm.expect([200, 403, 404]).to.include(pm.response.code);",
               "});",
               "",
-              "if (pm.response.code === 204) {",
-              "    pm.test(\"Bulk deactivation successful - no content\", function () {",
-              "        pm.expect(pm.response.body).to.be.empty;",
+              "if (pm.response.code === 200) {",
+              "    pm.test(\"Bulk deactivation returns summary\", function () {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData).to.have.property('affectedCount');",
+              "        pm.expect(jsonData).to.have.property('skippedCount');",
+              "        pm.expect(jsonData).to.have.property('noOp');",
               "    });",
               "}",
               "",
@@ -361,7 +367,7 @@
             }
           ]
         },
-        "description": "Bulk-deactivates all active VERIFIED enrollments for an integration (reversible lockdown).\n\n**Use case:** Precautionary lockdown — suspected but unconfirmed threat, emergency maintenance. Status remains VERIFIED; restore with **reactivate all enrollments**.\n\n**Guards:**\n- Cannot be applied to **system integrations** (403 with system-integration-revocation)\n- Calling admin's own enrollment is **skipped** (self-guard)\n- Tenant Admins can only bulk-deactivate enrollments in their tenant's integrations\n\n**Effects:**\n- All active VERIFIED enrollments set to active=false (VERIFIED preserved)\n- Bearer tokens for any admin enrollments found are invalidated\n- Audit log entry with deactivated count\n\n**Status Codes:**\n- 204: All enrollments deactivated\n- 403: Access denied or system integration guard\n- 404: Integration not found\n- 500: Internal server error"
+        "description": "Bulk-deactivates all active VERIFIED enrollments for an integration (reversible lockdown).\n\n**Use case:** Precautionary lockdown — suspected but unconfirmed threat, emergency maintenance. Status remains VERIFIED; restore with **reactivate all enrollments**.\n\n**Guards:**\n- Cannot be applied to **system integrations** (403 with system-integration-revocation)\n- Calling admin's own enrollment is **skipped** (self-guard)\n- Tenant Admins can only bulk-deactivate enrollments in their tenant's integrations\n\n**Effects:**\n- All active VERIFIED enrollments set to active=false (VERIFIED preserved)\n- Bearer tokens for any admin enrollments found are invalidated\n- Returns an execution summary with `affectedCount`, `skippedCount`, and `noOp`\n- A successful no-op does not emit a success audit row for this routine admin action\n\n**Status Codes:**\n- 200: Bulk deactivation completed with result summary\n- 403: Access denied or system integration guard\n- 404: Integration not found\n- 500: Internal server error"
       },
       "response": []
     },
@@ -372,13 +378,16 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 204 (all reactivated) or 403 or 404\", function () {",
-              "    pm.expect([204, 403, 404]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 200 (summary) or 403 or 404\", function () {",
+              "    pm.expect([200, 403, 404]).to.include(pm.response.code);",
               "});",
               "",
-              "if (pm.response.code === 204) {",
-              "    pm.test(\"Bulk reactivation successful - no content\", function () {",
-              "        pm.expect(pm.response.body).to.be.empty;",
+              "if (pm.response.code === 200) {",
+              "    pm.test(\"Bulk reactivation returns summary\", function () {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData).to.have.property('affectedCount');",
+              "        pm.expect(jsonData).to.have.property('skippedCount');",
+              "        pm.expect(jsonData).to.have.property('noOp');",
               "    });",
               "}",
               "",
@@ -426,7 +435,7 @@
             }
           ]
         },
-        "description": "Bulk-reactivates all inactive VERIFIED enrollments for an integration.\n\n**Use case:** After a precautionary **deactivate all enrollments**, when the threat is cleared or maintenance ends.\n\n**Effects:**\n- All VERIFIED + active=false enrollments set to active=true\n- Audit log entry with reactivated count\n- REVOKED enrollments are not affected\n\n**Status Codes:**\n- 204: All eligible enrollments reactivated\n- 403: Access denied\n- 404: Integration not found\n- 500: Internal server error"
+        "description": "Bulk-reactivates all inactive VERIFIED enrollments for an integration.\n\n**Use case:** After a precautionary **deactivate all enrollments**, when the threat is cleared or maintenance ends.\n\n**Effects:**\n- All VERIFIED + active=false enrollments set to active=true\n- Returns an execution summary with `affectedCount`, `skippedCount`, and `noOp`\n- A successful no-op does not emit a success audit row for this routine admin action\n- REVOKED enrollments are not affected\n\n**Status Codes:**\n- 200: Bulk reactivation completed with result summary\n- 403: Access denied\n- 404: Integration not found\n- 500: Internal server error"
       },
       "response": []
     },

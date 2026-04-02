@@ -84,6 +84,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EnrollmentRevocationService {
 
+  /**
+   * Internal result summary for integration-scoped bulk enrollment lifecycle operations.
+   *
+   * @param affectedCount number of enrollments whose state changed
+   * @param skippedCount number of enrollments skipped by defensive guards
+   * @param noOp whether the operation completed successfully without changing any enrollment state
+   */
+  public record BulkEnrollmentOperationResult(int affectedCount, int skippedCount, boolean noOp) {}
+
   private static final Logger logger = LoggerFactory.getLogger(EnrollmentRevocationService.class);
 
   private final EnrollmentRepository enrollmentRepository;
@@ -367,7 +376,7 @@ public class EnrollmentRevocationService {
    * @throws SystemIntegrationRevocationException if the integration is a system integration
    */
   @Transactional
-  public void revokeAllByIntegration(
+  public BulkEnrollmentOperationResult revokeAllByIntegration(
       Integer integrationId,
       AdminPrincipal principal,
       String reason,
@@ -412,23 +421,25 @@ public class EnrollmentRevocationService {
       revokedCount++;
     }
 
-    auditLogService.log(
-        AuditHelper.createAdminAudit(
-                context,
-                EventType.ENROLLMENT_REVOKED,
-                AdminAuditConstants.ENROLLMENT_REVOKE_ALL,
-                tenantId)
-            .eventStatus(EventStatus.SUCCESS)
-            .integrationId(integrationId)
-            .reason(reason)
-            .eventDetails(
-                "Bulk revocation: "
-                    + revokedCount
-                    + " enrollments revoked"
-                    + (skippedCount > 0 ? ", " + skippedCount + " skipped (self-guard)" : "")
-                    + " for integration "
-                    + integrationId)
-            .build());
+    if (revokedCount > 0) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_REVOKED,
+                  AdminAuditConstants.ENROLLMENT_REVOKE_ALL,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .integrationId(integrationId)
+              .reason(reason)
+              .eventDetails(
+                  "Bulk revocation: "
+                      + revokedCount
+                      + " enrollments revoked"
+                      + (skippedCount > 0 ? ", " + skippedCount + " skipped (self-guard)" : "")
+                      + " for integration "
+                      + integrationId)
+              .build());
+    }
 
     logger.info(
         "Bulk revocation complete for integration {}: {} revoked, {} skipped by admin {}",
@@ -436,6 +447,7 @@ public class EnrollmentRevocationService {
         revokedCount,
         skippedCount,
         principal.adminId());
+    return new BulkEnrollmentOperationResult(revokedCount, skippedCount, revokedCount == 0);
   }
 
   /**
@@ -460,7 +472,7 @@ public class EnrollmentRevocationService {
    * @throws SystemIntegrationRevocationException if the integration is a system integration
    */
   @Transactional
-  public void deactivateAllByIntegration(
+  public BulkEnrollmentOperationResult deactivateAllByIntegration(
       Integer integrationId,
       AdminPrincipal principal,
       String reason,
@@ -504,23 +516,25 @@ public class EnrollmentRevocationService {
       deactivatedCount++;
     }
 
-    auditLogService.log(
-        AuditHelper.createAdminAudit(
-                context,
-                EventType.ENROLLMENT_DEACTIVATED,
-                AdminAuditConstants.ENROLLMENT_DEACTIVATE_ALL,
-                tenantId)
-            .eventStatus(EventStatus.SUCCESS)
-            .integrationId(integrationId)
-            .reason(reason)
-            .eventDetails(
-                "Bulk deactivation: "
-                    + deactivatedCount
-                    + " enrollments deactivated"
-                    + (skippedCount > 0 ? ", " + skippedCount + " skipped (self-guard)" : "")
-                    + " for integration "
-                    + integrationId)
-            .build());
+    if (deactivatedCount > 0) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_DEACTIVATED,
+                  AdminAuditConstants.ENROLLMENT_DEACTIVATE_ALL,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .integrationId(integrationId)
+              .reason(reason)
+              .eventDetails(
+                  "Bulk deactivation: "
+                      + deactivatedCount
+                      + " enrollments deactivated"
+                      + (skippedCount > 0 ? ", " + skippedCount + " skipped (self-guard)" : "")
+                      + " for integration "
+                      + integrationId)
+              .build());
+    }
 
     logger.info(
         "Bulk deactivation complete for integration {}: {} deactivated, {} skipped by admin {}",
@@ -528,6 +542,7 @@ public class EnrollmentRevocationService {
         deactivatedCount,
         skippedCount,
         principal.adminId());
+    return new BulkEnrollmentOperationResult(deactivatedCount, skippedCount, deactivatedCount == 0);
   }
 
   /**
@@ -545,7 +560,7 @@ public class EnrollmentRevocationService {
    * @throws ResourceNotFoundException if the integration is not found
    */
   @Transactional
-  public void reactivateAllByIntegration(
+  public BulkEnrollmentOperationResult reactivateAllByIntegration(
       Integer integrationId,
       AdminPrincipal principal,
       String reason,
@@ -570,27 +585,30 @@ public class EnrollmentRevocationService {
       reactivatedCount++;
     }
 
-    auditLogService.log(
-        AuditHelper.createAdminAudit(
-                context,
-                EventType.ENROLLMENT_REACTIVATED,
-                AdminAuditConstants.ENROLLMENT_REACTIVATE_ALL,
-                tenantId)
-            .eventStatus(EventStatus.SUCCESS)
-            .integrationId(integrationId)
-            .reason(reason)
-            .eventDetails(
-                "Bulk reactivation: "
-                    + reactivatedCount
-                    + " enrollments reactivated for integration "
-                    + integrationId)
-            .build());
+    if (reactivatedCount > 0) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_REACTIVATED,
+                  AdminAuditConstants.ENROLLMENT_REACTIVATE_ALL,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .integrationId(integrationId)
+              .reason(reason)
+              .eventDetails(
+                  "Bulk reactivation: "
+                      + reactivatedCount
+                      + " enrollments reactivated for integration "
+                      + integrationId)
+              .build());
+    }
 
     logger.info(
         "Bulk reactivation complete for integration {}: {} reactivated by admin {}",
         integrationId,
         reactivatedCount,
         principal.adminId());
+    return new BulkEnrollmentOperationResult(reactivatedCount, 0, reactivatedCount == 0);
   }
 
   /**

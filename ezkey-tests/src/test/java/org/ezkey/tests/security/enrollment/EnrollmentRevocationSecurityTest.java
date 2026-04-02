@@ -250,13 +250,20 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
       int enrollment1 = createVerifiedEnrollment(integrationId, "RevokeAll Device A");
       int enrollment2 = createVerifiedEnrollment(integrationId, "RevokeAll Device B");
 
-      given()
-          .header("Authorization", "Bearer " + adminToken)
-          .queryParam("reason", REASON_MIN_10)
-          .when()
-          .post("/integrations/" + integrationId + "/enrollments/revoke-all")
-          .then()
-          .statusCode(204);
+      Response bulkRevokeResponse =
+          given()
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", REASON_MIN_10)
+              .when()
+              .post("/integrations/" + integrationId + "/enrollments/revoke-all")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      assertThat(bulkRevokeResponse.jsonPath().getInt("affectedCount")).isEqualTo(2);
+      assertThat(bulkRevokeResponse.jsonPath().getInt("skippedCount")).isZero();
+      assertThat(bulkRevokeResponse.jsonPath().getBoolean("noOp")).isFalse();
 
       Map<String, Object> authRequest = new HashMap<>();
       authRequest.put("challengeRequested", false);
@@ -324,13 +331,20 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
       int enrollment1 = createVerifiedEnrollment(integrationId, "DeactivateAll Device A");
       int enrollment2 = createVerifiedEnrollment(integrationId, "DeactivateAll Device B");
 
-      given()
-          .header("Authorization", "Bearer " + adminToken)
-          .queryParam("reason", "Emergency lockdown for functional test")
-          .when()
-          .post("/integrations/" + integrationId + "/enrollments/deactivate-all")
-          .then()
-          .statusCode(204);
+      Response bulkDeactivateResponse =
+          given()
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", "Emergency lockdown for functional test")
+              .when()
+              .post("/integrations/" + integrationId + "/enrollments/deactivate-all")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      assertThat(bulkDeactivateResponse.jsonPath().getInt("affectedCount")).isEqualTo(2);
+      assertThat(bulkDeactivateResponse.jsonPath().getInt("skippedCount")).isZero();
+      assertThat(bulkDeactivateResponse.jsonPath().getBoolean("noOp")).isFalse();
 
       Map<String, Object> authRequest = new HashMap<>();
       authRequest.put("challengeRequested", false);
@@ -352,13 +366,20 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
             .isEqualTo(403);
       }
 
-      given()
-          .header("Authorization", "Bearer " + adminToken)
-          .queryParam("reason", "Threat cleared - restoring access")
-          .when()
-          .post("/integrations/" + integrationId + "/enrollments/reactivate-all")
-          .then()
-          .statusCode(204);
+      Response bulkReactivateResponse =
+          given()
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", "Threat cleared - restoring access")
+              .when()
+              .post("/integrations/" + integrationId + "/enrollments/reactivate-all")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      assertThat(bulkReactivateResponse.jsonPath().getInt("affectedCount")).isEqualTo(2);
+      assertThat(bulkReactivateResponse.jsonPath().getInt("skippedCount")).isZero();
+      assertThat(bulkReactivateResponse.jsonPath().getBoolean("noOp")).isFalse();
 
       for (int enrollmentId : new int[] {enrollment1, enrollment2}) {
         authRequest.put("enrollmentId", enrollmentId);

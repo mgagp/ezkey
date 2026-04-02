@@ -792,7 +792,7 @@ public class AdminProvisioningService {
    * @throws AdminLimitException if deactivation would violate minimum limits (400, RFC 9457)
    */
   @Transactional
-  public void deactivateAdmin(Integer adminId, AdminPrincipal principal) {
+  public boolean deactivateAdmin(Integer adminId, AdminPrincipal principal) {
     // Load the admin to deactivate
     EzkeyAdmin adminToDeactivate =
         adminRepository
@@ -808,7 +808,7 @@ public class AdminProvisioningService {
     // Rule 2: Check if admin is already inactive
     if (!adminToDeactivate.getActive()) {
       logger.info("Admin {} is already inactive", adminId);
-      return; // Idempotent - nothing to do
+      return false; // Idempotent - nothing to do
     }
 
     // Rule 3: Enforce minimum limits for global admins
@@ -846,6 +846,7 @@ public class AdminProvisioningService {
         adminToDeactivate.getUsername(),
         principal.adminId(),
         tokensRevoked);
+    return true;
   }
 
   /**
@@ -860,7 +861,7 @@ public class AdminProvisioningService {
    * @throws ResourceNotFoundException if the administrator is not found (404)
    */
   @Transactional
-  public void activateAdmin(Integer adminId, AdminPrincipal principal) {
+  public boolean activateAdmin(Integer adminId, AdminPrincipal principal) {
     EzkeyAdmin admin =
         adminRepository
             .findById(adminId)
@@ -868,13 +869,14 @@ public class AdminProvisioningService {
 
     if (admin.getActive()) {
       logger.info("Admin {} is already active", adminId);
-      return; // Idempotent
+      return false; // Idempotent
     }
 
     admin.setActive(true);
     adminRepository.save(admin);
 
     logger.info("✅ Admin {} activated by admin {}", admin.getUsername(), principal.adminId());
+    return true;
   }
 
   /**

@@ -295,9 +295,13 @@ class EnrollmentRevocationServiceTest {
           .thenReturn(List.of(enrollmentA, enrollmentB));
       when(adminRepository.findByEnrollmentId(any())).thenReturn(Optional.empty());
 
-      service.revokeAllByIntegration(
-          10, globalAdminPrincipal, "Valid long reason here", clientContext, null);
+      EnrollmentRevocationService.BulkEnrollmentOperationResult result =
+          service.revokeAllByIntegration(
+              10, globalAdminPrincipal, "Valid long reason here", clientContext, null);
 
+      assertThat(result.affectedCount()).isEqualTo(2);
+      assertThat(result.skippedCount()).isZero();
+      assertThat(result.noOp()).isFalse();
       assertThat(enrollmentA.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
       assertThat(enrollmentA.getActive()).isFalse();
       assertThat(enrollmentB.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
@@ -316,11 +320,15 @@ class EnrollmentRevocationServiceTest {
               10, EnrollmentStatus.VERIFIED, true))
           .thenReturn(List.of());
 
-      service.revokeAllByIntegration(
-          10, globalAdminPrincipal, "Valid long reason here", clientContext, null);
+      EnrollmentRevocationService.BulkEnrollmentOperationResult result =
+          service.revokeAllByIntegration(
+              10, globalAdminPrincipal, "Valid long reason here", clientContext, null);
 
+      assertThat(result.affectedCount()).isZero();
+      assertThat(result.skippedCount()).isZero();
+      assertThat(result.noOp()).isTrue();
       verify(enrollmentRepository, never()).save(any());
-      verify(auditLogService).log(any());
+      verify(auditLogService, never()).log(any());
     }
   }
 
@@ -360,9 +368,13 @@ class EnrollmentRevocationServiceTest {
           .thenReturn(List.of(enrollmentA, enrollmentB));
       when(adminRepository.findByEnrollmentId(any())).thenReturn(Optional.empty());
 
-      service.deactivateAllByIntegration(
-          10, globalAdminPrincipal, "Emergency lockdown", clientContext, null);
+      EnrollmentRevocationService.BulkEnrollmentOperationResult result =
+          service.deactivateAllByIntegration(
+              10, globalAdminPrincipal, "Emergency lockdown", clientContext, null);
 
+      assertThat(result.affectedCount()).isEqualTo(2);
+      assertThat(result.skippedCount()).isZero();
+      assertThat(result.noOp()).isFalse();
       assertThat(enrollmentA.getStatus()).isEqualTo(EnrollmentStatus.VERIFIED);
       assertThat(enrollmentA.getActive()).isFalse();
       assertThat(enrollmentA.getDeactivatedAt()).isNotNull();
@@ -390,8 +402,13 @@ class EnrollmentRevocationServiceTest {
       when(ownerAdmin.getAdminId()).thenReturn(1);
       when(adminRepository.findByEnrollmentId(102)).thenReturn(Optional.empty());
 
-      service.deactivateAllByIntegration(10, globalAdminPrincipal, "Lockdown", clientContext, null);
+      EnrollmentRevocationService.BulkEnrollmentOperationResult result =
+          service.deactivateAllByIntegration(
+              10, globalAdminPrincipal, "Lockdown", clientContext, null);
 
+      assertThat(result.affectedCount()).isEqualTo(1);
+      assertThat(result.skippedCount()).isEqualTo(1);
+      assertThat(result.noOp()).isFalse();
       assertThat(selfEnrollment.getActive()).isTrue();
       verify(enrollmentRepository, never()).save(selfEnrollment);
       assertThat(otherEnrollment.getActive()).isFalse();
@@ -408,10 +425,14 @@ class EnrollmentRevocationServiceTest {
               10, EnrollmentStatus.VERIFIED, true))
           .thenReturn(List.of());
 
-      service.deactivateAllByIntegration(10, globalAdminPrincipal, null, clientContext, null);
+      EnrollmentRevocationService.BulkEnrollmentOperationResult result =
+          service.deactivateAllByIntegration(10, globalAdminPrincipal, null, clientContext, null);
 
+      assertThat(result.affectedCount()).isZero();
+      assertThat(result.skippedCount()).isZero();
+      assertThat(result.noOp()).isTrue();
       verify(enrollmentRepository, never()).save(any());
-      verify(auditLogService).log(any());
+      verify(auditLogService, never()).log(any());
     }
   }
 
@@ -434,9 +455,13 @@ class EnrollmentRevocationServiceTest {
               10, EnrollmentStatus.VERIFIED, false))
           .thenReturn(List.of(enrollmentA, enrollmentB));
 
-      service.reactivateAllByIntegration(
-          10, globalAdminPrincipal, "Threat cleared", clientContext, null);
+      EnrollmentRevocationService.BulkEnrollmentOperationResult result =
+          service.reactivateAllByIntegration(
+              10, globalAdminPrincipal, "Threat cleared", clientContext, null);
 
+      assertThat(result.affectedCount()).isEqualTo(2);
+      assertThat(result.skippedCount()).isZero();
+      assertThat(result.noOp()).isFalse();
       assertThat(enrollmentA.getActive()).isTrue();
       assertThat(enrollmentA.getDeactivatedAt()).isNull();
       assertThat(enrollmentA.getDeactivatedByAdminId()).isNull();
@@ -455,10 +480,14 @@ class EnrollmentRevocationServiceTest {
               10, EnrollmentStatus.VERIFIED, false))
           .thenReturn(List.of());
 
-      service.reactivateAllByIntegration(10, globalAdminPrincipal, null, clientContext, null);
+      EnrollmentRevocationService.BulkEnrollmentOperationResult result =
+          service.reactivateAllByIntegration(10, globalAdminPrincipal, null, clientContext, null);
 
+      assertThat(result.affectedCount()).isZero();
+      assertThat(result.skippedCount()).isZero();
+      assertThat(result.noOp()).isTrue();
       verify(enrollmentRepository, never()).save(any());
-      verify(auditLogService).log(any());
+      verify(auditLogService, never()).log(any());
     }
   }
 

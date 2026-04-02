@@ -889,19 +889,21 @@ public class AdminProvisioningController {
     }
 
     try {
-      provisioningService.deactivateAdmin(id, principal);
-      auditLogService.log(
-          AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ADMIN_DEACTIVATED,
-                  AdminAuditConstants.ADMIN_DEACTIVATED,
-                  principal.tenantId())
-              .eventStatus(EventStatus.SUCCESS)
-              .adminId(principal.adminId())
-              .targetAdminId(id)
-              .reason(reason)
-              .eventDetails("Admin ID: " + id)
-              .build());
+      boolean stateChanged = provisioningService.deactivateAdmin(id, principal);
+      if (stateChanged) {
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context,
+                    EventType.ADMIN_DEACTIVATED,
+                    AdminAuditConstants.ADMIN_DEACTIVATED,
+                    principal.tenantId())
+                .eventStatus(EventStatus.SUCCESS)
+                .adminId(principal.adminId())
+                .targetAdminId(id)
+                .reason(reason)
+                .eventDetails("Admin ID: " + id)
+                .build());
+      }
       return ResponseEntity.noContent().build();
     } catch (AdminNotAllowedException | AdminLimitException e) {
       auditLogService.log(
@@ -972,19 +974,21 @@ public class AdminProvisioningController {
     }
 
     try {
-      provisioningService.activateAdmin(id, principal);
-      auditLogService.log(
-          AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ADMIN_ACTIVATED,
-                  AdminAuditConstants.ADMIN_ACTIVATED,
-                  principal.tenantId())
-              .eventStatus(EventStatus.SUCCESS)
-              .adminId(principal.adminId())
-              .targetAdminId(id)
-              .reason(reason)
-              .eventDetails("Admin ID: " + id)
-              .build());
+      boolean stateChanged = provisioningService.activateAdmin(id, principal);
+      if (stateChanged) {
+        auditLogService.log(
+            AuditHelper.createAdminAudit(
+                    context,
+                    EventType.ADMIN_ACTIVATED,
+                    AdminAuditConstants.ADMIN_ACTIVATED,
+                    principal.tenantId())
+                .eventStatus(EventStatus.SUCCESS)
+                .adminId(principal.adminId())
+                .targetAdminId(id)
+                .reason(reason)
+                .eventDetails("Admin ID: " + id)
+                .build());
+      }
       return ResponseEntity.noContent().build();
     } catch (ResourceNotFoundException e) {
       auditLogService.log(

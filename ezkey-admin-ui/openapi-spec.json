@@ -662,20 +662,55 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "All enrollments revoked successfully"
+          "200": {
+            "description": "Bulk revocation completed successfully with result summary",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "400": {
-            "description": "Invalid parameters"
+            "description": "Invalid parameters",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Access denied or system integration guard triggered"
+            "description": "Access denied or system integration guard triggered",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Integration not found"
+            "description": "Integration not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Internal server error"
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           }
         }
       }
@@ -713,17 +748,45 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "All enrollments reactivated successfully"
+          "200": {
+            "description": "Bulk reactivation completed successfully with result summary",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Access denied"
+            "description": "Access denied",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Integration not found"
+            "description": "Integration not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Internal server error"
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           }
         }
       }
@@ -761,17 +824,45 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "All enrollments deactivated successfully"
+          "200": {
+            "description": "Bulk deactivation completed successfully with result summary",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Access denied or system integration guard triggered"
+            "description": "Access denied or system integration guard triggered",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Integration not found"
+            "description": "Integration not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Internal server error"
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentOperationResultDto"
+                }
+              }
+            }
           }
         }
       }
@@ -4974,6 +5065,22 @@
           "properties": {
             "type": "object",
             "additionalProperties": {}
+          }
+        }
+      },
+      "BulkEnrollmentOperationResultDto": {
+        "type": "object",
+        "properties": {
+          "affectedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "noOp": {
+            "type": "boolean"
           }
         }
       },

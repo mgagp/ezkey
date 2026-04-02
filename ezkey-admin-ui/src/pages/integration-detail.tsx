@@ -20,18 +20,15 @@ import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-deta
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { useDemoModeSession } from '@/context/demo-mode-context';
-import { getApiErrorMessage } from '@/lib/api-client';
+import { api, getApiErrorMessage } from '@/lib/api-client';
 import { isDemoMode } from '@/lib/demo-mode';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import {
-  deactivateAllEnrollments,
   delete1,
   getById1,
-  reactivateAllEnrollments,
-  revokeAllEnrollments,
 } from '@/generated/admin-api/integrations/integrations';
 import { search1 } from '@/generated/admin-api/enrollments/enrollments';
 import type { EnrollmentResponseDto, IntegrationResponseDto, PagedModelEnrollmentResponseDto } from '@/generated/admin-api/model';
@@ -47,6 +44,27 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
       <dd className="text-sm">{children}</dd>
     </div>
   );
+}
+
+type BulkEnrollmentOperationResult = {
+  affectedCount: number;
+  skippedCount: number;
+  noOp: boolean;
+};
+
+function buildBulkEnrollmentOperationPath(
+  integrationId: number,
+  action: 'deactivate-all' | 'reactivate-all' | 'revoke-all',
+  reason: string,
+): string {
+  const params = new URLSearchParams();
+  if (reason.trim().length >= 10) {
+    params.set('reason', reason.trim());
+  }
+
+  const query = params.toString();
+  const basePath = `/api/v1/integrations/${integrationId}/enrollments/${action}`;
+  return query ? `${basePath}?${query}` : basePath;
 }
 
 // ── Danger Zone Confirm Dialog ───────────────────────────────────────────────
@@ -377,11 +395,20 @@ export default function IntegrationDetailPage() {
         errorMessage=""
         renderReasonBadges={renderReasonBadges}
         onConfirm={(reason) => {
-          const params = reason.trim().length >= 10 ? { reason: reason.trim() } : {};
-          deactivateAllEnrollments(Number(integrationId), params)
-            .then(() => {
-              void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-              toast(t('detail.toastDeactivated'));
+          api
+            .post<BulkEnrollmentOperationResult>(
+              buildBulkEnrollmentOperationPath(Number(integrationId), 'deactivate-all', reason),
+              undefined,
+            )
+            .then((result) => {
+              if (!result.noOp) {
+                void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+              }
+              toast(
+                result.noOp
+                  ? t('detail.toastDeactivatedNoOp')
+                  : t('detail.toastDeactivated', { count: result.affectedCount }),
+              );
               setDangerAction(null);
             })
             .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
@@ -402,11 +429,20 @@ export default function IntegrationDetailPage() {
         errorMessage=""
         renderReasonBadges={renderReasonBadges}
         onConfirm={(reason) => {
-          const params = reason.trim().length >= 10 ? { reason: reason.trim() } : {};
-          reactivateAllEnrollments(Number(integrationId), params)
-            .then(() => {
-              void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-              toast(t('detail.toastReactivated'));
+          api
+            .post<BulkEnrollmentOperationResult>(
+              buildBulkEnrollmentOperationPath(Number(integrationId), 'reactivate-all', reason),
+              undefined,
+            )
+            .then((result) => {
+              if (!result.noOp) {
+                void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+              }
+              toast(
+                result.noOp
+                  ? t('detail.toastReactivatedNoOp')
+                  : t('detail.toastReactivated', { count: result.affectedCount }),
+              );
               setDangerAction(null);
             })
             .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
@@ -427,11 +463,21 @@ export default function IntegrationDetailPage() {
         errorMessage=""
         renderReasonBadges={renderReasonBadges}
         onConfirm={(reason) => {
-          const params = reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
-          revokeAllEnrollments(Number(integrationId), params)
-            .then(() => {
-              void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-              toast(t('detail.toastRevoked'), 'error');
+          api
+            .post<BulkEnrollmentOperationResult>(
+              buildBulkEnrollmentOperationPath(Number(integrationId), 'revoke-all', reason),
+              undefined,
+            )
+            .then((result) => {
+              if (!result.noOp) {
+                void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+              }
+              toast(
+                result.noOp
+                  ? t('detail.toastRevokedNoOp')
+                  : t('detail.toastRevoked', { count: result.affectedCount }),
+                'error',
+              );
               setDangerAction(null);
             })
             .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));

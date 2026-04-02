@@ -630,6 +630,67 @@ Retrieves integrations with optional filters and pagination. All filter paramete
 
 **Response (200 OK):** Paginated response with `content` (array of integration objects), `totalElements`, `totalPages`, etc. System integrations are excluded from the listing.
 
+#### Bulk enrollment lifecycle for an integration
+
+These endpoints execute integration-scoped bulk lifecycle actions against the current backend state.
+They are **successful no-ops** when no eligible enrollment matches at execution time. This keeps the
+backend authoritative and concurrency-safe while allowing the UI to present an exact result summary.
+
+**Shared response fields (`200 OK`):**
+- `affectedCount`: number of enrollments whose state changed
+- `skippedCount`: number of enrollments skipped by defensive guards (for example self-guard)
+- `noOp`: `true` when the request succeeded but changed no enrollment state
+
+**POST /api/v1/integrations/{id}/enrollments/deactivate-all**
+
+Reversibly deactivates all active VERIFIED enrollments for the integration. Cannot be applied to a
+system integration.
+
+**Request query parameter (optional):** `reason`
+
+**Response (200 OK):**
+```json
+{
+  "affectedCount": 3,
+  "skippedCount": 0,
+  "noOp": false
+}
+```
+
+**POST /api/v1/integrations/{id}/enrollments/reactivate-all**
+
+Reactivates all inactive VERIFIED enrollments for the integration.
+
+**Request query parameter (optional):** `reason`
+
+**Response (200 OK):**
+```json
+{
+  "affectedCount": 0,
+  "skippedCount": 0,
+  "noOp": true
+}
+```
+
+**POST /api/v1/integrations/{id}/enrollments/revoke-all**
+
+Permanently revokes all active VERIFIED enrollments for the integration. Cannot be applied to a
+system integration.
+
+**Request query parameter (optional):** `reason`
+
+**Response (200 OK):**
+```json
+{
+  "affectedCount": 5,
+  "skippedCount": 1,
+  "noOp": false
+}
+```
+
+**Audit behavior:** For these routine admin lifecycle bulk actions, Ezkey audits **effective
+changes**. A successful request that affects zero enrollments does not emit a success audit row.
+
 ---
 
 ## Tenant management
