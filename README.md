@@ -8,14 +8,19 @@ It does not implement FIDO2 or WebAuthn, and it should not be understood as a si
 
 Ezkey is designed for developers, especially backend developers, who want a self-hosted MFA system with strong cryptographic guarantees, explicit trust boundaries, and APIs that stay practical to integrate.
 
+It also includes an Admin UI for human administration, giving operators a direct surface for platform and tenant workflows without changing Ezkey's backend-first trust model.
+
 ## What Exists Today
 
+- `Admin UI` for day-to-day human administration across Global Admin and Tenant Admin workflows.
 - `Admin API` for administration, onboarding, and authentication management.
 - `Auth API` for mobile enrollment and authentication flows.
 - `Integration API` for machine-to-machine auth attempt lifecycle operations.
 - `Mobile app` for device enrollment and user approval flows.
-- `CLI and test tooling` for local stack usage and validation.
+- `CLI and test tooling` for local stack usage, validation, and fallback workflows.
 - `Self-hosted stack` for local development, demonstrations, and integration work.
+
+The Admin UI is the primary operator surface. Global Admins manage tenants, platform operations, and sensitive platform actions such as cryptographic key operations. Tenant Admins manage integrations, enrollments, API keys, and day-to-day tenant administration.
 
 ## Security Design
 
@@ -52,6 +57,7 @@ For stack details, modes, and test-oriented workflow:
 - [`docs/ENDPOINT.md`](docs/ENDPOINT.md) - API reference.
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) - Development workflow.
 - [`docs/OPERATIONAL.md`](docs/OPERATIONAL.md) - Operational and deployment guidance.
+- [`ezkey-admin-ui/README.md`](ezkey-admin-ui/README.md) - Admin UI overview and local usage.
 - [`ezkey_mobile/README.md`](ezkey_mobile/README.md) - Mobile application notes.
 - [`ezkey-cli-python/README.md`](ezkey-cli-python/README.md) - CLI usage.
 

@@ -36,6 +36,10 @@ That means the project gives priority to things developers have to live with eve
 
 This is not anti-UI. The mobile application matters, and the user experience matters. But the project starts from the conviction that the visible interface should reflect the integrity of the backend, not compensate for weak foundations.
 
+That includes the Admin UI. It is a real operational surface for Ezkey administrators, not an afterthought layered on top of the APIs.
+
+The audience is split in two practical ways: Global Admins handle tenants, platform operations, and sensitive actions such as cryptographic key operations; Tenant Admins handle integrations, enrollments, API keys, and day-to-day tenant administration.
+
 ## Backend-First Security Thesis
 
 Ezkey is based on a simple thesis: the real source of trust in a strong authentication system lives in backend guarantees.

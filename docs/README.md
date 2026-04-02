@@ -9,6 +9,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture, security design, and cryptographic implementation
 - **[CRYPTO.md](CRYPTO.md)** - Detailed cryptographic specifications and implementation details
 - **[ENDPOINT.md](ENDPOINT.md)** - API endpoint documentation and specifications
+- **[../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md)** - Admin UI overview for Global Admin and Tenant Admin workflows
 
 ### 🛠️ Development
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development guide, OpenAPI documentation, and testing strategy
@@ -38,15 +39,17 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 ### For Developers
 1. **Start Here**: Read [../README.md](../README.md) for the short project overview and recommended quick start
 2. **Architecture**: Read [ARCHITECTURE.md](ARCHITECTURE.md) for the system view
-3. **Development Setup**: Follow [DEVELOPMENT.md](DEVELOPMENT.md) for development workflow
-4. **API Reference**: Check [ENDPOINT.md](ENDPOINT.md) for API specifications
+3. **Admin Surface**: Read [../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md) to understand the primary human administration surface
+4. **Development Setup**: Follow [DEVELOPMENT.md](DEVELOPMENT.md) for development workflow
+5. **API Reference**: Check [ENDPOINT.md](ENDPOINT.md) for API specifications
 
 ### For System Administrators
 1. **Architecture**: Review [ARCHITECTURE.md](ARCHITECTURE.md) for deployment planning
-2. **Operations**: Follow [OPERATIONAL.md](OPERATIONAL.md) for production deployment and security
-3. **Monitoring**: Set up [monitoring/](monitoring/) for production monitoring
-4. **Security**: Understand [CRYPTO.md](CRYPTO.md) for security configuration
-5. **Compliance**: Review [SOC2_PREPARATION.md](SOC2_PREPARATION.md) for compliance roadmap
+2. **Admin UI**: Review [../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md) for the day-to-day operator surface used by Global Admins and Tenant Admins
+3. **Operations**: Follow [OPERATIONAL.md](OPERATIONAL.md) for production deployment and security
+4. **Monitoring**: Set up [monitoring/](monitoring/) for production monitoring
+5. **Security**: Understand [CRYPTO.md](CRYPTO.md) for security configuration
+6. **Compliance**: Review [SOC2_PREPARATION.md](SOC2_PREPARATION.md) for compliance roadmap
 
 ### For Contributors
 1. **Project Overview**: Start with [ARCHITECTURE.md](ARCHITECTURE.md)

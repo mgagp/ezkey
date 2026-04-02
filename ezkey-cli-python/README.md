@@ -14,7 +14,7 @@ The Ezkey CLI provides a unified interface for interacting with all Ezkey APIs. 
 - JSON file input support
 - Comprehensive error handling
 
-**Primary admin interface:** Use the **Admin UI** (web) for day-to-day operations. The TUI is a narrow, read-only tool for audit logs and entity lookup. See [TUI_SCOPE.md](TUI_SCOPE.md).
+**Primary admin interface:** Use the **Admin UI** (web) for day-to-day operations. It is the main human administration surface for both **Global Admin** and **Tenant Admin** workflows. The TUI is a narrow, read-only tool for audit logs and entity lookup. See [TUI_SCOPE.md](TUI_SCOPE.md).
 
 ## Installation
 

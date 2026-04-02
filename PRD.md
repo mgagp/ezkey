@@ -42,6 +42,8 @@ Ezkey is built on four core beliefs:
 - Fullstack developers who prefer server-side control over authentication flows.
 - Teams that want self-hosted security infrastructure with explicit trust boundaries.
 - Operators and technical decision makers who value transparency and controllable deployment.
+- Global Admin operators responsible for tenant management, platform operations, and sensitive platform actions such as cryptographic key operations.
+- Tenant Admin operators responsible for integrations, enrollments, API keys, and day-to-day tenant administration.
 
 ### Secondary audience
 
@@ -116,6 +118,8 @@ It carries one-time proof material, state transitions, and the final user decisi
 
 Ezkey includes administrative capabilities for operating the system, onboarding trusted administrators, and managing integrations, enrollments, and security-sensitive actions.
 
+These capabilities are exposed through the Admin UI and Admin API. The Admin UI is the main day-to-day human administration surface, while the backend remains authoritative for trust, verification, and control.
+
 ## Security Model
 
 Ezkey's security model is based on explicit backend trust and cryptographic verification across state transitions.
@@ -154,6 +158,7 @@ Trust is strengthened when the protocol, code, and operational behavior remain i
 
 At a high level, Ezkey currently includes:
 
+- an `Admin UI`,
 - an `Admin API`,
 - an `Auth API`,
 - an `Integration API`,

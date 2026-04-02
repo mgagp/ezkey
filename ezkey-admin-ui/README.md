@@ -1,8 +1,8 @@
 # EZKey Admin UI
 
-Web-based SPA for EZKey administrators — supports both **Global Admins** and **Tenant Admins**. Allows admins to manage integrations, enrollments, admins, API keys, and audit logs. Global Admins additionally have access to platform-wide features such as encryption key management.
+Primary web surface for EZKey human administration — supports both **Global Admins** and **Tenant Admins**. It allows admins to manage integrations, enrollments, admins, API keys, and audit logs. Global Admins additionally have access to platform-wide features such as tenant management, operational oversight, and encryption key management.
 
-Calls the **EZKey Admin API** (port 9080). Role scoping is automatic — the bearer token determines access level, and all tenant-scoped resources are filtered server-side.
+Calls the **EZKey Admin API** (port 9080). Role scoping is automatic — the bearer token determines access level, and all tenant-scoped resources are filtered server-side. Tenant Admin workflows stay focused on day-to-day tenant administration.
 
 ## Stack
 

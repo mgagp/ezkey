@@ -10,6 +10,7 @@ Ezkey is a backend-first cryptographic MFA platform. Its architecture should be 
 
 Ezkey is organized around a small set of explicit responsibilities:
 
+- a web-based admin UI for human administration,
 - a backend that owns durable state and verification,
 - a mobile client that holds device credentials and participates in signed flows,
 - integrating applications that create and consume authentication decisions through APIs.
@@ -18,14 +19,20 @@ At a high level:
 
 ```mermaid
 graph TB
-    App[Integrating Application] --> Admin[Admin API / Integration API]
-    Admin --> Core[Core Services]
+    AdminUi[Admin UI] --> AdminApi[Admin API]
+    App[Integrating Application] --> IntegrationApi[Integration API]
+    AdminApi --> Core[Core Services]
+    IntegrationApi --> Core
     Auth[Auth API] --> Core
     Mobile[Mobile App] --> Auth
     Core --> Db[(Database)]
 ```
 
 ## Main Components
+
+### `ezkey-admin-ui`
+
+Primary web surface for human administration. It supports both Global Admin and Tenant Admin workflows while delegating trust, authorization, and state transitions to the backend.
 
 ### `ezkey-core`
 
@@ -58,6 +65,7 @@ Ezkey's architecture is built around explicit trust boundaries.
 - The backend is authoritative for verification and state transitions.
 - The mobile device is trusted to hold device credentials and produce cryptographic proofs.
 - Integrating applications interact with Ezkey through explicit API calls rather than hidden browser flows.
+- The Admin UI is the primary operator surface for both platform-wide and tenant-scoped administration.
 - The UI is an integration surface, not the root of trust.
 
 ## Cryptographic Architecture
