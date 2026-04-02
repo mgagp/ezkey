@@ -337,6 +337,12 @@ ALTER TABLE ezkey_auth_attempt
 ALTER TABLE ezkey_admin
     ADD COLUMN email VARCHAR(255);
 
+-- Add phone_number column to ezkey_admin table
+-- Phone is optional contact metadata for operational use and future integrations.
+-- It is not a verified possession factor in this schema phase.
+ALTER TABLE ezkey_admin
+    ADD COLUMN phone_number VARCHAR(20);
+
 -- ============================================================================
 -- STEP 2: Add Constraints
 -- ============================================================================
@@ -350,6 +356,11 @@ ALTER TABLE ezkey_admin
 ALTER TABLE ezkey_admin
     ADD CONSTRAINT chk_admin_email_format 
     CHECK (email IS NULL OR email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+
+-- Add check constraint to ensure phone_number is stored in canonical E.164 format
+ALTER TABLE ezkey_admin
+    ADD CONSTRAINT chk_admin_phone_number_e164
+    CHECK (phone_number IS NULL OR phone_number ~ '^\+[1-9][0-9]{7,14}$');
 
 -- ============================================================================
 -- STEP 3: Update Existing Admin (if exists)
@@ -367,6 +378,10 @@ ALTER TABLE ezkey_admin
 COMMENT ON COLUMN ezkey_admin.email IS
 'Email address for the administrator. Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2). '
 'Used for audit trail and accountability. Must be unique and valid email format.';
+
+COMMENT ON COLUMN ezkey_admin.phone_number IS
+'Optional administrator phone number stored in canonical E.164 format (for example +15145551234). '
+'Used as operational contact metadata and for future communication integrations. Not treated as a verified possession factor in the current security model.';
 
 -- ============================================================================
 -- Migration Complete

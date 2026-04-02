@@ -27,6 +27,7 @@ import java.time.OffsetDateTime;
  *   <li>enrollmentName: Typo correction, device renamed (must be unique per integration for
  *       VERIFIED)
  *   <li>contactEmail: Contact info correction
+ *   <li>contactPhoneNumber: Contact phone correction
  *   <li>expiresAt: Pending invitation window only (bind/verify); must be in future if provided
  *   <li>authAttemptChallengeRequired: Security preference toggle per enrollment
  *   <li>userIdentifier: Optional app user reference (correlation); unique per integration where
@@ -46,6 +47,7 @@ import java.time.OffsetDateTime;
  *     concurrency check)
  * @param enrollmentName new enrollment name (must be unique per integration for VERIFIED status)
  * @param contactEmail new contact email for the end-user
+ * @param contactPhoneNumber new contact phone number for the end-user
  * @param expiresAt new expiration timestamp (must be in future; null = no expiration)
  * @param authAttemptChallengeRequired whether auth attempts require challenge
  * @param userIdentifier optional integrating-app user reference
@@ -79,6 +81,14 @@ public record EnrollmentUpdateRequestDto(
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Size(max = 255, message = "Contact email must not exceed 255 characters")
         String contactEmail,
+    @Schema(
+            description =
+                "Optional contact phone number for the end-user (accepts common separators and is"
+                    + " normalized to E.164 on write)",
+            example = "+1 514 555 1234",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Size(max = 50, message = "Contact phone number must not exceed 50 characters")
+        String contactPhoneNumber,
     @Schema(
             description =
                 "Optional expiration timestamp (must be in future). Null = no expiration.",

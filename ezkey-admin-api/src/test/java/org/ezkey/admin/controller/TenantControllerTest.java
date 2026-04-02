@@ -114,6 +114,7 @@ class TenantControllerTest {
             null,
             null,
             null,
+            null,
             true,
             false,
             null);
@@ -123,6 +124,7 @@ class TenantControllerTest {
             0L,
             "Tenant Two",
             "Desc 2",
+            null,
             null,
             null,
             null,

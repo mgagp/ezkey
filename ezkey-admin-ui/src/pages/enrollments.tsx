@@ -24,6 +24,7 @@ import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ApiError, fetchBlobUrl } from '@/lib/api-client';
 import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
+import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatDate } from '@/lib/utils';
 import { create1, search1 } from '@/generated/admin-api/enrollments/enrollments';
 import type {
@@ -62,6 +63,11 @@ function EnrollmentCreateDialog({
         name: z.string().min(1, t('validation.nameRequired')).max(100, t('validation.nameMax', { n: 100 })),
         authAttemptChallengeRequired: z.boolean(),
         contactEmail: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
+        contactPhoneNumber: z
+          .string()
+          .refine((value) => value === '' || isPhoneNumberInputValid(value), t('validation.invalidPhone'))
+          .optional()
+          .or(z.literal('')),
         userIdentifier: z.string().max(100).optional().or(z.literal('')),
       }),
     [t],
@@ -112,6 +118,7 @@ function EnrollmentCreateDialog({
       name: values.name,
       authAttemptChallengeRequired: values.authAttemptChallengeRequired,
       contactEmail: values.contactEmail || undefined,
+      contactPhoneNumber: normalizePhoneNumberInput(values.contactPhoneNumber),
       userIdentifier: values.userIdentifier || undefined,
     });
   };
@@ -267,6 +274,16 @@ function EnrollmentCreateDialog({
               placeholder={t('create.contactEmailPlaceholder')}
               error={errors.contactEmail?.message}
               {...register('contactEmail')}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="enr-phone">{t('create.contactPhone')} <span className="text-fg-muted font-normal">{t('create.contactEmailOptional')}</span></Label>
+            <Input
+              id="enr-phone"
+              placeholder={t('create.contactPhonePlaceholder')}
+              error={errors.contactPhoneNumber?.message}
+              {...register('contactPhoneNumber')}
             />
           </div>
 

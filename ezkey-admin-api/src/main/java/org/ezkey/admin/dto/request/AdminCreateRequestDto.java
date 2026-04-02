@@ -29,6 +29,7 @@ import jakarta.validation.constraints.Size;
  *
  * @param username Unique username for the administrator (required, 3-50 characters)
  * @param email Email address (required for global admins, optional for tenant admins)
+ * @param phoneNumber Phone number (optional contact metadata; normalized to E.164 on write)
  * @param firstName First name (required for global admins, optional for tenant admins)
  * @param lastName Last name (required for global admins, optional for tenant admins)
  * @param tenantId Tenant ID (required for tenant admin creation, ignored for global admin)
@@ -51,6 +52,14 @@ public record AdminCreateRequestDto(
         @Email(message = "Email must be a valid email address")
         @Size(max = 255, message = "Email must not exceed 255 characters")
         String email,
+    @Schema(
+            description =
+                "Phone number (optional contact metadata; accepts common separators and is"
+                    + " normalized to E.164 on write)",
+            example = "+1 514 555 1234",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Size(max = 50, message = "Phone number must not exceed 50 characters")
+        String phoneNumber,
     @Schema(
             description = "First name (required for global admins, optional for tenant admins)",
             example = "John",

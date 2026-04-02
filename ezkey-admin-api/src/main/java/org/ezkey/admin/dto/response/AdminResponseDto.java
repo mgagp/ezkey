@@ -30,6 +30,7 @@ import java.time.OffsetDateTime;
  *   <li><b>adminId:</b> Unique identifier for the administrator
  *   <li><b>username:</b> Username for the administrator
  *   <li><b>email:</b> Email address (optional)
+ *   <li><b>phoneNumber:</b> Phone number (optional contact metadata)
  *   <li><b>firstName:</b> First name (optional)
  *   <li><b>lastName:</b> Last name (optional)
  * </ul>
@@ -60,6 +61,7 @@ import java.time.OffsetDateTime;
  * @param version Optimistic lock version for PATCH concurrency control
  * @param username Username for the administrator
  * @param email Email address (optional, required for GLOBAL_ADMIN)
+ * @param phoneNumber Phone number (optional contact metadata)
  * @param firstName First name (optional, required for GLOBAL_ADMIN)
  * @param lastName Last name (optional, required for GLOBAL_ADMIN)
  * @param adminType Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)
@@ -82,6 +84,8 @@ public record AdminResponseDto(
         Long version,
     @Schema(description = "Username for the administrator", example = "john.doe") String username,
     @Schema(description = "Email address", example = "john.doe@example.com") String email,
+    @Schema(description = "Phone number stored in canonical E.164 format", example = "+15145551234")
+        String phoneNumber,
     @Schema(description = "First name", example = "John") String firstName,
     @Schema(description = "Last name", example = "Doe") String lastName,
     @Schema(

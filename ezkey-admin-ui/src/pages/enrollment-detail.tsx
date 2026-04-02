@@ -23,6 +23,7 @@ import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { ApiError, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
+import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
@@ -459,6 +460,7 @@ export default function EnrollmentDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
   const [editUserId, setEditUserId] = useState('');
   const [editChallenge, setEditChallenge] = useState(false);
   const [editExpiresLocal, setEditExpiresLocal] = useState('');
@@ -540,6 +542,7 @@ export default function EnrollmentDetailPage() {
     if (!enrollment) return;
     setEditName(enrollment.enrollmentName ?? '');
     setEditEmail(enrollment.contactEmail ?? '');
+    setEditPhone(enrollment.contactPhoneNumber ?? '');
     setEditUserId(enrollment.userIdentifier ?? '');
     setEditChallenge(Boolean(enrollment.authAttemptChallengeRequired));
     setEditExpiresLocal(isoToDatetimeLocal(enrollment.expiresAt));
@@ -565,6 +568,16 @@ export default function EnrollmentDetailPage() {
       if (email) {
         data.contactEmail = email;
       }
+    }
+    const phone = editPhone.trim();
+    if (phone) {
+      try {
+        data.contactPhoneNumber = normalizePhoneNumberInput(phone);
+      } catch {
+        return;
+      }
+    } else if (enrollment.contactPhoneNumber) {
+      data.contactPhoneNumber = '';
     }
     if (editClearExpires) {
       data.clearExpiresAt = true;
@@ -739,6 +752,9 @@ export default function EnrollmentDetailPage() {
                   </InfoRow>
                   <InfoRow label={t('detail.infoContactEmail')}>
                     <span className="text-fg-muted">{enrollment.contactEmail ?? '—'}</span>
+                  </InfoRow>
+                  <InfoRow label={t('detail.infoContactPhone')}>
+                    <span className="text-fg-muted">{enrollment.contactPhoneNumber ?? '—'}</span>
                   </InfoRow>
                   <InfoRow label={t('detail.infoUserId')}>
                     <span className="text-fg-muted break-all">{enrollment.userIdentifier ?? '—'}</span>
@@ -1211,6 +1227,20 @@ export default function EnrollmentDetailPage() {
             </label>
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="edit-phone">{t('detail.editContactPhone')}</Label>
+            <Input
+              id="edit-phone"
+              value={editPhone}
+              onChange={(e) => setEditPhone(e.target.value)}
+              className="border-2 border-fg/30"
+              maxLength={50}
+              autoComplete="off"
+            />
+            {editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone) && (
+              <p className="text-xs text-error">{t('validation.invalidPhone')}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="edit-user-id">{t('detail.editUserIdentifier')}</Label>
             <Input
               id="edit-user-id"
@@ -1277,7 +1307,7 @@ export default function EnrollmentDetailPage() {
               type="button"
               onClick={handleSaveMetadata}
               isLoading={updateMutation.isPending}
-              disabled={!editName.trim()}
+              disabled={!editName.trim() || (editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone))}
             >
               {t('detail.editSave')}
             </Button>

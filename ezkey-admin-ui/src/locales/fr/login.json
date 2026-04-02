@@ -58,7 +58,7 @@
     "cancelRecovery": "Annuler la récupération",
     "resetSuccessTitle": "Inscription réinitialisée",
     "resetSuccessBody": "L'ancien appareil est délié. Scannez le code QR avec l'application mobile EZKey pour lier le nouvel appareil, ou utilisez la saisie manuelle ci-dessous. Connectez-vous ensuite sans mot de passe comme d'habitude.",
-    "previewNotice": "Préversion technique : cet écran affiche le code QR et le défi de liaison ensemble pour faciliter la démonstration. Un déploiement orienté production ferait plutôt parvenir ces éléments par des canaux distincts (par exemple courriel et SMS) pour une assurance plus forte — les intégrations courriel/SMS ne font pas partie de cette version. Cette instance hébergée sert de démonstrateur, pas comme référence de sécurité de production.",
+    "previewNotice": "Préversion technique : cet écran affiche le code QR et le défi de liaison ensemble pour faciliter la démonstration. Ezkey n'envoie pas encore automatiquement les courriels ou les SMS dans ce flux. Un déploiement orienté production ferait parvenir ces éléments par des canaux distincts pour une assurance plus forte. Cette instance hébergée sert de démonstrateur, pas comme référence de sécurité de production.",
     "qrTitle": "Liaison par code QR",
     "qrLoading": "Génération du code QR…",
     "qrHint": "Ouvrez EZKey sur votre téléphone et scannez ce code pour poursuivre l'inscription.",

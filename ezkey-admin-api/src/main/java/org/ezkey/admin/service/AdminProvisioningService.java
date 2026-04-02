@@ -31,6 +31,7 @@ import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
+import org.ezkey.util.PhoneNumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -154,6 +155,7 @@ public class AdminProvisioningService {
       String timezone,
       String primaryContactName,
       String primaryContactEmail,
+      String primaryContactPhoneNumber,
       AdminPrincipal creatorPrincipal) {
     logger.info("Creating tenant: {} (creator: {})", tenantName, creatorPrincipal.adminId());
 
@@ -184,6 +186,8 @@ public class AdminProvisioningService {
     tenant.setTimezone(timezone);
     tenant.setPrimaryContactName(primaryContactName);
     tenant.setPrimaryContactEmail(primaryContactEmail);
+    tenant.setPrimaryContactPhoneNumber(
+        PhoneNumberUtils.normalizeToE164OrNull(primaryContactPhoneNumber));
 
     tenant = tenantRepository.save(tenant);
 
@@ -211,6 +215,7 @@ public class AdminProvisioningService {
   public ProvisioningResult createGlobalAdmin(
       String username,
       String email,
+      String phoneNumber,
       String firstName,
       String lastName,
       AdminPrincipal creatorPrincipal) {
@@ -261,6 +266,7 @@ public class AdminProvisioningService {
     // Create admin
     EzkeyAdmin admin = new EzkeyAdmin(username, AdminType.GLOBAL_ADMIN);
     admin.setEmail(email);
+    admin.setPhoneNumber(PhoneNumberUtils.normalizeToE164OrNull(phoneNumber));
     admin.setFirstName(firstName);
     admin.setLastName(lastName);
     admin.setTenant(systemTenant);
@@ -305,6 +311,7 @@ public class AdminProvisioningService {
   public ProvisioningResult createTenantAdmin(
       String username,
       String email,
+      String phoneNumber,
       String firstName,
       String lastName,
       Integer tenantId,
@@ -382,6 +389,7 @@ public class AdminProvisioningService {
     // Create admin
     EzkeyAdmin admin = new EzkeyAdmin(username, AdminType.TENANT_ADMIN);
     admin.setEmail(email);
+    admin.setPhoneNumber(PhoneNumberUtils.normalizeToE164OrNull(phoneNumber));
     admin.setFirstName(firstName);
     admin.setLastName(lastName);
     admin.setTenant(tenant);
@@ -589,6 +597,9 @@ public class AdminProvisioningService {
         throw new IllegalArgumentException("Email already exists: " + request.email());
       }
       admin.setEmail(request.email());
+    }
+    if (request.phoneNumber() != null) {
+      admin.setPhoneNumber(PhoneNumberUtils.normalizeToE164OrNull(request.phoneNumber()));
     }
     if (request.challengeRequired() != null) {
       admin.setChallengeRequired(request.challengeRequired());

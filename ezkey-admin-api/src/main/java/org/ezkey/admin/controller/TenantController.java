@@ -21,6 +21,7 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.TenantActivateRequestDto;
 import org.ezkey.admin.dto.request.TenantCreateRequestDto;
@@ -154,6 +155,7 @@ public class TenantController {
               request.timezone(),
               request.primaryContactName(),
               request.primaryContactEmail(),
+              request.primaryContactPhoneNumber(),
               principal);
 
       auditLogService.log(
@@ -320,6 +322,20 @@ public class TenantController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
+    Tenant existing =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new org.ezkey.exception.ResourceNotFoundException("Tenant", id));
+    String previousTenantName = existing.getTenantName();
+    String previousTenantDescription = existing.getTenantDescription();
+    String previousOrganizationName = existing.getOrganizationName();
+    String previousOrganizationDomain = existing.getOrganizationDomain();
+    String previousCountryCode = existing.getCountryCode();
+    String previousTimezone = existing.getTimezone();
+    String previousPrimaryContactName = existing.getPrimaryContactName();
+    String previousPrimaryContactEmail = existing.getPrimaryContactEmail();
+    String previousPrimaryContactPhoneNumber = existing.getPrimaryContactPhoneNumber();
+
     Tenant updated = tenantService.updateTenant(id, request, principal);
 
     auditLogService.log(
@@ -327,10 +343,100 @@ public class TenantController {
                 context, EventType.TENANT_UPDATED, AdminAuditConstants.TENANT_UPDATED, id)
             .eventStatus(EventStatus.SUCCESS)
             .adminId(principal.adminId())
-            .eventDetails("Tenant ID: " + id)
+            .eventDetails(
+                buildTenantUpdateAuditEventDetailsJson(
+                    id,
+                    request,
+                    previousTenantName,
+                    previousTenantDescription,
+                    previousOrganizationName,
+                    previousOrganizationDomain,
+                    previousCountryCode,
+                    previousTimezone,
+                    previousPrimaryContactName,
+                    previousPrimaryContactEmail,
+                    previousPrimaryContactPhoneNumber,
+                    updated))
             .build());
 
     return ResponseEntity.ok(tenantMapper.toResponseDto(updated));
+  }
+
+  private static String buildTenantUpdateAuditEventDetailsJson(
+      Integer tenantId,
+      TenantUpdateRequestDto request,
+      String previousTenantName,
+      String previousTenantDescription,
+      String previousOrganizationName,
+      String previousOrganizationDomain,
+      String previousCountryCode,
+      String previousTimezone,
+      String previousPrimaryContactName,
+      String previousPrimaryContactEmail,
+      String previousPrimaryContactPhoneNumber,
+      Tenant updated) {
+    org.ezkey.audit.util.AuditDetailsBuilder builder =
+        org.ezkey.audit.util.AuditDetailsBuilder.builder();
+    builder.custom("tenant_id", tenantId);
+
+    List<java.util.Map<String, Object>> changes = new ArrayList<>();
+    if (request.tenantName() != null
+        && !Objects.equals(previousTenantName, updated.getTenantName())) {
+      changes.add(
+          AuditHelper.changeEntry("tenantName", previousTenantName, updated.getTenantName()));
+    }
+    if (request.tenantDescription() != null
+        && !Objects.equals(previousTenantDescription, updated.getTenantDescription())) {
+      changes.add(
+          AuditHelper.changeEntry(
+              "tenantDescription", previousTenantDescription, updated.getTenantDescription()));
+    }
+    if (request.organizationName() != null
+        && !Objects.equals(previousOrganizationName, updated.getOrganizationName())) {
+      changes.add(
+          AuditHelper.changeEntry(
+              "organizationName", previousOrganizationName, updated.getOrganizationName()));
+    }
+    if (request.organizationDomain() != null
+        && !Objects.equals(previousOrganizationDomain, updated.getOrganizationDomain())) {
+      changes.add(
+          AuditHelper.changeEntry(
+              "organizationDomain", previousOrganizationDomain, updated.getOrganizationDomain()));
+    }
+    if (request.countryCode() != null
+        && !Objects.equals(previousCountryCode, updated.getCountryCode())) {
+      changes.add(
+          AuditHelper.changeEntry("countryCode", previousCountryCode, updated.getCountryCode()));
+    }
+    if (request.timezone() != null && !Objects.equals(previousTimezone, updated.getTimezone())) {
+      changes.add(AuditHelper.changeEntry("timezone", previousTimezone, updated.getTimezone()));
+    }
+    if (request.primaryContactName() != null
+        && !Objects.equals(previousPrimaryContactName, updated.getPrimaryContactName())) {
+      changes.add(
+          AuditHelper.changeEntry(
+              "primaryContactName", previousPrimaryContactName, updated.getPrimaryContactName()));
+    }
+    if (request.primaryContactEmail() != null
+        && !Objects.equals(previousPrimaryContactEmail, updated.getPrimaryContactEmail())) {
+      changes.add(
+          AuditHelper.changeEntry(
+              "primaryContactEmail",
+              previousPrimaryContactEmail,
+              updated.getPrimaryContactEmail()));
+    }
+    if (request.primaryContactPhoneNumber() != null
+        && !Objects.equals(
+            previousPrimaryContactPhoneNumber, updated.getPrimaryContactPhoneNumber())) {
+      changes.add(
+          AuditHelper.maskedPhoneChangeEntry(
+              "primaryContactPhoneNumber",
+              previousPrimaryContactPhoneNumber,
+              updated.getPrimaryContactPhoneNumber()));
+    }
+
+    builder.custom("changes", changes);
+    return builder.toJson();
   }
 
   /**

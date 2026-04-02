@@ -192,6 +192,15 @@ public class Tenant {
   private String primaryContactEmail;
 
   /**
+   * Phone number of the primary technical contact.
+   *
+   * <p>Stored in canonical E.164 format for operational contact and future communication
+   * integrations.
+   */
+  @Column(name = "primary_contact_phone_number", length = 20)
+  private String primaryContactPhoneNumber;
+
+  /**
    * Timestamp of the last modification to this tenant record.
    *
    * <p>SOC 2 CC7.2 requires change tracking. This field is set automatically by the service layer
@@ -559,6 +568,24 @@ public class Tenant {
    */
   public void setPrimaryContactEmail(String primaryContactEmail) {
     this.primaryContactEmail = primaryContactEmail;
+  }
+
+  /**
+   * Gets the primary contact phone number.
+   *
+   * @return the primary contact phone number in canonical E.164 format, or null
+   */
+  public String getPrimaryContactPhoneNumber() {
+    return primaryContactPhoneNumber;
+  }
+
+  /**
+   * Sets the primary contact phone number.
+   *
+   * @param primaryContactPhoneNumber the phone number in canonical E.164 format, or null
+   */
+  public void setPrimaryContactPhoneNumber(String primaryContactPhoneNumber) {
+    this.primaryContactPhoneNumber = primaryContactPhoneNumber;
   }
 
   /**

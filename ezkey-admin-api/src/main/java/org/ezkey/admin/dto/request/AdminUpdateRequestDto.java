@@ -26,6 +26,7 @@ import jakarta.validation.constraints.Size;
  * <ul>
  *   <li>firstName, lastName: Typo correction, legal name change
  *   <li>email: Contact info correction (must be unique)
+ *   <li>phoneNumber: Contact phone correction (normalized to E.164 on write)
  *   <li>challengeRequired: Security preference toggle for login challenge
  * </ul>
  *
@@ -41,6 +42,7 @@ import jakarta.validation.constraints.Size;
  * @param firstName new first name
  * @param lastName new last name
  * @param email new email address (must be unique)
+ * @param phoneNumber new contact phone number
  * @param challengeRequired whether challenge verification is required during passwordless login
  * @author Ezkey contributors
  * @since 2025
@@ -73,6 +75,14 @@ public record AdminUpdateRequestDto(
         @Email(message = "Invalid email format")
         @Size(max = 255, message = "Email must not exceed 255 characters")
         String email,
+    @Schema(
+            description =
+                "Phone number for the administrator. Accepts common separators and is normalized"
+                    + " to E.164 on write.",
+            example = "+1 514 555 1234",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Size(max = 50, message = "Phone number must not exceed 50 characters")
+        String phoneNumber,
     @Schema(
             description = "Whether challenge verification is required during passwordless login",
             example = "false",

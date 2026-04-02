@@ -133,6 +133,15 @@ public class EzkeyAdmin {
   private String email;
 
   /**
+   * Phone number for the administrator as operational contact metadata.
+   *
+   * <p>Stored in canonical E.164 format. This field is not treated as a verified possession factor
+   * in the current security model.
+   */
+  @Column(name = "phone_number", length = 20)
+  private String phoneNumber;
+
+  /**
    * First name of the administrator.
    *
    * <p>Required for GLOBAL_ADMIN type for SOC 2 compliance (CC6.1, CC7.2) to ensure proper
@@ -339,6 +348,24 @@ public class EzkeyAdmin {
    */
   public void setEmail(String email) {
     this.email = email;
+  }
+
+  /**
+   * Gets the administrator phone number.
+   *
+   * @return the phone number in canonical E.164 format, or null
+   */
+  public String getPhoneNumber() {
+    return phoneNumber;
+  }
+
+  /**
+   * Sets the administrator phone number.
+   *
+   * @param phoneNumber the phone number in canonical E.164 format, or null
+   */
+  public void setPhoneNumber(String phoneNumber) {
+    this.phoneNumber = phoneNumber;
   }
 
   /**

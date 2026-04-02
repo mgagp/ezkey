@@ -71,36 +71,32 @@ This module provides comprehensive security-focused end-to-end testing for Ezkey
 
 ## Quick Start
 
-### 1. Start Docker Stack
+### 1. Start the Local Stack
 
-**Mode Production (Default)** - Rate limiting enabled with production values:
+The recommended entrypoint is the Bash clean start from the repository root:
+
 ```bash
-# Linux/Mac
-./docker/start.sh
-
-# Windows (PowerShell)
-# From a PowerShell prompt in the repo root (recommended):
-powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1
-# Or run directly from PowerShell:
-.\docker\start.ps1
+./ezkey-tests/clean-start.sh
 ```
 
-Voir aussi: [docs/windows-power-shell.md](../docs/windows-power-shell.md) — explication du choix PowerShell pour Windows.
+On Windows, use Bash as well, for example through Git Bash.
 
-**Mode Test Libre** - Rate limiting disabled for unrestricted testing:
+**Alternative lower-level path**: if you need direct Docker control instead of the recommended clean start, you can still use `./docker/start.sh`.
+
+**Production-safe mode**:
 ```bash
-# Linux/Mac
-SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh
-
-# Windows PowerShell
-$env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
+./ezkey-tests/clean-start.sh --prod-safe
 ```
 
-**Mode Selection:**
-- **Production Mode (default)**: Tests run with production-like constraints. Rate limiting is enabled, requiring tests to handle rate limits using built-in synchronization and retry mechanisms.
-- **Test Mode**: Rate limiting is disabled, allowing unrestricted testing in any order and frequency. Useful for development and debugging.
+**Production-safe mode with JMX**:
+```bash
+./ezkey-tests/clean-start.sh --prod-safe --jmx
+```
 
-**Note**: The profile is set at stack startup and persists for the lifetime of the Docker stack. To change modes, restart the stack with the desired profile.
+**Mode selection:**
+- **Default clean start**: recommended for the standard local workflow.
+- **`--prod-safe`**: keeps a production-safe docker profile only, with rate limits enabled and reduced diagnostics exposure.
+- **`--jmx`**: enables JMX port publishing for local diagnostics.
 
 Wait for all services to be healthy (check logs or health endpoints).
 
@@ -381,7 +377,7 @@ ezkey.admin.ratelimit.auth-attempt.wait.window-minutes=15
 
 ### Workflow
 
-1. **Developer starts Docker stack**: `./docker/start.sh` (or `./docker/start.ps1` in PowerShell)
+1. **Developer starts the stack**: `./ezkey-tests/clean-start.sh`
 2. **Developer verifies stack health** (optional but recommended)
 3. **Developer sets admin token** (optional, for authenticated tests)
 4. **Developer runs tests**: `mvn test -pl ezkey-tests`
@@ -574,10 +570,7 @@ String adminToken = bootstrapService.ensureAdminToken();
 
 `./clean-start.sh` is the recommended entrypoint for a deterministic local test stack.
 
-**PowerShell (Windows, PowerShell 5.1+; 7 recommended):**
-- `./clean-start.ps1`
-- `./clean-start.ps1 -ProdSafe`
-- `./clean-start.ps1 -ProdSafe -Jmx`
+On Windows, use Bash as well, for example through Git Bash.
 
 **Common options:**
 - `--prod-safe`: start with production-safe docker profile only (rate limits enabled, minimal Actuator exposure). Also defaults **Auth API demo MITM** to off (`EZKEY_DEMO_MITM_SIGNATURE_ENABLED=false`) unless you pre-set the variable.

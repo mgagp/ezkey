@@ -391,6 +391,16 @@ class AdminProvisioningControllerTest {
     @Test
     @DisplayName("GlobalAdmin can update admin profile and returns 200")
     void globalAdminCanUpdateAdminProfile() {
+      EzkeyAdmin existing = new EzkeyAdmin("tenantadmin1", AdminType.TENANT_ADMIN);
+      existing.setAdminId(2);
+      existing.setTenant(testTenant);
+      existing.setEmail("old@example.com");
+      existing.setFirstName("Old");
+      existing.setLastName("Name");
+      existing.setVersion(0L);
+      existing.setCreatedAt(OffsetDateTime.now());
+      existing.setActive(true);
+
       EzkeyAdmin updated = new EzkeyAdmin("tenantadmin1", AdminType.TENANT_ADMIN);
       updated.setAdminId(2);
       updated.setTenant(testTenant);
@@ -402,8 +412,9 @@ class AdminProvisioningControllerTest {
       updated.setActive(true);
 
       AdminUpdateRequestDto request =
-          new AdminUpdateRequestDto(0L, "Updated", "Name", "updated@example.com", null);
+          new AdminUpdateRequestDto(0L, "Updated", "Name", "updated@example.com", null, null);
 
+      when(provisioningService.getAdminById(eq(2), any())).thenReturn(existing);
       when(provisioningService.updateAdmin(eq(2), any(AdminUpdateRequestDto.class), any()))
           .thenReturn(updated);
 
@@ -425,8 +436,16 @@ class AdminProvisioningControllerTest {
     @Test
     @DisplayName("Stale version throws ObjectOptimisticLockingFailureException")
     void staleVersionThrowsOptimisticLockConflict() {
-      AdminUpdateRequestDto request = new AdminUpdateRequestDto(3L, "New", null, null, null);
+      EzkeyAdmin existing = new EzkeyAdmin("tenantadmin1", AdminType.TENANT_ADMIN);
+      existing.setAdminId(2);
+      existing.setTenant(testTenant);
+      existing.setEmail("old@example.com");
+      existing.setFirstName("Old");
+      existing.setLastName("Name");
 
+      AdminUpdateRequestDto request = new AdminUpdateRequestDto(3L, "New", null, null, null, null);
+
+      when(provisioningService.getAdminById(eq(2), any())).thenReturn(existing);
       when(provisioningService.updateAdmin(eq(2), any(AdminUpdateRequestDto.class), any()))
           .thenThrow(new ObjectOptimisticLockingFailureException(EzkeyAdmin.class, 2));
 
@@ -441,8 +460,17 @@ class AdminProvisioningControllerTest {
     @Test
     @DisplayName("Admin not found throws ResourceNotFoundException")
     void adminNotFoundThrowsResourceNotFoundException() {
-      AdminUpdateRequestDto request = new AdminUpdateRequestDto(null, "New", null, null, null);
+      EzkeyAdmin existing = new EzkeyAdmin("tenantadmin1", AdminType.TENANT_ADMIN);
+      existing.setAdminId(999);
+      existing.setTenant(testTenant);
+      existing.setEmail("old@example.com");
+      existing.setFirstName("Old");
+      existing.setLastName("Name");
 
+      AdminUpdateRequestDto request =
+          new AdminUpdateRequestDto(null, "New", null, null, null, null);
+
+      when(provisioningService.getAdminById(eq(999), any())).thenReturn(existing);
       when(provisioningService.updateAdmin(eq(999), any(AdminUpdateRequestDto.class), any()))
           .thenThrow(new ResourceNotFoundException("Administrator", 999));
 

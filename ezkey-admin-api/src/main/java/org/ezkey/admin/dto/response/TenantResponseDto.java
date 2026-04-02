@@ -32,6 +32,7 @@ import java.time.OffsetDateTime;
  * @param timezone IANA timezone identifier
  * @param primaryContactName primary contact full name
  * @param primaryContactEmail primary contact email address
+ * @param primaryContactPhoneNumber primary contact phone number
  * @param createdAt timestamp when the tenant was created
  * @param updatedAt timestamp of last modification
  * @param active flag indicating if the tenant is active
@@ -66,6 +67,10 @@ public record TenantResponseDto(
         String primaryContactName,
     @Schema(description = "Primary contact email address", example = "jane.doe@acme.com")
         String primaryContactEmail,
+    @Schema(
+            description = "Primary contact phone number in canonical E.164 format",
+            example = "+15145551234")
+        String primaryContactPhoneNumber,
     @Schema(description = "Timestamp when the tenant was created", example = "2025-10-15T14:30:00Z")
         OffsetDateTime createdAt,
     @Schema(description = "Timestamp of the last modification", example = "2025-11-01T09:15:00Z")

@@ -40,6 +40,8 @@
     "primaryContactNamePlaceholder": "Oscar Boulon",
     "primaryContactEmail": "E-mail du contact principal",
     "primaryContactEmailPlaceholder": "oscar@garageducoin.ca",
+    "primaryContactPhone": "Téléphone du contact principal",
+    "primaryContactPhonePlaceholder": "+1 514 555 1234",
     "optgroupNorthAmerica": "Amérique du Nord",
     "optgroupEurope": "Europe (France et environs)",
     "optgroupAllCountries": "Tous les pays",
@@ -56,7 +58,8 @@
     "invalidDomain": "Domaine invalide",
     "countryCode": "Doit être un code pays à 2 lettres (ex. US, CA)",
     "twoLetterCode": "Code à 2 lettres",
-    "invalidEmail": "E-mail invalide"
+    "invalidEmail": "E-mail invalide",
+    "invalidPhone": "Utilisez un numéro international avec indicatif pays (exemple : +1 514 555 1234)"
   },
   "detail": {
     "fallbackTitle": "Tenant",
@@ -81,6 +84,7 @@
     "infoTimezone": "Fuseau horaire",
     "infoContactName": "Contact",
     "infoContactEmail": "E-mail du contact",
+    "infoContactPhone": "Téléphone du contact",
     "infoCreated": "Créé",
     "infoUpdated": "Modifié",
     "infoDeactivatedAt": "Désactivé le",

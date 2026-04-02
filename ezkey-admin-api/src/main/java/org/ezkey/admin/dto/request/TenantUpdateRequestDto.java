@@ -34,6 +34,7 @@ import jakarta.validation.constraints.Size;
  * @param timezone IANA timezone identifier
  * @param primaryContactName primary contact full name
  * @param primaryContactEmail primary contact email address
+ * @param primaryContactPhoneNumber primary contact phone number
  * @author Ezkey contributors
  * @since 2025
  */
@@ -96,4 +97,12 @@ public record TenantUpdateRequestDto(
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Email(message = "Invalid email format")
         @Size(max = 255, message = "Contact email must not exceed 255 characters")
-        String primaryContactEmail) {}
+        String primaryContactEmail,
+    @Schema(
+            description =
+                "Primary contact phone number. Accepts common separators and is normalized to"
+                    + " E.164 on write.",
+            example = "+1 514 555 1234",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        @Size(max = 50, message = "Contact phone number must not exceed 50 characters")
+        String primaryContactPhoneNumber) {}

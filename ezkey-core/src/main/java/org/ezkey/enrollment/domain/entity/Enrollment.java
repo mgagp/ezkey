@@ -236,6 +236,15 @@ public class Enrollment implements Reencryptable {
   private String contactEmail;
 
   /**
+   * Optional phone number for the end-user (device owner).
+   *
+   * <p>Stored in canonical E.164 format for operational contact and future communication
+   * integrations. Not treated as a verified possession factor in the current security model.
+   */
+  @Column(name = "contact_phone_number", length = 20)
+  private String contactPhoneNumber;
+
+  /**
    * Optional reference to integrating app user (username, user_id). Unique per integration for
    * lookup. Enables future auth attempt creation by userIdentifier.
    */
@@ -555,6 +564,14 @@ public class Enrollment implements Reencryptable {
 
   public void setContactEmail(String contactEmail) {
     this.contactEmail = contactEmail;
+  }
+
+  public String getContactPhoneNumber() {
+    return contactPhoneNumber;
+  }
+
+  public void setContactPhoneNumber(String contactPhoneNumber) {
+    this.contactPhoneNumber = contactPhoneNumber;
   }
 
   public String getUserIdentifier() {

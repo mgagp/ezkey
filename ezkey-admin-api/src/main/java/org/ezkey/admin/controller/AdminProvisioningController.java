@@ -19,6 +19,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.AdminCreateRequestDto;
 import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
@@ -189,6 +192,7 @@ public class AdminProvisioningController {
           provisioningService.createGlobalAdmin(
               request.username(),
               request.email(),
+              request.phoneNumber(),
               request.firstName(),
               request.lastName(),
               principal);
@@ -198,6 +202,7 @@ public class AdminProvisioningController {
               result.admin().getAdminId(),
               result.admin().getUsername(),
               result.admin().getEmail(),
+              result.admin().getPhoneNumber(),
               result.admin().getFirstName(),
               result.admin().getLastName(),
               result.admin().getAdminType().name(),
@@ -298,6 +303,7 @@ public class AdminProvisioningController {
           provisioningService.createTenantAdmin(
               request.username(),
               request.email(),
+              request.phoneNumber(),
               request.firstName(),
               request.lastName(),
               effectiveTenantId,
@@ -308,6 +314,7 @@ public class AdminProvisioningController {
               result.admin().getAdminId(),
               result.admin().getUsername(),
               result.admin().getEmail(),
+              result.admin().getPhoneNumber(),
               result.admin().getFirstName(),
               result.admin().getLastName(),
               result.admin().getAdminType().name(),
@@ -418,6 +425,7 @@ public class AdminProvisioningController {
                     admin.getVersion(),
                     admin.getUsername(),
                     admin.getEmail(),
+                    admin.getPhoneNumber(),
                     admin.getFirstName(),
                     admin.getLastName(),
                     admin.getAdminType().name(),
@@ -467,6 +475,7 @@ public class AdminProvisioningController {
               admin.getVersion(),
               admin.getUsername(),
               admin.getEmail(),
+              admin.getPhoneNumber(),
               admin.getFirstName(),
               admin.getLastName(),
               admin.getAdminType().name(),
@@ -527,6 +536,13 @@ public class AdminProvisioningController {
     }
 
     try {
+      EzkeyAdmin existingAdmin = provisioningService.getAdminById(id, principal);
+      String previousFirstName = existingAdmin.getFirstName();
+      String previousLastName = existingAdmin.getLastName();
+      String previousEmail = existingAdmin.getEmail();
+      String previousPhoneNumber = existingAdmin.getPhoneNumber();
+      Boolean previousChallengeRequired = existingAdmin.getChallengeRequired();
+
       EzkeyAdmin admin = provisioningService.updateAdmin(id, request, principal);
       AdminResponseDto response =
           new AdminResponseDto(
@@ -534,6 +550,7 @@ public class AdminProvisioningController {
               admin.getVersion(),
               admin.getUsername(),
               admin.getEmail(),
+              admin.getPhoneNumber(),
               admin.getFirstName(),
               admin.getLastName(),
               admin.getAdminType().name(),
@@ -551,7 +568,16 @@ public class AdminProvisioningController {
               .eventStatus(EventStatus.SUCCESS)
               .adminId(principal.adminId())
               .targetAdminId(id)
-              .eventDetails("Admin ID: " + id)
+              .eventDetails(
+                  buildAdminUpdateAuditEventDetailsJson(
+                      id,
+                      request,
+                      previousFirstName,
+                      previousLastName,
+                      previousEmail,
+                      previousPhoneNumber,
+                      previousChallengeRequired,
+                      admin))
               .build());
 
       return ResponseEntity.ok(response);
@@ -595,6 +621,46 @@ public class AdminProvisioningController {
               .build());
       throw e;
     }
+  }
+
+  private static String buildAdminUpdateAuditEventDetailsJson(
+      Integer adminId,
+      AdminUpdateRequestDto request,
+      String previousFirstName,
+      String previousLastName,
+      String previousEmail,
+      String previousPhoneNumber,
+      Boolean previousChallengeRequired,
+      EzkeyAdmin updated) {
+    org.ezkey.audit.util.AuditDetailsBuilder builder =
+        org.ezkey.audit.util.AuditDetailsBuilder.builder();
+    builder.custom("admin_id", adminId);
+
+    List<java.util.Map<String, Object>> changes = new ArrayList<>();
+    if (request.firstName() != null && !Objects.equals(previousFirstName, updated.getFirstName())) {
+      changes.add(AuditHelper.changeEntry("firstName", previousFirstName, updated.getFirstName()));
+    }
+    if (request.lastName() != null && !Objects.equals(previousLastName, updated.getLastName())) {
+      changes.add(AuditHelper.changeEntry("lastName", previousLastName, updated.getLastName()));
+    }
+    if (request.email() != null && !Objects.equals(previousEmail, updated.getEmail())) {
+      changes.add(AuditHelper.changeEntry("email", previousEmail, updated.getEmail()));
+    }
+    if (request.phoneNumber() != null
+        && !Objects.equals(previousPhoneNumber, updated.getPhoneNumber())) {
+      changes.add(
+          AuditHelper.maskedPhoneChangeEntry(
+              "phoneNumber", previousPhoneNumber, updated.getPhoneNumber()));
+    }
+    if (request.challengeRequired() != null
+        && !Objects.equals(previousChallengeRequired, updated.getChallengeRequired())) {
+      changes.add(
+          AuditHelper.changeEntry(
+              "challengeRequired", previousChallengeRequired, updated.getChallengeRequired()));
+    }
+
+    builder.custom("changes", changes);
+    return builder.toJson();
   }
 
   /**

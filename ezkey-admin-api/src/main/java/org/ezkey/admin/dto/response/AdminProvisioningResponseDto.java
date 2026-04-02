@@ -31,6 +31,7 @@ import java.util.List;
  * @param adminId Unique identifier for the administrator
  * @param username Username for the administrator
  * @param email Email address
+ * @param phoneNumber Phone number in canonical E.164 format
  * @param firstName First name
  * @param lastName Last name
  * @param adminType Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN)
@@ -49,6 +50,7 @@ public record AdminProvisioningResponseDto(
     @Schema(description = "Unique identifier for the administrator", example = "1") Integer adminId,
     @Schema(description = "Username for the administrator", example = "john.doe") String username,
     @Schema(description = "Email address", example = "john.doe@example.com") String email,
+    @Schema(description = "Phone number", example = "+15145551234") String phoneNumber,
     @Schema(description = "First name", example = "John") String firstName,
     @Schema(description = "Last name", example = "Doe") String lastName,
     @Schema(

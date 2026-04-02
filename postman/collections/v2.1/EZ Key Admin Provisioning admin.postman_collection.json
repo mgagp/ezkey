@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "30c5ba46-8574-47fb-a4be-b9de3cc94e0d",
     "name": "EZ Key Admin Provisioning admin",
-    "description": "Collection for administrator provisioning operations in the Admin API.\n\n## Endpoints\n\n- **List Admins**: List administrators with tenant-based filtering (GlobalAdmin or TenantAdmin)\n- **Create GlobalAdmin**: Create a peer global administrator (GlobalAdmin only)\n- **Create TenantAdmin**: Create a peer tenant administrator (GlobalAdmin or TenantAdmin for same tenant)\n- **Get Onboarding Credentials**: Retrieve onboarding credentials for an administrator\n- **Get Onboarding QR Code**: Generate QR code for administrator onboarding\n- **Deactivate Admin**: Deactivate an administrator (GlobalAdmin only, RFC 9457 Problem Detail responses)\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Permissions\n- **Create GlobalAdmin**: Only GlobalAdmin can create other GlobalAdmins\n- **Create TenantAdmin**:\n  - GlobalAdmin can create TenantAdmins for any tenant\n  - TenantAdmin can create TenantAdmins for their own tenant only\n  - TenantAdmin cannot create TenantAdmins for other tenants (returns 403)\n- **Get Onboarding Credentials**:\n  - GlobalAdmin can retrieve credentials for any admin\n  - TenantAdmin can only retrieve credentials for admins in their tenant\n\n### Limits Enforcement\n- **Max GlobalAdmins**: Default 3 (configurable via `ezkey.security.admin.max-global-admins`)\n- **Max TenantAdmins per tenant**: Default 3 (configurable via `ezkey.security.admin.max-tenant-admins-per-tenant`)\n- **Min GlobalAdmins**: Default 1 (prevents lockout)\n- **Min TenantAdmins per tenant**: Default 1 (prevents lockout)\n\n### Onboarding Credentials (Security Pattern)\n\n**Creation Response (POST /api/v1/admins/global or /tenant):**\n- Returns `adminId`, `username`, `email`, `firstName`, `lastName`, `adminType`, `tenantId`, `enrollmentId`, `createdAt`\n- **Includes once:** `recoveryCodes` (plain list; 10 single-use codes, format `XXXX-XXXX-...` — copy immediately)\n- **Does NOT include** `enrollmentProofToken` or `enrollmentChallenge` (use GET `/api/v1/admins/{id}/onboarding`)\n\n**Retrieval (GET /api/v1/admins/{id}/onboarding):**\n- Returns enrollment binding credentials:\n  - `enrollmentProofToken`: Enrollment proof token (shown once - save securely!)\n  - `enrollmentChallenge`: Enrollment challenge code, 6 digits (shown once - save securely!)\n  - `recoveryCodes`: always `null` here (plain codes were only on POST create)\n\n**Note on Recovery Codes:**\n- Plain codes appear **only** in the **201** body from POST create; the server stores BCrypt hashes\n- **Cannot be retrieved again** via GET onboarding or any other endpoint\n\n## Error Handling - RFC 9457 Problem Detail\n\nThe deactivate admin endpoint returns RFC 9457 Problem Detail responses for business logic errors:\n\n### AdminNotAllowedException (400 Bad Request)\n```json\n{\n  \"type\": \"https://ezkey.io/problems/admin-not-allowed\",\n  \"title\": \"Admin Operation Not Allowed\",\n  \"status\": 400,\n  \"detail\": \"Cannot deactivate your own account\",\n  \"path\": \"/api/v1/admins/1\"\n}\n```\n\n### AdminLimitException (400 Bad Request)\n```json\n{\n  \"type\": \"https://ezkey.io/problems/admin-limit-violation\",\n  \"title\": \"Admin Limit Violation\",\n  \"status\": 400,\n  \"detail\": \"Cannot deactivate global admin - would violate minimum limit of 2\",\n  \"path\": \"/api/v1/admins/2\"\n}\n```\n\n## Usage Flow\n\n1. Create admin (GlobalAdmin or TenantAdmin) → Returns `adminId`, `enrollmentId`, and `recoveryCodes` (save once)\n2. Store `recoveryCodes` securely (not returned again)\n3. GET /api/v1/admins/{id}/onboarding → `enrollmentProofToken`, `enrollmentChallenge`\n4. Save those credentials securely\n5. Login via `/api/v1/admin/auth/login` and bind device\n6. Resume normal passwordless authentication",
+    "description": "Collection for administrator provisioning operations in the Admin API.\n\n## Endpoints\n\n- **List Admins**: List administrators with tenant-based filtering (GlobalAdmin or TenantAdmin)\n- **Get Admin By ID**: Retrieve one administrator and capture its optimistic-lock version\n- **Update Admin Profile**: Patch contact/profile metadata, including phone number\n- **Create GlobalAdmin**: Create a peer global administrator (GlobalAdmin only)\n- **Create TenantAdmin**: Create a peer tenant administrator (GlobalAdmin or TenantAdmin for same tenant)\n- **Get Onboarding Credentials**: Retrieve onboarding credentials for an administrator\n- **Get Onboarding QR Code**: Generate QR code for administrator onboarding\n- **Deactivate Admin**: Deactivate an administrator (GlobalAdmin only, RFC 9457 Problem Detail responses)\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Permissions\n- **Create GlobalAdmin**: Only GlobalAdmin can create other GlobalAdmins\n- **Create TenantAdmin**:\n  - GlobalAdmin can create TenantAdmins for any tenant\n  - TenantAdmin can create TenantAdmins for their own tenant only\n  - TenantAdmin cannot create TenantAdmins for other tenants (returns 403)\n- **Get Onboarding Credentials**:\n  - GlobalAdmin can retrieve credentials for any admin\n  - TenantAdmin can only retrieve credentials for admins in their tenant\n\n### Limits Enforcement\n- **Max GlobalAdmins**: Default 3 (configurable via `ezkey.security.admin.max-global-admins`)\n- **Max TenantAdmins per tenant**: Default 3 (configurable via `ezkey.security.admin.max-tenant-admins-per-tenant`)\n- **Min GlobalAdmins**: Default 1 (prevents lockout)\n- **Min TenantAdmins per tenant**: Default 1 (prevents lockout)\n\n### Onboarding Credentials (Security Pattern)\n\n**Creation Response (POST /api/v1/admins/global or /tenant):**\n- Returns `adminId`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `enrollmentId`, `createdAt`\n- **Includes once:** `recoveryCodes` (plain list; 10 single-use codes, format `XXXX-XXXX-...` — copy immediately)\n- **Does NOT include** `enrollmentProofToken` or `enrollmentChallenge` (use GET `/api/v1/admins/{id}/onboarding`)\n\n**Retrieval (GET /api/v1/admins/{id}/onboarding):**\n- Returns enrollment binding credentials:\n  - `enrollmentProofToken`: Enrollment proof token (shown once - save securely!)\n  - `enrollmentChallenge`: Enrollment challenge code, 6 digits (shown once - save securely!)\n  - `recoveryCodes`: always `null` here (plain codes were only on POST create)\n\n**Note on Recovery Codes:**\n- Plain codes appear **only** in the **201** body from POST create; the server stores BCrypt hashes\n- **Cannot be retrieved again** via GET onboarding or any other endpoint\n\n## Error Handling - RFC 9457 Problem Detail\n\nThe deactivate admin endpoint returns RFC 9457 Problem Detail responses for business logic errors:\n\n### AdminNotAllowedException (400 Bad Request)\n```json\n{\n  \"type\": \"https://ezkey.io/problems/admin-not-allowed\",\n  \"title\": \"Admin Operation Not Allowed\",\n  \"status\": 400,\n  \"detail\": \"Cannot deactivate your own account\",\n  \"path\": \"/api/v1/admins/1\"\n}\n```\n\n### AdminLimitException (400 Bad Request)\n```json\n{\n  \"type\": \"https://ezkey.io/problems/admin-limit-violation\",\n  \"title\": \"Admin Limit Violation\",\n  \"status\": 400,\n  \"detail\": \"Cannot deactivate global admin - would violate minimum limit of 2\",\n  \"path\": \"/api/v1/admins/2\"\n}\n```\n\n## Usage Flow\n\n1. Create admin (GlobalAdmin or TenantAdmin) → Returns `adminId`, `enrollmentId`, `phoneNumber`, and `recoveryCodes` (save once)\n2. Optionally GET /api/v1/admins/{id} to capture `version` before PATCH updates\n3. Store `recoveryCodes` securely (not returned again)\n4. GET /api/v1/admins/{id}/onboarding → `enrollmentProofToken`, `enrollmentChallenge`\n5. Save those credentials securely\n6. Login via `/api/v1/admin/auth/login` and bind device\n7. Resume normal passwordless authentication",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -66,7 +66,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n    \"username\": \"new.global.admin\",\n    \"email\": \"newglobal@example.com\",\n    \"firstName\": \"New\",\n    \"lastName\": \"GlobalAdmin\"\n}",
+          "raw": "{\n    \"username\": \"new.global.admin\",\n    \"email\": \"newglobal@example.com\",\n    \"phoneNumber\": \"+1 514 555 1001\",\n    \"firstName\": \"New\",\n    \"lastName\": \"GlobalAdmin\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -85,7 +85,7 @@
             "global"
           ]
         },
-        "description": "Creates a new global administrator (peer admin). Only GlobalAdmin can create other GlobalAdmins.\n\n**Permissions:**\n- **GlobalAdmin**: Can create GlobalAdmins\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces maximum limit: `ezkey.security.admin.max-global-admins` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (required for GlobalAdmin): Email address (SOC 2 compliance)\n- `firstName` (required for GlobalAdmin): First name (SOC 2 compliance)\n- `lastName` (required for GlobalAdmin): Last name (SOC 2 compliance)\n- `tenantId` (ignored): Not used for GlobalAdmin creation\n\n**Response (201 Created):**\n- `adminId`, `username`, `email`, `firstName`, `lastName`, `adminType`, `tenantId` (null), `enrollmentId`, `createdAt`\n- `recoveryCodes`: Plain single-use codes (10 by default; format `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`). **Shown only here** — save immediately.\n- **Not in this response:** `enrollmentProofToken`, `enrollmentChallenge` — call GET `/api/v1/admins/{id}/onboarding` after creation.\n- Location header: `/api/v1/admins/{adminId}`\n\n**Status Codes:**\n- 201: Global administrator created successfully\n- 400: Invalid data, limit exceeded, or username exists\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error\n\n**CRITICAL:** Copy `recoveryCodes` from this response before closing the tab. Fetch enrollment proof and challenge via GET onboarding."
+        "description": "Creates a new global administrator (peer admin). Only GlobalAdmin can create other GlobalAdmins.\n\n**Permissions:**\n- **GlobalAdmin**: Can create GlobalAdmins\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces maximum limit: `ezkey.security.admin.max-global-admins` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (required for GlobalAdmin): Email address (SOC 2 compliance)\n- `phoneNumber` (optional): Contact phone number; accepts common separators and is normalized to E.164 on write\n- `firstName` (required for GlobalAdmin): First name (SOC 2 compliance)\n- `lastName` (required for GlobalAdmin): Last name (SOC 2 compliance)\n- `tenantId` (ignored): Not used for GlobalAdmin creation\n\n**Response (201 Created):**\n- `adminId`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId` (null), `enrollmentId`, `createdAt`\n- `recoveryCodes`: Plain single-use codes (10 by default; format `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`). **Shown only here** — save immediately.\n- **Not in this response:** `enrollmentProofToken`, `enrollmentChallenge` — call GET `/api/v1/admins/{id}/onboarding` after creation.\n- Location header: `/api/v1/admins/{adminId}`\n\n**Status Codes:**\n- 201: Global administrator created successfully\n- 400: Invalid data, limit exceeded, or username exists\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error\n\n**CRITICAL:** Copy `recoveryCodes` from this response before closing the tab. Fetch enrollment proof and challenge via GET onboarding."
       },
       "response": []
     },
@@ -158,7 +158,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n    \"username\": \"new.tenant.admin\",\n    \"email\": \"newtenant@example.com\",\n    \"firstName\": \"New\",\n    \"lastName\": \"TenantAdmin\",\n    \"tenantId\": {{tenantId}}\n}",
+          "raw": "{\n    \"username\": \"new.tenant.admin\",\n    \"email\": \"newtenant@example.com\",\n    \"phoneNumber\": \"+1 514 555 1002\",\n    \"firstName\": \"New\",\n    \"lastName\": \"TenantAdmin\",\n    \"tenantId\": {{tenantId}}\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -177,7 +177,7 @@
             "tenant"
           ]
         },
-        "description": "Creates a new tenant administrator (peer admin). GlobalAdmin can create TenantAdmins for any tenant. TenantAdmin can create TenantAdmins for their own tenant only.\n\n**Permissions:**\n- **GlobalAdmin**: Can create TenantAdmins for any tenant\n- **TenantAdmin**: Can create TenantAdmins for their own tenant only\n- **TenantAdmin for different tenant**: Returns 403 Forbidden\n- **System Tenant**: Cannot create TenantAdmin in System Tenant (returns 400)\n\n**Limits:**\n- Enforces maximum limit per tenant: `ezkey.security.admin.max-tenant-admins-per-tenant` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (optional): Email address (recommended but not required for TenantAdmin)\n- `firstName` (optional): First name (recommended but not required for TenantAdmin)\n- `lastName` (optional): Last name (recommended but not required for TenantAdmin)\n- `tenantId` (required): Tenant ID for the TenantAdmin (must NOT be System Tenant)\n\n**Response (201 Created):**\n- `adminId`: Unique identifier for the administrator\n- `username`: Username for the administrator\n- `email`: Email address (if provided)\n- `firstName`: First name (if provided)\n- `lastName`: Last name (if provided)\n- `adminType`: \"TENANT_ADMIN\"\n- `tenantId`: Tenant ID for the TenantAdmin\n- `enrollmentId`: Enrollment ID for passwordless authentication (use this to retrieve onboarding credentials)\n- `createdAt`: Timestamp when the administrator was created\n- `recoveryCodes`: Plain single-use codes (same semantics as global admin — **only** in this 201 response)\n- Location header: `/api/v1/admins/{adminId}`\n\n**Note:** `enrollmentProofToken` and `enrollmentChallenge` are **not** in this response. Use GET `/api/v1/admins/{id}/onboarding` for those. Copy `recoveryCodes` from this response immediately.\n\n**Status Codes:**\n- 201: Tenant administrator created successfully\n- 400: Invalid data, limit exceeded, username exists, email exists, tenant not found, or System Tenant\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create for different tenant\n- 500: Internal server error\n\n**Next Steps:**\n1. Save `recoveryCodes` from this response\n2. Call GET /api/v1/admins/{id}/onboarding for `enrollmentProofToken` and `enrollmentChallenge`"
+        "description": "Creates a new tenant administrator (peer admin). GlobalAdmin can create TenantAdmins for any tenant. TenantAdmin can create TenantAdmins for their own tenant only.\n\n**Permissions:**\n- **GlobalAdmin**: Can create TenantAdmins for any tenant\n- **TenantAdmin**: Can create TenantAdmins for their own tenant only\n- **TenantAdmin for different tenant**: Returns 403 Forbidden\n- **System Tenant**: Cannot create TenantAdmin in System Tenant (returns 400)\n\n**Limits:**\n- Enforces maximum limit per tenant: `ezkey.security.admin.max-tenant-admins-per-tenant` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (optional): Email address (recommended but not required for TenantAdmin)\n- `phoneNumber` (optional): Contact phone number; accepts common separators and is normalized to E.164 on write\n- `firstName` (optional): First name (recommended but not required for TenantAdmin)\n- `lastName` (optional): Last name (recommended but not required for TenantAdmin)\n- `tenantId` (required): Tenant ID for the TenantAdmin (must NOT be System Tenant)\n\n**Response (201 Created):**\n- `adminId`: Unique identifier for the administrator\n- `username`: Username for the administrator\n- `email`: Email address (if provided)\n- `phoneNumber`: Contact phone number in canonical E.164 format (if provided)\n- `firstName`: First name (if provided)\n- `lastName`: Last name (if provided)\n- `adminType`: \"TENANT_ADMIN\"\n- `tenantId`: Tenant ID for the TenantAdmin\n- `enrollmentId`: Enrollment ID for passwordless authentication (use this to retrieve onboarding credentials)\n- `createdAt`: Timestamp when the administrator was created\n- `recoveryCodes`: Plain single-use codes (same semantics as global admin — **only** in this 201 response)\n- Location header: `/api/v1/admins/{adminId}`\n\n**Note:** `enrollmentProofToken` and `enrollmentChallenge` are **not** in this response. Use GET `/api/v1/admins/{id}/onboarding` for those. Copy `recoveryCodes` from this response immediately.\n\n**Status Codes:**\n- 201: Tenant administrator created successfully\n- 400: Invalid data, limit exceeded, username exists, email exists, tenant not found, or System Tenant\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to create for different tenant\n- 500: Internal server error\n\n**Next Steps:**\n1. Save `recoveryCodes` from this response\n2. Call GET /api/v1/admins/{id}/onboarding for `enrollmentProofToken` and `enrollmentChallenge`"
       },
       "response": []
     },
@@ -212,7 +212,9 @@
               "        ",
               "        pm.test(\"Admin contains required fields\", function () {",
               "            pm.expect(firstAdmin).to.have.property('adminId');",
+              "            pm.expect(firstAdmin).to.have.property('version');",
               "            pm.expect(firstAdmin).to.have.property('username');",
+              "            pm.expect(firstAdmin).to.have.property('phoneNumber');",
               "            pm.expect(firstAdmin).to.have.property('adminType');",
               "            pm.expect(firstAdmin).to.have.property('active');",
               "            pm.expect(firstAdmin).to.have.property('createdAt');",
@@ -265,7 +267,140 @@
             }
           ]
         },
-        "description": "Lists administrators with tenant-based filtering. GlobalAdmin sees all administrators across all tenants. TenantAdmin sees only administrators from their tenant.\n\n**Permissions:**\n- **GlobalAdmin**: Sees all administrators (all tenants), or pass optional tenantId to limit to one tenant\n- **TenantAdmin**: Sees only administrators from their tenant (request tenantId is ignored)\n\n**Tenant Filtering:**\n- **TenantAdmin**: tenantId is always taken from authentication; any request tenantId is ignored\n- **GlobalAdmin**: If tenantId query param is provided, results are limited to that tenant; if omitted, returns all admins\n\n**Query Parameters:**\n- `tenantId` (optional, GlobalAdmin only): When provided, limits results to that tenant. Ignored for TenantAdmin.\n\n**Pagination Parameters:**\n- `page` (optional, default: 0): Page number (zero-based)\n- `size` (optional, default: 20): Number of items per page\n- `sort` (optional, default: createdAt,DESC): Sort field and direction (e.g., `adminId,asc`, `username,desc`)\n\n**Sortable Fields:**\n- `adminId`: Administrator ID\n- `username`: Username\n- `adminType`: Administrator type\n- `tenantId`: Tenant ID\n- `active`: Active status\n- `createdAt`: Creation timestamp\n\n**Response (200 OK):**\n- `content`: Array of AdminResponseDto objects\n- `totalElements`: Total number of administrators matching the filter\n- `totalPages`: Total number of pages\n- `size`: Page size\n- `number`: Current page number (zero-based)\n- `first`: Whether this is the first page\n- `last`: Whether this is the last page\n\n**AdminResponseDto Fields:**\n- `adminId`: Unique identifier for the administrator\n- `username`: Username for the administrator\n- `email`: Email address (optional)\n- `firstName`: First name (optional)\n- `lastName`: Last name (optional)\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)\n- `tenantId`: Tenant ID (null for global admins)\n- `active`: Flag indicating if the administrator is currently active\n- `createdAt`: Timestamp when the administrator was created\n\n**Status Codes:**\n- 200: List of administrators retrieved successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not an administrator\n- 500: Internal server error\n\n**Example Usage:**\n- List all admins (GlobalAdmin): `GET /api/v1/admins`\n- List admins for tenant 1 (GlobalAdmin): `GET /api/v1/admins?tenantId=1`\n- List with pagination: `GET /api/v1/admins?page=0&size=10`\n- List sorted by username: `GET /api/v1/admins?sort=username,asc`\n- List second page: `GET /api/v1/admins?page=1&size=20`"
+        "description": "Lists administrators with tenant-based filtering. GlobalAdmin sees all administrators across all tenants. TenantAdmin sees only administrators from their tenant.\n\n**Permissions:**\n- **GlobalAdmin**: Sees all administrators (all tenants), or pass optional tenantId to limit to one tenant\n- **TenantAdmin**: Sees only administrators from their tenant (request tenantId is ignored)\n\n**Tenant Filtering:**\n- **TenantAdmin**: tenantId is always taken from authentication; any request tenantId is ignored\n- **GlobalAdmin**: If tenantId query param is provided, results are limited to that tenant; if omitted, returns all admins\n\n**Query Parameters:**\n- `tenantId` (optional, GlobalAdmin only): When provided, limits results to that tenant. Ignored for TenantAdmin.\n\n**Pagination Parameters:**\n- `page` (optional, default: 0): Page number (zero-based)\n- `size` (optional, default: 20): Number of items per page\n- `sort` (optional, default: createdAt,DESC): Sort field and direction (e.g., `adminId,asc`, `username,desc`)\n\n**Sortable Fields:**\n- `adminId`: Administrator ID\n- `username`: Username\n- `adminType`: Administrator type\n- `tenantId`: Tenant ID\n- `active`: Active status\n- `createdAt`: Creation timestamp\n\n**Response (200 OK):**\n- `content`: Array of AdminResponseDto objects\n- `totalElements`: Total number of administrators matching the filter\n- `totalPages`: Total number of pages\n- `size`: Page size\n- `number`: Current page number (zero-based)\n- `first`: Whether this is the first page\n- `last`: Whether this is the last page\n\n**AdminResponseDto Fields:**\n- `adminId`: Unique identifier for the administrator\n- `version`: Optimistic lock version to reuse in PATCH requests\n- `username`: Username for the administrator\n- `email`: Email address (optional)\n- `phoneNumber`: Contact phone number in canonical E.164 format (optional)\n- `firstName`: First name (optional)\n- `lastName`: Last name (optional)\n- `adminType`: Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)\n- `tenantId`: Tenant ID (null for global admins)\n- `active`: Flag indicating if the administrator is currently active\n- `createdAt`: Timestamp when the administrator was created\n\n**Status Codes:**\n- 200: List of administrators retrieved successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not an administrator\n- 500: Internal server error\n\n**Example Usage:**\n- List all admins (GlobalAdmin): `GET /api/v1/admins`\n- List admins for tenant 1 (GlobalAdmin): `GET /api/v1/admins?tenantId=1`\n- List with pagination: `GET /api/v1/admins?page=0&size=10`\n- List sorted by username: `GET /api/v1/admins?sort=username,asc`\n- List second page: `GET /api/v1/admins?page=1&size=20`"
+      },
+      "response": []
+    },
+    {
+      "name": "get admin by ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200, 403, or 404\", function () {",
+              "    pm.expect([200, 403, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"adminId\", jsonData.adminId.toString());",
+              "    if (jsonData.version !== undefined && jsonData.version !== null) {",
+              "        pm.environment.set(\"adminVersion\", jsonData.version.toString());",
+              "    }",
+              "",
+              "    pm.test(\"Response contains admin profile fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('adminId');",
+              "        pm.expect(jsonData).to.have.property('version');",
+              "        pm.expect(jsonData).to.have.property('username');",
+              "        pm.expect(jsonData).to.have.property('email');",
+              "        pm.expect(jsonData).to.have.property('phoneNumber');",
+              "        pm.expect(jsonData).to.have.property('firstName');",
+              "        pm.expect(jsonData).to.have.property('lastName');",
+              "        pm.expect(jsonData).to.have.property('adminType');",
+              "        pm.expect(jsonData).to.have.property('tenantId');",
+              "        pm.expect(jsonData).to.have.property('active');",
+              "        pm.expect(jsonData).to.have.property('createdAt');",
+              "        pm.expect(jsonData).to.have.property('lastLoginAt');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admins/:id",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admins",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{adminId}}",
+              "description": "The administrator ID to retrieve"
+            }
+          ]
+        },
+        "description": "Retrieves one administrator by ID.\n\n**Permissions:**\n- **GlobalAdmin**: Can retrieve any administrator\n- **TenantAdmin**: Can retrieve administrators in their own tenant only\n\n**Response (200 OK):**\n- `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `active`, `createdAt`, `lastLoginAt`\n\nUse the returned `version` as `adminVersion` in the PATCH request for optimistic locking."
+      },
+      "response": []
+    },
+    {
+      "name": "update admin profile",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200, 400, 403, 404, or 409\", function () {",
+              "    pm.expect([200, 400, 403, 404, 409]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    if (jsonData.version !== undefined && jsonData.version !== null) {",
+              "        pm.environment.set(\"adminVersion\", jsonData.version.toString());",
+              "    }",
+              "",
+              "    pm.test(\"Response contains updated admin profile\", function () {",
+              "        pm.expect(jsonData).to.have.property('adminId');",
+              "        pm.expect(jsonData).to.have.property('version');",
+              "        pm.expect(jsonData).to.have.property('phoneNumber');",
+              "        pm.expect(jsonData.firstName).to.eql('Updated');",
+              "        pm.expect(jsonData.lastName).to.eql('Administrator');",
+              "        pm.expect(jsonData.email).to.eql('updated.admin@example.com');",
+              "        pm.expect(jsonData.phoneNumber).to.eql('+15145551003');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"version\": {{adminVersion}},\n    \"firstName\": \"Updated\",\n    \"lastName\": \"Administrator\",\n    \"email\": \"updated.admin@example.com\",\n    \"phoneNumber\": \"+1 514 555 1003\",\n    \"challengeRequired\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admins/:id",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admins",
+            ":id"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{adminId}}",
+              "description": "The administrator ID to update"
+            }
+          ]
+        },
+        "description": "Partially updates an administrator profile.\n\n**Run `get admin by ID` first** to populate `adminVersion` for optimistic locking.\n\n**Request Body (all fields optional):**\n- `version`: from GET response\n- `firstName`, `lastName`, `email`, `phoneNumber`, `challengeRequired`\n\n`phoneNumber` is contact metadata only and is normalized to canonical E.164 format on write."
       },
       "response": []
     },

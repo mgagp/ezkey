@@ -26,6 +26,7 @@ import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import { ApiError } from '@/lib/api-client';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
+import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatDate } from '@/lib/utils';
 import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import {
@@ -81,6 +82,11 @@ function EditTenantDialog({
         timezone: z.string().max(50).optional().or(z.literal('')),
         primaryContactName: z.string().max(255).optional().or(z.literal('')),
         primaryContactEmail: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
+        primaryContactPhoneNumber: z
+          .string()
+          .refine((value) => value === '' || isPhoneNumberInputValid(value), t('validation.invalidPhone'))
+          .optional()
+          .or(z.literal('')),
       }),
     [t],
   );
@@ -99,6 +105,7 @@ function EditTenantDialog({
       timezone: tenant.timezone ?? '',
       primaryContactName: tenant.primaryContactName ?? '',
       primaryContactEmail: tenant.primaryContactEmail ?? '',
+      primaryContactPhoneNumber: tenant.primaryContactPhoneNumber ?? '',
     },
   });
 
@@ -123,6 +130,9 @@ function EditTenantDialog({
     if (values.timezone !== undefined) dto.timezone = values.timezone || undefined;
     if (values.primaryContactName !== undefined) dto.primaryContactName = values.primaryContactName || undefined;
     if (values.primaryContactEmail !== undefined) dto.primaryContactEmail = values.primaryContactEmail || undefined;
+    if (values.primaryContactPhoneNumber !== undefined) {
+      dto.primaryContactPhoneNumber = normalizePhoneNumberInput(values.primaryContactPhoneNumber);
+    }
     updateMutation.mutate({ id: tenant.tenantId!, data: dto });
   };
 
@@ -191,15 +201,19 @@ function EditTenantDialog({
             </Select>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
           <div>
             <Label htmlFor="e-cname">{t('create.primaryContactName')}</Label>
             <Input id="e-cname" {...register('primaryContactName')} />
           </div>
           <div>
-            <Label htmlFor="e-cemail">{t('create.primaryContactEmail')}</Label>
-            <Input id="e-cemail" type="email" error={errors.primaryContactEmail?.message} {...register('primaryContactEmail')} />
+            <Label htmlFor="e-cphone">{t('create.primaryContactPhone')}</Label>
+            <Input id="e-cphone" error={errors.primaryContactPhoneNumber?.message} {...register('primaryContactPhoneNumber')} />
           </div>
+        </div>
+        <div>
+          <Label htmlFor="e-cemail">{t('create.primaryContactEmail')}</Label>
+          <Input id="e-cemail" type="email" error={errors.primaryContactEmail?.message} {...register('primaryContactEmail')} />
         </div>
 
         {updateMutation.isError && (
@@ -418,6 +432,9 @@ export default function TenantDetailPage() {
                     )}
                     {tenant.primaryContactEmail && (
                       <InfoRow label={t('detail.infoContactEmail')}><span>{tenant.primaryContactEmail}</span></InfoRow>
+                    )}
+                    {tenant.primaryContactPhoneNumber && (
+                      <InfoRow label={t('detail.infoContactPhone')}><span>{tenant.primaryContactPhoneNumber}</span></InfoRow>
                     )}
                     <InfoRow label={t('detail.infoCreated')}><span className="text-fg-muted">{formatDate(tenant.createdAt ?? '')}</span></InfoRow>
                     {tenant.updatedAt && (

@@ -41,6 +41,8 @@
     "contactEmail": "E-mail de contact",
     "contactEmailOptional": "(optionnel)",
     "contactEmailPlaceholder": "user@garageducoin.ca",
+    "contactPhone": "Téléphone de contact",
+    "contactPhonePlaceholder": "+1 514 555 1234",
     "userIdentifier": "Identifiant utilisateur",
     "userIdentifierPlaceholder": "Référence interne (ID RH, nom d'utilisateur…)",
     "challengeRequired": "Exiger un code défi à chaque authentification",
@@ -76,7 +78,8 @@
     "selectIntegration": "Sélectionnez une intégration",
     "nameRequired": "Le nom est obligatoire",
     "nameMax": "Max. {{n}} caractères",
-    "invalidEmail": "Adresse e-mail invalide"
+    "invalidEmail": "Adresse e-mail invalide",
+    "invalidPhone": "Utilisez un numéro international avec indicatif pays (exemple : +1 514 555 1234)"
   },
   "detail": {
     "fallbackTitle": "Détail de l'enrôlement",
@@ -92,6 +95,7 @@
     "challengeRequired": "Requis",
     "challengeNotRequired": "Non requis",
     "infoContactEmail": "E-mail de contact",
+    "infoContactPhone": "Téléphone de contact",
     "infoUserId": "ID utilisateur",
     "infoVerified": "Vérifié",
     "infoLastUsed": "Dernière utilisation",
@@ -111,6 +115,7 @@
     "editCancel": "Annuler",
     "editName": "Nom de l'enrôlement",
     "editContactEmail": "E-mail de contact",
+    "editContactPhone": "Téléphone de contact",
     "editUserIdentifier": "Identifiant utilisateur",
     "editChallengeRequired": "Exiger un défi à chaque authentification",
     "editExpiresAt": "Expiration de l'invitation (liaison / vérif.)",

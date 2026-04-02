@@ -10,11 +10,14 @@
 
 package org.ezkey.admin.util;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.util.ClientContext;
+import org.ezkey.util.PhoneNumberUtils;
 
 /**
  * Helper utilities for audit logging.
@@ -271,5 +274,35 @@ public final class AuditHelper {
         .eventStatus(EventStatus.ERROR)
         .errorMessage(errorMessage)
         .build();
+  }
+
+  /**
+   * Creates a standard audit change entry for structured {@code event_details}.
+   *
+   * @param field the field name
+   * @param previous the previous value
+   * @param newValue the new value
+   * @return a map suitable for the {@code changes} array
+   */
+  public static Map<String, Object> changeEntry(String field, Object previous, Object newValue) {
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("field", field);
+    row.put("previous", previous);
+    row.put("new", newValue);
+    return row;
+  }
+
+  /**
+   * Creates a masked phone-number audit change entry.
+   *
+   * @param field the field name
+   * @param previous the previous canonical phone number
+   * @param newValue the new canonical phone number
+   * @return a change row with masked values only
+   */
+  public static Map<String, Object> maskedPhoneChangeEntry(
+      String field, String previous, String newValue) {
+    return changeEntry(
+        field, PhoneNumberUtils.maskForAudit(previous), PhoneNumberUtils.maskForAudit(newValue));
   }
 }

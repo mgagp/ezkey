@@ -80,6 +80,9 @@ public class EnrollmentCreateRequest {
    */
   private String contactEmail;
 
+  /** Optional phone number for the end-user in canonical E.164 format. */
+  private String contactPhoneNumber;
+
   /**
    * Optional reference to the integrating app's user (username, user_id). Unique per integration
    * for lookup. Enables future auth attempt creation by userIdentifier (Phase 3).
@@ -162,6 +165,24 @@ public class EnrollmentCreateRequest {
    */
   public void setContactEmail(String contactEmail) {
     this.contactEmail = contactEmail;
+  }
+
+  /**
+   * Gets the optional contact phone number for the end-user.
+   *
+   * @return the contact phone number, or null
+   */
+  public String getContactPhoneNumber() {
+    return contactPhoneNumber;
+  }
+
+  /**
+   * Sets the optional contact phone number for the end-user.
+   *
+   * @param contactPhoneNumber the contact phone number to set
+   */
+  public void setContactPhoneNumber(String contactPhoneNumber) {
+    this.contactPhoneNumber = contactPhoneNumber;
   }
 
   /**

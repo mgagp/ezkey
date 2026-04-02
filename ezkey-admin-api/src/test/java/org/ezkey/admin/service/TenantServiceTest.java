@@ -282,7 +282,8 @@ class TenantServiceTest {
       when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(null, null, null, "Acme Inc.", null, null, null, null, null);
+          new TenantUpdateRequestDto(
+              null, null, null, "Acme Inc.", null, null, null, null, null, null);
 
       // Act
       Tenant result = tenantService.updateTenant(2, request, globalAdminPrincipal);
@@ -318,7 +319,8 @@ class TenantServiceTest {
               "CA",
               "America/Montreal",
               "Jane Doe",
-              "jane@acme.com");
+              "jane@acme.com",
+              null);
 
       // Act
       Tenant result = tenantService.updateTenant(2, request, globalAdminPrincipal);
@@ -344,7 +346,8 @@ class TenantServiceTest {
       when(tenantRepository.existsByTenantNameAndTenantIdNot("Taken Name", 2)).thenReturn(true);
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(null, "Taken Name", null, null, null, null, null, null, null);
+          new TenantUpdateRequestDto(
+              null, "Taken Name", null, null, null, null, null, null, null, null);
 
       // Act & Assert
       assertThrows(
@@ -366,7 +369,8 @@ class TenantServiceTest {
       when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(null, "Acme Corp", null, null, null, null, null, null, null);
+          new TenantUpdateRequestDto(
+              null, "Acme Corp", null, null, null, null, null, null, null, null);
 
       // Act
       tenantService.updateTenant(2, request, globalAdminPrincipal);
@@ -385,7 +389,8 @@ class TenantServiceTest {
       when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(null, null, null, "Acme Inc.", null, null, null, null, null);
+          new TenantUpdateRequestDto(
+              null, null, null, "Acme Inc.", null, null, null, null, null, null);
 
       // Act & Assert
       assertThrows(
@@ -407,7 +412,8 @@ class TenantServiceTest {
       when(tenantRepository.findById(1)).thenReturn(Optional.of(systemTenant));
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(null, null, null, "Acme Inc.", null, null, null, null, null);
+          new TenantUpdateRequestDto(
+              null, null, null, "Acme Inc.", null, null, null, null, null, null);
 
       // Act & Assert
       TenantNotAllowedException exception =
@@ -426,7 +432,7 @@ class TenantServiceTest {
       when(tenantRepository.findById(999)).thenReturn(Optional.empty());
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(null, null, null, null, null, null, null, null, null);
+          new TenantUpdateRequestDto(null, null, null, null, null, null, null, null, null, null);
 
       // Act & Assert
       assertThrows(
@@ -444,7 +450,8 @@ class TenantServiceTest {
       when(tenantRepository.findById(2)).thenReturn(Optional.of(tenant));
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(3L, null, null, "Acme Inc.", null, null, null, null, null);
+          new TenantUpdateRequestDto(
+              3L, null, null, "Acme Inc.", null, null, null, null, null, null);
 
       // Act & Assert
       assertThrows(
@@ -467,7 +474,8 @@ class TenantServiceTest {
       when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
       TenantUpdateRequestDto request =
-          new TenantUpdateRequestDto(5L, null, null, "Acme Inc.", null, null, null, null, null);
+          new TenantUpdateRequestDto(
+              5L, null, null, "Acme Inc.", null, null, null, null, null, null);
 
       // Act
       Tenant result = tenantService.updateTenant(2, request, globalAdminPrincipal);

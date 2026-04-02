@@ -119,6 +119,7 @@ public interface EnrollmentAdminMapper {
         base.createdByAdminId(),
         base.lastUsedAt(),
         base.contactEmail(),
+        base.contactPhoneNumber(),
         base.userIdentifier(),
         base.deactivatedAt(),
         base.deactivatedByAdminId(),

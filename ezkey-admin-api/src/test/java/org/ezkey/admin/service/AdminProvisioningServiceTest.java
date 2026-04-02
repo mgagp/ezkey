@@ -617,7 +617,7 @@ class AdminProvisioningServiceTest {
       when(adminRepository.save(any(EzkeyAdmin.class))).thenAnswer(inv -> inv.getArgument(0));
 
       AdminUpdateRequestDto request =
-          new AdminUpdateRequestDto(0L, "New", "Name", "new@example.com", null);
+          new AdminUpdateRequestDto(0L, "New", "Name", "new@example.com", null, null);
 
       EzkeyAdmin result = service.updateAdmin(2, request, principal);
 
@@ -638,7 +638,7 @@ class AdminProvisioningServiceTest {
 
       when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(target));
 
-      AdminUpdateRequestDto request = new AdminUpdateRequestDto(3L, "New", null, null, null);
+      AdminUpdateRequestDto request = new AdminUpdateRequestDto(3L, "New", null, null, null, null);
 
       assertThrows(
           ObjectOptimisticLockingFailureException.class,
@@ -652,7 +652,8 @@ class AdminProvisioningServiceTest {
       AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
       when(adminRepository.findById(999)).thenReturn(java.util.Optional.empty());
 
-      AdminUpdateRequestDto request = new AdminUpdateRequestDto(null, "New", null, null, null);
+      AdminUpdateRequestDto request =
+          new AdminUpdateRequestDto(null, "New", null, null, null, null);
 
       assertThrows(
           ResourceNotFoundException.class, () -> service.updateAdmin(999, request, principal));

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, KeyRound, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
+import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
@@ -26,18 +26,22 @@ import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav'
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { fetchApi, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
+import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import {
+  getGetAdminByIdQueryKey,
   listAdmins,
   useCreateGlobalAdmin,
   useCreateTenantAdmin,
   useDeactivateAdmin,
   useGetAdminById,
   useGetAdminOnboarding,
+  useUpdateAdmin,
 } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import { useListTenants } from '@/generated/admin-api/tenants/tenants';
 import type {
   AdminCreateRequestDto,
+  AdminUpdateRequestDto,
   AdminResponseDto,
   PagedModelAdminResponseDto,
   PagedModelTenantResponseDto,
@@ -306,6 +310,11 @@ function AdminDetailDialog({
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
 
   // Fetch live detail from API to ensure fresh data
   const { data: detail } = useGetAdminById<AdminResponseDto>(
@@ -339,11 +348,30 @@ function AdminDetailDialog({
     onError: (e: unknown) => toast(getApiErrorMessage(e, t('detail.errorActivate')), 'error'),
   });
 
+  const updateMutation = useUpdateAdmin({
+    mutation: {
+      onSuccess: async () => {
+        toast(t('detail.toastUpdated'), 'success');
+        await queryClient.invalidateQueries({ queryKey: ['admins'] });
+        await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
+        setEditOpen(false);
+      },
+    },
+  });
+
   if (!adm) return null;
 
   const activateReasonInvalid = activateReason.length > 0 && activateReason.length < 10;
 
   const fullName = [adm.firstName, adm.lastName].filter(Boolean).join(' ');
+
+  const openEditDialog = () => {
+    setEditFirstName(adm.firstName ?? '');
+    setEditLastName(adm.lastName ?? '');
+    setEditEmail(adm.email ?? '');
+    setEditPhone(adm.phoneNumber ?? '');
+    setEditOpen(true);
+  };
 
   function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -397,6 +425,7 @@ function AdminDetailDialog({
           <InfoRow label={t('detail.labelUsername')}><span className="font-medium">{adm.username}</span></InfoRow>
           <InfoRow label={t('detail.labelName')}>{fullName || <span className="text-fg-muted">—</span>}</InfoRow>
           <InfoRow label={t('detail.labelEmail')}>{adm.email || <span className="text-fg-muted">—</span>}</InfoRow>
+          <InfoRow label={t('detail.labelPhone')}>{adm.phoneNumber || <span className="text-fg-muted">—</span>}</InfoRow>
           <InfoRow label={t('detail.labelType')}><AdminTypeBadge type={adm.adminType} /></InfoRow>
           {adm.tenantId != null && (
             <InfoRow label={t('detail.labelTenantId')}><span className="font-mono">{adm.tenantId}</span></InfoRow>
@@ -437,6 +466,15 @@ function AdminDetailDialog({
             >
               <KeyRound className="size-3.5" />
               {t('detail.credentials')}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1.5"
+              onClick={openEditDialog}
+            >
+              <Pencil className="size-3.5" />
+              {t('detail.editProfile')}
             </Button>
 
             {isGlobalAdmin && adm.active && onRequestDeactivate && (
@@ -492,6 +530,92 @@ function AdminDetailDialog({
           <Button onClick={onClose}>{t('detail.close')}</Button>
         </div>
       </div>
+      <Dialog
+        open={editOpen}
+        onClose={() => {
+          if (!updateMutation.isPending) setEditOpen(false);
+        }}
+        title={t('detail.editDialogTitle')}
+        size="md"
+        dismissible={false}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="adm-edit-first-name">{t('detail.editFirstName')}</Label>
+              <Input
+                id="adm-edit-first-name"
+                value={editFirstName}
+                onChange={(e) => setEditFirstName(e.target.value)}
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="adm-edit-last-name">{t('detail.editLastName')}</Label>
+              <Input
+                id="adm-edit-last-name"
+                value={editLastName}
+                onChange={(e) => setEditLastName(e.target.value)}
+                maxLength={100}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="adm-edit-email">{t('detail.editEmail')}</Label>
+            <Input
+              id="adm-edit-email"
+              type="email"
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+              maxLength={255}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="adm-edit-phone">{t('detail.editPhone')}</Label>
+            <Input
+              id="adm-edit-phone"
+              value={editPhone}
+              onChange={(e) => setEditPhone(e.target.value)}
+              maxLength={50}
+            />
+            {editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone) && (
+              <p className="text-xs text-error">{t('validation.invalidPhone')}</p>
+            )}
+          </div>
+          {updateMutation.isError && (
+            <Alert variant="error">
+              {getApiErrorMessage(updateMutation.error, t('detail.errorUpdate'))}
+            </Alert>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditOpen(false)}
+              disabled={updateMutation.isPending}
+            >
+              {t('detail.editCancel')}
+            </Button>
+            <Button
+              type="button"
+              isLoading={updateMutation.isPending}
+              disabled={editPhone.trim() !== '' && !isPhoneNumberInputValid(editPhone)}
+              onClick={() => {
+                const data: AdminUpdateRequestDto = {
+                  version: adm.version,
+                  firstName: editFirstName.trim() || undefined,
+                  lastName: editLastName.trim() || undefined,
+                  email: editEmail.trim() || undefined,
+                  phoneNumber: normalizePhoneNumberInput(editPhone),
+                };
+                updateMutation.mutate({ id: adm.adminId!, data });
+              }}
+            >
+              {t('detail.editSave')}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </Dialog>
   );
 }
@@ -518,6 +642,7 @@ function CreateAdminDialog({
   const { sessionDemoOn } = useDemoModeSession();
   const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningShape | null>(null);
   const [recoveryCodesCopied, setRecoveryCodesCopied] = useState(false);
+  const [recoveryCodesSavedConfirmed, setRecoveryCodesSavedConfirmed] = useState(false);
   const [isGlobalType, setIsGlobalType] = useState(defaultGlobal);
 
   const [tenantFilter, setTenantFilter] = useState('');
@@ -534,6 +659,11 @@ function CreateAdminDialog({
       const base = z.object({
         username: z.string().min(3, t('validation.usernameMin')).max(50, t('validation.usernameMax')),
         email: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
+        phoneNumber: z
+          .string()
+          .refine((value) => value === '' || isPhoneNumberInputValid(value), t('validation.invalidPhone'))
+          .optional()
+          .or(z.literal('')),
         firstName: z.string().max(100).optional().or(z.literal('')),
         lastName: z.string().max(100).optional().or(z.literal('')),
         tenantId: z.union([z.number(), z.string()]).optional().or(z.literal('')),
@@ -567,7 +697,7 @@ function CreateAdminDialog({
   );
   type AdminFormValues = z.infer<typeof adminSchema>;
 
-  const defaultFormValues: AdminFormValues = { username: '', email: '', firstName: '', lastName: '', tenantId: '' };
+  const defaultFormValues: AdminFormValues = { username: '', email: '', phoneNumber: '', firstName: '', lastName: '', tenantId: '' };
   const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors } } = useForm<AdminFormValues>({
     resolver: zodResolver(adminSchema),
     defaultValues: defaultFormValues,
@@ -580,6 +710,7 @@ function CreateAdminDialog({
     setTenantFilter('');
     setCreatedAdmin(null);
     setRecoveryCodesCopied(false);
+    setRecoveryCodesSavedConfirmed(false);
     if (defaultTenantId != null && defaultTenantId > 0) {
       setIsGlobalType(false);
       setValue('tenantId', String(defaultTenantId));
@@ -680,9 +811,11 @@ function CreateAdminDialog({
   };
 
   const handleClose = () => {
+    if (createdAdmin && !recoveryCodesSavedConfirmed) return;
     reset();
     setCreatedAdmin(null);
     setRecoveryCodesCopied(false);
+    setRecoveryCodesSavedConfirmed(false);
     setIsGlobalType(defaultTenantId != null && defaultTenantId > 0 ? false : defaultGlobal);
     setTenantFilter('');
     createMutation.reset();
@@ -698,6 +831,7 @@ function CreateAdminDialog({
       body: {
         username: values.username.trim(),
         email: values.email || undefined,
+        phoneNumber: normalizePhoneNumberInput(values.phoneNumber),
         firstName: values.firstName || undefined,
         lastName: values.lastName || undefined,
         ...(tenantId !== undefined ? { tenantId } : {}),
@@ -715,6 +849,13 @@ function CreateAdminDialog({
           </Alert>
           {createdAdmin.recoveryCodes != null && createdAdmin.recoveryCodes.length > 0 && (
             <div className="space-y-2 border-2 border-accent/40 bg-bg p-3">
+              <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
+                <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-black text-error">{t('create.recoveryCodesWarningTitle')}</p>
+                  <p className="text-xs text-error/80 mt-0.5">{t('create.recoveryCodesWarningBody')}</p>
+                </div>
+              </div>
               <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
                 {t('create.recoveryCodesTitle')}
               </p>
@@ -734,13 +875,27 @@ function CreateAdminDialog({
                   <li key={code}>{code}</li>
                 ))}
               </ul>
+              <div className="flex items-center gap-2.5 p-3 border-2 border-fg/20 bg-bg">
+                <input
+                  id="recovery-codes-saved"
+                  type="checkbox"
+                  className="size-4 border-2 border-fg accent-accent"
+                  checked={recoveryCodesSavedConfirmed}
+                  onChange={(e) => setRecoveryCodesSavedConfirmed(e.target.checked)}
+                />
+                <label htmlFor="recovery-codes-saved" className="text-sm font-bold cursor-pointer select-none">
+                  {t('create.recoveryCodesSavedConfirmLabel')}
+                </label>
+              </div>
             </div>
           )}
           <p className="text-sm text-fg-muted">
             {t('create.successHint')}
           </p>
           <div className="flex justify-end pt-2">
-            <Button onClick={handleClose}>{t('create.done')}</Button>
+            <Button onClick={handleClose} disabled={!recoveryCodesSavedConfirmed}>
+              {t('create.done')}
+            </Button>
           </div>
         </div>
       ) : (
@@ -854,6 +1009,12 @@ function CreateAdminDialog({
             </Label>
             <Input id="adm-email" type="email" placeholder={t('create.emailPlaceholder')} error={errors.email?.message} {...register('email')} />
           </div>
+          <div className="space-y-1">
+            <Label htmlFor="adm-phone">
+              {t('create.phoneLabel')} <span className="text-fg-muted font-normal">{t('create.emailOptional')}</span>
+            </Label>
+            <Input id="adm-phone" placeholder={t('create.phonePlaceholder')} error={errors.phoneNumber?.message} {...register('phoneNumber')} />
+          </div>
 
           {createMutation.isError && (
             <Alert variant="error">
@@ -960,6 +1121,7 @@ export default function AdminsPage() {
       ),
     },
     { header: t('list.columns.email'), key: 'email', render: (r) => <span className="text-xs text-fg-muted">{r.email ?? '—'}</span> },
+    { header: t('list.columns.phone'), key: 'phoneNumber', render: (r) => <span className="text-xs text-fg-muted">{r.phoneNumber ?? '—'}</span> },
     { header: t('list.columns.type'), key: 'adminType', sortKey: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
     { header: t('list.columns.active'), key: 'active', sortKey: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? t('list.activeYes') : t('list.activeNo')}</Badge> },
     { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },

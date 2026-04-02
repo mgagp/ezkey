@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Ezkey Auth API",
-    "description": "Authentication API for Ezkey - Open Source MFA/Passkey Alternative\n\nThis API enables mobile device authentication operations:\n- **Enrollments**: Device binding and verification for user accounts\n- **Auth Attempts**: Mobile authentication request handling and responses\n\nThe API follows a pull-based model where mobile devices poll for pending\nauthentication requests and submit cryptographic signatures for validation.\nAll operations use DTOs for requests and responses with comprehensive validation.\n",
+    "description": "Authentication API for Ezkey - Open Source Cryptographic MFA Platform\n\nThis API enables mobile device authentication operations:\n- **Enrollments**: Device binding and verification for user accounts\n- **Auth Attempts**: Mobile authentication request handling and responses\n\nThe API follows a pull-based model where mobile devices poll for pending\nauthentication requests and submit cryptographic signatures for validation.\nEzkey is intentionally distinct from FIDO2/WebAuthn and uses its own\ncryptographic MFA model. All operations use DTOs for requests and responses\nwith comprehensive validation.\n",
     "contact": {
       "name": "Ezkey Team",
       "url": "https://ezkey.org",

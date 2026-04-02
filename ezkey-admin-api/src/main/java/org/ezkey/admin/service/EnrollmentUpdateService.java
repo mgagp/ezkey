@@ -12,17 +12,18 @@ package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 import org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto;
+import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.util.PhoneNumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -122,6 +123,7 @@ public class EnrollmentUpdateService {
 
     String previousName = enrollment.getEnrollmentName();
     String previousContactEmail = enrollment.getContactEmail();
+    String previousContactPhoneNumber = enrollment.getContactPhoneNumber();
     OffsetDateTime previousExpiresAt = enrollment.getExpiresAt();
     Boolean previousChallengeRequired = enrollment.getAuthAttemptChallengeRequired();
     String previousUserIdentifier = enrollment.getUserIdentifier();
@@ -156,6 +158,11 @@ public class EnrollmentUpdateService {
         }
         enrollment.setContactEmail(trimmed);
       }
+    }
+
+    if (request.contactPhoneNumber() != null) {
+      enrollment.setContactPhoneNumber(
+          PhoneNumberUtils.normalizeToE164OrNull(request.contactPhoneNumber()));
     }
 
     // Apply expiresAt: non-null instant wins; else optional clear
@@ -193,6 +200,7 @@ public class EnrollmentUpdateService {
             request,
             previousName,
             previousContactEmail,
+            previousContactPhoneNumber,
             previousExpiresAt,
             previousChallengeRequired,
             previousUserIdentifier,
@@ -207,6 +215,7 @@ public class EnrollmentUpdateService {
       EnrollmentUpdateRequestDto request,
       String previousName,
       String previousContactEmail,
+      String previousContactPhoneNumber,
       OffsetDateTime previousExpiresAt,
       Boolean previousChallengeRequired,
       String previousUserIdentifier,
@@ -220,18 +229,26 @@ public class EnrollmentUpdateService {
 
     if (request.enrollmentName() != null
         && !Objects.equals(previousName, updated.getEnrollmentName())) {
-      changes.add(changeEntry("enrollmentName", previousName, updated.getEnrollmentName()));
+      changes.add(
+          AuditHelper.changeEntry("enrollmentName", previousName, updated.getEnrollmentName()));
     }
     boolean contactEmailTouched =
         Boolean.TRUE.equals(request.clearContactEmail()) || request.contactEmail() != null;
     if (contactEmailTouched && !Objects.equals(previousContactEmail, updated.getContactEmail())) {
-      changes.add(changeEntry("contactEmail", previousContactEmail, updated.getContactEmail()));
+      changes.add(
+          AuditHelper.changeEntry("contactEmail", previousContactEmail, updated.getContactEmail()));
+    }
+    if (request.contactPhoneNumber() != null
+        && !Objects.equals(previousContactPhoneNumber, updated.getContactPhoneNumber())) {
+      changes.add(
+          AuditHelper.maskedPhoneChangeEntry(
+              "contactPhoneNumber", previousContactPhoneNumber, updated.getContactPhoneNumber()));
     }
     boolean expiresAtTouched =
         request.expiresAt() != null || Boolean.TRUE.equals(request.clearExpiresAt());
     if (expiresAtTouched && !Objects.equals(previousExpiresAt, updated.getExpiresAt())) {
       changes.add(
-          changeEntry(
+          AuditHelper.changeEntry(
               "expiresAt",
               previousExpiresAt != null ? previousExpiresAt.toString() : null,
               updated.getExpiresAt() != null ? updated.getExpiresAt().toString() : null));
@@ -239,7 +256,7 @@ public class EnrollmentUpdateService {
     if (request.authAttemptChallengeRequired() != null
         && !Objects.equals(previousChallengeRequired, updated.getAuthAttemptChallengeRequired())) {
       changes.add(
-          changeEntry(
+          AuditHelper.changeEntry(
               "authAttemptChallengeRequired",
               previousChallengeRequired,
               updated.getAuthAttemptChallengeRequired()));
@@ -247,7 +264,8 @@ public class EnrollmentUpdateService {
     if (request.userIdentifier() != null
         && !Objects.equals(previousUserIdentifier, updated.getUserIdentifier())) {
       changes.add(
-          changeEntry("userIdentifier", previousUserIdentifier, updated.getUserIdentifier()));
+          AuditHelper.changeEntry(
+              "userIdentifier", previousUserIdentifier, updated.getUserIdentifier()));
     }
 
     builder.custom("changes", changes);
@@ -256,13 +274,5 @@ public class EnrollmentUpdateService {
 
   private static boolean isValidContactEmail(String email) {
     return email != null && email.length() <= 255 && CONTACT_EMAIL_PATTERN.matcher(email).matches();
-  }
-
-  private static Map<String, Object> changeEntry(String field, Object previous, Object newValue) {
-    Map<String, Object> row = new LinkedHashMap<>();
-    row.put("field", field);
-    row.put("previous", previous);
-    row.put("new", newValue);
-    return row;
   }
 }

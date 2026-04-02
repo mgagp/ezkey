@@ -41,6 +41,8 @@
     "contactEmail": "Contact Email",
     "contactEmailOptional": "(optional)",
     "contactEmailPlaceholder": "user@garageducoin.ca",
+    "contactPhone": "Contact Phone",
+    "contactPhonePlaceholder": "+1 514 555 1234",
     "userIdentifier": "User Identifier",
     "userIdentifierPlaceholder": "Internal reference (HR ID, username…)",
     "challengeRequired": "Require challenge code on each authentication",
@@ -76,7 +78,8 @@
     "selectIntegration": "Select an integration",
     "nameRequired": "Name is required",
     "nameMax": "Max {{n}} characters",
-    "invalidEmail": "Invalid email address"
+    "invalidEmail": "Invalid email address",
+    "invalidPhone": "Use an international phone number with country code (example: +1 514 555 1234)"
   },
   "detail": {
     "fallbackTitle": "Enrollment Detail",
@@ -92,6 +95,7 @@
     "challengeRequired": "Required",
     "challengeNotRequired": "Not required",
     "infoContactEmail": "Contact Email",
+    "infoContactPhone": "Contact Phone",
     "infoUserId": "User ID",
     "infoVerified": "Verified",
     "infoLastUsed": "Last Used",
@@ -111,6 +115,7 @@
     "editCancel": "Cancel",
     "editName": "Enrollment name",
     "editContactEmail": "Contact email",
+    "editContactPhone": "Contact phone",
     "editUserIdentifier": "User identifier",
     "editChallengeRequired": "Require challenge on each authentication",
     "editExpiresAt": "Invitation expiry (bind/verify)",

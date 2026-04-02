@@ -34,7 +34,6 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
-import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
@@ -97,16 +96,13 @@ class EnrollmentControllerAuditTest {
 
   private EnrollmentCreateRequestDto requestDto;
   private EnrollmentCreateRequest createRequest;
-  private ClientContext clientContext;
 
   @BeforeEach
   void setUp() {
-    requestDto = new EnrollmentCreateRequestDto(1, "Test Enrollment", false, null, null);
+    requestDto = new EnrollmentCreateRequestDto(1, "Test Enrollment", false, null, null, null);
     createRequest = new EnrollmentCreateRequest();
     createRequest.setIntegrationId(1);
     createRequest.setName("Test Enrollment");
-
-    clientContext = ClientContext.from(httpRequest);
 
     // Mock SecurityContext with AdminPrincipal so audit logs get adminId
     Authentication auth = org.mockito.Mockito.mock(Authentication.class);

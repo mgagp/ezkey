@@ -43,6 +43,7 @@ export interface TenantDemoPreset {
     timezone: string;
     primaryContactName: string;
     primaryContactEmail: string;
+    primaryContactPhoneNumber: string;
   };
 }
 
@@ -59,6 +60,7 @@ export const tenantDemoPresets: TenantDemoPreset[] = [
       timezone: 'America/Montreal',
       primaryContactName: 'Oscar Boulon',
       primaryContactEmail: 'oscar@garageducoin.ca',
+      primaryContactPhoneNumber: '+15145551001',
     },
   },
   {
@@ -73,6 +75,7 @@ export const tenantDemoPresets: TenantDemoPreset[] = [
       timezone: 'America/New_York',
       primaryContactName: 'Jane Smith',
       primaryContactEmail: 'jane.smith@acme.example.com',
+      primaryContactPhoneNumber: '+15145551002',
     },
   },
   {
@@ -88,6 +91,7 @@ export const tenantDemoPresets: TenantDemoPreset[] = [
       timezone: 'America/Montreal',
       primaryContactName: 'Élodie Martin',
       primaryContactEmail: 'elodie.martin@fermedeslicornes.example.com',
+      primaryContactPhoneNumber: '+15145551003',
     },
   },
 ];
@@ -183,6 +187,7 @@ export interface EnrollmentDemoPreset {
   values: {
     name: string;
     contactEmail: string;
+      contactPhoneNumber: string;
     userIdentifier: string;
     authAttemptChallengeRequired: boolean;
   };
@@ -195,6 +200,7 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
     values: {
       name: 'Marie Dupont — iPhone 15',
       contactEmail: 'user@garageducoin.ca',
+      contactPhoneNumber: '+15145552001',
       userIdentifier: 'marie.dupont',
       authAttemptChallengeRequired: false,
     },
@@ -205,6 +211,7 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
     values: {
       name: 'Jean Martin — Android',
       contactEmail: 'jean.martin@garageducoin.ca',
+      contactPhoneNumber: '+15145552002',
       userIdentifier: 'jean.martin',
       authAttemptChallengeRequired: true,
     },
@@ -215,6 +222,7 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
     values: {
       name: 'Oscar Boulon — iPhone 15',
       contactEmail: 'oscar@garageducoin.ca',
+      contactPhoneNumber: '+15145552003',
       userIdentifier: 'oscar.boulon',
       authAttemptChallengeRequired: false,
     },
@@ -225,6 +233,7 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
     values: {
       name: 'Big Bird — iPhone 15',
       contactEmail: 'big.bird@garageducoin.ca',
+      contactPhoneNumber: '+15145552004',
       userIdentifier: 'big.bird',
       authAttemptChallengeRequired: false,
     },
@@ -235,6 +244,7 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
     values: {
       name: 'Élodie Martin — iPhone 15',
       contactEmail: 'elodie.martin@fermedeslicornes.example.com',
+      contactPhoneNumber: '+15145552005',
       userIdentifier: 'elodie.martin',
       authAttemptChallengeRequired: false,
     },
@@ -245,6 +255,7 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
     values: {
       name: 'Lucas Tremblay — Android',
       contactEmail: 'lucas.tremblay@fermedeslicornes.example.com',
+      contactPhoneNumber: '+15145552006',
       userIdentifier: 'lucas.tremblay',
       authAttemptChallengeRequired: true,
     },
@@ -260,6 +271,7 @@ export interface AdminDemoPreset {
   values: {
     username: string;
     email: string;
+      phoneNumber: string;
     firstName: string;
     lastName: string;
   };
@@ -273,6 +285,7 @@ export const adminDemoPresets: AdminDemoPreset[] = [
     values: {
       username: 'marie.dupont',
       email: 'marie@garageducoin.ca',
+      phoneNumber: '+15145553001',
       firstName: 'Marie',
       lastName: 'Dupont',
     },
@@ -284,6 +297,7 @@ export const adminDemoPresets: AdminDemoPreset[] = [
     values: {
       username: 'jean.martin',
       email: 'jean.martin@garageducoin.ca',
+      phoneNumber: '+15145553002',
       firstName: 'Jean',
       lastName: 'Martin',
     },
@@ -295,6 +309,7 @@ export const adminDemoPresets: AdminDemoPreset[] = [
     values: {
       username: 'lucas.tremblay',
       email: 'lucas.tremblay@fermedeslicornes.example.com',
+      phoneNumber: '+15145553003',
       firstName: 'Lucas',
       lastName: 'Tremblay',
     },

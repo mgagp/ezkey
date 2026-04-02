@@ -181,6 +181,11 @@ ALTER TABLE ezkey_tenant
 COMMENT ON COLUMN ezkey_tenant.primary_contact_email
   IS 'Email of the primary technical contact for incidents and notifications';
 
+ALTER TABLE ezkey_tenant
+  ADD COLUMN primary_contact_phone_number VARCHAR(20);
+COMMENT ON COLUMN ezkey_tenant.primary_contact_phone_number
+  IS 'Phone number of the primary technical contact, stored in canonical E.164 format (for example +15145551234). Used for operational contact and future communication integrations.';
+
 -- ============================================================
 -- 3. Governance and Lifecycle
 -- ============================================================
@@ -230,6 +235,13 @@ ALTER TABLE ezkey_tenant
 ALTER TABLE ezkey_tenant
   ADD CONSTRAINT chk_tenant_contact_email
   CHECK (primary_contact_email ~ '^[^@]+@[^@]+\.[^@]+$');
+
+ALTER TABLE ezkey_tenant
+  ADD CONSTRAINT chk_tenant_contact_phone_number_e164
+  CHECK (
+    primary_contact_phone_number IS NULL
+    OR primary_contact_phone_number ~ '^\+[1-9][0-9]{7,14}$'
+  );
 -- ============================================================================
 -- Ezkey Migration V31: Enrollment Contact and Audit Columns (Phase 1 & 2)
 -- ============================================================================
@@ -282,6 +294,12 @@ COMMENT ON COLUMN ezkey_enrollment.contact_email IS
 'Optional contact for the end-user (device owner). Used for incident response, revocation notices, support. Provided by integrating app at creation.';
 
 ALTER TABLE ezkey_enrollment
+    ADD COLUMN contact_phone_number VARCHAR(20);
+
+COMMENT ON COLUMN ezkey_enrollment.contact_phone_number IS
+'Optional phone number for the end-user (device owner), stored in canonical E.164 format (for example +15145551234). Used for operational contact and future communication integrations. Not treated as a verified possession factor in the current security model.';
+
+ALTER TABLE ezkey_enrollment
     ADD COLUMN user_identifier VARCHAR(255);
 
 COMMENT ON COLUMN ezkey_enrollment.user_identifier IS
@@ -297,6 +315,10 @@ CREATE INDEX idx_enrollment_integration_user_identifier
 
 COMMENT ON INDEX idx_enrollment_integration_user_identifier IS
 'Non-unique index for lookup by (integration_id, user_identifier). Supports single- and multi-device.';
+
+ALTER TABLE ezkey_enrollment
+    ADD CONSTRAINT chk_enrollment_contact_phone_number_e164
+    CHECK (contact_phone_number IS NULL OR contact_phone_number ~ '^\+[1-9][0-9]{7,14}$');
 
 -- ============================================================================
 -- Migration Complete

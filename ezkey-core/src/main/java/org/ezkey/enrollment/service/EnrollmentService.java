@@ -31,6 +31,7 @@ import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
+import org.ezkey.util.PhoneNumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -392,6 +393,8 @@ public class EnrollmentService {
         request.getContactEmail() != null && !request.getContactEmail().isBlank()
             ? request.getContactEmail().trim()
             : null);
+    enrollment.setContactPhoneNumber(
+        PhoneNumberUtils.normalizeToE164OrNull(request.getContactPhoneNumber()));
     enrollment.setUserIdentifier(
         request.getUserIdentifier() != null && !request.getUserIdentifier().isBlank()
             ? request.getUserIdentifier().trim()

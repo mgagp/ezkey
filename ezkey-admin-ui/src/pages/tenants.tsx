@@ -27,6 +27,7 @@ import { isDemoMode, resolveTenantDemoPresetForLocale, tenantDemoPresets } from 
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
+import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatDate } from '@/lib/utils';
 import { useCreateTenant, listTenants } from '@/generated/admin-api/tenants/tenants';
 import type { PagedModelTenantResponseDto, TenantResponseDto } from '@/generated/admin-api/model';
@@ -64,6 +65,11 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
         timezone: z.string().max(50).optional().or(z.literal('')),
         primaryContactName: z.string().max(255).optional().or(z.literal('')),
         primaryContactEmail: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
+        primaryContactPhoneNumber: z
+          .string()
+          .refine((value) => value === '' || isPhoneNumberInputValid(value), t('validation.invalidPhone'))
+          .optional()
+          .or(z.literal('')),
       }),
     [t],
   );
@@ -101,6 +107,7 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
         timezone: values.timezone || undefined,
         primaryContactName: values.primaryContactName || undefined,
         primaryContactEmail: values.primaryContactEmail || undefined,
+        primaryContactPhoneNumber: normalizePhoneNumberInput(values.primaryContactPhoneNumber),
       },
     });
   };
@@ -193,15 +200,19 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
         </div>
 
         {/* Row 4 — Contact */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
           <div>
             <Label htmlFor="t-cname">{t('create.primaryContactName')}</Label>
             <Input id="t-cname" placeholder={t('create.primaryContactNamePlaceholder')} {...register('primaryContactName')} />
           </div>
           <div>
-            <Label htmlFor="t-cemail">{t('create.primaryContactEmail')}</Label>
-            <Input id="t-cemail" type="email" placeholder={t('create.primaryContactEmailPlaceholder')} error={errors.primaryContactEmail?.message} {...register('primaryContactEmail')} />
+            <Label htmlFor="t-cphone">{t('create.primaryContactPhone')}</Label>
+            <Input id="t-cphone" placeholder={t('create.primaryContactPhonePlaceholder')} error={errors.primaryContactPhoneNumber?.message} {...register('primaryContactPhoneNumber')} />
           </div>
+        </div>
+        <div>
+          <Label htmlFor="t-cemail">{t('create.primaryContactEmail')}</Label>
+          <Input id="t-cemail" type="email" placeholder={t('create.primaryContactEmailPlaceholder')} error={errors.primaryContactEmail?.message} {...register('primaryContactEmail')} />
         </div>
 
         {createMutation.isError && (

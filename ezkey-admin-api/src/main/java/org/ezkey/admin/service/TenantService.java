@@ -22,6 +22,7 @@ import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
+import org.ezkey.util.PhoneNumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -231,6 +232,10 @@ public class TenantService {
     }
     if (request.primaryContactEmail() != null) {
       tenant.setPrimaryContactEmail(request.primaryContactEmail());
+    }
+    if (request.primaryContactPhoneNumber() != null) {
+      tenant.setPrimaryContactPhoneNumber(
+          PhoneNumberUtils.normalizeToE164OrNull(request.primaryContactPhoneNumber()));
     }
 
     // Audit trail (SOC 2 CC7.2)

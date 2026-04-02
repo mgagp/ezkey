@@ -41,6 +41,7 @@ import jakarta.validation.constraints.NotNull;
  * @param integrationId The integration ID to which this enrollment belongs (required)
  * @param name Human-readable name for the enrollment (e.g., "John's iPhone")
  * @param authAttemptChallengeRequired Whether authentication attempts require challenge validation
+ * @param contactPhoneNumber Optional contact phone number for the end-user
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentCreateRequest
@@ -82,6 +83,12 @@ public record EnrollmentCreateRequestDto(
      * revocation notices, support.
      */
     @Schema(description = "Optional contact email for the end-user") String contactEmail,
+    /**
+     * Optional contact phone number for the end-user (device owner). Accepts common separators and
+     * is normalized to E.164 on write.
+     */
+    @Schema(description = "Optional contact phone number for the end-user")
+        String contactPhoneNumber,
     /**
      * Optional reference to the integrating app's user (username, user_id). Unique per integration
      * for lookup. Enables future auth attempt creation by userIdentifier.

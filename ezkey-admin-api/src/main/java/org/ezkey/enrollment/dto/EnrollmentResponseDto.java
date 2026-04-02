@@ -78,6 +78,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param createdByAdminId Admin who created this enrollment (null when via API key)
  * @param lastUsedAt When enrollment was last used for successful authentication
  * @param contactEmail Optional contact email for the end-user
+ * @param contactPhoneNumber Optional contact phone number for the end-user
  * @param userIdentifier Optional user identifier from the integrating application
  * @param integrationName Display name for the enrollment's integration (e.g. "Ezkey System"); set
  *     when enrichment is used (e.g. GET by ID)
@@ -134,6 +135,10 @@ public record EnrollmentResponseDto(
     @Schema(description = "When enrollment was last used for successful authentication")
         java.time.OffsetDateTime lastUsedAt,
     @Schema(description = "Optional contact email for the end-user") String contactEmail,
+    @Schema(
+            description =
+                "Optional contact phone number for the end-user in canonical E.164 format")
+        String contactPhoneNumber,
     @Schema(description = "Optional user identifier from the integrating application")
         String userIdentifier,
     @Schema(
