@@ -13,7 +13,7 @@ package org.ezkey.admin.service;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
-import org.ezkey.admin.exception.EnrollmentLinkedAsAdminMfaException;
+import org.ezkey.admin.exception.EnrollmentLinkedAsAdminException;
 import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
 import org.ezkey.admin.exception.SystemIntegrationRevocationException;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -552,10 +552,9 @@ public class EnrollmentRevocationService {
       ClientContext context,
       Integer tenantId) {
 
-    Integration integration =
-        integrationRepository
-            .findById(integrationId)
-            .orElseThrow(() -> new ResourceNotFoundException("Integration", integrationId));
+    integrationRepository
+        .findById(integrationId)
+        .orElseThrow(() -> new ResourceNotFoundException("Integration", integrationId));
 
     List<Enrollment> inactiveEnrollments =
         enrollmentRepository.findByIntegrationIdAndStatusAndActive(
@@ -609,19 +608,19 @@ public class EnrollmentRevocationService {
    */
   private void assertNotSelfRevocation(AdminPrincipal principal, Enrollment enrollment) {
     adminRepository
-        .findByMfaEnrollmentEnrollmentId(enrollment.getEnrollmentId())
+        .findByEnrollmentId(enrollment.getEnrollmentId())
         .ifPresent(
             ownerAdmin -> {
               if (ownerAdmin.getAdminId().equals(principal.adminId())) {
                 throw new SelfRevocationNotAllowedException(
-                    "Cannot revoke or deactivate your own MFA enrollment. Use the recovery flow to"
+                    "Cannot revoke or deactivate your own enrollment. Use the recovery flow to"
                         + " reset it.");
               }
             });
   }
 
   /**
-   * Asserts that the calling administrator is not attempting to delete their own MFA enrollment.
+   * Asserts that the calling administrator is not attempting to delete their own enrollment.
    *
    * <p>Same guard as {@link #assertNotSelfRevocation} but for the delete operation, with a
    * delete-specific message. Call this before performing enrollment deletion so that the API
@@ -629,52 +628,51 @@ public class EnrollmentRevocationService {
    *
    * @param principal the admin principal performing the operation
    * @param enrollmentId the target enrollment ID to delete
-   * @throws SelfRevocationNotAllowedException if the enrollment is the calling admin's MFA
-   *     enrollment
+   * @throws SelfRevocationNotAllowedException if the enrollment is the calling admin's enrollment
    */
   public void assertNotSelfDeletion(AdminPrincipal principal, Integer enrollmentId) {
     adminRepository
-        .findByMfaEnrollmentEnrollmentId(enrollmentId)
+        .findByEnrollmentId(enrollmentId)
         .ifPresent(
             ownerAdmin -> {
               if (ownerAdmin.getAdminId().equals(principal.adminId())) {
                 throw new SelfRevocationNotAllowedException(
-                    "Cannot delete your own MFA enrollment. Use the recovery flow to reset it.");
+                    "Cannot delete your own enrollment. Use the recovery flow to reset it.");
               }
             });
   }
 
   /**
-   * Asserts that the enrollment is not linked as any administrator's MFA.
+   * Asserts that the enrollment is not linked as any administrator's enrollment.
    *
    * <p>Call this after {@link #assertNotSelfDeletion} when performing enrollment deletion. If this
-   * enrollment is any admin's mfaEnrollment (including another admin's), deletion would cause
-   * foreign key or Hibernate transient reference errors. This guard returns RFC 9457 409 instead.
+   * enrollment is linked to any admin (including another admin), deletion would cause foreign key
+   * or Hibernate transient reference errors. This guard returns RFC 9457 409 instead.
    *
    * @param enrollmentId the target enrollment ID to delete
-   * @throws EnrollmentLinkedAsAdminMfaException if the enrollment is linked as any admin's MFA
+   * @throws EnrollmentLinkedAsAdminException if the enrollment is linked as any admin's enrollment
    */
-  public void assertNotLinkedAsAdminMfa(Integer enrollmentId) {
-    if (adminRepository.findByMfaEnrollmentEnrollmentId(enrollmentId).isPresent()) {
-      throw new EnrollmentLinkedAsAdminMfaException(
-          "Enrollment cannot be deleted because it is linked as an administrator's MFA. Use the"
-              + " recovery flow to reset that admin's MFA first.");
+  public void assertNotLinkedAsAdmin(Integer enrollmentId) {
+    if (adminRepository.findByEnrollmentId(enrollmentId).isPresent()) {
+      throw new EnrollmentLinkedAsAdminException(
+          "Enrollment cannot be deleted because it is linked to an administrator. Use the recovery"
+              + " flow to reset that administrator enrollment first.");
     }
   }
 
   /**
-   * Checks whether the given enrollment is the calling admin's own MFA enrollment.
+   * Checks whether the given enrollment is the calling admin's own enrollment.
    *
    * <p>Used by the bulk revocation operation to skip the calling admin's own enrollment rather than
    * throwing an exception (bulk operations should be as complete as possible).
    *
    * @param principal the admin principal performing the operation
    * @param enrollment the enrollment to check
-   * @return {@code true} if this is the calling admin's own MFA enrollment, {@code false} otherwise
+   * @return {@code true} if this is the calling admin's own enrollment, {@code false} otherwise
    */
   private boolean isSelfEnrollment(AdminPrincipal principal, Enrollment enrollment) {
     return adminRepository
-        .findByMfaEnrollmentEnrollmentId(enrollment.getEnrollmentId())
+        .findByEnrollmentId(enrollment.getEnrollmentId())
         .map(ownerAdmin -> ownerAdmin.getAdminId().equals(principal.adminId()))
         .orElse(false);
   }
@@ -694,7 +692,7 @@ public class EnrollmentRevocationService {
    */
   private void invalidateAdminTokensIfAdminEnrollment(Enrollment enrollment) {
     adminRepository
-        .findByMfaEnrollmentEnrollmentId(enrollment.getEnrollmentId())
+        .findByEnrollmentId(enrollment.getEnrollmentId())
         .ifPresent(
             ownerAdmin -> {
               int revokedTokenCount =

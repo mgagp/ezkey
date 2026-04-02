@@ -34,7 +34,7 @@ class RecoveryAuditDetailsTest {
         .contains("\"flow\":\"admin_recovery\"")
         .contains("\"step\":\"recovery_code_validated\"")
         .contains("\"recovery_token_fingerprint\":\"aabbccddeeff0011\"")
-        .contains("\"mfa_enrollment_id\":100");
+        .contains("\"enrollment_id\":100");
   }
 
   @Test

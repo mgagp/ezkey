@@ -100,7 +100,7 @@ class EnrollmentControllerVerifyAuditTest {
 
     when(enrollmentMapper.toEnrollmentVerifyRequest(requestDto)).thenReturn(verifyRequest);
 
-    when(adminRepository.findTenantIdByMfaEnrollmentId(anyInt())).thenReturn(Optional.empty());
+    when(adminRepository.findTenantIdByEnrollmentId(anyInt())).thenReturn(Optional.empty());
 
     // Mock HttpServletRequest for AuditHelper (with empty trusted proxies only remoteAddr
     // is used). Lenient for header stubs that may not be called.

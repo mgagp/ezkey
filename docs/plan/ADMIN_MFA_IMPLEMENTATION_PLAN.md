@@ -124,8 +124,8 @@ L'admin global nécessite un enrollment pour MFA, mais créer un enrollment néc
      true
    );
    
-   UPDATE ezkey_admin 
-   SET mfa_enrollment_id = [enrollment_id]
+  UPDATE ezkey_admin 
+  SET enrollment_id = [enrollment_id]
    WHERE username = 'admin';
    ```
 
@@ -623,8 +623,8 @@ public class AdminBootstrapService {
                 .orElseThrow(() -> new RuntimeException("Admin zero not found"));
 
         // Check if admin already has enrollment
-        if (adminZero.getMfaEnrollmentId() != null) {
-            logger.info("✅ Admin already has enrollment (ID: {})", adminZero.getMfaEnrollmentId());
+        if (adminZero.getEnrollmentId() != null) {
+            logger.info("✅ Admin already has enrollment (ID: {})", adminZero.getEnrollmentId());
             return;
         }
 
@@ -657,7 +657,7 @@ public class AdminBootstrapService {
         enrollmentRepository.save(enrollmentZero);
 
         // Link admin to enrollment
-        adminZero.setMfaEnrollmentId(enrollmentZero.getEnrollmentId());
+        adminZero.setEnrollmentId(enrollmentZero.getEnrollmentId());
         adminRepository.save(adminZero);
 
         // Log enrollment URL
@@ -858,7 +858,7 @@ Optional<Integration> findByIsSystemIntegrationAndActiveTrue(Boolean isSystemInt
 - ✅ Check logs: "📱 Enrollment URL: ezkey://bind?enrollmentId=1&integrationId=1"
 - ✅ Verify DB: SELECT * FROM ezkey_integration WHERE is_system_integration = true
 - ✅ Verify DB: SELECT * FROM ezkey_enrollment WHERE enrollment_id = 1
-- ✅ Verify DB: SELECT mfa_enrollment_id FROM ezkey_admin WHERE username = 'admin'
+- ✅ Verify DB: SELECT enrollment_id FROM ezkey_admin WHERE username = 'admin'
 - ✅ Startup app (2nd time) → Integration Zero not duplicated
 - ✅ Integration Zero has valid RSA key pair
 

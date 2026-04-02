@@ -254,7 +254,7 @@
               "    });",
               "    ",
               "    if (jsonData.enrollmentId !== undefined && jsonData.enrollmentId !== null) {",
-              "        pm.environment.set(\"mfaEnrollmentId\", jsonData.enrollmentId);",
+              "        pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);",
               "    }",
               "    ",
               "    pm.test(\"Recovery successful\", function () {",
@@ -293,7 +293,7 @@
             "recover"
           ]
         },
-        "description": "Emergency access using a single-use recovery code. This endpoint allows administrators who have lost access to their enrolled device to regain access.\n\n**Security Features:**\n- Single-use recovery codes (removed from array after use)\n- BCrypt hashed storage\n- Limited token (30 min validity, enrollment binding only)\n- Rate limited to prevent brute force\n- Audit logged (`ADMIN_RECOVERY_USE`, structured `event_details` JSON on the server)\n\n**Request Body:**\n- `username` (required): Administrator username\n- `recoveryCode` (required): Single-use recovery code (32 digits in 8 groups of 4: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX)\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `recoveryToken`: Temporary recovery token (30 minutes validity)\n- `expiresAt`: Token expiration timestamp\n- `codesRemaining`: Number of recovery codes remaining after this use\n- `enrollmentId`: MFA enrollment ID to use as `enrollmentId` in `POST /api/v1/admin/enrollments/reset` (when the admin has an MFA enrollment)\n- `message`: \"Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately.\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: \"Recovery failed: …\"\n\n**Status Codes:**\n- 200: Recovery successful, temporary token issued\n- 400: Validation error (invalid recovery code format)\n- 403: Recovery failed (invalid or expired recovery code)\n- 429: Rate limit exceeded (3 attempts per 15 minutes per IP)\n- 500: Internal server error"
+        "description": "Emergency access using a single-use recovery code. This endpoint allows administrators who have lost access to their enrolled device to regain access.\n\n**Security Features:**\n- Single-use recovery codes (removed from array after use)\n- BCrypt hashed storage\n- Limited token (30 min validity, enrollment binding only)\n- Rate limited to prevent brute force\n- Audit logged (`ADMIN_RECOVERY_USE`, structured `event_details` JSON on the server)\n\n**Request Body:**\n- `username` (required): Administrator username\n- `recoveryCode` (required): Single-use recovery code (32 digits in 8 groups of 4: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX)\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `recoveryToken`: Temporary recovery token (30 minutes validity)\n- `expiresAt`: Token expiration timestamp\n- `codesRemaining`: Number of recovery codes remaining after this use\n- `enrollmentId`: Enrollment ID to use as `enrollmentId` in `POST /api/v1/admin/enrollments/reset` (when the admin has an enrollment)\n- `message`: \"Recovery successful. Token valid for 30 minutes. Re-bind enrollment immediately.\"\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: \"Recovery failed: …\"\n\n**Status Codes:**\n- 200: Recovery successful, temporary token issued\n- 400: Validation error (invalid recovery code format)\n- 403: Recovery failed (invalid or expired recovery code)\n- 429: Rate limit exceeded (3 attempts per 15 minutes per IP)\n- 500: Internal server error"
       },
       "response": []
     },
@@ -304,8 +304,8 @@
           "listen": "prerequest",
           "script": {
             "exec": [
-              "if (!pm.environment.get(\"mfaEnrollmentId\")) {",
-              "    pm.environment.set(\"mfaEnrollmentId\", \"1\");",
+              "if (!pm.environment.get(\"enrollmentId\")) {",
+              "    pm.environment.set(\"enrollmentId\", \"1\");",
               "}"
             ],
             "type": "text/javascript",
@@ -360,7 +360,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"enrollmentId\": {{mfaEnrollmentId}}\r\n}",
+          "raw": "{\r\n  \"enrollmentId\": {{enrollmentId}}\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -380,7 +380,7 @@
             "reset"
           ]
         },
-        "description": "Resets enrollment after using recovery code. This unbinds the old device and generates new enrollment credentials for binding a replacement device.\n\n**Prerequisites:**\n- Must have valid recovery token (obtained via `/recover` endpoint)\n- Recovery token expires after 30 minutes or after use\n- Set environment variable `mfaEnrollmentId` from the `/recover` response (`enrollmentId`), or set it manually before calling this request\n\n**Request Body:**\n- `enrollmentId` (required): MFA enrollment ID (must match the value returned by `/recover` for this admin)\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `enrollmentId`: The enrollment ID (same as before, but credentials are new)\n- `enrollmentProofToken`: New enrollment proof token for binding\n- `enrollmentChallenge`: New enrollment challenge code for verification\n- `integrationId`: Integration ID for reference\n- `message`: \"Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.\"\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description (e.g. enrollment not found)\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: e.g. invalid recovery token, wrong enrollment for this admin, or invalid token type\n\n**Audit:** Success and failures are recorded (`ADMIN_RECOVERY_ENROLLMENT_RESET`); `event_details` is JSON on the server (not in this response).\n\n**Status Codes:**\n- 200: Enrollment reset successfully\n- 400: Invalid request or enrollment not found\n- 403: Authentication failed (invalid/expired recovery token, wrong token type, or permission)\n- 429: Rate limit exceeded for enrollment reset\n- 500: Internal server error\n\n**Usage Flow:**\n1. Use recovery code to get recovery token and `enrollmentId`\n2. Reset enrollment (unbinds old device)\n3. Bind new device with new credentials\n4. Resume normal passwordless login"
+        "description": "Resets enrollment after using recovery code. This unbinds the old device and generates new enrollment credentials for binding a replacement device.\n\n**Prerequisites:**\n- Must have valid recovery token (obtained via `/recover` endpoint)\n- Recovery token expires after 30 minutes or after use\n- Set environment variable `enrollmentId` from the `/recover` response, or set it manually before calling this request\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID returned by `/recover` for this administrator\n\n**Response (200 OK) - Success:**\n- `success`: true\n- `enrollmentId`: The enrollment ID (same as before, but credentials are new)\n- `enrollmentProofToken`: New enrollment proof token for binding\n- `enrollmentChallenge`: New enrollment challenge code for verification\n- `integrationId`: Integration ID for reference\n- `message`: \"Enrollment reset successfully. Old device unbound. Use these credentials to bind new device.\"\n\n**Failure Response (400 Bad Request):**\n- `success`: false\n- `message`: Error description (e.g. enrollment not found)\n\n**Failure Response (403 Forbidden):**\n- `success`: false\n- `message`: e.g. invalid recovery token, wrong enrollment for this admin, or invalid token type\n\n**Audit:** Success and failures are recorded (`ADMIN_RECOVERY_ENROLLMENT_RESET`); `event_details` is JSON on the server (not in this response).\n\n**Status Codes:**\n- 200: Enrollment reset successfully\n- 400: Invalid request or enrollment not found\n- 403: Authentication failed (invalid/expired recovery token, wrong token type, or permission)\n- 429: Rate limit exceeded for enrollment reset\n- 500: Internal server error\n\n**Usage Flow:**\n1. Use recovery code to get recovery token and `enrollmentId`\n2. Reset enrollment (unbinds old device)\n3. Bind new device with new credentials\n4. Resume normal passwordless login"
       },
       "response": []
     },

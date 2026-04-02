@@ -13,7 +13,7 @@ package org.ezkey.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.ezkey.admin.exception.EnrollmentCannotBeDeletedException;
-import org.ezkey.admin.exception.EnrollmentLinkedAsAdminMfaException;
+import org.ezkey.admin.exception.EnrollmentLinkedAsAdminException;
 import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
 import org.ezkey.admin.exception.SystemIntegrationRevocationException;
 import org.springframework.core.annotation.Order;
@@ -41,8 +41,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *       integration, which is not permitted.
  *   <li><b>EnrollmentCannotBeDeletedException (409):</b> Enrollment cannot be deleted because it
  *       has authentication history; revoke instead.
- *   <li><b>EnrollmentLinkedAsAdminMfaException (409):</b> Enrollment cannot be deleted because it
- *       is linked as an administrator's MFA; use recovery flow to reset that admin's MFA first.
+ *   <li><b>EnrollmentLinkedAsAdminException (409):</b> Enrollment cannot be deleted because it is
+ *       linked to an administrator; use recovery flow to reset that administrator enrollment first.
  * </ul>
  *
  * <p><b>Response Format:</b> All responses conform to RFC 9457 (Problem Details for HTTP APIs).
@@ -68,7 +68,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * @see SelfRevocationNotAllowedException
  * @see SystemIntegrationRevocationException
  * @see EnrollmentCannotBeDeletedException
- * @see EnrollmentLinkedAsAdminMfaException
+ * @see EnrollmentLinkedAsAdminException
  */
 @RestControllerAdvice
 @Component
@@ -218,11 +218,11 @@ public class EnrollmentExceptionHandler extends ExceptionHandlerBase {
   }
 
   /**
-   * Handles EnrollmentLinkedAsAdminMfaException and returns HTTP 409 Conflict.
+   * Handles EnrollmentLinkedAsAdminException and returns HTTP 409 Conflict.
    *
-   * <p>Triggered when an enrollment cannot be deleted because it is linked as an administrator's
-   * MFA (ezkey_admin.mfa_enrollment_id). The client should use the recovery flow to reset that
-   * admin's MFA first.
+   * <p>Triggered when an enrollment cannot be deleted because it is linked to an administrator
+   * ({@code ezkey_admin.enrollment_id}). The client should use the recovery flow to reset that
+   * administrator enrollment first.
    *
    * <p><b>HTTP Status:</b> 409 Conflict
    *
@@ -230,26 +230,26 @@ public class EnrollmentExceptionHandler extends ExceptionHandlerBase {
    *
    * <pre>{@code
    * {
-   *   "type": "https://ezkey.io/problems/enrollment/cannot-delete-linked-as-admin-mfa",
-   *   "title": "Enrollment Linked as Admin MFA",
+   *   "type": "https://ezkey.io/problems/enrollment/cannot-delete-linked-as-admin",
+   *   "title": "Enrollment Linked to Administrator",
    *   "status": 409,
-   *   "detail": "Enrollment cannot be deleted because it is linked as an administrator's MFA. Use the recovery flow to reset that admin's MFA first.",
+   *   "detail": "Enrollment cannot be deleted because it is linked to an administrator. Use the recovery flow to reset that administrator enrollment first.",
    *   "path": "/api/v1/enrollments/42"
    * }
    * }</pre>
    *
-   * @param ex the EnrollmentLinkedAsAdminMfaException that was thrown
+   * @param ex the EnrollmentLinkedAsAdminException that was thrown
    * @param request the HTTP servlet request for path extraction
    * @return ResponseEntity containing ProblemDetail and HTTP 409 status
    */
-  @ExceptionHandler(EnrollmentLinkedAsAdminMfaException.class)
-  public ResponseEntity<ProblemDetail> handleEnrollmentLinkedAsAdminMfaException(
-      EnrollmentLinkedAsAdminMfaException ex, HttpServletRequest request) {
+  @ExceptionHandler(EnrollmentLinkedAsAdminException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentLinkedAsAdminException(
+      EnrollmentLinkedAsAdminException ex, HttpServletRequest request) {
     return buildProblemDetail(
         ex,
         HttpStatus.CONFLICT,
-        "https://ezkey.io/problems/enrollment/cannot-delete-linked-as-admin-mfa",
-        "Enrollment Linked as Admin MFA",
+        "https://ezkey.io/problems/enrollment/cannot-delete-linked-as-admin",
+        "Enrollment Linked to Administrator",
         request);
   }
 }

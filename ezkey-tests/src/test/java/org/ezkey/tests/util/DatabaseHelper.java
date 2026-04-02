@@ -259,7 +259,7 @@ public class DatabaseHelper {
    */
   public boolean isAdminEnrollment(Integer enrollmentId) {
     String sqlQuery =
-        "SELECT COUNT(*) FROM ezkey_admin WHERE mfa_enrollment_id = %d;".formatted(enrollmentId);
+        "SELECT COUNT(*) FROM ezkey_admin WHERE enrollment_id = %d;".formatted(enrollmentId);
     String count = executeQuerySingleValue(sqlQuery);
     return count != null && Integer.parseInt(count) > 0;
   }

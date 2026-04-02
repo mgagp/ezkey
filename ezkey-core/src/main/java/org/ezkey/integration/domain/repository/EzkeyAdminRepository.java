@@ -60,16 +60,15 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
   Optional<EzkeyAdmin> findByUsername(String username);
 
   /**
-   * Finds an administrator by username with MFA enrollment eagerly loaded.
+   * Finds an administrator by username with enrollment eagerly loaded.
    *
-   * <p>This method is used for authentication to find the administrator and load their MFA
-   * enrollment in a single query using JOIN FETCH. This is essential for the MFA flow to correctly
-   * determine if MFA should be required during login.
+   * <p>This method is used for authentication to find the administrator and load their enrollment
+   * in a single query using JOIN FETCH.
    *
    * @param username the unique username of the administrator
    * @return Optional containing the administrator with enrollment if found, empty otherwise
    */
-  @Query("SELECT a FROM EzkeyAdmin a LEFT JOIN FETCH a.mfaEnrollment WHERE a.username = :username")
+  @Query("SELECT a FROM EzkeyAdmin a LEFT JOIN FETCH a.enrollment WHERE a.username = :username")
   Optional<EzkeyAdmin> findByUsernameWithEnrollment(@Param("username") String username);
 
   /**
@@ -246,26 +245,25 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
       @Param("active") Boolean active);
 
   /**
-   * Find admin by MFA enrollment ID.
+   * Find admin by enrollment ID.
    *
    * <p>Used during passwordless authentication to identify which admin is associated with a
-   * specific enrollment when processing auth attempts. This is critical for the passwordless-wait
-   * flow where we need to determine the admin from the authAttempt's enrollment ID.
+   * specific enrollment when processing auth attempts.
    *
-   * @param enrollmentId the MFA enrollment ID
+   * @param enrollmentId the enrollment ID
    * @return Optional containing the admin if found
    */
-  @Query("SELECT a FROM EzkeyAdmin a WHERE a.mfaEnrollment.enrollmentId = :enrollmentId")
-  Optional<EzkeyAdmin> findByMfaEnrollmentEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+  @Query("SELECT a FROM EzkeyAdmin a WHERE a.enrollment.enrollmentId = :enrollmentId")
+  Optional<EzkeyAdmin> findByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
   /**
-   * Returns tenant info (id, name, description) for the admin whose MFA enrollment matches.
+   * Returns tenant info (id, name, description) for the admin whose enrollment matches.
    *
    * <p>Uses a native scalar query to avoid loading the Tenant entity. This prevents the "Found
    * shared references to a collection: Tenant.administrators" hazard when building bind responses
-   * for system integrations (admin MFA enrollments).
+   * for system integrations (administrator enrollments).
    *
-   * @param enrollmentId the MFA enrollment ID
+   * @param enrollmentId the enrollment ID
    * @return Object[] with [tenantId, tenantName, tenantDescription], or empty if admin has no
    *     tenant
    */
@@ -273,25 +271,24 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
       value =
           "SELECT t.tenant_id, t.tenant_name, t.tenant_description FROM ezkey_tenant t"
               + " JOIN ezkey_admin a ON a.tenant_id = t.tenant_id"
-              + " JOIN ezkey_enrollment e ON e.enrollment_id = a.mfa_enrollment_id"
+              + " JOIN ezkey_enrollment e ON e.enrollment_id = a.enrollment_id"
               + " WHERE e.enrollment_id = :enrollmentId",
       nativeQuery = true)
-  Optional<Object[]> findTenantInfoByAdminMfaEnrollmentId(
-      @Param("enrollmentId") Integer enrollmentId);
+  Optional<Object[]> findTenantInfoByAdminEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 
   /**
-   * Returns the tenant ID of the admin whose MFA enrollment is the given enrollment.
+   * Returns the tenant ID of the admin whose enrollment is the given enrollment.
    *
    * <p>Used for audit log tenant attribution: when bind/verify or auth-attempt events occur for an
-   * admin's MFA enrollment, the audit entry should use the admin's tenant so tenant admins see
-   * those events. Uses JPQL to avoid native-query type issues with Optional and nullable column.
+   * admin's enrollment, the audit entry should use the admin's tenant so tenant admins see those
+   * events. Uses JPQL to avoid native-query type issues with Optional and nullable column.
    *
-   * @param enrollmentId the MFA enrollment ID
+   * @param enrollmentId the enrollment ID
    * @return the admin's tenant ID (may be null for global admin), or empty if no admin has this
-   *     enrollment as MFA
+   *     enrollment
    */
   @Query(
-      "SELECT t.tenantId FROM EzkeyAdmin a JOIN a.tenant t WHERE a.mfaEnrollment.enrollmentId ="
+      "SELECT t.tenantId FROM EzkeyAdmin a JOIN a.tenant t WHERE a.enrollment.enrollmentId ="
           + " :enrollmentId")
-  Optional<Integer> findTenantIdByMfaEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
+  Optional<Integer> findTenantIdByEnrollmentId(@Param("enrollmentId") Integer enrollmentId);
 }

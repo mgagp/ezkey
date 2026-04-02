@@ -65,9 +65,6 @@ public class AdminRecoveryService {
 
   private static final String RECOVERY_CODE_CHARS =
       "0123456789"; // Digits only (106-bit entropy with 32 digits)
-  private static final int RECOVERY_CODE_LENGTH =
-      32; // 8 groups of 4 digits (paranoia-level: 106 bits)
-
   private final EzkeyAdminRepository adminRepository;
   private final AdminTokenRepository tokenRepository;
   private final EnrollmentRepository enrollmentRepository;
@@ -329,8 +326,8 @@ public class AdminRecoveryService {
             .orElseThrow(() -> new IllegalArgumentException("Enrollment not found"));
 
     // 2. Verify admin owns this enrollment (security check)
-    if (admin.getMfaEnrollment() == null
-        || !admin.getMfaEnrollment().getEnrollmentId().equals(enrollmentId)) {
+    if (admin.getEnrollment() == null
+        || !admin.getEnrollment().getEnrollmentId().equals(enrollmentId)) {
       logger.error(
           "❌ Admin {} attempted to reset enrollment {} which doesn't belong to them",
           admin.getUsername(),

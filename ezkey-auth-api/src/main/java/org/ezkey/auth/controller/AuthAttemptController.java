@@ -388,9 +388,9 @@ public class AuthAttemptController {
   /**
    * Resolves the tenant ID for audit log association for an auth attempt.
    *
-   * <p>For enrollments that belong to an admin (MFA enrollment), returns that admin's tenant so
-   * that tenant admins see pending/respond events in their tenant's audit view. For other
-   * enrollments, falls back to the integration's tenant.
+   * <p>For enrollments that belong to an administrator, returns that admin's tenant so that tenant
+   * admins see pending/respond events in their tenant's audit view. For other enrollments, falls
+   * back to the integration's tenant.
    *
    * @param authAttemptId the auth attempt ID to resolve the tenant from
    * @return the tenant ID for audit, or {@code null} if not resolvable
@@ -404,7 +404,7 @@ public class AuthAttemptController {
       return resolveTenantIdFromAuthAttempt(authAttemptId);
     }
     return adminRepository
-        .findTenantIdByMfaEnrollmentId(enrollmentId)
+        .findTenantIdByEnrollmentId(enrollmentId)
         .orElseGet(() -> resolveTenantIdFromAuthAttempt(authAttemptId));
   }
 

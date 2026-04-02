@@ -184,7 +184,7 @@ public class AdminAuthService {
 
     // Passwordless is the ONLY mode - no flag to check
     // Just ensure enrollment exists and is bound
-    if (admin.getMfaEnrollment() == null || admin.getMfaEnrollment().getDevicePublicKey() == null) {
+    if (admin.getEnrollment() == null || admin.getEnrollment().getDevicePublicKey() == null) {
       logger.warn("No bound enrollment for passwordless auth: {}", admin.getUsername());
       throw new AdminNoEnrollmentException(
           "No device enrollment found for passwordless authentication");
@@ -197,7 +197,7 @@ public class AdminAuthService {
         admin.getChallengeRequired() || Boolean.TRUE.equals(request.challengeRequested());
 
     AuthAttemptCreateRequest attemptReq = new AuthAttemptCreateRequest();
-    attemptReq.setEnrollmentId(admin.getMfaEnrollment().getEnrollmentId());
+    attemptReq.setEnrollmentId(admin.getEnrollment().getEnrollmentId());
     attemptReq.setChallengeRequested(challengeRequested);
 
     AuthAttemptCreateResponse attemptResponse = authAttemptTxHelper.createAuthAttempt(attemptReq);
@@ -354,7 +354,7 @@ public class AdminAuthService {
     // 3. Get admin from enrollment
     EzkeyAdmin admin =
         adminRepository
-            .findByMfaEnrollmentEnrollmentId(authAttempt.getEnrollmentId())
+            .findByEnrollmentId(authAttempt.getEnrollmentId())
             .orElseThrow(
                 () -> new IllegalArgumentException("Admin not found for this auth attempt"));
 
@@ -509,7 +509,7 @@ public class AdminAuthService {
 
   /**
    * Resolves username, admin id, and tenant id for audit logging for an auth attempt, when the
-   * attempt exists and is linked to an admin enrollment.
+   * attempt exists and is linked to an administrator enrollment.
    *
    * @param authAttemptId the authentication attempt id
    * @return context if resolvable; empty if the attempt or admin link is missing
@@ -524,7 +524,7 @@ public class AdminAuthService {
         .flatMap(
             attempt ->
                 adminRepository
-                    .findByMfaEnrollmentEnrollmentId(attempt.getEnrollmentId())
+                    .findByEnrollmentId(attempt.getEnrollmentId())
                     .map(
                         admin ->
                             new AdminAuthAuditContext(

@@ -286,7 +286,7 @@ version | description                              | success
 SELECT admin_id, username, email, admin_type, 
        tenant_id IS NOT NULL as has_tenant,
        challenge_required,
-       mfa_enrollment_id IS NULL as needs_bootstrap
+       enrollment_id IS NULL as needs_bootstrap
 FROM ezkey_admin
 WHERE admin_type = 'GLOBAL_ADMIN';
 ```
@@ -332,7 +332,7 @@ if (globalAdmin.isEmpty()) {
 }
 
 // Check if admin already has enrollment
-if (globalAdmin.get().getMfaEnrollment() != null) {
+if (globalAdmin.get().getEnrollment() != null) {
     logger.info("Global admin already bootstrapped");
     return;
 }

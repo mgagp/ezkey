@@ -106,14 +106,13 @@ public class AdminTokenValidationService {
             return Optional.empty();
           }
 
-          // Check if admin's MFA enrollment is still active.
+          // Check if the admin's enrollment is still active.
           // Defence-in-depth: EnrollmentRevocationService already invalidates tokens
           // immediately on revocation, but this guard catches any window where the
           // enrollment was deactivated without explicit token revocation.
-          Enrollment mfaEnrollment = admin.getMfaEnrollment();
-          if (mfaEnrollment != null && !Boolean.TRUE.equals(mfaEnrollment.getActive())) {
-            logger.warn(
-                "❌ Token rejected: MFA enrollment inactive for admin: {}", admin.getUsername());
+          Enrollment enrollment = admin.getEnrollment();
+          if (enrollment != null && !Boolean.TRUE.equals(enrollment.getActive())) {
+            logger.warn("❌ Token rejected: enrollment inactive for admin: {}", admin.getUsername());
             return Optional.empty();
           }
 

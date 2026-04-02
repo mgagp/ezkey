@@ -654,7 +654,7 @@ public class EnrollmentController {
 
       // Business guards: return RFC 9457 instead of DB constraint violation
       enrollmentRevocationService.assertNotSelfDeletion(principal, id);
-      enrollmentRevocationService.assertNotLinkedAsAdminMfa(id);
+      enrollmentRevocationService.assertNotLinkedAsAdmin(id);
       if (authAttemptRepository.existsByEnrollmentId(id)) {
         throw new EnrollmentCannotBeDeletedException(
             "Enrollment cannot be deleted because it has authentication history. Revoke the"

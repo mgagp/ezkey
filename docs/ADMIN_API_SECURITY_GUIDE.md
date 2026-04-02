@@ -705,7 +705,7 @@ GROUP BY a.admin_id, a.username;
 SELECT a.username, e.enrollment_id, 
        e.device_public_key IS NOT NULL as is_bound
 FROM ezkey_admin a
-LEFT JOIN ezkey_enrollment e ON e.enrollment_id = a.mfa_enrollment_id
+LEFT JOIN ezkey_enrollment e ON e.enrollment_id = a.enrollment_id
 WHERE a.username = 'admin';
 ```
 

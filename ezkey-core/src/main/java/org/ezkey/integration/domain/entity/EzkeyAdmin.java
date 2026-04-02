@@ -192,14 +192,14 @@ public class EzkeyAdmin {
   private Integration integration;
 
   /**
-   * Reference to the MFA enrollment for this administrator.
+   * Reference to the Ezkey enrollment used by this administrator.
    *
-   * <p>This field links to the enrollment record used for MFA authentication using the Ezkey
-   * system.
+   * <p>This field links to the standard enrollment record used for administrator authentication in
+   * the Ezkey system.
    */
   @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
-  @JoinColumn(name = "mfa_enrollment_id")
-  private Enrollment mfaEnrollment;
+  @JoinColumn(name = "enrollment_id")
+  private Enrollment enrollment;
 
   /**
    * Flag indicating whether challenge verification is required during passwordless auth.
@@ -459,21 +459,21 @@ public class EzkeyAdmin {
   }
 
   /**
-   * Gets the MFA enrollment.
+   * Gets the administrator enrollment.
    *
-   * @return the MFA enrollment
+   * @return the enrollment used by this administrator
    */
-  public Enrollment getMfaEnrollment() {
-    return mfaEnrollment;
+  public Enrollment getEnrollment() {
+    return enrollment;
   }
 
   /**
-   * Sets the MFA enrollment.
+   * Sets the administrator enrollment.
    *
-   * @param mfaEnrollment the MFA enrollment
+   * @param enrollment the enrollment used by this administrator
    */
-  public void setMfaEnrollment(Enrollment mfaEnrollment) {
-    this.mfaEnrollment = mfaEnrollment;
+  public void setEnrollment(Enrollment enrollment) {
+    this.enrollment = enrollment;
   }
 
   /**

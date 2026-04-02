@@ -147,7 +147,7 @@ private AdminLoginResponseDto authenticatePasswordless(AdminLoginRequestDto requ
         throw new TenantInactiveException("Tenant has been deactivated");
     }
 
-    if (admin.getMfaEnrollment() == null || admin.getMfaEnrollment().getDevicePublicKey() == null) {
+    if (admin.getEnrollment() == null || admin.getEnrollment().getDevicePublicKey() == null) {
         throw new AdminNoEnrollmentException("No device enrollment found");
     }
 

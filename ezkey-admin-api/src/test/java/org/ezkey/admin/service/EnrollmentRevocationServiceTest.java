@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
-import org.ezkey.admin.exception.EnrollmentLinkedAsAdminMfaException;
+import org.ezkey.admin.exception.EnrollmentLinkedAsAdminException;
 import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
 import org.ezkey.admin.exception.SystemIntegrationRevocationException;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -109,7 +109,7 @@ class EnrollmentRevocationServiceTest {
     void revoke_shouldSetStatusRevokedAndInactive_onHappyPath() {
       Enrollment enrollment = activeVerifiedEnrollment(1);
       when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(1)).thenReturn(Optional.empty());
+      when(adminRepository.findByEnrollmentId(1)).thenReturn(Optional.empty());
 
       service.revoke(
           1, globalAdminPrincipal, "Security incident - revocation required", clientContext, null);
@@ -139,7 +139,7 @@ class EnrollmentRevocationServiceTest {
     void revoke_shouldThrow_whenAdminRevokesOwnEnrollment() {
       Enrollment enrollment = activeVerifiedEnrollment(1);
       when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(1)).thenReturn(Optional.of(ownerAdmin));
+      when(adminRepository.findByEnrollmentId(1)).thenReturn(Optional.of(ownerAdmin));
       when(ownerAdmin.getAdminId()).thenReturn(1); // Same as globalAdminPrincipal.adminId()
 
       assertThatThrownBy(
@@ -155,7 +155,7 @@ class EnrollmentRevocationServiceTest {
     void revoke_shouldBeIdempotent_whenAlreadyRevoked() {
       Enrollment enrollment = revokedEnrollment(1);
       when(enrollmentRepository.findById(1)).thenReturn(Optional.of(enrollment));
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(1)).thenReturn(Optional.empty());
+      when(adminRepository.findByEnrollmentId(1)).thenReturn(Optional.empty());
 
       service.revoke(1, globalAdminPrincipal, "Valid reason here", clientContext, null);
 
@@ -177,7 +177,7 @@ class EnrollmentRevocationServiceTest {
     void deactivate_shouldSetInactiveAndRecordAuditFields_onHappyPath() {
       Enrollment enrollment = activeVerifiedEnrollment(2);
       when(enrollmentRepository.findById(2)).thenReturn(Optional.of(enrollment));
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(2)).thenReturn(Optional.empty());
+      when(adminRepository.findByEnrollmentId(2)).thenReturn(Optional.empty());
 
       service.deactivate(2, globalAdminPrincipal, "Suspicious activity", clientContext, null);
 
@@ -193,7 +193,7 @@ class EnrollmentRevocationServiceTest {
     void deactivate_shouldThrow_whenEnrollmentAlreadyRevoked() {
       Enrollment enrollment = revokedEnrollment(2);
       when(enrollmentRepository.findById(2)).thenReturn(Optional.of(enrollment));
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(2)).thenReturn(Optional.empty());
+      when(adminRepository.findByEnrollmentId(2)).thenReturn(Optional.empty());
 
       assertThatThrownBy(
               () -> service.deactivate(2, globalAdminPrincipal, "reason", clientContext, null))
@@ -209,7 +209,7 @@ class EnrollmentRevocationServiceTest {
     void deactivate_shouldThrow_whenAdminDeactivatesOwnEnrollment() {
       Enrollment enrollment = activeVerifiedEnrollment(2);
       when(enrollmentRepository.findById(2)).thenReturn(Optional.of(enrollment));
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(2)).thenReturn(Optional.of(ownerAdmin));
+      when(adminRepository.findByEnrollmentId(2)).thenReturn(Optional.of(ownerAdmin));
       when(ownerAdmin.getAdminId()).thenReturn(1); // Same as principal
 
       assertThatThrownBy(
@@ -293,7 +293,7 @@ class EnrollmentRevocationServiceTest {
       when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
               10, EnrollmentStatus.VERIFIED, true))
           .thenReturn(List.of(enrollmentA, enrollmentB));
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(any())).thenReturn(Optional.empty());
+      when(adminRepository.findByEnrollmentId(any())).thenReturn(Optional.empty());
 
       service.revokeAllByIntegration(
           10, globalAdminPrincipal, "Valid long reason here", clientContext, null);
@@ -358,7 +358,7 @@ class EnrollmentRevocationServiceTest {
       when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
               10, EnrollmentStatus.VERIFIED, true))
           .thenReturn(List.of(enrollmentA, enrollmentB));
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(any())).thenReturn(Optional.empty());
+      when(adminRepository.findByEnrollmentId(any())).thenReturn(Optional.empty());
 
       service.deactivateAllByIntegration(
           10, globalAdminPrincipal, "Emergency lockdown", clientContext, null);
@@ -386,10 +386,9 @@ class EnrollmentRevocationServiceTest {
       when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
               10, EnrollmentStatus.VERIFIED, true))
           .thenReturn(List.of(selfEnrollment, otherEnrollment));
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(101))
-          .thenReturn(Optional.of(ownerAdmin));
+      when(adminRepository.findByEnrollmentId(101)).thenReturn(Optional.of(ownerAdmin));
       when(ownerAdmin.getAdminId()).thenReturn(1);
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(102)).thenReturn(Optional.empty());
+      when(adminRepository.findByEnrollmentId(102)).thenReturn(Optional.empty());
 
       service.deactivateAllByIntegration(10, globalAdminPrincipal, "Lockdown", clientContext, null);
 
@@ -464,7 +463,7 @@ class EnrollmentRevocationServiceTest {
   }
 
   // -------------------------------------------------------------------------
-  // assertNotSelfDeletion() / assertNotLinkedAsAdminMfa() (delete guards)
+  // assertNotSelfDeletion() / assertNotLinkedAsAdmin() (delete guards)
   // -------------------------------------------------------------------------
 
   @Nested
@@ -474,53 +473,53 @@ class EnrollmentRevocationServiceTest {
     @Test
     @DisplayName("Should throw when principal is the owner of the enrollment")
     void assertNotSelfDeletion_throws_whenEnrollmentIsCallerMfa() {
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.of(ownerAdmin));
+      when(adminRepository.findByEnrollmentId(42)).thenReturn(Optional.of(ownerAdmin));
       when(ownerAdmin.getAdminId()).thenReturn(1);
 
       assertThatThrownBy(() -> service.assertNotSelfDeletion(globalAdminPrincipal, 42))
           .isInstanceOf(SelfRevocationNotAllowedException.class)
-          .hasMessageContaining("Cannot delete your own MFA enrollment");
+          .hasMessageContaining("Cannot delete your own enrollment");
     }
 
     @Test
-    @DisplayName("Should not throw when enrollment is another admin's MFA")
+    @DisplayName("Should not throw when enrollment is another admin's enrollment")
     void assertNotSelfDeletion_doesNotThrow_whenEnrollmentIsOtherAdminMfa() {
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.of(ownerAdmin));
+      when(adminRepository.findByEnrollmentId(42)).thenReturn(Optional.of(ownerAdmin));
       when(ownerAdmin.getAdminId()).thenReturn(999); // different from globalAdminPrincipal (1)
 
       service.assertNotSelfDeletion(globalAdminPrincipal, 42);
     }
 
     @Test
-    @DisplayName("Should not throw when enrollment is not any admin's MFA")
+    @DisplayName("Should not throw when enrollment is not linked to an admin")
     void assertNotSelfDeletion_doesNotThrow_whenEnrollmentNotLinked() {
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.empty());
+      when(adminRepository.findByEnrollmentId(42)).thenReturn(Optional.empty());
 
       service.assertNotSelfDeletion(globalAdminPrincipal, 42);
     }
   }
 
   @Nested
-  @DisplayName("assertNotLinkedAsAdminMfa()")
-  class AssertNotLinkedAsAdminMfaTests {
+  @DisplayName("assertNotLinkedAsAdmin()")
+  class AssertNotLinkedAsAdminTests {
 
     @Test
-    @DisplayName("Should throw when enrollment is linked as any admin's MFA")
-    void assertNotLinkedAsAdminMfa_throws_whenEnrollmentIsAdminMfa() {
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.of(ownerAdmin));
+    @DisplayName("Should throw when enrollment is linked to an administrator")
+    void assertNotLinkedAsAdmin_throws_whenEnrollmentIsAdminEnrollment() {
+      when(adminRepository.findByEnrollmentId(42)).thenReturn(Optional.of(ownerAdmin));
 
-      assertThatThrownBy(() -> service.assertNotLinkedAsAdminMfa(42))
-          .isInstanceOf(EnrollmentLinkedAsAdminMfaException.class)
-          .hasMessageContaining("linked as an administrator's MFA")
+      assertThatThrownBy(() -> service.assertNotLinkedAsAdmin(42))
+          .isInstanceOf(EnrollmentLinkedAsAdminException.class)
+          .hasMessageContaining("linked to an administrator")
           .hasMessageContaining("recovery flow");
     }
 
     @Test
-    @DisplayName("Should not throw when enrollment is not linked as any admin's MFA")
-    void assertNotLinkedAsAdminMfa_doesNotThrow_whenEnrollmentNotLinked() {
-      when(adminRepository.findByMfaEnrollmentEnrollmentId(42)).thenReturn(Optional.empty());
+    @DisplayName("Should not throw when enrollment is not linked to an administrator")
+    void assertNotLinkedAsAdmin_doesNotThrow_whenEnrollmentNotLinked() {
+      when(adminRepository.findByEnrollmentId(42)).thenReturn(Optional.empty());
 
-      service.assertNotLinkedAsAdminMfa(42);
+      service.assertNotLinkedAsAdmin(42);
     }
   }
 

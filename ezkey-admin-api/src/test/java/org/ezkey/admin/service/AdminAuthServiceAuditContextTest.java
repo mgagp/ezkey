@@ -50,7 +50,7 @@ class AdminAuthServiceAuditContextTest {
     Tenant tenant = new Tenant();
     tenant.setTenantId(3);
     admin.setTenant(tenant);
-    when(adminRepository.findByMfaEnrollmentEnrollmentId(5)).thenReturn(Optional.of(admin));
+    when(adminRepository.findByEnrollmentId(5)).thenReturn(Optional.of(admin));
 
     Optional<AdminAuthAuditContext> ctx = adminAuthService.findAuditContextForAuthAttempt(10);
 

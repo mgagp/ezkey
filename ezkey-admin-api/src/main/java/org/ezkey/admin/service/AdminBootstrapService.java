@@ -318,8 +318,8 @@ public class AdminBootstrapService {
                             + initialGlobalAdminProperties.getUsername()));
 
     // Check if admin already has enrollment
-    if (globalAdmin.getMfaEnrollment() != null) {
-      Integer enrollmentId = globalAdmin.getMfaEnrollment().getEnrollmentId();
+    if (globalAdmin.getEnrollment() != null) {
+      Integer enrollmentId = globalAdmin.getEnrollment().getEnrollmentId();
       logger.info("✅ Global admin already has enrollment (ID: {})", enrollmentId);
 
       // Set default challenge requirement if needed
@@ -406,11 +406,11 @@ public class AdminBootstrapService {
     // that was set)
     String tokenToLog = enrollmentProofToken;
 
-    // Persist enrollment first. EzkeyAdmin.mfaEnrollment has CascadeType.MERGE only (no
+    // Persist enrollment first. EzkeyAdmin.enrollment has CascadeType.MERGE only (no
     // PERSIST), so a new enrollment must be saved explicitly before linking to the admin;
     // otherwise Hibernate throws "references an unsaved transient instance".
     Enrollment persistedEnrollment = enrollmentRepository.save(globalAdminEnrollment);
-    globalAdmin.setMfaEnrollment(persistedEnrollment);
+    globalAdmin.setEnrollment(persistedEnrollment);
 
     // Configure passwordless authentication defaults
     // Passwordless is the ONLY mode - no flag needed (implicit)

@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
-import org.ezkey.admin.exception.EnrollmentLinkedAsAdminMfaException;
+import org.ezkey.admin.exception.EnrollmentLinkedAsAdminException;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -244,8 +244,9 @@ class AuditReasonPropagationTest {
 
   @Test
   @DisplayName(
-      "delete() enrollment linked as admin MFA – returns 409 (EnrollmentLinkedAsAdminMfaException)")
-  void deleteEnrollment_whenLinkedAsAdminMfa_throwsEnrollmentLinkedAsAdminMfaException() {
+      "delete() enrollment linked to administrator – returns 409"
+          + " (EnrollmentLinkedAsAdminException)")
+  void deleteEnrollment_whenLinkedAsAdmin_throwsEnrollmentLinkedAsAdminException() {
     Authentication auth = org.mockito.Mockito.mock(Authentication.class);
     when(auth.getPrincipal()).thenReturn(new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
     SecurityContextHolder.getContext().setAuthentication(auth);
@@ -262,11 +263,11 @@ class AuditReasonPropagationTest {
     when(integrationRepository.findById(1)).thenReturn(Optional.empty());
 
     doThrow(
-            new EnrollmentLinkedAsAdminMfaException(
-                "Enrollment cannot be deleted because it is linked as an administrator's MFA. Use"
-                    + " the recovery flow to reset that admin's MFA first."))
+            new EnrollmentLinkedAsAdminException(
+                "Enrollment cannot be deleted because it is linked to an administrator. Use the"
+                    + " recovery flow to reset that administrator enrollment first."))
         .when(enrollmentRevocationService)
-        .assertNotLinkedAsAdminMfa(42);
+        .assertNotLinkedAsAdmin(42);
 
     EnrollmentController controller =
         new EnrollmentController(
@@ -282,14 +283,14 @@ class AuditReasonPropagationTest {
             enrollmentUpdateService,
             authAttemptRepository);
 
-    EnrollmentLinkedAsAdminMfaException thrown =
+    EnrollmentLinkedAsAdminException thrown =
         assertThrows(
-            EnrollmentLinkedAsAdminMfaException.class,
-            () -> controller.delete(42, "Attempt to delete linked MFA", httpRequest));
+            EnrollmentLinkedAsAdminException.class,
+            () -> controller.delete(42, "Attempt to delete linked enrollment", httpRequest));
 
     assertEquals(
-        "Enrollment cannot be deleted because it is linked as an administrator's MFA. Use the"
-            + " recovery flow to reset that admin's MFA first.",
+        "Enrollment cannot be deleted because it is linked to an administrator. Use the recovery"
+            + " flow to reset that administrator enrollment first.",
         thrown.getMessage());
     verify(enrollmentService, times(0)).delete(any());
   }

@@ -433,7 +433,7 @@ MFA Enrollment:
        }
     ↓
     10. Update ezkey_admin:
-        - mfa_enrollment_id = 1
+        - enrollment_id = 1
         - enrollment STATUS = BOUND
     ↓
     11. Save enrollment info locally
@@ -466,7 +466,7 @@ MFA Enrollment:
        - mode = "dev"
        - admin.mfaEnabled = true
        - admin.mfaRequired = true
-       - admin.mfaEnrollmentId = 1 (bound)
+       - admin.enrollmentId = 1 (bound)
        → Decision: MFA REQUIRED
     4. Generate temp token (5 min)
     5. Save AdminTempToken to DB
@@ -488,7 +488,7 @@ MFA Enrollment:
   AdminMfaService.createMfaAttempt():
     1. Validate temp token → ✅ Valid
     2. Get admin from temp token
-    3. Get enrollment (admin.mfaEnrollmentId)
+    3. Get enrollment (admin.enrollmentId)
     4. Create AuthAttempt via AuthAttemptService
   ↓
   Response (200 OK):

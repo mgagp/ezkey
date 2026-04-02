@@ -514,7 +514,7 @@ public class AdminProvisioningService {
     enrollment = enrollmentRepository.save(enrollment);
 
     // Link admin to enrollment
-    admin.setMfaEnrollment(enrollment);
+    admin.setEnrollment(enrollment);
     adminRepository.save(admin);
 
     logger.debug(
@@ -735,11 +735,11 @@ public class AdminProvisioningService {
     }
 
     // Get enrollment
-    if (admin.getMfaEnrollment() == null) {
+    if (admin.getEnrollment() == null) {
       throw new IllegalArgumentException("Admin does not have an enrollment");
     }
 
-    Enrollment enrollment = admin.getMfaEnrollment();
+    Enrollment enrollment = admin.getEnrollment();
 
     // Reload enrollment from repository to ensure session is active and all
     // properties are loaded

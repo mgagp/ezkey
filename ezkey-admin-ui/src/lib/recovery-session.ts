@@ -10,7 +10,7 @@ export interface RecoverySession {
   expiresAt: string;
   username: string;
   codesRemaining: number;
-  /** MFA enrollment id for POST /api/v1/admin/enrollments/reset */
+  /** Enrollment ID for POST /api/v1/admin/enrollments/reset */
   enrollmentId: number;
 }
 

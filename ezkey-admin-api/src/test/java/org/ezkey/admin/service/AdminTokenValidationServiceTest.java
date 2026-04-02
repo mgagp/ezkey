@@ -5,7 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: AdminTokenValidationServiceTest
- * Description: Unit tests for the MFA enrollment active check in AdminTokenValidationService.
+ * Description: Unit tests for the administrator enrollment active check in
+ *     AdminTokenValidationService.
  */
 
 package org.ezkey.admin.service;
@@ -33,11 +34,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Unit tests for the MFA enrollment active check in {@link AdminTokenValidationService}.
+ * Unit tests for the administrator enrollment active check in {@link AdminTokenValidationService}.
  *
  * <p>These tests specifically target the defence-in-depth guard added as part of enrollment
- * lifecycle revocation: if an admin's MFA enrollment is inactive (revoked or deactivated), their
- * bearer token must be rejected even if it has not yet been explicitly invalidated.
+ * lifecycle revocation: if an admin's enrollment is inactive (revoked or deactivated), their bearer
+ * token must be rejected even if it has not yet been explicitly invalidated.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -47,7 +48,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @since 2025
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("AdminTokenValidationService — MFA Enrollment Active Check Tests")
+@DisplayName("AdminTokenValidationService — Enrollment Active Check Tests")
 class AdminTokenValidationServiceTest {
 
   private static final String TOKEN = "test-bearer-token";
@@ -60,7 +61,7 @@ class AdminTokenValidationServiceTest {
 
   @Mock private EzkeyAdmin admin;
 
-  @Mock private Enrollment mfaEnrollment;
+  @Mock private Enrollment enrollment;
 
   private AdminTokenValidationService service;
 
@@ -70,10 +71,10 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
-  @DisplayName("Should accept token when admin has no MFA enrollment (null)")
-  void validateTokenWithRelations_shouldReturnToken_whenMfaEnrollmentIsNull() {
+  @DisplayName("Should accept token when admin has no enrollment (null)")
+  void validateTokenWithRelations_shouldReturnToken_whenEnrollmentIsNull() {
     stubValidNonExpiredToken();
-    when(admin.getMfaEnrollment()).thenReturn(null);
+    when(admin.getEnrollment()).thenReturn(null);
 
     Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
 
@@ -81,11 +82,11 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
-  @DisplayName("Should accept token when admin MFA enrollment is active")
-  void validateTokenWithRelations_shouldReturnToken_whenMfaEnrollmentIsActive() {
+  @DisplayName("Should accept token when admin enrollment is active")
+  void validateTokenWithRelations_shouldReturnToken_whenEnrollmentIsActive() {
     stubValidNonExpiredToken();
-    when(admin.getMfaEnrollment()).thenReturn(mfaEnrollment);
-    when(mfaEnrollment.getActive()).thenReturn(true);
+    when(admin.getEnrollment()).thenReturn(enrollment);
+    when(enrollment.getActive()).thenReturn(true);
 
     Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
 
@@ -93,11 +94,11 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
-  @DisplayName("Should reject token when admin MFA enrollment is inactive (revoked or deactivated)")
-  void validateTokenWithRelations_shouldReturnEmpty_whenMfaEnrollmentIsInactive() {
+  @DisplayName("Should reject token when admin enrollment is inactive (revoked or deactivated)")
+  void validateTokenWithRelations_shouldReturnEmpty_whenEnrollmentIsInactive() {
     stubValidNonExpiredToken();
-    when(admin.getMfaEnrollment()).thenReturn(mfaEnrollment);
-    when(mfaEnrollment.getActive()).thenReturn(false);
+    when(admin.getEnrollment()).thenReturn(enrollment);
+    when(enrollment.getActive()).thenReturn(false);
 
     Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
 

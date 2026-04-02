@@ -358,7 +358,7 @@ POST /admin/auth/login
 
 // Backend:
 AuthAttemptCreateRequest req = new AuthAttemptCreateRequest();
-req.setEnrollmentId(admin.getMfaEnrollment().getEnrollmentId());
+req.setEnrollmentId(admin.getEnrollment().getEnrollmentId());
 req.setChallengeRequested(false);  // ← Default
 ```
 
@@ -558,13 +558,13 @@ private AdminLoginResponseDto authenticatePasswordless(AdminLoginRequestDto requ
         throw new AuthenticationException("Passwordless authentication not enabled for this account");
     }
     
-    if (admin.getMfaEnrollment() == null || admin.getMfaEnrollment().getDevicePublicKey() == null) {
+    if (admin.getEnrollment() == null || admin.getEnrollment().getDevicePublicKey() == null) {
         throw new AuthenticationException("No device enrolled for passwordless authentication");
     }
     
     // 2. Create auth attempt internally
     AuthAttemptCreateRequest attemptReq = new AuthAttemptCreateRequest();
-    attemptReq.setEnrollmentId(admin.getMfaEnrollment().getEnrollmentId());
+    attemptReq.setEnrollmentId(admin.getEnrollment().getEnrollmentId());
     attemptReq.setChallengeRequested(request.getChallengeRequested());
     AuthAttemptCreateResponse attempt = authAttemptService.create(attemptReq);
     

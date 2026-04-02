@@ -335,12 +335,13 @@ public class EnrollmentBindService {
     // Tenant resolution: use scalar queries only to avoid loading Tenant entity and its
     // administrators collection (prevents "Found shared references to collection:
     // Tenant.administrators").
-    // - For system integrations (admin MFA): try admin's tenant first; if empty (global admin),
+    // - For system integrations (administrator enrollment): try admin's tenant first; if empty
+    //   (global admin),
     //   use integration's tenant via scalar query.
     // - For non-system integrations: use integration's tenant via scalar query.
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
       Optional<Object[]> tenantInfo =
-          ezkeyAdminRepository.findTenantInfoByAdminMfaEnrollmentId(enrollment.getEnrollmentId());
+          ezkeyAdminRepository.findTenantInfoByAdminEnrollmentId(enrollment.getEnrollmentId());
       if (tenantInfo.isPresent()) {
         applyTenantInfoFromRow(response, tenantInfo.get());
       } else {

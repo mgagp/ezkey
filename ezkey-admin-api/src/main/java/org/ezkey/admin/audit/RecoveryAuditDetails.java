@@ -69,7 +69,7 @@ public final class RecoveryAuditDetails {
       Integer adminId,
       Integer tenantId,
       int recoveryCodesRemaining,
-      Integer mfaEnrollmentId,
+      Integer enrollmentId,
       String recoveryTokenFingerprint) {
     AuditDetailsBuilder b =
         AuditDetailsBuilder.builder()
@@ -83,8 +83,8 @@ public final class RecoveryAuditDetails {
       b.custom("admin_id", adminId);
     }
     b.custom("tenant_id", tenantId);
-    if (mfaEnrollmentId != null) {
-      b.custom("mfa_enrollment_id", mfaEnrollmentId);
+    if (enrollmentId != null) {
+      b.custom("enrollment_id", enrollmentId);
     }
     return b.toJson();
   }

@@ -576,7 +576,7 @@ SELECT
     admin_type,
     tenant_id,
     active,
-    mfa_enrollment_id
+    enrollment_id
 FROM ezkey_admin
 WHERE username = 'new_global_admin';
 
@@ -654,7 +654,7 @@ SELECT
     admin_type,
     tenant_id,
     active,
-    mfa_enrollment_id
+    enrollment_id
 FROM ezkey_admin
 WHERE admin_type = 'TENANT_ADMIN'
   AND username IN ('new_tenant_admin', 'peer_tenant_admin')
@@ -668,7 +668,7 @@ SELECT
     a.username,
     a.tenant_id
 FROM ezkey_enrollment e
-JOIN ezkey_admin a ON e.enrollment_id = a.mfa_enrollment_id
+JOIN ezkey_admin a ON e.enrollment_id = a.enrollment_id
 WHERE a.username IN ('new_tenant_admin', 'peer_tenant_admin');
 ```
 

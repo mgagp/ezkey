@@ -161,7 +161,7 @@ CREATE TABLE ezkey_admin (
     integration_id INT REFERENCES ezkey_integration(integration_id),
     mfa_enabled BOOLEAN DEFAULT TRUE NOT NULL,
     mfa_required BOOLEAN DEFAULT TRUE NOT NULL,
-    mfa_enrollment_id INT REFERENCES ezkey_enrollment(enrollment_id),
+    enrollment_id INT REFERENCES ezkey_enrollment(enrollment_id),
     password_change_required BOOLEAN DEFAULT FALSE NOT NULL,
     created_by_admin_id INT REFERENCES ezkey_admin(admin_id),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -190,7 +190,7 @@ COMMENT ON COLUMN ezkey_admin.tenant_id IS 'Foreign key to tenant - determines a
 COMMENT ON COLUMN ezkey_admin.integration_id IS 'Foreign key to integration - determines administrative scope for INTEGRATION_ADMIN type only';
 COMMENT ON COLUMN ezkey_admin.mfa_enabled IS 'Flag indicating if MFA is enabled for this admin - will be removed in V3 passwordless migration';
 COMMENT ON COLUMN ezkey_admin.mfa_required IS 'Flag indicating if MFA is required for this admin - will be removed in V3 passwordless migration';
-COMMENT ON COLUMN ezkey_admin.mfa_enrollment_id IS 'Foreign key to enrollment for MFA authentication - will be repurposed in V3 for passwordless auth';
+COMMENT ON COLUMN ezkey_admin.enrollment_id IS 'Foreign key to the administrator enrollment - reuses the same Ezkey enrollment identifier as all other flows.';
 COMMENT ON COLUMN ezkey_admin.password_change_required IS 'Flag indicating if admin must change password on next login - will be removed in V3 passwordless migration';
 COMMENT ON COLUMN ezkey_admin.created_by_admin_id IS 'Foreign key to admin who created this admin user - supports audit trail';
 COMMENT ON COLUMN ezkey_admin.created_at IS 'Audit timestamp with timezone recording when admin was created - immutable value for compliance tracking';
@@ -383,7 +383,7 @@ INSERT INTO ezkey_admin (
     integration_id,
     challenge_required,
     recovery_codes,
-    mfa_enrollment_id,
+    enrollment_id,
     created_at, 
     active
 ) VALUES (
@@ -443,8 +443,8 @@ COMMENT ON COLUMN ezkey_admin.challenge_required IS
 COMMENT ON COLUMN ezkey_admin.recovery_codes IS
 'Array of BCrypt-hashed recovery codes (32-digit, 106-bit entropy) for emergency access when device is lost. Single-use codes.';
 
-COMMENT ON COLUMN ezkey_admin.mfa_enrollment_id IS
-'Links to Ezkey enrollment for passwordless authentication. Bootstrap service ensures all active admins have enrollment.';
+COMMENT ON COLUMN ezkey_admin.enrollment_id IS
+'Links the administrator to its Ezkey enrollment using the standard enrollment identifier. Bootstrap service ensures all active admins have an enrollment.';
 
 COMMENT ON COLUMN ezkey_admin.username IS
 'Unique username for admin authentication. Used in passwordless login flow.';

@@ -4673,6 +4673,13 @@
             "example": "jane.doe@acme.com",
             "maxLength": 255,
             "minLength": 0
+          },
+          "primaryContactPhoneNumber": {
+            "type": "string",
+            "description": "Primary contact phone number. Accepts common separators and is normalized to E.164 on write.",
+            "example": "+1 514 555 1234",
+            "maxLength": 50,
+            "minLength": 0
           }
         }
       },
@@ -4731,6 +4738,11 @@
             "type": "string",
             "description": "Primary contact email address",
             "example": "jane.doe@acme.com"
+          },
+          "primaryContactPhoneNumber": {
+            "type": "string",
+            "description": "Primary contact phone number in canonical E.164 format",
+            "example": "+15145551234"
           },
           "createdAt": {
             "type": "string",
@@ -4823,6 +4835,13 @@
             "description": "Primary contact email address",
             "example": "jane.doe@acme.com",
             "maxLength": 255,
+            "minLength": 0
+          },
+          "primaryContactPhoneNumber": {
+            "type": "string",
+            "description": "Primary contact phone number. Accepts common separators and is normalized to E.164 on write.",
+            "example": "+1 514 555 1234",
+            "maxLength": 50,
             "minLength": 0
           }
         },
@@ -4981,6 +5000,10 @@
           "contactEmail": {
             "type": "string",
             "description": "Optional contact email for the end-user"
+          },
+          "contactPhoneNumber": {
+            "type": "string",
+            "description": "Optional contact phone number for the end-user"
           },
           "userIdentifier": {
             "type": "string",
@@ -5436,6 +5459,13 @@
             "maxLength": 255,
             "minLength": 0
           },
+          "phoneNumber": {
+            "type": "string",
+            "description": "Phone number (optional contact metadata; accepts common separators and is normalized to E.164 on write)",
+            "example": "+1 514 555 1234",
+            "maxLength": 50,
+            "minLength": 0
+          },
           "firstName": {
             "type": "string",
             "description": "First name (required for global admins, optional for tenant admins)",
@@ -5692,6 +5722,13 @@
             "maxLength": 255,
             "minLength": 0
           },
+          "contactPhoneNumber": {
+            "type": "string",
+            "description": "Optional contact phone number for the end-user (accepts common separators and is normalized to E.164 on write)",
+            "example": "+1 514 555 1234",
+            "maxLength": 50,
+            "minLength": 0
+          },
           "expiresAt": {
             "type": "string",
             "format": "date-time",
@@ -5815,6 +5852,10 @@
           "contactEmail": {
             "type": "string",
             "description": "Optional contact email for the end-user"
+          },
+          "contactPhoneNumber": {
+            "type": "string",
+            "description": "Optional contact phone number for the end-user in canonical E.164 format"
           },
           "userIdentifier": {
             "type": "string",
@@ -5991,6 +6032,13 @@
             "maxLength": 255,
             "minLength": 0
           },
+          "phoneNumber": {
+            "type": "string",
+            "description": "Phone number for the administrator. Accepts common separators and is normalized to E.164 on write.",
+            "example": "+1 514 555 1234",
+            "maxLength": 50,
+            "minLength": 0
+          },
           "challengeRequired": {
             "type": "boolean",
             "description": "Whether challenge verification is required during passwordless login",
@@ -6023,6 +6071,11 @@
             "type": "string",
             "description": "Email address",
             "example": "john.doe@example.com"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "description": "Phone number stored in canonical E.164 format",
+            "example": "+15145551234"
           },
           "firstName": {
             "type": "string",

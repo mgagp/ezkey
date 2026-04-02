@@ -451,9 +451,9 @@ public class EnrollmentController {
   /**
    * Resolves the tenant ID for audit log association.
    *
-   * <p>For enrollments that belong to an admin (MFA enrollment), returns that admin's tenant so
-   * that tenant admins see bind/verify events in their tenant's audit view. For other enrollments,
-   * falls back to the integration's tenant.
+   * <p>For enrollments that belong to an administrator, returns that admin's tenant so that tenant
+   * admins see bind/verify events in their tenant's audit view. For other enrollments, falls back
+   * to the integration's tenant.
    *
    * @param enrollmentId the enrollment ID to resolve the tenant from
    * @return the tenant ID for audit, or {@code null} if not resolvable
@@ -463,7 +463,7 @@ public class EnrollmentController {
       return null;
     }
     return adminRepository
-        .findTenantIdByMfaEnrollmentId(enrollmentId)
+        .findTenantIdByEnrollmentId(enrollmentId)
         .orElseGet(() -> resolveTenantId(enrollmentId));
   }
 
