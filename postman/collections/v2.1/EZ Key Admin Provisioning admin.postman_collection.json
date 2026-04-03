@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "30c5ba46-8574-47fb-a4be-b9de3cc94e0d",
     "name": "EZ Key Admin Provisioning admin",
-    "description": "Collection for administrator provisioning operations in the Admin API.\n\n## Endpoints\n\n- **List Admins**: List administrators with tenant-based filtering (GlobalAdmin or TenantAdmin)\n- **Get Admin By ID**: Retrieve one administrator and capture its optimistic-lock version\n- **Update Admin Profile**: Patch contact/profile metadata, including phone number\n- **Create GlobalAdmin**: Create a peer global administrator (GlobalAdmin only)\n- **Create TenantAdmin**: Create a peer tenant administrator (GlobalAdmin or TenantAdmin for same tenant)\n- **Get Onboarding Credentials**: Retrieve onboarding credentials for an administrator\n- **Get Onboarding QR Code**: Generate QR code for administrator onboarding\n- **Deactivate Admin**: Deactivate an administrator (GlobalAdmin only, RFC 9457 Problem Detail responses)\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Permissions\n- **Create GlobalAdmin**: Only GlobalAdmin can create other GlobalAdmins\n- **Create TenantAdmin**:\n  - GlobalAdmin can create TenantAdmins for any tenant\n  - TenantAdmin can create TenantAdmins for their own tenant only\n  - TenantAdmin cannot create TenantAdmins for other tenants (returns 403)\n- **Get Onboarding Credentials**:\n  - GlobalAdmin can retrieve credentials for any admin\n  - TenantAdmin can only retrieve credentials for admins in their tenant\n\n### Limits Enforcement\n- **Max GlobalAdmins**: Default 3 (configurable via `ezkey.security.admin.max-global-admins`)\n- **Max TenantAdmins per tenant**: Default 3 (configurable via `ezkey.security.admin.max-tenant-admins-per-tenant`)\n- **Min GlobalAdmins**: Default 1 (prevents lockout)\n- **Min TenantAdmins per tenant**: Default 1 (prevents lockout)\n\n### Onboarding Credentials (Security Pattern)\n\n**Creation Response (POST /api/v1/admins/global or /tenant):**\n- Returns `adminId`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `enrollmentId`, `createdAt`\n- **Includes once:** `recoveryCodes` (plain list; 10 single-use codes, format `XXXX-XXXX-...` — copy immediately)\n- **Does NOT include** `enrollmentProofToken` or `enrollmentChallenge` (use GET `/api/v1/admins/{id}/onboarding`)\n\n**Retrieval (GET /api/v1/admins/{id}/onboarding):**\n- Returns enrollment binding credentials:\n  - `enrollmentProofToken`: Enrollment proof token (shown once - save securely!)\n  - `enrollmentChallenge`: Enrollment challenge code, 6 digits (shown once - save securely!)\n  - `recoveryCodes`: always `null` here (plain codes were only on POST create)\n\n**Note on Recovery Codes:**\n- Plain codes appear **only** in the **201** body from POST create; the server stores BCrypt hashes\n- **Cannot be retrieved again** via GET onboarding or any other endpoint\n\n## Error Handling - RFC 9457 Problem Detail\n\nThe deactivate admin endpoint returns RFC 9457 Problem Detail responses for business logic errors:\n\n### AdminNotAllowedException (400 Bad Request)\n```json\n{\n  \"type\": \"https://ezkey.io/problems/admin-not-allowed\",\n  \"title\": \"Admin Operation Not Allowed\",\n  \"status\": 400,\n  \"detail\": \"Cannot deactivate your own account\",\n  \"path\": \"/api/v1/admins/1\"\n}\n```\n\n### AdminLimitException (400 Bad Request)\n```json\n{\n  \"type\": \"https://ezkey.io/problems/admin-limit-violation\",\n  \"title\": \"Admin Limit Violation\",\n  \"status\": 400,\n  \"detail\": \"Cannot deactivate global admin - would violate minimum limit of 2\",\n  \"path\": \"/api/v1/admins/2\"\n}\n```\n\n## Usage Flow\n\n1. Create admin (GlobalAdmin or TenantAdmin) → Returns `adminId`, `enrollmentId`, `phoneNumber`, and `recoveryCodes` (save once)\n2. Optionally GET /api/v1/admins/{id} to capture `version` before PATCH updates\n3. Store `recoveryCodes` securely (not returned again)\n4. GET /api/v1/admins/{id}/onboarding → `enrollmentProofToken`, `enrollmentChallenge`\n5. Save those credentials securely\n6. Login via `/api/v1/admin/auth/login` and bind device\n7. Resume normal passwordless authentication",
+    "description": "Collection for administrator provisioning and lifecycle operations in the Admin API.\n\n## Endpoints\n\n- **List Admins**: List administrators with tenant-based filtering (GlobalAdmin or TenantAdmin)\n- **Get Admin By ID**: Retrieve one administrator and capture its optimistic-lock version\n- **Update Admin Profile**: Patch contact/profile metadata, including phone number\n- **Create GlobalAdmin**: Create a peer global administrator (GlobalAdmin only)\n- **Create TenantAdmin**: Create a peer tenant administrator (GlobalAdmin or TenantAdmin for same tenant)\n- **Get Onboarding Credentials**: Retrieve onboarding credentials for an administrator\n- **Get Onboarding QR Code**: Generate QR code for administrator onboarding\n- **Regenerate Recovery Codes**: Replace the current recovery-code set and revoke previous unused codes\n- **Activate Admin**: Reactivate a previously deactivated administrator (GlobalAdmin only)\n- **Deactivate Admin**: Deactivate an administrator (GlobalAdmin only, RFC 9457 Problem Detail responses)\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Admin Types\n- **GLOBAL_ADMIN**: System-wide administrator, can access all tenants\n- **TENANT_ADMIN**: Tenant-scoped administrator, can only access resources within their tenant\n\n### Permissions\n- **Create GlobalAdmin**: Only GlobalAdmin can create other GlobalAdmins\n- **Create TenantAdmin**:\n  - GlobalAdmin can create TenantAdmins for any tenant\n  - TenantAdmin can create TenantAdmins for their own tenant only\n  - TenantAdmin cannot create TenantAdmins for other tenants (returns 403)\n- **Get Onboarding Credentials**:\n  - GlobalAdmin can retrieve credentials for any admin\n  - TenantAdmin can only retrieve credentials for admins in their tenant\n- **Regenerate Recovery Codes**:\n  - GlobalAdmin can regenerate for any admin\n  - TenantAdmin can regenerate for admins in their own tenant\n\n### Limits Enforcement\n- **Max GlobalAdmins**: Default 3 (configurable via `ezkey.security.admin.max-global-admins`)\n- **Max TenantAdmins per tenant**: Default 3 (configurable via `ezkey.security.admin.max-tenant-admins-per-tenant`)\n- **Min GlobalAdmins**: Default 1 (prevents lockout)\n- **Min TenantAdmins per tenant**: Default 1 (prevents lockout)\n\n### Onboarding Credentials (Security Pattern)\n\n**Creation Response (POST /api/v1/admins/global or /tenant):**\n- Returns `adminId`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `enrollmentId`, `createdAt`\n- **Includes once:** `recoveryCodes` (plain list; 5 single-use codes by default, format `XXXX-XXXX-...` — copy immediately)\n- **Does NOT include** `enrollmentProofToken` or `enrollmentChallenge` (use GET `/api/v1/admins/{id}/onboarding`)\n\n**Retrieval (GET /api/v1/admins/{id}/onboarding):**\n- Returns enrollment binding credentials:\n  - `enrollmentProofToken`: Enrollment proof token (shown once - save securely!)\n  - `enrollmentChallenge`: Enrollment challenge code, 6 digits (shown once - save securely!)\n  - `recoveryCodes`: always `null` here (plain codes were only on POST create)\n\n**Recovery-Code Rotation:**\n- POST `/api/v1/admins/{id}/recovery-codes/regenerate` returns a fresh plain-text set once\n- Previous unused recovery codes are invalidated immediately\n- Inactive administrators cannot receive regenerated recovery codes\n\n**Note on Recovery Codes:**\n- Plain codes appear **only** in the **201** body from POST create or the **200** body from POST regenerate; the server stores BCrypt hashes\n- **Cannot be retrieved again** via GET onboarding or any other read endpoint\n\n## Error Handling - RFC 9457 Problem Detail\n\nThe deactivate admin endpoint returns RFC 9457 Problem Detail responses for business logic errors:\n\n### AdminNotAllowedException (400 Bad Request)\n```json\n{\n  \"type\": \"https://ezkey.io/problems/admin-not-allowed\",\n  \"title\": \"Admin Operation Not Allowed\",\n  \"status\": 400,\n  \"detail\": \"Cannot deactivate your own account\",\n  \"path\": \"/api/v1/admins/1\"\n}\n```\n\n### AdminLimitException (400 Bad Request)\n```json\n{\n  \"type\": \"https://ezkey.io/problems/admin-limit-violation\",\n  \"title\": \"Admin Limit Violation\",\n  \"status\": 400,\n  \"detail\": \"Cannot deactivate global admin - would violate minimum limit of 2\",\n  \"path\": \"/api/v1/admins/2\"\n}\n```\n\n## Usage Flow\n\n1. Create admin (GlobalAdmin or TenantAdmin) → Returns `adminId`, `enrollmentId`, `phoneNumber`, and `recoveryCodes` (save once)\n2. Optionally GET /api/v1/admins/{id} to capture `version` before PATCH updates\n3. Store `recoveryCodes` securely (not returned again)\n4. GET /api/v1/admins/{id}/onboarding → `enrollmentProofToken`, `enrollmentChallenge`\n5. Save those credentials securely\n6. Optionally POST `/api/v1/admins/{id}/recovery-codes/regenerate` when the operator needs a replacement set\n7. Login via `/api/v1/admin/auth/login` and bind device\n8. Resume normal passwordless authentication",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -85,7 +85,7 @@
             "global"
           ]
         },
-        "description": "Creates a new global administrator (peer admin). Only GlobalAdmin can create other GlobalAdmins.\n\n**Permissions:**\n- **GlobalAdmin**: Can create GlobalAdmins\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces maximum limit: `ezkey.security.admin.max-global-admins` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (required for GlobalAdmin): Email address (SOC 2 compliance)\n- `phoneNumber` (optional): Contact phone number; accepts common separators and is normalized to E.164 on write\n- `firstName` (required for GlobalAdmin): First name (SOC 2 compliance)\n- `lastName` (required for GlobalAdmin): Last name (SOC 2 compliance)\n- `tenantId` (ignored): Not used for GlobalAdmin creation\n\n**Response (201 Created):**\n- `adminId`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId` (null), `enrollmentId`, `createdAt`\n- `recoveryCodes`: Plain single-use codes (10 by default; format `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`). **Shown only here** — save immediately.\n- **Not in this response:** `enrollmentProofToken`, `enrollmentChallenge` — call GET `/api/v1/admins/{id}/onboarding` after creation.\n- Location header: `/api/v1/admins/{adminId}`\n\n**Status Codes:**\n- 201: Global administrator created successfully\n- 400: Invalid data, limit exceeded, or username exists\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error\n\n**CRITICAL:** Copy `recoveryCodes` from this response before closing the tab. Fetch enrollment proof and challenge via GET onboarding."
+        "description": "Creates a new global administrator (peer admin). Only GlobalAdmin can create other GlobalAdmins.\n\n**Permissions:**\n- **GlobalAdmin**: Can create GlobalAdmins\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces maximum limit: `ezkey.security.admin.max-global-admins` (default: 3)\n- Returns 400 Bad Request if limit exceeded\n\n**Request Body:**\n- `username` (required): Unique username for the administrator (3-50 characters)\n- `email` (required for GlobalAdmin): Email address (SOC 2 compliance)\n- `phoneNumber` (optional): Contact phone number; accepts common separators and is normalized to E.164 on write\n- `firstName` (required for GlobalAdmin): First name (SOC 2 compliance)\n- `lastName` (required for GlobalAdmin): Last name (SOC 2 compliance)\n- `tenantId` (ignored): Not used for GlobalAdmin creation\n\n**Response (201 Created):**\n- `adminId`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId` (null), `enrollmentId`, `createdAt`\n- `recoveryCodes`: Plain single-use codes (5 by default; format `XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`). **Shown only here** — save immediately.\n- **Not in this response:** `enrollmentProofToken`, `enrollmentChallenge` — call GET `/api/v1/admins/{id}/onboarding` after creation.\n- Location header: `/api/v1/admins/{adminId}`\n\n**Status Codes:**\n- 201: Global administrator created successfully\n- 400: Invalid data, limit exceeded, or username exists\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 500: Internal server error\n\n**CRITICAL:** Copy `recoveryCodes` from this response before closing the tab. Fetch enrollment proof and challenge via GET onboarding."
       },
       "response": []
     },
@@ -530,6 +530,97 @@
       "response": []
     },
     {
+      "name": "regenerate recovery codes",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200, 400, 403, or 404\", function () {",
+              "    pm.expect([200, 400, 403, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    ",
+              "    pm.test(\"Response contains required regeneration fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('adminId');",
+              "        pm.expect(jsonData).to.have.property('username');",
+              "        pm.expect(jsonData).to.have.property('recoveryCodes');",
+              "        pm.expect(jsonData).to.have.property('codesCount');",
+              "        pm.expect(jsonData).to.have.property('invalidatedPreviousCodes');",
+              "        pm.expect(jsonData).to.have.property('message');",
+              "    });",
+              "    ",
+              "    pm.test(\"Recovery codes are returned once as a non-empty array\", function () {",
+              "        pm.expect(jsonData.recoveryCodes).to.be.an('array');",
+              "        pm.expect(jsonData.recoveryCodes.length).to.be.greaterThan(0);",
+              "    });",
+              "    ",
+              "    pm.test(\"Previous unused codes were invalidated\", function () {",
+              "        pm.expect(jsonData.invalidatedPreviousCodes).to.equal(true);",
+              "    });",
+              "    ",
+              "    if (pm.environment.get('recoveryCode')) {",
+              "        pm.environment.set('previousRecoveryCode', pm.environment.get('recoveryCode'));",
+              "    }",
+              "    if (jsonData.recoveryCodes && jsonData.recoveryCodes.length > 0) {",
+              "        pm.environment.set('recoveryCode', jsonData.recoveryCodes[0]);",
+              "        pm.environment.set('regeneratedRecoveryCode', jsonData.recoveryCodes[0]);",
+              "    }",
+              "} else if (pm.response.code === 400) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.test(\"400 response is RFC 9457 Problem Detail\", function () {",
+              "        pm.expect(jsonData).to.have.property('type');",
+              "        pm.expect(jsonData).to.have.property('title');",
+              "        pm.expect(jsonData).to.have.property('status');",
+              "        pm.expect(jsonData).to.have.property('detail');",
+              "        pm.expect(jsonData.status).to.equal(400);",
+              "    });",
+              "} else if (pm.response.code === 403) {",
+              "    pm.test(\"Forbidden - not authorized for this administrator\", function () {",
+              "        pm.expect(pm.response.code).to.equal(403);",
+              "    });",
+              "} else if (pm.response.code === 404) {",
+              "    pm.test(\"Administrator not found\", function () {",
+              "        pm.expect(pm.response.code).to.equal(404);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admins/:id/recovery-codes/regenerate",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admins",
+            ":id",
+            "recovery-codes",
+            "regenerate"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{adminId}}",
+              "description": "The administrator ID for recovery-code regeneration"
+            }
+          ]
+        },
+        "description": "Generates a fresh one-time set of recovery codes for the target administrator and immediately invalidates any previous unused recovery codes.\n\n**Permissions:**\n- **GlobalAdmin**: Can regenerate recovery codes for any administrator\n- **TenantAdmin**: Can regenerate recovery codes for administrators in their tenant\n\n**Path Parameters:**\n- `id` (required): Administrator ID to regenerate recovery codes for\n\n**Response (200 OK):**\n- `adminId`: Unique identifier for the administrator\n- `username`: Username for the administrator\n- `recoveryCodes`: New plain-text single-use recovery codes (**shown only in this response**)\n- `codesCount`: Number of codes returned (default `5`, configurable)\n- `invalidatedPreviousCodes`: Always `true` for this endpoint\n- `message`: Operator-facing summary\n\n**Notes:**\n- Previous unused recovery codes are revoked immediately.\n- Inactive administrators cannot receive regenerated recovery codes.\n- Save the new `recoveryCodes` immediately; they cannot be retrieved later.\n\n**Status Codes:**\n- 200: Recovery codes regenerated successfully\n- 400: Target administrator is inactive\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not authorized for this administrator\n- 404: Administrator not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
       "name": "deactivate admin",
       "event": [
         {
@@ -616,6 +707,71 @@
           ]
         },
         "description": "Deactivates an administrator, preventing further authentication while preserving data for audit purposes. Only GlobalAdmin can deactivate administrators.\n\n**RFC 9457 Problem Detail Responses:**\nBusiness logic errors are returned as RFC 9457 Problem Detail responses with specific type URIs:\n- `https://ezkey.io/problems/admin-not-allowed` - Operation not allowed (e.g., self-deactivation)\n- `https://ezkey.io/problems/admin-limit-violation` - Would violate admin limits\n\n**Rules:**\n- A global admin can deactivate another global admin (but not themselves)\n- A global admin can deactivate any tenant admin\n- A global admin can deactivate a tenant admin even if they're the only admin for that tenant\n- Deactivating a global admin must not fall below minimum global admin limit\n\n**Permissions:**\n- **GlobalAdmin**: Can deactivate administrators\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Limits:**\n- Enforces minimum global admin limit to prevent lockout:\n  - `ezkey.security.admin.min-global-admins` (default: 1)\n- Returns 400 Bad Request with AdminLimitException if minimum limits violated\n- Does NOT enforce minimum tenant admin limits per tenant (global admins can deactivate the only tenant admin)\n\n**Effects of Deactivation:**\n- Sets `active = false` on the administrator\n- Revokes all active tokens for that administrator\n- Data is preserved for audit purposes\n- Operation is idempotent (already inactive → returns 204)\n\n**Path Parameters:**\n- `id` (required): Administrator ID to deactivate\n\n**Query Parameters:**\n- `reason` (optional): Audit justification for the deactivation. Must be between 10 and 500 characters when provided. Recommended for SOC 2 CC6.3 compliance. Enable the query param in Postman to include it.\n\n**Response (204 No Content):**\n- No response body\n- Administrator is deactivated\n- All tokens for that administrator are revoked\n\n**Error Responses (400):**\n- `AdminNotAllowedException` - Self-deactivation attempt (RFC 9457)\n- `AdminLimitException` - Would violate minimum global admin limit (RFC 9457)\n- `VALIDATION_ERROR` - `reason` provided but shorter than 10 characters\n\n**Status Codes:**\n- 204: Administrator deactivated successfully\n- 400: Cannot deactivate - business rule violation (RFC 9457) or invalid reason length\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Administrator not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
+      "name": "activate admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204, 403, or 404\", function () {",
+              "    pm.expect([204, 403, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 204) {",
+              "    pm.test(\"Activation successful\", function () {",
+              "        pm.expect(pm.response.code).to.equal(204);",
+              "    });",
+              "} else if (pm.response.code === 403) {",
+              "    pm.test(\"Forbidden - not a global admin\", function () {",
+              "        pm.expect(pm.response.code).to.equal(403);",
+              "    });",
+              "} else if (pm.response.code === 404) {",
+              "    pm.test(\"Administrator not found\", function () {",
+              "        pm.expect(pm.response.code).to.equal(404);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admins/:id/activate",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admins",
+            ":id",
+            "activate"
+          ],
+          "query": [
+            {
+              "key": "reason",
+              "value": "{{reason}}",
+              "description": "Audit justification for the activation (min 10 characters when provided)",
+              "disabled": true
+            }
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{adminId}}",
+              "description": "The administrator ID to activate"
+            }
+          ]
+        },
+        "description": "Reactivates a previously deactivated administrator. Only GlobalAdmin can activate administrators.\n\n**Permissions:**\n- **GlobalAdmin**: Can activate administrators\n- **TenantAdmin**: Returns 403 Forbidden\n\n**Path Parameters:**\n- `id` (required): Administrator ID to activate\n\n**Query Parameters:**\n- `reason` (optional): Audit justification for the activation. Must be between 10 and 500 characters when provided. Enable the query param in Postman to include it.\n\n**Response (204 No Content):**\n- No response body\n- Administrator is active again\n- The administrator must log in again to obtain a new bearer token\n\n**Status Codes:**\n- 204: Administrator activated successfully\n- 401: Unauthorized - admin token required\n- 403: Forbidden - not a GlobalAdmin\n- 404: Administrator not found\n- 500: Internal server error"
       },
       "response": []
     }
