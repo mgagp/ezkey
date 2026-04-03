@@ -39,16 +39,19 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
 mvn spring-boot:run -pl ezkey-admin-api
 ```
 
-- Run unit tests:
+- Safe first validation after Java changes in this repo (from the repository root):
 
 ```bash
-mvn test -pl ezkey-admin-api
+mvn spotless:apply
+mvn checkstyle:check
+mvn clean
+mvn install -DskipTests
 ```
 
-- Build:
+- Targeted follow-up tests after the baseline succeeds:
 
 ```bash
-mvn -DskipTests package -pl ezkey-admin-api
+mvn test -pl 'ezkey-admin-api,!ezkey-tests'
 ```
 
 ## When changing endpoints / DTOs

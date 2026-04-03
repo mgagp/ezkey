@@ -1,35 +1,41 @@
 ---
-description: Mandatory Spotless-before-Maven workflow for agents (avoids Checkstyle/format drift)
+description: Safe Bash-first Maven baseline with Checkstyle-preserving follow-up rules
 alwaysApply: true
 ---
 
-# Maven build — Spotless first, always
+# Maven build — safe baseline first
 
-Generated or hand-edited code often does not match Spotless/Checkstyle until formatted. **Skipping `spotless:apply` before `mvn` is the most common cause of avoidable Checkstyle failures.**
+Ezkey's Maven validation is **reactor-sensitive** because Checkstyle resolves the internal
+`checkstyle-config` module during the build. Do **not** assume that an initial `-pl some-module`
+command is a safe validation path.
 
-## Mandatory order (agents and humans)
+## Mandatory baseline for Java changes
 
-When you have **implemented or changed** code that is validated with Maven (tasks, plans, features, refactors):
+When you have implemented or changed Java or other Spotless-covered code, start from the
+**repository root** and run this baseline in **Bash**:
 
-1. **From the repository root**, run **first**:
-   - `mvn spotless:apply`
-2. **Only after that**, run compile, tests, or install, for example:
-   - `mvn compile`
-   - `mvn test -pl 'ezkey-admin-api,!ezkey-tests'` (exclude functional tests)
-   - `mvn clean install`
+1. `mvn spotless:apply`
+2. `mvn checkstyle:check`
+3. `mvn clean`
+4. `mvn install -DskipTests`
 
-Do **not** run `mvn compile`, `mvn test`, or `mvn clean install` to verify Java changes until Step 1 has been applied from the **project root**, unless you are only re-running after Spotless already left the tree clean.
+`./scripts/build.sh` is the reference example of this health-check flow.
 
-This order applies to **every** validation build after substantive edits, not only full-reactor builds.
+## Targeted commands are follow-up only
 
-## Excluding functional tests
+Only **after** the baseline above succeeds may you optimize with targeted follow-up commands, for
+example:
 
-To run the build (and unit tests) without the functional test module, exclude `ezkey-tests`:
+- `mvn test -pl '!ezkey-tests'`
+- `mvn test -pl 'ezkey-admin-api,!ezkey-tests'`
+- `mvn test -pl 'ezkey-auth-api,!ezkey-tests'`
 
-- `mvn clean install -pl '!ezkey-tests'`
-- Or with tests skipped: `mvn clean install -DskipTests -pl '!ezkey-tests'`
+Do **not** use targeted module builds such as `mvn -pl ezkey-admin-api ...` or
+`mvn -pl ezkey-auth-api ...` as the first autonomous validation step after substantive Java edits.
 
-## Why this order
+## Why this rule exists
 
-- Spotless fixes formatting so Checkstyle and formatter rules pass.
-- Running Spotless before Checkstyle avoids "artifact descriptor could not be resolved" or similar issues when building a single module (e.g. `-pl ezkey-admin-api`) without a full reactor build, when combined with the project’s quality gates.
+- Spotless fixes formatting before Maven validation.
+- `mvn checkstyle:check` confirms style rules explicitly.
+- The full-reactor `clean` + `install -DskipTests` path reliably includes `checkstyle-config` and
+  avoids repeated trial-and-error around partial module builds.

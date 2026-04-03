@@ -8,7 +8,19 @@ For full product and technical context, read **PRD.md**, **README.md**, **docs/P
 
 ## Maven and formatting (before any build)
 
-After implementing or changing Java (or other Spotless-covered) code, **always run `mvn spotless:apply` from the repository root before** `mvn compile`, `mvn test`, or `mvn clean install`. This prevents Checkstyle and formatter drift from failing the build. See `.cursor/rules/maven-build.mdc` for the full workflow.
+After implementing or changing Java (or other Spotless-covered) code, use the safe Maven baseline
+from the repository root in **Bash**:
+
+1. `mvn spotless:apply`
+2. `mvn checkstyle:check`
+3. `mvn clean`
+4. `mvn install -DskipTests`
+
+This is the default autonomous validation path because Checkstyle depends on the reactor-built
+`checkstyle-config` module. Only after that baseline succeeds should you run targeted follow-up
+commands such as `mvn test -pl 'ezkey-admin-api,!ezkey-tests'`. `./scripts/build.sh` is the
+reference example of this workflow. See `.cursor/rules/maven-build.mdc` for the authoritative
+rule.
 
 ---
 

@@ -249,6 +249,30 @@ class OpenApiIntegrationTest {
 - **UTF-8**: All files in UTF-8 without BOM
 - **Javadoc**: Complete and detailed documentation
 
+### Reliable Local Maven Validation
+
+For autonomous local validation after substantive Java changes, use the repository-root Bash flow
+below before any targeted module optimization:
+
+```bash
+mvn spotless:apply
+mvn checkstyle:check
+mvn clean
+mvn install -DskipTests
+```
+
+This is the most reliable path because Checkstyle depends on the internal `checkstyle-config`
+module from the Maven reactor. `./scripts/build.sh` is the reference example of this health-check
+workflow.
+
+Only after that baseline succeeds should you run targeted follow-up commands, for example:
+
+```bash
+mvn test -pl '!ezkey-tests'
+mvn test -pl 'ezkey-admin-api,!ezkey-tests'
+mvn test -pl 'ezkey-auth-api,!ezkey-tests'
+```
+
 ### Maven Version Management and Branch Isolation
 
 Ezkey uses **CI-friendly Maven versions** with branch-specific qualifiers to prevent artifact collisions when working on multiple branches locally.
@@ -264,14 +288,10 @@ Ezkey uses **CI-friendly Maven versions** with branch-specific qualifiers to pre
 
 #### Building Without Collisions
 
-**Linux/macOS/WSL (Bash):**
+Use Bash on every platform, including Git Bash on Windows:
+
 ```bash
 ./scripts/mvn-branch.sh clean install
-```
-
-**Windows (PowerShell 7.x):**
-```powershell
-pwsh -File .\scripts\mvn-branch.ps1 clean install
 ```
 
 **Standard Maven (works, but no branch isolation):**

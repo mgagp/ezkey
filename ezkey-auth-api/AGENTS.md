@@ -30,11 +30,14 @@ This file is intended for coding agents working in `ezkey-auth-api/`.
 # Run module
 mvn spring-boot:run -pl ezkey-auth-api
 
-# Unit tests
-mvn test -pl ezkey-auth-api
+# Safe first validation after Java changes in this repo (from the repository root)
+mvn spotless:apply
+mvn checkstyle:check
+mvn clean
+mvn install -DskipTests
 
-# Build
-mvn -DskipTests package -pl ezkey-auth-api
+# Targeted follow-up tests after the baseline succeeds
+mvn test -pl 'ezkey-auth-api,!ezkey-tests'
 ```
 
 ---
