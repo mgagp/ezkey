@@ -27,6 +27,7 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.Ed25519KeyPair;
@@ -326,6 +327,17 @@ public class EnrollmentService {
           "Cannot create enrollment for system integration. System integrations are reserved for"
               + " global admin authentication and enrollments can only be created through the admin"
               + " provisioning API endpoints.");
+    }
+
+    if (!IntegrationLifecycleStatus.ACTIVE.equals(integration.getLifecycleStatus())) {
+      logger.warn(
+          "Enrollment creation blocked: integration {} lifecycle is {}",
+          request.getIntegrationId(),
+          integration.getLifecycleStatus());
+      throw new IllegalStateException(
+          "Cannot create enrollment for integration in lifecycle state "
+              + integration.getLifecycleStatus()
+              + ". Only ACTIVE integrations accept new enrollments.");
     }
 
     // Security: Block enrollment creation for inactive tenants

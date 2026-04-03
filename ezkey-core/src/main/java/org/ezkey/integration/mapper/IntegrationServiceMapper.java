@@ -39,13 +39,14 @@ import org.mapstruct.Mapping;
 public interface IntegrationServiceMapper {
 
   /**
-   * Maps create request → entity. Ignores {@code id}, {@code createdAt}, {@code active}; those use
-   * field init / @PrePersist. {@code tenant}, {@code isSystemIntegration}, {@code createdByAdmin}
-   * set by service.
+   * Maps create request → entity. Ignores {@code id}, {@code createdAt}, {@code lifecycleStatus};
+   * those use field init / service assignment. {@code tenant}, {@code isSystemIntegration}, {@code
+   * createdByAdmin} set by service.
    */
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "active", ignore = true)
+  @Mapping(target = "lifecycleStatus", ignore = true)
   @Mapping(target = "tenant", ignore = true)
   @Mapping(target = "isSystemIntegration", ignore = true)
   @Mapping(target = "createdByAdmin", ignore = true)

@@ -11,6 +11,7 @@
 package org.ezkey.integration.domain.repository;
 
 import java.util.Optional;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -48,16 +49,12 @@ public interface IntegrationRepository
   // - existsById(Integer id)
   // etc.
 
-  /**
-   * Find system integration (Integration Zero) by system flag and active status.
-   *
-   * <p>Returns the special system integration used for admin MFA authentication. There should only
-   * be one system integration per Ezkey instance, marked with isSystemIntegration=true.
-   *
-   * @param isSystemIntegration true to find the system integration
-   * @return Optional containing the system integration if found
-   */
-  Optional<Integration> findByIsSystemIntegrationAndActiveTrue(Boolean isSystemIntegration);
+  /** Returns the unique system integration used for administrator MFA. */
+  Optional<Integration> findByIsSystemIntegrationTrue();
+
+  /** Returns the unique system integration in a given lifecycle state. */
+  Optional<Integration> findByIsSystemIntegrationTrueAndLifecycleStatus(
+      IntegrationLifecycleStatus lifecycleStatus);
 
   /**
    * Check if an integration with the given code already exists for a specific tenant.

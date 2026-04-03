@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
+import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -251,16 +252,11 @@ export default function ApiKeyDetailPage() {
               <CardHeader className="flex flex-row items-center justify-between gap-2">
                 <CardTitle>{t('detail.cardDetails')}</CardTitle>
                 {relatedDetails.hasAnyFk && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
+                  <RelatedDetailsButton
                     onClick={relatedDetails.expand}
-                    disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
-                  >
-                    {relatedDetails.isExpanded && relatedDetails.isLoading
-                      ? t('common:buttons.loading')
-                      : t('common:detail.moreDetails')}
-                  </Button>
+                    isExpanded={relatedDetails.isExpanded}
+                    isLoading={relatedDetails.isLoading}
+                  />
                 )}
               </CardHeader>
               <CardContent>

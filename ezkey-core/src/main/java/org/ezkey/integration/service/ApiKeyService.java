@@ -136,7 +136,7 @@ public class ApiKeyService {
 
     logger.info("Creating API key for integration: {}", integrationId);
 
-    // Validate integration exists and is active
+    // Validate integration exists and is operational
     Integration integration =
         integrationRepository
             .findById(integrationId)
@@ -145,9 +145,12 @@ public class ApiKeyService {
                     new IllegalArgumentException(
                         "Integration not found with ID: " + integrationId));
 
-    if (!integration.getActive()) {
+    if (!integration.isOperational()) {
       throw new IllegalArgumentException(
-          "Cannot create API key for inactive integration: " + integrationId);
+          "Cannot create API key for integration in lifecycle state "
+              + integration.getLifecycleStatus()
+              + ": "
+              + integrationId);
     }
 
     // Security: Block API key creation for inactive tenants
@@ -286,6 +289,13 @@ public class ApiKeyService {
 
     // Check if the parent integration's tenant is active
     Integration integration = apiKey.getIntegration();
+    if (!integration.isOperational()) {
+      logger.warn(
+          "API key rejected: integration {} lifecycle is {}",
+          integration.getId(),
+          integration.getLifecycleStatus());
+      return Optional.empty();
+    }
     if (integration.getTenant() != null && !integration.getTenant().getActive()) {
       logger.warn("API key rejected: tenant inactive for integration: {}", integration.getId());
       return Optional.empty();

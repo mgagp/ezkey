@@ -19,6 +19,7 @@ import org.ezkey.admin.config.OrganizationProperties;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
@@ -177,7 +178,7 @@ public class AdminBootstrapService {
 
       // 1. Check if System Integration already exists
       Optional<Integration> existingIntegration =
-          integrationRepository.findByIsSystemIntegrationAndActiveTrue(true);
+          integrationRepository.findByIsSystemIntegrationTrue();
 
       if (existingIntegration.isPresent()) {
         Integration existing = existingIntegration.get();
@@ -244,14 +245,27 @@ public class AdminBootstrapService {
    */
   private void syncSystemIntegrationFromOrganization(Integration integration) {
     String name = organizationProperties.getName();
+    boolean changed = false;
     if (name == null || name.isBlank()) {
+      if (!IntegrationLifecycleStatus.ACTIVE.equals(integration.getLifecycleStatus())) {
+        integration.setLifecycleStatus(IntegrationLifecycleStatus.ACTIVE);
+        integrationRepository.save(integration);
+      }
       return;
     }
     String stripped = name.strip();
     if (!stripped.equals(integration.getName())) {
       integration.setName(stripped);
+      changed = true;
+    }
+    if (!IntegrationLifecycleStatus.ACTIVE.equals(integration.getLifecycleStatus())) {
+      integration.setLifecycleStatus(IntegrationLifecycleStatus.ACTIVE);
+      changed = true;
+    }
+    if (changed) {
       integrationRepository.save(integration);
-      logger.info("✅ System integration display name synced from organization configuration");
+      logger.info(
+          "✅ System integration display name/lifecycle synced from organization configuration");
     }
   }
 
@@ -286,7 +300,7 @@ public class AdminBootstrapService {
     Integration systemIntegration = new Integration();
     systemIntegration.setCode(SYSTEM_INTEGRATION_CODE);
     systemIntegration.setName(organizationProperties.getName());
-    systemIntegration.setActive(true);
+    systemIntegration.setLifecycleStatus(IntegrationLifecycleStatus.ACTIVE);
     systemIntegration.setCreatedAt(OffsetDateTime.now());
     systemIntegration.setTenant(systemTenant);
     systemIntegration.setIsSystemIntegration(true);

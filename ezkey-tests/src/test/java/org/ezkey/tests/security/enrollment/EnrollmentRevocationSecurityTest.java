@@ -63,6 +63,14 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
 
   private static final String REASON_MIN_10 = "Security incident validation test";
 
+  private record CreatedEnrollmentContext(int enrollmentId, String enrollmentProofToken) {}
+
+  private record BoundEnrollmentContext(
+      int enrollmentId,
+      String bindProofToken,
+      Integer challengeCode,
+      EcP256KeyPair deviceKeyPair) {}
+
   /**
    * Creates a fully verified enrollment (bind + verify) for use in revocation tests.
    *
@@ -134,6 +142,78 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
     configureForAdminApi(dockerStackConfig);
     log.debug("Created verified enrollment {} for integration {}", enrollmentId, integrationId);
     return enrollmentId;
+  }
+
+  private CreatedEnrollmentContext createCreatedEnrollment(
+      int integrationId, String enrollmentName) {
+    configureForAdminApi(dockerStackConfig);
+    String adminToken = authTokenManager.getAdminToken();
+
+    int enrollmentId =
+        testDataFactory.createEnrollment(
+            integrationId, enrollmentName != null ? enrollmentName : "Created Test Device", false);
+
+    Response enrollmentResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .when()
+            .get("/enrollments/" + enrollmentId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    return new CreatedEnrollmentContext(
+        enrollmentId, enrollmentResponse.jsonPath().getString("enrollmentProofToken"));
+  }
+
+  private BoundEnrollmentContext createBoundEnrollment(int integrationId, String enrollmentName) {
+    configureForAdminApi(dockerStackConfig);
+    String adminToken = authTokenManager.getAdminToken();
+
+    int enrollmentId =
+        testDataFactory.createEnrollment(
+            integrationId, enrollmentName != null ? enrollmentName : "Bound Test Device", false);
+
+    Response enrollmentResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .when()
+            .get("/enrollments/" + enrollmentId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    String enrollmentProofToken = enrollmentResponse.jsonPath().getString("enrollmentProofToken");
+    Integer challengeCode = enrollmentResponse.jsonPath().getInt("enrollmentChallenge");
+    EcP256KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
+
+    configureForAuthApi(dockerStackConfig);
+
+    Map<String, Object> bindRequest = new HashMap<>();
+    bindRequest.put("enrollmentId", enrollmentId);
+    bindRequest.put("enrollmentProofToken", enrollmentProofToken);
+
+    Response bindResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .body(bindRequest)
+            .when()
+            .post("/enrollments/bind")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    configureForAdminApi(dockerStackConfig);
+    return new BoundEnrollmentContext(
+        enrollmentId,
+        bindResponse.jsonPath().getString("enrollmentProofToken"),
+        challengeCode,
+        deviceKeyPair);
   }
 
   @Test
@@ -398,6 +478,149 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
             .isEqualTo(201);
         assertThat(resp.jsonPath().getInt("authAttemptId")).as("authAttemptId").isNotNull();
       }
+    } catch (IllegalStateException e) {
+      Assumptions.assumeTrue(false, "Admin token not available: " + e.getMessage());
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "Deactivate-all then revoke-all: inactive verified enrollments are revoked without"
+          + " reactivate")
+  public void deactivateAllThenRevokeAll_revokesInactiveVerifiedEnrollmentsWithoutReactivate() {
+    try {
+      configureForAdminApi(dockerStackConfig);
+      String adminToken = authTokenManager.getAdminToken();
+
+      int integrationId = testDataFactory.createIntegration();
+      int enrollment1 = createVerifiedEnrollment(integrationId, "DeactivateThenRevoke Device A");
+      int enrollment2 = createVerifiedEnrollment(integrationId, "DeactivateThenRevoke Device B");
+
+      given()
+          .header("Authorization", "Bearer " + adminToken)
+          .queryParam("reason", "Temporary containment before confirmed compromise")
+          .when()
+          .post("/integrations/" + integrationId + "/enrollments/deactivate-all")
+          .then()
+          .statusCode(200);
+
+      Response bulkRevokeResponse =
+          given()
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", REASON_MIN_10)
+              .when()
+              .post("/integrations/" + integrationId + "/enrollments/revoke-all")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      assertThat(bulkRevokeResponse.jsonPath().getInt("affectedCount")).isEqualTo(2);
+      assertThat(bulkRevokeResponse.jsonPath().getBoolean("noOp")).isFalse();
+
+      Map<String, Object> authRequest = new HashMap<>();
+      authRequest.put("challengeRequested", false);
+
+      for (int enrollmentId : new int[] {enrollment1, enrollment2}) {
+        authRequest.put("enrollmentId", enrollmentId);
+        Response resp =
+            given()
+                .contentType(ContentType.JSON)
+                .header("Authorization", "Bearer " + adminToken)
+                .body(authRequest)
+                .when()
+                .post("/auth-attempts")
+                .then()
+                .extract()
+                .response();
+        assertThat(resp.getStatusCode()).isEqualTo(403);
+      }
+    } catch (IllegalStateException e) {
+      Assumptions.assumeTrue(false, "Admin token not available: " + e.getMessage());
+    }
+  }
+
+  @Test
+  @DisplayName("Revoke-all revokes CREATED and BOUND enrollments so onboarding cannot continue")
+  public void revokeAllOnCreatedAndBoundEnrollments_blocksFurtherOnboardingProgress() {
+    try {
+      configureForAdminApi(dockerStackConfig);
+      String adminToken = authTokenManager.getAdminToken();
+
+      int integrationId = testDataFactory.createIntegration();
+      CreatedEnrollmentContext created =
+          createCreatedEnrollment(integrationId, "Created Pending Device");
+      BoundEnrollmentContext bound = createBoundEnrollment(integrationId, "Bound Pending Device");
+
+      Response bulkRevokeResponse =
+          given()
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", REASON_MIN_10)
+              .when()
+              .post("/integrations/" + integrationId + "/enrollments/revoke-all")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      assertThat(bulkRevokeResponse.jsonPath().getInt("affectedCount")).isEqualTo(2);
+
+      Response createdAfterRevoke =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/enrollments/" + created.enrollmentId())
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+      assertThat(createdAfterRevoke.jsonPath().getString("enrollmentStatus")).isEqualTo("REVOKED");
+
+      Response boundAfterRevoke =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/enrollments/" + bound.enrollmentId())
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+      assertThat(boundAfterRevoke.jsonPath().getString("enrollmentStatus")).isEqualTo("REVOKED");
+
+      configureForAuthApi(dockerStackConfig);
+      Map<String, Object> bindRequest = new HashMap<>();
+      bindRequest.put("enrollmentId", created.enrollmentId());
+      bindRequest.put("enrollmentProofToken", created.enrollmentProofToken());
+      Response bindAfterRevoke =
+          given()
+              .contentType(ContentType.JSON)
+              .body(bindRequest)
+              .when()
+              .post("/enrollments/bind")
+              .then()
+              .extract()
+              .response();
+      assertThat(bindAfterRevoke.getStatusCode()).isNotEqualTo(200);
+
+      String signature =
+          cryptoApiClient.signData(bound.bindProofToken(), bound.deviceKeyPair().privateKey());
+      Map<String, Object> verifyRequest = new HashMap<>();
+      verifyRequest.put("enrollmentId", bound.enrollmentId());
+      verifyRequest.put("challengeResponse", bound.challengeCode());
+      verifyRequest.put("devicePublicKey", bound.deviceKeyPair().publicKey());
+      verifyRequest.put("enrollmentProofTokenSigned", signature);
+      Response verifyAfterRevoke =
+          given()
+              .contentType(ContentType.JSON)
+              .body(verifyRequest)
+              .when()
+              .post("/enrollments/verify")
+              .then()
+              .extract()
+              .response();
+      assertThat(verifyAfterRevoke.getStatusCode()).isNotEqualTo(200);
     } catch (IllegalStateException e) {
       Assumptions.assumeTrue(false, "Admin token not available: " + e.getMessage());
     }

@@ -6,6 +6,7 @@ import { Check, Copy, Eye, EyeOff, Pencil, Power, PowerOff, QrCode, ShieldOff, T
 import { AppShell } from '@/components/layout/app-shell';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
+import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -701,16 +702,11 @@ export default function EnrollmentDetailPage() {
                     </Button>
                   )}
                   {relatedDetails.hasAnyFk && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
+                    <RelatedDetailsButton
                       onClick={relatedDetails.expand}
-                      disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
-                    >
-                      {relatedDetails.isExpanded && relatedDetails.isLoading
-                        ? t('common:buttons.loading')
-                        : t('common:detail.moreDetails')}
-                    </Button>
+                      isExpanded={relatedDetails.isExpanded}
+                      isLoading={relatedDetails.isLoading}
+                    />
                   )}
                 </div>
               </CardHeader>

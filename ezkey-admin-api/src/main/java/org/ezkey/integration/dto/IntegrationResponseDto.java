@@ -12,6 +12,7 @@ package org.ezkey.integration.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 
 /**
  * Response DTO for integration data in admin API.
@@ -33,8 +34,9 @@ import java.time.OffsetDateTime;
  * @param id Unique identifier for the integration (auto-generated primary key from the database)
  * @param code Unique business identifier code for the integration (must be unique per tenant)
  * @param tenantId Tenant ID that owns this integration (for multi-tenant isolation verification)
- * @param active Integration status flag (indicates whether the integration is currently active and
- *     available for use)
+ * @param active Temporary compatibility flag derived from lifecycle status (`true` only when
+ *     `ACTIVE`); intended to be removed after the lifecycle migration is fully completed
+ * @param lifecycleStatus Explicit lifecycle status for the integration
  * @param createdAt Timestamp when the integration was created (used for audit trails and sorting
  *     purposes, with timezone)
  * @param name Display name for the integration
@@ -54,7 +56,14 @@ public record IntegrationResponseDto(
             example = "web-portal")
         String code,
     @Schema(description = "Tenant ID that owns this integration", example = "2") Integer tenantId,
-    @Schema(description = "Integration status flag", example = "true") Boolean active,
+    @Schema(
+            description =
+                "Temporary compatibility flag derived from lifecycle status (`true` only when"
+                    + " `ACTIVE`); intended for transition only and planned for later removal",
+            example = "true")
+        Boolean active,
+    @Schema(description = "Explicit integration lifecycle status", example = "ACTIVE")
+        IntegrationLifecycleStatus lifecycleStatus,
     @Schema(
             description = "Timestamp when the integration was created (with timezone)",
             example = "2025-01-15T10:30:00+01:00")

@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { HelpDrawer } from '@/components/help/help-drawer';
 import { isDemoMode } from '@/lib/demo-mode';
-import { type HelpTopicId, resolveHelpTopicId } from '@/lib/help-topics';
+import { type HelpPatternId, type HelpTopicId, resolveHelpTopicId } from '@/lib/help-topics';
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -21,10 +21,16 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
+export interface OpenHelpOptions {
+  topicId?: HelpTopicId;
+  patternId?: HelpPatternId;
+}
+
 export interface HelpContextValue {
   open: boolean;
   topicId: HelpTopicId;
-  openHelp: () => void;
+  patternId: HelpPatternId | null;
+  openHelp: (options?: OpenHelpOptions) => void;
   closeHelp: () => void;
   toggleHelp: () => void;
 }
@@ -34,11 +40,27 @@ const HelpContext = createContext<HelpContextValue | null>(null);
 export function HelpProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const topicId = useMemo(() => resolveHelpTopicId(location.pathname), [location.pathname]);
+  const [overrideTopicId, setOverrideTopicId] = useState<HelpTopicId | null>(null);
+  const [patternId, setPatternId] = useState<HelpPatternId | null>(null);
+  const routeTopicId = useMemo(() => resolveHelpTopicId(location.pathname), [location.pathname]);
+  const topicId = overrideTopicId ?? routeTopicId;
 
-  const openHelp = useCallback(() => setOpen(true), []);
-  const closeHelp = useCallback(() => setOpen(false), []);
+  const openHelp = useCallback((options?: OpenHelpOptions) => {
+    setOverrideTopicId(options?.topicId ?? null);
+    setPatternId(options?.patternId ?? null);
+    setOpen(true);
+  }, []);
+  const closeHelp = useCallback(() => {
+    setOpen(false);
+    setOverrideTopicId(null);
+    setPatternId(null);
+  }, []);
   const toggleHelp = useCallback(() => setOpen((o) => !o), []);
+
+  useEffect(() => {
+    setOverrideTopicId(null);
+    setPatternId(null);
+  }, [location.pathname]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -56,17 +78,18 @@ export function HelpProvider({ children }: { children: ReactNode }) {
     () => ({
       open,
       topicId,
+      patternId,
       openHelp,
       closeHelp,
       toggleHelp,
     }),
-    [open, topicId, openHelp, closeHelp, toggleHelp],
+    [open, topicId, patternId, openHelp, closeHelp, toggleHelp],
   );
 
   return (
     <HelpContext.Provider value={value}>
       {children}
-      <HelpDrawerShell open={open} onClose={closeHelp} topicId={topicId} />
+      <HelpDrawerShell open={open} onClose={closeHelp} topicId={topicId} patternId={patternId} />
     </HelpContext.Provider>
   );
 }
@@ -75,10 +98,12 @@ function HelpDrawerShell({
   open,
   onClose,
   topicId,
+  patternId,
 }: {
   open: boolean;
   onClose: () => void;
   topicId: HelpTopicId;
+  patternId: HelpPatternId | null;
 }) {
   const { session } = useAuth();
   const { sessionDemoOn } = useDemoModeSession();
@@ -90,6 +115,7 @@ function HelpDrawerShell({
       open={open}
       onClose={onClose}
       topicId={topicId}
+      patternId={patternId}
       isGlobalAdmin={isGlobalAdmin}
       showDemoExtra={showDemoExtra}
     />

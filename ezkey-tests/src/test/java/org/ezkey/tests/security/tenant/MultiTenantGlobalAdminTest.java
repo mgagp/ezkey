@@ -113,6 +113,7 @@ import org.slf4j.LoggerFactory;
 public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
 
   private static final Logger log = LoggerFactory.getLogger(MultiTenantGlobalAdminTest.class);
+  private static final String AUDIT_REASON = "Lifecycle transition validation";
 
   private String uniqueSuffix;
   private Integer tenantAId;
@@ -259,11 +260,12 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
 
   @Test
   @Order(12)
-  @DisplayName("P1: GlobalAdmin can delete integration from any tenant")
-  void globalAdmin_can_delete_integration_from_any_tenant() {
+  @DisplayName("P1: GlobalAdmin can retire then delete an empty integration from any tenant")
+  void globalAdmin_can_retire_then_delete_empty_integration_from_any_tenant() {
     Integer integrationToDeleteId =
         createIntegrationForTenant("Temp Integration", tenantAdminAToken);
 
+    retireIntegration(integrationToDeleteId);
     deleteIntegration(integrationToDeleteId);
 
     Response response =
@@ -459,6 +461,18 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
         .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
         .when()
         .delete("/integrations/" + integrationId)
+        .then()
+        .statusCode(204);
+  }
+
+  private void retireIntegration(Integer integrationId) {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    given()
+        .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .queryParam("reason", AUDIT_REASON)
+        .when()
+        .post("/integrations/" + integrationId + "/retire")
         .then()
         .statusCode(204);
   }

@@ -81,7 +81,8 @@ public class DashboardOverviewElectiveTest extends AbstractSecurityTest {
     long dbIntegrationsTotal =
         queryLong(
             "SELECT COUNT(*) FROM ezkey_integration "
-                + "WHERE (is_system_integration IS NULL OR is_system_integration = false)");
+                + "WHERE (is_system_integration IS NULL OR is_system_integration = false) "
+                + "AND integration_lifecycle_status <> 'RETIRED'");
     long dbEnrollmentsActive =
         queryLong("SELECT COUNT(*) FROM ezkey_enrollment WHERE enrollment_active = true");
     long dbAuth24h =
@@ -130,7 +131,9 @@ public class DashboardOverviewElectiveTest extends AbstractSecurityTest {
         apiAuth24hTotal);
 
     assertThat(apiIntTotal)
-        .as("Overview integrations.total must match DB count (non-system integrations)")
+        .as(
+            "Overview integrations.total must match DB count (non-system, non-retired"
+                + " integrations)")
         .isEqualTo((int) dbIntegrationsTotal);
     assertThat(apiIntActive + apiIntInactive)
         .as("Overview active + inactive must equal total")

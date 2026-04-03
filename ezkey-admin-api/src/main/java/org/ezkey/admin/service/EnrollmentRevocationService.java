@@ -354,10 +354,11 @@ public class EnrollmentRevocationService {
   }
 
   /**
-   * Bulk-revokes all active VERIFIED enrollments for an integration.
+   * Bulk-revokes all revocable enrollments for an integration.
    *
    * <p>This operation is designed for incident response scenarios (e.g., compromised integration
-   * API key) where all enrollments associated with an integration must be immediately revoked.
+   * API key) where all enrollments associated with an integration must be immediately revoked,
+   * including already deactivated verified enrollments and in-flight CREATED or BOUND enrollments.
    *
    * <p><b>System integration guard:</b> Cannot be applied to system integrations ({@code
    * is_system_integration=true}), which host all administrator MFA enrollments. Applying bulk
@@ -394,14 +395,15 @@ public class EnrollmentRevocationService {
               + " Revoking all system enrollments would lock out all administrators.");
     }
 
-    List<Enrollment> activeEnrollments =
-        enrollmentRepository.findByIntegrationIdAndStatusAndActive(
-            integrationId, EnrollmentStatus.VERIFIED, true);
+    List<Enrollment> revocableEnrollments =
+        enrollmentRepository.findByIntegrationIdAndStatusIn(
+            integrationId,
+            List.of(EnrollmentStatus.CREATED, EnrollmentStatus.BOUND, EnrollmentStatus.VERIFIED));
 
     int revokedCount = 0;
     int skippedCount = 0;
 
-    for (Enrollment enrollment : activeEnrollments) {
+    for (Enrollment enrollment : revocableEnrollments) {
       if (isSelfEnrollment(principal, enrollment)) {
         logger.warn(
             "Bulk revoke skipped enrollment {} — it is the calling admin's own MFA enrollment."

@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -43,6 +44,9 @@ class IntegrationResponseDtoTest {
 
   private static final Boolean TEST_ACTIVE = true;
 
+  private static final IntegrationLifecycleStatus TEST_LIFECYCLE_STATUS =
+      IntegrationLifecycleStatus.ACTIVE;
+
   private static final OffsetDateTime TEST_CREATED_AT =
       OffsetDateTime.of(2025, 1, 15, 10, 30, 0, 0, ZoneOffset.ofHours(1));
 
@@ -59,6 +63,7 @@ class IntegrationResponseDtoTest {
             TEST_CODE,
             TEST_TENANT_ID,
             TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -68,6 +73,7 @@ class IntegrationResponseDtoTest {
     assertThat(dto.code()).isEqualTo(TEST_CODE);
     assertThat(dto.tenantId()).isEqualTo(TEST_TENANT_ID);
     assertThat(dto.active()).isEqualTo(TEST_ACTIVE);
+    assertThat(dto.lifecycleStatus()).isEqualTo(TEST_LIFECYCLE_STATUS);
     assertThat(dto.createdAt()).isEqualTo(TEST_CREATED_AT);
     assertThat(dto.name()).isEqualTo(TEST_NAME);
     assertThat(dto.description()).isEqualTo(TEST_DESCRIPTION);
@@ -79,7 +85,15 @@ class IntegrationResponseDtoTest {
   void shouldCreateRecordWithNullNameAndDescription() {
     IntegrationResponseDto dto =
         new IntegrationResponseDto(
-            TEST_ID, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, TEST_CREATED_AT, null, null, null);
+            TEST_ID,
+            TEST_CODE,
+            TEST_TENANT_ID,
+            TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
+            TEST_CREATED_AT,
+            null,
+            null,
+            null);
 
     assertThat(dto.id()).isEqualTo(TEST_ID);
     assertThat(dto.name()).isNull();
@@ -95,6 +109,7 @@ class IntegrationResponseDtoTest {
             TEST_CODE,
             TEST_TENANT_ID,
             TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
             TEST_CREATED_AT,
             TEST_NAME,
             null,
@@ -113,12 +128,14 @@ class IntegrationResponseDtoTest {
             TEST_CODE,
             TEST_TENANT_ID,
             false,
+            IntegrationLifecycleStatus.INACTIVE,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
             null);
 
     assertThat(dto.active()).isFalse();
+    assertThat(dto.lifecycleStatus()).isEqualTo(IntegrationLifecycleStatus.INACTIVE);
   }
 
   @Test
@@ -130,6 +147,7 @@ class IntegrationResponseDtoTest {
             TEST_CODE,
             TEST_TENANT_ID,
             TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -140,6 +158,7 @@ class IntegrationResponseDtoTest {
             TEST_CODE,
             TEST_TENANT_ID,
             TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -150,6 +169,7 @@ class IntegrationResponseDtoTest {
             TEST_CODE,
             TEST_TENANT_ID,
             TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -169,6 +189,7 @@ class IntegrationResponseDtoTest {
             TEST_CODE,
             TEST_TENANT_ID,
             TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -188,13 +209,37 @@ class IntegrationResponseDtoTest {
 
     IntegrationResponseDto dtoUtc =
         new IntegrationResponseDto(
-            1, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, utcTime, TEST_NAME, TEST_DESCRIPTION, null);
+            1,
+            TEST_CODE,
+            TEST_TENANT_ID,
+            TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
+            utcTime,
+            TEST_NAME,
+            TEST_DESCRIPTION,
+            null);
     IntegrationResponseDto dtoEst =
         new IntegrationResponseDto(
-            2, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, estTime, TEST_NAME, TEST_DESCRIPTION, null);
+            2,
+            TEST_CODE,
+            TEST_TENANT_ID,
+            TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
+            estTime,
+            TEST_NAME,
+            TEST_DESCRIPTION,
+            null);
     IntegrationResponseDto dtoJst =
         new IntegrationResponseDto(
-            3, TEST_CODE, TEST_TENANT_ID, TEST_ACTIVE, jstTime, TEST_NAME, TEST_DESCRIPTION, null);
+            3,
+            TEST_CODE,
+            TEST_TENANT_ID,
+            TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
+            jstTime,
+            TEST_NAME,
+            TEST_DESCRIPTION,
+            null);
 
     assertThat(dtoUtc.createdAt().getOffset()).isEqualTo(ZoneOffset.UTC);
     assertThat(dtoEst.createdAt().getOffset()).isEqualTo(ZoneOffset.ofHours(-5));
@@ -213,6 +258,7 @@ class IntegrationResponseDtoTest {
               TEST_CODE,
               TEST_TENANT_ID,
               TEST_ACTIVE,
+              TEST_LIFECYCLE_STATUS,
               TEST_CREATED_AT,
               TEST_NAME,
               TEST_DESCRIPTION,
@@ -230,6 +276,7 @@ class IntegrationResponseDtoTest {
             TEST_CODE,
             TEST_TENANT_ID,
             TEST_ACTIVE,
+            TEST_LIFECYCLE_STATUS,
             null,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -247,11 +294,13 @@ class IntegrationResponseDtoTest {
             TEST_CODE,
             TEST_TENANT_ID,
             null,
+            null,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
             null);
 
     assertThat(dto.active()).isNull();
+    assertThat(dto.lifecycleStatus()).isNull();
   }
 }

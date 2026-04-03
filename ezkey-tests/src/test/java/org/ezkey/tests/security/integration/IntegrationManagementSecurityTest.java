@@ -150,6 +150,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       assertThat(response.getStatusCode()).isEqualTo(200);
       assertThat(response.jsonPath().getInt("id")).isEqualTo(integrationId);
       assertThat(response.jsonPath().getBoolean("active")).isNotNull();
+      assertThat(response.jsonPath().getString("lifecycleStatus")).isEqualTo("ACTIVE");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -208,7 +209,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
   @Test
   @Order(4)
-  @DisplayName("Admin can delete integration (204)")
+  @DisplayName("Admin can retire then delete an unused integration (204)")
   public void testAdminCanDeleteIntegration() {
     try {
       String adminToken = authTokenManager.getAdminToken();
@@ -217,11 +218,64 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       // Create integration first
       Integer integrationId = testDataFactory.createIntegration();
 
-      // Delete integration
+      Response retireResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", "Retiring unused integration for lifecycle test")
+              .when()
+              .post("/integrations/" + integrationId + "/retire")
+              .then()
+              .extract()
+              .response();
+
+      assertThat(retireResponse.getStatusCode()).isEqualTo(204);
+
+      Response retiredGetResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/integrations/" + integrationId)
+              .then()
+              .extract()
+              .response();
+
+      assertThat(retiredGetResponse.getStatusCode()).isEqualTo(200);
+      assertThat(retiredGetResponse.jsonPath().getString("lifecycleStatus")).isEqualTo("RETIRED");
+
+      Response defaultListResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/integrations")
+              .then()
+              .extract()
+              .response();
+
+      List<Integer> defaultIds = defaultListResponse.jsonPath().getList("content.id");
+      assertThat(defaultIds).doesNotContain(integrationId);
+
+      Response listWithRetiredResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("includeRetired", true)
+              .when()
+              .get("/integrations")
+              .then()
+              .extract()
+              .response();
+
+      List<Integer> idsWithRetired = listWithRetiredResponse.jsonPath().getList("content.id");
+      assertThat(idsWithRetired).contains(integrationId);
+
       Response deleteResponse =
           given()
               .contentType(ContentType.JSON)
               .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", "Deleting retired unused integration for lifecycle test")
               .when()
               .delete("/integrations/" + integrationId)
               .then()
@@ -503,6 +557,19 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
       Integer integrationId = testDataFactory.createIntegration();
       testDataFactory.createEnrollment(integrationId, "Delete Constraint Test Device", false);
+
+      Response retireResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", "Retiring integration before exceptional delete attempt")
+              .when()
+              .post("/integrations/" + integrationId + "/retire")
+              .then()
+              .extract()
+              .response();
+
+      assertThat(retireResponse.getStatusCode()).isEqualTo(204);
 
       Response response =
           given()

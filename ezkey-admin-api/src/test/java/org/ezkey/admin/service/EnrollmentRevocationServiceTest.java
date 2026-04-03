@@ -283,41 +283,51 @@ class EnrollmentRevocationServiceTest {
     }
 
     @Test
-    @DisplayName("Should revoke all active VERIFIED enrollments for a normal integration")
-    void revokeAll_shouldRevokeAllActiveEnrollments_forNonSystemIntegration() {
+    @DisplayName("Should revoke VERIFIED, CREATED, and BOUND enrollments for a normal integration")
+    void revokeAll_shouldRevokeAllRevocableEnrollments_forNonSystemIntegration() {
       Enrollment enrollmentA = activeVerifiedEnrollment(101);
-      Enrollment enrollmentB = activeVerifiedEnrollment(102);
+      Enrollment enrollmentB = inactiveVerifiedEnrollment(102);
+      Enrollment enrollmentC = createdEnrollment(103);
+      Enrollment enrollmentD = boundEnrollment(104);
 
       when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
       when(integration.getIsSystemIntegration()).thenReturn(false);
-      when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
-              10, EnrollmentStatus.VERIFIED, true))
-          .thenReturn(List.of(enrollmentA, enrollmentB));
+      when(enrollmentRepository.findByIntegrationIdAndStatusIn(
+              10,
+              List.of(EnrollmentStatus.CREATED, EnrollmentStatus.BOUND, EnrollmentStatus.VERIFIED)))
+          .thenReturn(List.of(enrollmentA, enrollmentB, enrollmentC, enrollmentD));
       when(adminRepository.findByEnrollmentId(any())).thenReturn(Optional.empty());
 
       EnrollmentRevocationService.BulkEnrollmentOperationResult result =
           service.revokeAllByIntegration(
               10, globalAdminPrincipal, "Valid long reason here", clientContext, null);
 
-      assertThat(result.affectedCount()).isEqualTo(2);
+      assertThat(result.affectedCount()).isEqualTo(4);
       assertThat(result.skippedCount()).isZero();
       assertThat(result.noOp()).isFalse();
       assertThat(enrollmentA.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
       assertThat(enrollmentA.getActive()).isFalse();
       assertThat(enrollmentB.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
       assertThat(enrollmentB.getActive()).isFalse();
+      assertThat(enrollmentC.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
+      assertThat(enrollmentC.getActive()).isFalse();
+      assertThat(enrollmentD.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
+      assertThat(enrollmentD.getActive()).isFalse();
       verify(enrollmentRepository).save(enrollmentA);
       verify(enrollmentRepository).save(enrollmentB);
+      verify(enrollmentRepository).save(enrollmentC);
+      verify(enrollmentRepository).save(enrollmentD);
       verify(auditLogService).log(any());
     }
 
     @Test
-    @DisplayName("Should be no-op when integration has no active enrollments")
-    void revokeAll_shouldBeNoOp_whenNoActiveEnrollments() {
+    @DisplayName("Should be no-op when integration has no revocable enrollments")
+    void revokeAll_shouldBeNoOp_whenNoRevocableEnrollments() {
       when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
       when(integration.getIsSystemIntegration()).thenReturn(false);
-      when(enrollmentRepository.findByIntegrationIdAndStatusAndActive(
-              10, EnrollmentStatus.VERIFIED, true))
+      when(enrollmentRepository.findByIntegrationIdAndStatusIn(
+              10,
+              List.of(EnrollmentStatus.CREATED, EnrollmentStatus.BOUND, EnrollmentStatus.VERIFIED)))
           .thenReturn(List.of());
 
       EnrollmentRevocationService.BulkEnrollmentOperationResult result =
@@ -329,6 +339,38 @@ class EnrollmentRevocationServiceTest {
       assertThat(result.noOp()).isTrue();
       verify(enrollmentRepository, never()).save(any());
       verify(auditLogService, never()).log(any());
+    }
+
+    @Test
+    @DisplayName("Should skip calling admin self enrollment but revoke other revocable rows")
+    void revokeAll_shouldSkipSelfEnrollment_andStillRevokeInactiveAndInflightRows() {
+      Enrollment selfEnrollment = activeVerifiedEnrollment(101);
+      Enrollment inactiveVerified = inactiveVerifiedEnrollment(102);
+      Enrollment created = createdEnrollment(103);
+
+      when(integrationRepository.findById(10)).thenReturn(Optional.of(integration));
+      when(integration.getIsSystemIntegration()).thenReturn(false);
+      when(enrollmentRepository.findByIntegrationIdAndStatusIn(
+              10,
+              List.of(EnrollmentStatus.CREATED, EnrollmentStatus.BOUND, EnrollmentStatus.VERIFIED)))
+          .thenReturn(List.of(selfEnrollment, inactiveVerified, created));
+      when(adminRepository.findByEnrollmentId(101)).thenReturn(Optional.of(ownerAdmin));
+      when(ownerAdmin.getAdminId()).thenReturn(1);
+      when(adminRepository.findByEnrollmentId(102)).thenReturn(Optional.empty());
+      when(adminRepository.findByEnrollmentId(103)).thenReturn(Optional.empty());
+
+      EnrollmentRevocationService.BulkEnrollmentOperationResult result =
+          service.revokeAllByIntegration(
+              10, globalAdminPrincipal, "Valid long reason here", clientContext, null);
+
+      assertThat(result.affectedCount()).isEqualTo(2);
+      assertThat(result.skippedCount()).isEqualTo(1);
+      assertThat(selfEnrollment.getStatus()).isEqualTo(EnrollmentStatus.VERIFIED);
+      assertThat(inactiveVerified.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
+      assertThat(created.getStatus()).isEqualTo(EnrollmentStatus.REVOKED);
+      verify(enrollmentRepository, never()).save(selfEnrollment);
+      verify(enrollmentRepository).save(inactiveVerified);
+      verify(enrollmentRepository).save(created);
     }
   }
 
@@ -580,6 +622,26 @@ class EnrollmentRevocationServiceTest {
     Enrollment e = new Enrollment();
     e.setEnrollmentId(id);
     e.setStatus(EnrollmentStatus.REVOKED);
+    e.setActive(false);
+    e.setEnrollmentName("test-enrollment-" + id);
+    e.setIntegrationId(10);
+    return e;
+  }
+
+  private Enrollment createdEnrollment(Integer id) {
+    Enrollment e = new Enrollment();
+    e.setEnrollmentId(id);
+    e.setStatus(EnrollmentStatus.CREATED);
+    e.setActive(false);
+    e.setEnrollmentName("test-enrollment-" + id);
+    e.setIntegrationId(10);
+    return e;
+  }
+
+  private Enrollment boundEnrollment(Integer id) {
+    Enrollment e = new Enrollment();
+    e.setEnrollmentId(id);
+    e.setStatus(EnrollmentStatus.BOUND);
     e.setActive(false);
     e.setEnrollmentName("test-enrollment-" + id);
     e.setIntegrationId(10);

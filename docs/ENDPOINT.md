@@ -613,13 +613,16 @@ Authorization: Bearer ezkey_abc123def456...
 **GET /api/v1/integrations**
 
 Retrieves integrations with optional filters and pagination. All filter parameters are optional.
+Retired integrations are excluded by default from day-to-day listings.
 
 **Query Parameters:**
 - `page` (optional): Page number (zero-based, default: 0)
 - `size` (optional): Page size (default: 20)
-- `sort` (optional): Sort field and direction (e.g., `createdAt,desc`). Sortable fields: `id`, `createdAt`, `active`
+- `sort` (optional): Sort field and direction (e.g., `createdAt,desc`). Sortable fields: `id`, `createdAt`, `lifecycleStatus`
 - `integrationName` (optional): Filter by integration name (partial match, case-insensitive)
-- `active` (optional): Filter by active flag (true/false)
+- `active` (optional): Temporary compatibility filter by active flag (`true` = `ACTIVE`, `false` = `INACTIVE`). Kept only as a transition aid during the lifecycle migration and intended to be removed before final closure of this refactor.
+- `lifecycleStatus` (optional): Exact lifecycle filter (`ACTIVE`, `INACTIVE`, `RETIRED`)
+- `includeRetired` (optional): When `true`, include retired integrations in results if no exact `lifecycleStatus` is requested
 - `createdAfter` (optional): Filter integrations created after this timestamp (ISO-8601)
 - `createdBefore` (optional): Filter integrations created before this timestamp (ISO-8601)
 - `tenantId` (optional): Filter by tenant ID. **GlobalAdmin only**; when provided, limits results to that tenant. **Ignored for TenantAdmin** (they always see only their tenant).
@@ -628,7 +631,7 @@ Retrieves integrations with optional filters and pagination. All filter paramete
 - **GlobalAdmin**: Sees all integrations by default; use `tenantId` to restrict to a specific tenant.
 - **TenantAdmin**: Sees only integrations in their tenant; `tenantId` query parameter is ignored.
 
-**Response (200 OK):** Paginated response with `content` (array of integration objects), `totalElements`, `totalPages`, etc. System integrations are excluded from the listing.
+**Response (200 OK):** Paginated response with `content` (array of integration objects), `totalElements`, `totalPages`, etc. Each integration includes `lifecycleStatus` (`ACTIVE`, `INACTIVE`, `RETIRED`) as the source of truth. The `active` boolean is temporarily retained as a derived compatibility field during the transition and is intended to be removed once the migration is fully completed. System integrations are excluded from the listing.
 
 #### Bulk enrollment lifecycle for an integration
 
@@ -674,8 +677,9 @@ Reactivates all inactive VERIFIED enrollments for the integration.
 
 **POST /api/v1/integrations/{id}/enrollments/revoke-all**
 
-Permanently revokes all active VERIFIED enrollments for the integration. Cannot be applied to a
-system integration.
+Permanently revokes all revocable enrollments for the integration. This includes `CREATED`,
+`BOUND`, and `VERIFIED` enrollments, whether currently active or already deactivated. Cannot be
+applied to a system integration.
 
 **Request query parameter (optional):** `reason`
 
@@ -690,6 +694,27 @@ system integration.
 
 **Audit behavior:** For these routine admin lifecycle bulk actions, Ezkey audits **effective
 changes**. A successful request that affects zero enrollments does not emit a success audit row.
+
+#### Integration retirement and deletion
+
+**POST /api/v1/integrations/{id}/retire**
+
+Retires an integration from day-to-day operations while preserving historical data. As part of the
+retirement flow, Ezkey first bulk-revokes revocable enrollments under that integration, then marks
+the integration lifecycle as `RETIRED`. System integrations cannot be retired.
+
+**Request query parameter (optional):** `reason`
+
+**Response:** `204 No Content`
+
+**DELETE /api/v1/integrations/{id}**
+
+Permanent deletion is exceptional. It is only allowed after the integration has already been
+retired and only when no enrollments remain linked to it. System integrations cannot be deleted.
+
+**Request query parameter (optional):** `reason`
+
+**Response:** `204 No Content`
 
 ---
 

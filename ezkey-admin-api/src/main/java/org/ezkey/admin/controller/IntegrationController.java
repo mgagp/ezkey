@@ -35,6 +35,7 @@ import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.IntegrationResponse;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
@@ -42,6 +43,7 @@ import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.dto.IntegrationCreateRequestDto;
 import org.ezkey.integration.dto.IntegrationCreateResponseDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
+import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
 import org.ezkey.integration.mapper.IntegrationControllerMapper;
 import org.ezkey.integration.service.IntegrationService;
 import org.slf4j.Logger;
@@ -155,11 +157,13 @@ public class IntegrationController {
    *   <li>Use <code>?sort=field,direction</code> for sorting (e.g., <code>?sort=id,asc</code> or
    *       <code>?sort=createdAt,desc</code>)
    *   <li>Default: page=0, size=20, sort=createdAt,DESC
-   *   <li>Sortable fields: id, createdAt, active
+   *   <li>Sortable fields: id, createdAt, lifecycleStatus
    * </ul>
    *
    * @param integrationName optional filter by integration name (partial match, case-insensitive)
-   * @param active optional filter by active flag
+   * @param active optional compatibility filter by active flag
+   * @param lifecycleStatus optional exact lifecycle filter
+   * @param includeRetired when true, retired integrations are included in default listings
    * @param createdAfter optional filter for integrations created after this timestamp
    * @param createdBefore optional filter for integrations created before this timestamp
    * @param tenantId optional filter by tenant ID (GlobalAdmin only; ignored for TenantAdmin)
@@ -173,6 +177,7 @@ public class IntegrationController {
           "Retrieves integrations with optional filters and pagination for administration and"
               + " compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g.,"
               + " ?sort=id,asc). Default sort is by creation date descending (newest first)."
+              + " Retired integrations are excluded by default unless explicitly requested."
               + " Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their"
               + " tenant.")
   @ApiResponses(
@@ -194,8 +199,17 @@ public class IntegrationController {
       @Parameter(description = "Filter by integration name (partial match, case-insensitive)")
           @RequestParam(required = false)
           String integrationName,
-      @Parameter(description = "Filter by active flag") @RequestParam(required = false)
+      @Parameter(description = "Compatibility filter by active flag")
+          @RequestParam(required = false)
           Boolean active,
+      @Parameter(description = "Exact lifecycle filter (ACTIVE, INACTIVE, RETIRED)")
+          @RequestParam(required = false)
+          IntegrationLifecycleStatus lifecycleStatus,
+      @Parameter(
+              description =
+                  "Include retired integrations in results when no exact lifecycle is requested")
+          @RequestParam(required = false, defaultValue = "false")
+          Boolean includeRetired,
       @Parameter(description = "Filter integrations created after this timestamp (ISO-8601)")
           @RequestParam(required = false)
           OffsetDateTime createdAfter,
@@ -217,11 +231,25 @@ public class IntegrationController {
     // TenantAdmin: always scope to their tenant (ignore request tenantId). GlobalAdmin: use request
     // tenantId when provided.
     Integer effectiveTenantId = (authTenantId != null) ? authTenantId : tenantId;
+    IntegrationLifecycleStatus effectiveLifecycleStatus =
+        lifecycleStatus != null
+            ? lifecycleStatus
+            : (active == null
+                ? null
+                : (Boolean.TRUE.equals(active)
+                    ? IntegrationLifecycleStatus.ACTIVE
+                    : IntegrationLifecycleStatus.INACTIVE));
 
     Page<IntegrationResponseDto> integrations =
         service
             .findByFilters(
-                integrationName, active, createdAfter, createdBefore, effectiveTenantId, pageable)
+                integrationName,
+                effectiveLifecycleStatus,
+                Boolean.TRUE.equals(includeRetired),
+                createdAfter,
+                createdBefore,
+                effectiveTenantId,
+                pageable)
             .map(mapper::toResponse);
 
     return ResponseEntity.ok(integrations);
@@ -393,16 +421,115 @@ public class IntegrationController {
   }
 
   /**
+   * Retires an integration while preserving history.
+   *
+   * <p>Retirement is the normal end-of-life posture for integrations that should disappear from
+   * day-to-day operations while preserving historical traceability.
+   *
+   * @param id the integration ID to retire
+   * @return ResponseEntity with HTTP 204 No Content on success
+   */
+  @Operation(
+      summary = "Retire integration",
+      description =
+          "Retires an integration from day-to-day use while preserving historical data. The"
+              + " operation bulk-revokes revocable enrollments before marking the integration"
+              + " RETIRED.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "204",
+            description = "Integration retired successfully",
+            content = @io.swagger.v3.oas.annotations.media.Content()),
+        @ApiResponse(
+            responseCode = "403",
+            description = "System integration cannot be retired",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Integration not found",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
+      })
+  @PreAuthorize("hasRole('ADMIN')")
+  @PostMapping("/{id}/retire")
+  public ResponseEntity<Void> retire(
+      @Parameter(description = "Integration ID to retire", example = "1") @PathVariable("id")
+          Integer id,
+      @Parameter(description = "Audit justification for the retirement (min 10 characters)")
+          @RequestParam(required = false)
+          @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+          String reason,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    EzkeyAdmin currentAdmin = getCurrentAdmin();
+
+    // Check if integration exists
+    Integration integration =
+        service.getById(id).orElseThrow(() -> new ResourceNotFoundException("Integration", id));
+
+    // Validate tenant access for TenantAdmin
+    if (currentAdmin.getAdminType() == EzkeyAdmin.AdminType.TENANT_ADMIN) {
+      if (!integration.getTenant().getTenantId().equals(currentAdmin.getTenant().getTenantId())) {
+        // Return 404 to hide existence of cross-tenant resource
+        throw new ResourceNotFoundException("Integration", id);
+      }
+    }
+
+    Integer tenantId =
+        integration.getTenant() != null ? integration.getTenant().getTenantId() : null;
+
+    if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
+      throw new SystemIntegrationLifecycleException(
+          "System integration cannot be retired because it is reserved for administrator MFA.");
+    }
+
+    AdminPrincipal principal =
+        AdminProvisioningService.extractAdminPrincipal(
+            SecurityContextHolder.getContext().getAuthentication());
+    BulkEnrollmentOperationResult revokeResult =
+        enrollmentRevocationService.revokeAllByIntegration(
+            id, principal, reason, context, tenantId);
+    service.retire(id);
+
+    auditLogService.log(
+        AuditHelper.createAdminAudit(
+                context,
+                EventType.INTEGRATION_RETIRED,
+                AdminAuditConstants.INTEGRATION_RETIRED,
+                tenantId)
+            .eventStatus(EventStatus.SUCCESS)
+            .adminId(currentAdmin.getAdminId())
+            .integrationId(id)
+            .eventDetails(
+                AuditDetailsBuilder.builder()
+                    .custom("integration_id", id)
+                    .custom("revoked_enrollments", revokeResult.affectedCount())
+                    .custom("skipped_enrollments", revokeResult.skippedCount())
+                    .custom("lifecycle_status", IntegrationLifecycleStatus.RETIRED.name())
+                    .toJson())
+            .reason(reason)
+            .build());
+
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
    * Deletes an integration entity by its ID for administrative purposes.
    *
-   * <p>Removes an integration from the system, effectively disabling MFA protection for the
-   * associated application. Returns 204 No Content on successful deletion, or 404 if the
-   * integration is not found.
-   *
-   * @param id the integration ID to delete
-   * @return ResponseEntity with HTTP 204 No Content on success, or 404 if not found
+   * <p>Deletion is exceptional and only allowed after retirement, when no enrollments remain.
    */
-  @Operation(summary = "Delete integration", description = "Removes an integration from the system")
+  @Operation(
+      summary = "Delete integration",
+      description =
+          "Permanently deletes an already-retired integration that no longer has enrollments.")
   @ApiResponses(
       value = {
         @ApiResponse(
@@ -410,8 +537,24 @@ public class IntegrationController {
             description = "Integration deleted successfully",
             content = @io.swagger.v3.oas.annotations.media.Content()),
         @ApiResponse(
+            responseCode = "403",
+            description = "System integration cannot be deleted",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
             responseCode = "404",
             description = "Integration not found",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Integration must be retired first and must not have enrollments",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
@@ -446,7 +589,6 @@ public class IntegrationController {
     // Validate tenant access for TenantAdmin
     if (currentAdmin.getAdminType() == EzkeyAdmin.AdminType.TENANT_ADMIN) {
       if (!integration.getTenant().getTenantId().equals(currentAdmin.getTenant().getTenantId())) {
-        // Return 404 to hide existence of cross-tenant resource
         throw new ResourceNotFoundException("Integration", id);
       }
     }
@@ -456,8 +598,6 @@ public class IntegrationController {
 
     service.delete(id);
 
-    // Do not set integration_id on the audit row: the FK targets ezkey_integration, which no
-    // longer contains this id after delete. Persist the identifier in event_details instead.
     auditLogService.log(
         AuditHelper.createAdminAudit(
                 context,
@@ -544,7 +684,7 @@ public class IntegrationController {
   }
 
   /**
-   * Bulk-revokes all active VERIFIED enrollments for an integration.
+   * Bulk-revokes all revocable enrollments for an integration.
    *
    * <p>Designed for incident response: when an integration's API key is compromised, all associated
    * enrollments can be immediately and permanently revoked in a single operation.
@@ -563,7 +703,8 @@ public class IntegrationController {
   @Operation(
       summary = "Bulk-revoke all enrollments for an integration",
       description =
-          "Permanently revokes all active VERIFIED enrollments for the specified integration."
+          "Permanently revokes all revocable enrollments for the specified integration, including"
+              + " deactivated VERIFIED enrollments and in-flight CREATED or BOUND enrollments."
               + " Intended for incident response (e.g., compromised API key)."
               + " Cannot be applied to system integrations.")
   @ApiResponses(

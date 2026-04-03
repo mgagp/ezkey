@@ -7,6 +7,7 @@ import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, Qr
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
@@ -407,16 +408,11 @@ function AdminDetailDialog({
         )}
         {relatedDetails.hasAnyFk && (
           <div className="flex justify-end">
-            <Button
-              variant="secondary"
-              size="sm"
+            <RelatedDetailsButton
               onClick={relatedDetails.expand}
-              disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
-            >
-              {relatedDetails.isExpanded && relatedDetails.isLoading
-                ? t('common:buttons.loading')
-                : t('common:detail.moreDetails')}
-            </Button>
+              isExpanded={relatedDetails.isExpanded}
+              isLoading={relatedDetails.isLoading}
+            />
           </div>
         )}
         {/* Info section */}

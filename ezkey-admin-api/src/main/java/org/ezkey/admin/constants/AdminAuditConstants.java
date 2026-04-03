@@ -241,6 +241,9 @@ public final class AdminAuditConstants {
   /** Audit action for failed integration creation. */
   public static final String INTEGRATION_CREATION_FAILED = "integration_creation_failed";
 
+  /** Audit action for successful integration retirement. */
+  public static final String INTEGRATION_RETIRED = "integration_retired";
+
   /** Audit action for successful integration deletion. */
   public static final String INTEGRATION_DELETED = "integration_deleted";
 

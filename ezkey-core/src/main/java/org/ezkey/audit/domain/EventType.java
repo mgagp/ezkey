@@ -89,6 +89,7 @@ public enum EventType {
   // Integration lifecycle events
   INTEGRATION_CREATED, // New integration registered
   INTEGRATION_UPDATED, // Integration updated
+  INTEGRATION_RETIRED, // Integration retired from day-to-day operations
   INTEGRATION_DELETED, // Integration removed (+ reason when provided)
 
   // Tenant lifecycle events

@@ -41,6 +41,9 @@
   },
   "detail": {
     "moreDetails": "More details",
+    "moreDetailsTooltip": "Load related records referenced by this panel and add links when available. If the same record was already loaded elsewhere, the result may appear immediately.",
+    "relatedDetailsShown": "Related details shown",
+    "relatedDetailsShownTooltip": "Related records for this panel are already shown. Shared client-side caching can make this update appear instantly.",
     "relatedContext": "Related context",
     "relatedTenant": "Tenant",
     "relatedIntegration": "Integration",

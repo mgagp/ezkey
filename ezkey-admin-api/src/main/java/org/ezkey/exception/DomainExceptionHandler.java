@@ -13,6 +13,8 @@ package org.ezkey.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
+import org.ezkey.integration.exception.IntegrationLifecycleStateException;
+import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -177,6 +179,28 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
         HttpStatus.CONFLICT,
         "https://ezkey.io/problems/domain/integration-code-already-exists",
         "Integration Code Already Exists",
+        request);
+  }
+
+  @ExceptionHandler(IntegrationLifecycleStateException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrationLifecycleStateException(
+      IntegrationLifecycleStateException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/integration-lifecycle-state",
+        "Integration Lifecycle State Conflict",
+        request);
+  }
+
+  @ExceptionHandler(SystemIntegrationLifecycleException.class)
+  public ResponseEntity<ProblemDetail> handleSystemIntegrationLifecycleException(
+      SystemIntegrationLifecycleException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.FORBIDDEN,
+        "https://ezkey.io/problems/domain/system-integration-lifecycle",
+        "System Integration Lifecycle Protected",
         request);
   }
 }

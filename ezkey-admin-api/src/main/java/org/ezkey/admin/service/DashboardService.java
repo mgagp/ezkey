@@ -33,6 +33,7 @@ import org.ezkey.authattempt.domain.AuthAttemptDashboard24hStats;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.service.IntegrationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,11 +141,12 @@ public class DashboardService {
       Integer tenantId, PageRequest pageOne) {
     long total =
         integrationService
-            .findByFilters(null, null, null, null, tenantId, pageOne)
+            .findByFilters(null, null, false, null, null, tenantId, pageOne)
             .getTotalElements();
     long active =
         integrationService
-            .findByFilters(null, true, null, null, tenantId, pageOne)
+            .findByFilters(
+                null, IntegrationLifecycleStatus.ACTIVE, false, null, null, tenantId, pageOne)
             .getTotalElements();
     return new DashboardIntegrationStatsDto(total, active, total - active);
   }

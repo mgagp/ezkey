@@ -28,6 +28,22 @@ import { formatDate } from '@/lib/utils';
 import { create, search } from '@/generated/admin-api/integrations/integrations';
 import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
 
+type IntegrationLifecycleStatus = 'ACTIVE' | 'INACTIVE' | 'RETIRED';
+type IntegrationListFilter = 'operational' | 'active' | 'inactive' | 'retired' | 'all';
+
+type IntegrationWithLifecycleStatus = IntegrationResponseDto & {
+  lifecycleStatus?: IntegrationLifecycleStatus;
+};
+
+function getLifecycleStatus(integration: IntegrationResponseDto): IntegrationLifecycleStatus {
+  const lifecycleStatus = (integration as IntegrationWithLifecycleStatus).lifecycleStatus;
+  if (lifecycleStatus) {
+    return lifecycleStatus;
+  }
+  // Transitional fallback until the derived `active` field is removed from the API surface.
+  return integration.active ? 'ACTIVE' : 'INACTIVE';
+}
+
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
 function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -156,15 +172,26 @@ export default function IntegrationsPage() {
   const { t } = useTranslation('integrations');
   const navigate = useNavigate();
   const [nameInput, setNameInput] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [lifecycleFilter, setLifecycleFilter] = useState<IntegrationListFilter>('operational');
   const [createOpen, setCreateOpen] = useState(false);
   const debouncedName = useDebounce(nameInput, 300);
 
-  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<IntegrationResponseDto, { integrationName?: string; active?: boolean }>({
-    queryKey: ['integrations', debouncedName, activeFilter],
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<
+    IntegrationResponseDto,
+    { integrationName?: string; active?: boolean; lifecycleStatus?: IntegrationLifecycleStatus; includeRetired?: boolean }
+  >({
+    queryKey: ['integrations', debouncedName, lifecycleFilter],
     baseParams: {
       integrationName: debouncedName || undefined,
-      active: activeFilter === 'all' ? undefined : activeFilter === 'active',
+      lifecycleStatus:
+        lifecycleFilter === 'active'
+          ? 'ACTIVE'
+          : lifecycleFilter === 'inactive'
+            ? 'INACTIVE'
+            : lifecycleFilter === 'retired'
+              ? 'RETIRED'
+              : undefined,
+      includeRetired: lifecycleFilter === 'all' ? true : undefined,
     },
     fetchPage: (params) => search(params) as Promise<PagedModelIntegrationResponseDto>,
   });
@@ -175,9 +202,19 @@ export default function IntegrationsPage() {
     { header: t('list.columns.name'), key: 'name', render: (row) => <span className="font-medium">{getIntegrationName(row)}</span> },
     {
       header: t('list.columns.status'),
-      key: 'active',
-      sortKey: 'active',
-      render: (row) => <Badge variant={row.active ? 'success' : 'muted'}>{row.active ? t('list.statusActive') : t('list.statusInactive')}</Badge>,
+      key: 'lifecycleStatus',
+      sortKey: 'lifecycleStatus',
+      render: (row) => {
+        const lifecycleStatus = getLifecycleStatus(row);
+        const variant = lifecycleStatus === 'ACTIVE' ? 'success' : 'muted';
+        const label =
+          lifecycleStatus === 'ACTIVE'
+            ? t('list.statusActive')
+            : lifecycleStatus === 'INACTIVE'
+              ? t('list.statusInactive')
+              : t('list.statusRetired');
+        return <Badge variant={variant}>{label}</Badge>;
+      },
     },
     { header: t('list.columns.tenant'), key: 'tenantId', className: 'w-16', render: (row) => <span className="font-mono text-xs">{row.tenantId ?? '—'}</span> },
     { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (row) => <span className="text-xs text-fg-muted">{formatDate(row.createdAt ?? '')}</span> },
@@ -201,12 +238,14 @@ export default function IntegrationsPage() {
           </div>
           <div className="w-40">
             <Select
-              value={activeFilter}
-              onChange={(e) => setActiveFilter(e.target.value as typeof activeFilter)}
+              value={lifecycleFilter}
+              onChange={(e) => setLifecycleFilter(e.target.value as IntegrationListFilter)}
             >
+              <option value="operational">{t('list.filterOperational')}</option>
               <option value="all">{t('list.filterAll')}</option>
               <option value="active">{t('list.filterActive')}</option>
               <option value="inactive">{t('list.filterInactive')}</option>
+              <option value="retired">{t('list.filterRetired')}</option>
             </Select>
           </div>
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">

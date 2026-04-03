@@ -385,6 +385,15 @@ public interface EnrollmentRepository
       Integer integrationId, EnrollmentStatus status, Boolean active);
 
   /**
+   * Finds all enrollments for an integration whose status is contained in the provided set.
+   *
+   * <p>Used by bulk revocation to select revocable enrollments independently from the weaker active
+   * flag.
+   */
+  List<Enrollment> findByIntegrationIdAndStatusIn(
+      Integer integrationId, List<EnrollmentStatus> statuses);
+
+  /**
    * Finds CREATED enrollments that have expired (expires_at is set and expires_at &lt; now). Used
    * by the scheduled job to mark them as EXPIRED and emit ENROLLMENT_EXPIRED audit events.
    *

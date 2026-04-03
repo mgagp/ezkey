@@ -8,6 +8,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
+import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,22 @@ type BulkEnrollmentOperationResult = {
   skippedCount: number;
   noOp: boolean;
 };
+
+type IntegrationLifecycleStatus = 'ACTIVE' | 'INACTIVE' | 'RETIRED';
+type IntegrationWithLifecycleStatus = IntegrationResponseDto & {
+  lifecycleStatus?: IntegrationLifecycleStatus;
+};
+
+function getLifecycleStatus(
+  integration: IntegrationResponseDto,
+): IntegrationLifecycleStatus {
+  const lifecycleStatus = (integration as IntegrationWithLifecycleStatus).lifecycleStatus;
+  if (lifecycleStatus) {
+    return lifecycleStatus;
+  }
+  // Transitional fallback until the derived `active` field is removed from the API surface.
+  return integration.active ? 'ACTIVE' : 'INACTIVE';
+}
 
 function buildBulkEnrollmentOperationPath(
   integrationId: number,
@@ -171,7 +188,7 @@ export default function IntegrationDetailPage() {
       pathPrefix: '/integrations',
     });
 
-  const [dangerAction, setDangerAction] = useState<'revoke-all' | 'deactivate-all' | 'reactivate-all' | 'delete' | null>(null);
+  const [dangerAction, setDangerAction] = useState<'revoke-all' | 'deactivate-all' | 'reactivate-all' | 'retire' | 'delete' | null>(null);
 
   const { data: integration, isLoading } = useQuery({
     queryKey: ['integration', integrationId],
@@ -196,6 +213,8 @@ export default function IntegrationDetailPage() {
 
   const name = integration ? getIntegrationName(integration) : '...';
   const isSystemIntegration = (integration as { isSystemIntegration?: boolean } | undefined)?.isSystemIntegration === true;
+  const lifecycleStatus = integration ? getLifecycleStatus(integration) : 'ACTIVE';
+  const isRetired = lifecycleStatus === 'RETIRED';
 
   const relatedDetails = useExpandableRelatedDetails({
     tenantId: integration?.tenantId ?? undefined,
@@ -232,16 +251,11 @@ export default function IntegrationDetailPage() {
               <CardHeader className="flex flex-row items-center justify-between gap-2">
                 <CardTitle>{t('detail.integrationDetails')}</CardTitle>
                 {relatedDetails.hasAnyFk && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
+                  <RelatedDetailsButton
                     onClick={relatedDetails.expand}
-                    disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
-                  >
-                    {relatedDetails.isExpanded && relatedDetails.isLoading
-                      ? t('common:buttons.loading')
-                      : t('common:detail.moreDetails')}
-                  </Button>
+                    isExpanded={relatedDetails.isExpanded}
+                    isLoading={relatedDetails.isLoading}
+                  />
                 )}
               </CardHeader>
               <CardContent>
@@ -270,8 +284,12 @@ export default function IntegrationDetailPage() {
                     </InfoRow>
                   )}
                   <InfoRow label={t('detail.infoStatus')}>
-                    <Badge variant={integration.active ? 'success' : 'muted'}>
-                      {integration.active ? t('list.statusActive') : t('list.statusInactive')}
+                    <Badge variant={lifecycleStatus === 'ACTIVE' ? 'success' : 'muted'}>
+                      {lifecycleStatus === 'ACTIVE'
+                        ? t('list.statusActive')
+                        : lifecycleStatus === 'INACTIVE'
+                          ? t('list.statusInactive')
+                          : t('list.statusRetired')}
                     </Badge>
                   </InfoRow>
                   <InfoRow label={t('detail.infoCreated')}>
@@ -294,15 +312,17 @@ export default function IntegrationDetailPage() {
                     <Users className="size-3.5" />
                     {t('detail.viewAllEnrollments')}
                   </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full justify-start gap-2"
-                    onClick={() => navigate(`/api-keys?create=1&integrationId=${integration.id}`)}
-                  >
-                    <Key className="size-3.5" />
-                    {t('detail.createApiKey')}
-                  </Button>
+                  {!isRetired && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-start gap-2"
+                      onClick={() => navigate(`/api-keys?create=1&integrationId=${integration.id}`)}
+                    >
+                      <Key className="size-3.5" />
+                      {t('detail.createApiKey')}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -315,7 +335,7 @@ export default function IntegrationDetailPage() {
             <h3 className="text-xs font-black uppercase tracking-widest text-fg-muted">
               {t('detail.enrollmentsSectionTitle')}
             </h3>
-            {integration && !isSystemIntegration && (
+            {integration && !isSystemIntegration && !isRetired && (
               <Button
                 size="sm"
                 onClick={() => navigate(`/enrollments?integrationId=${integrationId}`)}
@@ -348,30 +368,38 @@ export default function IntegrationDetailPage() {
             <CardContent>
               <div className="space-y-3">
                 <p className="text-xs text-fg-muted">
-                  {t('detail.dangerZoneIntro')}
+                  {isRetired ? t('detail.retiredIntro') : t('detail.dangerZoneIntro')}
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('deactivate-all')}>
-                    <PowerOff className="size-3.5" />
-                    {t('detail.deactivateAll')}
-                  </Button>
-                  <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => setDangerAction('reactivate-all')}>
-                    <Power className="size-3.5" />
-                    {t('detail.reactivateAll')}
-                  </Button>
-                  <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('revoke-all')}>
-                    <ShieldOff className="size-3.5" />
-                    {t('detail.revokeAll')}
-                  </Button>
-                </div>
+                {!isRetired && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('deactivate-all')}>
+                      <PowerOff className="size-3.5" />
+                      {t('detail.deactivateAll')}
+                    </Button>
+                    <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => setDangerAction('reactivate-all')}>
+                      <Power className="size-3.5" />
+                      {t('detail.reactivateAll')}
+                    </Button>
+                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('revoke-all')}>
+                      <ShieldOff className="size-3.5" />
+                      {t('detail.revokeAll')}
+                    </Button>
+                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('retire')}>
+                      <Trash2 className="size-3.5" />
+                      {t('detail.retireIntegration')}
+                    </Button>
+                  </div>
+                )}
                 <div className="border-t-2 border-error/20 pt-3">
                   <p className="text-xs text-fg-muted mb-2">
                     {t('detail.deleteIntro')}
                   </p>
-                  <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('delete')}>
-                    <Trash2 className="size-3.5" />
-                    {t('detail.deleteIntegration')}
-                  </Button>
+                  {isRetired && (
+                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('delete')}>
+                      <Trash2 className="size-3.5" />
+                      {t('detail.deleteIntegration')}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -478,6 +506,38 @@ export default function IntegrationDetailPage() {
                   : t('detail.toastRevoked', { count: result.affectedCount }),
                 'error',
               );
+              setDangerAction(null);
+            })
+            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
+        }}
+      />
+      <DangerConfirmDialog
+        open={dangerAction === 'retire'}
+        onClose={() => setDangerAction(null)}
+        title={t('detail.danger.retireTitle')}
+        description={t('detail.danger.retireDescription')}
+        confirmLabel={t('detail.danger.retireConfirm')}
+        optionalReason
+        reasonLabel={t('detail.danger.reasonLabelOptional')}
+        reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
+        cancelLabel={t('detail.danger.cancel')}
+        isPending={false}
+        isError={false}
+        errorMessage=""
+        renderReasonBadges={renderReasonBadges}
+        onConfirm={(reason) => {
+          const path =
+            reason.trim().length >= 10
+              ? `/api/v1/integrations/${integrationId}/retire?reason=${encodeURIComponent(reason.trim())}`
+              : `/api/v1/integrations/${integrationId}/retire`;
+          api
+            .post<void>(path, undefined)
+            .then(() => {
+              void queryClient.invalidateQueries({ queryKey: ['integration', integrationId] });
+              void queryClient.invalidateQueries({ queryKey: ['integrations'] });
+              void queryClient.invalidateQueries({ queryKey: ['integrations-all'] });
+              void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+              toast(t('detail.toastRetired'));
               setDangerAction(null);
             })
             .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));

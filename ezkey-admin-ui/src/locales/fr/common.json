@@ -41,6 +41,9 @@
   },
   "detail": {
     "moreDetails": "Plus de détails",
+    "moreDetailsTooltip": "Charge les enregistrements liés référencés par ce panneau et ajoute des liens lorsque c’est possible. Si le même enregistrement a déjà été chargé ailleurs, le résultat peut apparaître immédiatement.",
+    "relatedDetailsShown": "Détails liés affichés",
+    "relatedDetailsShownTooltip": "Les enregistrements liés pour ce panneau sont déjà affichés. Le cache client partagé peut rendre cette mise à jour immédiate.",
     "relatedContext": "Contexte associé",
     "relatedTenant": "Tenant",
     "relatedIntegration": "Intégration",

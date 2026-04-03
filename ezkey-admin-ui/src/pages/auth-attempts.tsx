@@ -6,6 +6,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { AuthAttemptStatusBadge } from '@/components/feature/auth-attempt-status-badge';
+import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -94,16 +95,11 @@ function AttemptDetailDialog({
         )}
         {relatedDetails.hasAnyFk && (
           <div className="flex justify-end">
-            <Button
-              variant="secondary"
-              size="sm"
+            <RelatedDetailsButton
               onClick={relatedDetails.expand}
-              disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
-            >
-              {relatedDetails.isExpanded && relatedDetails.isLoading
-                ? t('common:buttons.loading')
-                : t('common:detail.moreDetails')}
-            </Button>
+              isExpanded={relatedDetails.isExpanded}
+              isLoading={relatedDetails.isLoading}
+            />
           </div>
         )}
         <dl className="space-y-3">

@@ -71,7 +71,7 @@ export function Header({ title }: HeaderProps) {
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
         <button
           type="button"
-          onClick={openHelp}
+          onClick={() => openHelp()}
           className="p-1.5 hover:bg-fg/10 transition-colors"
           aria-label={t('help:drawer.openHelp')}
           title={t('help:drawer.openHelp')}

@@ -12,6 +12,8 @@ package org.ezkey.integration.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,6 +23,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 
 /**
  * JPA entity representing an integration in the Ezkey system.
@@ -47,12 +50,10 @@ public class Integration {
   @Column(name = "integration_id")
   private Integer id;
 
-  /**
-   * Flag indicating whether the integration is active and available for use. Inactive integrations
-   * cannot be used for authentication. Defaults to {@code true} (matches DB: {@code DEFAULT TRUE}).
-   */
-  @Column(name = "integration_active", nullable = false)
-  private Boolean active = true;
+  /** Explicit lifecycle state for the integration. */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "integration_lifecycle_status", nullable = false)
+  private IntegrationLifecycleStatus lifecycleStatus = IntegrationLifecycleStatus.ACTIVE;
 
   /** Timestamp when the integration was created. Automatically set when the entity is persisted. */
   @Column(name = "created_at", nullable = false)
@@ -110,7 +111,7 @@ public class Integration {
 
   /** Default constructor for JPA. */
   public Integration() {
-    // active: field init. createdAt: @PrePersist when null. MapStruct ignores both
+    // lifecycleStatus: field init. createdAt: @PrePersist when null. MapStruct ignores both
     // (create→entity).
   }
 
@@ -143,22 +144,47 @@ public class Integration {
     this.id = id;
   }
 
-  /**
-   * Gets the active status of the integration.
-   *
-   * @return true if the integration is active, false otherwise
-   */
-  public Boolean getActive() {
-    return active;
+  /** Returns the explicit lifecycle state. */
+  public IntegrationLifecycleStatus getLifecycleStatus() {
+    return lifecycleStatus;
+  }
+
+  /** Sets the explicit lifecycle state. */
+  public void setLifecycleStatus(IntegrationLifecycleStatus lifecycleStatus) {
+    this.lifecycleStatus =
+        lifecycleStatus != null ? lifecycleStatus : IntegrationLifecycleStatus.ACTIVE;
   }
 
   /**
-   * Sets the active status of the integration.
+   * Compatibility helper while integration lifecycle migrates away from a boolean status model.
    *
-   * @param active the active status to set
+   * <p>Use lifecycle-specific methods for new code.
+   */
+  public Boolean getActive() {
+    return IntegrationLifecycleStatus.ACTIVE.equals(lifecycleStatus);
+  }
+
+  /**
+   * Compatibility helper while integration lifecycle migrates away from a boolean status model.
+   *
+   * <p>{@code true -> ACTIVE}, {@code false/null -> INACTIVE}. Use {@link #setLifecycleStatus} for
+   * new code.
    */
   public void setActive(Boolean active) {
-    this.active = active;
+    this.lifecycleStatus =
+        Boolean.TRUE.equals(active)
+            ? IntegrationLifecycleStatus.ACTIVE
+            : IntegrationLifecycleStatus.INACTIVE;
+  }
+
+  /** Indicates whether the integration is in the ACTIVE lifecycle state. */
+  public boolean isOperational() {
+    return IntegrationLifecycleStatus.ACTIVE.equals(lifecycleStatus);
+  }
+
+  /** Indicates whether the integration is retired. */
+  public boolean isRetired() {
+    return IntegrationLifecycleStatus.RETIRED.equals(lifecycleStatus);
   }
 
   /**

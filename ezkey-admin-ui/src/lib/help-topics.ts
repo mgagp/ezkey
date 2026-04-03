@@ -12,6 +12,12 @@ export type HelpTopicId =
   | 'audit-logs';
 
 /**
+ * Reusable cross-screen help patterns. These are not route-derived; they can be
+ * opened from shared UI affordances wherever the pattern appears.
+ */
+export type HelpPatternId = 'fkRelatedDetails';
+
+/**
  * Resolves the active help topic from the current pathname. Extend as new screens receive authored help.
  */
 export function resolveHelpTopicId(pathname: string): HelpTopicId {

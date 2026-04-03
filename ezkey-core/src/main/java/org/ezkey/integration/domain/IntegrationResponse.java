@@ -33,11 +33,8 @@ public class IntegrationResponse {
   /** Unique identifier for the integration. Auto-generated primary key from the database. */
   private Integer id;
 
-  /**
-   * Integration status flag. Indicates whether the integration is currently active and available
-   * for use.
-   */
-  private Boolean active;
+  /** Explicit lifecycle status for the integration. */
+  private IntegrationLifecycleStatus lifecycleStatus;
 
   /** Timestamp when the integration was created. Used for audit trails and sorting purposes. */
   private OffsetDateTime createdAt;
@@ -66,22 +63,14 @@ public class IntegrationResponse {
     this.id = id;
   }
 
-  /**
-   * Gets the integration status flag.
-   *
-   * @return true if the integration is active, false otherwise
-   */
-  public Boolean getActive() {
-    return active;
+  /** Gets the explicit lifecycle status. */
+  public IntegrationLifecycleStatus getLifecycleStatus() {
+    return lifecycleStatus;
   }
 
-  /**
-   * Sets the integration status flag.
-   *
-   * @param active the active status to set
-   */
-  public void setActive(Boolean active) {
-    this.active = active;
+  /** Sets the explicit lifecycle status. */
+  public void setLifecycleStatus(IntegrationLifecycleStatus lifecycleStatus) {
+    this.lifecycleStatus = lifecycleStatus;
   }
 
   /**

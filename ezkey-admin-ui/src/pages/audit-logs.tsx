@@ -9,6 +9,7 @@ import { Pagination } from '@/components/data-table/pagination';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { ContextHelp } from '@/components/ui/context-help';
 import { Tooltip } from '@/components/ui/tooltip';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
@@ -123,16 +124,11 @@ function AuditLogDetailDialog({
         )}
         <div className="flex justify-end items-start min-h-[2.25rem]">
           {relatedDetails.hasAnyFk ? (
-            <Button
-              variant="secondary"
-              size="sm"
+            <RelatedDetailsButton
               onClick={relatedDetails.expand}
-              disabled={relatedDetails.isExpanded && relatedDetails.isLoading}
-            >
-              {relatedDetails.isExpanded && relatedDetails.isLoading
-                ? t('common:buttons.loading')
-                : t('common:detail.moreDetails')}
-            </Button>
+              isExpanded={relatedDetails.isExpanded}
+              isLoading={relatedDetails.isLoading}
+            />
           ) : (
             <Button
               type="button"

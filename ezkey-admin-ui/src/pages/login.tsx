@@ -251,7 +251,7 @@ export default function LoginPage() {
           <div className="absolute top-0 right-0 flex items-center gap-2 text-sm">
           <button
             type="button"
-            onClick={openHelp}
+            onClick={() => openHelp()}
             className="p-1 hover:bg-fg/10 transition-colors"
             aria-label={t('help:drawer.openHelp')}
             title={t('help:drawer.openHelp')}

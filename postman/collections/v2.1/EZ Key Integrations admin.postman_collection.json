@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7b02aad6-04f2-429c-99b6-149f23c871c8",
     "name": "EZ Key Integrations admin",
-    "description": "Collection for integration management operations in the Admin API.\n\n## Concepts (Tenant vs Integration)\n\n- **Tenant**: The organization (e.g., \"Garage du coin\", \"ACME Corporation\"). Tenants are managed via the Tenants admin collection.\n- **Integration**: The application or system protected by Ezkey MFA (e.g., \"Administration\", \"Billing Portal\", \"ERP\"). Each tenant can have multiple integrations.\n- **name**: Display name of the application (shown on mobile, admin console). Use application names, not organization names.\n- **description**: Description of the application (e.g., \"Console d'administration\", \"Customer-facing billing portal\").\n\n## Endpoints\n\n- **Search Integrations**: Retrieve integrations with filters and pagination\n- **Get Integration**: Get details of a specific integration by ID\n- **Create Integration**: Create a new integration (code, name, description)\n- **Delete Integration**: Remove an integration from the system\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all integrations across all tenants\n- **TenantAdmin**: Can only access integrations within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only their tenant's integrations)\n- **Access Validation**: Individual resource access is validated via `AccessControlService`\n\n### Automatic Tenant Assignment\n- **GlobalAdmin creates integration**: Automatically assigned to \"Ezkey System\" tenant (tenantId: 1)\n- **TenantAdmin creates integration**: Automatically assigned to admin's tenant\n- **No Impersonation**: Administrators cannot create resources for other tenants\n\n## Integration Management\n\nIntegrations represent applications or systems that will use Ezkey for MFA protection. Each integration has: name, description, active/inactive status\n- Cryptographic keys (generated automatically, not exposed in responses)\n- Tenant association (automatically assigned based on admin type)\n\nIntegrations have a single `name` and optional `description`.",
+    "description": "Collection for integration management operations in the Admin API.\n\n## Concepts (Tenant vs Integration)\n\n- **Tenant**: The organization (e.g., \"Garage du coin\", \"ACME Corporation\"). Tenants are managed via the Tenants admin collection.\n- **Integration**: The application or system protected by Ezkey MFA (e.g., \"Administration\", \"Billing Portal\", \"ERP\"). Each tenant can have multiple integrations.\n- **name**: Display name of the application (shown on mobile, admin console). Use application names, not organization names.\n- **description**: Description of the application (e.g., \"Console d'administration\", \"Customer-facing billing portal\").\n\n## Endpoints\n\n- **Search Integrations**: Retrieve integrations with filters and pagination\n- **Get Integration**: Get details of a specific integration by ID\n- **Create Integration**: Create a new integration (code, name, description)\n- **Retire Integration**: Remove an integration from day-to-day operations while preserving history\n- **Delete Integration**: Permanently delete an already-retired integration with no remaining enrollments\n\n## Authentication\n\nAll endpoints require admin authentication via Bearer token.\n\n## Multi-Tenancy (Phase 1)\n\n### Tenant Scoping\n- **GlobalAdmin**: Can access all integrations across all tenants\n- **TenantAdmin**: Can only access integrations within their tenant\n- **Automatic Filtering**: Lists are automatically filtered by tenant (TenantAdmin sees only their tenant's integrations)\n- **Access Validation**: Individual resource access is validated via `AccessControlService`\n\n### Automatic Tenant Assignment\n- **GlobalAdmin creates integration**: Automatically assigned to \"Ezkey System\" tenant (tenantId: 1)\n- **TenantAdmin creates integration**: Automatically assigned to admin's tenant\n- **No Impersonation**: Administrators cannot create resources for other tenants\n\n## Integration Management\n\nIntegrations represent applications or systems that will use Ezkey for MFA protection.\n- Lifecycle is modeled explicitly through `lifecycleStatus` (`ACTIVE`, `INACTIVE`, `RETIRED`).\n- The legacy `active` field may still appear as a temporary derived compatibility flag during transition.\n- Retired integrations are excluded from day-to-day listings by default.\n- Cryptographic keys are generated automatically and not exposed in responses.\n- Tenant association is assigned automatically based on admin type.\n\nIntegrations have a single `name` and optional `description`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -65,7 +65,7 @@
             {
               "key": "sort",
               "value": "createdAt,desc",
-              "description": "Sort field and direction (e.g., id,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: id, createdAt, active",
+              "description": "Sort field and direction (e.g., id,asc or createdAt,desc). Default: createdAt,desc. Sortable fields: id, createdAt, lifecycleStatus",
               "disabled": true
             },
             {
@@ -77,7 +77,19 @@
             {
               "key": "active",
               "value": "true",
-              "description": "Filter by active flag (true/false)",
+              "description": "Temporary compatibility filter by active flag (true = ACTIVE, false = INACTIVE)",
+              "disabled": true
+            },
+            {
+              "key": "lifecycleStatus",
+              "value": "ACTIVE",
+              "description": "Exact lifecycle filter (ACTIVE, INACTIVE, RETIRED)",
+              "disabled": true
+            },
+            {
+              "key": "includeRetired",
+              "value": "true",
+              "description": "Include retired integrations when no exact lifecycleStatus is requested",
               "disabled": true
             },
             {
@@ -100,7 +112,7 @@
             }
           ]
         },
-        "description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Sees all integrations across all tenants; optional `tenantId` query parameter limits results to that tenant\n- **TenantAdmin**: Sees only integrations within their tenant (automatic filtering); `tenantId` parameter is ignored\n- Tenant scoping is applied automatically based on the authenticated admin's type\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `id,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `id`, `createdAt`, `active`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `integrationName`: Filter by integration name (partial match, case-insensitive)\n- `active`: Filter by active flag (true/false)\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n- `tenantId`: Filter by tenant ID (GlobalAdmin only; ignored for TenantAdmin)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=id,asc` - Sort by ID ascending\n- `?active=true` - Filter active integrations only\n- `?integrationName=Acme` - Search integrations with 'Acme' in name\n- `?tenantId=2` - GlobalAdmin: only integrations for tenant 2\n\n**Response (200 OK):**\nPaginated response containing `content` (array of integrations) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Integration Fields:**\n- `id`: Unique identifier for the integration\n- `logo`: URL or path to the integration logo image\n- `active`: Integration status flag\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `i18n`: Array of internationalized content objects\n\n**Note:** System integrations are automatically excluded from the listing.\n\n**Status Codes:**\n- 200: Search completed successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to access integration from another tenant\n- 500: Internal server error"
+        "description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Sees all integrations across all tenants; optional `tenantId` query parameter limits results to that tenant\n- **TenantAdmin**: Sees only integrations within their tenant (automatic filtering); `tenantId` parameter is ignored\n- Tenant scoping is applied automatically based on the authenticated admin's type\n\n**Pagination Parameters:**\n- `page`: Page number (zero-based, default: 0)\n- `size`: Page size (default: 20)\n- `sort`: Sort field and direction (e.g., `id,asc` or `createdAt,desc`). Default: `createdAt,desc`\n  - Sortable fields: `id`, `createdAt`, `lifecycleStatus`\n  - Directions: `asc` (ascending) or `desc` (descending)\n\n**Filter Parameters:**\n- `integrationName`: Filter by integration name (partial match, case-insensitive)\n- `lifecycleStatus`: Exact lifecycle filter (`ACTIVE`, `INACTIVE`, `RETIRED`)\n- `includeRetired`: Include retired integrations when no exact lifecycle filter is requested\n- `active`: Temporary compatibility filter by active flag (`true` = `ACTIVE`, `false` = `INACTIVE`)\n- `createdAfter`: Filter by start date (ISO-8601)\n- `createdBefore`: Filter by end date (ISO-8601)\n- `tenantId`: Filter by tenant ID (GlobalAdmin only; ignored for TenantAdmin)\n\n**Examples:**\n- `?page=0&size=20` - First page, 20 items per page\n- `?sort=id,asc` - Sort by ID ascending\n- `?lifecycleStatus=RETIRED` - Show only retired integrations\n- `?includeRetired=true` - Include retired integrations in a broader listing\n- `?integrationName=Acme` - Search integrations with 'Acme' in name\n- `?tenantId=2` - GlobalAdmin: only integrations for tenant 2\n\n**Response (200 OK):**\nPaginated response containing `content` (array of integrations) and pagination metadata (`totalElements`, `totalPages`, etc.).\n\n**Integration Fields:**\n- `id`: Unique identifier for the integration\n- `code`: Business identifier code\n- `lifecycleStatus`: Lifecycle source of truth (`ACTIVE`, `INACTIVE`, `RETIRED`)\n- `active`: Temporary derived compatibility flag during transition\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `name`: Display name for the integration\n- `description`: Optional description\n\n**Note:** Retired integrations are excluded by default unless explicitly requested. System integrations are automatically excluded from the listing.\n\n**Status Codes:**\n- 200: Search completed successfully\n- 400: Invalid parameters\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to access integration from another tenant\n- 500: Internal server error"
       },
       "response": []
     },
@@ -121,6 +133,7 @@
               "    ",
               "    pm.test(\"Response contains required fields\", function () {",
               "        pm.expect(jsonData).to.have.property('id');",
+              "        pm.expect(jsonData).to.have.property('lifecycleStatus');",
               "        pm.expect(jsonData).to.have.property('active');",
               "        pm.expect(jsonData).to.have.property('createdAt');",
               "        pm.expect(jsonData).to.have.property('name');",
@@ -154,7 +167,7 @@
             }
           ]
         },
-        "description": "Retrieves details of a specific integration by its unique identifier for administrative purposes.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can access any integration (any tenant)\n- **TenantAdmin**: Can only access integrations within their tenant\n- Access is validated via `AccessControlService.canAccessIntegration()`\n- Returns 403 Forbidden if TenantAdmin tries to access integration from another tenant\n\n**Path Parameters:**\n- `id` (required): Integration ID to retrieve\n\n**Response (200 OK):**\n- `id`: Unique identifier for the integration\n- `code`: Business identifier code\n- `active`: Integration status flag\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `name`: Display name for the integration\n- `description`: Optional description\n\n**Status Codes:**\n- 200: Integration found\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to access integration from another tenant\n- 404: Integration not found\n- 500: Internal server error"
+        "description": "Retrieves details of a specific integration by its unique identifier for administrative purposes.\n\n**Multi-Tenancy:**\n- **GlobalAdmin**: Can access any integration (any tenant)\n- **TenantAdmin**: Can only access integrations within their tenant\n- Access is validated via `AccessControlService.canAccessIntegration()`\n- Returns 403 Forbidden if TenantAdmin tries to access integration from another tenant\n\n**Path Parameters:**\n- `id` (required): Integration ID to retrieve\n\n**Response (200 OK):**\n- `id`: Unique identifier for the integration\n- `code`: Business identifier code\n- `lifecycleStatus`: Lifecycle source of truth (`ACTIVE`, `INACTIVE`, `RETIRED`)\n- `active`: Temporary derived compatibility flag during transition\n- `createdAt`: Timestamp when the integration was created (UTC with timezone)\n- `name`: Display name for the integration\n- `description`: Optional description\n\n**Status Codes:**\n- 200: Integration found\n- 401: Unauthorized - admin token required\n- 403: Forbidden - TenantAdmin trying to access integration from another tenant\n- 404: Integration not found\n- 500: Internal server error"
       },
       "response": []
     },
@@ -299,7 +312,7 @@
             }
           ]
         },
-        "description": "Bulk-revokes all active VERIFIED enrollments for an integration.\n\n**Use case:** Incident response — when an integration's API key is compromised, all associated enrollments should be immediately revoked.\n\n**Guards:**\n- Cannot be applied to **system integrations** (`is_system_integration=true`) — would cause complete admin lockout (403 with `system-integration-revocation` problem detail)\n- Calling admin's own enrollment is **skipped** (self-guard) rather than throwing\n- Tenant Admins can only bulk-revoke enrollments in their tenant's integrations\n\n**Effects:**\n- All active VERIFIED enrollments for the integration transition to `REVOKED`\n- Bearer tokens for any admin enrollments found are immediately invalidated\n- Returns an execution summary with `affectedCount`, `skippedCount`, and `noOp`\n- A successful no-op does not emit a success audit row for this routine admin action\n\n**Status Codes:**\n- 200: Bulk revocation completed with result summary\n- 400: Missing or invalid `reason`\n- 403: Access denied or system integration guard\n- 404: Integration not found\n- 500: Internal server error"
+        "description": "Bulk-revokes all revocable enrollments for an integration.\n\n**Use case:** Incident response — when an integration's API key is compromised, all associated enrollments should be immediately revoked.\n\n**Guards:**\n- Cannot be applied to **system integrations** (`is_system_integration=true`) — would cause complete admin lockout (403 with `system-integration-revocation` problem detail)\n- Calling admin's own enrollment is **skipped** (self-guard) rather than throwing\n- Tenant Admins can only bulk-revoke enrollments in their tenant's integrations\n\n**Effects:**\n- Revokes `VERIFIED` enrollments whether currently active or deactivated\n- Revokes in-flight `CREATED` and `BOUND` enrollments as part of the stronger retirement/incident posture\n- Bearer tokens for any admin enrollments found are immediately invalidated\n- Returns an execution summary with `affectedCount`, `skippedCount`, and `noOp`\n- A successful no-op does not emit a success audit row for this routine admin action\n\n**Status Codes:**\n- 200: Bulk revocation completed with result summary\n- 400: Missing or invalid `reason`\n- 403: Access denied or system integration guard\n- 404: Integration not found\n- 500: Internal server error"
       },
       "response": []
     },
@@ -440,20 +453,86 @@
       "response": []
     },
     {
+      "name": "retire",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 204, 400, 403 or 404\", function () {",
+              "    pm.expect([204, 400, 403, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if ([400, 403, 404].includes(pm.response.code)) {",
+              "    pm.test(\"ProblemDetail returned\", function () {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData).to.have.property('type');",
+              "        pm.expect(jsonData).to.have.property('status');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/integrations/:id/retire?reason=Retiring obsolete integration after credential incident",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "integrations",
+            ":id",
+            "retire"
+          ],
+          "query": [
+            {
+              "key": "reason",
+              "value": "Retiring obsolete integration after credential incident",
+              "description": "Optional audit justification (min 10, max 500 characters when provided)"
+            }
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{integrationId}}",
+              "description": "The integration ID to retire"
+            }
+          ]
+        },
+        "description": "Retires an integration while preserving historical data.\n\n**Normal posture:** Retirement is the standard end-of-life path for integrations that should disappear from day-to-day operations without erasing their audit-relevant history.\n\n**Effects:**\n- Bulk-revokes all revocable enrollments for the integration before retirement\n- Sets integration `lifecycleStatus` to `RETIRED`\n- Keeps the integration available for historical visibility while removing it from default operational listings\n\n**Guards:**\n- System integrations cannot be retired\n- Tenant Admins can retire integrations only within their tenant\n\n**Status Codes:**\n- 204: Integration retired successfully\n- 400: Invalid `reason`\n- 403: Access denied or system integration guard\n- 404: Integration not found\n- 500: Internal server error"
+      },
+      "response": []
+    },
+    {
       "name": "delete",
       "event": [
         {
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 204 or 404\", function () {",
-              "    pm.expect([204, 404]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 204, 400, 403, 404 or 409\", function () {",
+              "    pm.expect([204, 400, 403, 404, 409]).to.include(pm.response.code);",
               "});",
               "",
               "if (pm.response.code === 204) {",
               "    pm.test(\"Deletion successful\", function () {",
               "        pm.expect(pm.response.code).to.equal(204);",
               "        // DELETE returns 204 No Content with no body",
+              "    });",
+              "}",
+              "",
+              "if ([400, 403, 404, 409].includes(pm.response.code)) {",
+              "    pm.test(\"ProblemDetail returned\", function () {",
+              "        var jsonData = pm.response.json();",
+              "        pm.expect(jsonData).to.have.property('type');",
+              "        pm.expect(jsonData).to.have.property('status');",
               "    });",
               "}"
             ],
@@ -492,7 +571,7 @@
             }
           ]
         },
-        "description": "Removes an integration from the system, effectively disabling MFA protection for the associated application.\n\n**Path Parameters:**\n- `id` (required): Integration ID to delete\n\n**Response (204 No Content):**\n- No response body\n- Integration is removed from the system\n- All associated enrollments and API keys are also removed\n\n**Status Codes:**\n- 204: Integration deleted successfully\n- 401: Unauthorized - admin token required\n- 404: Integration not found\n- 500: Internal server error\n\n**Warning:** This operation is irreversible. Deleting an integration will also delete all associated enrollments, API keys, and authentication attempts."
+        "description": "Permanently deletes an already-retired integration that no longer has enrollments.\n\n**Exceptional posture:** Deletion is narrower than retirement and should only be used for disposable records after lifecycle closure.\n\n**Path Parameters:**\n- `id` (required): Integration ID to delete\n\n**Preconditions:**\n- Integration must already be `RETIRED`\n- Integration must not have any remaining enrollments\n- System integrations cannot be deleted\n\n**Response (204 No Content):**\n- No response body\n- Integration row is permanently removed\n\n**Status Codes:**\n- 204: Integration deleted successfully\n- 400: Invalid `reason`\n- 401: Unauthorized - admin token required\n- 403: Access denied or system integration guard\n- 404: Integration not found\n- 409: Integration not retired yet, or enrollments still exist\n- 500: Internal server error\n\n**Warning:** This operation is irreversible and is not the normal retirement mechanism."
       },
       "response": []
     }

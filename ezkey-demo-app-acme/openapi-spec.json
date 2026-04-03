@@ -444,7 +444,7 @@
           "Integrations"
         ],
         "summary": "Search integrations",
-        "description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=id,asc). Default sort is by creation date descending (newest first). Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their tenant.",
+        "description": "Retrieves integrations with optional filters and pagination for administration and compliance reporting. Supports dynamic sorting via ?sort=field,direction (e.g., ?sort=id,asc). Default sort is by creation date descending (newest first). Retired integrations are excluded by default unless explicitly requested. Optional tenantId filter: GlobalAdmin only; TenantAdmin scope is always their tenant.",
         "operationId": "search",
         "parameters": [
           {
@@ -459,10 +459,34 @@
           {
             "name": "active",
             "in": "query",
-            "description": "Filter by active flag",
+            "description": "Compatibility filter by active flag",
             "required": false,
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "lifecycleStatus",
+            "in": "query",
+            "description": "Exact lifecycle filter (ACTIVE, INACTIVE, RETIRED)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE",
+                "RETIRED"
+              ]
+            }
+          },
+          {
+            "name": "includeRetired",
+            "in": "query",
+            "description": "Include retired integrations in results when no exact lifecycle is requested",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           },
           {
@@ -629,13 +653,72 @@
         }
       }
     },
+    "/api/v1/integrations/{id}/retire": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Retire integration",
+        "description": "Retires an integration from day-to-day use while preserving historical data. The operation bulk-revokes revocable enrollments before marking the integration RETIRED.",
+        "operationId": "retire",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Integration ID to retire",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "description": "Audit justification for the retirement (min 10 characters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 10
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Integration retired successfully"
+          },
+          "403": {
+            "description": "System integration cannot be retired",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Integration not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/integrations/{id}/enrollments/revoke-all": {
       "post": {
         "tags": [
           "Integrations"
         ],
         "summary": "Bulk-revoke all enrollments for an integration",
-        "description": "Permanently revokes all active VERIFIED enrollments for the specified integration. Intended for incident response (e.g., compromised API key). Cannot be applied to system integrations.",
+        "description": "Permanently revokes all revocable enrollments for the specified integration, including deactivated VERIFIED enrollments and in-flight CREATED or BOUND enrollments. Intended for incident response (e.g., compromised API key). Cannot be applied to system integrations.",
         "operationId": "revokeAllEnrollments",
         "parameters": [
           {
@@ -3118,7 +3201,7 @@
           "Integrations"
         ],
         "summary": "Delete integration",
-        "description": "Removes an integration from the system",
+        "description": "Permanently deletes an already-retired integration that no longer has enrollments.",
         "operationId": "delete_1",
         "parameters": [
           {
@@ -3148,8 +3231,28 @@
           "204": {
             "description": "Integration deleted successfully"
           },
+          "403": {
+            "description": "System integration cannot be deleted",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Integration not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Integration must be retired first and must not have enrollments",
             "content": {
               "*/*": {
                 "schema": {
@@ -3844,6 +3947,7 @@
                 "REENCRYPTION_PAUSED",
                 "INTEGRATION_CREATED",
                 "INTEGRATION_UPDATED",
+                "INTEGRATION_RETIRED",
                 "INTEGRATION_DELETED",
                 "TENANT_CREATED",
                 "TENANT_UPDATED",
@@ -6313,8 +6417,18 @@
           },
           "active": {
             "type": "boolean",
-            "description": "Integration status flag",
+            "description": "Temporary compatibility flag derived from lifecycle status (`true` only when `ACTIVE`); intended for transition only and planned for later removal",
             "example": true
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "description": "Explicit integration lifecycle status",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE",
+              "RETIRED"
+            ],
+            "example": "ACTIVE"
           },
           "createdAt": {
             "type": "string",
@@ -6824,6 +6938,7 @@
               "REENCRYPTION_PAUSED",
               "INTEGRATION_CREATED",
               "INTEGRATION_UPDATED",
+              "INTEGRATION_RETIRED",
               "INTEGRATION_DELETED",
               "TENANT_CREATED",
               "TENANT_UPDATED",

@@ -21,6 +21,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
@@ -260,7 +261,7 @@ public class AdminProvisioningService {
     // Get system integration (for admin enrollment)
     Integration systemIntegration =
         integrationRepository
-            .findByIsSystemIntegrationAndActiveTrue(true)
+            .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
             .orElseThrow(() -> new RuntimeException("System integration not found"));
 
     // Create admin
@@ -383,7 +384,7 @@ public class AdminProvisioningService {
     // Get system integration (for admin enrollment)
     Integration systemIntegration =
         integrationRepository
-            .findByIsSystemIntegrationAndActiveTrue(true)
+            .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
             .orElseThrow(() -> new RuntimeException("System integration not found"));
 
     // Create admin

@@ -18,6 +18,7 @@ import java.util.Optional;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
@@ -26,6 +27,8 @@ import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
+import org.ezkey.integration.exception.IntegrationLifecycleStateException;
+import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,7 +115,8 @@ public class IntegrationService {
    *
    * @param integrationName optional integration name filter (partial match, case-insensitive on
    *     integration_name)
-   * @param active optional active flag filter
+   * @param lifecycleStatus optional exact lifecycle filter
+   * @param includeRetired when true, default exclusion of retired integrations is disabled
    * @param createdAfter optional start of date range filter
    * @param createdBefore optional end of date range filter
    * @param tenantId optional tenant ID filter for tenant scoping (null = all tenants, for
@@ -123,7 +127,8 @@ public class IntegrationService {
   @Transactional(readOnly = true)
   public Page<Integration> findByFilters(
       String integrationName,
-      Boolean active,
+      IntegrationLifecycleStatus lifecycleStatus,
+      boolean includeRetired,
       OffsetDateTime createdAfter,
       OffsetDateTime createdBefore,
       Integer tenantId,
@@ -139,8 +144,11 @@ public class IntegrationService {
                 cb.like(cb.lower(root.get("name")), "%" + integrationName.toLowerCase() + "%"));
           }
 
-          if (active != null) {
-            predicates.add(cb.equal(root.get("active"), active));
+          if (lifecycleStatus != null) {
+            predicates.add(cb.equal(root.get("lifecycleStatus"), lifecycleStatus));
+          } else if (!includeRetired) {
+            predicates.add(
+                cb.notEqual(root.get("lifecycleStatus"), IntegrationLifecycleStatus.RETIRED));
           }
 
           if (createdAfter != null) {
@@ -200,7 +208,7 @@ public class IntegrationService {
         createdByAdmin.getAdminType());
 
     Integration integration = integrationServiceMapper.toEntity(request);
-    integration.setActive(true);
+    integration.setLifecycleStatus(IntegrationLifecycleStatus.ACTIVE);
     integration.setCreatedAt(OffsetDateTime.now());
     integration.setCreatedByAdmin(createdByAdmin);
 
@@ -267,17 +275,50 @@ public class IntegrationService {
     return response;
   }
 
+  /** Retires an integration while preserving its historical footprint. */
+  @Transactional
+  public Integration retire(Integer id) {
+    Integration integration =
+        integrationRepository
+            .findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Integration not found: " + id));
+
+    if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
+      throw new SystemIntegrationLifecycleException(
+          "System integration cannot be retired because it is reserved for administrator MFA.");
+    }
+
+    if (IntegrationLifecycleStatus.RETIRED.equals(integration.getLifecycleStatus())) {
+      return integration;
+    }
+
+    integration.setLifecycleStatus(IntegrationLifecycleStatus.RETIRED);
+    return integrationRepository.save(integration);
+  }
+
   /**
    * Deletes an Integration entity by its unique identifier.
    *
-   * <p>Deletion is refused if the integration has one or more enrollments; remove or revoke
-   * enrollments first. This avoids surfacing a database foreign-key constraint violation to the
-   * client.
-   *
-   * @param id the unique identifier of the Integration to delete
-   * @throws IntegrationHasEnrollmentsException if the integration has at least one enrollment
+   * <p>Deletion is exceptional and only allowed for already-retired integrations without
+   * enrollments.
    */
+  @Transactional
   public void delete(Integer id) {
+    Integration integration =
+        integrationRepository
+            .findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Integration not found: " + id));
+
+    if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
+      throw new SystemIntegrationLifecycleException(
+          "System integration cannot be deleted because it is reserved for administrator MFA.");
+    }
+
+    if (!IntegrationLifecycleStatus.RETIRED.equals(integration.getLifecycleStatus())) {
+      throw new IntegrationLifecycleStateException(
+          "Integration must be retired before it can be permanently deleted.");
+    }
+
     if (enrollmentRepository.existsByIntegrationId(id)) {
       throw new IntegrationHasEnrollmentsException();
     }
