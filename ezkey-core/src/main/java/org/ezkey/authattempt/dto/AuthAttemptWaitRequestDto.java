@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 
 /**
  * Request parameters controlling the wait behaviour for an authentication attempt response.
@@ -63,7 +64,8 @@ public record AuthAttemptWaitRequestDto(
    */
   public AuthAttemptWaitRequestDto {
     if (timeout != null && polling != null && polling >= timeout) {
-      throw new IllegalArgumentException("Polling interval must be less than timeout duration");
+      throw new AuthAttemptWaitValidationException(
+          "Polling interval must be less than timeout duration");
     }
   }
 

@@ -18,6 +18,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.audit.domain.entity.AuditLog;
@@ -34,6 +36,7 @@ import org.ezkey.authattempt.dto.AuthAttemptRespondRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptRespondResponseDto;
 import org.ezkey.authattempt.mapper.AuthAttemptAuthApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.exception.AuthApiProblemCatalog;
 import org.ezkey.exception.GlobalExceptionHandler;
 import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
@@ -284,7 +287,11 @@ class AuthAttemptControllerTest {
     // Act & Assert
     mockMvc
         .perform(post(BASE_URL + "/pending").contentType(MediaType.APPLICATION_JSON).content(json))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_BINDING_FAILED))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_BAD_REQUEST))
+        .andExpect(jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_FAILED));
 
     // Verify service interactions
     verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
@@ -304,7 +311,12 @@ class AuthAttemptControllerTest {
     // Act & Assert
     mockMvc
         .perform(post(BASE_URL + "/pending").contentType(MediaType.APPLICATION_JSON).content(json))
-        .andExpect(status().isConflict());
+        .andExpect(status().isConflict())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_CONFLICT))
+        .andExpect(
+            jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
 
     // Verify service interactions
     verify(authAttemptService, times(1)).pending(any(AuthAttemptPendingRequest.class));
@@ -352,7 +364,11 @@ class AuthAttemptControllerTest {
     // Act & Assert
     mockMvc
         .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_BINDING_FAILED))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_BAD_REQUEST))
+        .andExpect(jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_FAILED));
 
     // Verify service interactions
     verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
@@ -372,7 +388,12 @@ class AuthAttemptControllerTest {
     // Act & Assert
     mockMvc
         .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
-        .andExpect(status().isConflict());
+        .andExpect(status().isConflict())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_AUTH_ATTEMPT_STATE_CONFLICT))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_CONFLICT))
+        .andExpect(
+            jsonPath("$.detail").value(AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT));
 
     // Verify service interactions
     verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));

@@ -17,6 +17,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.util.Set;
+import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -207,8 +208,9 @@ class AuthAttemptWaitRequestDtoTest {
   @DisplayName("Should throw exception when polling equals timeout")
   void shouldThrowExceptionWhenPollingEqualsTimeout() {
     // Act & Assert
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> new AuthAttemptWaitRequestDto(30, 30));
+    AuthAttemptWaitValidationException exception =
+        assertThrows(
+            AuthAttemptWaitValidationException.class, () -> new AuthAttemptWaitRequestDto(30, 30));
 
     assertEquals("Polling interval must be less than timeout duration", exception.getMessage());
   }
@@ -217,8 +219,9 @@ class AuthAttemptWaitRequestDtoTest {
   @DisplayName("Should throw exception when polling is greater than timeout")
   void shouldThrowExceptionWhenPollingGreaterThanTimeout() {
     // Act & Assert
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> new AuthAttemptWaitRequestDto(30, 31));
+    AuthAttemptWaitValidationException exception =
+        assertThrows(
+            AuthAttemptWaitValidationException.class, () -> new AuthAttemptWaitRequestDto(30, 31));
 
     assertEquals("Polling interval must be less than timeout duration", exception.getMessage());
   }

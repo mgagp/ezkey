@@ -18,6 +18,7 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -91,7 +92,7 @@ public class AuthAttemptWaitService {
    * @param request the wait request containing timeout and polling configuration
    * @return the wait response with final status and metadata
    * @throws ResourceNotFoundException if the authentication attempt is not found
-   * @throws IllegalArgumentException if the wait request parameters are invalid
+   * @throws AuthAttemptWaitValidationException if the wait request parameters are invalid
    */
   public AuthAttemptWaitResponse waitForResponse(
       Integer authAttemptId, AuthAttemptWaitRequest request) {
@@ -200,17 +201,18 @@ public class AuthAttemptWaitService {
    * not greater than timeout.
    *
    * @param request the wait request to validate
-   * @throws IllegalArgumentException if parameters are invalid
+   * @throws AuthAttemptWaitValidationException if parameters are invalid
    */
   private void validateWaitRequest(AuthAttemptWaitRequest request) {
     if (request.getTimeout() == null || request.getTimeout() <= 0 || request.getTimeout() > 300) {
-      throw new IllegalArgumentException("Timeout must be between 1 and 300 seconds");
+      throw new AuthAttemptWaitValidationException("Timeout must be between 1 and 300 seconds");
     }
     if (request.getPolling() == null || request.getPolling() <= 0 || request.getPolling() > 60) {
-      throw new IllegalArgumentException("Polling must be between 1 and 60 seconds");
+      throw new AuthAttemptWaitValidationException("Polling must be between 1 and 60 seconds");
     }
     if (request.getPolling() > request.getTimeout()) {
-      throw new IllegalArgumentException("Polling interval cannot be greater than timeout");
+      throw new AuthAttemptWaitValidationException(
+          "Polling interval cannot be greater than timeout");
     }
   }
 

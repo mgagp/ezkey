@@ -25,12 +25,14 @@ import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
+import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.ezkey.authattempt.mapper.AuthAttemptAdminApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -315,5 +317,26 @@ class AuthAttemptControllerTest {
 
     assertEquals(
         "Cannot cancel authentication attempt with status: EXPIRED", exception.getMessage());
+  }
+
+  @Test
+  @DisplayName(
+      "waitForResponse() - Should rethrow wait validation exception for global handler mapping")
+  void waitForResponse_ShouldRethrowAuthAttemptWaitValidationException() {
+    Integer authAttemptId = 123;
+    HttpServletRequest request = new MockHttpServletRequest();
+
+    when(authAttemptMapper.toAuthAttemptWaitRequest(any()))
+        .thenReturn(new AuthAttemptWaitRequest(30, 2));
+    when(authAttemptService.waitForResponse(eq(authAttemptId), any(AuthAttemptWaitRequest.class)))
+        .thenThrow(
+            new AuthAttemptWaitValidationException("Polling must be between 1 and 60 seconds"));
+
+    AuthAttemptWaitValidationException exception =
+        assertThrows(
+            AuthAttemptWaitValidationException.class,
+            () -> controller.waitForResponse(authAttemptId, 30, 2, request));
+
+    assertEquals("Polling must be between 1 and 60 seconds", exception.getMessage());
   }
 }

@@ -50,6 +50,7 @@ import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
@@ -804,8 +805,8 @@ public class AuthAttemptController {
 
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().build();
+    } catch (AuthAttemptWaitValidationException e) {
+      throw e;
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }

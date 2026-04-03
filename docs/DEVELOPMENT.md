@@ -263,7 +263,9 @@ mvn install -DskipTests
 
 This is the most reliable path because Checkstyle depends on the internal `checkstyle-config`
 module from the Maven reactor. `./scripts/build.sh` is the reference example of this health-check
-workflow.
+workflow. On this Windows workstation, `scripts/build-local.cmd` is available as a repo-local
+wrapper and should be the default entrypoint from Windows-hosted automation, because it forces Git
+Bash plus the local JDK 25 / Maven installation before delegating to `./scripts/build.sh`.
 
 Only after that baseline succeeds should you run targeted follow-up commands, for example:
 

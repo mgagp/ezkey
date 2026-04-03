@@ -22,6 +22,7 @@ import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.CryptoApiClient.EcP256KeyPair;
+import org.ezkey.tests.util.DatabaseHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,8 @@ import org.junit.jupiter.api.Test;
 @Tag(TestTags.AUTHENTICATION)
 @DisplayName("Authentication Flow Security Tests")
 public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
+
+  private final DatabaseHelper databaseHelper = new DatabaseHelper();
 
   @Test
   @DisplayName("Complete passwordless authentication flow")
@@ -207,4 +210,336 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
     }
   }
+
+  @Test
+  @DisplayName("Admin wait endpoint returns RFC 9457 for invalid wait parameters")
+  public void testAdminWaitEndpointRejectsInvalidParameters() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+
+      configureForAdminApi(dockerStackConfig);
+      Integer integrationId = testDataFactory.createIntegration();
+      Integer enrollmentId = testDataFactory.createEnrollment(integrationId);
+
+      Response enrollmentResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/enrollments/" + enrollmentId)
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      String enrollmentProofToken = enrollmentResponse.jsonPath().getString("enrollmentProofToken");
+      Integer challengeCode = enrollmentResponse.jsonPath().getInt("enrollmentChallenge");
+
+      EcP256KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
+      configureForAuthApi(dockerStackConfig);
+
+      Map<String, Object> bindRequest = new HashMap<>();
+      bindRequest.put("enrollmentId", enrollmentId);
+      bindRequest.put("enrollmentProofToken", enrollmentProofToken);
+
+      Response bindResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .body(bindRequest)
+              .when()
+              .post("/enrollments/bind")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
+      String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+
+      configureForAuthApi(dockerStackConfig);
+
+      Map<String, Object> verifyRequest = new HashMap<>();
+      verifyRequest.put("enrollmentId", enrollmentId);
+      verifyRequest.put("challengeResponse", challengeCode);
+      verifyRequest.put("devicePublicKey", deviceKeyPair.publicKey());
+      verifyRequest.put("enrollmentProofTokenSigned", signature);
+
+      given()
+          .contentType(ContentType.JSON)
+          .body(verifyRequest)
+          .when()
+          .post("/enrollments/verify")
+          .then()
+          .statusCode(200);
+
+      configureForAdminApi(dockerStackConfig);
+      Integer authAttemptId = testDataFactory.createAuthAttempt(enrollmentId, false);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .queryParam("timeout", 30)
+              .queryParam("polling", 30)
+              .when()
+              .get("/auth-attempts/" + authAttemptId + "/wait")
+              .then()
+              .statusCode(400)
+              .extract()
+              .response();
+
+      assertThat(response.asString()).isNotBlank();
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @DisplayName("Pending rejects invalid device signature with safe RFC 9457 ProblemDetail")
+  public void testPendingRejectsInvalidDeviceSignature() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      VerifiedEnrollmentFixture fixture = createVerifiedEnrollment(integrationId, adminToken);
+      testDataFactory.createAuthAttempt(fixture.enrollmentId(), false);
+
+      String deviceProofToken = cryptoApiClient.generateProofToken();
+      String invalidSignature =
+          cryptoApiClient.signData(
+              deviceProofToken + "-tampered", fixture.deviceKeyPair().privateKey());
+
+      configureForAuthApi(dockerStackConfig);
+      Map<String, Object> pendingRequest = new HashMap<>();
+      pendingRequest.put("enrollmentId", fixture.enrollmentId());
+      pendingRequest.put("enrollmentProofToken", fixture.enrollmentProofToken());
+      pendingRequest.put("deviceProofToken", deviceProofToken);
+      pendingRequest.put("deviceProofTokenSigned", invalidSignature);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .body(pendingRequest)
+              .when()
+              .post("/auth-attempts/pending")
+              .then()
+              .statusCode(400)
+              .extract()
+              .response();
+
+      assertThat(response.jsonPath().getString("type")).endsWith("/auth-attempt-binding-failed");
+      assertThat(response.jsonPath().getString("title")).isEqualTo("Request not acceptable");
+      assertThat(response.jsonPath().getString("detail"))
+          .isEqualTo("The authentication request could not be processed.");
+      assertThat(response.jsonPath().getString("detail")).doesNotContain("signature");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @DisplayName("Respond invalid signature returns signed FAILED business result")
+  public void testRespondInvalidSignatureReturnsSignedFailedResult() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      VerifiedEnrollmentFixture fixture = createVerifiedEnrollment(integrationId, adminToken);
+      Integer authAttemptId = testDataFactory.createAuthAttempt(fixture.enrollmentId(), false);
+      PendingAttemptFixture pendingAttempt = claimPendingAttempt(fixture, authAttemptId);
+
+      String invalidRespondSignature =
+          cryptoApiClient.signData(
+              pendingAttempt.authAttemptProofToken() + "|false",
+              fixture.deviceKeyPair().privateKey());
+
+      configureForAuthApi(dockerStackConfig);
+      Map<String, Object> respondRequest = new HashMap<>();
+      respondRequest.put("authAttemptId", authAttemptId);
+      respondRequest.put("authAttemptAccepted", true);
+      respondRequest.put("authAttemptProofTokenSignedByDevice", invalidRespondSignature);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .body(respondRequest)
+              .when()
+              .post("/auth-attempts/respond")
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      assertThat(response.jsonPath().getString("authAttemptResult")).isEqualTo("FAILED");
+      assertThat(response.jsonPath().getString("authAttemptMessage"))
+          .isEqualTo("The response could not be processed.");
+      assertThat(response.jsonPath().getString("authAttemptProofTokenResultSignedByIntegration"))
+          .isNotBlank();
+
+      configureForAdminApi(dockerStackConfig);
+      Response statusResponse =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/auth-attempts/" + authAttemptId)
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+
+      assertThat(statusResponse.jsonPath().getString("authAttemptStatus")).isEqualTo("INVALID");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @DisplayName("Respond expired attempt returns safe RFC 9457 state conflict")
+  public void testRespondExpiredAttemptReturnsSafeStateConflict() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      VerifiedEnrollmentFixture fixture = createVerifiedEnrollment(integrationId, adminToken);
+      Integer authAttemptId = testDataFactory.createAuthAttempt(fixture.enrollmentId(), false);
+      PendingAttemptFixture pendingAttempt = claimPendingAttempt(fixture, authAttemptId);
+
+      boolean updated =
+          databaseHelper.executeUpdate(
+              "UPDATE ezkey_auth_attempt SET expires_at = NOW() - INTERVAL '5 minutes' "
+                  + "WHERE auth_attempt_id = "
+                  + authAttemptId);
+      assertThat(updated).isTrue();
+
+      String respondSignature =
+          cryptoApiClient.signData(
+              pendingAttempt.authAttemptProofToken() + "|true",
+              fixture.deviceKeyPair().privateKey());
+
+      configureForAuthApi(dockerStackConfig);
+      Map<String, Object> respondRequest = new HashMap<>();
+      respondRequest.put("authAttemptId", authAttemptId);
+      respondRequest.put("authAttemptAccepted", true);
+      respondRequest.put("authAttemptProofTokenSignedByDevice", respondSignature);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .body(respondRequest)
+              .when()
+              .post("/auth-attempts/respond")
+              .then()
+              .statusCode(409)
+              .extract()
+              .response();
+
+      assertThat(response.jsonPath().getString("type")).endsWith("/auth-attempt-state-conflict");
+      assertThat(response.jsonPath().getString("title")).isEqualTo("Request cannot be completed");
+      assertThat(response.jsonPath().getString("detail"))
+          .isEqualTo(
+              "The authentication request is in a state that does not allow this operation.");
+      assertThat(response.jsonPath().getString("detail")).doesNotContain("expired");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  private VerifiedEnrollmentFixture createVerifiedEnrollment(
+      Integer integrationId, String adminToken) {
+    Integer enrollmentId = testDataFactory.createEnrollment(integrationId);
+
+    Response enrollmentResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .header("Authorization", "Bearer " + adminToken)
+            .when()
+            .get("/enrollments/" + enrollmentId)
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    String enrollmentProofToken = enrollmentResponse.jsonPath().getString("enrollmentProofToken");
+    Integer challengeCode = enrollmentResponse.jsonPath().getInt("enrollmentChallenge");
+
+    EcP256KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
+    configureForAuthApi(dockerStackConfig);
+
+    Map<String, Object> bindRequest = new HashMap<>();
+    bindRequest.put("enrollmentId", enrollmentId);
+    bindRequest.put("enrollmentProofToken", enrollmentProofToken);
+
+    Response bindResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .body(bindRequest)
+            .when()
+            .post("/enrollments/bind")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
+    String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+    configureForAuthApi(dockerStackConfig);
+
+    Map<String, Object> verifyRequest = new HashMap<>();
+    verifyRequest.put("enrollmentId", enrollmentId);
+    verifyRequest.put("challengeResponse", challengeCode);
+    verifyRequest.put("devicePublicKey", deviceKeyPair.publicKey());
+    verifyRequest.put("enrollmentProofTokenSigned", signature);
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(verifyRequest)
+        .when()
+        .post("/enrollments/verify")
+        .then()
+        .statusCode(200);
+
+    configureForAdminApi(dockerStackConfig);
+    return new VerifiedEnrollmentFixture(enrollmentId, enrollmentProofToken, deviceKeyPair);
+  }
+
+  private PendingAttemptFixture claimPendingAttempt(
+      VerifiedEnrollmentFixture fixture, Integer authAttemptId) {
+    String deviceProofToken = cryptoApiClient.generateProofToken();
+    String deviceProofTokenSigned =
+        cryptoApiClient.signData(deviceProofToken, fixture.deviceKeyPair().privateKey());
+
+    configureForAuthApi(dockerStackConfig);
+    Map<String, Object> pendingRequest = new HashMap<>();
+    pendingRequest.put("enrollmentId", fixture.enrollmentId());
+    pendingRequest.put("enrollmentProofToken", fixture.enrollmentProofToken());
+    pendingRequest.put("deviceProofToken", deviceProofToken);
+    pendingRequest.put("deviceProofTokenSigned", deviceProofTokenSigned);
+
+    Response pendingResponse =
+        given()
+            .contentType(ContentType.JSON)
+            .body(pendingRequest)
+            .when()
+            .post("/auth-attempts/pending")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
+
+    return new PendingAttemptFixture(
+        authAttemptId, pendingResponse.jsonPath().getString("authAttemptProofToken"));
+  }
+
+  private record VerifiedEnrollmentFixture(
+      Integer enrollmentId, String enrollmentProofToken, EcP256KeyPair deviceKeyPair) {}
+
+  private record PendingAttemptFixture(Integer authAttemptId, String authAttemptProofToken) {}
 }

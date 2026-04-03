@@ -11,12 +11,15 @@
 package org.ezkey.exception;
 
 import jakarta.validation.ConstraintViolationException;
+import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.ezkey.dto.ErrorResponseDto;
+import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -138,6 +141,17 @@ public class ValidationExceptionHandler {
             "VALIDATION_ERROR", message, request.getDescription(false).replace("uri=", ""));
 
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(AuthAttemptWaitValidationException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptWaitValidationException(
+      AuthAttemptWaitValidationException ex, WebRequest request) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    problem.setType(URI.create("https://ezkey.io/problems/validation/auth-attempt-wait-invalid"));
+    problem.setTitle("Invalid Auth Attempt Wait Request");
+    problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
   }
 
   /**

@@ -21,6 +21,22 @@ When you have implemented or changed Java or other Spotless-covered code, start 
 
 `./scripts/build.sh` is the reference example of this health-check flow.
 
+## Windows workstation default
+
+On this Windows workstation, when the agent is driving Maven from a Windows-hosted shell, prefer
+`scripts/build-local.cmd` as the default entrypoint instead of launching bare `bash`.
+
+Why:
+
+- bare `bash` may resolve to WSL (`C:\Windows\System32\bash.exe`) instead of Git Bash
+- that path can expose `java.exe` while still leaving `java`/`JAVA_HOME` unusable for Maven
+- `scripts/build-local.cmd` forces Git Bash, JDK 25, and the local Maven installation before
+  delegating to `./scripts/build.sh`
+
+If the agent needs diagnostics first, run:
+
+- `cmd /c scripts\build-local.cmd --diagnose-only`
+
 ## Targeted commands are follow-up only
 
 Only **after** the baseline above succeeds may you optimize with targeted follow-up commands, for

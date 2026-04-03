@@ -41,6 +41,7 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
+import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.api.constants.IntegrationApiAuditConstants;
 import org.ezkey.integration.api.security.AccessControlService;
 import org.ezkey.integration.api.security.RateLimitService;
@@ -381,8 +382,8 @@ public class IntegrationApiAuthAttemptController {
 
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().build();
+    } catch (AuthAttemptWaitValidationException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Unexpected error waiting for auth attempt {}", id, e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
