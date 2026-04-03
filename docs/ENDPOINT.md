@@ -1651,7 +1651,7 @@ Authorization: Bearer ezkey_admin_token...
 
 **Status Codes:**
 - 200: Authentication attempt cancelled successfully
-- 400: Bad Request - authentication attempt already in final state (cannot be cancelled)
+- 409: Conflict - authentication attempt already in final state (cannot be cancelled)
 - 404: Not Found - authentication attempt not found
 - 401: Unauthorized - authentication required
 - 403: Forbidden - access denied to authentication attempt

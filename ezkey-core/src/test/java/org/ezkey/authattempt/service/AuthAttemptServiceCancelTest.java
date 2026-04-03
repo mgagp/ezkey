@@ -24,6 +24,7 @@ import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.config.EzkeyCoreProperties;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -126,7 +127,7 @@ class AuthAttemptServiceCancelTest {
 
     // Act & Assert
     assertThatThrownBy(() -> authAttemptService.cancel(authAttemptId))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("Cannot cancel")
         .hasMessageContaining("ACCEPTED");
   }
@@ -141,7 +142,7 @@ class AuthAttemptServiceCancelTest {
 
     // Act & Assert
     assertThatThrownBy(() -> authAttemptService.cancel(authAttemptId))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("Cannot cancel")
         .hasMessageContaining("REJECTED");
   }
@@ -156,7 +157,7 @@ class AuthAttemptServiceCancelTest {
 
     // Act & Assert
     assertThatThrownBy(() -> authAttemptService.cancel(authAttemptId))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("Cannot cancel")
         .hasMessageContaining("INVALID");
   }
@@ -171,7 +172,7 @@ class AuthAttemptServiceCancelTest {
 
     // Act & Assert
     assertThatThrownBy(() -> authAttemptService.cancel(authAttemptId))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(AuthAttemptStateConflictException.class)
         .hasMessageContaining("Cannot cancel")
         .hasMessageContaining("EXPIRED");
   }

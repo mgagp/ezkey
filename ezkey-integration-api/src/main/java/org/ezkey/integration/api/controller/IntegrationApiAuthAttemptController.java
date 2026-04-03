@@ -40,6 +40,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.api.constants.IntegrationApiAuditConstants;
 import org.ezkey.integration.api.security.AccessControlService;
 import org.ezkey.integration.api.security.RateLimitService;
@@ -410,7 +411,7 @@ public class IntegrationApiAuthAttemptController {
       value = {
         @ApiResponse(responseCode = "200", description = "Auth attempt cancelled successfully"),
         @ApiResponse(
-            responseCode = "400",
+            responseCode = "409",
             description = "Auth attempt already in final state (cannot be cancelled)"),
         @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
         @ApiResponse(responseCode = "429", description = "Rate limit exceeded"),
@@ -470,7 +471,7 @@ public class IntegrationApiAuthAttemptController {
               .build());
       return ResponseEntity.notFound().build();
 
-    } catch (IllegalArgumentException e) {
+    } catch (AuthAttemptStateConflictException e) {
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
                   context,
@@ -482,7 +483,7 @@ public class IntegrationApiAuthAttemptController {
               .integrationId(resolveIntegrationIdFromAuthAttempt(id))
               .errorMessage(e.getMessage())
               .build());
-      return ResponseEntity.badRequest().build();
+      throw e;
 
     } catch (Exception e) {
       auditLogService.log(

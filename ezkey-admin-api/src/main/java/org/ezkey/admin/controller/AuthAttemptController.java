@@ -49,6 +49,7 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
@@ -601,7 +602,7 @@ public class AuthAttemptController {
       value = {
         @ApiResponse(responseCode = "200", description = "Auth attempt cancelled successfully"),
         @ApiResponse(
-            responseCode = "400",
+            responseCode = "409",
             description = "Auth attempt already in final state (cannot be cancelled)"),
         @ApiResponse(responseCode = "404", description = "Auth attempt not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
@@ -669,7 +670,7 @@ public class AuthAttemptController {
 
       return ResponseEntity.notFound().build();
 
-    } catch (IllegalArgumentException e) {
+    } catch (AuthAttemptStateConflictException e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -682,8 +683,7 @@ public class AuthAttemptController {
               .integrationId(resolveIntegrationIdFromAuthAttempt(id))
               .errorMessage(e.getMessage())
               .build());
-
-      return ResponseEntity.badRequest().build();
+      throw e;
 
     } catch (Exception e) {
       auditLogService.log(

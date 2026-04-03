@@ -11,6 +11,7 @@
 package org.ezkey.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
@@ -213,6 +214,17 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
         HttpStatus.CONFLICT,
         "https://ezkey.io/problems/domain/api-key-limit-exceeded",
         "API Key Limit Exceeded",
+        request);
+  }
+
+  @ExceptionHandler(AuthAttemptStateConflictException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptStateConflictException(
+      AuthAttemptStateConflictException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/auth-attempt-state-conflict",
+        "Auth Attempt State Conflict",
         request);
   }
 }

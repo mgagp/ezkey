@@ -187,7 +187,7 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
    * happens before the try block, making it available in error handlers.
    */
   @Test
-  @DisplayName("Cancel FAILURE audit log has tenant_id (already cancelled → 400)")
+  @DisplayName("Cancel FAILURE audit log has tenant_id (already cancelled → 409)")
   public void testCancelFailureAuditLogHasTenantId() {
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
@@ -215,8 +215,8 @@ public class AuditLogTenantVisibilityTest extends AbstractSecurityTest {
             .extract()
             .response();
     assertThat(secondCancel.getStatusCode())
-        .as("Second cancel should fail with 400 (already in final state)")
-        .isEqualTo(400);
+        .as("Second cancel should fail with 409 (already in final state)")
+        .isEqualTo(409);
 
     Response auditResponse =
         given()

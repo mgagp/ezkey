@@ -12,11 +12,13 @@ package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.security.AccessControlService;
@@ -28,6 +30,7 @@ import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.ezkey.authattempt.mapper.AuthAttemptAdminApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,6 +44,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 /**
  * Unit tests for AuthAttemptController.
@@ -291,5 +295,25 @@ class AuthAttemptControllerTest {
             eq(null),
             any(), // tenantId (null for tests)
             eq(pageable));
+  }
+
+  @Test
+  @DisplayName("cancel() - Should rethrow auth attempt state conflict for global handler mapping")
+  void cancel_ShouldRethrowAuthAttemptStateConflictException() {
+    Integer authAttemptId = 123;
+    HttpServletRequest request = new MockHttpServletRequest();
+
+    when(authAttemptService.cancel(authAttemptId))
+        .thenThrow(
+            new AuthAttemptStateConflictException(
+                "Cannot cancel authentication attempt with status: EXPIRED"));
+
+    AuthAttemptStateConflictException exception =
+        assertThrows(
+            AuthAttemptStateConflictException.class,
+            () -> controller.cancel(authAttemptId, request));
+
+    assertEquals(
+        "Cannot cancel authentication attempt with status: EXPIRED", exception.getMessage());
   }
 }

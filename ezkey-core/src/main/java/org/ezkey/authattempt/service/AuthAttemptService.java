@@ -41,6 +41,7 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
@@ -483,7 +484,8 @@ public class AuthAttemptService {
    * @param authAttemptId the authentication attempt ID to cancel
    * @return the updated authentication attempt with EXPIRED status
    * @throws ResourceNotFoundException if the authentication attempt is not found
-   * @throws IllegalArgumentException if the authentication attempt is already in a final state
+   * @throws AuthAttemptStateConflictException if the authentication attempt is already in a final
+   *     state
    */
   @Transactional
   public AuthAttempt cancel(Integer authAttemptId) {
@@ -496,7 +498,7 @@ public class AuthAttemptService {
     // Only allow cancellation of non-final states
     if (authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.PENDING
         && authAttempt.getAuthAttemptStatus() != AuthAttemptStatus.READ) {
-      throw new IllegalArgumentException(
+      throw new AuthAttemptStateConflictException(
           "Cannot cancel authentication attempt with status: "
               + authAttempt.getAuthAttemptStatus()
               + ". Only PENDING or READ attempts can be cancelled.");

@@ -16,6 +16,7 @@ import java.net.URI;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.TenantInactiveException;
+import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.slf4j.Logger;
@@ -163,6 +164,17 @@ public class GlobalExceptionHandler {
         HttpStatus.CONFLICT,
         "https://ezkey.io/problems/domain/api-key-limit-exceeded",
         "API Key Limit Exceeded",
+        request);
+  }
+
+  @ExceptionHandler(AuthAttemptStateConflictException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptStateConflictException(
+      AuthAttemptStateConflictException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex.getMessage(),
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/auth-attempt-state-conflict",
+        "Auth Attempt State Conflict",
         request);
   }
 
