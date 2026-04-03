@@ -7,6 +7,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 ### 🏗️ Architecture & Design
 - **[PROJECT_POSITIONING.md](PROJECT_POSITIONING.md)** - Strategic positioning, project philosophy, and backend-first security thesis
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture, security design, and cryptographic implementation
+- **[ADMIN_UI.md](ADMIN_UI.md)** - Admin UI purpose, operator roles, capabilities, workflows, and boundaries
 - **[CRYPTO.md](CRYPTO.md)** - Detailed cryptographic specifications and implementation details
 - **[ENDPOINT.md](ENDPOINT.md)** - API endpoint documentation and specifications
 - **[analysis/EXCEPTION_MAPPING_WAVE_1_ANALYSIS.md](analysis/EXCEPTION_MAPPING_WAVE_1_ANALYSIS.md)** - First migration wave for named exceptions and RFC 9457 alignment
@@ -41,13 +42,14 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 ### For Developers
 1. **Start Here**: Read [../README.md](../README.md) for the short project overview and recommended quick start
 2. **Architecture**: Read [ARCHITECTURE.md](ARCHITECTURE.md) for the system view
-3. **Admin Surface**: Read [../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md) to understand the primary human administration surface
-4. **Development Setup**: Follow [DEVELOPMENT.md](DEVELOPMENT.md) for development workflow
-5. **API Reference**: Check [ENDPOINT.md](ENDPOINT.md) for API specifications
+3. **Admin Surface**: Read [ADMIN_UI.md](ADMIN_UI.md) for the operator-facing Admin UI overview, role split, and capability map
+4. **Module Setup**: Read [../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md) for local development, frontend setup, and UI-specific security notes
+5. **Development Setup**: Follow [DEVELOPMENT.md](DEVELOPMENT.md) for development workflow
+6. **API Reference**: Check [ENDPOINT.md](ENDPOINT.md) for API specifications
 
 ### For System Administrators
 1. **Architecture**: Review [ARCHITECTURE.md](ARCHITECTURE.md) for deployment planning
-2. **Admin UI**: Review [../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md) for the day-to-day operator surface used by Global Admins and Tenant Admins
+2. **Admin UI**: Review [ADMIN_UI.md](ADMIN_UI.md) for the day-to-day operator surface, role split, and workflow boundaries
 3. **Operations**: Follow [OPERATIONAL.md](OPERATIONAL.md) for production deployment and security
 4. **Monitoring**: Set up [monitoring/](monitoring/) for production monitoring
 5. **Security**: Understand [CRYPTO.md](CRYPTO.md) for security configuration

@@ -4,6 +4,14 @@ Primary web surface for EZKey human administration — supports both **Global Ad
 
 Calls the **EZKey Admin API** (port 9080). Role scoping is automatic — the bearer token determines access level, and all tenant-scoped resources are filtered server-side. Tenant Admin workflows stay focused on day-to-day tenant administration.
 
+## Documentation
+
+Use the central Admin UI background document for operator-facing product context:
+
+- [`../docs/ADMIN_UI.md`](../docs/ADMIN_UI.md) - purpose, roles, capability map, workflows, and documentation boundaries
+
+Use this module README for frontend setup, local development, and UI-specific implementation notes.
+
 ## Stack
 
 - Vite 7 + React 19 + TypeScript (strict)
@@ -49,6 +57,8 @@ The app uses EZKey's passwordless authentication flow:
 
 The token is validated on every read (expiration check). Any 401 response from the API automatically clears the session and redirects to login.
 
+For the broader operator-facing explanation of how the Admin UI fits into Ezkey, when to use the UI versus the API, and which workflows matter most, see [`../docs/ADMIN_UI.md`](../docs/ADMIN_UI.md).
+
 ## Project Structure
 
 See `AGENTS.md` for detailed conventions, patterns, and design rules used throughout the codebase.
@@ -61,3 +71,4 @@ See `AGENTS.md` for detailed conventions, patterns, and design rules used throug
 Canonical documentation (workflows, CSP, split UI/API, mkcert, future HttpOnly cookies, `clean-start` + Caddy defaults):
 
 - [`docs/admin-ui-security.md`](../docs/admin-ui-security.md)
+- [`../docs/ADMIN_UI.md`](../docs/ADMIN_UI.md)

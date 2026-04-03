@@ -168,6 +168,56 @@ This cluster is a good Wave 1 because:
 
 This gives a fast feedback loop with meaningful value, while avoiding the risk of rewriting too many mixed-semantics service classes at once.
 
+## Detailed Inventory
+
+### Inventory Table
+
+| ID | Current location | Method / context | Current exception | Current meaning | Current API exposure | Wave 1 direction |
+|---|---|---|---|---|---|---|
+| W1-1 | `ezkey-core/src/main/java/org/ezkey/integration/service/IntegrationService.java` | integration creation when target tenant is inactive | `IllegalStateException` | business rule: inactive tenant cannot receive new integrations | Admin API today reaches legacy `409` path through `ValidationExceptionHandler` | replace with named tenant-lifecycle exception |
+| W1-2 | `ezkey-core/src/main/java/org/ezkey/integration/service/ApiKeyService.java` | API key creation when integration tenant is inactive | `IllegalStateException` | business rule: inactive tenant cannot receive new API keys | Admin API today reaches legacy `409` path through `ValidationExceptionHandler` | replace with same tenant-lifecycle exception family as W1-1 |
+| W1-3 | `ezkey-core/src/main/java/org/ezkey/integration/service/ApiKeyService.java` | API key creation when active key count reaches max | `IllegalStateException` | business rule: integration quota / active key limit reached | Admin API today reaches legacy `409` path through `ValidationExceptionHandler` | replace with named limit exception |
+| W1-4 | `ezkey-core/src/main/java/org/ezkey/enrollment/service/EnrollmentService.java` | enrollment creation when integration lifecycle is not `ACTIVE` | `IllegalStateException` | business rule: integration lifecycle blocks new enrollment creation | Admin API today reaches legacy `409`; any future reuse by other APIs would inherit generic semantics | replace with named integration-lifecycle exception |
+| W1-5 | `ezkey-core/src/main/java/org/ezkey/enrollment/service/EnrollmentService.java` | enrollment creation when tenant is inactive | `IllegalStateException` | business rule: inactive tenant cannot receive new enrollments | Admin API today reaches legacy `409`; any future reuse by other APIs would inherit generic semantics | replace with same tenant-lifecycle exception family as W1-1 / W1-2 |
+
+### Current Mapping Snapshot
+
+| API | Current generic mapping relevant to Wave 1 | Consequence |
+|---|---|---|
+| Admin API | `IllegalStateException -> 409` in `ValidationExceptionHandler` with legacy `ErrorResponseDto` | behavior is workable but not yet RFC 9457-shaped for these rules |
+| Auth API | `IllegalStateException -> 409` in legacy fallback inside `GlobalExceptionHandler` | target shape exists for named RFC 9457 mapping, but current fallback is semantically broad |
+| Integration API | no dedicated `IllegalStateException` handler in `GlobalExceptionHandler` | some shared-core state conflicts can degrade to generic `500` |
+
+### Observations Per Inventory Item
+
+#### W1-1 `IntegrationService` tenant inactive
+
+- The message is clear and already safe for operators.
+- The semantics are lifecycle/policy, not technical failure.
+- This is a strong candidate for a shared exception because the same rule reappears in other services.
+
+#### W1-2 `ApiKeyService` tenant inactive
+
+- Same business meaning as W1-1.
+- This should not become a second exception with slightly different wording unless the product really wants separate categories.
+- Best default is one shared tenant-inactive business exception reused across services.
+
+#### W1-3 `ApiKeyService` active key limit reached
+
+- This is the only Wave 1 item that is quota-oriented rather than lifecycle-oriented.
+- It still belongs in Wave 1 because it lives in the same service cluster and has precise semantics.
+- The future exception should not be named as a generic state conflict; quota is clearer.
+
+#### W1-4 `EnrollmentService` integration lifecycle not active
+
+- This is a pure lifecycle rule and the most semantically stable candidate in the wave.
+- The exception name should describe the enrollment creation rule, not just the raw integration state.
+
+#### W1-5 `EnrollmentService` tenant inactive
+
+- Same business meaning as W1-1 and W1-2.
+- This is the best place to prove that one shared exception can serve more than one core service without becoming vague.
+
 ## Proposed Wave 1 Shape
 
 ### Step 1
@@ -186,6 +236,136 @@ Map those exceptions explicitly in the relevant API layers with RFC 9457 respons
 Keep legacy generic handlers in place for everything else outside the wave.
 
 This preserves the progressive migration strategy and limits regression risk.
+
+## Technical Breakdown
+
+### Implementation Goal
+
+Keep Wave 1 intentionally small:
+- introduce only the minimum named exceptions needed for this cluster
+- wire only the minimum handlers needed for explicit mapping
+- do not refactor unrelated generic exception paths in the same pass
+
+### Proposed Exception Set
+
+Recommended first set:
+- `TenantInactiveException`
+- `IntegrationEnrollmentLifecycleException` or `IntegrationNotActiveForEnrollmentException`
+- `ApiKeyLimitExceededException`
+
+Preferred design characteristics:
+- one precise business meaning per class
+- reusable across modules when the meaning is identical
+- safe message strategy compatible with RFC 9457
+
+### Recommended Package Direction
+
+For consistency with the progressive migration, the cleanest direction is:
+- shared business exceptions used by multiple APIs should live in a shared package already visible from the API modules, likely under `ezkey-core` shared exception space
+- Admin-only business exceptions should stay in admin-specific packages, but that is not required for Wave 1
+
+Wave 1 should avoid creating duplicate exceptions with the same meaning in multiple modules.
+
+### Candidate File Touch Set
+
+Likely implementation touch points:
+
+Core business services:
+- `ezkey-core/src/main/java/org/ezkey/integration/service/IntegrationService.java`
+- `ezkey-core/src/main/java/org/ezkey/integration/service/ApiKeyService.java`
+- `ezkey-core/src/main/java/org/ezkey/enrollment/service/EnrollmentService.java`
+
+Exception classes:
+- one or more new shared exception classes under the common exception package used by API handlers
+
+API handlers:
+- `ezkey-admin-api/src/main/java/org/ezkey/exception/ValidationExceptionHandler.java` or a more specific RFC 9457-capable handler if that is already the preferred direction for the selected exception family
+- `ezkey-integration-api/src/main/java/org/ezkey/integration/api/exception/GlobalExceptionHandler.java`
+- possibly `ezkey-auth-api/src/main/java/org/ezkey/exception/GlobalExceptionHandler.java` only if the new shared exception types are relevant there now or in near-term reuse
+
+Documentation:
+- `docs/ENDPOINT.md` only if any externally visible error contract becomes more precise during implementation
+- this analysis document after validation feedback
+
+### Recommended Implementation Sequence
+
+#### Pass A: Introduce named exceptions only for the selected cluster
+
+Do first:
+- create the new exception classes
+- replace the raw `IllegalStateException` throws in the Wave 1 service locations
+
+Do not yet:
+- rewrite unrelated `IllegalArgumentException` paths
+- collapse broader handler architecture
+- rename unrelated exception packages
+
+#### Pass B: Add explicit API mapping for the new exceptions
+
+Do next:
+- add explicit handler coverage in Integration API
+- decide whether Admin API keeps temporary legacy mapping or gains explicit named mapping now for this cluster
+
+Recommended default:
+- Integration API should gain explicit named exception handling in this wave because it currently has the clearest behavioral gap
+- Admin API can either map the new exceptions explicitly now or temporarily continue to produce equivalent `409` responses if that keeps the pass smaller
+
+#### Pass C: Verify externally visible contract
+
+Check:
+- status code remains correct
+- problem `type` is stable and coherent
+- title and detail remain safe and operator-usable
+- no selected path now falls through to generic `500`
+
+### Handler Strategy Options
+
+#### Option 1: Minimal-risk Wave 1
+
+- add named exceptions
+- add explicit handler support only where behavior is currently wrong or incomplete
+- keep legacy generic handlers untouched for the rest
+
+Why this fits Wave 1:
+- smallest regression surface
+- fastest maintainer feedback loop
+
+#### Option 2: Slightly more ambitious Wave 1
+
+- add named exceptions
+- add explicit named mapping in both Admin API and Integration API
+- leave generic fallbacks in place for non-migrated code
+
+Why this may still be acceptable:
+- still narrow in scope
+- produces cleaner end-user consistency for the selected cluster
+
+Recommended choice:
+- start from Option 1 unless implementation shows the additional Admin API mapping is almost free
+
+### Technical Risks
+
+1. Reusing one tenant-inactive exception across services may expose subtle differences in wording or status expectations.
+2. Creating too many new exception classes in the first pass would dilute the benefit of the cluster strategy.
+3. If Integration API adds mapping but Admin API does not, temporary cross-API asymmetry may remain for payload shape.
+4. If problem `type` URIs are invented too early without taxonomy discipline, later waves may inherit naming drift.
+
+### Recommended Test Focus For The Future Implementation
+
+Unit and focused integration coverage should target:
+- integration creation blocked for inactive tenant
+- API key creation blocked for inactive tenant
+- API key creation blocked at active key limit
+- enrollment creation blocked for non-active integration
+- enrollment creation blocked for inactive tenant
+- Integration API response shape for the named exception path that previously risked generic `500`
+
+### Exit Criteria Before Starting Implementation
+
+Wave 1 is ready to implement when:
+- the exception names for the three selected meanings are accepted
+- the handler strategy for Admin API vs Integration API is chosen
+- the maintainers agree that no additional mixed-semantics paths are pulled into the same pass
 
 ## Validation Strategy For Wave 1
 
