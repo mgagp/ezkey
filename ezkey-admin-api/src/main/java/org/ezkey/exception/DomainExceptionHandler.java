@@ -11,6 +11,7 @@
 package org.ezkey.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
@@ -201,6 +202,17 @@ public class DomainExceptionHandler extends ExceptionHandlerBase {
         HttpStatus.FORBIDDEN,
         "https://ezkey.io/problems/domain/system-integration-lifecycle",
         "System Integration Lifecycle Protected",
+        request);
+  }
+
+  @ExceptionHandler(ApiKeyLimitExceededException.class)
+  public ResponseEntity<ProblemDetail> handleApiKeyLimitExceededException(
+      ApiKeyLimitExceededException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/api-key-limit-exceeded",
+        "API Key Limit Exceeded",
         request);
   }
 }

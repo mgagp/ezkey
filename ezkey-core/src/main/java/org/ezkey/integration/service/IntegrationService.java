@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
@@ -258,7 +259,7 @@ public class IntegrationService {
           "Integration creation blocked: tenant '{}' (ID: {}) is inactive",
           tenant.getTenantName(),
           tenant.getTenantId());
-      throw new IllegalStateException(
+      throw new TenantInactiveException(
           "Cannot create integration for inactive tenant. Contact your Ezkey administrator.");
     }
 

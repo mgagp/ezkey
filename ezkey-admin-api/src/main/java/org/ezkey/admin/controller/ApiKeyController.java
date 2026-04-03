@@ -38,10 +38,12 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.RateLimitExceededException;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.service.ApiKeyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -278,8 +280,8 @@ public class ApiKeyController {
               .errorMessage(e.getMessage())
               .build());
       return ResponseEntity.badRequest().build();
-    } catch (IllegalStateException e) {
-      logger.warn("API key creation failed - Conflict: {}", e.getMessage());
+    } catch (TenantInactiveException | ApiKeyLimitExceededException e) {
+      logger.warn("API key creation failed - Business conflict: {}", e.getMessage());
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -291,7 +293,7 @@ public class ApiKeyController {
               .integrationId(request.integrationId())
               .errorMessage(e.getMessage())
               .build());
-      return ResponseEntity.status(HttpStatus.CONFLICT).build();
+      throw e;
     }
   }
 

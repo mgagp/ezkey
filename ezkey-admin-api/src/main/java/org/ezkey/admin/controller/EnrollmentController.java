@@ -48,8 +48,10 @@ import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -585,6 +587,20 @@ public class EnrollmentController {
               .build());
 
       return ResponseEntity.badRequest().build();
+    } catch (IntegrationLifecycleStateException | TenantInactiveException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_CREATED,
+                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal != null ? principal.adminId() : null)
+              .integrationId(request.integrationId())
+              .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
+              .build());
+
+      throw e;
     } catch (Exception e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(

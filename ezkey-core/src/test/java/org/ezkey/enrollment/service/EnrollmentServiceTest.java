@@ -35,14 +35,18 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
 import org.ezkey.exception.auth.EnrollmentIntegrationNotFoundException;
 import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
@@ -207,6 +211,44 @@ class EnrollmentServiceTest {
     assertEquals("Integration ID is required", exception.getMessage());
 
     // Verify no service interactions
+    verify(signatureService, never()).generateProofToken();
+    verify(enrollmentRepository, never()).save(any(Enrollment.class));
+  }
+
+  @Test
+  @DisplayName("create() - Should throw lifecycle exception when integration is not active")
+  void create_WhenIntegrationLifecycleNotActive_ShouldThrowLifecycleException() {
+    // Arrange
+    integration.setLifecycleStatus(IntegrationLifecycleStatus.INACTIVE);
+
+    // Act & Assert
+    IntegrationLifecycleStateException exception =
+        assertThrows(
+            IntegrationLifecycleStateException.class,
+            () -> enrollmentService.create(createRequest));
+
+    assertTrue(exception.getMessage().contains("Only ACTIVE integrations accept new enrollments."));
+    verify(signatureService, never()).generateProofToken();
+    verify(enrollmentRepository, never()).save(any(Enrollment.class));
+  }
+
+  @Test
+  @DisplayName(
+      "create() - Should throw tenant inactive exception when integration tenant is inactive")
+  void create_WhenTenantInactive_ShouldThrowTenantInactiveException() {
+    // Arrange
+    Tenant tenant = new Tenant("Acme", "Inactive tenant");
+    tenant.setTenantId(77);
+    tenant.setActive(false);
+    integration.setTenant(tenant);
+
+    // Act & Assert
+    TenantInactiveException exception =
+        assertThrows(TenantInactiveException.class, () -> enrollmentService.create(createRequest));
+
+    assertEquals(
+        "Cannot create enrollment for inactive tenant. Contact your Ezkey administrator.",
+        exception.getMessage());
     verify(signatureService, never()).generateProofToken();
     verify(enrollmentRepository, never()).save(any(Enrollment.class));
   }

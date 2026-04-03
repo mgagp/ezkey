@@ -27,9 +27,11 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.ezkey.util.PhoneNumberUtils;
@@ -334,7 +336,7 @@ public class EnrollmentService {
           "Enrollment creation blocked: integration {} lifecycle is {}",
           request.getIntegrationId(),
           integration.getLifecycleStatus());
-      throw new IllegalStateException(
+      throw new IntegrationLifecycleStateException(
           "Cannot create enrollment for integration in lifecycle state "
               + integration.getLifecycleStatus()
               + ". Only ACTIVE integrations accept new enrollments.");
@@ -346,7 +348,7 @@ public class EnrollmentService {
           "Enrollment creation blocked: tenant (ID: {}) is inactive for integration {}",
           integration.getTenant().getTenantId(),
           request.getIntegrationId());
-      throw new IllegalStateException(
+      throw new TenantInactiveException(
           "Cannot create enrollment for inactive tenant. Contact your Ezkey administrator.");
     }
 

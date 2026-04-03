@@ -35,11 +35,13 @@ import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.service.ApiKeyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -183,20 +185,42 @@ class ApiKeyControllerTest {
     }
 
     @Test
-    @DisplayName("Should return 409 CONFLICT for IllegalStateException")
-    void shouldReturnConflictForIllegalStateException() {
+    @DisplayName("Should rethrow tenant inactive exception for global handler mapping")
+    void shouldRethrowTenantInactiveException() {
       // Arrange
       ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, "Test API Key", null, null);
 
       when(apiKeyService.createApiKey(anyInt(), any(EzkeyAdmin.class), anyString(), any(), any()))
-          .thenThrow(new IllegalStateException("Maximum keys limit reached"));
+          .thenThrow(
+              new TenantInactiveException("Tenant is inactive. Contact your Ezkey administrator."));
 
       // Act
-      ResponseEntity<ApiKeyCreateResponseDto> response =
-          controller.createApiKey(request, httpServletRequest);
+      TenantInactiveException exception =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              TenantInactiveException.class,
+              () -> controller.createApiKey(request, httpServletRequest));
 
       // Assert
-      assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+      assertEquals("Tenant is inactive. Contact your Ezkey administrator.", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should rethrow API key limit exception for global handler mapping")
+    void shouldRethrowApiKeyLimitExceededException() {
+      // Arrange
+      ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, "Test API Key", null, null);
+
+      when(apiKeyService.createApiKey(anyInt(), any(EzkeyAdmin.class), anyString(), any(), any()))
+          .thenThrow(new ApiKeyLimitExceededException("Maximum active keys limit (5) reached"));
+
+      // Act
+      ApiKeyLimitExceededException exception =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              ApiKeyLimitExceededException.class,
+              () -> controller.createApiKey(request, httpServletRequest));
+
+      // Assert
+      assertTrue(exception.getMessage().contains("Maximum active keys limit"));
     }
   }
 

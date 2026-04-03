@@ -17,11 +17,13 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.apache.commons.codec.binary.Hex;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -124,7 +126,8 @@ public class ApiKeyService {
    * @param ipWhitelist optional array of IP addresses or CIDR ranges
    * @return ApiKeyCreationResult containing both keys and metadata
    * @throws IllegalArgumentException if integration not found or inactive
-   * @throws IllegalStateException if maximum active keys limit reached
+   * @throws TenantInactiveException if the integration belongs to an inactive tenant
+   * @throws ApiKeyLimitExceededException if maximum active keys limit reached
    */
   @Transactional
   public ApiKeyCreationResult createApiKey(
@@ -159,14 +162,14 @@ public class ApiKeyService {
           "API key creation blocked: tenant (ID: {}) is inactive for integration {}",
           integration.getTenant().getTenantId(),
           integrationId);
-      throw new IllegalStateException(
+      throw new TenantInactiveException(
           "Cannot create API key for inactive tenant. Contact your Ezkey administrator.");
     }
 
     // Check active key limit
     long activeKeyCount = apiKeyRepository.countByIntegration_IdAndActiveTrue(integrationId);
     if (activeKeyCount >= MAX_ACTIVE_KEYS_PER_INTEGRATION) {
-      throw new IllegalStateException(
+      throw new ApiKeyLimitExceededException(
           "Maximum active keys limit (%d) reached for integration: %d"
               .formatted(MAX_ACTIVE_KEYS_PER_INTEGRATION, integrationId));
     }

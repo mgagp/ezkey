@@ -12,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.SystemTenantTestConstants;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
@@ -159,6 +160,28 @@ class IntegrationServiceTest {
       assertThat(toSave.getCreatedAt()).isNotNull();
       assertThat(toSave.getTenant()).isEqualTo(systemTenant);
       assertThat(toSave.getCreatedByAdmin()).isEqualTo(admin);
+    }
+
+    @Test
+    @DisplayName("createIntegration rejects inactive tenant")
+    void create_whenTenantInactive_throwsTenantInactiveException() {
+      IntegrationCreateRequest req = buildRequest(true);
+      Integration mapped = buildMappedEntity(true);
+      Tenant tenant = new Tenant("Acme", "Inactive tenant");
+      tenant.setTenantId(22);
+      tenant.setActive(false);
+
+      EzkeyAdmin admin = new EzkeyAdmin("tenantadmin", AdminType.TENANT_ADMIN);
+      admin.setAdminId(2);
+      admin.setTenant(tenant);
+
+      when(mapper.toEntity(req)).thenReturn(mapped);
+
+      assertThatThrownBy(() -> service.createIntegration(req, admin))
+          .isInstanceOf(TenantInactiveException.class)
+          .hasMessageContaining("inactive tenant");
+
+      verify(repository, never()).save(any(Integration.class));
     }
   }
 

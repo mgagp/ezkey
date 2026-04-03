@@ -13,7 +13,6 @@ package org.ezkey.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
-import org.ezkey.admin.exception.TenantInactiveException;
 import org.ezkey.admin.exception.TenantNotAllowedException;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;

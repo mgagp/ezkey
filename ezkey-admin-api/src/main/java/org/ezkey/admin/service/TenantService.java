@@ -13,10 +13,10 @@ package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
 import org.ezkey.admin.dto.request.TenantUpdateRequestDto;
-import org.ezkey.admin.exception.TenantInactiveException;
 import org.ezkey.admin.exception.TenantNotAllowedException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;

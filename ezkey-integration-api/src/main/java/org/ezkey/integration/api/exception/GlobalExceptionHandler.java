@@ -15,6 +15,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.TenantInactiveException;
+import org.ezkey.integration.exception.ApiKeyLimitExceededException;
+import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -127,6 +130,39 @@ public class GlobalExceptionHandler {
         HttpStatus.BAD_REQUEST,
         "https://ezkey.io/problems/validation/invalid-argument",
         "Invalid Argument",
+        request);
+  }
+
+  @ExceptionHandler(TenantInactiveException.class)
+  public ResponseEntity<ProblemDetail> handleTenantInactiveException(
+      TenantInactiveException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex.getMessage(),
+        HttpStatus.FORBIDDEN,
+        "https://ezkey.io/problems/authorization/tenant-inactive",
+        "Tenant Inactive",
+        request);
+  }
+
+  @ExceptionHandler(IntegrationLifecycleStateException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrationLifecycleStateException(
+      IntegrationLifecycleStateException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex.getMessage(),
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/integration-lifecycle-state",
+        "Integration Lifecycle State Conflict",
+        request);
+  }
+
+  @ExceptionHandler(ApiKeyLimitExceededException.class)
+  public ResponseEntity<ProblemDetail> handleApiKeyLimitExceededException(
+      ApiKeyLimitExceededException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex.getMessage(),
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/domain/api-key-limit-exceeded",
+        "API Key Limit Exceeded",
         request);
   }
 

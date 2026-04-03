@@ -26,11 +26,13 @@ import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.service.ApiKeyService.ApiKeyCreationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -186,7 +188,26 @@ class ApiKeyServiceTest {
 
       // Act & Assert
       assertThrows(
-          IllegalStateException.class,
+          ApiKeyLimitExceededException.class,
+          () -> apiKeyService.createApiKey(123, testAdmin, "Test", null, null));
+
+      verify(apiKeyRepository, never()).save(any(ApiKey.class));
+    }
+
+    @Test
+    @DisplayName("Should throw tenant inactive exception when integration tenant is inactive")
+    void createApiKey_WhenTenantInactive_ShouldThrowTenantInactiveException() {
+      // Arrange
+      org.ezkey.integration.domain.entity.Tenant tenant =
+          new org.ezkey.integration.domain.entity.Tenant("Acme", "Inactive tenant");
+      tenant.setTenantId(55);
+      tenant.setActive(false);
+      testIntegration.setTenant(tenant);
+      when(integrationRepository.findById(123)).thenReturn(Optional.of(testIntegration));
+
+      // Act & Assert
+      assertThrows(
+          TenantInactiveException.class,
           () -> apiKeyService.createApiKey(123, testAdmin, "Test", null, null));
 
       verify(apiKeyRepository, never()).save(any(ApiKey.class));
