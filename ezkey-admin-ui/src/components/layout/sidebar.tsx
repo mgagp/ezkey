@@ -81,7 +81,10 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-52 shrink-0 h-screen bg-sidebar-bg flex flex-col border-r-2 border-fg sticky top-0">
+    <aside
+      data-testid="app-sidebar"
+      className="w-52 shrink-0 h-screen bg-sidebar-bg flex flex-col border-r-2 border-fg sticky top-0"
+    >
       {/* Brand — Ctrl+click toggles demo mode when VITE_DEMO_MODE is true */}
       <div
         className="px-4 py-5 border-b-2 border-white/10"
@@ -122,7 +125,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-3 overflow-y-auto">
+      <nav data-testid="app-sidebar-nav" className="flex-1 py-3 overflow-y-auto">
         <ul className="space-y-0.5 px-2">
           {visibleItems.map(({ labelKey, path, icon: Icon }) => {
             const isActive = pathname === path || pathname.startsWith(`${path}/`);
@@ -130,6 +133,7 @@ export function Sidebar() {
               <li key={path}>
                 <Link
                   to={path}
+                  data-testid={`sidebar-link-${labelKey}`}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 text-sm font-medium border-l-[3px]',
                     'transition-colors duration-75',

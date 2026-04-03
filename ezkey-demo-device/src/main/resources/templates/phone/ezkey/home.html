@@ -45,7 +45,7 @@
   </script>
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" data-testid="demo-device-home">
     <div class="status-bar">
       <div>Ezkey</div>
       <div>9:41</div>
@@ -55,11 +55,11 @@
         <h1 class="title">My Enrollments</h1>
         <div class="text-muted" style="font-size:.85rem; opacity:.8;">Tap an enrollment to start authentication</div>
       </div>
-      <a href="/phone/ezkey/enrollment/new" class="new-enrollment-btn">+ New Enrollment</a>
-      <div class="list" th:if="${#lists.isEmpty(enrollments)}">
+      <a href="/phone/ezkey/enrollment/new" class="new-enrollment-btn" data-testid="demo-device-new-enrollment">+ New Enrollment</a>
+      <div class="list" th:if="${#lists.isEmpty(enrollments)}" data-testid="demo-device-empty-state">
         <div class="empty">No enrollments stored yet.</div>
       </div>
-      <div class="list" th:if="${!#lists.isEmpty(enrollments)}">
+      <div class="list" th:if="${!#lists.isEmpty(enrollments)}" data-testid="demo-device-enrollment-list">
         <div th:each="g : ${tenantGroups}">
           <div class="tenant-header">
             <div class="tenant-name" th:text="${g.tenantName}">Tenant</div>
@@ -68,7 +68,12 @@
             </div>
           </div>
           <div class="tenant-divider"></div>
-          <a class="item" th:each="e : ${g.enrollments}" th:href="@{'/phone/ezkey/enrollments/' + ${e.enrollmentId} + '/auth'}">
+          <a
+            class="item"
+            data-testid="demo-device-enrollment-link"
+            th:attr="data-enrollment-id=${e.enrollmentId}"
+            th:each="e : ${g.enrollments}"
+            th:href="@{'/phone/ezkey/enrollments/' + ${e.enrollmentId} + '/auth'}">
             <div style="display: flex; align-items: center;">
               <img th:if="${e.integrationLogo}" th:src="${e.integrationLogo}" alt="Integration Logo" 
                    style="width: 32px; height: 32px; border-radius: 6px; margin-right: 12px;">

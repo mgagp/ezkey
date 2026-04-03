@@ -131,7 +131,7 @@
   </script>
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" data-testid="demo-device-auth-pending">
     <div class="status-bar">
       <div>Ezkey</div>
       <div>9:41</div>
@@ -162,7 +162,7 @@
       </div>
 
       <!-- Authentication Request -->
-      <div class="auth-request">
+      <div class="auth-request" data-testid="demo-device-auth-request">
         <div class="auth-title" th:text="${contextTitle != null ? 'Review &amp; Respond' : 'Authentication Request'}">Authentication Request</div>
         <div class="auth-description">
           <span th:if="${contextTitle == null}">An authentication request is pending for this enrollment.</span>
@@ -170,7 +170,11 @@
           <span th:if="${challengeRequired}" style="color: #ffc107; font-weight: 600; display:block; margin-top:4px;">Challenge code required.</span>
         </div>
         
-        <form id="authForm" th:action="@{'/phone/ezkey/enrollments/' + ${enrollmentId} + '/auth/respond'}" method="post">
+        <form
+          id="authForm"
+          data-testid="demo-device-auth-form"
+          th:action="@{'/phone/ezkey/enrollments/' + ${enrollmentId} + '/auth/respond'}"
+          method="post">
           <input type="hidden" name="authAttemptId" th:value="${authAttemptId}">
           <input type="hidden" name="authAttemptProofToken" th:value="${authAttemptProofToken}">
           <input type="hidden" id="approved" name="approved" value="">
@@ -178,10 +182,11 @@
           
           <!-- Challenge Input (if required) -->
           <div th:if="${challengeRequired}">
-            <input type="text" 
-                   id="challengeResponse" 
-                   class="challenge-input" 
-                   placeholder="Enter challenge code" 
+            <input type="text"
+                   id="challengeResponse"
+                   data-testid="demo-device-challenge-input"
+                   class="challenge-input"
+                   placeholder="Enter challenge code"
                    required>
             <div style="font-size: 0.8rem; color: #888; margin-bottom: 16px;">
               Enter the challenge code shown in the demo console
@@ -192,8 +197,8 @@
       
       <!-- Action Buttons -->
       <div class="btn-group">
-        <button class="btn btn-approve" onclick="submitResponse(true)">Approve</button>
-        <button class="btn btn-deny" onclick="submitResponse(false)">Deny</button>
+        <button class="btn btn-approve" data-testid="demo-device-approve-button" onclick="submitResponse(true)">Approve</button>
+        <button class="btn btn-deny" data-testid="demo-device-deny-button" onclick="submitResponse(false)">Deny</button>
       </div>
     </div>
     <div class="side-exit" onclick="goBack()" title="Back"></div>

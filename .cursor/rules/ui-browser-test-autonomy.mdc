@@ -1,0 +1,16 @@
+---
+description: Browser UI test autonomy and recommendation criteria for Admin UI changes.
+alwaysApply: true
+---
+
+# Admin UI browser test autonomy
+
+- Treat Admin UI browser tests as a **risk-based and pragmatic tool**, not a mandatory step for every UI change.
+- When a task affects a workflow, a critical action, a confirmation path, role-based visibility, route behavior, or the Admin UI ↔ Demo Device interaction, explicitly evaluate whether browser tests are:
+  - already sufficient,
+  - worth running as-is,
+  - or worth extending with a small targeted scenario.
+- State that judgment clearly to the user instead of leaving it implicit.
+- Prefer **existing Playwright coverage** first, then a focused addition if there is a real gap.
+- Do **not** recommend or add browser tests for low-risk copy, spacing, or presentation-only changes unless there is a specific reason.
+- Keep instrumentation secondary: default recommendations should favor the real clean-start stack and Demo Device.

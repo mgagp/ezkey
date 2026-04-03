@@ -226,6 +226,65 @@ Use **start.sh** to build and run the Admin UI in Docker:
 - **Automated:** After a local `npm run build`, run `./scripts/assert-no-demo-in-build.sh` to grep `dist/` for demo-only strings; use in CI for the production build path.
 - **Visual:** With `./start.sh -production`, open the UI and confirm: no "Demo" badge in header, no "Fill demo" in create dialogs, no Ctrl+click behavior on the sidebar brand.
 
+## Browser UI Tests
+
+- The Admin UI now has a **Playwright** browser suite under `e2e/`.
+- The primary validation model is **device-backed end to end**:
+  - start the EZKey backend stack with `clean-start`
+  - use the pre-seeded **Demo Device** on `http://localhost:8083`
+  - run the Admin UI either with `npm run dev` or `./start.sh`
+- Preferred commands:
+  - Local dev path: `./scripts/run-ui-tests.sh`
+  - Docker-only QA path: `./scripts/run-ui-tests-docker.sh`
+- Default scope is intentionally narrow:
+  - public login shell
+  - real passwordless login approved on Demo Device
+  - authenticated shell smoke
+  - one representative post-login workflow
+  - elective rejection path
+- Use browser tests when a change materially affects:
+  - Admin UI login behavior
+  - authenticated shell/navigation behavior
+  - Admin UI ↔ Demo Device interaction
+- Do **not** default to running browser tests for every minor UI text or layout tweak.
+- Keep instrumentation **secondary**. The default path should continue to exercise the real Docker stack and real Demo Device behavior.
+
+### Autonomy and recommendations
+
+- For UI changes with meaningful workflow risk, do not stop at "browser tests exist" — explicitly judge whether:
+  - the current Playwright coverage is already sufficient,
+  - the existing suite should be run,
+  - or a focused browser test should be added or adjusted.
+- Typical triggers for that recommendation:
+  - critical actions such as revoke, deactivate, approve, reset, or other security-sensitive mutations
+  - changed confirmation/cancel behavior
+  - changed success/error/retry states
+  - changed route transitions, guards, or role-based visibility
+  - changed Admin UI ↔ Demo Device interactions
+- Keep recommendations proportionate:
+  - low-risk text or layout changes usually do **not** justify browser test work
+  - workflow or risk-bearing changes often **do**
+- When proposing a new UI test, prefer extending the existing representative suite over adding broad or duplicate coverage.
+- In the Ezkey spirit, prefer a **small, high-value recommendation** over a large generic test wish-list.
+
+### Manual exploratory summaries
+
+- When a UI change deserves human validation, it is often useful to provide a **brief manual exploratory test summary** alongside the automated recommendation.
+- Default assumptions for that summary:
+  - clean-start baseline
+  - empty database
+  - default Docker parameters
+  - Admin UI started either with `npm run dev` or `./start.sh`
+- When it helps the reviewer move quickly, use **demo-mode themes and presets** as the concrete examples for form input and workflow setup.
+- Good summaries are short and operator-friendly:
+  - a few representative steps
+  - expected visible results
+  - only the most relevant paths for the current change
+- This is especially valuable for:
+  - QA handoff
+  - interactive functional review after a plan is implemented
+  - preserving a compact historical trace of how a workflow was meant to be exercised
+
 ## Security (headers, workflows, deployment)
 
 - **Daily dev:** `npm run dev` — Vite HMR; **not** the same HTTP header surface as Caddy.

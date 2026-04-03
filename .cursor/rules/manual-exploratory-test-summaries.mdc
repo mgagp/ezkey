@@ -1,0 +1,15 @@
+---
+description: Propose concise manual exploratory test summaries when they improve UI workflow validation and QA handoff.
+alwaysApply: true
+---
+
+# Manual exploratory test summaries
+
+- When a change affects a meaningful user workflow, consider proposing a **brief manual exploratory test summary** in addition to automated validation.
+- Default assumption: a **clean-start** baseline with the standard Docker stack, empty database, and default parameters.
+- When it helps make the scenario concrete, prefer examples based on Admin UI **demo-mode themes and presets** rather than abstract placeholder data.
+- Keep the summary short and useful:
+  - a few representative steps
+  - expected visible results
+  - no inflated checklist unless the user asks for one
+- Use this especially when it improves QA handoff, interactive functional review, or future historical traceability in a plan or task summary.

@@ -235,6 +235,7 @@ export default function LoginPage() {
 
   return (
     <div
+      data-testid="login-page"
       className={cn(
         'min-h-screen bg-bg flex justify-center p-4',
         recoveryLayout ? 'items-start py-6 sm:py-10' : 'items-center',
@@ -253,6 +254,7 @@ export default function LoginPage() {
             type="button"
             onClick={() => openHelp()}
             className="p-1 hover:bg-fg/10 transition-colors"
+            data-testid="login-help-button"
             aria-label={t('help:drawer.openHelp')}
             title={t('help:drawer.openHelp')}
           >
@@ -262,6 +264,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setLanguage('en')}
+            data-testid="login-language-en"
             className={i18n.language.startsWith('en') ? 'font-bold text-sidebar-bg' : 'text-fg-muted hover:text-fg'}
             aria-label="English"
           >
@@ -271,6 +274,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setLanguage('fr')}
+            data-testid="login-language-fr"
             className={i18n.language.startsWith('fr') ? 'font-bold text-sidebar-bg' : 'text-fg-muted hover:text-fg'}
             aria-label="Français"
           >
@@ -316,13 +320,14 @@ export default function LoginPage() {
 
           {/* ── Idle / Submitting ── Login Form */}
           {authFlow === 'passwordless' && (loginState === 'idle' || loginState === 'submitting') && (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+            <form data-testid="login-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               <div>
                 <Label htmlFor="username">{t('login:form.username')}</Label>
                 <div className="flex gap-2 items-start">
                   <div className="flex-1 min-w-0">
                     <Input
                       id="username"
+                      data-testid="login-username-input"
                       autoFocus
                       autoComplete="username"
                       placeholder={t('login:form.usernamePlaceholder')}
@@ -341,6 +346,7 @@ export default function LoginPage() {
                         <Tooltip content={rememberLabel} position="top">
                           <button
                             type="button"
+                            data-testid="login-remember-username-toggle"
                             className={cn(
                               'flex shrink-0 items-center justify-center size-10 border-2 border-fg bg-surface',
                               'hover:bg-bg transition-colors focus:outline-none focus:shadow-accent focus:border-accent',
@@ -368,6 +374,7 @@ export default function LoginPage() {
                 <input
                   id="challengeRequested"
                   type="checkbox"
+                  data-testid="login-challenge-toggle"
                   className="size-4 border-2 border-sidebar-bg accent-sidebar-bg cursor-pointer"
                   {...register('challengeRequested')}
                 />
@@ -379,13 +386,20 @@ export default function LoginPage() {
                 </label>
               </div>
 
-              <Button type="submit" size="lg" className="w-full" isLoading={loginState === 'submitting'}>
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full"
+                isLoading={loginState === 'submitting'}
+                data-testid="login-submit-button"
+              >
                 {t('login:form.submit')}
               </Button>
 
               <div className="text-center pt-1">
                 <button
                   type="button"
+                  data-testid="login-recovery-link"
                   className="text-sm text-fg-muted hover:text-accent underline underline-offset-2"
                   onClick={() => {
                     setRecoveryUsernamePrefill(watch('username').trim());
@@ -400,7 +414,7 @@ export default function LoginPage() {
 
           {/* ── Waiting ── Countdown + challenge */}
           {authFlow === 'passwordless' && loginState === 'waiting' && waitingData && (
-            <div className="text-center space-y-5">
+            <div data-testid="login-waiting-state" className="text-center space-y-5">
               <div className="space-y-2">
                 <p className="text-xs font-black uppercase tracking-widest text-fg-muted">
                   {waitingData.challengeCode != null
@@ -415,7 +429,7 @@ export default function LoginPage() {
 
               {/* Challenge code — displayed only when challengeRequested */}
               {waitingData.challengeCode != null && (
-                <div className="border-2 border-sidebar-bg bg-bg p-5">
+                <div data-testid="login-challenge-panel" className="border-2 border-sidebar-bg bg-bg p-5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-2">
                     {t('login:waiting.challengeCode')}
                   </p>
@@ -444,7 +458,7 @@ export default function LoginPage() {
 
           {/* ── Rejected ── */}
           {authFlow === 'passwordless' && loginState === 'rejected' && (
-            <div className="space-y-4">
+            <div data-testid="login-rejected-state" className="space-y-4">
               <Alert variant="error" title={t('login:states.rejected.title')}>
                 {t('login:states.rejected.message')}
               </Alert>
@@ -456,7 +470,7 @@ export default function LoginPage() {
 
           {/* ── Expired ── */}
           {authFlow === 'passwordless' && loginState === 'expired' && (
-            <div className="space-y-4">
+            <div data-testid="login-expired-state" className="space-y-4">
               <Alert variant="error" title={t('login:states.expired.title')}>
                 {t('login:states.expired.message')}
               </Alert>
@@ -468,7 +482,7 @@ export default function LoginPage() {
 
           {/* ── Error ── */}
           {authFlow === 'passwordless' && loginState === 'error' && (
-            <div className="space-y-4">
+            <div data-testid="login-error-state" className="space-y-4">
               <Alert variant="error" title={t('login:states.error.title')}>
                 {errorMessage ?? t('login:states.error.messageFallback')}
               </Alert>

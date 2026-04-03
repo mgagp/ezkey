@@ -46,6 +46,83 @@ Output is in `dist/`. Serve it behind a reverse proxy (nginx, Caddy, etc.) that 
 
 Set `VITE_API_BASE_URL` in `.env.production` to the Admin API base URL if the UI and API are not served from the same origin.
 
+## Browser Tests
+
+The Admin UI includes a **Playwright** browser suite for representative end-to-end validation against the
+real EZKey stack.
+
+### Baseline assumptions
+
+- Start the EZKey backend stack with the standard clean start so Admin API, Auth API, Crypto API, and
+  the **Demo Device** are available.
+- The clean-start stack pre-seeds the Demo Device, so the browser tests can drive a real passwordless
+  login flow through the Admin UI and approve or deny it on the Demo Device.
+- The Admin UI runtime is still started separately from clean-start.
+
+### Local developer path
+
+Use the Vite dev server and let Playwright start it automatically:
+
+```bash
+./scripts/run-ui-tests.sh
+```
+
+Useful variants:
+
+```bash
+./scripts/run-ui-tests.sh --headed
+./scripts/run-ui-tests.sh --grep @elective
+```
+
+Default URLs:
+
+- Admin UI: `http://127.0.0.1:4173`
+- Demo Device: `http://127.0.0.1:8083`
+
+### Docker-only QA path
+
+Use Docker as the only host dependency for the browser runner. This path builds the Admin UI container,
+then runs Playwright inside a dedicated Docker image:
+
+```bash
+./scripts/run-ui-tests-docker.sh
+```
+
+Useful variants:
+
+```bash
+./scripts/run-ui-tests-docker.sh --headed
+./scripts/run-ui-tests-docker.sh --grep @elective
+./scripts/run-ui-tests-docker.sh --skip-ui-start
+```
+
+Default URLs for the Docker runner:
+
+- Admin UI: `http://host.docker.internal:3080`
+- Demo Device: `http://host.docker.internal:8083`
+
+### Artifacts
+
+The browser suite writes concise and rich outputs for follow-up and debugging:
+
+- Text summary: `test-results/browser/summary.txt`
+- Run metadata: `test-results/browser/run-info.txt`
+- Failure artifacts: `test-results/browser/artifacts/`
+- HTML report: `playwright-report/`
+
+### Scope
+
+The initial suite stays intentionally small:
+
+- unauthenticated shell checks
+- real passwordless login through the Demo Device
+- authenticated shell smoke
+- one representative post-login workflow
+- one elective rejection path
+
+Fresh enrollment automation, broad CRUD coverage, and heavy instrumentation remain out of scope for the
+first phase.
+
 ## Authentication
 
 The app uses EZKey's passwordless authentication flow:

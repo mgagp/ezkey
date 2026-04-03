@@ -82,7 +82,7 @@
   </script>
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" data-testid="demo-device-auth-result">
     <div class="status-bar">
       <div>Ezkey</div>
       <div>9:41</div>
@@ -107,18 +107,18 @@
       </div>
       
       <!-- Result Card -->
-      <div class="result-card">
+      <div class="result-card" data-testid="demo-device-result-card">
         <!-- Success State -->
-        <div th:if="${success}" class="result-icon result-success">✅</div>
+        <div th:if="${success}" data-testid="demo-device-result-success" class="result-icon result-success">✅</div>
         
         <!-- Denied State (User Choice) -->
-        <div th:if="${denied}" class="result-icon result-denied">❌</div>
+        <div th:if="${denied}" data-testid="demo-device-result-denied" class="result-icon result-denied">❌</div>
         
         <!-- Failed State (Technical Error) -->
-        <div th:if="${failed}" class="result-icon result-failed">⚠️</div>
+        <div th:if="${failed}" data-testid="demo-device-result-failed" class="result-icon result-failed">⚠️</div>
         
         <!-- Expired State (Authentication Expired) -->
-        <div th:if="${expired}" class="result-icon result-expired">⏰</div>
+        <div th:if="${expired}" data-testid="demo-device-result-expired" class="result-icon result-expired">⏰</div>
         
         <!-- Dynamic Title -->
         <div class="result-title" 
@@ -143,7 +143,7 @@
       
       <!-- Action Button -->
       <div class="mt-auto">
-        <button class="btn-primary" onclick="goBack()">Back to Enrollments</button>
+        <button class="btn-primary" data-testid="demo-device-back-to-enrollments" onclick="goBack()">Back to Enrollments</button>
       </div>
     </div>
     <div class="side-exit" onclick="goBack()" title="Back"></div>

@@ -103,3 +103,5 @@ yarn-debug.log*
 yarn-error.log*
 .checkstyle
 ezkey.json
+ezkey-admin-ui/playwright-report/
+ezkey-admin-ui/test-results/

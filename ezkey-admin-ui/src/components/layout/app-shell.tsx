@@ -24,11 +24,11 @@ interface AppShellProps {
  */
 export function AppShell({ title, breadcrumb, detailNav, children }: AppShellProps) {
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
+    <div data-testid="app-shell" className="flex h-screen overflow-hidden bg-bg">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header title={title} />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main data-testid="app-main" className="flex-1 overflow-y-auto p-6">
           {detailNav}
           {breadcrumb && breadcrumb.length > 0 && (
             <nav className="flex items-center gap-1.5 text-xs text-fg-muted mb-4" aria-label="Breadcrumb">

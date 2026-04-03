@@ -42,7 +42,7 @@ export function Header({ title }: HeaderProps) {
     (publicInstanceInfo.instanceName?.trim() || publicInstanceInfo.instanceDescription?.trim());
 
   return (
-    <header className="h-13 shrink-0 border-b-2 border-fg bg-surface flex items-center gap-4 px-4 sm:px-6 min-h-13">
+    <header data-testid="app-header" className="h-13 shrink-0 border-b-2 border-fg bg-surface flex items-center gap-4 px-4 sm:px-6 min-h-13">
       <div className="flex items-center gap-3 shrink-0 min-w-0">
         <h1 className="text-xs font-black uppercase tracking-[0.2em] text-fg truncate">{title}</h1>
         {isDemoMode && sessionDemoOn && (
@@ -73,6 +73,7 @@ export function Header({ title }: HeaderProps) {
           type="button"
           onClick={() => openHelp()}
           className="p-1.5 hover:bg-fg/10 transition-colors"
+          data-testid="app-help-button"
           aria-label={t('help:drawer.openHelp')}
           title={t('help:drawer.openHelp')}
         >
@@ -82,6 +83,7 @@ export function Header({ title }: HeaderProps) {
           <button
             type="button"
             onClick={() => setLanguage('en')}
+            data-testid="app-language-en"
             className={i18n.language.startsWith('en') ? 'text-sm font-bold text-fg' : 'text-sm text-fg-muted hover:text-fg'}
             aria-label="English"
           >
@@ -91,6 +93,7 @@ export function Header({ title }: HeaderProps) {
           <button
             type="button"
             onClick={() => setLanguage('fr')}
+            data-testid="app-language-fr"
             className={i18n.language.startsWith('fr') ? 'text-sm font-bold text-fg' : 'text-sm text-fg-muted hover:text-fg'}
             aria-label="Français"
           >
@@ -106,7 +109,7 @@ export function Header({ title }: HeaderProps) {
             </span>
           </div>
         )}
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-1.5">
+        <Button data-testid="app-logout-button" variant="ghost" size="sm" onClick={handleLogout} className="gap-1.5">
           <LogOut className="size-3.5" />
           {t('common:buttons.logout')}
         </Button>
