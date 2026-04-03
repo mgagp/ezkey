@@ -15,6 +15,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.ezkey.dto.ErrorResponseDto;
+import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -150,6 +151,17 @@ public class ValidationExceptionHandler {
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setType(URI.create("https://ezkey.io/problems/validation/auth-attempt-wait-invalid"));
     problem.setTitle("Invalid Auth Attempt Wait Request");
+    problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+  }
+
+  @ExceptionHandler(AuthAttemptCreateValidationException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptCreateValidationException(
+      AuthAttemptCreateValidationException ex, WebRequest request) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    problem.setType(URI.create("https://ezkey.io/problems/validation/auth-attempt-create-invalid"));
+    problem.setTitle("Invalid Auth Attempt Create Request");
     problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
   }

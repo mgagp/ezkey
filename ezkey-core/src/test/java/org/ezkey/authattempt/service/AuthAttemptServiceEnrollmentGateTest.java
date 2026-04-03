@@ -24,6 +24,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
+import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -76,6 +77,16 @@ class AuthAttemptServiceEnrollmentGateTest {
             pendingService,
             respondService,
             waitService);
+  }
+
+  @Test
+  @DisplayName("Should throw AuthAttemptCreateValidationException when enrollment is not found")
+  void create_shouldThrow_whenEnrollmentIsNotFound() {
+    when(enrollmentRepository.findById(1)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> authAttemptService.create(createRequest()))
+        .isInstanceOf(AuthAttemptCreateValidationException.class)
+        .hasMessageContaining("Enrollment not found for ID: 1");
   }
 
   @Test

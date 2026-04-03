@@ -17,6 +17,7 @@ import static org.ezkey.tests.util.RestAssuredTestConfig.configureForAuthApi;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
@@ -296,6 +297,81 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
   }
 
   @Test
+  @DisplayName("Admin create auth attempt rejects missing identifiers with RFC 9457 ProblemDetail")
+  public void testAdminCreateAuthAttemptRejectsMissingIdentifiers() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Map<String, Object> request = new HashMap<>();
+      request.put("challengeRequested", false);
+
+      Response response =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .body(request)
+              .when()
+              .post("/auth-attempts")
+              .then()
+              .statusCode(400)
+              .extract()
+              .response();
+
+      assertThat(response.jsonPath().getString("type"))
+          .isEqualTo("https://ezkey.io/problems/validation/auth-attempt-create-invalid");
+      assertThat(response.jsonPath().getString("title"))
+          .isEqualTo("Invalid Auth Attempt Create Request");
+      assertThat(response.jsonPath().getString("detail"))
+          .contains("Either enrollmentId or userIdentifier is required");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "Integration create auth attempt rejects missing identifiers with RFC 9457 ProblemDetail")
+  public void testIntegrationCreateAuthAttemptRejectsMissingIdentifiers() {
+    try {
+      String adminToken = authTokenManager.getAdminToken();
+      configureForAdminApi(dockerStackConfig);
+
+      Integer integrationId = testDataFactory.createIntegration();
+      String apiKeyCredentials =
+          testDataFactory.createApiKeyForIntegration(integrationId, adminToken);
+
+      Map<String, Object> request = new HashMap<>();
+      request.put("challengeRequested", false);
+
+      Response response =
+          given()
+              .baseUri(getIntegrationApiUrl())
+              .basePath("/api/v1")
+              .contentType(ContentType.JSON)
+              .header("Authorization", createBasicAuthHeader(apiKeyCredentials))
+              .body(request)
+              .when()
+              .post("/auth-attempts")
+              .then()
+              .statusCode(400)
+              .extract()
+              .response();
+
+      assertThat(response.jsonPath().getString("type"))
+          .isEqualTo("https://ezkey.io/problems/validation/auth-attempt-create-invalid");
+      assertThat(response.jsonPath().getString("title"))
+          .isEqualTo("Invalid Auth Attempt Create Request");
+      assertThat(response.jsonPath().getString("detail"))
+          .contains("Either enrollmentId or userIdentifier is required");
+    } catch (IllegalStateException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
+    }
+  }
+
+  @Test
   @DisplayName("Pending rejects invalid device signature with safe RFC 9457 ProblemDetail")
   public void testPendingRejectsInvalidDeviceSignature() {
     try {
@@ -536,6 +612,14 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
 
     return new PendingAttemptFixture(
         authAttemptId, pendingResponse.jsonPath().getString("authAttemptProofToken"));
+  }
+
+  private String createBasicAuthHeader(String credentials) {
+    return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes());
+  }
+
+  private String getIntegrationApiUrl() {
+    return System.getenv().getOrDefault("EZKEY_INTEGRATION_API_URL", "http://localhost:7080");
   }
 
   private record VerifiedEnrollmentFixture(

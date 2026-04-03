@@ -24,15 +24,20 @@ import java.util.List;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
+import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.ezkey.authattempt.mapper.AuthAttemptAdminApiMapper;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
+import org.ezkey.integration.domain.entity.Integration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -338,5 +343,50 @@ class AuthAttemptControllerTest {
             () -> controller.waitForResponse(authAttemptId, 30, 2, request));
 
     assertEquals("Polling must be between 1 and 60 seconds", exception.getMessage());
+  }
+
+  @Test
+  @DisplayName("create() - Should rethrow create validation exception from request resolution")
+  void create_ShouldRethrowCreateValidationException_WhenResolutionFails() {
+    HttpServletRequest request = new MockHttpServletRequest();
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(null, null, null, false, null, null, null);
+
+    AuthAttemptCreateValidationException exception =
+        assertThrows(
+            AuthAttemptCreateValidationException.class, () -> controller.create(dto, request));
+
+    assertEquals(
+        "Either enrollmentId or userIdentifier is required. Provide one or both for consistency"
+            + " check.",
+        exception.getMessage());
+  }
+
+  @Test
+  @DisplayName("create() - Should rethrow create validation exception from service layer")
+  void create_ShouldRethrowCreateValidationException_WhenServiceRejectsRequest() {
+    HttpServletRequest request = new MockHttpServletRequest();
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, null, false, null, null, null);
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(123);
+    enrollment.setIntegrationId(456);
+    Integration integration = new Integration();
+    integration.setId(456);
+
+    when(enrollmentRepository.findById(123)).thenReturn(java.util.Optional.of(enrollment));
+    when(integrationRepository.findById(456)).thenReturn(java.util.Optional.of(integration));
+    when(authAttemptService.create(any(AuthAttemptCreateRequest.class)))
+        .thenThrow(
+            new AuthAttemptCreateValidationException(
+                "No verified enrollment found for userIdentifier 'alice'."));
+
+    AuthAttemptCreateValidationException exception =
+        assertThrows(
+            AuthAttemptCreateValidationException.class, () -> controller.create(dto, request));
+
+    assertEquals(
+        "No verified enrollment found for userIdentifier 'alice'.", exception.getMessage());
   }
 }

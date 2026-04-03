@@ -41,6 +41,7 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.NoPendingAuthAttemptException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.signature.SignatureService;
@@ -356,7 +357,7 @@ public class AuthAttemptService {
    *
    * @param authRequest the creation request
    * @return the create response
-   * @throws IllegalArgumentException if enrollment not found or validation fails
+   * @throws AuthAttemptCreateValidationException if enrollment resolution fails
    */
   @Transactional
   public AuthAttemptCreateResponse create(AuthAttemptCreateRequest authRequest) {
@@ -366,7 +367,7 @@ public class AuthAttemptService {
             .findById(authRequest.getEnrollmentId())
             .orElseThrow(
                 () ->
-                    new IllegalArgumentException(
+                    new AuthAttemptCreateValidationException(
                         "Enrollment not found for ID: " + authRequest.getEnrollmentId()));
 
     // Security gate: reject auth attempts for inactive or non-verified enrollments.

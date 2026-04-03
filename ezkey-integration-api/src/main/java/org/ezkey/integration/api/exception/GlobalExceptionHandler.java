@@ -16,6 +16,7 @@ import java.net.URI;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.TenantInactiveException;
+import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
@@ -132,6 +133,17 @@ public class GlobalExceptionHandler {
         HttpStatus.BAD_REQUEST,
         "https://ezkey.io/problems/validation/invalid-argument",
         "Invalid Argument",
+        request);
+  }
+
+  @ExceptionHandler(AuthAttemptCreateValidationException.class)
+  public ResponseEntity<ProblemDetail> handleAuthAttemptCreateValidationException(
+      AuthAttemptCreateValidationException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex.getMessage(),
+        HttpStatus.BAD_REQUEST,
+        "https://ezkey.io/problems/validation/auth-attempt-create-invalid",
+        "Invalid Auth Attempt Create Request",
         request);
   }
 

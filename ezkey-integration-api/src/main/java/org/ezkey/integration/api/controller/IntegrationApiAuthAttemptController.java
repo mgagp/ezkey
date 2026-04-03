@@ -40,6 +40,7 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.api.constants.IntegrationApiAuditConstants;
@@ -51,8 +52,6 @@ import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -201,7 +200,7 @@ public class IntegrationApiAuthAttemptController {
     Integer effectiveEnrollmentId;
     try {
       effectiveEnrollmentId = resolveEnrollmentId(request);
-    } catch (IllegalArgumentException e) {
+    } catch (AuthAttemptCreateValidationException e) {
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
                   context,
@@ -210,10 +209,7 @@ public class IntegrationApiAuthAttemptController {
               .eventStatus(EventStatus.FAILURE)
               .errorMessage(e.getMessage())
               .build());
-      ProblemDetail pd =
-          ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(400), e.getMessage());
-      pd.setTitle("Invalid Request");
-      return ResponseEntity.badRequest().body(pd);
+      throw e;
     }
 
     // Validate enrollment ownership against the API key's integration
@@ -271,7 +267,7 @@ public class IntegrationApiAuthAttemptController {
           authAttemptMapper.toAuthAttemptCreateResponseDto(response);
       return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
 
-    } catch (IllegalArgumentException e) {
+    } catch (AuthAttemptCreateValidationException e) {
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
                   context,
@@ -283,10 +279,7 @@ public class IntegrationApiAuthAttemptController {
               .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
               .errorMessage(e.getMessage())
               .build());
-      ProblemDetail pd =
-          ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(400), e.getMessage());
-      pd.setTitle("Invalid Request");
-      return ResponseEntity.badRequest().body(pd);
+      throw e;
 
     } catch (Exception e) {
       auditLogService.log(
@@ -559,8 +552,8 @@ public class IntegrationApiAuthAttemptController {
    *
    * @param request the create request DTO
    * @return the resolved enrollment ID
-   * @throws IllegalArgumentException if resolution fails (missing identifiers, ambiguous, or
-   *     consistency mismatch)
+   * @throws AuthAttemptCreateValidationException if resolution fails (missing identifiers,
+   *     ambiguous, or consistency mismatch)
    */
   private Integer resolveEnrollmentId(AuthAttemptCreateRequestDto request) {
     Integer enrollmentId = request.enrollmentId();
@@ -570,7 +563,8 @@ public class IntegrationApiAuthAttemptController {
             : null;
 
     if (enrollmentId == null && userIdentifier == null) {
-      throw new IllegalArgumentException("Either enrollmentId or userIdentifier is required.");
+      throw new AuthAttemptCreateValidationException(
+          "Either enrollmentId or userIdentifier is required.");
     }
 
     // Path 1: enrollmentId only — validate enrollment belongs to API key's integration
@@ -579,7 +573,7 @@ public class IntegrationApiAuthAttemptController {
     if (enrollmentId != null && userIdentifier == null) {
       Integer integrationIdForPath1 = extractIntegrationId();
       if (integrationIdForPath1 == null) {
-        throw new IllegalArgumentException(
+        throw new AuthAttemptCreateValidationException(
             "Unable to determine integration from API key. Contact support.");
       }
       Enrollment enrollmentForPath1 =
@@ -587,7 +581,8 @@ public class IntegrationApiAuthAttemptController {
               .findById(enrollmentId)
               .orElseThrow(
                   () ->
-                      new IllegalArgumentException("Enrollment not found for ID: " + enrollmentId));
+                      new AuthAttemptCreateValidationException(
+                          "Enrollment not found for ID: " + enrollmentId));
       if (!integrationIdForPath1.equals(enrollmentForPath1.getIntegrationId())) {
         logger.warn(
             "Integration API cross-integration access attempt: API key from integration {} tried to"
@@ -595,7 +590,8 @@ public class IntegrationApiAuthAttemptController {
             integrationIdForPath1,
             enrollmentId,
             enrollmentForPath1.getIntegrationId());
-        throw new IllegalArgumentException("Enrollment does not belong to this integration.");
+        throw new AuthAttemptCreateValidationException(
+            "Enrollment does not belong to this integration.");
       }
       if (!Boolean.TRUE.equals(enrollmentForPath1.getActive())
           || !EnrollmentStatus.VERIFIED.equals(enrollmentForPath1.getStatus())) {
@@ -614,7 +610,7 @@ public class IntegrationApiAuthAttemptController {
     // Resolve integration for user identifier lookup
     Integer integrationId = extractIntegrationId();
     if (integrationId == null) {
-      throw new IllegalArgumentException(
+      throw new AuthAttemptCreateValidationException(
           "Unable to determine integration from API key. Contact support.");
     }
 
@@ -625,11 +621,11 @@ public class IntegrationApiAuthAttemptController {
               integrationId, userIdentifier, EnrollmentStatus.VERIFIED, true);
 
       if (enrollments.isEmpty()) {
-        throw new IllegalArgumentException(
+        throw new AuthAttemptCreateValidationException(
             "No verified enrollment found for userIdentifier '" + userIdentifier + "'.");
       }
       if (enrollments.size() > 1) {
-        throw new IllegalArgumentException(
+        throw new AuthAttemptCreateValidationException(
             "Multiple enrollments for this user. Please specify enrollmentId.");
       }
       return enrollments.get(0).getEnrollmentId();
@@ -641,7 +637,7 @@ public class IntegrationApiAuthAttemptController {
             integrationId, userIdentifier, EnrollmentStatus.VERIFIED, true);
 
     if (byUserIdentifier.isEmpty()) {
-      throw new IllegalArgumentException(
+      throw new AuthAttemptCreateValidationException(
           "No verified enrollment found for userIdentifier '" + userIdentifier + "'.");
     }
 
@@ -649,7 +645,7 @@ public class IntegrationApiAuthAttemptController {
       boolean matches =
           byUserIdentifier.stream().anyMatch(e -> e.getEnrollmentId().equals(enrollmentId));
       if (!matches) {
-        throw new IllegalArgumentException(
+        throw new AuthAttemptCreateValidationException(
             "enrollmentId and userIdentifier resolve to different enrollments.");
       }
       return enrollmentId;
@@ -657,7 +653,7 @@ public class IntegrationApiAuthAttemptController {
 
     Enrollment resolved = byUserIdentifier.get(0);
     if (!resolved.getEnrollmentId().equals(enrollmentId)) {
-      throw new IllegalArgumentException(
+      throw new AuthAttemptCreateValidationException(
           "enrollmentId "
               + enrollmentId
               + " and userIdentifier map to different enrollments (expected "
