@@ -55,6 +55,7 @@ For stack details, modes, and test-oriented workflow:
 - [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) - Strategic positioning and project philosophy.
 - [`docs/README.md`](docs/README.md) - Documentation index.
 - [`docs/ENDPOINT.md`](docs/ENDPOINT.md) - API reference.
+- [`docs/RECOVERY_CODES_LIFECYCLE_ANALYSIS.md`](docs/RECOVERY_CODES_LIFECYCLE_ANALYSIS.md) - Recovery-code lifecycle analysis and recommended regeneration model.
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) - Development workflow.
 - [`docs/OPERATIONAL.md`](docs/OPERATIONAL.md) - Operational and deployment guidance.
 - [`ezkey-admin-ui/README.md`](ezkey-admin-ui/README.md) - Admin UI overview and local usage.

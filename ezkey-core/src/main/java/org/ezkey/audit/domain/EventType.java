@@ -29,6 +29,7 @@ public enum EventType {
   ADMIN_LOGOUT,
   ADMIN_PASSWORD_CHANGE,
   ADMIN_RECOVERY_USE,
+  ADMIN_RECOVERY_CODES_REGENERATED,
   /**
    * MFA enrollment reset completed using a recovery token (device unbound, new bind credentials
    * issued). Distinct from {@link #ADMIN_RECOVERY_USE} (recovery code / recovery token issuance).

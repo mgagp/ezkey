@@ -61,6 +61,16 @@ interface AdminProvisioningShape {
   recoveryCodes?: string[];
 }
 
+/** UI-facing shape for recovery-code regeneration response. */
+interface AdminRecoveryCodesRegenerationShape {
+  adminId?: number;
+  username?: string;
+  recoveryCodes?: string[];
+  codesCount?: number;
+  invalidatedPreviousCodes?: boolean;
+  message?: string;
+}
+
 // ── Admin type badge ───────────────────────────────────────────────────────────
 
 function AdminTypeBadge({ type }: { type: AdminResponseDto['adminType'] }) {
@@ -316,6 +326,10 @@ function AdminDetailDialog({
   const [editLastName, setEditLastName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [regenerateOpen, setRegenerateOpen] = useState(false);
+  const [regeneratedCodes, setRegeneratedCodes] = useState<AdminRecoveryCodesRegenerationShape | null>(null);
+  const [regeneratedCodesCopied, setRegeneratedCodesCopied] = useState(false);
+  const [regeneratedCodesSavedConfirmed, setRegeneratedCodesSavedConfirmed] = useState(false);
 
   // Fetch live detail from API to ensure fresh data
   const { data: detail } = useGetAdminById<AdminResponseDto>(
@@ -360,6 +374,23 @@ function AdminDetailDialog({
     },
   });
 
+  const regenerateRecoveryCodesMutation = useMutation({
+    mutationFn: async (id: number) =>
+      fetchApi<AdminRecoveryCodesRegenerationShape>(`/api/v1/admins/${id}/recovery-codes/regenerate`, {
+        method: 'POST',
+      }),
+    onSuccess: async (data) => {
+      setRegeneratedCodes(data);
+      setRegeneratedCodesCopied(false);
+      setRegeneratedCodesSavedConfirmed(false);
+      toast(t('detail.toastRecoveryCodesRegenerated', { username: adm!.username }), 'success');
+      await queryClient.invalidateQueries({ queryKey: ['admins'] });
+      await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
+    },
+    onError: (e: unknown) =>
+      toast(getApiErrorMessage(e, t('detail.errorRecoveryCodesRegenerate')), 'error'),
+  });
+
   if (!adm) return null;
 
   const activateReasonInvalid = activateReason.length > 0 && activateReason.length < 10;
@@ -372,6 +403,39 @@ function AdminDetailDialog({
     setEditEmail(adm.email ?? '');
     setEditPhone(adm.phoneNumber ?? '');
     setEditOpen(true);
+  };
+
+  const openRegenerateDialog = () => {
+    setRegeneratedCodes(null);
+    setRegeneratedCodesCopied(false);
+    setRegeneratedCodesSavedConfirmed(false);
+    setRegenerateOpen(true);
+  };
+
+  const handleCloseRegenerateDialog = () => {
+    if (regeneratedCodes && !regeneratedCodesSavedConfirmed) {
+      return;
+    }
+    if (regenerateRecoveryCodesMutation.isPending) {
+      return;
+    }
+    setRegenerateOpen(false);
+    setRegeneratedCodes(null);
+    setRegeneratedCodesCopied(false);
+    setRegeneratedCodesSavedConfirmed(false);
+    regenerateRecoveryCodesMutation.reset();
+  };
+
+  const handleCopyRegeneratedCodes = async () => {
+    const codes = regeneratedCodes?.recoveryCodes;
+    if (codes == null || codes.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(codes.join('\n'));
+      setRegeneratedCodesCopied(true);
+      setTimeout(() => setRegeneratedCodesCopied(false), 2000);
+    } catch {
+      /* ignore clipboard API errors */
+    }
   };
 
   function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -472,6 +536,17 @@ function AdminDetailDialog({
               <Pencil className="size-3.5" />
               {t('detail.editProfile')}
             </Button>
+            {adm.active && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-1.5"
+                onClick={openRegenerateDialog}
+              >
+                <RefreshCw className="size-3.5" />
+                {t('detail.regenerateRecoveryCodes')}
+              </Button>
+            )}
 
             {isGlobalAdmin && adm.active && onRequestDeactivate && (
               <Button
@@ -526,6 +601,107 @@ function AdminDetailDialog({
           <Button onClick={onClose}>{t('detail.close')}</Button>
         </div>
       </div>
+      <Dialog
+        open={regenerateOpen}
+        onClose={handleCloseRegenerateDialog}
+        title={t('detail.regenerateRecoveryCodesDialogTitle', { username: adm.username })}
+        size="md"
+        dismissible={false}
+      >
+        {regeneratedCodes ? (
+          <div className="space-y-4">
+            <Alert variant="success">
+              {regeneratedCodes.message ?? t('detail.regenerateRecoveryCodesSuccess')}
+            </Alert>
+            <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
+              <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-black text-error">{t('detail.regenerateRecoveryCodesWarningTitle')}</p>
+                <p className="text-xs text-error/80 mt-0.5">{t('detail.regenerateRecoveryCodesWarningBody')}</p>
+              </div>
+            </div>
+            <div className="space-y-2 border-2 border-accent/40 bg-bg p-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+                {t('detail.recoveryCodesTitle')}
+              </p>
+              <p className="text-xs text-fg-muted">{t('detail.recoveryCodesHint')}</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void handleCopyRegeneratedCodes()}
+                className="gap-1.5"
+              >
+                {regeneratedCodesCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+                {regeneratedCodesCopied ? t('onboarding.copied') : t('detail.copyAllRecoveryCodes')}
+              </Button>
+              <ul className="font-mono text-xs space-y-1 break-all max-h-48 overflow-y-auto border-2 border-fg/20 p-2 bg-surface">
+                {(regeneratedCodes.recoveryCodes ?? []).map((code) => (
+                  <li key={code}>{code}</li>
+                ))}
+              </ul>
+              <div className="flex items-center gap-2.5 p-3 border-2 border-fg/20 bg-bg">
+                <input
+                  id="regenerated-recovery-codes-saved"
+                  type="checkbox"
+                  className="size-4 border-2 border-fg accent-accent"
+                  checked={regeneratedCodesSavedConfirmed}
+                  onChange={(e) => setRegeneratedCodesSavedConfirmed(e.target.checked)}
+                />
+                <label
+                  htmlFor="regenerated-recovery-codes-saved"
+                  className="text-sm font-bold cursor-pointer select-none"
+                >
+                  {t('detail.recoveryCodesSavedConfirmLabel')}
+                </label>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleCloseRegenerateDialog} disabled={!regeneratedCodesSavedConfirmed}>
+                {t('detail.close')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Alert variant="warning">
+              {t('detail.regenerateRecoveryCodesIntro')}
+            </Alert>
+            <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
+              <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-black text-error">{t('detail.regenerateRecoveryCodesWarningTitle')}</p>
+                <p className="text-xs text-error/80 mt-0.5">{t('detail.regenerateRecoveryCodesWarningBody')}</p>
+              </div>
+            </div>
+            {regenerateRecoveryCodesMutation.isError && (
+              <Alert variant="error">
+                {getApiErrorMessage(
+                  regenerateRecoveryCodesMutation.error,
+                  t('detail.errorRecoveryCodesRegenerate'),
+                )}
+              </Alert>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={handleCloseRegenerateDialog}
+                disabled={regenerateRecoveryCodesMutation.isPending}
+              >
+                {t('detail.editCancel')}
+              </Button>
+              <Button
+                type="button"
+                isLoading={regenerateRecoveryCodesMutation.isPending}
+                onClick={() => regenerateRecoveryCodesMutation.mutate(adm.adminId!)}
+              >
+                {t('detail.regenerateRecoveryCodesConfirm')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
       <Dialog
         open={editOpen}
         onClose={() => {

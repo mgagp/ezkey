@@ -49,6 +49,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 
 /**
  * Unit tests for AdminProvisioningService listAdmins method.
@@ -657,6 +658,57 @@ class AdminProvisioningServiceTest {
 
       assertThrows(
           ResourceNotFoundException.class, () -> service.updateAdmin(999, request, principal));
+    }
+  }
+
+  @Nested
+  @DisplayName("Recovery Code Regeneration Tests")
+  class RecoveryCodeRegenerationTests {
+
+    @Test
+    @DisplayName("GlobalAdmin can regenerate recovery codes for any admin")
+    void globalAdminCanRegenerateRecoveryCodes() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      tenantAdmin1.setRecoveryCodes(new String[] {"old-1", "old-2"});
+
+      AdminRecoveryService.RecoveryCodesResult recoveryCodes =
+          new AdminRecoveryService.RecoveryCodesResult(
+              List.of("1111-2222-3333-4444-5555-6666-7777-8888"), List.of("$2a$10$newHash"));
+
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(tenantAdmin1));
+      when(recoveryService.rotateRecoveryCodes(tenantAdmin1)).thenReturn(recoveryCodes);
+
+      AdminProvisioningService.RecoveryCodesRegenerationResult result =
+          service.regenerateRecoveryCodes(2, principal);
+
+      assertEquals(2, result.previousCodesCount());
+      assertEquals(tenantAdmin1, result.admin());
+      assertEquals(recoveryCodes.getPlainCodes(), result.recoveryCodes());
+      verify(adminRepository).findById(2);
+      verify(recoveryService).rotateRecoveryCodes(tenantAdmin1);
+    }
+
+    @Test
+    @DisplayName("TenantAdmin cannot regenerate recovery codes for admin in another tenant")
+    void tenantAdminCannotRegenerateRecoveryCodesForOtherTenant() {
+      AdminPrincipal principal = new AdminPrincipal(2, AdminType.TENANT_ADMIN, 1, null);
+      when(adminRepository.findById(4)).thenReturn(java.util.Optional.of(otherTenantAdmin));
+
+      assertThrows(
+          AccessDeniedException.class, () -> service.regenerateRecoveryCodes(4, principal));
+      verify(adminRepository).findById(4);
+    }
+
+    @Test
+    @DisplayName("Inactive administrator cannot receive regenerated recovery codes")
+    void inactiveAdministratorCannotReceiveRegeneratedRecoveryCodes() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      tenantAdmin1.setActive(false);
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(tenantAdmin1));
+
+      assertThrows(
+          IllegalStateException.class, () -> service.regenerateRecoveryCodes(2, principal));
+      verify(adminRepository).findById(2);
     }
   }
 }

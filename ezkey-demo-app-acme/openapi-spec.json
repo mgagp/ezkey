@@ -2115,6 +2115,71 @@
         }
       }
     },
+    "/api/v1/admins/{id}/recovery-codes/regenerate": {
+      "post": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Regenerate administrator recovery codes",
+        "description": "Generates a new set of single-use recovery codes for an administrator. Previous unused codes are invalidated immediately. GlobalAdmin can access any admin; TenantAdmin can access admins in their tenant.",
+        "operationId": "regenerateRecoveryCodes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Administrator ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recovery codes regenerated successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Target administrator is inactive",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Administrator not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admins/{id}/deactivate": {
       "post": {
         "tags": [
@@ -3907,6 +3972,7 @@
                 "ADMIN_LOGOUT",
                 "ADMIN_PASSWORD_CHANGE",
                 "ADMIN_RECOVERY_USE",
+                "ADMIN_RECOVERY_CODES_REGENERATED",
                 "ADMIN_RECOVERY_ENROLLMENT_RESET",
                 "ADMIN_CREATED",
                 "ADMIN_PROFILE_UPDATED",
@@ -6898,6 +6964,7 @@
               "ADMIN_LOGOUT",
               "ADMIN_PASSWORD_CHANGE",
               "ADMIN_RECOVERY_USE",
+              "ADMIN_RECOVERY_CODES_REGENERATED",
               "ADMIN_RECOVERY_ENROLLMENT_RESET",
               "ADMIN_CREATED",
               "ADMIN_PROFILE_UPDATED",

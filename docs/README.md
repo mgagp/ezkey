@@ -9,6 +9,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture, security design, and cryptographic implementation
 - **[CRYPTO.md](CRYPTO.md)** - Detailed cryptographic specifications and implementation details
 - **[ENDPOINT.md](ENDPOINT.md)** - API endpoint documentation and specifications
+- **[analysis/EXCEPTION_MAPPING_WAVE_1_ANALYSIS.md](analysis/EXCEPTION_MAPPING_WAVE_1_ANALYSIS.md)** - First migration wave for named exceptions and RFC 9457 alignment
 - **[../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md)** - Admin UI overview for Global Admin and Tenant Admin workflows
 
 ### 🛠️ Development
@@ -27,6 +28,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 ### 🔒 Security & Compliance
 - **[admin-ui-security.md](admin-ui-security.md)** - Admin UI token handling, Caddy headers / CSP, workflows (Vite vs Docker QA), split deployment, mkcert
 - **[admin-ui-security-validation.md](admin-ui-security-validation.md)** - Developer checklist: how to test headers, token storage, Path A vs B, `curl` / DevTools / Postman
+- **[RECOVERY_CODES_LIFECYCLE_ANALYSIS.md](RECOVERY_CODES_LIFECYCLE_ANALYSIS.md)** - Recovery-code lifecycle analysis, regeneration policy, operator workflow, and API recommendation
 - **[../SECURITY.md](../SECURITY.md)** - Security policy and vulnerability disclosure
 - **[SOC2_PREPARATION.md](SOC2_PREPARATION.md)** - SOC2 compliance preparation roadmap
 - **[SOC2_QUICK_START.md](SOC2_QUICK_START.md)** - Quick wins for first 30 days of SOC2 preparation

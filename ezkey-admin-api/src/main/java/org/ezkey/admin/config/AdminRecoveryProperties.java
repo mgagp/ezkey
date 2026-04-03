@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
  * <p><b>Security Model:</b>
  *
  * <ul>
- *   <li>10 recovery codes per admin (configurable)
+ *   <li>5 recovery codes per admin by default (configurable)
  *   <li>Format: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX (32 digits, 106-bit entropy)
  *   <li>BCrypt hashed storage
  *   <li>Single-use: Removed after successful validation
@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component;
  * <p><b>Configuration Example:</b>
  *
  * <pre>
- * ezkey.admin.recovery.codes-count=10
+ * ezkey.admin.recovery.codes-count=5
  * ezkey.admin.recovery.temp-token-duration-minutes=30
  * </pre>
  *
@@ -48,8 +48,8 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "ezkey.admin.recovery")
 public class AdminRecoveryProperties {
 
-  /** Number of recovery codes generated per admin. Default: 10 */
-  private int codesCount = 10;
+  /** Number of recovery codes generated per admin. Default: 5 */
+  private int codesCount = 5;
 
   /** Temporary recovery token validity duration in minutes. Default: 30 minutes */
   private int tempTokenDurationMinutes = 30;
@@ -57,7 +57,7 @@ public class AdminRecoveryProperties {
   /**
    * Gets the number of recovery codes to generate per admin.
    *
-   * @return the number of recovery codes (default: 10)
+   * @return the number of recovery codes (default: 5)
    */
   public int getCodesCount() {
     return codesCount;

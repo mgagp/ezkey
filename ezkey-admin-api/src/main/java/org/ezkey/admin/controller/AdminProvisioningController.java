@@ -22,11 +22,13 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.ezkey.admin.audit.RecoveryAuditDetails;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.AdminCreateRequestDto;
 import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
 import org.ezkey.admin.dto.response.AdminOnboardingResponseDto;
 import org.ezkey.admin.dto.response.AdminProvisioningResponseDto;
+import org.ezkey.admin.dto.response.AdminRecoveryCodesRegenerationResponseDto;
 import org.ezkey.admin.dto.response.AdminResponseDto;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
@@ -34,6 +36,7 @@ import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminProvisioningService.OnboardingCredentialsResult;
 import org.ezkey.admin.service.AdminProvisioningService.ProvisioningResult;
+import org.ezkey.admin.service.AdminProvisioningService.RecoveryCodesRegenerationResult;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.admin.util.AuditHelper;
@@ -52,6 +55,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -726,6 +730,147 @@ public class AdminProvisioningController {
           httpRequest,
           e.getMessage() != null ? e.getMessage() : "Invalid request.",
           "invalid-request",
+          "Invalid Request");
+    }
+  }
+
+  /**
+   * Regenerates recovery codes for an administrator.
+   *
+   * <p>GlobalAdmin can regenerate recovery codes for any admin. TenantAdmin can regenerate recovery
+   * codes for admins in their tenant. The operation invalidates any remaining unused recovery codes
+   * and returns a new plain-text set once.
+   *
+   * @param id the administrator ID
+   * @param auth the authentication context
+   * @param httpRequest the HTTP request for audit context
+   * @return ResponseEntity with the new recovery codes (200 OK)
+   */
+  @PostMapping("/{id}/recovery-codes/regenerate")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Regenerate administrator recovery codes",
+      description =
+          "Generates a new set of single-use recovery codes for an administrator. Previous unused"
+              + " codes are invalidated immediately. GlobalAdmin can access any admin; TenantAdmin"
+              + " can access admins in their tenant.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Recovery codes regenerated successfully"),
+    @ApiResponse(responseCode = "400", description = "Target administrator is inactive"),
+    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
+    @ApiResponse(responseCode = "404", description = "Administrator not found")
+  })
+  public ResponseEntity<?> regenerateRecoveryCodes(
+      @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    if (principal == null || (!principal.isGlobalAdmin() && !principal.isTenantAdmin())) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      RecoveryCodesRegenerationResult result =
+          provisioningService.regenerateRecoveryCodes(id, principal);
+      int newCodesCount = result.recoveryCodes() != null ? result.recoveryCodes().size() : 0;
+      boolean selfService = principal.adminId().equals(result.admin().getAdminId());
+
+      AdminRecoveryCodesRegenerationResponseDto response =
+          new AdminRecoveryCodesRegenerationResponseDto(
+              result.admin().getAdminId(),
+              result.admin().getUsername(),
+              result.recoveryCodes(),
+              newCodesCount,
+              true,
+              "New recovery codes generated. Previous unused codes are no longer valid.");
+
+      Integer tenantId =
+          result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null;
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_CODES_REGENERATED,
+                  AdminAuditConstants.RECOVERY_CODES_REGENERATED,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
+              .targetAdminId(result.admin().getAdminId())
+              .eventDetails(
+                  RecoveryAuditDetails.recoveryCodesRegenerated(
+                      principal.adminId(),
+                      result.admin().getAdminId(),
+                      result.admin().getUsername(),
+                      tenantId,
+                      result.previousCodesCount(),
+                      newCodesCount,
+                      selfService))
+              .build());
+
+      return ResponseEntity.ok(response);
+    } catch (ResourceNotFoundException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_CODES_REGENERATED,
+                  AdminAuditConstants.RECOVERY_CODES_REGENERATION_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage("Administrator not found: " + id)
+              .eventDetails(
+                  RecoveryAuditDetails.recoveryCodesRegenerationRejected(
+                      principal.adminId(),
+                      id,
+                      principal.tenantId(),
+                      "admin_not_found",
+                      "Administrator not found"))
+              .build());
+      throw e;
+    } catch (AccessDeniedException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_CODES_REGENERATED,
+                  AdminAuditConstants.RECOVERY_CODES_REGENERATION_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  RecoveryAuditDetails.recoveryCodesRegenerationRejected(
+                      principal.adminId(),
+                      id,
+                      principal.tenantId(),
+                      "access_denied",
+                      e.getMessage()))
+              .build());
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    } catch (IllegalStateException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_CODES_REGENERATED,
+                  AdminAuditConstants.RECOVERY_CODES_REGENERATION_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  RecoveryAuditDetails.recoveryCodesRegenerationRejected(
+                      principal.adminId(),
+                      id,
+                      principal.tenantId(),
+                      "admin_inactive",
+                      e.getMessage()))
+              .build());
+      return badRequest(
+          httpRequest,
+          e.getMessage() != null ? e.getMessage() : "Invalid request.",
+          "admin-inactive",
           "Invalid Request");
     }
   }

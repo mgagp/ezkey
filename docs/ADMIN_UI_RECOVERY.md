@@ -18,6 +18,7 @@ The Admin UI implements this as a **recovery funnel** on the login page, not as 
 ## Provisioning
 
 - New administrators receive recovery codes at **creation** time in the provisioning API response (`recoveryCodes` on the create response).
+- Administrators can also receive a **replacement set** later through `POST /api/v1/admins/{id}/recovery-codes/regenerate`; the previous unused set is invalidated immediately.
 - `GET /api/v1/admins/{id}/onboarding` does **not** return plaintext recovery codes (hashed at rest). Operators must save codes from the create-success screen or out-of-band processes (e.g. bootstrap logs for the initial global admin).
 
 ## References

@@ -43,8 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Security Model:</b>
  *
  * <ul>
- *   <li>10 recovery codes per admin (industry standard)
- *   <li>Format: XXX-XXX-XXX (9 alphanumeric characters, dash-separated)
+ *   <li>5 recovery codes per admin by default (configurable)
+ *   <li>Format: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX (32 digits)
  *   <li>BCrypt hashed storage (same security as passwords)
  *   <li>Single-use: Code removed from array after successful use
  *   <li>Limited access: Recovery token valid 30 minutes, enrollment binding only
@@ -92,9 +92,10 @@ public class AdminRecoveryService {
   /**
    * Generate recovery codes for an administrator.
    *
-   * <p>Generates 10 single-use recovery codes in format XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX.
-   * Each code contains 32 digits providing 106 bits of entropy (paranoia-level security). Codes are
-   * cryptographically secure and BCrypt hashed before storage.
+   * <p>Generates the configured number of single-use recovery codes in format
+   * XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX. Each code contains 32 digits providing 106 bits of
+   * entropy (paranoia-level security). Codes are cryptographically secure and BCrypt hashed before
+   * storage.
    *
    * @return RecoveryCodesResult containing plain codes (for display) and hashed codes (for storage)
    */
@@ -284,8 +285,8 @@ public class AdminRecoveryService {
   /**
    * Rotate recovery codes for an administrator.
    *
-   * <p>Generates a new set of 10 recovery codes, invalidating all previous codes. This should be
-   * done after using recovery mode or periodically for security.
+   * <p>Generates a new configured set of recovery codes, invalidating all previous codes. This is
+   * intended for explicit operator-driven regeneration.
    *
    * @param admin the administrator to rotate codes for
    * @return RecoveryCodesResult with new plain codes (for display)

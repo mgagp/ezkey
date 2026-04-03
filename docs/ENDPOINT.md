@@ -798,6 +798,7 @@ Administrator provisioning endpoints allow GlobalAdmins and TenantAdmins to crea
 **Security Pattern:**
 - Creation endpoints return basic admin information plus **one-time plain recovery codes** (`recoveryCodes`). Enrollment proof token and challenge are **not** in this response; they are retrieved via GET `/api/v1/admins/{id}/onboarding`.
 - Follows the same split as the enrollment API: bind credentials via a dedicated retrieval path; recovery codes are shown once at creation.
+- The default recovery-code set size is **5** and remains configurable via `ezkey.admin.recovery.codes-count`.
 
 **Multi-Tenancy:**
 - **GlobalAdmin**: Can create GlobalAdmins and TenantAdmins for any tenant
@@ -990,7 +991,54 @@ This allows the mobile app to automatically populate enrollment credentials and 
 
 ---
 
-### e) List Administrators
+### e) Regenerate Recovery Codes
+
+**POST /api/v1/admins/{id}/recovery-codes/regenerate**
+
+Generates a fresh one-time set of recovery codes for the target administrator and immediately
+invalidates any previous unused recovery codes.
+
+**Permissions:**
+- **GlobalAdmin**: Can regenerate recovery codes for any administrator
+- **TenantAdmin**: Can regenerate recovery codes for administrators in their tenant
+
+**Request:**
+```http
+POST /api/v1/admins/2/recovery-codes/regenerate
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "adminId": 2,
+  "username": "tenant.admin",
+  "recoveryCodes": [
+    "1111-2222-3333-4444-5555-6666-7777-8888",
+    "..."
+  ],
+  "codesCount": 5,
+  "invalidatedPreviousCodes": true,
+  "message": "New recovery codes generated. Previous unused codes are no longer valid."
+}
+```
+
+**Notes:**
+- `recoveryCodes` are plain text and are shown **only in this response**.
+- The previous remaining recovery codes are revoked immediately.
+- Inactive administrators cannot receive regenerated recovery codes.
+
+**Status Codes:**
+- 200: Recovery codes regenerated successfully
+- 400: Target administrator is inactive
+- 401: Unauthorized - admin token required
+- 403: Forbidden - not authorized for this administrator
+- 404: Administrator not found
+- 500: Internal server error
+
+---
+
+### e2) List Administrators
 
 **GET /api/v1/admins**
 
@@ -1045,7 +1093,7 @@ Authorization: Bearer ezkey_admin_token...
 
 ---
 
-### e2) Get Administrator by ID
+### e3) Get Administrator by ID
 
 **GET /api/v1/admins/{id}**
 
@@ -1070,7 +1118,7 @@ Authorization: Bearer ezkey_admin_token...
 
 ---
 
-### e3) Deactivate Administrator
+### e4) Deactivate Administrator
 
 **POST /api/v1/admins/{id}/deactivate**
 
@@ -1097,7 +1145,7 @@ Authorization: Bearer ezkey_admin_token...
 
 ---
 
-### e4) Activate Administrator
+### e5) Activate Administrator
 
 **POST /api/v1/admins/{id}/activate**
 

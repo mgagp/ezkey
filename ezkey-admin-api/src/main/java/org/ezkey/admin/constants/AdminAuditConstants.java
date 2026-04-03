@@ -114,6 +114,13 @@ public final class AdminAuditConstants {
   public static final String ENROLLMENT_RESET_VIA_RECOVERY_FAILED =
       "enrollment_reset_via_recovery_failed";
 
+  /** Audit action for successful regeneration of recovery codes. */
+  public static final String RECOVERY_CODES_REGENERATED = "recovery_codes_regenerated";
+
+  /** Audit action for failed regeneration of recovery codes. */
+  public static final String RECOVERY_CODES_REGENERATION_FAILED =
+      "recovery_codes_regeneration_failed";
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Enrollment Management Actions
   // ═══════════════════════════════════════════════════════════════════════════

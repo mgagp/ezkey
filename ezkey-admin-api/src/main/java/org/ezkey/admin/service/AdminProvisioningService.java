@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -893,6 +894,71 @@ public class AdminProvisioningService {
       String enrollmentProofToken,
       Integer enrollmentChallenge,
       java.util.List<String> recoveryCodes) {}
+
+  /**
+   * Result containing a newly generated set of recovery codes for an administrator.
+   *
+   * @param admin target administrator
+   * @param recoveryCodes new plain-text recovery codes shown once
+   * @param previousCodesCount count of codes that existed before regeneration
+   */
+  public record RecoveryCodesRegenerationResult(
+      EzkeyAdmin admin, java.util.List<String> recoveryCodes, int previousCodesCount) {}
+
+  /**
+   * Regenerates recovery codes for an administrator within the caller's authorization scope.
+   *
+   * <p>GlobalAdmin can regenerate codes for any administrator. TenantAdmin can regenerate codes for
+   * administrators in their tenant. The target administrator must be active. Regeneration replaces
+   * the full previous set, invalidating any remaining unused codes.
+   *
+   * @param adminId the administrator whose recovery codes should be regenerated
+   * @param requesterPrincipal the principal performing the operation
+   * @return result containing the target admin, new plain-text codes, and previous code count
+   * @throws ResourceNotFoundException if the target administrator does not exist
+   * @throws AccessDeniedException if the caller is outside the allowed scope
+   * @throws IllegalStateException if the target administrator is inactive
+   */
+  @Transactional
+  public RecoveryCodesRegenerationResult regenerateRecoveryCodes(
+      Integer adminId, AdminPrincipal requesterPrincipal) {
+    EzkeyAdmin admin =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
+
+    if (requesterPrincipal.isGlobalAdmin()) {
+      logger.debug("GlobalAdmin regenerating recovery codes for admin {}", adminId);
+    } else if (requesterPrincipal.isTenantAdmin()) {
+      Integer requesterTenantId = requesterPrincipal.tenantId();
+      Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+      if (requesterTenantId == null || !requesterTenantId.equals(adminTenantId)) {
+        throw new AccessDeniedException(
+            "Tenant administrators can only regenerate recovery codes for admins in their tenant");
+      }
+    } else {
+      throw new AccessDeniedException("Only administrators can regenerate recovery codes");
+    }
+
+    if (!Boolean.TRUE.equals(admin.getActive())) {
+      throw new IllegalStateException(
+          "Cannot regenerate recovery codes for an inactive administrator");
+    }
+
+    int previousCodesCount = admin.getRecoveryCodes() != null ? admin.getRecoveryCodes().length : 0;
+    AdminRecoveryService.RecoveryCodesResult recoveryCodes =
+        recoveryService.rotateRecoveryCodes(admin);
+
+    logger.info(
+        "✅ Recovery codes regenerated for admin {} by admin {} (previous={}, new={})",
+        admin.getUsername(),
+        requesterPrincipal.adminId(),
+        previousCodesCount,
+        recoveryCodes.getPlainCodes().size());
+
+    return new RecoveryCodesRegenerationResult(
+        admin, recoveryCodes.getPlainCodes(), previousCodesCount);
+  }
 
   /**
    * Extracts AdminPrincipal from authentication context.
