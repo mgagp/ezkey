@@ -14,7 +14,6 @@ import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.ezkey.dto.ErrorResponseDto;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.exception.ApiKeyCreateValidationException;
@@ -41,7 +40,7 @@ import org.springframework.web.context.request.WebRequest;
  * processing and data persistence, converting them into standardized HTTP responses with
  * appropriate status codes.
  *
- * <p><b>Exceptions Handled (6 total):</b>
+ * <p><b>Exceptions handled (representative):</b>
  *
  * <ul>
  *   <li><b>MethodArgumentNotValidException (400):</b> Bean Validation failures on request
@@ -57,8 +56,8 @@ import org.springframework.web.context.request.WebRequest;
  *       UNIQUE, FOREIGN KEY)
  * </ul>
  *
- * <p><b>Response Format:</b> All responses use ErrorResponseDto for consistency with legacy error
- * handling. These are data/constraint validation errors that are client-correctable.
+ * <p><b>Response format:</b> RFC 9457 {@link ProblemDetail}. These are data/constraint validation
+ * errors that are client-correctable.
  *
  * <p><b>HTTP Status Codes:</b>
  *
@@ -76,7 +75,7 @@ import org.springframework.web.context.request.WebRequest;
  *   <li>MethodArgumentNotValidException includes detailed field-level error messages
  *   <li>HttpMessageNotReadableException handles JSON parsing failures (critical for record DTOs)
  *   <li>DataIntegrityViolationException messages are sanitized to avoid exposing database schema
- *   <li>Error codes identify validation type (VALIDATION_ERROR, MALFORMED_REQUEST, etc.)
+ *   <li>Problem {@code type} URIs identify the error category (see {@link AdminApiProblemCatalog})
  *   <li>All handlers are simple, focused, and easy to extend or maintain
  * </ul>
  *
@@ -86,7 +85,7 @@ import org.springframework.web.context.request.WebRequest;
  *
  * @author Ezkey contributors
  * @since 2025
- * @see ErrorResponseDto
+ * @see AdminApiProblemCatalog
  * @see MethodArgumentNotValidException
  * @see HttpMessageNotReadableException
  * @see IllegalArgumentException
@@ -97,6 +96,19 @@ import org.springframework.web.context.request.WebRequest;
 @Component
 @Order(10)
 public class ValidationExceptionHandler {
+
+  private static String pathFrom(WebRequest request) {
+    return request.getDescription(false).replace("uri=", "");
+  }
+
+  private static ResponseEntity<ProblemDetail> problemResponse(
+      HttpStatus status, String typeUri, String title, String detail, WebRequest request) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+    problem.setType(URI.create(typeUri));
+    problem.setTitle(title);
+    problem.setProperty("path", pathFrom(request));
+    return ResponseEntity.status(status).body(problem);
+  }
 
   /**
    * Handles MethodArgumentNotValidException and returns HTTP 400 Bad Request.
@@ -117,11 +129,7 @@ public class ValidationExceptionHandler {
    *
    * <pre>
    * Input: POST /api/v1/admin/admins with invalid email format
-   * Response: {
-   *   "code": "VALIDATION_ERROR",
-   *   "message": "email: must be a valid email address",
-   *   "path": "/api/v1/admin/admins"
-   * }
+   * Response: RFC 9457 ProblemDetail with type .../validation-failed and detail listing fields
    * </pre>
    *
    * @param ex the MethodArgumentNotValidException that was thrown
@@ -130,7 +138,7 @@ public class ValidationExceptionHandler {
    * @since 2025
    */
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<ErrorResponseDto> handleMethodArgumentNotValidException(
+  public ResponseEntity<ProblemDetail> handleMethodArgumentNotValidException(
       MethodArgumentNotValidException ex, WebRequest request) {
 
     // Extract validation error messages for each failed field
@@ -141,11 +149,12 @@ public class ValidationExceptionHandler {
 
     String message = String.join("; ", errors);
 
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "VALIDATION_ERROR", message, request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AdminApiProblemCatalog.TYPE_VALIDATION_FAILED,
+        AdminApiProblemCatalog.TITLE_VALIDATION_FAILED,
+        message,
+        request);
   }
 
   @ExceptionHandler(AuthAttemptWaitValidationException.class)
@@ -238,11 +247,7 @@ public class ValidationExceptionHandler {
    *
    * <pre>
    * Input: Invalid enum value for admin type
-   * Response: {
-   *   "code": "INVALID_ARGUMENT",
-   *   "message": "Invalid admin type: SUPERUSER",
-   *   "path": "/api/v1/admin/admins"
-   * }
+   * Response: RFC 9457 ProblemDetail with type .../invalid-argument
    * </pre>
    *
    * @param ex the IllegalArgumentException that was thrown
@@ -251,13 +256,14 @@ public class ValidationExceptionHandler {
    * @since 2025
    */
   @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<ErrorResponseDto> handleIllegalArgumentException(
+  public ResponseEntity<ProblemDetail> handleIllegalArgumentException(
       IllegalArgumentException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "INVALID_ARGUMENT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AdminApiProblemCatalog.TYPE_INVALID_ARGUMENT,
+        AdminApiProblemCatalog.TITLE_INVALID_ARGUMENT,
+        ex.getMessage(),
+        request);
   }
 
   /**
@@ -272,11 +278,7 @@ public class ValidationExceptionHandler {
    *
    * <pre>
    * Input: POST /password-reset with user who doesn't have valid recovery code
-   * Response: {
-   *   "code": "STATE_CONFLICT",
-   *   "message": "Password reset not available for this account",
-   *   "path": "/api/v1/admin/accounts/456/password-reset"
-   * }
+   * Response: RFC 9457 ProblemDetail with type .../state-conflict (HTTP 409)
    * </pre>
    *
    * @param ex the IllegalStateException that was thrown
@@ -285,13 +287,14 @@ public class ValidationExceptionHandler {
    * @since 2025
    */
   @ExceptionHandler(IllegalStateException.class)
-  public ResponseEntity<ErrorResponseDto> handleIllegalStateException(
+  public ResponseEntity<ProblemDetail> handleIllegalStateException(
       IllegalStateException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "STATE_CONFLICT", ex.getMessage(), request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    return problemResponse(
+        HttpStatus.CONFLICT,
+        AdminApiProblemCatalog.TYPE_STATE_CONFLICT,
+        AdminApiProblemCatalog.TITLE_STATE_CONFLICT,
+        ex.getMessage(),
+        request);
   }
 
   /**
@@ -307,11 +310,7 @@ public class ValidationExceptionHandler {
    *
    * <pre>
    * Input: PATCH /api/v1/tenants/1 with version=5, but current version is 6
-   * Response: {
-   *   "code": "OPTIMISTIC_LOCK_CONFLICT",
-   *   "message": "Resource was modified by another request. Re-fetch and retry.",
-   *   "path": "/api/v1/tenants/1"
-   * }
+   * Response: RFC 9457 ProblemDetail with type .../optimistic-lock-conflict (HTTP 409)
    * </pre>
    *
    * @param ex the ObjectOptimisticLockingFailureException that was thrown
@@ -320,15 +319,14 @@ public class ValidationExceptionHandler {
    * @since 2025
    */
   @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-  public ResponseEntity<ErrorResponseDto> handleOptimisticLockingFailure(
+  public ResponseEntity<ProblemDetail> handleOptimisticLockingFailure(
       ObjectOptimisticLockingFailureException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "OPTIMISTIC_LOCK_CONFLICT",
-            "Resource was modified by another request. Re-fetch and retry.",
-            request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    return problemResponse(
+        HttpStatus.CONFLICT,
+        AdminApiProblemCatalog.TYPE_OPTIMISTIC_LOCK_CONFLICT,
+        AdminApiProblemCatalog.TITLE_OPTIMISTIC_LOCK,
+        "Resource was modified by another request. Re-fetch and retry.",
+        request);
   }
 
   /**
@@ -357,11 +355,7 @@ public class ValidationExceptionHandler {
    *
    * <pre>
    * Input: POST /api/v1/integrations with missing required i18n.name field
-   * Response: {
-   *   "code": "MALFORMED_REQUEST",
-   *   "message": "Invalid request: missing or malformed fields in request body",
-   *   "path": "/api/v1/integrations"
-   * }
+   * Response: RFC 9457 ProblemDetail with type .../malformed-request
    * </pre>
    *
    * @param ex the HttpMessageNotReadableException that was thrown
@@ -370,15 +364,14 @@ public class ValidationExceptionHandler {
    * @since 2025
    */
   @ExceptionHandler(HttpMessageNotReadableException.class)
-  public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadableException(
+  public ResponseEntity<ProblemDetail> handleHttpMessageNotReadableException(
       HttpMessageNotReadableException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "MALFORMED_REQUEST",
-            "Invalid request: missing or malformed fields in request body",
-            request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AdminApiProblemCatalog.TYPE_MALFORMED_REQUEST,
+        AdminApiProblemCatalog.TITLE_MALFORMED_REQUEST,
+        "Invalid request: missing or malformed fields in request body",
+        request);
   }
 
   /**
@@ -406,11 +399,7 @@ public class ValidationExceptionHandler {
    *
    * <pre>
    * Input: POST /api/v1/admin/admins with duplicate email
-   * Response: {
-   *   "code": "CONSTRAINT_VIOLATION",
-   *   "message": "Email already exists",
-   *   "path": "/api/v1/admin/admins"
-   * }
+   * Response: RFC 9457 ProblemDetail with type .../data-constraint-violation
    * </pre>
    *
    * @param ex the DataIntegrityViolationException that was thrown
@@ -419,7 +408,7 @@ public class ValidationExceptionHandler {
    * @since 2025
    */
   @ExceptionHandler(DataIntegrityViolationException.class)
-  public ResponseEntity<ErrorResponseDto> handleDataIntegrityViolationException(
+  public ResponseEntity<ProblemDetail> handleDataIntegrityViolationException(
       DataIntegrityViolationException ex, WebRequest request) {
 
     // Extract a user-friendly error message from the exception
@@ -462,11 +451,12 @@ public class ValidationExceptionHandler {
       message = "Invalid data: constraint violation";
     }
 
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "CONSTRAINT_VIOLATION", message, request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AdminApiProblemCatalog.TYPE_DATA_CONSTRAINT_VIOLATION,
+        AdminApiProblemCatalog.TITLE_DATA_CONSTRAINT,
+        message,
+        request);
   }
 
   /**
@@ -483,11 +473,7 @@ public class ValidationExceptionHandler {
    *
    * <pre>
    * Input: DELETE /api/v1/api-keys/42?reason=short
-   * Response: {
-   *   "code": "VALIDATION_ERROR",
-   *   "message": "revokeApiKey.reason: Reason must be between 10 and 500 characters",
-   *   "path": "/api/v1/api-keys/42"
-   * }
+   * Response: RFC 9457 ProblemDetail with type .../validation-failed
    * </pre>
    *
    * @param ex the ConstraintViolationException that was thrown
@@ -496,16 +482,18 @@ public class ValidationExceptionHandler {
    * @since 2025
    */
   @ExceptionHandler(ConstraintViolationException.class)
-  public ResponseEntity<ErrorResponseDto> handleConstraintViolationException(
+  public ResponseEntity<ProblemDetail> handleConstraintViolationException(
       ConstraintViolationException ex, WebRequest request) {
     String message =
         ex.getConstraintViolations().stream()
             .map(v -> v.getPropertyPath() + ": " + v.getMessage())
             .collect(Collectors.joining("; "));
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "VALIDATION_ERROR", message, request.getDescription(false).replace("uri=", ""));
-    return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AdminApiProblemCatalog.TYPE_VALIDATION_FAILED,
+        AdminApiProblemCatalog.TITLE_VALIDATION_FAILED,
+        message,
+        request);
   }
 
   /**

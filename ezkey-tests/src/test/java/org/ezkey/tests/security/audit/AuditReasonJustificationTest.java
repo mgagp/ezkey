@@ -142,7 +142,7 @@ public class AuditReasonJustificationTest extends AbstractSecurityTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @DisplayName("Revoke API key with short reason (< 10 chars) – returns 400 VALIDATION_ERROR")
+  @DisplayName("Revoke API key with short reason (< 10 chars) – returns 400 RFC 9457 validation")
   public void testRevokeWithShortReason_returns400() {
     RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
 
@@ -162,10 +162,13 @@ public class AuditReasonJustificationTest extends AbstractSecurityTest {
     assertThat(response.getStatusCode())
         .as("Short reason must be rejected with HTTP 400")
         .isEqualTo(400);
-    assertThat(response.jsonPath().getString("code"))
-        .as("Error code must be VALIDATION_ERROR")
-        .isEqualTo("VALIDATION_ERROR");
-    log.info("Verified: short reason returns 400 VALIDATION_ERROR");
+    assertThat(response.jsonPath().getString("type"))
+        .as("Problem type must be admin validation-failed")
+        .isEqualTo("https://ezkey.io/problems/admin/validation-failed");
+    assertThat(response.jsonPath().getString("detail"))
+        .as("Detail must describe the constraint violation")
+        .contains("Reason must be between 10 and 500");
+    log.info("Verified: short reason returns 400 RFC 9457 validation-failed");
   }
 
   // -----------------------------------------------------------------------

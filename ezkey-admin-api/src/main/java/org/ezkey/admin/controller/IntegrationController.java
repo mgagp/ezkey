@@ -191,7 +191,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
+                            implementation = org.springframework.http.ProblemDetail.class)))
       })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
@@ -286,7 +286,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = org.springframework.http.ProblemDetail.class))),
         @ApiResponse(
             responseCode = "500",
             description = "Internal server error",
@@ -294,7 +294,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
+                            implementation = org.springframework.http.ProblemDetail.class)))
       })
   @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/{id}")
@@ -346,7 +346,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = org.springframework.http.ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
             description = "Integration code already exists for this tenant",
@@ -362,7 +362,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
+                            implementation = org.springframework.http.ProblemDetail.class)))
       })
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping
@@ -448,7 +448,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = org.springframework.http.ProblemDetail.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Integration not found",
@@ -456,7 +456,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
+                            implementation = org.springframework.http.ProblemDetail.class)))
       })
   @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/{id}/retire")
@@ -543,7 +543,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = org.springframework.http.ProblemDetail.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Integration not found",
@@ -551,7 +551,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = org.springframework.http.ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
             description = "Integration must be retired first and must not have enrollments",
@@ -559,7 +559,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class))),
+                            implementation = org.springframework.http.ProblemDetail.class))),
         @ApiResponse(
             responseCode = "500",
             description = "Internal server error",
@@ -567,7 +567,7 @@ public class IntegrationController {
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =
                         @io.swagger.v3.oas.annotations.media.Schema(
-                            implementation = org.ezkey.dto.ErrorResponseDto.class)))
+                            implementation = org.springframework.http.ProblemDetail.class)))
       })
   @PreAuthorize("hasRole('ADMIN')")
   @DeleteMapping("/{id}")

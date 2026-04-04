@@ -36,7 +36,6 @@ import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
-import org.ezkey.dto.ErrorResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
@@ -202,9 +201,6 @@ public class AdminNativeConfiguration {
       // Register AuditLog DTOs for reflection
       hints.reflection().registerType(AuditLogResponseDto.class);
 
-      // Register ErrorResponseDto for reflection (used by ValidationExceptionHandler)
-      hints.reflection().registerType(ErrorResponseDto.class);
-
       // Register serialization hints for Jackson - Integration DTOs
       hints
           .serialization()
@@ -290,11 +286,6 @@ public class AdminNativeConfiguration {
       hints
           .serialization()
           .registerType(org.springframework.aot.hint.TypeReference.of(AuditLogResponseDto.class));
-
-      // Register serialization hints for Jackson - ErrorResponseDto (ValidationExceptionHandler)
-      hints
-          .serialization()
-          .registerType(org.springframework.aot.hint.TypeReference.of(ErrorResponseDto.class));
 
       // Register serialization hints for Jackson - JPA Entities
       hints

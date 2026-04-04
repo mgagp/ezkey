@@ -169,7 +169,7 @@ class HttpStatusSecurityTest {
     // Documentation: GlobalExceptionHandler now includes:
     //
     // @ExceptionHandler(IllegalStateException.class)
-    // public ResponseEntity<ErrorResponseDto> handleIllegalStateException(...) {
+    // public ResponseEntity<ProblemDetail> handleIllegalStateException(...) {
     // return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT); // 409
     // }
 

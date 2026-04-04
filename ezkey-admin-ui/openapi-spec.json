@@ -585,7 +585,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -625,7 +625,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -645,7 +645,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -694,7 +694,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -704,7 +704,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3264,7 +3264,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3274,7 +3274,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3321,7 +3321,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3331,7 +3331,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3341,7 +3341,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -3351,7 +3351,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -5198,38 +5198,6 @@
             "example": 42
           }
         }
-      },
-      "ErrorResponseDto": {
-        "type": "object",
-        "description": "Standardized error response for all API errors",
-        "properties": {
-          "code": {
-            "type": "string",
-            "description": "Error code identifier for categorizing the error type",
-            "example": "RESOURCE_NOT_FOUND"
-          },
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message describing what went wrong",
-            "example": "The requested resource was not found"
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the error occurred",
-            "example": "2025-10-15T14:30:00+00:00"
-          },
-          "path": {
-            "type": "string",
-            "description": "Request path that caused the error",
-            "example": "/api/v1/auth-attempts/123"
-          }
-        },
-        "required": [
-          "code",
-          "message",
-          "timestamp"
-        ]
       },
       "ProblemDetail": {
         "type": "object",
