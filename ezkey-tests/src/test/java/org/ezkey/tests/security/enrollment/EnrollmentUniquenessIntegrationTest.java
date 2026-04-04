@@ -76,6 +76,7 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
     Response response =
         given()
             .contentType(ContentType.JSON)
+            .accept("application/problem+json")
             .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
             .body(request)
             .when()
@@ -84,13 +85,16 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    // Assert: Should be rejected with 400 Bad Request
-    assertThat(response.getStatusCode()).isEqualTo(400);
-    String responseBody = response.getBody().asString();
-    assertThat(
-            responseBody.contains("active verified enrollment")
-                || responseBody.contains("recovery process"))
-        .isTrue();
+    // Assert: Should be rejected with 409 Conflict ProblemDetail
+    assertThat(response.getStatusCode()).isEqualTo(409);
+    assertThat(response.getContentType()).contains("application/problem+json");
+    assertThat(response.jsonPath().getString("type"))
+        .isEqualTo("https://ezkey.io/problems/enrollment/active-verified-enrollment-exists");
+    assertThat(response.jsonPath().getString("title"))
+        .isEqualTo("Active Verified Enrollment Already Exists");
+    assertThat(response.jsonPath().getString("detail"))
+        .contains("active verified enrollment")
+        .contains("recovery process");
   }
 
   @Test
@@ -121,6 +125,7 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
     Response response =
         given()
             .contentType(ContentType.JSON)
+            .accept("application/problem+json")
             .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
             .body(request)
             .when()
@@ -652,6 +657,7 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
     Response response =
         given()
             .contentType(ContentType.JSON)
+            .accept("application/problem+json")
             .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
             .body(request)
             .when()
@@ -660,14 +666,12 @@ public class EnrollmentUniquenessIntegrationTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    // Assert: Should be rejected with 400 Bad Request
-    assertThat(response.getStatusCode()).isEqualTo(400);
-    String responseBody = response.getBody().asString();
-
-    // Verify error message contains recovery process endpoints
-    assertThat(responseBody)
+    // Assert: Should be rejected with 409 Conflict ProblemDetail
+    assertThat(response.getStatusCode()).isEqualTo(409);
+    assertThat(response.getContentType()).contains("application/problem+json");
+    assertThat(response.jsonPath().getString("detail"))
         .containsAnyOf("/api/v1/admin/auth/recover", "/auth/recover", "recovery process");
-    assertThat(responseBody)
+    assertThat(response.jsonPath().getString("detail"))
         .containsAnyOf("/api/v1/admin/enrollments/reset", "/enrollments/reset", "recovery process");
   }
 

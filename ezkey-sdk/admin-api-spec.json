@@ -1135,6 +1135,26 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden by enrollment policy",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentCreateResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Enrollment conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentCreateResponseDto"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -1767,7 +1787,7 @@
               }
             }
           },
-          "400": {
+          "409": {
             "description": "Auth attempt already in final state (cannot be cancelled)",
             "content": {
               "*/*": {

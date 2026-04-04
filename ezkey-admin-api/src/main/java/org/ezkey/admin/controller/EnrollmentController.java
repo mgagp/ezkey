@@ -35,6 +35,7 @@ import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
@@ -47,7 +48,10 @@ import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
+import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.SystemIntegrationEnrollmentCreationException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
@@ -122,6 +126,7 @@ public class EnrollmentController {
   private final EnrollmentRevocationService enrollmentRevocationService;
   private final EnrollmentUpdateService enrollmentUpdateService;
   private final AuthAttemptRepository authAttemptRepository;
+  private final AuditEntityFkResolver auditEntityFkResolver;
 
   /**
    * Constructs the enrollment controller with required dependencies.
@@ -137,6 +142,7 @@ public class EnrollmentController {
    * @param enrollmentRevocationService the service for enrollment revocation lifecycle
    * @param enrollmentUpdateService the service for enrollment metadata partial updates
    * @param authAttemptRepository the repository to check for auth attempts before enrollment delete
+   * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
@@ -149,7 +155,8 @@ public class EnrollmentController {
       IntegrationRepository integrationRepository,
       EnrollmentRevocationService enrollmentRevocationService,
       EnrollmentUpdateService enrollmentUpdateService,
-      AuthAttemptRepository authAttemptRepository) {
+      AuthAttemptRepository authAttemptRepository,
+      AuditEntityFkResolver auditEntityFkResolver) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
@@ -161,6 +168,7 @@ public class EnrollmentController {
     this.enrollmentRevocationService = enrollmentRevocationService;
     this.enrollmentUpdateService = enrollmentUpdateService;
     this.authAttemptRepository = authAttemptRepository;
+    this.auditEntityFkResolver = auditEntityFkResolver;
   }
 
   /**
@@ -365,8 +373,9 @@ public class EnrollmentController {
                   tenantId)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(principal != null ? principal.adminId() : null)
-              .enrollmentId(id)
-              .integrationId(updated.getIntegrationId())
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(id))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(updated.getIntegrationId()))
               .eventDetails(outcome.auditEventDetailsJson())
               .build());
 
@@ -380,7 +389,7 @@ public class EnrollmentController {
                     AdminAuditConstants.ENROLLMENT_UPDATE_FAILED)
                 .eventStatus(EventStatus.FAILURE)
                 .adminId(principal.adminId())
-                .enrollmentId(id)
+                .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(id))
                 .errorMessage("Enrollment not found: " + id)
                 .build());
       }
@@ -396,7 +405,7 @@ public class EnrollmentController {
                     tenantId)
                 .eventStatus(EventStatus.FAILURE)
                 .adminId(principal.adminId())
-                .enrollmentId(id)
+                .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(id))
                 .errorMessage(e.getMessage())
                 .build());
       }
@@ -412,7 +421,7 @@ public class EnrollmentController {
                     tenantId)
                 .eventStatus(EventStatus.FAILURE)
                 .adminId(principal.adminId())
-                .enrollmentId(id)
+                .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(id))
                 .errorMessage("Optimistic lock conflict")
                 .build());
       }
@@ -437,6 +446,8 @@ public class EnrollmentController {
       value = {
         @ApiResponse(responseCode = "201", description = "Enrollment created successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid data"),
+        @ApiResponse(responseCode = "403", description = "Forbidden by enrollment policy"),
+        @ApiResponse(responseCode = "409", description = "Enrollment conflict"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PreAuthorize("hasRole('ADMIN')")
@@ -498,7 +509,8 @@ public class EnrollmentController {
                 .eventStatus(EventStatus.SUCCESS)
                 .adminId(principal != null ? principal.adminId() : null)
                 .enrollmentId(response.getEnrollmentId())
-                .integrationId(request.integrationId())
+                .integrationId(
+                    auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
                 .eventDetails(
                     "Enrollment name: "
                         + request.name()
@@ -516,61 +528,60 @@ public class EnrollmentController {
                 .eventStatus(EventStatus.SUCCESS)
                 .adminId(principal != null ? principal.adminId() : null)
                 .enrollmentId(response.getEnrollmentId())
-                .integrationId(request.integrationId())
+                .integrationId(
+                    auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
                 .eventDetails("Enrollment name: " + request.name())
                 .build());
       }
 
       return ResponseEntity.status(HttpStatus.CREATED)
           .body(enrollmentMapper.toCreateResponseDto(response));
-    } catch (IllegalArgumentException e) {
-      // Check if error is about existing VERIFIED enrollment
-      if (e.getMessage() != null && e.getMessage().contains("active verified enrollment")) {
-        // Query to find existing enrollment for audit purposes
-        Enrollment existing =
-            enrollmentRepository
-                .findByIntegrationIdAndEnrollmentNameAndStatus(
-                    request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
-                .stream()
-                .filter(enrollment -> Boolean.TRUE.equals(enrollment.getActive()))
-                .findFirst()
-                .orElse(null);
+    } catch (ActiveVerifiedEnrollmentExistsException e) {
+      Enrollment existing =
+          enrollmentRepository
+              .findByIntegrationIdAndEnrollmentNameAndStatus(
+                  request.integrationId(), request.name(), EnrollmentStatus.VERIFIED)
+              .stream()
+              .filter(enrollment -> Boolean.TRUE.equals(enrollment.getActive()))
+              .findFirst()
+              .orElse(null);
 
-        auditLogService.log(
-            AuditHelper.createAdminAudit(
-                    context,
-                    EventType.ENROLLMENT_CREATED,
-                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
-                    auditTenantId)
-                .eventStatus(EventStatus.FAILURE)
-                .adminId(principal != null ? principal.adminId() : null)
-                .integrationId(request.integrationId())
-                .enrollmentId(existing != null ? existing.getEnrollmentId() : null)
-                .errorMessage(e.getMessage())
-                .eventDetails(
-                    "Enrollment creation rejected: Active VERIFIED enrollment exists. "
-                        + "Existing enrollment ID: "
-                        + (existing != null ? existing.getEnrollmentId() : "unknown")
-                        + ", Requested name: "
-                        + request.name())
-                .build());
-      } else {
-        auditLogService.log(
-            AuditHelper.createAdminAudit(
-                    context,
-                    EventType.ENROLLMENT_CREATED,
-                    AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
-                    auditTenantId)
-                .eventStatus(EventStatus.FAILURE)
-                .adminId(principal != null ? principal.adminId() : null)
-                .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
-                .build());
-      }
-
-      // Let GlobalExceptionHandler handle the exception to return proper error
-      // response with
-      // message
-      // This ensures consistent error response format across all endpoints
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_CREATED,
+                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal != null ? principal.adminId() : null)
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
+              .enrollmentId(existing != null ? existing.getEnrollmentId() : null)
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  "Enrollment creation rejected: Active VERIFIED enrollment exists. "
+                      + "Existing enrollment ID: "
+                      + (existing != null ? existing.getEnrollmentId() : "unknown")
+                      + ", Requested name: "
+                      + request.name())
+              .build());
+      throw e;
+    } catch (EnrollmentCreateValidationException
+        | SystemIntegrationEnrollmentCreationException
+        | IntegrationLifecycleStateException
+        | TenantInactiveException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ENROLLMENT_CREATED,
+                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal != null ? principal.adminId() : null)
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
+              .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
+              .build());
       throw e;
     } catch (DataIntegrityViolationException e) {
       auditLogService.log(
@@ -587,20 +598,6 @@ public class EnrollmentController {
               .build());
 
       return ResponseEntity.badRequest().build();
-    } catch (IntegrationLifecycleStateException | TenantInactiveException e) {
-      auditLogService.log(
-          AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ENROLLMENT_CREATED,
-                  AdminAuditConstants.ENROLLMENT_CREATION_FAILED,
-                  auditTenantId)
-              .eventStatus(EventStatus.FAILURE)
-              .adminId(principal != null ? principal.adminId() : null)
-              .integrationId(request.integrationId())
-              .errorMessage(e.getMessage() + " (integrationId: " + request.integrationId() + ")")
-              .build());
-
-      throw e;
     } catch (Exception e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(

@@ -40,6 +40,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -92,6 +93,9 @@ class AuditReasonPropagationTest {
 
   // --- ApiKeyController mocks ---
 
+  @Mock private IntegrationRepository apiKeyAuditFkIntegrationRepository;
+  @Mock private EnrollmentRepository apiKeyAuditFkEnrollmentRepository;
+
   @Mock private ApiKeyService apiKeyService;
   @Mock private ApiKeyRepository apiKeyRepository;
   @Mock private AdminOperationsRateLimitService adminOpsRateLimitService;
@@ -139,6 +143,11 @@ class AuditReasonPropagationTest {
     // Arrange
     setupAdminSecurityContext();
     when(adminOpsRateLimitService.canRevokeApiKey(any())).thenReturn(true);
+    lenient().when(apiKeyAuditFkIntegrationRepository.existsById(any())).thenReturn(true);
+    lenient().when(apiKeyAuditFkEnrollmentRepository.existsById(any())).thenReturn(true);
+    AuditEntityFkResolver apiKeyFkResolver =
+        new AuditEntityFkResolver(
+            apiKeyAuditFkIntegrationRepository, apiKeyAuditFkEnrollmentRepository);
     ApiKeyController controller =
         new ApiKeyController(
             apiKeyService,
@@ -146,7 +155,8 @@ class AuditReasonPropagationTest {
             adminOpsRateLimitService,
             adminRepository,
             accessControlService,
-            auditLogService);
+            auditLogService,
+            apiKeyFkResolver);
 
     when(apiKeyService.revokeApiKey(eq(42), any(EzkeyAdmin.class))).thenReturn(true);
 
@@ -169,6 +179,11 @@ class AuditReasonPropagationTest {
     // Arrange
     setupAdminSecurityContext();
     when(adminOpsRateLimitService.canRevokeApiKey(any())).thenReturn(true);
+    lenient().when(apiKeyAuditFkIntegrationRepository.existsById(any())).thenReturn(true);
+    lenient().when(apiKeyAuditFkEnrollmentRepository.existsById(any())).thenReturn(true);
+    AuditEntityFkResolver apiKeyFkResolver =
+        new AuditEntityFkResolver(
+            apiKeyAuditFkIntegrationRepository, apiKeyAuditFkEnrollmentRepository);
     ApiKeyController controller =
         new ApiKeyController(
             apiKeyService,
@@ -176,7 +191,8 @@ class AuditReasonPropagationTest {
             adminOpsRateLimitService,
             adminRepository,
             accessControlService,
-            auditLogService);
+            auditLogService,
+            apiKeyFkResolver);
 
     when(apiKeyService.revokeApiKey(eq(42), any(EzkeyAdmin.class))).thenReturn(true);
 
@@ -214,6 +230,8 @@ class AuditReasonPropagationTest {
     // for test)
     when(integrationRepository.findById(1)).thenReturn(Optional.empty());
 
+    AuditEntityFkResolver enrollmentFkResolver =
+        new AuditEntityFkResolver(integrationRepository, enrollmentRepository);
     EnrollmentController controller =
         new EnrollmentController(
             enrollmentService,
@@ -226,7 +244,8 @@ class AuditReasonPropagationTest {
             integrationRepository,
             enrollmentRevocationService,
             enrollmentUpdateService,
-            authAttemptRepository);
+            authAttemptRepository,
+            enrollmentFkResolver);
 
     // Act
     controller.delete(42, "Decommissioned device returned", httpRequest);
@@ -269,6 +288,8 @@ class AuditReasonPropagationTest {
         .when(enrollmentRevocationService)
         .assertNotLinkedAsAdmin(42);
 
+    AuditEntityFkResolver enrollmentFkResolver =
+        new AuditEntityFkResolver(integrationRepository, enrollmentRepository);
     EnrollmentController controller =
         new EnrollmentController(
             enrollmentService,
@@ -281,7 +302,8 @@ class AuditReasonPropagationTest {
             integrationRepository,
             enrollmentRevocationService,
             enrollmentUpdateService,
-            authAttemptRepository);
+            authAttemptRepository,
+            enrollmentFkResolver);
 
     EnrollmentLinkedAsAdminException thrown =
         assertThrows(

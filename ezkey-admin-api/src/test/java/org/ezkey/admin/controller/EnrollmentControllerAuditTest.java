@@ -13,6 +13,8 @@ package org.ezkey.admin.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -34,6 +36,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
@@ -43,6 +46,8 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
+import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -94,6 +99,8 @@ class EnrollmentControllerAuditTest {
 
   private EnrollmentController enrollmentController;
 
+  private AuditEntityFkResolver auditEntityFkResolver;
+
   private EnrollmentCreateRequestDto requestDto;
   private EnrollmentCreateRequest createRequest;
 
@@ -111,10 +118,11 @@ class EnrollmentControllerAuditTest {
     SecurityContextHolder.getContext().setAuthentication(auth);
 
     // Mock mapper
-    when(enrollmentMapper.toCreateRequest(requestDto)).thenReturn(createRequest);
+    lenient().when(enrollmentMapper.toCreateRequest(requestDto)).thenReturn(createRequest);
 
     // Mock access control - allow access
-    when(accessControlService.canAccessIntegration(any(Authentication.class), eq(1)))
+    lenient()
+        .when(accessControlService.canAccessIntegration(any(Authentication.class), eq(1)))
         .thenReturn(true);
 
     // Mock HttpServletRequest for ClientContext (ClientIpResolver with no trusted
@@ -124,6 +132,9 @@ class EnrollmentControllerAuditTest {
     lenient().when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
     when(httpRequest.getHeader("User-Agent")).thenReturn("test-agent");
+
+    auditEntityFkResolver = new AuditEntityFkResolver(integrationRepository, enrollmentRepository);
+    lenient().when(integrationRepository.existsById(1)).thenReturn(true);
 
     // Create controller manually (like AuthAttemptControllerTest)
     enrollmentController =
@@ -138,7 +149,8 @@ class EnrollmentControllerAuditTest {
             integrationRepository,
             enrollmentRevocationService,
             enrollmentUpdateService,
-            authAttemptRepository);
+            authAttemptRepository,
+            auditEntityFkResolver);
   }
 
   @Test
@@ -156,7 +168,7 @@ class EnrollmentControllerAuditTest {
 
     when(enrollmentService.create(createRequest))
         .thenThrow(
-            new IllegalArgumentException(
+            new ActiveVerifiedEnrollmentExistsException(
                 "An active verified enrollment with the same name already exists for this"
                     + " integration."));
 
@@ -165,11 +177,9 @@ class EnrollmentControllerAuditTest {
         .thenReturn(List.of(existingVerified));
 
     // Act
-    try {
-      enrollmentController.create(requestDto, httpRequest);
-    } catch (IllegalArgumentException e) {
-      // Expected
-    }
+    assertThrows(
+        ActiveVerifiedEnrollmentExistsException.class,
+        () -> enrollmentController.create(requestDto, httpRequest));
 
     // Assert: Verify audit log was written with required fields
     ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
@@ -273,5 +283,41 @@ class EnrollmentControllerAuditTest {
     assertTrue(auditLog.getEventDetails().contains("Enrollment name: Test Enrollment"));
     // Should not contain replacement context
     assertFalse(auditLog.getEventDetails().contains("Replacing inactive VERIFIED"));
+  }
+
+  @Test
+  @DisplayName(
+      "create() - Non-existent integrationId: audit omits integration FK, id in error message")
+  void create_WhenIntegrationMissing_auditOmitsIntegrationFkButRetainsRequestedIdInMessage() {
+    int missingIntegrationId = 99999;
+    EnrollmentCreateRequestDto badDto =
+        new EnrollmentCreateRequestDto(
+            missingIntegrationId, "Test Enrollment", false, null, null, null);
+    EnrollmentCreateRequest badCreate = new EnrollmentCreateRequest();
+    badCreate.setIntegrationId(missingIntegrationId);
+    badCreate.setName("Test Enrollment");
+
+    when(enrollmentMapper.toCreateRequest(badDto)).thenReturn(badCreate);
+    when(accessControlService.canAccessIntegration(
+            any(Authentication.class), eq(missingIntegrationId)))
+        .thenReturn(true);
+    when(integrationRepository.existsById(missingIntegrationId)).thenReturn(false);
+    when(enrollmentService.create(badCreate))
+        .thenThrow(
+            new EnrollmentCreateValidationException(
+                "Integration not found or not available for enrollment creation."));
+
+    assertThrows(
+        EnrollmentCreateValidationException.class,
+        () -> enrollmentController.create(badDto, httpRequest));
+
+    ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(1)).log(auditLogCaptor.capture());
+    AuditLog auditLog = auditLogCaptor.getValue();
+    assertEquals(EventType.ENROLLMENT_CREATED, auditLog.getEventType());
+    assertEquals(EventStatus.FAILURE, auditLog.getEventStatus());
+    assertNull(auditLog.getIntegrationId());
+    assertNotNull(auditLog.getErrorMessage());
+    assertTrue(auditLog.getErrorMessage().contains("integrationId: " + missingIntegrationId));
   }
 }

@@ -24,6 +24,7 @@ import java.util.Optional;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
@@ -90,6 +91,10 @@ class AuthAttemptControllerOwnershipTest {
 
   @BeforeEach
   void setUp() {
+    lenient().when(integrationRepository.existsById(any())).thenReturn(true);
+    lenient().when(enrollmentRepository.existsById(any())).thenReturn(true);
+    AuditEntityFkResolver auditEntityFkResolver =
+        new AuditEntityFkResolver(integrationRepository, enrollmentRepository);
     controller =
         new AuthAttemptController(
             authAttemptService,
@@ -98,7 +103,8 @@ class AuthAttemptControllerOwnershipTest {
             rateLimitService,
             enrollmentRepository,
             accessControlService,
-            integrationRepository);
+            integrationRepository,
+            auditEntityFkResolver);
   }
 
   @Test

@@ -10,12 +10,14 @@ package org.ezkey.integration.api.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.dto.AuthAttemptCreateRequestDto;
 import org.ezkey.authattempt.mapper.AuthAttemptIntegrationApiMapper;
@@ -56,6 +58,10 @@ class IntegrationApiAuthAttemptControllerTest {
 
   @BeforeEach
   void setUp() {
+    lenient().when(enrollmentRepository.existsById(any())).thenReturn(true);
+    lenient().when(integrationRepository.existsById(any())).thenReturn(true);
+    AuditEntityFkResolver auditEntityFkResolver =
+        new AuditEntityFkResolver(integrationRepository, enrollmentRepository);
     controller =
         new IntegrationApiAuthAttemptController(
             authAttemptService,
@@ -64,7 +70,8 @@ class IntegrationApiAuthAttemptControllerTest {
             rateLimitService,
             enrollmentRepository,
             accessControlService,
-            integrationRepository);
+            integrationRepository,
+            auditEntityFkResolver);
   }
 
   @AfterEach

@@ -26,7 +26,10 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
+import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.SystemIntegrationEnrollmentCreationException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
@@ -297,15 +300,19 @@ public class EnrollmentService {
    *
    * @param request the enrollment creation request
    * @return the created enrollment response
-   * @throws IllegalArgumentException if required fields are missing or invalid, or if attempting to
-   *     create enrollment for a system integration
+   * @throws EnrollmentCreateValidationException if required fields are missing or invalid,
+   *     including when the target integration reference does not resolve
+   * @throws SystemIntegrationEnrollmentCreationException if enrollment creation targets the
+   *     protected system integration
+   * @throws ActiveVerifiedEnrollmentExistsException if an active VERIFIED enrollment already exists
+   *     for the same integration and name
    */
   public EnrollmentCreateResponse create(EnrollmentCreateRequest request) {
     if (request.getIntegrationId() == null) {
-      throw new IllegalArgumentException("Integration ID is required");
+      throw new EnrollmentCreateValidationException("Integration ID is required");
     }
     if (request.getName() == null || request.getName().trim().isEmpty()) {
-      throw new IllegalArgumentException("Enrollment name is required");
+      throw new EnrollmentCreateValidationException("Enrollment name is required");
     }
 
     // Security: Block enrollment creation for system integrations
@@ -317,7 +324,7 @@ public class EnrollmentService {
             .findById(request.getIntegrationId())
             .orElseThrow(
                 () ->
-                    new IllegalArgumentException(
+                    new EnrollmentCreateValidationException(
                         "Integration not found: " + request.getIntegrationId()));
 
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
@@ -325,7 +332,7 @@ public class EnrollmentService {
           "Attempt to create enrollment for system integration (ID: {}) blocked. "
               + "System integrations are reserved for global admin authentication.",
           request.getIntegrationId());
-      throw new IllegalArgumentException(
+      throw new SystemIntegrationEnrollmentCreationException(
           "Cannot create enrollment for system integration. System integrations are reserved for"
               + " global admin authentication and enrollments can only be created through the admin"
               + " provisioning API endpoints.");
@@ -372,7 +379,7 @@ public class EnrollmentService {
             existing.getEnrollmentId(),
             request.getIntegrationId(),
             request.getName());
-        throw new IllegalArgumentException(
+        throw new ActiveVerifiedEnrollmentExistsException(
             "An active verified enrollment with the same name already exists for this integration."
                 + " To replace an enrollment, use the recovery process: POST"
                 + " /api/v1/admin/auth/recover with a recovery code, then POST"

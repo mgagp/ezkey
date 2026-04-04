@@ -31,6 +31,7 @@ import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.signature.Ed25519KeyPair;
@@ -122,8 +123,10 @@ class EnrollmentUniquenessTest {
         .thenReturn(List.of(existingVerified));
 
     // Act & Assert
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> enrollmentService.create(createRequest));
+    ActiveVerifiedEnrollmentExistsException exception =
+        assertThrows(
+            ActiveVerifiedEnrollmentExistsException.class,
+            () -> enrollmentService.create(createRequest));
 
     assertTrue(
         exception.getMessage().contains("active verified enrollment"),
@@ -248,7 +251,9 @@ class EnrollmentUniquenessTest {
         .thenReturn(List.of(existingVerified));
 
     // Act & Assert
-    assertThrows(IllegalArgumentException.class, () -> enrollmentService.create(createRequest));
+    assertThrows(
+        ActiveVerifiedEnrollmentExistsException.class,
+        () -> enrollmentService.create(createRequest));
 
     // Verify existing enrollment was never modified
     verify(enrollmentRepository, never()).save(existingVerified);

@@ -166,6 +166,17 @@ public class ValidationExceptionHandler {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
   }
 
+  @ExceptionHandler(EnrollmentCreateValidationException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentCreateValidationException(
+      EnrollmentCreateValidationException ex, WebRequest request) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    problem.setType(URI.create("https://ezkey.io/problems/validation/enrollment-create-invalid"));
+    problem.setTitle("Invalid Enrollment Create Request");
+    problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+  }
+
   /**
    * Handles IllegalArgumentException and returns HTTP 400 Bad Request.
    *

@@ -22,6 +22,7 @@ import java.util.List;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
@@ -114,6 +115,7 @@ public class IntegrationApiAuthAttemptController {
   private final EnrollmentRepository enrollmentRepository;
   private final AccessControlService accessControlService;
   private final IntegrationRepository integrationRepository;
+  private final AuditEntityFkResolver auditEntityFkResolver;
 
   /**
    * Constructs the Integration API auth attempt controller with required dependencies.
@@ -125,6 +127,7 @@ public class IntegrationApiAuthAttemptController {
    * @param enrollmentRepository the enrollment repository for ownership validation
    * @param accessControlService the access control service for auth attempt access checks
    * @param integrationRepository the integration repository for tenant resolution in audit logs
+   * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
    */
   public IntegrationApiAuthAttemptController(
       AuthAttemptService authAttemptService,
@@ -133,7 +136,8 @@ public class IntegrationApiAuthAttemptController {
       RateLimitService rateLimitService,
       EnrollmentRepository enrollmentRepository,
       AccessControlService accessControlService,
-      IntegrationRepository integrationRepository) {
+      IntegrationRepository integrationRepository,
+      AuditEntityFkResolver auditEntityFkResolver) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
@@ -141,6 +145,7 @@ public class IntegrationApiAuthAttemptController {
     this.enrollmentRepository = enrollmentRepository;
     this.accessControlService = accessControlService;
     this.integrationRepository = integrationRepository;
+    this.auditEntityFkResolver = auditEntityFkResolver;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -222,8 +227,10 @@ public class IntegrationApiAuthAttemptController {
                   EventType.AUTH_ATTEMPT_CREATED,
                   IntegrationApiAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
               .eventStatus(EventStatus.FAILURE)
-              .enrollmentId(effectiveEnrollmentId)
-              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
               .errorMessage(e.getMessage())
               .build());
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -256,8 +263,10 @@ public class IntegrationApiAuthAttemptController {
               .eventStatus(EventStatus.SUCCESS)
               .authAttemptId(response.getAuthAttemptId())
               .authAttemptCreatedAt(response.getCreatedAt())
-              .enrollmentId(effectiveEnrollmentId)
-              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
               .eventDetails(
                   "Challenge: "
                       + (response.getAuthAttemptChallenge() != null ? "required" : "not required"))
@@ -275,8 +284,10 @@ public class IntegrationApiAuthAttemptController {
                   IntegrationApiAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
                   auditTenantId)
               .eventStatus(EventStatus.FAILURE)
-              .enrollmentId(effectiveEnrollmentId)
-              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
               .errorMessage(e.getMessage())
               .build());
       throw e;
@@ -289,8 +300,10 @@ public class IntegrationApiAuthAttemptController {
                   IntegrationApiAuditConstants.AUTH_ATTEMPT_CREATION_ERROR,
                   auditTenantId)
               .eventStatus(EventStatus.ERROR)
-              .enrollmentId(effectiveEnrollmentId)
-              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
               .errorMessage(e.getMessage())
               .build());
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

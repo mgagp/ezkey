@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,6 +25,7 @@ import java.util.List;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.RateLimitService;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
@@ -52,6 +54,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Unit tests for AuthAttemptController.
@@ -78,6 +81,11 @@ class AuthAttemptControllerTest {
 
   @BeforeEach
   void setUp() {
+    SecurityContextHolder.clearContext();
+    lenient().when(integrationRepository.existsById(any())).thenReturn(true);
+    lenient().when(enrollmentRepository.existsById(any())).thenReturn(true);
+    AuditEntityFkResolver auditEntityFkResolver =
+        new AuditEntityFkResolver(integrationRepository, enrollmentRepository);
     controller =
         new AuthAttemptController(
             authAttemptService,
@@ -86,7 +94,8 @@ class AuthAttemptControllerTest {
             rateLimitService,
             enrollmentRepository,
             accessControlService,
-            integrationRepository);
+            integrationRepository,
+            auditEntityFkResolver);
   }
 
   @Test

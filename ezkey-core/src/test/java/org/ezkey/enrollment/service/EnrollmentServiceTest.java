@@ -22,6 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.ezkey.config.EnrollmentProperties;
 import org.ezkey.config.EzkeyCoreProperties;
@@ -34,7 +35,10 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
+import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.SystemIntegrationEnrollmentCreationException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
@@ -199,18 +203,71 @@ class EnrollmentServiceTest {
   }
 
   @Test
-  @DisplayName("create() - Should throw IllegalArgumentException when integrationId is null")
-  void create_WhenIntegrationIdIsNull_ShouldThrowIllegalArgumentException() {
+  @DisplayName("create() - Should throw validation exception when integrationId is null")
+  void create_WhenIntegrationIdIsNull_ShouldThrowValidationException() {
     // Arrange
     createRequest.setIntegrationId(null);
 
     // Act & Assert
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> enrollmentService.create(createRequest));
+    EnrollmentCreateValidationException exception =
+        assertThrows(
+            EnrollmentCreateValidationException.class,
+            () -> enrollmentService.create(createRequest));
 
     assertEquals("Integration ID is required", exception.getMessage());
 
     // Verify no service interactions
+    verify(signatureService, never()).generateProofToken();
+    verify(enrollmentRepository, never()).save(any(Enrollment.class));
+  }
+
+  @Test
+  @DisplayName("create() - Should throw validation exception when name is blank")
+  void create_WhenNameIsBlank_ShouldThrowValidationException() {
+    // Arrange
+    createRequest.setName("   ");
+
+    // Act & Assert
+    EnrollmentCreateValidationException exception =
+        assertThrows(
+            EnrollmentCreateValidationException.class,
+            () -> enrollmentService.create(createRequest));
+
+    assertEquals("Enrollment name is required", exception.getMessage());
+    verify(signatureService, never()).generateProofToken();
+    verify(enrollmentRepository, never()).save(any(Enrollment.class));
+  }
+
+  @Test
+  @DisplayName("create() - Should throw validation exception when integration does not exist")
+  void create_WhenIntegrationDoesNotExist_ShouldThrowValidationException() {
+    // Arrange
+    when(integrationRepository.findById(123)).thenReturn(Optional.empty());
+
+    // Act & Assert
+    EnrollmentCreateValidationException exception =
+        assertThrows(
+            EnrollmentCreateValidationException.class,
+            () -> enrollmentService.create(createRequest));
+
+    assertEquals("Integration not found: 123", exception.getMessage());
+    verify(signatureService, never()).generateProofToken();
+    verify(enrollmentRepository, never()).save(any(Enrollment.class));
+  }
+
+  @Test
+  @DisplayName("create() - Should throw system integration exception when integration is protected")
+  void create_WhenSystemIntegration_ShouldThrowSystemIntegrationEnrollmentCreationException() {
+    // Arrange
+    integration.setIsSystemIntegration(true);
+
+    // Act & Assert
+    SystemIntegrationEnrollmentCreationException exception =
+        assertThrows(
+            SystemIntegrationEnrollmentCreationException.class,
+            () -> enrollmentService.create(createRequest));
+
+    assertTrue(exception.getMessage().contains("Cannot create enrollment for system integration"));
     verify(signatureService, never()).generateProofToken();
     verify(enrollmentRepository, never()).save(any(Enrollment.class));
   }
@@ -249,6 +306,32 @@ class EnrollmentServiceTest {
     assertEquals(
         "Cannot create enrollment for inactive tenant. Contact your Ezkey administrator.",
         exception.getMessage());
+    verify(signatureService, never()).generateProofToken();
+    verify(enrollmentRepository, never()).save(any(Enrollment.class));
+  }
+
+  @Test
+  @DisplayName("create() - Should throw conflict when active VERIFIED enrollment already exists")
+  void
+      create_WhenActiveVerifiedEnrollmentExists_ShouldThrowActiveVerifiedEnrollmentExistsException() {
+    // Arrange
+    Enrollment existingVerified = new Enrollment();
+    existingVerified.setEnrollmentId(999);
+    existingVerified.setIntegrationId(123);
+    existingVerified.setEnrollmentName("Test Enrollment");
+    existingVerified.setStatus(EnrollmentStatus.VERIFIED);
+    existingVerified.setActive(true);
+    when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
+            123, "Test Enrollment", EnrollmentStatus.VERIFIED))
+        .thenReturn(List.of(existingVerified));
+
+    // Act & Assert
+    ActiveVerifiedEnrollmentExistsException exception =
+        assertThrows(
+            ActiveVerifiedEnrollmentExistsException.class,
+            () -> enrollmentService.create(createRequest));
+
+    assertTrue(exception.getMessage().contains("active verified enrollment"));
     verify(signatureService, never()).generateProofToken();
     verify(enrollmentRepository, never()).save(any(Enrollment.class));
   }

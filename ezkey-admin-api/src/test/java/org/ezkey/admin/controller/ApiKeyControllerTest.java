@@ -12,13 +12,16 @@ package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,13 +37,17 @@ import org.ezkey.admin.dto.response.ApiKeyResponseDto;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminOperationsRateLimitService;
 import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.service.ApiKeyService;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +55,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -102,10 +110,18 @@ class ApiKeyControllerTest {
 
   @Mock private HttpServletRequest httpServletRequest;
 
+  @Mock private IntegrationRepository auditFkIntegrationRepository;
+
+  @Mock private EnrollmentRepository auditFkEnrollmentRepository;
+
   private ApiKeyController controller;
 
   @BeforeEach
   void setUp() {
+    lenient().when(auditFkIntegrationRepository.existsById(any())).thenReturn(true);
+    lenient().when(auditFkEnrollmentRepository.existsById(any())).thenReturn(true);
+    AuditEntityFkResolver auditEntityFkResolver =
+        new AuditEntityFkResolver(auditFkIntegrationRepository, auditFkEnrollmentRepository);
     controller =
         new ApiKeyController(
             apiKeyService,
@@ -113,7 +129,8 @@ class ApiKeyControllerTest {
             adminOpsRateLimitService,
             adminRepository,
             accessControlService,
-            auditLogService);
+            auditLogService,
+            auditEntityFkResolver);
 
     // Setup authentication context with admin user
     setupAdminAuthentication();
@@ -182,6 +199,25 @@ class ApiKeyControllerTest {
 
       // Assert
       assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName(
+        "IllegalArgumentException: audit omits integration FK when integration row missing")
+    void createApiKey_failureAuditOmitsIntegrationFkWhenIntegrationMissing() {
+      int missingId = 99999;
+      ApiKeyCreateRequestDto request =
+          new ApiKeyCreateRequestDto(missingId, "Test API Key", null, null);
+      doReturn(false).when(auditFkIntegrationRepository).existsById(missingId);
+      when(apiKeyService.createApiKey(anyInt(), any(EzkeyAdmin.class), anyString(), any(), any()))
+          .thenThrow(new IllegalArgumentException("Invalid integration ID"));
+
+      controller.createApiKey(request, httpServletRequest);
+
+      ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+      verify(auditLogService, times(1)).log(captor.capture());
+      assertNull(captor.getValue().getIntegrationId());
+      assertEquals("Invalid integration ID", captor.getValue().getErrorMessage());
     }
 
     @Test

@@ -36,6 +36,7 @@ import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.TenantInactiveException;
@@ -118,6 +119,7 @@ public class ApiKeyController {
   private final EzkeyAdminRepository adminRepository;
   private final AccessControlService accessControlService;
   private final AuditLogService auditLogService;
+  private final AuditEntityFkResolver auditEntityFkResolver;
 
   /**
    * Constructs a new ApiKeyController.
@@ -128,6 +130,7 @@ public class ApiKeyController {
    * @param adminRepository the admin repository for loading admin entities
    * @param accessControlService the access control service for tenant scoping validation
    * @param auditLogService the audit log service for security monitoring
+   * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
    */
   public ApiKeyController(
       ApiKeyService apiKeyService,
@@ -135,13 +138,15 @@ public class ApiKeyController {
       AdminOperationsRateLimitService adminOpsRateLimitService,
       EzkeyAdminRepository adminRepository,
       AccessControlService accessControlService,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      AuditEntityFkResolver auditEntityFkResolver) {
     this.apiKeyService = apiKeyService;
     this.apiKeyRepository = apiKeyRepository;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
     this.adminRepository = adminRepository;
     this.accessControlService = accessControlService;
     this.auditLogService = auditLogService;
+    this.auditEntityFkResolver = auditEntityFkResolver;
   }
 
   /**
@@ -260,7 +265,8 @@ public class ApiKeyController {
                   adminTenantId)
               .eventStatus(EventStatus.SUCCESS)
               .adminId(currentAdmin.getAdminId())
-              .integrationId(request.integrationId())
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
               .eventDetails("API key ID: " + result.getApiKeyId())
               .build());
 
@@ -276,7 +282,8 @@ public class ApiKeyController {
                   adminTenantId)
               .eventStatus(EventStatus.FAILURE)
               .adminId(currentAdmin.getAdminId())
-              .integrationId(request.integrationId())
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
               .errorMessage(e.getMessage())
               .build());
       return ResponseEntity.badRequest().build();
@@ -290,7 +297,8 @@ public class ApiKeyController {
                   adminTenantId)
               .eventStatus(EventStatus.FAILURE)
               .adminId(currentAdmin.getAdminId())
-              .integrationId(request.integrationId())
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(request.integrationId()))
               .errorMessage(e.getMessage())
               .build());
       throw e;

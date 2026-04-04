@@ -111,6 +111,28 @@ public class EnrollmentExceptionHandler extends ExceptionHandlerBase {
         request);
   }
 
+  @ExceptionHandler(ActiveVerifiedEnrollmentExistsException.class)
+  public ResponseEntity<ProblemDetail> handleActiveVerifiedEnrollmentExistsException(
+      ActiveVerifiedEnrollmentExistsException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.CONFLICT,
+        "https://ezkey.io/problems/enrollment/active-verified-enrollment-exists",
+        "Active Verified Enrollment Already Exists",
+        request);
+  }
+
+  @ExceptionHandler(SystemIntegrationEnrollmentCreationException.class)
+  public ResponseEntity<ProblemDetail> handleSystemIntegrationEnrollmentCreationException(
+      SystemIntegrationEnrollmentCreationException ex, HttpServletRequest request) {
+    return buildProblemDetail(
+        ex,
+        HttpStatus.FORBIDDEN,
+        "https://ezkey.io/problems/enrollment/system-integration-create-not-allowed",
+        "System Integration Enrollment Creation Not Allowed",
+        request);
+  }
+
   /**
    * Handles SelfRevocationNotAllowedException and returns HTTP 403 Forbidden.
    *

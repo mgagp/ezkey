@@ -29,6 +29,7 @@ import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
@@ -122,6 +123,7 @@ public class AuthAttemptController {
   private final EnrollmentRepository enrollmentRepository;
   private final AccessControlService accessControlService;
   private final IntegrationRepository integrationRepository;
+  private final AuditEntityFkResolver auditEntityFkResolver;
 
   /**
    * Constructs the authorization attempt controller with required dependencies.
@@ -133,6 +135,7 @@ public class AuthAttemptController {
    * @param enrollmentRepository the enrollment repository for ownership checks
    * @param accessControlService the access control service for tenant scoping validation
    * @param integrationRepository the integration repository for tenant resolution in audit logs
+   * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
    */
   public AuthAttemptController(
       AuthAttemptService authAttemptService,
@@ -141,7 +144,8 @@ public class AuthAttemptController {
       RateLimitService rateLimitService,
       EnrollmentRepository enrollmentRepository,
       AccessControlService accessControlService,
-      IntegrationRepository integrationRepository) {
+      IntegrationRepository integrationRepository,
+      AuditEntityFkResolver auditEntityFkResolver) {
     this.authAttemptService = authAttemptService;
     this.authAttemptMapper = authAttemptMapper;
     this.auditLogService = auditLogService;
@@ -149,6 +153,7 @@ public class AuthAttemptController {
     this.enrollmentRepository = enrollmentRepository;
     this.accessControlService = accessControlService;
     this.integrationRepository = integrationRepository;
+    this.auditEntityFkResolver = auditEntityFkResolver;
   }
 
   /**
@@ -376,8 +381,11 @@ public class AuthAttemptController {
                     AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
                 .eventStatus(EventStatus.FAILURE)
                 .adminId(adminIdForAudit)
-                .enrollmentId(effectiveEnrollmentId)
-                .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+                .enrollmentId(
+                    auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+                .integrationId(
+                    auditEntityFkResolver.integrationIdForAuditOrNull(
+                        resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
                 .errorMessage(
                     "Access denied: admin does not have access to enrollment "
                         + effectiveEnrollmentId)
@@ -416,8 +424,10 @@ public class AuthAttemptController {
               .adminId(adminIdForAudit)
               .authAttemptId(response.getAuthAttemptId())
               .authAttemptCreatedAt(response.getCreatedAt())
-              .enrollmentId(effectiveEnrollmentId)
-              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
               .eventDetails(
                   "Auth Type: "
                       + authType
@@ -436,8 +446,10 @@ public class AuthAttemptController {
                   auditTenantId)
               .eventStatus(EventStatus.FAILURE)
               .adminId(adminIdForAudit)
-              .enrollmentId(effectiveEnrollmentId)
-              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
               .errorMessage(e.getMessage())
               .build());
       throw e;
@@ -453,8 +465,10 @@ public class AuthAttemptController {
                   auditTenantId)
               .eventStatus(EventStatus.ERROR)
               .adminId(adminIdForAudit)
-              .enrollmentId(effectiveEnrollmentId)
-              .integrationId(resolveIntegrationIdFromEnrollment(effectiveEnrollmentId))
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
               .errorMessage(e.getMessage())
               .build());
 
