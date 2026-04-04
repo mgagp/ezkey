@@ -68,8 +68,7 @@ class ValidationExceptionHandlerWave7Test {
     assertNotNull(body);
     assertEquals("Invalid API Key Create Request", body.getTitle());
     assertEquals(
-        "https://ezkey.io/problems/validation/api-key-create-invalid",
-        body.getType().toString());
+        "https://ezkey.io/problems/validation/api-key-create-invalid", body.getType().toString());
   }
 
   @Test
@@ -90,8 +89,7 @@ class ValidationExceptionHandlerWave7Test {
     assertNotNull(body);
     assertEquals("Invalid API Key Update Request", body.getTitle());
     assertEquals(
-        "https://ezkey.io/problems/validation/api-key-update-invalid",
-        body.getType().toString());
+        "https://ezkey.io/problems/validation/api-key-update-invalid", body.getType().toString());
   }
 
   @Test

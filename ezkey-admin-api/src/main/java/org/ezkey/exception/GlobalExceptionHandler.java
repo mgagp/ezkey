@@ -10,9 +10,10 @@
 
 package org.ezkey.exception;
 
-import org.ezkey.dto.ErrorResponseDto;
+import java.net.URI;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -41,13 +42,14 @@ import org.springframework.web.context.request.WebRequest;
  * <p>The handler supports the following exception types:
  *
  * <ul>
- *   <li><b>ResourceNotFoundException:</b> Returns HTTP 404 with ErrorResponseDto
- *   <li><b>RateLimitExceededException:</b> Returns HTTP 429 with ErrorResponseDto
- *   <li><b>RuntimeException:</b> Returns HTTP 500 with ErrorResponseDto
- *   <li><b>Exception:</b> Catches all other exceptions and returns HTTP 500 with ErrorResponseDto
+ *   <li><b>ResourceNotFoundException:</b> Returns HTTP 404 with RFC 9457 {@link ProblemDetail}
+ *   <li><b>RateLimitExceededException:</b> Returns HTTP 429 with {@link ProblemDetail}
+ *   <li><b>RuntimeException:</b> Returns HTTP 500 with sanitized {@link ProblemDetail}
+ *   <li><b>Exception:</b> Catches all other exceptions and returns HTTP 500 with sanitized {@link
+ *       ProblemDetail}
  * </ul>
  *
- * <p><b>Error Response Format:</b> Uses ErrorResponseDto for consistency with legacy error handling
+ * <p><b>Error response format:</b> RFC 9457 Problem Details ({@link ProblemDetail}).
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -58,25 +60,27 @@ import org.springframework.web.context.request.WebRequest;
  * @see AuthenticationExceptionHandler
  * @see AuthorizationExceptionHandler
  * @see ValidationExceptionHandler
+ * @see AdminApiProblemCatalog
  * @see org.springframework.web.bind.annotation.RestControllerAdvice
  * @see org.springframework.web.bind.annotation.ExceptionHandler
- * @see ErrorResponseDto
  */
 @RestControllerAdvice
 @Order(99)
 public class GlobalExceptionHandler {
 
-  /**
-   * Handles RateLimitExceededException and returns HTTP 429.
-   *
-   * <p>This method catches RateLimitExceededException instances thrown by the RateLimitService when
-   * API keys exceed their rate limits and converts them into standardized HTTP 429 Too Many
-   * Requests responses with rate limit information.
-   *
-   * @param ex the RateLimitExceededException that was thrown
-   * @param request the web request that caused the exception
-   * @return ResponseEntity containing error details and HTTP 429 status
-   */
+  private static String pathFrom(WebRequest request) {
+    return request.getDescription(false).replace("uri=", "");
+  }
+
+  private static ResponseEntity<ProblemDetail> problemResponse(
+      HttpStatus status, String typeUri, String title, String detail, WebRequest request) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+    problem.setType(URI.create(typeUri));
+    problem.setTitle(title);
+    problem.setProperty("path", pathFrom(request));
+    return ResponseEntity.status(status).body(problem);
+  }
+
   /**
    * Handles {@link SystemTenantNotConfiguredException} and returns HTTP 500.
    *
@@ -84,91 +88,77 @@ public class GlobalExceptionHandler {
    * detail.
    */
   @ExceptionHandler(SystemTenantNotConfiguredException.class)
-  public ResponseEntity<ErrorResponseDto> handleSystemTenantNotConfiguredException(
+  public ResponseEntity<ProblemDetail> handleSystemTenantNotConfiguredException(
       SystemTenantNotConfiguredException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "SYSTEM_NOT_CONFIGURED",
-            "An unexpected error occurred",
-            request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    return problemResponse(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        AdminApiProblemCatalog.TYPE_SYSTEM_NOT_CONFIGURED,
+        AdminApiProblemCatalog.TITLE_INTERNAL_ERROR,
+        AdminApiProblemCatalog.DETAIL_UNEXPECTED,
+        request);
   }
 
   @ExceptionHandler(RateLimitExceededException.class)
-  public ResponseEntity<ErrorResponseDto> handleRateLimitExceededException(
+  public ResponseEntity<ProblemDetail> handleRateLimitExceededException(
       RateLimitExceededException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "RATE_LIMIT_EXCEEDED",
-            ex.getMessage(),
-            request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.TOO_MANY_REQUESTS);
+    return problemResponse(
+        HttpStatus.TOO_MANY_REQUESTS,
+        AdminApiProblemCatalog.TYPE_RATE_LIMIT_EXCEEDED,
+        AdminApiProblemCatalog.TITLE_TOO_MANY_REQUESTS,
+        ex.getMessage(),
+        request);
   }
 
   /**
    * Handles ResourceNotFoundException and returns HTTP 404.
    *
-   * <p>This method catches ResourceNotFoundException instances and converts them into standardized
-   * HTTP 404 Not Found responses with detailed error information.
-   *
    * @param ex the ResourceNotFoundException that was thrown
    * @param request the web request that caused the exception
-   * @return ResponseEntity containing error details and HTTP 404 status
+   * @return ResponseEntity containing ProblemDetail and HTTP 404 status
    */
   @ExceptionHandler(ResourceNotFoundException.class)
-  public ResponseEntity<ErrorResponseDto> handleResourceNotFoundException(
+  public ResponseEntity<ProblemDetail> handleResourceNotFoundException(
       ResourceNotFoundException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "RESOURCE_NOT_FOUND",
-            ex.getMessage(),
-            request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    return problemResponse(
+        HttpStatus.NOT_FOUND,
+        AdminApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
+        AdminApiProblemCatalog.TITLE_NOT_FOUND,
+        ex.getMessage(),
+        request);
   }
 
   /**
    * Handles RuntimeException and returns HTTP 500.
    *
-   * <p>This method catches RuntimeException instances and converts them into standardized HTTP 500
-   * Internal Server Error responses with error details.
-   *
    * @param ex the RuntimeException that was thrown
    * @param request the web request that caused the exception
-   * @return ResponseEntity containing error details and HTTP 500 status
+   * @return ResponseEntity containing sanitized ProblemDetail and HTTP 500 status
    */
   @ExceptionHandler(RuntimeException.class)
-  public ResponseEntity<ErrorResponseDto> handleRuntimeException(
+  public ResponseEntity<ProblemDetail> handleRuntimeException(
       RuntimeException ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "INTERNAL_ERROR",
-            "An unexpected error occurred",
-            request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    return problemResponse(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        AdminApiProblemCatalog.TYPE_INTERNAL_ERROR,
+        AdminApiProblemCatalog.TITLE_INTERNAL_ERROR,
+        AdminApiProblemCatalog.DETAIL_UNEXPECTED,
+        request);
   }
 
   /**
    * Handles all other exceptions and returns HTTP 500.
    *
-   * <p>This method serves as a catch-all for any exceptions not handled by more specific exception
-   * handlers. It ensures that all exceptions result in a consistent error response.
-   *
    * @param ex the Exception that was thrown
    * @param request the web request that caused the exception
-   * @return ResponseEntity containing error details and HTTP 500 status
+   * @return ResponseEntity containing sanitized ProblemDetail and HTTP 500 status
    */
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<ErrorResponseDto> handleGenericException(Exception ex, WebRequest request) {
-    ErrorResponseDto errorResponse =
-        new ErrorResponseDto(
-            "INTERNAL_SERVER_ERROR",
-            "An unexpected error occurred",
-            request.getDescription(false).replace("uri=", ""));
-
-    return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+  public ResponseEntity<ProblemDetail> handleGenericException(Exception ex, WebRequest request) {
+    return problemResponse(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        AdminApiProblemCatalog.TYPE_INTERNAL_ERROR,
+        AdminApiProblemCatalog.TITLE_INTERNAL_ERROR,
+        AdminApiProblemCatalog.DETAIL_UNEXPECTED,
+        request);
   }
 }

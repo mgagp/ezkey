@@ -202,7 +202,7 @@ public class AdminNativeConfiguration {
       // Register AuditLog DTOs for reflection
       hints.reflection().registerType(AuditLogResponseDto.class);
 
-      // Register ErrorResponseDto for reflection (used by GlobalExceptionHandler)
+      // Register ErrorResponseDto for reflection (used by ValidationExceptionHandler)
       hints.reflection().registerType(ErrorResponseDto.class);
 
       // Register serialization hints for Jackson - Integration DTOs
@@ -291,7 +291,7 @@ public class AdminNativeConfiguration {
           .serialization()
           .registerType(org.springframework.aot.hint.TypeReference.of(AuditLogResponseDto.class));
 
-      // Register serialization hints for Jackson - ErrorResponseDto
+      // Register serialization hints for Jackson - ErrorResponseDto (ValidationExceptionHandler)
       hints
           .serialization()
           .registerType(org.springframework.aot.hint.TypeReference.of(ErrorResponseDto.class));

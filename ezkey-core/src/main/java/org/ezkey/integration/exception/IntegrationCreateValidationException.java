@@ -10,8 +10,8 @@ package org.ezkey.integration.exception;
 import java.io.Serial;
 
 /**
- * Raised when an integration create request cannot be processed due to invalid administrator context
- * or configuration.
+ * Raised when an integration create request cannot be processed due to invalid administrator
+ * context or configuration.
  *
  * <p>Extends {@link IllegalArgumentException} so layered exception handling can treat it as a
  * client-correctable validation failure where appropriate.

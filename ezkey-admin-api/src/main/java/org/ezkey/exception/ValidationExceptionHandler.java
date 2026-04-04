@@ -219,7 +219,8 @@ public class ValidationExceptionHandler {
       ApiKeyIpWhitelistValidationException ex, WebRequest request) {
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
-    problem.setType(URI.create("https://ezkey.io/problems/validation/api-key-ip-whitelist-invalid"));
+    problem.setType(
+        URI.create("https://ezkey.io/problems/validation/api-key-ip-whitelist-invalid"));
     problem.setTitle("Invalid API Key IP Whitelist");
     problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
