@@ -12,6 +12,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.SystemTenantNotConfiguredException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.SystemTenantTestConstants;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
@@ -23,6 +25,7 @@ import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
+import org.ezkey.integration.exception.IntegrationCreateValidationException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
@@ -183,6 +186,58 @@ class IntegrationServiceTest {
 
       verify(repository, never()).save(any(Integration.class));
     }
+
+    @Test
+    @DisplayName("createIntegration throws when system tenant row is missing")
+    void create_whenSystemTenantMissing_throwsSystemTenantNotConfiguredException() {
+      IntegrationCreateRequest req = buildRequest(true);
+      Integration mapped = buildMappedEntity(true);
+      EzkeyAdmin admin = createTestGlobalAdmin();
+
+      when(mapper.toEntity(req)).thenReturn(mapped);
+      when(tenantRepository.findByIsSystemTenantTrue()).thenReturn(Optional.empty());
+
+      assertThatThrownBy(() -> service.createIntegration(req, admin))
+          .isInstanceOf(SystemTenantNotConfiguredException.class)
+          .hasMessageContaining("System tenant not found");
+
+      verify(repository, never()).save(any(Integration.class));
+    }
+
+    @Test
+    @DisplayName("createIntegration throws when tenant admin has no tenant")
+    void create_whenTenantAdminHasNoTenant_throwsIntegrationCreateValidationException() {
+      IntegrationCreateRequest req = buildRequest(true);
+      Integration mapped = buildMappedEntity(true);
+      EzkeyAdmin admin = new EzkeyAdmin("orphan", AdminType.TENANT_ADMIN);
+      admin.setAdminId(9);
+      admin.setTenant(null);
+
+      when(mapper.toEntity(req)).thenReturn(mapped);
+
+      assertThatThrownBy(() -> service.createIntegration(req, admin))
+          .isInstanceOf(IntegrationCreateValidationException.class)
+          .hasMessageContaining("associated tenant");
+
+      verify(repository, never()).save(any(Integration.class));
+    }
+
+    @Test
+    @DisplayName("createIntegration throws for unsupported admin type")
+    void create_whenUnsupportedAdminType_throwsIntegrationCreateValidationException() {
+      IntegrationCreateRequest req = buildRequest(true);
+      Integration mapped = buildMappedEntity(true);
+      EzkeyAdmin admin = new EzkeyAdmin("intadmin", AdminType.INTEGRATION_ADMIN);
+      admin.setAdminId(10);
+
+      when(mapper.toEntity(req)).thenReturn(mapped);
+
+      assertThatThrownBy(() -> service.createIntegration(req, admin))
+          .isInstanceOf(IntegrationCreateValidationException.class)
+          .hasMessageContaining("Unsupported admin type");
+
+      verify(repository, never()).save(any(Integration.class));
+    }
   }
 
   @Test
@@ -205,6 +260,15 @@ class IntegrationServiceTest {
     when(repository.findAll()).thenReturn(List.of(new Integration(), new Integration()));
     assertThat(service.getAll()).hasSize(2);
     verify(repository).findAll();
+  }
+
+  @Test
+  void delete_whenIntegrationMissing_throwsResourceNotFoundException() {
+    when(repository.findById(404)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.delete(404)).isInstanceOf(ResourceNotFoundException.class);
+
+    verify(repository, never()).deleteById(any());
   }
 
   @Test
@@ -243,6 +307,15 @@ class IntegrationServiceTest {
         .hasMessageContaining("retired");
 
     verify(repository, never()).deleteById(eq(11));
+  }
+
+  @Test
+  void retire_whenIntegrationMissing_throwsResourceNotFoundException() {
+    when(repository.findById(404)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.retire(404)).isInstanceOf(ResourceNotFoundException.class);
+
+    verify(repository, never()).save(any());
   }
 
   @Test

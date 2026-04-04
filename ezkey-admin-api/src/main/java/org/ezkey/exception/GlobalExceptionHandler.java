@@ -77,6 +77,24 @@ public class GlobalExceptionHandler {
    * @param request the web request that caused the exception
    * @return ResponseEntity containing error details and HTTP 429 status
    */
+  /**
+   * Handles {@link SystemTenantNotConfiguredException} and returns HTTP 500.
+   *
+   * <p>The response body is sanitized; operators should rely on server logs for the underlying
+   * detail.
+   */
+  @ExceptionHandler(SystemTenantNotConfiguredException.class)
+  public ResponseEntity<ErrorResponseDto> handleSystemTenantNotConfiguredException(
+      SystemTenantNotConfiguredException ex, WebRequest request) {
+    ErrorResponseDto errorResponse =
+        new ErrorResponseDto(
+            "SYSTEM_NOT_CONFIGURED",
+            "An unexpected error occurred",
+            request.getDescription(false).replace("uri=", ""));
+
+    return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
   @ExceptionHandler(RateLimitExceededException.class)
   public ResponseEntity<ErrorResponseDto> handleRateLimitExceededException(
       RateLimitExceededException ex, WebRequest request) {

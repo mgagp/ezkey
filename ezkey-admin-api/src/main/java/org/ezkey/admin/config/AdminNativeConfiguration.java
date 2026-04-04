@@ -189,6 +189,11 @@ public class AdminNativeConfiguration {
       hints
           .reflection()
           .registerType(org.ezkey.exception.ResourceNotFoundException.class)
+          .registerType(org.ezkey.exception.SystemTenantNotConfiguredException.class)
+          .registerType(org.ezkey.integration.exception.ApiKeyCreateValidationException.class)
+          .registerType(org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException.class)
+          .registerType(org.ezkey.integration.exception.ApiKeyUpdateValidationException.class)
+          .registerType(org.ezkey.integration.exception.IntegrationCreateValidationException.class)
           .registerType(org.ezkey.exception.RateLimitExceededException.class)
           .registerType(org.ezkey.exception.NoPendingAuthAttemptException.class)
           .registerType(org.ezkey.admin.exception.AuthenticationException.class)

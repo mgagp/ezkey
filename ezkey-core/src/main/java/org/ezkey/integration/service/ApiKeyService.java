@@ -23,7 +23,10 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.exception.ApiKeyCreateValidationException;
+import org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
+import org.ezkey.integration.exception.ApiKeyUpdateValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -125,7 +128,7 @@ public class ApiKeyService {
    * @param expiresAt optional expiration date for automatic rotation
    * @param ipWhitelist optional array of IP addresses or CIDR ranges
    * @return ApiKeyCreationResult containing both keys and metadata
-   * @throws IllegalArgumentException if integration not found or inactive
+   * @throws ApiKeyCreateValidationException if integration not found or not operational
    * @throws TenantInactiveException if the integration belongs to an inactive tenant
    * @throws ApiKeyLimitExceededException if maximum active keys limit reached
    */
@@ -145,11 +148,11 @@ public class ApiKeyService {
             .findById(integrationId)
             .orElseThrow(
                 () ->
-                    new IllegalArgumentException(
+                    new ApiKeyCreateValidationException(
                         "Integration not found with ID: " + integrationId));
 
     if (!integration.isOperational()) {
-      throw new IllegalArgumentException(
+      throw new ApiKeyCreateValidationException(
           "Cannot create API key for integration in lifecycle state "
               + integration.getLifecycleStatus()
               + ": "
@@ -389,7 +392,8 @@ public class ApiKeyService {
    * @param version optimistic lock version (null = skip check)
    * @return the updated API key
    * @throws org.ezkey.exception.ResourceNotFoundException if key not found
-   * @throws IllegalArgumentException if key is revoked or ipWhitelist validation fails
+   * @throws ApiKeyUpdateValidationException if key is revoked
+   * @throws ApiKeyIpWhitelistValidationException if ipWhitelist validation fails
    * @throws org.springframework.orm.ObjectOptimisticLockingFailureException if version mismatch
    */
   @Transactional
@@ -402,7 +406,7 @@ public class ApiKeyService {
             .orElseThrow(() -> new org.ezkey.exception.ResourceNotFoundException("API key", keyId));
 
     if (!Boolean.TRUE.equals(apiKey.getActive())) {
-      throw new IllegalArgumentException(
+      throw new ApiKeyUpdateValidationException(
           "API key cannot be updated: key has been revoked. Create a new key instead.");
     }
 
@@ -561,13 +565,14 @@ public class ApiKeyService {
    * <p>Checks that all entries are valid IP addresses or CIDR ranges.
    *
    * @param ipWhitelist the IP whitelist to validate
-   * @throws IllegalArgumentException if any entry is invalid
+   * @throws ApiKeyIpWhitelistValidationException if any entry is invalid
    */
   private void validateIpWhitelist(String[] ipWhitelist) {
     for (String ip : ipWhitelist) {
       IPAddressString ipAddressString = new IPAddressString(ip);
       if (!ipAddressString.isValid()) {
-        throw new IllegalArgumentException("Invalid IP address or CIDR in whitelist: " + ip);
+        throw new ApiKeyIpWhitelistValidationException(
+            "Invalid IP address or CIDR in whitelist: " + ip);
       }
     }
   }

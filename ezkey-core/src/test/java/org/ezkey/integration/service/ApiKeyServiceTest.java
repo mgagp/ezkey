@@ -32,7 +32,10 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.exception.ApiKeyCreateValidationException;
+import org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
+import org.ezkey.integration.exception.ApiKeyUpdateValidationException;
 import org.ezkey.integration.service.ApiKeyService.ApiKeyCreationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -158,7 +161,7 @@ class ApiKeyServiceTest {
 
       // Act & Assert
       assertThrows(
-          IllegalArgumentException.class,
+          ApiKeyCreateValidationException.class,
           () -> apiKeyService.createApiKey(999, testAdmin, "Test", null, null));
 
       verify(apiKeyRepository, never()).save(any(ApiKey.class));
@@ -173,7 +176,7 @@ class ApiKeyServiceTest {
 
       // Act & Assert
       assertThrows(
-          IllegalArgumentException.class,
+          ApiKeyCreateValidationException.class,
           () -> apiKeyService.createApiKey(123, testAdmin, "Test", null, null));
 
       verify(apiKeyRepository, never()).save(any(ApiKey.class));
@@ -264,7 +267,7 @@ class ApiKeyServiceTest {
 
       // Act & Assert
       assertThrows(
-          IllegalArgumentException.class,
+          ApiKeyIpWhitelistValidationException.class,
           () -> apiKeyService.createApiKey(123, testAdmin, "Test", null, invalidWhitelist));
     }
 
@@ -531,7 +534,8 @@ class ApiKeyServiceTest {
       when(apiKeyRepository.findById(42)).thenReturn(Optional.of(testApiKey));
 
       assertThrows(
-          IllegalArgumentException.class, () -> apiKeyService.updateApiKey(42, "Desc", null, 0L));
+          ApiKeyUpdateValidationException.class,
+          () -> apiKeyService.updateApiKey(42, "Desc", null, 0L));
       verify(apiKeyRepository, never()).save(any(ApiKey.class));
     }
 
@@ -553,7 +557,7 @@ class ApiKeyServiceTest {
       String[] invalidWhitelist = {"not-an-ip", "192.168.1.0/24"};
 
       assertThrows(
-          IllegalArgumentException.class,
+          ApiKeyIpWhitelistValidationException.class,
           () -> apiKeyService.updateApiKey(42, null, invalidWhitelist, 0L));
       verify(apiKeyRepository, never()).save(any(ApiKey.class));
     }

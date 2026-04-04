@@ -17,6 +17,10 @@ import java.util.stream.Collectors;
 import org.ezkey.dto.ErrorResponseDto;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
+import org.ezkey.integration.exception.ApiKeyCreateValidationException;
+import org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException;
+import org.ezkey.integration.exception.ApiKeyUpdateValidationException;
+import org.ezkey.integration.exception.IntegrationCreateValidationException;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -173,6 +177,50 @@ public class ValidationExceptionHandler {
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setType(URI.create("https://ezkey.io/problems/validation/enrollment-create-invalid"));
     problem.setTitle("Invalid Enrollment Create Request");
+    problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+  }
+
+  @ExceptionHandler(IntegrationCreateValidationException.class)
+  public ResponseEntity<ProblemDetail> handleIntegrationCreateValidationException(
+      IntegrationCreateValidationException ex, WebRequest request) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    problem.setType(URI.create("https://ezkey.io/problems/validation/integration-create-invalid"));
+    problem.setTitle("Invalid Integration Create Request");
+    problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+  }
+
+  @ExceptionHandler(ApiKeyCreateValidationException.class)
+  public ResponseEntity<ProblemDetail> handleApiKeyCreateValidationException(
+      ApiKeyCreateValidationException ex, WebRequest request) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    problem.setType(URI.create("https://ezkey.io/problems/validation/api-key-create-invalid"));
+    problem.setTitle("Invalid API Key Create Request");
+    problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+  }
+
+  @ExceptionHandler(ApiKeyUpdateValidationException.class)
+  public ResponseEntity<ProblemDetail> handleApiKeyUpdateValidationException(
+      ApiKeyUpdateValidationException ex, WebRequest request) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    problem.setType(URI.create("https://ezkey.io/problems/validation/api-key-update-invalid"));
+    problem.setTitle("Invalid API Key Update Request");
+    problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+  }
+
+  @ExceptionHandler(ApiKeyIpWhitelistValidationException.class)
+  public ResponseEntity<ProblemDetail> handleApiKeyIpWhitelistValidationException(
+      ApiKeyIpWhitelistValidationException ex, WebRequest request) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    problem.setType(URI.create("https://ezkey.io/problems/validation/api-key-ip-whitelist-invalid"));
+    problem.setTitle("Invalid API Key IP Whitelist");
     problem.setProperty("path", request.getDescription(false).replace("uri=", ""));
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
   }

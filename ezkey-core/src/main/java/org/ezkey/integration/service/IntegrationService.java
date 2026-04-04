@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.SystemTenantNotConfiguredException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
@@ -27,6 +29,7 @@ import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
 import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
+import org.ezkey.integration.exception.IntegrationCreateValidationException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
@@ -198,7 +201,10 @@ public class IntegrationService {
    * @param createdByAdmin the administrator creating the integration (for tenant assignment and
    *     audit)
    * @return the created and saved Integration entity
-   * @throws IllegalArgumentException if admin tenant cannot be determined
+   * @throws IntegrationCreateValidationException if the administrator context is invalid for
+   *     creation
+   * @throws SystemTenantNotConfiguredException if the system tenant row is missing (server
+   *     misconfiguration)
    */
   @Transactional
   public IntegrationCreateResponse createIntegration(
@@ -222,14 +228,14 @@ public class IntegrationService {
               .findByIsSystemTenantTrue()
               .orElseThrow(
                   () ->
-                      new IllegalStateException(
+                      new SystemTenantNotConfiguredException(
                           "System tenant not found. Database may not be properly initialized."));
       logger.debug("Associating integration with system tenant: {}", tenant.getTenantName());
     } else if (createdByAdmin.getAdminType() == AdminType.TENANT_ADMIN) {
       // Tenant admins create integrations in their own tenant
       tenant = createdByAdmin.getTenant();
       if (tenant == null) {
-        throw new IllegalArgumentException(
+        throw new IntegrationCreateValidationException(
             "Tenant admin must have an associated tenant. Admin: " + createdByAdmin.getUsername());
       }
       logger.debug(
@@ -237,7 +243,7 @@ public class IntegrationService {
           tenant.getTenantName(),
           tenant.getTenantId());
     } else {
-      throw new IllegalArgumentException(
+      throw new IntegrationCreateValidationException(
           "Unsupported admin type for integration creation: " + createdByAdmin.getAdminType());
     }
 
@@ -282,7 +288,7 @@ public class IntegrationService {
     Integration integration =
         integrationRepository
             .findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Integration not found: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("Integration", id));
 
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
       throw new SystemIntegrationLifecycleException(
@@ -308,7 +314,7 @@ public class IntegrationService {
     Integration integration =
         integrationRepository
             .findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Integration not found: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("Integration", id));
 
     if (Boolean.TRUE.equals(integration.getIsSystemIntegration())) {
       throw new SystemIntegrationLifecycleException(

@@ -48,6 +48,7 @@ import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.exception.ApiKeyCreateValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.service.ApiKeyService;
 import org.junit.jupiter.api.BeforeEach;
@@ -185,13 +186,13 @@ class ApiKeyControllerTest {
     }
 
     @Test
-    @DisplayName("Should return 400 BAD_REQUEST for IllegalArgumentException")
-    void shouldReturnBadRequestForIllegalArgumentException() {
+    @DisplayName("Should return 400 BAD_REQUEST for ApiKeyCreateValidationException")
+    void shouldReturnBadRequestForApiKeyCreateValidationException() {
       // Arrange
       ApiKeyCreateRequestDto request = new ApiKeyCreateRequestDto(123, "Test API Key", null, null);
 
       when(apiKeyService.createApiKey(anyInt(), any(EzkeyAdmin.class), anyString(), any(), any()))
-          .thenThrow(new IllegalArgumentException("Invalid integration ID"));
+          .thenThrow(new ApiKeyCreateValidationException("Invalid integration ID"));
 
       // Act
       ResponseEntity<ApiKeyCreateResponseDto> response =
@@ -203,14 +204,14 @@ class ApiKeyControllerTest {
 
     @Test
     @DisplayName(
-        "IllegalArgumentException: audit omits integration FK when integration row missing")
+        "ApiKeyCreateValidationException: audit omits integration FK when integration row missing")
     void createApiKey_failureAuditOmitsIntegrationFkWhenIntegrationMissing() {
       int missingId = 99999;
       ApiKeyCreateRequestDto request =
           new ApiKeyCreateRequestDto(missingId, "Test API Key", null, null);
       doReturn(false).when(auditFkIntegrationRepository).existsById(missingId);
       when(apiKeyService.createApiKey(anyInt(), any(EzkeyAdmin.class), anyString(), any(), any()))
-          .thenThrow(new IllegalArgumentException("Invalid integration ID"));
+          .thenThrow(new ApiKeyCreateValidationException("Invalid integration ID"));
 
       controller.createApiKey(request, httpServletRequest);
 
