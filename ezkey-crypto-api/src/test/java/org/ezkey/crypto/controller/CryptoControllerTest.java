@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.crypto.config.SecurityConfig;
+import org.ezkey.crypto.exception.CryptoApiProblemCatalog;
 import org.ezkey.security.EncryptionService;
 import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.ECP256KeyPair;
@@ -122,8 +123,8 @@ class CryptoControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
         .andExpect(status().isBadRequest())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(CryptoApiProblemCatalog.TYPE_VALIDATION_FAILED));
   }
 
   @Test
@@ -414,8 +415,8 @@ class CryptoControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
         .andExpect(status().isBadRequest())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(CryptoApiProblemCatalog.TYPE_VALIDATION_FAILED));
   }
 
   @Test
@@ -551,8 +552,8 @@ class CryptoControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
         .andExpect(status().isBadRequest())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(CryptoApiProblemCatalog.TYPE_VALIDATION_FAILED));
   }
 
   @Test
@@ -570,7 +571,7 @@ class CryptoControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestBody))
         .andExpect(status().isBadRequest())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(CryptoApiProblemCatalog.TYPE_VALIDATION_FAILED));
   }
 }

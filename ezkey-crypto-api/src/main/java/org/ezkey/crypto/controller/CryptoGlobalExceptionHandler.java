@@ -11,8 +11,10 @@
 package org.ezkey.crypto.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.ezkey.dto.ErrorResponseDto;
+import java.net.URI;
+import org.ezkey.crypto.exception.CryptoApiProblemCatalog;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -23,8 +25,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /**
  * Global exception handler for crypto API error responses.
  *
- * <p>Provides consistent error handling across all crypto endpoints, converting exceptions to
- * standardized ErrorResponseDto objects.
+ * <p>Maps exceptions to RFC 9457 {@link ProblemDetail} bodies for consistent error handling across
+ * crypto endpoints.
  *
  * @since 2025
  */
@@ -34,35 +36,44 @@ public class CryptoGlobalExceptionHandler {
   private static final org.slf4j.Logger logger =
       org.slf4j.LoggerFactory.getLogger(CryptoGlobalExceptionHandler.class);
 
+  private static ResponseEntity<ProblemDetail> problemResponse(
+      HttpStatus status, String typeUri, String title, String detail, HttpServletRequest request) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+    problem.setType(URI.create(typeUri));
+    problem.setTitle(title);
+    problem.setProperty("path", request.getRequestURI());
+    return ResponseEntity.status(status).body(problem);
+  }
+
   // Most specific handlers first - Spring will match the most specific one
   @ExceptionHandler(HttpMessageNotReadableException.class)
-  public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadableException(
+  public ResponseEntity<ProblemDetail> handleHttpMessageNotReadableException(
       HttpMessageNotReadableException e, HttpServletRequest request) {
-    // Log the full exception for debugging
     logger.error("JSON parsing error in crypto API endpoint: {}", request.getRequestURI(), e);
 
     String exceptionMessage = e.getMessage();
     if (exceptionMessage == null || exceptionMessage.isEmpty()) {
       exceptionMessage = "Invalid JSON format in request body";
     } else if (exceptionMessage.contains("JSON parse error")) {
-      // Extract the relevant part of the error message
       int jsonErrorIndex = exceptionMessage.indexOf("JSON parse error");
       if (jsonErrorIndex >= 0) {
         exceptionMessage = exceptionMessage.substring(jsonErrorIndex);
-        // Truncate if too long
         if (exceptionMessage.length() > 200) {
           exceptionMessage = exceptionMessage.substring(0, 197) + "...";
         }
       }
     }
 
-    var errorResponse =
-        new ErrorResponseDto("INVALID_JSON", exceptionMessage, request.getRequestURI());
-    return ResponseEntity.badRequest().body(errorResponse);
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        CryptoApiProblemCatalog.TYPE_MALFORMED_JSON,
+        CryptoApiProblemCatalog.TITLE_INVALID_JSON,
+        exceptionMessage,
+        request);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<ErrorResponseDto> handleValidationException(
+  public ResponseEntity<ProblemDetail> handleValidationException(
       MethodArgumentNotValidException e, HttpServletRequest request) {
 
     StringBuilder message = new StringBuilder("Validation failed: ");
@@ -70,54 +81,55 @@ public class CryptoGlobalExceptionHandler {
       message.append(error.getField()).append(" - ").append(error.getDefaultMessage()).append("; ");
     }
 
-    var errorResponse =
-        new ErrorResponseDto("VALIDATION_ERROR", message.toString(), request.getRequestURI());
-    return ResponseEntity.badRequest().body(errorResponse);
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        CryptoApiProblemCatalog.TYPE_VALIDATION_FAILED,
+        CryptoApiProblemCatalog.TITLE_VALIDATION_FAILED,
+        message.toString(),
+        request);
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<ErrorResponseDto> handleIllegalArgumentException(
+  public ResponseEntity<ProblemDetail> handleIllegalArgumentException(
       IllegalArgumentException e, HttpServletRequest request) {
-    var errorResponse =
-        new ErrorResponseDto("INVALID_PARAMETER", e.getMessage(), request.getRequestURI());
-    return ResponseEntity.badRequest().body(errorResponse);
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        CryptoApiProblemCatalog.TYPE_INVALID_ARGUMENT,
+        CryptoApiProblemCatalog.TITLE_INVALID_ARGUMENT,
+        e.getMessage(),
+        request);
   }
 
   @ExceptionHandler(RuntimeException.class)
-  public ResponseEntity<ErrorResponseDto> handleRuntimeException(
+  public ResponseEntity<ProblemDetail> handleRuntimeException(
       RuntimeException e, HttpServletRequest request) {
-    // Exclude actuator endpoints from global exception handling
     String path = request.getRequestURI();
     if (path != null && path.startsWith("/actuator/")) {
-      // Return null to let Spring Boot handle actuator exceptions with its default handler
       return null;
     }
 
-    // Exclude HttpMessageNotReadableException - handled by specific handler above
     if (e instanceof HttpMessageNotReadableException) {
       return null;
     }
 
-    // Log the full exception for debugging
     logger.error("RuntimeException in crypto API endpoint: {}", path, e);
 
-    var errorResponse =
-        new ErrorResponseDto(
-            "INTERNAL_ERROR", "An internal error occurred: " + e.getMessage(), path);
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    return problemResponse(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        CryptoApiProblemCatalog.TYPE_INTERNAL_ERROR,
+        CryptoApiProblemCatalog.TITLE_INTERNAL_ERROR,
+        "An internal error occurred: " + e.getMessage(),
+        request);
   }
 
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<ErrorResponseDto> handleGenericException(
+  public ResponseEntity<ProblemDetail> handleGenericException(
       Exception e, HttpServletRequest request) {
-    // Exclude actuator endpoints from global exception handling
     String path = request.getRequestURI();
     if (path != null && path.startsWith("/actuator/")) {
-      // Return null to let Spring Boot handle actuator exceptions with its default handler
       return null;
     }
 
-    // Log the full exception for debugging
     logger.error("Exception in crypto API endpoint: {}", path, e);
 
     String exceptionMessage = e.getMessage();
@@ -125,9 +137,11 @@ public class CryptoGlobalExceptionHandler {
       exceptionMessage = e.getClass().getSimpleName() + " (no message)";
     }
 
-    var errorResponse =
-        new ErrorResponseDto(
-            "UNKNOWN_ERROR", "An unexpected error occurred: " + exceptionMessage, path);
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    return problemResponse(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        CryptoApiProblemCatalog.TYPE_UNEXPECTED_ERROR,
+        CryptoApiProblemCatalog.TITLE_UNEXPECTED_ERROR,
+        "An unexpected error occurred: " + exceptionMessage,
+        request);
   }
 }
