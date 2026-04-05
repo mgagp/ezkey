@@ -69,7 +69,7 @@ Spring configuration class providing runtime hints for:
   - API Key DTOs: ApiKeyCreateRequestDto, ApiKeyCreateResponseDto, ApiKeyResponseDto
   - EncryptionKeyController record DTOs: EncryptionKeyResponse, KeyRotationResponse, ReencryptionBatchResponse, BatchResumeResponse, ReencryptionTriggerResponse, ReencryptionKeyResponse, BatchCreationResponse
   - AuditLog DTOs: AuditLogResponseDto
-  - Error DTOs: ErrorResponseDto
+  - Error responses: RFC 9457 `ProblemDetail` (Spring-provided; no legacy error DTO)
 - **JPA Entities**: All database entities:
   - AuthAttempt, Enrollment, Integration, IntegrationI18n
   - ApiKey, EzkeyAdmin, Tenant, AdminToken

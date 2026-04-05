@@ -106,8 +106,7 @@ class HttpClient:
                 if "title" in error_data and error_data["title"]:
                     return f"HTTP {response.status_code}: {error_data['title']}"
 
-                # Legacy format support
-                # Backend returns ErrorResponseDto with 'message' and 'error' fields
+                # Legacy shape (rare): some responses may expose 'message' and 'error' fields
                 message = error_data.get('message', error_data.get('error', 'Unknown error'))
 
                 # For validation errors, the message contains the detailed validation info
