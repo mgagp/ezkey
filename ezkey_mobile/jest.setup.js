@@ -1,7 +1,13 @@
 /**
  * Jest setup for React Native (see App.test.tsx and AsyncStorage Jest integration).
  */
+import {webcrypto} from 'crypto';
 import {NativeModules} from 'react-native';
+
+/** Node/Jest: Web Crypto API for tests that still use `globalThis.crypto`. */
+if (globalThis.crypto == null) {
+  globalThis.crypto = webcrypto;
+}
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
@@ -25,6 +31,12 @@ NativeModules.EzkeyCryptoModule = {
   sign: jest.fn().mockResolvedValue('dGVzdA=='),
   verify: jest.fn().mockResolvedValue(true),
   deleteKeyPair: jest.fn().mockResolvedValue(true),
+  getBuildTimestamp: jest.fn().mockResolvedValue('2025-01-01T00:00:00Z'),
+  generateProofToken: jest
+    .fn()
+    .mockResolvedValue(
+      'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8.ICEiIyQlJicoKSorLC0uLw',
+    ),
 };
 
 jest.mock('react-native-vision-camera', () => ({

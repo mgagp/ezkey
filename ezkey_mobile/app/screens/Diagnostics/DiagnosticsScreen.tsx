@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Alert} from 'react-native';
 import {
   ActivityIndicator,
@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import {useEnrollments} from '../../hooks/useEnrollments';
-import {cryptoService} from '../../services/crypto';
+import {cryptoService, nativeCrypto} from '../../services/crypto';
 import {enrollmentStorage, StoredEnrollment} from '../../services/storage/enrollmentStorage';
 
 type DiagnosticState = {
@@ -24,6 +24,26 @@ const TEST_PHRASE = 'ezkey-mobile-diagnostic';
 
 export const DiagnosticsScreen: React.FC = () => {
   const {data: enrollments, isLoading, refetch} = useEnrollments();
+  const [nativeBuildTimestampUtc, setNativeBuildTimestampUtc] = useState<string | undefined>();
+
+  useEffect(() => {
+    let cancelled = false;
+    void nativeCrypto
+      .getBuildTimestamp()
+      .then(value => {
+        if (!cancelled) {
+          setNativeBuildTimestampUtc(value.trim().length > 0 ? value : undefined);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setNativeBuildTimestampUtc(undefined);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleClearAllData = async () => {
     Alert.alert(
@@ -54,6 +74,13 @@ export const DiagnosticsScreen: React.FC = () => {
     <View style={styles.screen}>
       <View style={styles.banner}>
         <Text style={styles.bannerTitle}>Crypto diagnostics</Text>
+        {nativeBuildTimestampUtc ? (
+          <Text style={styles.bannerMeta} selectable>
+            Native build (UTC): {nativeBuildTimestampUtc}
+          </Text>
+        ) : (
+          <Text style={styles.bannerMeta}>Native build (UTC): unavailable</Text>
+        )}
         <Text style={styles.bannerMeta}>Provider: Native Keystore/Keychain</Text>
         <Text style={styles.bannerHelp}>
           Run a self-test to generate a diagnostic signature using the stored device key. Share the

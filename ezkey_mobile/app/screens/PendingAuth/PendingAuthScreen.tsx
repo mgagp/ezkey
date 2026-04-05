@@ -38,6 +38,7 @@ import {
   buildRespondResultPayload,
 } from '../../services/crypto/authAttemptPayload';
 import {cryptoService} from '../../services/crypto';
+import {generateProofToken} from '../../utils/generateProofToken';
 import {sha256HexUtf8} from '../../utils/sha256HexUtf8';
 import {RespondMitmLabControl} from '../../components/RespondMitmLabControl';
 
@@ -126,8 +127,10 @@ const AuthChallengeCodeInput: React.FC<AuthChallengeCodeInputProps> = ({
 /**
  * Presents pending authentication attempts for a selected enrollment and enables the user to accept or deny them.
  *
- * - Generates device proof tokens per poll, mirroring the guidance in `docs/CRYPTO.md`.
- * - Submits Ed25519 signatures through `cryptoService` to guarantee parity with the backend `SignatureService`.
+ * - Builds each `deviceProofToken` with `generateProofToken()` (same algorithm as backend
+ *   `SignatureService.generateProofToken()`; see `docs/CRYPTO.md`), then signs it with the device key
+ *   (EC P-256) via `cryptoService`.
+ * - Verifies integration Ed25519 signatures on the pending response payload before displaying context.
  * - Surfaces meaningful errors to maintain the human-in-the-loop posture emphasised in `docs/features/AUTH_SECURITY.md`.
  *
  * @param route React Navigation route containing the target enrollment identifier.
@@ -187,7 +190,6 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     if (!enrollment) {
       return;
     }
-    // With Ed25519, keys are derived on-demand, so we just need to ensure root key exists
     setLoading(true);
     setGlobalError(undefined);
     setChallengeFailedMessage(undefined);
@@ -203,7 +205,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           ? {...prev, lastStep: 'after_ensure'}
           : {lastStep: 'after_ensure', capturedAtIso: debugSnapshotAt},
       );
-      const deviceProofToken = Date.now().toString();
+      const deviceProofToken = await generateProofToken();
       const deviceProofTokenSigned = await cryptoService.sign(enrollmentId, deviceProofToken);
       const response = await authAttemptsApi.pending({
         enrollmentId: enrollment.id,

@@ -22,9 +22,11 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.ezkeymobile.BuildConfig
 import java.nio.charset.StandardCharsets
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.SecureRandom
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 
@@ -202,6 +204,47 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
+   * Returns the UTC ISO-8601 timestamp embedded at **native compile time** (Gradle `BuildConfig`).
+   * Use for diagnostics to identify which APK/binary is installed (e.g. debug vs an older build).
+   *
+   * @param promise Resolved with the timestamp string.
+   * @since 2025
+   */
+  @ReactMethod
+  fun getBuildTimestamp(promise: Promise) {
+    try {
+      promise.resolve(BuildConfig.BUILD_TIMESTAMP)
+    } catch (error: Exception) {
+      promise.reject(ERROR_CODE_BUILD_TIMESTAMP, error)
+    }
+  }
+
+  /**
+   * Generates a device proof token for pending auth: same wire format as {@code
+   * SignatureService.generateProofToken()} in ezkey-core (32 + 16 random bytes, URL-safe Base64
+   * without padding, dot-separated). Uses {@link SecureRandom} (platform CSPRNG); does not depend
+   * on {@code react-native-get-random-values}.
+   *
+   * @param promise Resolved with the token string.
+   * @since 2025
+   */
+  @ReactMethod
+  fun generateProofToken(promise: Promise) {
+    try {
+      val secureRandom = SecureRandom()
+      val randomBytes = ByteArray(32)
+      val saltBytes = ByteArray(16)
+      secureRandom.nextBytes(randomBytes)
+      secureRandom.nextBytes(saltBytes)
+      val randomPart = base64UrlEncodeNoPadding(randomBytes)
+      val saltPart = base64UrlEncodeNoPadding(saltBytes)
+      promise.resolve("$randomPart.$saltPart")
+    } catch (error: Exception) {
+      promise.reject(ERROR_CODE_PROOF_TOKEN, error)
+    }
+  }
+
+  /**
    * Deletes the EC P-256 key pair for a given enrollment.
    *
    * @param enrollmentId The enrollment ID to delete the key pair for.
@@ -235,6 +278,21 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     return "ezkey_enrollment_$enrollmentId"
   }
 
+  /** Base64 URL-safe encoding without padding (parity with JDK {@code Base64.getUrlEncoder().withoutPadding()}). */
+  private fun base64UrlEncodeNoPadding(bytes: ByteArray): String {
+    var flags = Base64.URL_SAFE or Base64.NO_WRAP
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      flags = flags or Base64.NO_PADDING
+    }
+    var encoded = Base64.encodeToString(bytes, flags)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+      while (encoded.endsWith("=")) {
+        encoded = encoded.substring(0, encoded.length - 1)
+      }
+    }
+    return encoded
+  }
+
   companion object {
     const val NAME = "EzkeyCryptoModule"
     private const val TAG = "EzkeyCrypto"
@@ -245,5 +303,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     private const val ERROR_CODE_NOT_FOUND = "EZK_KEY_NOT_FOUND"
     private const val ERROR_CODE_DELETE = "EZK_DELETE_ERROR"
     private const val ERROR_CODE_VERIFY = "EZK_VERIFY_ERROR"
+    private const val ERROR_CODE_BUILD_TIMESTAMP = "EZK_BUILD_TIMESTAMP_ERROR"
+    private const val ERROR_CODE_PROOF_TOKEN = "EZK_PROOF_TOKEN_ERROR"
   }
 }

@@ -49,12 +49,15 @@ The mobile app verifies **integration** signatures with **Ed25519** (`Integratio
 
 ## Proof tokens
 
-- **Enrollment proof token**: URL-safe Base64 (no padding), structure `randomBytes.salt` (see `SignatureService.generateProofToken`).
-- **Device proof token**: URL-safe Base64, 32 random bytes (usage in auth flows).
+- **Enrollment proof token**: URL-safe Base64 (no padding), structure `randomPart.saltPart` (see `SignatureService.generateProofToken()` in Java: 32 random bytes + 16 salt bytes, URL-safe Base64 without padding, dot-separated).
+- **Device proof token** (e.g. `deviceProofToken` on `POST /api/v1/auth-attempts/pending`): **same algorithm and wire format** as enrollment proof tokens — `SignatureService.generateProofToken()` — not timestamps or other predictable strings.
+
+**Mobile (reference app `ezkey_mobile`):** call [`generateProofToken()`](../ezkey_mobile/app/utils/generateProofToken.ts), which delegates to [`EzkeyCryptoModule.generateProofToken`](../ezkey_mobile/android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt) (Android `SecureRandom` / iOS `SecRandomCopyBytes`). This avoids a separate `RNGetRandomValues` native module; random bytes are not produced inside the JavaScript engine.
 
 ## Implementation references
 
 - Backend: [`SignatureService.java`](../ezkey-core/src/main/java/org/ezkey/signature/SignatureService.java), [`Ed25519SpkiBytes.java`](../ezkey-core/src/main/java/org/ezkey/signature/Ed25519SpkiBytes.java), [`EcdsaDerCodec.java`](../ezkey-core/src/main/java/org/ezkey/signature/EcdsaDerCodec.java)
+- Mobile proof token (TS): [`generateProofToken.ts`](../ezkey_mobile/app/utils/generateProofToken.ts)
 - Android: [`EzkeyCryptoModule.kt`](../ezkey_mobile/android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt), [`IntegrationKeyVerifier.kt`](../ezkey_mobile/android/app/src/main/java/com/ezkeymobile/crypto/IntegrationKeyVerifier.kt)
 - Payload format: [`AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)
 

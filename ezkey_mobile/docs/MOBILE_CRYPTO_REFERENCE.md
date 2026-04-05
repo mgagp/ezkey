@@ -10,6 +10,15 @@ This document records the current mobile crypto direction for Ezkey and should b
 - **Current iOS posture**: native secure-hardware-backed parity is still in progress and must be described conservatively
 - **Private key wording**: private key material is not exposed to application code
 
+## Device proof tokens (pending auth and similar)
+
+Strings such as `deviceProofToken` sent to the Auth API must use the same **CSPRNG-backed** format as backend `SignatureService.generateProofToken()` (32 random bytes + 16-byte salt, URL-safe Base64 without padding, `randomPart.saltPart`). [`app/utils/generateProofToken.ts`](../app/utils/generateProofToken.ts) delegates to **`EzkeyCryptoModule.generateProofToken`** (Android `SecureRandom`, iOS `SecRandomCopyBytes`).
+
+- **Not** Android Keystore–backed for the random bytes (only the signing key uses Keystore); the CSPRNG is the platform secure random API, not `react-native-get-random-values` / `RNGetRandomValues`.
+- **Do not** substitute timestamps or ad hoc strings; that weakens unpredictability and drifts from `docs/CRYPTO.md`.
+
+Device **signing** of that string (EC P-256) remains in the native module as elsewhere.
+
 ## Why EC P-256
 
 Ezkey uses EC P-256 for device-side signing because it maps to native mobile platform APIs more naturally than Ed25519 for the current architecture.

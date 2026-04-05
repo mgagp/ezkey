@@ -134,6 +134,50 @@ class EzkeyCryptoModule: NSObject, RCTBridgeModule {
     }
   }
 
+  /**
+   * Returns an ISO-8601 UTC string for diagnostics. On iOS this uses the main bundle directory
+   * modification date as a proxy for the install/build (no Gradle `BuildConfig` equivalent here).
+   */
+  @objc
+  func getBuildTimestamp(_ resolve: @escaping RCTPromiseResolveBlock,
+                         rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime]
+    guard let path = Bundle.main.bundlePath,
+          let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+          let date = attrs[.modificationDate] as? Date else {
+      resolve("")
+      return
+    }
+    resolve(formatter.string(from: date))
+  }
+
+  /// Device proof token: same format as Java `SignatureService.generateProofToken()` (SecRandomCopyBytes + Base64URL, no padding).
+  @objc
+  func generateProofToken(_ resolve: @escaping RCTPromiseResolveBlock,
+                            rejecter reject: @escaping RCTPromiseRejectBlock) {
+    func base64UrlNoPadding(_ data: Data) -> String {
+      var s = data.base64EncodedString()
+        .replacingOccurrences(of: "+", with: "-")
+        .replacingOccurrences(of: "/", with: "_")
+      while s.hasSuffix("=") {
+        s.removeLast()
+      }
+      return s
+    }
+    var randomBytes = [UInt8](repeating: 0, count: 32)
+    var saltBytes = [UInt8](repeating: 0, count: 16)
+    let r1 = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+    let r2 = SecRandomCopyBytes(kSecRandomDefault, saltBytes.count, &saltBytes)
+    guard r1 == errSecSuccess && r2 == errSecSuccess else {
+      reject("EZK_PROOF_TOKEN_ERROR", "SecRandomCopyBytes failed", nil)
+      return
+    }
+    let token =
+      base64UrlNoPadding(Data(randomBytes)) + "." + base64UrlNoPadding(Data(saltBytes))
+    resolve(token)
+  }
+
   @objc
   func deleteKey(_ alias: String,
                  resolver resolve: @escaping RCTPromiseResolveBlock,

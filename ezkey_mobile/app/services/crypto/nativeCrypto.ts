@@ -18,6 +18,10 @@ type NativeModuleShape = {
   sign(enrollmentId: string, data: string): Promise<string>;
   verify(data: string, signatureBase64: string, publicKeyBase64: string): Promise<boolean>;
   deleteKeyPair(enrollmentId: string): Promise<boolean>;
+  /** UTC ISO-8601 string set at native build time (Android `BuildConfig`); iOS uses bundle mtime proxy. */
+  getBuildTimestamp(): Promise<string>;
+  /** Same wire format as `SignatureService.generateProofToken()`; uses platform CSPRNG (no `RNGetRandomValues`). */
+  generateProofToken(): Promise<string>;
 };
 
 const {EzkeyCryptoModule} = NativeModules;
@@ -44,6 +48,12 @@ const fallback = {
       'EzkeyCryptoModule is not linked. Unable to delete key pair.',
     );
   },
+  async getBuildTimestamp(): Promise<string> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to read build timestamp.');
+  },
+  async generateProofToken(): Promise<string> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to generate proof token.');
+  },
 } satisfies NativeModuleShape;
 
 const cryptoModule =
@@ -69,6 +79,8 @@ export const nativeCrypto = {
     cryptoModule.verify(data, signatureBase64, publicKeyBase64),
   deleteKeyPair: (enrollmentId: string) =>
     cryptoModule.deleteKeyPair(enrollmentId),
+  getBuildTimestamp: () => cryptoModule.getBuildTimestamp(),
+  generateProofToken: () => cryptoModule.generateProofToken(),
 };
 
 export type NativeCrypto = typeof nativeCrypto;

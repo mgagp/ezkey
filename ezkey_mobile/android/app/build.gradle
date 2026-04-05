@@ -78,6 +78,10 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+    buildFeatures {
+        buildConfig true
+    }
+
     namespace "com.ezkeymobile"
     defaultConfig {
         applicationId "com.ezkeymobile"
@@ -85,6 +89,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        def buildTimeUtc = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+        buildTimeUtc.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
+        buildConfigField "String", "BUILD_TIMESTAMP", "\"${buildTimeUtc.format(new Date())}\""
         ndk {
             abiFilters "arm64-v8a", "x86_64"
         }

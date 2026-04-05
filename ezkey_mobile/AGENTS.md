@@ -45,6 +45,7 @@ Cross-platform companion app for Ezkey MFA: enrollment via QR, secure key manage
 - All new/updated content **in English**.
 - Never break Auth API contracts (`EnrollmentBindResponseDto`, `AuthAttemptPendingResponseDto`) without coordinating with backend.
 - Proof tokens: read-once semantics; never cache in plaintext outside secure storage.
+- **Device proof tokens** (e.g. pending poll): generate only via [`app/utils/generateProofToken.ts`](app/utils/generateProofToken.ts); do not add alternate generators or timestamp-based values.
 - EC P-256 keys: generated per enrollment through the native keystore path; for Android, prefer `Android Keystore` and `StrongBox when available` wording.
 
 ---
