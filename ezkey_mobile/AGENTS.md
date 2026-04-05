@@ -18,6 +18,7 @@ Cross-platform companion app for Ezkey MFA: enrollment via QR, secure key manage
 | State | Zustand + TanStack React Query v5 |
 | HTTP | Axios (shared client, timeouts, error handling) |
 | Camera / QR | react-native-vision-camera + custom frame processor |
+| Branding | `react-native-svg` + `react-native-svg-transformer` (see `assets/images/logo.svg`, same artwork as repo root `logo.svg`) |
 | Secure Storage | react-native-keychain |
 | Crypto | Native modules (EzkeyCryptoModule) — EC P-256, Android Keystore today, iOS secure-hardware-backed parity still in progress |
 | Config | react-native-config (.env) |
@@ -65,6 +66,7 @@ app/
     storage/          Secure + metadata storage abstractions
   state/              Zustand stores (e.g. enrollmentStore)
   utils/              urlValidation, tenantGrouping
+  data/               Generated data (e.g. thirdPartyLicenses.json from `yarn license:app-data`)
 android/              Native Android (Kotlin) — EzkeyCryptoModule, EzkeyQrFrameProcessorPlugin
 ios/                  Native iOS (Swift/Obj-C++) — EzkeyCryptoModule
 ```
@@ -73,12 +75,17 @@ ios/                  Native iOS (Swift/Obj-C++) — EzkeyCryptoModule
 
 ## Key References
 
+- [`docs/MOBILE_PLAY_PUBLISHING.md`](docs/MOBILE_PLAY_PUBLISHING.md) — Google Play checklist (listing, privacy, technical)
 - [`docs/MOBILE_ARCHITECTURE.md`](docs/MOBILE_ARCHITECTURE.md) — Architecture and layer overview
 - [`docs/NATIVE_MODULES.md`](docs/NATIVE_MODULES.md) — Native module responsibilities
 - [`docs/ENDPOINT.md`](../docs/ENDPOINT.md) — Auth API contract
 - [`docs/CRYPTO.md`](../docs/CRYPTO.md) — Cryptographic requirements
 
 ---
+
+## In-app logo
+
+The About screen uses [`assets/images/logo.svg`](assets/images/logo.svg) (under `ezkey_mobile/`). When the canonical [`logo.svg`](../logo.svg) at the repository root changes, copy it here so the mobile branding stays aligned.
 
 ## Launcher icon (Android)
 
@@ -97,6 +104,7 @@ See [`scripts/README.md`](scripts/README.md).
 
 ```bash
 yarn install
+yarn license:app-data   # Refresh app/data/thirdPartyLicenses.json after dependency changes
 yarn ios          # iOS simulator
 yarn android      # Android emulator/device
 yarn start        # Metro bundler only

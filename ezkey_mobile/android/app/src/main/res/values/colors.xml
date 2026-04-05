@@ -2,4 +2,6 @@
 <resources>
     <!-- Same pale blue as admin UI page background (index.css color-bg). Full bleed adaptive icon layer. -->
     <color name="ic_launcher_background">#d6e6ff</color>
+    <!-- Matches app shell (see app/config/theme.ts colors.background) for status/navigation bars. -->
+    <color name="app_background">#0b0d11</color>
 </resources>

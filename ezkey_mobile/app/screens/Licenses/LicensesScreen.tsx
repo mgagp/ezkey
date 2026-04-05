@@ -9,21 +9,19 @@ import React from 'react';
 import {View, Text, StyleSheet, ScrollView} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {colors, spacing, typography, borderRadius} from '../../config/theme';
+import thirdPartyData from '../../data/thirdPartyLicenses.json';
 
-const THIRD_PARTY_LICENSES: {name: string; license: string}[] = [
-  {name: 'React Native', license: 'MIT'},
-  {name: 'React', license: 'MIT'},
-  {name: 'React Navigation', license: 'MIT'},
-  {name: 'Axios', license: 'MIT'},
-  {name: 'Zustand', license: 'MIT'},
-  {name: 'TanStack Query', license: 'MIT'},
-  {name: 'react-native-vision-camera', license: 'MIT'},
-  {name: 'react-native-keychain', license: 'MIT'},
-  {name: 'js-sha256', license: 'MIT'},
-];
+type LicenseRow = {
+  name: string;
+  version: string;
+  license: string;
+};
+
+const PACKAGES: LicenseRow[] = thirdPartyData.packages;
 
 /**
- * Summary of third-party open-source components used by the app.
+ * Third-party packages shipped with the app (direct dependencies). Regenerate data with
+ * `yarn license:app-data` after dependency changes.
  *
  * @since 2025
  */
@@ -32,14 +30,27 @@ export const LicensesScreen: React.FC = () => {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + spacing.xxl}]}>
-      <Text style={styles.intro}>This app uses the following open-source software:</Text>
-      <View style={styles.list}>
-        {THIRD_PARTY_LICENSES.map((item, index) => (
+      contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + spacing.xxl}]}
+      accessibilityLabel="Open source licenses">
+      <Text style={styles.intro} accessibilityRole="text">
+        This app bundles the following direct npm dependencies. Run yarn license:app-data in the project to refresh this
+        list after dependency changes.
+      </Text>
+      {thirdPartyData.generatedAt ? (
+        <Text style={styles.meta} accessibilityLabel={`Data generated at ${thirdPartyData.generatedAt}`}>
+          Data snapshot: {thirdPartyData.generatedAt}
+        </Text>
+      ) : null}
+      <View style={styles.list} accessibilityRole="list">
+        {PACKAGES.map((item, index) => (
           <View
             key={item.name}
-            style={[styles.row, index === THIRD_PARTY_LICENSES.length - 1 && styles.rowLast]}>
-            <Text style={styles.name}>{item.name}</Text>
+            style={[styles.row, index === PACKAGES.length - 1 && styles.rowLast]}
+            accessibilityLabel={`${item.name} version ${item.version}, ${item.license} license`}>
+            <View style={styles.rowText}>
+              <Text style={styles.name}>{item.name}</Text>
+              {item.version ? <Text style={styles.version}>{item.version}</Text> : null}
+            </View>
             <Text style={styles.license}>{item.license}</Text>
           </View>
         ))}
@@ -59,6 +70,12 @@ const styles = StyleSheet.create({
   intro: {
     fontSize: typography.fontSize.base,
     color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: 22,
+  },
+  meta: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
     marginBottom: spacing.xl,
   },
   list: {
@@ -71,21 +88,32 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: spacing.md,
+  },
+  rowText: {
+    flex: 1,
+    minWidth: 0,
   },
   name: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
     color: colors.textPrimary,
-    flex: 1,
-    paddingRight: spacing.md,
+  },
+  version: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
   license: {
     fontSize: typography.fontSize.sm,
     color: colors.textMuted,
+    flexShrink: 0,
+    maxWidth: '38%',
+    textAlign: 'right',
   },
   rowLast: {
     borderBottomWidth: 0,

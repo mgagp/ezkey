@@ -109,8 +109,8 @@ export const HomeScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color={colors.primaryLight} />
+        <View style={styles.loadingContainer} accessibilityLabel="Loading enrollments">
+          <ActivityIndicator color={colors.primaryLight} accessibilityLabel="Loading" />
         </View>
       ) : (
         <SectionList
@@ -121,6 +121,7 @@ export const HomeScreen: React.FC = () => {
           renderSectionHeader={renderSectionHeader}
           ListEmptyComponent={EmptyState}
           stickySectionHeadersEnabled={false}
+          accessibilityLabel="Enrollments grouped by organization"
         />
       )}
       <TouchableOpacity
@@ -128,7 +129,8 @@ export const HomeScreen: React.FC = () => {
         onPress={navigateToWizard}
         activeOpacity={0.85}
         accessibilityRole="button"
-        accessibilityLabel="Add enrollment">
+        accessibilityLabel="Add enrollment"
+        accessibilityHint="Starts enrollment with QR scan">
         <Text style={styles.fabLabel}>+</Text>
       </TouchableOpacity>
     </View>
@@ -141,7 +143,7 @@ export const HomeScreen: React.FC = () => {
  * @since 2025
  */
 const EmptyState: React.FC = () => (
-  <View style={styles.emptyState}>
+  <View style={styles.emptyState} accessibilityRole="text" accessibilityLabel="No enrollments yet. Tap add to create one.">
     <Text style={styles.emptyText}>No enrollments yet. Tap + to add one.</Text>
   </View>
 );
@@ -184,7 +186,12 @@ type EnrollmentListItemProps = {
  * @since 2025
  */
 const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPress}) => (
-  <TouchableOpacity style={styles.card} onPress={() => onPress(enrollment)}>
+  <TouchableOpacity
+    style={styles.card}
+    onPress={() => onPress(enrollment)}
+    accessibilityRole="button"
+    accessibilityLabel={`${enrollment.integrationName}, ${enrollment.status}`}
+    accessibilityHint="Opens enrollment details">
     <View style={styles.cardHeader}>
       <Text style={styles.cardTitle}>{enrollment.integrationName}</Text>
       <Text style={styles.status}>{enrollment.status.toUpperCase()}</Text>

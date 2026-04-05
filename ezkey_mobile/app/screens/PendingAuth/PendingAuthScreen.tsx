@@ -197,16 +197,16 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     try {
       const debugSnapshotAt = new Date().toISOString();
       setDebugInfo({lastStep: 'start', capturedAtIso: debugSnapshotAt});
-      const enrollmentId = enrollment.id.toString();
+      const enrollmentKeyId = enrollment.id.toString();
       // Ensure EC P-256 key pair exists for this enrollment
-      await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
+      await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
       setDebugInfo(prev =>
         prev
           ? {...prev, lastStep: 'after_ensure'}
           : {lastStep: 'after_ensure', capturedAtIso: debugSnapshotAt},
       );
       const deviceProofToken = await generateProofToken();
-      const deviceProofTokenSigned = await cryptoService.sign(enrollmentId, deviceProofToken);
+      const deviceProofTokenSigned = await cryptoService.sign(enrollmentKeyId, deviceProofToken);
       const response = await authAttemptsApi.pending({
         enrollmentId: enrollment.id,
         enrollmentProofToken: enrollment.enrollmentProofToken,
@@ -350,15 +350,15 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       setFormError(undefined);
       try {
         // Ensure root key exists
-        const enrollmentId = enrollment.id.toString();
-        await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
+        const enrollmentKeyId = enrollment.id.toString();
+        await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
         /** User's real decision — always what we sign (proofToken|accepted). */
         const signAccepted = accepted;
         /** Wire value: MITM sim sends the opposite flag so JSON ≠ signed payload. */
         const wireAccepted =
           env.labRespondMitmSimulator && simulateRespondMitmMismatch ? !accepted : accepted;
         const respondPayload = buildRespondPayload(attempt.authAttemptProofToken, signAccepted);
-        const proofTokenSigned = await cryptoService.sign(enrollmentId, respondPayload);
+        const proofTokenSigned = await cryptoService.sign(enrollmentKeyId, respondPayload);
         const response = await authAttemptsApi.respond({
           authAttemptId: attempt.authAttemptId,
           authAttemptAccepted: wireAccepted,

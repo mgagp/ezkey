@@ -93,8 +93,8 @@ export const DangerZoneScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator color={colors.primaryLight} />
+      <View style={styles.loadingContainer} accessibilityLabel="Loading danger zone">
+        <ActivityIndicator color={colors.primaryLight} accessibilityLabel="Loading" />
       </View>
     );
   }
@@ -110,6 +110,7 @@ export const DangerZoneScreen: React.FC = () => {
       <FlatList
         data={enrollments ?? []}
         keyExtractor={item => item.id}
+        accessibilityLabel="Enrollments that can be deleted"
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -121,7 +122,10 @@ export const DangerZoneScreen: React.FC = () => {
             <TouchableOpacity
               style={[styles.clearAllButton, clearAllPending && styles.clearAllButtonDisabled]}
               onPress={handleClearAllData}
-              disabled={clearAllPending}>
+              disabled={clearAllPending}
+              accessibilityRole="button"
+              accessibilityLabel="Clear all enrollment data"
+              accessibilityHint="Removes every enrollment from this device">
               <Text style={styles.clearAllLabel}>Clear all enrollment data</Text>
             </TouchableOpacity>
             <Text style={styles.footerHint}>
@@ -139,7 +143,10 @@ export const DangerZoneScreen: React.FC = () => {
             <TouchableOpacity
               style={[styles.deleteButton, deleteMutation.isPending && styles.deleteButtonDisabled]}
               onPress={() => handleDelete(item)}
-              disabled={deleteMutation.isPending}>
+              disabled={deleteMutation.isPending}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete enrollment ${item.integrationName}`}
+              accessibilityHint="Unlinks this device from this enrollment">
               <Text style={styles.deleteLabel}>Delete</Text>
             </TouchableOpacity>
           </View>
