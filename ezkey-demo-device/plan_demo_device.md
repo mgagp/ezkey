@@ -21,7 +21,7 @@
 - ✅ Thymeleaf templates for all pages
 
 #### 3. **Enrollment Workflow**
-- ✅ New enrollment page
+- ✅ New enrollment page (manual ID + proof token, or **QR image import**: paste from clipboard, drag-and-drop, or file pick; decoded locally in the browser with jsQR using the same JSON / pipe-delimited payload as the Admin API QR and the mobile app)
 - ✅ Binding process (BIND API)
 - ✅ Verification process (VERIFY API)
 - ✅ Enrollment challenge handling
@@ -68,6 +68,11 @@
         <groupId>org.webjars</groupId>
         <artifactId>bootstrap</artifactId>
         <version>5.3.2</version>
+    </dependency>
+    <dependency>
+        <groupId>org.webjars.npm</groupId>
+        <artifactId>jsqr</artifactId>
+        <version>1.4.0</version>
     </dependency>
 </dependencies>
 ```
@@ -205,10 +210,12 @@ public static record Record(
 ### **4. New Enrollment**
 - **URL**: `http://localhost:8083/phone/ezkey/enrollment/new`
 - **Content**: Form with:
-  - Enrollment ID field
-  - Language selector (en, fr, es, de)
-- **Action**: Form submission
+  - Enrollment ID and enrollment proof token (manual entry), **or**
+  - Optional **QR image import** (paste from clipboard, drag-and-drop, or file pick): the browser decodes the QR with jsQR and fills the same fields. Payload format matches the Admin API QR (`QrCodePayloadService`) and the mobile app (`parseQrPayload`: JSON with `enrollmentId` / `enrollmentProofToken` / optional `authUrl`, or pipe-delimited fallback). If the QR's `authUrl` origin differs from this demo device's `ezkey.auth.api.url`, a non-blocking warning is shown.
+- **Action**: Form submission (**Start Enrollment**)
 - **Result**: Start of binding process
+
+**Manual validation (clean-start stack):** Create a new enrollment in the Admin UI and display the QR. Copy the QR image to the clipboard (e.g. Snipping Tool) or save a screenshot, then paste or drop it on the New Enrollment page. Fields should populate; complete bind and verify as usual.
 
 ### **5. Binding Process**
 - **URL**: `http://localhost:8083/phone/ezkey/enrollment/bind`

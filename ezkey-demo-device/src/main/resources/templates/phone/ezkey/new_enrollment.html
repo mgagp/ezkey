@@ -12,7 +12,7 @@
     .content { position:absolute; top: 52px; left:0; right:0; bottom: 0; display:flex; flex-direction:column; }
     .header { padding: 16px; }
     .title { margin:0; font-size: 1.25rem; }
-    .form-container { flex:1; padding: 16px; }
+    .form-container { flex:1; padding: 16px; overflow-y: auto; }
     .form-group { margin-bottom: 20px; }
     .form-label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #ccc; }
     .form-input { 
@@ -55,12 +55,26 @@
     }
     .btn-secondary:hover { background: rgba(255,255,255,.15); }
     .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; }
+    .qr-import-section { margin-bottom: 20px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px dashed rgba(255,255,255,.2); }
+    .qr-import-label { font-size: 0.9rem; color: #ccc; margin-bottom: 8px; display: block; }
+    .qr-drop-zone {
+      padding: 16px; border-radius: 12px; text-align: center; font-size: 0.85rem; color: #aaa;
+      cursor: pointer; user-select: none;
+    }
+    .qr-drop-zone:hover { background: rgba(255,255,255,.06); color: #ddd; }
+    .qr-import-hint { font-size: 0.75rem; color: #666; margin-top: 8px; line-height: 1.35; }
+    .qr-import-error { display: none; margin-top: 10px; padding: 10px 12px; border-radius: 12px; font-size: 0.85rem;
+      background: rgba(220, 53, 69, 0.2); border: 1px solid rgba(220, 53, 69, 0.35); color: #f8a8b3; }
+    .qr-import-warning { display: none; margin-top: 10px; padding: 10px 12px; border-radius: 12px; font-size: 0.8rem;
+      background: rgba(255, 193, 7, 0.12); border: 1px solid rgba(255, 193, 7, 0.35); color: #ffd666; }
+    #qrImportPreview { margin-top: 10px; text-align: center; min-height: 0; }
+    .qr-import-preview-img { max-width: 100%; max-height: 120px; object-fit: contain; border-radius: 8px; }
   </style>
   <script>
     function exitToSetup(){ window.location.href = '/phone/ezkey'; }
   </script>
 </head>
-<body>
+<body th:attr="data-auth-api-base=${configuredAuthApiBase}">
   <div class="app-shell">
     <div class="status-bar">
       <div>Ezkey</div>
@@ -72,6 +86,17 @@
         <div class="text-muted" style="font-size:.85rem; opacity:.8;">Enter enrollment ID and proof token from a <strong>newly created</strong> enrollment (Admin UI). Already-bound enrollments cannot be bound again.</div>
       </div>
       <div class="form-container">
+        <div class="qr-import-section">
+          <span class="qr-import-label">Import from QR image (optional)</span>
+          <div id="qrDropZone" class="qr-drop-zone" title="Drop a screenshot, click to choose a file, or paste an image">
+            Drop a screenshot here, click to browse, or paste (Ctrl+V) an image of the enrollment QR from the Admin UI.
+          </div>
+          <input type="file" id="qrFileInput" accept="image/*" hidden>
+          <div id="qrImportPreview"></div>
+          <div id="qrImportError" class="qr-import-error" role="alert"></div>
+          <div id="qrImportWarning" class="qr-import-warning" role="status"></div>
+          <p class="qr-import-hint">Clipboard paste works when the image is on the clipboard (e.g. Snipping Tool). If decoding fails, use manual entry below.</p>
+        </div>
         <form action="/phone/ezkey/enrollment/bind" method="post">
           <div class="form-group">
             <label for="enrollmentId" class="form-label">Enrollment ID</label>
@@ -91,5 +116,7 @@
     </div>
     <div class="side-exit" onclick="exitToSetup()" title="Exit"></div>
   </div>
+  <script th:src="@{/webjars/jsqr/1.4.0/dist/jsQR.js}"></script>
+  <script th:src="@{/js/enrollment-qr-import.js}"></script>
 </body>
 </html>

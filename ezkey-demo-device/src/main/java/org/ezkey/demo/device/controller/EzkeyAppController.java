@@ -21,6 +21,7 @@ import org.ezkey.demodevice.generated.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.demodevice.generated.dto.EnrollmentVerifyResponseDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -79,13 +80,18 @@ public class EzkeyAppController {
 
   private final EnrollmentStoreService storeService;
 
+  /** Auth API base URL configured for this demo-device (for QR payload vs runtime comparison). */
+  private final String configuredAuthApiBase;
+
   public EzkeyAppController(
       AuthApiService authApiService,
       DeviceCryptoService cryptoService,
-      EnrollmentStoreService storeService) {
+      EnrollmentStoreService storeService,
+      @Value("${ezkey.auth.api.url:http://localhost:8080}") String configuredAuthApiBase) {
     this.authApiService = authApiService;
     this.cryptoService = cryptoService;
     this.storeService = storeService;
+    this.configuredAuthApiBase = configuredAuthApiBase;
   }
 
   @GetMapping
@@ -100,6 +106,7 @@ public class EzkeyAppController {
   @GetMapping("/enrollment/new")
   public String newEnrollment(Model model) {
     model.addAttribute("pageTitle", "New Enrollment");
+    model.addAttribute("configuredAuthApiBase", configuredAuthApiBase);
     return "phone/ezkey/new_enrollment";
   }
 

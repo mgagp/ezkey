@@ -46,6 +46,13 @@
 			<version>5.3.2</version>
 		</dependency>
 
+		<!-- QR decode from pasted/dropped images (enrollment flow) -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>jsqr</artifactId>
+			<version>1.4.0</version>
+		</dependency>
+
 		<!-- HTTP Client for Ezkey Auth API calls -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
