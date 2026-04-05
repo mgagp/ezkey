@@ -58,7 +58,7 @@ app/
   hooks/              React Query + storage orchestration
   navigation/         Stack navigator + types
   providers/          App-wide context providers
-  screens/            Home, EnrollmentWizard, PendingAuth, EnrollmentDetail, Diagnostics
+  screens/            Home, Settings, About, Licenses, EnrollmentWizard, PendingAuth, EnrollmentDetail, DangerZone; Diagnostics (`__DEV__` only)
   services/
     api/              REST clients (enrollments, authAttempts), httpClient
     crypto/           Native crypto integration layer

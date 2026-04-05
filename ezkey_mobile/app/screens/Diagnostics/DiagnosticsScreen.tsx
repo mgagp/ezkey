@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import {Alert} from 'react-native';
 import {
   ActivityIndicator,
   FlatList,
@@ -11,7 +10,7 @@ import {
 } from 'react-native';
 import {useEnrollments} from '../../hooks/useEnrollments';
 import {cryptoService, nativeCrypto} from '../../services/crypto';
-import {enrollmentStorage, StoredEnrollment} from '../../services/storage/enrollmentStorage';
+import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 
 type DiagnosticState = {
   publicKey?: string;
@@ -23,12 +22,12 @@ type DiagnosticState = {
 const TEST_PHRASE = 'ezkey-mobile-diagnostic';
 
 export const DiagnosticsScreen: React.FC = () => {
-  const {data: enrollments, isLoading, refetch} = useEnrollments();
+  const {data: enrollments, isLoading} = useEnrollments();
   const [nativeBuildTimestampUtc, setNativeBuildTimestampUtc] = useState<string | undefined>();
 
   useEffect(() => {
     let cancelled = false;
-    void nativeCrypto
+    nativeCrypto
       .getBuildTimestamp()
       .then(value => {
         if (!cancelled) {
@@ -45,31 +44,6 @@ export const DiagnosticsScreen: React.FC = () => {
     };
   }, []);
 
-  const handleClearAllData = async () => {
-    Alert.alert(
-      'Clear All Data',
-      'This will delete all enrollments and reset the app. This action cannot be undone.',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await enrollmentStorage.clearAll();
-              await refetch();
-            } catch (error) {
-              Alert.alert(
-                'Error',
-                `Failed to clear data: ${error instanceof Error ? error.message : String(error)}`,
-              );
-            }
-          },
-        },
-      ],
-    );
-  };
-
   return (
     <View style={styles.screen}>
       <View style={styles.banner}>
@@ -84,11 +58,8 @@ export const DiagnosticsScreen: React.FC = () => {
         <Text style={styles.bannerMeta}>Provider: Native Keystore/Keychain</Text>
         <Text style={styles.bannerHelp}>
           Run a self-test to generate a diagnostic signature using the stored device key. Share the
-          signature and public key with the backend to validate.
+          signature and public key with the backend to validate. To clear all enrollments, use Settings → Danger Zone.
         </Text>
-        <TouchableOpacity style={styles.clearButton} onPress={handleClearAllData}>
-          <Text style={styles.clearButtonLabel}>Clear All Enrollment Data</Text>
-        </TouchableOpacity>
       </View>
       {isLoading ? (
         <View style={styles.loader}>
@@ -197,19 +168,6 @@ const styles = StyleSheet.create({
   bannerHelp: {
     fontSize: 13,
     color: '#c2c8d5',
-  },
-  clearButton: {
-    marginTop: 12,
-    backgroundColor: '#ff6666',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  clearButtonLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
   },
   loader: {
     flex: 1,

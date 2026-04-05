@@ -10,7 +10,7 @@
  * @since 2025
  */
 
-import React, {useCallback, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useRef, useState} from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -23,9 +23,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {StackScreenProps} from '@react-navigation/stack';
 import axios from 'axios';
-import {Buffer} from 'buffer';
 import {useCameraPermission} from 'react-native-vision-camera';
 import {useSaveEnrollment} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
@@ -37,15 +36,7 @@ import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import {env} from '../../config/env';
 import {validateAuthUrl} from '../../utils/urlValidation';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentWizard'>;
-
-type WizardStep = {
-  id: string;
-  title: string;
-  description: string;
-  actionLabel: string;
-  secondaryLabel?: string;
-};
+type Props = StackScreenProps<RootStackParamList, 'EnrollmentWizard'>;
 
 type EnrollmentDraft = {
   id: string;
@@ -197,7 +188,6 @@ const ChallengeCodeInput: React.FC<ChallengeCodeInputProps> = ({
  */
 export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   const {hasPermission: hasCameraPermission, requestPermission} = useCameraPermission();
-  const [stepIndex, setStepIndex] = useState(0);
   const [draft, setDraft] = useState<EnrollmentDraft | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBinding, setIsBinding] = useState(false);
@@ -231,32 +221,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     }
     return 'Unexpected error.';
   }, []);
-
-  const steps = useMemo<WizardStep[]>(
-    () => [
-      {
-        id: 'scan',
-        title: 'Scan the QR code',
-        description:
-          'Have the enrollment QR visible on your workstation. Tap the button below to open the camera.',
-        actionLabel: 'Open scanner',
-        secondaryLabel: 'Learn more',
-      },
-      {
-        id: 'challenge',
-        title: 'Enter enrollment challenge',
-        description: draft
-          ? `Enter the 6-digit code from the admin console. Tap Complete enrollment to link this device to ${draft.integrationName}.`
-          : 'Enter the 6-digit code from the admin console. Tap Complete enrollment to finish.',
-        actionLabel: 'Complete enrollment',
-        secondaryLabel: 'Cancel',
-      },
-    ],
-    [draft],
-  );
-
-  const currentStep = steps[stepIndex];
-  const progress = (stepIndex + 1) / steps.length;
 
   const buildDraft = useCallback(
     (
@@ -327,10 +291,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         );
         const nextDraft = buildDraft(response, {enrollmentId, enrollmentProofToken, language});
         setDraft(nextDraft);
-        setStepIndex(() => {
-          const challengeIndex = steps.findIndex(step => step.id === 'challenge');
-          return challengeIndex >= 0 ? challengeIndex : 0;
-        });
         setScannerVisible(false);
       } catch (error) {
         setBindError(extractErrorMessage(error));
@@ -339,7 +299,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         setIsBinding(false);
       }
     },
-    [authUrl, bindForm, buildDraft, extractErrorMessage, isBinding, steps],
+    [authUrl, bindForm, buildDraft, extractErrorMessage, isBinding],
   );
 
   const finalizeEnrollment = useCallback(async () => {
@@ -350,10 +310,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     const challengeResponse = enrollmentChallenge.trim();
     if (challengeResponse.length !== 6) {
       setChallengeError('Enrollment challenge must be 6 characters.');
-      const challengeIndex = steps.findIndex(step => step.id === 'challenge');
-      if (challengeIndex >= 0) {
-        setStepIndex(challengeIndex);
-      }
       return;
     }
     const enrollmentId = draft.id.toString();
@@ -399,10 +355,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       const message = extractErrorMessage(error);
       setChallengeError(message);
       setEnrollmentChallenge('');
-      setStepIndex(() => {
-        const challengeIndex = steps.findIndex(step => step.id === 'challenge');
-        return challengeIndex >= 0 ? challengeIndex : 0;
-      });
     } finally {
       setIsSubmitting(false);
     }
@@ -413,12 +365,10 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     extractErrorMessage,
     navigation,
     saveEnrollment,
-    steps,
   ]);
 
   const handlePrimary = useCallback(() => {
-    const step = steps[stepIndex];
-    if (step.id === 'scan') {
+    if (!draft) {
       setBindError(undefined);
       setCameraError(undefined);
       if (hasCameraPermission) {
@@ -434,39 +384,17 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       }
       return;
     }
-    if (step.id === 'challenge') {
-      if (enrollmentChallenge.trim().length !== 6) {
-        setChallengeError('Enrollment challenge must be 6 characters.');
-        return;
-      }
-      setChallengeError(undefined);
-      finalizeEnrollment();
+    if (enrollmentChallenge.trim().length !== 6) {
+      setChallengeError('Enrollment challenge must be 6 characters.');
       return;
     }
-    setStepIndex(index => Math.min(index + 1, steps.length - 1));
-  }, [
-    enrollmentChallenge,
-    finalizeEnrollment,
-    hasCameraPermission,
-    performBinding,
-    requestPermission,
-    stepIndex,
-    steps,
-  ]);
+    setChallengeError(undefined);
+    finalizeEnrollment().catch(() => {});
+  }, [draft, enrollmentChallenge, finalizeEnrollment, hasCameraPermission, requestPermission]);
 
   const handleSecondary = useCallback(() => {
-    if (!currentStep.secondaryLabel) {
-      return;
-    }
-    if (currentStep.id === 'scan') {
-      Alert.alert(
-        'Why we need camera access',
-        'The QR holds temporary enrollment credentials. The app never stores raw images; it only processes the encoded payload locally.',
-      );
-      return;
-    }
-    if (currentStep.id === 'challenge') {
-      if (!isBinding) {
+    if (draft) {
+      if (!isBinding && !isSubmitting) {
         setDraft(undefined);
         setEnrollmentChallenge('');
         setChallengeError(undefined);
@@ -474,47 +402,38 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       }
       return;
     }
-    if (currentStep.id === 'scan' && isBinding) {
-      return;
-    }
-    if (!isSubmitting) {
-      navigation.popToTop();
-    }
-  }, [currentStep, isBinding, isSubmitting, navigation]);
+    Alert.alert(
+      'Why we need camera access',
+      'The QR holds temporary enrollment credentials. The app never stores raw images; it only processes the encoded payload locally.',
+    );
+  }, [draft, isBinding, isSubmitting, navigation]);
 
   const handleBack = useCallback(() => {
-    if (stepIndex === 0) {
-      navigation.goBack();
-      return;
-    }
     if (isSubmitting || isBinding) {
       return;
     }
-    const step = steps[stepIndex];
-    if (step.id === 'challenge') {
+    if (draft) {
       setChallengeError(undefined);
       setEnrollmentChallenge('');
       setDraft(undefined);
+      return;
     }
-    setStepIndex(index => Math.max(index - 1, 0));
-  }, [isBinding, isSubmitting, navigation, stepIndex, steps]);
+    navigation.goBack();
+  }, [draft, isBinding, isSubmitting, navigation]);
 
-  const challengeMissing = currentStep.id === 'challenge' && enrollmentChallenge.trim().length !== 6;
+  const hasDraft = Boolean(draft);
+  const challengeMissing = hasDraft && enrollmentChallenge.trim().length !== 6;
   const primaryDisabled =
-    (currentStep.id === 'challenge' && isSubmitting) ||
-    (currentStep.id === 'scan' && isBinding) ||
-    challengeMissing;
-  const secondaryDisabled =
-    (currentStep.id === 'challenge' && isSubmitting) ||
-    (currentStep.id === 'scan' && isBinding);
-  const primaryLabel =
-    currentStep.id === 'challenge' && isSubmitting
+    (hasDraft && isSubmitting) || (!hasDraft && isBinding) || challengeMissing;
+  const secondaryDisabled = (hasDraft && isSubmitting) || (!hasDraft && isBinding);
+  const primaryLabel = hasDraft
+    ? isSubmitting
       ? 'Finishing…'
-      : currentStep.id === 'scan' && isBinding
-        ? 'Binding…'
-        : currentStep.actionLabel;
-
-  const isChallengeStep = currentStep.id === 'challenge' && !!draft;
+      : 'Complete enrollment'
+    : isBinding
+      ? 'Binding…'
+      : 'Open scanner';
+  const secondaryLabel = hasDraft ? 'Cancel' : 'Learn more';
 
   return (
     <>
@@ -531,35 +450,29 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Text style={styles.backLabel}>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add enrollment</Text>
           <View style={styles.backButton} />
         </View>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressBar, {flex: progress}]} />
-          <View style={[styles.progressRemaining, {flex: 1 - progress}]} />
-        </View>
         <View style={styles.stepContainer}>
-          {!isChallengeStep ? (
+          <Text style={styles.flowSectionLabel}>Scan</Text>
+          <Text style={styles.stepTitle}>Scan the QR code</Text>
+          <Text style={styles.stepDescription}>
+            Have the enrollment QR visible on your workstation. Tap Open scanner to use the camera.
+          </Text>
+          <View style={styles.scanInstructions}>
+            {(bindError || cameraError) ? (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorBannerText}>{bindError ?? cameraError}</Text>
+              </View>
+            ) : null}
+          </View>
+          {hasDraft && draft ? (
             <>
-              <Text style={styles.stepTitle}>{currentStep.title}</Text>
-              <Text style={styles.stepDescription}>{currentStep.description}</Text>
-            </>
-          ) : null}
-          {currentStep.id === 'scan' ? (
-            <View style={styles.scanInstructions}>
-              {(bindError || cameraError) ? (
-                <View style={styles.errorBanner}>
-                  <Text style={styles.errorBannerText}>{bindError ?? cameraError}</Text>
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-          {isChallengeStep ? (
-            <>
+              <View style={styles.flowDivider} />
+              <Text style={styles.flowSectionLabel}>Verify</Text>
               <View style={styles.challengeSection}>
                 <Text style={styles.challengeHeading}>Enter the 6-digit code from the admin console</Text>
                 <Text style={styles.challengeHint}>
-                  Tap Complete enrollment below to finish linking this device.
+                  Tap Complete enrollment below to finish linking this device to {draft.integrationName}.
                 </Text>
                 <ChallengeCodeInput
                   value={enrollmentChallenge}
@@ -580,16 +493,12 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         </View>
       </ScrollView>
       <View style={styles.actions}>
-        {currentStep.secondaryLabel ? (
-          <TouchableOpacity
-            style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
-            onPress={handleSecondary}
-            disabled={secondaryDisabled}>
-            <Text style={styles.secondaryLabel}>{currentStep.secondaryLabel}</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.secondaryButtonPlaceholder} />
-        )}
+        <TouchableOpacity
+          style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
+          onPress={handleSecondary}
+          disabled={secondaryDisabled}>
+          <Text style={styles.secondaryLabel}>{secondaryLabel}</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
           onPress={handlePrimary}
@@ -653,24 +562,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  headerTitle: {
-    fontSize: 18,
+  flowSectionLabel: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#f4f7ff',
+    color: '#5a7aa8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
-  progressTrack: {
-    flexDirection: 'row',
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#1c2230',
-    overflow: 'hidden',
-    marginTop: 16,
-  },
-  progressBar: {
-    backgroundColor: '#3076df',
-  },
-  progressRemaining: {
-    backgroundColor: 'transparent',
+  flowDivider: {
+    height: 1,
+    backgroundColor: 'rgba(54, 115, 223, 0.12)',
+    marginVertical: 24,
   },
   stepContainer: {
     flexGrow: 1,
@@ -873,9 +776,6 @@ const styles = StyleSheet.create({
     borderColor: '#5f6780',
     paddingVertical: 14,
     alignItems: 'center',
-  },
-  secondaryButtonPlaceholder: {
-    flex: 1,
   },
   disabledButton: {
     opacity: 0.6,

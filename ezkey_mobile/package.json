@@ -54,6 +54,7 @@
     "@react-native/metro-config": "0.76.0",
     "@react-native/typescript-config": "0.76.0",
     "@rnx-kit/third-party-notices": "^2.0.2",
+    "@types/jest": "^30.0.0",
     "@types/react": "^18.2.6",
     "@types/react-test-renderer": "^18.0.0",
     "babel-jest": "^29.6.3",

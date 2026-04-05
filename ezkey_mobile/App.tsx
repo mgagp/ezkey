@@ -10,11 +10,12 @@ import {StatusBar, StyleSheet} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {AppProviders} from './app/providers';
+import {colors} from './app/config/theme';
 
 const App: React.FC = () => (
   <GestureHandlerRootView style={styles.root}>
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor="#0b0d11" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <AppProviders />
     </SafeAreaProvider>
   </GestureHandlerRootView>
@@ -23,7 +24,7 @@ const App: React.FC = () => (
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0b0d11',
+    backgroundColor: colors.background,
   },
 });
 

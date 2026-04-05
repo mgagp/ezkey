@@ -11,23 +11,24 @@
  * @since 2025
  */
 
-import React, {useCallback, useLayoutEffect, useMemo} from 'react';
+import React, {useCallback, useMemo} from 'react';
 import {
   ActivityIndicator,
-  Button,
   SectionList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {StackNavigationProp} from '@react-navigation/stack';
 import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {groupEnrollmentsByTenant, type TenantGroup} from '../../utils/tenantGrouping';
+import {borderRadius, colors, spacing, typography} from '../../config/theme';
 
 /**
  * Orders enrollments prioritizing favorites while preserving newest-first semantics.
@@ -47,7 +48,7 @@ const sortEnrollments = (items: StoredEnrollment[]) =>
     return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
 
-type HomeNavigation = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+type HomeNavigation = StackNavigationProp<RootStackParamList, 'Home'>;
 
 /**
  * Converts tenant groups to SectionList sections format.
@@ -66,29 +67,9 @@ const toSections = (groups: TenantGroup[]): Array<{group: TenantGroup; data: Sto
  */
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNavigation>();
+  const insets = useSafeAreaInsets();
   const {data, isLoading} = useEnrollments();
   const setSelected = useEnrollmentStore(store => store.setSelected);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('DangerZone')}
-            style={styles.headerButton}
-            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Text style={styles.headerButtonLabel}>Manage</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Diagnostics')}
-            style={styles.headerButton}
-            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Text style={styles.diagnosticsLabel}>Diagnostics</Text>
-          </TouchableOpacity>
-        </View>
-      ),
-    });
-  }, [navigation]);
 
   const sections = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -123,27 +104,33 @@ export const HomeScreen: React.FC = () => {
 
   const keyExtractor = useCallback((item: StoredEnrollment) => item.id, []);
 
+  const fabBottom = insets.bottom + spacing.lg;
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Enrollments</Text>
-        <Button title="Add" onPress={navigateToWizard} />
-      </View>
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator />
+          <ActivityIndicator color={colors.primaryLight} />
         </View>
       ) : (
         <SectionList
           sections={sections}
           keyExtractor={keyExtractor}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, {paddingBottom: fabBottom + 56 + spacing.md}]}
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
           ListEmptyComponent={EmptyState}
           stickySectionHeadersEnabled={false}
         />
       )}
+      <TouchableOpacity
+        style={[styles.fab, {bottom: fabBottom}]}
+        onPress={navigateToWizard}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Add enrollment">
+        <Text style={styles.fabLabel}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -155,7 +142,7 @@ export const HomeScreen: React.FC = () => {
  */
 const EmptyState: React.FC = () => (
   <View style={styles.emptyState}>
-    <Text style={styles.emptyText}>No enrollments yet. Tap Add to begin.</Text>
+    <Text style={styles.emptyText}>No enrollments yet. Tap + to add one.</Text>
   </View>
 );
 
@@ -214,40 +201,9 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    backgroundColor: '#0b0d11',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#f4f7ff',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  headerButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  headerButtonLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#5a9cf7',
-  },
-  diagnosticsLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#1b2130',
-    opacity: 0.25,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -255,33 +211,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    gap: 12,
-    paddingBottom: 32,
+    gap: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   tenantHeader: {
-    marginTop: 14,
+    marginTop: spacing.md,
     paddingHorizontal: 0,
   },
   tenantName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#f4f7ff',
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
   },
   tenantDescription: {
     marginTop: 2,
-    fontSize: 13,
-    color: '#9aa3b6',
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
     lineHeight: 18,
   },
   tenantDivider: {
     height: 1,
-    marginTop: 10,
+    marginTop: spacing.sm + 2,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   card: {
-    backgroundColor: '#151923',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -290,23 +246,23 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#f4f7ff',
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
   },
   status: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#61d095',
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.success,
   },
   cardSubtitle: {
-    fontSize: 14,
-    color: '#c2c8d5',
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   cardMeta: {
-    fontSize: 12,
-    color: '#9aa3b6',
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
   },
   emptyState: {
     flex: 1,
@@ -315,7 +271,30 @@ const styles = StyleSheet.create({
     paddingVertical: 64,
   },
   emptyText: {
-    color: '#9aa3b6',
-    fontSize: 16,
+    color: colors.textMuted,
+    fontSize: typography.fontSize.lg,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.xl + 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fabLabel: {
+    fontSize: 28,
+    fontWeight: '300',
+    color: colors.textOnPrimary,
+    lineHeight: 32,
   },
 });
