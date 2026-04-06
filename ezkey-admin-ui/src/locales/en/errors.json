@@ -1,0 +1,23 @@
+{
+  "authentication": {
+    "invalid-credentials": "Invalid username or password.",
+    "account-inactive": "This administrator account is inactive.",
+    "no-enrollment": "No enrolled device is available for this account.",
+    "auth-expired": "The authentication attempt expired. Please try again.",
+    "auth-rejected": "Authentication was rejected on your device.",
+    "invalid-signature": "The device signature could not be verified.",
+    "auth-timeout": "No response from your device in time. Please try again."
+  },
+  "admin": {
+    "validation-failed": "Validation failed. Check the fields and try again.",
+    "invalid-argument": "Invalid argument.",
+    "state-conflict": "This action conflicts with the current state. Refresh and try again.",
+    "optimistic-lock-conflict": "This record was changed elsewhere. Refresh and try again.",
+    "malformed-request": "The request body could not be read.",
+    "data-constraint-violation": "The data violates a constraint.",
+    "resource-not-found": "The requested resource was not found.",
+    "internal-error": "An unexpected error occurred.",
+    "rate-limit-exceeded": "Too many requests. Please wait and try again.",
+    "system-tenant-not-configured": "The system is not fully configured. Contact your operator."
+  }
+}

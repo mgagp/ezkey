@@ -1,0 +1,23 @@
+{
+  "authentication": {
+    "invalid-credentials": "Nom d'utilisateur ou mot de passe invalide.",
+    "account-inactive": "Ce compte administrateur est inactif.",
+    "no-enrollment": "Aucun appareil enrôlé n'est disponible pour ce compte.",
+    "auth-expired": "La tentative d'authentification a expiré. Veuillez réessayer.",
+    "auth-rejected": "L'authentification a été refusée sur votre appareil.",
+    "invalid-signature": "La signature de l'appareil n'a pas pu être vérifiée.",
+    "auth-timeout": "Aucune réponse de votre appareil dans les délais. Veuillez réessayer."
+  },
+  "admin": {
+    "validation-failed": "Échec de la validation. Vérifiez les champs et réessayez.",
+    "invalid-argument": "Argument invalide.",
+    "state-conflict": "Cette action est incompatible avec l'état actuel. Actualisez la page et réessayez.",
+    "optimistic-lock-conflict": "Cet enregistrement a été modifié ailleurs. Actualisez la page et réessayez.",
+    "malformed-request": "Le corps de la requête n'a pas pu être lu.",
+    "data-constraint-violation": "Les données violent une contrainte.",
+    "resource-not-found": "La ressource demandée est introuvable.",
+    "internal-error": "Une erreur inattendue s'est produite.",
+    "rate-limit-exceeded": "Trop de requêtes. Veuillez patienter et réessayer.",
+    "system-tenant-not-configured": "Le système n'est pas entièrement configuré. Contactez l'opérateur."
+  }
+}

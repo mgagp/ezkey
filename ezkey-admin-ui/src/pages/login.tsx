@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tooltip } from '@/components/ui/tooltip';
 import { I18N_STORAGE_KEY } from '@/i18n';
-import { getApiErrorMessage } from '@/lib/api-client';
+import type { FetchOptions } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { mapPasswordlessWaitError } from '@/lib/map-passwordless-wait-error';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
 import { LoginRecoverySection } from '@/components/feature/login-recovery-section';
@@ -119,12 +120,13 @@ export default function LoginPage() {
 
     const doWait = async () => {
       try {
+        const waitOptions: FetchOptions = { signal: controller.signal, requireAuth: false };
         const response = await passwordlessWait(
           {
             authAttemptId: waitingData.authAttemptId,
             ...(waitingData.challengeCode != null && { challengeCode: waitingData.challengeCode }),
           },
-          { signal: controller.signal },
+          waitOptions,
         );
         const data = response as unknown as AdminLoginResponseDto;
 
@@ -151,6 +153,7 @@ export default function LoginPage() {
           err,
           t('login:states.error.messageFallback'),
           t('login:states.error.connectionLost'),
+          (e, fb) => getTranslatedApiError(e, t, fb),
         );
 
         switch (mapped.outcome) {
@@ -187,11 +190,15 @@ export default function LoginPage() {
     setLoginState('submitting');
     setErrorMessage(null);
     try {
-      const result = await loginApi({
-        username: formData.username.trim(),
-        challengeRequested: formData.challengeRequested,
-        nonBlocking: true,
-      }) as unknown as AdminLoginResponseDto;
+      const loginRequestOptions: FetchOptions = { requireAuth: false };
+      const result = await loginApi(
+        {
+          username: formData.username.trim(),
+          challengeRequested: formData.challengeRequested,
+          nonBlocking: true,
+        },
+        loginRequestOptions,
+      ) as unknown as AdminLoginResponseDto;
       if (result.authAttemptId && result.expiresAt) {
         persistUsernamePref(formData.username, formData.rememberUsername);
         setWaitingData({
@@ -206,7 +213,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       setLoginState('error');
-      setErrorMessage(getApiErrorMessage(err, t('login:states.error.serverUnreachable')));
+      setErrorMessage(getTranslatedApiError(err, t, t('login:states.error.serverUnreachable')));
     }
   };
 

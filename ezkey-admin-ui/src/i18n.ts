@@ -11,6 +11,7 @@ import enCommon from '@/locales/en/common.json';
 import enHelp from '@/locales/en/help.json';
 import enDashboard from '@/locales/en/dashboard.json';
 import enDemo from '@/locales/en/demo.json';
+import enErrors from '@/locales/en/errors.json';
 import enEnrollments from '@/locales/en/enrollments.json';
 import enIntegrations from '@/locales/en/integrations.json';
 import enLayout from '@/locales/en/layout.json';
@@ -25,6 +26,7 @@ import frCommon from '@/locales/fr/common.json';
 import frHelp from '@/locales/fr/help.json';
 import frDashboard from '@/locales/fr/dashboard.json';
 import frDemo from '@/locales/fr/demo.json';
+import frErrors from '@/locales/fr/errors.json';
 import frEnrollments from '@/locales/fr/enrollments.json';
 import frIntegrations from '@/locales/fr/integrations.json';
 import frLayout from '@/locales/fr/layout.json';
@@ -48,6 +50,7 @@ i18n
         help: enHelp as Record<string, unknown>,
         dashboard: enDashboard as Record<string, unknown>,
         demo: enDemo as Record<string, unknown>,
+        errors: enErrors as Record<string, unknown>,
         enrollments: enEnrollments as Record<string, unknown>,
         integrations: enIntegrations as Record<string, unknown>,
         layout: enLayout as Record<string, unknown>,
@@ -64,6 +67,7 @@ i18n
         help: frHelp as Record<string, unknown>,
         dashboard: frDashboard as Record<string, unknown>,
         demo: frDemo as Record<string, unknown>,
+        errors: frErrors as Record<string, unknown>,
         enrollments: frEnrollments as Record<string, unknown>,
         integrations: frIntegrations as Record<string, unknown>,
         layout: frLayout as Record<string, unknown>,
@@ -73,7 +77,7 @@ i18n
     },
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['admins', 'api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'demo', 'enrollments', 'help', 'integrations', 'layout', 'login', 'tenants'],
+    ns: ['admins', 'api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'demo', 'errors', 'enrollments', 'help', 'integrations', 'layout', 'login', 'tenants'],
     interpolation: {
       escapeValue: false,
     },

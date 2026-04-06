@@ -22,7 +22,7 @@ import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { ApiError } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isDemoMode, resolveTenantDemoPresetForLocale, tenantDemoPresets } from '@/lib/demo-mode';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
@@ -217,9 +217,7 @@ function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => v
 
         {createMutation.isError && (
           <Alert variant="error">
-            {createMutation.error instanceof ApiError
-              ? createMutation.error.message
-              : t('create.errorCreate')}
+            {getTranslatedApiError(createMutation.error, t, t('create.errorCreate'))}
           </Alert>
         )}
 

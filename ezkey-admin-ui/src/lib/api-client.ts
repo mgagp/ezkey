@@ -62,7 +62,8 @@ function messageFromProblemBody(status: number, body: unknown): { message: strin
   return { message, problem };
 }
 
-interface FetchOptions extends RequestInit {
+/** Options for {@link fetchApi}; extends {@link RequestInit} with auth flags. */
+export interface FetchOptions extends RequestInit {
   /** When false, the Authorization header is omitted (used for login calls). */
   requireAuth?: boolean;
   /**
@@ -87,19 +88,10 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+  /** True if this request used the normal admin session (JWT) — 401 means session expired, redirect to login. */
+  const sentSessionBearer = Boolean(!bearerToken && requireAuth && getToken());
 
-  if (response.status === 401) {
-    if (!bearerToken) {
-      clearSession();
-      window.location.replace('/login');
-    }
-    throw new ApiError(
-      401,
-      null,
-      bearerToken ? 'Request unauthorized.' : 'Session expired. Please log in again.',
-    );
-  }
+  const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
 
   const contentType = response.headers.get('content-type') ?? '';
   const isJson =
@@ -120,6 +112,24 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
         }
       }
     }
+
+    if (response.status === 401) {
+      if (bearerToken) {
+        const { message, problem } = messageFromProblemBody(401, body);
+        throw new ApiError(401, body, message, problem);
+      }
+      if (sentSessionBearer) {
+        clearSession();
+        window.location.replace('/login');
+        throw new ApiError(
+          401,
+          body,
+          'Session expired. Please log in again.',
+          isProblemDetail(body) ? (body as ProblemDetail) : null,
+        );
+      }
+    }
+
     const { message, problem } = messageFromProblemBody(response.status, body);
     throw new ApiError(response.status, body, message, problem);
   }

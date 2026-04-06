@@ -23,12 +23,16 @@ export type PasswordlessWaitErrorOutcome =
  * @param err - Caught error from passwordlessWait
  * @param messageFallback - i18n fallback when the API returns an error without a usable detail/title
  * @param connectionLostMessage - i18n copy for transport-level failures
+ * @param translateApiError - When set (e.g. {@link getTranslatedApiError} bound with {@code t}), maps RFC 9457 {@code type} to the {@code errors} namespace before falling back to detail/title
  */
 export function mapPasswordlessWaitError(
   err: unknown,
   messageFallback: string,
   connectionLostMessage: string,
+  translateApiError?: (error: unknown, fallback: string) => string,
 ): PasswordlessWaitErrorOutcome {
+  const resolveMessage = translateApiError ?? ((e: unknown, fb: string) => getApiErrorMessage(e, fb));
+
   if (err instanceof ApiError) {
     const type = err.problemDetail?.type;
 
@@ -41,13 +45,13 @@ export function mapPasswordlessWaitError(
     if (problemTypeMatches(type, PROBLEM_AUTH_TIMEOUT) || err.status === 408) {
       return {
         outcome: 'error',
-        message: getApiErrorMessage(err, messageFallback),
+        message: resolveMessage(err, messageFallback),
       };
     }
 
     return {
       outcome: 'error',
-      message: getApiErrorMessage(err, messageFallback),
+      message: resolveMessage(err, messageFallback),
     };
   }
 

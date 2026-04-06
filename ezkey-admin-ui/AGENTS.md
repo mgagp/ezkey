@@ -28,7 +28,8 @@ Calls the **Admin API** on port 9080. All tenant scoping is automatic via the be
 ```
 src/
   lib/
-    api-client.ts       Fetch wrapper: injects Bearer, handles 401 → /login, parses RFC 9457 ProblemDetail, getApiErrorMessage()
+    api-client.ts       Fetch wrapper: injects Bearer; 401 → redirect to /login only when the request used a session JWT (expired session). Unauthenticated calls (e.g. login with `requireAuth: false`) parse RFC 9457 body instead. getApiErrorMessage()
+    api-error-i18n.ts   Maps ProblemDetail.type (https://ezkey.io/problems/...) to i18n keys under `errors` (Option B); getTranslatedApiError()
     auth.ts             sessionStorage session management (AuthSession)
     demo-mode.ts        Dev-only: isDemoMode flag and demo presets for create forms (stripped in production); locale-specific preset copy lives in `locales/*/demo.json` (e.g. Unicorn Farm FR/EN)
     query-client.ts     TanStack QueryClient — staleTime 30s, 1 retry, refetchOnWindowFocus false
@@ -58,13 +59,18 @@ src/
 
 ### Error display (RFC 9457)
 
-The Admin API returns errors as **RFC 9457 Problem Details** (`type`, `title`, `status`, `detail`, `path`). The client parses these and exposes them on `ApiError`. **Always** use `getApiErrorMessage(error, fallback)` when showing mutation/query errors (Alert or toast) so users see the API’s `detail` or `title` instead of a raw "HTTP 403".
+The Admin API returns errors as **RFC 9457 Problem Details** (`type`, `title`, `status`, `detail`, `path`). The client parses these and exposes them on `ApiError`.
+
+- **Translated API errors (preferred):** use `getTranslatedApiError(error, t, fallback)` from `@/lib/api-error-i18n`. It maps `type` URIs under `https://ezkey.io/problems/` to the `errors` namespace (Option B). For `authentication.*`, curated locale strings win when present. For other types (e.g. `admin.invalid-argument`), RFC 9457 **`detail`** wins when non-empty so specific server messages (duplicate name, validation text) are not replaced by generic titles. If there is no `detail`, it uses a translation when the key exists, then `getApiErrorMessage`.
+- **Raw English from API only:** use `getApiErrorMessage(error, fallback)` from `@/lib/api-client`.
+
+When adding a new problem `type` from the backend, add matching keys under `src/locales/en/errors.json` and `src/locales/fr/errors.json` (nested object matching the dotted key path).
 
 ```tsx
-import { getApiErrorMessage } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 
 { mutation.isError && (
-  <Alert variant="error">{getApiErrorMessage(mutation.error, 'Operation failed.')}</Alert>
+  <Alert variant="error">{getTranslatedApiError(mutation.error, t, t('myNamespace:operationFailed'))}</Alert>
 )}
 ```
 
