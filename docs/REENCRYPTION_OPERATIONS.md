@@ -116,3 +116,39 @@ flowchart LR
 ```
 
 **Legend:** **create-batches** only enqueues. **Trigger full**, **scheduler**, and **resume** drive `processBatch`. **Per-key re-encrypt** creates and processes batches for one old key.
+
+---
+
+## 9. Configuration (`ezkey.encryption.reencryption.*`)
+
+Values below marked **Admin config** come from `ezkey-admin-api/config/application.properties` (used with clean-start Docker). The Java POJO still defines its own defaults if a property is omitted.
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `batch-size` | `500` (Admin config) / `500` (Java) | Max rows per fetch slice (`LIMIT`). Larger slices reduce loop iterations and throttle overhead; each slice loads that many entities into the persistence context before processing. |
+| `throttle-ms` | `10` (Admin config) | Pause after each slice to limit DB load. Use `0` only for short, controlled throughput experiments. |
+| `max-batches-per-run` | `100` (Admin config) | Scheduler: maximum batches processed in one scheduled run. |
+| `max-duration-minutes` | `180` (Admin config) | Scheduler: wall-clock cap per run so large queues are not stopped after a few minutes. |
+| `parallel-batch-workers` | `2` (Admin config) / `1` (Java) | Thread pool size for parallel submission. **Serialization by `target_table`:** at most one batch runs per physical table at a time, so two tables (enrollment + auth attempt) allow up to **two** batches in parallel without same-row contention across column batches. `1` keeps fully sequential behaviour. |
+| `parallel-batch-queue-capacity` | `100` | Bounded queue for the dedicated re-encryption executor when `parallel-batch-workers` &gt; 1. |
+| `temporal-batch-sizing-enabled` | `false` | When `true`, use two chunk sizes: first slice uses `recent-data-chunk-size`, later slices use `stale-data-chunk-size` (heuristic for “hot” leading rows vs throughput). |
+| `recent-data-chunk-size` | `250` | First fetch slice size when temporal sizing is enabled. |
+| `stale-data-chunk-size` | `1000` | Subsequent slices when temporal sizing is enabled. |
+
+**Parallelism:** Creation avoids duplicate active work for the same `(target_table, target_column, old_key_id)`. At execution time, `ReencryptionBatchParallelRunner` holds a **mutex per `target_table`** so two column batches on the same table (e.g. both enrollment columns) never run concurrently, eliminating optimistic-lock conflicts from that source. A bounded pool still limits task submission.
+
+**Temporal sizing:** Optional. Enable only after baseline metrics show benefit; two tiers keep behaviour testable. Trade-off: smaller first chunks reduce contention on recently touched rows; larger follow-up chunks improve throughput on cold segments.
+
+---
+
+## 10. Observability
+
+- **Micrometer (core):** `ezkey.reencryption.batch.duration` (timer, tags `target_table`, `target_column`), `ezkey.reencryption.rows.processed` (counter), `ezkey.reencryption.batch.failures` (counter on failure). Exposed when a `MeterRegistry` bean is present (e.g. Admin API with Actuator metrics).
+- **Actuator:** With `management.endpoints.web.exposure.include` including `metrics` (see `config/application-windows.properties` / `application-docker-dev.properties`), scrape `GET http://<host>:<management-port>/actuator/metrics` (e.g. port **9081** in local dev). Docker “production-like” profiles may expose only `health`; use dev or a profile that includes `metrics` for operator dashboards.
+- **Admin UI:** The **Re-encryption Batches** table **polls every 4 seconds** while the **current page** shows at least one batch in `PENDING`, `IN_PROGRESS`, or `PROCESSING`; otherwise polling is off. Use filters or pagination to remember that batches on other pages do not drive this heuristic.
+
+---
+
+## 11. OpenAPI
+
+REST DTOs for encryption keys and re-encryption are generated from the running Admin API (`./scripts/update-specs.sh` / `scripts\update-specs.bat` after a clean Docker start). Do not hand-edit files under `specs/`.

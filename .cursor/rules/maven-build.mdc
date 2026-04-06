@@ -49,6 +49,11 @@ example:
 Do **not** use targeted module builds such as `mvn -pl ezkey-admin-api ...` or
 `mvn -pl ezkey-auth-api ...` as the first autonomous validation step after substantive Java edits.
 
+A root `mvn clean` followed by `mvn install -DskipTests` installs `checkstyle-config` (and sibling
+reactor artifacts) into the local repository; after that, isolated commands such as
+`mvn test -pl ezkey-crypto-api` work without needing `-am`, as long as that baseline has completed
+successfully at least once in the current environment.
+
 ## Why this rule exists
 
 - Spotless fixes formatting before Maven validation.

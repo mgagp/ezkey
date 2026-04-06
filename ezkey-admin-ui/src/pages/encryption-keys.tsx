@@ -33,7 +33,7 @@ import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useDebounce } from '@/hooks/use-debounce';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { useToast } from '@/context/toast-context';
-import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { usePaginatedFromOrval, type PagedBody } from '@/hooks/use-paginated-orval';
 import {
   listKeys,
   listBatches,
@@ -532,6 +532,17 @@ function ReencryptionBatchesSection() {
     defaultSort: 'createdAt,DESC',
     defaultSize: 20,
     enabled: expanded,
+    refetchInterval: (query) => {
+      const body = query.state.data as PagedBody<ReencryptionBatchResponse> | undefined;
+      const rows = body?.content ?? [];
+      const active = rows.some(
+        (b) =>
+          b.status === 'PENDING'
+          || b.status === 'IN_PROGRESS'
+          || b.status === 'PROCESSING',
+      );
+      return active ? 4000 : false;
+    },
   });
 
   const selectedBatch = selectedBatchIndex !== null ? data[selectedBatchIndex] ?? null : null;

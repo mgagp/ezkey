@@ -228,6 +228,36 @@ public class TinkProperties {
     /** Automatically retry failed batches (default: true). */
     private boolean autoRetryFailed = true;
 
+    /**
+     * Parallel workers for submitting <b>distinct</b> re-encryption batches (different batch_id /
+     * targets). When 1, batches run sequentially on the caller thread. When &gt; 1, {@link
+     * org.ezkey.security.ReencryptionBatchParallelRunner} still serializes work by {@code
+     * target_table} so only one batch touches a given table at a time (avoids same-row contention
+     * across column batches). With two physical tables, up to two batches may run at once.
+     */
+    private int parallelBatchWorkers = 1;
+
+    /**
+     * Queue capacity for the re-encryption batch executor (bounded back-pressure when parallel
+     * workers &gt; 1).
+     */
+    private int parallelBatchQueueCapacity = 100;
+
+    /**
+     * When true, the first fetch slice uses {@link #recentDataChunkSize}; after {@code
+     * lastRecordId} is non-null, uses {@link #staleDataChunkSize}. Reduces optimistic-lock pressure
+     * on the leading edge of a migration; optional heuristic.
+     */
+    private boolean temporalBatchSizingEnabled = false;
+
+    /**
+     * Chunk size for the first slice (cursor not yet advanced). Used when temporal sizing enabled.
+     */
+    private int recentDataChunkSize = 250;
+
+    /** Chunk size after the cursor has moved (resume / subsequent slices). */
+    private int staleDataChunkSize = 1000;
+
     public boolean isEnabled() {
       return enabled;
     }
@@ -282,6 +312,46 @@ public class TinkProperties {
 
     public void setAutoRetryFailed(boolean autoRetryFailed) {
       this.autoRetryFailed = autoRetryFailed;
+    }
+
+    public int getParallelBatchWorkers() {
+      return parallelBatchWorkers;
+    }
+
+    public void setParallelBatchWorkers(int parallelBatchWorkers) {
+      this.parallelBatchWorkers = parallelBatchWorkers;
+    }
+
+    public int getParallelBatchQueueCapacity() {
+      return parallelBatchQueueCapacity;
+    }
+
+    public void setParallelBatchQueueCapacity(int parallelBatchQueueCapacity) {
+      this.parallelBatchQueueCapacity = parallelBatchQueueCapacity;
+    }
+
+    public boolean isTemporalBatchSizingEnabled() {
+      return temporalBatchSizingEnabled;
+    }
+
+    public void setTemporalBatchSizingEnabled(boolean temporalBatchSizingEnabled) {
+      this.temporalBatchSizingEnabled = temporalBatchSizingEnabled;
+    }
+
+    public int getRecentDataChunkSize() {
+      return recentDataChunkSize;
+    }
+
+    public void setRecentDataChunkSize(int recentDataChunkSize) {
+      this.recentDataChunkSize = recentDataChunkSize;
+    }
+
+    public int getStaleDataChunkSize() {
+      return staleDataChunkSize;
+    }
+
+    public void setStaleDataChunkSize(int staleDataChunkSize) {
+      this.staleDataChunkSize = staleDataChunkSize;
     }
   }
 

@@ -27,6 +27,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.List;
@@ -53,7 +54,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * Critical unit tests for ReencryptionService.
@@ -95,6 +97,15 @@ class ReencryptionServiceTest {
   @Mock private TinkProperties properties;
   @Mock private AuditLogService auditLogService;
   @Mock private EntityManager entityManager;
+  @Mock private ObjectProvider<MeterRegistry> meterRegistryProvider;
+
+  private ReencryptionRecordCipher recordCipher;
+  private ReencryptionTargetQueryService targetQueryService;
+  private ReencryptionRowPersistenceService rowPersistence;
+  private ReencryptionBatchProcessingService batchProcessingService;
+  private ReencryptionBatchParallelRunner parallelRunner;
+  private ReencryptionBatchCreationService batchCreationService;
+  private ThreadPoolTaskExecutor reencryptionBatchExecutor;
 
   private ReencryptionService service;
 
@@ -105,19 +116,47 @@ class ReencryptionServiceTest {
 
   @BeforeEach
   void setUp() {
+    lenient().when(meterRegistryProvider.getIfAvailable()).thenReturn(null);
+
+    recordCipher = new ReencryptionRecordCipher(encryptionService);
+    targetQueryService =
+        new ReencryptionTargetQueryService(enrollmentRepository, authAttemptRepository);
+    rowPersistence =
+        new ReencryptionRowPersistenceService(
+            enrollmentRepository, authAttemptRepository, entityManager, recordCipher);
+    batchProcessingService =
+        new ReencryptionBatchProcessingService(
+            batchRepository,
+            keyRepository,
+            properties,
+            auditLogService,
+            targetQueryService,
+            rowPersistence,
+            recordCipher,
+            meterRegistryProvider);
+    reencryptionBatchExecutor = new ThreadPoolTaskExecutor();
+    reencryptionBatchExecutor.setCorePoolSize(1);
+    reencryptionBatchExecutor.setMaxPoolSize(1);
+    reencryptionBatchExecutor.setQueueCapacity(10);
+    reencryptionBatchExecutor.setThreadNamePrefix("reenc-test-");
+    reencryptionBatchExecutor.initialize();
+    batchCreationService =
+        new ReencryptionBatchCreationService(
+            keyManager, keyRepository, batchRepository, auditLogService, targetQueryService);
+    parallelRunner =
+        new ReencryptionBatchParallelRunner(
+            reencryptionBatchExecutor, batchProcessingService, properties);
     service =
         new ReencryptionService(
             encryptionService,
-            keyManager,
             keyRepository,
             batchRepository,
-            enrollmentRepository,
-            authAttemptRepository,
             properties,
             auditLogService,
-            entityManager,
-            null);
-    ReflectionTestUtils.setField(service, "self", service);
+            batchCreationService,
+            batchProcessingService,
+            parallelRunner,
+            targetQueryService);
 
     // Setup encryption keys
     oldKey = new EncryptionKey();
@@ -150,6 +189,7 @@ class ReencryptionServiceTest {
     reencryptionConfig.setMaxBatchesPerRun(100);
     reencryptionConfig.setMaxDurationMinutes(60);
     reencryptionConfig.setEnabled(true);
+    reencryptionConfig.setParallelBatchWorkers(1);
 
     // Use lenient() for stubbings that may not be used by all tests
     lenient().when(properties.getReencryption()).thenReturn(reencryptionConfig);
@@ -171,7 +211,7 @@ class ReencryptionServiceTest {
     when(encryptionService.encrypt("plaintext-data")).thenReturn("ENC:2222222222:reencrypted-data");
 
     // Act
-    ReencryptionService.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
+    ReencryptionRecordCipher.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
 
     // Assert
     assertTrue(result.reencrypted());
@@ -193,7 +233,7 @@ class ReencryptionServiceTest {
 
     // Act
     ReencryptionBatch authBatch = createBatch("ezkey_auth_attempt", "auth_attempt_proof_token");
-    ReencryptionService.ReencryptResult result = invokeReencryptRecord(authBatch, authAttempt);
+    ReencryptionRecordCipher.ReencryptResult result = invokeReencryptRecord(authBatch, authAttempt);
 
     // Assert
     assertTrue(result.reencrypted());
@@ -210,7 +250,7 @@ class ReencryptionServiceTest {
     Enrollment enrollment = createMockEnrollment(123, "ENC:2222222222:already-reencrypted");
 
     // Act
-    ReencryptionService.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
+    ReencryptionRecordCipher.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
 
     // Assert
     assertFalse(result.reencrypted());
@@ -226,7 +266,7 @@ class ReencryptionServiceTest {
     Enrollment enrollment = createMockEnrollment(123, "ENC:9999999999:other-key-data");
 
     // Act
-    ReencryptionService.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
+    ReencryptionRecordCipher.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
 
     // Assert
     assertFalse(result.reencrypted());
@@ -242,7 +282,7 @@ class ReencryptionServiceTest {
     Enrollment enrollment = createMockEnrollment(123, null);
 
     // Act
-    ReencryptionService.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
+    ReencryptionRecordCipher.ReencryptResult result = invokeReencryptRecord(batch, enrollment);
 
     // Assert
     assertFalse(result.reencrypted());
@@ -634,14 +674,18 @@ class ReencryptionServiceTest {
   @DisplayName("discoverReencryptableTargets() - Should discover all Enrollment encrypted fields")
   void discoverReencryptableTargets_ShouldDiscoverEnrollmentFields() {
     // Act
-    List<Target> targets = invokeDiscoverReencryptableTargets();
+    List<ReencryptionBatchCreationService.Target> targets = invokeDiscoverReencryptableTargets();
 
     // Assert
     assertTrue(
-        targets.contains(new Target("ezkey_enrollment", "integration_private_key")),
+        targets.contains(
+            new ReencryptionBatchCreationService.Target(
+                "ezkey_enrollment", "integration_private_key")),
         "Should discover integration_private_key");
     assertTrue(
-        targets.contains(new Target("ezkey_enrollment", "enrollment_proof_token")),
+        targets.contains(
+            new ReencryptionBatchCreationService.Target(
+                "ezkey_enrollment", "enrollment_proof_token")),
         "Should discover enrollment_proof_token");
   }
 
@@ -649,14 +693,18 @@ class ReencryptionServiceTest {
   @DisplayName("discoverReencryptableTargets() - Should discover all AuthAttempt encrypted fields")
   void discoverReencryptableTargets_ShouldDiscoverAuthAttemptFields() {
     // Act
-    List<Target> targets = invokeDiscoverReencryptableTargets();
+    List<ReencryptionBatchCreationService.Target> targets = invokeDiscoverReencryptableTargets();
 
     // Assert
     assertTrue(
-        targets.contains(new Target("ezkey_auth_attempt", "auth_attempt_proof_token")),
+        targets.contains(
+            new ReencryptionBatchCreationService.Target(
+                "ezkey_auth_attempt", "auth_attempt_proof_token")),
         "Should discover auth_attempt_proof_token");
     assertTrue(
-        targets.contains(new Target("ezkey_auth_attempt", "device_proof_token")),
+        targets.contains(
+            new ReencryptionBatchCreationService.Target(
+                "ezkey_auth_attempt", "device_proof_token")),
         "Should discover device_proof_token");
   }
 
@@ -664,7 +712,7 @@ class ReencryptionServiceTest {
   @DisplayName("discoverReencryptableTargets() - Should discover all 4 encrypted fields")
   void discoverReencryptableTargets_ShouldDiscoverAllFields() {
     // Act
-    List<Target> targets = invokeDiscoverReencryptableTargets();
+    List<ReencryptionBatchCreationService.Target> targets = invokeDiscoverReencryptableTargets();
 
     // Assert
     assertEquals(4, targets.size(), "Should discover exactly 4 encrypted fields");
@@ -674,7 +722,7 @@ class ReencryptionServiceTest {
   @DisplayName("discoverReencryptableTargets() - Should eliminate duplicates")
   void discoverReencryptableTargets_ShouldEliminateDuplicates() {
     // Act
-    List<Target> targets = invokeDiscoverReencryptableTargets();
+    List<ReencryptionBatchCreationService.Target> targets = invokeDiscoverReencryptableTargets();
 
     // Assert - Check that each target appears only once
     long enrollmentPrivateKeyCount =
@@ -691,8 +739,8 @@ class ReencryptionServiceTest {
   @DisplayName("discoverReencryptableTargets() - Should return consistent order")
   void discoverReencryptableTargets_ShouldReturnConsistentOrder() {
     // Act - Call multiple times
-    List<Target> targets1 = invokeDiscoverReencryptableTargets();
-    List<Target> targets2 = invokeDiscoverReencryptableTargets();
+    List<ReencryptionBatchCreationService.Target> targets1 = invokeDiscoverReencryptableTargets();
+    List<ReencryptionBatchCreationService.Target> targets2 = invokeDiscoverReencryptableTargets();
 
     // Assert
     assertEquals(targets1, targets2, "Should return same order on multiple calls");
@@ -714,12 +762,12 @@ class ReencryptionServiceTest {
     assertTrue(enrollmentFields.containsKey("enrollment_proof_token"));
 
     // Act
-    List<Target> targets = invokeDiscoverReencryptableTargets();
+    List<ReencryptionBatchCreationService.Target> targets = invokeDiscoverReencryptableTargets();
 
     // Assert - Verify that what's in getEncryptedFields() is discovered
     for (String column : enrollmentFields.keySet()) {
       assertTrue(
-          targets.contains(new Target("ezkey_enrollment", column)),
+          targets.contains(new ReencryptionBatchCreationService.Target("ezkey_enrollment", column)),
           "Should discover column: " + column);
     }
   }
@@ -754,66 +802,17 @@ class ReencryptionServiceTest {
     return b;
   }
 
-  /** Helper method to invoke the private reencryptRecord method via reflection. */
-  private ReencryptionService.ReencryptResult invokeReencryptRecord(
+  private ReencryptionRecordCipher.ReencryptResult invokeReencryptRecord(
       ReencryptionBatch batch, Reencryptable record) {
-    try {
-      java.lang.reflect.Method method =
-          ReencryptionService.class.getDeclaredMethod(
-              "reencryptRecord", ReencryptionBatch.class, Reencryptable.class);
-      method.setAccessible(true);
-      return (ReencryptionService.ReencryptResult) method.invoke(service, batch, record);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to invoke reencryptRecord", e);
-    }
+    return recordCipher.reencryptRecord(batch, record);
   }
 
-  /** Helper method to invoke the private countRecordsEncryptedWithKey method via reflection. */
   private int invokeCountRecordsEncryptedWithKey(String table, String column, Long keyId) {
-    try {
-      java.lang.reflect.Method method =
-          ReencryptionService.class.getDeclaredMethod(
-              "countRecordsEncryptedWithKey", String.class, String.class, Long.class);
-      method.setAccessible(true);
-      return (int) method.invoke(service, table, column, keyId);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to invoke countRecordsEncryptedWithKey", e);
-    }
+    return targetQueryService.countRecordsEncryptedWithKey(table, column, keyId);
   }
 
-  /**
-   * Helper method to invoke the private discoverReencryptableTargets method via reflection.
-   *
-   * <p>Converts internal Target records to test Target records by accessing record components via
-   * reflection.
-   */
-  @SuppressWarnings("unchecked")
-  private List<Target> invokeDiscoverReencryptableTargets() {
-    try {
-      java.lang.reflect.Method method =
-          ReencryptionService.class.getDeclaredMethod("discoverReencryptableTargets");
-      method.setAccessible(true);
-      List<?> result = (List<?>) method.invoke(service);
-
-      // Convert internal Target records to test Target records
-      return result.stream()
-          .map(
-              obj -> {
-                try {
-                  // Access record components via reflection
-                  java.lang.reflect.Method tableMethod = obj.getClass().getMethod("table");
-                  java.lang.reflect.Method columnMethod = obj.getClass().getMethod("column");
-                  String table = (String) tableMethod.invoke(obj);
-                  String column = (String) columnMethod.invoke(obj);
-                  return new Target(table, column);
-                } catch (Exception e) {
-                  throw new RuntimeException("Failed to extract Target components", e);
-                }
-              })
-          .toList();
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to invoke discoverReencryptableTargets", e);
-    }
+  private List<ReencryptionBatchCreationService.Target> invokeDiscoverReencryptableTargets() {
+    return batchCreationService.discoverReencryptableTargets();
   }
 
   // ===== PRIORITY 1: createBatchesForOldKeys() Tests =====
@@ -930,10 +929,4 @@ class ReencryptionServiceTest {
           9999999999L, batch.getNewKey().getKeyId(), "All batches should target PRIMARY key");
     }
   }
-
-  /**
-   * Helper record to represent a re-encryption target (matches the private Target record in
-   * ReencryptionService).
-   */
-  private record Target(String table, String column) {}
 }

@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type Query } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
 /**
@@ -75,6 +75,11 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
   enabled?: boolean;
   /** When false, do not show previous data while the query key changes (e.g. after focus). Default true. */
   keepPreviousData?: boolean;
+  /** Optional polling; when a callback, receives the query so intervals can depend on loaded data. */
+  refetchInterval?:
+    | number
+    | false
+    | ((query: Query<PagedBody<T>, Error>) => number | false | undefined);
 }): UsePaginatedFromOrvalResult<T> {
   const {
     queryKey,
@@ -84,6 +89,7 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
     defaultSort = 'createdAt,DESC',
     enabled = true,
     keepPreviousData: useKeepPreviousData = true,
+    refetchInterval,
   } = options;
 
   const [page, setPageState] = useState(0);
@@ -102,6 +108,7 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
     queryFn: () => fetchPage(params),
     placeholderData: useKeepPreviousData ? keepPreviousData : undefined,
     enabled,
+    refetchInterval,
   });
 
   const totalPages = body?.page?.totalPages ?? 0;

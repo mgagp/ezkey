@@ -105,13 +105,19 @@
 		<artifactId>shedlock-spring</artifactId>
 		<version>7.4.0</version>
 	</dependency>
-	<dependency>
-		<groupId>net.javacrumbs.shedlock</groupId>
-		<artifactId>shedlock-provider-jdbc-template</artifactId>
-		<version>7.4.0</version>
-	</dependency>
+		<dependency>
+			<groupId>net.javacrumbs.shedlock</groupId>
+			<artifactId>shedlock-provider-jdbc-template</artifactId>
+			<version>7.4.0</version>
+		</dependency>
 
-	<!-- Test Dependencies -->
+		<!-- Micrometer for re-encryption batch timers/counters (MeterRegistry from consuming apps) -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-core</artifactId>
+		</dependency>
+
+		<!-- Test Dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>

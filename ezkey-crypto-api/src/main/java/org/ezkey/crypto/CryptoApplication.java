@@ -20,6 +20,10 @@ import org.springframework.context.annotation.FilterType;
  *
  * <p>This application provides cryptographic endpoints for testing and integration.
  *
+ * <p>Key rotation and the full re-encryption pipeline (batch jobs, JPA repositories) are excluded
+ * from component scan: Crypto API has no database and only needs {@link
+ * org.ezkey.security.EncryptionService} and related primitives.
+ *
  * @since 2025
  */
 @SpringBootApplication
@@ -36,7 +40,14 @@ import org.springframework.context.annotation.FilterType;
           type = FilterType.ASSIGNABLE_TYPE,
           classes = {
             org.ezkey.security.KeyRotationService.class,
-            org.ezkey.security.ReencryptionService.class
+            org.ezkey.security.ReencryptionService.class,
+            org.ezkey.security.ReencryptionBatchCreationService.class,
+            org.ezkey.security.ReencryptionBatchProcessingService.class,
+            org.ezkey.security.ReencryptionBatchParallelRunner.class,
+            org.ezkey.security.ReencryptionRecordCipher.class,
+            org.ezkey.security.ReencryptionRowPersistenceService.class,
+            org.ezkey.security.ReencryptionTargetQueryService.class,
+            org.ezkey.security.config.ReencryptionExecutorConfiguration.class
           })
     })
 public class CryptoApplication {
