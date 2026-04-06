@@ -8,7 +8,8 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { fetchApi, getApiErrorMessage } from '@/lib/api-client';
+import { fetchApi } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isValidRecoveryCodeFormat, normalizeRecoveryCodeInput } from '@/lib/recovery-code-format';
 import {
   clearRecoverySession,
@@ -178,7 +179,7 @@ export function LoginRecoverySection({
       setSession(next);
       setStep('tokenActive');
     } catch (err) {
-      setErrorMessage(getApiErrorMessage(err, t('login:recovery.recoverFailed')));
+      setErrorMessage(getTranslatedApiError(err, t, t('login:recovery.recoverFailed')));
     } finally {
       setSubmitting(false);
     }
@@ -204,7 +205,7 @@ export function LoginRecoverySection({
       setSession(null);
       setStep('afterReset');
     } catch (err) {
-      setErrorMessage(getApiErrorMessage(err, t('login:recovery.resetFailed')));
+      setErrorMessage(getTranslatedApiError(err, t, t('login:recovery.resetFailed')));
     } finally {
       setResetting(false);
     }

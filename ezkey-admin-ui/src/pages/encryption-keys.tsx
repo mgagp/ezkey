@@ -26,7 +26,7 @@ import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { HelpInlineButton } from '@/components/help/help-inline-button';
-import { getApiErrorMessage } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useDetailNavigation } from '@/hooks/use-detail-navigation';
@@ -115,7 +115,7 @@ function ReencryptKeyDialog({
         queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, t('reencryptDialog.errorTrigger')), 'error'),
+      onError: (e) => toast(getTranslatedApiError(e, t, t('reencryptDialog.errorTrigger')), 'error'),
     },
   });
 
@@ -404,7 +404,7 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
         queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, t('rotateDialog.errorRotate')), 'error'),
+      onError: (e) => toast(getTranslatedApiError(e, t, t('rotateDialog.errorRotate')), 'error'),
     },
   });
 
@@ -583,7 +583,7 @@ function ReencryptionBatchesSection() {
         toast(res.message ?? t('batchesSection.toastTrigger', { count: res.batchesCreated }), 'success');
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, t('batchesSection.errorTrigger')), 'error'),
+      onError: (e) => toast(getTranslatedApiError(e, t, t('batchesSection.errorTrigger')), 'error'),
     },
   });
 
@@ -594,7 +594,7 @@ function ReencryptionBatchesSection() {
         toast(res.message ?? t('batchesSection.toastCreate', { count: res.batchesCreated }), 'success');
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, t('batchesSection.errorCreate')), 'error'),
+      onError: (e) => toast(getTranslatedApiError(e, t, t('batchesSection.errorCreate')), 'error'),
     },
   });
 
@@ -605,7 +605,7 @@ function ReencryptionBatchesSection() {
         toast(res.message ?? t('batchesSection.toastResume', { id: res.batchId }), 'success');
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
-      onError: (e) => toast(getApiErrorMessage(e, t('batchesSection.errorResume')), 'error'),
+      onError: (e) => toast(getTranslatedApiError(e, t, t('batchesSection.errorResume')), 'error'),
     },
   });
 

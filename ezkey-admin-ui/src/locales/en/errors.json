@@ -19,5 +19,48 @@
     "internal-error": "An unexpected error occurred.",
     "rate-limit-exceeded": "Too many requests. Please wait and try again.",
     "system-tenant-not-configured": "The system is not fully configured. Contact your operator."
+  },
+  "authorization": {
+    "admin-not-allowed": "This administrator operation is not allowed.",
+    "admin-limit-violation": "This operation would violate administrator limits.",
+    "tenant-not-allowed": "This tenant operation is not allowed.",
+    "tenant-inactive": "Cannot use resources for an inactive tenant.",
+    "access-denied": "You do not have permission to perform this action."
+  },
+  "domain": {
+    "integration-has-enrollments": "Cannot delete this integration while enrollments exist. Remove or revoke enrollments first.",
+    "pending-encryption-key-exists": "A pending encryption key already exists. Promote it or use immediate promotion before introducing another key.",
+    "integration-code-already-exists": "An integration with this code already exists for this tenant.",
+    "integration-lifecycle-state": "This action is not valid for the integration's current lifecycle state.",
+    "system-integration-lifecycle": "The system integration is reserved for administrator MFA and cannot be changed this way.",
+    "api-key-limit-exceeded": "The maximum number of active API keys for this integration has been reached.",
+    "auth-attempt-state-conflict": "This authentication attempt is no longer in a state that allows this operation."
+  },
+  "enrollment": {
+    "enrollment-inactive": "This enrollment cannot be used for authentication (inactive or not verified).",
+    "active-verified-enrollment-exists": "An active verified enrollment with the same name already exists for this integration. Use the recovery flow to replace it.",
+    "system-integration-create-not-allowed": "Enrollments for the system integration cannot be created here; use the admin provisioning APIs.",
+    "self-revocation-not-allowed": "You cannot revoke, deactivate, or delete your own enrollment. Use the recovery flow.",
+    "system-integration-revocation": "Bulk revocation or bulk deactivation cannot be applied to a system integration.",
+    "cannot-delete-with-history": "This enrollment cannot be deleted because it has authentication history. Revoke it instead.",
+    "cannot-delete-linked-as-admin": "This enrollment cannot be deleted because it is linked to an administrator. Use the recovery flow first."
+  },
+  "validation": {
+    "auth-attempt-wait-invalid": "The passwordless wait request is not valid.",
+    "auth-attempt-create-invalid": "The authentication attempt request is not valid.",
+    "enrollment-create-invalid": "The enrollment creation request is not valid.",
+    "integration-create-invalid": "The integration creation request is not valid.",
+    "api-key-create-invalid": "The API key creation request is not valid.",
+    "api-key-update-invalid": "The API key update request is not valid.",
+    "api-key-ip-whitelist-invalid": "The IP allow list is not valid."
+  },
+  "admin-provisioning": {
+    "missing-email": "Email is required for global administrator creation.",
+    "missing-first-name": "First name is required for global administrator creation.",
+    "missing-last-name": "Last name is required for global administrator creation.",
+    "missing-tenant-id": "Tenant ID is required for tenant administrator creation.",
+    "invalid-request": "The request is not valid.",
+    "admin-inactive": "This administrator is inactive.",
+    "missing-proof-token": "Enrollment proof token is not available for this administrator."
   }
 }

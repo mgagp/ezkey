@@ -19,5 +19,48 @@
     "internal-error": "Une erreur inattendue s'est produite.",
     "rate-limit-exceeded": "Trop de requêtes. Veuillez patienter et réessayer.",
     "system-tenant-not-configured": "Le système n'est pas entièrement configuré. Contactez l'opérateur."
+  },
+  "authorization": {
+    "admin-not-allowed": "Cette opération administrateur n'est pas autorisée.",
+    "admin-limit-violation": "Cette opération violerait les limites applicables aux administrateurs.",
+    "tenant-not-allowed": "Cette opération sur le locataire n'est pas autorisée.",
+    "tenant-inactive": "Impossible d'utiliser les ressources d'un locataire inactif.",
+    "access-denied": "Vous n'avez pas l'autorisation d'effectuer cette action."
+  },
+  "domain": {
+    "integration-has-enrollments": "Impossible de supprimer cette intégration tant qu'il existe des enrôlements. Retirez ou révoquez les enrôlements d'abord.",
+    "pending-encryption-key-exists": "Une clé de chiffrement en attente existe déjà. Promouvez-la ou utilisez la promotion immédiate avant d'en introduire une autre.",
+    "integration-code-already-exists": "Une intégration avec ce code existe déjà pour ce locataire.",
+    "integration-lifecycle-state": "Cette action n'est pas valide pour l'état du cycle de vie actuel de l'intégration.",
+    "system-integration-lifecycle": "L'intégration système est réservée à l'authentification multifacteur des administrateurs et ne peut pas être modifiée ainsi.",
+    "api-key-limit-exceeded": "Le nombre maximal de clés API actives pour cette intégration est atteint.",
+    "auth-attempt-state-conflict": "Cette tentative d'authentification n'est plus dans un état permettant cette opération."
+  },
+  "enrollment": {
+    "enrollment-inactive": "Cet enrôlement ne peut pas servir à l'authentification (inactif ou non vérifié).",
+    "active-verified-enrollment-exists": "Un enrôlement vérifié actif portant le même nom existe déjà pour cette intégration. Utilisez le parcours de récupération pour le remplacer.",
+    "system-integration-create-not-allowed": "Les enrôlements pour l'intégration système ne peuvent pas être créés ici ; utilisez les API d'approvisionnement administrateur.",
+    "self-revocation-not-allowed": "Vous ne pouvez pas révoquer, désactiver ou supprimer votre propre enrôlement. Utilisez le parcours de récupération.",
+    "system-integration-revocation": "La révocation ou la désactivation en masse ne peut pas s'appliquer à une intégration système.",
+    "cannot-delete-with-history": "Cet enrôlement ne peut pas être supprimé car il a un historique d'authentification. Révoquez-le plutôt.",
+    "cannot-delete-linked-as-admin": "Cet enrôlement ne peut pas être supprimé car il est lié à un administrateur. Utilisez d'abord le parcours de récupération."
+  },
+  "validation": {
+    "auth-attempt-wait-invalid": "La requête d'attente sans mot de passe n'est pas valide.",
+    "auth-attempt-create-invalid": "La requête de création de tentative d'authentification n'est pas valide.",
+    "enrollment-create-invalid": "La requête de création d'enrôlement n'est pas valide.",
+    "integration-create-invalid": "La requête de création d'intégration n'est pas valide.",
+    "api-key-create-invalid": "La requête de création de clé API n'est pas valide.",
+    "api-key-update-invalid": "La requête de mise à jour de clé API n'est pas valide.",
+    "api-key-ip-whitelist-invalid": "La liste d'adresses IP autorisées n'est pas valide."
+  },
+  "admin-provisioning": {
+    "missing-email": "L'adresse e-mail est obligatoire pour la création d'un administrateur global.",
+    "missing-first-name": "Le prénom est obligatoire pour la création d'un administrateur global.",
+    "missing-last-name": "Le nom est obligatoire pour la création d'un administrateur global.",
+    "missing-tenant-id": "L'identifiant du locataire est obligatoire pour la création d'un administrateur de locataire.",
+    "invalid-request": "La requête n'est pas valide.",
+    "admin-inactive": "Cet administrateur est inactif.",
+    "missing-proof-token": "Le jeton de preuve d'enrôlement n'est pas disponible pour cet administrateur."
   }
 }

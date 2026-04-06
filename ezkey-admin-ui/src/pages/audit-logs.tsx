@@ -22,7 +22,7 @@ import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-deta
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { getApiErrorMessage } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { EventStatusBadge } from '@/components/feature/event-status-badge';
 import { EVENT_TYPE_KEYS, getAuditEventTypeLabel } from '@/lib/audit-event-type';
@@ -623,7 +623,7 @@ function IntegrityPanel() {
         setChainReportRange({ from: checkRange.from, to: checkRange.to });
       }
     } catch (e) {
-      toast(getApiErrorMessage(e, t('integrity.errorChainCheck')), 'error');
+      toast(getTranslatedApiError(e, t, t('integrity.errorChainCheck')), 'error');
     } finally {
       setChainLoading(false);
     }
@@ -647,7 +647,7 @@ function IntegrityPanel() {
         setIntegrityReportRange({ from: checkRange.from, to: checkRange.to });
       }
     } catch (e) {
-      toast(getApiErrorMessage(e, t('integrity.errorIntegrityCheck')), 'error');
+      toast(getTranslatedApiError(e, t, t('integrity.errorIntegrityCheck')), 'error');
     } finally {
       setIntegrityLoading(false);
     }
@@ -662,7 +662,7 @@ function IntegrityPanel() {
         queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
         queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
       },
-      onError: (e) => toast(getApiErrorMessage(e, t('integrity.errorSeal')), 'error'),
+      onError: (e) => toast(getTranslatedApiError(e, t, t('integrity.errorSeal')), 'error'),
     },
   });
 
@@ -674,7 +674,7 @@ function IntegrityPanel() {
         queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
         queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
       },
-      onError: (e) => toast(getApiErrorMessage(e, t('integrity.errorGap')), 'error'),
+      onError: (e) => toast(getTranslatedApiError(e, t, t('integrity.errorGap')), 'error'),
     },
   });
 

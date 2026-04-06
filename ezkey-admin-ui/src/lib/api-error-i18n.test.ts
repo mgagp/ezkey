@@ -49,6 +49,24 @@ describe('getTranslatedApiError', () => {
     expect(getTranslatedApiError(err, t, 'fallback')).toBe('Invalid username or password.');
   });
 
+  it('prefers curated i18n over English detail for domain.integration-has-enrollments (quick win)', async () => {
+    await i18n.changeLanguage('fr');
+    const err = new ApiError(
+      409,
+      {},
+      'Cannot delete integration: it has one or more enrollments...',
+      {
+        type: `${EZKEY_PROBLEM_TYPE_BASE}/domain/integration-has-enrollments`,
+        detail:
+          'Cannot delete integration: it has one or more enrollments. Remove or revoke enrollments first.',
+      },
+    );
+    const t = i18n.t.bind(i18n);
+    expect(getTranslatedApiError(err, t, 'fallback')).toBe(
+      "Impossible de supprimer cette intégration tant qu'il existe des enrôlements. Retirez ou révoquez les enrôlements d'abord.",
+    );
+  });
+
   it('prefers server detail over generic i18n for admin.invalid-argument', async () => {
     await i18n.changeLanguage('fr');
     const err = new ApiError(

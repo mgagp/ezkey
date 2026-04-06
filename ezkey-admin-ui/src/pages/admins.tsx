@@ -25,7 +25,8 @@ import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { fetchApi, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
+import { fetchApi, fetchBlobUrl } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
@@ -256,7 +257,7 @@ function DeactivateAdminDialog({
 
           {deactivateMutation.isError && (
             <Alert variant="error">
-              {getApiErrorMessage(deactivateMutation.error, t('deactivate.errorDeactivate'))}
+              {getTranslatedApiError(deactivateMutation.error, t, t('deactivate.errorDeactivate'))}
             </Alert>
           )}
 
@@ -360,7 +361,7 @@ function AdminDetailDialog({
       void queryClient.invalidateQueries({ queryKey: ['admins'] });
       void queryClient.invalidateQueries({ queryKey: ['admin-detail', adm!.adminId] });
     },
-    onError: (e: unknown) => toast(getApiErrorMessage(e, t('detail.errorActivate')), 'error'),
+    onError: (e: unknown) => toast(getTranslatedApiError(e, t, t('detail.errorActivate')), 'error'),
   });
 
   const updateMutation = useUpdateAdmin({
@@ -388,7 +389,7 @@ function AdminDetailDialog({
       await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
     },
     onError: (e: unknown) =>
-      toast(getApiErrorMessage(e, t('detail.errorRecoveryCodesRegenerate')), 'error'),
+      toast(getTranslatedApiError(e, t, t('detail.errorRecoveryCodesRegenerate')), 'error'),
   });
 
   if (!adm) return null;
@@ -676,8 +677,9 @@ function AdminDetailDialog({
             </div>
             {regenerateRecoveryCodesMutation.isError && (
               <Alert variant="error">
-                {getApiErrorMessage(
+                {getTranslatedApiError(
                   regenerateRecoveryCodesMutation.error,
+                  t,
                   t('detail.errorRecoveryCodesRegenerate'),
                 )}
               </Alert>
@@ -756,7 +758,7 @@ function AdminDetailDialog({
           </div>
           {updateMutation.isError && (
             <Alert variant="error">
-              {getApiErrorMessage(updateMutation.error, t('detail.errorUpdate'))}
+              {getTranslatedApiError(updateMutation.error, t, t('detail.errorUpdate'))}
             </Alert>
           )}
           <div className="flex justify-end gap-2 pt-2">
@@ -1190,7 +1192,7 @@ function CreateAdminDialog({
 
           {createMutation.isError && (
             <Alert variant="error">
-              {getApiErrorMessage(createMutation.error, t('create.errorCreate'))}
+              {getTranslatedApiError(createMutation.error, t, t('create.errorCreate'))}
             </Alert>
           )}
 

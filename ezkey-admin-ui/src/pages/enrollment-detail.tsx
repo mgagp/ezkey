@@ -22,7 +22,8 @@ import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-naviga
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
-import { ApiError, fetchBlobUrl, getApiErrorMessage } from '@/lib/api-client';
+import { ApiError, fetchBlobUrl } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
@@ -293,7 +294,7 @@ function TestAuthDialog({
 
           {createMutation.isError && (
             <Alert variant="error">
-              {getApiErrorMessage(createMutation.error, t('testAuth.errorCreateAttempt'))}
+              {getTranslatedApiError(createMutation.error, t, t('testAuth.errorCreateAttempt'))}
             </Alert>
           )}
 
@@ -956,12 +957,12 @@ export default function EnrollmentDetailPage() {
                       )}
                       {deactivateMutation.isError && (
                         <Alert variant="error">
-                          {getApiErrorMessage(deactivateMutation.error, t('detail.errorDeactivate'))}
+                          {getTranslatedApiError(deactivateMutation.error, t, t('detail.errorDeactivate'))}
                         </Alert>
                       )}
                       {reactivateMutation.isError && (
                         <Alert variant="error">
-                          {getApiErrorMessage(reactivateMutation.error, t('detail.errorReactivate'))}
+                          {getTranslatedApiError(reactivateMutation.error, t, t('detail.errorReactivate'))}
                         </Alert>
                       )}
                     </div>
@@ -1007,7 +1008,7 @@ export default function EnrollmentDetailPage() {
                           </div>
                           {revokeMutation.isError && (
                             <Alert variant="error">
-                              {getApiErrorMessage(revokeMutation.error, t('detail.errorRevoke'))}
+                              {getTranslatedApiError(revokeMutation.error, t, t('detail.errorRevoke'))}
                             </Alert>
                           )}
                           <div className="flex gap-2">
@@ -1059,7 +1060,7 @@ export default function EnrollmentDetailPage() {
                       </p>
                       {deleteMutation.isError && (
                         <Alert variant="error">
-                          {getApiErrorMessage(deleteMutation.error, t('detail.errorDelete'))}
+                          {getTranslatedApiError(deleteMutation.error, t, t('detail.errorDelete'))}
                         </Alert>
                       )}
                       <div className="flex gap-2">
@@ -1117,8 +1118,9 @@ export default function EnrollmentDetailPage() {
           </div>
           {(lifecycleConfirm === 'deactivate' ? deactivateMutation.isError : reactivateMutation.isError) && (
             <Alert variant="error">
-              {getApiErrorMessage(
+              {getTranslatedApiError(
                 lifecycleConfirm === 'deactivate' ? deactivateMutation.error : reactivateMutation.error,
+                t,
                 lifecycleConfirm === 'deactivate' ? t('detail.errorDeactivate') : t('detail.errorReactivate'),
               )}
             </Alert>
@@ -1282,8 +1284,9 @@ export default function EnrollmentDetailPage() {
           </div>
           {updateMutation.isError && (
             <Alert variant="error">
-              {getApiErrorMessage(
+              {getTranslatedApiError(
                 updateMutation.error,
+                t,
                 updateMutation.error instanceof ApiError && updateMutation.error.status === 409
                   ? t('detail.errorConflict')
                   : t('detail.errorUpdate'),

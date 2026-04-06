@@ -7,12 +7,24 @@ export const EZKEY_PROBLEM_TYPE_BASE = 'https://ezkey.io/problems';
 
 /**
  * Problem type keys (dotted, under {@code errors}) where a static locale string is preferred over
- * {@code detail}. Used for login/auth flows where the API {@code detail} is often English but we
- * ship curated FR/EN copy. For generic buckets (e.g. {@code admin.invalid-argument}), the server
- * {@code detail} carries the specific reason (duplicate name, etc.) and must win when present.
+ * non-empty {@code detail}. Authentication flows use this broadly. Other entries are allowlisted
+ * only when production {@code detail} is a single stable message (see docs/admin-ui-admin-api-error-inventory.md).
+ * For dynamic {@code detail} (duplicate names, limits with counts, etc.), the server message must win when present.
  */
+const PREFER_I18N_OVER_DETAIL_RELS = new Set<string>([
+  'domain.integration-has-enrollments',
+  'domain.pending-encryption-key-exists',
+  'enrollment.system-integration-create-not-allowed',
+  'enrollment.active-verified-enrollment-exists',
+  'enrollment.cannot-delete-with-history',
+  'enrollment.cannot-delete-linked-as-admin',
+]);
+
 function shouldPreferI18nOverDetail(rel: string): boolean {
-  return rel.startsWith('authentication.');
+  if (rel.startsWith('authentication.')) {
+    return true;
+  }
+  return PREFER_I18N_OVER_DETAIL_RELS.has(rel);
 }
 
 /**
@@ -34,10 +46,10 @@ export function problemTypeToTranslationKey(type: string | undefined): string | 
 }
 
 /**
- * Returns a user-facing API error string. Prefers curated i18n for {@code authentication.*}
- * problem types when a key exists; otherwise prefers RFC 9457 {@code detail} when non-empty (so
- * business-specific messages are not replaced by generic titles), then locale by {@code type},
- * then {@link getApiErrorMessage}.
+ * Returns a user-facing API error string. Prefers curated i18n for allowlisted problem types
+ * (see {@link shouldPreferI18nOverDetail}) when a key exists; otherwise prefers RFC 9457 {@code detail}
+ * when non-empty (so business-specific messages are not replaced by generic titles), then locale by
+ * {@code type}, then {@link getApiErrorMessage}.
  */
 export function getTranslatedApiError(error: unknown, t: TFunction, fallback: string): string {
   if (!(error instanceof ApiError)) return fallback;

@@ -21,7 +21,8 @@ import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-deta
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { useDemoModeSession } from '@/context/demo-mode-context';
-import { api, getApiErrorMessage } from '@/lib/api-client';
+import { api } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isDemoMode } from '@/lib/demo-mode';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
@@ -439,7 +440,7 @@ export default function IntegrationDetailPage() {
               );
               setDangerAction(null);
             })
-            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
+            .catch((e) => toast(getTranslatedApiError(e, t, t('detail.errorFailed')), 'error'));
         }}
       />
       <DangerConfirmDialog
@@ -473,7 +474,7 @@ export default function IntegrationDetailPage() {
               );
               setDangerAction(null);
             })
-            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
+            .catch((e) => toast(getTranslatedApiError(e, t, t('detail.errorFailed')), 'error'));
         }}
       />
       <DangerConfirmDialog
@@ -508,7 +509,7 @@ export default function IntegrationDetailPage() {
               );
               setDangerAction(null);
             })
-            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
+            .catch((e) => toast(getTranslatedApiError(e, t, t('detail.errorFailed')), 'error'));
         }}
       />
       <DangerConfirmDialog
@@ -540,7 +541,7 @@ export default function IntegrationDetailPage() {
               toast(t('detail.toastRetired'));
               setDangerAction(null);
             })
-            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorFailed')), 'error'));
+            .catch((e) => toast(getTranslatedApiError(e, t, t('detail.errorFailed')), 'error'));
         }}
       />
       <DangerConfirmDialog
@@ -565,7 +566,7 @@ export default function IntegrationDetailPage() {
               toast(t('detail.toastDeleted'));
               navigate('/integrations');
             })
-            .catch((e) => toast(getApiErrorMessage(e, t('detail.errorDeleteFailed')), 'error'));
+            .catch((e) => toast(getTranslatedApiError(e, t, t('detail.errorDeleteFailed')), 'error'));
         }}
       />
     </AppShell>
