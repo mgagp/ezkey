@@ -17,6 +17,11 @@ export interface ProblemDetail {
   detail?: string;
   instance?: string;
   path?: string;
+  /**
+   * RFC 9457 extension member: scalar values for client-side localization (e.g. i18next
+   * interpolation). Omitted when the problem has no dynamic fragments.
+   */
+  parameters?: Record<string, string | number | boolean>;
   [key: string]: unknown;
 }
 

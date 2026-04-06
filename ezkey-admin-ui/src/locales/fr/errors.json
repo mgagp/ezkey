@@ -61,6 +61,7 @@
     "missing-tenant-id": "L'identifiant du locataire est obligatoire pour la création d'un administrateur de locataire.",
     "invalid-request": "La requête n'est pas valide.",
     "admin-inactive": "Cet administrateur est inactif.",
-    "missing-proof-token": "Le jeton de preuve d'enrôlement n'est pas disponible pour cet administrateur."
+    "missing-proof-token": "Le jeton de preuve d'enrôlement n'est pas disponible pour cet administrateur.",
+    "global-admin-limit-reached": "Nombre maximal d'administrateurs globaux atteint ({{maxGlobalAdmins}}). Impossible d'en créer davantage."
   }
 }

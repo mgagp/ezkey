@@ -16,6 +16,7 @@ import org.ezkey.admin.config.AdminSecurityProperties;
 import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
+import org.ezkey.admin.exception.GlobalAdminLimitException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -210,7 +211,9 @@ public class AdminProvisioningService {
    * @param lastName the last name (required for SOC 2 compliance)
    * @param creatorPrincipal the principal of the creating administrator (must be global admin)
    * @return ProvisioningResult with admin, enrollment, and onboarding credentials
-   * @throws IllegalArgumentException if limit exceeded, username exists, or creator is not global
+   * @throws GlobalAdminLimitException if the active global administrator count is at the configured
+   *     maximum
+   * @throws IllegalArgumentException if username exists, validation fails, or creator is not global
    *     admin
    */
   @Transactional
@@ -232,9 +235,7 @@ public class AdminProvisioningService {
     long currentGlobalAdminCount =
         adminRepository.countByAdminTypeAndActiveTrue(AdminType.GLOBAL_ADMIN);
     if (currentGlobalAdminCount >= securityProperties.getMaxGlobalAdmins()) {
-      throw new IllegalArgumentException(
-          "Maximum global admins limit reached (%d). Cannot create more global admins."
-              .formatted(securityProperties.getMaxGlobalAdmins()));
+      throw new GlobalAdminLimitException(securityProperties.getMaxGlobalAdmins());
     }
 
     // Check if username already exists

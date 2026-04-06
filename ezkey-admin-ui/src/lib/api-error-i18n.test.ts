@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import i18n from 'i18next';
 import '@/i18n';
 import { ApiError } from './api-client';
-import { EZKEY_PROBLEM_TYPE_BASE, getTranslatedApiError, problemTypeToTranslationKey } from './api-error-i18n';
+import {
+  EZKEY_PROBLEM_TYPE_BASE,
+  getTranslatedApiError,
+  parseProblemParameters,
+  problemTypeToTranslationKey,
+} from './api-error-i18n';
 
 describe('problemTypeToTranslationKey', () => {
   it('returns null for missing or non-Ezkey URIs', () => {
@@ -102,5 +107,58 @@ describe('getTranslatedApiError', () => {
   it('returns fallback for non-ApiError', () => {
     const t = i18n.t.bind(i18n);
     expect(getTranslatedApiError(new Error('x'), t, 'fb')).toBe('fb');
+  });
+
+  it('interpolates RFC 9457 parameters when translation exists (en)', async () => {
+    await i18n.changeLanguage('en');
+    const err = new ApiError(
+      400,
+      {},
+      'Maximum global administrators reached (3). Cannot create more.',
+      {
+        type: `${EZKEY_PROBLEM_TYPE_BASE}/admin-provisioning/global-admin-limit-reached`,
+        detail: 'Maximum global administrators reached (3). Cannot create more.',
+        parameters: { maxGlobalAdmins: 3 },
+      },
+    );
+    const t = i18n.t.bind(i18n);
+    expect(getTranslatedApiError(err, t, 'fallback')).toBe(
+      'Maximum global administrators reached (3). Cannot create more.',
+    );
+  });
+
+  it('interpolates RFC 9457 parameters when translation exists (fr)', async () => {
+    await i18n.changeLanguage('fr');
+    const err = new ApiError(
+      400,
+      {},
+      'English detail',
+      {
+        type: `${EZKEY_PROBLEM_TYPE_BASE}/admin-provisioning/global-admin-limit-reached`,
+        detail: 'Maximum global administrators reached (3). Cannot create more.',
+        parameters: { maxGlobalAdmins: 3 },
+      },
+    );
+    const t = i18n.t.bind(i18n);
+    expect(getTranslatedApiError(err, t, 'fallback')).toBe(
+      "Nombre maximal d'administrateurs globaux atteint (3). Impossible d'en créer davantage.",
+    );
+  });
+});
+
+describe('parseProblemParameters', () => {
+  it('returns null for missing or invalid parameters', () => {
+    expect(parseProblemParameters(null)).toBeNull();
+    expect(parseProblemParameters(undefined)).toBeNull();
+    expect(parseProblemParameters({})).toBeNull();
+    expect(parseProblemParameters({ parameters: [] })).toBeNull();
+  });
+
+  it('keeps only scalar values', () => {
+    expect(
+      parseProblemParameters({
+        parameters: { maxGlobalAdmins: 3, ignored: null, x: {} },
+      }),
+    ).toEqual({ maxGlobalAdmins: 3 });
   });
 });

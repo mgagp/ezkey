@@ -2375,7 +2375,7 @@
             }
           },
           "400": {
-            "description": "Invalid request, limit exceeded, or username exists",
+            "description": "Invalid request, username exists, or global administrator limit reached. When the configured maximum active global administrators is reached, the response is RFC 9457 application/problem+json with type https://ezkey.io/problems/admin-provisioning/global-admin-limit-reached and extension property parameters.maxGlobalAdmins (integer).",
             "content": {
               "*/*": {
                 "schema": {

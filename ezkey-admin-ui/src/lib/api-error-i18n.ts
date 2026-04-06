@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 import i18n from 'i18next';
-import { ApiError, getApiErrorMessage } from './api-client';
+import { ApiError, getApiErrorMessage, type ProblemDetail } from './api-client';
 
 /** RFC 9457 problem type base for Ezkey (Option B: path after this prefix → dotted i18n key under `errors`). */
 export const EZKEY_PROBLEM_TYPE_BASE = 'https://ezkey.io/problems';
@@ -25,6 +25,25 @@ function shouldPreferI18nOverDetail(rel: string): boolean {
     return true;
   }
   return PREFER_I18N_OVER_DETAIL_RELS.has(rel);
+}
+
+/**
+ * Parses RFC 9457 extension {@code parameters} for safe i18next interpolation (scalars only).
+ */
+export function parseProblemParameters(
+  problem: ProblemDetail | null | undefined,
+): Record<string, string | number | boolean> | null {
+  const raw = problem?.parameters;
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+    return null;
+  }
+  const out: Record<string, string | number | boolean> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+      out[k] = v;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 /**
@@ -56,7 +75,15 @@ export function getTranslatedApiError(error: unknown, t: TFunction, fallback: st
   const rel = problemTypeToTranslationKey(error.problemDetail?.type);
   const detail =
     typeof error.problemDetail?.detail === 'string' ? error.problemDetail.detail.trim() : '';
+  const params = parseProblemParameters(error.problemDetail);
 
+  if (
+    rel != null &&
+    params != null &&
+    i18n.exists(rel, { ns: 'errors' })
+  ) {
+    return t(rel, { ns: 'errors', ...params });
+  }
   if (rel != null && i18n.exists(rel, { ns: 'errors' }) && shouldPreferI18nOverDetail(rel)) {
     return t(rel, { ns: 'errors' });
   }

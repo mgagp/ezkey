@@ -61,6 +61,7 @@
     "missing-tenant-id": "Tenant ID is required for tenant administrator creation.",
     "invalid-request": "The request is not valid.",
     "admin-inactive": "This administrator is inactive.",
-    "missing-proof-token": "Enrollment proof token is not available for this administrator."
+    "missing-proof-token": "Enrollment proof token is not available for this administrator.",
+    "global-admin-limit-reached": "Maximum global administrators reached ({{maxGlobalAdmins}}). Cannot create more."
   }
 }

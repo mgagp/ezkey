@@ -4,6 +4,7 @@ This document lists `https://ezkey.io/problems/...` URIs emitted by **ezkey-admi
 
 - **Static `detail` (quick win):** A single stable English `detail` from production code paths, or a fixed exception message. Safe to prefer curated **en**/**fr** strings when policy allows.
 - **Dynamic `detail`:** Message includes variable data (IDs, names, counts). **Do not** prefer generic i18n over `detail` when specifics matter; templating is a follow-up.
+- **Parameterized problems (RFC 9457 extension):** Some responses include a **`parameters`** object (JSON) alongside `type`, `title`, `status`, and `detail`. Keys are **camelCase**; values are **scalars** (string, number, or boolean) suitable for client-side interpolation. The Admin UI maps `type` to `errors.*` keys and passes `parameters` into i18next (see [`getTranslatedApiError`](../ezkey-admin-ui/src/lib/api-error-i18n.ts)). English **`detail`** remains a fallback for logs and clients that ignore `parameters`.
 - **Keys in UI:** All listed types have entries under [`ezkey-admin-ui/src/locales/en/errors.json`](../ezkey-admin-ui/src/locales/en/errors.json) (and `fr`) for fallback when `detail` is absent and for types where `getTranslatedApiError` prefers the catalog (see [`api-error-i18n.ts`](../ezkey-admin-ui/src/lib/api-error-i18n.ts)).
 
 ## Prefer curated locale over non-empty `detail`
@@ -35,6 +36,12 @@ These are allowlisted in `shouldPreferI18nOverDetail` because messages are fixed
 | `enrollment/system-integration-revocation` | Revoke-all vs deactivate-all wording |
 | `validation/*` | Bean validation / request specifics |
 | `admin-provisioning/*` | Mostly static per `type` suffix; some `invalid-request` paths use `e.getMessage()` |
+
+## Parameterized `type` values (`parameters` extension)
+
+| `type` (suffix) | `parameters` | Notes |
+| ----------------| --------------| ----- |
+| `admin-provisioning/global-admin-limit-reached` | `maxGlobalAdmins` (number) | Creating a global admin when the active global admin count is at the configured maximum |
 
 ## Maintenance
 

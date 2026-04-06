@@ -32,6 +32,7 @@ import org.ezkey.admin.dto.response.AdminRecoveryCodesRegenerationResponseDto;
 import org.ezkey.admin.dto.response.AdminResponseDto;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
+import org.ezkey.admin.exception.GlobalAdminLimitException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminProvisioningService.OnboardingCredentialsResult;
@@ -155,7 +156,12 @@ public class AdminProvisioningController {
     @ApiResponse(responseCode = "201", description = "Global administrator created successfully"),
     @ApiResponse(
         responseCode = "400",
-        description = "Invalid request, limit exceeded, or username exists"),
+        description =
+            "Invalid request, username exists, or global administrator limit reached. When the"
+                + " configured maximum active global administrators is reached, the response is RFC"
+                + " 9457 application/problem+json with type"
+                + " https://ezkey.io/problems/admin-provisioning/global-admin-limit-reached and"
+                + " extension property parameters.maxGlobalAdmins (integer)."),
     @ApiResponse(responseCode = "403", description = "Forbidden - not a global administrator")
   })
   public ResponseEntity<?> createGlobalAdmin(
@@ -233,7 +239,7 @@ public class AdminProvisioningController {
 
       return ResponseEntity.created(URI.create("/api/v1/admins/" + result.admin().getAdminId()))
           .body(response);
-    } catch (IllegalArgumentException | AdminLimitException e) {
+    } catch (IllegalArgumentException | AdminLimitException | GlobalAdminLimitException e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
