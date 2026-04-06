@@ -63,7 +63,32 @@ Validates EC P-256 ECDSA-SHA256 signatures.
 
 **Use Case**: Verify signatures in test assertions or debugging scenarios.
 
-### 5. Encrypt Plaintext Value
+### 5. Sign Integration Payload (Ed25519)
+**POST** `/api/v1/crypto/sign-ed25519`
+
+Signs UTF-8 payloads using an Ed25519 PKCS#8 private key and returns a raw 64-byte signature as
+Base64URL without padding.
+
+**Use Case**: Generate integration signatures for Pending or RespondResult oracle validation.
+
+### 6. Verify Integration Signature (Ed25519)
+**POST** `/api/v1/crypto/verify-ed25519`
+
+Verifies an Ed25519 signature using a raw 32-byte public key encoded as Base64URL without
+padding.
+
+**Use Case**: Validate integration signatures from Auth API payloads in Postman or Dart tests.
+
+### 7. Build Canonical EZKey Payload
+**POST** `/api/v1/crypto/payload-helper`
+
+Builds canonical Pending, Respond, or RespondResult payload strings using the exact EZKey NFC and
+separator rules.
+
+**Use Case**: Eliminate duplicated payload-building logic in Postman and serve as an oracle for
+Dart interoperability tests.
+
+### 8. Encrypt Plaintext Value
 **POST** `/api/v1/crypto/encrypt`
 
 **⚠️ TESTING TOOL**: Encrypts plaintext values and returns them in the standard encrypted format (`ENC:keyID:Base64(ciphertext)`).
@@ -90,7 +115,7 @@ Validates EC P-256 ECDSA-SHA256 signatures.
 
 **Note**: If input is already encrypted (has `ENC:` prefix), the endpoint detects this and skips re-encryption.
 
-### 6. Decrypt Encrypted Database Column
+### 9. Decrypt Encrypted Database Column
 **POST** `/api/v1/crypto/decrypt`
 
 **⚠️ DEBUGGING TOOL**: Decrypts encrypted database column values for investigation.

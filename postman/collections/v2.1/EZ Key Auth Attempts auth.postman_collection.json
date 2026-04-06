@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "ee4f0c3e-66f8-4ea8-a990-e37ddfc4598e",
     "name": "EZ Key Auth Attempts auth",
-    "description": "Collection for mobile device authentication operations in the Auth API.\n\n## Error format (4xx/5xx)\n\nHTTP errors use RFC 9457 Problem Details (`application/problem+json`): `type`, `title`, `status`, `detail`, optional `path` and `timestamp`. **204 No Content** on Pending when there is nothing to do is success (no body). See `docs/ENDPOINT.md`.\n\n## Endpoints\n\n- **Pending**: Check for pending authentication requests (user-initiated polling)\n- **Respond** / **Respond with context**: Submit user's response (approve/deny) with device signature\n\n## Crypto Operations\n\n- **Step 4 (Validate)**: Validates the integration signature over the canonical Pending payload: proofToken|challengeRequired|contextTitle|contextMessage (NFC for context). See docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md.\n- **Step 5 (Sign)**: Device signs the canonical Respond **request** payload: proofToken|accepted. The backend verifies this exact payload.\n- **Step 7 (Validate)**: After **6** or **6b**, validates the integration signature on the Respond **HTTP response** payload: proofToken|authAttemptId|result|message (NFC on message) via Crypto API — same pattern as step 4, end-to-end assurance in Postman.\n- **Respond response**: The API returns `authAttemptProofTokenResultSignedByIntegration` (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md).\n\n## Flow and Create/Respond match\n\n- **Create** (no context) → **6 respond** → **7**.\n- **Create with Context** (Admin) → **6b respond with context** → **7** (same step 7; run 6 **or** 6b, not both).\n\n## Security Notes\n\n- Pending and Respond use canonical payloads (pipe-separated, NFC for context and respond-result message fields).\n- All cryptographic operations use EC P-256 (ECDSA-SHA256).\n\n## Rate Limiting\n\n- Pending: rate limited; user-initiated polling model.",
+    "description": "Collection for mobile device authentication operations in the Auth API.\n\n## Error format (4xx/5xx)\n\nHTTP errors use RFC 9457 Problem Details (`application/problem+json`): `type`, `title`, `status`, `detail`, optional `path` and `timestamp`. **204 No Content** on Pending when there is nothing to do is success (no body). See `docs/ENDPOINT.md`.\n\n## Endpoints\n\n- **Pending**: Check for pending authentication requests (user-initiated polling)\n- **Respond** / **Respond with context**: Submit user's response (approve/deny) with device signature\n\n## Crypto Operations\n\n- **Step 3b**: Uses Crypto API `payload-helper` to build the canonical Pending payload: proofToken|challengeRequired|contextTitle|contextMessage (NFC for context).\n- **Step 4**: Verifies the integration Ed25519 signature over that Pending payload. See docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md.\n- **Step 5 (Sign)**: Device signs the canonical Respond **request** payload: proofToken|accepted. The backend verifies this exact payload.\n- **Step 6c**: Uses Crypto API `payload-helper` to build the canonical Respond HTTP response payload: proofToken|authAttemptId|result|message (NFC on message).\n- **Step 7**: Verifies the integration Ed25519 signature on the Respond **HTTP response** payload, end-to-end assurance in Postman.\n- **Respond response**: The API returns `authAttemptProofTokenResultSignedByIntegration` (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md).\n\n## Flow and Create/Respond match\n\n- **Create** (no context) → **6 respond** → **6c** → **7**.\n- **Create with Context** (Admin) → **6b respond with context** → **6c** → **7** (run 6 **or** 6b, not both).\n\n## Security Notes\n\n- Device cryptography uses EC P-256 (ECDSA-SHA256).\n- Integration cryptography uses Ed25519 for Pending and RespondResult signatures.\n- Pending and Respond use canonical payloads (pipe-separated, NFC for context and respond-result message fields).\n\n## Rate Limiting\n\n- Pending: rate limited; user-initiated polling model.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -186,21 +186,70 @@
       "response": []
     },
     {
+      "name": "3b crypto build pending payload",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"pendingPayload\", jsonData.payload);",
+              "    pm.test(\"Payload helper returned pending payload\", function () {",
+              "        pm.expect(jsonData.type).to.equal('pending');",
+              "        pm.expect(jsonData.payload).to.be.a('string');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"type\": \"pending\",\r\n    \"proofToken\": \"{{authAttemptProofToken}}\",\r\n    \"challengeRequired\": {{authAttemptChallengeRequired}},\r\n    \"contextTitle\": \"{{contextTitle}}\",\r\n    \"contextMessage\": \"{{contextMessage}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/payload-helper",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "payload-helper"
+          ]
+        },
+        "description": "Builds the canonical Pending payload through Crypto API instead of duplicating the NFC and separator rules in JavaScript. Run immediately after step 3."
+      },
+      "response": []
+    },
+    {
       "name": "4 crypto validate auth prooftoken by integration",
       "event": [
         {
           "listen": "prerequest",
           "script": {
             "exec": [
-              "// Canonical Pending payload: proofToken|challengeRequired|contextTitle|contextMessage (NFC for context). See AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md",
-              "var pt = pm.environment.get(\"authAttemptProofToken\");",
-              "var cr = pm.environment.get(\"authAttemptChallengeRequired\");",
-              "var ct = pm.environment.get(\"contextTitle\") || \"\";",
-              "var cm = pm.environment.get(\"contextMessage\") || \"\";",
-              "if (typeof ct === 'string' && ct.normalize) ct = ct.normalize('NFC');",
-              "if (typeof cm === 'string' && cm.normalize) cm = cm.normalize('NFC');",
-              "var payload = pt + \"|\" + cr + \"|\" + ct + \"|\" + cm;",
-              "pm.environment.set(\"pendingPayload\", payload);"
+              "var payload = pm.environment.get(\"pendingPayload\");",
+              "if (!payload) {",
+              "    throw new Error(\"Run step 3b first — pendingPayload is missing.\");",
+              "}"
             ],
             "type": "text/javascript",
             "packages": {},
@@ -248,7 +297,7 @@
           }
         },
         "url": {
-          "raw": "{{base_url_crypto_api}}/api/v1/crypto/validate",
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/verify-ed25519",
           "host": [
             "{{base_url_crypto_api}}"
           ],
@@ -256,10 +305,10 @@
             "api",
             "v1",
             "crypto",
-            "validate"
+            "verify-ed25519"
           ]
         },
-        "description": "Validates the integration's signature on the Pending payload. The integration signs the canonical payload proofToken|challengeRequired|contextTitle|contextMessage (see docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md). A pre-request script builds this payload from the Pending response (with NFC for context fields).\n\n**Request Body:**\n- `data`: The full Pending payload (built by pre-request script)\n- `signature`: Integration's signature (authAttemptProofTokenSignedByIntegration)\n- `publicKey`: Integration's public key\n\n**Response (200 OK):**\n- `valid`: Boolean indicating whether the signature is valid\n\n**Security Note:** The mobile app must verify this signature before displaying the authentication request to the user."
+        "description": "Validates the integration's Ed25519 signature on the Pending payload. Run step 3b first to build the canonical payload through Crypto API.\n\n**Request Body:**\n- `data`: The full Pending payload (`pendingPayload`)\n- `signature`: Integration's signature (`authAttemptProofTokenSignedByIntegration`)\n- `publicKey`: Integration's public key\n\n**Response (200 OK):**\n- `valid`: Boolean indicating whether the signature is valid\n\n**Security Note:** The mobile app must verify this signature before displaying the authentication request to the user."
       },
       "response": []
     },
@@ -468,25 +517,70 @@
       "response": []
     },
     {
+      "name": "6c crypto build respond result payload",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"respondResultPayload\", jsonData.payload);",
+              "    pm.test(\"Payload helper returned respond-result payload\", function () {",
+              "        pm.expect(jsonData.type).to.equal('respond-result');",
+              "        pm.expect(jsonData.payload).to.be.a('string');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"type\": \"respond-result\",\r\n    \"proofToken\": \"{{authAttemptProofToken}}\",\r\n    \"authAttemptId\": {{authAttemptId}},\r\n    \"result\": \"{{respondResultAuthAttemptResult}}\",\r\n    \"message\": \"{{respondResultAuthAttemptMessage}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/payload-helper",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "payload-helper"
+          ]
+        },
+        "description": "Builds the canonical Respond HTTP response payload through Crypto API. Run immediately after step 6 or 6b."
+      },
+      "response": []
+    },
+    {
       "name": "7 crypto validate respond result by integration",
       "event": [
         {
           "listen": "prerequest",
           "script": {
             "exec": [
-              "// Canonical Respond result payload: proofToken|authAttemptId|result|message (NFC on message). See AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md",
-              "var r = pm.environment.get(\"respondResultAuthAttemptResult\");",
-              "if (r === undefined || r === null || r === \"\") {",
-              "    throw new Error(\"Run step 6 or 6b first — respond result fields are missing.\");",
-              "}",
-              "var pt = pm.environment.get(\"authAttemptProofToken\") || \"\";",
-              "var idRaw = pm.environment.get(\"authAttemptId\");",
-              "var idStr = (idRaw === undefined || idRaw === null) ? \"\" : String(idRaw);",
-              "var res = String(r);",
-              "var msg = pm.environment.get(\"respondResultAuthAttemptMessage\") || \"\";",
-              "if (typeof msg === 'string' && msg.normalize) { msg = msg.normalize('NFC'); }",
-              "var payload = pt + \"|\" + idStr + \"|\" + res + \"|\" + msg;",
-              "pm.environment.set(\"respondResultPayload\", payload);"
+              "var payload = pm.environment.get(\"respondResultPayload\");",
+              "if (!payload) {",
+              "    throw new Error(\"Run step 6c first — respondResultPayload is missing.\");",
+              "}"
             ],
             "type": "text/javascript",
             "packages": {},
@@ -536,7 +630,7 @@
           }
         },
         "url": {
-          "raw": "{{base_url_crypto_api}}/api/v1/crypto/validate",
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/verify-ed25519",
           "host": [
             "{{base_url_crypto_api}}"
           ],
@@ -544,10 +638,10 @@
             "api",
             "v1",
             "crypto",
-            "validate"
+            "verify-ed25519"
           ]
         },
-        "description": "Validates the integration's signature on the **Respond HTTP response** body (same verifier as mobile). Canonical string: `proofToken|authAttemptId|authAttemptResult|authAttemptMessage` with Unicode NFC on the message (see docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md, section Respond HTTP response).\n\n**Prerequisites:** Run **6** or **6b** immediately before; test scripts save `respondResultAuthAttemptResult`, `respondResultAuthAttemptMessage`, and `respondResultSignature` to the environment. Uses `authAttemptProofToken` and `authAttemptId` from step 3.\n\n**Request Body (Crypto API):**\n- `data`: Built by pre-request script (`respondResultPayload`)\n- `signature`: `authAttemptProofTokenResultSignedByIntegration` from the Respond response\n- `publicKey`: Same integration public key as step 4\n\n**Response (200 OK):** `valid: true` when the signature matches.\n\n**Note:** If the Auth API returned a FAILED response without a signature, step 7 will fail the \"signature present\" test — that is expected for that edge case."
+        "description": "Validates the integration's Ed25519 signature on the **Respond HTTP response** body (same verifier as mobile). Run **6c** immediately before to build `respondResultPayload` through Crypto API.\n\n**Prerequisites:** Run **6** or **6b**, then **6c**. Step 6/6b saves the response fields; step 6c builds the canonical payload.\n\n**Request Body (Crypto API):**\n- `data`: `respondResultPayload` from step 6c\n- `signature`: `authAttemptProofTokenResultSignedByIntegration` from the Respond response\n- `publicKey`: Same integration public key as step 4\n\n**Response (200 OK):** `valid: true` when the signature matches.\n\n**Note:** If the Auth API returned a FAILED response without a signature, step 7 will fail the \"signature present\" test — that is expected for that edge case."
       },
       "response": []
     }

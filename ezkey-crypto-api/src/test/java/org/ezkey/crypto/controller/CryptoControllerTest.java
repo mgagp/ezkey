@@ -128,6 +128,54 @@ class CryptoControllerTest {
   }
 
   @Test
+  void testSignEd25519Endpoint() throws Exception {
+    when(signatureService.signIntegrationPayload(anyString(), anyString()))
+        .thenReturn("test-ed25519-signature");
+
+    String requestBody =
+        """
+        {
+          "data": "tok|true|Title|Msg",
+          "privateKey": "test-private-key"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/sign-ed25519")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.signature").value("test-ed25519-signature"))
+        .andExpect(jsonPath("$.originalData").value("tok|true|Title|Msg"))
+        .andExpect(jsonPath("$.algorithm").value("ED25519"));
+  }
+
+  @Test
+  void testSignEd25519InternalError() throws Exception {
+    when(signatureService.signIntegrationPayload(anyString(), anyString()))
+        .thenThrow(new RuntimeException("malformed key"));
+
+    String requestBody =
+        """
+        {
+          "data": "tok|true|Title|Msg",
+          "privateKey": "bad-private-key"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/sign-ed25519")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isInternalServerError())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(CryptoApiProblemCatalog.TYPE_INTERNAL_ERROR));
+  }
+
+  @Test
   void testValidateSignatureEndpoint() throws Exception {
     when(signatureService.validateSignature(anyString(), anyString(), anyString()))
         .thenReturn(true);
@@ -151,6 +199,147 @@ class CryptoControllerTest {
         .andExpect(jsonPath("$.valid").value(true))
         .andExpect(jsonPath("$.message").value("Signature is valid"))
         .andExpect(jsonPath("$.algorithm").value("EC_P256"));
+  }
+
+  @Test
+  void testVerifyEd25519Endpoint() throws Exception {
+    when(signatureService.verifyIntegrationSignature(anyString(), anyString(), anyString()))
+        .thenReturn(true);
+
+    String requestBody =
+        """
+        {
+          "data": "tok|true|Title|Msg",
+          "signature": "test-signature",
+          "publicKey": "test-public-key"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/verify-ed25519")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.valid").value(true))
+        .andExpect(jsonPath("$.message").value("Signature is valid"))
+        .andExpect(jsonPath("$.algorithm").value("ED25519"));
+  }
+
+  @Test
+  void testVerifyEd25519Invalid() throws Exception {
+    when(signatureService.verifyIntegrationSignature(anyString(), anyString(), anyString()))
+        .thenReturn(false);
+
+    String requestBody =
+        """
+        {
+          "data": "tok|true|Title|Msg",
+          "signature": "invalid-signature",
+          "publicKey": "test-public-key"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/verify-ed25519")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.valid").value(false))
+        .andExpect(jsonPath("$.message").value("Signature is invalid"))
+        .andExpect(jsonPath("$.algorithm").value("ED25519"));
+  }
+
+  @Test
+  void testPayloadHelperPendingEndpoint() throws Exception {
+    String requestBody =
+        """
+        {
+          "type": "pending",
+          "proofToken": "tok",
+          "challengeRequired": true,
+          "contextTitle": "Title",
+          "contextMessage": "Msg"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/payload-helper")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.type").value("pending"))
+        .andExpect(jsonPath("$.payload").value("tok|true|Title|Msg"))
+        .andExpect(jsonPath("$.encoding").value("UTF-8 + NFC where applicable"));
+  }
+
+  @Test
+  void testPayloadHelperRespondEndpoint() throws Exception {
+    String requestBody =
+        """
+        {
+          "type": "respond",
+          "proofToken": "tok",
+          "accepted": false
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/payload-helper")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("respond"))
+        .andExpect(jsonPath("$.payload").value("tok|false"));
+  }
+
+  @Test
+  void testPayloadHelperRespondResultEndpointNormalizesMessage() throws Exception {
+    String requestBody =
+        """
+        {
+          "type": "respond-result",
+          "proofToken": "tok",
+          "authAttemptId": 42,
+          "result": "approved",
+          "message": "Cafe\u0301"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/payload-helper")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("respond-result"))
+        .andExpect(jsonPath("$.payload").value("tok|42|APPROVED|Caf\u00E9"));
+  }
+
+  @Test
+  void testPayloadHelperRejectsMissingPendingFields() throws Exception {
+    String requestBody =
+        """
+        {
+          "type": "pending",
+          "proofToken": "tok"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/payload-helper")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(CryptoApiProblemCatalog.TYPE_INVALID_ARGUMENT));
   }
 
   @Test

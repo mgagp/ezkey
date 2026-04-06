@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "bd2c4c75-4295-4481-91b2-81389fe2a4b8",
     "name": "EZ Key Crypto",
-    "description": "Collection for cryptographic operations in the Crypto API.\n\n## Endpoints\n\n- **Generate Proof Token**: Generate cryptographically secure proof token\n- **Generate Key Pair**: Generate EC P-256 key pair for device simulation\n- **Generate Integration Key Pair**: Ed25519 (PKCS#8 private, raw public key Base64URL)\n- **Sign Data**: Sign data with EC P-256 private key (ECDSA-SHA256)\n- **Validate Signature**: Validate EC P-256 signature against data and public key\n- **Encrypt**: Encrypt plaintext values for testing and debugging\n- **Decrypt**: Decrypt encrypted database column values for debugging\n- **Hash Token**: Compute SHA-256 hash (hex) of a bearer token for DB lookup/debugging\n\n## Purpose\n\nThis Crypto API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, and validate signatures but don't have built-in cryptographic capabilities. It also provides debugging tools for investigating encrypted database columns.\n\n## Cryptographic Standards\n\n**Device (EC P-256):**\n- **Algorithm**: EC P-256 (secp256r1) with ECDSA-SHA256\n- **Private Key Format**: PKCS#8 (ASN.1 DER encoded, Base64)\n- **Public Key Format**: X.509 SubjectPublicKeyInfo (ASN.1 DER encoded, Base64)\n- **Signature Format**: ASN.1 DER encoded (variable length, Base64)\n\n**Integration (Ed25519):**\n- `GET /integration-keypair`: PKCS#8 private (standard Base64), raw 32-byte public (Base64URL)\n- Pending/Respond integration signatures: raw 64-byte Ed25519 (Base64URL on the wire)\n\n## Usage Context\n\nThis API is designed primarily for:\n- Testing and development scenarios\n- Integration with tools that lack cryptographic capabilities\n- Device simulation in authentication flows\n- End-to-end testing of Ezkey authentication flows\n\n## Security Notes\n\n- **Testing Only**: This API is intended for testing and development, not production use\n- **Key Management**: Generated keys should be stored securely in test environments\n- **Proof Tokens**: Generated tokens are cryptographically secure but should not be reused",
+    "description": "Collection for cryptographic operations in the Crypto API.\n\n## Endpoints\n\n- **Generate Proof Token**: Generate cryptographically secure proof token\n- **Generate Key Pair**: Generate EC P-256 key pair for device simulation\n- **Generate Integration Key Pair**: Ed25519 (PKCS#8 private, raw public key Base64URL)\n- **Sign Data**: Sign data with EC P-256 private key (ECDSA-SHA256)\n- **Validate Signature**: Validate EC P-256 signature against data and public key\n- **Sign Ed25519**: Sign data with an integration Ed25519 private key\n- **Verify Ed25519**: Verify integration Ed25519 signature against data and public key\n- **Payload Helper**: Build canonical EZKey payloads for pending/respond/respond-result\n- **Encrypt**: Encrypt plaintext values for testing and debugging\n- **Decrypt**: Decrypt encrypted database column values for debugging\n- **Hash Token**: Compute SHA-256 hash (hex) of a bearer token for DB lookup/debugging\n\n## Purpose\n\nThis Crypto API provides cryptographic services to support testing tools like Postman that need to generate keys, sign data, validate signatures, and reconstruct canonical payloads but don't have built-in cryptographic capabilities. It also provides debugging tools for investigating encrypted database columns.\n\n## Cryptographic Standards\n\n**Device (EC P-256):**\n- **Algorithm**: EC P-256 (secp256r1) with ECDSA-SHA256\n- **Private Key Format**: PKCS#8 (ASN.1 DER encoded, Base64)\n- **Public Key Format**: X.509 SubjectPublicKeyInfo (ASN.1 DER encoded, Base64)\n- **Signature Format**: ASN.1 DER encoded (variable length, Base64)\n\n**Integration (Ed25519):**\n- `GET /integration-keypair`: PKCS#8 private (standard Base64), raw 32-byte public (Base64URL)\n- `POST /sign-ed25519`: raw 64-byte Ed25519 signature as Base64URL without padding\n- `POST /verify-ed25519`: validates raw 64-byte Ed25519 signatures against raw 32-byte public keys\n- `POST /payload-helper`: canonical payload oracle for Pending/Respond/RespondResult\n\n## Usage Context\n\nThis API is designed primarily for:\n- Testing and development scenarios\n- Integration with tools that lack cryptographic capabilities\n- Device simulation in authentication flows\n- End-to-end testing of Ezkey authentication flows\n- Dart interoperability validation against the EZKey cryptographic contract\n\n## Security Notes\n\n- **Testing Only**: This API is intended for testing and development, not production use\n- **Key Management**: Generated keys should be stored securely in test environments\n- **Proof Tokens**: Generated tokens are cryptographically secure but should not be reused",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -146,6 +146,170 @@
           ]
         },
         "description": "Generates an Ed25519 key pair for **integration** signing (same shape as enrollment integration keys).\n\n**Response (200 OK):**\n- `privateKey`: PKCS#8 private key (standard Base64)\n- `publicKey`: Raw 32-byte public key as **Base64URL without padding**\n\n**Usage:** Sign canonical Pending/Respond payloads with the private key (via server or tooling) and verify with the public key; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`."
+      },
+      "response": []
+    },
+    {
+      "name": "sign-ed25519",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 400\", function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"integration_signature\", jsonData.signature);",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('signature');",
+              "        pm.expect(jsonData).to.have.property('originalData');",
+              "        pm.expect(jsonData).to.have.property('algorithm');",
+              "        pm.expect(jsonData.algorithm).to.equal('ED25519');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"data\": \"{{data}}\",\r\n    \"privateKey\": \"{{integration_privateKey}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/sign-ed25519",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "sign-ed25519"
+          ]
+        },
+        "description": "Signs UTF-8 data using the Ed25519 integration private key returned by `integration keypair`.\n\n**Request Body:**\n- `data`: Canonical payload to sign\n- `privateKey`: PKCS#8 private key in standard Base64 (`integration_privateKey`)\n\n**Response (200 OK):**\n- `signature`: Raw 64-byte Ed25519 signature as Base64URL without padding\n- `algorithm`: `ED25519`"
+      },
+      "response": []
+    },
+    {
+      "name": "verify-ed25519",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 400\", function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"valid\", jsonData.valid);",
+              "    pm.test(\"Response contains required fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('valid');",
+              "        pm.expect(jsonData).to.have.property('message');",
+              "        pm.expect(jsonData).to.have.property('algorithm');",
+              "        pm.expect(jsonData.algorithm).to.equal('ED25519');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"data\": \"{{data}}\",\r\n    \"signature\": \"{{integration_signature}}\",\r\n    \"publicKey\": \"{{integration_publicKey}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/verify-ed25519",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "verify-ed25519"
+          ]
+        },
+        "description": "Verifies an Ed25519 integration signature against the provided canonical payload.\n\n**Request Body:**\n- `data`: Canonical payload to verify\n- `signature`: Raw 64-byte Ed25519 signature as Base64URL without padding\n- `publicKey`: Raw 32-byte Ed25519 public key as Base64URL without padding"
+      },
+      "response": []
+    },
+    {
+      "name": "payload-helper",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 400\", function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"payload_helper_result\", jsonData.payload);",
+              "    pm.test(\"Response contains payload\", function () {",
+              "        pm.expect(jsonData).to.have.property('type');",
+              "        pm.expect(jsonData).to.have.property('payload');",
+              "        pm.expect(jsonData).to.have.property('encoding');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"type\": \"{{payloadHelperType}}\",\r\n    \"proofToken\": \"{{payloadHelperProofToken}}\",\r\n    \"challengeRequired\": {{payloadHelperChallengeRequired}},\r\n    \"contextTitle\": \"{{payloadHelperContextTitle}}\",\r\n    \"contextMessage\": \"{{payloadHelperContextMessage}}\",\r\n    \"accepted\": {{payloadHelperAccepted}},\r\n    \"authAttemptId\": {{payloadHelperAuthAttemptId}},\r\n    \"result\": \"{{payloadHelperResult}}\",\r\n    \"message\": \"{{payloadHelperMessage}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/payload-helper",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "payload-helper"
+          ]
+        },
+        "description": "Builds the canonical EZKey payload for `pending`, `respond`, or `respond-result`. This endpoint applies the same NFC rules as the backend protocol and can be used as an oracle in Postman or Dart tests. Unused fields can be left with their current environment values when testing a specific payload type."
       },
       "response": []
     },

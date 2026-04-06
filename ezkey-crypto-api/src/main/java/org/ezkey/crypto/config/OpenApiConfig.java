@@ -65,8 +65,10 @@ import org.springframework.context.annotation.Configuration;
                 This API exposes cryptographic primitives as REST endpoints for development
                 and testing purposes only:
                 - **Key Pairs**: Generate EC P-256 (secp256r1) key pairs for device simulation
+                - **Integration Key Pairs**: Generate Ed25519 integration keys
                 - **Proof Tokens**: Generate cryptographically secure proof tokens
-                - **Sign / Validate**: Sign data and validate signatures with EC keys
+                - **Sign / Validate**: Sign and verify with EC P-256 or Ed25519 keys
+                - **Payload Helper**: Build canonical EZKey payloads for Pending/Respond flows
                 - **Encrypt / Decrypt**: Encrypt and decrypt values for debugging database columns
 
                 ⚠️ **NOT FOR PRODUCTION USE** — No authentication is required. This API should

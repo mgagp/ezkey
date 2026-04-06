@@ -15,6 +15,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.Locale;
+import org.ezkey.authattempt.domain.AuthenticationResult;
+import org.ezkey.authattempt.service.AuthAttemptSignaturePayload;
 import org.ezkey.crypto.dto.DecryptRequestDto;
 import org.ezkey.crypto.dto.DecryptResponseDto;
 import org.ezkey.crypto.dto.ECP256KeyPairResponseDto;
@@ -23,6 +26,8 @@ import org.ezkey.crypto.dto.EncryptRequestDto;
 import org.ezkey.crypto.dto.EncryptResponseDto;
 import org.ezkey.crypto.dto.HashTokenRequestDto;
 import org.ezkey.crypto.dto.HashTokenResponseDto;
+import org.ezkey.crypto.dto.PayloadHelperRequestDto;
+import org.ezkey.crypto.dto.PayloadHelperResponseDto;
 import org.ezkey.crypto.dto.ProofTokenResponseDto;
 import org.ezkey.crypto.dto.SignDataRequestDto;
 import org.ezkey.crypto.dto.SignDataResponseDto;
@@ -157,6 +162,28 @@ public class CryptoController {
   }
 
   @Operation(
+      summary = "Sign data with Ed25519 integration key",
+      description =
+          "Signs the provided UTF-8 data using an Ed25519 private key in PKCS#8 Base64 format. "
+              + "Returns the raw 64-byte signature encoded as Base64URL without padding.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Data signed successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request data or malformed private key"),
+        @ApiResponse(responseCode = "500", description = "Signing operation failed")
+      })
+  @PostMapping("/sign-ed25519")
+  public ResponseEntity<SignDataResponseDto> signEd25519(
+      @Valid @RequestBody SignDataRequestDto request) {
+    String signature =
+        signatureService.signIntegrationPayload(request.getData(), request.getPrivateKey());
+    var response = new SignDataResponseDto(signature, request.getData(), "ED25519");
+    return ResponseEntity.ok(response);
+  }
+
+  @Operation(
       summary = "Validate signature",
       description =
           "Validates an EC P-256 ECDSA-SHA256 signature "
@@ -178,6 +205,61 @@ public class CryptoController {
 
     String message = isValid ? "Signature is valid" : "Signature is invalid";
     var response = new ValidateSignatureResponseDto(isValid, message, "EC_P256");
+    return ResponseEntity.ok(response);
+  }
+
+  @Operation(
+      summary = "Verify Ed25519 integration signature",
+      description =
+          "Verifies an Ed25519 signature over the provided UTF-8 data using a raw 32-byte "
+              + "public key encoded as Base64URL without padding. Standard Base64 is also "
+              + "accepted for compatibility.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Signature verification completed"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request data, malformed signature or public key"),
+        @ApiResponse(responseCode = "500", description = "Verification operation failed")
+      })
+  @PostMapping("/verify-ed25519")
+  public ResponseEntity<ValidateSignatureResponseDto> verifyEd25519(
+      @Valid @RequestBody ValidateSignatureRequestDto request) {
+    boolean isValid =
+        signatureService.verifyIntegrationSignature(
+            request.getData(), request.getSignature(), request.getPublicKey());
+
+    String message = isValid ? "Signature is valid" : "Signature is invalid";
+    var response = new ValidateSignatureResponseDto(isValid, message, "ED25519");
+    return ResponseEntity.ok(response);
+  }
+
+  @Operation(
+      summary = "Build canonical EZKey payload",
+      description =
+          "Builds the canonical EZKey payload for pending, respond, or respond-result flows. "
+              + "Applies NFC normalization to the text fields defined by the protocol so the "
+              + "result can be used as a validation oracle in Dart tests and Postman workflows.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Payload built successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request data or payload type")
+      })
+  @PostMapping("/payload-helper")
+  public ResponseEntity<PayloadHelperResponseDto> buildPayload(
+      @Valid @RequestBody PayloadHelperRequestDto request) {
+    String payloadType = request.getType().trim().toLowerCase(Locale.ROOT);
+    String payload =
+        switch (payloadType) {
+          case "pending" -> buildPendingPayload(request);
+          case "respond" -> buildRespondPayload(request);
+          case "respond-result" -> buildRespondResultPayload(request);
+          default ->
+              throw new IllegalArgumentException("Unsupported payload type: " + request.getType());
+        };
+
+    var response =
+        new PayloadHelperResponseDto(payloadType, payload, "UTF-8 + NFC where applicable");
     return ResponseEntity.ok(response);
   }
 
@@ -416,5 +498,47 @@ public class CryptoController {
             errorMessage,
             encryptionAvailable);
     return ResponseEntity.ok(response);
+  }
+
+  private static String buildPendingPayload(PayloadHelperRequestDto request) {
+    if (request.getChallengeRequired() == null) {
+      throw new IllegalArgumentException("challengeRequired is required for pending payloads");
+    }
+    return AuthAttemptSignaturePayload.buildPendingPayload(
+        request.getProofToken(),
+        request.getChallengeRequired(),
+        request.getContextTitle(),
+        request.getContextMessage());
+  }
+
+  private static String buildRespondPayload(PayloadHelperRequestDto request) {
+    if (request.getAccepted() == null) {
+      throw new IllegalArgumentException("accepted is required for respond payloads");
+    }
+    return AuthAttemptSignaturePayload.buildRespondPayload(
+        request.getProofToken(), request.getAccepted());
+  }
+
+  private static String buildRespondResultPayload(PayloadHelperRequestDto request) {
+    if (request.getAuthAttemptId() == null) {
+      throw new IllegalArgumentException("authAttemptId is required for respond-result payloads");
+    }
+    if (request.getResult() == null || request.getResult().isBlank()) {
+      throw new IllegalArgumentException("result is required for respond-result payloads");
+    }
+    AuthenticationResult authenticationResult;
+    try {
+      authenticationResult =
+          AuthenticationResult.valueOf(request.getResult().trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "Unsupported authentication result: " + request.getResult());
+    }
+
+    return AuthAttemptSignaturePayload.buildRespondResultPayload(
+        request.getProofToken(),
+        request.getAuthAttemptId(),
+        authenticationResult,
+        request.getMessage());
   }
 }

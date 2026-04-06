@@ -9,6 +9,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture, security design, and cryptographic implementation
 - **[ADMIN_UI.md](ADMIN_UI.md)** - Admin UI purpose, operator roles, capabilities, workflows, and boundaries
 - **[CRYPTO.md](CRYPTO.md)** - Detailed cryptographic specifications and implementation details
+- **[MOBILE_DEVELOPER_GUIDE.md](MOBILE_DEVELOPER_GUIDE.md)** - Android-first guide for implementing the EZKey mobile protocol in a third-party mobile authenticator
 - **[ENDPOINT.md](ENDPOINT.md)** - API endpoint documentation and specifications
 - **[analysis/EXCEPTION_MAPPING_WAVE_1_ANALYSIS.md](analysis/EXCEPTION_MAPPING_WAVE_1_ANALYSIS.md)** - First migration wave for named exceptions and RFC 9457 alignment
 - **[../ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md)** - Admin UI overview for Global Admin and Tenant Admin workflows
