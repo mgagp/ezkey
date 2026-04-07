@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import i18n from 'i18next';
 import '@/i18n';
-import { ApiError } from './api-client';
+import { ApiError, type ProblemDetail } from './api-client';
 import {
   EZKEY_PROBLEM_TYPE_BASE,
   getTranslatedApiError,
@@ -151,14 +151,15 @@ describe('parseProblemParameters', () => {
     expect(parseProblemParameters(null)).toBeNull();
     expect(parseProblemParameters(undefined)).toBeNull();
     expect(parseProblemParameters({})).toBeNull();
-    expect(parseProblemParameters({ parameters: [] })).toBeNull();
+    // Malformed API body: parameters must be an object at runtime; cast for strict typing.
+    expect(parseProblemParameters({ parameters: [] } as unknown as ProblemDetail)).toBeNull();
   });
 
   it('keeps only scalar values', () => {
     expect(
       parseProblemParameters({
         parameters: { maxGlobalAdmins: 3, ignored: null, x: {} },
-      }),
+      } as unknown as ProblemDetail),
     ).toEqual({ maxGlobalAdmins: 3 });
   });
 });
