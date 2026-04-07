@@ -6571,6 +6571,40 @@
           },
           "notes": {
             "type": "string"
+          },
+          "lifecycleStage": {
+            "type": "string",
+            "description": "Derived lifecycle stage (e.g. PRIMARY, ENABLED_IN_USE, DRAINED, DISABLED)"
+          },
+          "remainingRecords": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Remaining ciphertext rows across tracked targets; null when not applicable"
+          },
+          "remainingTargets": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "description": "Targets with remaining rows for this key; null when not applicable"
+          },
+          "lastVerifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When this snapshot was computed"
+          },
+          "verificationState": {
+            "type": "string",
+            "description": "Verification outcome (e.g. NOT_APPLICABLE, VERIFIED_ZERO, REMAINS_IN_USE)"
+          },
+          "decommissionEligible": {
+            "type": "boolean",
+            "description": "True when drained and ready for a future decommission workflow"
+          },
+          "incompleteMigrationBatches": {
+            "type": "boolean",
+            "description": "True when migration batches for this key are not all completed"
           }
         }
       },

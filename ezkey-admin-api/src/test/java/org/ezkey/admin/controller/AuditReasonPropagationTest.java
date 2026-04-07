@@ -53,6 +53,7 @@ import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.service.ApiKeyService;
 import org.ezkey.security.KeyRotationService;
+import org.ezkey.security.KeyUsageVerificationService;
 import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
@@ -121,6 +122,7 @@ class AuditReasonPropagationTest {
   @Mock private ReencryptionBatchRepository reencryptionBatchRepository;
   @Mock private KeyRotationService rotationService;
   @Mock private ReencryptionService reencryptionService;
+  @Mock private KeyUsageVerificationService keyUsageVerificationService;
 
   @BeforeEach
   void setUpHttpRequest() {
@@ -331,7 +333,8 @@ class AuditReasonPropagationTest {
             reencryptionBatchRepository,
             rotationService,
             reencryptionService,
-            auditLogService);
+            auditLogService,
+            keyUsageVerificationService);
 
     when(rotationService.introduceNewKey("ADMIN_MANUAL")).thenReturn(12345L);
 
@@ -358,7 +361,8 @@ class AuditReasonPropagationTest {
             reencryptionBatchRepository,
             rotationService,
             reencryptionService,
-            auditLogService);
+            auditLogService,
+            keyUsageVerificationService);
 
     when(rotationService.introduceNewKey("ADMIN_MANUAL"))
         .thenThrow(

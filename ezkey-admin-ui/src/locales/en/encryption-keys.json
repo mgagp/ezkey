@@ -14,14 +14,18 @@
     "columns": {
       "id": "ID",
       "status": "Status",
+      "lifecycle": "Lifecycle",
       "algorithm": "Algorithm",
       "records": "Records",
       "introduced": "Introduced",
       "primarySince": "Primary since",
       "createdBy": "Created by"
     },
+    "headerTooltipLifecycle": "Derived from tracked ciphertext targets and migration batch state. See key detail for full snapshot.",
+    "remainingRowsShort": "{{count}} DB row(s) still ENC: with this key",
+    "remainingRowsShortHelp": "Sum of rows (across tracked table/column pairs) whose value still contains this key's ciphertext prefix. Not a single business “record count”: one logical row can contribute multiple tracked columns.",
     "headerTooltipStatus": "Primary = used for new encryption; Enabled = decryption only; Disabled = retired.",
-    "headerTooltipRecords": "Number of records encrypted with this key.",
+    "headerTooltipRecords": "Aggregate counter stored on the key row (records_encrypted), intended for usage / migration tracking. It may stay 0 until the app increments it. For live remaining ciphertext, rely on the Lifecycle column (prefix scan), not this column alone.",
     "headerTooltipPrimarySince": "Date this key was promoted to primary.",
     "reencryptButtonTooltip": "Migrate records encrypted with this key to the current primary key.",
     "reencryptButton": "Re-encrypt",
@@ -39,11 +43,42 @@
     "helpDisabled": "Key is retired; all data has been re-encrypted to a newer key.",
     "helpPending": "Key created but not yet promoted or in use."
   },
+  "lifecycle": {
+    "stage": {
+      "PENDING": "Pending",
+      "PRIMARY": "Primary",
+      "DISABLED": "Disabled",
+      "ENABLED_IN_USE": "In use",
+      "DRAINED": "Drained"
+    },
+    "stageHelp": {
+      "PENDING": "Key not yet in rotation.",
+      "PRIMARY": "Current key for new encryption.",
+      "DISABLED": "Retired key.",
+      "ENABLED_IN_USE": "Old key: ciphertext or migration work may remain.",
+      "DRAINED": "No tracked ciphertext rows and no incomplete migration batches for this key."
+    },
+    "verification": {
+      "NOT_APPLICABLE": "Not applicable",
+      "REMAINS_IN_USE": "Ciphertext remains",
+      "MIGRATION_IN_PROGRESS": "Migration in progress",
+      "VERIFIED_ZERO": "Verified zero remaining"
+    }
+  },
   "keyDetail": {
     "title": "Key #{{id}}",
     "close": "Close",
     "labelKeyId": "Key ID",
     "labelStatus": "Status",
+    "labelLifecycleStage": "Lifecycle (derived)",
+    "labelRemainingRecords": "Remaining rows (tracked)",
+    "labelRemainingTargets": "Targets with rows",
+    "labelVerificationState": "Verification",
+    "labelLastVerifiedAt": "Snapshot at",
+    "labelDecommissionEligible": "Decommission eligible",
+    "labelIncompleteMigrationBatches": "Incomplete migration batches",
+    "yes": "Yes",
+    "no": "No",
     "labelAlgorithm": "Algorithm",
     "labelIntroduced": "Introduced",
     "labelPromotedPrimary": "Promoted primary",

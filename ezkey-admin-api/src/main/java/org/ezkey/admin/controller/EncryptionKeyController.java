@@ -12,6 +12,7 @@ package org.ezkey.admin.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +32,7 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.security.KeyRotationService;
+import org.ezkey.security.KeyUsageVerificationService;
 import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
@@ -112,18 +114,21 @@ public class EncryptionKeyController {
   private final KeyRotationService rotationService;
   private final ReencryptionService reencryptionService;
   private final AuditLogService auditLogService;
+  private final KeyUsageVerificationService keyUsageVerificationService;
 
   public EncryptionKeyController(
       EncryptionKeyRepository keyRepository,
       ReencryptionBatchRepository batchRepository,
       KeyRotationService rotationService,
       ReencryptionService reencryptionService,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      KeyUsageVerificationService keyUsageVerificationService) {
     this.keyRepository = keyRepository;
     this.batchRepository = batchRepository;
     this.rotationService = rotationService;
     this.reencryptionService = reencryptionService;
     this.auditLogService = auditLogService;
+    this.keyUsageVerificationService = keyUsageVerificationService;
   }
 
   /**
@@ -669,6 +674,8 @@ public class EncryptionKeyController {
   }
 
   private EncryptionKeyResponse toResponse(EncryptionKey key) {
+    KeyUsageVerificationService.KeyUsageSnapshot snap =
+        keyUsageVerificationService.computeSnapshot(key);
     return new EncryptionKeyResponse(
         key.getKeyId(),
         key.getKeyStatus().name(),
@@ -679,7 +686,14 @@ public class EncryptionKeyController {
         key.getRecordsEncrypted(),
         key.getRecordsReencrypted(),
         key.getCreatedBy(),
-        key.getNotes());
+        key.getNotes(),
+        snap.lifecycleStage(),
+        snap.remainingRecords(),
+        snap.remainingTargets(),
+        snap.lastVerifiedAt(),
+        snap.verificationState(),
+        snap.decommissionEligible(),
+        snap.incompleteMigrationBatches());
   }
 
   private ReencryptionBatchResponse toBatchResponse(ReencryptionBatch batch) {
@@ -717,18 +731,49 @@ public class EncryptionKeyController {
    * @param recordsReencrypted total number of records that have been re-encrypted from this key
    * @param createdBy identifier of who/what created the key (SYSTEM or admin username)
    * @param notes optional notes about the key
+   * @param lifecycleStage derived operator-facing lifecycle (e.g. PRIMARY, ENABLED_IN_USE, DRAINED)
+   * @param remainingRecords sum of ciphertext rows still using this key across tracked targets;
+   *     null when not applicable
+   * @param remainingTargets number of targets with remaining rows; null when not applicable
+   * @param lastVerifiedAt when the lifecycle snapshot was computed
+   * @param verificationState machine-readable verification outcome
+   * @param decommissionEligible true when drained and eligible for a future decommission workflow
+   * @param incompleteMigrationBatches true when non-completed migration batches exist for this old
+   *     key
    */
+  @Schema(description = "Encryption key row with derived lifecycle fields for operators.")
   public record EncryptionKeyResponse(
-      Long keyId,
-      String keyStatus,
-      String algorithm,
-      java.time.OffsetDateTime introducedAt,
-      java.time.OffsetDateTime promotedPrimaryAt,
-      java.time.OffsetDateTime disabledAt,
-      Long recordsEncrypted,
-      Long recordsReencrypted,
-      String createdBy,
-      String notes) {}
+      @Schema(description = "Unique key identifier (Tink keyset id)") Long keyId,
+      @Schema(description = "PRIMARY, ENABLED, DISABLED, or PENDING") String keyStatus,
+      @Schema(description = "Algorithm label, e.g. AES256_GCM") String algorithm,
+      @Schema(description = "When the key was introduced") java.time.OffsetDateTime introducedAt,
+      @Schema(description = "When promoted to PRIMARY, if applicable")
+          java.time.OffsetDateTime promotedPrimaryAt,
+      @Schema(description = "When disabled, if applicable") java.time.OffsetDateTime disabledAt,
+      @Schema(description = "Aggregate counter: records encrypted with this key")
+          Long recordsEncrypted,
+      @Schema(description = "Aggregate counter: records re-encrypted away from this key")
+          Long recordsReencrypted,
+      @Schema(description = "Creator label (SYSTEM or admin)") String createdBy,
+      @Schema(description = "Optional operator notes") String notes,
+      @Schema(
+              description =
+                  "Derived lifecycle stage (e.g. PRIMARY, ENABLED_IN_USE, DRAINED, DISABLED)")
+          String lifecycleStage,
+      @Schema(
+              description =
+                  "Remaining ciphertext rows across tracked targets; null when not applicable")
+          Long remainingRecords,
+      @Schema(description = "Targets with remaining rows for this key; null when not applicable")
+          Integer remainingTargets,
+      @Schema(description = "When this snapshot was computed")
+          java.time.OffsetDateTime lastVerifiedAt,
+      @Schema(description = "Verification outcome (e.g. NOT_APPLICABLE, VERIFIED_ZERO)")
+          String verificationState,
+      @Schema(description = "True when drained and ready for a future decommission workflow")
+          boolean decommissionEligible,
+      @Schema(description = "True when migration batches for this key are not all completed")
+          boolean incompleteMigrationBatches) {}
 
   /**
    * Response DTO for key rotation operation.

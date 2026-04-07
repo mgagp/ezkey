@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation, Trans } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -65,6 +66,36 @@ function KeyStatusBadge({ status }: { status?: string }) {
   if (status === 'DISABLED') return <Tooltip content={t('keyStatus.helpDisabled')}><Badge variant="error">{t('keyStatus.labelDisabled')}</Badge></Tooltip>;
   if (status === 'PENDING') return <Tooltip content={t('keyStatus.helpPending')}><Badge variant="muted">{t('keyStatus.labelPending')}</Badge></Tooltip>;
   return <Badge variant="muted">{status ?? '—'}</Badge>;
+}
+
+/** Derived lifecycle stage from prefix counts + batch state (see KeyUsageVerificationService). */
+function LifecycleStageBadge({ stage }: { stage?: string }) {
+  const { t } = useTranslation('encryption-keys');
+  if (!stage) return <Badge variant="muted">—</Badge>;
+  const labelKey = `lifecycle.stage.${stage}`;
+  const helpKey = `lifecycle.stageHelp.${stage}`;
+  const label = t(labelKey, { defaultValue: stage });
+  const help = t(helpKey, { defaultValue: '' });
+  let variant: 'success' | 'muted' | 'warning' | 'error' = 'muted';
+  if (stage === 'PRIMARY' || stage === 'DRAINED') variant = 'success';
+  else if (stage === 'ENABLED_IN_USE') variant = 'warning';
+  else if (stage === 'DISABLED') variant = 'error';
+  return (
+    <Tooltip content={help || label}>
+      <Badge variant={variant}>{label}</Badge>
+    </Tooltip>
+  );
+}
+
+/**
+ * Per-key re-encrypt migrates ciphertext from an old ENABLED key to the current PRIMARY. When the
+ * lifecycle snapshot is DRAINED (no tracked ENC: rows and no incomplete migration batches for this
+ * key), the action has no work to do — hide the button.
+ */
+function shouldShowReencryptButton(r: EncryptionKeyResponse): boolean {
+  if (r.keyStatus !== 'ENABLED') return false;
+  if (r.lifecycleStage === 'DRAINED') return false;
+  return true;
 }
 
 function BatchStatusBadge({ status }: { status?: string }) {
@@ -185,6 +216,11 @@ function ReencryptKeyDialog({
 
 // ── Key Detail Dialog ─────────────────────────────────────────────────────────
 
+function verificationStateLabel(state: string | undefined, t: TFunction) {
+  if (!state) return '—';
+  return t(`lifecycle.verification.${state}`, { defaultValue: state });
+}
+
 function KeyDetailDialog({
   keyId,
   onClose,
@@ -262,6 +298,33 @@ function KeyDetailDialog({
           <dl className="space-y-2.5">
             <Row label={t('keyDetail.labelKeyId')}><span className="font-mono">{keyData.keyId}</span></Row>
             <Row label={t('keyDetail.labelStatus')}><KeyStatusBadge status={keyData.keyStatus} /></Row>
+            <Row label={t('keyDetail.labelLifecycleStage')}>
+              <LifecycleStageBadge stage={keyData.lifecycleStage} />
+            </Row>
+            <Row label={t('keyDetail.labelRemainingRecords')}>
+              <span className="font-mono text-xs">
+                {keyData.remainingRecords != null ? keyData.remainingRecords : '—'}
+              </span>
+            </Row>
+            <Row label={t('keyDetail.labelRemainingTargets')}>
+              <span className="font-mono text-xs">
+                {keyData.remainingTargets != null ? keyData.remainingTargets : '—'}
+              </span>
+            </Row>
+            <Row label={t('keyDetail.labelVerificationState')}>
+              <span className="text-xs">{verificationStateLabel(keyData.verificationState, t)}</span>
+            </Row>
+            <Row label={t('keyDetail.labelLastVerifiedAt')}>
+              <span className="text-xs text-fg-muted">
+                {keyData.lastVerifiedAt ? formatRelativeTime(keyData.lastVerifiedAt) : '—'}
+              </span>
+            </Row>
+            <Row label={t('keyDetail.labelDecommissionEligible')}>
+              {keyData.decommissionEligible ? t('keyDetail.yes') : t('keyDetail.no')}
+            </Row>
+            <Row label={t('keyDetail.labelIncompleteMigrationBatches')}>
+              {keyData.incompleteMigrationBatches ? t('keyDetail.yes') : t('keyDetail.no')}
+            </Row>
             <Row label={t('keyDetail.labelAlgorithm')}><span className="font-mono text-xs">{keyData.algorithm ?? '—'}</span></Row>
             <Row label={t('keyDetail.labelIntroduced')}><span className="text-fg-muted">{keyData.introducedAt ? formatDate(keyData.introducedAt) : '—'}</span></Row>
             <Row label={t('keyDetail.labelPromotedPrimary')}>{keyData.promotedPrimaryAt ? formatDate(keyData.promotedPrimaryAt) : '—'}</Row>
@@ -272,7 +335,7 @@ function KeyDetailDialog({
             {keyData.notes && <Row label={t('keyDetail.labelNotes')}><span className="text-xs text-fg-muted">{keyData.notes}</span></Row>}
           </dl>
           <div className="flex justify-end gap-2 pt-4">
-            {keyData.keyStatus !== 'PRIMARY' && keyData.keyStatus !== 'DISABLED' && (
+            {shouldShowReencryptButton(keyData) && (
               <Button
                 variant="secondary"
                 className="gap-1.5"
@@ -949,6 +1012,23 @@ export default function EncryptionKeysPage() {
       render: (r) => <KeyStatusBadge status={r.keyStatus} />,
     },
     {
+      header: t('list.columns.lifecycle'),
+      key: 'lifecycleStage',
+      headerTooltip: t('list.headerTooltipLifecycle'),
+      render: (r) => (
+        <div className="flex flex-col gap-0.5 min-w-0 max-w-[11rem]">
+          <LifecycleStageBadge stage={r.lifecycleStage} />
+          {r.remainingRecords != null && r.remainingRecords > 0 ? (
+            <Tooltip content={t('list.remainingRowsShortHelp')}>
+              <span className="text-[10px] font-mono text-fg-muted leading-tight cursor-help underline decoration-dotted decoration-fg/30">
+                {t('list.remainingRowsShort', { count: r.remainingRecords })}
+              </span>
+            </Tooltip>
+          ) : null}
+        </div>
+      ),
+    },
+    {
       header: t('list.columns.algorithm'),
       key: 'algorithm',
       sortKey: 'algorithm',
@@ -988,7 +1068,7 @@ export default function EncryptionKeysPage() {
       header: '',
       key: 'actions',
       render: (r) =>
-        r.keyStatus === 'ENABLED' ? (
+        shouldShowReencryptButton(r) ? (
           <Tooltip content={t('list.reencryptButtonTooltip')}>
             <Button
               size="sm"

@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.security.KeyRotationService;
+import org.ezkey.security.KeyUsageVerificationService;
 import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
@@ -66,6 +68,7 @@ class EncryptionKeyControllerTest {
   @Mock private KeyRotationService rotationService;
   @Mock private ReencryptionService reencryptionService;
   @Mock private AuditLogService auditLogService;
+  @Mock private KeyUsageVerificationService keyUsageVerificationService;
 
   private EncryptionKeyController controller;
 
@@ -77,7 +80,12 @@ class EncryptionKeyControllerTest {
   void setUp() {
     controller =
         new EncryptionKeyController(
-            keyRepository, batchRepository, rotationService, reencryptionService, auditLogService);
+            keyRepository,
+            batchRepository,
+            rotationService,
+            reencryptionService,
+            auditLogService,
+            keyUsageVerificationService);
 
     OffsetDateTime now = OffsetDateTime.now();
     key1 = new EncryptionKey(100L, KeyStatus.PRIMARY, "AES256_GCM", now, "SYSTEM");
@@ -95,6 +103,43 @@ class EncryptionKeyControllerTest {
     batch1.setBatchId(1);
     batch1.setStatus(BatchStatus.PENDING);
     batch1.setProgressPct(BigDecimal.ZERO);
+
+    lenient()
+        .when(keyUsageVerificationService.computeSnapshot(any(EncryptionKey.class)))
+        .thenAnswer(
+            inv -> {
+              EncryptionKey k = inv.getArgument(0);
+              OffsetDateTime ts = OffsetDateTime.now();
+              return switch (k.getKeyStatus()) {
+                case PRIMARY ->
+                    new KeyUsageVerificationService.KeyUsageSnapshot(
+                        KeyUsageVerificationService.LIFECYCLE_PRIMARY,
+                        null,
+                        null,
+                        ts,
+                        KeyUsageVerificationService.VERIFICATION_NOT_APPLICABLE,
+                        false,
+                        false);
+                case ENABLED ->
+                    new KeyUsageVerificationService.KeyUsageSnapshot(
+                        KeyUsageVerificationService.LIFECYCLE_ENABLED_IN_USE,
+                        0L,
+                        0,
+                        ts,
+                        KeyUsageVerificationService.VERIFICATION_REMAINS_IN_USE,
+                        false,
+                        false);
+                default ->
+                    new KeyUsageVerificationService.KeyUsageSnapshot(
+                        KeyUsageVerificationService.LIFECYCLE_PENDING,
+                        null,
+                        null,
+                        ts,
+                        KeyUsageVerificationService.VERIFICATION_NOT_APPLICABLE,
+                        false,
+                        false);
+              };
+            });
   }
 
   @Test

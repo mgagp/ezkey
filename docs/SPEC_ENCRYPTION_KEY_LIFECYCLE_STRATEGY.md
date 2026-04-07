@@ -212,6 +212,23 @@ Use a hybrid model:
 
 This keeps the UI responsive while preserving correctness for sensitive actions.
 
+### 5.6 Implementation alignment (re-encryption refactor)
+
+Phase A verification **must** reuse the same building blocks as batch creation and processing:
+
+- **Prefix counts:** [`ReencryptionTargetQueryService`](c:/github/ezkey/ezkey-core/src/main/java/org/ezkey/security/ReencryptionTargetQueryService.java) is the single implementation of
+  `countRecordsEncryptedWithKey(table, column, keyId)` and `fetchRecords(...)` for the `ENC:{keyId}:%`
+  contract.
+- **Target inventory:** [`ReencryptionBatchCreationService#discoverReencryptableTargets()`](c:/github/ezkey/ezkey-core/src/main/java/org/ezkey/security/ReencryptionBatchCreationService.java) is the current source of
+  `(table, column)` pairs derived from `Reencryptable` entities. A future `ReencryptionTargetRegistry`
+  may extract this list to avoid drift; until then, lifecycle code should call the same discovery API
+  as batch creation.
+- **Parallel execution:** [`ReencryptionBatchParallelRunner`](c:/github/ezkey/ezkey-core/src/main/java/org/ezkey/security/ReencryptionBatchParallelRunner.java) does not change the definition of “drained”; it only
+  affects throughput. Lifecycle eligibility must still consider non-terminal batches for the old key
+  (for example `PENDING`, `IN_PROGRESS`, `FAILED`, `PAUSED`).
+
+The implemented [`KeyUsageVerificationService`](c:/github/ezkey/ezkey-core/src/main/java/org/ezkey/security/KeyUsageVerificationService.java) follows this model.
+
 ---
 
 ## 6. Admin UI strategy

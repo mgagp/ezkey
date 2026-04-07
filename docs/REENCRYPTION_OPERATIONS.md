@@ -15,6 +15,21 @@ For ciphertext format and rotation mechanics, see [ENCRYPTION_KEY_ROTATION_IMPLE
 
 The batch list is a **work queue** plus **historical rows** (completed batches are retained unless archived elsewhere).
 
+### 1.1 Service layout (refactor)
+
+Re-encryption is split across focused services (see `ezkey-core`):
+
+| Component | Role |
+|-----------|------|
+| `ReencryptionService` | Orchestration only: scheduler, manual triggers; delegates creation, processing, and the parallel runner. |
+| `ReencryptionBatchCreationService` | Creates batch rows (`REQUIRES_NEW`); owns `discoverReencryptableTargets()` and primary-key resolution. |
+| `ReencryptionTargetQueryService` | Single implementation of `countRecordsEncryptedWithKey` / `fetchRecords` using the `ENC:{keyId}:%` prefix. |
+| `ReencryptionBatchProcessingService` | Processes one batch per transaction (`REQUIRES_NEW`). |
+| `ReencryptionBatchParallelRunner` | Optional parallel batch execution; **mutex per `target_table`** when `parallel-batch-workers` &gt; 1. |
+| `KeyUsageVerificationService` | Admin-facing **derived** lifecycle snapshot: same target list as batch creation + prefix counts + non-`COMPLETED` batch detection. |
+
+**Drained vs parallelism:** “Drained” (no tracked ciphertext rows and no incomplete migration batches for that old key) is **orthogonal** to parallel workers. Table-level serialization avoids same-row contention across column batches; it does not replace checking batch queue state for lifecycle eligibility.
+
 ---
 
 ## 2. Endpoint map

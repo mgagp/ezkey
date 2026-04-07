@@ -131,6 +131,20 @@ public interface ReencryptionBatchRepository
       @Param("oldKeyId") Long oldKeyId, @Param("newKeyId") Long newKeyId);
 
   /**
+   * Counts batches for an old key whose status is not the given value (for example, all batches not
+   * yet {@code COMPLETED}).
+   *
+   * <p>Used by key lifecycle verification to detect migration work still in flight or needing
+   * attention.
+   *
+   * @param oldKeyId the old encryption key id
+   * @param status status to exclude from the count (typically {@link
+   *     org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus#COMPLETED})
+   * @return number of matching batches
+   */
+  long countByOldKey_KeyIdAndStatusNot(Long oldKeyId, BatchStatus status);
+
+  /**
    * Find the most recent batch for a target table/column that can be resumed.
    *
    * <p>Used to resume from the last batch if service was interrupted.

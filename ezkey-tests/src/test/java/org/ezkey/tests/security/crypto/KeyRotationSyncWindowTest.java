@@ -62,6 +62,13 @@ import org.slf4j.LoggerFactory;
  * <p><b>Note:</b> These tests depend on the sync window configuration (default 10s for
  * docker-test). The tests use database queries to verify which key was used for encryption.
  *
+ * <p><b>Admin bearer token:</b> Long-running scenarios must not cache the admin JWT in a local
+ * variable across waits or factory calls. {@link org.ezkey.tests.util.AuthTokenManager} may
+ * replace the in-memory token when validation fails and bootstrap runs again; {@link
+ * org.ezkey.tests.util.TestDataFactory} always calls {@code getAdminToken()}. Using a stale bearer
+ * string after that produces <strong>401 Unauthorized</strong> and is unrelated to Tink keyset
+ * sync across instances.
+ *
  * <p><b>Elective:</b> Tagged as elective because key rotation code is stable and rarely modified.
  * Run with {@code mvn test -pl ezkey-tests -P elective-tests} for periodic spot-checks.
  *
@@ -244,9 +251,8 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
   @DisplayName("Data encrypted before and after rotation can be decrypted")
   public void testDataDecryptableAcrossKeyRotation() throws Exception {
     // Skip if admin token not available
-    String adminToken;
     try {
-      adminToken = authTokenManager.getAdminToken();
+      authTokenManager.getAdminToken();
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Skipping test.");
@@ -264,7 +270,7 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
     Response responseBefore =
         given()
             .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + adminToken)
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
             .when()
             .get("/enrollments/" + enrollmentIdBefore)
             .then()
@@ -285,7 +291,7 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
       Response rotateResponse =
           given()
               .contentType(ContentType.JSON)
-              .header("Authorization", "Bearer " + adminToken)
+              .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
               .when()
               .post("/encryption-keys/rotate")
               .then()
@@ -307,11 +313,12 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
     Integer enrollmentIdAfter = testDataFactory.createEnrollment(integrationId2);
     log.info("Created enrollment {} AFTER rotation", enrollmentIdAfter);
 
-    // Step 5: Verify BOTH enrollments can be decrypted
+    // Step 5: Verify BOTH enrollments can be decrypted (always use current token from manager —
+    // TestDataFactory may have refreshed it; a stale local bearer causes 401, not crypto mismatch)
     Response responseBeforeAgain =
         given()
             .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + adminToken)
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
             .when()
             .get("/enrollments/" + enrollmentIdBefore)
             .then()
@@ -322,7 +329,7 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
     Response responseAfter =
         given()
             .contentType(ContentType.JSON)
-            .header("Authorization", "Bearer " + adminToken)
+            .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
             .when()
             .get("/enrollments/" + enrollmentIdAfter)
             .then()
