@@ -59,9 +59,10 @@ As a result:
 The most trustworthy signal for "this key still protects data" currently comes from SQL counting logic
 based on the ciphertext prefix `ENC:{keyId}:...`, not from a dedicated lifecycle verification model.
 
-At the same time, list and detail responses expose `recordsEncrypted` and `recordsReencrypted`, which
-can be useful indicators but are not sufficient by themselves to support irreversible lifecycle
-decisions.
+At the same time, list and detail responses expose `recordsEncrypted` (migration-scope baseline set
+when a key becomes `ENABLED`) and `recordsReencrypted` (cumulative units migrated in completed
+batches, reset at demotion). These support progress and health views but are not sufficient by
+themselves to support irreversible lifecycle decisions; drain remains prefix-based verification.
 
 ---
 
@@ -194,8 +195,9 @@ Recommended output shape:
 
 ### 5.4 Why counters are not enough
 
-Historical counters such as `recordsEncrypted` and `recordsReencrypted` are useful for trend and
-progress, but they are not a strong enough basis for decommissioning because:
+Persisted counters (`recordsEncrypted` baseline at demotion, `recordsReencrypted` cumulative) are
+useful for trend and progress versus that baseline, but they are not a strong enough basis for
+decommissioning because:
 
 - they do not by themselves prove the current live state,
 - they do not protect against missing target inventory,

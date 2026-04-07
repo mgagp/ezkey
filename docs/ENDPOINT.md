@@ -1750,6 +1750,8 @@ Lists encryption keys with server-side pagination and optional filter by status.
 
 **Response (200 OK):** Paginated. Body has `content` (array of encryption key objects) and `page` (object with `size`, `number`, `totalElements`, `totalPages`).
 
+**Encryption key object (non-exhaustive):** `recordsEncrypted` is the **migration baseline** (ciphertext units when the key became `ENABLED`); `recordsReencrypted` is **cumulative** units migrated in completed batches (reset when demoted). `remainingRecords` is a **derived** snapshot: sum of remaining ciphertext units on tracked targets (`ENC:{keyId}:%`), aligned with re-encryption batch discovery. `lifecycleStage` and related fields come from the same verification model; auto-disable of old keys uses **drained** verification (zero remaining + batch state), not counters alone.
+
 #### List re-encryption batches
 
 **GET /api/v1/encryption-keys/reencryption-batches**

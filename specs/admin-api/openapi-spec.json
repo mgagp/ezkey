@@ -6535,42 +6535,84 @@
       },
       "EncryptionKeyResponse": {
         "type": "object",
+        "description": "Encryption key row with derived lifecycle fields for operators.",
         "properties": {
           "keyId": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Unique key identifier (Tink keyset id)"
           },
           "keyStatus": {
-            "type": "string"
+            "type": "string",
+            "description": "PRIMARY, ENABLED, DISABLED, or PENDING"
           },
           "algorithm": {
-            "type": "string"
+            "type": "string",
+            "description": "Algorithm label, e.g. AES256_GCM"
           },
           "introducedAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "When the key was introduced"
           },
           "promotedPrimaryAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "When promoted to PRIMARY, if applicable"
           },
           "disabledAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "When disabled, if applicable"
           },
           "recordsEncrypted": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Migration baseline: ciphertext units when key became ENABLED (demotion); 0 while PRIMARY"
           },
           "recordsReencrypted": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Cumulative ciphertext units re-encrypted off this key (completed batches; reset at demotion)"
           },
           "createdBy": {
-            "type": "string"
+            "type": "string",
+            "description": "Creator label (SYSTEM or admin)"
           },
           "notes": {
-            "type": "string"
+            "type": "string",
+            "description": "Optional operator notes"
+          },
+          "lifecycleStage": {
+            "type": "string",
+            "description": "Derived lifecycle stage (e.g. PRIMARY, ENABLED_IN_USE, DRAINED, DISABLED)"
+          },
+          "remainingRecords": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Derived remaining ciphertext units (prefix scan across tracked targets); null when not applicable"
+          },
+          "remainingTargets": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Targets with remaining rows for this key; null when not applicable"
+          },
+          "lastVerifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this snapshot was computed"
+          },
+          "verificationState": {
+            "type": "string",
+            "description": "Verification outcome (e.g. NOT_APPLICABLE, VERIFIED_ZERO)"
+          },
+          "decommissionEligible": {
+            "type": "boolean",
+            "description": "True when drained and ready for a future decommission workflow"
+          },
+          "incompleteMigrationBatches": {
+            "type": "boolean",
+            "description": "True when migration batches for this key are not all completed"
           }
         }
       },

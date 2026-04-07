@@ -23,8 +23,8 @@ CREATE TABLE ezkey_encryption_key (
     introduced_at       TIMESTAMPTZ NOT NULL,         -- When key was added to keyset
     promoted_primary_at TIMESTAMPTZ,                  -- When became primary (nullable)
     disabled_at         TIMESTAMPTZ,                  -- When disabled (nullable)
-    records_encrypted   BIGINT DEFAULT 0,             -- Count of records encrypted with this key
-    records_reencrypted BIGINT DEFAULT 0,             -- Count re-encrypted to newer key
+    records_encrypted   BIGINT DEFAULT 0,             -- Baseline ciphertext units at demotion to ENABLED
+    records_reencrypted BIGINT DEFAULT 0,             -- Cumulative units re-encrypted (reset at demotion)
     last_reencrypt_at   TIMESTAMPTZ,                  -- Last re-encryption batch timestamp
     created_by          VARCHAR(100) DEFAULT 'SYSTEM',-- Job or admin who introduced key
     notes               TEXT,                         -- Optional notes for audit
@@ -78,10 +78,10 @@ COMMENT ON COLUMN ezkey_encryption_key.disabled_at IS
 'Timestamp when this key was disabled (nullable, only set when key is retired).';
 
 COMMENT ON COLUMN ezkey_encryption_key.records_encrypted IS 
-'Total count of records encrypted with this key. Incremented when new data is encrypted.';
+'Migration-scope baseline: sum of tracked ciphertext units (ENC:keyId: prefix rows per column) when this key became ENABLED. Zero while PRIMARY until demotion.';
 
 COMMENT ON COLUMN ezkey_encryption_key.records_reencrypted IS 
-'Count of records that were re-encrypted from this key to a newer key. Used to track migration progress.';
+'Cumulative ciphertext units migrated off this key via completed re-encryption batches; reset to zero at demotion. Informational vs baseline; drain uses prefix verification.';
 
 COMMENT ON COLUMN ezkey_encryption_key.last_reencrypt_at IS 
 'Timestamp of the last re-encryption batch that processed records encrypted with this key.';

@@ -115,18 +115,25 @@ public class EncryptionKey {
   private OffsetDateTime disabledAt;
 
   /**
-   * Total count of records encrypted with this key.
+   * Migration-scope baseline: total ciphertext units still using this key when it became {@link
+   * EncryptionKey.KeyStatus#ENABLED} (demoted from {@link EncryptionKey.KeyStatus#PRIMARY} or
+   * synced from the keyset).
    *
-   * <p>Incremented when new data is encrypted. Used for tracking key usage and migration planning.
+   * <p>Each unit is one tracked row/column ciphertext matching {@code ENC:{keyId}:%} (same
+   * inventory as re-encryption batches). Zero while primary until demotion. Not used as the sole
+   * signal for disablement; see prefix-based verification in {@code
+   * org.ezkey.security.KeyUsageVerificationService}.
    */
   @Column(name = "records_encrypted", nullable = false)
   private Long recordsEncrypted = 0L;
 
   /**
-   * Count of records that were re-encrypted from this key to a newer key.
+   * Cumulative ciphertext units re-encrypted away from this key (completed batch {@code
+   * records_done} summed per migration phase).
    *
-   * <p>Used to track migration progress. When records_reencrypted equals records_encrypted, all
-   * data has been migrated and the key can be disabled.
+   * <p>Reset to zero when the key is demoted to {@link EncryptionKey.KeyStatus#ENABLED} so progress
+   * applies to the current migration. Progress vs {@link #recordsEncrypted} is informational; drain
+   * uses prefix counts.
    */
   @Column(name = "records_reencrypted", nullable = false)
   private Long recordsReencrypted = 0L;

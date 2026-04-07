@@ -98,6 +98,28 @@ function shouldShowReencryptButton(r: EncryptionKeyResponse): boolean {
   return true;
 }
 
+/** List column: remaining ciphertext units for ENABLED; em dash when not applicable. */
+function RecordsColumnValue({ row }: { row: EncryptionKeyResponse }) {
+  const ks = row.keyStatus;
+  if (ks === 'PRIMARY' || ks === 'PENDING' || ks === 'DISABLED') {
+    return <span className="font-mono text-xs text-fg-muted">—</span>;
+  }
+  if (ks === 'ENABLED') {
+    const v = row.remainingRecords;
+    return (
+      <span className="font-mono text-xs">{v != null ? v : '—'}</span>
+    );
+  }
+  return <span className="font-mono text-xs text-fg-muted">—</span>;
+}
+
+function formatMigrationBaselineDetail(r: EncryptionKeyResponse): string {
+  if (r.keyStatus === 'PRIMARY' || r.keyStatus === 'PENDING') {
+    return '—';
+  }
+  return String(r.recordsEncrypted ?? 0);
+}
+
 function BatchStatusBadge({ status }: { status?: string }) {
   const { t } = useTranslation('encryption-keys');
   if (status === 'COMPLETED') return <Tooltip content={t('batchStatus.helpCompleted')}><Badge variant="success">{t('batchStatus.labelCompleted')}</Badge></Tooltip>;
@@ -329,7 +351,7 @@ function KeyDetailDialog({
             <Row label={t('keyDetail.labelIntroduced')}><span className="text-fg-muted">{keyData.introducedAt ? formatDate(keyData.introducedAt) : '—'}</span></Row>
             <Row label={t('keyDetail.labelPromotedPrimary')}>{keyData.promotedPrimaryAt ? formatDate(keyData.promotedPrimaryAt) : '—'}</Row>
             <Row label={t('keyDetail.labelDisabled')}>{keyData.disabledAt ? formatDate(keyData.disabledAt) : '—'}</Row>
-            <Row label={t('keyDetail.labelRecordsEncrypted')}><span className="font-mono">{keyData.recordsEncrypted ?? 0}</span></Row>
+            <Row label={t('keyDetail.labelRecordsEncrypted')}><span className="font-mono">{formatMigrationBaselineDetail(keyData)}</span></Row>
             <Row label={t('keyDetail.labelRecordsReencrypted')}><span className="font-mono">{keyData.recordsReencrypted ?? 0}</span></Row>
             <Row label={t('keyDetail.labelCreatedBy')}>{keyData.createdBy ?? '—'}</Row>
             {keyData.notes && <Row label={t('keyDetail.labelNotes')}><span className="text-xs text-fg-muted">{keyData.notes}</span></Row>}
@@ -1015,18 +1037,7 @@ export default function EncryptionKeysPage() {
       header: t('list.columns.lifecycle'),
       key: 'lifecycleStage',
       headerTooltip: t('list.headerTooltipLifecycle'),
-      render: (r) => (
-        <div className="flex flex-col gap-0.5 min-w-0 max-w-[11rem]">
-          <LifecycleStageBadge stage={r.lifecycleStage} />
-          {r.remainingRecords != null && r.remainingRecords > 0 ? (
-            <Tooltip content={t('list.remainingRowsShortHelp')}>
-              <span className="text-[10px] font-mono text-fg-muted leading-tight cursor-help underline decoration-dotted decoration-fg/30">
-                {t('list.remainingRowsShort', { count: r.remainingRecords })}
-              </span>
-            </Tooltip>
-          ) : null}
-        </div>
-      ),
+      render: (r) => <LifecycleStageBadge stage={r.lifecycleStage} />,
     },
     {
       header: t('list.columns.algorithm'),
@@ -1036,10 +1047,9 @@ export default function EncryptionKeysPage() {
     },
     {
       header: t('list.columns.records'),
-      key: 'recordsEncrypted',
-      sortKey: 'recordsEncrypted',
+      key: 'remainingRecords',
       headerTooltip: t('list.headerTooltipRecords'),
-      render: (r) => <span className="font-mono text-xs">{r.recordsEncrypted ?? 0}</span>,
+      render: (r) => <RecordsColumnValue row={r} />,
     },
     {
       header: t('list.columns.introduced'),

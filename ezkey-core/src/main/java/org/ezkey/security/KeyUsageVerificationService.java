@@ -129,8 +129,8 @@ public class KeyUsageVerificationService {
    *
    * @param lifecycleStage derived operator-facing stage (see constants on {@link
    *     KeyUsageVerificationService})
-   * @param remainingRecords sum of rows still using this key across tracked targets; null when not
-   *     applicable (non-ENABLED keys)
+   * @param remainingRecords sum of ciphertext units (tracked row/column ENC: prefix counts) still
+   *     using this key; null when not applicable (non-ENABLED keys)
    * @param remainingTargets number of targets with count &gt; 0; null when not applicable
    * @param lastVerifiedAt when this snapshot was computed
    * @param verificationState machine-readable verification outcome

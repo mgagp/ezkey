@@ -74,16 +74,22 @@ public class KeyRotationService {
   private final EncryptionKeyRepository keyRepository;
   private final TinkProperties properties;
   private final AuditLogService auditLogService;
+  private final EncryptionKeyMigrationScopeService migrationScopeService;
+  private final KeyUsageVerificationService keyUsageVerificationService;
 
   public KeyRotationService(
       TinkKeyManager keyManager,
       EncryptionKeyRepository keyRepository,
       TinkProperties properties,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      EncryptionKeyMigrationScopeService migrationScopeService,
+      KeyUsageVerificationService keyUsageVerificationService) {
     this.keyManager = keyManager;
     this.keyRepository = keyRepository;
     this.properties = properties;
     this.auditLogService = auditLogService;
+    this.migrationScopeService = migrationScopeService;
+    this.keyUsageVerificationService = keyUsageVerificationService;
   }
 
   /**
@@ -267,6 +273,7 @@ public class KeyRotationService {
             Long.toUnsignedString(primaryKey.getKeyId()));
         primaryKey.setKeyStatus(KeyStatus.ENABLED);
         primaryKey.setPromotedPrimaryAt(null);
+        migrationScopeService.applyDemotionBaseline(primaryKey);
         keyRepository.save(primaryKey);
       }
     }
@@ -594,6 +601,7 @@ public class KeyRotationService {
               Long.toUnsignedString(existingPrimary.getKeyId()));
           existingPrimary.setKeyStatus(KeyStatus.ENABLED);
           existingPrimary.setPromotedPrimaryAt(null);
+          migrationScopeService.applyDemotionBaseline(existingPrimary);
           keyRepository.save(existingPrimary);
         }
       }
@@ -635,6 +643,7 @@ public class KeyRotationService {
         } else {
           key.setKeyStatus(KeyStatus.ENABLED);
         }
+        migrationScopeService.applyDemotionBaseline(key);
       }
 
       if (key.getIntroducedAt() == null) {
@@ -732,6 +741,7 @@ public class KeyRotationService {
             newPrimaryKeyId);
         existingPrimaryKey.setKeyStatus(KeyStatus.ENABLED);
         existingPrimaryKey.setPromotedPrimaryAt(null);
+        migrationScopeService.applyDemotionBaseline(existingPrimaryKey);
         keyRepository.save(existingPrimaryKey);
       }
     }
@@ -766,6 +776,7 @@ public class KeyRotationService {
                       Long.toUnsignedString(oldPrimaryKeyId));
                   oldKey.setKeyStatus(KeyStatus.ENABLED);
                   oldKey.setPromotedPrimaryAt(null);
+                  migrationScopeService.applyDemotionBaseline(oldKey);
                   keyRepository.save(oldKey);
                 }
               });
@@ -786,6 +797,7 @@ public class KeyRotationService {
                         Long.toUnsignedString(keyId));
                     key.setKeyStatus(KeyStatus.ENABLED);
                     key.setPromotedPrimaryAt(null);
+                    migrationScopeService.applyDemotionBaseline(key);
                     keyRepository.save(key);
                   }
                 },
@@ -793,6 +805,7 @@ public class KeyRotationService {
                   // Create new record for key not in database
                   EncryptionKey key =
                       new EncryptionKey(keyId, KeyStatus.ENABLED, algorithm, now, createdBy);
+                  migrationScopeService.applyDemotionBaseline(key);
                   keyRepository.save(key);
                 });
       }
@@ -973,7 +986,9 @@ public class KeyRotationService {
    * <ul>
    *   <li>ENABLED status (not PRIMARY)
    *   <li>Older than auto-disable-days
-   *   <li>All data has been re-encrypted (records_reencrypted >= records_encrypted)
+   *   <li>Verified drained: no ciphertext rows remain for this key on tracked targets and no
+   *       incomplete re-encryption batches (same rules as {@link KeyUsageVerificationService}
+   *       {@code DRAINED})
    * </ul>
    *
    * <p><b>Defensive Measures:</b>
@@ -1005,33 +1020,41 @@ public class KeyRotationService {
         continue;
       }
 
-      // Only disable if all data has been re-encrypted
-      if (key.getRecordsReencrypted() >= key.getRecordsEncrypted()) {
-        key.setKeyStatus(KeyStatus.DISABLED);
-        key.setDisabledAt(OffsetDateTime.now());
-        keyRepository.save(key);
-
-        logger.info(
-            "Disabled old key: {} (age: {} days)",
+      KeyUsageVerificationService.KeyUsageSnapshot snap =
+          keyUsageVerificationService.computeSnapshot(key);
+      if (!KeyUsageVerificationService.LIFECYCLE_DRAINED.equals(snap.lifecycleStage())) {
+        logger.debug(
+            "Skipping auto-disable for key {}: lifecycle {}, not DRAINED",
             key.getKeyId(),
-            java.time.Duration.between(key.getIntroducedAt(), OffsetDateTime.now()).toDays());
-
-        // Emit audit log
-        auditLogService.log(
-            AuditLog.builder()
-                .eventType(EventType.KEY_DISABLED)
-                .eventAction("disable_old_key")
-                .eventStatus(EventStatus.SUCCESS)
-                .apiName(ApiName.ADMIN_API)
-                .ipAddress("127.0.0.1")
-                .eventDetails(
-                    AuditDetailsBuilder.builder()
-                        .encryptionKeyId(key.getKeyId())
-                        .custom("records_encrypted", key.getRecordsEncrypted())
-                        .custom("records_reencrypted", key.getRecordsReencrypted())
-                        .toJson())
-                .build());
+            snap.lifecycleStage());
+        continue;
       }
+
+      key.setKeyStatus(KeyStatus.DISABLED);
+      key.setDisabledAt(OffsetDateTime.now());
+      keyRepository.save(key);
+
+      logger.info(
+          "Disabled old key: {} (age: {} days)",
+          key.getKeyId(),
+          java.time.Duration.between(key.getIntroducedAt(), OffsetDateTime.now()).toDays());
+
+      // Emit audit log
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.KEY_DISABLED)
+              .eventAction("disable_old_key")
+              .eventStatus(EventStatus.SUCCESS)
+              .apiName(ApiName.ADMIN_API)
+              .ipAddress("127.0.0.1")
+              .eventDetails(
+                  AuditDetailsBuilder.builder()
+                      .encryptionKeyId(key.getKeyId())
+                      .custom("records_encrypted", key.getRecordsEncrypted())
+                      .custom("records_reencrypted", key.getRecordsReencrypted())
+                      .custom("lifecycle_stage", snap.lifecycleStage())
+                      .toJson())
+              .build());
     }
   }
 
@@ -1105,6 +1128,7 @@ public class KeyRotationService {
             Long.toUnsignedString(correctPrimaryKeyId));
         primaryKey.setKeyStatus(KeyStatus.ENABLED);
         primaryKey.setPromotedPrimaryAt(null);
+        migrationScopeService.applyDemotionBaseline(primaryKey);
         keyRepository.save(primaryKey);
         demotedCount++;
       }

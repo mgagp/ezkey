@@ -74,6 +74,7 @@ Therefore, **batches created in step 2 are not necessarily processed in the same
 
 ## 5. Admin UI (encryption keys page)
 
+- **Remaining** column — for `ENABLED` keys, shows derived **remaining ciphertext units** (same prefix-based rules as batches). Other statuses show an em dash. **Migration baseline** and **re-encrypted cumulative** counts appear in key detail (`recordsEncrypted` / `recordsReencrypted` semantics).
 - **Re-encrypt** (per ENABLED key in the table) — maps to `POST .../{keyId}/reencrypt`.
 - **Re-encryption Batches** section — **Create Batches** → `create-batches`; **Trigger Full Re-encryption** → `reencrypt/trigger`; row **Resume** → `resume` for `PENDING` or `FAILED` batches.
 

@@ -727,12 +727,14 @@ public class EncryptionKeyController {
    * @param promotedPrimaryAt timestamp when the key was promoted to PRIMARY status (null if never
    *     primary)
    * @param disabledAt timestamp when the key was disabled (null if still enabled)
-   * @param recordsEncrypted total number of records encrypted with this key
-   * @param recordsReencrypted total number of records that have been re-encrypted from this key
+   * @param recordsEncrypted migration-scope baseline: ciphertext units when this key became ENABLED
+   *     (demotion); zero while PRIMARY until demotion
+   * @param recordsReencrypted cumulative ciphertext units re-encrypted off this key (completed
+   *     batches; reset at demotion)
    * @param createdBy identifier of who/what created the key (SYSTEM or admin username)
    * @param notes optional notes about the key
    * @param lifecycleStage derived operator-facing lifecycle (e.g. PRIMARY, ENABLED_IN_USE, DRAINED)
-   * @param remainingRecords sum of ciphertext rows still using this key across tracked targets;
+   * @param remainingRecords derived sum of ciphertext units still using this key (prefix scan);
    *     null when not applicable
    * @param remainingTargets number of targets with remaining rows; null when not applicable
    * @param lastVerifiedAt when the lifecycle snapshot was computed
@@ -750,9 +752,15 @@ public class EncryptionKeyController {
       @Schema(description = "When promoted to PRIMARY, if applicable")
           java.time.OffsetDateTime promotedPrimaryAt,
       @Schema(description = "When disabled, if applicable") java.time.OffsetDateTime disabledAt,
-      @Schema(description = "Aggregate counter: records encrypted with this key")
+      @Schema(
+              description =
+                  "Migration baseline: ciphertext units when key became ENABLED (demotion); 0 while"
+                      + " PRIMARY")
           Long recordsEncrypted,
-      @Schema(description = "Aggregate counter: records re-encrypted away from this key")
+      @Schema(
+              description =
+                  "Cumulative ciphertext units re-encrypted off this key (completed batches; reset"
+                      + " at demotion)")
           Long recordsReencrypted,
       @Schema(description = "Creator label (SYSTEM or admin)") String createdBy,
       @Schema(description = "Optional operator notes") String notes,
@@ -762,7 +770,8 @@ public class EncryptionKeyController {
           String lifecycleStage,
       @Schema(
               description =
-                  "Remaining ciphertext rows across tracked targets; null when not applicable")
+                  "Derived remaining ciphertext units (prefix scan across tracked targets); null"
+                      + " when not applicable")
           Long remainingRecords,
       @Schema(description = "Targets with remaining rows for this key; null when not applicable")
           Integer remainingTargets,

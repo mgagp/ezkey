@@ -63,11 +63,11 @@ import org.slf4j.LoggerFactory;
  * docker-test). The tests use database queries to verify which key was used for encryption.
  *
  * <p><b>Admin bearer token:</b> Long-running scenarios must not cache the admin JWT in a local
- * variable across waits or factory calls. {@link org.ezkey.tests.util.AuthTokenManager} may
- * replace the in-memory token when validation fails and bootstrap runs again; {@link
+ * variable across waits or factory calls. {@link org.ezkey.tests.util.AuthTokenManager} may replace
+ * the in-memory token when validation fails and bootstrap runs again; {@link
  * org.ezkey.tests.util.TestDataFactory} always calls {@code getAdminToken()}. Using a stale bearer
- * string after that produces <strong>401 Unauthorized</strong> and is unrelated to Tink keyset
- * sync across instances.
+ * string after that produces <strong>401 Unauthorized</strong> and is unrelated to Tink keyset sync
+ * across instances.
  *
  * <p><b>Elective:</b> Tagged as elective because key rotation code is stable and rarely modified.
  * Run with {@code mvn test -pl ezkey-tests -P elective-tests} for periodic spot-checks.

@@ -47,6 +47,7 @@ import org.springframework.context.annotation.FilterType;
             org.ezkey.security.ReencryptionRecordCipher.class,
             org.ezkey.security.ReencryptionRowPersistenceService.class,
             org.ezkey.security.ReencryptionTargetQueryService.class,
+            org.ezkey.security.EncryptionKeyMigrationScopeService.class,
             org.ezkey.security.KeyUsageVerificationService.class,
             org.ezkey.security.config.ReencryptionExecutorConfiguration.class
           })

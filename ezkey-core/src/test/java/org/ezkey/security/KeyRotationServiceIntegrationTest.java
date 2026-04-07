@@ -282,7 +282,6 @@ class KeyRotationServiceIntegrationTest {
     initialKey.setIntroducedAt(introducedAt);
     initialKey.setPromotedPrimaryAt(introducedAt);
     initialKey.setCreatedBy("INITIAL");
-    initialKey.setRecordsEncrypted(100L);
     keyRepository.save(initialKey);
 
     org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
@@ -297,7 +296,10 @@ class KeyRotationServiceIntegrationTest {
     EncryptionKey oldKey = oldKeyOpt.get();
     assertEquals(KeyStatus.ENABLED, oldKey.getKeyStatus());
     assertEquals(introducedAt, oldKey.getIntroducedAt()); // Should preserve original date
-    assertEquals(100L, oldKey.getRecordsEncrypted()); // Should preserve counter
+    assertEquals(
+        0L,
+        oldKey.getRecordsEncrypted()); // Baseline = sum of tracked ciphertext units (empty DB => 0)
+    assertEquals(0L, oldKey.getRecordsReencrypted()); // Reset at demotion
   }
 
   @Test
