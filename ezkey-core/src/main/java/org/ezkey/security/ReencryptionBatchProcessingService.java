@@ -190,7 +190,11 @@ public class ReencryptionBatchProcessingService {
     if (accounted < batch.getRecordsTotal()) {
       int stillWithOldKey =
           targetQueryService.countRecordsEncryptedWithKey(
-              batch.getTargetTable(), batch.getTargetColumn(), batch.getOldKey().getKeyId());
+              batch.getTargetTable(),
+              batch.getTargetColumn(),
+              batch.getOldKey().getKeyId(),
+              batch.getShardIndex(),
+              batch.getShardCount());
       if (stillWithOldKey == 0) {
         int gap = batch.getRecordsTotal() - accounted;
         recordsSkipped += gap;

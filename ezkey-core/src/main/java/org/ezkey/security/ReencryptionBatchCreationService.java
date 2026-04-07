@@ -19,6 +19,7 @@ import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
+import org.ezkey.config.TinkProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
@@ -40,23 +41,29 @@ public class ReencryptionBatchCreationService {
   private static final Logger logger =
       LoggerFactory.getLogger(ReencryptionBatchCreationService.class);
 
+  /** Table name for {@link org.ezkey.authattempt.domain.entity.AuthAttempt}. */
+  public static final String EZKEY_AUTH_ATTEMPT_TABLE = "ezkey_auth_attempt";
+
   private final TinkKeyManager keyManager;
   private final EncryptionKeyRepository keyRepository;
   private final ReencryptionBatchRepository batchRepository;
   private final AuditLogService auditLogService;
   private final ReencryptionTargetQueryService targetQueryService;
+  private final TinkProperties tinkProperties;
 
   public ReencryptionBatchCreationService(
       TinkKeyManager keyManager,
       EncryptionKeyRepository keyRepository,
       ReencryptionBatchRepository batchRepository,
       AuditLogService auditLogService,
-      ReencryptionTargetQueryService targetQueryService) {
+      ReencryptionTargetQueryService targetQueryService,
+      TinkProperties tinkProperties) {
     this.keyManager = keyManager;
     this.keyRepository = keyRepository;
     this.batchRepository = batchRepository;
     this.auditLogService = auditLogService;
     this.targetQueryService = targetQueryService;
+    this.tinkProperties = tinkProperties;
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -74,60 +81,135 @@ public class ReencryptionBatchCreationService {
 
     for (EncryptionKey oldKey : enabledKeys) {
       for (Target target : targets) {
-        String table = target.table();
-        String column = target.column();
+        createBatchesForTarget(oldKey, primaryKey, target, "SYSTEM");
+      }
+    }
+  }
 
+  /**
+   * Creates one or more {@link ReencryptionBatch} rows for a single (old key, target) pair when
+   * needed. For {@link #EZKEY_AUTH_ATTEMPT_TABLE} and {@code authAttemptShardCount &gt; 1}, creates
+   * one batch per shard; otherwise a single non-sharded batch.
+   *
+   * @return batches inserted in this call (empty if nothing created)
+   */
+  public List<ReencryptionBatch> createBatchesForTarget(
+      EncryptionKey oldKey, EncryptionKey primaryKey, Target target, String createdBy) {
+    String table = target.table();
+    String column = target.column();
+    List<ReencryptionBatch> created = new ArrayList<>();
+
+    int configuredShards = tinkProperties.getReencryption().getAuthAttemptShardCount();
+    boolean useSharding = EZKEY_AUTH_ATTEMPT_TABLE.equals(table) && configuredShards > 1;
+
+    if (useSharding) {
+      for (int shardIndex = 0; shardIndex < configuredShards; shardIndex++) {
         List<ReencryptionBatch> activeBatches =
-            batchRepository.findActiveBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
+            batchRepository.findActiveBatchesByTargetAndOldKey(
+                table, column, oldKey.getKeyId(), shardIndex, configuredShards);
         if (!activeBatches.isEmpty()) {
           logger.debug(
-              "Active batch already exists for {}.{} with old key {}",
+              "Active batch already exists for {}.{} shard {}/{} with old key {}",
               table,
               column,
+              shardIndex,
+              configuredShards,
               oldKey.getKeyId());
           continue;
         }
 
         int recordCount =
-            targetQueryService.countRecordsEncryptedWithKey(table, column, oldKey.getKeyId());
+            targetQueryService.countRecordsEncryptedWithKey(
+                table, column, oldKey.getKeyId(), shardIndex, configuredShards);
         if (recordCount == 0) {
           logger.debug(
-              "No records found encrypted with key {} in {}.{}", oldKey.getKeyId(), table, column);
+              "No records for shard {}/{} encrypted with key {} in {}.{}",
+              shardIndex,
+              configuredShards,
+              oldKey.getKeyId(),
+              table,
+              column);
           continue;
         }
 
         ReencryptionBatch batch =
-            new ReencryptionBatch(table, column, oldKey, primaryKey, recordCount, "SYSTEM");
+            new ReencryptionBatch(
+                table,
+                column,
+                oldKey,
+                primaryKey,
+                recordCount,
+                createdBy,
+                shardIndex,
+                configuredShards);
         batchRepository.save(batch);
-
-        logger.info(
-            "Created re-encryption batch {} for {}.{} (old key: {}, new key: {}, records: {})",
-            batch.getBatchId(),
-            table,
-            column,
-            oldKey.getKeyId(),
-            primaryKey.getKeyId(),
-            recordCount);
-
-        auditLogService.log(
-            AuditLog.builder()
-                .eventType(EventType.REENCRYPTION_STARTED)
-                .eventAction("create_reencryption_batch")
-                .eventStatus(EventStatus.SUCCESS)
-                .apiName(ApiName.ADMIN_API)
-                .ipAddress("127.0.0.1")
-                .eventDetails(
-                    AuditDetailsBuilder.builder()
-                        .reencryptionBatchId(batch.getBatchId())
-                        .targetTable(table)
-                        .targetColumn(column)
-                        .oldKeyId(oldKey.getKeyId())
-                        .newKeyId(primaryKey.getKeyId())
-                        .recordsTotal(recordCount)
-                        .toJson())
-                .build());
+        created.add(batch);
+        logAndAuditBatchCreated(batch, table, column, oldKey, primaryKey, recordCount);
       }
+      return created;
     }
+
+    List<ReencryptionBatch> activeBatches =
+        batchRepository.findActiveBatchesByTargetAndOldKey(
+            table, column, oldKey.getKeyId(), null, null);
+    if (!activeBatches.isEmpty()) {
+      logger.debug(
+          "Active batch already exists for {}.{} with old key {}",
+          table,
+          column,
+          oldKey.getKeyId());
+      return created;
+    }
+
+    int recordCount =
+        targetQueryService.countRecordsEncryptedWithKey(table, column, oldKey.getKeyId());
+    if (recordCount == 0) {
+      logger.debug(
+          "No records found encrypted with key {} in {}.{}", oldKey.getKeyId(), table, column);
+      return created;
+    }
+
+    ReencryptionBatch batch =
+        new ReencryptionBatch(table, column, oldKey, primaryKey, recordCount, createdBy);
+    batchRepository.save(batch);
+    created.add(batch);
+    logAndAuditBatchCreated(batch, table, column, oldKey, primaryKey, recordCount);
+    return created;
+  }
+
+  private void logAndAuditBatchCreated(
+      ReencryptionBatch batch,
+      String table,
+      String column,
+      EncryptionKey oldKey,
+      EncryptionKey primaryKey,
+      int recordCount) {
+    logger.info(
+        "Created re-encryption batch {} for {}.{} (old key: {}, new key: {}, records: {})",
+        batch.getBatchId(),
+        table,
+        column,
+        oldKey.getKeyId(),
+        primaryKey.getKeyId(),
+        recordCount);
+
+    auditLogService.log(
+        AuditLog.builder()
+            .eventType(EventType.REENCRYPTION_STARTED)
+            .eventAction("create_reencryption_batch")
+            .eventStatus(EventStatus.SUCCESS)
+            .apiName(ApiName.ADMIN_API)
+            .ipAddress("127.0.0.1")
+            .eventDetails(
+                AuditDetailsBuilder.builder()
+                    .reencryptionBatchId(batch.getBatchId())
+                    .targetTable(table)
+                    .targetColumn(column)
+                    .oldKeyId(oldKey.getKeyId())
+                    .newKeyId(primaryKey.getKeyId())
+                    .recordsTotal(recordCount)
+                    .toJson())
+            .build());
   }
 
   public EncryptionKey getPrimaryKeyFromKeyset() {

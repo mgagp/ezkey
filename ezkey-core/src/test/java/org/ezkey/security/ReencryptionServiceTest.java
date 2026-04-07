@@ -20,6 +20,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -142,7 +144,12 @@ class ReencryptionServiceTest {
     reencryptionBatchExecutor.initialize();
     batchCreationService =
         new ReencryptionBatchCreationService(
-            keyManager, keyRepository, batchRepository, auditLogService, targetQueryService);
+            keyManager,
+            keyRepository,
+            batchRepository,
+            auditLogService,
+            targetQueryService,
+            properties);
     parallelRunner =
         new ReencryptionBatchParallelRunner(
             reencryptionBatchExecutor, batchProcessingService, properties);
@@ -155,8 +162,7 @@ class ReencryptionServiceTest {
             auditLogService,
             batchCreationService,
             batchProcessingService,
-            parallelRunner,
-            targetQueryService);
+            parallelRunner);
 
     // Setup encryption keys
     oldKey = new EncryptionKey();
@@ -190,6 +196,7 @@ class ReencryptionServiceTest {
     reencryptionConfig.setMaxDurationMinutes(60);
     reencryptionConfig.setEnabled(true);
     reencryptionConfig.setParallelBatchWorkers(1);
+    reencryptionConfig.setAuthAttemptShardCount(1);
 
     // Use lenient() for stubbings that may not be used by all tests
     lenient().when(properties.getReencryption()).thenReturn(reencryptionConfig);
@@ -601,7 +608,8 @@ class ReencryptionServiceTest {
   @DisplayName("countRecordsEncryptedWithKey() - Should count AuthAttempt auth_attempt_proof_token")
   void countRecordsEncryptedWithKey_ShouldCountAuthAttemptProofToken() {
     // Arrange
-    when(authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike("ENC:1111111111:%"))
+    when(authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
+            eq("ENC:1111111111:%"), isNull(), isNull()))
         .thenReturn(33);
 
     // Act
@@ -611,14 +619,16 @@ class ReencryptionServiceTest {
 
     // Assert
     assertEquals(33, count);
-    verify(authAttemptRepository).countByEncryptedAuthAttemptProofTokenLike("ENC:1111111111:%");
+    verify(authAttemptRepository)
+        .countByEncryptedAuthAttemptProofTokenLike(eq("ENC:1111111111:%"), isNull(), isNull());
   }
 
   @Test
   @DisplayName("countRecordsEncryptedWithKey() - Should count AuthAttempt device_proof_token")
   void countRecordsEncryptedWithKey_ShouldCountAuthAttemptDeviceProofToken() {
     // Arrange
-    when(authAttemptRepository.countByEncryptedDeviceProofTokenLike("ENC:1111111111:%"))
+    when(authAttemptRepository.countByEncryptedDeviceProofTokenLike(
+            eq("ENC:1111111111:%"), isNull(), isNull()))
         .thenReturn(7);
 
     // Act
@@ -627,7 +637,8 @@ class ReencryptionServiceTest {
 
     // Assert
     assertEquals(7, count);
-    verify(authAttemptRepository).countByEncryptedDeviceProofTokenLike("ENC:1111111111:%");
+    verify(authAttemptRepository)
+        .countByEncryptedDeviceProofTokenLike(eq("ENC:1111111111:%"), isNull(), isNull());
   }
 
   @Test
@@ -639,7 +650,8 @@ class ReencryptionServiceTest {
     // Assert
     assertEquals(0, count);
     verify(enrollmentRepository, never()).countByEncryptedIntegrationPrivateKeyLike(anyString());
-    verify(authAttemptRepository, never()).countByEncryptedAuthAttemptProofTokenLike(anyString());
+    verify(authAttemptRepository, never())
+        .countByEncryptedAuthAttemptProofTokenLike(anyString(), any(), any());
   }
 
   @Test
@@ -848,7 +860,8 @@ class ReencryptionServiceTest {
     // Mock: No active batches exist for any old key (using corrected method)
     // Note: With corrected version, this checks (table, column, oldKeyId) allowing multiple
     // batches for different old keys targeting the same table/column
-    when(batchRepository.findActiveBatchesByTargetAndOldKey(anyString(), anyString(), anyLong()))
+    when(batchRepository.findActiveBatchesByTargetAndOldKey(
+            anyString(), anyString(), anyLong(), any(), any()))
         .thenReturn(List.of());
 
     // Mock TinkKeyManager to return PRIMARY key ID
@@ -928,5 +941,84 @@ class ReencryptionServiceTest {
       assertEquals(
           9999999999L, batch.getNewKey().getKeyId(), "All batches should target PRIMARY key");
     }
+  }
+
+  @Test
+  @DisplayName(
+      "createBatchesForOldKeys() - Should create one shard batch per auth column when sharding"
+          + " enabled")
+  void createBatchesForOldKeys_ShouldCreateShardedAuthAttemptBatches() {
+    reencryptionConfig.setAuthAttemptShardCount(2);
+
+    EncryptionKey oldKey1 = new EncryptionKey();
+    oldKey1.setKeyId(1111111111L);
+    oldKey1.setKeyStatus(KeyStatus.ENABLED);
+
+    EncryptionKey primaryKey = new EncryptionKey();
+    primaryKey.setKeyId(9999999999L);
+    primaryKey.setKeyStatus(KeyStatus.PRIMARY);
+
+    when(keyRepository.findEnabledKeys()).thenReturn(new java.util.ArrayList<>(List.of(oldKey1)));
+    when(keyRepository.findById(9999999999L)).thenReturn(java.util.Optional.of(primaryKey));
+
+    when(batchRepository.findActiveBatchesByTargetAndOldKey(
+            anyString(), anyString(), anyLong(), any(), any()))
+        .thenReturn(List.of());
+
+    when(keyManager.isInitialized()).thenReturn(true);
+    when(keyManager.getCurrentPrimaryKeyId()).thenReturn(9999999999L);
+
+    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike(anyString())).thenReturn(0);
+    when(enrollmentRepository.countByEncryptedEnrollmentProofTokenLike(anyString())).thenReturn(0);
+
+    when(authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
+            eq("ENC:1111111111:%"), eq(0), eq(2)))
+        .thenReturn(10);
+    when(authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
+            eq("ENC:1111111111:%"), eq(1), eq(2)))
+        .thenReturn(0);
+    when(authAttemptRepository.countByEncryptedDeviceProofTokenLike(
+            eq("ENC:1111111111:%"), eq(0), eq(2)))
+        .thenReturn(7);
+    when(authAttemptRepository.countByEncryptedDeviceProofTokenLike(
+            eq("ENC:1111111111:%"), eq(1), eq(2)))
+        .thenReturn(0);
+
+    ArgumentCaptor<ReencryptionBatch> batchCaptor =
+        ArgumentCaptor.forClass(ReencryptionBatch.class);
+    when(batchRepository.save(batchCaptor.capture()))
+        .thenAnswer(
+            invocation -> {
+              ReencryptionBatch b = invocation.getArgument(0);
+              b.setBatchId(batchCaptor.getAllValues().size() + 1);
+              return b;
+            });
+
+    service.createBatchesForOldKeys();
+
+    List<ReencryptionBatch> saved = batchCaptor.getAllValues();
+    assertEquals(2, saved.size());
+    assertTrue(
+        saved.stream()
+            .allMatch(
+                b ->
+                    ReencryptionBatchCreationService.EZKEY_AUTH_ATTEMPT_TABLE.equals(
+                        b.getTargetTable())));
+    ReencryptionBatch proofBatch =
+        saved.stream()
+            .filter(b -> "auth_attempt_proof_token".equals(b.getTargetColumn()))
+            .findFirst()
+            .orElseThrow();
+    ReencryptionBatch deviceBatch =
+        saved.stream()
+            .filter(b -> "device_proof_token".equals(b.getTargetColumn()))
+            .findFirst()
+            .orElseThrow();
+    for (ReencryptionBatch b : List.of(proofBatch, deviceBatch)) {
+      assertEquals(2, b.getShardCount().intValue());
+      assertEquals(0, b.getShardIndex().intValue());
+    }
+    assertEquals(10, proofBatch.getRecordsTotal());
+    assertEquals(7, deviceBatch.getRecordsTotal());
   }
 }

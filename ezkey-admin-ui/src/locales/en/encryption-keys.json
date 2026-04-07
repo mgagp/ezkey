@@ -16,19 +16,19 @@
       "status": "Status",
       "lifecycle": "Lifecycle",
       "algorithm": "Algorithm",
-      "records": "Remaining",
+      "records": "Tracked",
       "introduced": "Introduced",
       "primarySince": "Primary since",
       "createdBy": "Created by"
     },
     "headerTooltipLifecycle": "Derived from tracked ciphertext targets and migration batch state. See key detail for full snapshot.",
     "headerTooltipStatus": "Primary = used for new encryption; Enabled = decryption only; Disabled = retired.",
-    "headerTooltipRecords": "For ENABLED keys: derived remaining ciphertext units (prefix scan across tracked table/column targets). Em dash for other statuses. Drain and lifecycle use the same counting rules as re-encryption batches.",
+    "headerTooltipRecords": "Prefix scan across the same targets as re-encryption batches. PRIMARY: current ciphertext volume on this key (sanity check / trend). ENABLED: migration backlog still encrypted with this key. Em dash for PENDING and DISABLED.",
     "headerTooltipPrimarySince": "Date this key was promoted to primary.",
     "reencryptButtonTooltip": "Migrate records encrypted with this key to the current primary key.",
     "reencryptButton": "Re-encrypt",
     "help": {
-      "sectionContent": "AES-256 encryption keys protecting sensitive data at rest. The <strong>PRIMARY</strong> key encrypts new data. Old keys remain <strong>ENABLED</strong> until all their records are re-encrypted."
+      "sectionContent": "AES-256 encryption keys protecting sensitive data at rest. The <strong>PRIMARY</strong> key encrypts new data. Old keys remain <strong>ENABLED</strong> until all their records are re-encrypted. The <strong>Tracked</strong> column shows prefix-based ciphertext counts: for the primary key it reflects live volume (useful to spot unexpected growth); for enabled keys it is the migration backlog."
     }
   },
   "keyStatus": {
@@ -58,6 +58,7 @@
     },
     "verification": {
       "NOT_APPLICABLE": "Not applicable",
+      "PRIMARY_USAGE": "Primary key usage (tracked)",
       "REMAINS_IN_USE": "Ciphertext remains",
       "MIGRATION_IN_PROGRESS": "Migration in progress",
       "VERIFIED_ZERO": "Verified zero remaining"
@@ -69,7 +70,7 @@
     "labelKeyId": "Key ID",
     "labelStatus": "Status",
     "labelLifecycleStage": "Lifecycle (derived)",
-    "labelRemainingRecords": "Remaining ciphertext units (derived)",
+    "labelRemainingRecords": "Tracked ciphertext units (derived)",
     "labelRemainingTargets": "Targets with rows",
     "labelVerificationState": "Verification",
     "labelLastVerifiedAt": "Snapshot at",
@@ -119,6 +120,7 @@
     "labelStatus": "Status",
     "labelTargetTable": "Target table",
     "labelTargetColumn": "Target column",
+    "labelShard": "Shard",
     "labelOldKey": "Old key",
     "labelNewKey": "New key",
     "labelProgress": "Progress",
@@ -129,6 +131,11 @@
     "labelRetryCount": "Retry count",
     "labelStarted": "Started",
     "labelCompleted": "Completed",
+    "labelDuration": "Duration",
+    "labelThroughput": "Throughput (records done)",
+    "labelElapsed": "Elapsed (running)",
+    "durationSeconds": "{{seconds}} s",
+    "throughputRecordsPerSec": "{{rate}} rec/s",
     "labelError": "Error",
     "failSuffix": "fail"
   },
@@ -166,10 +173,13 @@
     "columnsId": "ID",
     "columnsTable": "Table",
     "columnsColumn": "Column",
+    "columnsShard": "Shard",
     "columnsKeys": "Keys",
     "columnsStatus": "Status",
     "columnsProgress": "Progress",
     "columnsRecords": "Records",
+    "columnsPerf": "Timing",
+    "tooltipPerf": "Wall time between start and completion; rate is records done divided by that duration.",
     "resume": "Resume",
     "toastTrigger": "Triggered — {{count}} batches",
     "toastCreate": "Created {{count}} batches",

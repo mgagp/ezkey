@@ -16,19 +16,19 @@
       "status": "Statut",
       "lifecycle": "Cycle de vie",
       "algorithm": "Algorithme",
-      "records": "Restant",
+      "records": "Suivi",
       "introduced": "Introduite",
       "primarySince": "Primaire depuis",
       "createdBy": "Créée par"
     },
     "headerTooltipLifecycle": "Dérivé des cibles chiffrées suivies et de l'état des lots. Voir le détail de la clé pour l'instantané complet.",
     "headerTooltipStatus": "Primaire = chiffrement des nouvelles données ; Activée = déchiffrement uniquement ; Désactivée = retirée.",
-    "headerTooltipRecords": "Pour les clés ACTIVÉES : unités de texte chiffré restantes (scan préfixe sur les cibles suivies). Tiret pour les autres statuts. Même logique que les lots de re-chiffrement.",
+    "headerTooltipRecords": "Scan préfixe sur les mêmes cibles que les lots de re-chiffrement. PRIMAIRE : volume actuel chiffré avec cette clé (tendance / cohérence). ACTIVÉE : reliquat de migration. Tiret pour EN ATTENTE et DÉSACTIVÉE.",
     "headerTooltipPrimarySince": "Date de promotion en clé primaire.",
     "reencryptButtonTooltip": "Migrer les enregistrements chiffrés avec cette clé vers la clé primaire actuelle.",
     "reencryptButton": "Re-chiffrer",
     "help": {
-      "sectionContent": "Clés AES-256 protégeant les données sensibles au repos. La clé <strong>PRIMARY</strong> chiffre les nouvelles données. Les anciennes clés restent <strong>ENABLED</strong> jusqu'à ce que tous leurs enregistrements soient re-chiffrés."
+      "sectionContent": "Clés AES-256 protégeant les données sensibles au repos. La clé <strong>PRIMARY</strong> chiffre les nouvelles données. Les anciennes clés restent <strong>ENABLED</strong> jusqu'à ce que tous leurs enregistrements soient re-chiffrés. La colonne <strong>Suivi</strong> affiche des comptages par préfixe : pour la clé primaire, le volume chiffré actuel (utile pour repérer une croissance inattendue) ; pour les clés activées, le reliquat de migration."
     }
   },
   "keyStatus": {
@@ -58,6 +58,7 @@
     },
     "verification": {
       "NOT_APPLICABLE": "Sans objet",
+      "PRIMARY_USAGE": "Utilisation primaire (suivie)",
       "REMAINS_IN_USE": "Texte chiffré restant",
       "MIGRATION_IN_PROGRESS": "Migration en cours",
       "VERIFIED_ZERO": "Zéro restant vérifié"
@@ -69,7 +70,7 @@
     "labelKeyId": "ID clé",
     "labelStatus": "Statut",
     "labelLifecycleStage": "Cycle de vie (dérivé)",
-    "labelRemainingRecords": "Unités restantes (dérivé)",
+    "labelRemainingRecords": "Unités ciphertext suivies (dérivé)",
     "labelRemainingTargets": "Cibles avec lignes",
     "labelVerificationState": "Vérification",
     "labelLastVerifiedAt": "Instantané à",
@@ -119,6 +120,7 @@
     "labelStatus": "Statut",
     "labelTargetTable": "Table cible",
     "labelTargetColumn": "Colonne cible",
+    "labelShard": "Fragment",
     "labelOldKey": "Ancienne clé",
     "labelNewKey": "Nouvelle clé",
     "labelProgress": "Progression",
@@ -129,6 +131,11 @@
     "labelRetryCount": "Tentatives",
     "labelStarted": "Démarré",
     "labelCompleted": "Terminé",
+    "labelDuration": "Durée",
+    "labelThroughput": "Débit (enreg. traités)",
+    "labelElapsed": "Écoulé (en cours)",
+    "durationSeconds": "{{seconds}} s",
+    "throughputRecordsPerSec": "{{rate}} enreg./s",
     "labelError": "Erreur",
     "failSuffix": "éch."
   },
@@ -166,10 +173,13 @@
     "columnsId": "ID",
     "columnsTable": "Table",
     "columnsColumn": "Colonne",
+    "columnsShard": "Fragment",
     "columnsKeys": "Clés",
     "columnsStatus": "Statut",
     "columnsProgress": "Progression",
     "columnsRecords": "Enregistrements",
+    "columnsPerf": "Temps",
+    "tooltipPerf": "Durée entre début et fin ; débit = enregistrements traités ÷ durée.",
     "resume": "Reprendre",
     "toastTrigger": "Déclenché — {{count}} lots",
     "toastCreate": "{{count}} lots créés",

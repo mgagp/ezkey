@@ -177,6 +177,21 @@ public class ReencryptionBatch {
   private Long lastRecordId;
 
   /**
+   * When set ({@code >= 2}), number of parallel shards for {@code ezkey_auth_attempt} (mod on
+   * {@code auth_attempt_id}). {@code null} for non-sharded batches (enrollment or single-stream
+   * auth-attempt).
+   */
+  @Column(name = "shard_count")
+  private Integer shardCount;
+
+  /**
+   * Shard index {@code 0..shard_count-1} when sharded; {@code null} when {@link #shardCount} is
+   * {@code null}.
+   */
+  @Column(name = "shard_index")
+  private Integer shardIndex;
+
+  /**
    * Error message if batch failed.
    *
    * <p>Contains summary of failure reason for troubleshooting.
@@ -261,6 +276,42 @@ public class ReencryptionBatch {
     this.newKey = newKey;
     this.recordsTotal = recordsTotal;
     this.createdBy = createdBy;
+    this.status = BatchStatus.PENDING;
+    this.recordsDone = 0;
+    this.recordsFailed = 0;
+    this.recordsSkipped = 0;
+    this.progressPct = BigDecimal.ZERO;
+    this.errorCount = 0;
+    this.retryCount = 0;
+    this.maxRetries = 3;
+    this.createdAt = OffsetDateTime.now();
+    this.updatedAt = OffsetDateTime.now();
+  }
+
+  /**
+   * Constructor for a sharded re-encryption batch (e.g. {@code ezkey_auth_attempt} with {@code
+   * shard_count &gt; 1}).
+   *
+   * @param shardIndex inclusive {@code 0} to {@code shardCount - 1}
+   * @param shardCount number of shards ({@code >= 2})
+   */
+  public ReencryptionBatch(
+      String targetTable,
+      String targetColumn,
+      EncryptionKey oldKey,
+      EncryptionKey newKey,
+      Integer recordsTotal,
+      String createdBy,
+      Integer shardIndex,
+      Integer shardCount) {
+    this.targetTable = targetTable;
+    this.targetColumn = targetColumn;
+    this.oldKey = oldKey;
+    this.newKey = newKey;
+    this.recordsTotal = recordsTotal;
+    this.createdBy = createdBy;
+    this.shardIndex = shardIndex;
+    this.shardCount = shardCount;
     this.status = BatchStatus.PENDING;
     this.recordsDone = 0;
     this.recordsFailed = 0;
@@ -420,6 +471,22 @@ public class ReencryptionBatch {
   public void setLastRecordId(Long lastRecordId) {
     this.lastRecordId = lastRecordId;
     this.updatedAt = OffsetDateTime.now();
+  }
+
+  public Integer getShardCount() {
+    return shardCount;
+  }
+
+  public void setShardCount(Integer shardCount) {
+    this.shardCount = shardCount;
+  }
+
+  public Integer getShardIndex() {
+    return shardIndex;
+  }
+
+  public void setShardIndex(Integer shardIndex) {
+    this.shardIndex = shardIndex;
   }
 
   public String getErrorMessage() {

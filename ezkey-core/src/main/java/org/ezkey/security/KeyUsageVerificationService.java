@@ -41,6 +41,12 @@ public class KeyUsageVerificationService {
   public static final String VERIFICATION_MIGRATION_IN_PROGRESS = "MIGRATION_IN_PROGRESS";
   public static final String VERIFICATION_VERIFIED_ZERO = "VERIFIED_ZERO";
 
+  /**
+   * PRIMARY key: prefix-scan totals across the same tracked targets (live ciphertext using this
+   * key). Not a migration backlog; operator observability only.
+   */
+  public static final String VERIFICATION_PRIMARY_USAGE = "PRIMARY_USAGE";
+
   private final ReencryptionBatchCreationService batchCreationService;
   private final ReencryptionTargetQueryService targetQueryService;
   private final ReencryptionBatchRepository batchRepository;
@@ -66,9 +72,7 @@ public class KeyUsageVerificationService {
       case PENDING ->
           new KeyUsageSnapshot(
               LIFECYCLE_PENDING, null, null, verifiedAt, VERIFICATION_NOT_APPLICABLE, false, false);
-      case PRIMARY ->
-          new KeyUsageSnapshot(
-              LIFECYCLE_PRIMARY, null, null, verifiedAt, VERIFICATION_NOT_APPLICABLE, false, false);
+      case PRIMARY -> computePrimarySnapshot(key, verifiedAt);
       case DISABLED ->
           new KeyUsageSnapshot(
               LIFECYCLE_DISABLED,
@@ -80,6 +84,37 @@ public class KeyUsageVerificationService {
               false);
       case ENABLED -> computeEnabledSnapshot(key, verifiedAt);
     };
+  }
+
+  /**
+   * Snapshot for the current PRIMARY: same prefix counts as migration discovery, exposing how many
+   * ciphertext units currently reference this key (observability; unexpected growth may indicate
+   * load, misconfiguration, or stalled migration elsewhere).
+   */
+  private KeyUsageSnapshot computePrimarySnapshot(EncryptionKey key, OffsetDateTime verifiedAt) {
+    long totalOnKey = 0L;
+    int targetsWithRows = 0;
+    for (ReencryptionBatchCreationService.Target target :
+        batchCreationService.discoverReencryptableTargets()) {
+      int count =
+          targetQueryService.countRecordsEncryptedWithKey(
+              target.table(), target.column(), key.getKeyId());
+      totalOnKey += count;
+      if (count > 0) {
+        targetsWithRows++;
+      }
+    }
+    long nonCompletedBatches =
+        batchRepository.countByOldKey_KeyIdAndStatusNot(key.getKeyId(), BatchStatus.COMPLETED);
+    boolean incompleteMigration = nonCompletedBatches > 0;
+    return new KeyUsageSnapshot(
+        LIFECYCLE_PRIMARY,
+        totalOnKey,
+        targetsWithRows,
+        verifiedAt,
+        VERIFICATION_PRIMARY_USAGE,
+        false,
+        incompleteMigration);
   }
 
   private KeyUsageSnapshot computeEnabledSnapshot(EncryptionKey key, OffsetDateTime verifiedAt) {
@@ -129,8 +164,9 @@ public class KeyUsageVerificationService {
    *
    * @param lifecycleStage derived operator-facing stage (see constants on {@link
    *     KeyUsageVerificationService})
-   * @param remainingRecords sum of ciphertext units (tracked row/column ENC: prefix counts) still
-   *     using this key; null when not applicable (non-ENABLED keys)
+   * @param remainingRecords sum of ciphertext units (tracked row/column ENC: prefix counts) for
+   *     this key: migration backlog for ENABLED; live volume on PRIMARY; null for PENDING /
+   *     DISABLED
    * @param remainingTargets number of targets with count &gt; 0; null when not applicable
    * @param lastVerifiedAt when this snapshot was computed
    * @param verificationState machine-readable verification outcome

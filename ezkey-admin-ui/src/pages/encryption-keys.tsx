@@ -98,13 +98,48 @@ function shouldShowReencryptButton(r: EncryptionKeyResponse): boolean {
   return true;
 }
 
-/** List column: remaining ciphertext units for ENABLED; em dash when not applicable. */
+function parseIsoMs(s?: string | null): number | null {
+  if (!s) return null;
+  const ms = new Date(s).getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
+
+/**
+ * Wall-clock duration when both start and end timestamps exist (any terminal or paused run with
+ * both set).
+ */
+function getReencryptionBatchDurationSeconds(
+  startedAt?: string | null,
+  completedAt?: string | null,
+): number | null {
+  const a = parseIsoMs(startedAt);
+  const b = parseIsoMs(completedAt);
+  if (a === null || b === null || b < a) return null;
+  return (b - a) / 1000;
+}
+
+/** Elapsed seconds since start (in-progress batches). */
+function getReencryptionBatchElapsedSeconds(startedAt?: string | null): number | null {
+  const a = parseIsoMs(startedAt);
+  if (a === null) return null;
+  const elapsed = (Date.now() - a) / 1000;
+  return elapsed >= 0 ? elapsed : null;
+}
+
+function formatRecordsPerSecond(rate: number): string {
+  if (!Number.isFinite(rate) || rate < 0) return '0';
+  if (rate >= 100) return String(Math.round(rate));
+  if (rate >= 10) return rate.toFixed(1);
+  return rate.toFixed(2);
+}
+
+/** List column: prefix-scan totals — PRIMARY (live volume) and ENABLED (migration backlog). */
 function RecordsColumnValue({ row }: { row: EncryptionKeyResponse }) {
   const ks = row.keyStatus;
-  if (ks === 'PRIMARY' || ks === 'PENDING' || ks === 'DISABLED') {
+  if (ks === 'PENDING' || ks === 'DISABLED') {
     return <span className="font-mono text-xs text-fg-muted">—</span>;
   }
-  if (ks === 'ENABLED') {
+  if (ks === 'PRIMARY' || ks === 'ENABLED') {
     const v = row.remainingRecords;
     return (
       <span className="font-mono text-xs">{v != null ? v : '—'}</span>
@@ -408,6 +443,16 @@ function BatchDetailDialog({
 
   if (!batch) return null;
 
+  const elapsedRunningSec =
+    batch.status === 'IN_PROGRESS' && batch.startedAt && !batch.completedAt
+      ? getReencryptionBatchElapsedSeconds(batch.startedAt)
+      : null;
+  const wallDurationSec = getReencryptionBatchDurationSeconds(batch.startedAt, batch.completedAt);
+  const throughputRate =
+    wallDurationSec != null && wallDurationSec > 0
+      ? (batch.recordsDone ?? 0) / wallDurationSec
+      : null;
+
   function Row({ label, children }: { label: string; children: React.ReactNode }) {
     return (
       <div className="flex gap-4">
@@ -444,6 +489,11 @@ function BatchDetailDialog({
         <Row label={t('batchDetail.labelStatus')}><BatchStatusBadge status={batch.status} /></Row>
         <Row label={t('batchDetail.labelTargetTable')}><span className="font-mono text-xs">{batch.targetTable}</span></Row>
         <Row label={t('batchDetail.labelTargetColumn')}><span className="font-mono text-xs">{batch.targetColumn}</span></Row>
+        {batch.shardCount != null && batch.shardCount > 1 && batch.shardIndex != null && (
+          <Row label={t('batchDetail.labelShard')}>
+            <span className="font-mono text-xs">{batch.shardIndex} / {batch.shardCount}</span>
+          </Row>
+        )}
         <Row label={t('batchDetail.labelOldKey')}><span className="font-mono">#{batch.oldKeyId}</span></Row>
         <Row label={t('batchDetail.labelNewKey')}><span className="font-mono">#{batch.newKeyId}</span></Row>
         <Row label={t('batchDetail.labelProgress')}><ProgressBar pct={batch.progressPct} /></Row>
@@ -458,6 +508,29 @@ function BatchDetailDialog({
         <Row label={t('batchDetail.labelRetryCount')}><span className="font-mono">{batch.retryCount ?? 0}</span></Row>
         <Row label={t('batchDetail.labelStarted')}>{batch.startedAt ? formatDate(batch.startedAt) : '—'}</Row>
         <Row label={t('batchDetail.labelCompleted')}>{batch.completedAt ? formatDate(batch.completedAt) : '—'}</Row>
+        {elapsedRunningSec != null && (
+          <Row label={t('batchDetail.labelElapsed')}>
+            <span className="font-mono text-xs">
+              {t('batchDetail.durationSeconds', { seconds: Math.round(elapsedRunningSec) })}
+            </span>
+          </Row>
+        )}
+        {wallDurationSec != null && (
+          <>
+            <Row label={t('batchDetail.labelDuration')}>
+              <span className="font-mono text-xs">
+                {t('batchDetail.durationSeconds', { seconds: Math.round(wallDurationSec) })}
+              </span>
+            </Row>
+            <Row label={t('batchDetail.labelThroughput')}>
+              <span className="font-mono text-xs">
+                {throughputRate != null
+                  ? t('batchDetail.throughputRecordsPerSec', { rate: formatRecordsPerSecond(throughputRate) })
+                  : '—'}
+              </span>
+            </Row>
+          </>
+        )}
         {batch.errorMessage && (
           <Row label={t('batchDetail.labelError')}>
             <span className="text-xs text-error font-mono">{batch.errorMessage}</span>
@@ -726,6 +799,19 @@ function ReencryptionBatchesSection() {
       render: (r) => <span className="font-mono text-xs">{r.targetColumn}</span>,
     },
     {
+      header: t('batchesSection.columnsShard'),
+      key: 'shard',
+      className: 'w-16',
+      render: (r) =>
+        r.shardCount != null && r.shardCount > 1 && r.shardIndex != null ? (
+          <span className="font-mono text-xs">
+            {r.shardIndex}/{r.shardCount}
+          </span>
+        ) : (
+          <span className="text-fg-muted">—</span>
+        ),
+    },
+    {
       header: t('batchesSection.columnsKeys'),
       key: 'keys',
       render: (r) => (
@@ -756,6 +842,37 @@ function ReencryptionBatchesSection() {
           {(r.recordsFailed ?? 0) > 0 && <span className="text-error ml-1">({r.recordsFailed} {t('batchDetail.failSuffix')})</span>}
         </span>
       ),
+    },
+    {
+      header: t('batchesSection.columnsPerf'),
+      headerTooltip: t('batchesSection.tooltipPerf'),
+      key: 'perf',
+      className: 'w-36',
+      render: (r) => {
+        const durSec = getReencryptionBatchDurationSeconds(r.startedAt, r.completedAt);
+        if (durSec == null) {
+          if (r.status === 'IN_PROGRESS' && r.startedAt) {
+            const elapsed = getReencryptionBatchElapsedSeconds(r.startedAt);
+            if (elapsed != null) {
+              return (
+                <span className="text-xs font-mono text-fg-muted">
+                  {t('batchDetail.durationSeconds', { seconds: Math.round(elapsed) })}
+                </span>
+              );
+            }
+          }
+          return <span className="text-fg-muted">—</span>;
+        }
+        const done = r.recordsDone ?? 0;
+        const rate = durSec > 0 ? done / durSec : 0;
+        return (
+          <span className="text-xs font-mono text-fg-muted leading-tight">
+            {t('batchDetail.durationSeconds', { seconds: Math.round(durSec) })}
+            <span className="text-fg-muted/80"> · </span>
+            {t('batchDetail.throughputRecordsPerSec', { rate: formatRecordsPerSecond(rate) })}
+          </span>
+        );
+      },
     },
     {
       header: '',

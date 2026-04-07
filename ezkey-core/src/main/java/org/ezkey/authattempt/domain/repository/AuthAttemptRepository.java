@@ -298,11 +298,21 @@ public interface AuthAttemptRepository
    * <p>Used for re-encryption batch operations to identify records encrypted with a specific key.
    *
    * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param shardIndex when {@code shardCount} is set, {@code mod(auth_attempt_id, shardCount) =
+   *     shardIndex}; ignored when {@code shardCount} is null
+   * @param shardCount when non-null ({@code >= 2}), restricts to that shard; null for full table
    * @return count of matching records
    */
   @NativeQuery(
-      "SELECT COUNT(*) FROM ezkey_auth_attempt WHERE auth_attempt_proof_token LIKE :prefix")
-  int countByEncryptedAuthAttemptProofTokenLike(@Param("prefix") String prefix);
+      """
+      SELECT COUNT(*) FROM ezkey_auth_attempt
+      WHERE auth_attempt_proof_token LIKE :prefix
+        AND (:shardCount IS NULL OR mod(auth_attempt_id, :shardCount) = :shardIndex)
+      """)
+  int countByEncryptedAuthAttemptProofTokenLike(
+      @Param("prefix") String prefix,
+      @Param("shardIndex") Integer shardIndex,
+      @Param("shardCount") Integer shardCount);
 
   /**
    * Counts auth attempts with encrypted device proof token matching the prefix pattern.
@@ -310,10 +320,21 @@ public interface AuthAttemptRepository
    * <p>Used for re-encryption batch operations to identify records encrypted with a specific key.
    *
    * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param shardIndex when {@code shardCount} is set, {@code mod(auth_attempt_id, shardCount) =
+   *     shardIndex}; ignored when {@code shardCount} is null
+   * @param shardCount when non-null ({@code >= 2}), restricts to that shard; null for full table
    * @return count of matching records
    */
-  @NativeQuery("SELECT COUNT(*) FROM ezkey_auth_attempt WHERE device_proof_token LIKE :prefix")
-  int countByEncryptedDeviceProofTokenLike(@Param("prefix") String prefix);
+  @NativeQuery(
+      """
+      SELECT COUNT(*) FROM ezkey_auth_attempt
+      WHERE device_proof_token LIKE :prefix
+        AND (:shardCount IS NULL OR mod(auth_attempt_id, :shardCount) = :shardIndex)
+      """)
+  int countByEncryptedDeviceProofTokenLike(
+      @Param("prefix") String prefix,
+      @Param("shardIndex") Integer shardIndex,
+      @Param("shardCount") Integer shardCount);
 
   /**
    * Finds auth attempts with encrypted auth attempt proof token matching the prefix pattern.
@@ -324,6 +345,9 @@ public interface AuthAttemptRepository
    * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
    * @param lastId the last processed auth attempt ID (for resumability), or null to start from
    *     beginning
+   * @param shardIndex when {@code shardCount} is set, {@code mod(auth_attempt_id, shardCount) =
+   *     shardIndex}; ignored when {@code shardCount} is null
+   * @param shardCount when non-null ({@code >= 2}), restricts to that shard; null for full table
    * @param limit maximum number of records to return
    * @return list of matching auth attempts
    */
@@ -332,11 +356,16 @@ public interface AuthAttemptRepository
       SELECT * FROM ezkey_auth_attempt
       WHERE auth_attempt_proof_token LIKE :prefix
         AND (:lastId IS NULL OR auth_attempt_id > :lastId)
+        AND (:shardCount IS NULL OR mod(auth_attempt_id, :shardCount) = :shardIndex)
       ORDER BY auth_attempt_id ASC
       LIMIT :limit
       """)
   List<AuthAttempt> findEncryptedAuthAttemptProofTokenLike(
-      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
+      @Param("prefix") String prefix,
+      @Param("lastId") Integer lastId,
+      @Param("shardIndex") Integer shardIndex,
+      @Param("shardCount") Integer shardCount,
+      @Param("limit") int limit);
 
   /**
    * Finds auth attempts with encrypted device proof token matching the prefix pattern.
@@ -347,6 +376,9 @@ public interface AuthAttemptRepository
    * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
    * @param lastId the last processed auth attempt ID (for resumability), or null to start from
    *     beginning
+   * @param shardIndex when {@code shardCount} is set, {@code mod(auth_attempt_id, shardCount) =
+   *     shardIndex}; ignored when {@code shardCount} is null
+   * @param shardCount when non-null ({@code >= 2}), restricts to that shard; null for full table
    * @param limit maximum number of records to return
    * @return list of matching auth attempts
    */
@@ -355,9 +387,14 @@ public interface AuthAttemptRepository
       SELECT * FROM ezkey_auth_attempt
       WHERE device_proof_token LIKE :prefix
         AND (:lastId IS NULL OR auth_attempt_id > :lastId)
+        AND (:shardCount IS NULL OR mod(auth_attempt_id, :shardCount) = :shardIndex)
       ORDER BY auth_attempt_id ASC
       LIMIT :limit
       """)
   List<AuthAttempt> findEncryptedDeviceProofTokenLike(
-      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
+      @Param("prefix") String prefix,
+      @Param("lastId") Integer lastId,
+      @Param("shardIndex") Integer shardIndex,
+      @Param("shardCount") Integer shardCount,
+      @Param("limit") int limit);
 }

@@ -12,6 +12,7 @@ package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -114,10 +115,10 @@ class EncryptionKeyControllerTest {
                 case PRIMARY ->
                     new KeyUsageVerificationService.KeyUsageSnapshot(
                         KeyUsageVerificationService.LIFECYCLE_PRIMARY,
-                        null,
-                        null,
+                        50L,
+                        2,
                         ts,
-                        KeyUsageVerificationService.VERIFICATION_NOT_APPLICABLE,
+                        KeyUsageVerificationService.VERIFICATION_PRIMARY_USAGE,
                         false,
                         false);
                 case ENABLED ->
@@ -238,6 +239,8 @@ class EncryptionKeyControllerTest {
     assertEquals(1, body.getContent().get(0).batchId());
     assertEquals("PENDING", body.getContent().get(0).status());
     assertEquals("ezkey_enrollment", body.getContent().get(0).targetTable());
+    assertNull(body.getContent().get(0).shardIndex());
+    assertNull(body.getContent().get(0).shardCount());
     verify(batchRepository).findAll(any(Specification.class), eq(pageable));
   }
 

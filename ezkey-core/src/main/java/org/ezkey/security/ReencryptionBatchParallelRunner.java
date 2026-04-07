@@ -25,10 +25,10 @@ import org.springframework.stereotype.Component;
  * {@link TinkProperties.Reencryption#getParallelBatchWorkers()} is 1, work is sequential on the
  * caller thread (no pool). When &gt; 1, uses {@code reencryptionBatchExecutor}.
  *
- * <p>When parallel workers &gt; 1, each {@code target_table} is protected by a mutex so at most one
- * batch touches a given table at a time. That avoids concurrent updates to the same logical row
- * across different column batches (e.g. optimistic-lock conflicts on {@code Enrollment}). With the
- * current two physical tables, up to two batches may run simultaneously (one per table).
+ * <p>When parallel workers &gt; 1, a mutex key is derived per batch: {@code ezkey_enrollment} uses
+ * the table name only (two encrypted columns on the same row); {@code ezkey_auth_attempt} without
+ * sharding uses the table name only (same); {@code ezkey_auth_attempt} with {@code shard_count &gt;
+ * 1} uses {@code table|column|shard_index} so parallel shard workers do not share one lock.
  */
 @Component
 public class ReencryptionBatchParallelRunner {
@@ -36,12 +36,14 @@ public class ReencryptionBatchParallelRunner {
   private static final Logger logger =
       LoggerFactory.getLogger(ReencryptionBatchParallelRunner.class);
 
+  private static final String TABLE_ENROLLMENT = "ezkey_enrollment";
+  private static final String TABLE_AUTH_ATTEMPT = "ezkey_auth_attempt";
+
   /**
-   * One monitor per {@link org.ezkey.security.domain.entity.ReencryptionBatch#getTargetTable()
-   * target_table} so batches for the same table never execute {@link
-   * ReencryptionBatchProcessingService#processBatchInternal} concurrently.
+   * Mutex per derived key (see {@link #mutexKeyForBatch(ReencryptionBatch)}) so incompatible batch
+   * work does not run concurrently on the same pool workers.
    */
-  private final ConcurrentHashMap<String, Object> targetTableLocks = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Object> batchMutexLocks = new ConcurrentHashMap<>();
 
   private final ThreadPoolTaskExecutor reencryptionBatchExecutor;
   private final ReencryptionBatchProcessingService batchProcessingService;
@@ -113,14 +115,33 @@ public class ReencryptionBatchParallelRunner {
   }
 
   /**
-   * Runs batch processing while holding a per-table lock so two workers never migrate different
-   * columns on the same table at once (prevents same-row contention).
+   * Runs batch processing while holding the mutex for this batch's isolation key (table-wide or
+   * per-shard for auth attempts).
    */
   private void processBatchIsolatedByTargetTable(ReencryptionBatch batch) {
-    String table = batch.getTargetTable();
-    Object lock = targetTableLocks.computeIfAbsent(table, t -> new Object());
+    String key = mutexKeyForBatch(batch);
+    Object lock = batchMutexLocks.computeIfAbsent(key, t -> new Object());
     synchronized (lock) {
       batchProcessingService.processBatchInternal(batch);
     }
+  }
+
+  /**
+   * Enrollment: one lock per table. Auth attempt without sharding: one lock per table (serializes
+   * the two encrypted columns). Auth attempt with sharding: one lock per (table, column, shard).
+   */
+  static String mutexKeyForBatch(ReencryptionBatch batch) {
+    String table = batch.getTargetTable();
+    if (TABLE_ENROLLMENT.equals(table)) {
+      return table;
+    }
+    if (TABLE_AUTH_ATTEMPT.equals(table)) {
+      Integer shardCount = batch.getShardCount();
+      if (shardCount != null && shardCount > 1) {
+        return table + "|" + batch.getTargetColumn() + "|" + batch.getShardIndex();
+      }
+      return table;
+    }
+    return table;
   }
 }

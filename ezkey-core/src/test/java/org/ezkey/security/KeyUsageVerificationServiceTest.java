@@ -9,7 +9,6 @@ package org.ezkey.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -47,15 +46,26 @@ class KeyUsageVerificationServiceTest {
   }
 
   @Test
-  @DisplayName("PRIMARY key yields NOT_APPLICABLE verification")
+  @DisplayName("PRIMARY key yields tracked prefix totals and PRIMARY_USAGE verification")
   void primaryKey() {
     EncryptionKey key =
         new EncryptionKey(1L, KeyStatus.PRIMARY, "AES256_GCM", OffsetDateTime.now(), "SYSTEM");
+    when(batchCreationService.discoverReencryptableTargets()).thenReturn(List.of(t1, t2));
+    when(targetQueryService.countRecordsEncryptedWithKey(
+            "ezkey_enrollment", "integration_private_key", 1L))
+        .thenReturn(10);
+    when(targetQueryService.countRecordsEncryptedWithKey(
+            "ezkey_enrollment", "enrollment_proof_token", 1L))
+        .thenReturn(5);
+    when(batchRepository.countByOldKey_KeyIdAndStatusNot(1L, BatchStatus.COMPLETED)).thenReturn(0L);
+
     KeyUsageVerificationService.KeyUsageSnapshot s = service.computeSnapshot(key);
     assertEquals(KeyUsageVerificationService.LIFECYCLE_PRIMARY, s.lifecycleStage());
-    assertNull(s.remainingRecords());
-    assertEquals(KeyUsageVerificationService.VERIFICATION_NOT_APPLICABLE, s.verificationState());
+    assertEquals(15L, s.remainingRecords());
+    assertEquals(2, s.remainingTargets());
+    assertEquals(KeyUsageVerificationService.VERIFICATION_PRIMARY_USAGE, s.verificationState());
     assertFalse(s.decommissionEligible());
+    assertFalse(s.incompleteMigrationBatches());
   }
 
   @Test

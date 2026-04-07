@@ -280,10 +280,7 @@ public class AuthAttemptRespondService {
         authAttemptTxHelper.markAsInvalid(authAttempt.getAuthAttemptId());
 
         logger.warn(
-            "❌ Challenge validation failed for authAttemptId: {} (expected: {}, got: {})",
-            authAttempt.getAuthAttemptId(),
-            authAttempt.getAuthAttemptChallenge(),
-            request.getAuthAttemptChallengeResponse());
+            "❌ Challenge validation failed for authAttemptId: {}", authAttempt.getAuthAttemptId());
         throw new AuthAttemptRequestFailedException("Challenge value mismatch");
       }
       logger.debug(

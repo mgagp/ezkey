@@ -6701,6 +6701,14 @@
           "retryCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "shardIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shardCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

@@ -57,7 +57,6 @@ public class ReencryptionService {
   private final ReencryptionBatchCreationService batchCreationService;
   private final ReencryptionBatchProcessingService batchProcessingService;
   private final ReencryptionBatchParallelRunner parallelRunner;
-  private final ReencryptionTargetQueryService targetQueryService;
 
   public ReencryptionService(
       EncryptionService encryptionService,
@@ -67,8 +66,7 @@ public class ReencryptionService {
       AuditLogService auditLogService,
       ReencryptionBatchCreationService batchCreationService,
       ReencryptionBatchProcessingService batchProcessingService,
-      ReencryptionBatchParallelRunner parallelRunner,
-      ReencryptionTargetQueryService targetQueryService) {
+      ReencryptionBatchParallelRunner parallelRunner) {
     this.encryptionService = encryptionService;
     this.keyRepository = keyRepository;
     this.batchRepository = batchRepository;
@@ -77,7 +75,6 @@ public class ReencryptionService {
     this.batchCreationService = batchCreationService;
     this.batchProcessingService = batchProcessingService;
     this.parallelRunner = parallelRunner;
-    this.targetQueryService = targetQueryService;
   }
 
   @Scheduled(cron = "${ezkey.encryption.reencryption.schedule:0 0 3 * * ?}")
@@ -250,60 +247,10 @@ public class ReencryptionService {
     List<ReencryptionBatch> created = new ArrayList<>();
 
     for (ReencryptionBatchCreationService.Target target : targets) {
-      String table = target.table();
-      String column = target.column();
-
-      List<ReencryptionBatch> activeBatches =
-          batchRepository.findActiveBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
-      if (!activeBatches.isEmpty()) {
-        logger.debug(
-            "Active batch already exists for {}.{} with old key {}",
-            table,
-            column,
-            oldKey.getKeyId());
-        continue;
-      }
-
-      int recordCount =
-          targetQueryService.countRecordsEncryptedWithKey(table, column, oldKey.getKeyId());
-      if (recordCount == 0) {
-        logger.debug(
-            "No records found encrypted with key {} in {}.{}", oldKey.getKeyId(), table, column);
-        continue;
-      }
-
-      ReencryptionBatch batch =
-          new ReencryptionBatch(table, column, oldKey, primaryKey, recordCount, "ADMIN_MANUAL");
-      batchRepository.save(batch);
-      batchesCreated++;
-      created.add(batch);
-
-      logger.info(
-          "Created re-encryption batch {} for {}.{} (old key: {}, new key: {}, records: {})",
-          batch.getBatchId(),
-          table,
-          column,
-          oldKey.getKeyId(),
-          primaryKey.getKeyId(),
-          recordCount);
-
-      auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.REENCRYPTION_STARTED)
-              .eventAction("create_reencryption_batch")
-              .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress("127.0.0.1")
-              .eventDetails(
-                  AuditDetailsBuilder.builder()
-                      .reencryptionBatchId(batch.getBatchId())
-                      .targetTable(table)
-                      .targetColumn(column)
-                      .oldKeyId(oldKey.getKeyId())
-                      .newKeyId(primaryKey.getKeyId())
-                      .recordsTotal(recordCount)
-                      .toJson())
-              .build());
+      List<ReencryptionBatch> newBatches =
+          batchCreationService.createBatchesForTarget(oldKey, primaryKey, target, "ADMIN_MANUAL");
+      batchesCreated += newBatches.size();
+      created.addAll(newBatches);
     }
 
     int batchesProcessed = 0;

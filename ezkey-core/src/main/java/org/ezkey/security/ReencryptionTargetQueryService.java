@@ -33,10 +33,24 @@ public class ReencryptionTargetQueryService {
   }
 
   public int countRecordsEncryptedWithKey(String table, String column, Long keyId) {
+    return countRecordsEncryptedWithKey(table, column, keyId, null, null);
+  }
+
+  /**
+   * Counts rows still encrypted with {@code keyId} for the target, optionally restricted to a shard
+   * ({@code mod(auth_attempt_id, shardCount) = shardIndex}) for {@code ezkey_auth_attempt}.
+   *
+   * @param shardIndex shard index when {@code shardCount != null}; otherwise ignored
+   * @param shardCount when non-null ({@code >= 2}), applies shard filter on auth attempts; null for
+   *     full-table counts (lifecycle / enrollment)
+   */
+  public int countRecordsEncryptedWithKey(
+      String table, String column, Long keyId, Integer shardIndex, Integer shardCount) {
     String keyPrefix = "ENC:" + keyId + ":%";
     return switch (table) {
       case "ezkey_enrollment" -> countEnrollmentRecords(column, keyPrefix);
-      case "ezkey_auth_attempt" -> countAuthAttemptRecords(column, keyPrefix);
+      case "ezkey_auth_attempt" ->
+          countAuthAttemptRecords(column, keyPrefix, shardIndex, shardCount);
       default -> 0;
     };
   }
@@ -51,12 +65,15 @@ public class ReencryptionTargetQueryService {
     };
   }
 
-  private int countAuthAttemptRecords(String column, String keyPrefix) {
+  private int countAuthAttemptRecords(
+      String column, String keyPrefix, Integer shardIndex, Integer shardCount) {
     return switch (column) {
       case "auth_attempt_proof_token" ->
-          authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(keyPrefix);
+          authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
+              keyPrefix, shardIndex, shardCount);
       case "device_proof_token" ->
-          authAttemptRepository.countByEncryptedDeviceProofTokenLike(keyPrefix);
+          authAttemptRepository.countByEncryptedDeviceProofTokenLike(
+              keyPrefix, shardIndex, shardCount);
       default -> 0;
     };
   }
@@ -65,12 +82,15 @@ public class ReencryptionTargetQueryService {
       ReencryptionBatch batch, Long lastRecordId, int batchSize) {
     String keyPrefix = "ENC:" + batch.getOldKey().getKeyId() + ":%";
     Integer lastId = lastRecordId != null ? lastRecordId.intValue() : null;
+    Integer shardIndex = batch.getShardIndex();
+    Integer shardCount = batch.getShardCount();
 
     return switch (batch.getTargetTable()) {
       case "ezkey_enrollment" ->
           fetchEnrollmentRecords(batch.getTargetColumn(), keyPrefix, lastId, batchSize);
       case "ezkey_auth_attempt" ->
-          fetchAuthAttemptRecords(batch.getTargetColumn(), keyPrefix, lastId, batchSize);
+          fetchAuthAttemptRecords(
+              batch.getTargetColumn(), keyPrefix, lastId, batchSize, shardIndex, shardCount);
       default -> List.of();
     };
   }
@@ -87,12 +107,19 @@ public class ReencryptionTargetQueryService {
   }
 
   private List<AuthAttempt> fetchAuthAttemptRecords(
-      String column, String keyPrefix, Integer lastId, int limit) {
+      String column,
+      String keyPrefix,
+      Integer lastId,
+      int limit,
+      Integer shardIndex,
+      Integer shardCount) {
     return switch (column) {
       case "auth_attempt_proof_token" ->
-          authAttemptRepository.findEncryptedAuthAttemptProofTokenLike(keyPrefix, lastId, limit);
+          authAttemptRepository.findEncryptedAuthAttemptProofTokenLike(
+              keyPrefix, lastId, shardIndex, shardCount, limit);
       case "device_proof_token" ->
-          authAttemptRepository.findEncryptedDeviceProofTokenLike(keyPrefix, lastId, limit);
+          authAttemptRepository.findEncryptedDeviceProofTokenLike(
+              keyPrefix, lastId, shardIndex, shardCount, limit);
       default -> List.of();
     };
   }

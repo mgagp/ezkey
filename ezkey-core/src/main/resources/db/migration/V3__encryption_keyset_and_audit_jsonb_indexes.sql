@@ -132,6 +132,8 @@ CREATE TABLE ezkey_reencryption_batch (
     completed_at    TIMESTAMPTZ,
     last_batch_at   TIMESTAMPTZ,                      -- Last processed batch timestamp
     last_record_id  BIGINT,                           -- Resume point (last processed ID)
+    shard_count     INT,                             -- NULL = single-stream batch; N = parallel shards for ezkey_auth_attempt (INT matches JPA Integer)
+    shard_index     INT,                             -- 0..shard_count-1 when sharded; NULL when not sharded
     error_message   TEXT,
     error_count     INT DEFAULT 0,                    -- Count of errors in this batch
     retry_count     INT DEFAULT 0,
@@ -167,6 +169,19 @@ ALTER TABLE ezkey_reencryption_batch
     ADD CONSTRAINT chk_reencryption_batch_new_key_id_unsigned
     CHECK (new_key_id >= 0);
 
+ALTER TABLE ezkey_reencryption_batch
+    ADD CONSTRAINT chk_reencryption_batch_shard_consistency
+    CHECK (
+        (shard_count IS NULL AND shard_index IS NULL)
+        OR (
+            shard_count IS NOT NULL
+            AND shard_count >= 1
+            AND shard_index IS NOT NULL
+            AND shard_index >= 0
+            AND shard_index < shard_count
+        )
+    );
+
 -- ============================================================================
 -- STEP 3: Create Indexes
 -- ============================================================================
@@ -174,6 +189,8 @@ ALTER TABLE ezkey_reencryption_batch
 CREATE INDEX idx_reencryption_batch_status ON ezkey_reencryption_batch(status);
 CREATE INDEX idx_reencryption_batch_keys ON ezkey_reencryption_batch(old_key_id, new_key_id);
 CREATE INDEX idx_reencryption_batch_target ON ezkey_reencryption_batch(target_table, target_column);
+CREATE INDEX idx_reencryption_batch_target_old_shard
+    ON ezkey_reencryption_batch(target_table, target_column, old_key_id, shard_index);
 CREATE INDEX idx_reencryption_batch_progress ON ezkey_reencryption_batch(status, progress_pct);
 
 -- ============================================================================
@@ -227,6 +244,12 @@ COMMENT ON COLUMN ezkey_reencryption_batch.last_batch_at IS
 
 COMMENT ON COLUMN ezkey_reencryption_batch.last_record_id IS 
 'Resume point: last successfully processed record ID. Enables fault tolerance - if service crashes, resume from this ID.';
+
+COMMENT ON COLUMN ezkey_reencryption_batch.shard_count IS 
+'When set (>=2), parallel shard count for ezkey_auth_attempt; mod(auth_attempt_id, shard_count)=shard_index. NULL for non-sharded batches.';
+
+COMMENT ON COLUMN ezkey_reencryption_batch.shard_index IS 
+'Shard index 0..shard_count-1 when sharded; NULL when shard_count is NULL.';
 
 COMMENT ON COLUMN ezkey_reencryption_batch.error_message IS 
 'Error message if batch failed. Contains summary of failure reason for troubleshooting.';

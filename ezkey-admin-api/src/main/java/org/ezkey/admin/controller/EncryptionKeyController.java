@@ -712,7 +712,9 @@ public class EncryptionKeyController {
         batch.getStartedAt(),
         batch.getCompletedAt(),
         batch.getErrorMessage(),
-        batch.getRetryCount());
+        batch.getRetryCount(),
+        batch.getShardIndex(),
+        batch.getShardCount());
   }
 
   // Response DTOs
@@ -734,9 +736,9 @@ public class EncryptionKeyController {
    * @param createdBy identifier of who/what created the key (SYSTEM or admin username)
    * @param notes optional notes about the key
    * @param lifecycleStage derived operator-facing lifecycle (e.g. PRIMARY, ENABLED_IN_USE, DRAINED)
-   * @param remainingRecords derived sum of ciphertext units still using this key (prefix scan);
-   *     null when not applicable
-   * @param remainingTargets number of targets with remaining rows; null when not applicable
+   * @param remainingRecords derived sum of ciphertext units for this key (prefix scan): migration
+   *     backlog for ENABLED; live volume on PRIMARY; null when not applicable (PENDING / DISABLED)
+   * @param remainingTargets number of targets with count &gt; 0; null when not applicable
    * @param lastVerifiedAt when the lifecycle snapshot was computed
    * @param verificationState machine-readable verification outcome
    * @param decommissionEligible true when drained and eligible for a future decommission workflow
@@ -770,10 +772,10 @@ public class EncryptionKeyController {
           String lifecycleStage,
       @Schema(
               description =
-                  "Derived remaining ciphertext units (prefix scan across tracked targets); null"
-                      + " when not applicable")
+                  "Derived ciphertext units (prefix scan): ENABLED = migration backlog; PRIMARY ="
+                      + " current live volume; null when not applicable")
           Long remainingRecords,
-      @Schema(description = "Targets with remaining rows for this key; null when not applicable")
+      @Schema(description = "Targets with rows counted for this key; null when not applicable")
           Integer remainingTargets,
       @Schema(description = "When this snapshot was computed")
           java.time.OffsetDateTime lastVerifiedAt,
@@ -810,6 +812,10 @@ public class EncryptionKeyController {
    * @param completedAt timestamp when batch processing completed (null if not completed)
    * @param errorMessage error message if batch failed (null if successful)
    * @param retryCount number of times the batch has been retried after failure
+   * @param shardIndex parallel shard index for {@code ezkey_auth_attempt} when {@code shardCount
+   *     &gt; 1}; null for non-sharded batches
+   * @param shardCount number of parallel shards when sharding auth attempts; null for non-sharded
+   *     batches
    */
   public record ReencryptionBatchResponse(
       Integer batchId,
@@ -826,7 +832,9 @@ public class EncryptionKeyController {
       java.time.OffsetDateTime startedAt,
       java.time.OffsetDateTime completedAt,
       String errorMessage,
-      Integer retryCount) {}
+      Integer retryCount,
+      Integer shardIndex,
+      Integer shardCount) {}
 
   /**
    * Response DTO for batch resume operation.

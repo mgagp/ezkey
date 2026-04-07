@@ -258,6 +258,13 @@ public class TinkProperties {
     /** Chunk size after the cursor has moved (resume / subsequent slices). */
     private int staleDataChunkSize = 1000;
 
+    /**
+     * Number of parallel shards for {@code ezkey_auth_attempt} re-encryption batches ({@code
+     * mod(auth_attempt_id, N) = shard_index}). When {@code 1}, auth-attempt batches are a single
+     * stream (same as legacy). Values such as 4–8 suit typical Docker deployments.
+     */
+    private int authAttemptShardCount = 1;
+
     public boolean isEnabled() {
       return enabled;
     }
@@ -352,6 +359,14 @@ public class TinkProperties {
 
     public void setStaleDataChunkSize(int staleDataChunkSize) {
       this.staleDataChunkSize = staleDataChunkSize;
+    }
+
+    public int getAuthAttemptShardCount() {
+      return authAttemptShardCount;
+    }
+
+    public void setAuthAttemptShardCount(int authAttemptShardCount) {
+      this.authAttemptShardCount = authAttemptShardCount;
     }
   }
 

@@ -6590,12 +6590,12 @@
           "remainingRecords": {
             "type": "integer",
             "format": "int64",
-            "description": "Derived remaining ciphertext units (prefix scan across tracked targets); null when not applicable"
+            "description": "Derived ciphertext units (prefix scan): ENABLED = migration backlog; PRIMARY = current live volume; null when not applicable"
           },
           "remainingTargets": {
             "type": "integer",
             "format": "int32",
-            "description": "Targets with remaining rows for this key; null when not applicable"
+            "description": "Targets with rows counted for this key; null when not applicable"
           },
           "lastVerifiedAt": {
             "type": "string",
@@ -6699,6 +6699,14 @@
             "type": "string"
           },
           "retryCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shardIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shardCount": {
             "type": "integer",
             "format": "int32"
           }
