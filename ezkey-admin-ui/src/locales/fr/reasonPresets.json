@@ -1,0 +1,94 @@
+{
+  "selectLabel": "Suggestion rapide",
+  "selectPlaceholder": "Choisir une suggestion (optionnel)",
+  "minLengthErrorOptional": "La raison doit comporter au moins 10 caractères, ou laissez le champ vide.",
+  "minLengthErrorRequired": "La raison doit comporter au moins 10 caractères.",
+  "minLengthErrorJustification": "La justification doit comporter au moins 10 caractères.",
+  "groups": {
+    "api_key_revoke": {
+      "options": {
+        "rotation": "Rotation planifiée des clés terminée",
+        "exposure": "Exposition ou fuite de clé suspectée",
+        "decommission": "Service décommissionné ou environnement retiré",
+        "configChange": "Remplacement après changement de configuration"
+      }
+    },
+    "tenant_toggle": {
+      "options": {
+        "maintenance": "Fenêtre de maintenance planifiée",
+        "securityReview": "Revue de sécurité demandée",
+        "contractEnded": "Fin de contrat ou d'abonnement",
+        "reactivationMaintenance": "Réactivation après maintenance",
+        "tenantRestoreRequest": "Demande du locataire pour rétablir l'accès"
+      }
+    },
+    "admin_lifecycle": {
+      "options": {
+        "roleChange": "Changement de rôle : accès non requis",
+        "offboardingHr": "Départ selon demande RH ou du gestionnaire",
+        "temporarySuspension": "Suspension temporaire pendant une analyse",
+        "reactivationInvestigation": "Réactivation après clôture de l'analyse",
+        "mistakenDeactivation": "Rétablissement après désactivation par erreur"
+      }
+    },
+    "enrollment_revoke": {
+      "options": {
+        "lostDevice": "Appareil perdu ou volé signalé",
+        "suspectedCompromise": "Compromission suspectée ou fuite d'identifiants",
+        "newDevice": "Utilisateur a changé d'appareil : nouvel enrôlement",
+        "duplicateCleanup": "Nettoyage d'un enrôlement en double",
+        "userLeft": "Départ de l'utilisateur de l'organisation"
+      }
+    },
+    "enrollment_lifecycle": {
+      "options": {
+        "lockoutInvestigation": "Verrouillage temporaire pendant une analyse",
+        "reactivationMaintenance": "Réactivation après maintenance",
+        "testRemoved": "Enrôlement de test retiré avant mise en prod",
+        "deleteUserRequest": "Suppression demandée par l'utilisateur"
+      }
+    },
+    "integration_retire": {
+      "options": {
+        "decommissioned": "Application décommissionnée ou retirée",
+        "migration": "Migration vers une nouvelle intégration",
+        "vendorChange": "Changement de fournisseur ou fin de contrat",
+        "pilotComplete": "Intégration pilote ou test terminée",
+        "consolidation": "Consolidation vers une autre plateforme"
+      }
+    },
+    "integration_bulk": {
+      "options": {
+        "precautionLockdown": "Verrouillage prudent après incident suspect",
+        "incidentResponse": "Réponse à incident : identifiants compromis",
+        "endMaintenance": "Fin de maintenance : rétablir les enrôlements",
+        "tenantWideReset": "Réinitialisation globale selon politique de sécurité"
+      }
+    },
+    "integration_delete": {
+      "options": {
+        "permanentRetention": "Suppression définitive après examen archivage",
+        "exceptionalCleanup": "Nettoyage exceptionnel : aucun enrôlement restant",
+        "archivedUnneeded": "Intégration archivée devenue inutile"
+      }
+    },
+    "encryption_key_rotate": {
+      "options": {
+        "scheduledPolicy": "Rotation planifiée de la clé primaire selon la politique de sécurité",
+        "incidentResponse": "Rotation après réponse à un incident de sécurité",
+        "complianceReview": "Exigence de conformité ou d'audit réglementaire",
+        "keyExposure": "Exposition suspectée ou confirmée du matériel de clé",
+        "infrastructureMaintenance": "Changement d'infrastructure ou HSM après maintenance"
+      }
+    },
+    "audit_chain_justification": {
+      "options": {
+        "retentionCompliance": "Vérification de conformité aux politiques de rétention pour le scellé",
+        "externalAudit": "Audit externe de conformité sur l'intégrité de la chaîne d'audit",
+        "incidentDocumentation": "Documentation de l'état de la chaîne après analyse d'incident",
+        "qaTesting": "Tests QA des procédures de scellé et de déclaration de trou",
+        "operationalSignoff": "Validation opérationnelle pour la période d'archivage examinée"
+      }
+    }
+  }
+}

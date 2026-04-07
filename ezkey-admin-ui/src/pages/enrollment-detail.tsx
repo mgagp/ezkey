@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, Eye, EyeOff, Pencil, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { Alert } from '@/components/ui/alert';
@@ -996,16 +997,20 @@ export default function EnrollmentDetailPage() {
                           <p className="text-sm font-bold text-error">
                             {t('detail.revokeConfirmTitle')}
                           </p>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="revoke-reason">{t('detail.revokeReasonLabel')}</Label>
-                            <Input
-                              id="revoke-reason"
-                              value={revokeReason}
-                              onChange={(e) => setRevokeReason(e.target.value)}
-                              placeholder={t('detail.revokeReasonPlaceholder')}
-                            />
-                            <DemoReasonBadges onSelect={setRevokeReason} />
-                          </div>
+                          <ReasonFieldRow
+                            presetGroup="enrollment_revoke"
+                            idPrefix="enrollment-revoke"
+                            inputId="revoke-reason"
+                            value={revokeReason}
+                            onChange={setRevokeReason}
+                            label={t('detail.revokeReasonLabel')}
+                            placeholder={t('detail.revokeReasonPlaceholder')}
+                            showMinLengthError={
+                              revokeReason.trim().length > 0 && revokeReason.trim().length < 10
+                            }
+                            minLengthErrorTone="required"
+                            childrenAfterInput={<DemoReasonBadges onSelect={setRevokeReason} />}
+                          />
                           {revokeMutation.isError && (
                             <Alert variant="error">
                               {getTranslatedApiError(revokeMutation.error, t, t('detail.errorRevoke'))}
@@ -1016,8 +1021,12 @@ export default function EnrollmentDetailPage() {
                               variant="destructive"
                               size="sm"
                               isLoading={revokeMutation.isPending}
-                              disabled={revokeReason.length < 10}
-                              onClick={() => revokeMutation.mutate({ id: enrollmentId, params: { reason: revokeReason } })}
+                              disabled={revokeReason.trim().length < 10}
+                              onClick={() =>
+                                revokeMutation.mutate({
+                                  id: enrollmentId,
+                                  params: { reason: revokeReason.trim() },
+                                })}
                               className="gap-1.5"
                             >
                               <ShieldOff className="size-3.5" />
@@ -1104,18 +1113,24 @@ export default function EnrollmentDetailPage() {
               ? t('lifecycleDialog.deactivateMessage')
               : t('lifecycleDialog.reactivateMessage')}
           </p>
-          <div className="space-y-1.5">
-            <Label htmlFor="lifecycle-reason">
-              {t('lifecycleDialog.reasonLabel')} <span className="text-fg-muted font-normal">{t('lifecycleDialog.reasonHint')}</span>
-            </Label>
-            <Input
-              id="lifecycle-reason"
-              value={lifecycleReason}
-              onChange={(e) => setLifecycleReason(e.target.value)}
-              placeholder={t('lifecycleDialog.reasonPlaceholder')}
-            />
-            <DemoReasonBadges onSelect={setLifecycleReason} />
-          </div>
+          <ReasonFieldRow
+            presetGroup="enrollment_lifecycle"
+            idPrefix="enrollment-lifecycle"
+            inputId="lifecycle-reason"
+            value={lifecycleReason}
+            onChange={setLifecycleReason}
+            label={
+              <>
+                {t('lifecycleDialog.reasonLabel')}{' '}
+                <span className="text-fg-muted font-normal">{t('lifecycleDialog.reasonHint')}</span>
+              </>
+            }
+            placeholder={t('lifecycleDialog.reasonPlaceholder')}
+            showMinLengthError={
+              lifecycleReason.trim().length > 0 && lifecycleReason.trim().length < 10
+            }
+            childrenAfterInput={<DemoReasonBadges onSelect={setLifecycleReason} />}
+          />
           {(lifecycleConfirm === 'deactivate' ? deactivateMutation.isError : reactivateMutation.isError) && (
             <Alert variant="error">
               {getTranslatedApiError(
@@ -1139,7 +1154,7 @@ export default function EnrollmentDetailPage() {
                   ? deactivateMutation.isPending
                   : reactivateMutation.isPending
               }
-              disabled={lifecycleReason.length > 0 && lifecycleReason.length < 10}
+              disabled={lifecycleReason.trim().length > 0 && lifecycleReason.trim().length < 10}
               onClick={() => {
                 if (lifecycleConfirm === null) return;
                 const params = lifecycleReason.trim().length >= 10

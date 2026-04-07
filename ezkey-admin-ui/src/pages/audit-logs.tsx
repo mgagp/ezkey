@@ -10,6 +10,7 @@ import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { ContextHelp } from '@/components/ui/context-help';
 import { Tooltip } from '@/components/ui/tooltip';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
@@ -1039,7 +1040,7 @@ function IntegrityPanel() {
                   periodEnd: sealPeriodEnd ? new Date(sealPeriodEnd).toISOString() : undefined,
                   checkpointIdFrom: sealCheckpointFrom ? Number(sealCheckpointFrom) : undefined,
                   checkpointIdTo: sealCheckpointTo ? Number(sealCheckpointTo) : undefined,
-                  justification: sealJustification,
+                  justification: sealJustification.trim(),
                 },
               });
             }}
@@ -1068,13 +1069,24 @@ function IntegrityPanel() {
                 <Input id="seal-cp-to" type="number" placeholder={t('sealDialog.optionalPlaceholder')} value={sealCheckpointTo} onChange={(e) => setSealCheckpointTo(e.target.value)} />
               </div>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="seal-just">{t('sealDialog.justification')} <span className="text-fg-muted font-normal">{t('sealDialog.justificationHint')}</span></Label>
-              <Input id="seal-just" placeholder={t('sealDialog.justificationPlaceholder')} value={sealJustification} onChange={(e) => setSealJustification(e.target.value)} maxLength={500} />
-              {sealJustification.trim().length > 0 && sealJustification.trim().length < 10 && (
-                <p className="text-xs text-error">{t('sealDialog.justificationMinError')}</p>
-              )}
-            </div>
+            <ReasonFieldRow
+              presetGroup="audit_chain_justification"
+              idPrefix="audit-seal"
+              inputId="seal-just"
+              value={sealJustification}
+              onChange={setSealJustification}
+              label={
+                <>
+                  {t('sealDialog.justification')}{' '}
+                  <span className="text-fg-muted font-normal">{t('sealDialog.justificationHint')}</span>
+                </>
+              }
+              placeholder={t('sealDialog.justificationPlaceholder')}
+              showMinLengthError={
+                sealJustification.trim().length > 0 && sealJustification.trim().length < 10
+              }
+              minLengthErrorTone="justification"
+            />
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={() => setSealOpen(false)}>{t('sealDialog.cancel')}</Button>
               <Button type="submit" disabled={sealMutation.isPending || sealJustification.trim().length < 10}>
@@ -1112,7 +1124,7 @@ function IntegrityPanel() {
                   gapStart: gapStart ? new Date(gapStart).toISOString() : undefined,
                   gapEnd: gapEnd ? new Date(gapEnd).toISOString() : undefined,
                   anchorCheckpointId: gapAnchorId ? Number(gapAnchorId) : undefined,
-                  justification: gapJustification,
+                  justification: gapJustification.trim(),
                 },
               });
             }}
@@ -1135,13 +1147,24 @@ function IntegrityPanel() {
               <Label htmlFor="gap-anchor" className="text-xs">{t('gapDialog.anchorCheckpointId')}</Label>
               <Input id="gap-anchor" type="number" placeholder={t('gapDialog.anchorPlaceholder')} value={gapAnchorId} onChange={(e) => setGapAnchorId(e.target.value)} />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="gap-just">{t('gapDialog.justification')} <span className="text-fg-muted font-normal">{t('gapDialog.justificationHint')}</span></Label>
-              <Input id="gap-just" placeholder={t('gapDialog.justificationPlaceholder')} value={gapJustification} onChange={(e) => setGapJustification(e.target.value)} maxLength={500} />
-              {gapJustification.trim().length > 0 && gapJustification.trim().length < 10 && (
-                <p className="text-xs text-error">{t('gapDialog.justificationMinError')}</p>
-              )}
-            </div>
+            <ReasonFieldRow
+              presetGroup="audit_chain_justification"
+              idPrefix="audit-gap"
+              inputId="gap-just"
+              value={gapJustification}
+              onChange={setGapJustification}
+              label={
+                <>
+                  {t('gapDialog.justification')}{' '}
+                  <span className="text-fg-muted font-normal">{t('gapDialog.justificationHint')}</span>
+                </>
+              }
+              placeholder={t('gapDialog.justificationPlaceholder')}
+              showMinLengthError={
+                gapJustification.trim().length > 0 && gapJustification.trim().length < 10
+              }
+              minLengthErrorTone="justification"
+            />
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={() => setGapOpen(false)}>{t('gapDialog.cancel')}</Button>
               <Button type="submit" disabled={gapMutation.isPending || gapJustification.trim().length < 10}>

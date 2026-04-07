@@ -17,6 +17,7 @@ import enIntegrations from '@/locales/en/integrations.json';
 import enLayout from '@/locales/en/layout.json';
 import enLogin from '@/locales/en/login.json';
 import enTenants from '@/locales/en/tenants.json';
+import enReasonPresets from '@/locales/en/reasonPresets.json';
 import frAdmins from '@/locales/fr/admins.json';
 import frApiKeys from '@/locales/fr/api-keys.json';
 import frAuditLogs from '@/locales/fr/audit-logs.json';
@@ -32,6 +33,7 @@ import frIntegrations from '@/locales/fr/integrations.json';
 import frLayout from '@/locales/fr/layout.json';
 import frLogin from '@/locales/fr/login.json';
 import frTenants from '@/locales/fr/tenants.json';
+import frReasonPresets from '@/locales/fr/reasonPresets.json';
 
 const STORAGE_KEY = 'ezkey-admin-ui-lang';
 
@@ -56,6 +58,7 @@ i18n
         layout: enLayout as Record<string, unknown>,
         login: enLogin as Record<string, unknown>,
         tenants: enTenants as Record<string, unknown>,
+        reasonPresets: enReasonPresets as Record<string, unknown>,
       },
       fr: {
         admins: frAdmins as Record<string, unknown>,
@@ -73,11 +76,12 @@ i18n
         layout: frLayout as Record<string, unknown>,
         login: frLogin as Record<string, unknown>,
         tenants: frTenants as Record<string, unknown>,
+        reasonPresets: frReasonPresets as Record<string, unknown>,
       },
     },
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['admins', 'api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'demo', 'errors', 'enrollments', 'help', 'integrations', 'layout', 'login', 'tenants'],
+    ns: ['admins', 'api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'demo', 'errors', 'enrollments', 'help', 'integrations', 'layout', 'login', 'reasonPresets', 'tenants'],
     interpolation: {
       escapeValue: false,
     },

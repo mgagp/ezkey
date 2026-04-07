@@ -1,0 +1,94 @@
+{
+  "selectLabel": "Quick suggestion",
+  "selectPlaceholder": "Choose a suggestion (optional)",
+  "minLengthErrorOptional": "Reason must be at least 10 characters, or leave the field empty.",
+  "minLengthErrorRequired": "Reason must be at least 10 characters.",
+  "minLengthErrorJustification": "Justification must be at least 10 characters.",
+  "groups": {
+    "api_key_revoke": {
+      "options": {
+        "rotation": "Scheduled key rotation completed",
+        "exposure": "Suspected key exposure or leak",
+        "decommission": "Service decommissioned or environment removed",
+        "configChange": "Replacing key after configuration change"
+      }
+    },
+    "tenant_toggle": {
+      "options": {
+        "maintenance": "Scheduled maintenance window",
+        "securityReview": "Security review requested",
+        "contractEnded": "Contract or subscription ended",
+        "reactivationMaintenance": "Reactivation after maintenance",
+        "tenantRestoreRequest": "Tenant request to restore access"
+      }
+    },
+    "admin_lifecycle": {
+      "options": {
+        "roleChange": "Role change: access no longer needed",
+        "offboardingHr": "Offboarding per HR or manager request",
+        "temporarySuspension": "Temporary suspension during investigation",
+        "reactivationInvestigation": "Reactivation after investigation cleared",
+        "mistakenDeactivation": "Account restore after mistaken deactivation"
+      }
+    },
+    "enrollment_revoke": {
+      "options": {
+        "lostDevice": "Device lost or stolen reported",
+        "suspectedCompromise": "Suspected compromise or credential leak",
+        "newDevice": "User replaced device: new enrollment",
+        "duplicateCleanup": "Duplicate enrollment cleanup",
+        "userLeft": "User left organization"
+      }
+    },
+    "enrollment_lifecycle": {
+      "options": {
+        "lockoutInvestigation": "Temporary lockout during investigation",
+        "reactivationMaintenance": "Reactivation after maintenance",
+        "testRemoved": "Test enrollment removed before go-live",
+        "deleteUserRequest": "Enrollment deleted: user request"
+      }
+    },
+    "integration_retire": {
+      "options": {
+        "decommissioned": "Application decommissioned or sunset",
+        "migration": "Migration to a new integration",
+        "vendorChange": "Vendor change or contract ended",
+        "pilotComplete": "Pilot or test integration completed",
+        "consolidation": "Consolidation into another platform"
+      }
+    },
+    "integration_bulk": {
+      "options": {
+        "precautionLockdown": "Precautionary lockdown after suspected incident",
+        "incidentResponse": "Incident response: credential compromised",
+        "endMaintenance": "End of maintenance: restore enrollments",
+        "tenantWideReset": "Tenant-wide reset per security policy"
+      }
+    },
+    "integration_delete": {
+      "options": {
+        "permanentRetention": "Permanent removal after data retention review",
+        "exceptionalCleanup": "Exceptional cleanup: no remaining enrollments",
+        "archivedUnneeded": "Archived integration record no longer needed"
+      }
+    },
+    "encryption_key_rotate": {
+      "options": {
+        "scheduledPolicy": "Scheduled primary encryption key rotation per policy",
+        "incidentResponse": "Key rotation following security incident response",
+        "complianceReview": "Compliance review or regulatory audit requirement",
+        "keyExposure": "Suspected or confirmed encryption key material exposure",
+        "infrastructureMaintenance": "Infrastructure or HSM change after maintenance window"
+      }
+    },
+    "audit_chain_justification": {
+      "options": {
+        "retentionCompliance": "Retention policy compliance verification for archive seal",
+        "externalAudit": "External compliance audit of audit chain integrity",
+        "incidentDocumentation": "Documenting chain state after security incident review",
+        "qaTesting": "QA testing of seal and gap declaration procedures",
+        "operationalSignoff": "Operational sign-off for archival period under review"
+      }
+    }
+  }
+}

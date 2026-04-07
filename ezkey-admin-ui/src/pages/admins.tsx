@@ -7,6 +7,7 @@ import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, Qr
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
@@ -229,7 +230,7 @@ function DeactivateAdminDialog({
     onClose();
   };
 
-  const reasonInvalid = reason.length > 0 && reason.length < 10;
+  const reasonTooShort = reason.trim().length > 0 && reason.trim().length < 10;
   const params =
     reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
 
@@ -242,18 +243,22 @@ function DeactivateAdminDialog({
           </p>
           <p className="text-xs text-fg-muted">{t('deactivate.cannotUndo')}</p>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="deactivate-admin-reason">
-              {t('deactivate.reasonLabel')} <span className="text-fg-muted font-normal">{t('deactivate.reasonHint')}</span>
-            </Label>
-            <Input
-              id="deactivate-admin-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={t('deactivate.reasonPlaceholder')}
-            />
-            <DemoReasonBadges onSelect={setReason} />
-          </div>
+          <ReasonFieldRow
+            presetGroup="admin_lifecycle"
+            idPrefix="deactivate-admin"
+            inputId="deactivate-admin-reason"
+            value={reason}
+            onChange={setReason}
+            label={
+              <>
+                {t('deactivate.reasonLabel')}{' '}
+                <span className="text-fg-muted font-normal">{t('deactivate.reasonHint')}</span>
+              </>
+            }
+            placeholder={t('deactivate.reasonPlaceholder')}
+            showMinLengthError={reasonTooShort}
+            childrenAfterInput={<DemoReasonBadges onSelect={setReason} />}
+          />
 
           {deactivateMutation.isError && (
             <Alert variant="error">
@@ -268,7 +273,7 @@ function DeactivateAdminDialog({
             <Button
               variant="destructive"
               isLoading={deactivateMutation.isPending}
-              disabled={reasonInvalid}
+              disabled={reasonTooShort}
               onClick={() =>
                 admin &&
                 deactivateMutation.mutate({ id: admin.adminId!, params })
@@ -394,7 +399,7 @@ function AdminDetailDialog({
 
   if (!adm) return null;
 
-  const activateReasonInvalid = activateReason.length > 0 && activateReason.length < 10;
+  const activateReasonTooShort = activateReason.trim().length > 0 && activateReason.trim().length < 10;
 
   const fullName = [adm.firstName, adm.lastName].filter(Boolean).join(' ');
 
@@ -563,25 +568,28 @@ function AdminDetailDialog({
 
             {isGlobalAdmin && !adm.active && (
               <div className="w-full space-y-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="activate-admin-reason">
-                    {t('deactivate.reasonLabel')}{' '}
-                    <span className="text-fg-muted font-normal">{t('deactivate.reasonHint')}</span>
-                  </Label>
-                  <Input
-                    id="activate-admin-reason"
-                    value={activateReason}
-                    onChange={(e) => setActivateReason(e.target.value)}
-                    placeholder={t('detail.activateReasonPlaceholder')}
-                  />
-                  <DemoReasonBadges onSelect={setActivateReason} />
-                </div>
+                <ReasonFieldRow
+                  presetGroup="admin_lifecycle"
+                  idPrefix="activate-admin"
+                  inputId="activate-admin-reason"
+                  value={activateReason}
+                  onChange={setActivateReason}
+                  label={
+                    <>
+                      {t('deactivate.reasonLabel')}{' '}
+                      <span className="text-fg-muted font-normal">{t('deactivate.reasonHint')}</span>
+                    </>
+                  }
+                  placeholder={t('detail.activateReasonPlaceholder')}
+                  showMinLengthError={activateReasonTooShort}
+                  childrenAfterInput={<DemoReasonBadges onSelect={setActivateReason} />}
+                />
                 <Button
                   variant="secondary"
                   size="sm"
                   className="gap-1.5 text-success border-success/30 hover:bg-success/10"
                   isLoading={activateMutation.isPending}
-                  disabled={activateReasonInvalid}
+                  disabled={activateReasonTooShort}
                   onClick={() =>
                     activateMutation.mutate({
                       id: adm!.adminId!,

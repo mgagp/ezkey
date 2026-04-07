@@ -72,7 +72,6 @@
     "reasonLabel": "Reason",
     "reasonHint": "(optional — min 10 chars for audit trail)",
     "reasonPlaceholder": "e.g. Key compromised, rotating credentials",
-    "reasonMinError": "Reason must be at least 10 characters.",
     "cancel": "Cancel",
     "revoke": "Revoke",
     "errorRevoke": "Failed to revoke key."

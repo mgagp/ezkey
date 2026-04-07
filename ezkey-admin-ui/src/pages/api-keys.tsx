@@ -19,6 +19,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -384,21 +385,22 @@ export function RevokeApiKeyDialog({
         <p className="text-xs text-fg-muted">
           {t('revokeDialog.permanent')}
         </p>
-        <div className="space-y-1">
-          <Label htmlFor="revoke-reason">
-            {t('revokeDialog.reasonLabel')} <span className="text-fg-muted font-normal">{t('revokeDialog.reasonHint')}</span>
-          </Label>
-          <Input
-            id="revoke-reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder={t('revokeDialog.reasonPlaceholder')}
-          />
-          <DemoReasonBadges onSelect={setReason} />
-          {reasonTooShort && (
-            <p className="text-xs text-error">{t('revokeDialog.reasonMinError')}</p>
-          )}
-        </div>
+        <ReasonFieldRow
+          presetGroup="api_key_revoke"
+          idPrefix="revoke-api-key"
+          inputId="revoke-reason"
+          value={reason}
+          onChange={setReason}
+          label={
+            <>
+              {t('revokeDialog.reasonLabel')}{' '}
+              <span className="text-fg-muted font-normal">{t('revokeDialog.reasonHint')}</span>
+            </>
+          }
+          placeholder={t('revokeDialog.reasonPlaceholder')}
+          showMinLengthError={reasonTooShort}
+          childrenAfterInput={<DemoReasonBadges onSelect={setReason} />}
+        />
         {revokeMutation.isError && (
           <Alert variant="error">
             {revokeMutation.error instanceof ApiError ? revokeMutation.error.message : t('revokeDialog.errorRevoke')}

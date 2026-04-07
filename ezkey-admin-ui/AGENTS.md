@@ -32,6 +32,7 @@ src/
     api-error-i18n.ts   Maps ProblemDetail.type (https://ezkey.io/problems/...) to i18n keys under `errors` (Option B); getTranslatedApiError()
     auth.ts             sessionStorage session management (AuthSession)
     demo-mode.ts        Dev-only: isDemoMode flag and demo presets for create forms (stripped in production); locale-specific preset copy lives in `locales/*/demo.json` (e.g. Unicorn Farm FR/EN)
+    reason-preset-groups.ts  Keys per operation for audited reason quick-picks (`reasonPresets` i18n namespace)
     query-client.ts     TanStack QueryClient — staleTime 30s, 1 retry, refetchOnWindowFocus false
     query-keys.ts       Canonical query key prefixes for list/entity caches (invalidateQueries)
     utils.ts            cn(), formatDate(), formatCountdown(), formatChallengeCode(), formatRelativeTime()
@@ -49,7 +50,7 @@ src/
     ui/                 Button, Input, Label, Card, Badge, Alert, Select, Dialog, Textarea
     layout/             AppShell, Sidebar, Header
     data-table/         DataTable<T>, Pagination
-    feature/            EnrollmentStatusBadge, AuthAttemptStatusBadge
+    feature/            EnrollmentStatusBadge, AuthAttemptStatusBadge, ReasonQuickPick, ReasonFieldRow (production reason/justification suggestions + shared min-length line; `locales/*/reasonPresets.json` includes phase-2 `encryption_key_rotate` + `audit_chain_justification`), DemoReasonBadges (demo-only)
   pages/                One file per route (see table above)
   routes.tsx            All routes, lazy imports, ProtectedRoute
   App.tsx               Root: QueryClientProvider > AuthProvider > DemoModeProvider > ToastProvider > RouterProvider

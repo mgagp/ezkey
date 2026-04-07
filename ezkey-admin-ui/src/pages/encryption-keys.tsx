@@ -20,12 +20,12 @@ import { ContextHelp } from '@/components/ui/context-help';
 import { Dialog } from '@/components/ui/dialog';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { HelpInlineButton } from '@/components/help/help-inline-button';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
@@ -572,6 +572,8 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
     onClose();
   }
 
+  const reasonTooShort = reason.trim().length > 0 && reason.trim().length < 10;
+
   return (
     <Dialog open={open} onClose={handleClose} title={t('rotateDialog.title')} size="md" dismissible={false}>
       {result ? (
@@ -600,16 +602,18 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
               {t('rotateDialog.warning')}
             </p>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="rotate-reason">{t('rotateDialog.reasonLabel')}</Label>
-            <Input
-              id="rotate-reason"
-              placeholder={t('rotateDialog.reasonPlaceholder')}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-            <DemoReasonBadges onSelect={setReason} />
-          </div>
+          <ReasonFieldRow
+            presetGroup="encryption_key_rotate"
+            idPrefix="rotate-key"
+            inputId="rotate-reason"
+            value={reason}
+            onChange={setReason}
+            label={t('rotateDialog.reasonLabel')}
+            placeholder={t('rotateDialog.reasonPlaceholder')}
+            showMinLengthError={reasonTooShort}
+            minLengthErrorTone="required"
+            childrenAfterInput={<DemoReasonBadges onSelect={setReason} />}
+          />
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={handleClose}>{t('rotateDialog.cancel')}</Button>
             <Button type="submit" disabled={mutation.isPending || reason.trim().length < 10}>

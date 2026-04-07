@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Edit, Power, PowerOff, UserPlus } from 'lucide-react';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
@@ -248,7 +249,7 @@ function ToggleActiveDialog({
   const isActive = tenant.active;
   const [reason, setReason] = useState('');
 
-  const body = { reason: reason || undefined };
+  const body = { reason: reason.trim() || undefined };
   const deactivateMutation = useDeactivateTenant({
     mutation: {
       onSuccess: async () => {
@@ -275,6 +276,8 @@ function ToggleActiveDialog({
 
   const handleClose = () => { mutation.reset(); setReason(''); onClose(); };
 
+  const reasonTooShort = reason.trim().length > 0 && reason.trim().length < 10;
+
   return (
     <Dialog open={open} onClose={handleClose} title={isActive ? t('toggle.deactivateTitle') : t('toggle.activateTitle')} size="sm">
       <div className="space-y-4">
@@ -283,16 +286,22 @@ function ToggleActiveDialog({
             ? t('toggle.deactivateConfirm', { name: tenant.tenantName })
             : t('toggle.activateConfirm', { name: tenant.tenantName })}
         </p>
-        <div className="space-y-1.5">
-          <Label htmlFor="toggle-reason">{t('toggle.reasonLabel')} <span className="text-fg-muted font-normal">{t('toggle.reasonHint')}</span></Label>
-          <Input
-            id="toggle-reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder={t('toggle.reasonPlaceholder')}
-          />
-          <DemoReasonBadges onSelect={setReason} />
-        </div>
+        <ReasonFieldRow
+          presetGroup="tenant_toggle"
+          idPrefix="tenant-toggle"
+          inputId="toggle-reason"
+          value={reason}
+          onChange={setReason}
+          label={
+            <>
+              {t('toggle.reasonLabel')}{' '}
+              <span className="text-fg-muted font-normal">{t('toggle.reasonHint')}</span>
+            </>
+          }
+          placeholder={t('toggle.reasonPlaceholder')}
+          showMinLengthError={reasonTooShort}
+          childrenAfterInput={<DemoReasonBadges onSelect={setReason} />}
+        />
 
         {mutation.isError && (
           <Alert variant="error">
@@ -309,11 +318,7 @@ function ToggleActiveDialog({
               if (isActive) deactivateMutation.mutate({ id: tenant.tenantId!, data: body });
               else activateMutation.mutate({ id: tenant.tenantId!, data: body });
             }}
-            disabled={
-              mutation.isPending
-              || mutation.isSuccess
-              || (reason.length > 0 && reason.length < 10)
-            }
+            disabled={mutation.isPending || mutation.isSuccess || reasonTooShort}
           >
             {isActive ? <PowerOff className="size-3.5 mr-1.5" /> : <Power className="size-3.5 mr-1.5" />}
             {isActive ? t('toggle.deactivate') : t('toggle.activate')}

@@ -72,7 +72,6 @@
     "reasonLabel": "Raison",
     "reasonHint": "(optionnel — min. 10 caractères pour l'audit)",
     "reasonPlaceholder": "ex. Clé compromise, rotation des identifiants",
-    "reasonMinError": "La raison doit comporter au moins 10 caractères.",
     "cancel": "Annuler",
     "revoke": "Révoquer",
     "errorRevoke": "Échec de la révocation de la clé."

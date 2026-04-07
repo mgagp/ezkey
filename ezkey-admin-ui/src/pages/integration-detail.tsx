@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Key, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
@@ -14,8 +15,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/context/toast-context';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -26,6 +25,7 @@ import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isDemoMode } from '@/lib/demo-mode';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
+import type { ReasonPresetGroupId } from '@/lib/reason-preset-groups';
 import { formatDate } from '@/lib/utils';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import {
@@ -103,6 +103,8 @@ function DangerConfirmDialog({
   errorMessage,
   onConfirm,
   renderReasonBadges,
+  reasonPresetGroup,
+  reasonFieldIdPrefix = 'danger-confirm',
 }: {
   open: boolean;
   onClose: () => void;
@@ -120,13 +122,18 @@ function DangerConfirmDialog({
   errorMessage: string;
   onConfirm: (reason: string) => void;
   /** Demo mode: render quick-select reason badges (receives setReason). */
-  renderReasonBadges?: (setReason: (value: string) => void) => React.ReactNode;
+  renderReasonBadges?: (setReason: (value: string) => void) => ReactNode;
+  /** When set, shows production quick-pick presets above the reason field. */
+  reasonPresetGroup?: ReasonPresetGroupId;
+  /** Stable prefix for reason input and quick-pick ids (unique per dialog instance). */
+  reasonFieldIdPrefix?: string;
 }) {
   const [reason, setReason] = useState('');
 
   const showReason = requireReason || optionalReason;
-  const reasonInvalid = optionalReason && reason.length > 0 && reason.length < 10;
-  const disabled = requireReason ? reason.length < 10 : reasonInvalid;
+  const trimmed = reason.trim();
+  const reasonInvalid = optionalReason && trimmed.length > 0 && trimmed.length < 10;
+  const disabled = requireReason ? trimmed.length < 10 : reasonInvalid;
 
   const handleClose = () => { setReason(''); onClose(); };
 
@@ -138,18 +145,17 @@ function DangerConfirmDialog({
           <p className="text-sm">{description}</p>
         </div>
         {showReason && (
-          <div className="space-y-1.5">
-            <Label htmlFor="danger-reason">
-              {reasonLabel ?? (requireReason ? 'Reason (min 10 chars, required for audit)' : 'Reason (min 10 chars, for audit trail)')}
-            </Label>
-            <Input
-              id="danger-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder={reasonPlaceholder ?? 'Justification...'}
-            />
-            {renderReasonBadges?.(setReason)}
-          </div>
+          <ReasonFieldRow
+            presetGroup={reasonPresetGroup}
+            idPrefix={reasonFieldIdPrefix}
+            inputId={`${reasonFieldIdPrefix}-reason`}
+            value={reason}
+            onChange={setReason}
+            label={reasonLabel ?? (requireReason ? 'Reason (min 10 chars, required for audit)' : 'Reason (min 10 chars, for audit trail)')}
+            placeholder={reasonPlaceholder ?? 'Justification...'}
+            showMinLengthError={trimmed.length > 0 && trimmed.length < 10}
+            childrenAfterInput={renderReasonBadges?.(setReason)}
+          />
         )}
         {isError && <Alert variant="error">{errorMessage}</Alert>}
         <div className="flex justify-end gap-2 pt-2">
@@ -419,6 +425,8 @@ export default function IntegrationDetailPage() {
         reasonLabel={t('detail.danger.reasonLabelOptional')}
         reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
         cancelLabel={t('detail.danger.cancel')}
+        reasonPresetGroup="integration_bulk"
+        reasonFieldIdPrefix="integration-danger-deactivate-all"
         isPending={false}
         isError={false}
         errorMessage=""
@@ -453,6 +461,8 @@ export default function IntegrationDetailPage() {
         reasonLabel={t('detail.danger.reasonLabelOptional')}
         reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
         cancelLabel={t('detail.danger.cancel')}
+        reasonPresetGroup="integration_bulk"
+        reasonFieldIdPrefix="integration-danger-reactivate-all"
         isPending={false}
         isError={false}
         errorMessage=""
@@ -487,6 +497,8 @@ export default function IntegrationDetailPage() {
         reasonLabel={t('detail.danger.reasonLabelOptional')}
         reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
         cancelLabel={t('detail.danger.cancel')}
+        reasonPresetGroup="integration_bulk"
+        reasonFieldIdPrefix="integration-danger-revoke-all"
         isPending={false}
         isError={false}
         errorMessage=""
@@ -522,6 +534,8 @@ export default function IntegrationDetailPage() {
         reasonLabel={t('detail.danger.reasonLabelOptional')}
         reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
         cancelLabel={t('detail.danger.cancel')}
+        reasonPresetGroup="integration_retire"
+        reasonFieldIdPrefix="integration-danger-retire"
         isPending={false}
         isError={false}
         errorMessage=""
@@ -554,6 +568,8 @@ export default function IntegrationDetailPage() {
         reasonLabel={t('detail.danger.reasonLabelOptional')}
         reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
         cancelLabel={t('detail.danger.cancel')}
+        reasonPresetGroup="integration_delete"
+        reasonFieldIdPrefix="integration-danger-delete"
         isPending={false}
         isError={false}
         errorMessage=""
