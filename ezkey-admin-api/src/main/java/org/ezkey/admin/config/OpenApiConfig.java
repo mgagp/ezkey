@@ -80,7 +80,7 @@ import org.springframework.context.annotation.Configuration;
             contact =
                 @Contact(
                     name = "Ezkey Team",
-                    email = "contributors@ezkey.org",
+                    email = "info@ezkey.org",
                     url = "https://ezkey.org"),
             license = @License(name = "MIT License", url = "https://opensource.org/licenses/MIT")),
     servers = {

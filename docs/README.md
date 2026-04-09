@@ -367,7 +367,7 @@ We welcome contributions to the Ezkey project! Here's how to get started:
 ### Getting Help
 - **GitHub Issues**: Report bugs and request features
 - **GitHub Discussions**: Ask questions and discuss ideas
-- **Email**: contributors@ezkey.org for general inquiries
+- **Email**: info@ezkey.org for general inquiries
 
 ### Resources
 - **Website**: https://ezkey.org

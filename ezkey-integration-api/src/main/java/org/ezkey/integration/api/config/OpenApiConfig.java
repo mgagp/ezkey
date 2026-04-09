@@ -52,7 +52,10 @@ public class OpenApiConfig {
                         + " distinct from FIDO2/WebAuthn and uses its own cryptographic MFA model.")
                 .version("1.0.0")
                 .contact(
-                    new Contact().name("Ezkey Contributors").url("https://github.com/ezkey/ezkey"))
+                    new Contact()
+                        .name("Ezkey Team")
+                        .email("info@ezkey.org")
+                        .url("https://ezkey.org"))
                 .license(
                     new License().name("MIT License").url("https://opensource.org/licenses/MIT")))
         .addSecurityItem(new SecurityRequirement().addList("ApiKeyAuth"))

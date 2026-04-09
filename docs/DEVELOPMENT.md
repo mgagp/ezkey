@@ -58,7 +58,7 @@ This document covers the development workflow and documentation practices for Ez
         description = "REST API for Ezkey - Open Source Cryptographic MFA Platform",
         contact = @Contact(
             name = "Ezkey Team",
-            email = "contributors@ezkey.org",
+            email = "info@ezkey.org",
             url = "https://ezkey.org"
         ),
         license = @License(

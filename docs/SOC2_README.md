@@ -223,7 +223,7 @@ sudo mv comply /usr/local/bin/
 
 ### Documentation Questions
 - Create GitHub issue with `documentation` tag
-- Email: contributors@ezkey.org
+- Email: info@ezkey.org
 
 ### Security Issues
 - **DO NOT** create public issues

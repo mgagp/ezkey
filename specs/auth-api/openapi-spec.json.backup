@@ -6,7 +6,7 @@
     "contact": {
       "name": "Ezkey Team",
       "url": "https://ezkey.org",
-      "email": "contributors@ezkey.org"
+      "email": "info@ezkey.org"
     },
     "license": {
       "name": "MIT License",
@@ -170,7 +170,7 @@
           "Authentication Attempts"
         ],
         "summary": "Submit authentication response",
-        "description": "Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design.",
+        "description": "Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 may include a business-level FAILED result in the JSON body (integration-signed) when validation fails in the respond service; uncaught IllegalArgumentException uses 400.",
         "operationId": "respond",
         "requestBody": {
           "content": {
@@ -184,7 +184,7 @@
         },
         "responses": {
           "200": {
-            "description": "Authentication response submitted successfully",
+            "description": "Respond processed; body may be APPROVED, DENIED, or FAILED (signed FAILED when validation/crypto checks fail in the respond service)",
             "content": {
               "*/*": {
                 "schema": {

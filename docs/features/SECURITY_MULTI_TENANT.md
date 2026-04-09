@@ -1692,7 +1692,7 @@ public class EzkeyAdminController {
             """,
         contact = @Contact(
             name = "Ezkey Team",
-            email = "contributors@ezkey.org",
+            email = "info@ezkey.org",
             url = "https://ezkey.org"
         ),
         license = @License(

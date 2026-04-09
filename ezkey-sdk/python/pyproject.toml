@@ -7,7 +7,7 @@ name = "ezkey-python-sdk"
 version = "1.0.0"
 description = "Python SDK for Ezkey Admin and Auth APIs"
 authors = [
-    {name = "Ezkey Contributors", email = "contributors@ezkey.org"},
+    {name = "Ezkey Contributors", email = "info@ezkey.org"},
 ]
 license = {text = "MIT"}
 readme = "README.md"
