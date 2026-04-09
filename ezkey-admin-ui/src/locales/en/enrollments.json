@@ -26,7 +26,8 @@
       "created": "Created",
       "lastUsed": "Last used",
       "challenge": "Challenge",
-      "verified": "Verified"
+      "verified": "Verified",
+      "keyTier": "Key storage"
     },
     "activeYes": "Yes",
     "activeNo": "No"
@@ -74,6 +75,15 @@
     "helpRevoked": "Enrollment permanently revoked by an administrator.",
     "helpExpired": "Enrollment expired past its expiration date."
   },
+  "keyTier": {
+    "labelNone": "Not hardware-protected",
+    "labelStandard": "Hardware-backed",
+    "labelStrong": "Strong isolation",
+    "helpNone": "The device reported that its private key is not stored in hardware-backed keystore (e.g. demo tools or software storage). This is client-reported, not attested by the server.",
+    "helpStandard": "The device reported hardware-backed keystore (e.g. Android Keystore / TEE without StrongBox). Client-reported.",
+    "helpStrong": "The device reported StrongBox or equivalent strongly isolated hardware. Client-reported.",
+    "unknownTooltip": "Not reported at verification (legacy enrollment or older client)."
+  },
   "validation": {
     "selectIntegration": "Select an integration",
     "nameRequired": "Name is required",
@@ -98,6 +108,7 @@
     "infoContactPhone": "Contact Phone",
     "infoUserId": "User ID",
     "infoVerified": "Verified",
+    "infoKeyTier": "Device key storage",
     "infoLastUsed": "Last Used",
     "infoExpiresAt": "Invitation expires",
     "infoCreated": "Created",

@@ -24,6 +24,7 @@ import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.security.EncryptionService;
 import org.ezkey.security.Reencryptable;
@@ -250,6 +251,13 @@ public class Enrollment implements Reencryptable {
    */
   @Column(name = "user_identifier", length = 255)
   private String userIdentifier;
+
+  /**
+   * Client-reported storage tier for the device private key (set when enrollment reaches VERIFIED).
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "device_private_key_storage_tier", length = 32)
+  private DevicePrivateKeyStorageTier devicePrivateKeyStorageTier;
 
   // Default constructor
   public Enrollment() {
@@ -580,6 +588,15 @@ public class Enrollment implements Reencryptable {
 
   public void setUserIdentifier(String userIdentifier) {
     this.userIdentifier = userIdentifier;
+  }
+
+  public DevicePrivateKeyStorageTier getDevicePrivateKeyStorageTier() {
+    return devicePrivateKeyStorageTier;
+  }
+
+  public void setDevicePrivateKeyStorageTier(
+      DevicePrivateKeyStorageTier devicePrivateKeyStorageTier) {
+    this.devicePrivateKeyStorageTier = devicePrivateKeyStorageTier;
   }
 
   public OffsetDateTime getDeactivatedAt() {

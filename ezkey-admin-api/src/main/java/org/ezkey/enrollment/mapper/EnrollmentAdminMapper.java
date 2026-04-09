@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.mapper;
 
 import java.util.List;
+import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -113,6 +114,7 @@ public interface EnrollmentAdminMapper {
         base.authAttemptChallengeRequired(),
         base.integrationPublicKey(),
         base.devicePublicKey(),
+        base.devicePrivateKeyStorageTier(),
         base.verifiedAt(),
         base.expiresAt(),
         base.createdAt(),
@@ -167,4 +169,11 @@ public interface EnrollmentAdminMapper {
    * @see EnrollmentCreateResponseDto
    */
   EnrollmentCreateResponseDto toCreateResponseDto(EnrollmentCreateResponse response);
+
+  default String devicePrivateKeyStorageTierToString(DevicePrivateKeyStorageTier tier) {
+    if (tier == null) {
+      return null;
+    }
+    return tier.name();
+  }
 }

@@ -37,6 +37,7 @@ NativeModules.EzkeyCryptoModule = {
     .mockResolvedValue(
       'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8.ICEiIyQlJicoKSorLC0uLw',
     ),
+  getEnrollmentPrivateKeyStorageTier: jest.fn().mockResolvedValue('STANDARD'),
 };
 
 jest.mock('react-native-vision-camera', () => ({

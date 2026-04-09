@@ -41,6 +41,7 @@ Avoid these phrases unless a future implementation and verification justify them
 - `hardware-backed everywhere`
 - `Secure Enclave parity`
 - `guaranteed StrongBox`
+- `server-verified StrongBox` or `backend-proven hardware tier` (tier is client-reported until attestation exists)
 - `passkey-equivalent security`
 - `FIDO2/WebAuthn-level guarantees`
 
@@ -53,6 +54,16 @@ The current Android implementation:
 - exports only the public key material needed by the protocol
 
 This is a useful platform security benefit, but it should not be described as full attestation or FIDO2/WebAuthn equivalence.
+
+## Device private key storage tier (`verify`)
+
+The Auth API accepts optional `devicePrivateKeyStorageTier` on enrollment verify. **Semantics for operators and documentation:**
+
+- The **backend does not prove** StrongBox or any tier; it persists the string the mobile app sends. There is **no** Key Attestation validation on the server in the current product.
+- The **reference Android app** derives `NONE` / `STANDARD` / `STRONG` from `KeyInfo` after key creation (StrongBox signaled via `isStrongBoxBacked` and/or API 31+ `getSecurityLevel()` as StrongBox), and requests StrongBox at generation when supported. That is honest **client-side** classification using Android APIs; it does **not** create cryptographic proof to Ezkey servers.
+- Do **not** market or document Admin-visible tier as “server-verified hardware” or “cryptographically attested” until a future protocol adds verification (e.g. Key Attestation with server-side chain validation).
+
+See **`docs/MOBILE_DEVELOPER_GUIDE.md`** (Device private key storage tier — trust model and proof boundary) and **`docs/CRYPTO.md`**.
 
 ## iOS Summary
 

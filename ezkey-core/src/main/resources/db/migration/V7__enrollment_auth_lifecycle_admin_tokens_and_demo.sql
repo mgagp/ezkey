@@ -137,3 +137,14 @@ ALTER TABLE ezkey_auth_attempt
 
 COMMENT ON COLUMN ezkey_auth_attempt.demo_mitm_signature_enabled IS
     'When true, Pending JSON may be tampered after signing if Auth API demo MITM is enabled.';
+-- Client-reported tier for how the device private key is protected at verify time (NONE / STANDARD / STRONG).
+ALTER TABLE ezkey_enrollment
+    ADD COLUMN device_private_key_storage_tier VARCHAR(32);
+
+ALTER TABLE ezkey_enrollment
+    ADD CONSTRAINT ezkey_enrollment_device_private_key_storage_tier_check
+    CHECK (device_private_key_storage_tier IS NULL
+        OR device_private_key_storage_tier IN ('NONE', 'STANDARD', 'STRONG'));
+
+COMMENT ON COLUMN ezkey_enrollment.device_private_key_storage_tier IS
+    'Client-reported storage tier for the device private key at enrollment verify: NONE (not hardware-backed, e.g. demo), STANDARD (hardware keystore), STRONG (StrongBox or equivalent). NULL = unknown or legacy.';

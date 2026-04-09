@@ -64,6 +64,9 @@ export const enrollmentsApi = {
       challengeResponse: payload.challengeResponse ? Number(payload.challengeResponse) : undefined,
       devicePublicKey: payload.devicePublicKey,
       enrollmentProofTokenSigned: payload.enrollmentProofTokenSigned,
+      ...(payload.devicePrivateKeyStorageTier
+        ? {devicePrivateKeyStorageTier: payload.devicePrivateKeyStorageTier}
+        : {}),
     };
     const response = await httpClient.post<VerifyEnrollmentResponse>(`${basePath}/verify`, body, config);
     return response.data;

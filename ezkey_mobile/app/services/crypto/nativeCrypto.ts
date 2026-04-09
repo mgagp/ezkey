@@ -15,6 +15,8 @@ import {NativeModules} from 'react-native';
 type NativeModuleShape = {
   generateEnrollmentKeyPair(enrollmentId: string): Promise<boolean>;
   getPublicKey(enrollmentId: string): Promise<string>;
+  /** NONE | STANDARD | STRONG — matches Auth API DevicePrivateKeyStorageTier */
+  getEnrollmentPrivateKeyStorageTier(enrollmentId: string): Promise<string>;
   sign(enrollmentId: string, data: string): Promise<string>;
   verify(data: string, signatureBase64: string, publicKeyBase64: string): Promise<boolean>;
   deleteKeyPair(enrollmentId: string): Promise<boolean>;
@@ -54,6 +56,11 @@ const fallback = {
   async generateProofToken(): Promise<string> {
     throw new Error('EzkeyCryptoModule is not linked. Unable to generate proof token.');
   },
+  async getEnrollmentPrivateKeyStorageTier(): Promise<string> {
+    throw new Error(
+      'EzkeyCryptoModule is not linked. Unable to read enrollment key storage tier.',
+    );
+  },
 } satisfies NativeModuleShape;
 
 const cryptoModule =
@@ -81,6 +88,8 @@ export const nativeCrypto = {
     cryptoModule.deleteKeyPair(enrollmentId),
   getBuildTimestamp: () => cryptoModule.getBuildTimestamp(),
   generateProofToken: () => cryptoModule.generateProofToken(),
+  getEnrollmentPrivateKeyStorageTier: (enrollmentId: string) =>
+    cryptoModule.getEnrollmentPrivateKeyStorageTier(enrollmentId),
 };
 
 export type NativeCrypto = typeof nativeCrypto;

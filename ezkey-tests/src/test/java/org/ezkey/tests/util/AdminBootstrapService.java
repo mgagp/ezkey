@@ -855,6 +855,8 @@ public class AdminBootstrapService {
     verifyRequest.put("challengeResponse", challengeCode);
     verifyRequest.put("devicePublicKey", deviceKeyPair.publicKey());
     verifyRequest.put("enrollmentProofTokenSigned", signature);
+    // Explicit NONE: test device keys are not hardware-backed (matches Docker bootstrap-init.sh).
+    verifyRequest.put("devicePrivateKeyStorageTier", "NONE");
 
     Response response =
         given()

@@ -102,6 +102,25 @@ class CryptoService {
   }
 
   /**
+   * Returns the client-reported storage tier for the enrollment key: NONE, STANDARD, or STRONG
+   * (Android Keystore / StrongBox). On non-Android platforms, returns STANDARD until a native
+   * implementation exists.
+   *
+   * @param enrollmentId enrollment identifier
+   * @since 2025
+   */
+  async getDevicePrivateKeyStorageTier(enrollmentId: string): Promise<'NONE' | 'STANDARD' | 'STRONG'> {
+    if (Platform.OS !== 'android') {
+      return 'STANDARD';
+    }
+    const raw = await nativeCrypto.getDevicePrivateKeyStorageTier(enrollmentId);
+    if (raw === 'STRONG' || raw === 'STANDARD' || raw === 'NONE') {
+      return raw;
+    }
+    return 'STANDARD';
+  }
+
+  /**
    * Signs the provided data using EC P-256 with ECDSA-SHA256.
    *
    * @param enrollmentId The enrollment ID to sign with.

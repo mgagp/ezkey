@@ -6,6 +6,7 @@ import { Check, Copy, Eye, EyeOff, Pencil, Power, PowerOff, QrCode, ShieldOff, T
 import { AppShell } from '@/components/layout/app-shell';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
+import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { Alert } from '@/components/ui/alert';
@@ -770,6 +771,9 @@ export default function EnrollmentDetailPage() {
                   </InfoRow>
                   <InfoRow label={t('detail.infoVerified')}>
                     <span className="text-fg-muted">{enrollment.verifiedAt ? formatDate(enrollment.verifiedAt) : '—'}</span>
+                  </InfoRow>
+                  <InfoRow label={t('detail.infoKeyTier')}>
+                    <DevicePrivateKeyTierBadge tier={enrollment.devicePrivateKeyStorageTier} />
                   </InfoRow>
                   <InfoRow label={t('detail.infoLastUsed')}>
                     <span className="text-fg-muted">{enrollment.lastUsedAt ? formatDate(enrollment.lastUsedAt) : '—'}</span>

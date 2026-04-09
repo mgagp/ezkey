@@ -149,6 +149,12 @@ public class EnrollmentResponse {
   private OffsetDateTime createdAt;
 
   /**
+   * Client-reported device private key storage tier ({@link DevicePrivateKeyStorageTier} names), or
+   * null if unknown.
+   */
+  private String devicePrivateKeyStorageTier;
+
+  /**
    * Gets the unique identifier for the enrollment.
    *
    * @return the enrollment ID
@@ -345,5 +351,13 @@ public class EnrollmentResponse {
    */
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public String getDevicePrivateKeyStorageTier() {
+    return devicePrivateKeyStorageTier;
+  }
+
+  public void setDevicePrivateKeyStorageTier(String devicePrivateKeyStorageTier) {
+    this.devicePrivateKeyStorageTier = devicePrivateKeyStorageTier;
   }
 }

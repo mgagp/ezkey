@@ -122,6 +122,12 @@ public record EnrollmentResponseDto(
         Boolean authAttemptChallengeRequired,
     @Schema(description = "Public key for integration communication") String integrationPublicKey,
     @Schema(description = "Public key for the device") String devicePublicKey,
+    @Schema(
+            description =
+                "Client-reported device private key storage tier at verify (NONE, STANDARD,"
+                    + " STRONG); null if unknown or legacy",
+            allowableValues = {"NONE", "STANDARD", "STRONG"})
+        String devicePrivateKeyStorageTier,
     @Schema(description = "When enrollment was verified (device completed binding)")
         java.time.OffsetDateTime verifiedAt,
     @Schema(

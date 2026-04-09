@@ -14,6 +14,7 @@ package com.ezkeymobileapp.crypto
 
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
@@ -28,6 +29,7 @@ import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
+import java.security.spec.InvalidKeySpecException
 import java.security.spec.X509EncodedKeySpec
 
 /**
@@ -132,6 +134,45 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       promise.resolve(encodedBase64)
     } catch (error: Exception) {
       promise.reject(ERROR_CODE_PUBLIC_KEY, error)
+    }
+  }
+
+  /**
+   * Returns the storage tier for the enrollment key: STRONG (StrongBox-backed), STANDARD
+   * (hardware-backed), or NONE (software / not hardware-protected), based on [KeyInfo].
+   *
+   * @param enrollmentId The enrollment ID whose key was created in Android Keystore.
+   * @param promise Resolved with "NONE", "STANDARD", or "STRONG".
+   */
+  @ReactMethod
+  fun getDevicePrivateKeyStorageTier(enrollmentId: String, promise: Promise) {
+    try {
+      val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+      val alias = getEnrollmentAlias(enrollmentId)
+      if (!keyStore.containsAlias(alias)) {
+        promise.reject(ERROR_CODE_NOT_FOUND, "Key pair not found for enrollment $enrollmentId")
+        return
+      }
+      val entry = keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
+      val privateKey = entry?.privateKey
+          ?: throw IllegalStateException("Private key not found for enrollment $enrollmentId")
+      val factory = KeyFactory.getInstance(privateKey.algorithm, ANDROID_KEY_STORE)
+      val keyInfo: KeyInfo =
+          try {
+            factory.getKeySpec(privateKey, KeyInfo::class.java) as KeyInfo
+          } catch (_: InvalidKeySpecException) {
+            promise.resolve("NONE")
+            return
+          }
+      val tier =
+          when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && keyInfo.isStrongBoxBacked -> "STRONG"
+            keyInfo.isInsideSecureHardware -> "STANDARD"
+            else -> "NONE"
+          }
+      promise.resolve(tier)
+    } catch (error: Exception) {
+      promise.reject(ERROR_CODE_TIER, error)
     }
   }
 
@@ -247,5 +288,6 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     private const val ERROR_CODE_NOT_FOUND = "EZK_KEY_NOT_FOUND"
     private const val ERROR_CODE_DELETE = "EZK_DELETE_ERROR"
     private const val ERROR_CODE_VERIFY = "EZK_VERIFY_ERROR"
+    private const val ERROR_CODE_TIER = "EZK_TIER_ERROR"
   }
 }

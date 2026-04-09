@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.time.OffsetDateTime;
+import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -77,6 +78,7 @@ class EnrollmentCoreMapperTest {
     enrollment.setIntegrationPublicKey("integration-public-key");
     enrollment.setIntegrationPrivateKey("integration-private-key");
     enrollment.setDevicePublicKey("device-public-key");
+    enrollment.setDevicePrivateKeyStorageTier(DevicePrivateKeyStorageTier.STANDARD);
     enrollment.setCreatedAt(OffsetDateTime.now().minusMinutes(10));
   }
 
@@ -142,6 +144,7 @@ class EnrollmentCoreMapperTest {
 
     assertEquals(enrollment.getIntegrationPublicKey(), response.getIntegrationPublicKey());
     assertEquals(enrollment.getDevicePublicKey(), response.getDevicePublicKey());
+    assertEquals("STANDARD", response.getDevicePrivateKeyStorageTier());
     assertEquals(enrollment.getCreatedAt(), response.getCreatedAt());
   }
 

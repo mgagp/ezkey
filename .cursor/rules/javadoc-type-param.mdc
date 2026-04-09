@@ -1,0 +1,34 @@
+---
+description: Checkstyle JavadocType rejects @param/@return/@throws on class, interface, enum, or record type Javadoc
+globs: "**/*.java"
+alwaysApply: true
+---
+
+# Javadoc: type vs method/constructor (Checkstyle)
+
+The build runs Checkstyle `JavadocType` on types (classes, interfaces, enums, `record` declarations) and `JavadocMethod` on methods and constructors.
+
+## Do not use `@param` on type-level Javadoc
+
+**Invalid for this codebase (fails with `Unused @param tag for '…' [JavadocType]`):**
+
+```java
+/**
+ * Something.
+ *
+ * @param foo description   // WRONG here — not a method/constructor
+ */
+public class MyDto {
+```
+
+**Correct patterns:**
+
+1. **Put `@param` on the constructor** that takes those values (preferred when you have an all-args or primary constructor).
+2. **Use field Javadoc** (`/** ... */` above each field) when fields are not constructor parameters.
+3. **Use a short type summary only** (`/** ... */` on the class) with no `@param` lines.
+
+Java `record` components are not method parameters on the *type*; document the **canonical constructor** or use `@param` on accessors only if you add explicit Javadoc there (still under `JavadocMethod`).
+
+## Why this repeats
+
+Authors often mirror “parameter list” style on the class because it reads like a struct. Checkstyle treats `@param` as meaningful only where a Java method or constructor has formal parameters, so type-level `@param` tags are always “unused” for `JavadocType`.

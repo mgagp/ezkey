@@ -33,11 +33,16 @@ export type BindEnrollmentResponse = {
   tenantDescription?: string;
 };
 
+/** Matches Auth API `devicePrivateKeyStorageTier` at enrollment verify. */
+export type DevicePrivateKeyStorageTier = 'NONE' | 'STANDARD' | 'STRONG';
+
 export type VerifyEnrollmentRequest = {
   enrollmentId: string;
   challengeResponse?: string;
   devicePublicKey: string;
   enrollmentProofTokenSigned: string;
+  /** Reported from native keystore introspection (Android); sent on verify so the server can persist tier. */
+  devicePrivateKeyStorageTier?: DevicePrivateKeyStorageTier;
 };
 
 export type VerifyEnrollmentResponse = {

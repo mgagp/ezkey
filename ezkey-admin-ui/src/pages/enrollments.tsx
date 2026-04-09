@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
+import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -393,6 +394,11 @@ export default function EnrollmentsPage() {
     { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.createdAt ? formatDate(r.createdAt) : '—'}</span> },
     { header: t('list.columns.lastUsed'), key: 'lastUsedAt', sortKey: 'lastUsedAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}</span> },
     { header: t('list.columns.verified'), key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
+    {
+      header: t('list.columns.keyTier'),
+      key: 'devicePrivateKeyStorageTier',
+      render: (r) => <DevicePrivateKeyTierBadge tier={r.devicePrivateKeyStorageTier} />,
+    },
     { header: t('list.columns.challenge'), key: 'authAttemptChallengeRequired', sortKey: 'authAttemptChallengeRequired', render: (r) => <Badge variant={r.authAttemptChallengeRequired ? 'warning' : 'muted'}>{r.authAttemptChallengeRequired ? t('list.activeYes') : t('list.activeNo')}</Badge> },
   ];
 

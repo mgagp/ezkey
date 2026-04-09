@@ -144,12 +144,15 @@ export const EnrollmentFlowScreen: React.FC<Props> = ({navigation}) => {
       await crypto.ensureEnrollmentKeyPair(enrollmentId);
       const publicKey = await crypto.getPublicKey(enrollmentId);
       const proofTokenSigned = await crypto.sign(enrollmentId, draft.enrollmentProofToken);
+      const devicePrivateKeyStorageTier =
+        await crypto.getDevicePrivateKeyStorageTier(enrollmentId);
       const verifyResponse = await enrollmentsApi.verify(
         {
           enrollmentId: draft.id,
           challengeResponse: challenge,
           devicePublicKey: publicKey,
           enrollmentProofTokenSigned: proofTokenSigned,
+          devicePrivateKeyStorageTier,
         },
         authUrl,
       );
@@ -172,6 +175,7 @@ export const EnrollmentFlowScreen: React.FC<Props> = ({navigation}) => {
         enrollmentName: draft.enrollmentName,
         deviceLabel: draft.deviceLabel,
         authUrl,
+        devicePrivateKeyStorageTier,
       };
       await saveEnrollment.mutateAsync(record);
       navigation.navigate('Home');

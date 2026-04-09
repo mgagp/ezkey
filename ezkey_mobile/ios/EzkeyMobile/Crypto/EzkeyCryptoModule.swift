@@ -178,6 +178,18 @@ class EzkeyCryptoModule: NSObject, RCTBridgeModule {
     resolve(token)
   }
 
+  /**
+   * Auth API enrollment verify: client-reported tier (NONE / STANDARD / STRONG).
+   * Android EC P-256 path reports StrongBox / Keystore; iOS RSA enrollment parity is pending — return NONE until
+   * native introspection matches the Android mapping.
+   */
+  @objc
+  func getEnrollmentPrivateKeyStorageTier(_ enrollmentId: String,
+                                            resolver resolve: @escaping RCTPromiseResolveBlock,
+                                            rejecter reject: @escaping RCTPromiseRejectBlock) {
+    resolve("NONE")
+  }
+
   @objc
   func deleteKey(_ alias: String,
                  resolver resolve: @escaping RCTPromiseResolveBlock,

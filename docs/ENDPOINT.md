@@ -240,9 +240,12 @@ Content-Type: application/json
   "enrollmentId": 456,
   "challengeResponse": 987654,
   "devicePublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-  "enrollmentProofTokenSigned": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  "enrollmentProofTokenSigned": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "devicePrivateKeyStorageTier": "STANDARD"
 }
 ```
+
+`devicePrivateKeyStorageTier` is optional. When present, it must be one of `NONE`, `STANDARD`, or `STRONG`. It is **client-reported only** — the server does not independently verify hardware or Key Attestation; see trust model in `docs/MOBILE_DEVELOPER_GUIDE.md` (**Device private key storage tier — trust model and proof boundary**). Invalid values yield **400**.
 
 **Response**
 - 200 OK + verification confirmation
@@ -1218,7 +1221,7 @@ GET /api/v1/enrollments/123
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), cryptographic material references (`integrationPublicKey`, `devicePublicKey`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
+**Response (high level):** Returns the full enrollment record including integration display fields where applicable (`integrationName`, `isSystemIntegration`), cryptographic material references (`integrationPublicKey`, `devicePublicKey`), client-reported `devicePrivateKeyStorageTier` when set at verify (`NONE`, `STANDARD`, `STRONG`; not independently verified by the server — see `docs/MOBILE_DEVELOPER_GUIDE.md`), and lifecycle audit timestamps such as `createdAt`, `createdByAdminId`, `deactivatedAt`, `deactivatedByAdminId`, `revokedAt`, and `revokedByAdminId` when set.
 
 #### **PATCH /api/v1/enrollments/{id}** (Partial Update of Enrollment Metadata)
 

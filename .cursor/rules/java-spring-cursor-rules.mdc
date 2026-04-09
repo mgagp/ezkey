@@ -75,7 +75,7 @@ Build and Deployment
 Follow best practices for:
 - RESTful API design (proper use of HTTP methods, status codes, etc.).
 - Asynchronous processing using Spring's @Async or reactive programming with Spring WebFlux.
-- Always make sure the javadoc is complete, detailed and acurate for each class.
+- Always make sure the Javadoc is complete, detailed, and accurate for each public type and member. Do not put `@param` / `@return` / `@throws` on **class** or **record** Javadoc (Checkstyle `JavadocType`); document parameters on constructors or methods instead. See `.cursor/rules/javadoc-type-param.mdc`.
 
 Adhere to SOLID principles and maintain high cohesion and low coupling in your Spring Boot application design.
     

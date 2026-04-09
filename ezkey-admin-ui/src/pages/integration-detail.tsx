@@ -8,6 +8,7 @@ import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
+import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { Alert } from '@/components/ui/alert';
@@ -216,6 +217,11 @@ export default function IntegrationDetailPage() {
     { header: t('detail.enrollmentColumns.status'), key: 'enrollmentStatus', sortKey: 'status', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
     { header: t('detail.enrollmentColumns.active'), key: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? t('detail.activeYes') : t('detail.activeNo')}</Badge> },
     { header: t('detail.enrollmentColumns.verified'), key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
+    {
+      header: t('detail.enrollmentColumns.keyTier'),
+      key: 'devicePrivateKeyStorageTier',
+      render: (r) => <DevicePrivateKeyTierBadge tier={r.devicePrivateKeyStorageTier} />,
+    },
   ];
 
   const name = integration ? getIntegrationName(integration) : '...';

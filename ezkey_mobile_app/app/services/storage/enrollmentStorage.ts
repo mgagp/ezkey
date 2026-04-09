@@ -31,6 +31,7 @@ export type StoredEnrollment = EnrollmentSummary & {
   integrationPublicKey?: string;
   enrollmentName?: string;
   deviceLabel?: string;
+  devicePrivateKeyStorageTier?: 'NONE' | 'STANDARD' | 'STRONG';
 };
 
 type StorageDelegate = {

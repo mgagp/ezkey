@@ -115,6 +115,7 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
       verifyRequest.put("challengeResponse", challengeCode);
       verifyRequest.put("devicePublicKey", deviceKeyPair.publicKey());
       verifyRequest.put("enrollmentProofTokenSigned", signature);
+      verifyRequest.put("devicePrivateKeyStorageTier", "STANDARD");
 
       Response verifyResponse =
           given()
@@ -128,6 +129,20 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
               .response();
 
       assertThat(verifyResponse.jsonPath().getBoolean("active")).isTrue();
+
+      configureForAdminApi(dockerStackConfig);
+      Response enrolledAgain =
+          given()
+              .contentType(ContentType.JSON)
+              .header("Authorization", "Bearer " + adminToken)
+              .when()
+              .get("/enrollments/" + enrollmentId)
+              .then()
+              .statusCode(200)
+              .extract()
+              .response();
+      assertThat(enrolledAgain.jsonPath().getString("devicePrivateKeyStorageTier"))
+          .isEqualTo("STANDARD");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");

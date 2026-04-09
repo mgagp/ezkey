@@ -14,6 +14,7 @@ package com.ezkeymobile.crypto
 
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
@@ -24,11 +25,56 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.ezkeymobile.BuildConfig
 import java.nio.charset.StandardCharsets
+import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.SecureRandom
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
+
+/** API 31+ {@link KeyInfo#getSecurityLevel()} (reflective). */
+private fun keyInfoSecurityLevel(keyInfo: KeyInfo): Int? {
+  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+    return null
+  }
+  return try {
+    val m = KeyInfo::class.java.getMethod("getSecurityLevel")
+    m.invoke(keyInfo) as Int
+  } catch (_: ReflectiveOperationException) {
+    null
+  }
+}
+
+/** Matches {@link KeyProperties#SECURITY_LEVEL_STRONG_BOX} (value 2, API 31+). */
+private const val SECURITY_LEVEL_STRONG_BOX = 2
+
+/**
+ * True when {@link KeyInfo#getSecurityLevel()} reports StrongBox (API 31+). On some devices/OS
+ * levels this agrees with StrongBox placement while {@link KeyInfo#isStrongBoxBacked} still
+ * reflects false via reflection — use both for tier classification.
+ */
+private fun keyInfoIsStrongBoxBySecurityLevel(keyInfo: KeyInfo): Boolean {
+  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+    return false
+  }
+  val sl = keyInfoSecurityLevel(keyInfo) ?: return false
+  return sl == SECURITY_LEVEL_STRONG_BOX
+}
+
+/**
+ * StrongBox flag exists from API 28; call reflectively so Kotlin resolves against all compile SDKs.
+ */
+private fun keyInfoIsStrongBoxBacked(keyInfo: KeyInfo): Boolean {
+  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+    return false
+  }
+  return try {
+    val method = KeyInfo::class.java.getMethod("isStrongBoxBacked")
+    method.invoke(keyInfo) as Boolean
+  } catch (_: ReflectiveOperationException) {
+    false
+  }
+}
 
 /**
  * React Native module providing EC P-256 key generation, retrieval, signing, and deletion.
@@ -132,6 +178,46 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       promise.resolve(encodedBase64)
     } catch (error: Exception) {
       promise.reject(ERROR_CODE_PUBLIC_KEY, error)
+    }
+  }
+
+  /**
+   * Reports where the enrollment private key is stored, for Auth API verify ({@code NONE} /
+   * {@code STANDARD} / {@code STRONG}). STRONG when {@link KeyInfo#isStrongBoxBacked} (reflective)
+   * or API 31+ {@link KeyInfo#getSecurityLevel()} indicates StrongBox; else secure hardware →
+   * STANDARD; otherwise NONE (e.g. emulator / software-only).
+   *
+   * @param enrollmentId enrollment id (same alias as {@link #generateEnrollmentKeyPair})
+   * @param promise resolved with {@code "NONE"}, {@code "STANDARD"}, or {@code "STRONG"}
+   */
+  @ReactMethod
+  fun getEnrollmentPrivateKeyStorageTier(enrollmentId: String, promise: Promise) {
+    try {
+      val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+      val alias = getEnrollmentAlias(enrollmentId)
+      if (!keyStore.containsAlias(alias)) {
+        promise.reject(ERROR_CODE_NOT_FOUND, "Key pair not found for enrollment $enrollmentId")
+        return
+      }
+      val privateKey =
+          (keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry)?.privateKey
+              ?: throw IllegalStateException("Private key not found for enrollment $enrollmentId")
+      val factory = KeyFactory.getInstance(privateKey.algorithm, ANDROID_KEY_STORE)
+      val keyInfo = factory.getKeySpec(privateKey, KeyInfo::class.java) as KeyInfo
+      val strongBoxReflect = keyInfoIsStrongBoxBacked(keyInfo)
+      val strongBoxByLevel = keyInfoIsStrongBoxBySecurityLevel(keyInfo)
+      val strongBox = strongBoxReflect || strongBoxByLevel
+      val secureHw = keyInfo.isInsideSecureHardware
+      val tier =
+          when {
+            strongBox -> "STRONG"
+            secureHw -> "STANDARD"
+            else -> "NONE"
+          }
+      promise.resolve(tier)
+    } catch (error: Exception) {
+      Log.e(TAG, "getEnrollmentPrivateKeyStorageTier failed", error)
+      promise.reject(ERROR_CODE_STORAGE_TIER, error)
     }
   }
 
@@ -305,5 +391,6 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     private const val ERROR_CODE_VERIFY = "EZK_VERIFY_ERROR"
     private const val ERROR_CODE_BUILD_TIMESTAMP = "EZK_BUILD_TIMESTAMP_ERROR"
     private const val ERROR_CODE_PROOF_TOKEN = "EZK_PROOF_TOKEN_ERROR"
+    private const val ERROR_CODE_STORAGE_TIER = "EZK_STORAGE_TIER_ERROR"
   }
 }

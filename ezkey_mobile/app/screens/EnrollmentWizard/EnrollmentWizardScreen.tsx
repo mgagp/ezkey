@@ -320,6 +320,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
       // Get EC P-256 public key for this enrollment
       const publicKey = await cryptoService.getPublicKey(enrollmentId);
+      const devicePrivateKeyStorageTier =
+        await cryptoService.getEnrollmentPrivateKeyStorageTier(enrollmentId);
       // Sign the proof token with EC P-256 (ECDSA-SHA256)
       const proofTokenSigned = await cryptoService.sign(enrollmentId, draft.enrollmentProofToken);
       const verifyResponse = await enrollmentsApi.verify({
@@ -327,6 +329,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         devicePublicKey: publicKey,
         enrollmentProofTokenSigned: proofTokenSigned,
         challengeResponse,
+        devicePrivateKeyStorageTier,
       }, authUrl);
       const status: EnrollmentStatus = verifyResponse.active ? 'active' : 'pending';
       const record: StoredEnrollment = {

@@ -149,13 +149,14 @@ if [ "$BIND_PROOF_TOKEN" != "SKIPPED_ALREADY_BOUND" ]; then
     exit 1
   fi
   
-  # Verify enrollment
+  # Verify enrollment. NONE = not hardware-protected (bootstrap keys from Crypto API in-container;
+  # same explicit posture as Demo Device — avoids null/"unknown" in Admin UI).
   VERIFY_REQUEST=$(jq -n \
     --arg enrollmentId "$ENROLLMENT_ID" \
     --arg challengeResponse "$ENROLLMENT_CHALLENGE" \
     --arg devicePublicKey "$DEVICE_PUBLIC_KEY" \
     --arg enrollmentProofTokenSigned "$SIGNATURE" \
-    '{enrollmentId: ($enrollmentId | tonumber), challengeResponse: ($challengeResponse | tonumber), devicePublicKey: $devicePublicKey, enrollmentProofTokenSigned: $enrollmentProofTokenSigned}')
+    '{enrollmentId: ($enrollmentId | tonumber), challengeResponse: ($challengeResponse | tonumber), devicePublicKey: $devicePublicKey, enrollmentProofTokenSigned: $enrollmentProofTokenSigned, devicePrivateKeyStorageTier: "NONE"}')
   
   VERIFY_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
     -H "Content-Type: application/json" \
@@ -225,7 +226,7 @@ ENROLLMENT_JSON=$(jq -n \
   --arg integrationName "$INTEGRATION_NAME" \
   --arg integrationDescription "$INTEGRATION_DESCRIPTION" \
   --arg integrationLogo "$INTEGRATION_LOGO" \
-  '{enrollmentId: ($enrollmentId | tonumber), integrationId: null, enrollmentName: $enrollmentName, enrollmentUrl: null, integrationPublicKey: $integrationPublicKey, enrollmentProofToken: $enrollmentProofToken, devicePublicKey: $devicePublicKey, devicePrivateKey: $devicePrivateKey, authAttemptChallengeRequired: false, deviceLabel: "Device", createdAt: (now | todateiso8601), integrationName: (if $integrationName == "" then null else $integrationName end), integrationDescription: (if $integrationDescription == "" then null else $integrationDescription end), integrationLogo: (if $integrationLogo == "" then null else $integrationLogo end)}')
+  '{enrollmentId: ($enrollmentId | tonumber), integrationId: null, enrollmentName: $enrollmentName, enrollmentUrl: null, integrationPublicKey: $integrationPublicKey, enrollmentProofToken: $enrollmentProofToken, devicePublicKey: $devicePublicKey, devicePrivateKey: $devicePrivateKey, authAttemptChallengeRequired: false, deviceLabel: "Device", createdAt: (now | todateiso8601), integrationName: (if $integrationName == "" then null else $integrationName end), integrationDescription: (if $integrationDescription == "" then null else $integrationDescription end), integrationLogo: (if $integrationLogo == "" then null else $integrationLogo end), devicePrivateKeyStorageTier: "NONE"}')
 
 echo "$ENROLLMENT_JSON" > "$ENROLLMENT_FILE"
 echo "✅ Demo-device enrollment file created: $ENROLLMENT_FILE"

@@ -13,6 +13,8 @@ export type EnrollmentSummary = {
   favorited?: boolean;
   /** Base URL of the Ezkey Auth API for this enrollment (e.g. "https://ezkey.acme.com"). */
   authUrl?: string;
+  /** Client-reported device private key storage tier at verify (NONE, STANDARD, STRONG). */
+  devicePrivateKeyStorageTier?: 'NONE' | 'STANDARD' | 'STRONG';
 };
 
 export type BindEnrollmentRequest = {
@@ -38,6 +40,8 @@ export type VerifyEnrollmentRequest = {
   challengeResponse?: string;
   devicePublicKey: string;
   enrollmentProofTokenSigned: string;
+  /** Optional; sent when known (Android Keystore / StrongBox). */
+  devicePrivateKeyStorageTier?: 'NONE' | 'STANDARD' | 'STRONG';
 };
 
 export type VerifyEnrollmentResponse = {

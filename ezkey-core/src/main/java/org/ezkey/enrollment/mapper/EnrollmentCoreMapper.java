@@ -1,5 +1,6 @@
 package org.ezkey.enrollment.mapper;
 
+import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -27,5 +28,12 @@ public interface EnrollmentCoreMapper {
       return null;
     }
     return status.name();
+  }
+
+  default String devicePrivateKeyStorageTierToString(DevicePrivateKeyStorageTier tier) {
+    if (tier == null) {
+      return null;
+    }
+    return tier.name();
   }
 }

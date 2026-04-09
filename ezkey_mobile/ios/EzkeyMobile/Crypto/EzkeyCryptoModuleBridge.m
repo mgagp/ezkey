@@ -31,4 +31,9 @@ RCT_EXTERN_METHOD(generateProofToken:
                   (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(getEnrollmentPrivateKeyStorageTier:
+                  (NSString *)enrollmentId
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

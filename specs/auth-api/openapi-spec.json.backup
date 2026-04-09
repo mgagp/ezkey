@@ -302,6 +302,16 @@
             "type": "string",
             "description": "Device-signed enrollment proof token",
             "example": "eyJhbGciOiJSUzI1NiJ9..."
+          },
+          "devicePrivateKeyStorageTier": {
+            "type": "string",
+            "description": "Client-reported tier for device private key protection: NONE (e.g. demo), STANDARD (hardware keystore), STRONG (StrongBox or equivalent)",
+            "enum": [
+              "NONE",
+              "STANDARD",
+              "STRONG"
+            ],
+            "example": "STANDARD"
           }
         },
         "required": [
@@ -498,8 +508,8 @@
           },
           "authAttemptProofTokenResultSignedByIntegration": {
             "type": "string",
-            "description": "Integration signature over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
-            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+            "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
+            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
           }
         },
         "required": [

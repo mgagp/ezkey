@@ -26,6 +26,14 @@ Git Bash + JDK 25 + Maven path before delegating to `./scripts/build.sh`. See
 
 ---
 
+## Java Javadoc and Checkstyle (`@param` on types)
+
+Checkstyle `JavadocType` validates Javadoc on **classes, interfaces, enums, and record types**. Tags such as `@param`, `@return`, and `@throws` belong on **methods and constructors** (validated by `JavadocMethod`), not on the type itself. Putting `@param` on a class or `record` produces `Unused @param tag … [JavadocType]`.
+
+**Do:** summarize the type in its class Javadoc; put per-parameter descriptions on the **constructor** (or on fields / accessors as appropriate). See `.cursor/rules/javadoc-type-param.mdc`.
+
+---
+
 ## Project values (analysis and design)
 
 - **Simplicity and pragmatism**: 80–20 rule — target ~80% of the value with ~20% of the complexity. Prefer the simplest solution that meets the need.

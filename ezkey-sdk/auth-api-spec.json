@@ -302,6 +302,16 @@
             "type": "string",
             "description": "Device-signed enrollment proof token",
             "example": "eyJhbGciOiJSUzI1NiJ9..."
+          },
+          "devicePrivateKeyStorageTier": {
+            "type": "string",
+            "description": "Client-reported tier for device private key protection: NONE (e.g. demo), STANDARD (hardware keystore), STRONG (StrongBox or equivalent)",
+            "enum": [
+              "NONE",
+              "STANDARD",
+              "STRONG"
+            ],
+            "example": "STANDARD"
           }
         },
         "required": [

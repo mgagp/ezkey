@@ -77,7 +77,8 @@
       "name": "Name",
       "status": "Status",
       "active": "Active",
-      "verified": "Verified"
+      "verified": "Verified",
+      "keyTier": "Key storage"
     },
     "activeYes": "Yes",
     "activeNo": "No",

@@ -12,6 +12,7 @@ package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
+import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 
 /**
  * Request DTO for enrollment verification completion in auth API.
@@ -37,6 +38,8 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * @param challengeResponse User's response to the enrollment challenge
  * @param devicePublicKey The mobile device's generated public key
  * @param enrollmentProofTokenSigned Device-signed enrollment proof token
+ * @param devicePrivateKeyStorageTier Optional client-reported storage tier for the device private
+ *     key
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentVerifyRequest
@@ -64,4 +67,12 @@ public record EnrollmentVerifyRequestDto(
             description = "Device-signed enrollment proof token",
             example = "eyJhbGciOiJSUzI1NiJ9...",
             requiredMode = RequiredMode.REQUIRED)
-        String enrollmentProofTokenSigned) {}
+        String enrollmentProofTokenSigned,
+    @Schema(
+            description =
+                "Client-reported tier for device private key protection: NONE (e.g. demo),"
+                    + " STANDARD (hardware keystore), STRONG (StrongBox or equivalent)",
+            example = "STANDARD",
+            allowableValues = {"NONE", "STANDARD", "STRONG"},
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        DevicePrivateKeyStorageTier devicePrivateKeyStorageTier) {}

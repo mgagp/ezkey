@@ -26,7 +26,8 @@
       "created": "Créé",
       "lastUsed": "Dernière utilisation",
       "challenge": "Défi",
-      "verified": "Vérifié"
+      "verified": "Vérifié",
+      "keyTier": "Stockage clé"
     },
     "activeYes": "Oui",
     "activeNo": "Non"
@@ -74,6 +75,15 @@
     "helpRevoked": "Enrôlement révoqué définitivement par un administrateur.",
     "helpExpired": "Enrôlement expiré après sa date d'échéance."
   },
+  "keyTier": {
+    "labelNone": "Non protégé matériellement",
+    "labelStandard": "Matériel (TEE)",
+    "labelStrong": "Isolation forte",
+    "helpNone": "L'appareil indique que la clé privée n'est pas stockée dans un magasin matériel (ex. démo ou stockage logiciel). Information déclarée par le client, non attestée par le serveur.",
+    "helpStandard": "L'appareil indique un magasin de clés matériel (ex. Android Keystore / TEE sans StrongBox). Information déclarée par le client.",
+    "helpStrong": "L'appareil indique StrongBox ou matériel isolé équivalent. Information déclarée par le client.",
+    "unknownTooltip": "Non communiqué à la vérification (enrôlement antérieur ou ancienne application)."
+  },
   "validation": {
     "selectIntegration": "Sélectionnez une intégration",
     "nameRequired": "Le nom est obligatoire",
@@ -98,6 +108,7 @@
     "infoContactPhone": "Téléphone de contact",
     "infoUserId": "ID utilisateur",
     "infoVerified": "Vérifié",
+    "infoKeyTier": "Stockage de la clé appareil",
     "infoLastUsed": "Dernière utilisation",
     "infoExpiresAt": "Expiration de l'invitation",
     "infoCreated": "Créé le",

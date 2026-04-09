@@ -198,6 +198,24 @@ Important properties:
 - The mobile app signs UTF-8 payload bytes.
 - The public key exported during enrollment verify is the Base64-encoded SPKI representation.
 
+#### Device private key storage tier — trust model and proof boundary
+
+The optional `devicePrivateKeyStorageTier` field on `POST /api/v1/enrollments/verify` exists so operators can see a **coarse, client-reported** label (`NONE`, `STANDARD`, `STRONG`) in Admin tooling. **The current protocol does not give the backend any independent way to prove that label.**
+
+| Layer | What is true today |
+| --- | --- |
+| **Server** | Persists and exposes exactly the string the client sends. There is **no** Key Attestation chain validation, no challenge–response attestation, and no cryptographic binding between the tier value and hardware. |
+| **Honest mobile client** | Should derive the tier from platform APIs (see below) and send a value consistent with local key creation. |
+| **Malicious or compromised client** | Could send an arbitrary `NONE` / `STANDARD` / `STRONG` string; the server would still store it. |
+
+So **`STRONG` means “the client asserted StrongBox-class storage according to its own implementation,” not “the Ezkey backend cryptographically verified StrongBox.”** Align documentation, sales, and pilot expectations with that boundary until a future protocol adds verifiable attestation.
+
+**Reference Android behavior (honest client):** At key generation, the app requests StrongBox when the API allows (`setIsStrongBoxBacked(true)`), catching `StrongBoxUnavailableException` and continuing without StrongBox when the device cannot satisfy the request. For reporting, the tier is derived from `KeyInfo` after the key exists: treat as StrongBox-tier when Android reports StrongBox via `isStrongBoxBacked` **or** (API 31+) `getSecurityLevel()` equals `SECURITY_LEVEL_STRONG_BOX`; otherwise map secure hardware to `STANDARD`, else `NONE`. That follows the platform’s own descriptors; it still does not create server-side proof.
+
+**Future hardening (not implemented):** [Android Key Attestation](https://developer.android.com/privacy-and-security/security-key-attestation) (or an equivalent verified signal) could allow the backend to validate hardware claims. Until then, treat tier as **informational client telemetry**, not a server-audited security property.
+
+**Signature scope (verify):** `devicePrivateKeyStorageTier` is **not** included in the ECDSA payload. The server validates `enrollmentProofTokenSigned` against the **raw `enrollmentProofToken` string only** (UTF-8 bytes), matching what an honest client passes to `sign(enrollmentId, enrollmentProofToken)`. The tier is sent in the same JSON body but is **outside** that signed message, so its integrity is **not** cryptographically bound to the proof-token signature. A future protocol could introduce an extended canonical string (or a second signature) if tier must be tamper-evident to the backend.
+
 ### Integration-Side Cryptography
 
 The integration side uses Ed25519.
@@ -266,7 +284,7 @@ sequenceDiagram
     Auth-->>Mobile: enrollment metadata + integrationPublicKey
     Mobile->>Mobile: Generate EC P-256 key pair in Android Keystore
     Mobile->>Mobile: Sign enrollmentProofToken with device private key
-    Mobile->>Auth: POST /api/v1/enrollments/verify\n(enrollmentId, challengeResponse, devicePublicKey, enrollmentProofTokenSigned)
+    Mobile->>Auth: POST /api/v1/enrollments/verify\n(enrollmentId, challengeResponse, devicePublicKey, enrollmentProofTokenSigned, devicePrivateKeyStorageTier?)
     Auth-->>Mobile: { active: true }
 ```
 
@@ -339,6 +357,8 @@ What the mobile app should store after `bind`:
 - `integrationPublicKey`
 - integration display metadata if useful in UI
 
+After `verify`, also persist the `devicePrivateKeyStorageTier` value you sent (if any) so the app can show consistent local posture and support future UX.
+
 Recommended storage split:
 
 - Secure storage: `enrollmentProofToken`, integration verification material if your threat model
@@ -357,7 +377,7 @@ Before this call, the mobile app must:
 
 1. Generate a device key pair in Android Keystore.
 2. Export the device public key as SPKI Base64.
-3. Sign the raw `enrollmentProofToken` string using the device private key.
+3. Sign the raw `enrollmentProofToken` string using the device private key (this is the **only** string covered by `enrollmentProofTokenSigned`; optional `devicePrivateKeyStorageTier` is not part of it — see **Device private key storage tier — trust model and proof boundary**).
 
 Request body:
 
@@ -366,9 +386,12 @@ Request body:
   "enrollmentId": 456,
   "challengeResponse": 987654,
   "devicePublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-  "enrollmentProofTokenSigned": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  "enrollmentProofTokenSigned": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "devicePrivateKeyStorageTier": "STANDARD"
 }
 ```
+
+`devicePrivateKeyStorageTier` is optional. When sent, it must be exactly `NONE`, `STANDARD`, or `STRONG`. The server persists it and exposes it in the Admin API for operators. **The backend relies entirely on the mobile client for this value** — there is no Key Attestation or other server-side verification in the current protocol; see **Device private key storage tier — trust model and proof boundary** above. Typical mapping on Android (honest client): `NONE` when the key is not in hardware-backed Keystore (e.g. emulators or software-only paths); `STANDARD` for Android Keystore secure hardware without StrongBox-tier classification; `STRONG` when the platform reports StrongBox via `KeyInfo` as described there. Future iOS clients can map Keychain and Secure Enclave into `STANDARD` / `STRONG` without renaming the wire values.
 
 Field semantics:
 
@@ -377,7 +400,8 @@ Field semantics:
 | `enrollmentId` | number | Yes | Enrollment identifier |
 | `challengeResponse` | number | Yes | Mandatory six-digit numeric challenge shown during enrollment setup |
 | `devicePublicKey` | string | Yes | SPKI Base64 for the generated EC P-256 public key |
-| `enrollmentProofTokenSigned` | string | Yes | ECDSA DER Base64 signature over the raw enrollment proof token |
+| `enrollmentProofTokenSigned` | string | Yes | ECDSA DER Base64 signature over the **raw** enrollment proof token only (UTF-8); does **not** cover `devicePrivateKeyStorageTier` or other JSON fields |
+| `devicePrivateKeyStorageTier` | string | No | `NONE`, `STANDARD`, or `STRONG` — client-reported tier; **not** included in the proof-token signature; omit for legacy clients |
 
 Successful response:
 
@@ -398,6 +422,7 @@ implementation must collect the six-digit challenge shown during setup and send 
 - Do not invent your own key format for `devicePublicKey`. It must be the standard Base64-encoded
   X.509 SPKI bytes of the EC P-256 public key.
 - Do not sign JSON. Sign the raw proof-token string bytes in UTF-8.
+- Do not assume `devicePrivateKeyStorageTier` is integrity-protected by `enrollmentProofTokenSigned`; it is a separate JSON field. To bind tier to the device key cryptographically would require a protocol change (e.g. extended signed payload).
 - Treat a verify failure as terminal for that enrollment flow unless the server explicitly supports
   recovery for the specific error.
 

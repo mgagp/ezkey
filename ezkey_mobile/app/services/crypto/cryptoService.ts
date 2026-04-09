@@ -11,6 +11,7 @@
  */
 
 import {Platform} from 'react-native';
+import type {DevicePrivateKeyStorageTier} from '../api/types';
 import {isNativeCryptoLinked, nativeCrypto} from './nativeCrypto';
 
 /**
@@ -78,6 +79,22 @@ class CryptoService {
    */
   getPublicKey(enrollmentId: string): Promise<string> {
     return nativeCrypto.getPublicKey(enrollmentId);
+  }
+
+  /**
+   * Returns where the enrollment private key is stored (NONE / STANDARD / STRONG) for Auth API verify.
+   * Android derives this from {@code KeyInfo} (StrongBox vs other secure hardware). iOS returns NONE until parity.
+   *
+   * @param enrollmentId Enrollment identifier used as keystore alias.
+   */
+  async getEnrollmentPrivateKeyStorageTier(
+    enrollmentId: string,
+  ): Promise<DevicePrivateKeyStorageTier> {
+    const raw = await nativeCrypto.getEnrollmentPrivateKeyStorageTier(enrollmentId);
+    if (raw === 'NONE' || raw === 'STANDARD' || raw === 'STRONG') {
+      return raw;
+    }
+    return 'NONE';
   }
 
   /**

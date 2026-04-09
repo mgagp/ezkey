@@ -86,6 +86,12 @@ public class EnrollmentVerifyRequest {
   private String enrollmentProofTokenSigned;
 
   /**
+   * Optional client-reported tier for device private key protection (hardware-backed / StrongBox).
+   * When omitted, the server may persist null (legacy clients).
+   */
+  private DevicePrivateKeyStorageTier devicePrivateKeyStorageTier;
+
+  /**
    * Gets the unique identifier of the enrollment being verified.
    *
    * @return the enrollment ID
@@ -155,5 +161,14 @@ public class EnrollmentVerifyRequest {
    */
   public void setEnrollmentProofTokenSigned(String enrollmentProofTokenSigned) {
     this.enrollmentProofTokenSigned = enrollmentProofTokenSigned;
+  }
+
+  public DevicePrivateKeyStorageTier getDevicePrivateKeyStorageTier() {
+    return devicePrivateKeyStorageTier;
+  }
+
+  public void setDevicePrivateKeyStorageTier(
+      DevicePrivateKeyStorageTier devicePrivateKeyStorageTier) {
+    this.devicePrivateKeyStorageTier = devicePrivateKeyStorageTier;
   }
 }

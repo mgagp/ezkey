@@ -151,7 +151,8 @@ class EnrollmentControllerTest {
 
     // Setup verify request test data
     verifyRequestDto =
-        new EnrollmentVerifyRequestDto(123, null, "device-public-key", "proof-token-signature");
+        new EnrollmentVerifyRequestDto(
+            123, null, "device-public-key", "proof-token-signature", null);
 
     verifyRequest = new EnrollmentVerifyRequest();
     verifyRequest.setEnrollmentId(123);

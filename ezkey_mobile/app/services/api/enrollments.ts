@@ -19,6 +19,20 @@ import {
   VerifyEnrollmentResponse,
 } from './types';
 
+function verifyBody(payload: VerifyEnrollmentRequest) {
+  return {
+    enrollmentId: Number(payload.enrollmentId),
+    challengeResponse: payload.challengeResponse
+      ? Number(payload.challengeResponse)
+      : undefined,
+    devicePublicKey: payload.devicePublicKey,
+    enrollmentProofTokenSigned: payload.enrollmentProofTokenSigned,
+    ...(payload.devicePrivateKeyStorageTier != null
+      ? {devicePrivateKeyStorageTier: payload.devicePrivateKeyStorageTier}
+      : {}),
+  };
+}
+
 const basePath = '/api/v1/enrollments';
 
 /**
@@ -59,12 +73,7 @@ export const enrollmentsApi = {
    */
   verify: async (payload: VerifyEnrollmentRequest, authUrl?: string) => {
     const config = authUrl ? {baseURL: authUrl} : undefined;
-    const body = {
-      enrollmentId: Number(payload.enrollmentId),
-      challengeResponse: payload.challengeResponse ? Number(payload.challengeResponse) : undefined,
-      devicePublicKey: payload.devicePublicKey,
-      enrollmentProofTokenSigned: payload.enrollmentProofTokenSigned,
-    };
+    const body = verifyBody(payload);
     const response = await httpClient.post<VerifyEnrollmentResponse>(`${basePath}/verify`, body, config);
     return response.data;
   },

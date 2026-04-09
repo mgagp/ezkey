@@ -113,5 +113,31 @@ describe('enrollmentsApi', () => {
     );
     expect(result).toEqual(responseData);
   });
+
+  it('verify includes devicePrivateKeyStorageTier when provided', async () => {
+    const payload: VerifyEnrollmentRequest = {
+      enrollmentId: '42',
+      challengeResponse: '111111',
+      devicePublicKey: 'pk',
+      enrollmentProofTokenSigned: 'sig',
+      devicePrivateKeyStorageTier: 'STRONG',
+    };
+    const responseData: VerifyEnrollmentResponse = {active: true};
+    mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<VerifyEnrollmentResponse>);
+
+    await enrollmentsApi.verify(payload);
+
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/enrollments/verify',
+      {
+        enrollmentId: 42,
+        challengeResponse: 111111,
+        devicePublicKey: 'pk',
+        enrollmentProofTokenSigned: 'sig',
+        devicePrivateKeyStorageTier: 'STRONG',
+      },
+      undefined,
+    );
+  });
 });
 

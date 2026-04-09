@@ -169,7 +169,8 @@ public class EzkeyAppController {
                 integrationLogo,
                 tenantId,
                 tenantName,
-                tenantDescription);
+                tenantDescription,
+                "NONE");
         storeService.save(record);
 
         model.addAttribute("enrollmentId", enrollmentId);
@@ -242,7 +243,9 @@ public class EzkeyAppController {
               .enrollmentId(enrollmentId)
               .challengeResponse(Integer.parseInt(challengeResponse))
               .devicePublicKey(rec.devicePublicKey())
-              .enrollmentProofTokenSigned(enrollmentProofTokenSigned);
+              .enrollmentProofTokenSigned(enrollmentProofTokenSigned)
+              .devicePrivateKeyStorageTier(
+                  EnrollmentVerifyRequestDto.DevicePrivateKeyStorageTierEnum.NONE);
 
       // Log the request for debugging
       logger.info("Verify request for enrollment {}: {}", enrollmentId, requestDto);
@@ -273,7 +276,8 @@ public class EzkeyAppController {
                   rec.integrationLogo(),
                   rec.tenantId(),
                   rec.tenantName(),
-                  rec.tenantDescription());
+                  rec.tenantDescription(),
+                  "NONE");
           storeService.save(updatedRecord);
 
           model.addAttribute("success", "Enrollment verified successfully!");

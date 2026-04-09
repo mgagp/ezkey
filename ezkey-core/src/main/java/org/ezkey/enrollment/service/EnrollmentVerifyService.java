@@ -420,6 +420,7 @@ public class EnrollmentVerifyService {
     // validation
     String devicePublicKeyHash = SensitiveDataHasher.sha256Hex(request.getDevicePublicKey());
     enrollment.setDevicePublicKeyHash(devicePublicKeyHash);
+    enrollment.setDevicePrivateKeyStorageTier(request.getDevicePrivateKeyStorageTier());
 
     enrollmentRepository.saveAndFlush(enrollment);
 

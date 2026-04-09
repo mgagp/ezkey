@@ -21,6 +21,8 @@ The mobile app verifies **integration** signatures with **Ed25519** (`Integratio
 - **Signature**: `SHA256withECDSA`, ASN.1 DER, standard Base64.
 - **Mobile**: In the current Android implementation, keys live in Android Keystore with StrongBox requested when available. Private key material is not exposed to application code. iOS secure-hardware integration should be documented conservatively until the native path reaches feature parity.
 
+**`devicePrivateKeyStorageTier` (enrollment verify):** The wire value `NONE` / `STANDARD` / `STRONG` is **client-reported metadata**. The Auth API does **not** validate Android Key Attestation or any hardware attestation chain; the backend stores what the app sends. A well-behaved Android client derives the tier from `KeyInfo` (and requested StrongBox at generation time) per `docs/MOBILE_DEVELOPER_GUIDE.md` — but that remains **trust in the client**, not a server-proven property. Do not describe Admin-visible tier as “verified StrongBox” unless a future protocol adds attestation or equivalent verification.
+
 ### Signing and verification (device)
 
 - Backend verifies device material with `SignatureService.validateSignature` (JCA `SHA256withECDSA`).

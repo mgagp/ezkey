@@ -84,7 +84,8 @@ class EnrollmentControllerVerifyAuditTest {
   @BeforeEach
   void setUp() {
     requestDto =
-        new EnrollmentVerifyRequestDto(200, 123456, "device-public-key", "proof-token-signature");
+        new EnrollmentVerifyRequestDto(
+            200, 123456, "device-public-key", "proof-token-signature", null);
 
     verifyRequest = new EnrollmentVerifyRequest();
     verifyRequest.setEnrollmentId(200);

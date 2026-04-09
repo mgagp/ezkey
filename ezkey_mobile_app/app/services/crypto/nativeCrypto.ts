@@ -15,6 +15,7 @@ import {NativeModules} from 'react-native';
 type NativeModuleShape = {
   generateEnrollmentKeyPair(enrollmentId: string): Promise<boolean>;
   getPublicKey(enrollmentId: string): Promise<string>;
+  getDevicePrivateKeyStorageTier(enrollmentId: string): Promise<string>;
   sign(enrollmentId: string, data: string): Promise<string>;
   verify(data: string, signatureBase64: string, publicKeyBase64: string): Promise<boolean>;
   deleteKeyPair(enrollmentId: string): Promise<boolean>;
@@ -31,6 +32,11 @@ const fallback = {
   async getPublicKey(): Promise<string> {
     throw new Error(
       'EzkeyCryptoModule is not linked. Unable to retrieve public key.',
+    );
+  },
+  async getDevicePrivateKeyStorageTier(): Promise<string> {
+    throw new Error(
+      'EzkeyCryptoModule is not linked. Unable to read device key storage tier.',
     );
   },
   async sign(): Promise<string> {
@@ -63,6 +69,8 @@ export const nativeCrypto = {
     cryptoModule.generateEnrollmentKeyPair(enrollmentId),
   getPublicKey: (enrollmentId: string) =>
     cryptoModule.getPublicKey(enrollmentId),
+  getDevicePrivateKeyStorageTier: (enrollmentId: string) =>
+    cryptoModule.getDevicePrivateKeyStorageTier(enrollmentId),
   sign: (enrollmentId: string, data: string) =>
     cryptoModule.sign(enrollmentId, data),
   verify: (data: string, signatureBase64: string, publicKeyBase64: string) =>

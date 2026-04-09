@@ -6089,6 +6089,15 @@
             "type": "string",
             "description": "Public key for the device"
           },
+          "devicePrivateKeyStorageTier": {
+            "type": "string",
+            "description": "Client-reported device private key storage tier at verify (NONE, STANDARD, STRONG); null if unknown or legacy",
+            "enum": [
+              "NONE",
+              "STANDARD",
+              "STRONG"
+            ]
+          },
           "verifiedAt": {
             "type": "string",
             "format": "date-time",
