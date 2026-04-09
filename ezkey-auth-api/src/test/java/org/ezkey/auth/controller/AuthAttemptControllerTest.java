@@ -351,8 +351,32 @@ class AuthAttemptControllerTest {
   }
 
   @Test
-  @DisplayName("POST /api/v1/auth-attempts/respond - Should return 400 on invalid response")
-  void respond_WhenInvalidResponse_ShouldReturn400() throws Exception {
+  @DisplayName(
+      "POST /api/v1/auth-attempts/respond - Should return 400 when service throws legacy "
+          + "IllegalArgumentException")
+  void respond_WhenServiceThrowsLegacyIllegalArgument_ShouldReturn400() throws Exception {
+    when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
+        .thenReturn(respondRequest);
+    when(authAttemptService.respond(any(AuthAttemptRespondRequest.class)))
+        .thenThrow(new IllegalArgumentException("legacy validation"));
+
+    String json = objectMapper.writeValueAsString(respondRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/respond").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(AuthApiProblemCatalog.TYPE_VALIDATION_FAILED))
+        .andExpect(jsonPath("$.title").value(AuthApiProblemCatalog.TITLE_BAD_REQUEST));
+
+    verify(authAttemptService, times(1)).respond(any(AuthAttemptRespondRequest.class));
+  }
+
+  @Test
+  @DisplayName(
+      "POST /api/v1/auth-attempts/respond - Should return 400 when service throws "
+          + "AuthAttemptRequestFailedException")
+  void respond_WhenServiceThrowsAuthAttemptRequestFailed_ShouldReturn400() throws Exception {
     // Arrange
     when(authAttemptMapper.toAuthAttemptRespondRequest(any(AuthAttemptRespondRequestDto.class)))
         .thenReturn(respondRequest);

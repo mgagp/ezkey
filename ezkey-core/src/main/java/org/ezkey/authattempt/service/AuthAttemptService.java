@@ -559,7 +559,8 @@ public class AuthAttemptService {
    *
    * @param request the pending request with enrollment proof token
    * @return the pending authentication response with proof token
-   * @throws IllegalArgumentException if enrollment proof token is invalid
+   * @throws org.ezkey.exception.auth.AuthAttemptRequestFailedException if enrollment proof token is
+   *     invalid
    * @throws IllegalStateException if the authentication attempt is already processed
    * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
    * @since 2025
@@ -573,7 +574,8 @@ public class AuthAttemptService {
    *
    * @param request the pending request with enrollment proof token
    * @return the pending authentication response with proof token
-   * @throws IllegalArgumentException if enrollment proof token is invalid
+   * @throws org.ezkey.exception.auth.AuthAttemptRequestFailedException if enrollment proof token is
+   *     invalid
    * @throws IllegalStateException if the authentication attempt is already processed
    * @throws NoPendingAuthAttemptException if no pending authentication attempt is found
    */

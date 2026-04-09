@@ -132,8 +132,10 @@ public class AuthAttemptRespondService {
 
       // Step 6: Build and return response (integration-signed result payload)
       return buildResponse(request, authAttempt, enrollment);
-    } catch (IllegalArgumentException e) {
-      return buildFailedResponse(request, authAttempt, e);
+    } catch (AuthAttemptRequestFailedException ignored) {
+      // Domain FAILED response (integration-signed); state conflicts use
+      // AuthAttemptStateConflictException and propagate.
+      return buildFailedResponse(request, authAttempt);
     }
   }
 
@@ -341,7 +343,7 @@ public class AuthAttemptRespondService {
    * from the attempt's enrollment.
    */
   private AuthAttemptRespondResponse buildFailedResponse(
-      AuthAttemptRespondRequest request, AuthAttempt authAttempt, IllegalArgumentException e) {
+      AuthAttemptRespondRequest request, AuthAttempt authAttempt) {
     AuthAttemptRespondResponse response =
         new AuthAttemptRespondResponse(AuthenticationResult.FAILED, RESPOND_FAILURE_CLIENT_MESSAGE);
     if (authAttempt != null) {

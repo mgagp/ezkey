@@ -184,7 +184,8 @@ public class AuthAttemptController {
    * @param httpRequest the HTTP servlet request for extracting audit information (IP, user agent)
    * @return ResponseEntity containing pending authentication details with HTTP 200, or 204 No
    *     Content if no pending requests, or 400 for invalid requests
-   * @throws IllegalArgumentException if enrollment proof token is invalid or enrollment not found
+   * @throws org.ezkey.exception.auth.AuthAttemptRequestFailedException if enrollment proof token is
+   *     invalid or enrollment not found (mapped to HTTP 400 by {@code GlobalExceptionHandler})
    * @since 2025
    */
   @PostMapping("/pending")
@@ -274,13 +275,18 @@ public class AuthAttemptController {
   @Operation(
       summary = "Submit authentication response",
       description =
-          "Submits mobile device's response to an authentication request. "
-              + "The authAttemptId is provided in the request body for uniform API design.")
+          "Submits mobile device's response to an authentication request. The authAttemptId is"
+              + " provided in the request body for uniform API design. HTTP 200 may include a"
+              + " business-level FAILED result in the JSON body (integration-signed) when"
+              + " validation fails in the respond service; uncaught IllegalArgumentException uses"
+              + " 400.")
   @ApiResponses(
       value = {
         @ApiResponse(
             responseCode = "200",
-            description = "Authentication response submitted successfully",
+            description =
+                "Respond processed; body may be APPROVED, DENIED, or FAILED (signed FAILED when "
+                    + "validation/crypto checks fail in the respond service)",
             content =
                 @io.swagger.v3.oas.annotations.media.Content(
                     schema =

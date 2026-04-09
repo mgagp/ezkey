@@ -12,12 +12,12 @@ import java.io.Serial;
 /**
  * Thrown when a pending or respond request fails validation or cryptographic checks.
  *
- * <p>Extends {@link IllegalArgumentException} so {@link
- * org.ezkey.authattempt.service.AuthAttemptRespondService} can return HTTP 200 with a signed FAILED
- * business result where that contract applies. Message text is for server logs only; clients must
- * not rely on {@link #getMessage()} for security UX.
+ * <p>{@link org.ezkey.authattempt.service.AuthAttemptRespondService} catches this type and returns
+ * HTTP 200 with a signed FAILED business result for the respond contract. Other callers may let it
+ * propagate to the Auth API {@code GlobalExceptionHandler} (typically HTTP 400). Message text is
+ * for server logs only; clients must not rely on {@link #getMessage()} for security UX.
  */
-public class AuthAttemptRequestFailedException extends IllegalArgumentException {
+public class AuthAttemptRequestFailedException extends RuntimeException {
 
   @Serial private static final long serialVersionUID = 1L;
 

@@ -115,7 +115,7 @@ HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem De
 
 **204 No Content** on `POST /api/v1/auth-attempts/pending` when there is no pending attempt is a **success** (no body), not an error.
 
-**200 OK** on `POST /api/v1/auth-attempts/respond` may still return a business-level `FAILED` result in the JSON body for some validation paths (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). HTTP-level failures use Problem Details as above.
+**200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level `FAILED` result in the JSON body when validation or cryptographic checks fail in a way modeled as `AuthAttemptRequestFailedException` in the respond service (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (e.g. superseded or expired attempt) use **409** Problem Details as above.
 
 ### a) Retrieve pending request
 
