@@ -80,6 +80,6 @@ export type RespondAuthResponse = {
   authAttemptId: number;
   authAttemptResult: AuthAttemptDecision;
   authAttemptMessage: string;
-  /** Base64 ECDSA signature; null only if the server could not sign (e.g. integration key unavailable). */
+  /** Base64URL Ed25519 signature (raw 64 bytes); null only if the server could not sign (e.g. integration key unavailable). */
   authAttemptProofTokenResultSignedByIntegration: string | null;
 };

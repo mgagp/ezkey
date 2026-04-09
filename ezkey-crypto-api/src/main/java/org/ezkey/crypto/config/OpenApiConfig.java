@@ -73,10 +73,7 @@ import org.springframework.context.annotation.Configuration;
                 only be used in secure, isolated testing environments.
                 """,
             contact =
-                @Contact(
-                    name = "Ezkey Team",
-                    email = "info@ezkey.org",
-                    url = "https://ezkey.org"),
+                @Contact(name = "Ezkey Team", email = "info@ezkey.org", url = "https://ezkey.org"),
             license = @License(name = "MIT License", url = "https://opensource.org/licenses/MIT")),
     servers = {
       @Server(url = "http://localhost:9090", description = "Development server Crypto API")

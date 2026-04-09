@@ -6,7 +6,7 @@ import {
 
 /**
  * Regression guard for docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md canonical strings.
- * Golden vectors that prove ECDSA over a real integration key live in Android
+ * Golden vectors that prove Ed25519 over a real integration key live in Android
  * IntegrationKeyVerifierTest + optional files under android/.../fixtures/ (see README there).
  */
 describe('authAttemptPayload', () => {

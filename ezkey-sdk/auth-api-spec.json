@@ -498,8 +498,8 @@
           },
           "authAttemptProofTokenResultSignedByIntegration": {
             "type": "string",
-            "description": "Integration signature over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
-            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+            "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
+            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
           }
         },
         "required": [

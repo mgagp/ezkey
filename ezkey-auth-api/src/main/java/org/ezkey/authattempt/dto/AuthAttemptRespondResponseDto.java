@@ -58,14 +58,16 @@ public record AuthAttemptRespondResponseDto(
         String authAttemptMessage,
 
     /**
-     * Integration ECDSA signature (Base64) over the canonical Respond result payload. Null only
-     * when the server could not sign (e.g. integration key unavailable).
+     * Ed25519 signature over the canonical Respond result payload, encoded as Base64URL without
+     * padding (raw 64-byte signature). Null only when the server could not sign (e.g. integration
+     * key unavailable).
      */
     @Schema(
             description =
-                "Integration signature over proofToken|authAttemptId|result|message (see"
+                "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over"
+                    + " proofToken|authAttemptId|result|message (see"
                     + " AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
             example =
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             requiredMode = RequiredMode.NOT_REQUIRED)
         String authAttemptProofTokenResultSignedByIntegration) {}

@@ -89,7 +89,8 @@ public class AuthAttemptRespondResponse {
   private OffsetDateTime createdAt;
 
   /**
-   * Integration ECDSA signature (Base64) over the canonical Respond result payload. See {@link
+   * Ed25519 signature over the canonical Respond result payload, encoded as Base64URL without
+   * padding (raw 64-byte signature). See {@link
    * org.ezkey.authattempt.service.AuthAttemptSignaturePayload#buildRespondResultPayload} and {@code
    * docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md}. Null when the integration private key could not be
    * used (e.g. attempt id unknown).
@@ -208,7 +209,7 @@ public class AuthAttemptRespondResponse {
   /**
    * Gets the integration signature over the Respond result payload.
    *
-   * @return Base64-encoded signature, or null if not generated
+   * @return Ed25519 signature as Base64URL without padding, or null if not generated
    */
   public String getAuthAttemptProofTokenResultSignedByIntegration() {
     return authAttemptProofTokenResultSignedByIntegration;
@@ -217,7 +218,8 @@ public class AuthAttemptRespondResponse {
   /**
    * Sets the integration signature over the Respond result payload.
    *
-   * @param authAttemptProofTokenResultSignedByIntegration Base64-encoded signature, or null
+   * @param authAttemptProofTokenResultSignedByIntegration Ed25519 signature as Base64URL without
+   *     padding, or null
    */
   public void setAuthAttemptProofTokenResultSignedByIntegration(
       String authAttemptProofTokenResultSignedByIntegration) {

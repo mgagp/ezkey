@@ -77,10 +77,7 @@ import org.springframework.context.annotation.Configuration;
                 with comprehensive validation.
                 """,
             contact =
-                @Contact(
-                    name = "Ezkey Team",
-                    email = "info@ezkey.org",
-                    url = "https://ezkey.org"),
+                @Contact(name = "Ezkey Team", email = "info@ezkey.org", url = "https://ezkey.org"),
             license = @License(name = "MIT License", url = "https://opensource.org/licenses/MIT")),
     servers = {
       @Server(url = "http://localhost:8080", description = "Development server Auth API"),

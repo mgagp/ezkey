@@ -114,12 +114,13 @@ class CryptoService {
   }
 
   /**
-   * Verifies an ECDSA-SHA256 signature over the given data with the given public key.
-   * Used to verify the integration signature on the Pending response payload.
+   * Verifies an Ed25519 signature over the given data with the integration public key.
+   * Used for integration-signed fields on Pending and Respond responses (raw 32-byte key and
+   * 64-byte signature on the wire; native layer uses flexible Base64 decode).
    *
    * @param data The exact payload that was signed (UTF-8).
-   * @param signatureBase64 Base64-encoded ECDSA signature.
-   * @param publicKeyBase64 Base64-encoded X.509 public key (e.g. integration public key).
+   * @param signatureBase64 Base64-encoded raw Ed25519 signature (typically Base64URL from the API).
+   * @param publicKeyBase64 Base64-encoded raw Ed25519 public key from enrollment bind.
    * @return true if the signature is valid.
    * @since 2025
    */
