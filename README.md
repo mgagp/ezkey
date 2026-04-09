@@ -59,6 +59,8 @@ For stack details, modes, and test-oriented workflow:
 - [`docs/RECOVERY_CODES_LIFECYCLE_ANALYSIS.md`](docs/RECOVERY_CODES_LIFECYCLE_ANALYSIS.md) - Recovery-code lifecycle analysis and recommended regeneration model.
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) - Development workflow.
 - [`docs/OPERATIONAL.md`](docs/OPERATIONAL.md) - Operational and deployment guidance.
+- [`docs/cloudflare/`](docs/cloudflare/) - Public static site (`sites/ezkey-org`) and Cloudflare workflow notes.
+- [`sites/ezkey-org/`](sites/ezkey-org/) - Source for the ezkey.org static landing page.
 - [`ezkey-admin-ui/README.md`](ezkey-admin-ui/README.md) - Admin UI overview and local usage.
 - [`ezkey_mobile/README.md`](ezkey_mobile/README.md) - Mobile application notes.
 - [`ezkey-cli-python/README.md`](ezkey-cli-python/README.md) - CLI usage.

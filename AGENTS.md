@@ -1,6 +1,6 @@
 # Ezkey — Agent notes (repo-wide)
 
-For agents working anywhere in the repo. For module-specific conventions and patterns, see the `AGENTS.md` in each module (e.g. `ezkey-admin-ui/AGENTS.md`, `ezkey-admin-api/AGENTS.md`).
+For agents working anywhere in the repo. For module-specific conventions and patterns, see the `AGENTS.md` in each module (e.g. `ezkey-admin-ui/AGENTS.md`, `ezkey-admin-api/AGENTS.md`, `sites/ezkey-org/AGENTS.md` for the public static site and Cloudflare Pages context).
 
 For full product and technical context, read **PRD.md**, **README.md**, **docs/PROJECT_POSITIONING.md**, and **docs/ENDPOINT.md** at the start of a new session.
 

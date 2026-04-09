@@ -4,6 +4,10 @@
 
 This directory contains utility scripts for Ezkey project management, including OpenAPI specification management and database migration tools.
 
+## Cloudflare (static site preview)
+
+- [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).
+
 ## Initial Problem
 
 Demo projects were using two different approaches for OpenAPI specifications:

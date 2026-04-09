@@ -22,6 +22,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 ### 📊 Monitoring & Operations
 - **[monitoring/](monitoring/)** - Grafana dashboards, monitoring setup, and operational guides
 - **[OPERATIONAL.md](OPERATIONAL.md)** - Production deployment, security configuration, and operational best practices
+- **[cloudflare/](cloudflare/)** - ezkey.org static site source location, Cloudflare workflow (preview vs production), and edge-related planning notes
 
 ### 🔧 Development Tools
 - **[dev-tools/](dev-tools/)** - Development tools, configurations, and utilities
