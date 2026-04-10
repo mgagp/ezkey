@@ -59,6 +59,7 @@
     "labelPhone": "Téléphone",
     "labelType": "Type",
     "labelTenantId": "ID tenant",
+    "labelEnrollmentId": "ID d'enrôlement",
     "labelStatus": "Statut",
     "labelCreated": "Créé",
     "labelLastLogin": "Dernière connexion",

@@ -12,11 +12,13 @@ package org.ezkey.admin.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,6 +34,7 @@ import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.QrCodeGeneratorService;
 import org.ezkey.admin.service.QrCodePayloadService;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
@@ -376,6 +379,62 @@ class AdminProvisioningControllerTest {
       assertEquals(0, responseBody.getTotalElements());
       assertTrue(responseBody.getContent().isEmpty());
       verify(provisioningService).listAdmins(eq(1), eq(pageable));
+    }
+  }
+
+  @Nested
+  @DisplayName("Get Administrator by ID")
+  class GetAdminByIdTests {
+
+    @BeforeEach
+    void setUpGlobalAdmin() {
+      setupGlobalAdminAuthentication();
+    }
+
+    @Test
+    @DisplayName("Returns enrollmentId when admin has linked enrollment")
+    void returnsEnrollmentIdWhenLinked() {
+      Enrollment enrollment = mock(Enrollment.class);
+      when(enrollment.getEnrollmentId()).thenReturn(99);
+
+      EzkeyAdmin admin = new EzkeyAdmin("tenantadmin1", AdminType.TENANT_ADMIN);
+      admin.setAdminId(2);
+      admin.setTenant(testTenant);
+      admin.setEnrollment(enrollment);
+      admin.setEmail("t@example.com");
+      admin.setVersion(0L);
+      admin.setCreatedAt(OffsetDateTime.now());
+      admin.setActive(true);
+
+      when(provisioningService.getAdminById(eq(2), any())).thenReturn(admin);
+
+      ResponseEntity<AdminResponseDto> response =
+          controller.getAdminById(2, SecurityContextHolder.getContext().getAuthentication());
+
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      assertEquals(Integer.valueOf(99), response.getBody().enrollmentId());
+    }
+
+    @Test
+    @DisplayName("Returns null enrollmentId when admin has no enrollment")
+    void returnsNullEnrollmentIdWhenNotLinked() {
+      EzkeyAdmin admin = new EzkeyAdmin("tenantadmin1", AdminType.TENANT_ADMIN);
+      admin.setAdminId(2);
+      admin.setTenant(testTenant);
+      admin.setEmail("t@example.com");
+      admin.setVersion(0L);
+      admin.setCreatedAt(OffsetDateTime.now());
+      admin.setActive(true);
+
+      when(provisioningService.getAdminById(eq(2), any())).thenReturn(admin);
+
+      ResponseEntity<AdminResponseDto> response =
+          controller.getAdminById(2, SecurityContextHolder.getContext().getAuthentication());
+
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      assertNull(response.getBody().enrollmentId());
     }
   }
 

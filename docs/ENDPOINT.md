@@ -1079,6 +1079,7 @@ Authorization: Bearer ezkey_admin_token...
       "lastName": "Docker",
       "adminType": "GLOBAL_ADMIN",
       "tenantId": null,
+      "enrollmentId": 42,
       "active": true,
       "createdAt": "2025-12-26T10:00:00Z",
       "lastLoginAt": "2025-12-28T09:15:00Z"
@@ -1093,7 +1094,7 @@ Authorization: Bearer ezkey_admin_token...
 }
 ```
 
-**Response fields:** `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). Useful for access reviews and SOC 2 procedures.
+**Response fields:** `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). Useful for access reviews and SOC 2 procedures.
 
 **Status Codes:**
 - 200: List of administrators retrieved successfully
@@ -1117,7 +1118,7 @@ GET /api/v1/admins/2
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Success Response (200 OK):** Same fields as a list item: `adminId`, `username`, `email`, `firstName`, `lastName`, `adminType`, `tenantId`, `active`, `createdAt`, `lastLoginAt`.
+**Success Response (200 OK):** Same fields as a list item: `adminId`, `username`, `email`, `firstName`, `lastName`, `adminType`, `tenantId`, `enrollmentId`, `active`, `createdAt`, `lastLoginAt`.
 
 **Status Codes:**
 - 200: Administrator retrieved successfully

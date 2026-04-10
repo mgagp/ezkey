@@ -40,6 +40,7 @@ import java.time.OffsetDateTime;
  * <ul>
  *   <li><b>adminType:</b> Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)
  *   <li><b>tenantId:</b> Tenant ID (null for global admins)
+ *   <li><b>enrollmentId:</b> MFA enrollment ID for passwordless admin identity (null if not linked)
  * </ul>
  *
  * <p><b>Status Fields:</b>
@@ -66,6 +67,7 @@ import java.time.OffsetDateTime;
  * @param lastName Last name (optional, required for GLOBAL_ADMIN)
  * @param adminType Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)
  * @param tenantId Tenant ID (null for global admins)
+ * @param enrollmentId MFA enrollment ID (null if not linked)
  * @param active Flag indicating if the administrator is currently active
  * @param createdAt Timestamp when the administrator was created (with timezone)
  * @param lastLoginAt Timestamp of last successful login (null if never logged in)
@@ -94,6 +96,13 @@ public record AdminResponseDto(
             allowableValues = {"GLOBAL_ADMIN", "TENANT_ADMIN", "INTEGRATION_ADMIN"})
         String adminType,
     @Schema(description = "Tenant ID (null for global admins)", example = "1") Integer tenantId,
+    @Schema(
+            description =
+                "Enrollment ID for MFA (passwordless admin identity). Null if not linked to an"
+                    + " enrollment.",
+            example = "123",
+            nullable = true)
+        Integer enrollmentId,
     @Schema(
             description = "Flag indicating if the administrator is currently active",
             example = "true")

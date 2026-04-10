@@ -347,6 +347,7 @@ function AdminDetailDialog({
 
   const relatedDetails = useExpandableRelatedDetails({
     tenantId: adm?.tenantId ?? undefined,
+    enrollmentId: adm?.enrollmentId ?? undefined,
   });
 
   const [activateReason, setActivateReason] = useState('');
@@ -496,6 +497,11 @@ function AdminDetailDialog({
           {adm.tenantId != null && (
             <InfoRow label={t('detail.labelTenantId')}><span className="font-mono">{adm.tenantId}</span></InfoRow>
           )}
+          {adm.enrollmentId != null && (
+            <InfoRow label={t('detail.labelEnrollmentId')}>
+              <span className="font-mono">{adm.enrollmentId}</span>
+            </InfoRow>
+          )}
           {relatedDetails.isExpanded && relatedDetails.tenant && (
             <InfoRow label={t('common:detail.relatedTenant')}>
               <Link
@@ -503,6 +509,17 @@ function AdminDetailDialog({
                 className="font-medium text-accent hover:underline"
               >
                 {relatedDetails.tenant.tenantName ?? relatedDetails.tenant.tenantId} (ID {relatedDetails.tenant.tenantId})
+              </Link>
+            </InfoRow>
+          )}
+          {relatedDetails.isExpanded && relatedDetails.enrollment && adm.enrollmentId != null && (
+            <InfoRow label={t('common:detail.relatedEnrollment')}>
+              <Link
+                to={`/enrollments/${adm.enrollmentId}`}
+                className="font-medium text-accent hover:underline"
+              >
+                {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId}{' '}
+                (ID {relatedDetails.enrollment.enrollmentId})
               </Link>
             </InfoRow>
           )}

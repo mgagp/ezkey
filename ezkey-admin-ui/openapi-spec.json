@@ -6377,6 +6377,12 @@
             "description": "Tenant ID (null for global admins)",
             "example": 1
           },
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID for MFA (passwordless admin identity). Null if not linked to an enrollment.",
+            "example": 123
+          },
           "active": {
             "type": "boolean",
             "description": "Flag indicating if the administrator is currently active",

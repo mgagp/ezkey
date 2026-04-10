@@ -59,6 +59,7 @@
     "labelPhone": "Phone",
     "labelType": "Type",
     "labelTenantId": "Tenant ID",
+    "labelEnrollmentId": "Enrollment ID",
     "labelStatus": "Status",
     "labelCreated": "Created",
     "labelLastLogin": "Last Login",

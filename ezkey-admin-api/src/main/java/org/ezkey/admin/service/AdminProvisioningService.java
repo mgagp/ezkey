@@ -610,6 +610,7 @@ public class AdminProvisioningService {
 
     admin = adminRepository.save(admin);
     logger.info("Admin {} profile updated by admin {}", adminId, requesterPrincipal.adminId());
+    loadAdminResponseAssociations(admin);
     return admin;
   }
 
@@ -630,18 +631,24 @@ public class AdminProvisioningService {
    * @param pageable pagination and sorting parameters
    * @return page of administrators matching the tenant filter
    */
+  @Transactional(readOnly = true)
   public Page<EzkeyAdmin> listAdmins(Integer tenantId, Pageable pageable) {
     logger.debug("Listing admins - tenantId: {}, pageable: {}", tenantId, pageable);
 
+    Page<EzkeyAdmin> page;
     if (tenantId == null) {
       // GlobalAdmin: return all admins
       logger.debug("GlobalAdmin listing all admins");
-      return adminRepository.findAll(pageable);
+      page = adminRepository.findAll(pageable);
     } else {
       // TenantAdmin: return only admins from their tenant
       logger.debug("TenantAdmin listing admins for tenant: {}", tenantId);
-      return adminRepository.findByTenantTenantId(tenantId, pageable);
+      page = adminRepository.findByTenantTenantId(tenantId, pageable);
     }
+    for (EzkeyAdmin admin : page.getContent()) {
+      loadAdminResponseAssociations(admin);
+    }
+    return page;
   }
 
   /**
@@ -664,6 +671,7 @@ public class AdminProvisioningService {
             .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
 
     if (requesterPrincipal.isGlobalAdmin()) {
+      loadAdminResponseAssociations(admin);
       return admin;
     }
     if (requesterPrincipal.isTenantAdmin()) {
@@ -674,10 +682,22 @@ public class AdminProvisioningService {
             "Tenant administrators can only access admins in their tenant");
       }
     }
-    // Force-load lazy associations and fields used by the controller while still in transaction
+    loadAdminResponseAssociations(admin);
+    return admin;
+  }
+
+  /**
+   * Loads lazy associations needed to build {@link org.ezkey.admin.dto.response.AdminResponseDto}
+   * outside this transaction (avoids lazy init issues when open-in-view is disabled).
+   *
+   * @param admin administrator entity
+   */
+  private void loadAdminResponseAssociations(EzkeyAdmin admin) {
     admin.getTenant();
     admin.getLastLoginAt();
-    return admin;
+    if (admin.getEnrollment() != null) {
+      admin.getEnrollment().getEnrollmentId();
+    }
   }
 
   /**

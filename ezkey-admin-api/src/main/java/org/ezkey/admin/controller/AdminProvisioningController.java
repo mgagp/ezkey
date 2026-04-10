@@ -136,6 +136,25 @@ public class AdminProvisioningController {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
   }
 
+  private static AdminResponseDto toAdminResponseDto(EzkeyAdmin admin) {
+    Integer enrollmentId =
+        admin.getEnrollment() != null ? admin.getEnrollment().getEnrollmentId() : null;
+    return new AdminResponseDto(
+        admin.getAdminId(),
+        admin.getVersion(),
+        admin.getUsername(),
+        admin.getEmail(),
+        admin.getPhoneNumber(),
+        admin.getFirstName(),
+        admin.getLastName(),
+        admin.getAdminType().name(),
+        admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
+        enrollmentId,
+        admin.getActive(),
+        admin.getCreatedAt(),
+        admin.getLastLoginAt());
+  }
+
   /**
    * Creates a new global administrator (peer admin).
    *
@@ -427,22 +446,7 @@ public class AdminProvisioningController {
 
     Page<EzkeyAdmin> admins = provisioningService.listAdmins(effectiveTenantId, pageable);
 
-    Page<AdminResponseDto> response =
-        admins.map(
-            admin ->
-                new AdminResponseDto(
-                    admin.getAdminId(),
-                    admin.getVersion(),
-                    admin.getUsername(),
-                    admin.getEmail(),
-                    admin.getPhoneNumber(),
-                    admin.getFirstName(),
-                    admin.getLastName(),
-                    admin.getAdminType().name(),
-                    admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
-                    admin.getActive(),
-                    admin.getCreatedAt(),
-                    admin.getLastLoginAt()));
+    Page<AdminResponseDto> response = admins.map(AdminProvisioningController::toAdminResponseDto);
 
     return ResponseEntity.ok(response);
   }
@@ -479,21 +483,7 @@ public class AdminProvisioningController {
 
     try {
       EzkeyAdmin admin = provisioningService.getAdminById(id, principal);
-      AdminResponseDto response =
-          new AdminResponseDto(
-              admin.getAdminId(),
-              admin.getVersion(),
-              admin.getUsername(),
-              admin.getEmail(),
-              admin.getPhoneNumber(),
-              admin.getFirstName(),
-              admin.getLastName(),
-              admin.getAdminType().name(),
-              admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
-              admin.getActive(),
-              admin.getCreatedAt(),
-              admin.getLastLoginAt());
-      return ResponseEntity.ok(response);
+      return ResponseEntity.ok(toAdminResponseDto(admin));
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
     } catch (IllegalArgumentException e) {
@@ -554,20 +544,7 @@ public class AdminProvisioningController {
       Boolean previousChallengeRequired = existingAdmin.getChallengeRequired();
 
       EzkeyAdmin admin = provisioningService.updateAdmin(id, request, principal);
-      AdminResponseDto response =
-          new AdminResponseDto(
-              admin.getAdminId(),
-              admin.getVersion(),
-              admin.getUsername(),
-              admin.getEmail(),
-              admin.getPhoneNumber(),
-              admin.getFirstName(),
-              admin.getLastName(),
-              admin.getAdminType().name(),
-              admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
-              admin.getActive(),
-              admin.getCreatedAt(),
-              admin.getLastLoginAt());
+      AdminResponseDto response = toAdminResponseDto(admin);
 
       auditLogService.log(
           AuditHelper.createAdminAudit(
