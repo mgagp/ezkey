@@ -77,10 +77,20 @@ class _FakeAuthApi implements EzkeyAuthApi {
   @override
   Future<EnrollmentBindResponse> bind(EnrollmentBindRequest request) async {
     lastBindRequest = request;
+    final bindPayload = buildEnrollmentBindPayload(
+      enrollmentProofToken: request.enrollmentProofToken,
+      enrollmentId: int.parse(request.enrollmentId),
+      integrationPublicKey: integrationPublicKey,
+      integrationKeyAlgorithm: 'ed25519',
+      integrationName: 'Acme Demo',
+      tenantName: 'Acme Tenant',
+    );
+    final bindSig = await signEd25519WithPkcs8(bindPayload, integrationPkcs8);
     return EnrollmentBindResponse(
       enrollmentId: request.enrollmentId,
       enrollmentProofToken: request.enrollmentProofToken,
       integrationPublicKey: integrationPublicKey,
+      enrollmentBindPayloadSignedByIntegration: bindSig,
       integrationKeyAlgorithm: 'ed25519',
       integrationName: 'Acme Demo',
       tenantName: 'Acme Tenant',
@@ -128,6 +138,33 @@ class _FakeAuthApi implements EzkeyAuthApi {
     expect(request.challengeResponse, '654321');
     expect(request.devicePublicKey, isNotEmpty);
     expect(request.enrollmentProofTokenSigned, isNotEmpty);
-    return EnrollmentVerifyResponse(active: true);
+    final canonical = buildEnrollmentVerifyDevicePayload(
+      'proof.enroll',
+      123,
+      654321,
+      request.devicePublicKey,
+    );
+    final pub = ecPublicKeyFromSpkiBase64(request.devicePublicKey);
+    expect(
+      EzKeyCrypto.verifyDeviceSignature(
+        pub,
+        canonical,
+        request.enrollmentProofTokenSigned,
+      ),
+      isTrue,
+    );
+    const verifyMessage = 'Enrollment verified successfully';
+    final resultPayload = buildEnrollmentVerifyResultPayload(
+      'proof.enroll',
+      123,
+      'VERIFIED',
+      verifyMessage,
+    );
+    final resultSig = await signEd25519WithPkcs8(resultPayload, integrationPkcs8);
+    return EnrollmentVerifyResponse(
+      active: true,
+      enrollmentVerifyMessage: verifyMessage,
+      enrollmentVerifyPayloadSignedByIntegration: resultSig,
+    );
   }
 }

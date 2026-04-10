@@ -42,6 +42,7 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * @param tenantName The tenant display name of the integration associated with this enrollment
  * @param tenantDescription The tenant description of the integration associated with this
  *     enrollment
+ * @param enrollmentBindPayloadSignedByIntegration Ed25519 signature over the canonical bind payload
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentBindResponse
@@ -101,4 +102,12 @@ public record EnrollmentBindResponseDto(
             description = "Tenant description of the integration associated with this enrollment",
             example = "Acme Corp tenant workspace",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        String tenantDescription) {}
+        String tenantDescription,
+    @Schema(
+            description =
+                "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind"
+                    + " payload (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)",
+            example =
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            requiredMode = RequiredMode.REQUIRED)
+        String enrollmentBindPayloadSignedByIntegration) {}

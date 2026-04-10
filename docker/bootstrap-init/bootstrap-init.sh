@@ -131,9 +131,13 @@ if [ "$BIND_PROOF_TOKEN" != "SKIPPED_ALREADY_BOUND" ]; then
   echo ""
   echo "Step 5: Verifying enrollment..."
   
-  # Sign bind proof token with device private key
+  # Canonical verify device payload (must match docs/ENROLLMENT_SIGNATURE_PAYLOAD.md and
+  # EnrollmentSignaturePayload.buildVerifyDevicePayload): proofToken|enrollmentId|challenge|devicePublicKey
+  VERIFY_SIGN_DATA="${BIND_PROOF_TOKEN}|${ENROLLMENT_ID}|${ENROLLMENT_CHALLENGE}|${DEVICE_PUBLIC_KEY}"
+  
+  # Sign canonical payload with device private key (ECDSA-SHA256 via Crypto API)
   SIGN_REQUEST=$(jq -n \
-    --arg data "$BIND_PROOF_TOKEN" \
+    --arg data "$VERIFY_SIGN_DATA" \
     --arg privateKey "$DEVICE_PRIVATE_KEY" \
     '{data: $data, privateKey: $privateKey}')
   
@@ -145,7 +149,7 @@ if [ "$BIND_PROOF_TOKEN" != "SKIPPED_ALREADY_BOUND" ]; then
   SIGNATURE=$(echo "$SIGN_RESPONSE" | jq -r '.signature')
   
   if [ "$SIGNATURE" = "null" ] || [ -z "$SIGNATURE" ]; then
-    echo "❌ Error: Failed to sign bind proof token"
+    echo "❌ Error: Failed to sign enrollment verify canonical payload"
     exit 1
   fi
   

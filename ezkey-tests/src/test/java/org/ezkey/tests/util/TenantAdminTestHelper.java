@@ -251,8 +251,11 @@ public class TenantAdminTestHelper {
     String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
     log.info("Device bound successfully");
 
-    // Step 5: Sign bind proof token
-    String bindSignature = cryptoApiClient.signData(bindProofToken, keyPair.privateKey());
+    // Step 5: Sign canonical enrollment verify payload
+    String verifyPayload =
+        EnrollmentVerifyDevicePayload.build(
+            bindProofToken, enrollmentId, enrollmentChallenge, keyPair.publicKey());
+    String bindSignature = cryptoApiClient.signData(verifyPayload, keyPair.privateKey());
 
     // Step 6: Verify enrollment
     RestAssuredTestConfig.configureForAuthApi(dockerStackConfig);

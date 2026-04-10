@@ -135,6 +135,7 @@ class EnrollmentControllerTest {
     bindResponse.setEnrollmentProofToken("test-proof-token");
     bindResponse.setIntegrationPublicKey("test-public-key");
     bindResponse.setIntegrationKeyAlgorithm("ed25519");
+    bindResponse.setEnrollmentBindPayloadSignedByIntegration("bind-signature");
 
     bindResponseDto =
         new EnrollmentBindResponseDto(
@@ -147,7 +148,8 @@ class EnrollmentControllerTest {
             null,
             null,
             null,
-            null);
+            null,
+            "bind-signature");
 
     // Setup verify request test data
     verifyRequestDto =
@@ -161,8 +163,12 @@ class EnrollmentControllerTest {
 
     verifyResponse = new EnrollmentVerifyResponse();
     verifyResponse.setActive(true);
+    verifyResponse.setEnrollmentVerifyMessage("Enrollment verified successfully");
+    verifyResponse.setEnrollmentVerifyPayloadSignedByIntegration("verify-signature");
 
-    verifyResponseDto = new EnrollmentVerifyResponseDto(true);
+    verifyResponseDto =
+        new EnrollmentVerifyResponseDto(
+            true, "Enrollment verified successfully", "verify-signature");
   }
 
   // ===== BIND ENDPOINT TESTS =====

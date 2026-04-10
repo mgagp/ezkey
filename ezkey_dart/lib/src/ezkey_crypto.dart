@@ -73,6 +73,63 @@ class EzKeyCrypto {
     );
   }
 
+  /// Canonical bind payload string (integration-signed). Delegates to `payload.dart`.
+  static String buildEnrollmentBindPayload({
+    required String enrollmentProofToken,
+    required int enrollmentId,
+    required String integrationPublicKey,
+    required String integrationKeyAlgorithm,
+    String? integrationName,
+    String? integrationDescription,
+    String? enrollmentName,
+    int? tenantId,
+    String? tenantName,
+    String? tenantDescription,
+  }) {
+    return payloads.buildEnrollmentBindPayload(
+      enrollmentProofToken: enrollmentProofToken,
+      enrollmentId: enrollmentId,
+      integrationPublicKey: integrationPublicKey,
+      integrationKeyAlgorithm: integrationKeyAlgorithm,
+      integrationName: integrationName,
+      integrationDescription: integrationDescription,
+      enrollmentName: enrollmentName,
+      tenantId: tenantId,
+      tenantName: tenantName,
+      tenantDescription: tenantDescription,
+    );
+  }
+
+  /// Canonical verify-request payload (device-signed). Delegates to `payload.dart`.
+  static String buildEnrollmentVerifyDevicePayload(
+    String enrollmentProofToken,
+    int enrollmentId,
+    int challengeResponse,
+    String devicePublicKey,
+  ) {
+    return payloads.buildEnrollmentVerifyDevicePayload(
+      enrollmentProofToken,
+      enrollmentId,
+      challengeResponse,
+      devicePublicKey,
+    );
+  }
+
+  /// Canonical verify-response payload (integration-signed). Delegates to `payload.dart`.
+  static String buildEnrollmentVerifyResultPayload(
+    String enrollmentProofToken,
+    int enrollmentId,
+    String outcome,
+    String? message,
+  ) {
+    return payloads.buildEnrollmentVerifyResultPayload(
+      enrollmentProofToken,
+      enrollmentId,
+      outcome,
+      message,
+    );
+  }
+
   static String generateDeviceProofToken() => generateProofToken();
 
   static SimplePublicKey parseIntegrationPublicKey(String base64Value) {

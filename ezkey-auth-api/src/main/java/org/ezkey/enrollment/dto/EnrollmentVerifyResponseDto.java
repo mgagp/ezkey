@@ -32,6 +32,9 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * <p><b>License:</b> MIT
  *
  * @param active Whether the enrollment is now active and ready for authentication
+ * @param enrollmentVerifyMessage User-facing message included in the signed verify result payload
+ * @param enrollmentVerifyPayloadSignedByIntegration Ed25519 signature over the canonical verify
+ *     result payload
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentVerifyResponse
@@ -43,4 +46,19 @@ public record EnrollmentVerifyResponseDto(
             description = "Whether the enrollment is now active and ready for authentication",
             example = "true",
             requiredMode = RequiredMode.REQUIRED)
-        boolean active) {}
+        boolean active,
+    @Schema(
+            description =
+                "Human-readable verify completion message (included in the integration signature)",
+            example = "Enrollment verified successfully",
+            requiredMode = RequiredMode.REQUIRED)
+        String enrollmentVerifyMessage,
+    @Schema(
+            description =
+                "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over"
+                    + " proofToken|enrollmentId|VERIFIED|message (see"
+                    + " docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)",
+            example =
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            requiredMode = RequiredMode.REQUIRED)
+        String enrollmentVerifyPayloadSignedByIntegration) {}

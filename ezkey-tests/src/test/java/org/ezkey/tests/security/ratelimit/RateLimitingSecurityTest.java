@@ -146,7 +146,10 @@ public class RateLimitingSecurityTest extends AbstractSecurityTest {
     String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
     assertThat(bindProofToken).isNotNull().isNotEmpty();
 
-    String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+    String verifyPayload =
+        org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+            bindProofToken, enrollmentId, challengeCode, deviceKeyPair.publicKey());
+    String signature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
     configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> verifyRequest = new HashMap<>();

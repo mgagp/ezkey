@@ -124,6 +124,7 @@
         <!-- Verify Form -->
         <form th:if="${success}" action="/phone/ezkey/enrollment/verify" method="post">
           <input type="hidden" name="enrollmentId" th:value="${enrollmentId}">
+          <input type="hidden" name="enrollmentProofToken" th:value="${enrollmentProofToken}">
           <div class="form-group">
             <label for="challengeResponse" class="form-label">Challenge Code</label>
             <input type="text" id="challengeResponse" name="challengeResponse" class="form-input" placeholder="Enter challenge code" required>

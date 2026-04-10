@@ -247,7 +247,10 @@ public class OperationalChurnTest extends AbstractSecurityTest {
     String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
     assertThat(bindProofToken).isNotNull().isNotEmpty();
 
-    String bindSignature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+    String verifyPayload =
+        org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+            bindProofToken, enrollmentId, challengeCode, deviceKeyPair.publicKey());
+    String bindSignature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
     configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> verifyRequest = new HashMap<>();

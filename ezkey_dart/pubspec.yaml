@@ -2,6 +2,10 @@ name: ezkey_dart
 description: Pure Dart cryptographic helpers and live-stack bridge utilities for EZKey.
 version: 0.1.0
 
+executables:
+  ezkey_dart: ezkey_dart
+  ezkey_auth_runner: ezkey_auth_runner
+
 environment:
   sdk: '>=3.7.0 <4.0.0'
 dependencies:

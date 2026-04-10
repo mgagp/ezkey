@@ -25,12 +25,16 @@ export type BindEnrollmentResponse = {
   enrollmentId: number | string;
   enrollmentProofToken: string;
   integrationPublicKey: string;
+  /** e.g. ed25519 — included in canonical bind payload */
+  integrationKeyAlgorithm: string;
   integrationName: string;
   integrationDescription?: string;
   enrollmentName?: string;
   tenantId?: number;
   tenantName?: string;
   tenantDescription?: string;
+  /** Ed25519 over canonical bind payload (see ENROLLMENT_SIGNATURE_PAYLOAD.md) */
+  enrollmentBindPayloadSignedByIntegration: string;
 };
 
 /** Matches Auth API `devicePrivateKeyStorageTier` at enrollment verify. */
@@ -47,6 +51,8 @@ export type VerifyEnrollmentRequest = {
 
 export type VerifyEnrollmentResponse = {
   active: boolean;
+  enrollmentVerifyMessage: string;
+  enrollmentVerifyPayloadSignedByIntegration: string;
 };
 
 export type PendingAuthRequest = {

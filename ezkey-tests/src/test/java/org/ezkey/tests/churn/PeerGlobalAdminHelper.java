@@ -130,7 +130,10 @@ public final class PeerGlobalAdminHelper {
             .response();
 
     String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
-    String bindSignature = cryptoApiClient.signData(bindProofToken, keyPair.privateKey());
+    String verifyPayload =
+        org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+            bindProofToken, enrollmentId, enrollmentChallenge, keyPair.publicKey());
+    String bindSignature = cryptoApiClient.signData(verifyPayload, keyPair.privateKey());
 
     RestAssuredTestConfig.configureForAuthApi(dockerStackConfig);
 

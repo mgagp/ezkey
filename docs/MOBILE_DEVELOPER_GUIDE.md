@@ -214,7 +214,7 @@ So **`STRONG` means “the client asserted StrongBox-class storage according to 
 
 **Future hardening (not implemented):** [Android Key Attestation](https://developer.android.com/privacy-and-security/security-key-attestation) (or an equivalent verified signal) could allow the backend to validate hardware claims. Until then, treat tier as **informational client telemetry**, not a server-audited security property.
 
-**Signature scope (verify):** `devicePrivateKeyStorageTier` is **not** included in the ECDSA payload. The server validates `enrollmentProofTokenSigned` against the **raw `enrollmentProofToken` string only** (UTF-8 bytes), matching what an honest client passes to `sign(enrollmentId, enrollmentProofToken)`. The tier is sent in the same JSON body but is **outside** that signed message, so its integrity is **not** cryptographically bound to the proof-token signature. A future protocol could introduce an extended canonical string (or a second signature) if tier must be tamper-evident to the backend.
+**Signature scope (verify):** `devicePrivateKeyStorageTier` is **not** included in the ECDSA payload. The server validates `enrollmentProofTokenSigned` against the **canonical verify device payload** (UTF-8 bytes): `{enrollmentProofToken}|{enrollmentId}|{challengeResponse}|{devicePublicKey}`. The tier is sent in the same JSON body but is **outside** that signed message, so its integrity is **not** cryptographically bound to the device signature. See [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md).
 
 ### Integration-Side Cryptography
 
@@ -283,7 +283,7 @@ sequenceDiagram
     Mobile->>Auth: POST /api/v1/enrollments/bind\n(enrollmentId, enrollmentProofToken, language)
     Auth-->>Mobile: enrollment metadata + integrationPublicKey
     Mobile->>Mobile: Generate EC P-256 key pair in Android Keystore
-    Mobile->>Mobile: Sign enrollmentProofToken with device private key
+    Mobile->>Mobile: Sign canonical verify payload with device private key
     Mobile->>Auth: POST /api/v1/enrollments/verify\n(enrollmentId, challengeResponse, devicePublicKey, enrollmentProofTokenSigned, devicePrivateKeyStorageTier?)
     Auth-->>Mobile: { active: true }
 ```
@@ -330,15 +330,18 @@ Successful response:
   "integrationKeyAlgorithm": "ed25519",
   "integrationName": "Acme Bank",
   "integrationDescription": "Acme Bank provides secure online banking services.",
-  "enrollmentName": "John's Android"
+  "enrollmentName": "John's Android",
+  "enrollmentBindPayloadSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
 ```
+
+The integration signs `enrollmentBindPayloadSignedByIntegration` over the canonical bind payload (see [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md)). The mobile app **must** verify this Ed25519 signature with `integrationPublicKey` before trusting the bind response or storing the integration key for pending/respond verification.
 
 Critical response fields:
 
 | Field | Meaning | Device handling |
 |---|---|---|
-| `integrationPublicKey` | Ed25519 public key, raw 32 bytes, Base64URL without padding | Store for later verification of pending and result signatures |
+| `integrationPublicKey` | Ed25519 public key, raw 32 bytes, Base64URL without padding | Store for later verification of pending and result signatures; verify `enrollmentBindPayloadSignedByIntegration` against this key first |
 | `integrationKeyAlgorithm` | Cryptographic algorithm descriptor for the integration key material | Preserve and inspect when your client contract exposes it; stricter validation behavior is being hardened in ongoing work |
 | `enrollmentProofToken` | Enrollment proof token | Store in secure storage |
 | `enrollmentName` | Human label for the enrollment | Optional display metadata |
@@ -377,7 +380,7 @@ Before this call, the mobile app must:
 
 1. Generate a device key pair in Android Keystore.
 2. Export the device public key as SPKI Base64.
-3. Sign the raw `enrollmentProofToken` string using the device private key (this is the **only** string covered by `enrollmentProofTokenSigned`; optional `devicePrivateKeyStorageTier` is not part of it — see **Device private key storage tier — trust model and proof boundary**).
+3. Build the canonical verify device payload (see [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md)): `{enrollmentProofToken}|{enrollmentId}|{challengeResponse}|{devicePublicKey}` (UTF-8), then sign that string with the device private key. Optional `devicePrivateKeyStorageTier` is **not** part of the signed message — see **Device private key storage tier — trust model and proof boundary**.
 
 Request body:
 
@@ -400,16 +403,20 @@ Field semantics:
 | `enrollmentId` | number | Yes | Enrollment identifier |
 | `challengeResponse` | number | Yes | Mandatory six-digit numeric challenge shown during enrollment setup |
 | `devicePublicKey` | string | Yes | SPKI Base64 for the generated EC P-256 public key |
-| `enrollmentProofTokenSigned` | string | Yes | ECDSA DER Base64 signature over the **raw** enrollment proof token only (UTF-8); does **not** cover `devicePrivateKeyStorageTier` or other JSON fields |
+| `enrollmentProofTokenSigned` | string | Yes | ECDSA DER Base64 signature over the canonical verify payload (UTF-8): `{enrollmentProofToken}\|{enrollmentId}\|{challengeResponse}\|{devicePublicKey}`; does **not** cover `devicePrivateKeyStorageTier` or other JSON fields |
 | `devicePrivateKeyStorageTier` | string | No | `NONE`, `STANDARD`, or `STRONG` — client-reported tier; **not** included in the proof-token signature; omit for legacy clients |
 
 Successful response:
 
 ```json
 {
-  "active": true
+  "active": true,
+  "enrollmentVerifyMessage": "Enrollment verified successfully",
+  "enrollmentVerifyPayloadSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
 ```
+
+The integration signs `enrollmentVerifyPayloadSignedByIntegration` over the canonical verify-result payload (see [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md)). The mobile app **must** verify this Ed25519 signature with the integration public key from bind before treating enrollment as complete.
 
 At this point, the enrollment is cryptographically bound to the device key pair.
 
@@ -421,7 +428,7 @@ implementation must collect the six-digit challenge shown during setup and send 
 
 - Do not invent your own key format for `devicePublicKey`. It must be the standard Base64-encoded
   X.509 SPKI bytes of the EC P-256 public key.
-- Do not sign JSON. Sign the raw proof-token string bytes in UTF-8.
+- Do not sign JSON. Sign the canonical verify device UTF-8 string (see [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md)), not the HTTP body.
 - Do not assume `devicePrivateKeyStorageTier` is integrity-protected by `enrollmentProofTokenSigned`; it is a separate JSON field. To bind tier to the device key cryptographically would require a protocol change (e.g. extended signed payload).
 - Treat a verify failure as terminal for that enrollment flow unless the server explicitly supports
   recovery for the specific error.
@@ -795,7 +802,7 @@ Minimum useful sequence:
 1. Create or retrieve an enrollment through the admin flow so you have `enrollmentId` and
    `enrollmentProofToken`.
 2. Call `POST /api/v1/enrollments/bind`.
-3. Generate a device key pair and sign the raw enrollment proof token.
+3. Generate a device key pair and sign the canonical enrollment verify device payload (see [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md)).
 4. Call `POST /api/v1/enrollments/verify`.
 5. Create an auth attempt from the backend side through the Integration API.
 6. Call `POST /api/v1/auth-attempts/pending` from the mobile side.
@@ -841,7 +848,7 @@ Before calling your implementation complete, verify all of the following:
 
 - You generate and store the device private key in Android Keystore.
 - You export the device public key as SPKI Base64.
-- You sign the raw enrollment proof token for enrollment verify.
+- You sign the canonical enrollment verify device payload for enrollment verify (not the raw proof token alone).
 - You generate and sign a `deviceProofToken` for pending.
 - You verify `authAttemptProofTokenSignedByIntegration` before trusting pending content.
 - You build the canonical respond payload as `{proofToken}|{accepted}`.

@@ -122,7 +122,10 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
     String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
     assertThat(bindProofToken).isNotNull().isNotEmpty();
 
-    String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+    String verifyPayload =
+        org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+            bindProofToken, enrollmentId, challengeCode, deviceKeyPair.publicKey());
+    String signature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
     configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> verifyRequest = new HashMap<>();
@@ -604,8 +607,14 @@ public class EnrollmentRevocationSecurityTest extends AbstractSecurityTest {
               .response();
       assertThat(bindAfterRevoke.getStatusCode()).isNotEqualTo(200);
 
+      String verifyPayload =
+          org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+              bound.bindProofToken(),
+              bound.enrollmentId(),
+              bound.challengeCode(),
+              bound.deviceKeyPair().publicKey());
       String signature =
-          cryptoApiClient.signData(bound.bindProofToken(), bound.deviceKeyPair().privateKey());
+          cryptoApiClient.signData(verifyPayload, bound.deviceKeyPair().privateKey());
       Map<String, Object> verifyRequest = new HashMap<>();
       verifyRequest.put("enrollmentId", bound.enrollmentId());
       verifyRequest.put("challengeResponse", bound.challengeCode());

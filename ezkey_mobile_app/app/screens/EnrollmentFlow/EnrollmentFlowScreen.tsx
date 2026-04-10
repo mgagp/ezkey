@@ -19,6 +19,11 @@ import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import {enrollmentsApi} from '../../services/api/enrollments';
 import {BindEnrollmentResponse, EnrollmentStatus} from '../../services/api/types';
 import {getCryptoService} from '../../services/crypto/cryptoService';
+import {
+  buildBindPayload,
+  buildVerifyDevicePayload,
+  buildVerifyResultPayload,
+} from '../../services/crypto/enrollmentPayload';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {useSaveEnrollment} from '../../hooks/useEnrollments';
 import {parseQrPayload} from '../../utils/parseQrPayload';
@@ -120,6 +125,17 @@ export const EnrollmentFlowScreen: React.FC<Props> = ({navigation}) => {
           },
           parsed.authUrl,
         );
+        const crypto = getCryptoService();
+        const bindPayload = buildBindPayload(response);
+        const bindOk = await crypto.verify(
+          bindPayload,
+          response.enrollmentBindPayloadSignedByIntegration,
+          response.integrationPublicKey,
+        );
+        if (!bindOk) {
+          setBindError('Could not verify server identity (integration signature).');
+          return;
+        }
         const nextDraft = buildDraft(response, {
           enrollmentId: parsed.enrollmentId,
           enrollmentProofToken: response.enrollmentProofToken ?? parsed.enrollmentProofToken,
@@ -143,7 +159,14 @@ export const EnrollmentFlowScreen: React.FC<Props> = ({navigation}) => {
       const enrollmentId = draft.id;
       await crypto.ensureEnrollmentKeyPair(enrollmentId);
       const publicKey = await crypto.getPublicKey(enrollmentId);
-      const proofTokenSigned = await crypto.sign(enrollmentId, draft.enrollmentProofToken);
+      const challengeNum = Number(challenge);
+      const verifyDevicePayload = buildVerifyDevicePayload(
+        draft.enrollmentProofToken,
+        Number(draft.id),
+        challengeNum,
+        publicKey,
+      );
+      const proofTokenSigned = await crypto.sign(enrollmentId, verifyDevicePayload);
       const devicePrivateKeyStorageTier =
         await crypto.getDevicePrivateKeyStorageTier(enrollmentId);
       const verifyResponse = await enrollmentsApi.verify(
@@ -156,6 +179,22 @@ export const EnrollmentFlowScreen: React.FC<Props> = ({navigation}) => {
         },
         authUrl,
       );
+      const verifyResultPayload = buildVerifyResultPayload(
+        draft.enrollmentProofToken,
+        Number(draft.id),
+        'VERIFIED',
+        verifyResponse.enrollmentVerifyMessage,
+      );
+      const resultOk = await crypto.verify(
+        verifyResultPayload,
+        verifyResponse.enrollmentVerifyPayloadSignedByIntegration,
+        draft.integrationPublicKey,
+      );
+      if (!resultOk) {
+        setChallengeError('Could not verify enrollment result (integration signature).');
+        setChallenge('');
+        return;
+      }
       const status: EnrollmentStatus = verifyResponse.active ? 'active' : 'pending';
       const now = new Date().toISOString();
       const record: StoredEnrollment = {

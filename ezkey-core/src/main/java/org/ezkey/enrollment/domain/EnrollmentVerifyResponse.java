@@ -52,6 +52,15 @@ public class EnrollmentVerifyResponse {
    */
   private boolean active;
 
+  /** Message segment included in the integration-signed verify result payload. */
+  private String enrollmentVerifyMessage;
+
+  /**
+   * Ed25519 signature over the canonical verify result payload (see {@code
+   * docs/ENROLLMENT_SIGNATURE_PAYLOAD.md}).
+   */
+  private String enrollmentVerifyPayloadSignedByIntegration;
+
   /**
    * Default constructor.
    *
@@ -76,5 +85,42 @@ public class EnrollmentVerifyResponse {
    */
   public void setActive(boolean active) {
     this.active = active;
+  }
+
+  /**
+   * Gets the user-facing verify completion message (also part of the signed payload).
+   *
+   * @return message text
+   */
+  public String getEnrollmentVerifyMessage() {
+    return enrollmentVerifyMessage;
+  }
+
+  /**
+   * Sets the user-facing verify completion message.
+   *
+   * @param enrollmentVerifyMessage message text
+   */
+  public void setEnrollmentVerifyMessage(String enrollmentVerifyMessage) {
+    this.enrollmentVerifyMessage = enrollmentVerifyMessage;
+  }
+
+  /**
+   * Gets the integration signature over the verify result payload.
+   *
+   * @return Base64URL Ed25519 signature
+   */
+  public String getEnrollmentVerifyPayloadSignedByIntegration() {
+    return enrollmentVerifyPayloadSignedByIntegration;
+  }
+
+  /**
+   * Sets the integration signature over the verify result payload.
+   *
+   * @param enrollmentVerifyPayloadSignedByIntegration signed canonical payload
+   */
+  public void setEnrollmentVerifyPayloadSignedByIntegration(
+      String enrollmentVerifyPayloadSignedByIntegration) {
+    this.enrollmentVerifyPayloadSignedByIntegration = enrollmentVerifyPayloadSignedByIntegration;
   }
 }

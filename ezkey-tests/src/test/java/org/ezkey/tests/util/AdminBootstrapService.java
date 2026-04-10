@@ -837,9 +837,11 @@ public class AdminBootstrapService {
       CryptoApiClient.EcP256KeyPair deviceKeyPair,
       String bindProofToken,
       Integer challengeCode) {
-    log.info("   Signing bind proof token with device private key...");
-    // Sign bind proof token (this configures RestAssured for Crypto API)
-    String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+    log.info("   Signing enrollment verify canonical payload with device private key...");
+    String verifyPayload =
+        EnrollmentVerifyDevicePayload.build(
+            bindProofToken, enrollmentId, challengeCode, deviceKeyPair.publicKey());
+    String signature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
     log.info(
         "   ✅ Signature generated: {}...",
         signature.substring(0, Math.min(30, signature.length())));

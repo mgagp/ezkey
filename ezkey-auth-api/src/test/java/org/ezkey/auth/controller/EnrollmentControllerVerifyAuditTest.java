@@ -206,8 +206,11 @@ class EnrollmentControllerVerifyAuditTest {
     // Arrange
     EnrollmentVerifyResponse verifyResponse = new EnrollmentVerifyResponse();
     verifyResponse.setActive(true);
+    verifyResponse.setEnrollmentVerifyMessage("Enrollment verified successfully");
+    verifyResponse.setEnrollmentVerifyPayloadSignedByIntegration("sig");
 
-    EnrollmentVerifyResponseDto responseDto = new EnrollmentVerifyResponseDto(true);
+    EnrollmentVerifyResponseDto responseDto =
+        new EnrollmentVerifyResponseDto(true, "Enrollment verified successfully", "sig");
 
     when(enrollmentService.verify(verifyRequest)).thenReturn(verifyResponse);
     when(enrollmentMapper.toEnrollmentVerifyResponseDto(verifyResponse)).thenReturn(responseDto);

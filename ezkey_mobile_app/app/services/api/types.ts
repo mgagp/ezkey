@@ -27,12 +27,14 @@ export type BindEnrollmentResponse = {
   enrollmentId: number | string;
   enrollmentProofToken: string;
   integrationPublicKey: string;
+  integrationKeyAlgorithm: string;
   integrationName: string;
   integrationDescription?: string;
   enrollmentName?: string;
   tenantId?: number;
   tenantName?: string;
   tenantDescription?: string;
+  enrollmentBindPayloadSignedByIntegration: string;
 };
 
 export type VerifyEnrollmentRequest = {
@@ -46,6 +48,8 @@ export type VerifyEnrollmentRequest = {
 
 export type VerifyEnrollmentResponse = {
   active: boolean;
+  enrollmentVerifyMessage: string;
+  enrollmentVerifyPayloadSignedByIntegration: string;
 };
 
 export type PendingAuthRequest = {

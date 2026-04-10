@@ -23,6 +23,7 @@ class EnrollmentBindResponse {
     required this.enrollmentId,
     required this.enrollmentProofToken,
     required this.integrationPublicKey,
+    required this.enrollmentBindPayloadSignedByIntegration,
     this.integrationKeyAlgorithm,
     this.integrationName,
     this.integrationDescription,
@@ -35,6 +36,8 @@ class EnrollmentBindResponse {
   final String enrollmentId;
   final String enrollmentProofToken;
   final String integrationPublicKey;
+  /// Ed25519 (Base64URL) over the canonical bind payload string.
+  final String enrollmentBindPayloadSignedByIntegration;
   final String? integrationKeyAlgorithm;
   final String? integrationName;
   final String? integrationDescription;
@@ -48,6 +51,10 @@ class EnrollmentBindResponse {
       enrollmentId: _requiredString(json, 'enrollmentId'),
       enrollmentProofToken: _requiredString(json, 'enrollmentProofToken'),
       integrationPublicKey: _requiredString(json, 'integrationPublicKey'),
+      enrollmentBindPayloadSignedByIntegration: _requiredString(
+        json,
+        'enrollmentBindPayloadSignedByIntegration',
+      ),
       integrationKeyAlgorithm: _optionalString(json, 'integrationKeyAlgorithm'),
       integrationName: _optionalString(json, 'integrationName'),
       integrationDescription: _optionalString(json, 'integrationDescription'),
@@ -84,16 +91,30 @@ class EnrollmentVerifyRequest {
 }
 
 class EnrollmentVerifyResponse {
-  EnrollmentVerifyResponse({required this.active});
+  EnrollmentVerifyResponse({
+    required this.active,
+    required this.enrollmentVerifyMessage,
+    required this.enrollmentVerifyPayloadSignedByIntegration,
+  });
 
   final bool active;
+  final String enrollmentVerifyMessage;
+  /// Ed25519 (Base64URL) over the canonical verify-result payload (outcome VERIFIED).
+  final String enrollmentVerifyPayloadSignedByIntegration;
 
   factory EnrollmentVerifyResponse.fromJson(Map<String, dynamic> json) {
     final active = json['active'];
     if (active is! bool) {
       throw FormatException('Missing or invalid active in verify response');
     }
-    return EnrollmentVerifyResponse(active: active);
+    return EnrollmentVerifyResponse(
+      active: active,
+      enrollmentVerifyMessage: _requiredString(json, 'enrollmentVerifyMessage'),
+      enrollmentVerifyPayloadSignedByIntegration: _requiredString(
+        json,
+        'enrollmentVerifyPayloadSignedByIntegration',
+      ),
+    );
   }
 }
 

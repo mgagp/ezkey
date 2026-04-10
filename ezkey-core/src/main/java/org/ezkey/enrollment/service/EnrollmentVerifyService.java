@@ -125,7 +125,7 @@ public class EnrollmentVerifyService {
     markAsVerified(lockedEnrollment, request);
 
     // Step 7: Build and return response
-    return buildVerifyResponse();
+    return buildVerifyResponse(lockedEnrollment);
   }
 
   /**
@@ -218,11 +218,15 @@ public class EnrollmentVerifyService {
   private void validateSignature(EnrollmentVerifyRequest request, Enrollment enrollment) {
     logger.debug("Step 2: Validating signature for enrollment ID: {}", request.getEnrollmentId());
 
+    String signedPayload =
+        EnrollmentSignaturePayload.buildVerifyDevicePayload(
+            enrollment.getEnrollmentProofToken(),
+            request.getEnrollmentId(),
+            request.getChallengeResponse(),
+            request.getDevicePublicKey());
     boolean valid =
         signatureService.validateSignature(
-            enrollment.getEnrollmentProofToken(),
-            request.getEnrollmentProofTokenSigned(),
-            request.getDevicePublicKey());
+            signedPayload, request.getEnrollmentProofTokenSigned(), request.getDevicePublicKey());
 
     if (!valid) {
       logger.warn(
@@ -460,11 +464,33 @@ public class EnrollmentVerifyService {
    *
    * @return the verification response
    */
-  private EnrollmentVerifyResponse buildVerifyResponse() {
+  private EnrollmentVerifyResponse buildVerifyResponse(Enrollment enrollment) {
     logger.debug("Step 8: Building verify response");
+
+    String message = EnrollmentSignaturePayload.defaultVerifySuccessMessage();
+    String resultPayload =
+        EnrollmentSignaturePayload.buildVerifyResultPayload(
+            enrollment.getEnrollmentProofToken(),
+            enrollment.getEnrollmentId(),
+            EnrollmentSignaturePayload.EnrollmentVerificationOutcome.VERIFIED,
+            message);
+    String resultSignature =
+        signatureService.signIntegrationPayload(
+            resultPayload, enrollment.getIntegrationPrivateKey());
+    String normalizedIntegrationPublicKey =
+        signatureService.normalizeIntegrationPublicKeyToBase64(
+            enrollment.getIntegrationPublicKey());
+    if (!signatureService.verifyIntegrationSignature(
+        resultPayload, resultSignature, normalizedIntegrationPublicKey)) {
+      logger.error(
+          "Verify response integration signature self-verification failed for enrollment ID: {}",
+          enrollment.getEnrollmentId());
+    }
 
     EnrollmentVerifyResponse response = new EnrollmentVerifyResponse();
     response.setActive(true);
+    response.setEnrollmentVerifyMessage(message);
+    response.setEnrollmentVerifyPayloadSignedByIntegration(resultSignature);
 
     logger.info("Enrollment verify process completed successfully");
     return response;

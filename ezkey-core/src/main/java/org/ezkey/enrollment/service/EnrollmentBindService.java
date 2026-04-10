@@ -130,8 +130,9 @@ public class EnrollmentBindService {
     // Step 4: Mark as BOUND (read-once guarantee)
     markAsBound(lockedEnrollment);
 
-    // Step 5: Build and return response
-    return buildBindResponse(enrollment, integration, integrationName, integrationDescription);
+    // Step 5: Build and return response (uses locked row for integration signing material)
+    return buildBindResponse(
+        lockedEnrollment, integration, integrationName, integrationDescription);
   }
 
   /**
@@ -354,6 +355,28 @@ public class EnrollmentBindService {
       integrationRepository
           .findTenantInfoByIntegrationId(integration.getId())
           .ifPresent(row -> applyTenantInfoFromRow(response, row));
+    }
+
+    String bindPayload =
+        EnrollmentSignaturePayload.buildBindPayload(
+            response.getEnrollmentProofToken(),
+            response.getEnrollmentId(),
+            response.getIntegrationPublicKey(),
+            response.getIntegrationKeyAlgorithm(),
+            response.getIntegrationName(),
+            response.getIntegrationDescription(),
+            response.getEnrollmentName(),
+            response.getTenantId(),
+            response.getTenantName(),
+            response.getTenantDescription());
+    String bindSignature =
+        signatureService.signIntegrationPayload(bindPayload, enrollment.getIntegrationPrivateKey());
+    response.setEnrollmentBindPayloadSignedByIntegration(bindSignature);
+    if (!signatureService.verifyIntegrationSignature(
+        bindPayload, bindSignature, response.getIntegrationPublicKey())) {
+      logger.error(
+          "Bind response integration signature self-verification failed for enrollment ID: {}",
+          enrollment.getEnrollmentId());
     }
 
     logger.info(

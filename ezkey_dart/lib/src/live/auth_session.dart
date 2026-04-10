@@ -60,11 +60,42 @@ class EzkeyAuthSession {
       );
     }
 
+    final bindPayload = buildEnrollmentBindPayload(
+      enrollmentProofToken: bindResponse.enrollmentProofToken,
+      enrollmentId: int.parse(bindResponse.enrollmentId),
+      integrationPublicKey: bindResponse.integrationPublicKey,
+      integrationKeyAlgorithm: bindResponse.integrationKeyAlgorithm?.trim() ?? '',
+      integrationName: bindResponse.integrationName,
+      integrationDescription: bindResponse.integrationDescription,
+      enrollmentName: bindResponse.enrollmentName,
+      tenantId: bindResponse.tenantId,
+      tenantName: bindResponse.tenantName,
+      tenantDescription: bindResponse.tenantDescription,
+    );
+    final bindSignatureOk = await EzKeyCrypto.verifyIntegrationSignature(
+      bindPayload,
+      bindResponse.enrollmentBindPayloadSignedByIntegration,
+      bindResponse.integrationPublicKey,
+    );
+    if (!bindSignatureOk) {
+      throw StateError(
+        'Bind response failed integration signature verification. '
+        'This indicates a contract or integrity problem.',
+      );
+    }
+
     final deviceKeyPair = EzKeyCrypto.generateDeviceKeyPair();
     final devicePublicKey = EzKeyCrypto.exportDevicePublicKey(deviceKeyPair);
+    final challengeInt = int.parse(bindingChallenge.trim());
+    final verifyDevicePayload = buildEnrollmentVerifyDevicePayload(
+      bindResponse.enrollmentProofToken,
+      int.parse(bindResponse.enrollmentId),
+      challengeInt,
+      devicePublicKey,
+    );
     final proofTokenSigned = EzKeyCrypto.signWithDeviceKey(
       deviceKeyPair,
-      bindResponse.enrollmentProofToken,
+      verifyDevicePayload,
     );
 
     final verifyResponse = await api.verify(
@@ -78,6 +109,25 @@ class EzkeyAuthSession {
 
     if (!verifyResponse.active) {
       throw StateError('Enrollment verify completed but the enrollment is not active');
+    }
+
+    final enrollmentIdInt = int.parse(bindResponse.enrollmentId);
+    final verifyResultPayload = buildEnrollmentVerifyResultPayload(
+      bindResponse.enrollmentProofToken,
+      enrollmentIdInt,
+      'VERIFIED',
+      verifyResponse.enrollmentVerifyMessage,
+    );
+    final verifyResultOk = await EzKeyCrypto.verifyIntegrationSignature(
+      verifyResultPayload,
+      verifyResponse.enrollmentVerifyPayloadSignedByIntegration,
+      bindResponse.integrationPublicKey,
+    );
+    if (!verifyResultOk) {
+      throw StateError(
+        'Verify response failed integration signature verification. '
+        'This indicates a contract or integrity problem.',
+      );
     }
 
     return EzkeyAuthSession._(

@@ -32,4 +32,32 @@ void main() {
 
     expect(payload, 'tok|42|APPROVED|Café');
   });
+
+  test('buildEnrollmentVerifyDevicePayload uses four pipe-separated segments', () {
+    expect(
+      buildEnrollmentVerifyDevicePayload('pt', 7, 123456, 'spkiB64'),
+      'pt|7|123456|spkiB64',
+    );
+  });
+
+  test('buildEnrollmentBindPayload matches documented field order', () {
+    expect(
+      buildEnrollmentBindPayload(
+        enrollmentProofToken: 't',
+        enrollmentId: 1,
+        integrationPublicKey: 'ipk',
+        integrationKeyAlgorithm: 'ed25519',
+        integrationName: 'Cafe\u0301',
+        tenantId: 9,
+      ),
+      't|1|ipk|ed25519|Café|||9||',
+    );
+  });
+
+  test('buildEnrollmentVerifyResultPayload normalizes message to NFC', () {
+    expect(
+      buildEnrollmentVerifyResultPayload('pt', 2, 'VERIFIED', 'Cafe\u0301'),
+      'pt|2|VERIFIED|Café',
+    );
+  });
 }

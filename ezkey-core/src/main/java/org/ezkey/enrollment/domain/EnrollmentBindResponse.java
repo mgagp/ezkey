@@ -135,6 +135,12 @@ public class EnrollmentBindResponse {
   private String tenantDescription;
 
   /**
+   * Ed25519 signature (Base64URL, raw 64 bytes) over the canonical bind payload (see {@code
+   * docs/ENROLLMENT_SIGNATURE_PAYLOAD.md}).
+   */
+  private String enrollmentBindPayloadSignedByIntegration;
+
+  /**
    * Gets the enrollment ID.
    *
    * @return the enrollment ID
@@ -312,5 +318,24 @@ public class EnrollmentBindResponse {
    */
   public void setTenantDescription(String tenantDescription) {
     this.tenantDescription = tenantDescription;
+  }
+
+  /**
+   * Gets the integration signature over the bind response payload.
+   *
+   * @return Base64URL Ed25519 signature
+   */
+  public String getEnrollmentBindPayloadSignedByIntegration() {
+    return enrollmentBindPayloadSignedByIntegration;
+  }
+
+  /**
+   * Sets the integration signature over the bind response payload.
+   *
+   * @param enrollmentBindPayloadSignedByIntegration signed canonical bind payload
+   */
+  public void setEnrollmentBindPayloadSignedByIntegration(
+      String enrollmentBindPayloadSignedByIntegration) {
+    this.enrollmentBindPayloadSignedByIntegration = enrollmentBindPayloadSignedByIntegration;
   }
 }

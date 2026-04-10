@@ -103,7 +103,10 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
       // Step 4: Sign proof token with device private key
       // Note: signData() configures RestAssured for Crypto API, so we need to reconfigure for Auth
       // API after
-      String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+      String verifyPayload =
+          org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+              bindProofToken, enrollmentId, challengeCode, deviceKeyPair.publicKey());
+      String signature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
 
       // Reconfigure RestAssured for Auth API after Crypto API call
       configureForAuthApi(dockerStackConfig);
@@ -229,10 +232,13 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
               .response();
 
       String bindProofToken = bindResp.jsonPath().getString("enrollmentProofToken");
-      String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+      Integer wrongChallenge = correctChallenge == 123456 ? 654321 : 123456;
+      String verifyPayload =
+          org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+              bindProofToken, enrollmentId, wrongChallenge, deviceKeyPair.publicKey());
+      String signature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
       configureForAuthApi(dockerStackConfig);
 
-      Integer wrongChallenge = correctChallenge == 123456 ? 654321 : 123456;
       Map<String, Object> verifyRequest = new HashMap<>();
       verifyRequest.put("enrollmentId", enrollmentId);
       verifyRequest.put("challengeResponse", wrongChallenge);
@@ -340,10 +346,13 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
               .response();
 
       String bindProofToken = bindResp.jsonPath().getString("enrollmentProofToken");
-      String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+      Integer wrongChallenge = correctChallenge == 123456 ? 654321 : 123456;
+      String verifyPayload =
+          org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+              bindProofToken, enrollmentId, wrongChallenge, deviceKeyPair.publicKey());
+      String signature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
       configureForAuthApi(dockerStackConfig);
 
-      Integer wrongChallenge = correctChallenge == 123456 ? 654321 : 123456;
       Map<String, Object> verifyRequest = new HashMap<>();
       verifyRequest.put("enrollmentId", enrollmentId);
       verifyRequest.put("challengeResponse", wrongChallenge);

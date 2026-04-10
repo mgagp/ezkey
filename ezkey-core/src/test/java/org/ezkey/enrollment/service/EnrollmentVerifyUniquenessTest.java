@@ -87,6 +87,11 @@ class EnrollmentVerifyUniquenessTest {
     verifyRequest.setChallengeResponse(123456);
   }
 
+  private String expectedVerifyDevicePayload() {
+    return EnrollmentSignaturePayload.buildVerifyDevicePayload(
+        "test-proof-token", 200, 123456, "device-public-key");
+  }
+
   @Test
   @DisplayName("verify() - Should reject verification when VERIFIED enrollment exists")
   void verify_WhenVerifiedExists_ShouldReject() {
@@ -103,7 +108,16 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 2: Mock validateSignature - signature validation passes
     when(signatureService.validateSignature(
-            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq(expectedVerifyDevicePayload()),
+            eq("proof-token-signature"),
+            eq("device-public-key")))
+        .thenReturn(true);
+    when(signatureService.signIntegrationPayload(any(), eq("integration-private-key")))
+        .thenReturn("integration-sig");
+    when(signatureService.normalizeIntegrationPublicKeyToBase64(eq("integration-public-key")))
+        .thenReturn("integration-public-key");
+    when(signatureService.verifyIntegrationSignature(
+            any(), eq("integration-sig"), eq("integration-public-key")))
         .thenReturn(true);
 
     // Step 3: Mock validateDeviceKeyUniqueness - device key is unique
@@ -152,7 +166,9 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 2: Mock validateSignature
     when(signatureService.validateSignature(
-            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq(expectedVerifyDevicePayload()),
+            eq("proof-token-signature"),
+            eq("device-public-key")))
         .thenReturn(true);
 
     // Step 3: Mock validateDeviceKeyUniqueness
@@ -186,7 +202,16 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 2: Mock validateSignature
     when(signatureService.validateSignature(
-            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq(expectedVerifyDevicePayload()),
+            eq("proof-token-signature"),
+            eq("device-public-key")))
+        .thenReturn(true);
+    when(signatureService.signIntegrationPayload(any(), eq("integration-private-key")))
+        .thenReturn("integration-sig");
+    when(signatureService.normalizeIntegrationPublicKeyToBase64(eq("integration-public-key")))
+        .thenReturn("integration-public-key");
+    when(signatureService.verifyIntegrationSignature(
+            any(), eq("integration-sig"), eq("integration-public-key")))
         .thenReturn(true);
 
     // Step 3: Mock validateDeviceKeyUniqueness - device key is unique
@@ -234,7 +259,9 @@ class EnrollmentVerifyUniquenessTest {
 
     // Step 2: Mock validateSignature
     when(signatureService.validateSignature(
-            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq(expectedVerifyDevicePayload()),
+            eq("proof-token-signature"),
+            eq("device-public-key")))
         .thenReturn(true);
 
     // Step 3: Mock validateDeviceKeyUniqueness
@@ -281,7 +308,9 @@ class EnrollmentVerifyUniquenessTest {
 
     when(enrollmentRepository.findById(200)).thenReturn(Optional.of(enrollment));
     when(signatureService.validateSignature(
-            eq("test-proof-token"), eq("proof-token-signature"), eq("device-public-key")))
+            eq(expectedVerifyDevicePayload()),
+            eq("proof-token-signature"),
+            eq("device-public-key")))
         .thenReturn(true);
     when(enrollmentRepository.existsByDevicePublicKeyHash(any(String.class))).thenReturn(false);
     when(enrollmentRepository.findAndLockBoundById(200)).thenReturn(Optional.of(enrollment));

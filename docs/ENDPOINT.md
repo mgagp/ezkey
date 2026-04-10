@@ -219,17 +219,18 @@ Content-Type: application/json
   "integrationKeyAlgorithm": "ed25519",
   "integrationName": "Acme Bank",
   "integrationDescription": "Acme Bank provides secure online banking services.",
-  "enrollmentName": "John's iPhone"
+  "enrollmentName": "John's iPhone",
+  "enrollmentBindPayloadSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
 ```
 
-`integrationPublicKey` is the **raw 32-byte** Ed25519 public key, **Base64URL without padding** (43 characters). `integrationKeyAlgorithm` is always `ed25519` for this wire format. Device keys in verify requests remain **EC P-256** SPKI (standard Base64).
+`integrationPublicKey` is the **raw 32-byte** Ed25519 public key, **Base64URL without padding** (43 characters). `integrationKeyAlgorithm` is always `ed25519` for this wire format. `enrollmentBindPayloadSignedByIntegration` is an Ed25519 signature over the canonical bind payload; clients must verify it before trusting the integration key (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`). Device keys in verify requests remain **EC P-256** SPKI (standard Base64).
 
 ### d) Enrollment verification
 
 **POST /api/v1/enrollments/verify**
 
-- **Description**: Finalizes the enrollment process by submitting the device's cryptographic keys and the enrollment proof token signature.
+- **Description**: Finalizes the enrollment process by submitting the device's cryptographic keys and an ECDSA signature over the canonical verify payload (`enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey`; see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`).
 
 **Request**
 ```http
@@ -248,12 +249,16 @@ Content-Type: application/json
 `devicePrivateKeyStorageTier` is optional. When present, it must be one of `NONE`, `STANDARD`, or `STRONG`. It is **client-reported only** — the server does not independently verify hardware or Key Attestation; see trust model in `docs/MOBILE_DEVELOPER_GUIDE.md` (**Device private key storage tier — trust model and proof boundary**). Invalid values yield **400**.
 
 **Response**
-- 200 OK + verification confirmation
+- 200 OK + verification confirmation (integration-signed outcome)
 ```json
 {
-  "active": true
+  "active": true,
+  "enrollmentVerifyMessage": "Enrollment verified successfully",
+  "enrollmentVerifyPayloadSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
 ```
+
+Canonical verify-result format: `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`.
 
 **Error responses**
 

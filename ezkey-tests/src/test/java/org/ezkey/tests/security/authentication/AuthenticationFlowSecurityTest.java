@@ -100,7 +100,10 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .response();
 
       String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
-      String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+      String verifyPayload =
+          org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+              bindProofToken, enrollmentId, challengeCode, deviceKeyPair.publicKey());
+      String signature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
 
       // Reconfigure RestAssured for Auth API after Crypto API call
       configureForAuthApi(dockerStackConfig);
@@ -255,7 +258,10 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
               .response();
 
       String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
-      String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+      String verifyPayload =
+          org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+              bindProofToken, enrollmentId, challengeCode, deviceKeyPair.publicKey());
+      String signature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
 
       configureForAuthApi(dockerStackConfig);
 
@@ -565,7 +571,10 @@ public class AuthenticationFlowSecurityTest extends AbstractSecurityTest {
             .response();
 
     String bindProofToken = bindResponse.jsonPath().getString("enrollmentProofToken");
-    String signature = cryptoApiClient.signData(bindProofToken, deviceKeyPair.privateKey());
+    String verifyPayload =
+        org.ezkey.tests.util.EnrollmentVerifyDevicePayload.build(
+            bindProofToken, enrollmentId, challengeCode, deviceKeyPair.publicKey());
+    String signature = cryptoApiClient.signData(verifyPayload, deviceKeyPair.privateKey());
     configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> verifyRequest = new HashMap<>();

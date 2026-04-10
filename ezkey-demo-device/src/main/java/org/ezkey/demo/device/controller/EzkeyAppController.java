@@ -12,6 +12,7 @@ import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.DeviceCryptoService.ECP256DeviceKeyPair;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
+import org.ezkey.demo.device.service.EnrollmentVerifyPayloadUtil;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptRespondRequestDto;
@@ -203,6 +204,16 @@ public class EzkeyAppController {
     return "phone/ezkey/bind_enrollment";
   }
 
+  private static String firstNonBlank(String a, String b) {
+    if (a != null && !a.isBlank()) {
+      return a;
+    }
+    if (b != null && !b.isBlank()) {
+      return b;
+    }
+    return null;
+  }
+
   /** Maps bind API error status and optional body to a clear, actionable message for the user. */
   private static String toBindErrorMessage(int statusCode, String responseBody) {
     if (statusCode == 409) {
@@ -223,6 +234,8 @@ public class EzkeyAppController {
   public String verifyEnrollment(
       @RequestParam("enrollmentId") Integer enrollmentId,
       @RequestParam("challengeResponse") String challengeResponse,
+      @RequestParam(value = "enrollmentProofToken", required = false)
+          String enrollmentProofTokenParam,
       Model model) {
     model.addAttribute("pageTitle", "Enrollment - Verify");
     try {
@@ -233,15 +246,39 @@ public class EzkeyAppController {
       }
       Record rec = recOpt.get();
 
-      // Sign the enrollment proof token with device private key
+      String proofToken = firstNonBlank(rec.enrollmentProofToken(), enrollmentProofTokenParam);
+      if (proofToken == null) {
+        model.addAttribute(
+            "error",
+            "Enrollment proof token is missing from the demo device. Return to Bind and complete"
+                + " bind again, or ensure enrollments are stored on a shared volume if you run"
+                + " multiple demo-device replicas.");
+        model.addAttribute("enrollmentId", enrollmentId);
+        return "phone/ezkey/bind_enrollment";
+      }
+
+      final int challenge;
+      try {
+        challenge = Integer.parseInt(challengeResponse.trim());
+      } catch (NumberFormatException e) {
+        model.addAttribute(
+            "error", "Invalid challenge code. Enter the numeric code from the console.");
+        model.addAttribute("enrollmentId", enrollmentId);
+        return "phone/ezkey/bind_enrollment";
+      }
+
+      // Canonical payload (must match Auth API / mobile): token|id|challenge|devicePublicKey
+      String verifyPayload =
+          EnrollmentVerifyPayloadUtil.buildVerifyDevicePayload(
+              proofToken, enrollmentId, challenge, rec.devicePublicKey());
       String enrollmentProofTokenSigned =
-          cryptoService.signStringToBase64(rec.enrollmentProofToken(), rec.devicePrivateKey());
+          cryptoService.signStringToBase64(verifyPayload, rec.devicePrivateKey());
 
       // Create typed request DTO
       EnrollmentVerifyRequestDto requestDto =
           new EnrollmentVerifyRequestDto()
               .enrollmentId(enrollmentId)
-              .challengeResponse(Integer.parseInt(challengeResponse))
+              .challengeResponse(challenge)
               .devicePublicKey(rec.devicePublicKey())
               .enrollmentProofTokenSigned(enrollmentProofTokenSigned)
               .devicePrivateKeyStorageTier(
@@ -249,9 +286,9 @@ public class EzkeyAppController {
 
       // Log the request for debugging
       logger.info("Verify request for enrollment {}: {}", enrollmentId, requestDto);
-      logger.info("Enrollment proof token being signed: {}", rec.enrollmentProofToken());
+      logger.info("Verify device payload signed (canonical): {}", verifyPayload);
       logger.info("Device public key: {}", rec.devicePublicKey());
-      logger.info("Signed enrollment proof token: {}", enrollmentProofTokenSigned);
+      logger.info("Signature (enrollmentProofTokenSigned): {}", enrollmentProofTokenSigned);
 
       EnrollmentVerifyResponseDto verifyResponse = authApiService.verify(requestDto).block();
       if (verifyResponse != null) {
