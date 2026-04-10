@@ -6,13 +6,11 @@ class EnrollmentCode {
   EnrollmentCode({
     required this.enrollmentId,
     required this.enrollmentProofToken,
-    this.language,
     this.authUrl,
   });
 
   final String enrollmentId;
   final String enrollmentProofToken;
-  final String? language;
   final String? authUrl;
 
   factory EnrollmentCode.parse(String value) {
@@ -29,7 +27,6 @@ class EnrollmentCode {
         return EnrollmentCode(
           enrollmentId: decoded['enrollmentId'].toString(),
           enrollmentProofToken: decoded['enrollmentProofToken'].toString(),
-          language: decoded['language']?.toString(),
           authUrl: validateAuthUrl(decoded['authUrl']?.toString()),
         );
       }

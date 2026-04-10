@@ -152,8 +152,7 @@ public class EnrollmentController {
    * addition to the enrollment ID, preventing attackers from systematically testing enrollment IDs
    * to discover valid enrollments.
    *
-   * @param request the binding request containing enrollment ID, proof token, and language
-   *     preference
+   * @param request the binding request containing enrollment ID and enrollment proof token
    * @return ResponseEntity containing enrollment binding information with HTTP 200, or 400 for
    *     invalid enrollment ID/proof token, or 409 if enrollment is already bound
    */

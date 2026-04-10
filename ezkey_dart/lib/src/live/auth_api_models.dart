@@ -2,18 +2,15 @@ class EnrollmentBindRequest {
   EnrollmentBindRequest({
     required this.enrollmentId,
     required this.enrollmentProofToken,
-    this.language,
   });
 
   final String enrollmentId;
   final String enrollmentProofToken;
-  final String? language;
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
       'enrollmentId': int.parse(enrollmentId),
       'enrollmentProofToken': enrollmentProofToken,
-      if (language != null && language!.trim().isNotEmpty) 'language': language,
     };
   }
 }

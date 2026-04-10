@@ -39,7 +39,6 @@ class EzkeyAuthSession {
     required Uri authApiBaseUri,
     required EnrollmentCode code,
     required String bindingChallenge,
-    String? language,
   }) async {
     if (!RegExp(r'^\d{6}$').hasMatch(bindingChallenge.trim())) {
       throw const FormatException('Enrollment binding challenge must be exactly 6 digits');
@@ -49,7 +48,6 @@ class EzkeyAuthSession {
       EnrollmentBindRequest(
         enrollmentId: code.enrollmentId,
         enrollmentProofToken: code.enrollmentProofToken,
-        language: language ?? code.language,
       ),
     );
 

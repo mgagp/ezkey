@@ -135,7 +135,7 @@ Content-Type: application/json
   "enrollmentId": 456,
   "enrollmentProofToken": "EZK-ABC123-DEF456",
   "deviceProofToken": "abc123-def456-ghi789",
-  "deviceProofTokenSigned": "eyJhbGciOiJSUzI1NiJ9..."
+  "deviceProofTokenSigned": "<ECDSA-SHA256 DER, standard Base64 — use Crypto API POST /api/v1/crypto/sign; see docs/MOBILE_DEVELOPER_GUIDE.md>"
 }
 ```
 
@@ -204,8 +204,7 @@ Content-Type: application/json
 
 {
   "enrollmentId": 456,
-  "enrollmentProofToken": "abc123-def456-ghi789",
-  "language": "en"
+  "enrollmentProofToken": "abc123-def456-ghi789"
 }
 ```
 

@@ -14,7 +14,6 @@ import {validateAuthUrl} from './urlValidation';
 export type QrPayload = {
   enrollmentId: string;
   enrollmentProofToken: string;
-  language?: string;
   authUrl?: string;
 };
 
@@ -37,7 +36,6 @@ export function parseQrPayload(value: string): QrPayload {
       return {
         enrollmentId: String(json.enrollmentId),
         enrollmentProofToken: String(json.enrollmentProofToken),
-        language: json.language ? String(json.language) : undefined,
         authUrl: validateAuthUrl(json.authUrl),
       };
     }

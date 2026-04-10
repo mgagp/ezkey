@@ -48,11 +48,10 @@ export class EzkeyAuthAPI {
   /**
    * Binds a device to an enrollment.
    */
-  async bindEnrollment(enrollmentId: number, acceptLanguage: string = 'en'): Promise<EnrollmentBindResponseDto> {
+  async bindEnrollment(enrollmentId: number): Promise<EnrollmentBindResponseDto> {
     try {
-      return await this.enrollmentApi.bind({ 
-        enrollmentId, 
-        acceptLanguage 
+      return await this.enrollmentApi.bind({
+        enrollmentId,
       });
     } catch (error) {
       throw EzkeyException.fromError('Failed to bind enrollment', error);

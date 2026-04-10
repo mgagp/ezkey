@@ -202,7 +202,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   const [bindForm, setBindForm] = useState({
     enrollmentId: '',
     enrollmentProofToken: '',
-    language: 'en',
   });
   const [enrollmentChallenge, setEnrollmentChallenge] = useState('');
   const [challengeError, setChallengeError] = useState<string | undefined>();
@@ -231,7 +230,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   const buildDraft = useCallback(
     (
       response: BindEnrollmentResponse,
-      request: {enrollmentId: string; enrollmentProofToken: string; language?: string},
+      request: {enrollmentId: string; enrollmentProofToken: string},
     ): EnrollmentDraft => {
       const rawId = response.enrollmentId ?? request.enrollmentId;
       const enrollmentId = String(rawId);
@@ -255,13 +254,12 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   );
 
   const performBinding = useCallback(
-    async (override?: {enrollmentId: string; enrollmentProofToken: string; language?: string; authUrl?: string}) => {
+    async (override?: {enrollmentId: string; enrollmentProofToken: string; authUrl?: string}) => {
       if (isBinding) {
         return;
       }
       const enrollmentId = (override?.enrollmentId ?? bindForm.enrollmentId).trim();
       const enrollmentProofToken = (override?.enrollmentProofToken ?? bindForm.enrollmentProofToken).trim();
-      const language = (override?.language ?? bindForm.language).trim() || undefined;
       if (!enrollmentId || !enrollmentProofToken) {
         setBindError('Enrollment ID and proof token are required.');
         return;
@@ -285,13 +283,11 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           ...previous,
           enrollmentId,
           enrollmentProofToken,
-          language: language ?? previous.language,
         }));
         const response = await enrollmentsApi.bind(
           {
             enrollmentId,
             enrollmentProofToken,
-            language,
           },
           urlForBind,
         );
@@ -312,7 +308,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           setScannerVisible(false);
           return;
         }
-        const nextDraft = buildDraft(response, {enrollmentId, enrollmentProofToken, language});
+        const nextDraft = buildDraft(response, {enrollmentId, enrollmentProofToken});
         setDraft(nextDraft);
         setScannerVisible(false);
       } catch (error) {
@@ -567,7 +563,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
             setBindForm(prev => ({
               enrollmentId: parsed.enrollmentId,
               enrollmentProofToken: parsed.enrollmentProofToken,
-              language: parsed.language ?? prev.language ?? 'en',
             }));
             setBindError(undefined);
             performBinding(parsed);
@@ -848,7 +843,6 @@ const styles = StyleSheet.create({
 type QrPayload = {
   enrollmentId: string;
   enrollmentProofToken: string;
-  language?: string;
   /** Validated Auth API base URL when present in the QR code. */
   authUrl?: string;
 };
@@ -881,7 +875,6 @@ const parseQrPayload = (value: string): QrPayload => {
       return {
         enrollmentId: String(json.enrollmentId),
         enrollmentProofToken: String(json.enrollmentProofToken),
-        language: json.language ? String(json.language) : undefined,
         authUrl: validateAuthUrl(json.authUrl),
       };
     }

@@ -147,7 +147,6 @@ await adminAPI.deleteAuthAttempt(authAttemptId);
 ```typescript
 // Enrollment operations
 const binding = await authAPI.bindEnrollment(enrollmentId);
-const binding = await authAPI.bindEnrollment(enrollmentId, 'en'); // With language
 
 const verification = await authAPI.verifyEnrollment(
   enrollmentId, challengeResponse, devicePublicKey, enrollmentProofTokenSigned

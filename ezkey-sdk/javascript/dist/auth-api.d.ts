@@ -12,7 +12,7 @@ export declare class EzkeyAuthAPI {
     /**
      * Binds a device to an enrollment.
      */
-    bindEnrollment(enrollmentId: number, acceptLanguage?: string): Promise<EnrollmentBindResponseDto>;
+    bindEnrollment(enrollmentId: number): Promise<EnrollmentBindResponseDto>;
     /**
      * Verifies and completes the enrollment process.
      */

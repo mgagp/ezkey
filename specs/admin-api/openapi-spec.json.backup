@@ -6380,7 +6380,6 @@
           "enrollmentId": {
             "type": "integer",
             "format": "int32",
-            "nullable": true,
             "description": "Enrollment ID for MFA (passwordless admin identity). Null if not linked to an enrollment.",
             "example": 123
           },

@@ -30,12 +30,9 @@ package org.ezkey.enrollment.domain;
  * that the mobile device must validate and respond to with its own generated keys and cryptographic
  * signature to complete the secure enrollment binding process.
  *
- * <p><b>Integration Metadata:</b> Includes logo, name, and description to provide enhanced user
- * experience during enrollment by displaying relevant branding and contextual information about the
- * service being enrolled with.
- *
- * <p><b>Internationalization:</b> Supports localized integration information based on the language
- * specified in the binding request, ensuring appropriate content display for international users.
+ * <p><b>Integration Metadata:</b> Includes name and description to provide user-facing context
+ * during enrollment. Values come from the integration record stored in the database (single display
+ * name and description per integration; no bind-time locale selection).
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -84,20 +81,18 @@ public class EnrollmentBindResponse {
   private String enrollmentProofToken;
 
   /**
-   * The localized display name of the integration.
+   * The display name of the integration.
    *
-   * <p>Human-readable name of the integration in the requested language, shown to the user during
-   * enrollment to help identify the service or application being enrolled. This name is localized
-   * based on the language specified in the binding request.
+   * <p>Human-readable name from the integration record, shown to the user during enrollment to help
+   * identify the service or application being enrolled.
    */
   private String integrationName;
 
   /**
-   * The localized description of the integration.
+   * The description of the integration.
    *
-   * <p>Provides additional context or information about the integration in the requested language,
-   * such as its purpose or features, to assist the user during the enrollment process. This
-   * description helps users understand what service they are enrolling with.
+   * <p>Additional context from the integration record, such as purpose or features, to assist the
+   * user during the enrollment process.
    */
   private String integrationDescription;
 

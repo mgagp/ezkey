@@ -43,11 +43,10 @@ void main() {
         '{"enrollmentId":123,"enrollmentProofToken":"proof.enroll","authUrl":"https://goateed.example.dev"}',
       ),
       bindingChallenge: '654321',
-      language: 'fr',
     );
 
     expect(session.enrollmentId, '123');
-    expect(fakeApi.lastBindRequest?.language, 'fr');
+    expect(fakeApi.lastBindRequest?.enrollmentProofToken, 'proof.enroll');
 
     final pending = await session.checkPending();
     expect(pending, isNotNull);

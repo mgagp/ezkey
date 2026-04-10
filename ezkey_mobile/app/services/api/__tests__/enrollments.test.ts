@@ -20,7 +20,6 @@ describe('enrollmentsApi', () => {
     const payload: BindEnrollmentRequest = {
       enrollmentId: '123',
       enrollmentProofToken: 'proof-token',
-      language: 'en',
     };
     const responseData: BindEnrollmentResponse = {
       enrollmentId: 123,
@@ -36,7 +35,7 @@ describe('enrollmentsApi', () => {
 
     expect(mockedPost).toHaveBeenCalledWith(
       '/api/v1/enrollments/bind',
-      {enrollmentId: 123, enrollmentProofToken: 'proof-token', language: 'en'},
+      {enrollmentId: 123, enrollmentProofToken: 'proof-token'},
       undefined,
     );
     expect(result).toEqual(responseData);

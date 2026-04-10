@@ -25,6 +25,11 @@ main outcome of this document is simple: you should be able to implement `bind`,
 `pending`, and `respond` correctly, store the right material securely, and validate your work
 against a local Docker stack.
 
+This document is a **protocol specification** for mobile clients: HTTP endpoints, JSON field
+semantics, canonical signed strings, and verification order. It does **not** prescribe screen
+layouts, navigation, or general user experience beyond security-relevant behavior (for example
+user-initiated polling). Product UX is intentionally out of scope here.
+
 ## Audience And Scope
 
 This guide targets:
@@ -38,6 +43,38 @@ This guide does not focus on:
 - Admin API provisioning workflows.
 - iOS secure enclave implementation details.
 - Browser-centric or WebAuthn-style models.
+
+### Example wire values: Crypto API (local stack)
+
+JSON examples in this guide sometimes use **short illustrative** strings so the document stays
+readable. For **real** Base64 material that matches the same algorithms and wire formats as the
+production `SignatureService` paths, use the **Crypto API** shipped with the standard Ezkey
+installation (`http://localhost:9090` when using the default local stack). It is a **testing and
+diagnostics** surface only (no authentication); see [ENDPOINT.md](ENDPOINT.md) and
+[`ezkey-crypto-api/AGENTS.md`](../ezkey-crypto-api/AGENTS.md).
+
+| Need | HTTP | Notes |
+|---|---|---|
+| Proof token (`randomPart.saltPart`, same as `deviceProofToken`) | `GET /api/v1/crypto/prooftoken` | Response field `proofToken` |
+| EC P-256 key pair (PKCS#8 private + SPKI public) | `GET /api/v1/crypto/keypair` | `publicKey` → `devicePublicKey` on verify; `privateKey` for signing |
+| ECDSA-SHA256 over UTF-8 (DER, standard Base64) | `POST /api/v1/crypto/sign` | Body `{"data":"<exact string>","privateKey":"<PKCS#8>"}` → response `signature` (use for signing the raw `deviceProofToken`, and for the canonical enrollment verify payload) |
+| Ed25519 integration key pair | `GET /api/v1/crypto/integration-keypair` | Raw `publicKey` (Base64URL) matches integration wire shape |
+| Ed25519 over UTF-8 (signature Base64URL) | `POST /api/v1/crypto/sign-ed25519` | For oracle checks against integration-signed payloads |
+
+**Example: sign `deviceProofToken` for `POST .../auth-attempts/pending`** (requires `curl`, `jq`; stack must be up):
+
+```bash
+CRYPTO=http://localhost:9090
+TOKEN=$(curl -s "$CRYPTO/api/v1/crypto/prooftoken" | jq -r .proofToken)
+KEYS=$(curl -s "$CRYPTO/api/v1/crypto/keypair")
+PRIV=$(echo "$KEYS" | jq -r .privateKey)
+curl -s -X POST "$CRYPTO/api/v1/crypto/sign" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --arg t "$TOKEN" --arg k "$PRIV" '{data:$t,privateKey:$k}')"
+```
+
+Use the response `signature` field as `deviceProofTokenSigned` (ECDSA DER, standard Base64). **Do
+not** confuse this with JWT: a misleading `eyJ...` prefix is not ECDSA DER.
 
 ## Product Positioning In One Page
 
@@ -280,7 +317,7 @@ sequenceDiagram
     participant Mobile as Mobile App
     participant Auth as Auth API
 
-    Mobile->>Auth: POST /api/v1/enrollments/bind\n(enrollmentId, enrollmentProofToken, language)
+    Mobile->>Auth: POST /api/v1/enrollments/bind\n(enrollmentId, enrollmentProofToken)
     Auth-->>Mobile: enrollment metadata + integrationPublicKey
     Mobile->>Mobile: Generate EC P-256 key pair in Android Keystore
     Mobile->>Mobile: Sign canonical verify payload with device private key
@@ -301,8 +338,7 @@ Request body:
 ```json
 {
   "enrollmentId": 456,
-  "enrollmentProofToken": "abc123-def456-ghi789",
-  "language": "en"
+  "enrollmentProofToken": "abc123-def456-ghi789"
 }
 ```
 
@@ -312,13 +348,8 @@ Primary request fields:
 |---|---|---|---|
 | `enrollmentId` | number | Yes | Enrollment identifier |
 | `enrollmentProofToken` | string | Yes | Permanent proof token associated with the enrollment |
-| `language` | string | Partial support only | Client-supplied language hint; current ecosystem support is not yet fully aligned and should not be treated as a stable protocol guarantee |
 
-Implementation note:
-
-The current EZKey ecosystem still has work in progress around language handling for enrollment
-binding. Some clients already carry a `language` hint, but support is partial and should be
-understood as provisional until a future protocol/documentation pass stabilizes that behavior.
+The bind contract defines **only** these two fields. Integration display names in the response come from the single name and description stored on the integration record (no bind-time locale negotiation). A future product iteration could introduce locale-aware integration copy and API support; that is not part of the current protocol.
 
 Successful response:
 
@@ -491,7 +522,7 @@ Request body:
   "enrollmentId": 456,
   "enrollmentProofToken": "EZK-ABC123-DEF456",
   "deviceProofToken": "abc123-def456-ghi789",
-  "deviceProofTokenSigned": "eyJhbGciOiJSUzI1NiJ9..."
+  "deviceProofTokenSigned": "<ECDSA-SHA256 DER signature, standard Base64 — see Crypto API example above>"
 }
 ```
 
@@ -502,7 +533,7 @@ Field semantics:
 | `enrollmentId` | number | Yes in current API contract | Enrollment identifier |
 | `enrollmentProofToken` | string | Yes | Permanent token for secure enrollment association |
 | `deviceProofToken` | string | Yes | Client-generated proof token for this poll cycle, using the same wire format as the backend proof-token generator |
-| `deviceProofTokenSigned` | string | Yes | Device signature over the raw device proof token |
+| `deviceProofTokenSigned` | string | Yes | ECDSA-SHA256 over the **raw** `deviceProofToken` string (UTF-8), ASN.1 DER, standard Base64 — generate a real value with `POST /api/v1/crypto/sign` on the local Crypto API |
 
 #### Generating `deviceProofToken`
 
@@ -783,7 +814,9 @@ default choice for day-to-day protocol testing.
 
 ### Crypto API Usage For Validation
 
-The Crypto API is useful for fixture generation and debugging.
+The Crypto API is useful for fixture generation and debugging. For **curl workflows** that produce
+real `deviceProofToken` / `deviceProofTokenSigned` and related wire values, see **Example wire
+values: Crypto API** at the top of this guide.
 
 Helpful endpoints:
 
@@ -839,6 +872,9 @@ Avoid these mistakes:
 - Signing `enrollmentProofToken` during `respond`. The correct token is `authAttemptProofToken`.
 - Treating the integration public key as an EC public key. It is Ed25519 raw 32-byte material.
 - Treating the integration signature as DER. It is raw 64-byte Ed25519 output.
+- Building UI around `integrationLogo` or other legacy logo fields. Integration branding in the
+  current product is **name and description** only; logo-style fields are not part of the minimal
+  protocol and should be ignored in new clients (see [`ezkey_mobile/AGENTS.md`](../ezkey_mobile/AGENTS.md)).
 - Forgetting NFC normalization on context fields before verifying pending signatures.
 - Normalizing proof tokens. Do not normalize them.
 - Assuming `pending` should run as aggressive background polling.

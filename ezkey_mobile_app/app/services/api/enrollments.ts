@@ -42,7 +42,6 @@ export const enrollmentsApi = {
     const body = {
       enrollmentId: Number(payload.enrollmentId),
       enrollmentProofToken: payload.enrollmentProofToken,
-      ...(payload.language ? {language: payload.language} : {}),
     };
     const response = await httpClient.post<BindEnrollmentResponse>(`${basePath}/bind`, body, config);
     return response.data;

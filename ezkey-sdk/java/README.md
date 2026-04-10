@@ -124,7 +124,6 @@ adminAPI.deleteAuthAttempt(authAttemptId);
 ```java
 // Enrollment operations
 EnrollmentBindResponseDto binding = authAPI.bindEnrollment(enrollmentId);
-EnrollmentBindResponseDto binding = authAPI.bindEnrollment(enrollmentId, "en"); // With language
 
 EnrollmentVerifyResponseDto verification = authAPI.verifyEnrollment(
     enrollmentId, challengeResponse, devicePublicKey, enrollmentProofTokenSigned

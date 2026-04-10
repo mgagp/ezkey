@@ -104,7 +104,7 @@ export const EnrollmentFlowScreen: React.FC<Props> = ({navigation}) => {
   const onScanned = useCallback(
     async (value: string) => {
       setScannerVisible(false);
-      let parsed: {enrollmentId: string; enrollmentProofToken: string; language?: string; authUrl?: string};
+      let parsed: {enrollmentId: string; enrollmentProofToken: string; authUrl?: string};
       try {
         parsed = parseQrPayload(value);
       } catch (e) {
@@ -122,7 +122,6 @@ export const EnrollmentFlowScreen: React.FC<Props> = ({navigation}) => {
           {
             enrollmentId: parsed.enrollmentId,
             enrollmentProofToken: parsed.enrollmentProofToken,
-            language: parsed.language,
           },
           parsed.authUrl,
         );

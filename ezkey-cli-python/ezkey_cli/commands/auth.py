@@ -32,10 +32,9 @@ def enrollment_group(ctx):
 @enrollment_group.command('bind')
 @click.option('--enrollment-id', required=True, type=int, help='Enrollment ID')
 @click.option('--enrollment-proof-token', required=True, help='Enrollment proof token')
-@click.option('--language', default='en', show_default=True, help='Preferred language for i18n fields')
 @click.option('--data', help='JSON data (or @filename for file input)')
 @click.pass_context
-def bind_enrollment(ctx, enrollment_id, enrollment_proof_token, language, data):
+def bind_enrollment(ctx, enrollment_id, enrollment_proof_token, data):
     """Bind device to enrollment using proof token authentication."""
     config: ConfigManager = ctx.obj['config']
     http_client = HttpClient(config)
@@ -61,11 +60,6 @@ def bind_enrollment(ctx, enrollment_id, enrollment_proof_token, language, data):
     
     json_data.setdefault('enrollmentId', enrollment_id)
     json_data.setdefault('enrollmentProofToken', enrollment_proof_token)
-    json_data.setdefault('language', language)
-    
-    # Add Accept-Language header for backward compatibility
-    previous_language = http_client.session.headers.get('Accept-Language')
-    http_client.session.headers['Accept-Language'] = language
     
     OutputUtils.verbose(f"POST {url}", verbose)
     if verbose:
@@ -75,12 +69,6 @@ def bind_enrollment(ctx, enrollment_id, enrollment_proof_token, language, data):
     
     response = http_client.post(url, json_data=json_data)
     OutputUtils.output_response(response, pretty_print=pretty_print, verbose=verbose)
-    
-    # Restore previous header
-    if previous_language is None:
-        http_client.session.headers.pop('Accept-Language', None)
-    else:
-        http_client.session.headers['Accept-Language'] = previous_language
 
 
 @enrollment_group.command('verify')

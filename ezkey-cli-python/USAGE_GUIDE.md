@@ -274,8 +274,7 @@ ezkey admin api-key revoke --id 42
 # Bind enrollment to device with proof token
 ezkey auth enrollment bind \
   --enrollment-id 456 \
-  --enrollment-proof-token EZK-ABC123 \
-  --language en
+  --enrollment-proof-token EZK-ABC123
 
 # Verify enrollment (device completes cryptographic challenge)
 ezkey auth enrollment verify \

@@ -29,11 +29,10 @@ class EzkeyAuthAPI {
     /**
      * Binds a device to an enrollment.
      */
-    async bindEnrollment(enrollmentId, acceptLanguage = 'en') {
+    async bindEnrollment(enrollmentId) {
         try {
             return await this.enrollmentApi.bind({
                 enrollmentId,
-                acceptLanguage
             });
         }
         catch (error) {

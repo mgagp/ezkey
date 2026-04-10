@@ -18,7 +18,6 @@ export type EnrollmentSummary = {
 export type BindEnrollmentRequest = {
   enrollmentId: string;
   enrollmentProofToken: string;
-  language?: string;
 };
 
 export type BindEnrollmentResponse = {

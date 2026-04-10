@@ -76,7 +76,7 @@ public interface EnrollmentAuthMapper {
    * Converts a bind request DTO to domain request for enrollment binding.
    *
    * <p>Maps mobile device binding requests to domain objects for processing enrollment binding.
-   * Handles enrollment ID, proof token, and language preferences for secure enrollment access.
+   * Maps enrollment ID and proof token for secure enrollment access.
    *
    * @param request the mobile bind request DTO
    * @return the corresponding domain bind request

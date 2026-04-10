@@ -83,7 +83,7 @@ Security alignment:
 
 - **Error handling**: `httpClient` centralizes Axios interceptors; UI layers map server errors to actionable alerts.
 - **Logging**: Development builds prefer `console.warn` / `console.error` to surface non-fatal issues; production logging remains a separate concern.
-- **Localization**: Wizard defaults to English (`language: 'en'`), but API payloads accept locale overrides.
+- **Localization**: Mobile UI copy is English-only today. The Auth API bind request accepts only `enrollmentId` and `enrollmentProofToken`; integration display strings in the bind response come from the integration record (single locale at the data layer).
 - **Accessibility**: Screens rely on React Native primitives for accessible touch targets; platform-specific audits remain outstanding.
 
 ## Testing Strategy
