@@ -34,6 +34,7 @@ import {cryptoService} from '../../services/crypto';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import {env} from '../../config/env';
+import {integrationKeyAlgorithmBindError} from '../../utils/integrationKeyAlgorithm';
 import {validateAuthUrl} from '../../utils/urlValidation';
 import {
   buildBindPayload,
@@ -294,6 +295,12 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           },
           urlForBind,
         );
+        const algoErr = integrationKeyAlgorithmBindError(response.integrationKeyAlgorithm);
+        if (algoErr) {
+          setBindError(algoErr);
+          setScannerVisible(false);
+          return;
+        }
         const bindPayload = buildBindPayload(response);
         const bindSigOk = await cryptoService.verify(
           bindPayload,

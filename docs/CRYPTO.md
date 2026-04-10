@@ -41,7 +41,7 @@ The mobile app verifies **integration** signatures with **Ed25519** (`Integratio
 - Algorithm: `Signature.getInstance("Ed25519")` over **exact UTF-8** payload bytes (no pre-hash API; the provider hashes internally per Ed25519).
 - **Wire**: raw 64-byte signature as **Base64URL without padding**; decoders also accept standard Base64 where the API emits it.
 - **Normalize**: `SignatureService.normalizeIntegrationPublicKeyToBase64` canonicalizes stored keys to Base64URL (32 bytes after decode).
-- Enrollment bind may include `integrationKeyAlgorithm`: `"ed25519"`.
+- **Bind response**: `integrationKeyAlgorithm` is **required** on `POST /api/v1/enrollments/bind` (see `docs/ENDPOINT.md`). Phase 1 only supports **`ed25519`** (exact string). Integrators and mobile clients should **validate** this field before interpreting `integrationPublicKey` or verifying the integration signature; if it is not exactly `ed25519`, **stop** the enrollment flow (fail closed). The reference app implements this check (see `ezkey_mobile/app/utils/integrationKeyAlgorithm.ts`).
 
 ### Pitfalls
 

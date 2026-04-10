@@ -26,6 +26,7 @@ import {
 } from '../../services/crypto/enrollmentPayload';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {useSaveEnrollment} from '../../hooks/useEnrollments';
+import {integrationKeyAlgorithmBindError} from '../../utils/integrationKeyAlgorithm';
 import {parseQrPayload} from '../../utils/parseQrPayload';
 
 type Props = StackScreenProps<RootStackParamList, 'EnrollmentFlow'>;
@@ -125,6 +126,11 @@ export const EnrollmentFlowScreen: React.FC<Props> = ({navigation}) => {
           },
           parsed.authUrl,
         );
+        const algoErr = integrationKeyAlgorithmBindError(response.integrationKeyAlgorithm);
+        if (algoErr) {
+          setBindError(algoErr);
+          return;
+        }
         const crypto = getCryptoService();
         const bindPayload = buildBindPayload(response);
         const bindOk = await crypto.verify(

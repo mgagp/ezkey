@@ -25,8 +25,8 @@ export type BindEnrollmentResponse = {
   enrollmentId: number | string;
   enrollmentProofToken: string;
   integrationPublicKey: string;
-  /** e.g. ed25519 — included in canonical bind payload */
-  integrationKeyAlgorithm: string;
+  /** Phase 1: only `ed25519` (see docs/CRYPTO.md). Clients must validate before using the public key. */
+  integrationKeyAlgorithm: 'ed25519';
   integrationName: string;
   integrationDescription?: string;
   enrollmentName?: string;

@@ -335,23 +335,25 @@ Successful response:
 }
 ```
 
-The integration signs `enrollmentBindPayloadSignedByIntegration` over the canonical bind payload (see [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md)). The mobile app **must** verify this Ed25519 signature with `integrationPublicKey` before trusting the bind response or storing the integration key for pending/respond verification.
+The integration signs `enrollmentBindPayloadSignedByIntegration` over the canonical bind payload (see [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md)). After confirming `integrationKeyAlgorithm` is `ed25519`, the mobile app **must** verify this Ed25519 signature with `integrationPublicKey` before trusting the bind response or storing the integration key for pending/respond verification.
 
 Critical response fields:
 
 | Field | Meaning | Device handling |
 |---|---|---|
 | `integrationPublicKey` | Ed25519 public key, raw 32 bytes, Base64URL without padding | Store for later verification of pending and result signatures; verify `enrollmentBindPayloadSignedByIntegration` against this key first |
-| `integrationKeyAlgorithm` | Cryptographic algorithm descriptor for the integration key material | Preserve and inspect when your client contract exposes it; stricter validation behavior is being hardened in ongoing work |
+| `integrationKeyAlgorithm` | Required string; phase 1 is exactly `ed25519` (lowercase) | **Validate** before decoding `integrationPublicKey` or verifying the bind signature. If the value is missing or not `ed25519`, **abort enrollment** (fail closed). See [CRYPTO.md](CRYPTO.md) and [ENDPOINT.md](ENDPOINT.md). Reference implementation: [`ezkey_mobile/app/utils/integrationKeyAlgorithm.ts`](../ezkey_mobile/app/utils/integrationKeyAlgorithm.ts) |
 | `enrollmentProofToken` | Enrollment proof token | Store in secure storage |
 | `enrollmentName` | Human label for the enrollment | Optional display metadata |
 
 Implementation note:
 
-The backend bind response includes `integrationKeyAlgorithm`, but client-side handling is not yet
-uniformly strict across all EZKey implementations. For now, treat it as useful descriptive
-metadata and as a forward-compatible validation hook, without overstating the strength of current
-client-side enforcement.
+The reference React Native app (`ezkey_mobile`) models `integrationKeyAlgorithm` on the bind
+response type (`integrationKeyAlgorithm: 'ed25519'`) and runs a fail-closed check immediately after
+`POST .../bind`, before building the canonical bind payload or verifying
+`enrollmentBindPayloadSignedByIntegration`. Third-party clients should follow the same order:
+validate algorithm, then verify the integration signature. Other Ezkey mobile codebases may lag;
+do not treat omission of this check elsewhere as a protocol relaxation.
 
 What the mobile app should store after `bind`:
 
