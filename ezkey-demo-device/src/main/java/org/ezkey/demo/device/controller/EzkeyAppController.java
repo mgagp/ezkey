@@ -284,11 +284,9 @@ public class EzkeyAppController {
               .devicePrivateKeyStorageTier(
                   EnrollmentVerifyRequestDto.DevicePrivateKeyStorageTierEnum.NONE);
 
-      // Log the request for debugging
-      logger.info("Verify request for enrollment {}: {}", enrollmentId, requestDto);
-      logger.info("Verify device payload signed (canonical): {}", verifyPayload);
-      logger.info("Device public key: {}", rec.devicePublicKey());
-      logger.info("Signature (enrollmentProofTokenSigned): {}", enrollmentProofTokenSigned);
+      // Do not log proof payloads, signatures, or full request bodies — they belong in API
+      // responses only.
+      logger.info("Verify request submitted for enrollment {}", enrollmentId);
 
       EnrollmentVerifyResponseDto verifyResponse = authApiService.verify(requestDto).block();
       if (verifyResponse != null) {

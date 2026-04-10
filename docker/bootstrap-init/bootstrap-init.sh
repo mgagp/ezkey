@@ -4,6 +4,15 @@
 
 set -e
 
+if [ "${EZKEY_BOOTSTRAP_INIT_ENABLED:-true}" = "false" ]; then
+  echo "=========================================="
+  echo "  Ezkey Bootstrap Init — SKIPPED"
+  echo "=========================================="
+  echo "EZKEY_BOOTSTRAP_INIT_ENABLED=false (e.g. recovery_primary bootstrap: no bootstrap-credentials.json)."
+  echo "Perform global admin enrollment via Admin UI recovery flow, or set EZKEY_BOOTSTRAP_INIT_ENABLED=true with full bootstrap mode."
+  exit 0
+fi
+
 BOOTSTRAP_CREDS_FILE="/bootstrap/bootstrap-credentials.json"
 DEVICE_CREDS_FILE="/bootstrap/device-credentials.json"
 DEMO_DEVICE_ENROLLMENTS_DIR="/app/data/enrollments"

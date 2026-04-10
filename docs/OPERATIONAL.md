@@ -14,6 +14,7 @@ This document provides operational guidance for deploying and configuring Ezkey 
 6. [Performance Tuning](#performance-tuning)
 7. [Security Headers](#security-headers)
 8. [Backup and Recovery](#backup-and-recovery)
+9. [Global admin bootstrap and recovery codes](#global-admin-bootstrap-and-recovery-codes)
 
 ---
 
@@ -479,6 +480,19 @@ ssl_stapling_verify on;
 ---
 
 ## Logging and Monitoring
+
+### Logging and secrets (Admin API)
+
+Server logs must **not** duplicate high-value secrets that are already returned in API responses (for example enrollment proof tokens and challenge codes after enrollment reset). Use identifiers such as `enrollmentId` and usernames for correlation. Plaintext recovery codes appear only in deliberate bootstrap output when configured.
+
+### Global admin bootstrap and recovery codes
+
+`ezkey.admin.mfa.bootstrap.credentials-output-mode` controls what the Admin API prints at first global-admin enrollment:
+
+- **`full`** (default for development and Docker clean-start): enrollment secrets and ASCII QR may appear in startup logs; `bootstrap-credentials.json` may be written when file export is enabled (for `bootstrap-init` automation).
+- **`recovery_primary`**: recovery codes and operator instructions only; enrollment secrets are omitted from logs and JSON export is skipped. Use the Admin UI account-recovery flow (recover → reset enrollment → bind). For Docker, set **`EZKEY_BOOTSTRAP_INIT_ENABLED=false`** on the `bootstrap-init` service when no `bootstrap-credentials.json` is produced, or omit that service.
+
+**Operational recommendation:** After the global administrator completes first device binding and can sign in, **regenerate recovery codes** from the Admin UI so unused codes from bootstrap logs are invalidated.
 
 ### Log Configuration
 

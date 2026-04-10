@@ -26,6 +26,7 @@ import org.springframework.stereotype.Component;
  * ezkey.admin.mfa.mode=dev
  * ezkey.admin.mfa.bootstrap.enabled=true
  * ezkey.admin.mfa.bootstrap.auto-enrollment=true
+ * ezkey.admin.mfa.bootstrap.credentials-output-mode=full
  * </pre>
  *
  * <p><b>MFA Modes:</b>
@@ -126,6 +127,17 @@ public class AdminMfaProperties {
     private boolean autoEnrollment = true;
 
     /**
+     * What to print and export when global-admin enrollment is created at bootstrap.
+     *
+     * <p>Use {@link BootstrapCredentialsOutputMode#FULL} for development and Docker clean-start
+     * (enrollment secrets + optional JSON file). Use {@link
+     * BootstrapCredentialsOutputMode#RECOVERY_PRIMARY} for production-style deployments where
+     * operators enroll via the recovery funnel only.
+     */
+    private BootstrapCredentialsOutputMode credentialsOutputMode =
+        BootstrapCredentialsOutputMode.FULL;
+
+    /**
      * Gets the bootstrap enabled status.
      *
      * @return true if bootstrap is enabled
@@ -159,6 +171,24 @@ public class AdminMfaProperties {
      */
     public void setAutoEnrollment(boolean autoEnrollment) {
       this.autoEnrollment = autoEnrollment;
+    }
+
+    /**
+     * Gets the credentials output mode for bootstrap.
+     *
+     * @return full vs recovery-primary emission policy
+     */
+    public BootstrapCredentialsOutputMode getCredentialsOutputMode() {
+      return credentialsOutputMode;
+    }
+
+    /**
+     * Sets the credentials output mode for bootstrap.
+     *
+     * @param credentialsOutputMode output policy
+     */
+    public void setCredentialsOutputMode(BootstrapCredentialsOutputMode credentialsOutputMode) {
+      this.credentialsOutputMode = credentialsOutputMode;
     }
   }
 }

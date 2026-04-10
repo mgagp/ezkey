@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminMfaProperties;
+import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
 import org.ezkey.admin.config.OrganizationProperties;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -469,6 +470,12 @@ public class AdminBootstrapService {
    */
   private void logGlobalAdminEnrollmentCredentials(
       Enrollment enrollment, java.util.List<String> recoveryCodes, String enrollmentProofToken) {
+    if (mfaProperties.getBootstrap().getCredentialsOutputMode()
+        == BootstrapCredentialsOutputMode.RECOVERY_PRIMARY) {
+      logRecoveryPrimaryGlobalAdminCredentials(enrollment, recoveryCodes);
+      return;
+    }
+
     String separator = "=".repeat(80);
     String username = initialGlobalAdminProperties.getUsername();
     String email = initialGlobalAdminProperties.getEmail();
@@ -534,6 +541,56 @@ public class AdminBootstrapService {
     logger.warn("   - Save all credentials in a secure password manager");
     logger.warn("   - These credentials cannot be retrieved again without database access");
     logger.warn("   - Bind enrollment before attempting first login");
+    logger.warn("");
+    logger.warn(separator);
+    logger.warn("");
+  }
+
+  /**
+   * Recovery-first bootstrap: log only username context and recovery codes; enrollment proof token,
+   * challenge, and ASCII QR are omitted. Operators use Admin UI recovery (recover → reset
+   * enrollment) to obtain bind material.
+   *
+   * @param enrollment enrollment record (enrollment id may be logged as a non-secret correlation
+   *     id)
+   * @param recoveryCodes plaintext recovery codes (shown once)
+   */
+  private void logRecoveryPrimaryGlobalAdminCredentials(
+      Enrollment enrollment, java.util.List<String> recoveryCodes) {
+    String separator = "=".repeat(80);
+    String username = initialGlobalAdminProperties.getUsername();
+    String email = initialGlobalAdminProperties.getEmail();
+    String firstName = initialGlobalAdminProperties.getFirstName();
+    String lastName = initialGlobalAdminProperties.getLastName();
+    String fullName = firstName + " " + lastName;
+
+    logger.warn("");
+    logger.warn(separator);
+    logger.warn("GLOBAL ADMIN BOOTSTRAP (recovery-primary) — SAVE RECOVERY CODES NOW");
+    logger.warn(separator);
+    logger.warn("");
+    logger.warn("Global Admin: {} ({}) — {}", username, email, fullName);
+    logger.warn("Enrollment ID (reference only): {}", enrollment.getEnrollmentId());
+    logger.warn("");
+    logger.warn("RECOVERY CODES (single-use — store in a password manager):");
+    for (int i = 0; i < recoveryCodes.size(); i++) {
+      logger.warn("   {}. {}", (i + 1), recoveryCodes.get(i));
+    }
+    logger.warn("");
+    logger.warn("Initial enrollment (no proof token in logs):");
+    logger.warn("  1) Open Admin UI → Login → Use account recovery.");
+    logger.warn("  2) POST /api/v1/admin/auth/recover with username + one recovery code.");
+    logger.warn("  3) POST /api/v1/admin/enrollments/reset with the recovery token — new bind");
+    logger.warn("     credentials are returned in the HTTP response body only (not in logs).");
+    logger.warn("  4) Bind the mobile app using those credentials, then use passwordless login.");
+    logger.warn("");
+    logger.warn(
+        "Bootstrap JSON file export is disabled in recovery-primary mode "
+            + "(no bootstrap-credentials.json).");
+    logger.warn(
+        "For Docker automation that needs unattended bind+verify, use"
+            + " credentials-output-mode=full");
+    logger.warn("or implement a separate recovery-based automation path.");
     logger.warn("");
     logger.warn(separator);
     logger.warn("");

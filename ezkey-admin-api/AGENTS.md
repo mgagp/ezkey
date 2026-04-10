@@ -29,7 +29,13 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
   - a system integration (`isSystemIntegration=true`)
   - a global admin enrollment (EC P-256 keys)
   - recovery codes (hashed in DB; plain text is only available at generation time)
+- Bootstrap log/export policy: `ezkey.admin.mfa.bootstrap.credentials-output-mode` — `full` (default; enrollment secrets + optional `bootstrap-credentials.json`) vs `recovery_primary` (recovery codes + instructions only; skips JSON export for Docker).
 - **Bootstrap transaction:** `@Transactional` must be on `bootstrapAdminMfa()` (entry point), not only on `doBootstrapAdminMfa()`. Passing `this::doBootstrapAdminMfa` to `LockingTaskExecutor` bypasses the proxy; the inner method’s `@Transactional` would not apply. See `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md`.
+
+## Logging and secrets
+
+- **Never** log enrollment proof tokens, enrollment challenge codes, plaintext recovery codes, temporary recovery tokens, bearer tokens, or raw cryptographic signatures used as proof material. If operators need correlation, log **non-secret** identifiers only (e.g. `enrollmentId`, username). Enrollment reset and onboarding secrets belong in **HTTP responses** only.
+- The **only** deliberate exception is optional one-time **bootstrap** output (`AdminBootstrapService`), controlled by `ezkey.admin.mfa.bootstrap.credentials-output-mode` (`full` vs `recovery_primary`). Do not copy that pattern into request/response handlers or enrollment services.
 
 ## Running and testing
 

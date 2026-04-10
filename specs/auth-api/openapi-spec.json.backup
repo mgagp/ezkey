@@ -329,10 +329,22 @@
             "type": "boolean",
             "description": "Whether the enrollment is now active and ready for authentication",
             "example": true
+          },
+          "enrollmentVerifyMessage": {
+            "type": "string",
+            "description": "Human-readable verify completion message (included in the integration signature)",
+            "example": "Enrollment verified successfully"
+          },
+          "enrollmentVerifyPayloadSignedByIntegration": {
+            "type": "string",
+            "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over proofToken|enrollmentId|VERIFIED|message (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)",
+            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
           }
         },
         "required": [
-          "active"
+          "active",
+          "enrollmentVerifyMessage",
+          "enrollmentVerifyPayloadSignedByIntegration"
         ]
       },
       "ProblemDetail": {
@@ -438,9 +450,15 @@
             "type": "string",
             "description": "Tenant description of the integration associated with this enrollment",
             "example": "Acme Corp tenant workspace"
+          },
+          "enrollmentBindPayloadSignedByIntegration": {
+            "type": "string",
+            "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind payload (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)",
+            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
           }
         },
         "required": [
+          "enrollmentBindPayloadSignedByIntegration",
           "enrollmentId",
           "enrollmentProofToken",
           "integrationKeyAlgorithm",

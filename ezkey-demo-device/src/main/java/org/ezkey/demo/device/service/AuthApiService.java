@@ -62,11 +62,8 @@ public class AuthApiService {
     Mono<EnrollmentBindResponseDto> errorHandledMono =
         responseMono
             .doOnSuccess(
-                response ->
-                    logger.info("Bind API response for enrollment {}: {}", enrollmentId, response))
-            .doOnError(
-                e ->
-                    logger.error("Bind failed for enrollment {} with proof token", enrollmentId, e))
+                response -> logger.info("Bind API completed for enrollment {}", enrollmentId))
+            .doOnError(e -> logger.error("Bind failed for enrollment {}", enrollmentId, e))
             .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
             .onErrorResume(Exception.class, ex -> Mono.error(ex));
 
@@ -94,8 +91,14 @@ public class AuthApiService {
 
     Mono<EnrollmentVerifyResponseDto> errorHandledMono =
         responseMono
-            .doOnSuccess(response -> logger.info("Verify API response: {}", response))
-            .doOnError(e -> logger.error("Verify failed for request: {}", requestDto, e))
+            .doOnSuccess(
+                response ->
+                    logger.info(
+                        "Verify API completed for enrollment {}", requestDto.getEnrollmentId()))
+            .doOnError(
+                e ->
+                    logger.error(
+                        "Verify failed for enrollment {}", requestDto.getEnrollmentId(), e))
             .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
             .onErrorResume(Exception.class, ex -> Mono.error(ex));
 
@@ -124,8 +127,14 @@ public class AuthApiService {
 
     Mono<AuthAttemptPendingResponseDto> errorHandledMono =
         responseMono
-            .doOnSuccess(response -> logger.info("Pending API response: {}", response))
-            .doOnError(e -> logger.error("Pending failed for request: {}", requestDto, e))
+            .doOnSuccess(
+                response ->
+                    logger.info(
+                        "Pending API completed for enrollment {}", requestDto.getEnrollmentId()))
+            .doOnError(
+                e ->
+                    logger.error(
+                        "Pending failed for enrollment {}", requestDto.getEnrollmentId(), e))
             .onErrorResume(
                 WebClientResponseException.class,
                 ex -> {
@@ -160,14 +169,15 @@ public class AuthApiService {
 
     Mono<AuthAttemptRespondResponseDto> errorHandledMono =
         responseMono
-            .doOnSuccess(response -> logger.info("Respond API response: {}", response))
+            .doOnSuccess(
+                response ->
+                    logger.info(
+                        "Respond API completed for authAttemptId {}",
+                        requestDto.getAuthAttemptId()))
             .doOnError(
                 e ->
                     logger.error(
-                        "Respond failed for authAttemptId {}: {}",
-                        requestDto.getAuthAttemptId(),
-                        requestDto,
-                        e))
+                        "Respond failed for authAttemptId {}", requestDto.getAuthAttemptId(), e))
             .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
             .onErrorResume(Exception.class, ex -> Mono.error(ex));
 

@@ -242,9 +242,7 @@ public class AdminRecoveryService {
    * @throws org.ezkey.admin.exception.AuthenticationException if token is invalid
    */
   public EzkeyAdmin validateRecoveryToken(String recoveryToken) {
-    logger.debug(
-        "🔍 Validating recovery token: {}...",
-        recoveryToken.substring(0, Math.min(15, recoveryToken.length())));
+    logger.debug("Validating recovery token (value not logged)");
 
     // 1. Verify it's a recovery token
     if (!recoveryToken.startsWith(AdminAuditConstants.RECOVERY_TOKEN_PREFIX)) {
@@ -352,10 +350,9 @@ public class AdminRecoveryService {
     enrollmentRepository.save(enrollment);
 
     logger.warn(
-        "✅ Enrollment reset successful (ID: {}, old device unbound, new credentials generated)",
+        "✅ Enrollment reset successful (enrollmentId: {}, device unbound; new proof token and"
+            + " challenge are in the HTTP response body only)",
         enrollmentId);
-    logger.warn("🔐 New proof token: {}", newProofToken);
-    logger.warn("🔐 New challenge: {}", newChallenge);
 
     return enrollment;
   }

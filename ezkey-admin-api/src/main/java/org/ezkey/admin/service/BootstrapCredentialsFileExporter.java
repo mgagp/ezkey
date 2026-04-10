@@ -13,6 +13,8 @@ package org.ezkey.admin.service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.ezkey.admin.config.AdminMfaProperties;
+import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.BootstrapExportProperties;
 import org.ezkey.admin.config.QrCodeProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -32,6 +34,9 @@ import tools.jackson.databind.node.ObjectNode;
  * <p><b>Idempotent:</b> If the file already exists and contains the same enrollmentId, it will not
  * be overwritten to avoid unnecessary churn.
  *
+ * <p>When {@link BootstrapCredentialsOutputMode#RECOVERY_PRIMARY} is set, export is skipped even if
+ * enabled — enrollment secrets are not written to disk.
+ *
  * <p><b>Security:</b> This feature should only be enabled in Docker/demo profiles, never in
  * production.
  *
@@ -45,12 +50,16 @@ public class BootstrapCredentialsFileExporter {
 
   private final BootstrapExportProperties exportProperties;
   private final QrCodeProperties qrCodeProperties;
+  private final AdminMfaProperties adminMfaProperties;
   private final ObjectMapper objectMapper;
 
   public BootstrapCredentialsFileExporter(
-      BootstrapExportProperties exportProperties, QrCodeProperties qrCodeProperties) {
+      BootstrapExportProperties exportProperties,
+      QrCodeProperties qrCodeProperties,
+      AdminMfaProperties adminMfaProperties) {
     this.exportProperties = exportProperties;
     this.qrCodeProperties = qrCodeProperties;
+    this.adminMfaProperties = adminMfaProperties;
     this.objectMapper = new ObjectMapper();
   }
 
@@ -68,6 +77,13 @@ public class BootstrapCredentialsFileExporter {
   public void exportIfEnabled(Enrollment enrollment, String enrollmentProofToken, String username) {
     if (!exportProperties.isEnabled()) {
       logger.debug("Bootstrap credentials file export is disabled");
+      return;
+    }
+    if (adminMfaProperties.getBootstrap().getCredentialsOutputMode()
+        == BootstrapCredentialsOutputMode.RECOVERY_PRIMARY) {
+      logger.info(
+          "Bootstrap credentials file export skipped "
+              + "(ezkey.admin.mfa.bootstrap.credentials-output-mode=recovery_primary)");
       return;
     }
 

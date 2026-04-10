@@ -12,7 +12,7 @@ public final class EnrollmentVerifyPayloadUtil {
   private EnrollmentVerifyPayloadUtil() {}
 
   /**
-   * Format: {@code enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey}
+   * Format: {@code enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey}.
    *
    * @param enrollmentProofToken proof token from bind response
    * @param enrollmentId enrollment id
