@@ -40,9 +40,14 @@ export type BindEnrollmentResponse = {
 /** Matches Auth API `devicePrivateKeyStorageTier` at enrollment verify. */
 export type DevicePrivateKeyStorageTier = 'NONE' | 'STANDARD' | 'STRONG';
 
+/**
+ * Request to complete enrollment verification (Auth API `EnrollmentVerifyRequestDto`).
+ * `challengeResponse` is required: the user-entered value matching the server-stored challenge
+ * (the app typically collects six digits). `enrollmentsApi.verify` serializes it as a JSON number.
+ */
 export type VerifyEnrollmentRequest = {
   enrollmentId: string;
-  challengeResponse?: string;
+  challengeResponse: string;
   devicePublicKey: string;
   enrollmentProofTokenSigned: string;
   /** Reported from native keystore introspection (Android); sent on verify so the server can persist tier. */

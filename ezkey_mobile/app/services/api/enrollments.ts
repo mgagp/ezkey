@@ -22,9 +22,7 @@ import {
 function verifyBody(payload: VerifyEnrollmentRequest) {
   return {
     enrollmentId: Number(payload.enrollmentId),
-    challengeResponse: payload.challengeResponse
-      ? Number(payload.challengeResponse)
-      : undefined,
+    challengeResponse: Number(payload.challengeResponse),
     devicePublicKey: payload.devicePublicKey,
     enrollmentProofTokenSigned: payload.enrollmentProofTokenSigned,
     ...(payload.devicePrivateKeyStorageTier != null
@@ -62,9 +60,10 @@ export const enrollmentsApi = {
     return response.data;
   },
   /**
-   * Finalizes enrollment by submitting the device public key and signed proof token.
+   * Finalizes enrollment by submitting the device public key, signed proof token, and challenge response.
    *
-   * The payload must comply with the cryptographic rules in `docs/CRYPTO.md` (Ed25519, 32-byte keys, 64-byte signatures).
+   * `challengeResponse` is required by the Auth API (`docs/ENDPOINT.md`) and must match the stored challenge.
+   * The payload must comply with the cryptographic rules in `docs/CRYPTO.md` (device keys, signatures).
    *
    * @param payload Verify enrollment request carrying device credentials.
    * @param authUrl Optional per-enrollment Auth API base URL. When provided, overrides the global default.

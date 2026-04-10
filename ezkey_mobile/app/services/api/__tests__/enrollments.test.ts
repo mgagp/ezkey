@@ -26,7 +26,9 @@ describe('enrollmentsApi', () => {
       enrollmentId: 123,
       enrollmentProofToken: 'proof-token-updated',
       integrationPublicKey: 'public-key',
+      integrationKeyAlgorithm: 'ed25519',
       integrationName: 'Acme Bank',
+      enrollmentBindPayloadSignedByIntegration: 'bind-signature',
     };
     mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<BindEnrollmentResponse>);
 
@@ -49,7 +51,9 @@ describe('enrollmentsApi', () => {
       enrollmentId: 456,
       enrollmentProofToken: 'proof-token-2',
       integrationPublicKey: 'pk',
+      integrationKeyAlgorithm: 'ed25519',
       integrationName: 'Globex Corp',
+      enrollmentBindPayloadSignedByIntegration: 'bind-signature',
     };
     mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<BindEnrollmentResponse>);
 
@@ -72,6 +76,8 @@ describe('enrollmentsApi', () => {
     };
     const responseData: VerifyEnrollmentResponse = {
       active: true,
+      enrollmentVerifyMessage: 'ok',
+      enrollmentVerifyPayloadSignedByIntegration: 'verify-signature',
     };
     mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<VerifyEnrollmentResponse>);
 
@@ -93,10 +99,15 @@ describe('enrollmentsApi', () => {
   it('verify passes authUrl as baseURL config when provided', async () => {
     const payload: VerifyEnrollmentRequest = {
       enrollmentId: '789',
+      challengeResponse: '123456',
       devicePublicKey: 'device-pk',
       enrollmentProofTokenSigned: 'signed',
     };
-    const responseData: VerifyEnrollmentResponse = {active: true};
+    const responseData: VerifyEnrollmentResponse = {
+      active: true,
+      enrollmentVerifyMessage: 'ok',
+      enrollmentVerifyPayloadSignedByIntegration: 'verify-signature',
+    };
     mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<VerifyEnrollmentResponse>);
 
     const result = await enrollmentsApi.verify(payload, 'https://ezkey.initech.com');
@@ -105,7 +116,7 @@ describe('enrollmentsApi', () => {
       '/api/v1/enrollments/verify',
       {
         enrollmentId: 789,
-        challengeResponse: undefined,
+        challengeResponse: 123456,
         devicePublicKey: 'device-pk',
         enrollmentProofTokenSigned: 'signed',
       },
@@ -122,7 +133,11 @@ describe('enrollmentsApi', () => {
       enrollmentProofTokenSigned: 'sig',
       devicePrivateKeyStorageTier: 'STRONG',
     };
-    const responseData: VerifyEnrollmentResponse = {active: true};
+    const responseData: VerifyEnrollmentResponse = {
+      active: true,
+      enrollmentVerifyMessage: 'ok',
+      enrollmentVerifyPayloadSignedByIntegration: 'verify-signature',
+    };
     mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<VerifyEnrollmentResponse>);
 
     await enrollmentsApi.verify(payload);
