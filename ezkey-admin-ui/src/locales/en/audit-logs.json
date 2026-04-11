@@ -16,6 +16,7 @@
   "list": {
     "title": "Audit Logs",
     "filterEventTypeAll": "All Event Types",
+    "filterAllTypesInFamily": "All {{family}} events",
     "filterStatusAll": "All Status",
     "filterStatusSuccess": "Success",
     "filterStatusFailure": "Failure",
@@ -45,6 +46,18 @@
       "status": "How the step finished: Success, Failure (expected rules or terminal MFA outcomes), or Error (unexpected processing).",
       "api": "Which Ezkey API recorded this entry (Admin, Auth, or Integration)."
     }
+  },
+  "eventFamily": {
+    "ADMIN": "Administrators",
+    "ENROLLMENT": "Enrollments",
+    "AUTH_ATTEMPT": "Authentication attempts",
+    "API_KEY": "API keys",
+    "SYSTEM": "System",
+    "ENCRYPTION_KEY": "Encryption keys",
+    "REENCRYPTION": "Re-encryption",
+    "INTEGRATION": "Integrations",
+    "TENANT": "Tenants",
+    "AUDIT_CHAIN": "Audit chain"
   },
   "eventType": {
     "ADMIN_LOGIN": "Admin Login",
@@ -93,6 +106,7 @@
     "REENCRYPTION_PAUSED": "Re-encryption Paused",
     "INTEGRATION_CREATED": "Integration Created",
     "INTEGRATION_UPDATED": "Integration Updated",
+    "INTEGRATION_RETIRED": "Integration Retired",
     "INTEGRATION_DELETED": "Integration Deleted",
     "TENANT_CREATED": "Tenant Created",
     "TENANT_UPDATED": "Tenant Updated",

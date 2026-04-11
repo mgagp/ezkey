@@ -21,6 +21,7 @@ import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.EventTypeFamily;
 import org.ezkey.audit.dto.ArchiveSealRequest;
 import org.ezkey.audit.dto.ArchiveSealResult;
 import org.ezkey.audit.dto.AuditChainCheckpointResponseDto;
@@ -158,7 +159,10 @@ public class AuditLogController {
    *   <li>Sortable fields: auditLogId, createdAt, eventType, eventStatus, apiName
    * </ul>
    *
-   * @param eventType optional event type filter
+   * @param eventType optional single event type filter (mutually exclusive with {@code
+   *     eventTypeFamily})
+   * @param eventTypeFamily optional filter for all types in a family (mutually exclusive with
+   *     {@code eventType})
    * @param eventStatus optional event status filter
    * @param apiName optional API name filter
    * @param enrollmentId optional enrollment ID filter
@@ -191,8 +195,15 @@ public class AuditLogController {
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   public ResponseEntity<Page<AuditLogResponseDto>> getAuditLogs(
-      @Parameter(description = "Filter by event type") @RequestParam(required = false)
+      @Parameter(description = "Filter by a single event type (not together with eventTypeFamily)")
+          @RequestParam(required = false)
           EventType eventType,
+      @Parameter(
+              description =
+                  "Filter by event family (all types in the family). Mutually exclusive with "
+                      + "eventType.")
+          @RequestParam(required = false)
+          EventTypeFamily eventTypeFamily,
       @Parameter(description = "Filter by event status") @RequestParam(required = false)
           EventStatus eventStatus,
       @Parameter(description = "Filter by API name") @RequestParam(required = false)
@@ -232,10 +243,16 @@ public class AuditLogController {
     // as a filter.
     Integer filterTenantId = (requesterTenantId == null) ? tenantId : null;
 
+    if (eventType != null && eventTypeFamily != null) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Specify either eventType or eventTypeFamily, not both");
+    }
+
     Page<AuditLogResponseDto> auditLogs =
         auditLogService
             .findByFilters(
                 eventType,
+                eventTypeFamily,
                 eventStatus,
                 apiName,
                 enrollmentId,
