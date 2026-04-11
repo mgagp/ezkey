@@ -1,1 +1,0 @@
-export {PendingAuthScreen} from './PendingAuthScreen';

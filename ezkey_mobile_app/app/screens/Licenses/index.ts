@@ -1,1 +1,0 @@
-export {LicensesScreen} from './LicensesScreen';
