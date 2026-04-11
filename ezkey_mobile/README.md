@@ -112,7 +112,12 @@ yarn android:bundle:release
 
 ### Install on your phone (standalone Android build)
 
-The Android **debug** build is configured to **embed the JavaScript bundle in the APK** (`debuggableVariants = []` in `android/app/build.gradle`), so you can use the app on a physical device **without** running Metro on your machine.
+The Android **debug** build is configured in two ways so it can run **without Metro**:
+
+1. **`debuggableVariants = []`** in `android/app/build.gradle` — Gradle **embeds** `index.android.bundle` in the APK when you run `assembleDebug` / `installDebug`.
+2. **`ezkey.useMetroInDebug=false`** in `android/gradle.properties` (default) — `MainApplication` sets `getUseDeveloperSupport()` from `BuildConfig.USE_DEVELOPER_SUPPORT`, so the app **does not** look for the packager or enable the RN dev menu on a **debug** install.
+
+To work with **Metro + fast refresh** on a debug build, set `ezkey.useMetroInDebug=true`, rebuild, and use `yarn start` (for a physical device, `adb reverse tcp:8081 tcp:8081`).
 
 1. On the phone, enable **Developer options → USB debugging** and connect via USB (accept the computer’s RSA prompt when prompted).
 2. Confirm the device is visible:

@@ -16,6 +16,7 @@
   "list": {
     "title": "Journaux d'audit",
     "filterEventTypeAll": "Tous les types d'événements",
+    "filterAllTypesInFamily": "Tous les événements — {{family}}",
     "filterStatusAll": "Tous les statuts",
     "filterStatusSuccess": "Succès",
     "filterStatusFailure": "Échec",
@@ -46,6 +47,18 @@
       "api": "API Ezkey qui a enregistré cette entrée (Admin, Auth ou Integration)."
     }
   },
+  "eventFamily": {
+    "ADMIN": "Administrateurs",
+    "ENROLLMENT": "Enrôlements",
+    "AUTH_ATTEMPT": "Tentatives d'authentification",
+    "API_KEY": "Clés API",
+    "SYSTEM": "Système",
+    "ENCRYPTION_KEY": "Clés de chiffrement",
+    "REENCRYPTION": "Re-chiffrement",
+    "INTEGRATION": "Intégrations",
+    "TENANT": "Tenants",
+    "AUDIT_CHAIN": "Chaîne d'audit"
+  },
   "eventType": {
     "ADMIN_LOGIN": "Connexion admin",
     "ADMIN_LOGOUT": "Déconnexion admin",
@@ -71,6 +84,7 @@
     "AUTH_ATTEMPT_PENDING": "Tentative d'auth en attente",
     "AUTH_ATTEMPT_RESPOND": "Réponse tentative d'auth",
     "AUTH_ATTEMPT_CANCELLED": "Tentative d'auth annulée",
+    "AUTH_ATTEMPT_EXPIRED": "Tentative d'auth expirée",
     "API_KEY_CREATED": "Clé API créée",
     "API_KEY_UPDATED": "Clé API mise à jour",
     "API_KEY_REVOKED": "Clé API révoquée",
@@ -92,6 +106,7 @@
     "REENCRYPTION_PAUSED": "Ré-chiffrement en pause",
     "INTEGRATION_CREATED": "Intégration créée",
     "INTEGRATION_UPDATED": "Intégration mise à jour",
+    "INTEGRATION_RETIRED": "Intégration retirée",
     "INTEGRATION_DELETED": "Intégration supprimée",
     "TENANT_CREATED": "Tenant créé",
     "TENANT_UPDATED": "Tenant mis à jour",
@@ -163,6 +178,7 @@
     "auth_attempt_creation_failed": "Échec création tentative d'auth",
     "auth_attempt_creation_error": "Erreur création tentative d'auth",
     "auth_attempt_cancelled": "Tentative d'auth annulée",
+    "auth_attempt_expired_scheduler": "Tentative d'auth expirée (TTL planifié)",
     "auth_attempt_cancellation_failed": "Échec annulation tentative d'auth",
     "api_key_created": "Clé API créée",
     "api_key_creation_failed": "Échec création clé API",

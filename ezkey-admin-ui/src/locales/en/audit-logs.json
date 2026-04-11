@@ -16,6 +16,7 @@
   "list": {
     "title": "Audit Logs",
     "filterEventTypeAll": "All Event Types",
+    "filterAllTypesInFamily": "All {{family}} events",
     "filterStatusAll": "All Status",
     "filterStatusSuccess": "Success",
     "filterStatusFailure": "Failure",
@@ -46,6 +47,18 @@
       "api": "Which Ezkey API recorded this entry (Admin, Auth, or Integration)."
     }
   },
+  "eventFamily": {
+    "ADMIN": "Administrators",
+    "ENROLLMENT": "Enrollments",
+    "AUTH_ATTEMPT": "Authentication attempts",
+    "API_KEY": "API keys",
+    "SYSTEM": "System",
+    "ENCRYPTION_KEY": "Encryption keys",
+    "REENCRYPTION": "Re-encryption",
+    "INTEGRATION": "Integrations",
+    "TENANT": "Tenants",
+    "AUDIT_CHAIN": "Audit chain"
+  },
   "eventType": {
     "ADMIN_LOGIN": "Admin Login",
     "ADMIN_LOGOUT": "Admin Logout",
@@ -71,6 +84,7 @@
     "AUTH_ATTEMPT_PENDING": "Auth Attempt Pending",
     "AUTH_ATTEMPT_RESPOND": "Auth Attempt Respond",
     "AUTH_ATTEMPT_CANCELLED": "Auth Attempt Cancelled",
+    "AUTH_ATTEMPT_EXPIRED": "Auth Attempt Expired",
     "API_KEY_CREATED": "API Key Created",
     "API_KEY_UPDATED": "API Key Updated",
     "API_KEY_REVOKED": "API Key Revoked",
@@ -92,6 +106,7 @@
     "REENCRYPTION_PAUSED": "Re-encryption Paused",
     "INTEGRATION_CREATED": "Integration Created",
     "INTEGRATION_UPDATED": "Integration Updated",
+    "INTEGRATION_RETIRED": "Integration Retired",
     "INTEGRATION_DELETED": "Integration Deleted",
     "TENANT_CREATED": "Tenant Created",
     "TENANT_UPDATED": "Tenant Updated",
@@ -163,6 +178,7 @@
     "auth_attempt_creation_failed": "Auth attempt creation failed",
     "auth_attempt_creation_error": "Auth attempt creation error",
     "auth_attempt_cancelled": "Auth attempt cancelled",
+    "auth_attempt_expired_scheduler": "Auth attempt expired (scheduled TTL)",
     "auth_attempt_cancellation_failed": "Auth attempt cancellation failed",
     "api_key_created": "API key created",
     "api_key_creation_failed": "API key creation failed",

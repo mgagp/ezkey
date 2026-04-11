@@ -10,6 +10,8 @@
 
 package org.ezkey.admin.constants;
 
+import org.ezkey.audit.constants.AuthAttemptAuditConstants;
+
 /**
  * Audit action constants for admin API operations.
  *
@@ -205,6 +207,15 @@ public final class AdminAuditConstants {
 
   /** Audit action for failed auth attempt cancellation (already completed or not found). */
   public static final String AUTH_ATTEMPT_CANCELLATION_FAILED = "auth_attempt_cancellation_failed";
+
+  /**
+   * Auth attempt passed {@code expires_at} while still {@code PENDING} or {@code READ}; scheduled
+   * job persisted {@code EXPIRED}.
+   *
+   * <p>Same value as {@link AuthAttemptAuditConstants#AUTH_ATTEMPT_EXPIRED_SCHEDULER}.
+   */
+  public static final String AUTH_ATTEMPT_EXPIRED_SCHEDULER =
+      AuthAttemptAuditConstants.AUTH_ATTEMPT_EXPIRED_SCHEDULER;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Token Prefixes

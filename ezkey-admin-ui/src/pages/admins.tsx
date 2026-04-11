@@ -1252,6 +1252,19 @@ export default function AdminsPage() {
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [searchParams]);
 
+  /** Deep-link from other screens (e.g. tenant admins table, enrollment “created by”). */
+  const adminIdFromUrl = useMemo(() => {
+    const raw = searchParams.get('adminId');
+    if (raw == null || raw === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [searchParams]);
+
+  const { data: adminFromUrl } = useGetAdminById<AdminResponseDto>(
+    adminIdFromUrl ?? 0,
+    { query: { enabled: adminIdFromUrl != null } },
+  );
+
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [onboardingTarget, setOnboardingTarget] = useState<{ id: number; username: string } | null>(null);
@@ -1264,6 +1277,19 @@ export default function AdminsPage() {
   });
 
   const selectedAdmin = selectedIndex !== null ? data[selectedIndex] ?? null : null;
+  const dialogAdmin = selectedAdmin ?? (adminFromUrl != null ? adminFromUrl : null);
+
+  const clearAdminIdFromUrl = useCallback(() => {
+    if (!searchParams.has('adminId')) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('adminId');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const handleCloseDetailDialog = useCallback(() => {
+    setSelectedIndex(null);
+    clearAdminIdFromUrl();
+  }, [clearAdminIdFromUrl]);
   const showRowNav = data.length > 1;
   const hasPrev = selectedIndex !== null && selectedIndex > 0;
   const hasNext = selectedIndex !== null && selectedIndex < data.length - 1;
@@ -1382,6 +1408,7 @@ export default function AdminsPage() {
             onRowClick={(row) => {
               const idx = data.findIndex((r) => r.adminId === row.adminId);
               setSelectedIndex(idx >= 0 ? idx : null);
+              clearAdminIdFromUrl();
             }}
             keyExtractor={(r, i) => r.adminId ?? i}
             emptyMessage={t('list.emptyMessage')}
@@ -1393,14 +1420,16 @@ export default function AdminsPage() {
       </div>
 
       <AdminDetailDialog
-        admin={selectedAdmin}
-        onClose={() => setSelectedIndex(null)}
+        admin={dialogAdmin}
+        onClose={handleCloseDetailDialog}
         onShowCredentials={(id, username) => {
           setSelectedIndex(null);
+          clearAdminIdFromUrl();
           setOnboardingTarget({ id, username });
         }}
         onRequestDeactivate={(a) => {
           setSelectedIndex(null);
+          clearAdminIdFromUrl();
           setDeactivateTarget(a);
         }}
         onPrev={goPrevAdmin}

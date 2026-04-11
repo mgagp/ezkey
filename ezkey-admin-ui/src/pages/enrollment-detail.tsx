@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, Eye, EyeOff, Pencil, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
@@ -481,6 +481,7 @@ export default function EnrollmentDetailPage() {
 
   const relatedDetails = useExpandableRelatedDetails({
     integrationId: enrollment?.integrationId ?? undefined,
+    adminId: enrollment?.createdByAdminId ?? undefined,
   });
 
   const deleteMutation = useDelete({
@@ -763,7 +764,17 @@ export default function EnrollmentDetailPage() {
                   </InfoRow>
                   {enrollment.createdByAdminId != null && (
                     <InfoRow label={t('detail.infoCreatedByAdmin')}>
-                      <span className="font-mono text-fg-muted">{enrollment.createdByAdminId}</span>
+                      {relatedDetails.isExpanded && relatedDetails.admin ? (
+                        <Link
+                          to={`/admins?adminId=${enrollment.createdByAdminId}`}
+                          className="font-medium text-accent hover:underline"
+                        >
+                          {relatedDetails.admin.username ?? relatedDetails.admin.adminId} (ID{' '}
+                          {relatedDetails.admin.adminId})
+                        </Link>
+                      ) : (
+                        <span className="font-mono text-fg-muted">{enrollment.createdByAdminId}</span>
+                      )}
                     </InfoRow>
                   )}
                   <InfoRow label={t('detail.infoVersion')}>

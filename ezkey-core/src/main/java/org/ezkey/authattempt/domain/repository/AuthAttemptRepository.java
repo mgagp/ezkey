@@ -255,6 +255,33 @@ public interface AuthAttemptRepository
       @Param("statuses") List<AuthAttemptStatus> statuses);
 
   /**
+   * Finds non-terminal auth attempts whose {@code expiresAt} is strictly before {@code now}, for
+   * scheduled expiry processing.
+   *
+   * @param statuses typically {@link AuthAttemptStatus#PENDING} and {@link AuthAttemptStatus#READ}
+   * @param now upper bound; rows with {@code expiresAt} &lt; {@code now} match
+   * @return matching attempts ordered by primary key for stable processing
+   */
+  List<AuthAttempt> findByAuthAttemptStatusInAndExpiresAtBeforeOrderByAuthAttemptIdAsc(
+      List<AuthAttemptStatus> statuses, OffsetDateTime now);
+
+  /**
+   * Atomically marks one auth attempt {@code EXPIRED} only if it is still in a non-terminal status
+   * and past its deadline. Used to avoid racing with approve/deny/cancel between read and update.
+   *
+   * @return number of rows updated (0 or 1)
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "UPDATE AuthAttempt a SET a.authAttemptStatus = :expired WHERE a.authAttemptId = :id AND"
+          + " a.authAttemptStatus IN :statuses AND a.expiresAt < :now")
+  int expireIfStale(
+      @Param("id") Integer id,
+      @Param("statuses") List<AuthAttemptStatus> statuses,
+      @Param("now") OffsetDateTime now,
+      @Param("expired") AuthAttemptStatus expired);
+
+  /**
    * Updates multiple authentication attempts to EXPIRED status.
    *
    * <p>This method atomically updates multiple authentication attempts to EXPIRED status, used for
@@ -270,27 +297,6 @@ public interface AuthAttemptRepository
   int updateStatusForMultipleAttempts(
       @Param("authAttemptIds") List<Integer> authAttemptIds,
       @Param("newStatus") AuthAttemptStatus newStatus);
-
-  /**
-   * Marks non-terminal authentication attempts as {@link AuthAttemptStatus#EXPIRED} when their
-   * {@code expiresAt} is in the past.
-   *
-   * <p>Used by {@link org.ezkey.authattempt.service.AuthAttemptExpiryScheduler} so rows reflect
-   * real-world expiry instead of staying indefinitely in {@code PENDING} or {@code READ}.
-   *
-   * @param statuses statuses to update (typically {@code PENDING} and {@code READ})
-   * @param now current time; rows with {@code expiresAt} strictly before this are expired
-   * @param expiredStatus target status ({@link AuthAttemptStatus#EXPIRED})
-   * @return number of rows updated
-   */
-  @Modifying
-  @Query(
-      "UPDATE AuthAttempt a SET a.authAttemptStatus = :expiredStatus WHERE a.authAttemptStatus IN"
-          + " (:statuses) AND a.expiresAt < :now")
-  int expireAttemptsPastDeadline(
-      @Param("statuses") List<AuthAttemptStatus> statuses,
-      @Param("now") OffsetDateTime now,
-      @Param("expiredStatus") AuthAttemptStatus expiredStatus);
 
   /**
    * Counts auth attempts with encrypted auth attempt proof token matching the prefix pattern.

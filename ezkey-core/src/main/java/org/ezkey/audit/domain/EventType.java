@@ -59,6 +59,8 @@ public enum EventType {
   AUTH_ATTEMPT_PENDING,
   AUTH_ATTEMPT_RESPOND,
   AUTH_ATTEMPT_CANCELLED,
+  /** Auth attempt TTL elapsed; status set to EXPIRED by scheduled job (past {@code expires_at}). */
+  AUTH_ATTEMPT_EXPIRED,
 
   // API key events
   API_KEY_CREATED,
