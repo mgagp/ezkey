@@ -5632,7 +5632,7 @@ __metadata:
     react-native-gesture-handler: "npm:2.14.1"
     react-native-keychain: "npm:^10.0.0"
     react-native-safe-area-context: "npm:^5.6.2"
-    react-native-screens: "npm:3.30.1"
+    react-native-screens: "npm:4.5.0"
     react-native-svg: "npm:^15.15.4"
     react-native-svg-transformer: "npm:^1.5.3"
     react-native-vision-camera: "npm:^4.2.3"
@@ -9283,16 +9283,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-screens@npm:3.30.1":
-  version: 3.30.1
-  resolution: "react-native-screens@npm:3.30.1"
+"react-native-screens@npm:4.5.0":
+  version: 4.5.0
+  resolution: "react-native-screens@npm:4.5.0"
   dependencies:
     react-freeze: "npm:^1.0.0"
     warn-once: "npm:^0.1.0"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/3a9930524a44bfd5554908ff616ee757b638ea4a25b45d0a2abd5c800baee36c69d17fed67096066740945962996df9d3302db170fe273d6b13a46bd46e5da19
+  checksum: 10c0/948b5bf0eb2fe250f9bbc0de011bf7ed14456924a0fb08ce66660913362c89849b5f4355fc8eb6577ab25cd74dbaa1492ea923b4ec173686c5e05ad0c3a699b3
   languageName: node
   linkType: hard
 
