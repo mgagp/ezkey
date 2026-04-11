@@ -65,6 +65,24 @@ Once started, you can access:
 - Auth API: http://localhost:8080/swagger-ui/index.html
 - Crypto API: http://localhost:9090/swagger-ui/index.html
 
+## Container timezone and log timestamps
+
+Docker images use **UTC** for their default timezone unless you configure otherwise. The JVM (Spring Boot) and PostgreSQL read the standard **`TZ`** environment variable. If your host clock shows 14:45 in Montréal (Eastern Daylight, UTC−4) while `docker logs` show **18:45**, that is the same instant expressed in **UTC** (14:45 + 4h).
+
+**Configure locally (recommended for developers):**
+
+1. Copy `docker/.env.example` to `docker/.env` (gitignored).
+2. Set a single IANA name, for example:
+   - `TZ=America/Toronto` (Eastern — includes DST)
+   - `TZ=Europe/Paris`
+3. Recreate containers so they pick up the new env (`docker compose up -d` after `down` or `up --force-recreate` as needed).
+
+Compose passes `TZ: ${TZ:-UTC}` into services; if `TZ` is unset, behavior stays **UTC** (good for CI and reproducible traces).
+
+**Why not “match the host automatically”?** Docker Compose does not read the host OS timezone. On **Linux**, you can export a zone before starting the stack, for example `export TZ=$(timedatectl show -p Timezone --value)` when `timedatectl` exists. On **Windows** with Docker Desktop, set `TZ` explicitly in `docker/.env` (one line per machine or team).
+
+**Separate concern — API JSON datetimes:** Ezkey APIs return timestamps in **UTC** with a `Z` suffix by design (`docs/ENDPOINT.md`, `docs/DATETIME_TIMEZONE_DECISION.md`). Changing `TZ` affects **container logs and local log formatting**, not that API contract.
+
 ## Architecture
 
 ```
