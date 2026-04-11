@@ -11,13 +11,13 @@
  * @since 2025
  */
 
-import {httpClient} from './httpClient';
 import {
   BindEnrollmentRequest,
   BindEnrollmentResponse,
   VerifyEnrollmentRequest,
   VerifyEnrollmentResponse,
 } from './types';
+import {bind as bindGenerated, verify as verifyGenerated} from './generated/auth-api/enrollments/enrollments';
 
 function verifyBody(payload: VerifyEnrollmentRequest) {
   return {
@@ -30,8 +30,6 @@ function verifyBody(payload: VerifyEnrollmentRequest) {
       : {}),
   };
 }
-
-const basePath = '/api/v1/enrollments';
 
 /**
  * Enrollment API facade used by the mobile application.
@@ -50,13 +48,15 @@ export const enrollmentsApi = {
    * @since 2025
    */
   bind: async (payload: BindEnrollmentRequest, authUrl?: string) => {
-    const config = authUrl ? {baseURL: authUrl} : undefined;
     const body = {
       enrollmentId: Number(payload.enrollmentId),
       enrollmentProofToken: payload.enrollmentProofToken,
     };
-    const response = await httpClient.post<BindEnrollmentResponse>(`${basePath}/bind`, body, config);
-    return response.data;
+    const response = await bindGenerated(
+      body,
+      (authUrl ? {baseURL: authUrl} : undefined) as RequestInit | undefined,
+    );
+    return response.data as BindEnrollmentResponse;
   },
   /**
    * Finalizes enrollment by submitting the device public key, signed proof token, and challenge response.
@@ -70,9 +70,11 @@ export const enrollmentsApi = {
    * @since 2025
    */
   verify: async (payload: VerifyEnrollmentRequest, authUrl?: string) => {
-    const config = authUrl ? {baseURL: authUrl} : undefined;
     const body = verifyBody(payload);
-    const response = await httpClient.post<VerifyEnrollmentResponse>(`${basePath}/verify`, body, config);
-    return response.data;
+    const response = await verifyGenerated(
+      body,
+      (authUrl ? {baseURL: authUrl} : undefined) as RequestInit | undefined,
+    );
+    return response.data as VerifyEnrollmentResponse;
   },
 };

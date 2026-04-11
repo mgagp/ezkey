@@ -5,7 +5,7 @@ REM This script centralizes the management of OpenAPI specifications for all Ezk
 setlocal enabledelayedexpansion
 
 REM Configuration
-set "PROJECT_ROOT=%~dp0.."
+for %%I in ("%~dp0..") do set "PROJECT_ROOT=%%~fI"
 set "SPECS_DIR=%PROJECT_ROOT%\specs"
 set "ADMIN_API_URL=http://localhost:9080/api-docs"
 set "AUTH_API_URL=http://localhost:8080/api-docs"
@@ -83,11 +83,11 @@ if "%UPDATE_AUTH%"=="true" (
 
 REM Summary
 echo.
-if %SUCCESS_COUNT% equ %TOTAL_COUNT% (
-    echo [SUCCESS] All specifications updated successfully! (%SUCCESS_COUNT%/%TOTAL_COUNT%)
+if !SUCCESS_COUNT! equ !TOTAL_COUNT! (
+    echo [SUCCESS] All specifications updated successfully - !SUCCESS_COUNT!/!TOTAL_COUNT!
     echo [INFO] You can now build demo projects and SDKs with updated specifications
 ) else (
-    echo [WARNING] Some specifications failed to update (%SUCCESS_COUNT%/%TOTAL_COUNT%)
+    echo [WARNING] Some specifications failed to update - !SUCCESS_COUNT!/!TOTAL_COUNT!
     echo [INFO] Check that APIs are running and accessible
     exit /b 1
 )
@@ -161,6 +161,7 @@ if "%API_NAME%"=="admin-api" (
     echo [INFO] Updating auth-api links...
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-demo-device\openapi-spec.json"
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-sdk\auth-api-spec.json"
+    call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey_mobile\openapi-spec.json"
 )
 
 exit /b 0
@@ -176,7 +177,7 @@ if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 
 REM Copy file
 copy "%SOURCE%" "%TARGET%" >nul
-echo [INFO] Copied to %~nx2
+echo [INFO] Copied to %TARGET%
 
 exit /b 0
 

@@ -121,6 +121,7 @@ update_project_links() {
             print_status "Updating auth-api links..."
             update_link "$spec_file" "ezkey-demo-device/openapi-spec.json"
             update_link "$spec_file" "ezkey-sdk/auth-api-spec.json"
+            update_link "$spec_file" "ezkey_mobile/openapi-spec.json"
             ;;
     esac
 }

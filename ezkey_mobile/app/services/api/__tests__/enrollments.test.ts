@@ -1,19 +1,19 @@
-import type {AxiosResponse} from 'axios';
 import {enrollmentsApi} from '../enrollments';
-import {httpClient} from '../httpClient';
+import {bind, verify} from '../generated/auth-api/enrollments/enrollments';
 import type {BindEnrollmentRequest, BindEnrollmentResponse, VerifyEnrollmentRequest, VerifyEnrollmentResponse} from '../types';
 
-jest.mock('../httpClient', () => ({
-  httpClient: {
-    post: jest.fn(),
-  },
+jest.mock('../generated/auth-api/enrollments/enrollments', () => ({
+  bind: jest.fn(),
+  verify: jest.fn(),
 }));
 
-const mockedPost = httpClient.post as jest.Mock;
+const mockedBind = bind as jest.Mock;
+const mockedVerify = verify as jest.Mock;
 
 describe('enrollmentsApi', () => {
   beforeEach(() => {
-    mockedPost.mockReset();
+    mockedBind.mockReset();
+    mockedVerify.mockReset();
   });
 
   it('bind calls the correct endpoint with normalized payload', async () => {
@@ -29,12 +29,11 @@ describe('enrollmentsApi', () => {
       integrationName: 'Acme Bank',
       enrollmentBindPayloadSignedByIntegration: 'bind-signature',
     };
-    mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<BindEnrollmentResponse>);
+    mockedBind.mockResolvedValueOnce({data: responseData, status: 200, headers: new Headers()});
 
     const result = await enrollmentsApi.bind(payload);
 
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/enrollments/bind',
+    expect(mockedBind).toHaveBeenCalledWith(
       {enrollmentId: 123, enrollmentProofToken: 'proof-token'},
       undefined,
     );
@@ -54,12 +53,11 @@ describe('enrollmentsApi', () => {
       integrationName: 'Globex Corp',
       enrollmentBindPayloadSignedByIntegration: 'bind-signature',
     };
-    mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<BindEnrollmentResponse>);
+    mockedBind.mockResolvedValueOnce({data: responseData, status: 200, headers: new Headers()});
 
     const result = await enrollmentsApi.bind(payload, 'https://ezkey.globex.com');
 
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/enrollments/bind',
+    expect(mockedBind).toHaveBeenCalledWith(
       {enrollmentId: 456, enrollmentProofToken: 'proof-token-2'},
       {baseURL: 'https://ezkey.globex.com'},
     );
@@ -78,12 +76,11 @@ describe('enrollmentsApi', () => {
       enrollmentVerifyMessage: 'ok',
       enrollmentVerifyPayloadSignedByIntegration: 'verify-signature',
     };
-    mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<VerifyEnrollmentResponse>);
+    mockedVerify.mockResolvedValueOnce({data: responseData, status: 200, headers: new Headers()});
 
     const result = await enrollmentsApi.verify(payload);
 
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/enrollments/verify',
+    expect(mockedVerify).toHaveBeenCalledWith(
       {
         enrollmentId: 123,
         challengeResponse: 654321,
@@ -107,12 +104,11 @@ describe('enrollmentsApi', () => {
       enrollmentVerifyMessage: 'ok',
       enrollmentVerifyPayloadSignedByIntegration: 'verify-signature',
     };
-    mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<VerifyEnrollmentResponse>);
+    mockedVerify.mockResolvedValueOnce({data: responseData, status: 200, headers: new Headers()});
 
     const result = await enrollmentsApi.verify(payload, 'https://ezkey.initech.com');
 
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/enrollments/verify',
+    expect(mockedVerify).toHaveBeenCalledWith(
       {
         enrollmentId: 789,
         challengeResponse: 123456,
@@ -137,12 +133,11 @@ describe('enrollmentsApi', () => {
       enrollmentVerifyMessage: 'ok',
       enrollmentVerifyPayloadSignedByIntegration: 'verify-signature',
     };
-    mockedPost.mockResolvedValueOnce({data: responseData} as AxiosResponse<VerifyEnrollmentResponse>);
+    mockedVerify.mockResolvedValueOnce({data: responseData, status: 200, headers: new Headers()});
 
     await enrollmentsApi.verify(payload);
 
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/enrollments/verify',
+    expect(mockedVerify).toHaveBeenCalledWith(
       {
         enrollmentId: 42,
         challengeResponse: 111111,

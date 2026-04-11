@@ -8,6 +8,7 @@
 - **Primary Flows**: Enrollment via QR, secure key generation, pending authentication approvals/denials, challenge handling
 - **APIs Consumed**: `auth-api` endpoints documented in [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)
 - **Security Alignment**: Tracks the current guarantees and constraints documented in [`docs/CRYPTO.md`](../docs/CRYPTO.md) and [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md)
+- **Auth API Client Source**: OpenAPI-driven client generation via Orval from the versioned local [`openapi-spec.json`](openapi-spec.json)
 
 ## Core Capabilities
 
@@ -36,7 +37,7 @@ ezkey_mobile/
 │   ├── providers/               # App-wide context providers
 │   ├── screens/                 # Feature screens (Home, Enrollment Wizard, Pending Auth, Diagnostics)
 │   ├── services/
-│   │   ├── api/                 # REST clients and DTOs
+│   │   ├── api/                 # Generated Auth API client, wrappers, problems, DTOs
 │   │   ├── crypto/              # Native crypto integration layer
 │   │   └── storage/             # Secure + metadata storage abstractions
 │   └── state/                   # Zustand stores
@@ -91,12 +92,23 @@ yarn start
 ### Useful scripts
 
 ```bash
+yarn generate:api         # Regenerate the local Auth API client from openapi-spec.json
 yarn android:clean         # Clear Gradle outputs
 yarn android:assemble:debug
 yarn android:install:debug
 yarn android:assemble:release
 yarn android:bundle:release
 ```
+
+## Auth API spec and code generation policy
+
+- `ezkey_mobile/openapi-spec.json` is the mobile project's local, versioned copy of the Auth API spec.
+- This file exists so the mobile sub-project remains autonomous and reproducible.
+- Do not edit `openapi-spec.json` manually.
+- The only supported way to refresh this file is the centralized update script at [`scripts/update-specs.sh`](../scripts/update-specs.sh) or [`scripts/update-specs.bat`](../scripts/update-specs.bat).
+- The expected workflow is human-driven: start the Docker stack cleanly, wait for the APIs to be up, then run the centralized spec update script to fetch, format, and dispatch the latest specs into each sub-project.
+- After the mobile spec has been refreshed, regenerate the local client with `yarn generate:api`.
+- Coding assistants working in this project must follow the same rule: never hand-edit `openapi-spec.json`; always rely on the centralized update script and then regenerate.
 
 ### Install on your phone (standalone Android build)
 

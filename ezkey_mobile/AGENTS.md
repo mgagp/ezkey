@@ -17,6 +17,7 @@ Cross-platform companion app for Ezkey MFA: enrollment via QR, secure key manage
 | Navigation | React Navigation (native-stack, stack) |
 | State | Zustand + TanStack React Query v5 |
 | HTTP | Axios (shared client, timeouts, error handling) |
+| API codegen | Orval from versioned local `openapi-spec.json` |
 | Camera / QR | react-native-vision-camera + custom frame processor |
 | Branding | `react-native-svg` + `react-native-svg-transformer` (see `assets/images/logo.svg`, same artwork as repo root `logo.svg`) |
 | Secure Storage | react-native-keychain |
@@ -45,6 +46,8 @@ Cross-platform companion app for Ezkey MFA: enrollment via QR, secure key manage
 
 - All new/updated content **in English**.
 - Never break Auth API contracts (`EnrollmentBindResponseDto`, `AuthAttemptPendingResponseDto`) without coordinating with backend.
+- Never hand-edit `openapi-spec.json` in `ezkey_mobile/`; refresh it only via the centralized root scripts `scripts/update-specs.sh` or `scripts/update-specs.bat` after the human has started a clean Docker stack.
+- After refreshing the local spec, regenerate the mobile API client with `yarn generate:api`.
 - Proof tokens: read-once semantics; never cache in plaintext outside secure storage.
 - **Device proof tokens** (e.g. pending poll): generate only via [`app/utils/generateProofToken.ts`](app/utils/generateProofToken.ts); do not add alternate generators or timestamp-based values.
 - EC P-256 keys: generated per enrollment through the native keystore path; for Android, prefer `Android Keystore` and `StrongBox when available` wording.
@@ -104,6 +107,7 @@ See [`scripts/README.md`](scripts/README.md).
 
 ```bash
 yarn install
+yarn generate:api   # Regenerate from ezkey_mobile/openapi-spec.json after running the root update-specs script
 yarn license:app-data   # Refresh app/data/thirdPartyLicenses.json after dependency changes
 yarn ios          # iOS simulator
 yarn android      # Android emulator/device

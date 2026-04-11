@@ -1,6 +1,5 @@
-import type {AxiosResponse} from 'axios';
 import {authAttemptsApi} from '../authAttempts';
-import {httpClient} from '../httpClient';
+import {pending, respond} from '../generated/auth-api/authentication-attempts/authentication-attempts';
 import type {
   PendingAuthRequest,
   PendingAuthResponse,
@@ -8,17 +7,18 @@ import type {
   RespondAuthResponse,
 } from '../types';
 
-jest.mock('../httpClient', () => ({
-  httpClient: {
-    post: jest.fn(),
-  },
+jest.mock('../generated/auth-api/authentication-attempts/authentication-attempts', () => ({
+  pending: jest.fn(),
+  respond: jest.fn(),
 }));
 
-const mockedPost = httpClient.post as jest.Mock;
+const mockedPending = pending as jest.Mock;
+const mockedRespond = respond as jest.Mock;
 
 describe('authAttemptsApi', () => {
   beforeEach(() => {
-    mockedPost.mockReset();
+    mockedPending.mockReset();
+    mockedRespond.mockReset();
   });
 
   it('pending hits the pending endpoint with normalized payload', async () => {
@@ -34,14 +34,15 @@ describe('authAttemptsApi', () => {
       authAttemptProofTokenSignedByIntegration: 'signed-proof',
       authAttemptChallengeRequired: true,
     };
-    mockedPost.mockResolvedValueOnce({
+    mockedPending.mockResolvedValueOnce({
       data: responseData,
-    } as AxiosResponse<PendingAuthResponse>);
+      status: 200,
+      headers: new Headers(),
+    });
 
     const result = await authAttemptsApi.pending(payload);
 
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/auth-attempts/pending',
+    expect(mockedPending).toHaveBeenCalledWith(
       {
         enrollmentId: 123,
         enrollmentProofToken: 'proof-token',
@@ -66,14 +67,15 @@ describe('authAttemptsApi', () => {
       authAttemptProofTokenSignedByIntegration: 'signed-apt',
       authAttemptChallengeRequired: false,
     };
-    mockedPost.mockResolvedValueOnce({
+    mockedPending.mockResolvedValueOnce({
       data: responseData,
-    } as AxiosResponse<PendingAuthResponse>);
+      status: 200,
+      headers: new Headers(),
+    });
 
     const result = await authAttemptsApi.pending(payload, 'https://ezkey.globex.com');
 
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/auth-attempts/pending',
+    expect(mockedPending).toHaveBeenCalledWith(
       {
         enrollmentId: 456,
         enrollmentProofToken: 'proof',
@@ -98,14 +100,15 @@ describe('authAttemptsApi', () => {
       authAttemptMessage: 'Authentication approved',
       authAttemptProofTokenResultSignedByIntegration: 'c2lnLWJ5dGVz',
     };
-    mockedPost.mockResolvedValueOnce({
+    mockedRespond.mockResolvedValueOnce({
       data: responseData,
-    } as AxiosResponse<RespondAuthResponse>);
+      status: 200,
+      headers: new Headers(),
+    });
 
     const result = await authAttemptsApi.respond(payload);
 
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/auth-attempts/respond',
+    expect(mockedRespond).toHaveBeenCalledWith(
       {
         authAttemptId: 123,
         authAttemptAccepted: true,
@@ -129,14 +132,15 @@ describe('authAttemptsApi', () => {
       authAttemptMessage: 'Denied by user',
       authAttemptProofTokenResultSignedByIntegration: 'c2lnLWJ5dGVz',
     };
-    mockedPost.mockResolvedValueOnce({
+    mockedRespond.mockResolvedValueOnce({
       data: responseData,
-    } as AxiosResponse<RespondAuthResponse>);
+      status: 200,
+      headers: new Headers(),
+    });
 
     const result = await authAttemptsApi.respond(payload, 'https://ezkey.initech.com');
 
-    expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/auth-attempts/respond',
+    expect(mockedRespond).toHaveBeenCalledWith(
       {
         authAttemptId: 789,
         authAttemptAccepted: false,

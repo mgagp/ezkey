@@ -11,15 +11,16 @@
  * @since 2025
  */
 
-import {httpClient} from './httpClient';
 import {
   PendingAuthRequest,
   PendingAuthResponse,
   RespondAuthRequest,
   RespondAuthResponse,
 } from './types';
-
-const basePath = '/api/v1/auth-attempts';
+import {
+  pending as pendingGenerated,
+  respond as respondGenerated,
+} from './generated/auth-api/authentication-attempts/authentication-attempts';
 
 /**
  * Lightweight wrapper around the authentication attempt endpoints exposed to the mobile application.
@@ -39,15 +40,17 @@ export const authAttemptsApi = {
    * @since 2025
    */
   pending: async (payload: PendingAuthRequest, authUrl?: string) => {
-    const config = authUrl ? {baseURL: authUrl} : undefined;
     const body = {
       enrollmentId: Number(payload.enrollmentId),
       enrollmentProofToken: payload.enrollmentProofToken,
       deviceProofToken: payload.deviceProofToken,
       deviceProofTokenSigned: payload.deviceProofTokenSigned,
     };
-    const response = await httpClient.post<PendingAuthResponse>(`${basePath}/pending`, body, config);
-    return response.data;
+    const response = await pendingGenerated(
+      body,
+      (authUrl ? {baseURL: authUrl} : undefined) as RequestInit | undefined,
+    );
+    return response.data as PendingAuthResponse;
   },
   /**
    * Submits the device decision (approve or reject) for a specific authentication attempt.
@@ -61,7 +64,6 @@ export const authAttemptsApi = {
    * @since 2025
    */
   respond: async (payload: RespondAuthRequest, authUrl?: string) => {
-    const config = authUrl ? {baseURL: authUrl} : undefined;
     const body = {
       authAttemptId: Number(payload.authAttemptId),
       authAttemptAccepted: payload.authAttemptAccepted,
@@ -70,7 +72,10 @@ export const authAttemptsApi = {
         ? {authAttemptChallengeResponse: Number(payload.authAttemptChallengeResponse)}
         : {}),
     };
-    const response = await httpClient.post<RespondAuthResponse>(`${basePath}/respond`, body, config);
-    return response.data;
+    const response = await respondGenerated(
+      body,
+      (authUrl ? {baseURL: authUrl} : undefined) as RequestInit | undefined,
+    );
+    return response.data as RespondAuthResponse;
   },
 };
