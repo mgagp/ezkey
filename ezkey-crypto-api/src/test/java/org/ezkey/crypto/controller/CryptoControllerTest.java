@@ -323,6 +323,105 @@ class CryptoControllerTest {
   }
 
   @Test
+  void testPayloadHelperEnrollmentBindEndpoint() throws Exception {
+    String requestBody =
+        """
+        {
+          "type": "enrollment-bind",
+          "proofToken": "ptok",
+          "enrollmentId": 99,
+          "integrationPublicKey": "integPk",
+          "integrationKeyAlgorithm": "ed25519",
+          "integrationName": "Acme",
+          "integrationDescription": "Desc",
+          "enrollmentName": "Device A",
+          "tenantId": 1,
+          "tenantName": "Tenant",
+          "tenantDescription": "TDesc"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/payload-helper")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("enrollment-bind"))
+        .andExpect(
+            jsonPath("$.payload")
+                .value("ptok|99|integPk|ed25519|Acme|Desc|Device A|1|Tenant|TDesc"))
+        .andExpect(jsonPath("$.encoding").value("UTF-8 + NFC where applicable"));
+  }
+
+  @Test
+  void testPayloadHelperEnrollmentVerifyDeviceEndpoint() throws Exception {
+    String requestBody =
+        """
+        {
+          "type": "enrollment-verify-device",
+          "proofToken": "ptok",
+          "enrollmentId": 42,
+          "challengeResponse": 123456,
+          "devicePublicKey": "MIIBDevice"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/payload-helper")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("enrollment-verify-device"))
+        .andExpect(jsonPath("$.payload").value("ptok|42|123456|MIIBDevice"));
+  }
+
+  @Test
+  void testPayloadHelperEnrollmentVerifyResultEndpoint() throws Exception {
+    String requestBody =
+        """
+        {
+          "type": "enrollment-verify-result",
+          "proofToken": "ptok",
+          "enrollmentId": 7,
+          "result": "VERIFIED",
+          "message": "Enrollment verified successfully"
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/payload-helper")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("enrollment-verify-result"))
+        .andExpect(jsonPath("$.payload").value("ptok|7|VERIFIED|Enrollment verified successfully"));
+  }
+
+  @Test
+  void testPayloadHelperRejectsMissingEnrollmentVerifyDeviceFields() throws Exception {
+    String requestBody =
+        """
+        {
+          "type": "enrollment-verify-device",
+          "proofToken": "ptok",
+          "enrollmentId": 1
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/crypto/payload-helper")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type").value(CryptoApiProblemCatalog.TYPE_INVALID_ARGUMENT));
+  }
+
+  @Test
   void testPayloadHelperRejectsMissingPendingFields() throws Exception {
     String requestBody =
         """

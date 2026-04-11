@@ -82,8 +82,10 @@ padding.
 ### 7. Build Canonical EZKey Payload
 **POST** `/api/v1/crypto/payload-helper`
 
-Builds canonical Pending, Respond, or RespondResult payload strings using the exact EZKey NFC and
-separator rules.
+Builds canonical payload strings using the exact EZKey NFC and separator rules: auth-attempt types
+(`pending`, `respond`, `respond-result`) and enrollment types (`enrollment-bind`,
+`enrollment-verify-device`, `enrollment-verify-result`), delegating to the same builders as
+`ezkey-core` (`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`).
 
 **Use Case**: Eliminate duplicated payload-building logic in Postman and serve as an oracle for
 Dart interoperability tests.

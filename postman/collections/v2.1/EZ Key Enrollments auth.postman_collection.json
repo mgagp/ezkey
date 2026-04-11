@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "6e55501a-e60c-4288-a21e-18c74c4c887f",
     "name": "EZ Key Enrollments auth",
-    "description": "Collection for mobile device enrollment operations in the Auth API.\n\n## Error format (4xx/5xx)\n\nHTTP errors use RFC 9457 Problem Details (`application/problem+json`): `type`, `title`, `status`, `detail`, optional `path` and `timestamp`. See `docs/ENDPOINT.md`.\n\n## Endpoints\n\n- **Bind**: Initiate device binding using secure enrollment proof token\n- **Verify**: Complete enrollment verification process with device keys and signatures\n\n## Crypto Operations\n\nThis collection includes helper endpoints from the Crypto API:\n- **Generate Key Pair**: Generate EC P-256 key pair for device\n- **Sign**: Cryptographically sign enrollment proof token with device private key\n\n## Enrollment Flow\n\n1. **Bind**: Mobile device initiates binding with enrollment ID and proof token\n2. **Generate Keys**: Device generates EC P-256 key pair\n3. **Sign Token**: Device signs enrollment proof token with private key\n4. **Verify**: Device submits public key and signature to complete enrollment\n\n## Security Notes\n\n- Uses enrollment proof token in request body (not URL) to prevent enumeration attacks\n- Device keys: EC P-256 (ECDSA-SHA256). Integration keys from bind: Ed25519 (raw public key / signatures — see `docs/CRYPTO.md`)\n- Device generates its own key pair (private key never leaves device in production)\n- Enrollment proof token signature proves device received the original token\n- Optional `devicePrivateKeyStorageTier` on verify is client-reported storage metadata; it is **not** included in the bytes signed for `enrollmentProofTokenSigned` (see `docs/MOBILE_DEVELOPER_GUIDE.md`)\n- Challenge response validates device possession of enrollment credentials",
+    "description": "Collection for mobile device enrollment operations in the Auth API.\n\n## Error format (4xx/5xx)\n\nHTTP errors use RFC 9457 Problem Details (`application/problem+json`). See `docs/ENDPOINT.md`.\n\n## Cryptographic protocol\n\nEnrollment uses **canonical pipe-separated UTF-8 payloads** (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md` and `docs/MOBILE_DEVELOPER_GUIDE.md`):\n\n- **Bind response:** verify integration Ed25519 signature on the bind payload before trusting metadata.\n- **Verify request:** device ECDSA signature covers `enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey` — **not** the raw proof token alone.\n- **Verify response:** verify integration Ed25519 signature on the verify-result payload before treating enrollment as complete.\n\nThis collection mirrors **EZ Key Auth Attempts auth** (payload-helper → verify-ed25519 → device sign → Auth API → payload-helper → verify-ed25519).\n\n## Prerequisites\n\nSet `enrollmentId`, `enrollmentProofToken`, and `enrollmentChallenge` in the environment (from Admin enrollment creation) **before** step 1. The Crypto API (`base_url_crypto_api`) must be reachable.\n\n## Flow (numbered requests)\n\n1. Bind — Auth API\n2. Crypto build enrollment bind payload — `payload-helper` `enrollment-bind`\n3. Crypto validate bind signature — Ed25519 verify\n4. Crypto generate device keypair\n5. Crypto build enrollment verify device payload — `payload-helper` `enrollment-verify-device`\n6. Crypto sign verify device payload — ECDSA over canonical string from step 5\n7. Verify — Auth API\n8. Crypto build enrollment verify result payload — `payload-helper` `enrollment-verify-result`\n9. Crypto validate verify result signature — Ed25519 verify\n",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -22,13 +22,21 @@
               "    var jsonData = pm.response.json();",
               "    pm.environment.set(\"enrollmentId\", jsonData.enrollmentId);",
               "    pm.environment.set(\"integrationPublicKey\", jsonData.integrationPublicKey);",
+              "    pm.environment.set(\"integrationKeyAlgorithm\", jsonData.integrationKeyAlgorithm);",
               "    pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);",
-              "    ",
+              "    pm.environment.set(\"enrollmentBindPayloadSignedByIntegration\", jsonData.enrollmentBindPayloadSignedByIntegration);",
+              "    pm.environment.set(\"bind_integrationName\", jsonData.integrationName != null ? jsonData.integrationName : \"\");",
+              "    pm.environment.set(\"bind_integrationDescription\", jsonData.integrationDescription != null ? jsonData.integrationDescription : \"\");",
+              "    pm.environment.set(\"bind_enrollmentName\", jsonData.enrollmentName != null ? jsonData.enrollmentName : \"\");",
+              "    pm.environment.set(\"bind_tenantId\", jsonData.tenantId != null ? String(jsonData.tenantId) : \"\");",
+              "    pm.environment.set(\"bind_tenantName\", jsonData.tenantName != null ? jsonData.tenantName : \"\");",
+              "    pm.environment.set(\"bind_tenantDescription\", jsonData.tenantDescription != null ? jsonData.tenantDescription : \"\");",
               "    pm.test(\"Response contains required fields\", function () {",
               "        pm.expect(jsonData).to.have.property('enrollmentId');",
               "        pm.expect(jsonData).to.have.property('integrationPublicKey');",
               "        pm.expect(jsonData).to.have.property('integrationKeyAlgorithm');",
               "        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
+              "        pm.expect(jsonData).to.have.property('enrollmentBindPayloadSignedByIntegration');",
               "    });",
               "}"
             ],
@@ -61,12 +69,153 @@
             "bind"
           ]
         },
-        "description": "Initiates the device binding process for mobile enrollment. The mobile device calls this endpoint to start the enrollment binding process using secure enrollment proof token.\n\n**Security Enhancement:** This endpoint requires both enrollment ID and enrollment proof token to prevent enumeration attacks and ensure secure access to enrollment data.\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID to bind to the mobile device\n- `enrollmentProofToken` (required): Enrollment proof token for authentication\n\n**Response (200 OK):**\n- `enrollmentId`: Enrollment ID that was bound to the mobile device\n- `integrationPublicKey`: Raw 32-byte Ed25519 public key (Base64URL without padding)\n- `integrationKeyAlgorithm`: `ed25519`\n- `enrollmentProofToken`: Enrollment proof token to be signed by the device\n- `integrationLogo` (optional): Logo URL or base64-encoded image for the integration\n- `integrationName` (optional): Display name of the integration\n- `integrationDescription` (optional): Description of the integration\n- `enrollmentName` (optional): Human-readable name for the enrollment\n\n**Expiration:** When the enrollment has an `expiresAt` (pending expiration policy) and the current time is past that date, bind returns **400** with a message indicating the enrollment invitation has expired. The enrollment status is set to EXPIRED.\n\n**Status Codes:**\n- 200: Enrollment binding information retrieved successfully\n- 400: Invalid enrollment ID, proof token, or enrollment invitation expired\n- 409: Enrollment already bound or proof token already used\n- 500: Internal server error\n\n**Usage:** After binding, the device generates its own key pair and signs the enrollment proof token to complete verification."
+        "description": "Initiates device binding. On **200**, persist integration metadata and `enrollmentBindPayloadSignedByIntegration` for the next steps.\n\n**Next:** Run **2** to build the canonical bind payload, then **3** to verify the integration Ed25519 signature.\n\nSee `docs/MOBILE_DEVELOPER_GUIDE.md` (bind response)."
       },
       "response": []
     },
     {
-      "name": "2 crypto generate device keypair",
+      "name": "2 crypto build enrollment bind payload",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var tid = pm.environment.get(\"bind_tenantId\");",
+              "var body = {",
+              "    type: \"enrollment-bind\",",
+              "    proofToken: pm.environment.get(\"enrollmentProofToken\"),",
+              "    enrollmentId: Number(pm.environment.get(\"enrollmentId\")),",
+              "    integrationPublicKey: pm.environment.get(\"integrationPublicKey\"),",
+              "    integrationKeyAlgorithm: pm.environment.get(\"integrationKeyAlgorithm\"),",
+              "    integrationName: pm.environment.get(\"bind_integrationName\") || null,",
+              "    integrationDescription: pm.environment.get(\"bind_integrationDescription\") || null,",
+              "    enrollmentName: pm.environment.get(\"bind_enrollmentName\") || null,",
+              "    tenantId: tid === \"\" || tid === undefined ? null : Number(tid),",
+              "    tenantName: pm.environment.get(\"bind_tenantName\") || null,",
+              "    tenantDescription: pm.environment.get(\"bind_tenantDescription\") || null",
+              "};",
+              "pm.request.body.raw = JSON.stringify(body);"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"enrollmentBindPayload\", jsonData.payload);",
+              "    pm.test(\"Payload helper returned enrollment-bind payload\", function () {",
+              "        pm.expect(jsonData.type).to.equal('enrollment-bind');",
+              "        pm.expect(jsonData.payload).to.be.a('string');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/payload-helper",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "payload-helper"
+          ]
+        },
+        "description": "Builds the canonical bind payload via Crypto API (same rules as `EnrollmentSignaturePayload` in `ezkey-core`). Run immediately after **1 bind** (200).\n\n**Next:** **3** — verify `enrollmentBindPayloadSignedByIntegration` with `verify-ed25519`."
+      },
+      "response": []
+    },
+    {
+      "name": "3 crypto validate enrollment bind by integration",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var payload = pm.environment.get(\"enrollmentBindPayload\");",
+              "if (!payload) {",
+              "    throw new Error(\"Run step 2 first — enrollmentBindPayload is missing.\");",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.test(\"Bind payload signature is valid\", function () {",
+              "        pm.expect(jsonData.valid).to.be.true;",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"data\": \"{{enrollmentBindPayload}}\",\r\n    \"signature\": \"{{enrollmentBindPayloadSignedByIntegration}}\",\r\n    \"publicKey\": \"{{integrationPublicKey}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/verify-ed25519",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "verify-ed25519"
+          ]
+        },
+        "description": "Verifies the integration Ed25519 signature on the bind payload before trusting enrollment metadata (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`)."
+      },
+      "response": []
+    },
+    {
+      "name": "4 crypto generate device keypair",
       "event": [
         {
           "listen": "test",
@@ -80,18 +229,14 @@
               "    var jsonData = pm.response.json();",
               "    pm.environment.set(\"device_privateKey\", jsonData.privateKey);",
               "    pm.environment.set(\"device_publicKey\", jsonData.publicKey);",
-              "    ",
               "    pm.test(\"Response contains required fields\", function () {",
               "        pm.expect(jsonData).to.have.property('privateKey');",
               "        pm.expect(jsonData).to.have.property('publicKey');",
-              "        pm.expect(jsonData.privateKey).to.be.a('string');",
-              "        pm.expect(jsonData.publicKey).to.be.a('string');",
               "    });",
               "}"
             ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "packages": {}
           }
         }
       ],
@@ -110,13 +255,26 @@
             "keypair"
           ]
         },
-        "description": "Generates a new EC P-256 key pair for the mobile device. In production, this would be done on the device itself using hardware-backed keystores (Android Keystore, iOS Secure Enclave).\n\n**Response (200 OK):**\n- `privateKey`: Base64-encoded EC P-256 private key (PKCS#8 format)\n- `publicKey`: Base64-encoded EC P-256 public key (X.509 SubjectPublicKeyInfo format)\n\n**Usage:** The private key is used for signing enrollment proof token, and the public key is submitted during verification."
+        "description": "Generates an EC P-256 key pair for the simulated device (production: on-device keystore)."
       },
       "response": []
     },
     {
-      "name": "3 crypto generate enrollment proof token signature",
+      "name": "5 crypto build enrollment verify device payload",
       "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var ch = pm.environment.get(\"enrollmentChallenge\");",
+              "if (ch === undefined || ch === null || ch === \"\") {",
+              "    throw new Error(\"Set enrollmentChallenge in the environment (from Admin enrollment creation).\");",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        },
         {
           "listen": "test",
           "script": {
@@ -127,17 +285,15 @@
               "",
               "if (pm.response.code === 200) {",
               "    var jsonData = pm.response.json();",
-              "    pm.environment.set(\"enrollment_proofkey_signature\", jsonData.signature);",
-              "    ",
-              "    pm.test(\"Response contains signature\", function () {",
-              "        pm.expect(jsonData).to.have.property('signature');",
-              "        pm.expect(jsonData.signature).to.be.a('string');",
+              "    pm.environment.set(\"enrollmentVerifyDevicePayload\", jsonData.payload);",
+              "    pm.test(\"Payload helper returned enrollment-verify-device payload\", function () {",
+              "        pm.expect(jsonData.type).to.equal('enrollment-verify-device');",
+              "        pm.expect(jsonData.payload).to.be.a('string');",
               "    });",
               "}"
             ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "packages": {}
           }
         }
       ],
@@ -146,7 +302,74 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"data\": \"{{enrollmentProofToken}}\",\r\n    \"privateKey\": \"{{device_privateKey}}\"\r\n}",
+          "raw": "{\r\n    \"type\": \"enrollment-verify-device\",\r\n    \"proofToken\": \"{{enrollmentProofToken}}\",\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeResponse\": {{enrollmentChallenge}},\r\n    \"devicePublicKey\": \"{{device_publicKey}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/payload-helper",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "payload-helper"
+          ]
+        },
+        "description": "Builds the canonical string that the device must sign for verify: `enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey` (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`).\n\n**Prerequisite:** `enrollmentChallenge` in the environment."
+      },
+      "response": []
+    },
+    {
+      "name": "6 crypto sign enrollment verify device payload",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var p = pm.environment.get(\"enrollmentVerifyDevicePayload\");",
+              "if (!p) {",
+              "    throw new Error(\"Run step 5 first — enrollmentVerifyDevicePayload is missing.\");",
+              "}",
+              "var pk = pm.environment.get(\"device_privateKey\");",
+              "pm.request.body.raw = JSON.stringify({ data: p, privateKey: pk });"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"enrollmentProofTokenSigned\", jsonData.signature);",
+              "    pm.test(\"Response contains signature\", function () {",
+              "        pm.expect(jsonData).to.have.property('signature');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
           "options": {
             "raw": {
               "language": "json"
@@ -165,12 +388,12 @@
             "sign"
           ]
         },
-        "description": "Signs the enrollment proof token with the device's private key. This signature proves that the device has received the original enrollment proof token and is responding to it.\n\n**Request Body:**\n- `data`: The enrollment proof token (from bind response)\n- `privateKey`: Device's private key (EC P-256, PKCS#8 format, Base64 encoded)\n\n**Response (200 OK):**\n- `signature`: Cryptographic signature (ECDSA-SHA256, ASN.1 DER encoded, Base64)\n- `originalData`: Original data that was signed\n- `algorithm`: Signature algorithm used (\"EC_P256\")\n\n**Security Note:** This signature is included in the verify request as `enrollmentProofTokenSigned`. It proves the device received the original token and prevents replay attacks. Sign **only** the enrollment proof token string — do not concatenate `devicePrivateKeyStorageTier` or other verify fields into the signed payload unless a future protocol defines an extended canonical message."
+        "description": "Signs the **canonical verify-device payload** from step 5 with the device private key. The result is `enrollmentProofTokenSigned` for **7 verify** — do **not** sign the raw proof token alone."
       },
       "response": []
     },
     {
-      "name": "4 verify",
+      "name": "7 verify",
       "event": [
         {
           "listen": "test",
@@ -182,20 +405,18 @@
               "",
               "if (pm.response.code === 200) {",
               "    var jsonData = pm.response.json();",
-              "    ",
+              "    pm.environment.set(\"enrollmentVerifyMessage\", jsonData.enrollmentVerifyMessage != null ? jsonData.enrollmentVerifyMessage : \"\");",
+              "    pm.environment.set(\"enrollmentVerifyPayloadSignedByIntegration\", jsonData.enrollmentVerifyPayloadSignedByIntegration);",
               "    pm.test(\"Response contains active field\", function () {",
               "        pm.expect(jsonData).to.have.property('active');",
-              "        pm.expect(jsonData.active).to.be.a('boolean');",
               "    });",
-              "    ",
               "    pm.test(\"Enrollment is active\", function () {",
               "        pm.expect(jsonData.active).to.be.true;",
               "    });",
               "}"
             ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "packages": {}
           }
         }
       ],
@@ -204,7 +425,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeResponse\": {{enrollmentChallenge}},\r\n    \"devicePublicKey\": \"{{device_publicKey}}\",\r\n    \"enrollmentProofTokenSigned\": \"{{enrollment_proofkey_signature}}\",\r\n    \"devicePrivateKeyStorageTier\": \"STANDARD\"\r\n}",
+          "raw": "{\r\n    \"enrollmentId\": {{enrollmentId}},\r\n    \"challengeResponse\": {{enrollmentChallenge}},\r\n    \"devicePublicKey\": \"{{device_publicKey}}\",\r\n    \"enrollmentProofTokenSigned\": \"{{enrollmentProofTokenSigned}}\",\r\n    \"devicePrivateKeyStorageTier\": \"STANDARD\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -223,7 +444,149 @@
             "verify"
           ]
         },
-        "description": "Completes the enrollment verification process for mobile devices. The device submits its cryptographic keys and signed proof token to finalize the enrollment.\n\n**Request Body:**\n- `enrollmentId` (required): Enrollment ID being verified\n- `challengeResponse` (required): Response to enrollment challenge (challenge code from enrollment creation)\n- `devicePublicKey` (required): Device's public key (EC P-256, X.509 format, Base64 encoded)\n- `enrollmentProofTokenSigned` (required): Device's signature on the enrollment proof token (ECDSA-SHA256, ASN.1 DER encoded, Base64)\n- `devicePrivateKeyStorageTier` (optional): Client-reported storage tier for the device private key: `NONE`, `STANDARD`, or `STRONG`\n\n**Response (200 OK):**\n- `active`: Boolean indicating whether the enrollment is now active and ready for authentication\n\n**Expiration:** When the enrollment has an `expiresAt` (pending expiration policy) and the current time is past that date, verify returns **400** with a message indicating the enrollment invitation has expired. The enrollment status is set to EXPIRED.\n\n**Status Codes:**\n- 200: Enrollment verification completed successfully\n- 400: Invalid verification data, cryptographic validation failed, or enrollment invitation expired\n- 409: Enrollment state conflict or already verified\n- 500: Internal server error\n\n**Security Note:** The enrollment proof token signature must sign **only** the raw enrollment proof token string from the bind response (UTF-8). The server validates `enrollmentProofTokenSigned` against that string and `devicePublicKey`. Optional `devicePrivateKeyStorageTier` is **not** included in the signed bytes — it is client-reported metadata in the same JSON body (see `docs/MOBILE_DEVELOPER_GUIDE.md`, Device private key storage tier).\n\n**Usage:** After successful verification, the enrollment becomes active and the device can participate in authentication attempts for the associated integration."
+        "description": "Completes enrollment verification. `enrollmentProofTokenSigned` must be ECDSA over the canonical verify-device string from step 5–6.\n\n**Next:** **8** and **9** validate the integration signature on the verify HTTP response."
+      },
+      "response": []
+    },
+    {
+      "name": "8 crypto build enrollment verify result payload",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var msg = pm.environment.get(\"enrollmentVerifyMessage\");",
+              "if (msg === undefined) {",
+              "    throw new Error(\"Run step 7 verify (200) first — enrollmentVerifyMessage is missing.\");",
+              "}",
+              "var body = {",
+              "    type: \"enrollment-verify-result\",",
+              "    proofToken: pm.environment.get(\"enrollmentProofToken\"),",
+              "    enrollmentId: Number(pm.environment.get(\"enrollmentId\")),",
+              "    result: \"VERIFIED\",",
+              "    message: msg",
+              "};",
+              "pm.request.body.raw = JSON.stringify(body);"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"enrollmentVerifyResultPayload\", jsonData.payload);",
+              "    pm.test(\"Payload helper returned enrollment-verify-result payload\", function () {",
+              "        pm.expect(jsonData.type).to.equal('enrollment-verify-result');",
+              "        pm.expect(jsonData.payload).to.be.a('string');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/payload-helper",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "payload-helper"
+          ]
+        },
+        "description": "Builds the canonical verify-result payload for Ed25519 verification (same as server). Run after **7 verify** (200)."
+      },
+      "response": []
+    },
+    {
+      "name": "9 crypto validate enrollment verify result by integration",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var payload = pm.environment.get(\"enrollmentVerifyResultPayload\");",
+              "if (!payload) {",
+              "    throw new Error(\"Run step 8 first — enrollmentVerifyResultPayload is missing.\");",
+              "}",
+              "var sig = pm.environment.get(\"enrollmentVerifyPayloadSignedByIntegration\");",
+              "if (!sig) {",
+              "    throw new Error(\"Run step 7 verify (200) first — enrollmentVerifyPayloadSignedByIntegration is missing.\");",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.test(\"Verify-result signature cryptographically valid\", function () {",
+              "        pm.expect(jsonData.valid).to.be.true;",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"data\": \"{{enrollmentVerifyResultPayload}}\",\r\n    \"signature\": \"{{enrollmentVerifyPayloadSignedByIntegration}}\",\r\n    \"publicKey\": \"{{integrationPublicKey}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_crypto_api}}/api/v1/crypto/verify-ed25519",
+          "host": [
+            "{{base_url_crypto_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "crypto",
+            "verify-ed25519"
+          ]
+        },
+        "description": "Verifies the integration Ed25519 signature on the verify HTTP response (`enrollmentVerifyPayloadSignedByIntegration`). End-to-end assurance in Postman."
       },
       "response": []
     }

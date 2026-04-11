@@ -99,7 +99,7 @@ flowchart LR
      - Document the new Respond response body (`authAttemptResult`, `authAttemptMessage`, `authAttemptId`, `authAttemptProofTokenResultSignedByIntegration`).  
      - Adjust **6 respond** / **6b respond with context** folder descriptions and any **Tests** tab scripts that assert on `result` / `message` so they match the new field names.  
      - Optionally add a short collection-level note that the mobile should verify the integration signature on the Respond response (same public key as Pending).  
-   - Align with [`docs/testing/POSTMAN_COLLECTIONS_UPDATE_PLAN.md`](../../docs/testing/POSTMAN_COLLECTIONS_UPDATE_PLAN.md) style (descriptions + tests consistency).
+   - Keep collection descriptions and Tests scripts consistent (historical note: legacy `docs/testing/POSTMAN_COLLECTIONS_UPDATE_PLAN.md` was removed as superseded).
 
 4. **Demo device (ezkey-demo-device)**  
    - Consume new response fields; verify integration signature on Respond response before showing outcome (end-to-end without mobile in phase 1).

@@ -33,6 +33,8 @@ import org.ezkey.crypto.dto.SignDataRequestDto;
 import org.ezkey.crypto.dto.SignDataResponseDto;
 import org.ezkey.crypto.dto.ValidateSignatureRequestDto;
 import org.ezkey.crypto.dto.ValidateSignatureResponseDto;
+import org.ezkey.enrollment.service.EnrollmentSignaturePayload;
+import org.ezkey.enrollment.service.EnrollmentSignaturePayload.EnrollmentVerificationOutcome;
 import org.ezkey.security.EncryptionService;
 import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.ECP256KeyPair;
@@ -237,9 +239,11 @@ public class CryptoController {
   @Operation(
       summary = "Build canonical EZKey payload",
       description =
-          "Builds the canonical EZKey payload for pending, respond, or respond-result flows. "
-              + "Applies NFC normalization to the text fields defined by the protocol so the "
-              + "result can be used as a validation oracle in Dart tests and Postman workflows.")
+          "Builds the canonical EZKey payload for auth-attempt (pending, respond, respond-result)"
+              + " or enrollment (enrollment-bind, enrollment-verify-device,"
+              + " enrollment-verify-result) flows. Applies NFC normalization to the text fields"
+              + " defined by the protocol so the result can be used as a validation oracle in Dart"
+              + " tests and Postman workflows.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Payload built successfully"),
@@ -254,6 +258,9 @@ public class CryptoController {
           case "pending" -> buildPendingPayload(request);
           case "respond" -> buildRespondPayload(request);
           case "respond-result" -> buildRespondResultPayload(request);
+          case "enrollment-bind" -> buildEnrollmentBindPayload(request);
+          case "enrollment-verify-device" -> buildEnrollmentVerifyDevicePayload(request);
+          case "enrollment-verify-result" -> buildEnrollmentVerifyResultPayload(request);
           default ->
               throw new IllegalArgumentException("Unsupported payload type: " + request.getType());
         };
@@ -540,5 +547,73 @@ public class CryptoController {
         request.getAuthAttemptId(),
         authenticationResult,
         request.getMessage());
+  }
+
+  private static String buildEnrollmentBindPayload(PayloadHelperRequestDto request) {
+    if (request.getEnrollmentId() == null) {
+      throw new IllegalArgumentException("enrollmentId is required for enrollment-bind payloads");
+    }
+    if (request.getIntegrationPublicKey() == null || request.getIntegrationPublicKey().isBlank()) {
+      throw new IllegalArgumentException(
+          "integrationPublicKey is required for enrollment-bind payloads");
+    }
+    if (request.getIntegrationKeyAlgorithm() == null
+        || request.getIntegrationKeyAlgorithm().isBlank()) {
+      throw new IllegalArgumentException(
+          "integrationKeyAlgorithm is required for enrollment-bind payloads");
+    }
+    return EnrollmentSignaturePayload.buildBindPayload(
+        request.getProofToken(),
+        request.getEnrollmentId(),
+        request.getIntegrationPublicKey(),
+        request.getIntegrationKeyAlgorithm(),
+        request.getIntegrationName(),
+        request.getIntegrationDescription(),
+        request.getEnrollmentName(),
+        request.getTenantId(),
+        request.getTenantName(),
+        request.getTenantDescription());
+  }
+
+  private static String buildEnrollmentVerifyDevicePayload(PayloadHelperRequestDto request) {
+    if (request.getEnrollmentId() == null) {
+      throw new IllegalArgumentException(
+          "enrollmentId is required for enrollment-verify-device payloads");
+    }
+    if (request.getChallengeResponse() == null) {
+      throw new IllegalArgumentException(
+          "challengeResponse is required for enrollment-verify-device payloads");
+    }
+    if (request.getDevicePublicKey() == null || request.getDevicePublicKey().isBlank()) {
+      throw new IllegalArgumentException(
+          "devicePublicKey is required for enrollment-verify-device payloads");
+    }
+    return EnrollmentSignaturePayload.buildVerifyDevicePayload(
+        request.getProofToken(),
+        request.getEnrollmentId(),
+        request.getChallengeResponse(),
+        request.getDevicePublicKey());
+  }
+
+  private static String buildEnrollmentVerifyResultPayload(PayloadHelperRequestDto request) {
+    if (request.getEnrollmentId() == null) {
+      throw new IllegalArgumentException(
+          "enrollmentId is required for enrollment-verify-result payloads");
+    }
+    if (request.getResult() == null || request.getResult().isBlank()) {
+      throw new IllegalArgumentException(
+          "result is required for enrollment-verify-result payloads");
+    }
+    EnrollmentVerificationOutcome outcome;
+    try {
+      outcome =
+          EnrollmentVerificationOutcome.valueOf(
+              request.getResult().trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "Unsupported enrollment verification outcome: " + request.getResult());
+    }
+    return EnrollmentSignaturePayload.buildVerifyResultPayload(
+        request.getProofToken(), request.getEnrollmentId(), outcome, request.getMessage());
   }
 }
