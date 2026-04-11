@@ -3983,7 +3983,7 @@
           {
             "name": "eventType",
             "in": "query",
-            "description": "Filter by event type",
+            "description": "Filter by a single event type (not together with eventTypeFamily)",
             "required": false,
             "schema": {
               "type": "string",
@@ -4012,6 +4012,7 @@
                 "AUTH_ATTEMPT_PENDING",
                 "AUTH_ATTEMPT_RESPOND",
                 "AUTH_ATTEMPT_CANCELLED",
+                "AUTH_ATTEMPT_EXPIRED",
                 "API_KEY_CREATED",
                 "API_KEY_UPDATED",
                 "API_KEY_REVOKED",
@@ -4042,6 +4043,27 @@
                 "AUDIT_CHAIN_ARCHIVE_SEALED",
                 "AUDIT_CHAIN_GAP_DECLARED",
                 "AUDIT_CHAIN_GAP_PENDING"
+              ]
+            }
+          },
+          {
+            "name": "eventTypeFamily",
+            "in": "query",
+            "description": "Filter by event family (all types in the family). Mutually exclusive with eventType.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ADMIN",
+                "ENROLLMENT",
+                "AUTH_ATTEMPT",
+                "API_KEY",
+                "SYSTEM",
+                "ENCRYPTION_KEY",
+                "REENCRYPTION",
+                "INTEGRATION",
+                "TENANT",
+                "AUDIT_CHAIN"
               ]
             }
           },
@@ -7037,6 +7059,7 @@
               "AUTH_ATTEMPT_PENDING",
               "AUTH_ATTEMPT_RESPOND",
               "AUTH_ATTEMPT_CANCELLED",
+              "AUTH_ATTEMPT_EXPIRED",
               "API_KEY_CREATED",
               "API_KEY_UPDATED",
               "API_KEY_REVOKED",

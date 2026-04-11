@@ -26,7 +26,8 @@ import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { EventStatusBadge } from '@/components/feature/event-status-badge';
-import { EVENT_TYPE_KEYS, getAuditEventTypeLabel } from '@/lib/audit-event-type';
+import { AUDIT_EVENT_TYPE_GROUPS, auditEventFilterToApiParams } from '@/lib/audit-event-type-family';
+import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDate, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -1203,7 +1204,7 @@ export default function AuditLogsPage() {
   const { t } = useTranslation('audit-logs');
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
-  const [eventTypeFilter, setEventTypeFilter] = useState('');
+  const [eventFilter, setEventFilter] = useState('');
   const [eventStatusFilter, setEventStatusFilter] = useState('');
   const [apiNameFilter, setApiNameFilter] = useState('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
@@ -1214,21 +1215,17 @@ export default function AuditLogsPage() {
       ? dateRangeToApiParams(dateRange.from, dateRange.to)
       : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
-  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuditLogResponseDto, {
-    eventType?: string;
-    eventStatus?: string;
-    apiName?: string;
-    createdAfter?: string;
-    createdBefore?: string;
-  }>({
-    queryKey: ['audit-logs', eventTypeFilter, eventStatusFilter, apiNameFilter, dateRange.from, dateRange.to],
+  const eventFilterParams = auditEventFilterToApiParams(eventFilter);
+
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuditLogResponseDto, GetAuditLogsParams>({
+    queryKey: ['audit-logs', eventFilter, eventStatusFilter, apiNameFilter, dateRange.from, dateRange.to],
     baseParams: {
-      eventType: eventTypeFilter || undefined,
+      ...eventFilterParams,
       eventStatus: eventStatusFilter || undefined,
       apiName: apiNameFilter || undefined,
       createdAfter: listApiDateParams.createdAfter,
       createdBefore: listApiDateParams.createdBefore,
-    },
+    } as GetAuditLogsParams,
     fetchPage: (params) => getAuditLogs(params as GetAuditLogsParams) as Promise<PagedModelAuditLogResponseDto>,
   });
 
@@ -1345,10 +1342,19 @@ export default function AuditLogsPage() {
         {/* Filter bar */}
         <div className="flex gap-3 items-center flex-wrap">
           <div className="min-w-[15rem] w-64">
-            <Select value={eventTypeFilter} onChange={(e) => setEventTypeFilter(e.target.value)}>
+            <Select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
               <option value="">{t('list.filterEventTypeAll')}</option>
-              {EVENT_TYPE_KEYS.map((val) => (
-                <option key={val} value={val}>{t(`eventType.${val}`)}</option>
+              {AUDIT_EVENT_TYPE_GROUPS.map((group) => (
+                <optgroup key={group.family} label={t(`eventFamily.${group.family}`)}>
+                  <option value={group.family}>
+                    {t('list.filterAllTypesInFamily', { family: t(`eventFamily.${group.family}`) })}
+                  </option>
+                  {group.memberKeys.map((val) => (
+                    <option key={val} value={val}>
+                      {t(`eventType.${val}`)}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </Select>
           </div>

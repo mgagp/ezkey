@@ -18,6 +18,7 @@ import java.util.List;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.EventTypeFamily;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.integrity.AuditHmacService;
@@ -143,7 +144,10 @@ public class AuditLogService {
    * <p><b>Use Case:</b> Security operators monitoring audit logs, forensic analysis, and compliance
    * reporting with proper multi-tenant isolation.
    *
-   * @param eventType optional event type filter
+   * @param eventType optional single event type filter (mutually exclusive with {@code
+   *     eventTypeFamily})
+   * @param eventTypeFamily optional filter for all event types in a family ({@code IN (...)} ;
+   *     mutually exclusive with {@code eventType})
    * @param eventStatus optional event status filter
    * @param apiName optional API name filter
    * @param enrollmentId optional enrollment ID filter
@@ -162,6 +166,7 @@ public class AuditLogService {
   @Transactional(readOnly = true)
   public Page<AuditLog> findByFilters(
       EventType eventType,
+      EventTypeFamily eventTypeFamily,
       EventStatus eventStatus,
       ApiName apiName,
       Integer enrollmentId,
@@ -185,7 +190,9 @@ public class AuditLogService {
             predicates.add(cb.equal(root.get("tenantId"), filterTenantId));
           }
 
-          if (eventType != null) {
+          if (eventTypeFamily != null) {
+            predicates.add(root.get("eventType").in(eventTypeFamily.getMemberEventTypes()));
+          } else if (eventType != null) {
             predicates.add(cb.equal(root.get("eventType"), eventType));
           }
 

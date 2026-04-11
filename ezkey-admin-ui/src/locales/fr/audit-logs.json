@@ -16,6 +16,7 @@
   "list": {
     "title": "Journaux d'audit",
     "filterEventTypeAll": "Tous les types d'événements",
+    "filterAllTypesInFamily": "Tous les événements — {{family}}",
     "filterStatusAll": "Tous les statuts",
     "filterStatusSuccess": "Succès",
     "filterStatusFailure": "Échec",
@@ -45,6 +46,18 @@
       "status": "Résultat de l'étape : réussite, échec attendu (règles ou fin MFA), ou erreur (traitement inattendu).",
       "api": "API Ezkey qui a enregistré cette entrée (Admin, Auth ou Integration)."
     }
+  },
+  "eventFamily": {
+    "ADMIN": "Administrateurs",
+    "ENROLLMENT": "Enrôlements",
+    "AUTH_ATTEMPT": "Tentatives d'authentification",
+    "API_KEY": "Clés API",
+    "SYSTEM": "Système",
+    "ENCRYPTION_KEY": "Clés de chiffrement",
+    "REENCRYPTION": "Re-chiffrement",
+    "INTEGRATION": "Intégrations",
+    "TENANT": "Tenants",
+    "AUDIT_CHAIN": "Chaîne d'audit"
   },
   "eventType": {
     "ADMIN_LOGIN": "Connexion admin",
@@ -93,6 +106,7 @@
     "REENCRYPTION_PAUSED": "Ré-chiffrement en pause",
     "INTEGRATION_CREATED": "Intégration créée",
     "INTEGRATION_UPDATED": "Intégration mise à jour",
+    "INTEGRATION_RETIRED": "Intégration retirée",
     "INTEGRATION_DELETED": "Intégration supprimée",
     "TENANT_CREATED": "Tenant créé",
     "TENANT_UPDATED": "Tenant mis à jour",

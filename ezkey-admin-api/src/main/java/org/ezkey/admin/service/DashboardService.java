@@ -195,7 +195,18 @@ public class DashboardService {
       Integer requesterTenantId, PageRequest pageRequest) {
     var page =
         auditLogService.findByFilters(
-            null, null, null, null, null, null, requesterTenantId, null, null, null, pageRequest);
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            requesterTenantId,
+            null,
+            null,
+            null,
+            pageRequest);
     List<DashboardRecentActivityItemDto> list = new ArrayList<>();
     for (AuditLog log : page.getContent()) {
       DashboardRecentActivityItemDto item = new DashboardRecentActivityItemDto();
@@ -215,6 +226,7 @@ public class DashboardService {
     var page =
         auditLogService.findByFilters(
             EventType.AUDIT_CHAIN_GAP_PENDING,
+            null,
             null,
             null,
             null,
