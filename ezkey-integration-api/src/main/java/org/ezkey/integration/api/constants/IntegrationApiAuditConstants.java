@@ -10,6 +10,8 @@
 
 package org.ezkey.integration.api.constants;
 
+import org.ezkey.audit.constants.AuthAttemptAuditConstants;
+
 /**
  * Audit action constants for M2M (machine-to-machine) API operations.
  *
@@ -53,4 +55,12 @@ public final class IntegrationApiAuditConstants {
 
   /** Audit action for unexpected error during auth attempt cancellation. */
   public static final String AUTH_ATTEMPT_CANCELLATION_ERROR = "auth_attempt_cancellation_error";
+
+  /**
+   * Auth attempt TTL elapsed; scheduled job persisted {@code EXPIRED}.
+   *
+   * <p>Same value as {@link AuthAttemptAuditConstants#AUTH_ATTEMPT_EXPIRED_SCHEDULER}.
+   */
+  public static final String AUTH_ATTEMPT_EXPIRED_SCHEDULER =
+      AuthAttemptAuditConstants.AUTH_ATTEMPT_EXPIRED_SCHEDULER;
 }

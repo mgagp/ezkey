@@ -6,11 +6,17 @@ x-buildkit: &buildkit
   DOCKER_BUILDKIT: 1
   COMPOSE_DOCKER_CLI_BUILD: 1
 
+# Log line timestamps in containers follow this zone (JVM, Postgres, shell). Default UTC.
+# Override with IANA name in docker/.env, e.g. TZ=America/Toronto (see docker/README.md).
+x-container-tz: &container-tz
+  TZ: ${TZ:-UTC}
+
 services:
   postgres:
     image: postgres:18-alpine
     container_name: ezkey-postgres
     environment:
+      <<: *container-tz
       POSTGRES_DB: ezkey_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ezkey
@@ -37,6 +43,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -57,6 +64,7 @@ services:
       migration:
         condition: service_completed_successfully
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -102,6 +110,7 @@ services:
       migration:
         condition: service_completed_successfully
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -141,6 +150,7 @@ services:
       admin-api:
         condition: service_healthy
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -171,6 +181,7 @@ services:
       auth-api:
         condition: service_healthy
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       EZKEY_AUTH_API_URL: http://auth-api:8080
     volumes:
@@ -201,6 +212,7 @@ services:
       admin-api:
         condition: service_healthy
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
     volumes:
       - encryption-secrets:/etc/ezkey
@@ -226,6 +238,7 @@ services:
       admin-api:
         condition: service_healthy
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       # External configuration location - must be set as environment variable to be loaded early enough
       # Spring Boot automatically searches in ./config/ relative to working directory (/app/config/)
@@ -262,6 +275,7 @@ services:
       crypto-api:
         condition: service_healthy
     environment:
+      <<: *container-tz
       EZKEY_ADMIN_API_URL: http://admin-api:9080
       EZKEY_ADMIN_HEALTH_URL: http://admin-api:9081
       EZKEY_AUTH_API_URL: http://auth-api:8080
@@ -294,6 +308,7 @@ services:
       demo-device:
         condition: service_started
     environment:
+      <<: *container-tz
       ADMIN_API_URL: http://admin-api:9080
       AUTH_API_URL: http://auth-api:8080
       CRYPTO_API_URL: http://crypto-api:9090

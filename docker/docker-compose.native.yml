@@ -6,11 +6,16 @@ x-buildkit: &buildkit
   DOCKER_BUILDKIT: 1
   COMPOSE_DOCKER_CLI_BUILD: 1
 
+# See docker/docker-compose.yml — log timestamps; override TZ in docker/.env.
+x-container-tz: &container-tz
+  TZ: ${TZ:-UTC}
+
 services:
   postgres:
     image: postgres:18-alpine
     container_name: ezkey-postgres-native
     environment:
+      <<: *container-tz
       POSTGRES_DB: ezkey_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ezkey
@@ -37,6 +42,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -58,6 +64,7 @@ services:
       migration:
         condition: service_completed_successfully
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-native}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -95,6 +102,7 @@ services:
       migration:
         condition: service_completed_successfully
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-native}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -125,6 +133,7 @@ services:
       auth-api:
         condition: service_healthy
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       EZKEY_AUTH_API_URL: http://auth-api:8080
     volumes:
@@ -153,6 +162,7 @@ services:
       migration:
         condition: service_completed_successfully
     environment:
+      <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
     volumes:
       - encryption-secrets-native:/etc/ezkey
@@ -181,6 +191,7 @@ services:
       crypto-api:
         condition: service_healthy
     environment:
+      <<: *container-tz
       EZKEY_ADMIN_API_URL: http://admin-api:9080
       EZKEY_ADMIN_HEALTH_URL: http://admin-api:9081
       EZKEY_AUTH_API_URL: http://auth-api:8080

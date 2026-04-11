@@ -1672,6 +1672,7 @@ Authorization: Bearer ezkey_admin_token...
 - Attempts that are already in a final state (`ACCEPTED`, `REJECTED`, `INVALID`, `EXPIRED`) cannot be cancelled
 - Supports both Bearer token (admin) and API key (Integration API) authentication
 - All cancellation operations are audited for security monitoring
+- **Automatic TTL expiry (no HTTP call):** When `expires_at` passes without a response, a scheduled job in the Admin API process (default interval `ezkey.auth-attempt.expiry-scheduler.fixed-delay-ms`, often 60s) persists `EXPIRED` for eligible `PENDING`/`READ` rows and writes an `AUTH_ATTEMPT_EXPIRED` audit row with `event_action` `auth_attempt_expired_scheduler`. This is distinct from explicit cancel (`AUTH_ATTEMPT_CANCELLED`).
 
 ---
 
