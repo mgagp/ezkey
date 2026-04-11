@@ -1,14 +1,16 @@
 /*
- * pam_ezkey.c - Ezkey PAM Module (Mock Version)
- * 
- * Mock PAM module for testing SSH integration with Ezkey MFA system
- * This version only logs activities for development purposes
+ * pam_ezkey.c - Ezkey PAM Module
+ *
+ * PAM module for SSH integration with Ezkey MFA system via the M2M API.
+ * Credentials are read from environment variables:
+ *   EZKEY_M2M_API_URL      - M2M API base URL (default: http://localhost:7080)
+ *   EZKEY_INTEGRATION_KEY  - API integration key
+ *   EZKEY_SECRET_KEY       - API secret key
  */
 
 #include <curl/curl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
 #include <string.h>
 #include <cjson/cJSON.h> // Parsing JSON via cJSON
 #include <unistd.h>
@@ -25,15 +27,13 @@ PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags,
                               int argc, const char **argv);
 
 /* Internal functions */
-static int ezkey_authenticate_user(pam_handle_t *pamh, const char *username);
+static int ezkey_authenticate_user_api(pam_handle_t *pamh, const char *username);
 static void log_pam_info(pam_handle_t *pamh, const char *message);
 static void log_pam_error(pam_handle_t *pamh, const char *message);
 static int parse_config_args(int argc, const char **argv);
 
 /* Global configuration */
 static int debug_mode = 0;
-static int mock_success = 1; /* 1=success, 0=failure for testing */
-static int mock_delay = 5;   /* seconds to simulate wait */
 
 static size_t ezkey_curl_write_cb(void *contents, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
@@ -44,10 +44,42 @@ static size_t ezkey_curl_write_cb(void *contents, size_t size, size_t nmemb, voi
 static int ezkey_authenticate_user_api(pam_handle_t *pamh, const char *username) {
     CURL *curl;
     CURLcode res;
-    char response[1024] = {0};
+    char response[2048] = {0};
     long authAttemptId = -1;
 
-    // 1. Création de l'authAttempt
+    /* Read runtime configuration from environment variables */
+    const char *m2m_url = getenv(EZKEY_ENV_M2M_URL);
+    if (!m2m_url || strlen(m2m_url) == 0) {
+        m2m_url = EZKEY_M2M_API_URL;
+    }
+    const char *integration_key = getenv(EZKEY_ENV_INTEGRATION_KEY);
+    const char *secret_key = getenv(EZKEY_ENV_SECRET_KEY);
+
+    if (!integration_key || !secret_key ||
+        strlen(integration_key) == 0 || strlen(secret_key) == 0) {
+        log_pam_error(pamh, "EZKEY_INTEGRATION_KEY or EZKEY_SECRET_KEY not set");
+        return PAM_AUTH_ERR;
+    }
+
+    /* Build userpwd string for Basic Auth: integrationKey:secretKey */
+    char userpwd[512];
+    snprintf(userpwd, sizeof(userpwd), "%s:%s", integration_key, secret_key);
+
+    /* Build POST body: {"userIdentifier": "<username>"} */
+    char post_body[512];
+    snprintf(post_body, sizeof(post_body), "{\"userIdentifier\": \"%s\"}", username);
+
+    /* Build POST URL */
+    char post_url[512];
+    snprintf(post_url, sizeof(post_url), "%s/api/v1/auth-attempts", m2m_url);
+
+    if (debug_mode) {
+        char dbg[512];
+        snprintf(dbg, sizeof(dbg), "POST %s body=%s", post_url, post_body);
+        log_pam_info(pamh, dbg);
+    }
+
+    /* 1. Create auth attempt */
     curl = curl_easy_init();
     if (!curl) {
         log_pam_error(pamh, "curl_easy_init failed");
@@ -55,23 +87,34 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const char *username)
     }
     struct curl_slist *headers = NULL;
     headers = curl_slist_append(headers, "Content-Type: application/json");
-    curl_easy_setopt(curl, CURLOPT_URL, "http://host.docker.internal:9080/api/v1/auth-attempts");
+    curl_easy_setopt(curl, CURLOPT_URL, post_url);
     curl_easy_setopt(curl, CURLOPT_POST, 1L);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "{\"enrollmentId\": 1}");
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_body);
+    curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+    curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ezkey_curl_write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)EZKEY_API_TIMEOUT);
 
     res = curl_easy_perform(curl);
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        log_pam_error(pamh, "Failed to POST auth-attempt");
+        char err[256];
+        snprintf(err, sizeof(err), "Failed to POST auth-attempt: %s", curl_easy_strerror(res));
+        log_pam_error(pamh, err);
         return PAM_AUTH_ERR;
     }
 
-    // 2. Extraction de l'ID depuis le JSON (cJSON)
+    if (debug_mode) {
+        char dbg[512];
+        snprintf(dbg, sizeof(dbg), "POST response: %s", response);
+        log_pam_info(pamh, dbg);
+    }
+
+    /* 2. Extract authAttemptId from JSON response */
     cJSON *root = cJSON_Parse(response);
     if (!root) {
         log_pam_error(pamh, "JSON parse error for authAttemptId");
@@ -83,13 +126,22 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const char *username)
         cJSON_Delete(root);
         return PAM_AUTH_ERR;
     }
-    authAttemptId = (long)id_val->valuedouble; // cJSON stores numbers as double
+    authAttemptId = (long)id_val->valuedouble;
     cJSON_Delete(root);
 
-    // 3. Appel de l'API wait
-    char wait_url[256];
+    char id_msg[128];
+    snprintf(id_msg, sizeof(id_msg), "Auth attempt created, id=%ld", authAttemptId);
+    log_pam_info(pamh, id_msg);
+
+    /* 3. Call wait API with timeout and polling query params */
+    char wait_url[512];
     snprintf(wait_url, sizeof(wait_url),
-             "http://host.docker.internal:9080/api/v1/auth-attempts/%ld/wait", authAttemptId);
+             "%s/api/v1/auth-attempts/%ld/wait?timeout=%d&polling=%d",
+             m2m_url, authAttemptId, EZKEY_WAIT_TIMEOUT, EZKEY_WAIT_POLLING);
+
+    if (debug_mode) {
+        log_pam_info(pamh, wait_url);
+    }
 
     memset(response, 0, sizeof(response));
     curl = curl_easy_init();
@@ -98,58 +150,46 @@ static int ezkey_authenticate_user_api(pam_handle_t *pamh, const char *username)
         return PAM_AUTH_ERR;
     }
     curl_easy_setopt(curl, CURLOPT_URL, wait_url);
+    curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+    curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ezkey_curl_write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+    /* Timeout slightly longer than server-side wait to allow response to arrive */
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)(EZKEY_WAIT_TIMEOUT + 10));
 
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
 
     if (res != CURLE_OK) {
-        log_pam_error(pamh, "Failed to GET wait API");
+        char err[256];
+        snprintf(err, sizeof(err), "Failed to GET wait API: %s", curl_easy_strerror(res));
+        log_pam_error(pamh, err);
         return PAM_AUTH_ERR;
     }
 
-    // 4. Interprétation de la réponse : status doit être "ACCEPTED"
+    if (debug_mode) {
+        char dbg[512];
+        snprintf(dbg, sizeof(dbg), "Wait response: %s", response);
+        log_pam_info(pamh, dbg);
+    }
+
+    /* 4. Check status == "ACCEPTED" */
     root = cJSON_Parse(response);
     if (!root) {
         log_pam_error(pamh, "JSON parse error for wait response");
         return PAM_AUTH_ERR;
     }
     cJSON *status_val = cJSON_GetObjectItemCaseSensitive(root, "status");
-    int accepted = (cJSON_IsString(status_val) && status_val->valuestring && strcmp(status_val->valuestring, "ACCEPTED") == 0);
+    int accepted = (cJSON_IsString(status_val) &&
+                    status_val->valuestring &&
+                    strcmp(status_val->valuestring, "ACCEPTED") == 0);
     cJSON_Delete(root);
+
     if (accepted) {
         return PAM_SUCCESS;
     }
     log_pam_error(pamh, "Authentication rejected or timeout (status not ACCEPTED)");
     return PAM_AUTH_ERR;
-}
-
-static size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp) {
-    size_t realsize = size * nmemb;
-    FILE *fp = (FILE *)userp;
-    fwrite(contents, size, nmemb, fp);
-    return realsize;
-}
-
-int ezkey_poc1_prooftoken() {
-    CURL *curl;
-    CURLcode res;
-    FILE *fp = fopen("/tmp/prooftoken", "w");
-    if (!fp) return -1;
-
-    curl = curl_easy_init();
-    if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, "http://host.docker.internal:8085/api/v1/sim/prooftoken");
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-        res = curl_easy_perform(curl);
-        curl_easy_cleanup(curl);
-        fclose(fp);
-        return (res == CURLE_OK) ? 0 : -2;
-    }
-    fclose(fp);
-    return -3;
 }
 
 /*
@@ -160,15 +200,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,
     const char *username;
     int retval;
     int i;
-
-    int fd = open("/tmp/pam_ezkey_was_here", O_CREAT|O_WRONLY, 0644);
-
-    if (fd != -1) {
-        write(fd, "called\n", 7);
-        close(fd);
-    }
-
-    ezkey_poc1_prooftoken();
 
     /* Parse module arguments */
     parse_config_args(argc, argv);
@@ -211,7 +242,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,
             "Authentication requested for user: %s", username);
     log_pam_info(pamh, user_msg);
 
-    /* Perform mock Ezkey authentication */
+    /* Perform Ezkey MFA authentication via M2M API */
     retval = ezkey_authenticate_user_api(pamh, username);
 
     char result_msg[256];
@@ -236,85 +267,17 @@ PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags,
 }
 
 /*
- * Mock Ezkey authentication - simulates API calls to Ezkey backend
- */
-static int ezkey_authenticate_user(pam_handle_t *pamh, const char *username) {
-    char msg[512];
-    int i;
-
-    log_pam_info(pamh, "--- Starting Ezkey MFA Process ---");
-
-    /* Step 1: Mock API call to create auth attempt */
-    snprintf(msg, sizeof(msg), 
-            "MOCK: POST %s/api/v1/auth-attempts (user: %s)", 
-            EZKEY_ADMIN_API_URL, username);
-    log_pam_info(pamh, msg);
-
-    /* Simulate API processing time */
-    sleep(1);
-
-    /* Mock auth attempt ID */
-    const char *mock_auth_id = "auth_12345_mock";
-    snprintf(msg, sizeof(msg), 
-            "MOCK: Created auth attempt ID: %s", mock_auth_id);
-    log_pam_info(pamh, msg);
-
-    /* Step 2: Mock sending notification to mobile device */
-    log_pam_info(pamh, "MOCK: Notification sent to user's mobile device");
-    log_pam_info(pamh, "MOCK: User should receive push notification now");
-
-    /* Step 3: Mock wait for user response using Wait API */
-    snprintf(msg, sizeof(msg), 
-            "MOCK: Waiting for user response (timeout: %ds)...", 
-            EZKEY_WAIT_TIMEOUT);
-    log_pam_info(pamh, msg);
-
-    /* Simulate waiting with progress updates */
-    for (i = 0; i < mock_delay; i++) {
-        snprintf(msg, sizeof(msg), 
-                "MOCK: Polling... %d/%d seconds", i+1, mock_delay);
-        if (debug_mode) {
-            log_pam_info(pamh, msg);
-        }
-        sleep(1);
-    }
-
-    /* Step 4: Mock API response */
-    if (mock_success) {
-        snprintf(msg, sizeof(msg), 
-                "MOCK: GET %s/api/v1/auth-attempts/%s/wait -> ACCEPTED", 
-                EZKEY_ADMIN_API_URL, mock_auth_id);
-        log_pam_info(pamh, msg);
-        log_pam_info(pamh, "MOCK: User accepted authentication on mobile device");
-        return PAM_SUCCESS;
-    } else {
-        snprintf(msg, sizeof(msg), 
-                "MOCK: GET %s/api/v1/auth-attempts/%s/wait -> REJECTED", 
-                EZKEY_ADMIN_API_URL, mock_auth_id);
-        log_pam_info(pamh, msg);
-        log_pam_info(pamh, "MOCK: User rejected authentication or timeout occurred");
-        return PAM_AUTH_ERR;
-    }
-}
-
-/*
  * Parse module configuration arguments
  */
 static int parse_config_args(int argc, const char **argv) {
     int i;
-    
+
     for (i = 0; i < argc; i++) {
         if (strcmp(argv[i], "debug") == 0) {
             debug_mode = 1;
-        } else if (strcmp(argv[i], "mock_failure") == 0) {
-            mock_success = 0;
-        } else if (strncmp(argv[i], "mock_delay=", 11) == 0) {
-            mock_delay = atoi(argv[i] + 11);
-            if (mock_delay < 1) mock_delay = 5;
-            if (mock_delay > 60) mock_delay = 60;
         }
     }
-    
+
     return 0;
 }
 

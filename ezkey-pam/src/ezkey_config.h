@@ -7,16 +7,20 @@
 
 /* Module identification */
 #define EZKEY_MODULE_NAME "pam_ezkey"
-#define EZKEY_VERSION "1.0.0-mock"
+#define EZKEY_VERSION "1.1.0"
 
-/* Default Ezkey API endpoints (modify for your environment) */
-#define EZKEY_ADMIN_API_URL "http://localhost:9080"
-#define EZKEY_AUTH_API_URL "http://localhost:8080" 
+/* Default Ezkey M2M API endpoint (overridable via environment variable) */
+#define EZKEY_M2M_API_URL "http://localhost:7080"
+
+/* Environment variable names for runtime configuration */
+#define EZKEY_ENV_M2M_URL        "EZKEY_M2M_API_URL"
+#define EZKEY_ENV_INTEGRATION_KEY "EZKEY_INTEGRATION_KEY"
+#define EZKEY_ENV_SECRET_KEY     "EZKEY_SECRET_KEY"
 
 /* Timeout settings */
 #define EZKEY_WAIT_TIMEOUT 30      /* seconds to wait for user response */
+#define EZKEY_WAIT_POLLING 2       /* polling interval in seconds */
 #define EZKEY_API_TIMEOUT 10       /* seconds for API calls */
-#define EZKEY_RETRY_COUNT 3        /* number of API retry attempts */
 
 /* Configuration file path */
 #define EZKEY_CONFIG_FILE "/etc/security/pam_ezkey.conf"

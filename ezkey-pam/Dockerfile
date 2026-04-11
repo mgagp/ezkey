@@ -2,46 +2,47 @@
 # Dockerfile - Environnement de test PAM Ezkey
 # ==================================================
 
-FROM rockylinux/rockylinux:9.6
+FROM rockylinux/rockylinux:10
 
 # Métadonnées
 LABEL maintainer="Ezkey Development Team"
-LABEL description="Environment de test pour le module PAM Ezkey"
-LABEL version="1.0.0"
+LABEL description="Environment de test pour le module PAM Ezkey (Rocky Linux 10)"
+LABEL version="1.1.0"
 
-# Variables d'environnement
+# Variables d'environnement de base
 ENV CONTAINER=docker
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
-# Installation des packages de base (un par un pour debug)
+# Credentials M2M API (injecter via docker-compose ou docker run -e)
+ENV EZKEY_M2M_API_URL=""
+ENV EZKEY_INTEGRATION_KEY=""
+ENV EZKEY_SECRET_KEY=""
+
+# Installation des packages en une seule commande (réduit les layers)
 RUN dnf update -y && \
-    dnf install -y openssh-server || exit 1 && \
-    dnf install -y openssh-clients || exit 1 && \
-    dnf install -y pam-devel || exit 1 && \
-    dnf install -y gcc || exit 1 && \
-    dnf install -y make || exit 1 && \
-    dnf install -y rsyslog || exit 1 && \
-    dnf install -y sudo || exit 1 && \
-    dnf install -y passwd || exit 1 && \
-    dnf install -y which || exit 1 && \
-    dnf install -y procps-ng || exit 1 && \
-    dnf install -y net-tools || exit 1 && \
-    dnf install -y wget || exit 1 && \
-    dnf install -y vim || exit 1 && \
-    dnf install -y less || exit 1 && \
-    dnf install -y grep || exit 1 && \
-    dnf install -y sed || exit 1 && \
-    dnf install -y gawk || exit 1 && \
-    dnf install -y systemd || exit 1 && \
+    dnf install -y epel-release && \
+    dnf install -y \
+        openssh-server \
+        openssh-clients \
+        pam-devel \
+        gcc \
+        make \
+        rsyslog \
+        sudo \
+        passwd \
+        which \
+        procps-ng \
+        net-tools \
+        wget \
+        vim \
+        less \
+        grep \
+        sed \
+        gawk \
+        libcurl-devel \
+        cjson-devel && \
     dnf clean all
-
-RUN dnf install -y libcurl-devel
-
-RUN dnf install epel-release -y && dnf clean all
-
-#RUN dnf install -y jansson jansson-devel
-RUN dnf -y install cjson-devel
     
 # Configuration SSH
 RUN ssh-keygen -A && \
@@ -81,9 +82,7 @@ RUN cp build/pam_ezkey.so /lib64/security/ && \
     cp config/pam_ezkey.conf /etc/security/ && \
     chmod 644 /etc/security/pam_ezkey.conf
 
-# Configuration PAM pour SSH (insertion après pam_sepermit.so)
-#RUN cp /etc/pam.d/sshd /etc/pam.d/sshd.backup && \
-#    sed -i '/^auth[[:space:]]\+required[[:space:]]\+pam_sepermit.so/a auth       required     pam_ezkey.so debug mock_delay=3' /etc/pam.d/sshd
+# Configuration PAM pour SSH
 COPY sshd /etc/pam.d/sshd
 
 # Script de démarrage
