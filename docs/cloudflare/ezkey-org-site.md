@@ -4,7 +4,16 @@ This document describes the **repository location** of the public static site, t
 
 ## Current reality
 
-- **Cloudflare Pages project name:** **`ezkey-org`** (renamed from `ezkey-teaser` via API). **`ezkey.org`** remains attached as a custom domain. The default **`*.pages.dev`** hostname in the API may still show the old label (`ezkey-teaser.pages.dev`) until Cloudflare refreshes it or you run a new deployment; use the dashboard or `https://ezkey.org` as the source of truth for the live site.
+- **Cloudflare Pages project name:** **`ezkey-org`**. **`ezkey.org`** is the production custom domain on that project. Repository folder: [sites/ezkey-org/](../../sites/ezkey-org/).
+
+### Why you may still see `ezkey-teaser` in preview URLs (no functional split)
+
+Early setup used the name **Ezkey Teaser** for the Pages project. The project was later **renamed to `ezkey-org`** (dashboard + API + this repo). That rename **does not imply two different sites**: there is a **single** Pages project and **one** production hostname (**`ezkey.org`**).
+
+What can linger is only the **default `*.pages.dev` subdomain** Cloudflare attached when the project was **first created**. For many accounts, that default subdomain **keeps the original slug** (e.g. `ezkey-teaser.pages.dev`) even after the project **display name** becomes `ezkey-org`. Preview deployments from Wrangler then print URLs like `https://<deployment-id>.ezkey-teaser.pages.dev` — they are **the same project and the same files** as production builds, not a separate “teaser” application.
+
+**How to think about it in this repo:** treat **`ezkey-org`** as the only project name; treat **`ezkey-teaser` in a `*.pages.dev` URL** as a **legacy hostname label** if it still appears. For humans, **`https://ezkey.org`** is the canonical public URL. To see or adjust default Pages hostnames, use the Cloudflare dashboard (**Workers & Pages → ezkey-org → Custom domains** and related settings).
+
 - **Source:** [sites/ezkey-org/](../../sites/ezkey-org/) — `index.html` (EN, `/`), `fr/index.html` (FR, `/fr/`). Logo is inline SVG only.
 - **Nature:** Fully static HTML/CSS; no bundler or Maven module. Suitable for **Cloudflare Pages** (or equivalent) with **no build command** and publish directory = `sites/ezkey-org` (or the project root if the Pages project points at that folder only).
 - **Deployment today:** Manual or ad hoc Cloudflare deployment is acceptable; the important part is that **git** holds the canonical content.
@@ -45,7 +54,7 @@ export CLOUDFLARE_ACCOUNT_ID="your_account_id_here"
 ./scripts/cloudflare/deploy-ezkey-org-preview.sh
 ```
 
-The script deploys `sites/ezkey-org/` to the Pages project **`ezkey-org`** (override with `CLOUDFLARE_PAGES_PROJECT`) and passes `--branch` with a unique preview branch name. Wrangler prints a **deployment URL** (typically `https://<short-id>.ezkey-org.pages.dev` once the project subdomain matches the new name; see Cloudflare dashboard if an older `*.pages.dev` hostname still appears until the next deploy).
+The script deploys `sites/ezkey-org/` to the Pages project **`ezkey-org`** (override with `CLOUDFLARE_PAGES_PROJECT`) and passes `--branch` with a unique preview branch name. Wrangler prints a **deployment URL** such as `https://<short-id>.<pages-subdomain>.pages.dev`. The `<pages-subdomain>` may still be the **legacy** name from project creation (e.g. `ezkey-teaser`); that is **normal** and does not mean a different project — see [Current reality](#current-reality) above.
 
 **PowerShell (Windows)**
 

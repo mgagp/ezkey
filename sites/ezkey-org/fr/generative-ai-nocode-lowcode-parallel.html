@@ -303,11 +303,11 @@
             <p>Cette séparation réduit la complexité technique tout en respectant les workflows existants. Mais ce n’est pas un dogme : si votre organisation a déjà investi massivement dans des intégrations MCP et qu’elles fonctionnent bien, il n’y a aucune raison de tout remettre en question. L’important est de mesurer le retour sur investissement réel et de ne pas adopter ces ponts par défaut sans évaluer les alternatives plus simples.</p>
 
             <h3>Les niveaux de cérémonie (frameworks de spécification)</h3>
-            <p>Plusieurs approches émergent pour structurer cette documentation « in-repo », avec différents niveaux de formalisme (« cérémonie ») :</p>
+            <p>Plusieurs approches émergent pour structurer cette documentation « in-repo », avec différents niveaux de formalisme (« cérémonie »). Le paysage a évolué depuis les premiers assistants de codage dans l’IDE : les grands éditeurs proposent désormais des flux de type <strong>plan</strong> (faible cérémonie <em>dans l’éditeur</em>), tandis que des formats légers in-repo comme Open Specs se rapprochent des spec kits au niveau <strong>medium</strong>.</p>
             <ol>
                 <li><strong>No ceremony (exploration libre) :</strong> aucune structure prédéfinie. Essentiel pour l’exploration conceptuelle fluide, où suivre une checklist ou un template deviendrait un frein à la créativité.</li>
-                <li><strong>Low ceremony (ex. : Open Specs) :</strong> une approche légère, informelle, qui vise à capturer l’intention et le design sans lourdeur administrative. Idéal pour des équipes agiles rapides.</li>
-                <li><strong>Medium ceremony (ex. : GitHub Copilot Spec Kit) :</strong> apporte une structure plus établie et standardisée, facilitant la consommation par l’IA tout en restant accessible.</li>
+                <li><strong>Low ceremony (ex. : mode plan dans l’IDE) :</strong> structuration offerte par les principaux IDE de codage avec IA (écosystème VS Code, Cursor, etc.) — l’intention et les étapes sont cadrées dans l’éditeur avant la génération de code, sans adopter encore un cadre de spécification in-repo dédié.</li>
+                <li><strong>Medium ceremony (ex. : Open Specs, GitHub Copilot Spec Kit) :</strong> capture légère et informelle de l’intention et du design dans le dépôt, complétée par des gabarits plus standardisés (spec kits) — assez de structure pour une consommation fiable par l’IA à partir de textes écrits, sans la lourdeur d’un BMAD.</li>
                 <li><strong>High ceremony (ex. : BMAD) :</strong> un cadre très formel, consommateur de ressources (humaines et IA), pour des systèmes critiques nécessitant une précision absolue.</li>
             </ol>
 

@@ -24,4 +24,4 @@ Add more scripts here only when a **repeated** automation need appears (e.g. sta
 
 ## Site source
 
-The public static site for ezkey.org lives at **[sites/ezkey-org/](../../sites/ezkey-org/)**. Details: [ezkey-org-site.md](ezkey-org-site.md). Agent notes (dictation pitfalls, Cloudflare project naming vs repo): **[sites/ezkey-org/AGENTS.md](../../sites/ezkey-org/AGENTS.md)**.
+The public static site for ezkey.org lives at **[sites/ezkey-org/](../../sites/ezkey-org/)**. Details: [ezkey-org-site.md](ezkey-org-site.md) (includes why preview URLs may still show **`ezkey-teaser.pages.dev`** — legacy hostname, same project as **`ezkey-org`**). Agent notes: **[sites/ezkey-org/AGENTS.md](../../sites/ezkey-org/AGENTS.md)**.
