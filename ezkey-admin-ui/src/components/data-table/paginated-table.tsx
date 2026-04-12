@@ -25,6 +25,7 @@ interface PaginatedTableProps<T extends object> {
   data: T[];
   isLoading?: boolean;
   onRowClick?: (row: T) => void;
+  rowClassName?: (row: T, index: number) => string | undefined;
   emptyMessage?: string;
   keyExtractor?: (row: T, index: number) => string | number;
   currentSort?: string;
@@ -42,6 +43,7 @@ export function PaginatedTable<T extends object>({
   data,
   isLoading,
   onRowClick,
+  rowClassName,
   emptyMessage,
   keyExtractor,
   currentSort,
@@ -70,6 +72,7 @@ export function PaginatedTable<T extends object>({
         data={data}
         isLoading={isLoading}
         onRowClick={onRowClick}
+        rowClassName={rowClassName}
         emptyMessage={emptyMessage}
         keyExtractor={keyExtractor}
         currentSort={currentSort}

@@ -2,9 +2,9 @@ import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react
 import { useTranslation, Trans } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
-import { type ColumnDef } from '@/components/data-table/data-table';
+import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { Pagination } from '@/components/data-table/pagination';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Badge } from '@/components/ui/badge';
@@ -35,15 +35,18 @@ import { useToast } from '@/context/toast-context';
 import {
   checkChainIntegrity,
   checkIntegrity,
+  getAuditLogContext,
   getAuditLogs,
   getChainCheckpoints,
   useDeclareGap,
   useSealArchive,
 } from '@/generated/admin-api/audit-logs/audit-logs';
 import type {
+  AuditLogContextResponseDto,
   AuditChainCheckpointResponseDto,
   AuditLogResponseDto,
   ChainVerificationReport,
+  GetAuditLogContextParams,
   GetAuditLogsParams,
   GetChainCheckpointsParams,
   IntegrityReport,
@@ -59,6 +62,7 @@ type AuditLogQueryParams = GetAuditLogsParams & {
 };
 type AuditEventStatusFilter = NonNullable<GetAuditLogsParams['eventStatus']> | '';
 type AuditApiNameFilter = NonNullable<GetAuditLogsParams['apiName']> | '';
+type ContextEntityType = 'enrollment' | 'authAttempt' | 'integration' | '';
 
 function parseEventStatusFilter(value: string | null | undefined): AuditEventStatusFilter {
   if (value === 'SUCCESS' || value === 'FAILURE' || value === 'ERROR') {
@@ -69,6 +73,32 @@ function parseEventStatusFilter(value: string | null | undefined): AuditEventSta
 
 function parseApiNameFilter(value: string | null | undefined): AuditApiNameFilter {
   if (value === 'ADMIN_API' || value === 'AUTH_API' || value === 'INTEGRATION_API') {
+    return value;
+  }
+  return '';
+}
+
+function parsePositiveIntegerString(value: string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return '';
+  }
+  return String(parsed);
+}
+
+function parseContextCount(value: string | null | undefined, fallback = 10): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 50) {
+    return fallback;
+  }
+  return parsed;
+}
+
+function parseContextEntityType(value: string | null | undefined): ContextEntityType {
+  if (value === 'enrollment' || value === 'authAttempt' || value === 'integration') {
     return value;
   }
   return '';
@@ -88,12 +118,20 @@ function toDateInputValue(iso?: string | null): string {
   return `${year}-${month}-${day}`;
 }
 
-function getLast24HoursWindow(): { createdAfter: string; createdBefore: string } {
+function getLastHoursWindow(hours: number): { createdAfter: string; createdBefore: string } {
   const now = new Date();
   return {
-    createdAfter: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+    createdAfter: new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString(),
     createdBefore: now.toISOString(),
   };
+}
+
+function getLast24HoursWindow(): { createdAfter: string; createdBefore: string } {
+  return getLastHoursWindow(24);
+}
+
+function getLast48HoursWindow(): { createdAfter: string; createdBefore: string } {
+  return getLastHoursWindow(48);
 }
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
@@ -167,7 +205,7 @@ function AuditLogDetailDialog({
             {tc('detailNav.endOfPageMore')}
           </p>
         )}
-        <div className="flex justify-end items-start min-h-[2.25rem]">
+        <div className="flex justify-end items-start gap-2 min-h-[2.25rem]">
           {relatedDetails.hasAnyFk ? (
             <RelatedDetailsButton
               onClick={relatedDetails.expand}
@@ -1258,6 +1296,15 @@ export default function AuditLogsPage() {
   const [enrollmentFilter, setEnrollmentFilter] = useState(
     () => searchParams.get('enrollmentId') ?? '',
   );
+  const [contextAnchorAuditLogId, setContextAnchorAuditLogId] = useState(
+    () => parsePositiveIntegerString(searchParams.get('anchorAuditLogId')),
+  );
+  const [contextBeforeCount, setContextBeforeCount] = useState(
+    () => parseContextCount(searchParams.get('beforeCount')),
+  );
+  const [contextAfterCount, setContextAfterCount] = useState(
+    () => parseContextCount(searchParams.get('afterCount')),
+  );
   const [authAttemptFilter, setAuthAttemptFilter] = useState(
     () => searchParams.get('authAttemptId') ?? '',
   );
@@ -1265,6 +1312,53 @@ export default function AuditLogsPage() {
     () => searchParams.get('integrationId') ?? '',
   );
   const [contextSource, setContextSource] = useState(() => searchParams.get('source') ?? '');
+  const [contextEntityType, setContextEntityType] = useState<ContextEntityType>(() => {
+    const explicitEntityType = parseContextEntityType(searchParams.get('contextEntityType'));
+    if (explicitEntityType) {
+      return explicitEntityType;
+    }
+    if (searchParams.get('source') === 'enrollment-detail' && searchParams.get('enrollmentId')) {
+      return 'enrollment';
+    }
+    if (searchParams.get('source') === 'auth-attempt-detail' && searchParams.get('authAttemptId')) {
+      return 'authAttempt';
+    }
+    if (searchParams.get('source') === 'integration-detail' && searchParams.get('integrationId')) {
+      return 'integration';
+    }
+    return '';
+  });
+  const [contextEntityId, setContextEntityId] = useState(
+    () => searchParams.get('contextEntityId')
+      ?? searchParams.get('enrollmentId')
+      ?? searchParams.get('authAttemptId')
+      ?? searchParams.get('integrationId')
+      ?? '',
+  );
+  const [contextBaseDateRange, setContextBaseDateRange] = useState<{
+    createdAfter: string;
+    createdBefore: string;
+  } | null>(() => {
+    const baseCreatedAfter = searchParams.get('contextBaseCreatedAfter');
+    const baseCreatedBefore = searchParams.get('contextBaseCreatedBefore');
+
+    if (baseCreatedAfter && baseCreatedBefore) {
+      return { createdAfter: baseCreatedAfter, createdBefore: baseCreatedBefore };
+    }
+
+    const source = searchParams.get('source');
+    const enrollmentId = searchParams.get('enrollmentId');
+    const authAttemptId = searchParams.get('authAttemptId');
+    const integrationId = searchParams.get('integrationId');
+
+    if ((source === 'enrollment-detail' && enrollmentId)
+        || (source === 'auth-attempt-detail' && authAttemptId)
+        || (source === 'integration-detail' && integrationId)) {
+      return getLast24HoursWindow();
+    }
+
+    return null;
+  });
   const [dateRange, setDateRange] = useState(() => ({
     from: toDateInputValue(searchParams.get('createdAfter')),
     to: toDateInputValue(searchParams.get('createdBefore')),
@@ -1291,6 +1385,21 @@ export default function AuditLogsPage() {
     return null;
   });
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const anchorAuditLogId = contextAnchorAuditLogId ? Number(contextAnchorAuditLogId) : null;
+  const isAuditLogContextMode = anchorAuditLogId !== null;
+  const isEntityContextSource = contextSource === 'enrollment-detail'
+    || contextSource === 'auth-attempt-detail'
+    || contextSource === 'integration-detail';
+  const isExpandedEntityContext = contextSource === 'context-expanded';
+  const hasEntityContext = Boolean(enrollmentFilter || authAttemptFilter || integrationFilter);
+  const canExpandEntityContext = !isAuditLogContextMode
+    && isEntityContextSource
+    && hasEntityContext
+    && contextualDateRange !== null;
+  const canRestoreExpandedContext = !isAuditLogContextMode
+    && isExpandedEntityContext
+    && Boolean(contextEntityType && contextEntityId);
+  const expandedContextEntityId = Number.parseInt(contextEntityId, 10);
 
   const listApiDateParams = contextualDateRange
     ? {
@@ -1318,6 +1427,11 @@ export default function AuditLogsPage() {
     if (enrollmentFilter) {
       next.set('enrollmentId', enrollmentFilter);
     }
+    if (contextAnchorAuditLogId) {
+      next.set('anchorAuditLogId', contextAnchorAuditLogId);
+      next.set('beforeCount', String(contextBeforeCount));
+      next.set('afterCount', String(contextAfterCount));
+    }
     if (authAttemptFilter) {
       next.set('authAttemptId', authAttemptFilter);
     }
@@ -1331,6 +1445,16 @@ export default function AuditLogsPage() {
     if (contextSource) {
       next.set('source', contextSource);
     }
+    if (contextEntityType) {
+      next.set('contextEntityType', contextEntityType);
+    }
+    if (contextEntityId) {
+      next.set('contextEntityId', contextEntityId);
+    }
+    if (contextBaseDateRange?.createdAfter && contextBaseDateRange.createdBefore) {
+      next.set('contextBaseCreatedAfter', contextBaseDateRange.createdAfter);
+      next.set('contextBaseCreatedBefore', contextBaseDateRange.createdBefore);
+    }
 
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true });
@@ -1338,6 +1462,12 @@ export default function AuditLogsPage() {
   }, [
     apiNameFilter,
     authAttemptFilter,
+    contextAfterCount,
+    contextAnchorAuditLogId,
+    contextBaseDateRange,
+    contextBeforeCount,
+    contextEntityId,
+    contextEntityType,
     contextSource,
     enrollmentFilter,
     eventFilter,
@@ -1372,16 +1502,42 @@ export default function AuditLogsPage() {
       createdBefore: listApiDateParams.createdBefore,
     },
     fetchPage: (params) => getAuditLogs(params as GetAuditLogsParams) as Promise<PagedModelAuditLogResponseDto>,
+    enabled: !isAuditLogContextMode,
   });
 
-  const selectedLog = selectedIndex !== null ? data[selectedIndex] ?? null : null;
-  const showRowNav = data.length > 1;
+  const contextParams: GetAuditLogContextParams | undefined = anchorAuditLogId === null
+    ? undefined
+    : {
+        beforeCount: contextBeforeCount,
+        afterCount: contextAfterCount,
+      };
+
+  const {
+    data: contextResponse,
+    isLoading: isContextLoading,
+    refetch: refetchContext,
+  } = useQuery({
+    queryKey: ['audit-log-context', anchorAuditLogId, contextBeforeCount, contextAfterCount],
+    queryFn: () => getAuditLogContext(
+      anchorAuditLogId!,
+      contextParams,
+    ) as Promise<AuditLogContextResponseDto>,
+    enabled: isAuditLogContextMode,
+  });
+
+  const activeData = isAuditLogContextMode ? (contextResponse?.items ?? []) : data;
+  const activeIsLoading = isAuditLogContextMode ? isContextLoading : isLoading;
+  const activeRefetch = isAuditLogContextMode ? refetchContext : refetch;
+
+  const selectedLog = selectedIndex !== null ? activeData[selectedIndex] ?? null : null;
+  const showRowNav = activeData.length > 1;
   const hasPrev = selectedIndex !== null && selectedIndex > 0;
-  const hasNext = selectedIndex !== null && selectedIndex < data.length - 1;
+  const hasNext = selectedIndex !== null && selectedIndex < activeData.length - 1;
   const showEndOfPageHint =
+    !isAuditLogContextMode &&
     selectedIndex !== null &&
-    data.length > 0 &&
-    selectedIndex === data.length - 1 &&
+    activeData.length > 0 &&
+    selectedIndex === activeData.length - 1 &&
     !pagination.isLast;
 
   const goPrevLog = useCallback(() => {
@@ -1391,18 +1547,133 @@ export default function AuditLogsPage() {
   const goNextLog = useCallback(() => {
     setSelectedIndex((i) => {
       if (i === null) return i;
-      return i < data.length - 1 ? i + 1 : i;
+      return i < activeData.length - 1 ? i + 1 : i;
     });
-  }, [data.length]);
+  }, [activeData.length]);
 
   useEffect(() => {
-    if (selectedIndex !== null && (selectedIndex >= data.length || data.length === 0)) {
+    if (selectedIndex !== null && (selectedIndex >= activeData.length || activeData.length === 0)) {
       setSelectedIndex(null);
     }
-  }, [selectedIndex, data.length]);
+  }, [selectedIndex, activeData.length]);
+
+  const expandEntityContext = useCallback(() => {
+    if (contextualDateRange) {
+      setContextBaseDateRange(contextualDateRange);
+    }
+
+    if (enrollmentFilter) {
+      setContextEntityType('enrollment');
+      setContextEntityId(enrollmentFilter);
+    } else if (authAttemptFilter) {
+      setContextEntityType('authAttempt');
+      setContextEntityId(authAttemptFilter);
+    } else if (integrationFilter) {
+      setContextEntityType('integration');
+      setContextEntityId(integrationFilter);
+    }
+
+    setEnrollmentFilter('');
+    setAuthAttemptFilter('');
+    setIntegrationFilter('');
+    setContextSource('context-expanded');
+    setContextualDateRange(getLast48HoursWindow());
+    setDateRange({ from: '', to: '' });
+    setSelectedIndex(null);
+  }, [authAttemptFilter, contextualDateRange, enrollmentFilter, integrationFilter]);
+
+  const restoreEntityContext = useCallback(() => {
+    setEnrollmentFilter(contextEntityType === 'enrollment' ? contextEntityId : '');
+    setAuthAttemptFilter(contextEntityType === 'authAttempt' ? contextEntityId : '');
+    setIntegrationFilter(contextEntityType === 'integration' ? contextEntityId : '');
+
+    if (contextEntityType === 'enrollment') {
+      setContextSource('enrollment-detail');
+    } else if (contextEntityType === 'authAttempt') {
+      setContextSource('auth-attempt-detail');
+    } else if (contextEntityType === 'integration') {
+      setContextSource('integration-detail');
+    } else {
+      setContextSource('');
+    }
+
+    setContextualDateRange(getLast24HoursWindow());
+    setDateRange({ from: '', to: '' });
+    setSelectedIndex(null);
+  }, [contextEntityId, contextEntityType]);
+
+  const isWithinBaseContextRange = useCallback((createdAt?: string | null) => {
+    if (!contextBaseDateRange || !createdAt) {
+      return false;
+    }
+
+    const createdAtMs = new Date(createdAt).getTime();
+    const baseStartMs = new Date(contextBaseDateRange.createdAfter).getTime();
+    const baseEndMs = new Date(contextBaseDateRange.createdBefore).getTime();
+
+    if (Number.isNaN(createdAtMs) || Number.isNaN(baseStartMs) || Number.isNaN(baseEndMs)) {
+      return false;
+    }
+
+    return createdAtMs >= baseStartMs && createdAtMs <= baseEndMs;
+  }, [contextBaseDateRange]);
+
+  const matchesFocusedContext = useCallback((row: AuditLogResponseDto) => {
+    if (!canRestoreExpandedContext || !Number.isInteger(expandedContextEntityId) || expandedContextEntityId <= 0) {
+      return false;
+    }
+
+    if (!isWithinBaseContextRange(row.createdAt)) {
+      return false;
+    }
+
+    if (contextEntityType === 'enrollment') {
+      return row.enrollmentId === expandedContextEntityId;
+    }
+    if (contextEntityType === 'authAttempt') {
+      return row.authAttemptId === expandedContextEntityId;
+    }
+    if (contextEntityType === 'integration') {
+      return row.integrationId === expandedContextEntityId;
+    }
+    return false;
+  }, [canRestoreExpandedContext, contextEntityType, expandedContextEntityId, isWithinBaseContextRange]);
+
+  const clearAuditLogContext = useCallback(() => {
+    setContextAnchorAuditLogId('');
+    setContextBeforeCount(10);
+    setContextAfterCount(10);
+    if (contextSource === 'audit-log-context') {
+      setContextSource('');
+    }
+  }, [contextSource]);
+
+  const loadMoreBefore = useCallback(() => {
+    setContextBeforeCount((value) => Math.min(50, value + 10));
+  }, []);
+
+  const loadMoreAfter = useCallback(() => {
+    setContextAfterCount((value) => Math.min(50, value + 10));
+  }, []);
 
   const columns: ColumnDef<AuditLogResponseDto>[] = [
-    { header: t('list.columns.id'), key: 'auditLogId', className: 'w-14', sortKey: 'auditLogId', render: (r) => <span className="font-mono text-xs">{r.auditLogId}</span> },
+    {
+      header: t('list.columns.id'),
+      key: 'auditLogId',
+      className: 'w-14',
+      sortKey: 'auditLogId',
+      render: (r) => (
+        <span className="inline-flex items-center gap-2">
+          <span className="font-mono text-xs">{r.auditLogId}</span>
+          {isAuditLogContextMode && r.auditLogId === anchorAuditLogId && (
+            <Badge variant="warning">{t('list.anchorBadge')}</Badge>
+          )}
+          {!isAuditLogContextMode && matchesFocusedContext(r) && (
+            <Badge variant="warning">{t('list.focusedContextBadge')}</Badge>
+          )}
+        </span>
+      ),
+    },
     {
       header: t('list.columns.event'),
       headerTooltip: t('list.columnTooltips.event'),
@@ -1469,7 +1740,7 @@ export default function AuditLogsPage() {
             className="p-1"
             onClick={(e) => {
               e.stopPropagation();
-              const idx = data.findIndex((x) => x.auditLogId === r.auditLogId);
+              const idx = activeData.findIndex((x) => x.auditLogId === r.auditLogId);
               setSelectedIndex(idx >= 0 ? idx : null);
             }}
           >
@@ -1483,7 +1754,49 @@ export default function AuditLogsPage() {
   return (
     <AppShell title={t('list.title')}>
       <div className="space-y-4">
-        {(enrollmentFilter || authAttemptFilter || integrationFilter) && (
+        {isAuditLogContextMode ? (
+          <div className="space-y-3 border border-fg/20 bg-fg/[0.03] px-3 py-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span>{t('list.contextualAroundEvent', { id: contextAnchorAuditLogId })}</span>
+              <span className="text-fg-muted">
+                {t('list.contextualAroundEventWindow', {
+                  before: contextBeforeCount,
+                  after: contextAfterCount,
+                })}
+              </span>
+              <button
+                type="button"
+                className="ml-auto text-xs font-medium text-accent underline hover:text-accent/80"
+                onClick={clearAuditLogContext}
+              >
+                {t('list.exitEventContext')}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={loadMoreBefore}
+                disabled={!contextResponse?.hasMoreBefore}
+              >
+                {t('list.loadMoreBefore')}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={loadMoreAfter}
+                disabled={!contextResponse?.hasMoreAfter}
+              >
+                {t('list.loadMoreAfter')}
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => activeRefetch()}>
+                {t('list.refresh')}
+              </Button>
+            </div>
+          </div>
+        ) : (hasEntityContext || canRestoreExpandedContext) && (
           <div className="flex flex-wrap items-center gap-2 border border-fg/20 bg-fg/[0.03] px-3 py-2 text-sm">
             {enrollmentFilter && (
               <span>{t('list.contextualEnrollment', { id: enrollmentFilter })}</span>
@@ -1494,11 +1807,23 @@ export default function AuditLogsPage() {
             {integrationFilter && (
               <span>{t('list.contextualIntegration', { id: integrationFilter })}</span>
             )}
-            {(contextSource === 'enrollment-detail'
-                || contextSource === 'auth-attempt-detail'
-                || contextSource === 'integration-detail')
-                && contextualDateRange && (
+            {canRestoreExpandedContext && contextEntityType === 'enrollment' && (
+              <span>{t('list.expandedContextFromEnrollment', { id: contextEntityId })}</span>
+            )}
+            {canRestoreExpandedContext && contextEntityType === 'authAttempt' && (
+              <span>{t('list.expandedContextFromAuthAttempt', { id: contextEntityId })}</span>
+            )}
+            {canRestoreExpandedContext && contextEntityType === 'integration' && (
+              <span>{t('list.expandedContextFromIntegration', { id: contextEntityId })}</span>
+            )}
+            {isEntityContextSource && contextualDateRange && (
               <span className="text-fg-muted">{t('list.contextualEnrollmentWindow')}</span>
+            )}
+            {canRestoreExpandedContext && contextualDateRange && (
+              <span className="text-fg-muted">{t('list.expandedContextWindow')}</span>
+            )}
+            {canRestoreExpandedContext && (
+              <span className="text-fg-muted">{t('list.focusedContextHint')}</span>
             )}
             <button
               type="button"
@@ -1508,6 +1833,9 @@ export default function AuditLogsPage() {
                 setAuthAttemptFilter('');
                 setIntegrationFilter('');
                 setContextSource('');
+                setContextEntityType('');
+                setContextEntityId('');
+                setContextBaseDateRange(null);
                 setContextualDateRange(null);
                 setDateRange({ from: '', to: '' });
               }}
@@ -1518,7 +1846,7 @@ export default function AuditLogsPage() {
         )}
 
         {/* Filter bar */}
-        <div className="flex gap-3 items-center flex-wrap">
+        {!isAuditLogContextMode && <div className="flex gap-3 items-center flex-wrap">
           <div className="min-w-[15rem] w-64">
             <Select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
               <option value="">{t('list.filterEventTypeAll')}</option>
@@ -1564,35 +1892,74 @@ export default function AuditLogsPage() {
               setDateRange(next);
               setContextualDateRange(null);
               setContextSource('');
+              setContextEntityType('');
+              setContextEntityId('');
+              setContextBaseDateRange(null);
             }}
             showClear={true}
             emptyOptionLabel={t('list.dateRangeFull')}
           />
-          <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5 ml-auto">
-            <ShieldCheck className="size-3.5" />
-            {t('list.refresh')}
-          </Button>
-        </div>
+          <div className="ml-auto flex items-center gap-2">
+            {canRestoreExpandedContext && (
+              <Tooltip content={t('list.restoreContextTooltip')}>
+                <Button variant="secondary" size="sm" onClick={restoreEntityContext} className="gap-1.5">
+                  {t('list.restoreContext')}
+                </Button>
+              </Tooltip>
+            )}
+            {canExpandEntityContext && (
+              <Tooltip content={t('list.expandContextTooltip')}>
+                <Button variant="secondary" size="sm" onClick={expandEntityContext} className="gap-1.5">
+                  {t('list.expandContext')}
+                </Button>
+              </Tooltip>
+            )}
+            <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5">
+              <ShieldCheck className="size-3.5" />
+              {t('list.refresh')}
+            </Button>
+          </div>
+        </div>}
 
         <p className="text-xs text-fg-muted italic">
-          {t('list.hint')}
+          {isAuditLogContextMode ? t('list.contextualHint') : t('list.hint')}
         </p>
 
         <div>
-          <PaginatedTable
-            columns={columns}
-            data={data}
-            isLoading={isLoading}
-            onRowClick={(row) => {
-              const idx = data.findIndex((r) => r.auditLogId === row.auditLogId);
-              setSelectedIndex(idx >= 0 ? idx : null);
-            }}
-            keyExtractor={(r, i) => r.auditLogId ?? i}
-            emptyMessage={t('list.emptyMessage')}
-            currentSort={pagination.sort}
-            onSort={pagination.setSort}
-            pagination={pagination}
-          />
+          {isAuditLogContextMode ? (
+            <DataTable
+              columns={columns}
+              data={activeData}
+              isLoading={activeIsLoading}
+              onRowClick={(row) => {
+                const idx = activeData.findIndex((r) => r.auditLogId === row.auditLogId);
+                setSelectedIndex(idx >= 0 ? idx : null);
+              }}
+              rowClassName={(row) =>
+                row.auditLogId === anchorAuditLogId ? '!bg-accent/10 border-l-4 border-l-accent' : undefined}
+              keyExtractor={(r, i) => r.auditLogId ?? i}
+              emptyMessage={t('list.emptyMessage')}
+            />
+          ) : (
+            <PaginatedTable
+              columns={columns}
+              data={data}
+              isLoading={isLoading}
+              onRowClick={(row) => {
+                const idx = data.findIndex((r) => r.auditLogId === row.auditLogId);
+                setSelectedIndex(idx >= 0 ? idx : null);
+              }}
+              keyExtractor={(r, i) => r.auditLogId ?? i}
+              emptyMessage={t('list.emptyMessage')}
+              currentSort={pagination.sort}
+              onSort={pagination.setSort}
+              pagination={pagination}
+              rowClassName={(row) =>
+                matchesFocusedContext(row)
+                  ? '!bg-warning/10 border-l-4 border-l-warning'
+                  : undefined}
+            />
+          )}
         </div>
       </div>
 

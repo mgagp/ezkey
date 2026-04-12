@@ -25,6 +25,7 @@ import org.ezkey.audit.domain.EventTypeFamily;
 import org.ezkey.audit.dto.ArchiveSealRequest;
 import org.ezkey.audit.dto.ArchiveSealResult;
 import org.ezkey.audit.dto.AuditChainCheckpointResponseDto;
+import org.ezkey.audit.dto.AuditLogContextResponseDto;
 import org.ezkey.audit.dto.AuditLogResponseDto;
 import org.ezkey.audit.dto.CheckpointType;
 import org.ezkey.audit.dto.GapDeclarationRequest;
@@ -273,6 +274,76 @@ public class AuditLogController {
             .map(auditLogMapper::toResponseDto);
 
     return ResponseEntity.ok(auditLogs);
+  }
+
+  /**
+   * Retrieve a bounded audit-log neighborhood around a single anchor event.
+   *
+   * <p>This endpoint is intentionally opinionated for operator investigations: it returns a small,
+   * bounded context around one anchor audit event rather than invoking the general list-search
+   * model.
+   *
+   * @param auditLogId anchor audit log identifier
+   * @param beforeCount number of older events to include before the anchor (default 10, max 50)
+   * @param afterCount number of newer events to include after the anchor (default 10, max 50)
+   * @param tenantId optional tenant filter for Global Admin only
+   * @return bounded audit-log neighborhood around the anchor event
+   */
+  @PreAuthorize("hasRole('ADMIN')")
+  @GetMapping("/{auditLogId}/context")
+  @Operation(
+      summary = "Get audit log context around an anchor event",
+      description =
+          "Retrieves a bounded neighborhood of audit events around a single anchor log for "
+              + "operator investigation. Tenant visibility rules are enforced exactly like the "
+              + "standard audit search.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Audit log context retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid before/after counts"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "Anchor audit log not found")
+      })
+  public ResponseEntity<AuditLogContextResponseDto> getAuditLogContext(
+      @PathVariable Long auditLogId,
+      @RequestParam(required = false) Integer beforeCount,
+      @RequestParam(required = false) Integer afterCount,
+      @Parameter(
+              description =
+                  "Filter by tenant ID (Global Admin only). Ignored for Tenant Admin whose scope "
+                      + "is enforced automatically.")
+          @RequestParam(required = false)
+          Integer tenantId) {
+
+    int boundedBefore = normalizeContextCount(beforeCount, "beforeCount");
+    int boundedAfter = normalizeContextCount(afterCount, "afterCount");
+    Integer requesterTenantId = extractRequesterTenantId();
+    Integer filterTenantId = (requesterTenantId == null) ? tenantId : null;
+
+    AuditLogService.AuditLogContextSlice slice =
+        auditLogService.findContextAround(
+            auditLogId, boundedBefore, boundedAfter, requesterTenantId, filterTenantId);
+
+    AuditLogContextResponseDto response = new AuditLogContextResponseDto();
+    response.setAnchorAuditLogId(slice.getAnchorAuditLogId());
+    response.setHasMoreBefore(slice.isHasMoreBefore());
+    response.setHasMoreAfter(slice.isHasMoreAfter());
+    response.setItems(slice.getItems().stream().map(auditLogMapper::toResponseDto).toList());
+    return ResponseEntity.ok(response);
+  }
+
+  private int normalizeContextCount(Integer value, String parameterName) {
+    if (value == null) {
+      return 10;
+    }
+    if (value < 0 || value > 50) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, parameterName + " must be between 0 and 50");
+    }
+    return value;
   }
 
   /**

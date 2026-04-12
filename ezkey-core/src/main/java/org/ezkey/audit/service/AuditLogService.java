@@ -14,6 +14,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -22,10 +23,13 @@ import org.ezkey.audit.domain.EventTypeFamily;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.integrity.AuditHmacService;
+import org.ezkey.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -54,6 +58,38 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @Service
 public class AuditLogService {
+
+  /** Bounded neighborhood of audit events around a single anchor log. */
+  public static final class AuditLogContextSlice {
+    private final List<AuditLog> items;
+    private final Long anchorAuditLogId;
+    private final boolean hasMoreBefore;
+    private final boolean hasMoreAfter;
+
+    public AuditLogContextSlice(
+        List<AuditLog> items, Long anchorAuditLogId, boolean hasMoreBefore, boolean hasMoreAfter) {
+      this.items = items;
+      this.anchorAuditLogId = anchorAuditLogId;
+      this.hasMoreBefore = hasMoreBefore;
+      this.hasMoreAfter = hasMoreAfter;
+    }
+
+    public List<AuditLog> getItems() {
+      return items;
+    }
+
+    public Long getAnchorAuditLogId() {
+      return anchorAuditLogId;
+    }
+
+    public boolean isHasMoreBefore() {
+      return hasMoreBefore;
+    }
+
+    public boolean isHasMoreAfter() {
+      return hasMoreAfter;
+    }
+  }
 
   private static final Logger logger = LoggerFactory.getLogger(AuditLogService.class);
 
@@ -244,6 +280,139 @@ public class AuditLogService {
         };
 
     return auditLogRepository.findAll(spec, pageable);
+  }
+
+  /**
+   * Find a bounded neighborhood of audit events around a single anchor log.
+   *
+   * <p>The result is intentionally opinionated and bounded: the anchor event is returned together
+   * with a limited number of older and newer events that are visible to the requesting admin under
+   * the same tenant-scoping rules as the standard audit search.
+   *
+   * @param anchorAuditLogId anchor audit log identifier
+   * @param beforeCount number of older events to include before the anchor in chronological order
+   * @param afterCount number of newer events to include after the anchor in chronological order
+   * @param requesterTenantId tenant scope enforced for tenant admins; {@code null} for global
+   * @param filterTenantId optional explicit tenant filter for global admins
+   * @return bounded audit-log neighborhood around the anchor
+   * @throws ResourceNotFoundException if the anchor does not exist or is outside the caller scope
+   */
+  @Transactional(readOnly = true)
+  public AuditLogContextSlice findContextAround(
+      Long anchorAuditLogId,
+      int beforeCount,
+      int afterCount,
+      Integer requesterTenantId,
+      Integer filterTenantId) {
+
+    AuditLog anchor =
+        auditLogRepository
+            .findById(anchorAuditLogId)
+            .orElseThrow(() -> new ResourceNotFoundException("AuditLog", anchorAuditLogId));
+
+    if (!isVisibleToRequester(anchor, requesterTenantId, filterTenantId)) {
+      throw new ResourceNotFoundException("AuditLog", anchorAuditLogId);
+    }
+
+    List<AuditLog> before =
+        fetchOlderContext(anchor, beforeCount + 1, requesterTenantId, filterTenantId);
+    boolean hasMoreBefore = before.size() > beforeCount;
+    if (hasMoreBefore) {
+      before = new ArrayList<>(before.subList(0, beforeCount));
+    }
+    Collections.reverse(before);
+
+    List<AuditLog> after =
+        fetchNewerContext(anchor, afterCount + 1, requesterTenantId, filterTenantId);
+    boolean hasMoreAfter = after.size() > afterCount;
+    if (hasMoreAfter) {
+      after = new ArrayList<>(after.subList(0, afterCount));
+    }
+
+    List<AuditLog> items = new ArrayList<>(before.size() + 1 + after.size());
+    items.addAll(before);
+    items.add(anchor);
+    items.addAll(after);
+
+    return new AuditLogContextSlice(items, anchor.getAuditLogId(), hasMoreBefore, hasMoreAfter);
+  }
+
+  private List<AuditLog> fetchOlderContext(
+      AuditLog anchor, int limit, Integer requesterTenantId, Integer filterTenantId) {
+    if (limit <= 0) {
+      return List.of();
+    }
+
+    Specification<AuditLog> spec =
+        visibleToRequester(requesterTenantId, filterTenantId)
+            .and(olderThan(anchor.getCreatedAt(), anchor.getAuditLogId()));
+
+    return auditLogRepository
+        .findAll(
+            spec,
+            PageRequest.of(
+                0, limit, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("auditLogId"))))
+        .getContent();
+  }
+
+  private List<AuditLog> fetchNewerContext(
+      AuditLog anchor, int limit, Integer requesterTenantId, Integer filterTenantId) {
+    if (limit <= 0) {
+      return List.of();
+    }
+
+    Specification<AuditLog> spec =
+        visibleToRequester(requesterTenantId, filterTenantId)
+            .and(newerThan(anchor.getCreatedAt(), anchor.getAuditLogId()));
+
+    return auditLogRepository
+        .findAll(
+            spec,
+            PageRequest.of(
+                0, limit, Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("auditLogId"))))
+        .getContent();
+  }
+
+  private Specification<AuditLog> visibleToRequester(
+      Integer requesterTenantId, Integer filterTenantId) {
+    return (root, query, cb) -> {
+      if (requesterTenantId != null) {
+        return cb.equal(root.get("tenantId"), requesterTenantId);
+      }
+      if (filterTenantId != null) {
+        return cb.equal(root.get("tenantId"), filterTenantId);
+      }
+      return cb.conjunction();
+    };
+  }
+
+  private Specification<AuditLog> olderThan(OffsetDateTime createdAt, Long auditLogId) {
+    return (root, query, cb) ->
+        cb.or(
+            cb.lessThan(root.get("createdAt"), createdAt),
+            cb.and(
+                cb.equal(root.get("createdAt"), createdAt),
+                cb.lessThan(root.get("auditLogId"), auditLogId)));
+  }
+
+  private Specification<AuditLog> newerThan(OffsetDateTime createdAt, Long auditLogId) {
+    return (root, query, cb) ->
+        cb.or(
+            cb.greaterThan(root.get("createdAt"), createdAt),
+            cb.and(
+                cb.equal(root.get("createdAt"), createdAt),
+                cb.greaterThan(root.get("auditLogId"), auditLogId)));
+  }
+
+  private boolean isVisibleToRequester(
+      AuditLog auditLog, Integer requesterTenantId, Integer filterTenantId) {
+    if (requesterTenantId != null) {
+      return requesterTenantId.equals(auditLog.getTenantId());
+    }
+    if (filterTenantId != null) {
+      return filterTenantId.equals(auditLog.getTenantId());
+    }
+    return true;
   }
 
   /**

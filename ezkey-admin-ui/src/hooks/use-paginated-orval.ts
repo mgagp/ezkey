@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery, type Query } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 /**
  * Shape of the JSON body returned by Admin API paginated list endpoints.
@@ -95,6 +95,11 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
   const [page, setPageState] = useState(0);
   const [size, setSizeState] = useState(defaultSize);
   const [sort, setSortState] = useState(defaultSort);
+  const pageResetKey = JSON.stringify(queryKey);
+
+  useEffect(() => {
+    setPageState(0);
+  }, [pageResetKey]);
 
   const params = {
     ...baseParams,
