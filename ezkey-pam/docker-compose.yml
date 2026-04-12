@@ -1,7 +1,10 @@
 # ==================================================
 # docker-compose.yml
 # ==================================================
-version: '3.8'
+# Usage:
+#   EZKEY_INTEGRATION_KEY=<key> EZKEY_SECRET_KEY=<secret> docker-compose up --build
+# Or set the variables in a .env file in this directory.
+# The ezkey-network must already exist (created by the main stack: cd docker && ./manage.sh start)
 
 services:
   ezkey-pam-test:
@@ -12,14 +15,19 @@ services:
     hostname: ezkey-test
     ports:
       - "2222:22"    # SSH accessible sur localhost:2222
-      - "2223:2222"   # SSH accessible sur localhost:2223
     volumes:
       - ./logs:/var/log/container    # Logs accessibles depuis l'host
       - ./workspace:/home/testuser/workspace    # Workspace partagé
     environment:
-      - MOCK_SUCCESS=1
-      - MOCK_DELAY=5
-      - DEBUG_MODE=1
+      - EZKEY_M2M_API_URL=http://m2m-api:7080
+      - EZKEY_INTEGRATION_KEY=${EZKEY_INTEGRATION_KEY:-}
+      - EZKEY_SECRET_KEY=${EZKEY_SECRET_KEY:-}
+    networks:
+      - ezkey-network
     restart: unless-stopped
     tty: true
     stdin_open: true
+
+networks:
+  ezkey-network:
+    external: true

@@ -3983,7 +3983,7 @@
           {
             "name": "eventType",
             "in": "query",
-            "description": "Filter by event type",
+            "description": "Filter by a single event type (not together with eventTypeFamily)",
             "required": false,
             "schema": {
               "type": "string",
@@ -4012,6 +4012,7 @@
                 "AUTH_ATTEMPT_PENDING",
                 "AUTH_ATTEMPT_RESPOND",
                 "AUTH_ATTEMPT_CANCELLED",
+                "AUTH_ATTEMPT_EXPIRED",
                 "API_KEY_CREATED",
                 "API_KEY_UPDATED",
                 "API_KEY_REVOKED",
@@ -4042,6 +4043,27 @@
                 "AUDIT_CHAIN_ARCHIVE_SEALED",
                 "AUDIT_CHAIN_GAP_DECLARED",
                 "AUDIT_CHAIN_GAP_PENDING"
+              ]
+            }
+          },
+          {
+            "name": "eventTypeFamily",
+            "in": "query",
+            "description": "Filter by event family (all types in the family). Mutually exclusive with eventType.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ADMIN",
+                "ENROLLMENT",
+                "AUTH_ATTEMPT",
+                "API_KEY",
+                "SYSTEM",
+                "ENCRYPTION_KEY",
+                "REENCRYPTION",
+                "INTEGRATION",
+                "TENANT",
+                "AUDIT_CHAIN"
               ]
             }
           },
@@ -4077,6 +4099,26 @@
             "name": "enrollmentId",
             "in": "query",
             "description": "Filter by enrollment ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "authAttemptId",
+            "in": "query",
+            "description": "Filter by auth attempt ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "integrationId",
+            "in": "query",
+            "description": "Filter by integration ID",
             "required": false,
             "schema": {
               "type": "integer",
@@ -4275,6 +4317,107 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/{auditLogId}/context": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Get audit log context around an anchor event",
+        "description": "Retrieves a bounded neighborhood of audit events around a single anchor log for operator investigation. Tenant visibility rules are enforced exactly like the standard audit search.",
+        "operationId": "getAuditLogContext",
+        "parameters": [
+          {
+            "name": "auditLogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "beforeCount",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "afterCount",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "description": "Filter by tenant ID (Global Admin only). Ignored for Tenant Admin whose scope is enforced automatically.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit log context retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid before/after counts",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Anchor audit log not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
                 }
               }
             }
@@ -7037,6 +7180,7 @@
               "AUTH_ATTEMPT_PENDING",
               "AUTH_ATTEMPT_RESPOND",
               "AUTH_ATTEMPT_CANCELLED",
+              "AUTH_ATTEMPT_EXPIRED",
               "API_KEY_CREATED",
               "API_KEY_UPDATED",
               "API_KEY_REVOKED",
@@ -7177,6 +7321,27 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "AuditLogContextResponseDto": {
+        "type": "object",
+        "properties": {
+          "anchorAuditLogId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hasMoreBefore": {
+            "type": "boolean"
+          },
+          "hasMoreAfter": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogResponseDto"
+            }
           }
         }
       },

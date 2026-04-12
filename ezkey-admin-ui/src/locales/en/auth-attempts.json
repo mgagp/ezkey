@@ -27,6 +27,7 @@
   "detail": {
     "title": "Auth Attempt #{{id}}",
     "close": "Close",
+    "viewRelatedAudits": "View related audits",
     "labelId": "ID",
     "labelStatus": "Status",
     "labelEnrollment": "Enrollment",

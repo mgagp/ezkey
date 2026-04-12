@@ -23,6 +23,7 @@ interface DataTableProps<T extends object> {
   data: T[];
   isLoading?: boolean;
   onRowClick?: (row: T) => void;
+  rowClassName?: (row: T, index: number) => string | undefined;
   emptyMessage?: string;
   keyExtractor?: (row: T, index: number) => string | number;
   /**
@@ -54,6 +55,7 @@ export function DataTable<T extends object>({
   data,
   isLoading,
   onRowClick,
+  rowClassName,
   emptyMessage = 'No records found.',
   keyExtractor,
   currentSort = '',
@@ -151,6 +153,7 @@ export function DataTable<T extends object>({
                   'border-b border-fg/10 bg-surface even:bg-bg',
                   'transition-colors duration-75',
                   onRowClick && 'cursor-pointer hover:bg-accent/5 hover:border-l-2 hover:border-l-accent',
+                  rowClassName?.(row, index),
                 )}
               >
                 {columns.map((col) => (

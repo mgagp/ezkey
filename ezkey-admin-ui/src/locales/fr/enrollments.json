@@ -121,6 +121,7 @@
     "infoIntegrationPublicKey": "Clé publique d'intégration",
     "infoDevicePublicKey": "Clé publique de l'appareil",
     "editMetadata": "Modifier les métadonnées",
+    "viewRelatedAudits": "Voir les audits liés",
     "editDialogTitle": "Modifier les métadonnées de l'enrôlement",
     "editSave": "Enregistrer",
     "editCancel": "Annuler",

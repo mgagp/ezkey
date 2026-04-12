@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Key, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
+import { AlertTriangle, Key, ListOrdered, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
@@ -324,6 +324,15 @@ export default function IntegrationDetailPage() {
                   >
                     <Users className="size-3.5" />
                     {t('detail.viewAllEnrollments')}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => navigate(`/audit-logs?integrationId=${integration.id}&source=integration-detail`)}
+                  >
+                    <ListOrdered className="size-3.5" />
+                    {t('detail.viewRelatedAudits')}
                   </Button>
                   {!isRetired && (
                     <Button

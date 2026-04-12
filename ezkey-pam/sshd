@@ -1,5 +1,5 @@
 #%PAM-1.0
-auth       required     pam_ezkey.so debug mock_delay=3
+auth       required     pam_ezkey.so debug
 auth       substack     password-auth
 auth       include      postlogin
 account    required     pam_sepermit.so

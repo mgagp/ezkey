@@ -1,225 +1,157 @@
-# Ezkey PAM Module - Mock Version
+# Ezkey PAM Module
 
-This is a mock implementation of the Ezkey PAM module for testing SSH integration on Rocky Linux 9.6.
+PAM module for SSH integration with the Ezkey MFA system via the **M2M API** (port 7080).
+When a user connects over SSH, the module:
+1. Creates an auth attempt on the M2M API (`POST /api/v1/auth-attempts`) using the Linux username as `userIdentifier`.
+2. Waits for the user to approve or reject from the demo-device UI (`GET /api/v1/auth-attempts/{id}/wait`).
+3. Grants or denies SSH access based on the response.
 
-## What This Module Does
+## Prerequisites
 
-This mock module simulates the complete Ezkey MFA flow:
-1. Intercepts SSH authentication attempts
-2. Logs all activities to `/var/log/secure`
-3. Simulates API calls to Ezkey backend
-4. Simulates waiting for mobile device response
-5. Returns success/failure based on configuration
+- Rocky Linux 10 (or compatible RHEL 10 system)
+- `gcc`, `make`, `pam-devel`, `libcurl-devel`, `cjson-devel`
+- Running Ezkey stack with M2M API accessible
+- An active API key pair (integration key + secret key)
+- An enrollment with `userIdentifier` matching the Linux username (`testuser`)
 
-## Quick Installation
+## Environment Variables
 
-1. **Extract and build:**
-   ```bash
-   # Extract the files (if from zip)
-   unzip pam-ezkey-mock.zip
-   cd pam-ezkey-mock
-   
-   # Build the module
-   make all
-   ```
+| Variable | Default | Description |
+|---|---|---|
+| `EZKEY_M2M_API_URL` | `http://localhost:7080` | M2M API base URL |
+| `EZKEY_INTEGRATION_KEY` | *(required)* | API integration key |
+| `EZKEY_SECRET_KEY` | *(required)* | API secret key |
 
-2. **Install (as root):**
-   ```bash
-   sudo ./install.sh
-   ```
+## Quick Start (Docker)
 
-3. **Test the installation:**
-   ```bash
-   ./test/test_pam.sh
-   ```
+```bash
+# 1. Start the main Ezkey stack
+cd docker && ./manage.sh start
 
-## Manual Installation Steps
+# 2. In the Admin UI, create an integration and generate an API key
+open http://localhost:9080   # Admin UI
+# -> Integrations -> New integration -> Generate API key
+# -> Enrollments -> New enrollment -> set userIdentifier=testuser
 
-If you prefer to install manually:
+# 3. Start the PAM container
+cd ezkey-pam
+EZKEY_INTEGRATION_KEY=<key> EZKEY_SECRET_KEY=<secret> docker-compose up --build
 
-1. **Install dependencies:**
-   ```bash
-   sudo dnf install -y pam-devel gcc make
-   ```
+# 4. SSH into the PAM container
+ssh -p 2222 testuser@localhost
 
-2. **Build and install module:**
-   ```bash
-   make all
-   sudo make install
-   ```
-
-3. **Configure PAM for SSH:**
-   ```bash
-   sudo cp config/pam_ezkey.conf /etc/security/
-   ```
-
-4. **Edit `/etc/pam.d/sshd` and add after the first auth line:**
-   ```
-   auth       required     pam_ezkey.so debug
-   ```
-
-5. **Update SSH configuration in `/etc/ssh/sshd_config`:**
-   ```
-   UsePAM yes
-   ChallengeResponseAuthentication yes
-   KbdInteractiveAuthentication yes
-   ```
-
-6. **Restart SSH daemon:**
-   ```bash
-   sudo systemctl restart sshd
-   ```
-
-## Configuration
-
-Edit `/etc/security/pam_ezkey.conf` to modify:
-- `mock_success=1` - Set to 0 to simulate authentication failures
-- `mock_delay=5` - Number of seconds to simulate waiting
-- `debug=1` - Enable/disable verbose logging
-
-You can also pass options directly in PAM configuration:
+# 5. Approve the auth attempt in the demo-device UI
+open http://localhost:8083/phone/ezkey
 ```
-auth required pam_ezkey.so debug mock_delay=10 mock_failure
+
+## E2E Test Procedure
+
+```
+1. cd docker && ./manage.sh clean          # Clean start
+2. cd docker && ./manage.sh start          # Start the full stack
+3. Open the Admin UI at http://localhost:9080
+4. Create an integration and generate an API key
+   -> Integrations -> New integration -> Generate API key
+   -> Note the integration key and secret key
+5. Create an enrollment for the test user
+   -> Enrollments -> New enrollment -> userIdentifier = testuser
+6. cd ezkey-pam
+7. EZKEY_INTEGRATION_KEY=<key> EZKEY_SECRET_KEY=<secret> docker-compose up --build
+8. ssh -p 2222 testuser@localhost           # SSH triggers PAM -> POST /api/v1/auth-attempts
+9. Open http://localhost:8083/phone/ezkey   # Demo-device UI
+10. Check pending -> Approve                # Demo-device approves the auth attempt
+11. SSH session completes successfully      # PAM received ACCEPTED from wait API
+```
+
+## Manual Installation (bare metal)
+
+```bash
+# Install dependencies
+sudo dnf install -y gcc make pam-devel libcurl-devel epel-release
+sudo dnf install -y cjson-devel
+
+# Build and install
+export EZKEY_M2M_API_URL=http://your-m2m-api:7080
+export EZKEY_INTEGRATION_KEY=your-integration-key
+export EZKEY_SECRET_KEY=your-secret-key
+sudo ./install.sh
+```
+
+## PAM Configuration
+
+The `/etc/pam.d/sshd` auth line:
+```
+auth  required  pam_ezkey.so debug
+```
+Only the `debug` argument is supported (enables verbose logging).
+
+## Logging
+
+```bash
+# Real-time auth logs
+tail -f /var/log/secure
+
+# Short-form log from within the container
+docker exec ezkey-pam-test cat /tmp/pam_ezkey.out
+docker exec ezkey-pam-test cat /tmp/pam_ezkey.err
+```
+
+Example log output:
+```
+=== EZKEY PAM MODULE STARTED ===
+Authentication requested for user: testuser
+Auth attempt created, id=42
+=== EZKEY PAM MODULE FINISHED ===
+Authentication result for testuser: SUCCESS
 ```
 
 ## Testing
 
-1. **Monitor logs:**
-   ```bash
-   sudo tail -f /var/log/secure
-   ```
-
-2. **Test SSH connection:**
-   ```bash
-   ssh $USER@localhost
-   ```
-
-3. **Run test suite:**
-   ```bash
-   ./test/test_pam.sh
-   ```
-
-## Expected Log Output
-
-When you SSH, you should see logs like:
-```
-Dec 13 10:30:15 hostname sshd[12345]: pam_ezkey: === EZKEY PAM MODULE STARTED ===
-Dec 13 10:30:15 hostname sshd[12345]: pam_ezkey: Authentication requested for user: testuser
-Dec 13 10:30:15 hostname sshd[12345]: pam_ezkey: MOCK: POST http://localhost:9080/api/v1/auth-attempts (user: testuser)
-Dec 13 10:30:16 hostname sshd[12345]: pam_ezkey: MOCK: Created auth attempt ID: auth_12345_mock
-Dec 13 10:30:16 hostname sshd[12345]: pam_ezkey: MOCK: Notification sent to user's mobile device
-Dec 13 10:30:16 hostname sshd[12345]: pam_ezkey: MOCK: Waiting for user response (timeout: 30s)...
-Dec 13 10:30:21 hostname sshd[12345]: pam_ezkey: MOCK: GET http://localhost:9080/api/v1/auth-attempts/auth_12345_mock/wait -> ACCEPTED
-Dec 13 10:30:21 hostname sshd[12345]: pam_ezkey: MOCK: User accepted authentication on mobile device
-Dec 13 10:30:21 hostname sshd[12345]: pam_ezkey: Authentication result for testuser: SUCCESS
-Dec 13 10:30:21 hostname sshd[12345]: pam_ezkey: === EZKEY PAM MODULE FINISHED ===
-```
-
-## Module Arguments
-
-You can customize behavior by passing arguments in PAM configuration:
-
 ```bash
-# Basic configuration
-auth required pam_ezkey.so
-
-# Debug mode with custom delay
-auth required pam_ezkey.so debug mock_delay=10
-
-# Simulate failure for testing
-auth required pam_ezkey.so debug mock_failure
-
-# Multiple options
-auth required pam_ezkey.so debug mock_delay=8 mock_failure
+# Run basic tests from within the container
+docker exec ezkey-pam-test /opt/pam-ezkey/test/test_pam.sh
 ```
-
-Available arguments:
-- `debug` - Enable verbose logging
-- `mock_delay=N` - Set delay in seconds (1-60)
-- `mock_failure` - Simulate authentication failure
-
-## Security Notes
-
-**⚠️ Important:** This is a MOCK module for development only!
-
-- It does NOT perform real MFA authentication
-- It does NOT connect to actual Ezkey APIs
-- It should NEVER be used in production
-- All authentication attempts will succeed by default
-- Use only for testing PAM integration
 
 ## Troubleshooting
 
+### `PAM_AUTH_ERR` immediately
+- Check that `EZKEY_INTEGRATION_KEY` and `EZKEY_SECRET_KEY` are set in the container environment.
+- Verify M2M API is reachable: `curl http://m2m-api:7080/actuator/health`
+- Check that an enrollment with `userIdentifier=testuser` exists.
+
+### SSH connection hangs forever
+- The wait API has a 30-second timeout by default (`EZKEY_WAIT_TIMEOUT`).
+  Make sure you approve/reject in the demo-device UI within that window.
+
+### No logs in `/var/log/secure`
+```bash
+# Check rsyslog is running
+pgrep rsyslogd || rsyslogd
+```
+
 ### Module not found
 ```bash
-# Check if module exists
 ls -la /lib64/security/pam_ezkey.so
-
-# Rebuild if missing
-make clean && make all && sudo make install
+make clean && make all && sudo cp build/pam_ezkey.so /lib64/security/
 ```
-
-### SSH connection hangs
-```bash
-# Check SSH daemon syntax
-sudo sshd -t
-
-# Check PAM configuration
-sudo pamtest login $USER authenticate
-```
-
-### No logs appearing
-```bash
-# Check rsyslog service
-sudo systemctl status rsyslog
-
-# Check syslog configuration
-grep authpriv /etc/rsyslog.conf
-```
-
-### Permission denied
-```bash
-# Check module permissions
-ls -la /lib64/security/pam_ezkey.so
-# Should be: -rwxr-xr-x root root
-
-# Fix if needed
-sudo chmod 755 /lib64/security/pam_ezkey.so
-```
-
-## Integration with Real Ezkey
-
-To integrate with your real Ezkey system:
-
-1. **Modify API endpoints** in `src/ezkey_config.h`:
-   ```c
-   #define EZKEY_ADMIN_API_URL "https://your-ezkey-server:9080"
-   #define EZKEY_AUTH_API_URL "https://your-ezkey-server:8080"
-   ```
-
-2. **Replace mock functions** with real HTTP client code
-3. **Add proper error handling** for network failures
-4. **Implement enrollment detection** for users
-5. **Add configuration file parsing** for `/etc/security/pam_ezkey.conf`
 
 ## Directory Structure
 
 ```
-pam-ezkey-mock/
+ezkey-pam/
 ├── src/
-│   ├── pam_ezkey.c          # Main PAM module source
-│   └── ezkey_config.h       # Configuration constants
+│   ├── pam_ezkey.c          # PAM module source
+│   └── ezkey_config.h       # Compile-time defaults and env var names
 ├── config/
-│   └── pam_ezkey.conf       # Runtime configuration
+│   └── pam_ezkey.conf       # Reference config (credentials via env vars)
 ├── test/
-│   └── test_pam.sh          # Test suite
+│   └── test_pam.sh          # Basic test suite
 ├── build/                   # Generated build files
-├── Makefile                 # Build configuration
-├── install.sh              # Automated installer
-└── README.md               # This file
+├── Makefile
+├── install.sh               # Automated installer
+├── docker-entrypoint.sh     # Container startup script
+├── Dockerfile
+├── docker-compose.yml
+└── sshd                     # PAM sshd configuration
 ```
 
-## License
-
-This mock module is provided for development and testing purposes.
-Adapt as needed for your Ezkey integration project.

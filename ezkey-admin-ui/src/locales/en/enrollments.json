@@ -121,6 +121,7 @@
     "infoIntegrationPublicKey": "Integration public key",
     "infoDevicePublicKey": "Device public key",
     "editMetadata": "Edit metadata",
+    "viewRelatedAudits": "View related audits",
     "editDialogTitle": "Edit enrollment metadata",
     "editSave": "Save changes",
     "editCancel": "Cancel",

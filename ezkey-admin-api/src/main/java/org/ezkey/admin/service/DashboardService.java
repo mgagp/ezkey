@@ -202,6 +202,8 @@ public class DashboardService {
             null,
             null,
             null,
+            null,
+            null,
             requesterTenantId,
             null,
             null,
@@ -226,6 +228,8 @@ public class DashboardService {
     var page =
         auditLogService.findByFilters(
             EventType.AUDIT_CHAIN_GAP_PENDING,
+            null,
+            null,
             null,
             null,
             null,

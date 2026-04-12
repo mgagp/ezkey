@@ -4106,6 +4106,26 @@
             }
           },
           {
+            "name": "authAttemptId",
+            "in": "query",
+            "description": "Filter by auth attempt ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "integrationId",
+            "in": "query",
+            "description": "Filter by integration ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "adminId",
             "in": "query",
             "description": "Filter by admin ID (actor)",
@@ -4297,6 +4317,107 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/IntegrityReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/{auditLogId}/context": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Get audit log context around an anchor event",
+        "description": "Retrieves a bounded neighborhood of audit events around a single anchor log for operator investigation. Tenant visibility rules are enforced exactly like the standard audit search.",
+        "operationId": "getAuditLogContext",
+        "parameters": [
+          {
+            "name": "auditLogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "beforeCount",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "afterCount",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "description": "Filter by tenant ID (Global Admin only). Ignored for Tenant Admin whose scope is enforced automatically.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit log context retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid before/after counts",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Anchor audit log not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogContextResponseDto"
                 }
               }
             }
@@ -7200,6 +7321,27 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "AuditLogContextResponseDto": {
+        "type": "object",
+        "properties": {
+          "anchorAuditLogId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hasMoreBefore": {
+            "type": "boolean"
+          },
+          "hasMoreAfter": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogResponseDto"
+            }
           }
         }
       },
