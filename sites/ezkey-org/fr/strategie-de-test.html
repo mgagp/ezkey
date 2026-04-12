@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/testing-strategy.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/strategie-de-test.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/testing-strategy.html">
+    <title>Stratégie de test dans Ezkey — Du test unitaire au stress opérationnel — Ezkey</title>
+    <meta name="description" content="Comment Ezkey structure ses tests pour un développement AI-first : tests unitaires, fonctionnels séquentiels, électifs, opérationnels avec compression de temps. Retour d'expérience d'un développeur solo.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.65;
+        }
+
+        .shell {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        .nav-top {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .nav-top a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: underline;
+        }
+
+        .nav-top a:hover {
+            color: #fff;
+        }
+
+        article {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+            padding: 40px 36px 48px;
+            text-align: left;
+        }
+
+        @media (max-width: 600px) {
+            article { padding: 28px 20px 36px; }
+        }
+
+        .doc-meta {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 16px;
+        }
+
+        .hero-title {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .hero-title .label {
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .hero-title h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #111;
+            line-height: 1.25;
+            margin: 0 0 12px;
+            border: none;
+            padding: 0;
+        }
+
+        .hero-title .tagline {
+            font-size: 1.05rem;
+            color: #444;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .hero-title .kicker {
+            font-size: 0.98rem;
+            color: #555;
+            font-style: italic;
+        }
+
+        h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #222;
+            margin: 28px 0 12px;
+        }
+
+        h2:first-of-type {
+            margin-top: 12px;
+        }
+
+        h3 {
+            font-size: 1.02rem;
+            font-weight: 600;
+            color: #333;
+            margin: 18px 0 10px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            font-size: 0.98rem;
+        }
+
+        ul, ol {
+            margin: 10px 0 14px 1.25rem;
+        }
+
+        li {
+            margin-bottom: 8px;
+            font-size: 0.98rem;
+        }
+
+        .pull-quote {
+            margin: 16px 0;
+            padding: 14px 18px;
+            background: #f8f9ff;
+            border-left: 4px solid #764ba2;
+            font-size: 0.98rem;
+        }
+
+        table.tags {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0 20px;
+            font-size: 0.88rem;
+        }
+
+        table.tags th,
+        table.tags td {
+            border: 1px solid #dde1ee;
+            padding: 8px 10px;
+            vertical-align: top;
+        }
+
+        table.tags thead th {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+            font-weight: 700;
+            text-align: left;
+        }
+
+        table.tags tbody td:first-child {
+            font-weight: 600;
+            color: #3d3d55;
+            white-space: nowrap;
+        }
+
+        table.tags code {
+            background: #f0f0f5;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+
+        table.profiles {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0 20px;
+            font-size: 0.88rem;
+        }
+
+        table.profiles th,
+        table.profiles td {
+            border: 1px solid #dde1ee;
+            padding: 8px 10px;
+            vertical-align: top;
+        }
+
+        table.profiles thead th {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+            font-weight: 700;
+            text-align: left;
+        }
+
+        table.profiles code {
+            background: #f0f0f5;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+
+        .test-pyramid {
+            margin: 18px 0 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .test-pyramid .layer {
+            width: 100%;
+            max-width: 520px;
+            padding: 10px 14px;
+            border: 1px solid #c8cfe8;
+            background: #fafbff;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .test-pyramid .layer strong {
+            display: block;
+            color: #2d2d44;
+            margin-bottom: 4px;
+        }
+
+        .test-pyramid .layer span.hint {
+            font-size: 0.82rem;
+            color: #555;
+        }
+
+        .test-pyramid .layer.l1 { border-radius: 8px 8px 0 0; max-width: 38%; min-width: 200px; }
+        .test-pyramid .layer.l2 { max-width: 52%; min-width: 240px; }
+        .test-pyramid .layer.l3 { max-width: 68%; min-width: 280px; }
+        .test-pyramid .layer.l4 { border-radius: 0 0 8px 8px; max-width: 100%; }
+
+        .cmd-block {
+            margin: 12px 0 16px;
+            padding: 12px 16px;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            border-radius: 8px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.88rem;
+            overflow-x: auto;
+            line-height: 1.5;
+        }
+
+        .cmd-block .comment {
+            color: #6c7086;
+        }
+
+        .closing {
+            margin-top: 24px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .closing p {
+            margin-bottom: 10px;
+        }
+
+        .closing p:last-child {
+            margin-bottom: 0;
+            font-weight: 600;
+            color: #2d2d44;
+        }
+
+        .doc-link-sibling {
+            margin-top: 14px;
+            font-size: 0.92rem;
+        }
+
+        .doc-link-sibling:first-of-type {
+            margin-top: 18px;
+        }
+
+        .doc-link-sibling a {
+            color: #4a56c4;
+        }
+
+        footer.doc-footer {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.75);
+            text-align: center;
+        }
+
+        footer.doc-footer a {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        @media print {
+            body { background: #fff; }
+            .shell { max-width: none; padding: 0; }
+            .nav-top, footer.doc-footer, .doc-link-sibling { display: none; }
+            article { box-shadow: none; border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top">
+            <a href="/fr/">Accueil (français)</a>
+            · <a href="/">English home</a>
+        </p>
+
+        <article>
+            <p class="doc-meta">Retour d'expérience · Avril 2026</p>
+
+            <header class="hero-title">
+                <p class="label">Stratégie de test</p>
+                <h1>Du test unitaire<br>au stress opérationnel</h1>
+                <p class="tagline">Comment structurer ses tests pour un développement solo, AI-first.</p>
+                <p class="kicker">Le filet de sécurité qui rend l'autonomie possible.</p>
+            </header>
+
+            <!-- ============================================================ -->
+            <h2>01 — Le problème</h2>
+            <p>Quand un développeur solo travaille avec des agents de codage, la question n'est plus « est-ce que je devrais écrire des tests ? » — c'est « quels tests, dans quel ordre, et pour protéger quoi ? »</p>
+            <p>Ezkey est une plateforme cryptographique MFA, développée en solo avec une approche AI-first. Le code est modifié autant par l'humain que par l'agent. Sans une stratégie de test claire, chaque modification devient un pari. Avec la bonne stratégie, chaque modification devient vérifiable — rapidement, à moindre coût, et de manière répétable.</p>
+            <p>Ce qui suit est le résultat d'un an d'itérations. Ce n'est pas une recette académique — c'est ce qui fonctionne en pratique.</p>
+
+            <!-- ============================================================ -->
+            <h2>02 — Tests unitaires : première ligne de défense</h2>
+            <p>Les tests unitaires sont le point de départ. Ils sont rapides, peu coûteux, et ils offrent un double avantage concret :</p>
+            <ul>
+                <li><strong>Feedback immédiat</strong> — après une modification, l'humain ou l'agent peut les lancer en quelques secondes pour un premier test de santé.</li>
+                <li><strong>Garde-fou de régression</strong> — ils protègent les comportements critiques sans avoir besoin de démarrer l'infrastructure complète.</li>
+            </ul>
+            <p>Dans Ezkey, les tests unitaires couvrent les services métier, les mappers, la logique de validation et les utilitaires cryptographiques. Ils s'exécutent sans base de données, sans Docker, sans réseau. C'est cette légèreté qui les rend utilisables comme réflexe après chaque changement — que ce soit l'humain qui lance un <code>mvn test</code> ciblé, ou l'agent qui valide son propre travail automatiquement.</p>
+            <div class="pull-quote">
+                Les tests unitaires sont le minimum vital. Si un changement casse un test unitaire, on le sait en secondes — pas en minutes après un rebuild Docker complet.
+            </div>
+
+            <!-- ============================================================ -->
+            <h2>03 — La segmentation par tags</h2>
+            <p>Quand le nombre de tests augmente, pouvoir cibler précisément ce qu'on exécute devient essentiel. Ezkey utilise les tags JUnit&nbsp;5 pour segmenter les tests en sous-groupes. Chaque test porte un ou plusieurs tags, et les profils Maven permettent de combiner ces tags à la ligne de commande.</p>
+            <p>L'intérêt est direct : on peut lancer uniquement les tests d'encryption après un changement cryptographique, ou uniquement les smoke tests après un déploiement, sans exécuter la suite complète.</p>
+
+            <table class="tags">
+                <thead>
+                    <tr>
+                        <th>Tag</th>
+                        <th>Rôle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>fast</code></td>
+                        <td>Tests complétés en &lt;&nbsp;5 secondes — exécution par défaut en CI</td>
+                    </tr>
+                    <tr>
+                        <td><code>slow</code></td>
+                        <td>Tests prenant 30+ secondes — builds nocturnes, pré-release</td>
+                    </tr>
+                    <tr>
+                        <td><code>smoke</code></td>
+                        <td>Validation rapide des fonctionnalités critiques — sanity check post-déploiement</td>
+                    </tr>
+                    <tr>
+                        <td><code>encryption</code></td>
+                        <td>Rotation de clés, encryption, synchronisation de keysets</td>
+                    </tr>
+                    <tr>
+                        <td><code>enrollment</code></td>
+                        <td>Flux d'enrôlement et cycle de vie</td>
+                    </tr>
+                    <tr>
+                        <td><code>authentication</code></td>
+                        <td>Tentatives d'authentification, challenge-response, tokens</td>
+                    </tr>
+                    <tr>
+                        <td><code>admin</code></td>
+                        <td>Authentification admin, tokens, opérations administratives</td>
+                    </tr>
+                    <tr>
+                        <td><code>security</code></td>
+                        <td>Frontières de sécurité — échecs 401 et 403</td>
+                    </tr>
+                    <tr>
+                        <td><code>multi-tenant</code></td>
+                        <td>Isolation entre tenants, permissions, frontières</td>
+                    </tr>
+                    <tr>
+                        <td><code>cross-instance</code></td>
+                        <td>Interaction Admin API ↔ Auth API — comportements distribués</td>
+                    </tr>
+                    <tr>
+                        <td><code>audit-integrity</code></td>
+                        <td>Signatures HMAC, chaînes de checkpoints, détection de falsification</td>
+                    </tr>
+                    <tr>
+                        <td><code>database</code></td>
+                        <td>Tests impliquant un accès SQL direct à la base de données</td>
+                    </tr>
+                    <tr>
+                        <td><code>time-dependent</code></td>
+                        <td>Tests sensibles au timing — potentiellement instables sous charge</td>
+                    </tr>
+                    <tr>
+                        <td><code>elective</code></td>
+                        <td>Vérifications ponctuelles sur demande — jamais en exécution automatique</td>
+                    </tr>
+                    <tr>
+                        <td><code>operational-churn</code></td>
+                        <td>Boucles longue durée simulant une activité de production</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>En pratique, les profils Maven les plus courants :</p>
+
+            <div class="cmd-block">
+                <span class="comment"># Validation rapide (défaut CI — exclut slow, elective, operational)</span><br>
+                mvn test -pl ezkey-tests<br><br>
+                <span class="comment"># Tous les tests standard (excl. elective et operational)</span><br>
+                mvn test -pl ezkey-tests -P all-tests<br><br>
+                <span class="comment"># Cibler une famille spécifique</span><br>
+                mvn test -pl ezkey-tests -Dgroups="encryption"<br>
+                mvn test -pl ezkey-tests -Dgroups="authentication,enrollment"
+            </div>
+
+            <!-- ============================================================ -->
+            <h2>04 — L'environnement Docker : la clean room</h2>
+            <p>Avant de parler de tests fonctionnels, il faut expliquer comment on obtient un environnement fiable. La réponse dans Ezkey, c'est le <em>clean start</em>.</p>
+            <p>Un script (<code>clean-start.sh</code>) fait tout le travail :</p>
+            <ol>
+                <li>Arrêt complet du stack Docker, y compris les volumes — un vrai reset.</li>
+                <li>Compilation de tous les modules Java avec un build Docker optimisé (BuildKit).</li>
+                <li>Démarrage ordonné de tous les services : PostgreSQL, migrations Flyway, Admin API, Auth API, Crypto API, Demo Device.</li>
+                <li>Extraction automatique des credentials de bootstrap depuis les logs Docker.</li>
+                <li>Initialisation du token admin pour les tests.</li>
+            </ol>
+            <p>Le résultat : un environnement propre, complet, reproductible. C'est la fondation sur laquelle tous les tests fonctionnels reposent. L'agent de codage peut déclencher un clean start, lancer les tests, et avoir un verdict fiable — sans intervention humaine.</p>
+
+            <!-- ============================================================ -->
+            <h2>05 — Tests fonctionnels : le cœur de la stratégie</h2>
+            <p>C'est ici que les choses deviennent intéressantes. Les tests fonctionnels dans Ezkey sont des tests bout-en-bout qui parlent aux vraies API, sur un vrai stack Docker, avec une vraie base de données. Ce ne sont pas des mocks — c'est le système réel.</p>
+
+            <h3>La règle du 80-20</h3>
+            <p>On ne cherche pas une couverture exhaustive de chaque cas de figure. On cible les 80&nbsp;% de valeur avec 20&nbsp;% de l'effort. Chaque test fonctionnel doit justifier son existence par la valeur qu'il protège, pas par un objectif de couverture abstraite.</p>
+
+            <h3>Trois principes fondamentaux</h3>
+            <p><strong>Indépendance.</strong> Chaque test doit pouvoir s'exécuter seul, dans n'importe quel ordre. Il crée ses propres données (tenants, intégrations, enrôlements) avec des identifiants uniques. Aucune dépendance implicite à l'ordre d'exécution.</p>
+            <p><strong>Idempotence.</strong> Relancer un test deux fois donne le même résultat. Pas de surprise liée à des données résiduelles, pas d'hypothèse sur la pagination ou l'état préexistant.</p>
+            <p><strong>Opportunisme avec helpers.</strong> Les tests ne se limitent pas à valider la réponse HTTP. Quand c'est pertinent, ils vont examiner directement la base de données via SQL pour confirmer qu'un service a bien fait son travail. C'est un angle de validation complémentaire — pas un contournement des API, mais une vérification indépendante que les effets de bord sont corrects.</p>
+
+            <h3>Pourquoi séquentiels ?</h3>
+            <p>Les tests fonctionnels par défaut s'exécutent de manière séquentielle. C'est un choix délibéré, pas une contrainte technique.</p>
+            <p>La raison est pragmatique : quand un test échoue, on veut pouvoir identifier la cause rapidement. Un log séquentiel est lisible. On peut le copier-coller dans une conversation avec un agent de codage et obtenir une analyse de root cause efficace. Avec des tests parallèles, les logs s'entrelacent, les effets de bord se multiplient, et l'investigation devient un casse-tête.</p>
+            <div class="pull-quote">
+                Le séquentiel n'est pas une limitation — c'est une décision pour maximiser la vitesse d'investigation quand quelque chose casse.
+            </div>
+
+            <h3>Les données restent</h3>
+            <p>Autre choix intentionnel : les tests fonctionnels ne nettoient pas leurs données. Chaque exécution ajoute des tenants, des enrôlements, des tentatives d'authentification dans la base. Ce n'est pas de la négligence — c'est une stratégie.</p>
+            <p>Ce volume accumulé donne une chance de repérer des problèmes de performance SQL qui n'apparaîtraient jamais sur une base vide. C'est un premier palier, modeste mais gratuit, de validation de performance. Et c'est cette même base enrichie que les tests électifs et opérationnels viennent ensuite exploiter.</p>
+
+            <!-- ============================================================ -->
+            <h2>06 — Tests électifs : les vérifications ponctuelles</h2>
+            <p>Certains scénarios sont importants mais changent rarement, prennent du temps, ou n'ont de sens que sur un système ayant accumulé des données. Les exécuter à chaque build serait un gaspillage. Les ignorer serait un risque.</p>
+            <p>La solution : les <strong>tests électifs</strong>. Ils ne s'exécutent jamais automatiquement. On les lance explicitement, quand le contexte le justifie — après plusieurs jours d'uptime, avant une release, ou après un changement ciblé dans le domaine concerné.</p>
+            <p>Exemples concrets dans Ezkey :</p>
+            <ul>
+                <li><strong>Rotation de clés cryptographiques avec activité concurrente</strong> — simule une rotation de clé pendant que des opérations d'encryption sont en cours. Test lent, sensible au timing, mais critique pour valider l'intégrité cryptographique.</li>
+                <li><strong>Synchronisation de keysets entre instances</strong> — valide le comportement distribué (Admin API ↔ Auth API) pendant une fenêtre de rotation. Pertinent surtout en mode haute disponibilité.</li>
+                <li><strong>Exclusion mutuelle des batchs (ShedLock)</strong> — vérifie que les tâches planifiées ne s'exécutent pas en parallèle sur plusieurs instances. Le code est stable, mais la vérification périodique reste pertinente.</li>
+                <li><strong>Intégrité de la chaîne d'audit</strong> — valide les signatures HMAC et les checkpoints de la chaîne d'audit. Plus significatif après accumulation de données réelles.</li>
+                <li><strong>Intégrité de l'encryption</strong> — spot check sur les données encryptées en base pour valider leur cohérence.</li>
+            </ul>
+
+            <div class="cmd-block">
+                <span class="comment"># Lancer les tests électifs</span><br>
+                mvn test -pl ezkey-tests -P elective-tests
+            </div>
+
+            <!-- ============================================================ -->
+            <h2>07 — Tests opérationnels : la compression de temps</h2>
+            <p>Et c'est ici que l'approche devient, je crois, assez unique.</p>
+            <p>Quand j'ai évalué la pertinence d'un framework de test de charge classique (JMeter, Gatling), je me suis rendu compte que le vrai besoin n'était pas de mesurer des requêtes par seconde. Le vrai besoin était de simuler une <em>activité de production réaliste sur une durée étendue</em> — et d'observer ce qui se passe quand le temps est compressé.</p>
+
+            <h3>Le concept</h3>
+            <p>Un test opérationnel dans Ezkey utilise le même framework JUnit&nbsp;5 que les autres tests. Pas de framework additionnel, pas de nouvelle dépendance. La différence : il vit beaucoup plus longtemps.</p>
+            <p>Concrètement, le test opérationnel actuel :</p>
+            <ol>
+                <li>Crée un tenant, un administrateur, des intégrations, des enrôlements — un setup complet.</li>
+                <li>Entre ensuite dans une boucle d'authentifications répétées, pour une <strong>durée par défaut de deux heures</strong>, avec un volume configurable (léger, moyen, soutenu).</li>
+            </ol>
+            <p>On peut en démarrer plusieurs instances en parallèle dans des terminaux séparés et les laisser tourner. Chaque instance est indépendante — elle crée ses propres données.</p>
+
+            <h3>Pourquoi pas un framework de test de charge ?</h3>
+            <p>Parce que le coût d'introduction d'un framework dédié ne se justifie pas pour le retour obtenu. Les tests opérationnels d'Ezkey accomplissent quelque chose de différent : ils ne mesurent pas la performance brute, ils exercent le <strong>parallélisme et la concurrence</strong> dans des conditions réalistes.</p>
+            <p>Les tests fonctionnels standard sont séquentiels — c'est leur force pour l'investigation. Mais ça veut aussi dire qu'ils ne testent jamais les mécanismes d'exclusion mutuelle, les verrous distribués, ou les problèmes de concurrence entre sessions multiples. Les tests opérationnels comblent ce trou.</p>
+
+            <h3>La compression de temps</h3>
+            <p>C'est le prolongement le plus intéressant de cette approche. L'idée : prendre des opérations qui, en production, se produisent rarement — une rotation de clé par trimestre, un batch de ré-encryption mensuel — et les comprimer dans un horizon de quelques heures.</p>
+            <p>Par exemple : introduire une nouvelle clé cryptographique toutes les 5 minutes au lieu de tous les 3 mois, avec les batchs de ré-encryption correspondants, pendant qu'une charge d'authentification continue en parallèle.</p>
+            <p>Sur quelques heures, on compresse des mois d'opérations. Les comportements qui n'apparaîtraient normalement qu'une fois par trimestre se manifestent des dizaines de fois. Les conditions de course, les interblocages, les problèmes de coordination entre instances — tout ça a une chance de se révéler.</p>
+            <div class="pull-quote">
+                La compression de temps transforme un test de longue durée en accélérateur de découverte. En quelques heures, on simule des mois d'opérations et on force l'émergence de problèmes qui mettraient des semaines à apparaître naturellement.
+            </div>
+
+            <h3>L'accumulation de données — un choix intentionnel</h3>
+            <p>Comme les tests fonctionnels, les tests opérationnels ne nettoient pas après eux. Après quelques sessions de deux heures avec une ou plusieurs instances en parallèle, la base de données contient un volume représentatif : des milliers d'enrôlements, de tentatives d'authentification, d'entrées d'audit.</p>
+            <p>Ce volume remplit deux fonctions :</p>
+            <ul>
+                <li><strong>Validation de performance implicite</strong> — si une requête SQL commence à ralentir avec du volume, on le voit. Sur une base toujours vide, on ne le verrait jamais.</li>
+                <li><strong>Simulation d'un pilote initial</strong> — le volume accumulé se rapproche de ce qu'un premier déploiement en environnement réel produirait. C'est un proxy modeste mais concret d'une réalité de production.</li>
+            </ul>
+
+            <!-- ============================================================ -->
+            <h2>08 — La pyramide : vue d'ensemble</h2>
+
+            <div class="test-pyramid" role="img" aria-label="Pyramide de tests, du haut vers la base">
+                <div class="layer l1">
+                    <strong>Tests opérationnels</strong>
+                    <span class="hint">Parallélisme, compression de temps, volume</span>
+                </div>
+                <div class="layer l2">
+                    <strong>Tests électifs</strong>
+                    <span class="hint">Vérifications ponctuelles, sujets spécialisés</span>
+                </div>
+                <div class="layer l3">
+                    <strong>Tests fonctionnels</strong>
+                    <span class="hint">Bout-en-bout, séquentiels, la référence</span>
+                </div>
+                <div class="layer l4">
+                    <strong>Tests unitaires</strong>
+                    <span class="hint">Rapides, peu coûteux — première ligne de défense</span>
+                </div>
+            </div>
+
+            <p>La logique est celle d'une escalade progressive :</p>
+            <ol>
+                <li><strong>Tests unitaires</strong> — feedback en secondes, aucune infrastructure. Premier réflexe après chaque modification.</li>
+                <li><strong>Tests fonctionnels</strong> — un clean start Docker, puis des tests séquentiels bout-en-bout. Le verdict de référence.</li>
+                <li><strong>Tests électifs</strong> — vérifications spécialisées lancées à la demande, pour les sujets stables mais critiques.</li>
+                <li><strong>Tests opérationnels</strong> — longue durée, parallélisme, compression de temps. Là où les problèmes subtils se révèlent.</li>
+            </ol>
+            <p>À chaque niveau, on ajoute de la complexité et du temps d'exécution. La règle : commencer par les tests les plus rapides et les moins coûteux, stabiliser à ce niveau, puis monter progressivement. Si un problème peut être détecté par un test unitaire, il ne devrait pas nécessiter un test opérationnel de deux heures pour être trouvé.</p>
+
+            <h3>Des blocs composables</h3>
+            <p>Un aspect clé de cette architecture : chaque niveau de test est un composant indépendant. On peut les enchaîner librement, les combiner, les répartir. Un humain peut lancer les tests unitaires pendant que l'agent de codage s'occupe d'un clean start et des tests fonctionnels. Ou inversement. Les tests opérationnels tournent dans des terminaux séparés sans interférer avec le reste.</p>
+            <p>Cette composabilité est essentielle pour un mode de développement AI-first. L'agent a besoin de blocs de validation clairs, autonomes, avec des verdicts sans ambiguïté. Les tests lui donnent exactement ça.</p>
+
+            <table class="profiles">
+                <thead>
+                    <tr>
+                        <th>Scénario</th>
+                        <th>Commande</th>
+                        <th>Durée typique</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Validation rapide (CI)</td>
+                        <td><code>mvn test -pl ezkey-tests</code></td>
+                        <td>~2 min</td>
+                    </tr>
+                    <tr>
+                        <td>Suite complète standard</td>
+                        <td><code>mvn test -pl ezkey-tests -P all-tests</code></td>
+                        <td>~10 min</td>
+                    </tr>
+                    <tr>
+                        <td>Smoke check</td>
+                        <td><code>mvn test -pl ezkey-tests -P smoke-tests</code></td>
+                        <td>&lt;1 min</td>
+                    </tr>
+                    <tr>
+                        <td>Tests électifs</td>
+                        <td><code>mvn test -pl ezkey-tests -P elective-tests</code></td>
+                        <td>~10 min</td>
+                    </tr>
+                    <tr>
+                        <td>Churn opérationnel</td>
+                        <td><code>mvn test -pl ezkey-tests -P operational-churn-tests</code></td>
+                        <td>2+ heures</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ============================================================ -->
+            <h2>09 — Ce que j'ai appris en chemin</h2>
+            <p>Cette stratégie n'est pas apparue du jour au lendemain. Ezkey est un projet solo, et j'ai commencé comme beaucoup : avec du <em>vibe coding</em> naïf, très peu de tests, et une confiance excessive dans le fait que « ça marche sur ma machine ».</p>
+            <p>L'introduction des agents de codage en 2025 a changé la donne. Quand un agent modifie du code de manière autonome, sans filet de sécurité, les régressions arrivent vite. Il fallait un contrat clair entre l'humain et l'agent : voici les garde-fous, voici comment on vérifie, voici les verdicts.</p>
+            <p>La progression a été graduelle :</p>
+            <ul>
+                <li>D'abord quelques tests unitaires sur les services critiques.</li>
+                <li>Puis l'infrastructure Docker pour avoir un environnement reproductible.</li>
+                <li>Puis des plans de travail structurés incluant les critères de test.</li>
+                <li>Puis les tests fonctionnels bout-en-bout avec la philosophie d'indépendance.</li>
+                <li>Puis les tests électifs pour les sujets qui ne justifient pas une exécution systématique.</li>
+                <li>Enfin les tests opérationnels, pour aller chercher les problèmes que les autres niveaux ne peuvent pas trouver.</li>
+            </ul>
+            <p>Chaque étape a été motivée par un besoin concret — jamais par une ambition théorique de couverture. Et chaque étape a rendu le cycle suivant plus efficace : plus l'agent dispose de garde-fous fiables, plus on peut lui déléguer de travail avec confiance.</p>
+            <p>La prochaine frontière : les <strong>tests UI avec Playwright</strong>. Une base existe déjà pour valider les scénarios critiques de l'Admin UI, mais elle est volontairement limitée. L'objectif est de la faire grandir de façon ordonnée, en s'appuyant sur les mêmes fondations — Docker, clean start, indépendance des tests — et les mêmes valeurs de pragmatisme acquises en cours de route. Pas de big bang, le même chemin incrémental.</p>
+
+            <div class="closing">
+                <p>La stratégie de test dans Ezkey suit un fil conducteur simple : commencer petit, valider vite, monter en complexité seulement quand c'est justifié. Chaque niveau de test a un rôle précis et complémentaire. Et l'ensemble forme un système où l'humain et l'agent collaborent avec une confiance fondée sur des vérifications concrètes — pas sur des suppositions.</p>
+                <p>C'est un cercle vertueux : plus les tests sont solides, plus l'autonomie est possible. Plus l'autonomie est possible, plus on investit dans les tests. Et c'est ce cercle qui rend un projet solo AI-first non seulement viable, mais productif.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>English:</strong> <a href="/testing-strategy.html">Same article in English</a></p>
+            <p class="doc-link-sibling"><strong>Voir aussi :</strong> <a href="/fr/ai-coding-manifesto.html">Manifeste — Le futur du codage est déjà là</a></p>
+            <p class="doc-link-sibling"><strong>Voir aussi :</strong> <a href="/fr/generative-ai-nocode-lowcode-parallel.html">Parallèle IA générative et No-Code / Low-Code</a></p>
+        </article>
+
+        <footer class="doc-footer">
+            <p>Ezkey · <a href="/fr/">ezkey.org/fr/</a></p>
+        </footer>
+    </div>
+</body>
+</html>
