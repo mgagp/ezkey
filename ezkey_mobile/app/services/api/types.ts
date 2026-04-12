@@ -1,3 +1,16 @@
+import type {
+  AuthAttemptPendingRequestDto,
+  AuthAttemptPendingResponseDto,
+  AuthAttemptRespondRequestDto,
+  AuthAttemptRespondResponseDto,
+  AuthAttemptRespondResponseDtoAuthAttemptResult,
+  EnrollmentBindRequestDto,
+  EnrollmentBindResponseDto,
+  EnrollmentVerifyRequestDto,
+  EnrollmentVerifyRequestDtoDevicePrivateKeyStorageTier,
+  EnrollmentVerifyResponseDto,
+} from './generated/auth-api/model';
+
 export type EnrollmentStatus = 'active' | 'pending';
 
 export type EnrollmentSummary = {
@@ -17,27 +30,14 @@ export type EnrollmentSummary = {
 
 export type BindEnrollmentRequest = {
   enrollmentId: string;
-  enrollmentProofToken: string;
+  enrollmentProofToken: EnrollmentBindRequestDto['enrollmentProofToken'];
 };
 
-export type BindEnrollmentResponse = {
-  enrollmentId: number | string;
-  enrollmentProofToken: string;
-  integrationPublicKey: string;
-  /** Phase 1: only `ed25519` (see docs/CRYPTO.md). Clients must validate before using the public key. */
-  integrationKeyAlgorithm: 'ed25519';
-  integrationName: string;
-  integrationDescription?: string;
-  enrollmentName?: string;
-  tenantId?: number;
-  tenantName?: string;
-  tenantDescription?: string;
-  /** Ed25519 over canonical bind payload (see ENROLLMENT_SIGNATURE_PAYLOAD.md) */
-  enrollmentBindPayloadSignedByIntegration: string;
-};
+export type BindEnrollmentResponse = EnrollmentBindResponseDto;
 
 /** Matches Auth API `devicePrivateKeyStorageTier` at enrollment verify. */
-export type DevicePrivateKeyStorageTier = 'NONE' | 'STANDARD' | 'STRONG';
+export type DevicePrivateKeyStorageTier =
+  EnrollmentVerifyRequestDtoDevicePrivateKeyStorageTier;
 
 /**
  * Request to complete enrollment verification (Auth API `EnrollmentVerifyRequestDto`).
@@ -47,43 +47,30 @@ export type DevicePrivateKeyStorageTier = 'NONE' | 'STANDARD' | 'STRONG';
 export type VerifyEnrollmentRequest = {
   enrollmentId: string;
   challengeResponse: string;
-  devicePublicKey: string;
-  enrollmentProofTokenSigned: string;
+  devicePublicKey: EnrollmentVerifyRequestDto['devicePublicKey'];
+  enrollmentProofTokenSigned: EnrollmentVerifyRequestDto['enrollmentProofTokenSigned'];
   /** Reported from native keystore introspection (Android); sent on verify so the server can persist tier. */
   devicePrivateKeyStorageTier?: DevicePrivateKeyStorageTier;
 };
 
-export type VerifyEnrollmentResponse = {
-  active: boolean;
-  enrollmentVerifyMessage: string;
-  enrollmentVerifyPayloadSignedByIntegration: string;
-};
+export type VerifyEnrollmentResponse = EnrollmentVerifyResponseDto;
 
 export type PendingAuthRequest = {
   enrollmentId: string | number;
-  enrollmentProofToken: string;
-  deviceProofToken: string;
-  deviceProofTokenSigned: string;
+  enrollmentProofToken: AuthAttemptPendingRequestDto['enrollmentProofToken'];
+  deviceProofToken: AuthAttemptPendingRequestDto['deviceProofToken'];
+  deviceProofTokenSigned: AuthAttemptPendingRequestDto['deviceProofTokenSigned'];
 };
 
-export type PendingAuthResponse = {
-  authAttemptId: string | number;
-  authAttemptProofToken: string;
-  authAttemptProofTokenSignedByIntegration: string;
-  authAttemptChallengeRequired: boolean;
-  /** Optional short title for the approval request (e.g. "Payment Approval"). */
-  contextTitle?: string;
-  /** Optional descriptive message for the approver. */
-  contextMessage?: string;
-};
+export type PendingAuthResponse = AuthAttemptPendingResponseDto;
 
 /** Values returned by Auth API for Respond authAttemptResult. */
-export type AuthAttemptDecision = 'APPROVED' | 'DENIED' | 'FAILED' | 'EXPIRED';
+export type AuthAttemptDecision = AuthAttemptRespondResponseDtoAuthAttemptResult;
 
 export type RespondAuthRequest = {
   authAttemptId: string | number;
-  authAttemptAccepted: boolean;
-  authAttemptProofTokenSignedByDevice: string;
+  authAttemptAccepted: AuthAttemptRespondRequestDto['authAttemptAccepted'];
+  authAttemptProofTokenSignedByDevice: AuthAttemptRespondRequestDto['authAttemptProofTokenSignedByDevice'];
   authAttemptChallengeResponse?: string | number;
 };
 
@@ -91,10 +78,4 @@ export type RespondAuthRequest = {
  * Respond HTTP response (Auth API). Matches Auth API AuthAttemptRespondResponseDto; integration signs
  * authAttemptProofTokenResultSignedByIntegration over the canonical result payload (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md).
  */
-export type RespondAuthResponse = {
-  authAttemptId: number;
-  authAttemptResult: AuthAttemptDecision;
-  authAttemptMessage: string;
-  /** Base64URL Ed25519 signature (raw 64 bytes); null only if the server could not sign (e.g. integration key unavailable). */
-  authAttemptProofTokenResultSignedByIntegration: string | null;
-};
+export type RespondAuthResponse = AuthAttemptRespondResponseDto;

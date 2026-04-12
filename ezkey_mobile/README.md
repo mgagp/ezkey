@@ -108,6 +108,8 @@ yarn android:bundle:release
 - The only supported way to refresh this file is the centralized update script at [`scripts/update-specs.sh`](../scripts/update-specs.sh) or [`scripts/update-specs.bat`](../scripts/update-specs.bat).
 - The expected workflow is human-driven: start the Docker stack cleanly, wait for the APIs to be up, then run the centralized spec update script to fetch, format, and dispatch the latest specs into each sub-project.
 - After the mobile spec has been refreshed, regenerate the local client with `yarn generate:api`.
+- The generated models under `app/services/api/generated/auth-api/model/` are the contract source of truth for Auth API DTOs.
+- `app/services/api/types.ts` is intentionally thin: it keeps local mobile domain types such as `EnrollmentSummary` and wrapper input shapes that still accept UI-friendly string values before normalization.
 - Coding assistants working in this project must follow the same rule: never hand-edit `openapi-spec.json`; always rely on the centralized update script and then regenerate.
 
 ### Install on your phone (standalone Android build)
@@ -169,6 +171,41 @@ yarn android
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 yarn android
 ```
+
+### When to suspect stale build or dependency artifacts
+
+Use a targeted reset early when all three of these are true:
+
+- the problem started after a branch switch, dependency change, or reinstall;
+- the crash is in React Native infrastructure code such as `react-native-screens`, `gesture-handler`, or another startup library;
+- the failure appears before the app reaches the Ezkey business flow you actually changed.
+
+In that situation, prefer a short rebuild-reset before a long investigation:
+
+```bash
+yarn install --immutable
+cd android
+./gradlew clean
+cd ..
+yarn android:install:debug
+```
+
+On Windows PowerShell, use:
+
+```powershell
+Set-Location android
+.\gradlew.bat clean
+Set-Location ..
+yarn android:install:debug
+```
+
+If the device still behaves inconsistently, uninstall the app before reinstalling:
+
+```bash
+adb uninstall com.ezkeymobile
+```
+
+This is the preferred first-line reset for mobile dependency/build drift. Do this before assuming a recent TypeScript or API-layer change caused a native startup regression.
 
 ## Native Modules Summary
 
