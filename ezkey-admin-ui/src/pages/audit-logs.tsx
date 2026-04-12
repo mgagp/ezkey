@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
@@ -52,6 +52,49 @@ import type {
   PagedModelAuditLogResponseDto,
   PagedModelAuditChainCheckpointResponseDto,
 } from '@/generated/admin-api/model';
+
+type AuditLogQueryParams = GetAuditLogsParams & {
+  authAttemptId?: number;
+  integrationId?: number;
+};
+type AuditEventStatusFilter = NonNullable<GetAuditLogsParams['eventStatus']> | '';
+type AuditApiNameFilter = NonNullable<GetAuditLogsParams['apiName']> | '';
+
+function parseEventStatusFilter(value: string | null | undefined): AuditEventStatusFilter {
+  if (value === 'SUCCESS' || value === 'FAILURE' || value === 'ERROR') {
+    return value;
+  }
+  return '';
+}
+
+function parseApiNameFilter(value: string | null | undefined): AuditApiNameFilter {
+  if (value === 'ADMIN_API' || value === 'AUTH_API' || value === 'INTEGRATION_API') {
+    return value;
+  }
+  return '';
+}
+
+function toDateInputValue(iso?: string | null): string {
+  if (!iso) {
+    return '';
+  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return '';
+  }
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getLast24HoursWindow(): { createdAfter: string; createdBefore: string } {
+  const now = new Date();
+  return {
+    createdAfter: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+    createdBefore: now.toISOString(),
+  };
+}
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 
@@ -1204,28 +1247,130 @@ export default function AuditLogsPage() {
   const { t } = useTranslation('audit-logs');
   const { session } = useAuth();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
-  const [eventFilter, setEventFilter] = useState('');
-  const [eventStatusFilter, setEventStatusFilter] = useState('');
-  const [apiNameFilter, setApiNameFilter] = useState('');
-  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [eventFilter, setEventFilter] = useState(() => searchParams.get('eventType') ?? '');
+  const [eventStatusFilter, setEventStatusFilter] = useState<AuditEventStatusFilter>(
+    () => parseEventStatusFilter(searchParams.get('eventStatus')),
+  );
+  const [apiNameFilter, setApiNameFilter] = useState<AuditApiNameFilter>(
+    () => parseApiNameFilter(searchParams.get('apiName')),
+  );
+  const [enrollmentFilter, setEnrollmentFilter] = useState(
+    () => searchParams.get('enrollmentId') ?? '',
+  );
+  const [authAttemptFilter, setAuthAttemptFilter] = useState(
+    () => searchParams.get('authAttemptId') ?? '',
+  );
+  const [integrationFilter, setIntegrationFilter] = useState(
+    () => searchParams.get('integrationId') ?? '',
+  );
+  const [contextSource, setContextSource] = useState(() => searchParams.get('source') ?? '');
+  const [dateRange, setDateRange] = useState(() => ({
+    from: toDateInputValue(searchParams.get('createdAfter')),
+    to: toDateInputValue(searchParams.get('createdBefore')),
+  }));
+  const [contextualDateRange, setContextualDateRange] = useState<{
+    createdAfter: string;
+    createdBefore: string;
+  } | null>(() => {
+    const createdAfter = searchParams.get('createdAfter');
+    const createdBefore = searchParams.get('createdBefore');
+    const source = searchParams.get('source');
+    const enrollmentId = searchParams.get('enrollmentId');
+    const authAttemptId = searchParams.get('authAttemptId');
+    const integrationId = searchParams.get('integrationId');
+
+    if (createdAfter && createdBefore) {
+      return { createdAfter, createdBefore };
+    }
+    if ((source === 'enrollment-detail' && enrollmentId)
+        || (source === 'auth-attempt-detail' && authAttemptId)
+        || (source === 'integration-detail' && integrationId)) {
+      return getLast24HoursWindow();
+    }
+    return null;
+  });
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const listApiDateParams =
-    dateRange.from && dateRange.to
+  const listApiDateParams = contextualDateRange
+    ? {
+        createdAfter: contextualDateRange.createdAfter,
+        createdBefore: contextualDateRange.createdBefore,
+      }
+    : dateRange.from && dateRange.to
       ? dateRangeToApiParams(dateRange.from, dateRange.to)
       : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
   const eventFilterParams = auditEventFilterToApiParams(eventFilter);
 
-  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuditLogResponseDto, GetAuditLogsParams>({
-    queryKey: ['audit-logs', eventFilter, eventStatusFilter, apiNameFilter, dateRange.from, dateRange.to],
+  useEffect(() => {
+    const next = new URLSearchParams();
+
+    if (eventFilter) {
+      next.set('eventType', eventFilter);
+    }
+    if (eventStatusFilter) {
+      next.set('eventStatus', eventStatusFilter);
+    }
+    if (apiNameFilter) {
+      next.set('apiName', apiNameFilter);
+    }
+    if (enrollmentFilter) {
+      next.set('enrollmentId', enrollmentFilter);
+    }
+    if (authAttemptFilter) {
+      next.set('authAttemptId', authAttemptFilter);
+    }
+    if (integrationFilter) {
+      next.set('integrationId', integrationFilter);
+    }
+    if (listApiDateParams.createdAfter && listApiDateParams.createdBefore) {
+      next.set('createdAfter', listApiDateParams.createdAfter);
+      next.set('createdBefore', listApiDateParams.createdBefore);
+    }
+    if (contextSource) {
+      next.set('source', contextSource);
+    }
+
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [
+    apiNameFilter,
+    authAttemptFilter,
+    contextSource,
+    enrollmentFilter,
+    eventFilter,
+    eventStatusFilter,
+    integrationFilter,
+    listApiDateParams.createdAfter,
+    listApiDateParams.createdBefore,
+    searchParams,
+    setSearchParams,
+  ]);
+
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuditLogResponseDto, AuditLogQueryParams>({
+    queryKey: [
+      'audit-logs',
+      eventFilter,
+      eventStatusFilter,
+      apiNameFilter,
+      enrollmentFilter,
+      authAttemptFilter,
+      integrationFilter,
+      listApiDateParams.createdAfter ?? '',
+      listApiDateParams.createdBefore ?? '',
+    ],
     baseParams: {
       ...eventFilterParams,
       eventStatus: eventStatusFilter || undefined,
       apiName: apiNameFilter || undefined,
+      enrollmentId: enrollmentFilter ? Number(enrollmentFilter) : undefined,
+      authAttemptId: authAttemptFilter ? Number(authAttemptFilter) : undefined,
+      integrationId: integrationFilter ? Number(integrationFilter) : undefined,
       createdAfter: listApiDateParams.createdAfter,
       createdBefore: listApiDateParams.createdBefore,
-    } as GetAuditLogsParams,
+    },
     fetchPage: (params) => getAuditLogs(params as GetAuditLogsParams) as Promise<PagedModelAuditLogResponseDto>,
   });
 
@@ -1338,6 +1483,39 @@ export default function AuditLogsPage() {
   return (
     <AppShell title={t('list.title')}>
       <div className="space-y-4">
+        {(enrollmentFilter || authAttemptFilter || integrationFilter) && (
+          <div className="flex flex-wrap items-center gap-2 border border-fg/20 bg-fg/[0.03] px-3 py-2 text-sm">
+            {enrollmentFilter && (
+              <span>{t('list.contextualEnrollment', { id: enrollmentFilter })}</span>
+            )}
+            {authAttemptFilter && (
+              <span>{t('list.contextualAuthAttempt', { id: authAttemptFilter })}</span>
+            )}
+            {integrationFilter && (
+              <span>{t('list.contextualIntegration', { id: integrationFilter })}</span>
+            )}
+            {(contextSource === 'enrollment-detail'
+                || contextSource === 'auth-attempt-detail'
+                || contextSource === 'integration-detail')
+                && contextualDateRange && (
+              <span className="text-fg-muted">{t('list.contextualEnrollmentWindow')}</span>
+            )}
+            <button
+              type="button"
+              className="ml-auto text-xs font-medium text-accent underline hover:text-accent/80"
+              onClick={() => {
+                setEnrollmentFilter('');
+                setAuthAttemptFilter('');
+                setIntegrationFilter('');
+                setContextSource('');
+                setContextualDateRange(null);
+                setDateRange({ from: '', to: '' });
+              }}
+            >
+              {t('list.clearContextualFilter')}
+            </button>
+          </div>
+        )}
 
         {/* Filter bar */}
         <div className="flex gap-3 items-center flex-wrap">
@@ -1359,7 +1537,10 @@ export default function AuditLogsPage() {
             </Select>
           </div>
           <div className="min-w-[10rem] w-40">
-            <Select value={eventStatusFilter} onChange={(e) => setEventStatusFilter(e.target.value)}>
+            <Select
+              value={eventStatusFilter}
+              onChange={(e) => setEventStatusFilter(parseEventStatusFilter(e.target.value))}
+            >
               <option value="">{t('list.filterStatusAll')}</option>
               <option value="SUCCESS">{t('list.filterStatusSuccess')}</option>
               <option value="FAILURE">{t('list.filterStatusFailure')}</option>
@@ -1367,14 +1548,26 @@ export default function AuditLogsPage() {
             </Select>
           </div>
           <div className="w-36">
-            <Select value={apiNameFilter} onChange={(e) => setApiNameFilter(e.target.value)}>
+            <Select
+              value={apiNameFilter}
+              onChange={(e) => setApiNameFilter(parseApiNameFilter(e.target.value))}
+            >
               <option value="">{t('list.filterApiAll')}</option>
               <option value="ADMIN_API">{t('list.filterApiAdmin')}</option>
               <option value="AUTH_API">{t('list.filterApiAuth')}</option>
               <option value="INTEGRATION_API">{t('list.filterApiIntegration')}</option>
             </Select>
           </div>
-          <DateRangeFilter value={dateRange} onChange={setDateRange} showClear={true} emptyOptionLabel={t('list.dateRangeFull')} />
+          <DateRangeFilter
+            value={dateRange}
+            onChange={(next) => {
+              setDateRange(next);
+              setContextualDateRange(null);
+              setContextSource('');
+            }}
+            showClear={true}
+            emptyOptionLabel={t('list.dateRangeFull')}
+          />
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5 ml-auto">
             <ShieldCheck className="size-3.5" />
             {t('list.refresh')}

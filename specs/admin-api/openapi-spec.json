@@ -4106,6 +4106,26 @@
             }
           },
           {
+            "name": "authAttemptId",
+            "in": "query",
+            "description": "Filter by auth attempt ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "integrationId",
+            "in": "query",
+            "description": "Filter by integration ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
             "name": "adminId",
             "in": "query",
             "description": "Filter by admin ID (actor)",

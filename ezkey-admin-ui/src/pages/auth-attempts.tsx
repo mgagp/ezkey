@@ -47,6 +47,7 @@ function AttemptDetailDialog({
 }) {
   const { t } = useTranslation('auth-attempts');
   const { t: tc } = useTranslation('common');
+  const navigate = useNavigate();
 
   useDetailNavigation(attempt !== null && showNav, {
     hasPrev: hasPrev && showNav,
@@ -93,15 +94,21 @@ function AttemptDetailDialog({
             {tc('detailNav.endOfPageMore')}
           </p>
         )}
-        {relatedDetails.hasAnyFk && (
-          <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => navigate(`/audit-logs?authAttemptId=${attempt.authAttemptId}&source=auth-attempt-detail`)}
+          >
+            {t('detail.viewRelatedAudits')}
+          </Button>
+          {relatedDetails.hasAnyFk && (
             <RelatedDetailsButton
               onClick={relatedDetails.expand}
               isExpanded={relatedDetails.isExpanded}
               isLoading={relatedDetails.isLoading}
             />
-          </div>
-        )}
+          )}
+        </div>
         <dl className="space-y-3">
           <InfoRow label={t('detail.labelId')}><span className="font-mono">{attempt.authAttemptId}</span></InfoRow>
           <InfoRow label={t('detail.labelStatus')}><AuthAttemptStatusBadge status={attempt.authAttemptStatus} /></InfoRow>

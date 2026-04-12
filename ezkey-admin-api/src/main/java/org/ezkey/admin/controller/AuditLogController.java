@@ -166,6 +166,7 @@ public class AuditLogController {
    * @param eventStatus optional event status filter
    * @param apiName optional API name filter
    * @param enrollmentId optional enrollment ID filter
+   * @param integrationId optional integration ID filter
    * @param adminId optional admin ID filter (actor who performed the action)
    * @param targetAdminId optional target admin ID filter (admin who is the subject of the event,
    *     e.g. created, deactivated, or activated)
@@ -210,6 +211,10 @@ public class AuditLogController {
           ApiName apiName,
       @Parameter(description = "Filter by enrollment ID") @RequestParam(required = false)
           Integer enrollmentId,
+      @Parameter(description = "Filter by auth attempt ID") @RequestParam(required = false)
+          Integer authAttemptId,
+      @Parameter(description = "Filter by integration ID") @RequestParam(required = false)
+          Integer integrationId,
       @Parameter(description = "Filter by admin ID (actor)") @RequestParam(required = false)
           Integer adminId,
       @Parameter(
@@ -256,6 +261,8 @@ public class AuditLogController {
                 eventStatus,
                 apiName,
                 enrollmentId,
+                authAttemptId,
+                integrationId,
                 adminId,
                 targetAdminId,
                 requesterTenantId,

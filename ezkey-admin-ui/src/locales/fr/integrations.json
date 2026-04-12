@@ -52,6 +52,7 @@
     "integrationDetails": "Détails de l'intégration",
     "actions": "Actions",
     "viewAllEnrollments": "Voir tous les enrôlements",
+    "viewRelatedAudits": "Voir les audits liés",
     "createApiKey": "Créer une clé API",
     "enrollmentsSectionTitle": "Enrôlements pour cette intégration",
     "newEnrollment": "Nouvel enrôlement",

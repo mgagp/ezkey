@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, Eye, EyeOff, Pencil, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, ListOrdered, Pencil, Power, PowerOff, QrCode, ShieldOff, Trash2, Zap } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
@@ -665,17 +665,31 @@ export default function EnrollmentDetailPage() {
 
         {/* Test Auth */}
         <div className="flex items-center justify-end">
-          {enrollment?.enrollmentStatus === 'VERIFIED' && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setTestAuthOpen(true)}
-              className="gap-1.5"
-            >
-              <Zap className="size-3.5" />
-              {t('detail.testAuthentication')}
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {enrollment && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => navigate(`/audit-logs?enrollmentId=${enrollment.enrollmentId}&source=enrollment-detail`)}
+                className="gap-1.5"
+              >
+                <ListOrdered className="size-3.5" />
+                {t('detail.viewRelatedAudits')}
+              </Button>
+            )}
+            {enrollment?.enrollmentStatus === 'VERIFIED' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setTestAuthOpen(true)}
+                className="gap-1.5"
+              >
+                <Zap className="size-3.5" />
+                {t('detail.testAuthentication')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {isLoading && (

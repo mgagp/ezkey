@@ -5,6 +5,10 @@
  */
 
 import type { AuditEventTypeKey } from '@/lib/audit-event-type';
+import type {
+  GetAuditLogsEventType,
+  GetAuditLogsEventTypeFamily,
+} from '@/generated/admin-api/model';
 
 /** Wire values for GET /api/v1/audit-logs?eventTypeFamily= */
 export const EVENT_TYPE_FAMILY_KEYS = [
@@ -131,14 +135,14 @@ const FAMILY_KEY_SET = new Set<string>(EVENT_TYPE_FAMILY_KEYS);
  * concrete `eventType` enum names.
  */
 export function auditEventFilterToApiParams(selected: string): {
-  eventType?: string;
-  eventTypeFamily?: AuditEventTypeFamilyKey;
+  eventType?: GetAuditLogsEventType;
+  eventTypeFamily?: GetAuditLogsEventTypeFamily;
 } {
   if (selected === '') {
     return {};
   }
   if (FAMILY_KEY_SET.has(selected)) {
-    return { eventTypeFamily: selected as AuditEventTypeFamilyKey };
+    return { eventTypeFamily: selected as GetAuditLogsEventTypeFamily };
   }
-  return { eventType: selected };
+  return { eventType: selected as GetAuditLogsEventType };
 }

@@ -151,6 +151,8 @@ public class AuditLogService {
    * @param eventStatus optional event status filter
    * @param apiName optional API name filter
    * @param enrollmentId optional enrollment ID filter
+   * @param authAttemptId optional auth attempt ID filter
+   * @param integrationId optional integration ID filter
    * @param adminId optional admin ID filter (actor who performed the action)
    * @param targetAdminId optional target admin ID filter (admin who is the subject of the event,
    *     e.g. created, deactivated, or activated)
@@ -170,6 +172,8 @@ public class AuditLogService {
       EventStatus eventStatus,
       ApiName apiName,
       Integer enrollmentId,
+      Integer authAttemptId,
+      Integer integrationId,
       Integer adminId,
       Integer targetAdminId,
       Integer requesterTenantId,
@@ -206,6 +210,14 @@ public class AuditLogService {
 
           if (enrollmentId != null) {
             predicates.add(cb.equal(root.get("enrollmentId"), enrollmentId));
+          }
+
+          if (authAttemptId != null) {
+            predicates.add(cb.equal(root.get("authAttemptId"), authAttemptId));
+          }
+
+          if (integrationId != null) {
+            predicates.add(cb.equal(root.get("integrationId"), integrationId));
           }
 
           if (adminId != null) {

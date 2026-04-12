@@ -83,6 +83,8 @@ class AuditLogControllerGetAuditLogsTest {
                     null,
                     null,
                     null,
+                    null,
+                    null,
                     pageable));
     assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
   }
@@ -103,11 +105,25 @@ class AuditLogControllerGetAuditLogsTest {
             isNull(),
             isNull(),
             isNull(),
+            isNull(),
+            isNull(),
             eq(pageable)))
         .thenReturn(new PageImpl<>(java.util.List.of()));
 
     controller.getAuditLogs(
-        null, EventTypeFamily.ENROLLMENT, null, null, null, null, null, null, null, null, pageable);
+        null,
+        EventTypeFamily.ENROLLMENT,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        pageable);
 
     ArgumentCaptor<EventTypeFamily> familyCaptor = ArgumentCaptor.forClass(EventTypeFamily.class);
     verify(auditLogService)
@@ -123,7 +139,93 @@ class AuditLogControllerGetAuditLogsTest {
             isNull(),
             isNull(),
             isNull(),
+            isNull(),
+            isNull(),
             eq(pageable));
     assertEquals(EventTypeFamily.ENROLLMENT, familyCaptor.getValue());
+  }
+
+  @Test
+  @DisplayName("getAuditLogs passes integrationId to service")
+  void getAuditLogs_passesIntegrationId() {
+    Pageable pageable = PageRequest.of(0, 20);
+    when(auditLogService.findByFilters(
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(42),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(pageable)))
+        .thenReturn(new PageImpl<>(java.util.List.of()));
+
+    controller.getAuditLogs(
+        null, null, null, null, null, null, 42, null, null, null, null, null, pageable);
+
+    verify(auditLogService)
+        .findByFilters(
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(42),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(pageable));
+  }
+
+  @Test
+  @DisplayName("getAuditLogs passes authAttemptId to service")
+  void getAuditLogs_passesAuthAttemptId() {
+    Pageable pageable = PageRequest.of(0, 20);
+    when(auditLogService.findByFilters(
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(77),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(pageable)))
+        .thenReturn(new PageImpl<>(java.util.List.of()));
+
+    controller.getAuditLogs(
+        null, null, null, null, null, 77, null, null, null, null, null, null, pageable);
+
+    verify(auditLogService)
+        .findByFilters(
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(77),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq(pageable));
   }
 }
