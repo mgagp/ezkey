@@ -18,9 +18,10 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
             overflow-x: hidden;
+            padding: 36px 0 56px;
         }
 
         .container {
@@ -205,27 +206,133 @@ div.logo-container div.logo svg {
             line-height: 1.5;
         }
 
-        .coming-soon {
+        .home-panel {
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(15px);
-            padding: 40px;
+            padding: 36px 40px 40px;
             border-radius: 25px;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            margin-bottom: 40px;
+            margin-bottom: 32px;
+            text-align: left;
             animation: slideInUp 1s ease-out 0.8s both;
         }
 
-        .coming-soon h2 {
-            color: white;
-            font-size: 2rem;
-            margin-bottom: 15px;
-            font-weight: 600;
+        .section-eyebrow {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
         }
 
-        .coming-soon p {
+        .home-panel h2 {
+            color: white;
+            font-size: 1.75rem;
+            margin-bottom: 18px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.25;
+        }
+
+        .home-panel .updates-intro {
             color: rgba(255, 255, 255, 0.9);
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             line-height: 1.6;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .home-panel .pub-intro {
+            margin-bottom: 20px;
+        }
+
+        .update-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .update-entry {
+            padding: 16px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .update-entry:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .update-entry:last-child {
+            padding-bottom: 0;
+        }
+
+        .update-date {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.65);
+            margin-bottom: 8px;
+            letter-spacing: 0.02em;
+        }
+
+        .update-text {
+            color: rgba(255, 255, 255, 0.92);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .publication-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+            margin-top: 8px;
+        }
+
+        .pub-card {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 22px 22px 20px;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+        }
+
+        .pub-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .pub-card-title {
+            font-size: 1.08rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 8px;
+            line-height: 1.35;
+        }
+
+        .pub-card-desc {
+            font-size: 0.92rem;
+            color: rgba(255, 255, 255, 0.78);
+            line-height: 1.5;
+            margin-bottom: 14px;
+            flex: 1;
+        }
+
+        .pub-card-cta {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
         }
 
         .pulse {
@@ -241,6 +348,7 @@ div.logo-container div.logo svg {
         .footer {
             color: rgba(255, 255, 255, 0.6);
             font-size: 0.9rem;
+            margin-top: 8px;
             animation: slideInUp 1s ease-out 1s both;
         }
 
@@ -315,6 +423,14 @@ div.logo-container div.logo svg {
             
             .container {
                 padding: 20px;
+            }
+
+            .home-panel {
+                padding: 28px 20px 32px;
+            }
+
+            .home-panel h2 {
+                font-size: 1.45rem;
             }
         }
 
@@ -695,24 +811,46 @@ div.logo-container div.logo svg {
             </div>
         </div>
 
-        <div class="coming-soon">
-            <h2><span class="pulse"></span>Coming Soon</h2>
-            <p>
+        <div class="home-panel">
+            <span class="section-eyebrow">Build status</span>
+            <h2><span class="pulse"></span>Product updates</h2>
+            <p class="updates-intro">
                 We’re still building. The goal is simple: make secure authentication easier for backend teams to adopt and operate — closer to integrating a well-documented API than to fighting your stack.
             </p>
-			</br>
-            <p>
-                February 2026 update... Building an authentication system is challeging!
-				Making it safe and reliable is hard!
-				EZKey will be released in phases, the first will be in the coming months.
-				It will be a technology preview, meaning that it will show the potential of the system but will NOT be production ready.
+            <ul class="update-list">
+                <li class="update-entry">
+                    <span class="update-date">February 2026</span>
+                    <div class="update-text">
+                        Building an authentication system is challenging. Making it safe and reliable is harder. Ezkey will ship in phases; the first is due in the coming months. It will be a technology preview: it will show what the system can do, but it will <strong>not</strong> be production-ready.
+                    </div>
+                </li>
+                <li class="update-entry">
+                    <span class="update-date">March 2026</span>
+                    <div class="update-text">
+                        The admin UI is about 90% complete. The mobile app is being rewritten, and the crypto APIs are under review. QA is getting more thorough and surfacing many issues to fix before a release. Progress is steady, and the product is starting to take shape.
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="home-panel">
+            <span class="section-eyebrow">Writing</span>
+            <h2>Articles &amp; notes</h2>
+            <p class="updates-intro pub-intro">
+                Longer pieces on engineering practice and AI-assisted development — independent of the product roadmap above.
             </p>
-			</br>
-			<p>
-				March 2026 update — The admin UI is about 90% complete. The mobile application is currently being rewritten, and the crypto APIs are under review.
-QA is becoming more thorough and is uncovering a lot of issues that need to be addressed before considering a release.
-That said, progress is steady, and the product is really starting to take shape.
-			</p>
+            <div class="publication-grid">
+                <a class="pub-card" href="/ai-coding-manifesto.html">
+                    <span class="pub-card-title">AI coding manifesto</span>
+                    <span class="pub-card-desc">The future of coding is already here: boundaries, Docker, tests, and how the developer role shifts.</span>
+                    <span class="pub-card-cta">Read</span>
+                </a>
+                <a class="pub-card" href="/generative-ai-nocode-lowcode-parallel.html">
+                    <span class="pub-card-title">Generative AI and No-Code / Low-Code</span>
+                    <span class="pub-card-desc">A parallel between the No-Code era and today’s AI coding tools — specs, lock-in, and hybrid documentation.</span>
+                    <span class="pub-card-cta">Read</span>
+                </a>
+            </div>
         </div>
 
         <div class="footer">

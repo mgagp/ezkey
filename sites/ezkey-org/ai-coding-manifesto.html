@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/ai-coding-manifesto.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/ai-coding-manifesto.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/ai-coding-manifesto.html">
+    <title>Manifesto — The Future of Coding Is Already Here — Ezkey</title>
+    <meta name="description" content="Manifesto: developer-as-architect paradigm, Docker, test pyramid, boundaries and vertical slices, working cycle with coding agents.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.65;
+        }
+
+        .shell {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        .nav-top {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .nav-top a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: underline;
+        }
+
+        .nav-top a:hover {
+            color: #fff;
+        }
+
+        article {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+            padding: 40px 36px 48px;
+            text-align: left;
+        }
+
+        @media (max-width: 600px) {
+            article { padding: 28px 20px 36px; }
+        }
+
+        .doc-meta {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 16px;
+        }
+
+        .hero-title {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .hero-title .label {
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .hero-title h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #111;
+            line-height: 1.25;
+            margin: 0 0 12px;
+            border: none;
+            padding: 0;
+        }
+
+        .hero-title .tagline {
+            font-size: 1.05rem;
+            color: #444;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #222;
+            margin: 28px 0 12px;
+        }
+
+        h2:first-of-type {
+            margin-top: 12px;
+        }
+
+        h3 {
+            font-size: 1.02rem;
+            font-weight: 600;
+            color: #333;
+            margin: 18px 0 10px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            font-size: 0.98rem;
+        }
+
+        ul {
+            margin: 10px 0 14px 1.25rem;
+        }
+
+        li {
+            margin-bottom: 8px;
+            font-size: 0.98rem;
+        }
+
+        .pull-quote {
+            margin: 16px 0;
+            padding: 14px 18px;
+            background: #f8f9ff;
+            border-left: 4px solid #764ba2;
+            font-size: 0.98rem;
+        }
+
+        table.comparison {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0 20px;
+            font-size: 0.92rem;
+        }
+
+        table.comparison th,
+        table.comparison td {
+            border: 1px solid #dde1ee;
+            padding: 10px 12px;
+            vertical-align: top;
+        }
+
+        table.comparison thead th {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+            font-weight: 700;
+            text-align: center;
+        }
+
+        table.comparison tbody td:first-child {
+            font-weight: 600;
+            color: #3d3d55;
+            width: 42%;
+        }
+
+        .test-pyramid {
+            margin: 18px 0 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .test-pyramid .layer {
+            width: 100%;
+            max-width: 520px;
+            padding: 10px 14px;
+            border: 1px solid #c8cfe8;
+            background: #fafbff;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .test-pyramid .layer strong {
+            display: block;
+            color: #2d2d44;
+            margin-bottom: 4px;
+        }
+
+        .test-pyramid .layer span.hint {
+            font-size: 0.82rem;
+            color: #555;
+        }
+
+        .test-pyramid .layer.l1 { border-radius: 8px 8px 0 0; max-width: 38%; min-width: 200px; }
+        .test-pyramid .layer.l2 { max-width: 52%; min-width: 240px; }
+        .test-pyramid .layer.l3 { max-width: 68%; min-width: 280px; }
+        .test-pyramid .layer.l4 { border-radius: 0 0 8px 8px; max-width: 100%; }
+
+        .flow-steps {
+            margin: 16px 0 20px;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .flow-steps li {
+            position: relative;
+            padding: 10px 12px 10px 14px;
+            margin-bottom: 0;
+            background: #f4f6ff;
+            border: 1px solid #dde3ff;
+            font-size: 0.95rem;
+        }
+
+        .flow-steps li:not(:last-child) {
+            margin-bottom: 8px;
+        }
+
+        .flow-steps li:not(:last-child)::after {
+            content: "↓";
+            display: block;
+            text-align: center;
+            color: #667eea;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin: 6px 0 2px;
+        }
+
+        .start-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 12px 16px;
+            margin: 16px 0 8px;
+            align-items: start;
+        }
+
+        .start-grid .num {
+            font-weight: 800;
+            color: #667eea;
+            font-size: 1rem;
+            min-width: 2rem;
+        }
+
+        .start-grid .block strong {
+            display: block;
+            color: #222;
+            margin-bottom: 4px;
+        }
+
+        .start-grid .block {
+            font-size: 0.95rem;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .start-grid .block:last-of-type {
+            border-bottom: none;
+        }
+
+        .closing {
+            margin-top: 24px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .closing p {
+            margin-bottom: 10px;
+        }
+
+        .closing p:last-child {
+            margin-bottom: 0;
+            font-weight: 600;
+            color: #2d2d44;
+        }
+
+        .doc-link-sibling {
+            margin-top: 14px;
+            font-size: 0.92rem;
+        }
+
+        .doc-link-sibling:first-of-type {
+            margin-top: 18px;
+        }
+
+        .doc-link-sibling a {
+            color: #4a56c4;
+        }
+
+        footer.doc-footer {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.75);
+            text-align: center;
+        }
+
+        footer.doc-footer a {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        @media print {
+            body { background: #fff; }
+            .shell { max-width: none; padding: 0; }
+            .nav-top, footer.doc-footer, .doc-link-sibling { display: none; }
+            article { box-shadow: none; border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top">
+            <a href="/">English home</a>
+            · <a href="/fr/">Accueil (français)</a>
+        </p>
+
+        <article>
+            <p class="doc-meta">Document</p>
+
+            <header class="hero-title">
+                <p class="label">Manifesto</p>
+                <h1>The future of coding<br>is already here</h1>
+                <p class="tagline">It’s not a dream. It’s a decision.</p>
+            </header>
+
+            <h2>01 — The reality</h2>
+            <p>AI-assisted coding is no longer a demo toy or a vague promise. Companies are doing exactly that — at industrial scale, on legacy production codebases — today.</p>
+            <p>Stripe has documented it publicly with end-to-end coding agents (Minions). Experienced developer teams discuss it openly. It’s no longer science fiction. It’s a bold choice. And it’s available now.</p>
+            <div class="pull-quote">
+                The real question isn’t “Does it work?” — the real question is: “Are we ready to change paradigms?”
+            </div>
+
+            <h2>02 — The paradigm shift</h2>
+            <p><strong>The old model:</strong> the developer is the coding machine.</p>
+            <p><strong>The new model:</strong> the developer is the brain directing the machine.</p>
+
+            <table class="comparison">
+                <thead>
+                    <tr>
+                        <th scope="col">Before</th>
+                        <th scope="col">After</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>I write code</td>
+                        <td>I define what must be coded</td>
+                    </tr>
+                    <tr>
+                        <td>I debug</td>
+                        <td>I verify that success criteria are met</td>
+                    </tr>
+                    <tr>
+                        <td>I figure out how to do it</td>
+                        <td>I decide what to do and why</td>
+                    </tr>
+                    <tr>
+                        <td>I’m deep in implementation</td>
+                        <td>I’m the architect, analyst, product owner</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>Humans become 100% focused on:</p>
+            <ul>
+                <li>precise, unambiguous requirements;</li>
+                <li>technical and functional constraints;</li>
+                <li>goals and non-goals;</li>
+                <li>critical review of plans and produced code;</li>
+                <li>detailed success criteria before a single line is written.</li>
+            </ul>
+
+            <h2>03 — How it works in practice</h2>
+
+            <h3>Docker as a guaranteed clean room</h3>
+            <p>No more “works on my machine.” The build lives in Docker — a build tuned specifically for Docker that delivers a clean environment every time. <code>docker-compose up</code> means full environment, clean build, tests running.</p>
+            <p>Full sandboxing so the agent can operate with real operational autonomy: test, break, retry — without risk to the real environment.</p>
+
+            <h3>The test pyramid as a safety net</h3>
+            <div class="test-pyramid" role="img" aria-label="Test pyramid, top to bottom">
+                <div class="layer l1">
+                    <strong>Operational tests</strong>
+                    <span class="hint">← Concurrent scenarios, continuously</span>
+                </div>
+                <div class="layer l2">
+                    <strong>Elective tests</strong>
+                    <span class="hint">← Special cases / slower runs</span>
+                </div>
+                <div class="layer l3">
+                    <strong>Functional tests</strong>
+                    <span class="hint">← End-to-end APIs, sequential</span>
+                </div>
+                <div class="layer l4">
+                    <strong>Unit tests</strong>
+                    <span class="hint">← First line of defense: cheap &amp; fast</span>
+                </div>
+            </div>
+            <p>For every area of code we touch → we first write characterization tests of existing behavior. The agent doesn’t code in a vacuum; it codes under supervision.</p>
+
+            <h3>A living documentation base</h3>
+            <p>The agent needs context. That context lives in the repository:</p>
+            <ul>
+                <li><strong>AGENTS.md</strong> — strong rules, documented patterns, known pitfalls;</li>
+                <li><strong>PAYMENT_PROCESS.md</strong> — structured, traceable work plan;</li>
+                <li>module- or domain-specific directives.</li>
+            </ul>
+            <p>This isn’t documentation for documentation’s sake. It’s the working contract between human and agent. The more precise that contract, the more effective the agent.</p>
+
+            <h2>04 — The structuring principle: boundaries</h2>
+            <p>A coding agent is only as good as the context you give it. Its context window has real limits — cognitive and physical. This is where the human architect plays an irreplaceable role.</p>
+
+            <h3>The trap: horizontal coding</h3>
+            <p>Changing serialization strategy across 12 modules, refactoring a cross-cutting pattern across the whole codebase — these are horizontal efforts. They dilute the agent’s context to the breaking point. It loses the thread, produces inconsistencies, misses side effects.</p>
+
+            <h3>The alternative: bounded vertical slices</h3>
+            <p>Working on a well-defined vertical — payment flow from API to DB, authentication from validation to token — lets the agent hold the whole problem in mind. It operates in a closed world where every piece is visible, dependencies are known, and side effects are containable.</p>
+            <p>The boundary isn’t a constraint — it’s a success condition. A sovereign agent in a well-bounded world produces coherent, tested code. An agent drowning in a cross-cutting effort produces noise.</p>
+            <p>This split into integrated verticals isn’t new — it’s what DDD (Domain-Driven Design) calls <em>bounded contexts</em>. What’s new is that these boundaries become the agent’s unit of work.</p>
+            <p>Defining those boundaries is the architect’s job. It’s hard, intentional, and demands deep domain knowledge. That’s precisely why it’s human work you don’t delegate away.</p>
+
+            <h2>05 — What changes: the new cycle</h2>
+            <p>The IDE becomes a code review and quality validation tool — navigate fast, critique, question, draft targeted improvement plans. Not a production tool.</p>
+            <ol class="flow-steps">
+                <li>Define intent clearly</li>
+                <li>Document constraints and success criteria</li>
+                <li>Delegate to the agent + Docker sandboxing</li>
+                <li>Review produced code (intent vs reality)</li>
+                <li>Iterate if needed</li>
+                <li>Validate: functional tests + full stack</li>
+            </ol>
+
+            <h2>06 — Why now?</h2>
+            <p>Because the competitive advantage window is open <em>now</em>. Companies adopting this paradigm compound velocity. Those who wait compound lag.</p>
+            <p>We already have the ingredients:</p>
+            <ul>
+                <li>a codebase we understand;</li>
+                <li>existing Docker infrastructure;</li>
+                <li>testing tooling in place;</li>
+                <li>coding agents that can work on legacy code.</li>
+            </ul>
+            <p>What’s missing is the decision and discipline to operate differently.</p>
+
+            <h2>07 — The future we can build</h2>
+            <p>Every team member becomes a mini product owner for their area of responsibility:</p>
+            <ul>
+                <li>lead analyst for their domain;</li>
+                <li>architect of design decisions;</li>
+                <li>project lead for coding agents;</li>
+                <li>guardian of quality through review and tests.</li>
+            </ul>
+            <p>It’s not less work. It’s different work — more strategic, higher impact, closer to the real value we ship.</p>
+            <p>Potential velocity is unprecedented. Human cost per shipped feature collapses. Quality rises because human brains focus where they add the most value.</p>
+
+            <h2>08 — Where to start</h2>
+            <div class="start-grid">
+                <div class="num">01</div>
+                <div class="block">
+                    <strong>Adopt Docker</strong>
+                    Clean build every time, tests included
+                </div>
+                <div class="num">02</div>
+                <div class="block">
+                    <strong>Start documentation</strong>
+                    AGENTS.md, work plans, explicit rules
+                </div>
+                <div class="num">03</div>
+                <div class="block">
+                    <strong>Characterization tests</strong>
+                    On every area of code you touch
+                </div>
+                <div class="num">04</div>
+                <div class="block">
+                    <strong>Success criteria first</strong>
+                    Define before coding — not after
+                </div>
+                <div class="num">05</div>
+                <div class="block">
+                    <strong>Trust the agent</strong>
+                    Focus human energy on review
+                </div>
+            </div>
+
+            <div class="closing">
+                <p>It’s demanding. Getting started takes real investment.</p>
+                <p>But the trajectory is clear: every effort invested in this paradigm compounds — docs, tests, and rules accumulate and make the next iterations exponentially faster.</p>
+                <p>Moving now means choosing sustainable velocity.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>French:</strong> <a href="/fr/ai-coding-manifesto.html">Same manifesto in French</a></p>
+            <p class="doc-link-sibling"><strong>See also:</strong> <a href="/generative-ai-nocode-lowcode-parallel.html">Generative AI and No-Code / Low-Code (analysis)</a></p>
+        </article>
+
+        <footer class="doc-footer">
+            <p>Ezkey · <a href="/">ezkey.org</a></p>
+        </footer>
+    </div>
+</body>
+</html>
