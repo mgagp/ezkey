@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/from-code-to-intent-ai-workflow.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/from-code-to-intent-ai-workflow.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/from-code-to-intent-ai-workflow.html">
+    <title>Du code à l'intention — Un an de workflow avec l'IA sur un projet open source — Ezkey</title>
+    <meta name="description" content="Retour d'expérience : comment le workflow de développement avec assistance IA évolue d'un codage brut vers un rôle d'architecte, d'analyste et de product owner.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.65;
+        }
+
+        .shell {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        .nav-top {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .nav-top a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: underline;
+        }
+
+        .nav-top a:hover {
+            color: #fff;
+        }
+
+        article {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+            padding: 40px 36px 48px;
+            text-align: left;
+        }
+
+        @media (max-width: 600px) {
+            article { padding: 28px 20px 36px; }
+        }
+
+        .doc-meta {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 16px;
+        }
+
+        .hero-title {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .hero-title .label {
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .hero-title h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #111;
+            line-height: 1.25;
+            margin: 0 0 12px;
+            border: none;
+            padding: 0;
+        }
+
+        .hero-title .tagline {
+            font-size: 1.05rem;
+            color: #444;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .hero-title .kicker {
+            font-size: 0.98rem;
+            color: #555;
+            font-style: italic;
+        }
+
+        h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #222;
+            margin: 28px 0 12px;
+        }
+
+        h2:first-of-type {
+            margin-top: 12px;
+        }
+
+        h3 {
+            font-size: 1.02rem;
+            font-weight: 600;
+            color: #333;
+            margin: 18px 0 10px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            font-size: 0.98rem;
+        }
+
+        ul, ol {
+            margin: 10px 0 14px 1.25rem;
+        }
+
+        li {
+            margin-bottom: 8px;
+            font-size: 0.98rem;
+        }
+
+        code {
+            font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', 'Roboto Mono', monospace;
+            background: #f0f2ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .pull-quote {
+            margin: 16px 0;
+            padding: 14px 18px;
+            background: #f8f9ff;
+            border-left: 4px solid #764ba2;
+            font-size: 0.98rem;
+        }
+
+        table.comparison {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0 20px;
+            font-size: 0.92rem;
+        }
+
+        table.comparison th,
+        table.comparison td {
+            border: 1px solid #dde1ee;
+            padding: 10px 12px;
+            vertical-align: top;
+        }
+
+        table.comparison thead th {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+            font-weight: 700;
+            text-align: center;
+        }
+
+        table.comparison tbody td:first-child {
+            font-weight: 600;
+            color: #3d3d55;
+            width: 42%;
+        }
+
+        .elevation-stack {
+            margin: 18px 0 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .elevation-stack .level {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #c8cfe8;
+            background: #fafbff;
+            text-align: center;
+            font-size: 0.92rem;
+        }
+
+        .elevation-stack .level strong {
+            display: block;
+            color: #2d2d44;
+            margin-bottom: 2px;
+        }
+
+        .elevation-stack .level span.hint {
+            font-size: 0.82rem;
+            color: #555;
+        }
+
+        .elevation-stack .level.e1 { border-radius: 8px 8px 0 0; max-width: 38%; min-width: 200px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.10) 0%, rgba(118, 75, 162, 0.10) 100%); }
+        .elevation-stack .level.e2 { max-width: 52%; min-width: 240px; }
+        .elevation-stack .level.e3 { max-width: 68%; min-width: 280px; }
+        .elevation-stack .level.e4 { border-radius: 0 0 8px 8px; max-width: 100%; }
+
+        .flow-steps {
+            margin: 16px 0 20px;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .flow-steps li {
+            position: relative;
+            padding: 10px 12px 10px 14px;
+            margin-bottom: 0;
+            background: #f4f6ff;
+            border: 1px solid #dde3ff;
+            font-size: 0.95rem;
+        }
+
+        .flow-steps li:not(:last-child) {
+            margin-bottom: 8px;
+        }
+
+        .flow-steps li:not(:last-child)::after {
+            content: "\2193";
+            display: block;
+            text-align: center;
+            color: #667eea;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin: 6px 0 2px;
+        }
+
+        .closing {
+            margin-top: 24px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .closing p {
+            margin-bottom: 10px;
+        }
+
+        .closing p:last-child {
+            margin-bottom: 0;
+            font-weight: 600;
+            color: #2d2d44;
+        }
+
+        .doc-link-sibling {
+            margin-top: 14px;
+            font-size: 0.92rem;
+        }
+
+        .doc-link-sibling:first-of-type {
+            margin-top: 18px;
+        }
+
+        .doc-link-sibling a {
+            color: #4a56c4;
+        }
+
+        footer.doc-footer {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.75);
+            text-align: center;
+        }
+
+        footer.doc-footer a {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        @media print {
+            body { background: #fff; }
+            .shell { max-width: none; padding: 0; }
+            .nav-top, footer.doc-footer, .doc-link-sibling { display: none; }
+            article { box-shadow: none; border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top">
+            <a href="/fr/">Accueil (fran&ccedil;ais)</a>
+            &middot; <a href="/">English home</a>
+        </p>
+
+        <article>
+            <p class="doc-meta">Article &middot; avril 2026</p>
+
+            <header class="hero-title">
+                <p class="label">Retour d'exp&eacute;rience</p>
+                <h1>Du code &agrave; l'intention</h1>
+                <p class="tagline">Un an de workflow avec l'IA sur un projet open source</p>
+                <p class="kicker">Notes de parcours sur un an de d&eacute;veloppement assist&eacute; par IA &mdash; avec les t&acirc;tonnements, les prises de conscience et les ajustements en cours de route.</p>
+            </header>
+
+            <!-- ========================================================= -->
+
+            <h2>01 &mdash; Le point de d&eacute;part</h2>
+
+            <p>Mai 2025. Je lance Ezkey, un projet MFA open source, en mode solo dev. Greenfield total. Tout est sur <code>main</code>, pas de branches, pas de tickets. L'objectif est simple&nbsp;: v&eacute;locit&eacute; maximale.</p>
+
+            <p>Les assistants de codage IA sont encore jeunes. Ils n'ont pas le r&eacute;flexe de faire un plan de travail, encore moins de le conserver d'une session &agrave; l'autre. Mais ils codent bien. Je prends confiance rapidement&nbsp;: l'IA g&eacute;n&egrave;re du code Spring Boot fonctionnel, les tests passent, les entit&eacute;s JPA se mettent en place. La v&eacute;locit&eacute; est r&eacute;elle.</p>
+
+            <p>Ce que je n'ai pas encore r&eacute;alis&eacute;, c'est que cette vitesse va me forcer &agrave; changer compl&egrave;tement ma fa&ccedil;on de travailler.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>02 &mdash; La prise de conscience documentaire</h2>
+
+            <p>Tr&egrave;s vite, je suis sid&eacute;r&eacute; par la quantit&eacute; d'information qui d&eacute;file devant moi. L'IA produit du code, des analyses, des suggestions &mdash; et tout dispara&icirc;t &agrave; la fin de la session. Je r&eacute;alise que je perds de la valeur &agrave; chaque conversation.</p>
+
+            <div class="pull-quote">
+                L'assistant de codage produit &eacute;norm&eacute;ment d'information. Si on ne la capture pas, on la perd. Et on recommence.
+            </div>
+
+            <p>De mon initiative, je commence &agrave; demander syst&eacute;matiquement une sauvegarde dans un fichier&nbsp;: plan de travail, analyse, d&eacute;cisions prises. C'est artisanal, mais &ccedil;a fonctionne. Quelques mois plus tard, les agents de codage int&egrave;grent nativement le &laquo;&nbsp;mode plan&nbsp;&raquo;. Je garde l'habitude, mais elle se professionnalise.</p>
+
+            <p>Fast forward d&eacute;but 2026&nbsp;: chaque feature commence par un plan de travail versionn&eacute;. Quand le travail est compl&eacute;t&eacute;, le plan est annot&eacute; puis archiv&eacute; dans un dossier dat&eacute; (par exemple <code>.cursor/plans-archived-2026-03/</code>). L'historique est pr&eacute;serv&eacute;. Le feature et sa trace documentaire sont li&eacute;s.</p>
+
+            <p>Ce dossier <code>docs/</code> que j'avais presque n&eacute;glig&eacute; au d&eacute;but est devenu un corpus vivant. Je fais r&eacute;guli&egrave;rement des consolidations&nbsp;: je prends des fichiers d'analyse plus ou moins historiques, je demande &agrave; l'IA de les &eacute;valuer, de dispatcher l'information pertinente et de r&eacute;duire le bruit. L'assistant de codage excelle dans ce r&ocirc;le de biblioth&eacute;caire.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>03 &mdash; Du trunk-based assumé aux worktrees</h2>
+
+            <p>Pendant des mois, je me sens un peu coupable. Tout le monde fait des branches, des pull requests, des reviews. Moi, je pousse sur <code>main</code>. Pourtant, &ccedil;a fonctionne. Le code compile, les tests passent, le projet avance vite.</p>
+
+            <p>Puis je tombe sur des &eacute;quipes qui documentent ouvertement leur adoption du mod&egrave;le <em>trunk-based development</em>. La culpabilit&eacute; s'estompe. Mon workflow &mdash; conserver la v&eacute;locit&eacute; avec un minimum de c&eacute;r&eacute;monie Git &mdash; est un choix l&eacute;gitime, pas un raccourci.</p>
+
+            <p>Un peu plus tard, j'ajoute les <strong>worktrees Git</strong>. Le principe&nbsp;: trois r&eacute;pertoires de travail, chacun sur sa propre branche, mais tous synchronis&eacute;s sur <code>main</code>. Le premier pour les analyses et la conception. Le deuxi&egrave;me pour l'application mobile. Le troisi&egrave;me pour les APIs backend.</p>
+
+            <p>L'int&eacute;r&ecirc;t est imm&eacute;diat. Je peux faire une analyse conceptuelle sur un worktree pendant qu'un autre g&eacute;n&egrave;re et teste du code. Les merges sont simples &mdash; souvent un fast-forward &mdash; parce que la strat&eacute;gie reste trunk-based. Et c'est un outil de <em>context switching</em> propre&nbsp;: changer de sujet ne signifie plus &laquo;&nbsp;perdre le fil&nbsp;&raquo;, le worktree conserve l'&eacute;tat complet.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>04 &mdash; L'&eacute;l&eacute;vation progressive</h2>
+
+            <p>Voici ce qui s'est pass&eacute;, graduellement, sur un an&nbsp;:</p>
+
+            <div class="elevation-stack" role="img" aria-label="Pyramide d'&eacute;l&eacute;vation : du code &agrave; l'intention">
+                <div class="level e1">
+                    <strong>Intention</strong>
+                    <span class="hint">&larr; Ancrer dans la r&eacute;alit&eacute; op&eacute;rationnelle</span>
+                </div>
+                <div class="level e2">
+                    <strong>Analyse</strong>
+                    <span class="hint">&larr; Challenger les concepts et les entit&eacute;s</span>
+                </div>
+                <div class="level e3">
+                    <strong>Conception</strong>
+                    <span class="hint">&larr; Patterns, alternatives, comparatifs</span>
+                </div>
+                <div class="level e4">
+                    <strong>Code</strong>
+                    <span class="hint">&larr; G&eacute;n&eacute;ration, tests, it&eacute;ration</span>
+                </div>
+            </div>
+
+            <p>Au d&eacute;but, je fais des prompts individuels. &laquo;&nbsp;G&eacute;n&egrave;re-moi un controller REST.&nbsp;&raquo; Je suis dans la couche basse&nbsp;: je produis du code.</p>
+
+            <p>Quelques semaines plus tard, je ne code plus. Je conçois. Je d&eacute;cris les entit&eacute;s, les relations, les flux &mdash; et l'IA g&eacute;n&egrave;re l'impl&eacute;mentation. Mais je r&eacute;alise que mes conceptions portent mes biais. Je remonte d'un cran vers l'analyse&nbsp;: je demande des alternatives, je compare avec des projets similaires, je fais &eacute;valuer les compromis.</p>
+
+            <p>Puis vient le changement le plus profond. Aujourd'hui, avant m&ecirc;me de penser &agrave; l'analyse, je cadre <strong>l'intention</strong>. Qui va utiliser cette fonctionnalit&eacute;&nbsp;? Quel est leur quotidien&nbsp;? Quel probl&egrave;me r&eacute;el r&eacute;sout-on&nbsp;? Et je le fais avec le corpus documentaire accumul&eacute; &mdash; PRD, analyses pr&eacute;c&eacute;dentes, plans archiv&eacute;s.</p>
+
+            <div class="pull-quote">
+                L'assistant de codage n'est plus un assistant de codage. C'est un partenaire d'analyse, de conception et de positionnement produit.
+            </div>
+
+            <p>L'IA ancr&eacute;e dans un corpus bien organis&eacute; devient un partenaire product owner. Elle conna&icirc;t les entit&eacute;s, les contraintes, les d&eacute;cisions pass&eacute;es. La qualit&eacute; du dialogue s'&eacute;l&egrave;ve &mdash; et les d&eacute;cisions convergent plus vite.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>05 &mdash; Lib&eacute;rer la pens&eacute;e&nbsp;: la diction vocale</h2>
+
+            <p>Novembre 2025. J'adopte un outil de diction vocale pour interagir avec l'assistant de codage. C'est un changement que je n'avais pas anticip&eacute; &mdash; et qui s'est r&eacute;v&eacute;l&eacute; radical.</p>
+
+            <p>Quand on tape au clavier, on se censure. On &eacute;conomise les mots parce qu'&eacute;crire prend du temps, les mains fatiguent, et on finit par tronquer sa pens&eacute;e. On donne un prompt minimal et on esp&egrave;re que l'IA devinera le reste. Souvent, elle devine mal &mdash; et on it&egrave;re.</p>
+
+            <p>Quand on dicte, on pense &agrave; voix haute. La pens&eacute;e coule librement d'un concept &agrave; l'autre. On ne cherche pas le mot exact &mdash; on exprime l'intention compl&egrave;te, avec son contexte, ses nuances, ses valeurs. Ce n'est pas de la surcharge de contexte&nbsp;: c'est du cadrage pertinent que nos doigts n'auraient jamais pris la peine de taper.</p>
+
+            <div class="pull-quote">
+                La diction vocale ne fait pas gagner du temps de frappe. Elle lib&egrave;re une couche de pens&eacute;e qu'on censurait sans le savoir.
+            </div>
+
+            <p>C'est directement li&eacute; aux valeurs de projet. Lorsqu'on peut &eacute;noncer librement l'ensemble des consid&eacute;rations pertinentes &agrave; un sujet &mdash; les contraintes, le contexte op&eacute;rationnel, les principes &agrave; respecter &mdash; l'IA re&ccedil;oit un cadrage d'une richesse incomparablement sup&eacute;rieure &agrave; ce qu'un prompt tap&eacute; aurait fourni. La qualit&eacute; de ses r&eacute;ponses s'en ressent imm&eacute;diatement.</p>
+
+            <p>Ce que j'ai d&eacute;couvert, c'est que la diction vocale est l'outil qui rend les niveaux sup&eacute;rieurs de la pyramide d'&eacute;l&eacute;vation v&eacute;ritablement accessibles. Donner l'intention, rappeler les valeurs, cadrer le contexte op&eacute;rationnel &mdash; tout &ccedil;a demande des mots, beaucoup de mots, et la voix les lib&egrave;re sans effort. C'est une fusion d'id&eacute;es avec l'IA que le clavier seul ne permettait pas.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>06 &mdash; L'int&eacute;grit&eacute; conceptuelle &agrave; grande &eacute;chelle</h2>
+
+            <p>Au d&eacute;but, j'ai utilis&eacute; l'IA pour de l'int&eacute;grit&eacute; technique&nbsp;: uniformiser les records Java, les enums, le nommage. Puis au niveau des designs&nbsp;: est-ce que tous les DTOs suivent le m&ecirc;me pattern de mapping&nbsp;? Est-ce que les r&eacute;ponses d'erreur sont coh&eacute;rentes d'un module &agrave; l'autre&nbsp;? L'IA &eacute;value &agrave; travers la codebase et rapporte les &eacute;carts. Uniformiser un pattern transversal, c'est exactement ce qu'elle fait mieux qu'un humain.</p>
+
+            <p>Puis j'ai remont&eacute; encore. Activation, d&eacute;sactivation, r&eacute;vocation, suppression &mdash; ces concepts traversent toutes les entit&eacute;s d'Ezkey. Je les ai trait&eacute;s dans des plans de travail s&eacute;par&eacute;s, et &ccedil;a a donn&eacute; des comportements incoh&eacute;rents. Si on d&eacute;sactive un tenant, quel effet sur les enr&ocirc;lements&nbsp;? Sur les cl&eacute;s API&nbsp;? Sur les int&eacute;grations&nbsp;?</p>
+
+            <p>La r&eacute;v&eacute;lation&nbsp;: le probl&egrave;me n'est pas chaque plan individuel &mdash; chacun fonctionne. Le probl&egrave;me, c'est l'absence de vision transversale. J'ai produit un document global, une analyse qui reprend l'ensemble des entit&eacute;s pour hi&eacute;rarchiser et organiser les concepts de cycle de vie. Et l'IA, nourrie de ce corpus complet, a pu jouer un r&ocirc;le de partenaire d'analyse de premier plan.</p>
+
+            <table class="comparison">
+                <thead>
+                    <tr>
+                        <th scope="col">Niveau d'int&eacute;grit&eacute;</th>
+                        <th scope="col">Exemple concret</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Code</td>
+                        <td>Uniformiser les records Java, les enums, le nommage</td>
+                    </tr>
+                    <tr>
+                        <td>Design</td>
+                        <td>V&eacute;rifier que les DTOs, mappers et r&eacute;ponses d'erreur suivent le m&ecirc;me pattern</td>
+                    </tr>
+                    <tr>
+                        <td>Analyse</td>
+                        <td>Assurer la coh&eacute;rence des cycles de vie &agrave; travers toutes les entit&eacute;s</td>
+                    </tr>
+                    <tr>
+                        <td>Intention</td>
+                        <td>Chaque d&eacute;cision de design est ancr&eacute;e dans un besoin op&eacute;rationnel r&eacute;el</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ========================================================= -->
+
+            <h2>07 &mdash; Les valeurs de projet comme boussole</h2>
+
+            <p>Il y a un concept que je r&eacute;p&egrave;te constamment dans Ezkey et qui m&eacute;rite qu'on s'y attarde&nbsp;: les <strong>valeurs de projet</strong>. Ce ne sont pas des v&oelig;ux pieux affich&eacute;s dans un README. Ce sont des principes explicites, &eacute;nonc&eacute;s, r&eacute;p&eacute;t&eacute;s, et utilis&eacute;s comme crit&egrave;res de d&eacute;cision &agrave; chaque niveau &mdash; code, conception, analyse, strat&eacute;gie produit.</p>
+
+            <p>Pourquoi c'est si important avec l'IA&nbsp;? Parce que l'IA a besoin de cadrage. Sans valeurs explicites, elle va optimiser selon ses propres biais statistiques. Avec des valeurs clairement &eacute;nonc&eacute;es, elle a un cap &agrave; suivre. Et moi aussi.</p>
+
+            <p>Voici les valeurs de projet d'Ezkey&nbsp;:</p>
+
+            <ul>
+                <li><strong>R&egrave;gle du 80/20.</strong> Viser 80&nbsp;% de l'effet avec 20&nbsp;% de l'effort. Constamment. &Agrave; tous les niveaux. C'est un filtre implacable contre le <em>gold plating</em> et la sur-ing&eacute;nierie.</li>
+                <li><strong>Pragmatisme.</strong> La solution la plus simple qui r&eacute;pond au besoin. Pas la plus &eacute;l&eacute;gante, pas la plus g&eacute;n&eacute;rique &mdash; la plus pragmatique.</li>
+                <li><strong>Complexit&eacute; essentielle oui, complexit&eacute; accidentelle non.</strong> La complexit&eacute; qui sert directement l'objectif est accept&eacute;e. L'indirection inutile, l'abstraction pr&eacute;matur&eacute;e, les couches suppl&eacute;mentaires &laquo;&nbsp;au cas o&ugrave;&nbsp;&raquo; &mdash; refus&eacute;es.</li>
+                <li><strong><em>Eat your own dog food.</em></strong> Le syst&egrave;me doit &ecirc;tre autonome, int&eacute;gr&eacute;, coh&eacute;rent. Pas de d&eacute;pendance externe qu'on ne ma&icirc;trise pas. L'int&eacute;grit&eacute; interne n'est pas un luxe &mdash; c'est un objectif de design.</li>
+                <li><strong>Suivre le consensus de la communaut&eacute;.</strong> Pour chaque d&eacute;cision, se poser la question&nbsp;: qu'est-ce que les projets similaires font&nbsp;? Qu'est-ce qu'un d&eacute;veloppeur qui arrive d'un autre produit va consid&eacute;rer normal et attendu&nbsp;? Si la r&eacute;ponse est &laquo;&nbsp;mais qu'est-ce que c'est que cette affaire&nbsp;?&nbsp;&raquo;, c'est un signal d'alarme. Si c'est &laquo;&nbsp;ah oui, rien &agrave; redire, tout est clair&nbsp;&raquo;, on est sur la bonne voie.</li>
+            </ul>
+
+            <div class="pull-quote">
+                Des valeurs de projet explicites ne sont pas de la po&eacute;sie de gestion. C'est un outil de cadrage qui s'applique du choix technologique jusqu'au nom d'une variable.
+            </div>
+
+            <p>Ces valeurs sont r&eacute;p&eacute;t&eacute;es dans le corpus documentaire, et l'IA les int&egrave;gre dans son cadrage. Quand je demande une analyse, l'IA sait d&eacute;j&agrave; que la r&eacute;ponse doit &ecirc;tre pragmatique, suivre le 80/20 et &eacute;viter la complexit&eacute; accidentelle. &Ccedil;a &eacute;limine &eacute;norm&eacute;ment de bruit dans les &eacute;changes.</p>
+
+            <p>Et c'est aussi un outil de d&eacute;biaisage. Quand je suis tent&eacute; par une solution trop sophistiqu&eacute;e, les valeurs me ram&egrave;nent &agrave; l'essentiel. Quand l'IA propose quelque chose d'exotique, je peux lui rappeler&nbsp;: &laquo;&nbsp;Est-ce que c'est ce qu'on observe le plus souvent dans les projets comparables&nbsp;?&nbsp;&raquo; La r&eacute;ponse recalibre instantan&eacute;ment.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>08 &mdash; L'esprit critique comme comp&eacute;tence cl&eacute;</h2>
+
+            <p>&Agrave; l'&eacute;t&eacute; 2025, comme beaucoup, je me suis senti un peu d&eacute;poss&eacute;d&eacute;. Quarante ans &agrave; &eacute;crire du code pour le plaisir de la chose, &agrave; ma&icirc;triser chaque subtilit&eacute; de syntaxe. Regarder le code se produire sous mes yeux et me dire&nbsp;: &laquo;&nbsp;je ne fais plus rien.&nbsp;&raquo;</p>
+
+            <p>Puis la v&eacute;locit&eacute; est devenue r&eacute;elle. Et j'ai compris&nbsp;: l'enjeu n'est pas d'&eacute;crire le code &mdash; c'est d'en augmenter la qualit&eacute;. Javadoc, tests unitaires, documents d'analyse&nbsp;: ce qui &eacute;tait des &laquo;&nbsp;bonnes pratiques optionnelles&nbsp;&raquo; est devenu une condition fondamentale pour que l'assistance IA reste fiable.</p>
+
+            <p>Mais le vrai changement a &eacute;t&eacute; d'apprendre &agrave; contenir mes propres biais. L'IA actuelle est un outil statistique avanc&eacute;&nbsp;: elle oriente ses r&eacute;ponses selon les probabilit&eacute;s. Si je formule une question avec un biais, l'IA s'y enfonce. Si je demande que la s&eacute;curit&eacute; soit le crit&egrave;re num&eacute;ro un, les d&eacute;cisions seront radicalement diff&eacute;rentes de celles o&ugrave; je priorise la performance. L'IA refl&egrave;te et amplifie le cadrage qu'on lui donne.</p>
+
+            <div class="pull-quote">
+                Discuter avec l'IA, c'est une fa&ccedil;on tr&egrave;s sophistiqu&eacute;e de parler avec soi-m&ecirc;me. Le risque de chambre d'&eacute;cho est r&eacute;el. L'antidote, c'est l'esprit critique.
+            </div>
+
+            <p>Les strat&eacute;gies que j'ai adopt&eacute;es&nbsp;:</p>
+            <ul>
+                <li><strong>Demander des alternatives.</strong> Jamais imposer une id&eacute;e sans avoir vu les options. &laquo;&nbsp;Quelles sont les trois approches possibles&nbsp;? Classe-les par compromis.&nbsp;&raquo;</li>
+                <li><strong>Demander des comparatifs.</strong> &laquo;&nbsp;Comment les projets similaires g&egrave;rent-ils ce probl&egrave;me&nbsp;?&nbsp;&raquo; &Ccedil;a ouvre un horizon de possibilit&eacute;s qu'on n'aurait pas envisag&eacute; seul.</li>
+                <li><strong>Ajuster mon vocabulaire.</strong> J'ai appris &agrave; formuler mes questions de fa&ccedil;on plus neutre pour &eacute;viter de <em>tilter</em> l'IA dans une direction pr&eacute;d&eacute;termin&eacute;e.</li>
+                <li><strong>Ne pas s'enfoncer.</strong> D&egrave;s qu'on sent l'<em>escalation of commitment</em> &mdash; on a investi dans une piste et on refuse de reculer &mdash; c'est le moment de redemander un &eacute;tat des lieux objectif.</li>
+            </ul>
+
+            <p>On le vit trop facilement avec l'IA. Mais c'est aussi quelque chose qu'on devrait faire tous les jours, avec tout le monde. L'IA nous force simplement &agrave; am&eacute;liorer une comp&eacute;tence qu'on n&eacute;gligeait&nbsp;: la rigueur dans notre propre pens&eacute;e.</p>
+
+            <p>Je ne pr&eacute;tends pas y arriver &agrave; tout coup. Les biais sont tenaces, et il m'arrive encore r&eacute;guli&egrave;rement de me retrouver enfonc&eacute; dans une piste avant de r&eacute;aliser que j'aurais d&ucirc; reculer trois &eacute;tapes plus t&ocirc;t. Le simple fait de le savoir ne suffit pas &mdash; il faut le pratiquer, et c'est un exercice permanent.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>09 &mdash; Le workflow actuel</h2>
+
+            <p>Aujourd'hui, chaque initiative suit un cycle pr&eacute;visible&nbsp;:</p>
+
+            <ol class="flow-steps">
+                <li><strong>Intention</strong> &mdash; Qui est l'utilisateur&nbsp;? Quel est le besoin r&eacute;el dans leur quotidien&nbsp;?</li>
+                <li><strong>Analyse conceptuelle</strong> &mdash; Comment les entit&eacute;s du domaine interagissent pour accomplir cette intention&nbsp;?</li>
+                <li><strong>Conception</strong> &mdash; Patterns connus, alternatives compar&eacute;es, d&eacute;cisions document&eacute;es</li>
+                <li><strong>G&eacute;n&eacute;ration de code</strong> &mdash; L'IA impl&eacute;mente, les tests valident</li>
+                <li><strong>QA et it&eacute;ration</strong> &mdash; Bugs conceptuels → recadrage design → boucle courte</li>
+            </ol>
+
+            <p>La plupart du temps, le code fonctionne essentiellement du premier coup. Les probl&egrave;mes r&eacute;siduels sont des technicalit&eacute;s (traces, configuration) ou des limitations de design qu'on challenger en remontant au bon niveau.</p>
+
+            <p>Les worktrees permettent de faire tourner ce cycle en parall&egrave;le sur diff&eacute;rents sujets. L'enjeu devient la gestion du <em>switching cost</em> et la capacit&eacute; &agrave; &eacute;valuer les r&eacute;sultats.</p>
+
+            <h3>Ma&icirc;triser le contexte</h3>
+
+            <p>Plus on &eacute;l&egrave;ve le jeu vers la conception et l'analyse, plus le contexte fourni &agrave; l'IA doit &ecirc;tre pertinent &mdash; et plus il risque de devenir trop volumineux. J'ai appris &agrave; mes d&eacute;pens que la surcharge de contexte d&eacute;grade la qualit&eacute; des r&eacute;ponses autant que l'absence de contexte.</p>
+
+            <p>La strat&eacute;gie qui a fait la diff&eacute;rence&nbsp;: d&eacute;couper en verticales et cha&icirc;ner les plans. Concr&egrave;tement&nbsp;: quand je modifie un backend API, c'est un plan de travail d&eacute;di&eacute;, centr&eacute; sur cette verticale. Une fois le backend valid&eacute; et test&eacute;, je g&eacute;n&egrave;re la sp&eacute;cification OpenAPI mise &agrave; jour et je la dispatche dans les sous-projets &mdash; l'admin UI, le mobile. Chaque sous-projet d&eacute;marre son propre plan, dans sa propre session, avec un contexte cibl&eacute;.</p>
+
+            <p>L'autre levier&nbsp;: les plans de travail versionn&eacute;s deviennent un contexte condens&eacute; r&eacute;utilisable. Au d&eacute;but d'un nouveau plan, il suffit de dire &agrave; l'IA&nbsp;: &laquo;&nbsp;va consulter le plan pr&eacute;c&eacute;dent&nbsp;&raquo;. Le plan archiv&eacute; contient les d&eacute;cisions, les contraintes, les choix de design &mdash; d&eacute;j&agrave; condens&eacute;s. C'est un contexte ultra-pertinent avec un minimum de tokens. L'efficacit&eacute; de la fen&ecirc;tre de contexte est maximis&eacute;e.</p>
+
+            <p>C'est un effet compos&eacute;&nbsp;: chaque document bien &eacute;crit am&eacute;liore la qualit&eacute; de tous les &eacute;changes futurs, et chaque plan archiv&eacute; devient un point d'entr&eacute;e condens&eacute; pour la prochaine it&eacute;ration.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>10 &mdash; Ce que j'en retiens</h2>
+
+            <div class="closing">
+                <p>Ce que je d&eacute;cris ici, c'est un id&eacute;al vers lequel je tends &mdash; pas une r&eacute;alit&eacute; que je vis parfaitement chaque jour. Il y a des jours o&ugrave; je retombe dans le prompt rapide, o&ugrave; je n&eacute;glige le plan, o&ugrave; je m'enfonce dans une piste sans la challenger. Le workflow &laquo;&nbsp;parfait&nbsp;&raquo; n'existe pas. Ce qui existe, c'est la direction.</p>
+
+                <p>L'IA ne remplace pas la pens&eacute;e. Elle l'amplifie. La charge cognitive diminue c&ocirc;t&eacute; code et augmente c&ocirc;t&eacute; conception &mdash; et c'est exactement l&agrave; qu'elle apporte le plus de valeur.</p>
+
+                <p>Le pr&eacute;requis, c'est l'investissement dans le corpus documentaire. Plus on documente avec rigueur, plus le dialogue avec l'IA gagne en substance. C'est un cercle vertueux qui se capitalise &agrave; chaque it&eacute;ration.</p>
+
+                <p>L'antidote au risque de chambre d'&eacute;cho, c'est un esprit critique aiguisé, ancr&eacute; dans des valeurs de projet explicites. Rester objectif. Demander des alternatives. Accepter de se tromper et de reculer.</p>
+
+                <p>Je partage ces notes sans pr&eacute;tendre avoir trouv&eacute; la formule d&eacute;finitive. C'est un travail en cours &mdash; le projet &eacute;volue, les outils &eacute;voluent, et ma compr&eacute;hension aussi. Si certaines de ces id&eacute;es r&eacute;sonnent avec votre propre exp&eacute;rience, tant mieux. Si elles vous semblent incompl&egrave;tes, c'est probablement le cas.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>English:</strong> <a href="/from-code-to-intent-ai-workflow.html">English version of this article</a></p>
+            <p class="doc-link-sibling"><strong>Voir aussi&nbsp;:</strong> <a href="/fr/ai-coding-manifesto.html">Manifeste sur le codage assist&eacute; par IA</a></p>
+            <p class="doc-link-sibling"><strong>Voir aussi&nbsp;:</strong> <a href="/fr/generative-ai-nocode-lowcode-parallel.html">Parall&egrave;le IA g&eacute;n&eacute;rative et No-Code / Low-Code</a></p>
+        </article>
+
+        <footer class="doc-footer">
+            <p>Ezkey &middot; <a href="/fr/">ezkey.org/fr/</a></p>
+        </footer>
+    </div>
+</body>
+</html>
