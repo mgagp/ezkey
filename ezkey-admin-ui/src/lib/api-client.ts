@@ -93,9 +93,6 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  /** True if this request used the normal admin session (JWT) — 401 means session expired, redirect to login. */
-  const sentSessionBearer = Boolean(!bearerToken && requireAuth && getToken());
-
   const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
 
   const contentType = response.headers.get('content-type') ?? '';
@@ -123,7 +120,8 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
         const { message, problem } = messageFromProblemBody(401, body);
         throw new ApiError(401, body, message, problem);
       }
-      if (sentSessionBearer) {
+      /** Session-scoped request (not login/public, not recovery bearer) — 401 always sends user to login. */
+      if (requireAuth) {
         clearSession();
         window.location.replace('/login');
         throw new ApiError(
@@ -156,6 +154,11 @@ export async function fetchBlobUrl(path: string): Promise<string> {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
+  if (response.status === 401) {
+    clearSession();
+    window.location.replace('/login');
+    throw new ApiError(401, null, 'Session expired. Please log in again.', null);
+  }
   if (!response.ok) throw new ApiError(response.status, null, `HTTP ${response.status}`);
   const blob = await response.blob();
   return URL.createObjectURL(blob);
