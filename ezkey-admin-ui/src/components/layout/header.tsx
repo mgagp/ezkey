@@ -1,14 +1,13 @@
-import { CircleHelp, LogOut } from 'lucide-react';
+import { CircleHelp, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/context/auth-context';
 import { useHelp } from '@/context/help-context';
+import { useAuth } from '@/context/auth-context';
 import { useDemoModeSession } from '@/context/demo-mode-context';
-import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
-import { logout as logoutApi } from '@/generated/admin-api/admin-authentication/admin-authentication';
+import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
 import { I18N_STORAGE_KEY } from '@/i18n';
 import { isDemoMode } from '@/lib/demo-mode';
-import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
+import { DisplayTimezoneMenu } from '@/components/layout/account-timezone-menu';
+import { HeaderLogoutButton } from '@/components/layout/header-logout-button';
 
 interface HeaderProps {
   title: string;
@@ -16,21 +15,10 @@ interface HeaderProps {
 
 export function Header({ title }: HeaderProps) {
   const { t, i18n } = useTranslation(['layout', 'common', 'help']);
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   const { openHelp } = useHelp();
   const { sessionDemoOn } = useDemoModeSession();
-  const navigate = useNavigate();
   const { data: publicInstanceInfo } = usePublicInstanceInfo();
-
-  const handleLogout = async () => {
-    try {
-      await logoutApi();
-    } catch {
-      // Best effort: clear client session even if server logout fails
-    }
-    logout();
-    navigate('/login', { replace: true });
-  };
 
   const setLanguage = (lng: 'en' | 'fr') => {
     i18n.changeLanguage(lng);
@@ -101,18 +89,19 @@ export function Header({ title }: HeaderProps) {
           </button>
         </div>
         {session && (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-fg-muted text-xs">{t('layout:header.signedInAs')}</span>
-            <span className="font-bold text-fg text-sm">{session.username}</span>
-            <span className="text-[10px] px-1.5 py-0.5 bg-fg text-surface font-black uppercase tracking-widest">
-              {session.adminType.replace('_ADMIN', '')}
-            </span>
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end text-sm min-w-0">
+            <span className="text-fg-muted text-xs hidden sm:inline shrink-0">{t('layout:header.signedInAs')}</span>
+            <div className="flex items-center gap-1.5 min-w-0 max-w-[min(100%,14rem)]">
+              <User className="size-3.5 shrink-0 text-fg-muted" aria-hidden />
+              <span className="font-bold text-fg truncate">{session.username}</span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-fg text-surface font-black uppercase tracking-widest shrink-0">
+                {session.adminType.replace('_ADMIN', '')}
+              </span>
+            </div>
+            <DisplayTimezoneMenu />
+            <HeaderLogoutButton />
           </div>
         )}
-        <Button data-testid="app-logout-button" variant="ghost" size="sm" onClick={handleLogout} className="gap-1.5">
-          <LogOut className="size-3.5" />
-          {t('common:buttons.logout')}
-        </Button>
       </div>
     </header>
   );

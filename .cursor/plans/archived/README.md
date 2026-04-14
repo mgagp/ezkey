@@ -12,6 +12,24 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2026-04 - Tenant timezone strategy (Admin UI / API)
+
+**Completion Date:** April 13, 2026  
+**Status:** ✅ **FULLY IMPLEMENTED AND VALIDATED**
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-04/tenant_timezone_strategy_08096020.plan.md** | IANA validation on tenant `timezone`; session `tenantId` / `adminId`; display timezone preference (local vs tenant) with header controls; formatters + date-range API bounds aligned | ✅ Completed |
+
+**What was implemented:**
+
+- Backend: Bean Validation `@IanaTimezone` on tenant create/update DTOs; login response includes `adminId` and `tenantId` where applicable for tenant-scoped UI.
+- Admin UI: `DisplayTimezoneProvider`, `DisplayTimezoneMenu` (clock + short label) and `HeaderLogoutButton` (icon + label at first level); `display-timezone-pref`, resolver + `utils` / `date-range-presets` / list pages using effective zone.
+
+**Note:** The “Current State” section inside the archived plan file is a **historical pre-implementation snapshot**; behavior has since changed as above.
+
+---
+
 ### 2026-03 - Admin UI token security (HTTP hardening)
 
 **Completion Date:** March 27, 2026  

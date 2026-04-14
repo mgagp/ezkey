@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import i18n from 'i18next';
 import { twMerge } from 'tailwind-merge';
+import { getDisplayTimeZoneId } from '@/lib/display-timezone-resolver';
 
 /** Merge Tailwind classes safely — the standard shadcn/ui utility. */
 export function cn(...inputs: ClassValue[]): string {
@@ -22,6 +23,7 @@ function getDateLocaleAndOptions(): { locale: string; hour12: boolean } {
 /** Format an ISO date string to a human-readable local date/time (locale-aware, 24h for French). */
 export function formatDate(dateStr: string): string {
   const { locale, hour12 } = getDateLocaleAndOptions();
+  const tz = getDisplayTimeZoneId();
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
@@ -29,6 +31,7 @@ export function formatDate(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit',
     hour12,
+    ...(tz ? { timeZone: tz } : {}),
   }).format(new Date(dateStr));
 }
 
@@ -39,10 +42,12 @@ export function formatDate(dateStr: string): string {
 export function formatDateOnly(dateStr: string): string {
   if (!dateStr) return '';
   const { locale } = getDateLocaleAndOptions();
+  const tz = getDisplayTimeZoneId();
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    ...(tz ? { timeZone: tz } : {}),
   }).format(new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`));
 }
 
@@ -54,6 +59,7 @@ export function formatDateOnly(dateStr: string): string {
 export function formatDateWithTimezone(dateStr: string): string {
   const date = new Date(dateStr);
   const { locale, hour12 } = getDateLocaleAndOptions();
+  const tz = getDisplayTimeZoneId();
   const parts = new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: 'short',
@@ -62,14 +68,15 @@ export function formatDateWithTimezone(dateStr: string): string {
     minute: '2-digit',
     hour12,
     timeZoneName: 'short',
+    ...(tz ? { timeZone: tz } : {}),
   }).formatToParts(date);
   const dateTime = parts
     .filter((p) => p.type !== 'timeZoneName')
     .map((p) => p.value)
     .join('');
   const tzPart = parts.find((p) => p.type === 'timeZoneName');
-  const tz = tzPart?.value ?? 'UTC';
-  return `${dateTime.trim()} (${tz})`;
+  const tzAbbrev = tzPart?.value ?? 'UTC';
+  return `${dateTime.trim()} (${tzAbbrev})`;
 }
 
 /** Format seconds remaining as MM:SS for countdown display. */

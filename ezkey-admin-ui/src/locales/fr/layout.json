@@ -19,7 +19,18 @@
   "header": {
     "signedInAs": "Connecté en tant que",
     "demoBadge": "Démo",
-    "instanceContext": "Instance Ezkey"
+    "instanceContext": "Instance Ezkey",
+    "account": {
+      "timezoneButtonShort": "Fuseau",
+      "displayTimezone": "Fuseau d’affichage",
+      "modeLocal": "Fuseau du navigateur",
+      "modeLocalHint": "Utiliser le fuseau de votre appareil pour les dates et plages.",
+      "modeTenant": "Fuseau du tenant",
+      "modeTenantHint": "Utiliser la zone configurée pour ce tenant : {{zone}}.",
+      "modeTenantNoZone": "Aucune zone IANA n’est définie sur le tenant ; l’heure locale est utilisée.",
+      "effectiveZone": "Actif : {{zone}}",
+      "effectiveFallbackLocal": "Zone tenant absente ou invalide — utilisation de l’heure locale."
+    }
   },
   "sidebar": {
     "demoModeTitle": "Ctrl+clic pour basculer le mode démo",

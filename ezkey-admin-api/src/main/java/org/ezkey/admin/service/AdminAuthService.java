@@ -503,8 +503,14 @@ public class AdminAuthService {
       EzkeyAdmin admin, AdminToken token, String plainToken) {
     logger.info("Authentication successful for: {}", admin.getUsername());
 
+    Integer tenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
     return new AdminLoginResponseDto(
-        plainToken, admin.getAdminType().name(), admin.getUsername(), token.getExpiresAt());
+        plainToken,
+        admin.getAdminType().name(),
+        admin.getUsername(),
+        token.getExpiresAt(),
+        admin.getAdminId(),
+        tenantId);
   }
 
   /**

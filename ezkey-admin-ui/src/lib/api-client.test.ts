@@ -13,7 +13,7 @@ vi.mock('./auth', () => ({
 
 import { ApiError, fetchApi, fetchBlobUrl } from './api-client';
 
-function jsonResponse(status: number, body: unknown) {
+function jsonResponse(status: number, body: unknown): Response {
   const raw = typeof body === 'string' ? body : JSON.stringify(body);
   return {
     ok: status >= 200 && status < 300,
@@ -23,7 +23,7 @@ function jsonResponse(status: number, body: unknown) {
     },
     json: () => Promise.resolve(body),
     text: () => Promise.resolve(raw),
-  };
+  } as Response;
 }
 
 describe('fetchApi', () => {

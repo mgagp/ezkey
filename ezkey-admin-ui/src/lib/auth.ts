@@ -5,6 +5,13 @@ export interface AuthSession {
   adminType: string;
   /** ISO-8601 — token expiration from the Admin API. */
   expiresAt: string;
+  /** Administrator ID from login response (for tenant-scoped display preferences). */
+  adminId?: number;
+  /**
+   * Tenant scope when the administrator is tenant- or integration-scoped; omitted for global
+   * administrators and legacy sessions saved before this field existed.
+   */
+  tenantId?: number | null;
 }
 
 const AUTH_KEY = 'ezkey_admin_auth';

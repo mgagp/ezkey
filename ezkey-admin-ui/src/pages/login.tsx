@@ -135,7 +135,14 @@ export default function LoginPage() {
 
         if (data.success && data.token && data.username && data.adminType && data.expiresAt) {
           finalStatusRef.current = 'ACCEPTED';
-          login({ token: data.token, username: data.username, adminType: data.adminType, expiresAt: data.expiresAt });
+          login({
+            token: data.token,
+            username: data.username,
+            adminType: data.adminType,
+            expiresAt: data.expiresAt,
+            ...(data.adminId != null && { adminId: data.adminId }),
+            ...(data.tenantId != null && { tenantId: data.tenantId }),
+          });
           navigate('/dashboard', { replace: true });
         } else if (data.status === 'rejected') {
           finalStatusRef.current = 'REJECTED';

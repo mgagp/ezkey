@@ -19,7 +19,18 @@
   "header": {
     "signedInAs": "Signed in as",
     "demoBadge": "Demo",
-    "instanceContext": "This Ezkey instance"
+    "instanceContext": "This Ezkey instance",
+    "account": {
+      "timezoneButtonShort": "Time zone",
+      "displayTimezone": "Display timezone",
+      "modeLocal": "Browser local",
+      "modeLocalHint": "Use your device timezone for dates and ranges.",
+      "modeTenant": "Tenant timezone",
+      "modeTenantHint": "Use this tenant’s configured zone: {{zone}}.",
+      "modeTenantNoZone": "No IANA zone is set on the tenant; local time is used.",
+      "effectiveZone": "Active: {{zone}}",
+      "effectiveFallbackLocal": "Invalid or missing tenant zone — using local time."
+    }
   },
   "sidebar": {
     "demoModeTitle": "Ctrl+click to toggle demo mode",

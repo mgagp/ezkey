@@ -6077,6 +6077,18 @@
             "format": "int32",
             "description": "6-digit challenge code for device verification",
             "example": 654321
+          },
+          "adminId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Administrator ID for the authenticated session",
+            "example": 2
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant scope ID when the administrator is tenant- or integration-scoped; null for global administrators",
+            "example": 3
           }
         }
       },

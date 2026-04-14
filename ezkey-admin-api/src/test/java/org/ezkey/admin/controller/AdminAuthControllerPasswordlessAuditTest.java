@@ -82,7 +82,12 @@ class AdminAuthControllerPasswordlessAuditTest {
     when(authService.findAuditContextForAuthAttempt(10)).thenReturn(Optional.of(auditCtx));
     AdminLoginResponseDto ok =
         new AdminLoginResponseDto(
-            "token", "GLOBAL_ADMIN", "admin1", java.time.OffsetDateTime.now().plusHours(1));
+            "token",
+            "GLOBAL_ADMIN",
+            "admin1",
+            java.time.OffsetDateTime.now().plusHours(1),
+            42,
+            null);
     when(authService.waitForPasswordlessAuth(10, 7)).thenReturn(ok);
 
     ResponseEntity<AdminLoginResponseDto> response =

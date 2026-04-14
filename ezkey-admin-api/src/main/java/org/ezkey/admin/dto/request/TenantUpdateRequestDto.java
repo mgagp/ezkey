@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import org.ezkey.admin.validation.IanaTimezone;
 
 /**
  * Request DTO for updating a tenant.
@@ -84,6 +85,7 @@ public record TenantUpdateRequestDto(
             example = "America/Montreal",
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Size(max = 50, message = "Timezone must not exceed 50 characters")
+        @IanaTimezone
         String timezone,
     @Schema(
             description = "Primary contact full name",

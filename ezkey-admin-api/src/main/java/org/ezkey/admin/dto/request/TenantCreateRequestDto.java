@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import org.ezkey.admin.validation.IanaTimezone;
 
 /**
  * Request DTO for creating a tenant.
@@ -80,6 +81,7 @@ public record TenantCreateRequestDto(
             example = "America/Montreal",
             requiredMode = RequiredMode.NOT_REQUIRED)
         @Size(max = 50, message = "Timezone must not exceed 50 characters")
+        @IanaTimezone
         String timezone,
     @Schema(
             description = "Primary contact full name",

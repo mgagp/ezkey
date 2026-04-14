@@ -34,17 +34,6 @@ import java.time.OffsetDateTime;
  *
  * @author Ezkey contributors
  * @since 2025
- * @param success indicates if the authentication was successful
- * @param message response message describing authentication result
- * @param status authentication attempt status (pending, accepted, rejected)
- * @param token bearer token for authenticated API requests
- * @param adminType type of administrator (GLOBAL_ADMIN, TENANT_ADMIN, INTEGRATION_ADMIN)
- * @param username administrator username
- * @param expiresAt when successful: admin bearer token expiry; when {@code status=pending}: auth
- *     attempt expiry (same instant as stored on the attempt, driven by {@code
- *     ezkey.core.auth-attempt.ttl-seconds})
- * @param authAttemptId authentication attempt ID for two-step flow
- * @param challengeCode 6-digit challenge code for device verification
  */
 @Schema(description = "Response DTO for passwordless administrator login")
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -81,7 +70,15 @@ public record AdminLoginResponseDto(
     @Schema(description = "Authentication attempt ID for two-step flow", example = "123")
         Integer authAttemptId,
     @Schema(description = "6-digit challenge code for device verification", example = "654321")
-        Integer challengeCode) {
+        Integer challengeCode,
+    @Schema(description = "Administrator ID for the authenticated session", example = "2")
+        Integer adminId,
+    @Schema(
+            description =
+                "Tenant scope ID when the administrator is tenant- or integration-scoped; null for"
+                    + " global administrators",
+            example = "3")
+        Integer tenantId) {
 
   /**
    * Constructor for error responses.
@@ -89,7 +86,7 @@ public record AdminLoginResponseDto(
    * @param message the error message
    */
   public AdminLoginResponseDto(String message) {
-    this(false, message, null, null, null, null, null, null, null);
+    this(false, message, null, null, null, null, null, null, null, null, null);
   }
 
   /**
@@ -99,9 +96,16 @@ public record AdminLoginResponseDto(
    * @param adminType the administrator type
    * @param username the administrator username
    * @param expiresAt the token expiration time
+   * @param adminId the administrator ID
+   * @param tenantId tenant scope when applicable, otherwise null
    */
   public AdminLoginResponseDto(
-      String token, String adminType, String username, OffsetDateTime expiresAt) {
+      String token,
+      String adminType,
+      String username,
+      OffsetDateTime expiresAt,
+      Integer adminId,
+      Integer tenantId) {
     this(
         true,
         "Authentication successful",
@@ -111,7 +115,9 @@ public record AdminLoginResponseDto(
         username,
         expiresAt,
         null,
-        null);
+        null,
+        adminId,
+        tenantId);
   }
 
   /**
@@ -140,7 +146,9 @@ public record AdminLoginResponseDto(
         username,
         expiresAt,
         authAttemptId,
-        challengeCode);
+        challengeCode,
+        null,
+        null);
   }
 
   /**
@@ -150,10 +158,17 @@ public record AdminLoginResponseDto(
    * @param adminType the administrator type
    * @param username the administrator username
    * @param expiresAt the token expiration time
+   * @param adminId the administrator ID
+   * @param tenantId tenant scope when applicable
    * @return a success response
    */
   public static AdminLoginResponseDto success(
-      String token, String adminType, String username, OffsetDateTime expiresAt) {
+      String token,
+      String adminType,
+      String username,
+      OffsetDateTime expiresAt,
+      Integer adminId,
+      Integer tenantId) {
     return new AdminLoginResponseDto(
         true,
         "Authentication successful",
@@ -163,7 +178,9 @@ public record AdminLoginResponseDto(
         username,
         expiresAt,
         null,
-        null);
+        null,
+        adminId,
+        tenantId);
   }
 
   /**
@@ -173,7 +190,8 @@ public record AdminLoginResponseDto(
    * @return an error response
    */
   public static AdminLoginResponseDto error(String message) {
-    return new AdminLoginResponseDto(false, message, null, null, null, null, null, null, null);
+    return new AdminLoginResponseDto(
+        false, message, null, null, null, null, null, null, null, null, null);
   }
 
   @Override

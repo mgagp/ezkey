@@ -31,6 +31,7 @@ import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDate, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
+import { useDisplayTimezone } from '@/context/display-timezone-context';
 import { useToast } from '@/context/toast-context';
 import {
   checkChainIntegrity,
@@ -540,6 +541,7 @@ function CheckpointTimelineTable({
 
 function IntegrityPanel() {
   const { t } = useTranslation('audit-logs');
+  const { effectiveTimeZoneId } = useDisplayTimezone();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
@@ -600,13 +602,17 @@ function IntegrityPanel() {
       } as GetChainCheckpointsParams;
     }
     if (!checkpointRange.from || !checkpointRange.to) return {};
-    const { createdAfter, createdBefore } = dateRangeToApiParams(checkpointRange.from, checkpointRange.to);
+    const { createdAfter, createdBefore } = dateRangeToApiParams(
+      checkpointRange.from,
+      checkpointRange.to,
+      effectiveTimeZoneId,
+    );
     return {
       windowStartAfter: createdAfter,
       windowStartBefore: createdBefore,
       checkpointType: checkpointTypeFilter || undefined,
     } as GetChainCheckpointsParams;
-  }, [focusedGap, checkpointRange.from, checkpointRange.to, checkpointTypeFilter]);
+  }, [focusedGap, checkpointRange.from, checkpointRange.to, checkpointTypeFilter, effectiveTimeZoneId]);
 
   const {
     data: checkpointData,
@@ -696,7 +702,11 @@ function IntegrityPanel() {
       const params =
         checkRange.from && checkRange.to
           ? (() => {
-              const { createdAfter, createdBefore } = dateRangeToApiParams(checkRange.from, checkRange.to);
+              const { createdAfter, createdBefore } = dateRangeToApiParams(
+                checkRange.from,
+                checkRange.to,
+                effectiveTimeZoneId,
+              );
               return { from: createdAfter, to: createdBefore };
             })()
           : { from: undefined as string | undefined, to: undefined as string | undefined };
@@ -720,7 +730,11 @@ function IntegrityPanel() {
       const params =
         checkRange.from && checkRange.to
           ? (() => {
-              const { createdAfter, createdBefore } = dateRangeToApiParams(checkRange.from, checkRange.to);
+              const { createdAfter, createdBefore } = dateRangeToApiParams(
+                checkRange.from,
+                checkRange.to,
+                effectiveTimeZoneId,
+              );
               return { from: createdAfter, to: createdBefore };
             })()
           : { from: undefined as string | undefined, to: undefined as string | undefined };
@@ -1284,6 +1298,7 @@ function InfoPair({ label, value, mono }: { label: string; value: string; mono?:
 export default function AuditLogsPage() {
   const { t } = useTranslation('audit-logs');
   const { session } = useAuth();
+  const { effectiveTimeZoneId } = useDisplayTimezone();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const [searchParams, setSearchParams] = useSearchParams();
   const [eventFilter, setEventFilter] = useState(() => searchParams.get('eventType') ?? '');
@@ -1407,7 +1422,7 @@ export default function AuditLogsPage() {
         createdBefore: contextualDateRange.createdBefore,
       }
     : dateRange.from && dateRange.to
-      ? dateRangeToApiParams(dateRange.from, dateRange.to)
+      ? dateRangeToApiParams(dateRange.from, dateRange.to, effectiveTimeZoneId)
       : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
   const eventFilterParams = auditEventFilterToApiParams(eventFilter);
@@ -1490,6 +1505,7 @@ export default function AuditLogsPage() {
       integrationFilter,
       listApiDateParams.createdAfter ?? '',
       listApiDateParams.createdBefore ?? '',
+      effectiveTimeZoneId,
     ],
     baseParams: {
       ...eventFilterParams,

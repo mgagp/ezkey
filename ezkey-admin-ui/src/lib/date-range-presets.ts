@@ -1,8 +1,17 @@
 /**
  * Shared date-range preset definitions and helpers for admin UI temporal filters.
- * All semantics use the user's local timezone; API params are built from local
- * start/end of day and converted to ISO for the backend.
+ * When no IANA time zone is passed, semantics use the browser local calendar; when a zone is
+ * passed (tenant display mode), presets use that zone's calendar. API params use start/end of day
+ * in the active zone and convert to ISO UTC for the backend.
  */
+
+import {
+  addDaysYmd,
+  endOfDayInTimeZone,
+  formatYmdInTimeZone,
+  startOfDayInTimeZone,
+  weekdaySun0InZone,
+} from '@/lib/timezone-calendar';
 
 export const DATE_RANGE_PRESET_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Full range' },
@@ -23,17 +32,7 @@ function toYYYYMMDD(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/**
- * Returns the date range for a preset id using local calendar semantics.
- * - Today / Yesterday: that calendar day.
- * - Last 7 days / Last 30 days: rolling from (now − N days) to now (as calendar dates).
- * - Last week: previous Monday–Sunday.
- * - Last month: previous calendar month.
- * - Last quarter: previous calendar quarter.
- * Returns null for empty/full range.
- */
-export function getPresetDateRange(presetId: string): { from: string; to: string } | null {
-  if (!presetId || presetId === 'full') return null;
+function getPresetDateRangeLocal(presetId: string): { from: string; to: string } | null {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -81,21 +80,106 @@ export function getPresetDateRange(presetId: string): { from: string; to: string
   }
 }
 
+function getPresetDateRangeInZone(
+  presetId: string,
+  timeZone: string,
+): { from: string; to: string } | null {
+  const todayYmd = formatYmdInTimeZone(new Date(), timeZone);
+
+  switch (presetId) {
+    case 'today':
+      return { from: todayYmd, to: todayYmd };
+    case 'yesterday': {
+      const y = addDaysYmd(todayYmd, -1);
+      return { from: y, to: y };
+    }
+    case 'last-7d': {
+      const from = addDaysYmd(todayYmd, -7);
+      return { from, to: todayYmd };
+    }
+    case 'last-30d': {
+      const from = addDaysYmd(todayYmd, -30);
+      return { from, to: todayYmd };
+    }
+    case 'last-week': {
+      const wd = weekdaySun0InZone(todayYmd, timeZone);
+      const lastMonday = addDaysYmd(todayYmd, -(wd + 6));
+      const lastSunday = addDaysYmd(lastMonday, 6);
+      return { from: lastMonday, to: lastSunday };
+    }
+    case 'last-month': {
+      const [y, m] = todayYmd.split('-').map(Number);
+      const firstOfThisMonth = new Date(Date.UTC(y, m - 1, 1));
+      const lastOfPrev = new Date(firstOfThisMonth.getTime() - 86400000);
+      const fy = lastOfPrev.getUTCFullYear();
+      const fm = lastOfPrev.getUTCMonth();
+      const firstOfLastMonth = new Date(Date.UTC(fy, fm, 1));
+      const from = `${firstOfLastMonth.getUTCFullYear()}-${String(firstOfLastMonth.getUTCMonth() + 1).padStart(2, '0')}-01`;
+      const to = `${fy}-${String(fm + 1).padStart(2, '0')}-${String(lastOfPrev.getUTCDate()).padStart(2, '0')}`;
+      return { from, to };
+    }
+    case 'last-quarter': {
+      const [y, m] = todayYmd.split('-').map(Number);
+      const month0 = m - 1;
+      const currentQ = Math.floor(month0 / 3);
+      let year = y;
+      let prevQ = currentQ - 1;
+      if (prevQ < 0) {
+        prevQ = 3;
+        year -= 1;
+      }
+      const qStartMonth = prevQ * 3;
+      const qStart = new Date(Date.UTC(year, qStartMonth, 1));
+      const qEnd = new Date(Date.UTC(year, qStartMonth + 3, 0));
+      const from = `${qStart.getUTCFullYear()}-${String(qStart.getUTCMonth() + 1).padStart(2, '0')}-01`;
+      const to = `${qEnd.getUTCFullYear()}-${String(qEnd.getUTCMonth() + 1).padStart(2, '0')}-${String(qEnd.getUTCDate()).padStart(2, '0')}`;
+      return { from, to };
+    }
+    default:
+      return null;
+  }
+}
+
 /**
- * Converts two YYYY-MM-DD strings (local calendar dates) to API params.
- * Uses start-of-day for from and end-of-day for to in the user's local timezone,
- * then converts to ISO so "Today" and "Yesterday" match the admin's calendar.
+ * Returns the date range for a preset id.
+ * - Without {@code timeZone}: browser local calendar (legacy behavior).
+ * - With {@code timeZone}: that IANA zone's calendar (tenant display mode).
+ */
+export function getPresetDateRange(
+  presetId: string,
+  timeZone?: string,
+): { from: string; to: string } | null {
+  if (!presetId || presetId === 'full') return null;
+  if (!timeZone) {
+    return getPresetDateRangeLocal(presetId);
+  }
+  return getPresetDateRangeInZone(presetId, timeZone);
+}
+
+/**
+ * Converts two YYYY-MM-DD strings to API params.
+ * Without {@code timeZone}: start/end of day in the browser local zone.
+ * With {@code timeZone}: start/end of day in that IANA zone.
  */
 export function dateRangeToApiParams(
   from: string,
   to: string,
+  timeZone?: string,
 ): { createdAfter: string; createdBefore: string } {
-  const [yFrom, mFrom, dFrom] = from.split('-').map(Number);
-  const [yTo, mTo, dTo] = to.split('-').map(Number);
-  const startLocal = new Date(yFrom, mFrom - 1, dFrom, 0, 0, 0, 0);
-  const endLocal = new Date(yTo, mTo - 1, dTo, 23, 59, 59, 999);
+  if (!timeZone) {
+    const [yFrom, mFrom, dFrom] = from.split('-').map(Number);
+    const [yTo, mTo, dTo] = to.split('-').map(Number);
+    const startLocal = new Date(yFrom, mFrom - 1, dFrom, 0, 0, 0, 0);
+    const endLocal = new Date(yTo, mTo - 1, dTo, 23, 59, 59, 999);
+    return {
+      createdAfter: startLocal.toISOString(),
+      createdBefore: endLocal.toISOString(),
+    };
+  }
+  const start = startOfDayInTimeZone(from, timeZone);
+  const end = endOfDayInTimeZone(to, timeZone);
   return {
-    createdAfter: startLocal.toISOString(),
-    createdBefore: endLocal.toISOString(),
+    createdAfter: start.toISOString(),
+    createdBefore: end.toISOString(),
   };
 }

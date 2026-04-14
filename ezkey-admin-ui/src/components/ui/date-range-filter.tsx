@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useDisplayTimezone } from '@/context/display-timezone-context';
 import {
   DATE_RANGE_PRESET_OPTIONS,
   getPresetDateRange,
@@ -39,12 +40,13 @@ export function DateRangeFilter({
   emptyOptionLabel,
 }: DateRangeFilterProps) {
   const { t } = useTranslation('common');
+  const { effectiveTimeZoneId } = useDisplayTimezone();
   const defaultEmptyLabel = t('dateRange.full');
   const resolvedEmptyLabel = emptyOptionLabel ?? defaultEmptyLabel;
   const hasRange = Boolean(value.from || value.to);
 
   const handlePresetChange = (presetValue: string) => {
-    const range = getPresetDateRange(presetValue);
+    const range = getPresetDateRange(presetValue, effectiveTimeZoneId);
     if (range) {
       onChange({ from: range.from, to: range.to });
     } else {
@@ -68,7 +70,7 @@ export function DateRangeFilter({
     if (!value.from && !value.to) return '';
     for (const opt of DATE_RANGE_PRESET_OPTIONS) {
       if (!opt.value) continue;
-      const range = getPresetDateRange(opt.value);
+      const range = getPresetDateRange(opt.value, effectiveTimeZoneId);
       if (range && range.from === value.from && range.to === value.to) return opt.value;
     }
     return '';

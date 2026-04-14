@@ -17,6 +17,7 @@ import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { useDisplayTimezone } from '@/context/display-timezone-context';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -155,6 +156,7 @@ function AttemptDetailDialog({
 
 export default function AuthAttemptsPage() {
   const { t } = useTranslation('auth-attempts');
+  const { effectiveTimeZoneId } = useDisplayTimezone();
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('');
   const [enrollmentIdInput, setEnrollmentIdInput] = useState('');
@@ -167,7 +169,7 @@ export default function AuthAttemptsPage() {
 
   const apiDateParams =
     dateRange.from && dateRange.to
-      ? dateRangeToApiParams(dateRange.from, dateRange.to)
+      ? dateRangeToApiParams(dateRange.from, dateRange.to, effectiveTimeZoneId)
       : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
   const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuthAttemptDto, {
@@ -177,7 +179,7 @@ export default function AuthAttemptsPage() {
     createdAfter?: string;
     createdBefore?: string;
   }>({
-    queryKey: ['auth-attempts', statusFilter, debouncedEnrollmentId, integrationFilter, dateRange.from, dateRange.to],
+    queryKey: ['auth-attempts', statusFilter, debouncedEnrollmentId, integrationFilter, dateRange.from, dateRange.to, effectiveTimeZoneId],
     baseParams: {
       status: statusFilter || undefined,
       enrollmentId: debouncedEnrollmentId ? parseInt(debouncedEnrollmentId, 10) : undefined,

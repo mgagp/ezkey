@@ -34,6 +34,7 @@ import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useDebounce } from '@/hooks/use-debounce';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { useToast } from '@/context/toast-context';
+import { useDisplayTimezone } from '@/context/display-timezone-context';
 import { usePaginatedFromOrval, type PagedBody } from '@/hooks/use-paginated-orval';
 import {
   listKeys,
@@ -630,6 +631,7 @@ function RotateKeyDialog({ open, onClose }: { open: boolean; onClose: () => void
 
 function ReencryptionBatchesSection() {
   const { t } = useTranslation('encryption-keys');
+  const { effectiveTimeZoneId } = useDisplayTimezone();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
@@ -649,7 +651,7 @@ function ReencryptionBatchesSection() {
 
   const apiDateParams =
     dateRange.from && dateRange.to
-      ? dateRangeToApiParams(dateRange.from, dateRange.to)
+      ? dateRangeToApiParams(dateRange.from, dateRange.to, effectiveTimeZoneId)
       : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
   function parseKeyId(s: string): number | undefined {
@@ -680,6 +682,7 @@ function ReencryptionBatchesSection() {
       debouncedNewKey,
       dateRange.from,
       dateRange.to,
+      effectiveTimeZoneId,
     ],
     baseParams: {
       status: statusFilter || undefined,
