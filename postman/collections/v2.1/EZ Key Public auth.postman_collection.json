@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "c8f3a1e2-9b4d-4c6a-8f1e-2d7a6b5c4d3e",
-    "name": "EZ Key Public admin",
-    "description": "Unauthenticated Admin API endpoints intended for the Admin UI login shell, operators, and QA.\n\n## Endpoints\n\n- **Get public instance info**: Read-only metadata (`instanceName`, `instanceDescription`, `aboutUrl`, `authApiPublicBaseUrl`)\n\nThe **same** `GET /api/v1/public/instance-info` contract is also exposed on the **Auth API** — see collection **EZ Key Public auth** (`{{base_url}}`, port 8080 by default).\n\n## Authentication\n\n**No Bearer token.** No `Authorization` header. These routes are `permitAll` in Spring Security.\n\n## Relationship to enrollment QR\n\n`authApiPublicBaseUrl` mirrors the value configured as `ezkey.qr.auth-base-url` on the Admin API — the same string embedded as `authUrl` in enrollment QR JSON when that property is set. Use this request to verify what the server will expose before scanning QR codes on a device.\n\n## Environment\n\nUse the same `{{base_url_admin_api}}` variable as other Admin API collections (see `postman/environments/local.postman_environment.json`).",
+    "_postman_id": "a7e2b9c1-4f3d-5e6a-9b0c-1d2e3f4a5b6c",
+    "name": "EZ Key Public auth",
+    "description": "Unauthenticated Auth API endpoints for mobile clients, operators, and QA.\n\n## Endpoints\n\n- **Get public instance info**: Read-only metadata (`instanceName`, `instanceDescription`, `aboutUrl`, `authApiPublicBaseUrl`) — **same JSON contract** as `EZ Key Public admin` (`GET /api/v1/public/instance-info` on the Admin API).\n\n## Authentication\n\n**No Bearer token.** No cryptographic signature. These routes are `permitAll` in Spring Security.\n\n## Configuration\n\nProperties are read from the **Auth API** process: `ezkey.qr.auth-base-url` and `ezkey.organization.*` (e.g. `EZKEY_QR_AUTH_BASE_URL`, `EZKEY_ORGANIZATION_ABOUT_URL` in Docker). Set them consistently with the Admin API when both are exposed.\n\n## Environment\n\nUse `{{base_url}}` — same variable as **EZ Key Enrollments auth** and **EZ Key Auth Attempts auth** (`http://localhost:8080` in `postman/environments/local.postman_environment.json`).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "4087"
   },
@@ -47,8 +47,8 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{base_url_admin_api}}/api/v1/public/instance-info",
-        "description": "Returns read-only instance metadata for branding and operator visibility.\n\n**No authentication required.**\n\n**Response (200 OK):**\n- `instanceName` (string): from `ezkey.organization.name`\n- `instanceDescription` (string): from `ezkey.organization.description`\n- `aboutUrl` (string | null): from `ezkey.organization.about-url` when set\n- `authApiPublicBaseUrl` (string | null): from `ezkey.qr.auth-base-url`; same value as `authUrl` in enrollment QR JSON when configured\n\n**Status codes:**\n- 200: OK\n- 500: Internal server error"
+        "url": "{{base_url}}/api/v1/public/instance-info",
+        "description": "Returns read-only instance metadata for branding and mobile visibility.\n\n**No authentication required.** Same payload as Admin API `GET /api/v1/public/instance-info`.\n\n**Response (200 OK):**\n- `instanceName` (string): from `ezkey.organization.name`\n- `instanceDescription` (string): from `ezkey.organization.description`\n- `aboutUrl` (string | null): from `ezkey.organization.about-url` when set\n- `authApiPublicBaseUrl` (string | null): from `ezkey.qr.auth-base-url`; same value as `authUrl` in enrollment QR JSON when configured\n\n**Status codes:**\n- 200: OK\n- 500: Internal server error"
       },
       "response": []
     }

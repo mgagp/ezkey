@@ -109,6 +109,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ezkey
       # Same as docker-compose.yml auth-api — demo Pending MITM simulation (default on for clean-start --native).
       EZKEY_DEMO_MITM_SIGNATURE_ENABLED: ${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
     volumes:
       - encryption-secrets-native:/etc/ezkey
     ports:

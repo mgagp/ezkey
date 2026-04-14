@@ -5,10 +5,10 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test: PublicInstanceInfoControllerTest
- * Description: Unit tests for public instance-info endpoint.
+ * Description: Unit tests for Auth API public instance-info endpoint.
  */
 
-package org.ezkey.admin.controller;
+package org.ezkey.auth.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;

@@ -16,7 +16,7 @@ import java.util.Optional;
 import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.InitialGlobalAdminProperties;
-import org.ezkey.admin.config.OrganizationProperties;
+import org.ezkey.config.OrganizationProperties;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;

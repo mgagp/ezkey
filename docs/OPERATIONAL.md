@@ -151,8 +151,8 @@ ezkey.organization.about-url=https://www.example.com/about-ezkey
 
 | Variable | Maps to | Purpose |
 | -------- | ------- | ------- |
-| `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | Optional “About / learn more” link in Admin UI |
-| `EZKEY_QR_AUTH_BASE_URL` | `ezkey.qr.auth-base-url` | Public Auth API base URL embedded as `authUrl` in enrollment QR JSON and returned as `authApiPublicBaseUrl` from `GET /api/v1/public/instance-info` |
+| `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | Optional “About / learn more” link; `aboutUrl` on `GET /api/v1/public/instance-info` (Admin API and Auth API) |
+| `EZKEY_QR_AUTH_BASE_URL` | `ezkey.qr.auth-base-url` | Public Auth API base URL embedded as `authUrl` in enrollment QR JSON and returned as `authApiPublicBaseUrl` from `GET /api/v1/public/instance-info` (Admin API and Auth API) |
 
 **Use Cases:**
 - **Single Organization**: Default "Ezkey System" for internal use

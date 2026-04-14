@@ -121,6 +121,9 @@ services:
       # Default true for this dev stack so ./ezkey-tests/clean-start.sh can demo without extra env.
       # Set EZKEY_DEMO_MITM_SIGNATURE_ENABLED=false for production-like runs.
       EZKEY_DEMO_MITM_SIGNATURE_ENABLED: ${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}
+      # Same public metadata as admin-api for GET /api/v1/public/instance-info (mobile, operators).
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-}
+      EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
     volumes:
       - encryption-secrets:/etc/ezkey
     ports:

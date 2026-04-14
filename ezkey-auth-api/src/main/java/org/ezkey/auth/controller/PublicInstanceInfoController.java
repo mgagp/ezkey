@@ -5,10 +5,10 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Controller: PublicInstanceInfoController
- * Description: Unauthenticated REST endpoint for public instance metadata.
+ * Description: Unauthenticated REST endpoint for public instance metadata (mobile and tooling).
  */
 
-package org.ezkey.admin.controller;
+package org.ezkey.auth.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,15 +23,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Exposes read-only instance metadata without authentication (login page, tooling).
+ * Exposes read-only instance metadata without authentication (mobile clients, operators).
  *
  * <p>Does not replace {@code authUrl} inside scanned enrollment QR payloads; it mirrors {@link
- * org.ezkey.config.QrCodeProperties#getAuthBaseUrl()} for visibility.
+ * org.ezkey.config.QrCodeProperties#getAuthBaseUrl()} for visibility. Same JSON contract as the
+ * Admin API {@code GET /api/v1/public/instance-info}.
  */
 @RestController
 @RequestMapping("/api/v1/public")
 @Tag(name = "Public", description = "Unauthenticated instance metadata")
 public class PublicInstanceInfoController {
+
+  /** Full path for OpenAPI and documentation. */
+  public static final String FULL_PATH_INSTANCE_INFO = "/api/v1/public/instance-info";
 
   private final PublicInstanceInfoService publicInstanceInfoService;
 
@@ -47,9 +51,10 @@ public class PublicInstanceInfoController {
   @Operation(
       summary = "Get public instance info",
       description =
-          "Returns read-only instance metadata for the Admin UI (login shell) and operators."
-              + " authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when"
-              + " ezkey.qr.auth-base-url is set.")
+          "Returns read-only instance metadata for mobile clients and operators. Same payload as"
+              + " the Admin API public instance-info. authApiPublicBaseUrl matches the authUrl"
+              + " embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.",
+      security = {})
   @ApiResponse(
       responseCode = "200",
       description = "Instance metadata",

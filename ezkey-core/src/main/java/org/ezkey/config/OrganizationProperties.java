@@ -8,7 +8,7 @@
  * Description: Configuration properties for the organization hosting this Ezkey instance.
  */
 
-package org.ezkey.admin.config;
+package org.ezkey.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -60,7 +60,8 @@ public class OrganizationProperties {
   /**
    * Optional URL for "About" / learn more in the Admin UI (e.g. page describing this instance).
    *
-   * <p>Not a secret; exposed via {@code GET /api/v1/public/instance-info}.
+   * <p>Not a secret; exposed via {@code GET /api/v1/public/instance-info} on Admin API and Auth
+   * API.
    */
   private String aboutUrl;
 

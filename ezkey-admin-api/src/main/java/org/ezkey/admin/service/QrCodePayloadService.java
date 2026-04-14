@@ -10,7 +10,7 @@
 
 package org.ezkey.admin.service;
 
-import org.ezkey.admin.config.QrCodeProperties;
+import org.ezkey.config.QrCodeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

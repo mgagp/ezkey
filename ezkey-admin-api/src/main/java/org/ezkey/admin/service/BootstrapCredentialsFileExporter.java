@@ -16,7 +16,7 @@ import java.nio.file.Path;
 import org.ezkey.admin.config.AdminMfaProperties;
 import org.ezkey.admin.config.BootstrapCredentialsOutputMode;
 import org.ezkey.admin.config.BootstrapExportProperties;
-import org.ezkey.admin.config.QrCodeProperties;
+import org.ezkey.config.QrCodeProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

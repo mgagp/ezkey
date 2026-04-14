@@ -33,6 +33,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
       "org.ezkey.audit", //
       "org.ezkey.signature", //
       "org.ezkey.config", // Configuration properties
+      "org.ezkey.instance", // Public instance metadata (instance-info)
       "org.ezkey.security", // Tink encryption services
     })
 public class AuthApplication {

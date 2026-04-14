@@ -37,6 +37,10 @@
     {
       "name": "Authentication Attempts",
       "description": "Mobile authentication attempt operations for checking pending requests and submitting responses"
+    },
+    {
+      "name": "Public",
+      "description": "Unauthenticated instance metadata"
     }
   ],
   "paths": {
@@ -270,6 +274,28 @@
           },
           "429": {
             "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/v1/public/instance-info": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Get public instance info",
+        "description": "Returns read-only instance metadata for mobile clients and operators. Same payload as the Admin API public instance-info. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.",
+        "operationId": "getInstanceInfo",
+        "responses": {
+          "200": {
+            "description": "Instance metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicInstanceInfoResponseDto"
+                }
+              }
+            }
           }
         }
       }
@@ -611,6 +637,32 @@
           "authAttemptProofToken",
           "authAttemptProofTokenSignedByIntegration"
         ]
+      },
+      "PublicInstanceInfoResponseDto": {
+        "type": "object",
+        "description": "Public instance metadata (branding, optional public Auth API URL for QR alignment)",
+        "properties": {
+          "authApiPublicBaseUrl": {
+            "type": "string",
+            "description": "Public base URL of the Auth API (same as authUrl in enrollment QR JSON when configured)",
+            "example": "https://auth.example.com:8080"
+          },
+          "instanceName": {
+            "type": "string",
+            "description": "Instance / organization display name",
+            "example": "Acme Corporation"
+          },
+          "instanceDescription": {
+            "type": "string",
+            "description": "Optional instance or organization description",
+            "example": "Acme Corp Ezkey MFA"
+          },
+          "aboutUrl": {
+            "type": "string",
+            "description": "Optional URL for About / learn more (e.g. company instance page)",
+            "example": "https://www.example.com/about-ezkey"
+          }
+        }
       }
     },
     "securitySchemes": {

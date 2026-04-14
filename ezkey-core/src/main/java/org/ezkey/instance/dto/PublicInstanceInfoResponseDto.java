@@ -5,19 +5,20 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * DTO: PublicInstanceInfoResponseDto
- * Description: Public, unauthenticated instance metadata for Admin UI and operators.
+ * Description: Public, unauthenticated instance metadata for Admin UI, Auth API clients, and
+ * operators.
  */
 
-package org.ezkey.admin.dto.response;
+package org.ezkey.instance.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * Public instance information (no authentication required).
  *
- * <p>Used by the Admin UI login shell and for operator visibility. {@code authApiPublicBaseUrl}
- * mirrors the {@code authUrl} field embedded in enrollment QR codes when {@code
- * ezkey.qr.auth-base-url} is configured.
+ * <p>Used by the Admin UI login shell, the Auth API public {@code instance-info} endpoint, and for
+ * operator visibility. {@code authApiPublicBaseUrl} mirrors the {@code authUrl} field embedded in
+ * enrollment QR codes when {@code ezkey.qr.auth-base-url} is configured.
  */
 @Schema(
     description =

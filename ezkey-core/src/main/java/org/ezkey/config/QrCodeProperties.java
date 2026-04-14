@@ -8,7 +8,7 @@
  * Description: Configuration properties for QR code generation, including the public auth-api URL.
  */
 
-package org.ezkey.admin.config;
+package org.ezkey.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -28,8 +28,8 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>Self-Hosted Note:</b> Since Ezkey is designed to be self-hosted, this URL must be the
  * <b>public-facing</b> URL of the auth-api, accessible from the mobile device. In Docker
- * deployments, this is NOT the internal Docker network URL (e.g., {@code http://auth-api:8080}),
- * but the external URL reachable from outside the Docker network.
+ * deployments, this is NOT the internal Docker network URL (e.g. {@code http://auth-api:8080}), but
+ * the external URL reachable from outside the Docker network.
  *
  * <p><b>Backward Compatibility:</b> If not configured, QR codes will omit the {@code authUrl}
  * field. The mobile application will fall back to its configured default base URL.

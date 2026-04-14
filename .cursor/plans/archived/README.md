@@ -12,6 +12,27 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2026-04 - Auth API public `instance-info`
+
+**Completion Date:** April 13, 2026  
+**Status:** ✅ **COMPLETED** (implemented; Postman validated)
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-04/auth_api_public_instance-info_79f69132.plan.md** | Same `GET /api/v1/public/instance-info` JSON on Auth API as Admin API; shared DTO/properties/service in `ezkey-core`; Docker env on `auth-api`; docs + mobile README | ✅ Completed |
+
+**What was implemented:**
+
+- `ezkey-core`: `PublicInstanceInfoService`, `PublicInstanceInfoResponseDto`, `QrCodeProperties`, `OrganizationProperties`; Admin and Auth thin controllers.
+- `ezkey-auth-api`: `PublicInstanceInfoController` with OpenAPI `security = {}` for the GET.
+- Docker: `EZKEY_QR_AUTH_BASE_URL` / `EZKEY_ORGANIZATION_ABOUT_URL` on `auth-api` (and HA/native variants); `application-docker*.properties` for Auth API.
+- Docs: `docs/ENDPOINT.md` §1, `docs/OPERATIONAL.md`, `ezkey_mobile/README.md`.
+- Postman: `EZ Key Public auth` collection; `EZ Key Public admin` URL as string for correct import.
+
+**Canonical reference:** [`docs/ENDPOINT.md`](../../../docs/ENDPOINT.md).
+
+---
+
 ### 2026-04 - Tenant timezone strategy (Admin UI / API)
 
 **Completion Date:** April 13, 2026  

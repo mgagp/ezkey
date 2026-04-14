@@ -54,6 +54,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
       "org.ezkey.audit", //
       "org.ezkey.signature",
       "org.ezkey.config",
+      "org.ezkey.instance",
       "org.ezkey.tenant",
       "org.ezkey.adminauth",
       "org.ezkey.security", // Tink encryption services

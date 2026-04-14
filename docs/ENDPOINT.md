@@ -117,6 +117,21 @@ HTTP **4xx** and **5xx** responses from the Auth API use **RFC 9457** Problem De
 
 **200 OK** on `POST /api/v1/auth-attempts/respond` returns a business-level `FAILED` result in the JSON body when validation or cryptographic checks fail in a way modeled as `AuthAttemptRequestFailedException` in the respond service (integration-signed; see `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`). A raw `IllegalArgumentException` or other uncaught exception from that flow is not converted to `FAILED` and is handled like other Auth API errors (typically Problem Details **400** for `IllegalArgumentException`). HTTP-level failures for state conflicts (e.g. superseded or expired attempt) use **409** Problem Details as above.
 
+### Public instance metadata (unauthenticated)
+
+**Base path:** `GET http://localhost:8080/api/v1/public/instance-info` (no `Authorization` header, no cryptographic signature).
+
+Returns the same read-only JSON as the Admin API public instance-info (see **§2 Admin API — Public instance metadata**). Mobile clients can use this endpoint on the **Auth API** base URL so they do not depend on the Admin API.
+
+| Field | Source | Notes |
+| ----- | ------ | ----- |
+| `authApiPublicBaseUrl` | `ezkey.qr.auth-base-url` | Same value embedded as `authUrl` in enrollment QR JSON; `null` when unset |
+| `instanceName` | `ezkey.organization.name` | Instance / organization display name |
+| `instanceDescription` | `ezkey.organization.description` | Human-facing blurb for this **deployment** |
+| `aboutUrl` | `ezkey.organization.about-url` | Optional link for “Learn more”; `null` when unset |
+
+Configure these properties on the Auth API process (e.g. `EZKEY_QR_AUTH_BASE_URL`, `EZKEY_ORGANIZATION_ABOUT_URL` in Docker) so the response matches operator expectations and the Admin API when both are deployed.
+
 ### a) Retrieve pending request
 
 **POST /api/v1/auth-attempts/pending**
