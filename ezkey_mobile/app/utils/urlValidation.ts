@@ -25,7 +25,60 @@ const DEV_HTTP_HOSTS = ['localhost', '127.0.0.1', '10.0.2.2'];
  * Uses a simple regex approach instead of the WHATWG `URL` constructor to guarantee compatibility
  * with all React Native / Hermes runtime versions.
  */
-const URL_PATTERN = /^(https?):\/\/([^/?#\s]+)(\/[^?#\s]*)?$/;
+const URL_PATTERN = /^(https?):\/\/([^/?#\s]+)(\/[^?#\s]*)?$/i;
+
+const DEFAULT_HTTPS_PORT = '443';
+
+type ParsedHost = {
+  hostname: string;
+  port?: string;
+};
+
+function parseHost(value: string): ParsedHost | undefined {
+  const parts = value.split(':');
+  if (parts.length === 1) {
+    return {hostname: parts[0]};
+  }
+  if (parts.length !== 2 || !parts[1]) {
+    return undefined;
+  }
+
+  return {
+    hostname: parts[0],
+    port: parts[1],
+  };
+}
+
+function normalizePath(path: string | undefined): string | undefined {
+  if (!path || path === '/') {
+    return undefined;
+  }
+
+  const normalizedPath = path.replace(/\/+$/, '');
+  return normalizedPath || undefined;
+}
+
+function normalizeHost(scheme: string, rawHost: string): string | undefined {
+  const parsedHost = parseHost(rawHost);
+  if (!parsedHost) {
+    return undefined;
+  }
+
+  const hostname = parsedHost.hostname.toLowerCase();
+  if (!hostname) {
+    return undefined;
+  }
+
+  if (!parsedHost.port) {
+    return hostname;
+  }
+
+  if (scheme === 'https' && parsedHost.port === DEFAULT_HTTPS_PORT) {
+    return hostname;
+  }
+
+  return `${hostname}:${parsedHost.port}`;
+}
 
 /**
  * Validates that the given string is a well-formed Auth API URL.
@@ -56,11 +109,16 @@ export const validateAuthUrl = (value: string | undefined | null): string | unde
     return undefined;
   }
 
-  const scheme = match[1]; // 'http' or 'https'
+  const scheme = match[1].toLowerCase(); // 'http' or 'https'
   const host = match[2];   // 'example.com' or 'example.com:8080'
   const path = match[3];   // '/some/path' or undefined
 
-  const hostname = host.split(':')[0];
+  const parsedHost = parseHost(host);
+  if (!parsedHost) {
+    return undefined;
+  }
+
+  const hostname = parsedHost.hostname.toLowerCase();
 
   const isHttps = scheme === 'https';
   const isDevHttp = scheme === 'http' && DEV_HTTP_HOSTS.includes(hostname);
@@ -69,11 +127,31 @@ export const validateAuthUrl = (value: string | undefined | null): string | unde
     return undefined;
   }
 
+  const normalizedHost = normalizeHost(scheme, host);
+  if (!normalizedHost) {
+    return undefined;
+  }
+
   // Rebuild normalized URL, stripping trailing slashes for consistent Axios baseURL usage.
-  let normalized = `${scheme}://${host}`;
-  if (path && path !== '/') {
-    normalized += path.replace(/\/+$/, '');
+  let normalized = `${scheme}://${normalizedHost}`;
+  const normalizedPath = normalizePath(path);
+  if (normalizedPath) {
+    normalized += normalizedPath;
   }
 
   return normalized;
 };
+
+/**
+ * Builds the canonical installation identity from a raw Auth API URL.
+ *
+ * The installation identity mirrors `validateAuthUrl()` because Ezkey installations are grouped
+ * by their normalized trust-zone URL, not by mutable branding labels.
+ *
+ * @param value Raw Auth API URL.
+ * @return Canonical installation identifier or undefined when invalid.
+ * @since 2025
+ */
+export const normalizeInstallationId = (
+  value: string | undefined | null,
+): string | undefined => validateAuthUrl(value);

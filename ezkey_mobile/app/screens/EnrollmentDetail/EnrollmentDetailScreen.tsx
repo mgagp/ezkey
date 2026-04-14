@@ -16,6 +16,7 @@ import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
+import {shouldShowInstallationHostHint} from '../../utils/installationMetadata';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
@@ -76,17 +77,27 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     timeStyle: 'short',
   });
   const hasCustomServer = !!enrollment.authUrl;
+  const showHostHint = shouldShowInstallationHostHint(enrollment);
 
   return (
     <View style={styles.container}>
       <View style={styles.identityZone}>
+        <Text style={styles.installationLine}>{enrollment.installationName}</Text>
+        {showHostHint && enrollment.installationHost ? (
+          <Text style={styles.installationHint}>{enrollment.installationHost}</Text>
+        ) : null}
+        {enrollment.tenantName ? (
+          <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
+        ) : null}
         <View style={styles.identityRow}>
           <Text style={styles.integrationName}>{enrollment.integrationName}</Text>
           <Text style={styles.statusBadge}>{enrollment.status.toUpperCase()}</Text>
         </View>
-        <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
         {enrollment.enrollmentName ? (
           <Text style={styles.deviceLine}>{enrollment.enrollmentName}</Text>
+        ) : null}
+        {enrollment.installationDescription ? (
+          <Text style={styles.descriptionLine}>{enrollment.installationDescription}</Text>
         ) : null}
       </View>
 
@@ -128,6 +139,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 10,
+  },
+  installationLine: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#dfe6f7',
+  },
+  installationHint: {
+    fontSize: 12,
+    color: '#7e91b9',
+    marginTop: 2,
   },
   integrationName: {
     fontSize: 18,
@@ -149,6 +171,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#c2c8d5',
     marginTop: 2,
+  },
+  descriptionLine: {
+    fontSize: 13,
+    color: '#9aa3b6',
+    marginTop: 10,
+    lineHeight: 18,
   },
   metaZone: {
     paddingHorizontal: 4,

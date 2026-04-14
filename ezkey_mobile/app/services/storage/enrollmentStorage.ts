@@ -13,6 +13,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {EnrollmentSummary} from '../api/types';
+import {hydrateInstallationMetadata} from '../../utils/installationMetadata';
 import {secureStorage} from './secureStorage';
 
 const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
@@ -29,6 +30,7 @@ export type StoredEnrollment = EnrollmentSummary & {
   enrollmentProofToken: string;
   enrollmentId?: string; // Enrollment ID used for key derivation (for backward compatibility)
   integrationPublicKey?: string;
+  integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
 };
@@ -83,7 +85,7 @@ class EnrollmentStorage {
     }
     try {
       const parsed = JSON.parse(payload) as StoredEnrollment[];
-      return parsed;
+      return parsed.map(item => hydrateInstallationMetadata(item));
     } catch (error) {
       console.warn('[enrollmentStorage] Failed to parse enrollment cache:', error);
       return [];
@@ -101,7 +103,18 @@ class EnrollmentStorage {
    */
   async saveEnrollment(record: StoredEnrollment) {
     const items = await this.listEnrollments();
-    const nextItems = items.filter(item => item.id !== record.id).concat(record);
+    const nextItems = items.filter(item => item.id !== record.id).concat(hydrateInstallationMetadata(record));
+    await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
+  }
+
+  /**
+   * Replaces the full enrollment collection.
+   *
+   * @param records Enrollment records to persist.
+   * @since 2025
+   */
+  async replaceAll(records: StoredEnrollment[]) {
+    const nextItems = records.map(item => hydrateInstallationMetadata(item));
     await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
   }
 

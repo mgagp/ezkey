@@ -11,10 +11,10 @@
  * @since 2025
  */
 
-import React, {useCallback, useMemo} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
-  SectionList,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -23,11 +23,14 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
-import {useEnrollments} from '../../hooks/useEnrollments';
+import {useEnrollments, useRefreshInstallationMetadata} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
-import {groupEnrollmentsByTenant, type TenantGroup} from '../../utils/tenantGrouping';
+import {
+  groupEnrollmentsByTenant,
+  type InstallationGroup,
+} from '../../utils/tenantGrouping';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 
 /**
@@ -51,16 +54,6 @@ const sortEnrollments = (items: StoredEnrollment[]) =>
 type HomeNavigation = StackNavigationProp<RootStackParamList, 'Home'>;
 
 /**
- * Converts tenant groups to SectionList sections format.
- *
- * @param groups Tenant groups from groupEnrollmentsByTenant.
- * @return Sections for SectionList.
- * @since 2025
- */
-const toSections = (groups: TenantGroup[]): Array<{group: TenantGroup; data: StoredEnrollment[]}> =>
-  groups.map(group => ({group, data: group.enrollments}));
-
-/**
  * Lists stored enrollments and routes users to detail or wizard screens.
  *
  * @since 2025
@@ -69,14 +62,44 @@ export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeNavigation>();
   const insets = useSafeAreaInsets();
   const {data, isLoading} = useEnrollments();
+  const refreshInstallationMetadata = useRefreshInstallationMetadata();
+  const {isPending: isRefreshingInstallationMetadata, mutate: refreshInstallations} =
+    refreshInstallationMetadata;
   const setSelected = useEnrollmentStore(store => store.setSelected);
+  const [expandedInstallations, setExpandedInstallations] = useState<string[]>([]);
 
-  const sections = useMemo(() => {
+  const installationGroups = useMemo(() => {
     if (!data || data.length === 0) return [];
     const sorted = sortEnrollments(data);
-    const groups = groupEnrollmentsByTenant(sorted);
-    return toSections(groups);
+    return groupEnrollmentsByTenant(sorted);
   }, [data]);
+
+  useEffect(() => {
+    if (installationGroups.length === 0) {
+      setExpandedInstallations([]);
+      return;
+    }
+
+    setExpandedInstallations(previous => {
+      if (installationGroups.length === 1) {
+        return [installationGroups[0].installationId];
+      }
+
+      const kept = previous.filter(id =>
+        installationGroups.some(group => group.installationId === id),
+      );
+
+      return kept.length > 0 ? kept : [installationGroups[0].installationId];
+    });
+  }, [installationGroups]);
+
+  useEffect(() => {
+    if (!data || data.length === 0 || isRefreshingInstallationMetadata) {
+      return;
+    }
+
+    refreshInstallations(data);
+  }, [data, isRefreshingInstallationMetadata, refreshInstallations]);
 
   const navigateToWizard = () => navigation.navigate('EnrollmentWizard');
 
@@ -88,21 +111,13 @@ export const HomeScreen: React.FC = () => {
     [navigation, setSelected],
   );
 
-  const renderItem = useCallback(
-    ({item}: {item: StoredEnrollment}) => (
-      <EnrollmentListItem enrollment={item} onPress={handleSelect} />
-    ),
-    [handleSelect],
-  );
-
-  const renderSectionHeader = useCallback(
-    ({section}: {section: {group: TenantGroup; data: StoredEnrollment[]}}) => (
-      <TenantSectionHeader tenantName={section.group.tenantName} tenantDescription={section.group.tenantDescription} />
-    ),
-    [],
-  );
-
-  const keyExtractor = useCallback((item: StoredEnrollment) => item.id, []);
+  const toggleInstallation = useCallback((installationId: string) => {
+    setExpandedInstallations(previous =>
+      previous.includes(installationId)
+        ? previous.filter(id => id !== installationId)
+        : [...previous, installationId],
+    );
+  }, []);
 
   const fabBottom = insets.bottom + spacing.lg;
 
@@ -113,16 +128,23 @@ export const HomeScreen: React.FC = () => {
           <ActivityIndicator color={colors.primaryLight} accessibilityLabel="Loading" />
         </View>
       ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={keyExtractor}
+        <ScrollView
           contentContainerStyle={[styles.listContent, {paddingBottom: fabBottom + 56 + spacing.md}]}
-          renderItem={renderItem}
-          renderSectionHeader={renderSectionHeader}
-          ListEmptyComponent={EmptyState}
-          stickySectionHeadersEnabled={false}
-          accessibilityLabel="Enrollments grouped by organization"
-        />
+          accessibilityLabel="Enrollments grouped by Ezkey installation">
+          {installationGroups.length === 0 ? (
+            <EmptyState />
+          ) : (
+            installationGroups.map(group => (
+              <InstallationSection
+                key={group.installationId}
+                group={group}
+                expanded={expandedInstallations.includes(group.installationId)}
+                onToggle={toggleInstallation}
+                onSelectEnrollment={handleSelect}
+              />
+            ))
+          )}
+        </ScrollView>
       )}
       <TouchableOpacity
         style={[styles.fab, {bottom: fabBottom}]}
@@ -173,6 +195,66 @@ const TenantSectionHeader: React.FC<TenantSectionHeaderProps> = ({
   </View>
 );
 
+type InstallationSectionProps = {
+  group: InstallationGroup;
+  expanded: boolean;
+  onToggle: (installationId: string) => void;
+  onSelectEnrollment: (enrollment: StoredEnrollment) => void;
+};
+
+const InstallationSection: React.FC<InstallationSectionProps> = ({
+  group,
+  expanded,
+  onToggle,
+  onSelectEnrollment,
+}) => (
+  <View style={styles.installationSection}>
+    <TouchableOpacity
+      style={styles.installationHeader}
+      onPress={() => onToggle(group.installationId)}
+      accessibilityRole="button"
+      accessibilityLabel={`${group.installationName} installation`}
+      accessibilityHint={expanded ? 'Collapses this installation section' : 'Expands this installation section'}>
+      <View style={styles.installationHeaderContent}>
+        <Text style={styles.installationName}>{group.installationName}</Text>
+        {group.installationDescription ? (
+          <Text style={styles.installationDescription}>{group.installationDescription}</Text>
+        ) : null}
+        {group.showHostHint && group.installationHost ? (
+          <Text style={styles.installationHost}>{group.installationHost}</Text>
+        ) : null}
+      </View>
+      <Text style={styles.installationToggle}>{expanded ? '−' : '+'}</Text>
+    </TouchableOpacity>
+    {expanded ? (
+      <View style={styles.installationBody}>
+        {group.tenantGroups.map(tenantGroup => (
+          <View key={`${group.installationId}:${tenantGroup.tenantId ?? tenantGroup.tenantName}`}>
+            <TenantSectionHeader
+              tenantName={tenantGroup.tenantName}
+              tenantDescription={tenantGroup.tenantDescription}
+            />
+            {tenantGroup.enrollments.map(enrollment => (
+              <EnrollmentListItem
+                key={enrollment.id}
+                enrollment={enrollment}
+                onPress={onSelectEnrollment}
+              />
+            ))}
+          </View>
+        ))}
+        {group.ungroupedEnrollments.map(enrollment => (
+          <EnrollmentListItem
+            key={enrollment.id}
+            enrollment={enrollment}
+            onPress={onSelectEnrollment}
+          />
+        ))}
+      </View>
+    ) : null}
+  </View>
+);
+
 type EnrollmentListItemProps = {
   enrollment: StoredEnrollment;
   onPress: (enrollment: StoredEnrollment) => void;
@@ -199,9 +281,11 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPr
     {enrollment.enrollmentName ? (
       <Text style={styles.cardSubtitle}>{enrollment.enrollmentName}</Text>
     ) : null}
-    <Text style={styles.cardMeta}>
-      Created {new Date(enrollment.createdAt).toLocaleDateString()}
-    </Text>
+    {enrollment.integrationDescription ? (
+      <Text numberOfLines={2} style={styles.cardDescription}>
+        {enrollment.integrationDescription}
+      </Text>
+    ) : null}
   </TouchableOpacity>
 );
 
@@ -221,9 +305,48 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  installationSection: {
+    gap: spacing.sm,
+  },
+  installationHeader: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  installationHeaderContent: {
+    flex: 1,
+    paddingRight: spacing.md,
+  },
+  installationName: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  installationDescription: {
+    marginTop: 4,
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  installationHost: {
+    marginTop: 6,
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+  },
+  installationToggle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.textSecondary,
+  },
+  installationBody: {
+    gap: spacing.md,
+  },
   tenantHeader: {
-    marginTop: spacing.md,
-    paddingHorizontal: 0,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   tenantName: {
     fontSize: typography.fontSize.md,
@@ -267,9 +390,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 4,
   },
-  cardMeta: {
+  cardDescription: {
     fontSize: typography.fontSize.sm,
     color: colors.textMuted,
+    lineHeight: 18,
   },
   emptyState: {
     flex: 1,

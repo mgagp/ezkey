@@ -13,11 +13,27 @@ import type {
 
 export type EnrollmentStatus = 'active' | 'pending';
 
-export type EnrollmentSummary = {
+export type PublicInstanceInfoResponse = {
+  authApiPublicBaseUrl?: string | null;
+  instanceName?: string | null;
+  instanceDescription?: string | null;
+  aboutUrl?: string | null;
+};
+
+export type InstallationSummary = {
+  installationId?: string;
+  installationHost?: string;
+  installationName?: string;
+  installationDescription?: string;
+  installationAboutUrl?: string;
+  installationLastRefreshedAt?: string;
+};
+
+export type EnrollmentSummary = InstallationSummary & {
   id: string;
   integrationId: string;
   integrationName: string;
-  tenantName: string;
+  tenantName?: string;
   tenantId?: number;
   tenantDescription?: string;
   createdAt: string;

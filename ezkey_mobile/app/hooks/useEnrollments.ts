@@ -12,7 +12,14 @@
  */
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import {instanceInfoApi} from '../services/api/instanceInfo';
 import {enrollmentStorage, StoredEnrollment} from '../services/storage/enrollmentStorage';
+import {
+  buildInstallationSummary,
+  isInstallationMetadataStale,
+  needsInstallationMetadataRefresh,
+  resolveEnrollmentAuthUrl,
+} from '../utils/installationMetadata';
 
 /**
  * Fetches enrollments from secure storage.
@@ -24,6 +31,73 @@ import {enrollmentStorage, StoredEnrollment} from '../services/storage/enrollmen
  */
 const fetchEnrollments = async (): Promise<StoredEnrollment[]> => {
   return enrollmentStorage.listEnrollments();
+};
+
+const refreshInstallationMetadata = async (
+  enrollments: StoredEnrollment[],
+): Promise<boolean> => {
+  if (enrollments.length === 0) {
+    return false;
+  }
+
+  const staleByInstallation = new Map<string, {authUrl: string; indices: number[]}>();
+
+  enrollments.forEach((enrollment, index) => {
+    if (!isInstallationMetadataStale(enrollment) && !needsInstallationMetadataRefresh(enrollment)) {
+      return;
+    }
+
+    const authUrl = resolveEnrollmentAuthUrl(enrollment.authUrl);
+    const installationId = enrollment.installationId ?? authUrl;
+    if (!authUrl || !installationId) {
+      return;
+    }
+
+    const existing = staleByInstallation.get(installationId);
+    if (existing) {
+      existing.indices.push(index);
+      return;
+    }
+
+    staleByInstallation.set(installationId, {authUrl, indices: [index]});
+  });
+
+  if (staleByInstallation.size === 0) {
+    return false;
+  }
+
+  const nextItems = [...enrollments];
+  let updated = false;
+
+  for (const installation of staleByInstallation.values()) {
+    try {
+      const instanceInfo = await instanceInfoApi.get(installation.authUrl);
+      const refreshedAt = new Date().toISOString();
+      const installationSummary = buildInstallationSummary(
+        installation.authUrl,
+        instanceInfo,
+        refreshedAt,
+      );
+
+      installation.indices.forEach(index => {
+        nextItems[index] = {
+          ...nextItems[index],
+          authUrl: installation.authUrl,
+          ...installationSummary,
+        };
+      });
+      updated = true;
+    } catch (error) {
+      console.warn('[useEnrollments] Failed to refresh installation metadata:', error);
+    }
+  }
+
+  if (!updated) {
+    return false;
+  }
+
+  await enrollmentStorage.replaceAll(nextItems);
+  return true;
 };
 
 /**
@@ -79,6 +153,24 @@ export const useDeleteEnrollment = () => {
   return useMutation({
     mutationFn: (id: string) => enrollmentStorage.deleteEnrollment(id),
     onSuccess: () => queryClient.invalidateQueries({queryKey: ['enrollments']}),
+  });
+};
+
+/**
+ * Opportunistically refreshes stale Ezkey installation metadata from the public instance-info endpoint.
+ *
+ * @return React Query mutation handler for silent installation metadata refresh.
+ * @since 2025
+ */
+export const useRefreshInstallationMetadata = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (records: StoredEnrollment[]) => refreshInstallationMetadata(records),
+    onSuccess: didUpdate => {
+      if (didUpdate) {
+        queryClient.invalidateQueries({queryKey: ['enrollments']});
+      }
+    },
   });
 };
 

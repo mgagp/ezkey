@@ -51,7 +51,7 @@ type PendingAttempt = {
   authAttemptProofToken: string;
   authAttemptProofTokenSignedByIntegration: string;
   integrationName: string;
-  tenantName: string;
+  tenantName?: string;
   createdAt: string;
   challengeRequired: boolean;
   contextTitle?: string;
@@ -433,7 +433,9 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       {enrollment && !showResultState && !attempt?.contextTitle ? (
         <View style={styles.enrollmentBox}>
           <Text style={styles.enrollmentIntegration}>{enrollment.integrationName}</Text>
-          <Text style={styles.enrollmentTenant}>{enrollment.tenantName}</Text>
+          {enrollment.tenantName ? (
+            <Text style={styles.enrollmentTenant}>{enrollment.tenantName}</Text>
+          ) : null}
         </View>
       ) : null}
       {isEnrollmentLoading || loading ? (
@@ -536,7 +538,9 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
               <Text style={styles.contextMessageLine}>{attempt.contextMessage}</Text>
             ) : (
               <>
-                <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
+                {enrollment.tenantName ? (
+                  <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
+                ) : null}
                 {enrollment.enrollmentName ? (
                   <Text style={styles.deviceLine}>{enrollment.enrollmentName}</Text>
                 ) : null}
@@ -577,7 +581,9 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
 
               {/* Subtitle: tenant name only when no context (context card is self-contained) */}
               {!attempt.contextTitle ? (
-                <Text style={styles.cardSubtitle}>{attempt.tenantName}</Text>
+                attempt.tenantName ? (
+                  <Text style={styles.cardSubtitle}>{attempt.tenantName}</Text>
+                ) : null
               ) : null}
 
               {/* Context message */}

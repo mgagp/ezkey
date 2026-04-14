@@ -32,7 +32,13 @@ const resolvedApiBaseUrl = (): string => {
   return raw && raw.length > 0 ? raw : fallbackBaseUrl;
 };
 
+const resolvedConfiguredApiBaseUrl = (): string | undefined => {
+  const raw = Config.EZKEY_API_BASE_URL?.trim();
+  return raw && raw.length > 0 ? raw : undefined;
+};
+
 export const env = {
+  configuredApiBaseUrl: resolvedConfiguredApiBaseUrl(),
   apiBaseUrl: resolvedApiBaseUrl(),
   requestTimeoutMs: parseNumber(Config.EZKEY_REQUEST_TIMEOUT, fallbackTimeoutMs),
   /**

@@ -29,12 +29,17 @@ import {useCameraPermission} from 'react-native-vision-camera';
 import {useSaveEnrollment} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {enrollmentsApi} from '../../services/api/enrollments';
+import {instanceInfoApi} from '../../services/api/instanceInfo';
 import {BindEnrollmentResponse, EnrollmentStatus} from '../../services/api/types';
 import {cryptoService} from '../../services/crypto';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import {env} from '../../config/env';
 import {integrationKeyAlgorithmBindError} from '../../utils/integrationKeyAlgorithm';
+import {
+  buildInstallationSummary,
+  resolveEnrollmentAuthUrl,
+} from '../../utils/installationMetadata';
 import {validateAuthUrl} from '../../utils/urlValidation';
 import {
   buildBindPayload,
@@ -48,7 +53,7 @@ type EnrollmentDraft = {
   id: string;
   integrationId: string;
   integrationName: string;
-  tenantName: string;
+  tenantName?: string;
   tenantId?: number;
   tenantDescription?: string;
   enrollmentProofToken: string;
@@ -90,13 +95,17 @@ const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
           <Text style={styles.infoValue}>{draft.integrationDescription}</Text>
         </View>
       ) : null}
-      <View style={styles.infoDivider} />
-      <View style={styles.infoRow}>
-        <Text style={styles.infoLabel}>Organization</Text>
-        <Text style={styles.infoValue}>{draft.tenantName}</Text>
-      </View>
-      {draft.tenantDescription ? (
-        <Text style={styles.infoValueMuted}>{draft.tenantDescription}</Text>
+      {draft.tenantName ? (
+        <>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Organization</Text>
+            <Text style={styles.infoValue}>{draft.tenantName}</Text>
+          </View>
+          {draft.tenantDescription ? (
+            <Text style={styles.infoValueMuted}>{draft.tenantDescription}</Text>
+          ) : null}
+        </>
       ) : null}
       {draft.enrollmentName ? (
         <>
@@ -238,8 +247,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         id: enrollmentId,
         integrationId: enrollmentId,
         integrationName: response.integrationName ?? 'Integration',
-        tenantName:
-          response.tenantName ?? response.integrationDescription ?? 'Your organization',
+        tenantName: response.tenantName ?? undefined,
         tenantId: response.tenantId,
         tenantDescription: response.tenantDescription,
         enrollmentProofToken: response.enrollmentProofToken ?? request.enrollmentProofToken,
@@ -261,13 +269,15 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       const enrollmentId = (override?.enrollmentId ?? bindForm.enrollmentId).trim();
       const enrollmentProofToken = (override?.enrollmentProofToken ?? bindForm.enrollmentProofToken).trim();
       if (!enrollmentId || !enrollmentProofToken) {
+        setScannerVisible(false);
         setBindError('Enrollment ID and proof token are required.');
         return;
       }
       const urlForBind =
         (override?.authUrl !== undefined ? override.authUrl : authUrl)?.trim() || undefined;
-      const hasGlobalBase = Boolean(env.apiBaseUrl?.trim());
+      const hasGlobalBase = Boolean(env.configuredApiBaseUrl?.trim());
       if (!urlForBind && !hasGlobalBase) {
+        setScannerVisible(false);
         setBindError(
           'No Auth API URL: scan a QR that includes authUrl (set ezkey.qr.auth-base-url on the server), or set EZKEY_API_BASE_URL in .env and rebuild.',
         );
@@ -333,6 +343,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     }
     const enrollmentId = draft.id.toString();
     const now = new Date().toISOString();
+    const effectiveAuthUrl = resolveEnrollmentAuthUrl(authUrl);
     setIsSubmitting(true);
     try {
       // Ensure EC P-256 key pair exists for this enrollment (generates if needed)
@@ -355,7 +366,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         enrollmentProofTokenSigned: proofTokenSigned,
         challengeResponse,
         devicePrivateKeyStorageTier,
-      }, authUrl);
+      }, effectiveAuthUrl);
       const verifyResultPayload = buildVerifyResultPayload(
         draft.enrollmentProofToken,
         Number(draft.id),
@@ -373,6 +384,18 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         return;
       }
       const status: EnrollmentStatus = verifyResponse.active ? 'active' : 'pending';
+      let installationSummary =
+        effectiveAuthUrl != null ? buildInstallationSummary(effectiveAuthUrl, undefined, now) : {};
+
+      if (effectiveAuthUrl) {
+        try {
+          const instanceInfo = await instanceInfoApi.get(effectiveAuthUrl);
+          installationSummary = buildInstallationSummary(effectiveAuthUrl, instanceInfo, now);
+        } catch (error) {
+          console.warn('[EnrollmentWizard] Failed to fetch installation metadata:', error);
+        }
+      }
+
       const record: StoredEnrollment = {
         id: draft.id,
         integrationId: draft.integrationId,
@@ -389,7 +412,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         integrationPublicKey: draft.integrationPublicKey,
         enrollmentName: draft.enrollmentName,
         deviceLabel: draft.deviceLabel,
-        authUrl,
+        authUrl: effectiveAuthUrl,
+        ...installationSummary,
       };
       await saveEnrollment.mutateAsync(record);
       setDraft(undefined);
@@ -560,7 +584,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
             const parsed = parseQrPayload(value);
             console.log('[EnrollmentWizard] Parsed QR payload:', JSON.stringify(parsed));
             setAuthUrl(parsed.authUrl);
-            setBindForm(prev => ({
+            setBindForm(() => ({
               enrollmentId: parsed.enrollmentId,
               enrollmentProofToken: parsed.enrollmentProofToken,
             }));
@@ -568,6 +592,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
             performBinding(parsed);
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
+            setScannerVisible(false);
             console.warn('[EnrollmentWizard] Invalid QR payload:', message, '| raw:', JSON.stringify(value));
             Alert.alert('Invalid QR', `The scanned code is not a valid Ezkey enrollment.\n\nDetails: ${message}`);
           }
@@ -870,8 +895,16 @@ const parseQrPayload = (value: string): QrPayload => {
     throw new Error('Empty payload');
   }
   try {
-    const json = JSON.parse(trimmed);
+    const json = JSON.parse(trimmed) as {
+      enrollmentId?: string | number;
+      enrollmentProofToken?: string;
+      authUrl?: string;
+    };
     if (json.enrollmentId && json.enrollmentProofToken) {
+      if (json.authUrl !== undefined && validateAuthUrl(json.authUrl) == null) {
+        throw new Error('Invalid Auth API URL in QR payload.');
+      }
+
       return {
         enrollmentId: String(json.enrollmentId),
         enrollmentProofToken: String(json.enrollmentProofToken),

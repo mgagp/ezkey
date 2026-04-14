@@ -1,4 +1,4 @@
-import {validateAuthUrl} from '../urlValidation';
+import {normalizeInstallationId, validateAuthUrl} from '../urlValidation';
 
 describe('validateAuthUrl', () => {
   it('returns undefined for null/undefined/empty input', () => {
@@ -14,6 +14,10 @@ describe('validateAuthUrl', () => {
 
   it('accepts HTTPS URL with a port', () => {
     expect(validateAuthUrl('https://ezkey.acme.com:8443')).toBe('https://ezkey.acme.com:8443');
+  });
+
+  it('collapses implicit HTTPS port 443', () => {
+    expect(validateAuthUrl('https://ezkey.acme.com:443')).toBe('https://ezkey.acme.com');
   });
 
   it('accepts HTTPS URL with a path and strips trailing slash', () => {
@@ -50,10 +54,30 @@ describe('validateAuthUrl', () => {
     expect(validateAuthUrl('  https://ezkey.acme.com  ')).toBe('https://ezkey.acme.com');
   });
 
+  it('lowercases scheme and host while preserving path casing', () => {
+    expect(validateAuthUrl('HTTPS://EZKEY.Acme.COM/Auth/API/')).toBe(
+      'https://ezkey.acme.com/Auth/API',
+    );
+  });
+
   it('returns undefined for non-string input', () => {
     // @ts-expect-error testing runtime safety
     expect(validateAuthUrl(123)).toBeUndefined();
     // @ts-expect-error testing runtime safety
     expect(validateAuthUrl({})).toBeUndefined();
+  });
+});
+
+describe('normalizeInstallationId', () => {
+  it('matches normalized Auth API URL semantics', () => {
+    expect(normalizeInstallationId('https://EZKEY.Acme.COM:443/')).toBe(
+      'https://ezkey.acme.com',
+    );
+  });
+
+  it('preserves distinct non-empty paths', () => {
+    expect(normalizeInstallationId('https://ezkey.acme.com/auth')).toBe(
+      'https://ezkey.acme.com/auth',
+    );
   });
 });
