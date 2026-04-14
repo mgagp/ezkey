@@ -6973,23 +6973,32 @@
       },
       "DashboardEnrollmentStatsDto": {
         "type": "object",
-        "description": "Enrollment counts by status for dashboard overview",
+        "description": "Active enrollment counts (grouped buckets) for dashboard overview",
         "properties": {
           "total": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "All active enrollments in scope (sum of bucket fields)"
           },
           "verified": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Active enrollments with status VERIFIED"
           },
-          "bound": {
+          "inProgress": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Active enrollments in CREATED or BOUND (onboarding in progress)"
           },
-          "created": {
+          "expired": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Active enrollments with status EXPIRED"
+          },
+          "unavailable": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Active enrollments with status INVALID or REVOKED"
           }
         }
       },

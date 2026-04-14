@@ -10,12 +10,13 @@ export interface DashboardIntegrationStats {
   inactive: number;
 }
 
-/** Enrollment counts by status for dashboard overview. */
+/** Active enrollment counts (grouped buckets) for dashboard overview. */
 export interface DashboardEnrollmentStats {
   total: number;
   verified: number;
-  bound: number;
-  created: number;
+  inProgress: number;
+  expired: number;
+  unavailable: number;
 }
 
 /** Auth attempt counts and terminal-outcome rates in the last 24 hours (dashboard). */

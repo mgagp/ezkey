@@ -110,8 +110,9 @@ export default function DashboardPage() {
 
   const enrTotal = overview?.enrollments?.total;
   const enrVerified = overview?.enrollments?.verified;
-  const enrBound = overview?.enrollments?.bound;
-  const enrCreated = overview?.enrollments?.created;
+  const enrInProgress = overview?.enrollments?.inProgress;
+  const enrExpired = overview?.enrollments?.expired;
+  const enrUnavailable = overview?.enrollments?.unavailable;
 
   const authTotal = overview?.auth24h?.total;
   const authAccepted = overview?.auth24h?.accepted;
@@ -239,10 +240,22 @@ export default function DashboardPage() {
             <p className="text-4xl font-black text-fg">
               <StatNum value={enrTotal} isLoading={overviewLoading} />
             </p>
+            <p className="text-xs text-fg-muted mt-2 font-medium">
+              {t('dashboard:stats.enrollmentsHint')}
+            </p>
             <div className="flex gap-1 mt-2 flex-wrap">
               <Badge variant="success"><StatNum value={enrVerified} isLoading={overviewLoading} /> {t('dashboard:stats.verified')}</Badge>
-              <Badge variant="warning"><StatNum value={enrBound} isLoading={overviewLoading} /> {t('dashboard:stats.bound')}</Badge>
-              <Badge variant="muted"><StatNum value={enrCreated} isLoading={overviewLoading} /> {t('dashboard:stats.created')}</Badge>
+              <Tooltip content={t('dashboard:stats.enrollmentInProgressHelp')}>
+                <Badge variant={(enrInProgress ?? 0) > 0 ? 'warning' : 'muted'}>
+                  <StatNum value={enrInProgress} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentInProgress')}
+                </Badge>
+              </Tooltip>
+              <Badge variant={(enrExpired ?? 0) > 0 ? 'warning' : 'muted'}>
+                <StatNum value={enrExpired} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentExpired')}
+              </Badge>
+              <Badge variant={(enrUnavailable ?? 0) > 0 ? 'error' : 'muted'}>
+                <StatNum value={enrUnavailable} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentUnavailable')}
+              </Badge>
             </div>
           </StatCard>
 

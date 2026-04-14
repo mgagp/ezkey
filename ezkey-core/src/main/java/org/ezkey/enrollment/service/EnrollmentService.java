@@ -10,10 +10,18 @@
 
 package org.ezkey.enrollment.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Tuple;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.ezkey.config.EnrollmentProperties;
 import org.ezkey.config.EzkeyCoreProperties;
@@ -21,6 +29,7 @@ import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
+import org.ezkey.enrollment.domain.EnrollmentDashboardStats;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
@@ -124,6 +133,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class EnrollmentService {
 
   private static final Logger logger = LoggerFactory.getLogger(EnrollmentService.class);
+
+  @PersistenceContext private EntityManager entityManager;
 
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
@@ -285,6 +296,53 @@ public class EnrollmentService {
         };
 
     return enrollmentRepository.findAll(spec, pageable);
+  }
+
+  /**
+   * Aggregates active enrollment row counts by status for the Admin UI dashboard.
+   *
+   * <p>Uses a single grouped query with the same tenant scoping as {@link #findByFilters}. Buckets
+   * are derived in {@link EnrollmentDashboardStats}.
+   *
+   * @param tenantId optional tenant scope; {@code null} means all tenants (Global Admin)
+   * @return counts where {@code total} equals the sum of status counts and of the bucket fields
+   */
+  @Transactional(readOnly = true)
+  public EnrollmentDashboardStats aggregateDashboardEnrollmentStats(Integer tenantId) {
+    CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+    CriteriaQuery<Tuple> cq = cb.createTupleQuery();
+    Root<Enrollment> root = cq.from(Enrollment.class);
+    cq.multiselect(root.get("status"), cb.count(root));
+    cq.where(buildEnrollmentDashboardPredicate(root, cq, cb, tenantId));
+    cq.groupBy(root.get("status"));
+    List<Tuple> tuples = entityManager.createQuery(cq).getResultList();
+
+    Map<EnrollmentStatus, Long> counts = new EnumMap<>(EnrollmentStatus.class);
+    for (EnrollmentStatus s : EnrollmentStatus.values()) {
+      counts.put(s, 0L);
+    }
+    for (Tuple tuple : tuples) {
+      EnrollmentStatus status = (EnrollmentStatus) tuple.get(0);
+      long cnt = (Long) tuple.get(1);
+      counts.put(status, cnt);
+    }
+    return EnrollmentDashboardStats.fromStatusCounts(counts);
+  }
+
+  private Predicate buildEnrollmentDashboardPredicate(
+      Root<Enrollment> root, CriteriaQuery<?> query, CriteriaBuilder cb, Integer tenantId) {
+    List<Predicate> predicates = new ArrayList<>();
+    predicates.add(cb.equal(root.get("active"), Boolean.TRUE));
+    if (tenantId != null) {
+      var subquery = query.subquery(Integer.class);
+      var integrationRoot = subquery.from(Integration.class);
+      subquery.select(integrationRoot.get("id"));
+      subquery.where(
+          cb.equal(integrationRoot.get("tenant").get("tenantId"), tenantId),
+          cb.equal(integrationRoot.get("id"), root.get("integrationId")));
+      predicates.add(cb.exists(subquery));
+    }
+    return cb.and(predicates.toArray(new Predicate[0]));
   }
 
   /**
