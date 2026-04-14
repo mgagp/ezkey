@@ -31,7 +31,7 @@ import org.ezkey.audit.integrity.AuditChainCheckpointRepository;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptDashboard24hStats;
 import org.ezkey.authattempt.service.AuthAttemptService;
-import org.ezkey.enrollment.domain.EnrollmentStatus;
+import org.ezkey.enrollment.domain.EnrollmentDashboardStats;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.service.IntegrationService;
@@ -106,7 +106,7 @@ public class DashboardService {
         CompletableFuture.supplyAsync(() -> buildIntegrationStats(tenantId, pageOne));
 
     CompletableFuture<DashboardEnrollmentStatsDto> enrollmentsFuture =
-        CompletableFuture.supplyAsync(() -> buildEnrollmentStats(tenantId, pageOne));
+        CompletableFuture.supplyAsync(() -> buildEnrollmentStats(tenantId));
 
     CompletableFuture<DashboardAuth24hStatsDto> auth24hFuture =
         CompletableFuture.supplyAsync(() -> buildAuth24hStats(tenantId, since24h));
@@ -151,26 +151,10 @@ public class DashboardService {
     return new DashboardIntegrationStatsDto(total, active, total - active);
   }
 
-  private DashboardEnrollmentStatsDto buildEnrollmentStats(Integer tenantId, PageRequest pageOne) {
-    long total =
-        enrollmentService
-            .findByFilters(null, null, null, true, null, null, tenantId, pageOne)
-            .getTotalElements();
-    long verified =
-        enrollmentService
-            .findByFilters(
-                EnrollmentStatus.VERIFIED, null, null, true, null, null, tenantId, pageOne)
-            .getTotalElements();
-    long bound =
-        enrollmentService
-            .findByFilters(EnrollmentStatus.BOUND, null, null, true, null, null, tenantId, pageOne)
-            .getTotalElements();
-    long created =
-        enrollmentService
-            .findByFilters(
-                EnrollmentStatus.CREATED, null, null, true, null, null, tenantId, pageOne)
-            .getTotalElements();
-    return new DashboardEnrollmentStatsDto(total, verified, bound, created);
+  private DashboardEnrollmentStatsDto buildEnrollmentStats(Integer tenantId) {
+    EnrollmentDashboardStats s = enrollmentService.aggregateDashboardEnrollmentStats(tenantId);
+    return new DashboardEnrollmentStatsDto(
+        s.total(), s.verified(), s.inProgress(), s.expired(), s.unavailable());
   }
 
   private DashboardAuth24hStatsDto buildAuth24hStats(Integer tenantId, OffsetDateTime since24h) {

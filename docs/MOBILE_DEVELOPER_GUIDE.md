@@ -251,6 +251,22 @@ So **`STRONG` means “the client asserted StrongBox-class storage according to 
 
 **Future hardening (not implemented):** [Android Key Attestation](https://developer.android.com/privacy-and-security/security-key-attestation) (or an equivalent verified signal) could allow the backend to validate hardware claims. Until then, treat tier as **informational client telemetry**, not a server-audited security property.
 
+#### Trust model boundary — no end-to-end PKI/CA chain
+
+Ezkey does not provide an end-to-end PKI/CA certificate chain. The self-hosted backend is the
+trust anchor by design. There is no independent certificate authority that validates the identity
+of the Ezkey server to the mobile device via a verifiable chain of certificates.
+
+Trust in the backend rests on the fact that it is *your* backend — installed, operated, and
+controlled by your organization. This is a deliberate design choice, consistent with the
+self-hosting model, and a known limitation:
+
+- A malicious or compromised backend could present a valid integration key without the mobile
+  client having an independent way to verify the server's organizational identity beyond TLS.
+- Operators should ensure standard TLS certificate hygiene for the Auth API endpoint.
+- Future protocol evolution may add a verifiable attestation path (e.g., Key Attestation chain
+  validated server-side), but this is not part of the current protocol.
+
 **Signature scope (verify):** `devicePrivateKeyStorageTier` is **not** included in the ECDSA payload. The server validates `enrollmentProofTokenSigned` against the **canonical verify device payload** (UTF-8 bytes): `{enrollmentProofToken}|{enrollmentId}|{challengeResponse}|{devicePublicKey}`. The tier is sent in the same JSON body but is **outside** that signed message, so its integrity is **not** cryptographically bound to the device signature. See [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md).
 
 ### Integration-Side Cryptography
@@ -643,6 +659,13 @@ POST /api/v1/auth-attempts/respond
 
 The device does not sign the enrollment proof token here. It signs the one-time
 `authAttemptProofToken` received during `pending`.
+
+> **Cryptographic chain — pending → respond.** The `authAttemptProofToken` is not a generic
+> session identifier. It is the exact material signed in `respond`. A valid `respond` can only be
+> constructed by a client that genuinely received this token in the `pending` response: the two
+> steps are cryptographically linked, not just sequentially ordered. A device that never called
+> `pending` — or whose `pending` call was rejected — cannot produce a signature that the backend
+> will accept.
 
 Canonical respond payload:
 

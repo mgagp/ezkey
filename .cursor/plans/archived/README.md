@@ -12,6 +12,23 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2026-04 - Dashboard enrollment widget (integrity + operator story)
+
+**Completion Date:** April 14, 2026  
+**Status:** ✅ **COMPLETED** (implemented)
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-04/dashboard_enrollment_widget_1aaa3560.plan.md** | Dashboard enrollments: single `GROUP BY status` aggregation for `active=true`; DTO buckets (`verified`, `inProgress`, `expired`, `unavailable`); Admin UI badges sum to headline total; aligns with auth-attempt dashboard discipline | ✅ Completed |
+
+**What was implemented:**
+
+- `ezkey-core`: `EnrollmentDashboardStats`, `EnrollmentService.aggregateDashboardEnrollmentStats`, `EnrollmentDashboardStatsTest`.
+- `ezkey-admin-api`: `DashboardEnrollmentStatsDto` revised; `DashboardService` wired to aggregation.
+- `ezkey-admin-ui`: enrollments `StatCard` + `dashboard.json` EN/FR; hand-updated `dashboardEnrollmentStatsDto.ts` until OpenAPI / Orval regen.
+
+---
+
 ### 2026-04 - Auth API public `instance-info`
 
 **Completion Date:** April 13, 2026  
