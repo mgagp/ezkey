@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="canonical" href="https://ezkey.org/fr/guide-developpeur-mobile-ezkey.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/guide-developpeur-mobile-ezkey.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/">
+    <title>Comment l'application mobile signe chaque étape — et ce que ça implique — Ezkey</title>
+    <meta name="description" content="Un parcours détechnilisé dans le protocole Ezkey : enrollment, proof tokens et chaînage cryptographique de bout en bout — sans confiance implicite.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.65;
+        }
+
+        .shell {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        .nav-top {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .nav-top a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: underline;
+        }
+
+        .nav-top a:hover {
+            color: #fff;
+        }
+
+        article {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+            padding: 40px 36px 48px;
+            text-align: left;
+        }
+
+        @media (max-width: 600px) {
+            article { padding: 28px 20px 36px; }
+        }
+
+        .doc-meta {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 16px;
+        }
+
+        .hero-title {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .hero-title .label {
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .hero-title h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #111;
+            line-height: 1.3;
+            margin: 0 0 12px;
+            border: none;
+            padding: 0;
+        }
+
+        .hero-title .tagline {
+            font-size: 1rem;
+            color: #555;
+            font-style: italic;
+            margin: 0;
+        }
+
+        h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #222;
+            margin: 32px 0 12px;
+        }
+
+        h2:first-of-type {
+            margin-top: 12px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            font-size: 0.98rem;
+        }
+
+        ul, ol {
+            margin: 10px 0 14px 1.4rem;
+        }
+
+        li {
+            margin-bottom: 9px;
+            font-size: 0.98rem;
+        }
+
+        strong {
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        code {
+            font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+            font-size: 0.9em;
+            background: #f4f6ff;
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid #e2e6f5;
+        }
+
+        pre {
+            background: #f4f6ff;
+            border: 1px solid #dde3ff;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin: 14px 0 18px;
+            overflow-x: auto;
+        }
+
+        pre code {
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 0.92em;
+            line-height: 1.6;
+        }
+
+        .sig-flow {
+            background: #fafbff;
+            border: 1px solid #dde3ff;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin: 16px 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sig-flow .sig-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 32px;
+        }
+
+        .sig-flow .sig-sep {
+            height: 10px;
+        }
+
+        .sig-flow .sig-actor {
+            font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+            font-weight: 700;
+            font-size: 0.88em;
+            color: #4a56c4;
+            width: 64px;
+            flex-shrink: 0;
+        }
+
+        .sig-flow .sig-arrow {
+            font-size: 1.1rem;
+            color: #667eea;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .sig-flow .sig-desc {
+            font-size: 0.88em;
+            line-height: 1.45;
+            flex: 1;
+        }
+
+        .sig-flow .sig-tag {
+            display: inline-block;
+            font-style: normal;
+            font-size: 0.82em;
+            background: #e8ecff;
+            border-radius: 3px;
+            padding: 1px 5px;
+            color: #4a56c4;
+            margin-left: 4px;
+        }
+
+        .sig-flow .sig-check {
+            display: block;
+            font-size: 0.82em;
+            color: #3a7a50;
+            margin-top: 2px;
+            font-style: italic;
+        }
+
+        .honest-box {
+            margin-top: 16px;
+            padding: 16px 18px;
+            background: #fffbf0;
+            border-radius: 10px;
+            border-left: 4px solid #e0a83a;
+        }
+
+        .honest-box p {
+            margin-bottom: 8px;
+            font-size: 0.97rem;
+        }
+
+        .honest-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .honest-box strong {
+            color: #7a5a1a;
+        }
+
+        .three-ways {
+            margin: 14px 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .three-ways .way {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid #e8eaf5;
+            background: #fafbff;
+        }
+
+        .three-ways .way.way-highlight {
+            border-color: #b8c4f2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.06) 100%);
+        }
+
+        .three-ways .way-num {
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: #667eea;
+            flex-shrink: 0;
+            line-height: 1.4;
+        }
+
+        .three-ways .way-text {
+            font-size: 0.97rem;
+            line-height: 1.5;
+        }
+
+        .closing {
+            margin-top: 24px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .closing p {
+            margin-bottom: 0;
+            font-size: 0.98rem;
+        }
+
+        .doc-link-sibling {
+            margin-top: 20px;
+            font-size: 0.92rem;
+        }
+
+        .doc-link-sibling a {
+            color: #4a56c4;
+        }
+
+        footer.doc-footer {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.75);
+            text-align: center;
+        }
+
+        footer.doc-footer a {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        @media print {
+            body { background: #fff; }
+            .shell { max-width: none; padding: 0; }
+            .nav-top, footer.doc-footer, .doc-link-sibling { display: none; }
+            article { box-shadow: none; border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top">
+            <a href="/fr/">Accueil (français)</a>
+            · <a href="/">Accueil (anglais)</a>
+        </p>
+
+        <article>
+            <p class="doc-meta">Guide développeur · Avril 2026</p>
+
+            <header class="hero-title">
+                <p class="label">Protocole mobile</p>
+                <h1>Comment l'application mobile signe chaque étape — et ce que ça implique</h1>
+                <p class="tagline">Un parcours détechnilisé dans le protocole Ezkey : enrollment, proof tokens et chaînage cryptographique de bout en bout.</p>
+            </header>
+
+            <h2>01 — Le monde dans lequel on vit</h2>
+            <p>En 2026, pour la majorité des équipes, l'authentification forte se résume encore à un mot de passe combiné à un code envoyé par SMS ou par courriel. Au Canada comme ailleurs, les SMS circulent sans chiffrement de bout en bout sur des réseaux qui ne garantissent aucune confidentialité. Les courriels ne font pas mieux comme canal de transmission de secrets temporels. Et pourtant, c'est sur ces vecteurs que repose la majorité des dispositifs MFA en production aujourd'hui.</p>
+            <p>Les passkeys arrivent, et c'est une bonne nouvelle. Construits sur FIDO2, ils proposent un modèle robuste ancré dans les plateformes, progressivement adopté par les grands acteurs. Mais leur déploiement reste inégal, particulièrement pour les équipes back-end-first qui travaillent loin des frameworks web côté client.</p>
+            <p>Le vrai problème n'est peut-être pas la forme du code — six chiffres, lien magique, notification push. Le problème, c'est le <strong>modèle de confiance sous-jacent</strong> : qui valide quoi, et comment cette validation est-elle ancrée cryptographiquement ?</p>
+            <p>Ezkey propose une troisième voie. Pas une alternative aux passkeys : une solution plus modeste et pragmatique, supérieure aux codes OTP et aux SMS sur le plan de la sécurité cryptographique, taillée pour les équipes qui veulent comprendre et contrôler ce qui se passe dans leur chaîne d'authentification.</p>
+
+            <h2>02 — L'ancrage : la confiance vient du back-end</h2>
+            <p>Le modèle Ezkey repose sur un principe déjà décrit dans <a href="/fr/ezkey-at-a-glance-trust-zone-mobile.html">Ezkey en un coup d'œil</a> : l'installation back-end auto-hébergée est le socle de confiance. Pas une plateforme tierce, pas un service cloud opaque — l'instance Ezkey déployée dans l'environnement de l'organisation, sous son contrôle direct.</p>
+            <p>Dans ce modèle, l'application mobile n'est pas un bouton de confirmation. Elle est un <strong>participant cryptographique à part entière</strong>. Elle détient une clé privée protégée par les mécanismes de sécurisation de la plateforme : sur Android, cette clé est générée directement dans l'Android Keystore, et — lorsque le matériel le permet — dans un module dédié à la protection cryptographique matérielle (StrongBox). La clé ne quitte jamais ce périmètre ; elle ne transite pas dans la mémoire de l'application, n'est pas exportable, n'est jamais stockée en clair.</p>
+            <p>C'est la différence fondamentale avec un modèle push-to-approve traditionnel. Dans un tel modèle, l'application reçoit une notification et l'utilisateur tape « Oui ». Le canal de confiance est humain. Ici, <strong>le canal de confiance est cryptographique</strong>. L'application signe.</p>
+
+            <h2>03 — L'inscription : prouver qu'on possède la clé</h2>
+            <p>L'inscription se déroule en deux phases — <code>bind</code> puis <code>verify</code> — qui forment une séquence cryptographiquement liée.</p>
+            <p><strong>Bind.</strong> L'application se présente avec un <code>enrollmentProofToken</code> — un jeton opaque fourni hors bande par l'équipe d'administration lors de la création du compte. Ce jeton est anti-énumération : impossible de deviner l'existence d'une inscription en essayant des valeurs arbitraires.</p>
+            <p>Le back-end répond en fournissant sa clé publique d'intégration et une signature de la réponse. L'application vérifie cette signature <strong>avant d'aller plus loin</strong>. C'est la première protection contre un intermédiaire malveillant : si une réponse injestée est forgée, la vérification de la signature échoue et le flux s'arrête là.</p>
+            <p><strong>Verify.</strong> L'application génère une paire de clés EC P-256 directement dans l'Android Keystore. Elle construit ensuite une charge signée canonique :</p>
+            <pre><code>enrollmentProofToken|enrollmentId|challengeResponse|devicePublicKey</code></pre>
+            <p>Elle signe cette chaîne avec sa clé privée et envoie la signature au back-end avec la clé publique correspondante. Ce qui est signé ici, ce n'est pas juste un challenge : c'est <strong>l'intégralité du contexte de l'inscription</strong>. La normalisation est stricte — séparateur <code>|</code>, encodage UTF-8, aucune ambiguïté sur ce que couvre la signature.</p>
+            <p>Ce niveau de précision n'est pas de la rigueur pour la rigueur : c'est ce qui rend la preuve vérifiable et non réinterprétable. Le back-end vérifie et contre-signe à son tour. L'application valide cette dernière signature avant de considérer l'inscription comme complète. À ce stade, les deux parties ont prouvé leur identité cryptographique dans les deux sens.</p>
+            <p>Schématiquement, le flux d'inscription ressemble à ceci :</p>
+            <div class="sig-flow" role="img" aria-label="Les échanges signés dans le flux d'inscription bind et verify">
+                <div class="sig-row">
+                    <span class="sig-actor">App</span>
+                    <span class="sig-arrow">→</span>
+                    <span class="sig-desc"><code>bind</code> · <code>enrollmentProofToken</code> (hors bande)</span>
+                    <span class="sig-actor">Back-end</span>
+                </div>
+                <div class="sig-row">
+                    <span class="sig-actor">App</span>
+                    <span class="sig-arrow">←</span>
+                    <span class="sig-desc">
+                        clé publique d'intégration Ed25519 + réponse <em class="sig-tag">signée Ed25519</em>
+                        <span class="sig-check">✓ vérifié par l'app avant de continuer</span>
+                    </span>
+                    <span class="sig-actor">Back-end</span>
+                </div>
+                <div class="sig-sep"></div>
+                <div class="sig-row">
+                    <span class="sig-actor">App</span>
+                    <span class="sig-arrow">→</span>
+                    <span class="sig-desc"><code>verify</code> · clé publique + <em class="sig-tag">contexte signé ECDSA</em> · <code>enrollmentProofToken|enrollmentId|challenge|devicePublicKey</code></span>
+                    <span class="sig-actor">Back-end</span>
+                </div>
+                <div class="sig-row">
+                    <span class="sig-actor">App</span>
+                    <span class="sig-arrow">←</span>
+                    <span class="sig-desc">
+                        confirmation d'inscription <em class="sig-tag">signée Ed25519</em>
+                        <span class="sig-check">✓ vérifié par l'app — inscription considérée complète</span>
+                    </span>
+                    <span class="sig-actor">Back-end</span>
+                </div>
+            </div>
+
+            <h2>04 — Le Proof Token : matière non répétable</h2>
+            <p>Ezkey utilise trois types de jetons dans son protocole, chacun avec un rôle précis.</p>
+            <ol>
+                <li><strong><code>enrollmentProofToken</code></strong> — fourni hors bande à l'inscription, stable pour toute la durée du flux d'enrollment. Il identifie le contexte d'inscription de façon opaque, sans exposer de surface de devinette.</li>
+                <li><strong><code>deviceProofToken</code></strong> — généré par l'application à chaque sondage, à partir du générateur de nombres aléatoires cryptographiques de la plateforme. Il est signé avec la clé d'inscription. Son rôle : prouver la <strong>fraîcheur</strong> de l'appel. Rejouer un <code>deviceProofToken</code> précédent ne fonctionne pas.</li>
+                <li><strong><code>authAttemptProofToken</code></strong> — émis par le back-end pour chaque tentative d'authentification, à usage unique. C'est la matière centrale du chaînage entre <code>pending</code> et <code>respond</code>.</li>
+            </ol>
+            <p>L'analogie la plus simple : pensez à une déclaration notariée. Chaque acte porte une date précise, un contexte spécifique, et une signature unique. On ne peut pas photocopier l'acte et l'utiliser dans un contexte différent. Les proof tokens fonctionnent sur ce même principe.</p>
+
+            <h2>05 — L'authentification : un aller-retour signé de bout en bout</h2>
+            <p>L'authentification se déroule en deux étapes : <code>pending</code> puis <code>respond</code>.</p>
+            <p><strong>Pending.</strong> L'application se signale avec son <code>deviceProofToken</code> signé — la preuve que cet appel est frais. Le back-end, s'il dispose d'une tentative d'authentification en attente pour ce dispositif, répond avec <code>authAttemptProofToken</code>, signé par la clé d'intégration établie lors de l'inscription.</p>
+            <p>L'application vérifie cette signature <strong>avant d'afficher quoi que ce soit à l'utilisateur</strong>. Ce point est décisif. Si un proxy malveillant intercepte la communication et injecte une fausse réponse, il ne peut pas la signer avec la clé d'intégration : cette clé est connue seulement du back-end légitime, et elle a été ancrée dans l'application lors de l'inscription. La vérification échoue, l'application rejette la réponse, l'utilisateur ne voit rien.</p>
+            <p><strong>Le maillon de chaîne.</strong> L'<code>authAttemptProofToken</code> reçu dans <code>pending</code> est précisément la matière signée dans <code>respond</code>. L'application signe :</p>
+            <pre><code>authAttemptProofToken|true</code></pre>
+            <p>— ou <code>false</code> si l'utilisateur refuse. Ce n'est pas un détail d'implémentation : c'est le <strong>lien cryptographique entre les deux étapes</strong>. On ne peut pas construire un <code>respond</code> valide sans avoir reçu ce token dans la réponse <code>pending</code>. Les deux appels sont cryptographiquement liés, pas seulement séquentiels dans le temps.</p>
+            <p><strong>Respond.</strong> Le back-end vérifie la signature de l'application. Il signe à son tour le résultat. L'application vérifie cette signature avant d'afficher le résultat final.</p>
+            <p>En résumé, le flux complet ressemble à ceci :</p>
+            <div class="sig-flow" role="img" aria-label="Les quatre moments de vérification dans le flux pending et respond">
+                <div class="sig-row">
+                    <span class="sig-actor">App</span>
+                    <span class="sig-arrow">→</span>
+                    <span class="sig-desc"><code>pending</code> · <code>deviceProofToken</code> signé</span>
+                    <span class="sig-actor">Back-end</span>
+                </div>
+                <div class="sig-row">
+                    <span class="sig-actor">App</span>
+                    <span class="sig-arrow">←</span>
+                    <span class="sig-desc">
+                        <code>authAttemptProofToken</code> <em class="sig-tag">signé Ed25519</em>
+                        <span class="sig-check">✓ vérifié par l'app avant affichage</span>
+                    </span>
+                    <span class="sig-actor">Back-end</span>
+                </div>
+                <div class="sig-sep"></div>
+                <div class="sig-row">
+                    <span class="sig-actor">App</span>
+                    <span class="sig-arrow">→</span>
+                    <span class="sig-desc"><code>respond</code> · <code>authAttemptProofToken|décision</code> signé</span>
+                    <span class="sig-actor">Back-end</span>
+                </div>
+                <div class="sig-row">
+                    <span class="sig-actor">App</span>
+                    <span class="sig-arrow">←</span>
+                    <span class="sig-desc">
+                        résultat <em class="sig-tag">signé Ed25519</em>
+                        <span class="sig-check">✓ vérifié par l'app avant affichage</span>
+                    </span>
+                    <span class="sig-actor">Back-end</span>
+                </div>
+            </div>
+            <p>Quatre moments de vérification. Aucune étape ne se termine sur une confiance implicite.</p>
+
+            <h2>06 — Contre quoi ça protège — et les limites honnêtes</h2>
+            <p><strong>Replay.</strong> L'<code>authAttemptProofToken</code> est lié à une tentative précise et à usage unique. Rejouer une requête <code>respond</code> passée ne produit aucun résultat : le token est consommé.</p>
+            <p><strong>Interception (MITM).</strong> Un proxy malveillant ne peut pas forger une réponse <code>pending</code> crédible. La clé d'intégration est établie lors de l'inscription — elle ne circule pas dans le flux d'authentification. Aucune réponse non signée par cette clé ne franchit la vérification de l'application.</p>
+            <p><strong>Énumération.</strong> Les tokens d'inscription sont opaques. Il n'existe pas de surface de devinette permettant de sonder l'existence d'un enrollment par essais successifs.</p>
+            <div class="honest-box">
+                <p><strong>Les limites — documentées en toute transparence.</strong></p>
+                <p>Le champ <code>devicePrivateKeyStorageTier</code> est une <strong>assertion cliente</strong>. L'application déclare si sa clé privée bénéficie d'une protection matérielle renforcée. Le back-end enregistre cette déclaration ; il ne peut pas la vérifier cryptographiquement. Un client malveillant pourrait déclarer un niveau de protection qu'il n'a pas. C'est une limite connue, documentée explicitement, pas une faille cachée.</p>
+                <p>Plus fondamentalement : <strong>Ezkey ne fournit pas de chaîne de certification PKI/CA de bout en bout.</strong> Le back-end auto-hébergé est l'ancre de confiance par design. Il n'existe pas de tiers de certification indépendant qui valide l'identité du serveur Ezkey auprès de l'appareil via une chaîne de certificats vérifiable par une autorité externe. La confiance dans le back-end repose sur le fait que c'est <em>votre</em> back-end — installé, opéré et contrôlé par votre organisation. C'est un choix de modèle assumé, cohérent avec le principe d'auto-hébergement, et une limite candidate à une évolution future du protocole.</p>
+            </div>
+
+            <h2>07 — La troisième voie : honnêteté sur ce qu'Ezkey est (et n'est pas)</h2>
+            <p>Il existe aujourd'hui trois grandes approches de l'authentification forte :</p>
+            <div class="three-ways">
+                <div class="way">
+                    <span class="way-num">1</span>
+                    <span class="way-text"><strong>Mot de passe + MFA par SMS ou courriel.</strong> Le statu quo. Pratique, déployé partout, et structurellement fragile : les codes circulent sur des canaux non chiffrés, interceptables, réutilisables dans une fenêtre temporelle.</span>
+                </div>
+                <div class="way">
+                    <span class="way-num">2</span>
+                    <span class="way-text"><strong>Passkeys et FIDO2.</strong> La direction vers laquelle l'industrie évolue. Robustesse cryptographique élevée, ancrage dans les plateformes, adoption en progression. Pour les organisations avec des équipes front-end matures ou des intégrations navigateur établies, c'est une excellente voie.</span>
+                </div>
+                <div class="way way-highlight">
+                    <span class="way-num">3</span>
+                    <span class="way-text"><strong>Ezkey.</strong> Une troisième voie, délibérément plus modeste. Supérieure à l'option 1 sur le plan cryptographique — pas de code transporté en clair, pas de rejeu possible, chaînage explicite à chaque étape. Plus accessible que l'option 2 pour les équipes back-end-first qui veulent maîtriser leur pile sans dépendre de frameworks côté navigateur ou d'infrastructures tierces.</span>
+                </div>
+            </div>
+            <p>Ezkey est Android-first aujourd'hui, avec iOS prévu dans une version future. C'est un projet open source, en développement actif. <strong>Être opinionated n'est pas un défaut si les hypothèses de sécurité sont explicitées, documentées et vérifiables.</strong> C'est précisément ce que le protocole s'efforce de garantir à chaque étape.</p>
+
+            <h2>08 — Pour aller plus loin</h2>
+            <div class="closing">
+                <p>La solidité du protocole Ezkey ne repose pas sur une promesse — elle repose sur des <strong>signatures vérifiables à chaque étape</strong>. Chacune peut être auditée indépendamment, avec les bibliothèques cryptographiques standard de la plateforme, sans dépendance à l'outillage Ezkey.</p>
+            </div>
+            <ul>
+                <li><strong>Guide technique complet</strong> (anglais) : <a href="https://github.com/ezkey-project/ezkey">MOBILE_DEVELOPER_GUIDE.md</a> dans le dépôt</li>
+                <li><strong>Tester en local</strong> : la stack Docker démarre proprement avec <code>./ezkey-tests/clean-start.sh</code> ; l'API Crypto (<code>localhost:9090</code>) permet de générer des paires de clés et des signatures réelles pour valider une implémentation en quelques minutes</li>
+                <li><strong>Article connexe</strong> : <a href="/fr/ezkey-at-a-glance-trust-zone-mobile.html">Ezkey en un coup d'œil — zone de confiance, mobile et flux</a></li>
+            </ul>
+
+            <p class="doc-link-sibling"><strong>English :</strong> <a href="/how-the-mobile-app-signs-every-step.html">Same article in English</a></p>
+        </article>
+
+        <footer class="doc-footer">
+            <p>Ezkey · <a href="/fr/">ezkey.org/fr/</a></p>
+        </footer>
+    </div>
+</body>
+</html>
