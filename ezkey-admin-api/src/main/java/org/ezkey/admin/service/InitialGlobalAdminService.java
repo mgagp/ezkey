@@ -76,9 +76,15 @@ public class InitialGlobalAdminService {
    *
    * <p><b>HA Safety:</b> Uses distributed locking to ensure only one instance performs bootstrap in
    * HA deployments.
+   *
+   * <p><b>Transaction boundary:</b> {@code @Transactional} is on this public entry point so the
+   * work executed inside {@link LockingTaskExecutor} (including {@code this::} callbacks) runs in
+   * one Spring-managed transaction. {@code @Transactional} on the private task method would not
+   * apply (proxy bypass via self-invocation).
    */
   @EventListener(ApplicationReadyEvent.class)
   @Order(1) // Run before AdminBootstrapService (which has default Order)
+  @Transactional
   public void initializeGlobalAdmin() {
     logger.info("🔧 Initializing initial global administrator...");
 
@@ -96,9 +102,8 @@ public class InitialGlobalAdminService {
    * Perform the actual global admin initialization (called within distributed lock).
    *
    * <p>This method validates the configuration and ensures the initial global admin exists with SOC
-   * 2 compliant credentials.
+   * 2 compliant credentials. Runs in the transaction started by {@link #initializeGlobalAdmin()}.
    */
-  @Transactional
   private void doInitializeGlobalAdmin() {
     // Validate configuration
     validateConfiguration();

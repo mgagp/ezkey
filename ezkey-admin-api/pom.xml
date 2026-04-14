@@ -103,6 +103,12 @@
 			<scope>test</scope>
 			<version>4.0.2</version>
 		</dependency>
+		<!-- In-memory JDBC driver for transaction-boundary tests (F-001 regression) -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
