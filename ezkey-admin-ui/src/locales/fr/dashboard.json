@@ -33,7 +33,26 @@
     "pending": "en attente",
     "authAttempts24hHint": "Les pastilles totalisent ce chiffre (tentatives créées dans la fenêtre).",
     "inProgress": "en cours",
-    "inProgressHelp": "En attente + lues (prises en charge), pas encore terminées — même fenêtre 24 h que le total."
+    "inProgressHelp": "En attente + lues (prises en charge), pas encore terminées — même fenêtre 24 h que le total.",
+    "read": "lues",
+    "readHelp": "La demande a été reçue sur l'appareil ; pas encore terminée — même fenêtre 24 h que le total.",
+    "pendingHelp": "En attente de prise en charge par l'appareil — même fenêtre 24 h que le total.",
+    "viewAuditTrail": "Voir les événements d'audit des tentatives d'auth. (24 h)"
+  },
+  "drilldown": {
+    "integrationsActive": "Voir les intégrations actives",
+    "integrationsInactive": "Voir les intégrations inactives",
+    "enrollmentsVerified": "Voir les enrôlements actifs vérifiés",
+    "enrollmentsInProgress": "Voir les enrôlements en cours (créés ou liés)",
+    "enrollmentsExpired": "Voir les enrôlements actifs expirés",
+    "enrollmentsUnavailable": "Voir les enrôlements indisponibles (invalides ou révoqués)",
+    "authPending": "Voir les tentatives en attente sur les dernières 24 h",
+    "authRead": "Voir les tentatives lues sur les dernières 24 h",
+    "authAccepted": "Voir les tentatives acceptées sur les dernières 24 h",
+    "authRejected": "Voir les tentatives refusées sur les dernières 24 h",
+    "authInvalid": "Voir les tentatives invalides sur les dernières 24 h",
+    "authExpired": "Voir les tentatives expirées sur les dernières 24 h",
+    "authAll24h": "Voir toutes les tentatives sur les dernières 24 h"
   },
   "auditChain": {
     "title": "Alertes chaîne d'audit",

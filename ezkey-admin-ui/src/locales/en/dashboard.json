@@ -33,7 +33,26 @@
     "pending": "pending",
     "authAttempts24hHint": "Badges sum to this total (attempts created in the window).",
     "inProgress": "in progress",
-    "inProgressHelp": "Pending plus read (claimed), not yet finished — same 24h window as the total."
+    "inProgressHelp": "Pending plus read (claimed), not yet finished — same 24h window as the total.",
+    "read": "read",
+    "readHelp": "Device received the request; not yet finished — same 24h window as the total.",
+    "pendingHelp": "Waiting for the device to pick up the request — same 24h window as the total.",
+    "viewAuditTrail": "View auth-attempt audit events (24h)"
+  },
+  "drilldown": {
+    "integrationsActive": "View active integrations",
+    "integrationsInactive": "View inactive integrations",
+    "enrollmentsVerified": "View verified active enrollments",
+    "enrollmentsInProgress": "View enrollments in progress (created or bound)",
+    "enrollmentsExpired": "View expired active enrollments",
+    "enrollmentsUnavailable": "View unavailable enrollments (invalid or revoked)",
+    "authPending": "View pending auth attempts in the last 24 hours",
+    "authRead": "View read auth attempts in the last 24 hours",
+    "authAccepted": "View accepted auth attempts in the last 24 hours",
+    "authRejected": "View rejected auth attempts in the last 24 hours",
+    "authInvalid": "View invalid auth attempts in the last 24 hours",
+    "authExpired": "View expired auth attempts in the last 24 hours",
+    "authAll24h": "View all auth attempts in the last 24 hours"
   },
   "auditChain": {
     "title": "Audit chain alerts",

@@ -16,6 +16,7 @@
     "refresh": "Actualiser",
     "newEnrollment": "Nouvel enrôlement",
     "emptyMessage": "Aucun enrôlement trouvé. Créez votre premier enrôlement pour commencer.",
+    "bucketTruncationWarning": "Plus de 500 lignes pour l'un des statuts combinés — cette vue peut être incomplète. Restreignez par intégration ou utilisez un seul filtre de statut.",
     "columns": {
       "id": "ID",
       "name": "Nom",

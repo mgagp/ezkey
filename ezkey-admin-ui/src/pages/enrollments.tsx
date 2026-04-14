@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
 import { Plus, QrCode, RefreshCw, Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -22,6 +22,7 @@ import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { ENROLLMENT_BUCKET_PARAM, type EnrollmentDrilldownBucket } from '@/lib/dashboard-drilldown-links';
 import { ApiError, fetchBlobUrl } from '@/lib/api-client';
 import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
@@ -35,6 +36,13 @@ import type {
   PagedModelEnrollmentResponseDto,
   Search1Params,
 } from '@/generated/admin-api/model';
+
+function parseEnrollmentBucket(value: string | null): EnrollmentDrilldownBucket | '' {
+  if (value === 'inProgress' || value === 'unavailable') {
+    return value;
+  }
+  return '';
+}
 
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
@@ -336,16 +344,167 @@ function EnrollmentCreateDialog({
 export default function EnrollmentsPage() {
   const { t } = useTranslation('enrollments');
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const enrollmentBucket = parseEnrollmentBucket(searchParams.get(ENROLLMENT_BUCKET_PARAM));
+  const [bucketPage, setBucketPage] = useState(0);
+  const bucketPageSize = 20;
 
   const [nameInput, setNameInput] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(() =>
+    enrollmentBucket ? '' : (searchParams.get('status') ?? ''),
+  );
   const [integrationFilter, setIntegrationFilter] = useState(searchParams.get('integrationId') ?? '');
-  const [activeFilter, setActiveFilter] = useState('');
+  const [activeFilter, setActiveFilter] = useState(() =>
+    enrollmentBucket ? 'true' : (searchParams.get('active') ?? ''),
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const debouncedName = useDebounce(nameInput, 300);
   const { list: integrations } = useIntegrations();
+
+  const clearBucketInUrl = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete(ENROLLMENT_BUCKET_PARAM);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    setBucketPage(0);
+  }, [enrollmentBucket]);
+
+  useEffect(() => {
+    if (debouncedName) {
+      clearBucketInUrl();
+    }
+  }, [debouncedName, clearBucketInUrl]);
+
+  useEffect(() => {
+    if (enrollmentBucket) {
+      return;
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (statusFilter) {
+          next.set('status', statusFilter);
+        } else {
+          next.delete('status');
+        }
+        if (activeFilter) {
+          next.set('active', activeFilter);
+        } else {
+          next.delete('active');
+        }
+        if (integrationFilter) {
+          next.set('integrationId', integrationFilter);
+        } else {
+          next.delete('integrationId');
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  }, [activeFilter, enrollmentBucket, integrationFilter, setSearchParams, statusFilter]);
+
+  const bucketQueries = useQueries({
+    queries: [
+      {
+        queryKey: ['enrollments', 'bucket', 'CREATED', integrationFilter],
+        queryFn: () =>
+          search1({
+            status: 'CREATED',
+            active: true,
+            page: 0,
+            size: 500,
+            sort: ['createdAt,DESC'],
+            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+        enabled: enrollmentBucket === 'inProgress',
+      },
+      {
+        queryKey: ['enrollments', 'bucket', 'BOUND', integrationFilter],
+        queryFn: () =>
+          search1({
+            status: 'BOUND',
+            active: true,
+            page: 0,
+            size: 500,
+            sort: ['createdAt,DESC'],
+            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+        enabled: enrollmentBucket === 'inProgress',
+      },
+      {
+        queryKey: ['enrollments', 'bucket', 'INVALID', integrationFilter],
+        queryFn: () =>
+          search1({
+            status: 'INVALID',
+            active: true,
+            page: 0,
+            size: 500,
+            sort: ['createdAt,DESC'],
+            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+        enabled: enrollmentBucket === 'unavailable',
+      },
+      {
+        queryKey: ['enrollments', 'bucket', 'REVOKED', integrationFilter],
+        queryFn: () =>
+          search1({
+            status: 'REVOKED',
+            active: true,
+            page: 0,
+            size: 500,
+            sort: ['createdAt,DESC'],
+            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+        enabled: enrollmentBucket === 'unavailable',
+      },
+    ],
+  });
+
+  const mergedBucketRows = useMemo(() => {
+    if (enrollmentBucket === 'inProgress') {
+      const a = bucketQueries[0].data?.content ?? [];
+      const b = bucketQueries[1].data?.content ?? [];
+      return [...a, ...b].sort((x, y) => (y.createdAt ?? '').localeCompare(x.createdAt ?? ''));
+    }
+    if (enrollmentBucket === 'unavailable') {
+      const a = bucketQueries[2].data?.content ?? [];
+      const b = bucketQueries[3].data?.content ?? [];
+      return [...a, ...b].sort((x, y) => (y.createdAt ?? '').localeCompare(x.createdAt ?? ''));
+    }
+    return [];
+  }, [bucketQueries, enrollmentBucket]);
+
+  const bucketTruncated =
+    (enrollmentBucket === 'inProgress'
+      && ((bucketQueries[0].data?.page?.totalElements ?? 0) > 500
+        || (bucketQueries[1].data?.page?.totalElements ?? 0) > 500))
+    || (enrollmentBucket === 'unavailable'
+      && ((bucketQueries[2].data?.page?.totalElements ?? 0) > 500
+        || (bucketQueries[3].data?.page?.totalElements ?? 0) > 500));
+
+  const bucketSlice = useMemo(() => {
+    const start = bucketPage * bucketPageSize;
+    return mergedBucketRows.slice(start, start + bucketPageSize);
+  }, [bucketPage, mergedBucketRows]);
+
+  const bucketTotalPages = Math.max(1, Math.ceil(mergedBucketRows.length / bucketPageSize) || 1);
+
+  const bucketIsLoading = enrollmentBucket
+    ? bucketQueries.some((q, i) => {
+        const enabled =
+          (enrollmentBucket === 'inProgress' && i < 2) || (enrollmentBucket === 'unavailable' && i >= 2);
+        return enabled && q.isLoading;
+      })
+    : false;
 
   const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<EnrollmentResponseDto, {
     enrollmentName?: string;
@@ -361,6 +520,7 @@ export default function EnrollmentsPage() {
       active: activeFilter === '' ? undefined : activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
     },
     fetchPage: (params) => search1(params as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+    enabled: !enrollmentBucket,
   });
 
   const columns: ColumnDef<EnrollmentResponseDto>[] = [
@@ -419,7 +579,13 @@ export default function EnrollmentsPage() {
           </div>
 
           <div className="w-36">
-            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <Select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                clearBucketInUrl();
+              }}
+            >
               <option value="">{t('list.filterStatusAll')}</option>
               <option value="CREATED">{t('list.filterStatusCreated')}</option>
               <option value="BOUND">{t('list.filterStatusBound')}</option>
@@ -431,7 +597,13 @@ export default function EnrollmentsPage() {
           </div>
 
           <div className="w-52">
-            <Select value={integrationFilter} onChange={(e) => setIntegrationFilter(e.target.value)}>
+            <Select
+              value={integrationFilter}
+              onChange={(e) => {
+                setIntegrationFilter(e.target.value);
+                clearBucketInUrl();
+              }}
+            >
               <option value="">{t('list.filterIntegrationAll')}</option>
               {integrations.map((i) => (
                 <option key={i.id} value={String(i.id)}>{i.code}</option>
@@ -440,7 +612,13 @@ export default function EnrollmentsPage() {
           </div>
 
           <div className="w-32">
-            <Select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value)}>
+            <Select
+              value={activeFilter}
+              onChange={(e) => {
+                setActiveFilter(e.target.value);
+                clearBucketInUrl();
+              }}
+            >
               <option value="">{t('list.filterActiveAny')}</option>
               <option value="true">{t('list.filterActiveActive')}</option>
               <option value="false">{t('list.filterActiveInactive')}</option>
@@ -458,22 +636,69 @@ export default function EnrollmentsPage() {
           </Button>
         </div>
 
+        {enrollmentBucket && bucketTruncated && (
+          <Alert variant="warning">{t('list.bucketTruncationWarning')}</Alert>
+        )}
+
         {/* Table */}
         <div>
-          <PaginatedTable
-            columns={columns}
-            data={data}
-            isLoading={isLoading}
-            onRowClick={(row) => {
-              const st = buildListDetailNavState(data, (r) => r.enrollmentId ?? 0, row, !pagination.isLast);
-              navigate(`/enrollments/${row.enrollmentId}`, { state: st ?? undefined });
-            }}
-            keyExtractor={(row, i) => row.enrollmentId ?? i}
-            emptyMessage={t('list.emptyMessage')}
-            currentSort={pagination.sort}
-            onSort={pagination.setSort}
-            pagination={pagination}
-          />
+          {enrollmentBucket ? (
+            <>
+              <PaginatedTable
+                columns={columns}
+                data={bucketSlice}
+                isLoading={bucketIsLoading}
+                onRowClick={(row) => {
+                  const st = buildListDetailNavState(
+                    bucketSlice,
+                    (r) => r.enrollmentId ?? 0,
+                    row,
+                    bucketPage < bucketTotalPages - 1,
+                  );
+                  navigate(`/enrollments/${row.enrollmentId}`, { state: st ?? undefined });
+                }}
+                keyExtractor={(row, i) => row.enrollmentId ?? i}
+                emptyMessage={t('list.emptyMessage')}
+                currentSort="createdAt,DESC"
+                pagination={{
+                  page: bucketPage,
+                  size: bucketPageSize,
+                  totalPages: bucketTotalPages,
+                  totalElements: mergedBucketRows.length,
+                  isFirst: bucketPage === 0,
+                  isLast: bucketPage >= bucketTotalPages - 1,
+                  firstPage: () => {
+                    setBucketPage(0);
+                  },
+                  lastPage: () => {
+                    setBucketPage(Math.max(0, bucketTotalPages - 1));
+                  },
+                  nextPage: () => {
+                    setBucketPage((p) => Math.min(bucketTotalPages - 1, p + 1));
+                  },
+                  prevPage: () => {
+                    setBucketPage((p) => Math.max(0, p - 1));
+                  },
+                  setPageSize: () => {},
+                }}
+              />
+            </>
+          ) : (
+            <PaginatedTable
+              columns={columns}
+              data={data}
+              isLoading={isLoading}
+              onRowClick={(row) => {
+                const st = buildListDetailNavState(data, (r) => r.enrollmentId ?? 0, row, !pagination.isLast);
+                navigate(`/enrollments/${row.enrollmentId}`, { state: st ?? undefined });
+              }}
+              keyExtractor={(row, i) => row.enrollmentId ?? i}
+              emptyMessage={t('list.emptyMessage')}
+              currentSort={pagination.sort}
+              onSort={pagination.setSort}
+              pagination={pagination}
+            />
+          )}
         </div>
       </div>
 

@@ -16,6 +16,7 @@
     "refresh": "Refresh",
     "newEnrollment": "New Enrollment",
     "emptyMessage": "No enrollments found. Create your first enrollment to get started.",
+    "bucketTruncationWarning": "More than 500 rows exist in one of the combined status filters — this view may be incomplete. Narrow by integration or use a single status filter.",
     "columns": {
       "id": "ID",
       "name": "Name",

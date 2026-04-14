@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Shield } from 'lucide-react';
+import { FileText, RefreshCw, Shield } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
@@ -22,8 +22,34 @@ import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
+import {
+  ROLLING_24H_PRESET_PARAM,
+  ROLLING_24H_PRESET_VALUE,
+  buildAuthAttemptAuditTrailUrl,
+  getRolling24HoursWindowIso,
+} from '@/lib/dashboard-drilldown-links';
 import { search2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import type { AuthAttemptDto, PagedModelAuthAttemptDto, Search2Params } from '@/generated/admin-api/model';
+
+const AUTH_STATUSES = ['PENDING', 'READ', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'INVALID'] as const;
+
+function parseAuthStatusFilter(value: string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
+  return (AUTH_STATUSES as readonly string[]).includes(value) ? value : '';
+}
+
+function parsePositiveIntString(value: string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
+  const n = Number.parseInt(value, 10);
+  if (!Number.isInteger(n) || n <= 0) {
+    return '';
+  }
+  return String(n);
+}
 
 // ── Detail dialog ─────────────────────────────────────────────────────────────
 
@@ -158,9 +184,18 @@ export default function AuthAttemptsPage() {
   const { t } = useTranslation('auth-attempts');
   const { effectiveTimeZoneId } = useDisplayTimezone();
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState('');
-  const [enrollmentIdInput, setEnrollmentIdInput] = useState('');
-  const [integrationFilter, setIntegrationFilter] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [statusFilter, setStatusFilter] = useState(() => parseAuthStatusFilter(searchParams.get('status')));
+  const [enrollmentIdInput, setEnrollmentIdInput] = useState(
+    () => parsePositiveIntString(searchParams.get('enrollmentId')),
+  );
+  const [integrationFilter, setIntegrationFilter] = useState(
+    () => parsePositiveIntString(searchParams.get('integrationId')),
+  );
+  const [presetRolling24h, setPresetRolling24h] = useState(
+    () => searchParams.get(ROLLING_24H_PRESET_PARAM) === ROLLING_24H_PRESET_VALUE,
+  );
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -168,7 +203,7 @@ export default function AuthAttemptsPage() {
   const { list: integrations, lookup } = useIntegrations();
 
   const apiDateParams =
-    dateRange.from && dateRange.to
+    !presetRolling24h && dateRange.from && dateRange.to
       ? dateRangeToApiParams(dateRange.from, dateRange.to, effectiveTimeZoneId)
       : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
@@ -179,7 +214,16 @@ export default function AuthAttemptsPage() {
     createdAfter?: string;
     createdBefore?: string;
   }>({
-    queryKey: ['auth-attempts', statusFilter, debouncedEnrollmentId, integrationFilter, dateRange.from, dateRange.to, effectiveTimeZoneId],
+    queryKey: [
+      'auth-attempts',
+      statusFilter,
+      debouncedEnrollmentId,
+      integrationFilter,
+      presetRolling24h,
+      dateRange.from,
+      dateRange.to,
+      effectiveTimeZoneId,
+    ],
     baseParams: {
       status: statusFilter || undefined,
       enrollmentId: debouncedEnrollmentId ? parseInt(debouncedEnrollmentId, 10) : undefined,
@@ -187,8 +231,49 @@ export default function AuthAttemptsPage() {
       createdAfter: apiDateParams.createdAfter,
       createdBefore: apiDateParams.createdBefore,
     },
-    fetchPage: (params) => search2(params as Search2Params) as Promise<PagedModelAuthAttemptDto>,
+    fetchPage: (params) => {
+      const p = params as Search2Params & { page: number; size: number; sort: string[] };
+      if (presetRolling24h) {
+        const w = getRolling24HoursWindowIso();
+        return search2({
+          ...p,
+          createdAfter: w.createdAfter,
+          createdBefore: w.createdBefore,
+        }) as Promise<PagedModelAuthAttemptDto>;
+      }
+      return search2(p) as Promise<PagedModelAuthAttemptDto>;
+    },
   });
+
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (statusFilter) {
+          next.set('status', statusFilter);
+        } else {
+          next.delete('status');
+        }
+        if (debouncedEnrollmentId) {
+          next.set('enrollmentId', debouncedEnrollmentId);
+        } else {
+          next.delete('enrollmentId');
+        }
+        if (integrationFilter) {
+          next.set('integrationId', integrationFilter);
+        } else {
+          next.delete('integrationId');
+        }
+        if (presetRolling24h) {
+          next.set(ROLLING_24H_PRESET_PARAM, ROLLING_24H_PRESET_VALUE);
+        } else {
+          next.delete(ROLLING_24H_PRESET_PARAM);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  }, [debouncedEnrollmentId, integrationFilter, presetRolling24h, setSearchParams, statusFilter]);
 
   const selectedAttempt = selectedIndex !== null ? data[selectedIndex] ?? null : null;
   const showRowNav = data.length > 1;
@@ -292,7 +377,32 @@ export default function AuthAttemptsPage() {
               min={1}
             />
           </div>
-          <DateRangeFilter value={dateRange} onChange={setDateRange} showClear={true} emptyOptionLabel={t('list.dateRangeFull')} />
+          <DateRangeFilter
+            value={dateRange}
+            onChange={(r) => {
+              setDateRange(r);
+              if (r.from || r.to) {
+                setPresetRolling24h(false);
+              }
+            }}
+            showClear={true}
+            emptyOptionLabel={t('list.dateRangeFull')}
+          />
+          {presetRolling24h && (
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <p className="text-xs text-fg-muted max-w-md">{t('list.rolling24hHint')}</p>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setPresetRolling24h(false)}>
+                {t('list.clearRollingPreset')}
+              </Button>
+              <Link
+                to={buildAuthAttemptAuditTrailUrl()}
+                className="inline-flex items-center gap-1 text-xs font-bold text-accent hover:underline"
+              >
+                <FileText className="size-3.5 shrink-0" aria-hidden />
+                {t('list.viewAuditTrail')}
+              </Link>
+            </div>
+          )}
           <Button variant="secondary" size="sm" onClick={() => refetch()} className="gap-1.5 ml-auto">
             <RefreshCw className="size-3.5" />
             {t('list.refresh')}

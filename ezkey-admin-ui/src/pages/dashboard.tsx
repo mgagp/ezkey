@@ -14,6 +14,13 @@ import { formatCountdown, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
 import type { DashboardOverviewDto } from '@/generated/admin-api/model';
+import { DashboardStatBadgeLink } from '@/components/feature/dashboard-stat-badge-link';
+import {
+  buildAuthAttemptAuditTrailUrl,
+  buildAuthAttemptsDrilldownUrl,
+  buildEnrollmentsDrilldownUrl,
+  buildIntegrationsDrilldownUrl,
+} from '@/lib/dashboard-drilldown-links';
 
 const REFRESH_INTERVAL_OVERVIEW_MS = 60_000;
 
@@ -119,7 +126,6 @@ export default function DashboardPage() {
   const authRejected = overview?.auth24h?.rejected;
   const authPending24h = overview?.auth24h?.pending;
   const authRead24h = overview?.auth24h?.readCount;
-  const authInFlight24h = (authPending24h ?? 0) + (authRead24h ?? 0);
   const authInvalid = overview?.auth24h?.invalid;
   const successRate = overview?.auth24h?.successRatePct;
   const terminalTotal = overview?.auth24h?.terminalTotal;
@@ -231,8 +237,20 @@ export default function DashboardPage() {
               <StatNum value={intTotal} isLoading={overviewLoading} />
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Badge variant="success"><StatNum value={intActive} isLoading={overviewLoading} /> {t('dashboard:stats.active')}</Badge>
-              <Badge variant="muted"><StatNum value={intInactive} isLoading={overviewLoading} /> {t('dashboard:stats.inactive')}</Badge>
+              <DashboardStatBadgeLink
+                to={buildIntegrationsDrilldownUrl('active')}
+                variant="success"
+                ariaLabel={t('dashboard:drilldown.integrationsActive')}
+              >
+                <StatNum value={intActive} isLoading={overviewLoading} /> {t('dashboard:stats.active')}
+              </DashboardStatBadgeLink>
+              <DashboardStatBadgeLink
+                to={buildIntegrationsDrilldownUrl('inactive')}
+                variant="muted"
+                ariaLabel={t('dashboard:drilldown.integrationsInactive')}
+              >
+                <StatNum value={intInactive} isLoading={overviewLoading} /> {t('dashboard:stats.inactive')}
+              </DashboardStatBadgeLink>
             </div>
           </StatCard>
 
@@ -244,18 +262,36 @@ export default function DashboardPage() {
               {t('dashboard:stats.enrollmentsHint')}
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Badge variant="success"><StatNum value={enrVerified} isLoading={overviewLoading} /> {t('dashboard:stats.verified')}</Badge>
+              <DashboardStatBadgeLink
+                to={buildEnrollmentsDrilldownUrl({ status: 'VERIFIED', activeTrue: true })}
+                variant="success"
+                ariaLabel={t('dashboard:drilldown.enrollmentsVerified')}
+              >
+                <StatNum value={enrVerified} isLoading={overviewLoading} /> {t('dashboard:stats.verified')}
+              </DashboardStatBadgeLink>
               <Tooltip content={t('dashboard:stats.enrollmentInProgressHelp')}>
-                <Badge variant={(enrInProgress ?? 0) > 0 ? 'warning' : 'muted'}>
+                <DashboardStatBadgeLink
+                  to={buildEnrollmentsDrilldownUrl({ bucket: 'inProgress' })}
+                  variant={(enrInProgress ?? 0) > 0 ? 'warning' : 'muted'}
+                  ariaLabel={t('dashboard:drilldown.enrollmentsInProgress')}
+                >
                   <StatNum value={enrInProgress} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentInProgress')}
-                </Badge>
+                </DashboardStatBadgeLink>
               </Tooltip>
-              <Badge variant={(enrExpired ?? 0) > 0 ? 'warning' : 'muted'}>
+              <DashboardStatBadgeLink
+                to={buildEnrollmentsDrilldownUrl({ status: 'EXPIRED', activeTrue: true })}
+                variant={(enrExpired ?? 0) > 0 ? 'warning' : 'muted'}
+                ariaLabel={t('dashboard:drilldown.enrollmentsExpired')}
+              >
                 <StatNum value={enrExpired} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentExpired')}
-              </Badge>
-              <Badge variant={(enrUnavailable ?? 0) > 0 ? 'error' : 'muted'}>
+              </DashboardStatBadgeLink>
+              <DashboardStatBadgeLink
+                to={buildEnrollmentsDrilldownUrl({ bucket: 'unavailable' })}
+                variant={(enrUnavailable ?? 0) > 0 ? 'error' : 'muted'}
+                ariaLabel={t('dashboard:drilldown.enrollmentsUnavailable')}
+              >
                 <StatNum value={enrUnavailable} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentUnavailable')}
-              </Badge>
+              </DashboardStatBadgeLink>
             </div>
           </StatCard>
 
@@ -266,20 +302,61 @@ export default function DashboardPage() {
             <p className="text-xs text-fg-muted mt-2 font-medium">
               {t('dashboard:stats.authAttempts24hHint')}
             </p>
+            <p className="text-xs mt-1">
+              <Link
+                to={buildAuthAttemptAuditTrailUrl()}
+                className="font-bold text-accent hover:underline"
+              >
+                {t('dashboard:stats.viewAuditTrail')}
+              </Link>
+            </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Tooltip content={t('dashboard:stats.inProgressHelp')}>
-                <Badge variant={authInFlight24h > 0 ? 'warning' : 'muted'}>
-                  <StatNum value={authInFlight24h} isLoading={overviewLoading} /> {t('dashboard:stats.inProgress')}
-                </Badge>
+              <Tooltip content={t('dashboard:stats.pendingHelp')}>
+                <DashboardStatBadgeLink
+                  to={buildAuthAttemptsDrilldownUrl({ status: 'PENDING', rolling24h: true })}
+                  variant={(authPending24h ?? 0) > 0 ? 'warning' : 'muted'}
+                  ariaLabel={t('dashboard:drilldown.authPending')}
+                >
+                  <StatNum value={authPending24h} isLoading={overviewLoading} /> {t('dashboard:stats.pending')}
+                </DashboardStatBadgeLink>
               </Tooltip>
-              <Badge variant="success"><StatNum value={authAccepted} isLoading={overviewLoading} /> {t('dashboard:stats.accepted')}</Badge>
-              <Badge variant="error"><StatNum value={authRejected} isLoading={overviewLoading} /> {t('dashboard:stats.rejected')}</Badge>
-              <Badge variant={(authInvalid ?? 0) > 0 ? 'error' : 'muted'}>
+              <Tooltip content={t('dashboard:stats.readHelp')}>
+                <DashboardStatBadgeLink
+                  to={buildAuthAttemptsDrilldownUrl({ status: 'READ', rolling24h: true })}
+                  variant={(authRead24h ?? 0) > 0 ? 'warning' : 'muted'}
+                  ariaLabel={t('dashboard:drilldown.authRead')}
+                >
+                  <StatNum value={authRead24h} isLoading={overviewLoading} /> {t('dashboard:stats.read')}
+                </DashboardStatBadgeLink>
+              </Tooltip>
+              <DashboardStatBadgeLink
+                to={buildAuthAttemptsDrilldownUrl({ status: 'ACCEPTED', rolling24h: true })}
+                variant="success"
+                ariaLabel={t('dashboard:drilldown.authAccepted')}
+              >
+                <StatNum value={authAccepted} isLoading={overviewLoading} /> {t('dashboard:stats.accepted')}
+              </DashboardStatBadgeLink>
+              <DashboardStatBadgeLink
+                to={buildAuthAttemptsDrilldownUrl({ status: 'REJECTED', rolling24h: true })}
+                variant="error"
+                ariaLabel={t('dashboard:drilldown.authRejected')}
+              >
+                <StatNum value={authRejected} isLoading={overviewLoading} /> {t('dashboard:stats.rejected')}
+              </DashboardStatBadgeLink>
+              <DashboardStatBadgeLink
+                to={buildAuthAttemptsDrilldownUrl({ status: 'INVALID', rolling24h: true })}
+                variant={(authInvalid ?? 0) > 0 ? 'error' : 'muted'}
+                ariaLabel={t('dashboard:drilldown.authInvalid')}
+              >
                 <StatNum value={authInvalid} isLoading={overviewLoading} /> {t('dashboard:stats.invalid')}
-              </Badge>
-              <Badge variant={(expiredCount ?? 0) > 0 ? 'warning' : 'muted'}>
+              </DashboardStatBadgeLink>
+              <DashboardStatBadgeLink
+                to={buildAuthAttemptsDrilldownUrl({ status: 'EXPIRED', rolling24h: true })}
+                variant={(expiredCount ?? 0) > 0 ? 'warning' : 'muted'}
+                ariaLabel={t('dashboard:drilldown.authExpired')}
+              >
                 <StatNum value={expiredCount} isLoading={overviewLoading} /> {t('dashboard:stats.expired')}
-              </Badge>
+              </DashboardStatBadgeLink>
             </div>
           </StatCard>
 
@@ -302,15 +379,27 @@ export default function DashboardPage() {
                   : ''}
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <Badge variant={(invalidCount ?? 0) > 0 ? 'error' : 'muted'}>
+              <DashboardStatBadgeLink
+                to={buildAuthAttemptsDrilldownUrl({ status: 'INVALID', rolling24h: true })}
+                variant={(invalidCount ?? 0) > 0 ? 'error' : 'muted'}
+                ariaLabel={t('dashboard:drilldown.authInvalid')}
+              >
                 <StatNum value={invalidCount} isLoading={overviewLoading} /> {t('dashboard:stats.invalid')}
-              </Badge>
-              <Badge variant={(expiredCount ?? 0) > 0 ? 'warning' : 'muted'}>
+              </DashboardStatBadgeLink>
+              <DashboardStatBadgeLink
+                to={buildAuthAttemptsDrilldownUrl({ status: 'EXPIRED', rolling24h: true })}
+                variant={(expiredCount ?? 0) > 0 ? 'warning' : 'muted'}
+                ariaLabel={t('dashboard:drilldown.authExpired')}
+              >
                 <StatNum value={expiredCount} isLoading={overviewLoading} /> {t('dashboard:stats.expired')}
-              </Badge>
-              <Badge variant={(rejectedDenyCount ?? 0) > 0 ? 'warning' : 'muted'}>
+              </DashboardStatBadgeLink>
+              <DashboardStatBadgeLink
+                to={buildAuthAttemptsDrilldownUrl({ status: 'REJECTED', rolling24h: true })}
+                variant={(rejectedDenyCount ?? 0) > 0 ? 'warning' : 'muted'}
+                ariaLabel={t('dashboard:drilldown.authRejected')}
+              >
                 <StatNum value={rejectedDenyCount} isLoading={overviewLoading} /> {t('dashboard:stats.denied')}
-              </Badge>
+              </DashboardStatBadgeLink>
             </div>
           </StatCard>
         </div>

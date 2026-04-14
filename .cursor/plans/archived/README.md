@@ -12,6 +12,21 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2026-04 - Dashboard badge drill-downs (clickable stats → lists / audit)
+
+**Completion Date:** April 14, 2026  
+**Status:** ✅ **COMPLETED** (implemented; validated in manual testing)
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-04/dashboard_badge_drill-downs_175c29d4.plan.md** | Dashboard stat badges link to entity lists with matching filters (rolling 24h for auth attempts); `dashboard-drilldown-links.ts`; enrollments bucket merge for CREATED+BOUND / INVALID+REVOKED; integrations `lifecycleFilter` in URL; optional audit trail; aria-labels EN/FR | ✅ Completed |
+
+**What was implemented:**
+
+- `ezkey-admin-ui`: [`dashboard-drilldown-links.ts`](../../../ezkey-admin-ui/src/lib/dashboard-drilldown-links.ts), [`dashboard-stat-badge-link.tsx`](../../../ezkey-admin-ui/src/components/feature/dashboard-stat-badge-link.tsx), [`dashboard.tsx`](../../../ezkey-admin-ui/src/pages/dashboard.tsx), [`auth-attempts.tsx`](../../../ezkey-admin-ui/src/pages/auth-attempts.tsx), [`enrollments.tsx`](../../../ezkey-admin-ui/src/pages/enrollments.tsx), [`integrations.tsx`](../../../ezkey-admin-ui/src/pages/integrations.tsx); locales (`dashboard`, `auth-attempts`, `enrollments`).
+
+---
+
 ### 2026-04 - Dashboard enrollment widget (integrity + operator story)
 
 **Completion Date:** April 14, 2026  

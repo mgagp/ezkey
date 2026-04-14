@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,11 +25,25 @@ import { ApiError } from '@/lib/api-client';
 import { integrationDemoPresets, isDemoMode, resolveIntegrationDemoPresetForLocale } from '@/lib/demo-mode';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { formatDate } from '@/lib/utils';
+import { INTEGRATION_LIFECYCLE_FILTER_PARAM } from '@/lib/dashboard-drilldown-links';
 import { create, search } from '@/generated/admin-api/integrations/integrations';
 import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
 
 type IntegrationLifecycleStatus = 'ACTIVE' | 'INACTIVE' | 'RETIRED';
 type IntegrationListFilter = 'operational' | 'active' | 'inactive' | 'retired' | 'all';
+
+function parseLifecycleFilterFromUrl(value: string | null): IntegrationListFilter {
+  if (
+    value === 'operational'
+    || value === 'all'
+    || value === 'active'
+    || value === 'inactive'
+    || value === 'retired'
+  ) {
+    return value;
+  }
+  return 'operational';
+}
 
 type IntegrationWithLifecycleStatus = IntegrationResponseDto & {
   lifecycleStatus?: IntegrationLifecycleStatus;
@@ -171,10 +185,24 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
 export default function IntegrationsPage() {
   const { t } = useTranslation('integrations');
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [nameInput, setNameInput] = useState('');
-  const [lifecycleFilter, setLifecycleFilter] = useState<IntegrationListFilter>('operational');
+  const [lifecycleFilter, setLifecycleFilter] = useState<IntegrationListFilter>(() =>
+    parseLifecycleFilterFromUrl(searchParams.get(INTEGRATION_LIFECYCLE_FILTER_PARAM)),
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const debouncedName = useDebounce(nameInput, 300);
+
+  useEffect(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set(INTEGRATION_LIFECYCLE_FILTER_PARAM, lifecycleFilter);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [lifecycleFilter, setSearchParams]);
 
   const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<
     IntegrationResponseDto,
