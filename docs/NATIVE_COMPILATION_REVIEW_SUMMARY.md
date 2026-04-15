@@ -1,5 +1,10 @@
 # Native Compilation Review - Summary
 
+> Status note (April 2026): this document reflects an earlier stage of the native effort and should
+> be treated as historical context only. Admin API native support is no longer part of the active
+> strategy, and the current runtime outcome for Auth API and Integration API is summarized in
+> `docs/NATIVE_INITIATIVE_STATUS_2026-04.md`.
+
 ## Overview
 
 This document summarizes the comprehensive review and updates made to native compilation configuration for ADMIN_API and AUTH_API.

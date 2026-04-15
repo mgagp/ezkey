@@ -1,5 +1,10 @@
 # Guide de Test de Compilation Native - Étape par Étape
 
+> Note de statut (avril 2026) : ce guide est désormais historique. Il décrit une campagne de tests
+> antérieure, y compris des étapes `admin-api native` qui ne font plus partie de la stratégie
+> active. Pour l'état réel de l'initiative et la recommandation actuelle, lire d'abord
+> `docs/NATIVE_INITIATIVE_STATUS_2026-04.md`.
+
 Ce guide vous accompagne dans les tests de validation de la compilation native pour ADMIN_API et AUTH_API.
 
 ## Objectifs des Tests
