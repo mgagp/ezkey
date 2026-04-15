@@ -56,10 +56,12 @@ public class TenantAdminTestHelper {
 
   private static final Logger log = LoggerFactory.getLogger(TenantAdminTestHelper.class);
 
+  private static final String STATE_DIR = System.getProperty("ezkey.test.state.dir", ".ezkey-test");
+
   private static final String TENANT_ADMIN_DEVICE_CREDENTIALS_FILE_PATTERN =
-      ".ezkey-test/tenant-admin-%d-device-credentials.json";
+      STATE_DIR + "/tenant-admin-%d-device-credentials.json";
   private static final String TENANT_ADMIN_TOKEN_FILE_PATTERN =
-      ".ezkey-test/tenant-admin-%d-token.json";
+      STATE_DIR + "/tenant-admin-%d-token.json";
 
   private final DockerStackConfig dockerStackConfig;
   private final TestDataFactory testDataFactory;

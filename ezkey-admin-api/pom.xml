@@ -101,7 +101,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-test</artifactId>
 			<scope>test</scope>
-			<version>4.0.2</version>
+			<version>4.0.5</version>
 		</dependency>
 		<!-- In-memory JDBC driver for transaction-boundary tests (F-001 regression) -->
 		<dependency>

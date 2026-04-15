@@ -177,7 +177,8 @@ public class AdminAuthenticationSecurityTest extends AbstractSecurityTest {
       // This ensures test independence - other tests can still use a valid token
       // AuthTokenManager will automatically bootstrap a new token via Priority 3
       authTokenManager.setAdminToken(null);
-      Path tokenPath = Path.of(".ezkey-test/admin-token.json");
+      Path tokenPath =
+          Path.of(System.getProperty("ezkey.test.state.dir", ".ezkey-test"), "admin-token.json");
       if (Files.exists(tokenPath)) {
         try {
           Files.delete(tokenPath);

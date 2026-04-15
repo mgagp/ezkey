@@ -47,7 +47,8 @@ public class AuthTokenManager {
 
   private static final Logger log = LoggerFactory.getLogger(AuthTokenManager.class);
 
-  private static final String TOKEN_FILE_PATH = ".ezkey-test/admin-token.json";
+  private static final String TOKEN_FILE_PATH =
+      System.getProperty("ezkey.test.state.dir", ".ezkey-test") + "/admin-token.json";
 
   private final DockerStackConfig dockerStackConfig;
   private String adminToken;

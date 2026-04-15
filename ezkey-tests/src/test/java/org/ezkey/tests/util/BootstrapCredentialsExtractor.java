@@ -81,7 +81,8 @@ public class BootstrapCredentialsExtractor {
    */
   private static final String ENV_ADMIN_DOCKER_CONTAINER = "EZKEY_ADMIN_DOCKER_CONTAINER";
 
-  private static final String CREDENTIALS_FILE_PATH = ".ezkey-test/bootstrap-credentials.json";
+  private static final String CREDENTIALS_FILE_PATH =
+      System.getProperty("ezkey.test.state.dir", ".ezkey-test") + "/bootstrap-credentials.json";
   private static final String SHEDLOCK_LOCK_NAME = "ADMIN_STARTUP_BOOTSTRAP";
 
   // Patterns for parsing logs
