@@ -37,6 +37,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 - **[SOC2_PREPARATION.md](SOC2_PREPARATION.md)** - SOC2 compliance preparation roadmap
 - **[SOC2_QUICK_START.md](SOC2_QUICK_START.md)** - Quick wins for first 30 days of SOC2 preparation
 - **[ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md](ADMIN_PROVISIONING_DEPROVISIONING_PROCEDURE.md)** - Admin provisioning, deactivation, reactivation, and audit (SOC 2–oriented)
+- **[security/SQL_INJECTION_POSTURE_AUDIT.md](security/SQL_INJECTION_POSTURE_AUDIT.md)** - SQL injection posture: repository and JDBC inventory, bound-parameter review, risk register
 - **[AUDIT_REASON_AND_JUSTIFICATION_UI.md](AUDIT_REASON_AND_JUSTIFICATION_UI.md)** - Audit `reason` / `justification` product rules, API/UI alignment, and Admin UI quick-picks (single reference; supersedes prior analysis/UX/implementation split)
 
 ---
