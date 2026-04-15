@@ -6,6 +6,7 @@ Welcome to the centralized documentation for the Ezkey project - an open-source 
 
 ### 🏗️ Architecture & Design
 - **[PROJECT_POSITIONING.md](PROJECT_POSITIONING.md)** - Strategic positioning, project philosophy, and backend-first security thesis
+- **[configuration/README.md](configuration/README.md)** - Configuration reference index: all `ezkey.*` prefixes, module × prefix matrix, and links to per-module `CONFIGURATION.md`
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture, security design, and cryptographic implementation
 - **[ADMIN_UI.md](ADMIN_UI.md)** - Admin UI purpose, operator roles, capabilities, workflows, and boundaries
 - **[CRYPTO.md](CRYPTO.md)** - Detailed cryptographic specifications and implementation details

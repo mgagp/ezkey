@@ -1,0 +1,28 @@
+{
+  "groups": [],
+  "properties": [
+    {
+      "name": "ezkey.encryption.keyset.storage-mode",
+      "type": "org.ezkey.config.TinkProperties$Keyset$StorageMode",
+      "description": "Keyset storage mode. Always FILE in Crypto API (no database).",
+      "defaultValue": "FILE"
+    }
+  ],
+  "hints": [
+    {
+      "name": "ezkey.encryption.keyset.storage-mode",
+      "values": [
+        { "value": "FILE", "description": "Keyset stored only in file. Required for Crypto API (no DB)." },
+        { "value": "DATABASE", "description": "Database as source of truth (Admin/Auth/Integration API)." },
+        { "value": "HYBRID", "description": "Both file and database; database preferred for reads." }
+      ]
+    },
+    {
+      "name": "ezkey.encryption.algorithm",
+      "values": [
+        { "value": "AES256_GCM", "description": "AES-256-GCM authenticated encryption (recommended)." },
+        { "value": "CHACHA20_POLY1305", "description": "ChaCha20-Poly1305 authenticated encryption." }
+      ]
+    }
+  ]
+}

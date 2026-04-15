@@ -1,0 +1,136 @@
+{
+  "groups": [
+    {
+      "name": "ezkey.admin.initial",
+      "type": "org.ezkey.admin.config.InitialGlobalAdminProperties",
+      "sourceType": "org.ezkey.admin.config.InitialGlobalAdminProperties",
+      "description": "Initial Global Admin bootstrap — SOC 2 compliant identity required."
+    },
+    {
+      "name": "ezkey.admin.mfa",
+      "type": "org.ezkey.admin.config.AdminMfaProperties",
+      "sourceType": "org.ezkey.admin.config.AdminMfaProperties",
+      "description": "Admin MFA enforcement mode and bootstrap configuration."
+    },
+    {
+      "name": "ezkey.admin.mfa.bootstrap",
+      "type": "org.ezkey.admin.config.AdminMfaProperties$BootstrapConfig",
+      "sourceType": "org.ezkey.admin.config.AdminMfaProperties"
+    },
+    {
+      "name": "ezkey.admin.token",
+      "type": "org.ezkey.admin.config.AdminTokenRotationProperties",
+      "sourceType": "org.ezkey.admin.config.AdminTokenRotationProperties",
+      "description": "Admin session token TTL and rotation-on-login policy."
+    },
+    {
+      "name": "ezkey.admin.token.cleanup",
+      "type": "org.ezkey.admin.config.AdminTokenCleanupProperties",
+      "sourceType": "org.ezkey.admin.config.AdminTokenCleanupProperties",
+      "description": "Scheduled cleanup of expired admin tokens."
+    },
+    {
+      "name": "ezkey.admin.recovery",
+      "type": "org.ezkey.admin.config.AdminRecoveryProperties",
+      "sourceType": "org.ezkey.admin.config.AdminRecoveryProperties",
+      "description": "Recovery code count and temporary token TTL for lost-device recovery."
+    },
+    {
+      "name": "ezkey.admin.rate-limit",
+      "type": "org.ezkey.admin.config.AdminRateLimitProperties",
+      "sourceType": "org.ezkey.admin.config.AdminRateLimitProperties",
+      "description": "Rate limiting for admin login endpoint."
+    },
+    {
+      "name": "ezkey.admin.rate-limit.login",
+      "type": "org.ezkey.admin.config.AdminRateLimitProperties$LoginConfig",
+      "sourceType": "org.ezkey.admin.config.AdminRateLimitProperties"
+    },
+    {
+      "name": "ezkey.admin-operations.rate-limit",
+      "type": "org.ezkey.admin.config.AdminOperationsRateLimitProperties",
+      "sourceType": "org.ezkey.admin.config.AdminOperationsRateLimitProperties",
+      "description": "Rate limiting for privileged admin operations (API key CRUD, enrollment reset)."
+    },
+    {
+      "name": "ezkey.api-key.rate-limit",
+      "type": "org.ezkey.admin.config.ApiKeyRateLimitProperties",
+      "sourceType": "org.ezkey.admin.config.ApiKeyRateLimitProperties",
+      "description": "Rate limiting for API key bearer operations (create/wait auth attempt)."
+    },
+    {
+      "name": "ezkey.security.admin",
+      "type": "org.ezkey.admin.config.AdminSecurityProperties",
+      "sourceType": "org.ezkey.admin.config.AdminSecurityProperties",
+      "description": "Hard caps and safety floors for Global Admin and Tenant Admin counts."
+    },
+    {
+      "name": "ezkey.admin.bootstrap.export",
+      "type": "org.ezkey.admin.config.BootstrapExportProperties",
+      "sourceType": "org.ezkey.admin.config.BootstrapExportProperties",
+      "description": "Bootstrap credentials file export (Docker only; disable in production)."
+    },
+    {
+      "name": "ezkey.trusted-proxies",
+      "type": "org.ezkey.admin.config.TrustedProxyProperties",
+      "sourceType": "org.ezkey.admin.config.TrustedProxyProperties",
+      "description": "Trusted proxy CIDR list for safe X-Forwarded-For resolution."
+    }
+  ],
+  "properties": [
+    {
+      "name": "ezkey.admin.mfa.bootstrap.credentials-output-mode",
+      "type": "org.ezkey.admin.config.BootstrapCredentialsOutputMode",
+      "description": "Controls what is printed and exported after global-admin bootstrap enrollment.",
+      "defaultValue": "FULL"
+    },
+    {
+      "name": "ezkey.admin.rate-limit.login.key-strategy",
+      "type": "java.lang.String",
+      "description": "Rate-limit key strategy for the login endpoint. Only 'client-ip' is implemented.",
+      "defaultValue": "client-ip"
+    },
+    {
+      "name": "ezkey.trusted-proxies.cidrs",
+      "type": "java.util.List<java.lang.String>",
+      "description": "CIDR ranges of trusted reverse proxies (e.g. 10.0.0.0/8)."
+    }
+  ],
+  "hints": [
+    {
+      "name": "ezkey.admin.mfa.mode",
+      "values": [
+        {
+          "value": "dev",
+          "description": "MFA optional for all admin logins."
+        },
+        {
+          "value": "prod",
+          "description": "MFA required for all admin logins."
+        }
+      ]
+    },
+    {
+      "name": "ezkey.admin.mfa.bootstrap.credentials-output-mode",
+      "values": [
+        {
+          "value": "FULL",
+          "description": "Log enrollment token, challenge, ASCII QR, recovery codes, CLI hints. Export bootstrap-credentials.json."
+        },
+        {
+          "value": "RECOVERY_PRIMARY",
+          "description": "Log recovery codes and operator instructions only. No enrollment secrets in logs. No JSON export."
+        }
+      ]
+    },
+    {
+      "name": "ezkey.admin.rate-limit.login.key-strategy",
+      "values": [
+        {
+          "value": "client-ip",
+          "description": "Rate-limit by client IP address (from trusted proxy header when applicable)."
+        }
+      ]
+    }
+  ]
+}
