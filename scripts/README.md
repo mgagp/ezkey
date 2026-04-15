@@ -197,48 +197,43 @@ This script will:
 
 This is particularly useful for diagnosing intermittent `NoClassDefFoundError` issues that work sometimes but not others.
 
-### Native Admin API Build Script
+### Native API Build Scripts
 
-A simplified build script for admin-api that builds a native image WITHOUT AOT processing.
-
-#### Strategy
-Admin API uses limited native compilation (native image only) for memory footprint reduction (~50% reduction) without the complexity of AOT configuration. Startup time is similar to JVM (~15-20s), which is acceptable for batch operations.
+The native-image workflow is scoped to the Auth API and Integration API. Admin API remains JVM-only.
 
 #### Usage
 
 **Bash Script (Linux/macOS/Git Bash):**
 ```bash
-./scripts/build-native-admin.sh [options]
+./scripts/build-native-aot.sh [options]
 ```
 
 #### Available Options
 - `--skip-tests` : Skip tests during build
+- `--skip-aot` : Stop after compilation, before Spring AOT
 - `--verbose` : Show detailed Maven output
+- `--debug-classpath` : Dump classpath details before AOT
 - `--help` : Show help message
 
 #### Examples
 ```bash
-# Standard build without tests
-./scripts/build-native-admin.sh --skip-tests
+# Standard auth-api build without tests
+./scripts/build-native-aot.sh --skip-tests
 
 # Verbose output for debugging
-./scripts/build-native-admin.sh --verbose
+./scripts/build-native-aot.sh --verbose
 ```
 
-#### Build Process
-1. Clean and compile admin-api (standard JAR)
-2. Build native image using Spring Boot buildpacks (no AOT required)
+#### Native Image Builds
+```bash
+# Auth API
+mvn spring-boot:build-image -pl ezkey-auth-api -Pnative \
+	-Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests
 
-#### Expected Results
-- **Memory**: ~100-150MB baseline (vs ~200-300MB JVM) - **~50% reduction**
-- **Startup**: ~15-20 seconds (similar to JVM - acceptable for batch)
-- **Binary Size**: ~80-120MB (vs JAR + JVM ~300MB+)
-
-#### When to Use
-- Production deployments with memory constraints
-- Container environments with resource limits
-- Batch processing workloads
-- Scheduled task execution
+# Integration API
+mvn spring-boot:build-image -pl ezkey-integration-api -Pnative \
+	-Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests
+```
 
 See `docs/NATIVE_COMPILATION_STRATEGY.md` for complete strategy details.
 
@@ -246,7 +241,6 @@ See `docs/NATIVE_COMPILATION_STRATEGY.md` for complete strategy details.
 
 - `format-specs.sh` - Format existing JSON specifications for better readability
 - `build-native-aot.sh` - Native AOT build script for auth-api (see Native Build Scripts section above)
-- `build-native-admin.sh` - Native build script for admin-api (limited - no AOT)
 - `debug-aot-classpath.sh` - Debug classpath used by AOT processor
 - `debug-aot-runtime-classpath.sh` - Debug runtime classpath during AOT execution
 - `debug-aot-execution-order.sh` - Debug execution order and timing of AOT processing

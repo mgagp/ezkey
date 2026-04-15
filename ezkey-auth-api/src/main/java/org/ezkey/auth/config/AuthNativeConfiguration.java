@@ -193,7 +193,10 @@ public class AuthNativeConfiguration {
             .reflection() //
             .registerType(
                 org.springframework.aot.hint.TypeReference.of(className),
-                hint -> hint.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS));
+                hint ->
+                    hint.withMembers(
+                        MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
+                        MemberCategory.ACCESS_DECLARED_FIELDS));
       }
 
       // Register Caffeine core classes
@@ -234,6 +237,12 @@ public class AuthNativeConfiguration {
         // Core Hibernate logger (most important - used throughout Hibernate)
         "org.hibernate.internal.CoreMessageLogger",
         "org.hibernate.internal.CoreMessageLogger_$logger",
+        // Boot logger - required during BootstrapServiceRegistry initialization
+        "org.hibernate.boot.BootLogging",
+        "org.hibernate.boot.BootLogging_$logger",
+        // JPA logger - required during EntityManagerFactory bootstrap
+        "org.hibernate.jpa.internal.JpaLogger",
+        "org.hibernate.jpa.internal.JpaLogger_$logger",
         // EntityManager logger
         "org.hibernate.internal.EntityManagerMessageLogger",
         "org.hibernate.internal.EntityManagerMessageLogger_$logger",
@@ -333,6 +342,78 @@ public class AuthNativeConfiguration {
             .reflection() //
             .registerType(
                 org.springframework.aot.hint.TypeReference.of(className),
+                hint ->
+                    hint.withMembers(
+                        MemberCategory.INTROSPECT_PUBLIC_CONSTRUCTORS,
+                        MemberCategory.INTROSPECT_DECLARED_CONSTRUCTORS,
+                        MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
+                        MemberCategory.INVOKE_DECLARED_METHODS,
+                        MemberCategory.INVOKE_PUBLIC_METHODS,
+                        MemberCategory.DECLARED_FIELDS));
+      }
+
+      String[] hibernateGeneratedLoggerClasses = {
+        "org.hibernate.action.internal.ActionLogging_$logger",
+        "org.hibernate.boot.BootLogging_$logger",
+        "org.hibernate.boot.archive.scan.internal.ScannerLogger_$logger",
+        "org.hibernate.boot.beanvalidation.BeanValidationLogger_$logger",
+        "org.hibernate.boot.jaxb.JaxbLogger_$logger",
+        "org.hibernate.bytecode.enhance.internal.BytecodeEnhancementLogging_$logger",
+        "org.hibernate.bytecode.enhance.spi.interceptor.BytecodeInterceptorLogging_$logger",
+        "org.hibernate.cache.spi.SecondLevelCacheLogger_$logger",
+        "org.hibernate.collection.internal.CollectionLogger_$logger",
+        "org.hibernate.context.internal.CurrentSessionLogging_$logger",
+        "org.hibernate.dialect.DialectLogging_$logger",
+        "org.hibernate.engine.internal.NaturalIdLogging_$logger",
+        "org.hibernate.engine.internal.PersistenceContextLogging_$logger",
+        "org.hibernate.engine.internal.SessionMetricsLogger_$logger",
+        "org.hibernate.engine.internal.VersionLogger_$logger",
+        "org.hibernate.engine.jdbc.JdbcLogging_$logger",
+        "org.hibernate.engine.jdbc.batch.JdbcBatchLogging_$logger",
+        "org.hibernate.engine.jdbc.connections.internal.ConnectionProviderLogging_$logger",
+        "org.hibernate.engine.jdbc.env.internal.LobCreationLogging_$logger",
+        "org.hibernate.engine.jdbc.spi.SQLExceptionLogging_$logger",
+        "org.hibernate.event.internal.EntityCopyLogging_$logger",
+        "org.hibernate.event.internal.EventListenerLogging_$logger",
+        "org.hibernate.id.UUIDLogger_$logger",
+        "org.hibernate.id.enhanced.OptimizerLogger_$logger",
+        "org.hibernate.id.enhanced.SequenceGeneratorLogger_$logger",
+        "org.hibernate.id.enhanced.TableGeneratorLogger_$logger",
+        "org.hibernate.internal.CoreMessageLogger_$logger",
+        "org.hibernate.internal.SessionFactoryLogging_$logger",
+        "org.hibernate.internal.SessionFactoryRegistryMessageLogger_$logger",
+        "org.hibernate.internal.SessionLogging_$logger",
+        "org.hibernate.internal.log.ConnectionAccessLogger_$logger",
+        "org.hibernate.internal.log.ConnectionInfoLogger_$logger",
+        "org.hibernate.internal.log.DeprecationLogger_$logger",
+        "org.hibernate.internal.log.IncubationLogger_$logger",
+        "org.hibernate.internal.log.StatisticsLogger_$logger",
+        "org.hibernate.internal.log.UrlMessageBundle_$logger",
+        "org.hibernate.jpa.internal.JpaLogger_$logger",
+        "org.hibernate.loader.ast.internal.MultiKeyLoadLogging_$logger",
+        "org.hibernate.metamodel.mapping.MappingModelCreationLogging_$logger",
+        "org.hibernate.query.QueryLogging_$logger",
+        "org.hibernate.query.hql.HqlLogging_$logger",
+        "org.hibernate.resource.beans.internal.BeansMessageLogger_$logger",
+        "org.hibernate.resource.jdbc.internal.LogicalConnectionLogging_$logger",
+        "org.hibernate.resource.jdbc.internal.ResourceRegistryLogger_$logger",
+        "org.hibernate.resource.transaction.backend.jta.internal.JtaLogging_$logger",
+        "org.hibernate.resource.transaction.internal.SynchronizationLogging_$logger",
+        "org.hibernate.service.internal.ServiceLogger_$logger",
+        "org.hibernate.sql.ast.tree.SqlAstTreeLogger_$logger",
+        "org.hibernate.sql.exec.SqlExecLogger_$logger",
+        "org.hibernate.sql.model.ModelMutationLogging_$logger",
+        "org.hibernate.sql.results.LoadingLogger_$logger",
+        "org.hibernate.sql.results.ResultsLogger_$logger",
+        "org.hibernate.sql.results.graph.embeddable.EmbeddableLoadingLogger_$logger"
+      };
+
+      for (String className : hibernateGeneratedLoggerClasses) {
+        hints
+            .reflection() //
+            .registerTypeIfPresent(
+                classLoader,
+                className,
                 hint ->
                     hint.withMembers(
                         MemberCategory.INTROSPECT_PUBLIC_CONSTRUCTORS,

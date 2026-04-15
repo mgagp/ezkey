@@ -1,5 +1,10 @@
 # Native Build Quick Start Guide
 
+> Status note (April 2026): this guide is now historical. The bounded Spring Boot 4 native spike
+> completed image builds for Auth API and Integration API, but the Docker runtime path is still not
+> viable. Admin API native support is no longer part of the active strategy. Read
+> `docs/NATIVE_INITIATIVE_STATUS_2026-04.md` first before using anything below.
+
 This guide provides quick reference commands for building native images for Ezkey components.
 
 ## Overview
@@ -7,7 +12,8 @@ This guide provides quick reference commands for building native images for Ezke
 Ezkey uses different native compilation strategies for different components:
 
 - **auth-api**: Full native with AOT (fast startup, low memory)
-- **admin-api**: Limited native without AOT (memory reduction, acceptable startup)
+- **integration-api**: Experimental native path explored during the Spring Boot 4 spike
+- **admin-api**: JVM-only in the active strategy
 - **Other components**: No native compilation
 
 See `docs/NATIVE_COMPILATION_STRATEGY.md` for detailed strategy and rationale.
@@ -35,26 +41,16 @@ mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boo
 - Memory: ~50-100MB baseline (vs ~200-300MB JVM)
 - Cold Start (Lambda): ~100-500ms (vs ~5-10s JVM)
 
-### Admin API - Limited Native Build (Native Image Only)
+### Integration API - Experimental Native Build
 
-**Complete Build Process**:
 ```bash
-# Single step - no AOT required
-./scripts/build-native-admin.sh --skip-tests
+mvn -pl ezkey-integration-api -Pnative spring-boot:build-image \
+    -Dspring-boot.build-image.imageName=ezkey-integration-api-native \
+    -DskipTests
 ```
 
-**Alternative (Manual)**:
-```bash
-mvn -pl ezkey-admin-api -Pnative spring-boot:build-image \
-    -Dspring-boot.build-image.imageName=ezkey-admin-api-native \
-    -DskipTests \
-    -Dspring-boot.build-image.skip=false
-```
-
-**Expected Results**:
-- Startup: ~15-20 seconds (similar to JVM - acceptable for batch)
-- Memory: ~100-150MB baseline (vs ~200-300MB JVM) - **~50% reduction**
-- Binary Size: ~80-120MB (vs JAR + JVM ~300MB+)
+Use this only as historical context for the April 2026 spike. The image build works, but the
+runtime path is still not considered viable.
 
 ## Docker Compose
 
@@ -70,13 +66,13 @@ docker-compose -f docker/docker-compose.native.yml up -d
 **Start Specific Services**:
 ```bash
 # Start only native APIs (assumes postgres and migration already running)
-docker-compose -f docker/docker-compose.native.yml up -d admin-api auth-api
+docker-compose -f docker/docker-compose.native.yml up -d auth-api integration-api
 ```
 
 **View Logs**:
 ```bash
 docker-compose -f docker/docker-compose.native.yml logs -f auth-api
-docker-compose -f docker/docker-compose.native.yml logs -f admin-api
+docker-compose -f docker/docker-compose.native.yml logs -f integration-api
 ```
 
 **Stop Services**:
@@ -97,17 +93,15 @@ docker run -p 8080:8080 \
     ezkey-auth-api-native:latest
 ```
 
-### Admin API Native Image
+### Integration API Native Image
 
 ```bash
-docker run -p 9080:9080 \
+docker run -p 7080:7080 \
     -e SPRING_PROFILES_ACTIVE=native \
     -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/ezkey_db \
     -e SPRING_DATASOURCE_USERNAME=postgres \
     -e SPRING_DATASOURCE_PASSWORD=ezkey \
-    -e EZKEY_ADMIN_INITIAL_USERNAME=admin.docker \
-    -e EZKEY_ADMIN_INITIAL_EMAIL=admin@ezkey.local \
-    ezkey-admin-api-native:latest
+    ezkey-integration-api-native:latest
 ```
 
 ## Troubleshooting
@@ -126,12 +120,12 @@ docker run -p 9080:9080 \
 
 **Class Not Found Errors**:
 - For auth-api: Add runtime hints to `AuthNativeConfiguration.java`
-- For admin-api: Add `@RegisterForReflection` or `reflect-config.json`
+- For integration-api: Review `IntegrationNativeConfiguration.java` and the native image logs
 
 ### Runtime Issues
 
 **Startup Failures**:
-- Check logs: `docker logs ezkey-auth-api-native` or `docker logs ezkey-admin-api-native`
+- Check logs: `docker logs ezkey-auth-api-native` or `docker logs ezkey-integration-api-native`
 - Verify database connectivity
 - Check environment variables
 
@@ -146,10 +140,10 @@ docker run -p 9080:9080 \
 - **Usage**: `./scripts/build-native-aot.sh [--skip-tests] [--verbose]`
 - **Output**: AOT files in `target/spring-aot/`
 
-### `build-native-admin.sh` (Admin API)
-- **Purpose**: Direct native compilation for admin-api (no AOT)
-- **Usage**: `./scripts/build-native-admin.sh [--skip-tests] [--verbose]`
-- **Output**: Native image `ezkey-admin-api-native:latest`
+### Integration API build command
+- **Purpose**: Build the experimental integration-api native image used during the April 2026 spike
+- **Usage**: `mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -DskipTests`
+- **Output**: Native image `ezkey-integration-api-native:latest`
 
 ### Debugging Scripts
 - `debug-aot-classpath.sh`: Analyze classpath used by AOT
@@ -161,9 +155,9 @@ docker run -p 9080:9080 \
 | Component | Build Type | Startup | Memory | Use Case |
 |-----------|-----------|---------|--------|----------|
 | **auth-api** | Full Native (AOT) | 2-3s | 50-100MB | High-frequency service |
-| **admin-api** | Limited Native | 15-20s | 100-150MB | Batch operations |
+| **integration-api** | Experimental Native | Not validated | Not validated | Historical spike |
 | **auth-api** | JVM | 15-20s | 200-300MB | Development/testing |
-| **admin-api** | JVM | 15-20s | 200-300MB | Development/testing |
+| **admin-api** | JVM | 15-20s | 200-300MB | Active operational path |
 
 ## Next Steps
 

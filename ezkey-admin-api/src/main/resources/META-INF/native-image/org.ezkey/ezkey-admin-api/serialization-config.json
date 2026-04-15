@@ -1,4 +1,0 @@
-[
-  "org.postgresql.Driver",
-  "org.hibernate.dialect.PostgreSQLDialect"
-]

@@ -26,8 +26,8 @@ if ($Native) {
     Write-Host "Native mode: Using docker-compose.native.yml"
     Write-Host "   Note: Native images must be built separately before using this mode"
     Write-Host "   Build commands:"
-    Write-Host "     mvn spring-boot:build-image -pl ezkey-admin-api -Pnative -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests"
     Write-Host "     mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
+    Write-Host "     mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests"
     Write-Host ""
 }
 
