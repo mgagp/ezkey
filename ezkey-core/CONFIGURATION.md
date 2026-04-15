@@ -1,115 +1,287 @@
-# Ezkey Core Configuration
+# Configuration Reference — ezkey-core
 
-This document describes the configuration options available for the ezkey-core module.
+Ezkey-core is the shared library depended upon by all API modules. It defines **8 groups** of
+`@ConfigurationProperties` classes covering encryption, audit integrity, authentication, and
+instance metadata. Applications that depend on ezkey-core declare these properties in their own
+`application*.properties` files.
 
-## Overview
+---
 
-The ezkey-core module provides centralized configuration through `EzkeyCoreProperties` class, which allows applications using ezkey-core to configure cryptographic and authentication parameters.
+## Quick Overview
 
-## Configuration Properties
+| Property | Docker env var | Default | Obligation |
+|---|---|---|---|
+| `ezkey.encryption.enabled` | — | `true` | optionnel |
+| `ezkey.encryption.master-key-file` | — | *(null)* | requis [docker] |
+| `ezkey.encryption.keyset-file` | — | *(null)* | requis [docker] lors du mode FILE/HYBRID |
+| `ezkey.encryption.algorithm` | — | `AES256_GCM` | optionnel |
+| `ezkey.encryption.keyset.storage-mode` | — | `DATABASE` | optionnel |
+| `ezkey.audit.integrity.enabled` | — | `true` | optionnel |
+| `ezkey.audit.integrity.hmac-key-file` | — | *(null)* | requis [docker] |
+| `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | *(null)* | optionnel |
+| `ezkey.audit.chain.enabled` | — | `true` | optionnel |
+| `ezkey.organization.name` | — | `Ezkey System` | optionnel |
+| `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
+| `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
+| `ezkey.enrollment.pending-expiration-days` | — | *(null)* | optionnel |
+| `ezkey.demo.mitm-signature-enabled` | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `false` | optionnel |
+| `ezkey.core.crypto.rsa-key-size` | — | `2048` | optionnel |
+| `ezkey.core.auth-attempt.challenge-digits` | — | `2` | optionnel |
+| `ezkey.core.auth-attempt.ttl-seconds` | — | `120` | optionnel |
 
-### Prefix: `ezkey.core`
+---
 
-All configuration properties are prefixed with `ezkey.core`.
+## Properties by Functional Group
 
-### Crypto Configuration
+### Core Crypto & Auth Attempt (`ezkey.core.*`)
 
-#### `ezkey.core.crypto.rsa-key-size`
-- **Type:** `int`
-- **Default:** `2048`
-- **Minimum:** `2048`
-- **Description:** RSA key size in bits for key pair generation. Must be at least 2048 bits for security compliance.
+**Description:** cryptographic algorithm parameters for RSA key pairs and signature verification,
+plus authentication attempt challenge configuration.
 
-#### `ezkey.core.crypto.rsa-algorithm`
-- **Type:** `String`
-- **Default:** `"RSA"`
-- **Description:** RSA algorithm name for key generation and operations.
+**Defined in:** `EzkeyCoreProperties`
 
-#### `ezkey.core.crypto.signature-algorithm`
-- **Type:** `String`
-- **Default:** `"SHA256withRSA"`
-- **Description:** Digital signature algorithm for signing and verification.
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.core.crypto.rsa-key-size` | `int` | `2048` | optionnel | RSA key size in bits. Minimum 2048. |
+| `ezkey.core.crypto.rsa-algorithm` | `String` | `RSA` | optionnel | Algorithm name for key generation. |
+| `ezkey.core.crypto.signature-algorithm` | `String` | `SHA256withRSA` | optionnel | Digital signature algorithm. |
+| `ezkey.core.crypto.minimum-key-size` | `int` | `2048` | optionnel | Minimum RSA key size for validation; keys smaller than this are rejected. |
+| `ezkey.core.auth-attempt.challenge-digits` | `int` | `2` | optionnel | Number of digits in the challenge code (range 1–6). |
+| `ezkey.core.auth-attempt.ttl-seconds` | `int` | `120` | optionnel | Auth attempt time-to-live in seconds (range 30–600). |
 
-#### `ezkey.core.crypto.minimum-key-size`
-- **Type:** `int`
-- **Default:** `2048`
-- **Minimum:** `2048`
-- **Description:** Minimum RSA key size for validation. Keys smaller than this will be rejected.
-
-### Authentication Attempt Configuration
-
-#### `ezkey.core.auth-attempt.challenge-digits`
-- **Type:** `int`
-- **Default:** `2`
-- **Range:** `1-6`
-- **Description:** Number of digits for challenge codes. Range is 1-6 digits.
-
-#### `ezkey.core.auth-attempt.ttl-seconds`
-- **Type:** `int`
-- **Default:** `120`
-- **Range:** `30-600`
-- **Description:** Time-to-live for authentication attempts in seconds. Range is 30 seconds to 10 minutes.
-
-## Usage Examples
-
-### application.properties
+**Exemple minimal :**
 
 ```properties
-# Cryptographic configuration
-ezkey.core.crypto.rsa-key-size=2048
-ezkey.core.crypto.rsa-algorithm=RSA
-ezkey.core.crypto.signature-algorithm=SHA256withRSA
-ezkey.core.crypto.minimum-key-size=2048
-
-# Authentication attempt configuration
+# All defaults are production-viable; override only if necessary.
 ezkey.core.auth-attempt.challenge-digits=2
 ezkey.core.auth-attempt.ttl-seconds=120
 ```
 
-### application.yml
+---
 
-```yaml
-ezkey:
-  core:
-    crypto:
-      rsa-key-size: 2048
-      rsa-algorithm: RSA
-      signature-algorithm: SHA256withRSA
-      minimum-key-size: 2048
-    auth-attempt:
-      challenge-digits: 2
-      ttl-seconds: 120
+### Encryption at Rest (`ezkey.encryption.*`)
+
+**Description:** controls Tink-based AES-256-GCM encryption applied to sensitive fields
+(challenge codes, auth attempt payloads). Includes key rotation and re-encryption batch jobs.
+Rotation and re-encryption jobs run **only in Admin API**; Auth API and Integration API set
+`rotation.enabled=false` and `reencryption.enabled=false`.
+
+**Defined in:** `TinkProperties`
+
+#### Core
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.encryption.enabled` | `boolean` | `true` | optionnel | Enable/disable encryption at rest. |
+| `ezkey.encryption.master-key-file` | `String` | *(null)* | requis [docker] | Path to the Base64-encoded 256-bit master key file (e.g. `/etc/ezkey/secrets/master.key`). |
+| `ezkey.encryption.keyset-file` | `String` | *(null)* | requis [docker] en mode FILE/HYBRID | Path to the encrypted Tink keyset file (e.g. `/etc/ezkey/keysets/keyset.json.encrypted`). |
+| `ezkey.encryption.algorithm` | `String` | `AES256_GCM` | optionnel | AEAD algorithm. Accepted values: `AES256_GCM`, `CHACHA20_POLY1305`. |
+
+#### Keyset Storage (`ezkey.encryption.keyset.*`)
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.encryption.keyset.storage-mode` | `StorageMode` | `DATABASE` | optionnel | Enum: `FILE` (file only), `DATABASE` (DB as source of truth), `HYBRID` (both, DB preferred). Use `DATABASE` in multi-instance deployments. |
+| `ezkey.encryption.keyset.degraded-mode-enabled` | `boolean` | `false` | optionnel | When true, a decryption failure triggers a DB reload and a read-only degraded mode instead of a hard failure. |
+| `ezkey.encryption.keyset.max-reload-retries` | `int` | `1` | optionnel | Maximum keyset reload attempts on decryption failure. |
+
+#### Key Rotation (`ezkey.encryption.rotation.*`)
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.encryption.rotation.enabled` | `boolean` | `true` | optionnel | Enable scheduled key rotation. Disable in Auth API and Integration API. |
+| `ezkey.encryption.rotation.schedule` | `String` | `0 0 2 * * ?` | optionnel | Cron schedule for rotation checks (daily at 2 AM by default). |
+| `ezkey.encryption.rotation.max-key-age-days` | `int` | `90` | optionnel | Maximum primary key age in days before automatic rotation. |
+| `ezkey.encryption.rotation.backup-before-rotation` | `boolean` | `true` | optionnel | Create a keyset backup before each rotation for rollback capability. |
+| `ezkey.encryption.rotation.backup-retention-days` | `int` | `365` | optionnel | Backup retention period in days. |
+| `ezkey.encryption.rotation.min-keys-in-keyset` | `int` | `2` | optionnel | Minimum number of keys to keep for decryption (old ciphertext decryptability). |
+| `ezkey.encryption.rotation.max-keys-in-keyset` | `int` | `5` | optionnel | Maximum keys before cleanup. |
+| `ezkey.encryption.rotation.auto-disable-days` | `int` | `180` | optionnel | Days after which old keys are automatically disabled. |
+| `ezkey.encryption.rotation.sync-window-seconds` | `int` | `30` | optionnel | Seconds a new key stays `PENDING` before promotion to `PRIMARY` (allows HA instance synchronization). |
+| `ezkey.encryption.rotation.promotion-check-interval-seconds` | `int` | `5` | optionnel | Interval in seconds between checks for `PENDING` keys ready for promotion. |
+
+#### Re-encryption (`ezkey.encryption.reencryption.*`)
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.encryption.reencryption.enabled` | `boolean` | `true` | optionnel | Enable scheduled re-encryption batch processing. Disable in Auth API and Integration API. |
+| `ezkey.encryption.reencryption.schedule` | `String` | `0 0 3 * * ?` | optionnel | Cron schedule (daily at 3 AM, after rotation). |
+| `ezkey.encryption.reencryption.batch-size` | `int` | `500` | optionnel | Records per batch. |
+| `ezkey.encryption.reencryption.throttle-ms` | `int` | `100` | optionnel | Delay in milliseconds between batches (prevents DB overload). |
+| `ezkey.encryption.reencryption.max-batches-per-run` | `int` | `100` | optionnel | Maximum batches processed per scheduled execution. |
+| `ezkey.encryption.reencryption.max-duration-minutes` | `int` | `60` | optionnel | Maximum wall-clock duration per execution in minutes. |
+| `ezkey.encryption.reencryption.auto-retry-failed` | `boolean` | `true` | optionnel | Automatically retry failed batches. |
+| `ezkey.encryption.reencryption.parallel-batch-workers` | `int` | `1` | optionnel | Parallel workers for distinct batches. With 2 physical tables, up to 2 batches may run in parallel. |
+| `ezkey.encryption.reencryption.parallel-batch-queue-capacity` | `int` | `100` | optionnel | Queue capacity for the parallel executor (back-pressure). |
+| `ezkey.encryption.reencryption.temporal-batch-sizing-enabled` | `boolean` | `false` | optionnel | When true, the first fetch uses `recent-data-chunk-size`; subsequent slices use `stale-data-chunk-size`. |
+| `ezkey.encryption.reencryption.recent-data-chunk-size` | `int` | `250` | optionnel | Chunk size for the first slice (leading edge). |
+| `ezkey.encryption.reencryption.stale-data-chunk-size` | `int` | `1000` | optionnel | Chunk size after the cursor has advanced (resume). |
+| `ezkey.encryption.reencryption.auth-attempt-shard-count` | `int` | `1` | optionnel | Parallel shards for `ezkey_auth_attempt` re-encryption (mod by shard count). Values 4–8 suit Docker deployments. |
+
+**Exemple Docker minimal :**
+
+```properties
+ezkey.encryption.enabled=true
+ezkey.encryption.master-key-file=/etc/ezkey/secrets/master.key
+ezkey.encryption.keyset-file=/etc/ezkey/keysets/keyset.json.encrypted
+ezkey.encryption.algorithm=AES256_GCM
+ezkey.encryption.keyset.storage-mode=DATABASE
 ```
+
+---
+
+### Audit Log Integrity (`ezkey.audit.integrity.*`)
+
+**Description:** per-entry HMAC-SHA256 signing of audit log records. Provides tamper-evidence for
+SOC 2 compliance. The HMAC key is intentionally separate from the Tink master key (separation of
+concerns: integrity vs. confidentiality).
+
+**Defined in:** `AuditHmacProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.audit.integrity.enabled` | `boolean` | `true` | optionnel | Enable/disable HMAC signing of audit entries. Disable only in development. |
+| `ezkey.audit.integrity.hmac-key-file` | `String` | *(null)* | requis [docker] | Path to the Base64-encoded 256-bit HMAC key file (e.g. `/etc/ezkey/secrets/audit-hmac.key`). |
+| `ezkey.audit.integrity.instance-id` | `String` | *(null)* | optionnel | Instance identifier for HA tracking (e.g. `admin-api-1`). Set from `EZKEY_INSTANCE_ID` env var. |
+
+**Exemple Docker minimal :**
+
+```properties
+ezkey.audit.integrity.enabled=true
+ezkey.audit.integrity.hmac-key-file=/etc/ezkey/secrets/audit-hmac.key
+ezkey.audit.integrity.instance-id=${EZKEY_INSTANCE_ID:admin-api}
+```
+
+---
+
+### Audit Log Chain (`ezkey.audit.chain.*`)
+
+**Description:** periodic chain checkpoints linking consecutive time windows. Detects row
+insertions, deletions, and reordering between checkpoints. Chain jobs run **only in Admin API**.
+Auth API and Integration API set `ezkey.audit.chain.enabled=false`.
+
+**Defined in:** `AuditChainProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.audit.chain.enabled` | `boolean` | `true` | optionnel | Enable/disable chain checkpoint job. Set to `false` in Auth API and Integration API. |
+| `ezkey.audit.chain.window-minutes` | `int` | `5` | optionnel | Time window size in minutes for each checkpoint. |
+| `ezkey.audit.chain.lookback-minutes` | `int` | `60` | optionnel | Lookback window in minutes for catch-up after restarts. |
+
+---
+
+### Organization (`ezkey.organization.*`)
+
+**Description:** metadata for the organization hosting this Ezkey instance. Exposed via
+`GET /api/v1/public/instance-info` on Admin API and Auth API.
+
+**Defined in:** `OrganizationProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.organization.name` | `String` | `Ezkey System` | optionnel | Name of the organization. Used to seed the system tenant. |
+| `ezkey.organization.description` | `String` | `Ezkey MFA instance for your organization` | optionnel | Short description of this deployment, shown in the Admin UI and public instance-info. |
+| `ezkey.organization.about-url` | `String` | *(null)* | optionnel | Optional URL for an "About" / "Learn more" link in the Admin UI. |
+
+---
+
+### QR Code (`ezkey.qr.*`)
+
+**Description:** controls the content embedded in enrollment QR codes. The `auth-base-url` is the
+public-facing URL of the Auth API reachable from the mobile device. **Not the internal Docker
+network URL.**
+
+**Defined in:** `QrCodeProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.qr.auth-base-url` | `String` | *(null)* | requis [docker] | Public Auth API base URL embedded in QR code payloads (e.g. `https://ezkey.acme.com:8080`). When absent, `authUrl` is omitted from QR codes and the mobile app falls back to its own default. |
+
+---
+
+### Enrollment (`ezkey.enrollment.*`)
+
+**Description:** controls pending enrollment expiration and the cleanup job that marks expired
+enrollments. Used only by Admin API.
+
+**Defined in:** `EnrollmentProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.enrollment.pending-expiration-days` | `Integer` | *(null)* | optionnel | Days after creation before a pending enrollment expires. `null` means no expiration. |
+| `ezkey.enrollment.expired-cleanup-cron` | `String` | `0 0 1 * * ?` | optionnel | Cron expression for the job that marks expired enrollments and emits `ENROLLMENT_EXPIRED` events. |
+
+---
+
+### Demo (`ezkey.demo.*`)
+
+**Description:** optional demonstration / lab settings for MITM simulation. **Must never be
+enabled in production.** Disabled by default.
+
+**Defined in:** `EzkeyDemoProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.demo.mitm-signature-enabled` | `boolean` | `false` | optionnel | When `true`, auth attempts flagged `demo_mitm_signature_enabled` receive a tampered Pending response. For demos and security training only. |
+
+---
+
+## Profile Matrix
+
+The following table shows the effective values in each profile. Blank cells indicate the property
+is not set in that profile (Java class default applies).
+
+### `ezkey.encryption.*`
+
+| Property | default | docker | docker-test | native (admin-api) |
+|---|---|---|---|---|
+| `enabled` | `true` | `true` | `true` | `true` |
+| `master-key-file` | *(null)* | `/etc/ezkey/secrets/master.key` | `/etc/ezkey/secrets/master.key` | *(null)* |
+| `keyset-file` | *(null)* | `/etc/ezkey/keysets/keyset.json.encrypted` | `/etc/ezkey/keysets/keyset.json.encrypted` | *(null)* |
+| `algorithm` | `AES256_GCM` | `AES256_GCM` | `AES256_GCM` | `AES256_GCM` |
+| `keyset.storage-mode` | `DATABASE` | `DATABASE` | `DATABASE` | `FILE` |
+| `rotation.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` |
+| `rotation.schedule` | `0 0 2 * * ?` | `0 0 2 * * ?` | `0 */5 * * * ?` | `0 0 2 * * ?` |
+| `reencryption.enabled` | `true` | `true` (admin) / `false` (auth, int) | `true` | `true` |
+| `reencryption.batch-size` | `500` | `500` | `500` | `500` |
+
+### `ezkey.audit.integrity.*`
+
+| Property | default | docker | docker-test |
+|---|---|---|---|
+| `enabled` | `true` | `true` | `true` |
+| `hmac-key-file` | *(null)* | `/etc/ezkey/secrets/audit-hmac.key` | `/etc/ezkey/secrets/audit-hmac.key` |
+| `instance-id` | *(null)* | `${EZKEY_INSTANCE_ID:admin-api}` | `${EZKEY_INSTANCE_ID:admin-api}` |
+
+### `ezkey.organization.*`
+
+| Property | default | docker |
+|---|---|---|
+| `name` | `Ezkey System` | `Ezkey System` |
+| `description` | `Ezkey MFA instance for your organization` | `Ezkey MFA instance for your organization` |
+| `about-url` | *(null)* | `${EZKEY_ORGANIZATION_ABOUT_URL:}` |
+
+---
+
+## Docker Environment Variable Reference
+
+| Spring property | Docker env var | Notes |
+|---|---|---|
+| `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | Per-instance. E.g. `admin-api-1`. |
+| `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | Set in `docker-compose.yml`. |
+| `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | Public Auth API URL for mobile QR. |
+| `ezkey.demo.mitm-signature-enabled` | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | Auth API only. Default `true` in dev stack (false in prod). |
+
+> The master key and HMAC key files are not passed as env vars — they are mounted via the
+> `encryption-secrets` Docker volume at `/etc/ezkey/`.
+
+---
 
 ## Security Considerations
 
-1. **RSA Key Size:** Never use RSA keys smaller than 2048 bits in production environments.
-2. **Challenge Digits:** More digits provide better security but may impact user experience.
-3. **TTL Configuration:** Shorter TTL values improve security but may cause timeouts for slow users.
-
-## Migration from @Value
-
-If you were previously using `@Value` annotations for ezkey-core configuration, you can now use the centralized properties:
-
-**Before:**
-```java
-@Value("${ezkey.auth-attempt.challenge-digits:2}")
-private int challengeDigits;
-```
-
-**After:**
-```java
-private final EzkeyCoreProperties ezkeyCoreProperties;
-
-// Usage:
-int challengeDigits = ezkeyCoreProperties.getAuthAttempt().getChallengeDigits();
-```
-
-## Validation
-
-All configuration properties include validation annotations:
-- `@Min` and `@Max` for numeric ranges
-- `@NotBlank` for string values
-- Custom validation messages for better error reporting
-
-Invalid configuration will cause application startup to fail with descriptive error messages.
+1. **Master key and HMAC key files** must never be committed to source control. Use Docker secrets
+   or a secure vault.
+2. **Demo MITM flag** (`ezkey.demo.mitm-signature-enabled`) must be `false` in any production
+   environment.
+3. **RSA key size** must be ≥ 2048 bits; never override to a lower value.
+4. **Key rotation** is enabled by default and should remain so in production (Admin API only).
