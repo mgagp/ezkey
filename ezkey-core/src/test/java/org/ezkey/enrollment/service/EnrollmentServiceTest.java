@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -46,11 +47,11 @@ import org.ezkey.exception.auth.EnrollmentIntegrationNotFoundException;
 import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
-import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
+import org.ezkey.service.EntityEligibilityService;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
@@ -111,6 +112,8 @@ class EnrollmentServiceTest {
   @Mock private EnrollmentProperties enrollmentProperties;
 
   @Mock private IntegrationRepository integrationRepository;
+
+  @Mock private EntityEligibilityService eligibilityService;
 
   @Mock private EnrollmentBindService bindService;
 
@@ -276,7 +279,11 @@ class EnrollmentServiceTest {
   @DisplayName("create() - Should throw lifecycle exception when integration is not active")
   void create_WhenIntegrationLifecycleNotActive_ShouldThrowLifecycleException() {
     // Arrange
-    integration.setLifecycleStatus(IntegrationLifecycleStatus.INACTIVE);
+    doThrow(
+            new IntegrationLifecycleStateException(
+                "Only ACTIVE integrations accept new enrollments."))
+        .when(eligibilityService)
+        .ensureIntegrationOperational(any(Integration.class));
 
     // Act & Assert
     IntegrationLifecycleStateException exception =
@@ -298,6 +305,11 @@ class EnrollmentServiceTest {
     tenant.setTenantId(77);
     tenant.setActive(false);
     integration.setTenant(tenant);
+    doThrow(
+            new TenantInactiveException(
+                "Cannot create enrollment for inactive tenant. Contact your Ezkey administrator."))
+        .when(eligibilityService)
+        .ensureIntegrationOperational(any(Integration.class));
 
     // Act & Assert
     TenantInactiveException exception =

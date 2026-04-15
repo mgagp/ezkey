@@ -84,6 +84,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *     when enrichment is used (e.g. GET by ID)
  * @param isSystemIntegration Whether this enrollment's integration is the system integration; set
  *     when enrichment is used (e.g. GET by ID)
+ * @param operational Whether the enrollment is currently operational: VERIFIED status, active flag
+ *     true, and (when integration context is available) full parent chain also operational
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.entity.Enrollment
@@ -166,4 +168,11 @@ public record EnrollmentResponseDto(
             description =
                 "Whether this enrollment's integration is the system integration; populated on GET"
                     + " by ID")
-        Boolean isSystemIntegration) {}
+        Boolean isSystemIntegration,
+    @Schema(
+            description =
+                "Whether the enrollment is currently operational: VERIFIED status, active flag"
+                    + " true, and (when integration context is available) full parent chain also"
+                    + " operational",
+            example = "true")
+        Boolean operational) {}

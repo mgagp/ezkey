@@ -59,6 +59,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
       "org.ezkey.adminauth",
       "org.ezkey.security", // Tink encryption services
       "org.ezkey.database", // Database partition management
+      "org.ezkey.service", // EntityEligibilityService and shared core services
     })
 @EnableScheduling
 public class AdminApplication {

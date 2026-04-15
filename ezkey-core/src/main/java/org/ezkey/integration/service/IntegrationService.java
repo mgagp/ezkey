@@ -18,7 +18,6 @@ import java.util.Optional;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.SystemTenantNotConfiguredException;
-import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
@@ -34,6 +33,7 @@ import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
+import org.ezkey.service.EntityEligibilityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -64,6 +64,7 @@ public class IntegrationService {
   private final IntegrationServiceMapper integrationServiceMapper;
   private final TenantRepository tenantRepository;
   private final EnrollmentRepository enrollmentRepository;
+  private final EntityEligibilityService eligibilityService;
 
   /**
    * Constructs the service with the required repository and mapper.
@@ -72,16 +73,19 @@ public class IntegrationService {
    * @param integrationServiceMapper the mapper for converting between DTOs and entities
    * @param tenantRepository the repository for Tenant entities
    * @param enrollmentRepository the repository for Enrollment entities (used for delete guard)
+   * @param eligibilityService the centralized eligibility service for entity state checks
    */
   public IntegrationService(
       IntegrationRepository integrationRepository,
       IntegrationServiceMapper integrationServiceMapper,
       TenantRepository tenantRepository,
-      EnrollmentRepository enrollmentRepository) {
+      EnrollmentRepository enrollmentRepository,
+      EntityEligibilityService eligibilityService) {
     this.integrationRepository = integrationRepository;
     this.integrationServiceMapper = integrationServiceMapper;
     this.tenantRepository = tenantRepository;
     this.enrollmentRepository = enrollmentRepository;
+    this.eligibilityService = eligibilityService;
   }
 
   /**
@@ -260,14 +264,7 @@ public class IntegrationService {
     }
 
     // Security: Block integration creation for inactive tenants
-    if (!tenant.getActive()) {
-      logger.warn(
-          "Integration creation blocked: tenant '{}' (ID: {}) is inactive",
-          tenant.getTenantName(),
-          tenant.getTenantId());
-      throw new TenantInactiveException(
-          "Cannot create integration for inactive tenant. Contact your Ezkey administrator.");
-    }
+    eligibilityService.ensureTenantOperational(tenant);
 
     var domResponse = integrationRepository.save(integration);
     IntegrationCreateResponse response = integrationServiceMapper.toCreateResponse(domResponse);

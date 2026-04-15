@@ -45,7 +45,6 @@ public interface IntegrationServiceMapper {
    */
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
-  @Mapping(target = "active", ignore = true)
   @Mapping(target = "lifecycleStatus", ignore = true)
   @Mapping(target = "tenant", ignore = true)
   @Mapping(target = "isSystemIntegration", ignore = true)

@@ -139,6 +139,11 @@ public class AdminProvisioningController {
   private static AdminResponseDto toAdminResponseDto(EzkeyAdmin admin) {
     Integer enrollmentId =
         admin.getEnrollment() != null ? admin.getEnrollment().getEnrollmentId() : null;
+    boolean operational =
+        Boolean.TRUE.equals(admin.getActive())
+            && (admin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN
+                || (admin.getTenant() != null
+                    && Boolean.TRUE.equals(admin.getTenant().getActive())));
     return new AdminResponseDto(
         admin.getAdminId(),
         admin.getVersion(),
@@ -152,7 +157,8 @@ public class AdminProvisioningController {
         enrollmentId,
         admin.getActive(),
         admin.getCreatedAt(),
-        admin.getLastLoginAt());
+        admin.getLastLoginAt(),
+        operational);
   }
 
   /**

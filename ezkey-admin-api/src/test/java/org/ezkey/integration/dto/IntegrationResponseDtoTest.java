@@ -42,7 +42,7 @@ class IntegrationResponseDtoTest {
 
   private static final Integer TEST_TENANT_ID = 2;
 
-  private static final Boolean TEST_ACTIVE = true;
+  private static final Boolean TEST_OPERATIONAL = true;
 
   private static final IntegrationLifecycleStatus TEST_LIFECYCLE_STATUS =
       IntegrationLifecycleStatus.ACTIVE;
@@ -62,8 +62,8 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -72,7 +72,7 @@ class IntegrationResponseDtoTest {
     assertThat(dto.id()).isEqualTo(TEST_ID);
     assertThat(dto.code()).isEqualTo(TEST_CODE);
     assertThat(dto.tenantId()).isEqualTo(TEST_TENANT_ID);
-    assertThat(dto.active()).isEqualTo(TEST_ACTIVE);
+    assertThat(dto.operational()).isEqualTo(TEST_OPERATIONAL);
     assertThat(dto.lifecycleStatus()).isEqualTo(TEST_LIFECYCLE_STATUS);
     assertThat(dto.createdAt()).isEqualTo(TEST_CREATED_AT);
     assertThat(dto.name()).isEqualTo(TEST_NAME);
@@ -88,8 +88,8 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             TEST_CREATED_AT,
             null,
             null,
@@ -108,8 +108,8 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             TEST_CREATED_AT,
             TEST_NAME,
             null,
@@ -120,22 +120,22 @@ class IntegrationResponseDtoTest {
   }
 
   @Test
-  @DisplayName("Should create record with inactive status")
+  @DisplayName("Should create record with retired status")
   void shouldCreateRecordWithInactiveStatus() {
     IntegrationResponseDto dto =
         new IntegrationResponseDto(
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            IntegrationLifecycleStatus.RETIRED,
             false,
-            IntegrationLifecycleStatus.INACTIVE,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
             null);
 
-    assertThat(dto.active()).isFalse();
-    assertThat(dto.lifecycleStatus()).isEqualTo(IntegrationLifecycleStatus.INACTIVE);
+    assertThat(dto.operational()).isFalse();
+    assertThat(dto.lifecycleStatus()).isEqualTo(IntegrationLifecycleStatus.RETIRED);
   }
 
   @Test
@@ -146,8 +146,8 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -157,8 +157,8 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -168,8 +168,8 @@ class IntegrationResponseDtoTest {
             2,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -188,8 +188,8 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             TEST_CREATED_AT,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -212,8 +212,8 @@ class IntegrationResponseDtoTest {
             1,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             utcTime,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -223,8 +223,8 @@ class IntegrationResponseDtoTest {
             2,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             estTime,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -234,8 +234,8 @@ class IntegrationResponseDtoTest {
             3,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             jstTime,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -257,8 +257,8 @@ class IntegrationResponseDtoTest {
               id,
               TEST_CODE,
               TEST_TENANT_ID,
-              TEST_ACTIVE,
               TEST_LIFECYCLE_STATUS,
+              TEST_OPERATIONAL,
               TEST_CREATED_AT,
               TEST_NAME,
               TEST_DESCRIPTION,
@@ -275,8 +275,8 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
-            TEST_ACTIVE,
             TEST_LIFECYCLE_STATUS,
+            TEST_OPERATIONAL,
             null,
             TEST_NAME,
             TEST_DESCRIPTION,
@@ -286,7 +286,7 @@ class IntegrationResponseDtoTest {
   }
 
   @Test
-  @DisplayName("Should handle null active status")
+  @DisplayName("Should handle null operational status")
   void shouldHandleNullActiveStatus() {
     IntegrationResponseDto dto =
         new IntegrationResponseDto(
@@ -300,7 +300,7 @@ class IntegrationResponseDtoTest {
             TEST_DESCRIPTION,
             null);
 
-    assertThat(dto.active()).isNull();
+    assertThat(dto.operational()).isNull();
     assertThat(dto.lifecycleStatus()).isNull();
   }
 }

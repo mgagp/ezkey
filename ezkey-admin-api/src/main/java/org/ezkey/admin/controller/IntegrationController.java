@@ -202,7 +202,7 @@ public class IntegrationController {
       @Parameter(description = "Compatibility filter by active flag")
           @RequestParam(required = false)
           Boolean active,
-      @Parameter(description = "Exact lifecycle filter (ACTIVE, INACTIVE, RETIRED)")
+      @Parameter(description = "Exact lifecycle filter (ACTIVE, RETIRED)")
           @RequestParam(required = false)
           IntegrationLifecycleStatus lifecycleStatus,
       @Parameter(
@@ -238,7 +238,7 @@ public class IntegrationController {
                 ? null
                 : (Boolean.TRUE.equals(active)
                     ? IntegrationLifecycleStatus.ACTIVE
-                    : IntegrationLifecycleStatus.INACTIVE));
+                    : IntegrationLifecycleStatus.RETIRED));
 
     Page<IntegrationResponseDto> integrations =
         service
@@ -464,7 +464,7 @@ public class IntegrationController {
       @Parameter(description = "Integration ID to retire", example = "1") @PathVariable("id")
           Integer id,
       @Parameter(description = "Audit justification for the retirement (min 10 characters)")
-          @RequestParam(required = false)
+          @RequestParam
           @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
           String reason,
       HttpServletRequest httpRequest) {
@@ -575,7 +575,7 @@ public class IntegrationController {
       @Parameter(description = "Integration ID to delete", example = "1") @PathVariable("id")
           Integer id,
       @Parameter(description = "Audit justification for the deletion (min 10 characters)")
-          @RequestParam(required = false)
+          @RequestParam
           @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
           String reason,
       HttpServletRequest httpRequest) {

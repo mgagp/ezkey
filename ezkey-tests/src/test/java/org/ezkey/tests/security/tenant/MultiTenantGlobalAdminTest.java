@@ -459,6 +459,7 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
 
     given()
         .header("Authorization", "Bearer " + authTokenManager.getAdminToken())
+        .queryParam("reason", "Integration decommissioned during functional test run")
         .when()
         .delete("/integrations/" + integrationId)
         .then()

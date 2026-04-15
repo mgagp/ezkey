@@ -45,6 +45,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
       "org.ezkey.security",
       "org.ezkey.exception",
       "org.ezkey.signature",
+      "org.ezkey.service", // Shared core services (EntityEligibilityService, …)
     })
 public class IntegrationApiApplication {
 

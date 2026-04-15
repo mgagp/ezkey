@@ -58,6 +58,7 @@ import org.ezkey.security.ReencryptionService;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
+import org.ezkey.service.EntityEligibilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -102,6 +103,7 @@ class AuditReasonPropagationTest {
   @Mock private AdminOperationsRateLimitService adminOpsRateLimitService;
   @Mock private EzkeyAdminRepository adminRepository;
   @Mock private AccessControlService accessControlService;
+  @Mock private EntityEligibilityService eligibilityService;
 
   // --- EnrollmentController mocks ---
 
@@ -158,7 +160,8 @@ class AuditReasonPropagationTest {
             adminRepository,
             accessControlService,
             auditLogService,
-            apiKeyFkResolver);
+            apiKeyFkResolver,
+            eligibilityService);
 
     when(apiKeyService.revokeApiKey(eq(42), any(EzkeyAdmin.class))).thenReturn(true);
 
@@ -194,7 +197,8 @@ class AuditReasonPropagationTest {
             adminRepository,
             accessControlService,
             auditLogService,
-            apiKeyFkResolver);
+            apiKeyFkResolver,
+            eligibilityService);
 
     when(apiKeyService.revokeApiKey(eq(42), any(EzkeyAdmin.class))).thenReturn(true);
 
@@ -246,7 +250,6 @@ class AuditReasonPropagationTest {
             integrationRepository,
             enrollmentRevocationService,
             enrollmentUpdateService,
-            authAttemptRepository,
             enrollmentFkResolver);
 
     // Act
@@ -288,7 +291,7 @@ class AuditReasonPropagationTest {
                 "Enrollment cannot be deleted because it is linked to an administrator. Use the"
                     + " recovery flow to reset that administrator enrollment first."))
         .when(enrollmentRevocationService)
-        .assertNotLinkedAsAdmin(42);
+        .validateDelete(any(org.ezkey.admin.security.AdminPrincipal.class), eq(42));
 
     AuditEntityFkResolver enrollmentFkResolver =
         new AuditEntityFkResolver(integrationRepository, enrollmentRepository);
@@ -304,7 +307,6 @@ class AuditReasonPropagationTest {
             integrationRepository,
             enrollmentRevocationService,
             enrollmentUpdateService,
-            authAttemptRepository,
             enrollmentFkResolver);
 
     EnrollmentLinkedAsAdminException thrown =

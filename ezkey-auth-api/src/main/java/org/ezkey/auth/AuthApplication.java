@@ -35,6 +35,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
       "org.ezkey.config", // Configuration properties
       "org.ezkey.instance", // Public instance metadata (instance-info)
       "org.ezkey.security", // Tink encryption services
+      "org.ezkey.service", // Shared core services (EntityEligibilityService, …)
     })
 public class AuthApplication {
 

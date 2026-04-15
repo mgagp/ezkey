@@ -29,6 +29,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -493,6 +494,29 @@ public class ValidationExceptionHandler {
         AdminApiProblemCatalog.TYPE_VALIDATION_FAILED,
         AdminApiProblemCatalog.TITLE_VALIDATION_FAILED,
         message,
+        request);
+  }
+
+  /**
+   * Handles MissingServletRequestParameterException and returns HTTP 400 Bad Request.
+   *
+   * <p>Triggered when a required {@code @RequestParam} (e.g., {@code reason} on DELETE endpoints)
+   * is absent from the request. Without this handler the exception falls through to the generic
+   * fallback and produces a misleading 500.
+   *
+   * @param ex the MissingServletRequestParameterException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 400 status
+   * @since 2025
+   */
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  public ResponseEntity<ProblemDetail> handleMissingServletRequestParameter(
+      MissingServletRequestParameterException ex, WebRequest request) {
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AdminApiProblemCatalog.TYPE_VALIDATION_FAILED,
+        AdminApiProblemCatalog.TITLE_VALIDATION_FAILED,
+        "Required parameter '" + ex.getParameterName() + "' is missing",
         request);
   }
 

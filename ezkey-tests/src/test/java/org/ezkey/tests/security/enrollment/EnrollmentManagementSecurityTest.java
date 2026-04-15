@@ -225,6 +225,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
           given()
               .contentType(ContentType.JSON)
               .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", "Enrollment decommissioned during functional test run")
               .when()
               .delete("/enrollments/" + enrollmentId)
               .then()
@@ -455,6 +456,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
               .header(
                   "Authorization",
                   createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .queryParam("reason", "Enrollment decommissioned during functional test run")
               .when()
               .delete("/enrollments/" + enrollmentId)
               .then()
@@ -509,6 +511,7 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
           given()
               .contentType(ContentType.JSON)
               .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", "Enrollment decommissioned during functional test run")
               .when()
               .delete("/enrollments/99999")
               .then()

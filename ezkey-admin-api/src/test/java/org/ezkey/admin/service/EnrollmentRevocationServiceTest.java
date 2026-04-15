@@ -25,6 +25,7 @@ import org.ezkey.admin.exception.SystemIntegrationRevocationException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
+import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -72,6 +73,8 @@ class EnrollmentRevocationServiceTest {
 
   @Mock private AuditLogService auditLogService;
 
+  @Mock private AuthAttemptRepository authAttemptRepository;
+
   @Mock private EzkeyAdmin ownerAdmin;
 
   @Mock private Integration integration;
@@ -90,7 +93,8 @@ class EnrollmentRevocationServiceTest {
             adminRepository,
             adminTokenRepository,
             integrationRepository,
-            auditLogService);
+            auditLogService,
+            authAttemptRepository);
 
     globalAdminPrincipal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
     clientContext = new ClientContext("127.0.0.1", "test-agent/1.0");

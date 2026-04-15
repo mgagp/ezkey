@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.exception.TenantInactiveException;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
@@ -37,6 +39,7 @@ import org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.ApiKeyUpdateValidationException;
 import org.ezkey.integration.service.ApiKeyService.ApiKeyCreationResult;
+import org.ezkey.service.EntityEligibilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -73,6 +76,8 @@ class ApiKeyServiceTest {
 
   @Mock private BCryptPasswordEncoder passwordEncoder;
 
+  @Mock private EntityEligibilityService eligibilityService;
+
   @InjectMocks private ApiKeyService apiKeyService;
 
   private Integration testIntegration;
@@ -84,7 +89,12 @@ class ApiKeyServiceTest {
     // Setup test integration
     testIntegration = new Integration();
     testIntegration.setId(123);
-    testIntegration.setActive(true);
+    testIntegration.setLifecycleStatus(IntegrationLifecycleStatus.ACTIVE);
+
+    // Setup lenient default: integration is operational for most tests
+    lenient()
+        .when(eligibilityService.isIntegrationOperational(any(Integration.class)))
+        .thenReturn(true);
 
     // Setup test admin
     testAdmin = new EzkeyAdmin();
@@ -171,7 +181,7 @@ class ApiKeyServiceTest {
     @DisplayName("Should throw exception when integration is inactive")
     void createApiKey_WhenIntegrationInactive_ShouldThrowException() {
       // Arrange
-      testIntegration.setActive(false);
+      testIntegration.setLifecycleStatus(IntegrationLifecycleStatus.RETIRED);
       when(integrationRepository.findById(123)).thenReturn(Optional.of(testIntegration));
 
       // Act & Assert
@@ -207,6 +217,9 @@ class ApiKeyServiceTest {
       tenant.setActive(false);
       testIntegration.setTenant(tenant);
       when(integrationRepository.findById(123)).thenReturn(Optional.of(testIntegration));
+      doThrow(new TenantInactiveException("inactive tenant"))
+          .when(eligibilityService)
+          .ensureTenantOperational(any());
 
       // Act & Assert
       assertThrows(

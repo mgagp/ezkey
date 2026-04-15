@@ -185,19 +185,16 @@ This favors simpler code, more predictable rollback, and clearer audit history.
 | Deactivate | Allowed except system tenant | Crisis stop, offboarding, temporary suspension | Default: runtime block on integrations, admins, enrollments, API keys; no broad persistent cascade |
 | Reactivate | Allowed | Reverse mistaken or temporary stop | Restores effective use without child mutation |
 | Revoke | Not applicable | Tenant is not a credential | None |
-| Retire | Not primary concept | Tenant offboarding can stay modeled as inactive unless future archival needs justify more | None |
-| Soft delete | Usually no | Too much conceptual ambiguity for a root scope | None |
-| Hard delete | Exceptional only, likely out of current scope | High blast radius, audit and legal implications | Should require strong guard rails |
+| Retire | Not applicable in Phase 1 | Deactivation covers offboarding; archival is a future concern | None |
+| Delete | Not in Phase 1 | High blast radius, audit and legal implications; deactivation covers all current needs | Out of scope |
 
-Recommendation:
+Decision (locked):
 
-- keep tenant state simple,
+- keep tenant state simple: `active` boolean toggle,
 - use tenant deactivation as a master organizational stop,
-- prefer runtime blocking over persisted child cascades.
-
-Alternative to consider later:
-
-- materialize derived child statuses only if operator diagnosis becomes too opaque.
+- runtime eligibility service handles all derived child blocking — no persistent cascade,
+- no materialized child statuses in Phase 1,
+- no soft delete concept, no hard delete in Phase 1.
 
 ### 7.2 Global Admin and Tenant Admin
 
@@ -206,14 +203,15 @@ Alternative to consider later:
 | Create / provision | Allowed with role-specific constraints | Administrative onboarding | Already audit-sensitive |
 | Deactivate | Allowed with safety guards | Temporary suspension or investigation | Should not silently violate minimum-admin safety rules |
 | Reactivate | Allowed | Restore administrative function | Keep idempotent |
-| Revoke | Only if modeled as credential access invalidation, not identity destruction | Depends on whether admin identity and admin MFA enrollment remain separated | Prefer revoking admin credentials rather than deleting admin identity |
-| Soft delete | Rare | Could be meaningful for operator mistakes only if identity never used | Avoid unless a concrete use case justifies it |
-| Hard delete | Exceptional | Dangerous for audit continuity | Should remain highly constrained |
+| Revoke | Via enrollment revocation, not identity destruction | Admin identity and admin MFA enrollment remain separated | Revoke the credential, preserve the identity |
+| Delete | Not in Phase 1 | Dangerous for audit continuity; deactivation + enrollment revocation cover all operational needs | Out of scope |
 
-Recommendation:
+Decision (locked):
 
 - keep admin identity lifecycle separate from admin MFA enrollment lifecycle,
 - treat enrollment revocation as the primary security-invalidating action,
+- deactivation covers temporary suspension and investigation,
+- no soft delete, no hard delete in Phase 1,
 - preserve minimum-admin and system-tenant protections.
 
 ### 7.3 Integration
@@ -221,25 +219,16 @@ Recommendation:
 | Operation | Target rule | Rationale | Child impact |
 | --- | --- | --- | --- |
 | Create | Allowed | Standard setup action | Enables enrollments and API keys |
-| Deactivate | Decision point | Could be useful as reversible operational stop | Could runtime-block new auth attempts, enrollments, API key usage |
-| Reactivate | Decision point if deactivate exists | Symmetry and operator intuition | Reverse the stop |
 | Retire | Allowed and primary decommissioning action | Best fit for replaced, sunset, or phased-out applications | Blocks new operational use while keeping history |
-| Soft delete | Only if operationally meaningful | Probably not needed if retire already covers historical preservation | Be careful not to duplicate retire |
-| Hard delete | Allowed only after strong preconditions | Good for disposable or mistaken integrations with no remaining dependents | Must block when enrollments still exist |
+| Delete | Allowed only after RETIRED + zero enrollments | Cleanup for disposable or mistaken integrations | Must block when enrollments still exist; reason required |
 
-Recommended direction:
+Decision (locked):
 
-- keep `retire` as the main non-destructive end-of-life action,
-- allow `delete` only as an exceptional cleanup action after strict guards,
-- do not introduce both `inactive` and `retired` unless each has a distinct operational story.
-
-Alternative A:
-
-- no dedicated integration deactivate state; use `retire` for non-reversible removal from service.
-
-Alternative B:
-
-- add reversible `inactive` only if there is a strong operational need for temporary suspension distinct from retirement.
+- lifecycle states: `ACTIVE` and `RETIRED` only — `INACTIVE` removed from `IntegrationLifecycleStatus` enum,
+- no reversible deactivation for integrations; operators manage child entities (enrollments, API keys) directly,
+- `retire` is the main non-destructive end-of-life action,
+- `delete` is physical cleanup only, guarded by RETIRED status + zero enrollment count + required reason,
+- no soft delete concept.
 
 ### 7.4 Enrollment
 
@@ -248,15 +237,16 @@ Alternative B:
 | Create | Allowed | Bind a user device or admin MFA device | Requires operational parent context |
 | Deactivate | Allowed | Investigation, lost device, temporary hold | Blocks new auth attempts |
 | Reactivate | Allowed only from deactivated verified state | Simple reversible path | Restores use |
-| Revoke | Allowed and terminal | Confirmed compromise or permanent withdrawal | Immediately invalidates trust |
-| Soft delete | Conditional | Only for unused or mistaken records that never became meaningful, or for tightly guarded cleanup | Must not blur with revoke |
-| Hard delete | Exceptional | Useful for operator-error cleanup in constrained conditions | Dangerous once the enrollment has real history |
+| Revoke | Allowed and terminal | Confirmed compromise or permanent withdrawal | Immediately invalidates trust; reason required |
+| Delete | Physical cleanup only | For mistaken or unused records that never became operationally meaningful | Guarded: no auth history + not linked as admin enrollment; reason required |
 
-Recommendation:
+Decision (locked):
 
-- treat enrollment as the clearest security-state finite-state machine,
-- keep revoke and deactivate distinct,
-- keep delete exceptional and subordinate to lifecycle meaning.
+- enrollment is the clearest security-state finite-state machine in Ezkey,
+- revoke and deactivate remain distinct operations with distinct semantics,
+- no soft delete — delete is physical removal for error cleanup only,
+- delete preconditions: zero auth attempts + not linked as any admin's MFA enrollment,
+- reason required for revoke and delete.
 
 ### 7.5 Authentication Attempt
 
@@ -281,13 +271,13 @@ Recommendation:
 | Reactivate | No | Same reason |
 | Revoke | Allowed and terminal | Standard machine-credential security action |
 | Expire | Allowed and policy-driven | Useful for rotation and stale credential control |
-| Soft delete | No | Little value over revoke plus historical listing |
-| Hard delete | Usually no current need | Audit value often outweighs cleanup value |
+| Delete | No | Revoked keys preserved for audit; no cleanup value justifies deletion |
 
-Recommendation:
+Decision (locked):
 
-- keep API key lifecycle intentionally asymmetric,
-- do not force a reversible model where industry practice and Ezkey simplicity both support terminal revoke.
+- API key lifecycle is intentionally asymmetric: create, revoke, expire — no reactivation, no delete,
+- revoked keys are preserved permanently for audit traceability,
+- reason required for revoke.
 
 ### 7.7 Encryption Key
 
@@ -362,12 +352,14 @@ This favors one consistent helper or policy service over scattered one-off check
 | Tenant | Deactivate and activate exist in service; runtime master-switch behavior already present | Keep simple reversible tenant on/off with no broad child cascade | Medium, mostly documentation and consistency |
 | System tenant | Special protections exist but remain asymmetric across flows | Keep explicit protected-root semantics everywhere | Medium |
 | Enrollment | Revoke, deactivate, reactivate already form a strong lifecycle core | Use enrollment as the clearest reference finite-state machine | Low-to-medium |
-| Integration | Retire and delete exist; reversible temporary inactive semantics remain unclear | Clarify whether integration needs reversible deactivate at all | High |
-| API key | Create, revoke, expire; no reactivation, which is probably correct | Preserve asymmetry intentionally | Low |
+| Integration | Retire and delete exist; `INACTIVE` state exists in enum but adds ambiguity | Decision taken: ACTIVE + RETIRED only, INACTIVE removed | Medium — decision locked, implementation needed |
+| API key | Create, revoke, expire; no reactivation — correct by design | Preserve asymmetry intentionally; no delete | Low |
 | Auth attempt | Behavior depends on parent eligibility checks; lifecycle is event-based | Keep derived and not operator-managed | Low |
 | Encryption key | Lifecycle is more advanced and two-layered than most entities | Use as a reference for separating operator lifecycle from technical role where needed | Medium |
-| Soft delete | Appears as a possible cleanup need in some entities but not a universal concept | Keep selective and exceptional | Medium |
-| Reason policy | Reasons exist in many operations, with mixed optional vs required semantics | Unify around operational-story value and irreversible-action seriousness | High |
+| Delete policy | No soft delete concept exists in code but terminology is ambiguous in docs | Delete is physical cleanup only, allowed for Integration and Enrollment under strict guards; no soft delete anywhere | Medium — decision locked, docs realignment needed |
+| Eligibility service | Does not exist as a centralized component; checks are scattered across services | Must be created as a single injectable service computing `operational` status | High — new component |
+| Computed `operational` field | Not exposed in any DTO | All response DTOs should include a computed `operational` boolean from the eligibility service | High — new DTO field |
+| Reason policy | Reasons exist in many operations, with mixed optional vs required semantics | Unify: required for irreversible actions (revoke, delete), optional but recommended for reversible actions | High |
 | Documentation | `ENDPOINT.md`, plans, code, and UI are not fully aligned | Produce one reference vocabulary and then realign docs | High |
 
 ## 10. Proposed reason policy
@@ -387,87 +379,89 @@ Recommended default policy:
 
 This supports future SOC 2 ambitions while staying operationally grounded.
 
-## 11. Explicit structural decisions still open
+## 11. Structural decisions — final arbitrages
 
-These are the main points that should remain visible during review instead of being hidden in the prose.
+All four structural decisions have been arbitrated and locked. No alternatives remain open.
 
-### Decision 1 - Parent blocking model
+### Decision 1 - Parent blocking model ✅ LOCKED
 
-Recommended default:
+**Arbitrage: centralized eligibility service, no persistent cascades.**
 
-- local persisted lifecycle state,
-- derived runtime blocking upward and downward as needed,
-- minimal persistent cascading.
+- Each entity persists only its own lifecycle state.
+- A single injectable eligibility service computes effective operational capability at runtime.
+- Evaluation order: local state → parent operational state → tenant scope → special guards → operation type.
+- No automatic persistent cascade on child entities when a parent state changes.
+- Rollback-friendly: changing eligibility rules does not require schema migrations.
 
-Alternative:
+### Decision 2 - Integration lifecycle shape ✅ LOCKED
 
-- materialize some derived child states if operator visibility and diagnostics become too weak.
+**Arbitrage: ACTIVE + RETIRED only. INACTIVE removed.**
 
-### Decision 2 - Integration lifecycle shape
+- `IntegrationLifecycleStatus` enum reduced to two values: `ACTIVE` and `RETIRED`.
+- No reversible deactivation for integrations — operators manage child entities directly.
+- `retire` is the primary decommissioning action preserving history.
+- `delete` is physical cleanup only, guarded by: RETIRED status + zero enrollment count + reason required.
 
-Recommended default:
+### Decision 3 - Delete policy ✅ LOCKED
 
-- keep `retire` as the main decommissioning step,
-- keep `delete` exceptional,
-- do not add `inactive` unless temporary suspension is a real, repeated operator scenario.
+**Arbitrage: delete is housekeeping, not a lifecycle concept. No soft delete.**
 
-Alternative:
+- Delete means physical removal. There is no soft delete concept anywhere in Ezkey.
+- The lifecycle handles "stop using" (deactivate, revoke, retire). Delete handles "clean up after lifecycle".
+- Delete is allowed only for two entities under strict preconditions:
+  - **Integration**: must be RETIRED + zero enrollments + reason required.
+  - **Enrollment**: must have zero auth history + not linked as admin MFA enrollment + reason required.
+- All other entities: deactivate, revoke, or retire covers every operational need.
+- Tenant delete, admin delete, bulk purge, and GDPR scenarios are explicitly deferred to Phase 2+.
 
-- introduce `inactive` plus `reactivate` if temporary integration suspension is needed often enough to justify the added state machine branch.
+### Decision 4 - Persisted states versus derived statuses ✅ LOCKED
 
-### Decision 3 - Selective delete policy
+**Arbitrage: local persistent state + computed `operational` boolean in API responses.**
 
-Recommended default:
+- Each entity persists only its own state (no cascade columns, no derived state in database).
+- The eligibility service computes a boolean `operational` field for all entity response DTOs.
+  - `operational = local state OK AND parent chain OK`
+  - Example: Enrollment VERIFIED + active + integration ACTIVE + tenant active → `operational: true`
+  - Example: Enrollment VERIFIED + active + integration RETIRED → `operational: false`
+- Detail responses include parent context (name, status) for operator diagnosis.
+- List responses: `operational` boolean + scope context suffices.
+- No `blockedBy` field in Phase 1. No `effectiveStatus` text field.
+- Enrollment dual model (`status` enum + `active` boolean) preserved as-is — it is correct and coherent.
 
-- never universalize delete,
-- allow cleanup deletion only where the entity is disposable, mistaken, unused, or safely detached.
+## 12. Document status
 
-Alternative:
+This document is now **decisionally complete**. All four structural decisions (§11) are locked.
+The common vocabulary (§4), entity matrices (§7), blast radius model (§8), and reason policy (§10) are stable.
 
-- broaden deletion to more entities later if the cleanup burden becomes operationally important and audit cost remains manageable.
+The next step is a **backend implementation plan** (Plan 1) that uses this document as its design reference.
+A subsequent **Admin UI alignment plan** (Plan 2) will follow once the backend is stabilized.
 
-### Decision 4 - Persisted states versus derived statuses
+## 13. Implementation phase breakdown
 
-Recommended default:
+All phases below depend on the arbitrages locked in §11.
 
-- use explicit finite states only when the entity itself truly has a lifecycle,
-- use derived runtime statuses for inherited blockage whenever that keeps the model simpler.
+### Plan 1 — Backend implementation
 
-Alternative:
+Order of work follows entity hierarchy (stabilize parents first):
 
-- materialize more statuses for UI explanation if derived-only visibility proves too opaque.
+1. **Eligibility service** — create centralized injectable service computing `operational` for all entities.
+2. **Integration** — remove `INACTIVE` from enum, align service and controller, update guards.
+3. **Tenant** — align runtime blocking through eligibility service, ensure system-tenant guards.
+4. **Enrollment** — confirm finite-state machine alignment, lock delete preconditions.
+5. **API Key** — confirm revoke-only model, remove any delete ambiguity.
+6. **Admin** — align deactivation and enrollment revocation separation.
+7. **Reason policy** — enforce required reasons on irreversible actions across all services.
+8. **DTO updates** — add `operational` boolean to all response DTOs, enrich detail responses.
+9. **Tests** — unit tests for eligibility service, lifecycle transitions, and delete guards.
+10. **Spec/docs** — update `ENDPOINT.md` and lifecycle-specific documentation.
 
-## 12. Production outline for the next phase
+### Plan 2 — Admin UI alignment
 
-This document should become the direct source for the next work package, in this order:
-
-1. validate the common vocabulary,
-2. validate the target matrices and the open decisions,
-3. derive phased backend correction plans,
-4. derive UI guidance and danger-zone behavior,
-5. align audit and error semantics,
-6. update operator and endpoint documentation,
-7. add regression tests around lifecycle transitions and runtime eligibility checks.
-
-## 13. Recommended next phase breakdown
-
-### Phase A - Domain and backend rules
-
-- normalize lifecycle enums and local state machines,
-- centralize runtime eligibility checks,
-- align exceptions and Problem Details,
-- formalize reason requirements and audit events.
-
-### Phase B - Admin UI alignment
-
-- align actions, labels, disabled states, tooltips, confirmations,
-- reflect derived versus persisted status clearly,
-- keep danger zones intuitive and non-redundant.
-
-### Phase C - Documentation and tests
-
-- update `docs/ENDPOINT.md`, operator docs, and any lifecycle-specific docs,
-- add focused unit, integration, and selected browser tests where workflow risk justifies them.
+- Align actions, labels, disabled states, tooltips, confirmations with backend changes.
+- Reflect `operational` status visually (badge, icon).
+- Remove INACTIVE-related UI paths for integrations.
+- Keep danger zones intuitive and non-redundant.
+- Targeted browser tests where workflow risk justifies them.
 
 ## 14. Summary recommendation
 

@@ -46,6 +46,7 @@ import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.service.ApiKeyService;
+import org.ezkey.service.EntityEligibilityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springdoc.core.annotations.ParameterObject;
@@ -120,6 +121,7 @@ public class ApiKeyController {
   private final AccessControlService accessControlService;
   private final AuditLogService auditLogService;
   private final AuditEntityFkResolver auditEntityFkResolver;
+  private final EntityEligibilityService eligibilityService;
 
   /**
    * Constructs a new ApiKeyController.
@@ -131,6 +133,7 @@ public class ApiKeyController {
    * @param accessControlService the access control service for tenant scoping validation
    * @param auditLogService the audit log service for security monitoring
    * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
+   * @param eligibilityService the service for computing operational status of API keys
    */
   public ApiKeyController(
       ApiKeyService apiKeyService,
@@ -139,7 +142,8 @@ public class ApiKeyController {
       EzkeyAdminRepository adminRepository,
       AccessControlService accessControlService,
       AuditLogService auditLogService,
-      AuditEntityFkResolver auditEntityFkResolver) {
+      AuditEntityFkResolver auditEntityFkResolver,
+      EntityEligibilityService eligibilityService) {
     this.apiKeyService = apiKeyService;
     this.apiKeyRepository = apiKeyRepository;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
@@ -147,6 +151,7 @@ public class ApiKeyController {
     this.accessControlService = accessControlService;
     this.auditLogService = auditLogService;
     this.auditEntityFkResolver = auditEntityFkResolver;
+    this.eligibilityService = eligibilityService;
   }
 
   /**
@@ -759,6 +764,8 @@ public class ApiKeyController {
     if (apiKey.getRevokedByAdmin() != null) {
       revokedByUsername = apiKey.getRevokedByAdmin().getUsername();
     }
+    boolean operational =
+        eligibilityService.isApiKeyFullyOperational(apiKey, apiKey.getIntegration());
 
     return new ApiKeyResponseDto(
         apiKey.getApiKeyId(),
@@ -772,7 +779,8 @@ public class ApiKeyController {
         apiKey.getLastUsedAt(),
         apiKey.getIpWhitelist(),
         apiKey.getRevokedAt(),
-        revokedByUsername);
+        revokedByUsername,
+        operational);
   }
 
   /**

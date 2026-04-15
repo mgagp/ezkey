@@ -51,6 +51,7 @@ import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.exception.ApiKeyCreateValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.service.ApiKeyService;
+import org.ezkey.service.EntityEligibilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -109,6 +110,8 @@ class ApiKeyControllerTest {
 
   @Mock private AuditLogService auditLogService;
 
+  @Mock private EntityEligibilityService eligibilityService;
+
   @Mock private HttpServletRequest httpServletRequest;
 
   @Mock private IntegrationRepository auditFkIntegrationRepository;
@@ -123,6 +126,7 @@ class ApiKeyControllerTest {
     lenient().when(auditFkEnrollmentRepository.existsById(any())).thenReturn(true);
     AuditEntityFkResolver auditEntityFkResolver =
         new AuditEntityFkResolver(auditFkIntegrationRepository, auditFkEnrollmentRepository);
+    lenient().when(eligibilityService.isApiKeyFullyOperational(any(), any())).thenReturn(true);
     controller =
         new ApiKeyController(
             apiKeyService,
@@ -131,7 +135,8 @@ class ApiKeyControllerTest {
             adminRepository,
             accessControlService,
             auditLogService,
-            auditEntityFkResolver);
+            auditEntityFkResolver,
+            eligibilityService);
 
     // Setup authentication context with admin user
     setupAdminAuthentication();

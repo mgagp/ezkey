@@ -155,28 +155,6 @@ public class Integration {
         lifecycleStatus != null ? lifecycleStatus : IntegrationLifecycleStatus.ACTIVE;
   }
 
-  /**
-   * Compatibility helper while integration lifecycle migrates away from a boolean status model.
-   *
-   * <p>Use lifecycle-specific methods for new code.
-   */
-  public Boolean getActive() {
-    return IntegrationLifecycleStatus.ACTIVE.equals(lifecycleStatus);
-  }
-
-  /**
-   * Compatibility helper while integration lifecycle migrates away from a boolean status model.
-   *
-   * <p>{@code true -> ACTIVE}, {@code false/null -> INACTIVE}. Use {@link #setLifecycleStatus} for
-   * new code.
-   */
-  public void setActive(Boolean active) {
-    this.lifecycleStatus =
-        Boolean.TRUE.equals(active)
-            ? IntegrationLifecycleStatus.ACTIVE
-            : IntegrationLifecycleStatus.INACTIVE;
-  }
-
   /** Indicates whether the integration is in the ACTIVE lifecycle state. */
   public boolean isOperational() {
     return IntegrationLifecycleStatus.ACTIVE.equals(lifecycleStatus);

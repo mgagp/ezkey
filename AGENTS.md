@@ -34,6 +34,20 @@ Checkstyle `JavadocType` validates Javadoc on **classes, interfaces, enums, and 
 
 ---
 
+## `scanBasePackages` — keeping Application classes in sync
+
+Each boot module (`AdminApplication`, `AuthApplication`, `IntegrationApiApplication`, …) declares an **explicit** `scanBasePackages` list. When a new top-level package is added to `ezkey-core` (e.g. `org.ezkey.service`), every boot application that transitively uses a bean from that package must include the new entry, or Spring will fail to start with a *"required a bean … that could not be found"* error.
+
+**Rule:** whenever you introduce a new `org.ezkey.<package>` in `ezkey-core` that contains `@Service`, `@Component`, or `@Repository` classes, check and update `scanBasePackages` in **all three** application classes:
+
+- `ezkey-admin-api` → `AdminApplication.java`
+- `ezkey-auth-api` → `AuthApplication.java`
+- `ezkey-integration-api` → `IntegrationApiApplication.java`
+
+The symptom is a clean compile but a startup failure — not caught by unit tests.
+
+---
+
 ## Project values (analysis and design)
 
 - **Simplicity and pragmatism**: 80–20 rule — target ~80% of the value with ~20% of the complexity. Prefer the simplest solution that meets the need.

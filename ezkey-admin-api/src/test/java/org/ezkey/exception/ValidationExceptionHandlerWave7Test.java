@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.context.request.ServletWebRequest;
 
 @DisplayName("ValidationExceptionHandler Wave 7 (integration / API key)")
@@ -112,5 +113,27 @@ class ValidationExceptionHandlerWave7Test {
     assertEquals(
         "https://ezkey.io/problems/validation/api-key-ip-whitelist-invalid",
         body.getType().toString());
+  }
+
+  @Test
+  @DisplayName("MissingServletRequestParameterException maps to 400 with param name in detail")
+  void missingRequiredParam_mapsTo400() {
+    ValidationExceptionHandler handler = new ValidationExceptionHandler();
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI("/api/v1/integrations/42");
+
+    MissingServletRequestParameterException ex =
+        new MissingServletRequestParameterException("reason", "String");
+
+    ResponseEntity<ProblemDetail> response =
+        handler.handleMissingServletRequestParameter(ex, new ServletWebRequest(request));
+
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    ProblemDetail body = response.getBody();
+    assertNotNull(body);
+    assertEquals(400, body.getStatus());
+    assertEquals("Required parameter 'reason' is missing", body.getDetail());
+    assertEquals(AdminApiProblemCatalog.TITLE_VALIDATION_FAILED, body.getTitle());
+    assertEquals(AdminApiProblemCatalog.TYPE_VALIDATION_FAILED, body.getType().toString());
   }
 }
