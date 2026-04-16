@@ -74,6 +74,10 @@
     "activateWarning": "This tenant is currently inactive. Re-activating will restore access to all resources.",
     "deactivateTenant": "Deactivate Tenant",
     "activateTenant": "Activate Tenant",
+    "contextHelp": {
+      "dangerZoneTitle": "Tenant activation / deactivation",
+      "dangerZoneContent": "Deactivating a tenant immediately blocks all authentication for every integration and enrollment under it — no persistent cascade is written to child records. Reactivating restores access instantly. Use deactivation during security investigations or when suspending a tenant temporarily."
+    },
     "infoId": "ID",
     "infoName": "Name",
     "infoDescription": "Description",

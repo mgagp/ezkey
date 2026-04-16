@@ -39,14 +39,56 @@
     },
     "integrations": {
       "title": "Intégrations",
-      "summary": "Applications protégées par l’AMF EZKey pour un locataire.",
-      "body": "Chaque intégration a un code stable, un nom d’affichage et une description facultative. Créez une intégration lors de l’embarquement d’une application ; ouvrez une ligne pour voir les clés, les paramètres et les inscriptions.\n\nUtilisez la recherche et les filtres pour parcourir de longues listes.",
+      "summary": "Applications protégées par l'AMF EZKey pour un locataire.",
+      "body": "Chaque intégration a un code stable, un nom d'affichage et une description facultative. Les états du cycle de vie sont Actif (opérationnel) et Retiré (retiré définitivement). Créez une intégration lors de l'embarquement d'une application ; ouvrez une ligne pour voir les clés, les paramètres et les enrôlements.\n\nUne intégration est « opérationnelle » lorsqu'elle est Active et que son tenant parent est également actif. Si un tenant est désactivé, toutes ses intégrations affichent un avertissement même si leur statut propre est Actif — l'authentification sera bloquée jusqu'à la réactivation du tenant.\n\nUtilisez la recherche et les filtres pour parcourir de longues listes.",
       "demoExtra": "Avec le mode démo activé, des préréglages « Remplir la démo » apparaissent dans la boîte de dialogue de création pour accélérer les tests locaux."
     },
     "integration-detail": {
-      "title": "Détail d’intégration",
-      "summary": "Configuration d’une intégration et objets liés.",
-      "body": "Consultez les identifiants, le statut et le matériel cryptographique exposé selon votre rôle. Depuis cet écran vous pouvez gérer les inscriptions et d’autres ressources selon les permissions.\n\nTraitez les clés et API conformément à la politique de votre organisation.",
+      "title": "Détail d'intégration",
+      "summary": "Configuration d'une intégration et objets liés.",
+      "body": "Consultez les identifiants, le statut du cycle de vie et les ressources liées. L'état « opérationnel » signifie que cette intégration est Active et que son tenant parent est actif — seules les intégrations opérationnelles peuvent traiter des authentifications.\n\nRetirer une intégration est une action permanente et irréversible qui révoque tous les enrôlements et supprime l'intégration des listes opérationnelles. Une justification est obligatoire. La suppression n'est disponible qu'après retrait et doit rester exceptionnelle.\n\nDepuis cet écran, vous pouvez gérer les enrôlements, créer des clés API (lorsque active) et déclencher des opérations bulk dans la zone de danger.",
+      "demoExtra": ""
+    },
+    "tenants": {
+      "title": "Tenants",
+      "summary": "Unités organisationnelles propriétaires des intégrations, des enrôlements et de leurs propres comptes admin.",
+      "body": "Chaque tenant regroupe un ensemble d'intégrations et les utilisateurs enrôlés. Un tenant peut être actif ou inactif.\n\nDésactiver un tenant bloque immédiatement toute authentification pour l'ensemble de ses intégrations et enrôlements — aucune modification persistante n'est apportée aux entités filles. La réactivation rétablit l'accès complet instantanément. La désactivation du tenant est donc l'outil adapté pour un verrouillage rapide et réversible lors d'investigations de sécurité.",
+      "demoExtra": ""
+    },
+    "tenant-detail": {
+      "title": "Détail du tenant",
+      "summary": "Configuration d'un tenant, ses administrateurs et ses contrôles de cycle de vie.",
+      "body": "Consultez les informations de contact, les administrateurs liés et le statut du cycle de vie. La zone de danger affiche les contrôles d'activation/désactivation pour les tenants non-système.\n\nDésactiver bloque toute authentification en aval (intégrations, enrôlements) au niveau runtime — l'action est réversible à tout moment et ne laisse aucune modification durable sur les entités filles. Utilisez-la pour une suspension temporaire ou une réponse à un incident de sécurité.\n\nLe Tenant Système est un tenant interne Ezkey utilisé pour la MFA admin ; il ne peut pas être désactivé.",
+      "demoExtra": ""
+    },
+    "enrollments": {
+      "title": "Enrôlements",
+      "summary": "Liaisons utilisateur-appareil permettant l'authentification MFA pour une intégration.",
+      "body": "Chaque enrôlement lie l'appareil d'un utilisateur à une intégration. Le cycle de vie passe par Créé → Lié → Vérifié. Seuls les enrôlements Vérifiés et actifs peuvent traiter des tentatives d'authentification.\n\nUn enrôlement est « opérationnel » lorsqu'il est Vérifié, actif et que toute la chaîne parente (intégration et tenant) est également active. Si une intégration est retirée ou un tenant désactivé, tous leurs enrôlements affichent un avertissement opérationnel même si leur statut propre est Vérifié.\n\nUtilisez les filtres de statut et d'activité pour affiner la liste. Un triangle d'avertissement dans la colonne statut indique une dégradation de la chaîne parente.",
+      "demoExtra": ""
+    },
+    "enrollment-detail": {
+      "title": "Détail de l'enrôlement",
+      "summary": "Une liaison utilisateur-appareil, ses actions de cycle de vie et le matériel cryptographique associé.",
+      "body": "Cet écran affiche le statut de l'enrôlement, les coordonnées, le niveau de clé et le jeton de preuve. Tester l'authentification permet de déclencher une demande MFA en direct — le bouton est désactivé si l'enrôlement n'est pas opérationnel.\n\nDésactiver suspend l'authentification sans modification permanente ; réactiver la rétablit immédiatement. Révoquer est définitif et nécessite une raison — la clé de l'appareil est invalidée et un nouvel enrôlement doit être créé. Supprimer retire entièrement l'enregistrement et nécessite également une raison.\n\nPréférez la révocation à la suppression pour les actions de sécurité car elle conserve une piste d'audit complète. La suppression est réservée au nettoyage de données de test ou aux demandes d'effacement.",
+      "demoExtra": ""
+    },
+    "api-keys": {
+      "title": "Clés API",
+      "summary": "Clés secrètes permettant d'authentifier les requêtes à l'API Integration pour une intégration donnée.",
+      "body": "Les clés API sont limitées à une intégration. Chaque clé a un cycle de vie : Active (peut effectuer des requêtes API), Expirée (date d'expiration dépassée) et Révoquée (désactivée définitivement). Un maximum de 5 clés actives est imposé par intégration.\n\nUne clé API est « opérationnelle » lorsqu'elle est active, non expirée et que la chaîne parente (intégration et tenant) est également active. Un avertissement « bloquée par le parent » s'affiche lorsque la clé elle-même est valide mais que l'authentification échouerait au moment de l'exécution.\n\nLes clés secrètes ne sont affichées qu'une seule fois à la création. Utilisez les listes blanches d'IP pour restreindre les origines autorisées.",
+      "demoExtra": ""
+    },
+    "api-key-detail": {
+      "title": "Détail de la clé API",
+      "summary": "Une clé API, sa configuration et les contrôles de révocation.",
+      "body": "Cet écran affiche les identifiants de la clé, la liste blanche IP, le statut et l'historique d'utilisation. Vous pouvez modifier la description et la liste blanche IP pour les clés actives.\n\nRévoquer une clé API est permanent et irréversible — la clé ne peut plus être utilisée pour authentifier les requêtes API d'intégration. Une raison est obligatoire pour l'audit. Planifiez la rotation des clés à l'avance pour éviter les interruptions de service.",
+      "demoExtra": ""
+    },
+    "admins": {
+      "title": "Administrateurs",
+      "summary": "Administrateurs globaux et de tenant qui gèrent Ezkey via l'interface Admin.",
+      "body": "Les administrateurs globaux gèrent les ressources au niveau de l'instance (clés de chiffrement, tous les tenants). Les administrateurs de tenant sont limités à un tenant et gèrent ses intégrations, enrôlements et clés API.\n\nChaque administrateur s'authentifie par MFA via son appareil enrôlé. L'accès d'un administrateur de tenant dépend de l'activité de son tenant parent — si le tenant est désactivé, l'administrateur apparaît comme non opérationnel même si son compte est marqué actif.\n\nDésactiver un administrateur bloque sa connexion sans supprimer son compte. À utiliser pour les départs ou les suspensions temporaires. Une raison est enregistrée pour la piste d'audit.",
       "demoExtra": ""
     },
     "encryption-keys": {

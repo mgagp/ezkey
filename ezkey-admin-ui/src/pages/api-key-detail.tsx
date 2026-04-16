@@ -8,6 +8,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
+import { OperationalWarning } from '@/components/feature/operational-warning';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
+import { ContextHelp } from '@/components/ui/context-help';
 import { useToast } from '@/context/toast-context';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
@@ -52,6 +54,7 @@ function StatusBadge({ apiKey }: { apiKey: ApiKeyResponseDto }) {
     const daysLeft = (new Date(apiKey.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     if (daysLeft <= 7) return <Badge variant="warning">{t('status.labelExpiringSoon')}</Badge>;
   }
+  if (apiKey.active && apiKey.operational === false) return <Badge variant="warning">{t('status.labelBlockedByParent')}</Badge>;
   return <Badge variant={apiKey.active ? 'success' : 'muted'}>{apiKey.active ? t('status.labelActive') : t('status.labelInactive')}</Badge>;
 }
 
@@ -246,6 +249,9 @@ export default function ApiKeyDetailPage() {
 
       {apiKey && (
         <div className="space-y-6">
+          {apiKey.operational === false && isActive && !isExpired && (
+            <OperationalWarning message={t('detail.operationalWarning.message')} />
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* ── Details card ──────────────────────────────── */}
             <Card className="lg:col-span-2">
@@ -361,15 +367,18 @@ export default function ApiKeyDetailPage() {
                         <Pencil className="size-3.5" />
                         {t('detail.editKeyConfig')}
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="w-full justify-start gap-2"
-                        onClick={() => setRevokeTarget(apiKey)}
-                      >
-                        <ShieldOff className="size-3.5" />
-                        {t('detail.revokeKey')}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1 justify-start gap-2"
+                          onClick={() => setRevokeTarget(apiKey)}
+                        >
+                          <ShieldOff className="size-3.5" />
+                          {t('detail.revokeKey')}
+                        </Button>
+                        <ContextHelp title={t('detail.contextHelp.revokeTitle')} content={t('detail.contextHelp.revokeContent')} />
+                      </div>
                     </>
                   )}
 

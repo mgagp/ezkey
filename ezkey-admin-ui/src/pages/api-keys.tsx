@@ -73,7 +73,14 @@ function KeyStatusBadge({ apiKey }: { apiKey: ApiKeyResponseDto }) {
 
   return (
     <span className="inline-flex items-center gap-1.5">
-      {badge}
+      {status === 'active' && apiKey.operational === false ? (
+        <Tooltip content={t('list.operationalWarningTooltip')}>
+          <span className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
+            {badge}
+            <AlertTriangle className="size-4 text-warning" aria-hidden />
+          </span>
+        </Tooltip>
+      ) : badge}
       {hasIpRestriction && (
         <Tooltip content={t('status.helpIpWhitelist')}>
           <span className="inline-flex"><Shield className="size-3 text-fg-muted" aria-hidden /></span>
@@ -373,7 +380,7 @@ export function RevokeApiKeyDialog({
 
   if (!apiKey) return null;
 
-  const reasonTooShort = reason.trim().length > 0 && reason.trim().length < 10;
+  const reasonTooShort = reason.trim().length < 10;
 
   return (
     <Dialog open={apiKey !== null} onClose={handleClose} title={t('revokeDialog.title')} size="sm">
@@ -391,14 +398,10 @@ export function RevokeApiKeyDialog({
           inputId="revoke-reason"
           value={reason}
           onChange={setReason}
-          label={
-            <>
-              {t('revokeDialog.reasonLabel')}{' '}
-              <span className="text-fg-muted font-normal">{t('revokeDialog.reasonHint')}</span>
-            </>
-          }
+          label={t('revokeDialog.reasonLabel')}
           placeholder={t('revokeDialog.reasonPlaceholder')}
-          showMinLengthError={reasonTooShort}
+          showMinLengthError={reason.trim().length > 0 && reason.trim().length < 10}
+          minLengthErrorTone="required"
           childrenAfterInput={<DemoReasonBadges onSelect={setReason} />}
         />
         {revokeMutation.isError && (
@@ -413,7 +416,7 @@ export function RevokeApiKeyDialog({
             size="sm"
             isLoading={revokeMutation.isPending}
             disabled={reasonTooShort}
-            onClick={() => revokeMutation.mutate({ keyId: apiKey!.apiKeyId!, params: { reason: reason.trim() || undefined } })}
+            onClick={() => revokeMutation.mutate({ keyId: apiKey!.apiKeyId!, params: { reason: reason.trim() } })}
             className="gap-1.5"
           >
             <ShieldOff className="size-3.5" />

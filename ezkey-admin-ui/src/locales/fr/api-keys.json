@@ -20,7 +20,8 @@
       "expires": "Expire",
       "lastUsed": "Dernière utilisation"
     },
-    "revokeTooltip": "Révoquer cette clé"
+    "revokeTooltip": "Révoquer cette clé",
+    "operationalWarningTooltip": "L'intégration ou le tenant est inactif — les appels API seront rejetés"
   },
   "status": {
     "labelActive": "Actif",
@@ -31,7 +32,9 @@
     "helpIntegrationKey": "Identifiant public de la paire de clés API ; peut être journalisé.",
     "helpIpWhitelist": "Requêtes limitées à ces adresses IP ou plages CIDR.",
     "helpExpiringSoon": "La clé expire dans 30 jours ; prévoir une rotation.",
-    "helpRevoked": "Clé désactivée définitivement ; ne peut pas être réactivée."
+    "helpRevoked": "Clé désactivée définitivement ; ne peut pas être réactivée.",
+    "labelBlockedByParent": "Bloquée",
+    "helpBlockedByParent": "L'intégration ou le tenant est actuellement inactif. Les requêtes API utilisant cette clé seront rejetées."
   },
   "create": {
     "title": "Nouvelle clé API",
@@ -69,8 +72,7 @@
     "title": "Révoquer la clé API",
     "confirm": "Voulez-vous vraiment révoquer la clé",
     "permanent": "La révocation est définitive. Tout service utilisant cette clé perdra l'accès immédiatement.",
-    "reasonLabel": "Raison",
-    "reasonHint": "(optionnel — min. 10 caractères pour l'audit)",
+    "reasonLabel": "Raison (min. 10 caractères, obligatoire pour l'audit)",
     "reasonPlaceholder": "ex. Clé compromise, rotation des identifiants",
     "cancel": "Annuler",
     "revoke": "Révoquer",
@@ -100,7 +102,14 @@
     "noActions": "Cette clé n'est plus active. Aucune action disponible.",
     "labelRevokedAt": "Révoquée le",
     "labelRevokedBy": "Révoquée par",
-    "toastUpdated": "Clé API mise à jour."
+    "toastUpdated": "Clé API mise à jour.",
+    "operationalWarning": {
+      "message": "L'intégration ou le tenant parent de cette clé API est actuellement inactif. Les requêtes API utilisant cette clé seront rejetées jusqu'à la réactivation du parent."
+    },
+    "contextHelp": {
+      "revokeTitle": "Révoquer la clé API",
+      "revokeContent": "Révoquer désactive définitivement cette clé API. Tout service l'utilisant perdra immédiatement l'accès à l'API d'intégration. Une raison est obligatoire pour la traçabilité d'audit. Planifiez la rotation des clés à l'avance pour éviter toute interruption — créez une clé de remplacement avant de révoquer l'ancienne."
+    }
   },
   "editDialog": {
     "title": "Modifier la clé API",

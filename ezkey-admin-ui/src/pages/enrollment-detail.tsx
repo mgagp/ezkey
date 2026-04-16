@@ -9,6 +9,7 @@ import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
+import { OperationalWarning } from '@/components/feature/operational-warning';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { ContextHelp } from '@/components/ui/context-help';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
@@ -456,6 +458,7 @@ export default function EnrollmentDetailPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
   const [revokeConfirm, setRevokeConfirm] = useState(false);
   const [revokeReason, setRevokeReason] = useState('');
   const [lifecycleConfirm, setLifecycleConfirm] = useState<'deactivate' | 'reactivate' | null>(null);
@@ -679,18 +682,40 @@ export default function EnrollmentDetailPage() {
               </Button>
             )}
             {enrollment?.enrollmentStatus === 'VERIFIED' && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setTestAuthOpen(true)}
-                className="gap-1.5"
-              >
-                <Zap className="size-3.5" />
-                {t('detail.testAuthentication')}
-              </Button>
+              enrollment.operational === false ? (
+                <Tooltip content={t('detail.testAuthBlockedTooltip')}>
+                  <span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled
+                      className="gap-1.5 pointer-events-none"
+                    >
+                      <Zap className="size-3.5" />
+                      {t('detail.testAuthentication')}
+                    </Button>
+                  </span>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setTestAuthOpen(true)}
+                  className="gap-1.5"
+                >
+                  <Zap className="size-3.5" />
+                  {t('detail.testAuthentication')}
+                </Button>
+              )
             )}
           </div>
         </div>
+
+        {enrollment && enrollment.operational === false &&
+          enrollment.enrollmentStatus === 'VERIFIED' &&
+          enrollment.enrollmentActive === true && (
+          <OperationalWarning message={t('detail.operationalWarning.message')} />
+        )}
 
         {isLoading && (
           <div className="flex justify-center py-12">
@@ -954,9 +979,12 @@ export default function EnrollmentDetailPage() {
                     <div className="space-y-2">
                       {enrollment.enrollmentActive ? (
                         <>
-                          <p className="text-xs text-fg-muted">
-                            {t('detail.deactivateIntro')}
-                          </p>
+                          <div className="flex items-start gap-2">
+                            <p className="text-xs text-fg-muted">
+                              {t('detail.deactivateIntro')}
+                            </p>
+                            <ContextHelp title={t('detail.contextHelp.deactivateTitle')} content={t('detail.contextHelp.deactivateContent')} />
+                          </div>
                           <Button
                             variant="destructive"
                             size="sm"
@@ -970,9 +998,12 @@ export default function EnrollmentDetailPage() {
                         </>
                       ) : (
                         <>
-                          <p className="text-xs text-fg-muted">
-                            {t('detail.reactivateIntro')}
-                          </p>
+                          <div className="flex items-start gap-2">
+                            <p className="text-xs text-fg-muted">
+                              {t('detail.reactivateIntro')}
+                            </p>
+                            <ContextHelp title={t('detail.contextHelp.deactivateTitle')} content={t('detail.contextHelp.deactivateContent')} />
+                          </div>
                           <Button
                             variant="primary"
                             size="sm"
@@ -1008,9 +1039,12 @@ export default function EnrollmentDetailPage() {
                     <div className="space-y-2">
                       {!revokeConfirm ? (
                         <>
-                          <p className="text-xs text-fg-muted">
-                            {t('detail.revokeIntro')}
-                          </p>
+                          <div className="flex items-start gap-2">
+                            <p className="text-xs text-fg-muted">
+                              {t('detail.revokeIntro')}
+                            </p>
+                            <ContextHelp title={t('detail.contextHelp.revokeTitle')} content={t('detail.contextHelp.revokeContent')} />
+                          </div>
                           <Button
                             variant="destructive"
                             size="sm"
@@ -1078,9 +1112,12 @@ export default function EnrollmentDetailPage() {
                   {/* Delete */}
                   {!deleteConfirm ? (
                     <>
-                      <p className="text-xs text-fg-muted">
-                        {t('detail.deleteIntro')}
-                      </p>
+                      <div className="flex items-start gap-2">
+                        <p className="text-xs text-fg-muted">
+                          {t('detail.deleteIntro')}
+                        </p>
+                        <ContextHelp title={t('detail.contextHelp.deleteTitle')} content={t('detail.contextHelp.deleteContent')} />
+                      </div>
                       <Button
                         variant="destructive"
                         size="sm"
@@ -1096,6 +1133,20 @@ export default function EnrollmentDetailPage() {
                       <p className="text-sm font-bold text-error">
                         {t('detail.deleteConfirmTitle')}
                       </p>
+                      <ReasonFieldRow
+                        presetGroup="enrollment_lifecycle"
+                        idPrefix="enrollment-delete"
+                        inputId="delete-reason"
+                        value={deleteReason}
+                        onChange={setDeleteReason}
+                        label={t('detail.deleteReasonLabel')}
+                        placeholder={t('detail.deleteReasonPlaceholder')}
+                        showMinLengthError={
+                          deleteReason.trim().length > 0 && deleteReason.trim().length < 10
+                        }
+                        minLengthErrorTone="required"
+                        childrenAfterInput={<DemoReasonBadges onSelect={setDeleteReason} />}
+                      />
                       {deleteMutation.isError && (
                         <Alert variant="error">
                           {getTranslatedApiError(deleteMutation.error, t, t('detail.errorDelete'))}
@@ -1106,7 +1157,8 @@ export default function EnrollmentDetailPage() {
                           variant="destructive"
                           size="sm"
                           isLoading={deleteMutation.isPending}
-                          onClick={() => deleteMutation.mutate({ id: enrollmentId })}
+                          disabled={deleteReason.trim().length < 10}
+                          onClick={() => deleteMutation.mutate({ id: enrollmentId, params: { reason: deleteReason.trim() } })}
                           className="gap-1.5"
                         >
                           <Trash2 className="size-3.5" />
@@ -1115,7 +1167,7 @@ export default function EnrollmentDetailPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setDeleteConfirm(false)}
+                          onClick={() => { setDeleteConfirm(false); setDeleteReason(''); }}
                         >
                           {t('lifecycleDialog.cancel')}
                         </Button>

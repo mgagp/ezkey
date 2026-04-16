@@ -74,6 +74,10 @@
     "activateWarning": "Ce tenant est actuellement inactif. Le réactiver rétablira l'accès à toutes les ressources.",
     "deactivateTenant": "Désactiver le tenant",
     "activateTenant": "Activer le tenant",
+    "contextHelp": {
+      "dangerZoneTitle": "Activation / désactivation du tenant",
+      "dangerZoneContent": "Désactiver un tenant bloque immédiatement toute authentification pour l'ensemble de ses intégrations et enrôlements — aucune cascade persistante n'est écrite sur les entités filles. La réactivation rétablit l'accès instantanément. Utilisez la désactivation lors d'une investigation de sécurité ou pour suspendre temporairement un tenant."
+    },
     "infoId": "ID",
     "infoName": "Nom",
     "infoDescription": "Description",

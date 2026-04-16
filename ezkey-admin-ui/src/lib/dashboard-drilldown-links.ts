@@ -16,7 +16,7 @@ export type EnrollmentDrilldownBucket = 'inProgress' | 'unavailable';
 /** Integration list filter key (matches {@link IntegrationListFilter} in integrations page). */
 export const INTEGRATION_LIFECYCLE_FILTER_PARAM = 'lifecycleFilter';
 
-export type IntegrationLifecycleFilterParam = 'operational' | 'active' | 'inactive' | 'retired' | 'all';
+export type IntegrationLifecycleFilterParam = 'active' | 'retired' | 'all';
 
 /**
  * Rolling window aligned with {@code OffsetDateTime.now().minusHours(24)} to {@code now} on the

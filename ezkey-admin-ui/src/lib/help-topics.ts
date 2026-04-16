@@ -6,8 +6,15 @@ export type HelpTopicId =
   | 'default'
   | 'login'
   | 'dashboard'
+  | 'tenants'
+  | 'tenant-detail'
   | 'integrations'
   | 'integration-detail'
+  | 'enrollments'
+  | 'enrollment-detail'
+  | 'api-keys'
+  | 'api-key-detail'
+  | 'admins'
   | 'encryption-keys'
   | 'audit-logs';
 
@@ -24,8 +31,15 @@ export function resolveHelpTopicId(pathname: string): HelpTopicId {
   const path = pathname.split('?')[0] ?? pathname;
   if (path === '/login') return 'login';
   if (path === '/dashboard' || path === '/') return 'dashboard';
+  if (path === '/tenants') return 'tenants';
+  if (path.startsWith('/tenants/')) return 'tenant-detail';
   if (path === '/integrations') return 'integrations';
   if (path.startsWith('/integrations/')) return 'integration-detail';
+  if (path === '/enrollments') return 'enrollments';
+  if (path.startsWith('/enrollments/')) return 'enrollment-detail';
+  if (path === '/api-keys') return 'api-keys';
+  if (path.startsWith('/api-keys/')) return 'api-key-detail';
+  if (path === '/admins') return 'admins';
   if (path === '/encryption-keys') return 'encryption-keys';
   if (path === '/audit-logs') return 'audit-logs';
   return 'default';

@@ -25,6 +25,7 @@ import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-naviga
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
 import { ApiError } from '@/lib/api-client';
+import { ContextHelp } from '@/components/ui/context-help';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
@@ -495,7 +496,15 @@ export default function TenantDetailPage() {
                 {/* Danger zone */}
                 {!tenant.isSystemTenant && (
                   <Card className="border-error">
-                    <CardHeader><CardTitle>{t('detail.dangerZone')}</CardTitle></CardHeader>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {t('detail.dangerZone')}
+                        <ContextHelp
+                          title={t('detail.contextHelp.dangerZoneTitle')}
+                          content={t('detail.contextHelp.dangerZoneContent')}
+                        />
+                      </CardTitle>
+                    </CardHeader>
                     <CardContent>
                       <p className="text-xs text-fg-muted mb-3">
                         {tenant.active
