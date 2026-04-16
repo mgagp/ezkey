@@ -143,9 +143,10 @@ validate_configuration() {
     
     local files=(
         "src/main/resources/application-native.properties"
-        "src/main/resources/META-INF/native-image/org.ezkey/ezkey-auth-api/reflect-config.json"
-        "src/main/resources/META-INF/native-image/org.ezkey/ezkey-auth-api/resource-config.json"
         "src/main/resources/META-INF/native-image/org.ezkey/ezkey-auth-api/native-image.properties"
+        "src/main/resources/META-INF/native-image/org.ezkey/ezkey-auth-api/reflect-config.json.disabled"
+        "src/main/resources/META-INF/native-image/org.ezkey/ezkey-auth-api/resource-config.json.disabled"
+        "src/main/resources/META-INF/native-image/org.ezkey/ezkey-auth-api/serialization-config.json.disabled"
         "src/main/java/org/ezkey/auth/config/AuthNativeConfiguration.java"
     )
     

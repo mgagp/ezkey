@@ -62,18 +62,18 @@
 		<maven.compiler.target>25</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<spring-boot.version>4.0.3</spring-boot.version>
+		<spring-boot.version>4.0.5</spring-boot.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
-		<springdoc.version>3.0.1</springdoc.version>
+		<springdoc.version>3.0.3</springdoc.version>
 		<spotbugs.version>4.7.3</spotbugs.version>
 		<checkstyle.version>3.6.0</checkstyle.version>
 		<pmd.version>3.28.0</pmd.version>
 		<jacoco.version>0.8.14</jacoco.version>
 		<zxing.version>3.5.4</zxing.version>
 		<spotless.version>3.2.0</spotless.version>
-		<bucket4j.version>8.16.1</bucket4j.version>
+		<bucket4j.version>8.18.0</bucket4j.version>
 		<caffeine.version>3.2.3</caffeine.version>
-		<license-maven-plugin.version>2.7.0</license-maven-plugin.version>
+		<license-maven-plugin.version>2.7.1</license-maven-plugin.version>
 	</properties>
 
 	<!-- Gestion centralisée des dépendances -->
@@ -167,7 +167,7 @@
 							<removeUnusedImports/>
 							<trimTrailingWhitespace/>
 							<googleJavaFormat>
-								<version>1.34.1</version>
+								<version>1.35.0</version>
 								<style>GOOGLE</style>
 								<reflowLongStrings>true</reflowLongStrings>
 								<formatJavadoc>true</formatJavadoc>
@@ -193,7 +193,7 @@
     					<dependency>
       						<groupId>com.puppycrawl.tools</groupId>
       						<artifactId>checkstyle</artifactId>
-      						<version>13.2.0</version> <!-- Override default -->
+      						<version>13.4.0</version> <!-- Override default -->
     					</dependency>
 						<dependency>
 							<groupId>org.ezkey</groupId>
@@ -244,7 +244,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
-					<version>3.5.4</version>
+					<version>3.5.5</version>
 					<configuration>
 						<includes>
 							<include>**/*Test.java</include>
@@ -260,7 +260,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-failsafe-plugin</artifactId>
-					<version>3.5.4</version>
+					<version>3.5.5</version>
 					<configuration>
 						<includes>
 							<include>**/*IntegrationTest.java</include>
@@ -334,7 +334,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-resources-plugin</artifactId>
-					<version>3.4.0</version>
+					<version>3.5.0</version>
 					<configuration>
 						<nonFilteredFileExtensions>
 							<nonFilteredFileExtension>txt</nonFilteredFileExtension>
@@ -435,10 +435,10 @@
 			<id>native</id>
 			<properties>
 				<!-- Buildpacks native image settings for all Boot apps -->
-				<spring-boot.build-image.builder>paketobuildpacks/builder-jammy-tiny</spring-boot.build-image.builder>
+				<spring-boot.build-image.builder>paketobuildpacks/builder-noble-java-tiny</spring-boot.build-image.builder>
 				<spring-boot.build-image.environment.BP_NATIVE_IMAGE>true</spring-boot.build-image.environment.BP_NATIVE_IMAGE>
 				<!-- Centralize GraalVM Native Build Tools version -->
-				<native.maven.plugin.version>0.10.3</native.maven.plugin.version>
+				<native.maven.plugin.version>0.11.5</native.maven.plugin.version>
 			</properties>
 		</profile>
 

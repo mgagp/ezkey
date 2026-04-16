@@ -1,0 +1,36 @@
+{
+  "groups": [
+    {
+      "name": "ezkey.api-key.rate-limit",
+      "type": "org.ezkey.integration.api.config.ApiKeyRateLimitProperties",
+      "sourceType": "org.ezkey.integration.api.config.ApiKeyRateLimitProperties",
+      "description": "Rate limiting for Integration API key bearer operations (create/wait auth attempt)."
+    },
+    {
+      "name": "ezkey.api-key.rate-limit.create-auth-attempt",
+      "type": "org.ezkey.integration.api.config.ApiKeyRateLimitProperties$CreateAuthAttemptConfig",
+      "sourceType": "org.ezkey.integration.api.config.ApiKeyRateLimitProperties",
+      "description": "Rate limit for creating auth attempts."
+    },
+    {
+      "name": "ezkey.api-key.rate-limit.wait-auth-attempt",
+      "type": "org.ezkey.integration.api.config.ApiKeyRateLimitProperties$WaitAuthAttemptConfig",
+      "sourceType": "org.ezkey.integration.api.config.ApiKeyRateLimitProperties",
+      "description": "Rate limit for waiting on / long-polling auth attempts."
+    },
+    {
+      "name": "ezkey.trusted-proxies",
+      "type": "org.ezkey.integration.api.config.TrustedProxyProperties",
+      "sourceType": "org.ezkey.integration.api.config.TrustedProxyProperties",
+      "description": "Trusted proxy CIDR list for safe X-Forwarded-For resolution."
+    }
+  ],
+  "properties": [
+    {
+      "name": "ezkey.trusted-proxies.cidrs",
+      "type": "java.util.List<java.lang.String>",
+      "description": "CIDR ranges of trusted reverse proxies (e.g. 10.0.0.0/8)."
+    }
+  ],
+  "hints": []
+}

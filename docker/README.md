@@ -26,13 +26,13 @@ On Windows, use Bash as well, for example through Git Bash.
 ./docker/start.sh --native
 ```
 
-**Note**: Native mode requires pre-built native images. Build them first:
+**Note**: Native mode requires pre-built native images for Auth API and Integration API. Admin API stays on the JVM in native mode. Build the native images first:
 ```bash
 # Build native images
-mvn spring-boot:build-image -pl ezkey-admin-api -Pnative \
-    -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests
 mvn spring-boot:build-image -pl ezkey-auth-api -Pnative \
     -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests
+mvn spring-boot:build-image -pl ezkey-integration-api -Pnative \
+   -Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests
 
 # Then start with --native flag
 ./docker/start.sh --native

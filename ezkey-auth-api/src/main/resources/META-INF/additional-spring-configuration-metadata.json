@@ -1,0 +1,100 @@
+{
+  "groups": [
+    {
+      "name": "ezkey.rate-limit",
+      "type": "org.ezkey.auth.config.RateLimitProperties",
+      "sourceType": "org.ezkey.auth.config.RateLimitProperties",
+      "description": "Rate limiting for Auth API device-facing endpoints (pending, respond, verify, bind)."
+    },
+    {
+      "name": "ezkey.rate-limit.pending",
+      "type": "org.ezkey.auth.config.RateLimitProperties$EndpointConfig",
+      "sourceType": "org.ezkey.auth.config.RateLimitProperties",
+      "description": "Rate limit for the pending auth-attempt polling endpoint."
+    },
+    {
+      "name": "ezkey.rate-limit.respond",
+      "type": "org.ezkey.auth.config.RateLimitProperties$EndpointConfig",
+      "sourceType": "org.ezkey.auth.config.RateLimitProperties",
+      "description": "Rate limit for the auth-attempt respond endpoint (per auth-attempt-id)."
+    },
+    {
+      "name": "ezkey.rate-limit.verify",
+      "type": "org.ezkey.auth.config.RateLimitProperties$EndpointConfig",
+      "sourceType": "org.ezkey.auth.config.RateLimitProperties",
+      "description": "Rate limit for the enrollment verification endpoint."
+    },
+    {
+      "name": "ezkey.rate-limit.bind",
+      "type": "org.ezkey.auth.config.RateLimitProperties$EndpointConfig",
+      "sourceType": "org.ezkey.auth.config.RateLimitProperties",
+      "description": "Rate limit for the enrollment binding endpoint."
+    },
+    {
+      "name": "ezkey.trusted-proxies",
+      "type": "org.ezkey.auth.config.TrustedProxyProperties",
+      "sourceType": "org.ezkey.auth.config.TrustedProxyProperties",
+      "description": "Trusted proxy CIDR list for safe X-Forwarded-For resolution."
+    }
+  ],
+  "properties": [
+    {
+      "name": "ezkey.rate-limit.pending.key-strategy",
+      "type": "java.lang.String",
+      "description": "Rate-limit key strategy for the pending endpoint.",
+      "defaultValue": "client-ip"
+    },
+    {
+      "name": "ezkey.rate-limit.respond.key-strategy",
+      "type": "java.lang.String",
+      "description": "Rate-limit key strategy for the respond endpoint. Must be 'auth-attempt-id'.",
+      "defaultValue": "auth-attempt-id"
+    },
+    {
+      "name": "ezkey.rate-limit.verify.key-strategy",
+      "type": "java.lang.String",
+      "description": "Rate-limit key strategy for the verify endpoint.",
+      "defaultValue": "client-ip"
+    },
+    {
+      "name": "ezkey.rate-limit.bind.key-strategy",
+      "type": "java.lang.String",
+      "description": "Rate-limit key strategy for the bind endpoint.",
+      "defaultValue": "client-ip"
+    },
+    {
+      "name": "ezkey.trusted-proxies.cidrs",
+      "type": "java.util.List<java.lang.String>",
+      "description": "CIDR ranges of trusted reverse proxies (e.g. 10.0.0.0/8)."
+    }
+  ],
+  "hints": [
+    {
+      "name": "ezkey.rate-limit.pending.key-strategy",
+      "values": [
+        { "value": "client-ip", "description": "Rate-limit by remote IP." },
+        { "value": "enrollment-id", "description": "Rate-limit by enrollment ID (device-scoped polling)." }
+      ]
+    },
+    {
+      "name": "ezkey.rate-limit.respond.key-strategy",
+      "values": [
+        { "value": "auth-attempt-id", "description": "Rate-limit per auth-attempt (correct for respond endpoint)." }
+      ]
+    },
+    {
+      "name": "ezkey.rate-limit.verify.key-strategy",
+      "values": [
+        { "value": "client-ip", "description": "Rate-limit by remote IP." },
+        { "value": "enrollment-id", "description": "Rate-limit by enrollment ID." }
+      ]
+    },
+    {
+      "name": "ezkey.rate-limit.bind.key-strategy",
+      "values": [
+        { "value": "client-ip", "description": "Rate-limit by remote IP." },
+        { "value": "enrollment-id", "description": "Rate-limit by enrollment ID." }
+      ]
+    }
+  ]
+}

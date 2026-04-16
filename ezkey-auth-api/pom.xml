@@ -76,6 +76,13 @@
 			<scope>provided</scope>
 		</dependency>
 
+		<!-- Configuration Metadata Processor -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
+			<optional>true</optional>
+		</dependency>
+
 		<!-- Test Dependencies -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -91,7 +98,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-test</artifactId>
 			<scope>test</scope>
-			<version>4.0.2</version>
+			<version>4.0.5</version>
 		</dependency>
 	</dependencies>
 
@@ -149,7 +156,7 @@
 	                    <artifactId>spring-boot-maven-plugin</artifactId>
 	                    <configuration>
 	                        <image>
-	                            <builder>paketobuildpacks/builder-jammy-tiny</builder>
+	                            <builder>${spring-boot.build-image.builder}</builder>
 	                            <env>
 	                                <BP_NATIVE_IMAGE>true</BP_NATIVE_IMAGE>
 	                            </env>
@@ -181,17 +188,7 @@
 	                        <metadataRepository>
 	                            <enabled>true</enabled>
 	                        </metadataRepository>
-	                        <requiredVersion>22.3</requiredVersion>
-	                        <buildArgs>
-	                            <buildArg>--verbose</buildArg>
-	                            <buildArg>--no-fallback</buildArg>
-	                            <buildArg>-H:+ReportExceptionStackTraces</buildArg>
-	                            <buildArg>-H:+AddAllCharsets</buildArg>
-	                            <buildArg>-H:IncludeResourceBundles=org.hibernate.validator.ValidationMessages</buildArg>
-	                            <!-- AWS Lambda optimizations -->
-	                            <buildArg>-H:+StaticExecutableWithDynamicLibC</buildArg>
-	                            <buildArg>-H:+RemoveSaturatedTypeFlows</buildArg>
-	                        </buildArgs>
+	                        <requiredVersion>25</requiredVersion>
 	                        <!-- Skip native compilation by default; prefer buildpacks -->
 	                        <skip>true</skip>
 	                    </configuration>

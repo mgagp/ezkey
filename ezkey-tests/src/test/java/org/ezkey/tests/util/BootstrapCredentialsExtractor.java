@@ -40,12 +40,13 @@ import org.slf4j.LoggerFactory;
  * </pre>
  *
  * <p><b>Container names:</b> The extractor resolves the Admin API container via {@code docker
- * inspect}. Supported names are the standard stack ({@code ezkey-admin-api}), native stack ({@code
- * ezkey-admin-api-native}), and HA ({@code ezkey-admin-api-1} / {@code ezkey-admin-api-2}).
- * Override with environment variable {@code EZKEY_ADMIN_DOCKER_CONTAINER} if your compose uses a
- * different {@code container_name}. If the JVM cannot find the {@code docker} executable (common on
- * Windows when running Maven outside Git Bash), set {@link DockerCliLocator#ENV_DOCKER_CLI} to the
- * full path of {@code docker.exe} (see {@link DockerCliLocator}).
+ * inspect}. Supported names are the standard stack ({@code ezkey-admin-api}) and HA ({@code
+ * ezkey-admin-api-1} / {@code ezkey-admin-api-2}). Native mode keeps the Admin API on the same JVM
+ * container name. Override with environment variable {@code EZKEY_ADMIN_DOCKER_CONTAINER} if your
+ * compose uses a different {@code container_name}. If the JVM cannot find the {@code docker}
+ * executable (common on Windows when running Maven outside Git Bash), set {@link
+ * DockerCliLocator#ENV_DOCKER_CLI} to the full path of {@code docker.exe} (see {@link
+ * DockerCliLocator}).
  *
  * <p><b>Log Format Parsed:</b>
  *
@@ -69,9 +70,6 @@ public class BootstrapCredentialsExtractor {
 
   private static final String DOCKER_CONTAINER_NAME_STANDARD = "ezkey-admin-api";
 
-  /** Native image stack ({@code docker-compose.native.yml}) uses a distinct container name. */
-  private static final String DOCKER_CONTAINER_NAME_NATIVE = "ezkey-admin-api-native";
-
   private static final String DOCKER_CONTAINER_NAME_HA_1 = "ezkey-admin-api-1";
   private static final String DOCKER_CONTAINER_NAME_HA_2 = "ezkey-admin-api-2";
 
@@ -81,7 +79,8 @@ public class BootstrapCredentialsExtractor {
    */
   private static final String ENV_ADMIN_DOCKER_CONTAINER = "EZKEY_ADMIN_DOCKER_CONTAINER";
 
-  private static final String CREDENTIALS_FILE_PATH = ".ezkey-test/bootstrap-credentials.json";
+  private static final String CREDENTIALS_FILE_PATH =
+      System.getProperty("ezkey.test.state.dir", ".ezkey-test") + "/bootstrap-credentials.json";
   private static final String SHEDLOCK_LOCK_NAME = "ADMIN_STARTUP_BOOTSTRAP";
 
   // Patterns for parsing logs
@@ -234,17 +233,10 @@ public class BootstrapCredentialsExtractor {
       return DOCKER_CONTAINER_NAME_STANDARD;
     }
 
-    if (containerExists(DOCKER_CONTAINER_NAME_NATIVE)) {
-      log.info("Native stack detected: Using container {}", DOCKER_CONTAINER_NAME_NATIVE);
-      return DOCKER_CONTAINER_NAME_NATIVE;
-    }
-
     logDockerBootstrapDiagnostics();
     throw new IllegalStateException(
         "No Admin API container found. Expected one of: "
             + DOCKER_CONTAINER_NAME_STANDARD
-            + ", "
-            + DOCKER_CONTAINER_NAME_NATIVE
             + ", "
             + DOCKER_CONTAINER_NAME_HA_1
             + ", or "

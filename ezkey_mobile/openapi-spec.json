@@ -507,7 +507,10 @@
             "example": "eyJhbGciOiJSUzI1NiJ9..."
           },
           "authAttemptChallengeResponse": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32",
             "description": "User's response to authentication challenge (if required)",
             "example": 123456
@@ -643,7 +646,10 @@
         "description": "Public instance metadata (branding, optional public Auth API URL for QR alignment)",
         "properties": {
           "authApiPublicBaseUrl": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Public base URL of the Auth API (same as authUrl in enrollment QR JSON when configured)",
             "example": "https://auth.example.com:8080"
           },
@@ -653,12 +659,18 @@
             "example": "Acme Corporation"
           },
           "instanceDescription": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Optional instance or organization description",
             "example": "Acme Corp Ezkey MFA"
           },
           "aboutUrl": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Optional URL for About / learn more (e.g. company instance page)",
             "example": "https://www.example.com/about-ezkey"
           }

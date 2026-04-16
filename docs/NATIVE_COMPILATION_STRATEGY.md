@@ -1,15 +1,22 @@
 # Native Compilation Strategy for Ezkey
 
+> Status note (April 2026): this document is now historical. The bounded Spring Boot 4 native
+> initiative completed build-time alignment and native image generation, but the Docker runtime path
+> is not currently viable for Auth API or Integration API. Admin API native support is no longer
+> part of the active strategy. Read `docs/NATIVE_INITIATIVE_STATUS_2026-04.md` first.
+
 ## Overview
 
-This document defines the native compilation strategy for Ezkey components, balancing performance benefits, build complexity, and operational requirements.
+This document records an earlier native compilation strategy for Ezkey components. It is kept for
+historical rationale, not as the current operational recommendation.
 
 ## Strategic Decision Matrix
 
 | Component | Native Compilation | AOT Processing | Rationale |
 |-----------|-------------------|----------------|-----------|
 | **auth-api** | ✅ Full (AOT + Native) | ✅ Required | High-frequency service, benefits from fast startup and low memory |
-| **admin-api** | ⚠️ Limited (Native only, no AOT) | ❌ Not required | Batch operations, startup time less critical, memory reduction valuable |
+| **integration-api** | ⚠️ Experimental (builds, runtime blocked) | ✅ Required | Simpler target surface, but runtime Docker path still blocked |
+| **admin-api** | ❌ No active native path | ❌ Not applicable | JVM-only in the active strategy |
 | **demo-device** | ❌ No | ❌ No | Development/demo tool, no production deployment |
 | **demo-app-acme** | ❌ No | ❌ No | Development/demo tool, no production deployment |
 | **migration (Flyway)** | ❌ No | ❌ No | One-time execution, no runtime performance benefit |
@@ -40,40 +47,24 @@ mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boo
 - Native-optimized properties in `application-native.properties`
 - Full reflection configuration for DTOs, mappers, and Hibernate classes
 
-### 2. Admin API - Limited Native Compilation
+### 2. Integration API - Experimental Native Compilation
 
-**Strategy**: Native image compilation WITHOUT AOT processing
+**Strategy**: Full native image compilation with AOT, but still considered experimental because the
+runtime Docker path remains blocked.
 
-**Rationale**:
-- **Startup Time**: Less critical (batch operations, scheduled tasks)
-- **Memory Footprint**: Significant reduction (~50-100MB vs ~200-300MB JVM)
-- **Build Complexity**: Avoids AOT configuration overhead
-- **Operational Pattern**: Runs scheduled tasks, less frequent restarts
-
-**Benefits of Native Without AOT**:
-- ✅ **Memory Reduction**: 50-70% reduction in baseline memory usage
-- ✅ **Smaller Binary**: Reduced container image size
-- ✅ **Simpler Build**: No AOT hints configuration required
-- ⚠️ **Startup Time**: Similar to JVM (~15-20 seconds) - acceptable for batch operations
-- ⚠️ **Reflection**: Requires manual configuration for dynamic features
+**Current outcome**:
+- Native image build succeeds.
+- Runtime Docker startup still fails during JPA / Hikari bootstrap.
+- The path remains a future-investigation topic, not a recommended deployment mode.
 
 **Build Process**:
 ```bash
-# Direct native compilation (no AOT step needed)
-mvn -pl ezkey-admin-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+# Experimental integration-api native build
+mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -DskipTests
 ```
 
-**Configuration Requirements**:
-- Basic native image configuration (reflection for DTOs if needed)
-- No AOT processing configuration
-- Standard Spring Boot native image support
-
-**Memory Analysis**:
-- **JVM Baseline**: ~200-300MB (heap + metaspace + native memory)
-- **Native (no AOT)**: ~100-150MB (reduced JIT overhead, no class metadata)
-- **Native (with AOT)**: ~50-100MB (optimized startup, pre-computed metadata)
-
-**Conclusion**: For admin-api, native compilation without AOT provides **significant memory benefits** (~50% reduction) with acceptable trade-offs (startup time similar to JVM, but less critical for batch operations).
+**Conclusion**: Integration was the last bounded candidate because its surface is conceptually
+simpler, but the current stack still does not provide a viable native runtime path.
 
 ### 3. Demo Components - No Native Compilation
 
@@ -107,18 +98,16 @@ mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boo
 - High-frequency service instances
 - Memory-constrained environments
 
-### Admin API - Limited Native Build
+### Integration API - Experimental Native Build
 
 ```bash
-# Direct native compilation (no AOT)
-mvn -pl ezkey-admin-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+# Experimental native build
+mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -DskipTests
 ```
 
 **When to use**:
-- Production deployments with memory constraints
-- Container environments with resource limits
-- Batch processing workloads
-- Scheduled task execution
+- Historical reproduction of the April 2026 spike
+- Focused future investigation only
 
 ## Performance Expectations
 
@@ -131,13 +120,13 @@ mvn -pl ezkey-admin-api -Pnative spring-boot:build-image -DskipTests -Dspring-bo
 | Cold Start (Lambda) | 5-10s | 100-500ms | **90-95%** |
 | Binary Size | N/A | ~80-120MB | N/A |
 
-### Admin API (Native without AOT)
+### Integration API (Experimental Native)
 
-| Metric | JVM | Native (no AOT) | Improvement |
-|--------|-----|-----------------|-------------|
-| Startup Time | 15-20s | 15-20s | **0%** (acceptable) |
-| Memory Baseline | 200-300MB | 100-150MB | **50%** |
-| Binary Size | N/A | ~80-120MB | N/A |
+| Metric | JVM | Native | Improvement |
+|--------|-----|--------|-------------|
+| Startup Time | 15-20s | Not validated | Not validated |
+| Memory Baseline | 200-300MB | Not validated | Not validated |
+| Binary Size | N/A | Built successfully | N/A |
 
 ## Implementation Notes
 
@@ -151,12 +140,10 @@ The AOT configuration is iterative and requires adding runtime hints as new feat
 
 See `ezkey-auth-api/src/main/java/org/ezkey/auth/config/AuthNativeConfiguration.java` for current hints.
 
-### Admin API Native Configuration
+### Integration API Native Configuration
 
-Admin API uses standard Spring Boot native image support without AOT. If reflection issues arise, they can be addressed with:
-- `@RegisterForReflection` annotations
-- `reflect-config.json` files
-- Runtime hints (if AOT is added later)
+Integration API now has its own runtime hints and native image properties, but the current runtime
+result is still blocked in Docker.
 
 ## Maintenance Strategy
 
@@ -165,27 +152,17 @@ Admin API uses standard Spring Boot native image support without AOT. If reflect
 - **Iterative Process**: Add hints when new `NoClassDefFoundError` or reflection errors occur
 - **Documentation**: Keep `NATIVE_BUILD.md` updated with new hints
 
-### Admin API
-- **Low Maintenance**: Standard native image support, minimal configuration
-- **Reactive**: Add reflection configuration only if issues arise
-- **Optional AOT**: Can be upgraded to full AOT if startup time becomes critical
+### Integration API
+- **Experimental**: Build-time path works, runtime path remains blocked
+- **Do not treat as supported**: revisit only in a bounded future spike
 
 ## Future Considerations
 
-### Potential Admin API AOT Upgrade
+### Future Restart Target
 
-If admin-api startup time becomes critical (e.g., frequent restarts, scaling requirements), consider:
-1. Adding AOT processing configuration
-2. Creating `AdminNativeConfiguration.java` with runtime hints
-3. Following the same iterative process as auth-api
-
-### Migration Path
-
-To upgrade admin-api to full AOT:
-1. Create native configuration class
-2. Add runtime hints iteratively
-3. Update build process to include AOT step
-4. Test thoroughly before production deployment
+If the initiative is reopened, Integration remains a reasonable first bounded retry because its
+surface is conceptually simpler than Auth. The restart baseline is documented in
+`docs/NATIVE_INITIATIVE_STATUS_2026-04.md`.
 
 ## Troubleshooting Strategy
 

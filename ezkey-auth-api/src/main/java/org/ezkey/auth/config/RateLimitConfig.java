@@ -12,9 +12,11 @@
 
 package org.ezkey.auth.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -96,7 +98,19 @@ public class RateLimitConfig {
   public RateLimitFilter rateLimitFilter(
       RateLimitProperties properties,
       TrustedProxyProperties trustedProxyProperties,
-      com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+      ObjectMapper objectMapper) {
     return new RateLimitFilter(properties, trustedProxyProperties, objectMapper);
+  }
+
+  /**
+   * Provides a minimal fallback ObjectMapper for native contexts where Jackson auto-configuration
+   * does not materialize the primary bean.
+   *
+   * @return reusable Jackson object mapper
+   */
+  @Bean
+  @ConditionalOnMissingBean(ObjectMapper.class)
+  public ObjectMapper objectMapper() {
+    return new ObjectMapper().findAndRegisterModules();
   }
 }

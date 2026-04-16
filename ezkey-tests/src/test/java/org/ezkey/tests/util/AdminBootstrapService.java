@@ -65,8 +65,10 @@ public class AdminBootstrapService {
 
   private static final Logger log = LoggerFactory.getLogger(AdminBootstrapService.class);
 
-  private static final String TOKEN_FILE_PATH = ".ezkey-test/admin-token.json";
-  private static final String DEVICE_CREDENTIALS_FILE_PATH = ".ezkey-test/device-credentials.json";
+  private static final String STATE_DIR = System.getProperty("ezkey.test.state.dir", ".ezkey-test");
+
+  private static final String TOKEN_FILE_PATH = STATE_DIR + "/admin-token.json";
+  private static final String DEVICE_CREDENTIALS_FILE_PATH = STATE_DIR + "/device-credentials.json";
   private static final String ADMIN_USERNAME = "admin.docker";
 
   /**

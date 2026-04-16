@@ -57,7 +57,8 @@ public class BootstrapCredentialsExtractionTest {
   @DisplayName("Extract bootstrap credentials from Docker logs")
   public void testExtractBootstrapCredentials() {
     // Check if credentials file already exists (bootstrap already done)
-    String credentialsFilePath = ".ezkey-test/bootstrap-credentials.json";
+    String stateDir = System.getProperty("ezkey.test.state.dir", ".ezkey-test");
+    String credentialsFilePath = stateDir + "/bootstrap-credentials.json";
     boolean credentialsFileExists = Files.exists(Path.of(credentialsFilePath));
 
     // If credentials already exist, skip this test (bootstrap already completed)

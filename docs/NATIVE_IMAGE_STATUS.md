@@ -1,66 +1,73 @@
 # Native Image Compilation Status
 
-**Last Updated**: 2025-12-19  
-**Status**: ⚠️ **BLOCKED** - Work paused pending resolution of Hibernate/JBoss Logging issue
+**Last Updated**: 2026-04-15  
+**Status**: Archived after bounded spike; build-time path works, runtime native path remains non-viable.
 
 ## Quick Summary
 
-Native image compilation for `ezkey-auth-api` is configured and ready, but blocked by a Hibernate/JBoss Logging compatibility issue. The application fails to start in native mode due to missing generated logger implementation class.
+The Spring Boot 4 native initiative no longer has a single active blocker.
+
+- `ezkey-auth-api` native builds, but still fails at runtime during Hibernate / JPA bootstrap.
+- `ezkey-integration-api` native builds, but still fails at runtime during JPA / Hikari startup.
+- `ezkey-admin-api` native support is no longer part of the active strategy.
+
+This file is now a historical status snapshot. The canonical reference is
+`docs/NATIVE_INITIATIVE_STATUS_2026-04.md`.
 
 ## Current State
 
 ### ✅ Completed
-- AOT processing configuration (`AuthNativeConfiguration.java`)
-- Build scripts (`scripts/build-native-aot.sh`)
-- Native image build arguments (`native-image.properties`)
-- Application properties for native execution
-- Comprehensive reflection hints for DTOs, mappers, Hibernate classes
+- Parent native toolchain alignment for Spring Boot 4.0.5
+- Auth API native profile and iterative hint fixes
+- Integration API native profile and runtime hints alignment
+- Docker native compose rationalization around Auth + Integration
+- Root Maven validation and targeted AOT checks
+- Native image builds for Auth API and Integration API
 
-### ⚠️ Blocking Issue
+### ⚠️ Final Runtime Outcome
 
-**Error**: `Invalid logger interface org.hibernate.sql.ast.tree.SqlAstTreeLogger (implementation not found)`
+**Auth API native**
 
-**Root Cause**: 
-- JBoss Logging generates `SqlAstTreeLogger_$logger` at compile time
-- This generated class is not included in GraalVM native image
-- `SqlAstTreeLogger` initializes statically during class loading (before config is read)
-- All disablement attempts via properties have failed
+- Progressed beyond earlier JBoss Logging failures.
+- Latest confirmed blocker: `ClassNotFoundException: org.hibernate.dialect.type.PostgreSQLInetJdbcType`.
 
-**Failed Solutions**:
-- Property-based disablement (`hibernate.sql.log_sql_ast=false`)
-- Logging level configuration
-- Reflection hints
-- Runtime initialization configuration
+**Integration API native**
+
+- Rebuilt and retested after Hibernate / PostgreSQL hint alignment.
+- Rebuilt again with `SPRING_PROFILES_ACTIVE=docker,native` active during build.
+- Latest confirmed blocker: `NullPointerException` from `com.zaxxer.hikari.pool.HikariPool`
+	during `entityManagerFactory` creation.
 
 ## Next Steps (When Resuming)
 
-1. **Verify generated class existence** - Check if `SqlAstTreeLogger_$logger` exists in Hibernate JARs
-2. **Investigate JBoss Logging generation** - Understand annotation processor behavior
-3. **Check Hibernate version compatibility** - Look for native image fixes in newer versions
-4. **Explore GraalVM substitution** - Use `@Substitute` to replace problematic initialization
-5. **Research community solutions** - Check Quarkus/Spring Boot native image implementations
-6. **Consider alternatives** - Evaluate if logger can be bypassed or Hibernate patched
+1. Revalidate the exact Spring Boot, Hibernate, GraalVM, and Native Build Tools combination.
+2. Reproduce each API in isolation before using the full Docker stack.
+3. Treat profile selection during AOT and runtime as an explicit validation point.
+4. Restart only as a time-boxed spike with a stop criterion.
 
 ## Key Files
 
 - `ezkey-auth-api/src/main/java/org/ezkey/auth/config/AuthNativeConfiguration.java` - AOT hints
+- `ezkey-integration-api/src/main/java/org/ezkey/integration/api/config/IntegrationNativeConfiguration.java` - Integration native hints
 - `ezkey-auth-api/src/main/resources/META-INF/native-image/org.ezkey/ezkey-auth-api/native-image.properties` - GraalVM build args
-- `ezkey-auth-api/src/main/resources/application-native.properties` - Native app config
-- `scripts/build-native-aot.sh` - Build script
-- `docs/NATIVE_TROUBLESHOOTING_STRATEGY.md` - Detailed troubleshooting guide
+- `ezkey-integration-api/src/main/resources/META-INF/native-image/org.ezkey/ezkey-integration-api/native-image.properties` - Integration GraalVM build args
+- `docker/docker-compose.native.yml` - Current native stack definition used during the spike
+- `docs/NATIVE_INITIATIVE_STATUS_2026-04.md` - Canonical closure note
 
 ## Build Commands
 
 ```bash
-# AOT Processing (works)
+# AOT processing (works)
 ./scripts/build-native-aot.sh --skip-tests
 
-# Native Image Build (currently fails at runtime)
+# Native image builds (work, but runtime remains blocked)
 mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -DskipTests
 ```
 
 ## Related Documentation
 
+- `docs/NATIVE_INITIATIVE_STATUS_2026-04.md` - Canonical April 2026 closure note
 - `docs/NATIVE_TROUBLESHOOTING_STRATEGY.md` - Systematic troubleshooting approach
 - `docs/NATIVE_COMPILATION_STRATEGY.md` - Overall native compilation strategy
 - `ezkey-auth-api/NATIVE_BUILD.md` - Detailed build documentation

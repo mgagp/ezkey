@@ -97,14 +97,15 @@ public class AdminInitialBootstrapTest extends AbstractSecurityTest {
     }
 
     // Delete existing device credentials to force fresh bootstrap
-    Path deviceCredentialsPath = Path.of(".ezkey-test/device-credentials.json");
+    String stateDir = System.getProperty("ezkey.test.state.dir", ".ezkey-test");
+    Path deviceCredentialsPath = Path.of(stateDir, "device-credentials.json");
     if (Files.exists(deviceCredentialsPath)) {
       Files.delete(deviceCredentialsPath);
       log.info("Deleted existing device credentials to force fresh bootstrap");
     }
 
     // Delete existing token to force fresh creation
-    Path tokenPath = Path.of(".ezkey-test/admin-token.json");
+    Path tokenPath = Path.of(stateDir, "admin-token.json");
     if (Files.exists(tokenPath)) {
       Files.delete(tokenPath);
       log.info("Deleted existing admin token to force fresh creation");

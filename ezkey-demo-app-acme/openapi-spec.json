@@ -3858,6 +3858,7 @@
             "required": false,
             "schema": {
               "type": "string",
+              "default": "30",
               "maximum": 300,
               "minimum": 1
             },
@@ -3870,6 +3871,7 @@
             "required": false,
             "schema": {
               "type": "string",
+              "default": "2",
               "maximum": 60,
               "minimum": 1
             },
@@ -5402,7 +5404,8 @@
           "name": {
             "type": "string",
             "description": "Human-readable name for the enrollment",
-            "example": "John's iPhone"
+            "example": "John's iPhone",
+            "minLength": 1
           },
           "authAttemptChallengeRequired": {
             "type": "boolean",
@@ -6547,7 +6550,10 @@
             "example": 1
           },
           "enrollmentId": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32",
             "description": "Enrollment ID for MFA (passwordless admin identity). Null if not linked to an enrollment.",
             "example": 123
@@ -6564,7 +6570,10 @@
             "example": "2025-10-15T14:30:00Z"
           },
           "lastLoginAt": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time",
             "description": "Timestamp of last successful login (null if never logged in)",
             "example": "2025-10-20T09:15:00Z"
@@ -6616,7 +6625,10 @@
         "description": "Public instance metadata (branding, optional public Auth API URL for QR alignment)",
         "properties": {
           "authApiPublicBaseUrl": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Public base URL of the Auth API (same as authUrl in enrollment QR JSON when configured)",
             "example": "https://auth.example.com:8080"
           },
@@ -6626,12 +6638,18 @@
             "example": "Acme Corporation"
           },
           "instanceDescription": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Optional instance or organization description",
             "example": "Acme Corp Ezkey MFA"
           },
           "aboutUrl": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Optional URL for About / learn more (e.g. company instance page)",
             "example": "https://www.example.com/about-ezkey"
           }
@@ -6968,22 +6986,34 @@
             "description": "Terminal outcomes: accepted + rejected + invalid + expired (denominator for rate fields)"
           },
           "successRatePct": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32",
             "description": "Accepted as % of terminal outcomes; null if terminalTotal is 0"
           },
           "invalidRatePct": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32",
             "description": "Invalid as % of terminal outcomes; null if terminalTotal is 0"
           },
           "expiredRatePct": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32",
             "description": "Expired as % of terminal outcomes; null if terminalTotal is 0"
           },
           "rejectedRatePct": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32",
             "description": "Rejected as % of terminal outcomes; null if terminalTotal is 0"
           }

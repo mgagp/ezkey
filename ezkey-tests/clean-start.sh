@@ -341,7 +341,7 @@ if [ -n "$HA_MODE" ]; then
     echo "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8085/stats (Auth)"
 elif [ -n "$NATIVE_MODE" ]; then
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (NATIVE mode)"
-    echo "  - Images: Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"
+    echo "  - Images: Using native compiled images (ezkey-auth-api-native, ezkey-integration-api-native)"
 elif [ -n "$WITH_PROXY" ]; then
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (Caddy reverse proxy)"
     echo "  - Admin API (via Caddy): http://localhost:19080"
@@ -391,12 +391,12 @@ echo "    mvn test -pl ezkey-tests -DexcludedGroups=time-dependent"
 echo ""
 if [ -n "$NATIVE_MODE" ]; then
     echo "📦 Native Mode Information:"
-    echo "  - Using native compiled images (ezkey-admin-api-native, ezkey-auth-api-native)"
+    echo "  - Using native compiled images (ezkey-auth-api-native, ezkey-integration-api-native)"
     echo "  - Faster startup time (~2-3 seconds vs ~15-20 seconds)"
     echo "  - Lower memory usage (~50-100MB vs ~200-300MB)"
     echo "  - To rebuild native images:"
-    echo "    mvn spring-boot:build-image -pl ezkey-admin-api -Pnative -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests"
     echo "    mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
+    echo "    mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests"
     echo ""
 fi
 echo "💡 Useful Commands:"

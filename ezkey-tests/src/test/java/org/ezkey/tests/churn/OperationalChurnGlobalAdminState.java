@@ -24,7 +24,10 @@ import java.nio.file.Path;
  */
 public record OperationalChurnGlobalAdminState(String username, String bearerToken) {
 
-  public static final Path STATE_FILE = Path.of(".ezkey-test/operational-churn-global-admin.json");
+  public static final Path STATE_FILE =
+      Path.of(
+          System.getProperty("ezkey.test.state.dir", ".ezkey-test"),
+          "operational-churn-global-admin.json");
 
   /**
    * Loads state from disk, or null if missing or unreadable.
