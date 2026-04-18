@@ -16,6 +16,7 @@ import org.ezkey.admin.security.ApiKeyAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -34,6 +35,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   <li><b>Bearer Tokens:</b> Token-based authentication for human administrators
  *   <li><b>Rate Limiting:</b> Protection against brute force attacks
  * </ul>
+ *
+ * <p><b>CORS:</b> When {@code ezkey.admin.cors.allowed-origins} is non-empty, Spring Security
+ * applies {@link org.springframework.web.cors.CorsConfigurationSource} for browser clients on a
+ * different origin than the API (e.g. Admin UI on Cloudflare Pages). Empty origins leave CORS unset
+ * (same as same-origin deployments behind a reverse proxy).
  *
  * <p><b>Filter Chain Order:</b>
  *
@@ -87,6 +93,7 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
+        .cors(Customizer.withDefaults())
         .authorizeHttpRequests(
             authz ->
                 authz

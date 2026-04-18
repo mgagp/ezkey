@@ -59,7 +59,7 @@ The Admin UI **Caddyfile** sets an **enforced** CSP for the SPA, tuned for the V
 
 | Topic | Action |
 |-------|--------|
-| **CORS** | Admin API must allow the **browser origin** of the Admin UI (`Access-Control-Allow-Origin`, credentials if using cookies later). |
+| **CORS** | Admin API must allow the **browser origin** of the Admin UI (`Access-Control-Allow-Origin`, credentials if using cookies later). Configure via **`ezkey.admin.cors.*`** in the Admin API (see [ezkey-admin-api/CONFIGURATION.md](../ezkey-admin-api/CONFIGURATION.md) §11). |
 | **CSP `connect-src`** | Include the API base origin (scheme + host + port). |
 | **Cookies (future)** | `SameSite`, `Secure`, and registrable domain rules depend on whether UI and API share a **site**; a **BFF** on one origin often simplifies this. |
 

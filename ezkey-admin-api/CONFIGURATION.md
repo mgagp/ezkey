@@ -29,6 +29,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.security.admin.max-global-admins` | — | `3` | optionnel |
 | `ezkey.admin.bootstrap.export.enabled` | — | `false` | optionnel |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
+| `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(empty list)* | optionnel |
 
 ---
 
@@ -241,6 +242,29 @@ ezkey:
 
 ---
 
+### 11. Admin CORS — browser cross-origin (`ezkey.admin.cors.*`)
+
+**Description:** when the Admin UI is served from a **different origin** than the Admin API (for
+example static hosting on Cloudflare Pages calling `https://exp1-admin-api.ezkey.org`), browsers
+enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS response headers
+(unchanged behavior for same-origin setups such as the Admin UI behind Caddy in Docker).
+
+**Defined in:** `AdminCorsProperties`, `AdminCorsConfig`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.admin.cors.allowed-origins` | `List<String>` | *(empty)* | optionnel | Exact browser origins (scheme + host + port), e.g. `https://my-app.pages.dev`. Comma-separated in env. |
+| `ezkey.admin.cors.allowed-methods` | `List<String>` | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | optionnel | Methods allowed for CORS. |
+| `ezkey.admin.cors.allowed-headers` | `List<String>` | `Authorization`, `Content-Type`, `Accept`, `Origin`, `Access-Control-Request-Method`, `Access-Control-Request-Headers` | optionnel | Request headers the browser may send on cross-origin requests. |
+| `ezkey.admin.cors.allow-credentials` | `boolean` | `false` | optionnel | Set `true` only if you use credentialed requests (e.g. cookies); requires explicit origins (not `*`). |
+
+**Split deployment notes:**
+
+- List each production UI origin (and preview URLs if you allow them); wildcard `*` is not used for origins.
+- The Admin UI still needs an API base URL (e.g. `VITE_API_BASE_URL`); **CSP** `connect-src` on the edge must allow the API origin separately from CORS.
+
+---
+
 ## Shared Properties (ezkey-core)
 
 The following ezkey-core prefixes are also active in Admin API. See
@@ -285,6 +309,7 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(empty)* |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(empty)* |
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | `admin-api` |
+| `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(unset)* |
 
 ---
 
@@ -295,4 +320,5 @@ The following ezkey-core prefixes are also active in Admin API. See
 3. Set `ezkey.admin.mfa.bootstrap.auto-enrollment=false` or `credentials-output-mode=RECOVERY_PRIMARY`.
 4. Set `ezkey.admin.bootstrap.export.enabled=false` unless Docker clean-start automation is needed.
 5. Configure `ezkey.trusted-proxies.cidrs` when Admin API is behind a reverse proxy.
-6. Configure `ezkey.encryption.master-key-file` and `ezkey.audit.integrity.hmac-key-file` via volume mounts.
+6. For split UI/API hosting, set `ezkey.admin.cors.allowed-origins` to the Admin UI origin(s); align CSP `connect-src` on the static host.
+7. Configure `ezkey.encryption.master-key-file` and `ezkey.audit.integrity.hmac-key-file` via volume mounts.

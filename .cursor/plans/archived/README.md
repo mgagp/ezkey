@@ -12,6 +12,22 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2026-04 - Admin API CORS (configurable browser cross-origin)
+
+**Completion Date:** April 17, 2026  
+**Status:** ✅ **COMPLETED** (implemented; validated with clean-start functional tests)
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-04/admin_api_cors_config_ee3c6b9a.plan.md** | `ezkey.admin.cors.*`, `CorsConfigurationSource`, `SecurityConfig` `.cors()`; docs + slice/unit tests; Auth API and Integration API explicitly out of scope (mobile / machine-to-machine) | ✅ Completed |
+
+**What was implemented:**
+
+- `ezkey-admin-api`: [`AdminCorsProperties`](../../../ezkey-admin-api/src/main/java/org/ezkey/admin/config/AdminCorsProperties.java), [`AdminCorsConfig`](../../../ezkey-admin-api/src/main/java/org/ezkey/admin/config/AdminCorsConfig.java), [`SecurityConfig`](../../../ezkey-admin-api/src/main/java/org/ezkey/admin/config/SecurityConfig.java); tests under [`org.ezkey.admin.config`](../../../ezkey-admin-api/src/test/java/org/ezkey/admin/config/) (`AdminCorsConfigurationSourceTest`, preflight WebMvc tests, `AdminCorsTestFilterBeans`); test dependency `spring-boot-starter-webmvc-test`.
+- Docs: [`ezkey-admin-api/CONFIGURATION.md`](../../../ezkey-admin-api/CONFIGURATION.md) §11, [`docs/configuration/README.md`](../../../docs/configuration/README.md), [`docs/admin-ui-security.md`](../../../docs/admin-ui-security.md).
+
+---
+
 ### 2026-04 - Native compilation strategy (Spring Boot 4 bounded spike)
 
 **Completion Date:** April 15, 2026  
