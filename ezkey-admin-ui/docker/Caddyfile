@@ -1,6 +1,7 @@
 # Admin UI — static SPA + /api/* reverse proxy to Admin API on the Docker host.
 # Security headers: OWASP-oriented baseline (CSP, frame denial, referrer, permissions).
 # HSTS: only send over HTTPS — add a tls { } block (e.g. mkcert) and uncomment the @https header block below.
+# When you add TLS here (HTTPS), align with the project posture: tls { protocols tls1.3 tls1.3 } (TLS 1.3 only).
 {
 	# Optional: enable debug logging while tuning CSP
 	# debug

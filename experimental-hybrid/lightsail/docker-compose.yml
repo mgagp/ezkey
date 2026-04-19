@@ -1,0 +1,181 @@
+# Ezkey experimental Lightsail stack: Postgres, migration, Admin/Auth/Integration APIs, Caddy (TLS).
+# Images are expected to be loaded on the VM (docker load) from tar exports — see ../README.md.
+# Do not publish API ports publicly; only Caddy exposes 80/443. Postgres binds to loopback for SSH tunnel.
+
+name: ezkey-experimental-lightsail
+
+x-container-tz: &container-tz
+  TZ: ${TZ:-UTC}
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: ezkey-exp-postgres
+    environment:
+      <<: *container-tz
+      POSTGRES_DB: ${POSTGRES_DB:-ezkey_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ezkey-exp-net
+    restart: unless-stopped
+
+  migration:
+    image: ezkey-migration:latest
+    container_name: ezkey-exp-migration
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *container-tz
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+    networks:
+      - ezkey-exp-net
+    restart: "no"
+
+  admin-api:
+    image: ezkey-admin-api:latest
+    container_name: ezkey-exp-admin-api
+    # Loads every key from .env into the container (Compose does not do this by default).
+    # Ensures EZKEY_* (e.g. CORS) reach Spring even if an older compose file omitted them under environment:.
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    environment:
+      <<: *container-tz
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      EZKEY_ADMIN_INITIAL_USERNAME: ${EZKEY_ADMIN_INITIAL_USERNAME:-admin.docker}
+      EZKEY_ADMIN_INITIAL_EMAIL: ${EZKEY_ADMIN_INITIAL_EMAIL:-admin@ezkey.local}
+      EZKEY_ADMIN_INITIAL_FIRST_NAME: ${EZKEY_ADMIN_INITIAL_FIRST_NAME:-Admin}
+      EZKEY_ADMIN_INITIAL_LAST_NAME: ${EZKEY_ADMIN_INITIAL_LAST_NAME:-Docker}
+      MANAGEMENT_SERVER_PORT: 9081
+      EZKEY_DATABASE_PARTITION_SCHEDULER_CRON: ${EZKEY_DATABASE_PARTITION_SCHEDULER_CRON:-0 */20 * * * ?}
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-https://exp1-auth-api.ezkey.org}
+      EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
+      EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE: ${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:-full}
+      EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
+      # Required when Admin UI is on another origin (e.g. Cloudflare Pages). Comma-separated origins.
+      EZKEY_ADMIN_CORS_ALLOWED_ORIGINS: ${EZKEY_ADMIN_CORS_ALLOWED_ORIGINS:-}
+    volumes:
+      - encryption-secrets:/etc/ezkey
+      - bootstrap-artifacts:/var/lib/ezkey/bootstrap
+    networks:
+      - ezkey-exp-net
+    restart: on-failure:3
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
+
+  auth-api:
+    image: ezkey-auth-api:latest
+    container_name: ezkey-exp-auth-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    environment:
+      <<: *container-tz
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      MANAGEMENT_SERVER_PORT: 8085
+      EZKEY_DEMO_MITM_SIGNATURE_ENABLED: ${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}
+      EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-https://exp1-auth-api.ezkey.org}
+      EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
+      EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
+    volumes:
+      - encryption-secrets:/etc/ezkey
+    networks:
+      - ezkey-exp-net
+    restart: on-failure:3
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8085/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
+
+  integration-api:
+    image: ezkey-integration-api:latest
+    container_name: ezkey-exp-integration-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+      admin-api:
+        condition: service_healthy
+    environment:
+      <<: *container-tz
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      MANAGEMENT_SERVER_PORT: 7081
+      EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
+    volumes:
+      - encryption-secrets:/etc/ezkey
+    networks:
+      - ezkey-exp-net
+    restart: on-failure:3
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: ezkey-exp-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
+    depends_on:
+      admin-api:
+        condition: service_healthy
+      auth-api:
+        condition: service_healthy
+      integration-api:
+        condition: service_healthy
+    networks:
+      - ezkey-exp-net
+    restart: on-failure:3
+
+networks:
+  ezkey-exp-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  encryption-secrets:
+  bootstrap-artifacts:
+  caddy-data:

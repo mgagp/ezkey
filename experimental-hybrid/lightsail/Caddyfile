@@ -1,0 +1,42 @@
+# Experimental Lightsail — TLS termination and reverse proxy for Ezkey APIs.
+# Edit hostnames below to match your DNS (A records to this VM; DNS-only / grey cloud in Cloudflare for LE).
+# Defaults match the experimental naming convention; replace ezkey.org zone if needed.
+#
+# TLS: Ezkey is opinionated — only TLS 1.3 is offered here (no TLS 1.2). Older clients cannot connect.
+# See DEPLOYMENT_PLAYBOOK.md (TLS section). Admin UI on Cloudflare Pages: set minimum TLS 1.3 in Cloudflare.
+
+exp1-auth-api.ezkey.org {
+	tls {
+		protocols tls1.3 tls1.3
+	}
+	reverse_proxy auth-api:8080
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+exp1-admin-api.ezkey.org {
+	tls {
+		protocols tls1.3 tls1.3
+	}
+	reverse_proxy admin-api:9080
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+exp1-integration-api.ezkey.org {
+	tls {
+		protocols tls1.3 tls1.3
+	}
+	reverse_proxy integration-api:7080
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}

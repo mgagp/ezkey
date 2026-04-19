@@ -46,6 +46,19 @@ Output is in `dist/`. Serve it behind a reverse proxy (nginx, Caddy, etc.) that 
 
 Set `VITE_API_BASE_URL` in `.env.production` to the Admin API base URL if the UI and API are not served from the same origin.
 
+### Cloudflare Pages (split UI / API)
+
+For a static deploy where the Admin API is a separate HTTPS origin (e.g. `https://exp1-admin-api.ezkey.org`):
+
+```bash
+npm ci
+npm run build:cloudflare
+```
+
+This uses [`.env.cloudflare`](.env.cloudflare) (`vite --mode cloudflare`) to embed the API base URL at build time. Output is still `dist/`, including [`public/_redirects`](public/_redirects) for SPA routing on Pages.
+
+Operator runbook (CORS on the API VM, Wrangler deploy, edge CSP): [`../docs/cloudflare/admin-ui-pages.md`](../docs/cloudflare/admin-ui-pages.md).
+
 ## Browser Tests
 
 The Admin UI includes a **Playwright** browser suite for representative end-to-end validation against the

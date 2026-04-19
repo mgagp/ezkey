@@ -1,0 +1,21 @@
+---
+description: Voice dictation (e.g. Wispr Flow) — disambiguate phonetic near-matches to project terms
+alwaysApply: true
+---
+
+# Voice dictation and project terminology
+
+The maintainer may use **voice dictation** (e.g. Wispr Flow). Spoken names are sometimes transcribed with **phonetic** or approximate spellings.
+
+**When a word in the user message sounds like a known project or tool name in context, assume the canonical spelling** and proceed without pedantic correction in replies unless clarification is needed.
+
+Examples (non-exhaustive):
+
+| Often heard / transcribed | Intended |
+|---------------------------|----------|
+| Kadi, Caddie, Katy | **Caddy** (reverse proxy / TLS) |
+| iziki, easy key, Ez Key | **Ezkey** (project name) |
+| Light sail | **Lightsail** (AWS) |
+| Wisp, whisper | **Wispr** (if referring to Wispr Flow) |
+
+Prefer interpreting **technical discussion** (deploy, TLS, compose, API hostnames) through this lens rather than treating odd spellings as unrelated proper nouns.

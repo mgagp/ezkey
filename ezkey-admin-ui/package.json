@@ -7,6 +7,8 @@
     "generate:api": "orval --config orval.config.ts",
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:cloudflare": "npm run generate:api && tsc -b && vite build --mode cloudflare",
+    "build:cloudflare:verify": "npm run build:cloudflare && bash scripts/assert-no-demo-in-build.sh dist",
     "build:test": "tsc -b && vite build --mode test",
     "lint": "eslint .",
     "preview": "vite preview",

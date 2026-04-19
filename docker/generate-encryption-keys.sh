@@ -4,16 +4,22 @@
 # Generates master key file in Docker volume for Tink encryption.
 # This script should be run before first startup or when master key is missing.
 #
-# Usage: ./docker/generate-encryption-keys.sh [--native] [--ha]
+# Usage: ./docker/generate-encryption-keys.sh [--native] [--ha] [--experimental-lightsail]
 #   --native: Generate keys for native stack (uses ezkey-native_encryption-secrets-native volume)
 #   --ha: Generate keys for HA stack (uses ezkey-ha_encryption-secrets-ha volume)
+#   --experimental-lightsail: Generate keys for experimental-hybrid Lightsail compose
+#     (project name ezkey-experimental-lightsail; volume ezkey-experimental-lightsail_encryption-secrets)
 #
 # Security: Master key file is stored in persistent Docker volume with 600 permissions
+#
+# Host user: root is not required. You only need permission to use the Docker CLI (e.g. membership in the
+# "docker" group). Processes inside the temporary Alpine container run as root only inside that container.
 
 set -e
 
 NATIVE_MODE=""
 HA_MODE=""
+EXPERIMENTAL_LIGHTSAIL_MODE=""
 FORCE_MODE=""
 VOLUME_NAME="ezkey_encryption-secrets"
 
@@ -28,12 +34,16 @@ for arg in "$@"; do
             HA_MODE="1"
             VOLUME_NAME="ezkey-ha_encryption-secrets-ha"
             ;;
+        --experimental-lightsail)
+            EXPERIMENTAL_LIGHTSAIL_MODE="1"
+            VOLUME_NAME="ezkey-experimental-lightsail_encryption-secrets"
+            ;;
         --force)
             FORCE_MODE="1"
             ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./generate-encryption-keys.sh [--native] [--ha] [--force]"
+            echo "Usage: ./generate-encryption-keys.sh [--native] [--ha] [--experimental-lightsail] [--force]"
             exit 1
             ;;
     esac
@@ -44,12 +54,20 @@ if [ -n "$NATIVE_MODE" ] && [ -n "$HA_MODE" ]; then
     echo "❌ Error: --native and --ha options are incompatible"
     exit 1
 fi
+if [ -n "$EXPERIMENTAL_LIGHTSAIL_MODE" ]; then
+    if [ -n "$NATIVE_MODE" ] || [ -n "$HA_MODE" ]; then
+        echo "❌ Error: --experimental-lightsail cannot be combined with --native or --ha"
+        exit 1
+    fi
+fi
 
 echo "🔑 Ezkey Encryption Keys Generator (Docker)"
 if [ -n "$HA_MODE" ]; then
     echo "   Mode: High Availability (HA)"
 elif [ -n "$NATIVE_MODE" ]; then
     echo "   Mode: Native"
+elif [ -n "$EXPERIMENTAL_LIGHTSAIL_MODE" ]; then
+    echo "   Mode: experimental-hybrid Lightsail (compose project ezkey-experimental-lightsail)"
 fi
 echo "=========================================="
 echo ""
@@ -160,9 +178,14 @@ echo ""
 echo "✅ Master key generation complete!"
 echo ""
 echo "📋 Next steps:"
-echo "   1. Start Docker stack: ./docker/start.sh"
-echo "   2. The keyset will be automatically generated on first startup"
-echo "   3. Both admin-api and auth-api will use the same encryption keys"
+if [ -n "$EXPERIMENTAL_LIGHTSAIL_MODE" ]; then
+    echo "   1. From experimental-hybrid/lightsail: docker compose up -d"
+    echo "      (or run ./experimental-hybrid/lightsail/clean-start.sh which does down -v, keygen, up)"
+else
+    echo "   1. Start Docker stack: ./docker/start.sh"
+    echo "   2. The keyset will be automatically generated on first startup"
+    echo "   3. Both admin-api and auth-api will use the same encryption keys"
+fi
 echo ""
 echo "⚠️  IMPORTANT: Backup the master key securely!"
 echo "   To backup: docker run --rm -v $VOLUME_NAME:/data alpine tar czf - /data/secrets/master.key | gzip > master-key-backup.tar.gz"

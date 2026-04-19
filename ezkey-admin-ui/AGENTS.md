@@ -230,7 +230,7 @@ Use **start.sh** to build and run the Admin UI in Docker:
 
 **Verification (production build, no demo leakage):**
 
-- **Automated:** After a local `npm run build`, run `./scripts/assert-no-demo-in-build.sh` to grep `dist/` for demo-only strings; use in CI for the production build path.
+- **Automated:** After a local `npm run build` or `npm run build:cloudflare`, run `./scripts/assert-no-demo-in-build.sh` (or `npm run build:cloudflare:verify`) to grep `dist/` for strings unique to `demo-mode.ts` preset data; use in CI for production or Cloudflare build paths.
 - **Visual:** With `./start.sh -production`, open the UI and confirm: no "Demo" badge in header, no "Fill demo" in create dialogs, no Ctrl+click behavior on the sidebar brand.
 
 ## Browser UI Tests

@@ -14,11 +14,14 @@ if [ ! -d "$DIST_DIR" ]; then
   exit 1
 fi
 
-# Demo-only strings that must not appear in production bundles (from demo-mode.ts and UI labels)
+# Strings that exist only in demo-mode.ts preset data (not in locale JSON). If these appear in
+# dist/*.js, demo preset tables were bundled — production should tree-shaken them when VITE_DEMO_MODE
+# is forced false (see vite.config.ts). Do not use "Fill demo" / "Garage du coin" here: those
+# substrings also appear in i18n files shipped in all builds.
 DEMO_STRINGS=(
-  'Fill demo'
-  'Garage du coin'
-  'Ctrl+click to toggle demo'
+  'big.bird@garageducoin.ca'
+  'Oscar Boulon — iPhone (Garage du coin)'
+  'jean.martin@garageducoin.ca'
 )
 
 FOUND=0

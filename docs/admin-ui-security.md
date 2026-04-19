@@ -88,7 +88,7 @@ This is a **cross-cutting** change (API, BFF, CORS, UI client). The current bear
 
 ## Mirroring headers at the edge (Cloudflare / AWS)
 
-For production, replicate the **same baseline** as `ezkey-admin-ui/docker/Caddyfile` (CSP, frame denial, referrer, permissions) on **Cloudflare** (Transform Rules, Page Rules, or Workers) or on **ALB / CloudFront** response headers. Keep **one** documented source of truth (this file + Caddyfile) and align the edge when policies change.
+For production, replicate the **same baseline** as `ezkey-admin-ui/docker/Caddyfile` (CSP, frame denial, referrer, permissions) on **Cloudflare** (Transform Rules, Page Rules, or Workers) or on **ALB / CloudFront** response headers. Keep **one** documented source of truth (this file + Caddyfile) and align the edge when policies change. For **Admin UI on Cloudflare Pages** (split UI/API), see [cloudflare/admin-ui-pages.md](cloudflare/admin-ui-pages.md) for a concrete CSP `connect-src` line and operator steps.
 
 ## Related files
 
@@ -98,3 +98,4 @@ For production, replicate the **same baseline** as `ezkey-admin-ui/docker/Caddyf
 | [`ezkey-admin-ui/docker/Caddyfile`](../ezkey-admin-ui/docker/Caddyfile) | Admin UI static SPA + `/api/*` proxy + CSP and security headers |
 | [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile) | API-only Caddy in `docker-compose.with-proxy.yml` |
 | [`ezkey-tests/clean-start.sh`](../ezkey-tests/clean-start.sh) | Default stack includes Caddy proxy (`--no-proxy` to disable) |
+| [`docs/cloudflare/admin-ui-pages.md`](cloudflare/admin-ui-pages.md) | Cloudflare Pages deploy, API CORS on VM, edge header table |

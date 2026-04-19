@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  /** Same demo stripping as production; `cloudflare` mode uses `.env.cloudflare` for API URL. */
+  const productionLike = mode === 'production' || mode === 'cloudflare'
+  return {
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -13,8 +16,7 @@ export default defineConfig(({ mode }) => ({
     // Avoid two React copies (breaks context) when dependencies resolve differently per chunk.
     dedupe: ['react', 'react-dom'],
   },
-  define:
-    mode === 'production'
+  define: productionLike
       ? { 'import.meta.env.VITE_DEMO_MODE': '"false"' }
       : undefined,
   server: {
@@ -32,4 +34,5 @@ export default defineConfig(({ mode }) => ({
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },
-}))
+  }
+})
