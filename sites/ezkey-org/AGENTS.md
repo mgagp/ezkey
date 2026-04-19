@@ -39,12 +39,24 @@ Operators may use **Wispr Flow** or other dictation tools. Speech recognition of
 
 Some French drafts under **`fr/`** (e.g. `draft-ezkey-*.md`) are the **working source** for articles. They may contain **editorial positioning** that must **not** appear in the public HTML.
 
+## Default article workflow
+
+For long-form editorial work on ezkey.org, the default execution order is:
+
+1. **Start with a French draft only** under **`sites/ezkey-org/fr/draft-<english-filename>.md`**.
+2. **Do not** create or update the published HTML yet.
+3. **Do not** attach the article to **`fr/index.html`** at draft stage.
+4. Refine the French draft until the narrative, angle, and exclusions are stable.
+5. Only then, if explicitly requested or clearly part of the next approved step, generate the published French HTML and update the French index.
+
+This means the expected first deliverable for an article plan is a **French draft markdown file not linked from the index**.
+
 **Convention (single file, two layers):**
 
 1. **YAML front matter** (optional, at the very top) — **not** copied into article body HTML: `status`, `audience`, or other short metadata for authors and tooling.
 2. **HTML comment blocks** — **not** published when generating or hand-syncing HTML. Use **one** multiline HTML comment (everything from `<!-- ezkey-org:exclude-start` through `ezkey-org:exclude-end -->`):
 
-   ```
+   ```text
    <!-- ezkey-org:exclude-start
    Internal notes only. Not publishable.
    ezkey-org:exclude-end -->
@@ -61,7 +73,7 @@ When **regenerating** HTML from Markdown, **omit** YAML front matter and **omit*
 ## Related paths
 
 | Path | Role |
-|------|------|
+| ---- | ---- |
 | [README.md](README.md) | Short description of folder contents |
 | [index.html](index.html) | Live page source |
 | [../../docs/cloudflare/README.md](../../docs/cloudflare/README.md) | Cloudflare docs index |
