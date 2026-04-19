@@ -128,15 +128,22 @@ flowchart TD
 
   GA --> T
   TA --> T
+  GA -- "MFA binding" --> E
+  TA -- "MFA binding" --> E
+  GA --> RC
+  TA --> RC
   T --> I
   I --> E
   I --> AK
   E --> AA
-  E --> RC
   EK -. protects .-> T
   EK -. protects .-> I
   EK -. protects .-> E
 ```
+
+> **Correction (April 2026):** The original diagram linked Recovery Codes to Enrollment (`E --> RC`).
+> In the actual implementation, recovery codes are a property of the Admin entity, not of Enrollment.
+> Regular user enrollments have no recovery codes. The diagram has been corrected to reflect this.
 
 ### Reading of the hierarchy
 
@@ -145,6 +152,7 @@ flowchart TD
 - Enrollment and API Key are security credentials with different lifecycles and threat models.
 - Authentication Attempt is not a durable operator-managed lifecycle object; it is an event object strongly constrained by parent state.
 - Encryption Key is a platform protection asset, not a tenant child in the same sense as Integration.
+- Recovery Codes are a break-glass mechanism attached to Admin accounts, independent of the enrollment lifecycle.
 
 ## 6. Target lifecycle model
 
