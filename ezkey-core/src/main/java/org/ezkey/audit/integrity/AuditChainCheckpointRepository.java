@@ -11,6 +11,7 @@
 package org.ezkey.audit.integrity;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -167,4 +168,21 @@ public interface AuditChainCheckpointRepository
       "SELECT c FROM AuditChainCheckpoint c "
           + "WHERE c.windowStart >= :from ORDER BY c.windowStart ASC")
   List<AuditChainCheckpoint> findAllWithWindowStartAtOrAfter(@Param("from") OffsetDateTime from);
+
+  List<AuditChainCheckpoint> findByLifecycleStateAndCheckpointTypeOrderByWindowStartAsc(
+      CheckpointLifecycleState lifecycleState, String checkpointType);
+
+  List<AuditChainCheckpoint>
+      findByLifecycleStateAndCheckpointTypeAndWindowStartBeforeOrderByWindowStartAsc(
+          CheckpointLifecycleState lifecycleState, String checkpointType, OffsetDateTime before);
+
+  @Query(
+      "SELECT COUNT(c) FROM AuditChainCheckpoint c "
+          + "WHERE c.windowStart < :before AND c.lifecycleState NOT IN :allowedStates")
+  long countByWindowStartBeforeAndLifecycleStateNotIn(
+      @Param("before") OffsetDateTime before,
+      @Param("allowedStates") Collection<CheckpointLifecycleState> allowedStates);
+
+  long countByWindowStartBeforeAndLifecycleState(
+      OffsetDateTime before, CheckpointLifecycleState lifecycleState);
 }

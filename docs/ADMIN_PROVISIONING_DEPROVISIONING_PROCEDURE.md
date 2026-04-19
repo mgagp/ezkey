@@ -49,7 +49,8 @@ System tenant (tenant_id=1) cannot have Tenant Admins created in it.
   - `eventType`: `ADMIN_CREATED`, `ADMIN_DEACTIVATED`, or `ADMIN_ACTIVATED`.
   - `targetAdminId`: Admin ID that is the subject of the event (e.g. “all events affecting admin 5”).
   - `adminId`: Admin ID of the actor who performed the action.
-- **Retention:** Configured via `ezkey.audit.retention-days` (default 90 days; SOC 2–oriented).
+- **Retention:** Controlled by the audit lifecycle policy via `ezkey.audit.archive.*`; physical
+  deletion happens only after checkpoint lifecycle progression reaches a purgeable state.
 
 ## SOC 2 Relevance
 

@@ -12,16 +12,21 @@ package org.ezkey.audit.integrity;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.EnumSet;
 import java.util.List;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.dto.ArchiveConfirmArchivedRequest;
+import org.ezkey.audit.dto.ArchiveConfirmArchivedResult;
+import org.ezkey.audit.dto.ArchiveEligibilityResult;
 import org.ezkey.audit.dto.ArchiveSealRequest;
 import org.ezkey.audit.dto.ArchiveSealResult;
 import org.ezkey.audit.dto.GapDeclarationRequest;
 import org.ezkey.audit.dto.GapDeclarationResult;
+import org.ezkey.audit.exception.AuditLifecycleConflictException;
 import org.ezkey.audit.service.AuditLogService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,8 +67,10 @@ public class AuditLifecycleService {
 
   private static final String CHECKPOINT_TYPE_ARCHIVE_SEAL = "ARCHIVE_SEAL";
   private static final String CHECKPOINT_TYPE_GAP_DECLARATION = "GAP_DECLARATION";
+  private static final String CHECKPOINT_TYPE_REGULAR = "REGULAR";
   private static final String FIELD_SEPARATOR = "|";
   private static final String GENESIS_MARKER = "GENESIS";
+  private static final String AUTO_SEAL_NOTES = "Auto-sealed by audit lifecycle policy.";
 
   private final AuditChainCheckpointRepository checkpointRepository;
   private final AuditLogRepository auditLogRepository;
@@ -71,6 +78,7 @@ public class AuditLifecycleService {
   private final AuditChainVerificationService chainVerificationService;
   private final AuditLogService auditLogService;
   private final AuditChainProperties chainProperties;
+  private final AuditArchiveProperties archiveProperties;
 
   /**
    * Constructs the lifecycle service with required dependencies.
@@ -81,6 +89,7 @@ public class AuditLifecycleService {
    * @param chainVerificationService chain integrity verification service
    * @param auditLogService audit log service for creating meta-audit entries
    * @param chainProperties chain configuration (window size for gapEnd auto-derivation)
+   * @param archiveProperties archive lifecycle policy configuration
    */
   public AuditLifecycleService(
       AuditChainCheckpointRepository checkpointRepository,
@@ -88,13 +97,41 @@ public class AuditLifecycleService {
       AuditHmacService auditHmacService,
       AuditChainVerificationService chainVerificationService,
       AuditLogService auditLogService,
-      AuditChainProperties chainProperties) {
+      AuditChainProperties chainProperties,
+      AuditArchiveProperties archiveProperties) {
     this.checkpointRepository = checkpointRepository;
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
     this.chainVerificationService = chainVerificationService;
     this.auditLogService = auditLogService;
     this.chainProperties = chainProperties;
+    this.archiveProperties = archiveProperties;
+  }
+
+  /**
+   * Progresses checkpoint lifecycle states according to the system-owned archive policy.
+   *
+   * <p>This automation covers the backend-only path needed for the current implementation slice:
+   * eligible regular checkpoints are sealed automatically, and when external archival is disabled
+   * the same FSM short-circuits from {@code SEALED} to {@code PURGEABLE} after the configured
+   * lifecycle horizon.
+   *
+   * @param now reference time for lifecycle cutoff evaluation
+   * @return summary of transitions applied during this execution
+   */
+  @Transactional
+  public LifecycleAutomationResult progressLifecyclePolicy(OffsetDateTime now) {
+    OffsetDateTime sealCutoff =
+        now.minus(archiveProperties.getRetentionPeriod()).minus(archiveProperties.getSealDelay());
+    int sealedCount = autoSealEligibleCheckpoints(sealCutoff);
+
+    int purgeableCount = 0;
+    if (!archiveProperties.isExternalArchivalEnabled()) {
+      OffsetDateTime purgeableCutoff = sealCutoff.minus(archiveProperties.getPurgeDelay());
+      purgeableCount = promoteSealedCheckpointsToPurgeable(purgeableCutoff);
+    }
+
+    return new LifecycleAutomationResult(sealedCount, purgeableCount);
   }
 
   /**
@@ -177,6 +214,8 @@ public class AuditLifecycleService {
       checkpoints = checkpointRepository.findByWindowRange(periodStart, periodEnd);
     }
 
+    validateSealableCheckpoints(checkpoints);
+
     // Pre-flight: verify chain integrity for the derived period before sealing
     AuditChainVerificationService.ChainVerificationReport verificationReport =
         chainVerificationService.verifyChain(periodStart, periodEnd);
@@ -196,6 +235,8 @@ public class AuditLifecycleService {
     String sealChainHmac = null;
     for (AuditChainCheckpoint checkpoint : checkpoints) {
       checkpoint.setCheckpointType(CHECKPOINT_TYPE_ARCHIVE_SEAL);
+      checkpoint.setLifecycleState(CheckpointLifecycleState.SEALED);
+      checkpoint.setSealedAt(OffsetDateTime.now(ZoneOffset.UTC));
       checkpoint.setNotes(request.justification());
       checkpointRepository.save(checkpoint);
       sealChainHmac = checkpoint.getChainHmac();
@@ -246,6 +287,120 @@ public class AuditLifecycleService {
         sealChainHmac,
         metaEntry.getAuditLogId(),
         request.justification());
+  }
+
+  /**
+   * Returns the current export-facing lifecycle eligibility summary.
+   *
+   * <p>This read-only contract is intended for future archival automation clients. It does not
+   * materialize an export bundle; it only exposes whether sealed checkpoints currently await
+   * confirmation and which tranche forms the next eligible archive unit.
+   *
+   * @return summary of the current archive eligibility window
+   */
+  @Transactional(readOnly = true)
+  public ArchiveEligibilityResult getArchiveEligibility() {
+    List<AuditChainCheckpoint> sealedCheckpoints =
+        checkpointRepository.findByLifecycleStateAndCheckpointTypeOrderByWindowStartAsc(
+            CheckpointLifecycleState.SEALED, CHECKPOINT_TYPE_ARCHIVE_SEAL);
+    boolean confirmationRequired =
+        archiveProperties.isExternalArchivalEnabled() && !sealedCheckpoints.isEmpty();
+
+    if (sealedCheckpoints.isEmpty()) {
+      return new ArchiveEligibilityResult(
+          archiveProperties.isExternalArchivalEnabled(),
+          confirmationRequired,
+          0,
+          null,
+          null,
+          null,
+          null);
+    }
+
+    AuditChainCheckpoint oldest = sealedCheckpoints.get(0);
+    AuditChainCheckpoint newest = sealedCheckpoints.get(sealedCheckpoints.size() - 1);
+    return new ArchiveEligibilityResult(
+        archiveProperties.isExternalArchivalEnabled(),
+      confirmationRequired,
+        sealedCheckpoints.size(),
+        oldest.getWindowStart(),
+        newest.getWindowEnd(),
+        oldest.getCheckpointId(),
+        newest.getCheckpointId());
+  }
+
+  /**
+   * Confirms that a sealed audit range has been archived externally.
+   *
+   * <p>This is the backend contract meant to be called by a future archival workflow once it has
+   * exported and persisted a sealed range. It intentionally records only the lifecycle transition
+   * and archival digest binding; bundle generation remains out of scope for this session.
+   *
+   * @param request confirmation request identifying the sealed range and exported bundle digest
+   * @param adminId identifier of the admin actor confirming the archive, or {@code null} when not
+   *     available
+   * @return confirmation result summarizing the exported tranche
+   */
+  @Transactional
+  public ArchiveConfirmArchivedResult confirmArchived(
+      ArchiveConfirmArchivedRequest request, Integer adminId) {
+    if (!archiveProperties.isExternalArchivalEnabled()) {
+      throw new AuditLifecycleConflictException(
+          "Archive confirmation rejected: external archival is disabled by policy.");
+    }
+
+    ResolvedCheckpointRange resolvedRange =
+        resolveCheckpointRange(
+            request.periodStart(),
+            request.periodEnd(),
+            request.checkpointIdFrom(),
+            request.checkpointIdTo());
+    validateExportableCheckpoints(resolvedRange.checkpoints());
+
+    OffsetDateTime exportedAt =
+        request.archivedAt() != null ? request.archivedAt() : OffsetDateTime.now(ZoneOffset.UTC);
+    for (AuditChainCheckpoint checkpoint : resolvedRange.checkpoints()) {
+      checkpoint.setLifecycleState(CheckpointLifecycleState.EXPORTED);
+      checkpoint.setExportedAt(exportedAt);
+      checkpoint.setExportedByAdminId(adminId);
+      checkpoint.setExportBundleDigest(request.exportBundleDigest());
+    }
+    checkpointRepository.saveAll(resolvedRange.checkpoints());
+
+    String eventDetails =
+        "{"
+            + "\"periodStart\":\""
+            + resolvedRange.periodStart()
+            + "\","
+            + "\"periodEnd\":\""
+            + resolvedRange.periodEnd()
+            + "\","
+            + "\"checkpointsExported\":"
+            + resolvedRange.checkpoints().size()
+            + ","
+            + "\"exportBundleDigest\":\""
+            + escapeJson(request.exportBundleDigest())
+            + "\""
+            + "}";
+
+    AuditLog metaEntry =
+        AuditLog.builder()
+            .eventType(EventType.AUDIT_CHAIN_ARCHIVE_EXPORTED)
+            .eventAction("audit-chain-lifecycle")
+            .eventStatus(EventStatus.SUCCESS)
+            .apiName(ApiName.ADMIN_API)
+            .adminId(adminId)
+            .eventDetails(eventDetails)
+            .build();
+    auditLogService.log(metaEntry);
+
+    return new ArchiveConfirmArchivedResult(
+        resolvedRange.periodStart(),
+        resolvedRange.periodEnd(),
+        resolvedRange.checkpoints().size(),
+        request.exportBundleDigest(),
+        exportedAt,
+        metaEntry.getAuditLogId());
   }
 
   /**
@@ -476,6 +631,98 @@ public class AuditLifecycleService {
         request.justification());
   }
 
+  private void validateSealableCheckpoints(List<AuditChainCheckpoint> checkpoints) {
+    if (checkpoints.isEmpty()) {
+      return;
+    }
+
+    EnumSet<CheckpointLifecycleState> sealableStates = EnumSet.of(CheckpointLifecycleState.ACTIVE);
+
+    for (AuditChainCheckpoint checkpoint : checkpoints) {
+      if (!sealableStates.contains(checkpoint.getLifecycleState())
+          || !CHECKPOINT_TYPE_REGULAR.equals(checkpoint.getCheckpointType())) {
+        throw new AuditLifecycleConflictException(
+            "Archive seal rejected: checkpoint "
+                + checkpoint.getCheckpointId()
+                + " is not sealable (lifecycleState="
+                + checkpoint.getLifecycleState()
+                + ", checkpointType="
+                + checkpoint.getCheckpointType()
+                + ").");
+      }
+    }
+  }
+
+  private void validateExportableCheckpoints(List<AuditChainCheckpoint> checkpoints) {
+    if (checkpoints.isEmpty()) {
+      throw new IllegalArgumentException("No checkpoints found for archive confirmation.");
+    }
+
+    for (AuditChainCheckpoint checkpoint : checkpoints) {
+      if (checkpoint.getLifecycleState() != CheckpointLifecycleState.SEALED
+          || !CHECKPOINT_TYPE_ARCHIVE_SEAL.equals(checkpoint.getCheckpointType())) {
+        throw new AuditLifecycleConflictException(
+            "Archive confirmation rejected: checkpoint "
+                + checkpoint.getCheckpointId()
+                + " is not exportable (lifecycleState="
+                + checkpoint.getLifecycleState()
+                + ", checkpointType="
+                + checkpoint.getCheckpointType()
+                + ").");
+      }
+    }
+  }
+
+  private ResolvedCheckpointRange resolveCheckpointRange(
+      OffsetDateTime periodStart,
+      OffsetDateTime periodEnd,
+      Long checkpointIdFrom,
+      Long checkpointIdTo) {
+    boolean idMode = checkpointIdFrom != null || checkpointIdTo != null;
+    boolean tsMode = periodStart != null || periodEnd != null;
+
+    if (idMode && tsMode) {
+      throw new IllegalArgumentException(
+          "Provide either (checkpointIdFrom + checkpointIdTo) or (periodStart + periodEnd), not"
+              + " both.");
+    }
+
+    List<AuditChainCheckpoint> checkpoints;
+    OffsetDateTime resolvedPeriodStart;
+    OffsetDateTime resolvedPeriodEnd;
+
+    if (idMode) {
+      if (checkpointIdFrom == null || checkpointIdTo == null) {
+        throw new IllegalArgumentException(
+            "Both checkpointIdFrom and checkpointIdTo must be provided when using ID mode.");
+      }
+      if (checkpointIdTo < checkpointIdFrom) {
+        throw new IllegalArgumentException("checkpointIdTo must be >= checkpointIdFrom.");
+      }
+      checkpoints = checkpointRepository.findByIdRange(checkpointIdFrom, checkpointIdTo);
+      if (checkpoints.isEmpty()) {
+        throw new IllegalArgumentException(
+            "No checkpoints found with IDs in [" + checkpointIdFrom + ", " + checkpointIdTo + "].");
+      }
+      resolvedPeriodStart = checkpoints.get(0).getWindowStart();
+      resolvedPeriodEnd = checkpoints.get(checkpoints.size() - 1).getWindowEnd();
+    } else {
+      if (periodStart == null || periodEnd == null) {
+        throw new IllegalArgumentException(
+            "Either (checkpointIdFrom + checkpointIdTo) or (periodStart + periodEnd) must be"
+                + " provided.");
+      }
+      if (!periodEnd.isAfter(periodStart)) {
+        throw new IllegalArgumentException("periodEnd must be strictly after periodStart.");
+      }
+      checkpoints = checkpointRepository.findByWindowRange(periodStart, periodEnd);
+      resolvedPeriodStart = periodStart;
+      resolvedPeriodEnd = periodEnd;
+    }
+
+    return new ResolvedCheckpointRange(checkpoints, resolvedPeriodStart, resolvedPeriodEnd);
+  }
+
   /**
    * Derives {@code gapEnd} automatically when it is not provided in anchor checkpoint mode.
    *
@@ -523,4 +770,63 @@ public class AuditLifecycleService {
     }
     return value.replace("\\", "\\\\").replace("\"", "\\\"");
   }
+
+  private int autoSealEligibleCheckpoints(OffsetDateTime sealCutoff) {
+    List<AuditChainCheckpoint> eligibleCheckpoints =
+        checkpointRepository
+            .findByLifecycleStateAndCheckpointTypeAndWindowStartBeforeOrderByWindowStartAsc(
+                CheckpointLifecycleState.ACTIVE, CHECKPOINT_TYPE_REGULAR, sealCutoff);
+
+    if (eligibleCheckpoints.isEmpty()) {
+      return 0;
+    }
+
+    OffsetDateTime sealedAt = OffsetDateTime.now(ZoneOffset.UTC);
+    for (AuditChainCheckpoint checkpoint : eligibleCheckpoints) {
+      checkpoint.setLifecycleState(CheckpointLifecycleState.SEALED);
+      checkpoint.setCheckpointType(CHECKPOINT_TYPE_ARCHIVE_SEAL);
+      checkpoint.setSealedAt(sealedAt);
+      checkpoint.setNotes(AUTO_SEAL_NOTES);
+    }
+    checkpointRepository.saveAll(eligibleCheckpoints);
+    logger.info(
+        "Lifecycle automation sealed {} checkpoint(s) before {}",
+        eligibleCheckpoints.size(),
+        sealCutoff);
+    return eligibleCheckpoints.size();
+  }
+
+  private int promoteSealedCheckpointsToPurgeable(OffsetDateTime purgeableCutoff) {
+    List<AuditChainCheckpoint> eligibleCheckpoints =
+        checkpointRepository
+            .findByLifecycleStateAndCheckpointTypeAndWindowStartBeforeOrderByWindowStartAsc(
+                CheckpointLifecycleState.SEALED, CHECKPOINT_TYPE_ARCHIVE_SEAL, purgeableCutoff);
+
+    if (eligibleCheckpoints.isEmpty()) {
+      return 0;
+    }
+
+    for (AuditChainCheckpoint checkpoint : eligibleCheckpoints) {
+      checkpoint.setLifecycleState(CheckpointLifecycleState.PURGEABLE);
+    }
+    checkpointRepository.saveAll(eligibleCheckpoints);
+    logger.info(
+        "Lifecycle automation promoted {} checkpoint(s) to PURGEABLE before {}",
+        eligibleCheckpoints.size(),
+        purgeableCutoff);
+    return eligibleCheckpoints.size();
+  }
+
+  /**
+   * Summary of automatic lifecycle transitions applied by policy execution.
+   *
+   * @param sealedCount number of checkpoints promoted from {@code ACTIVE} to {@code SEALED}
+   * @param purgeableCount number of checkpoints promoted to {@code PURGEABLE}
+   */
+  public record LifecycleAutomationResult(int sealedCount, int purgeableCount) {}
+
+  private record ResolvedCheckpointRange(
+      List<AuditChainCheckpoint> checkpoints,
+      OffsetDateTime periodStart,
+      OffsetDateTime periodEnd) {}
 }

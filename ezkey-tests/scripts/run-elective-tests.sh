@@ -7,6 +7,7 @@
 #
 # Elective tests include:
 #   - AuditIntegrityElectiveTest (audit log HMAC integrity, chain checkpoints)
+#   - AuditLifecycleArchiveEligibilityElectiveTest (archive lifecycle eligibility spot check)
 #   - EncryptionIntegrityElectiveTest (enrollment proof token encryption at rest)
 #   - KeyRotationSyncWindowTest (key rotation sync window)
 #   - ShedLockDistributedTest (distributed locking / HA)
@@ -37,7 +38,7 @@ PROJECT_ROOT="$(cd "$EZKEY_TESTS_DIR/.." && pwd)"
 
 echo -e "${BLUE}=== Ezkey Elective Tests Spot Check ===${NC}"
 echo -e "${BLUE}[INFO]${NC} Project root: $PROJECT_ROOT"
-echo -e "${BLUE}[INFO]${NC} Running elective tests (AuditIntegrityElectiveTest, EncryptionIntegrityElectiveTest, KeyRotationSyncWindowTest, ShedLockDistributedTest)..."
+echo -e "${BLUE}[INFO]${NC} Running elective tests (AuditIntegrityElectiveTest, AuditLifecycleArchiveEligibilityElectiveTest, EncryptionIntegrityElectiveTest, KeyRotationSyncWindowTest, ShedLockDistributedTest)..."
 echo
 
 cd "$PROJECT_ROOT"

@@ -15,6 +15,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -22,7 +23,9 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.EventTypeFamily;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.integrity.AuditChainCheckpointRepository;
 import org.ezkey.audit.integrity.AuditHmacService;
+import org.ezkey.audit.integrity.CheckpointLifecycleState;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,16 +97,19 @@ public class AuditLogService {
   private static final Logger logger = LoggerFactory.getLogger(AuditLogService.class);
 
   private final AuditLogRepository auditLogRepository;
+  private final AuditChainCheckpointRepository checkpointRepository;
   private final AuditHmacService auditHmacService;
   private final EntityManager entityManager;
   private final TransactionTemplate requiresNewTx;
 
   public AuditLogService(
       AuditLogRepository auditLogRepository,
+      AuditChainCheckpointRepository checkpointRepository,
       AuditHmacService auditHmacService,
       EntityManager entityManager,
       PlatformTransactionManager transactionManager) {
     this.auditLogRepository = auditLogRepository;
+    this.checkpointRepository = checkpointRepository;
     this.auditHmacService = auditHmacService;
     this.entityManager = entityManager;
     TransactionTemplate tx = new TransactionTemplate(transactionManager);
@@ -416,16 +422,34 @@ public class AuditLogService {
   }
 
   /**
-   * Delete audit logs older than retention period.
+   * Purge audit logs whose checkpoint windows are lifecycle-authorized for physical deletion.
    *
-   * @param retentionDays number of days to retain audit logs
+   * <p>Physical deletion is permitted only after checkpoint lifecycle progression reaches {@code
+   * PURGEABLE}. This method intentionally has no chain-off or age-only fallback path.
+   *
+   * @param purgeCutoff exclusive upper bound for rows and checkpoint windows considered for purge
    * @return number of records deleted
    */
   @Transactional
-  public int deleteOldLogs(int retentionDays) {
-    OffsetDateTime cutoffDate = OffsetDateTime.now().minusDays(retentionDays);
-    int deleted = auditLogRepository.deleteOlderThan(cutoffDate);
-    logger.info("Deleted {} audit logs older than {} days", deleted, retentionDays);
+  public int purgeLifecycleEligibleLogs(OffsetDateTime purgeCutoff) {
+    EnumSet<CheckpointLifecycleState> deletableStates =
+        EnumSet.of(CheckpointLifecycleState.PURGEABLE, CheckpointLifecycleState.PURGED);
+    long blockedCheckpointCount =
+        checkpointRepository.countByWindowStartBeforeAndLifecycleStateNotIn(
+            purgeCutoff, deletableStates);
+    long purgeableCheckpointCount =
+        checkpointRepository.countByWindowStartBeforeAndLifecycleState(
+            purgeCutoff, CheckpointLifecycleState.PURGEABLE);
+    boolean hasOldLogs = auditLogRepository.existsByCreatedAtBefore(purgeCutoff);
+
+    if (blockedCheckpointCount > 0 || (hasOldLogs && purgeableCheckpointCount == 0)) {
+      logger.warn(
+          "Skipping audit log purge: target overlaps checkpoint ranges that are not PURGEABLE.");
+      return 0;
+    }
+
+    int deleted = auditLogRepository.deleteOlderThan(purgeCutoff);
+    logger.info("Purged {} audit logs before {}", deleted, purgeCutoff);
     return deleted;
   }
 }

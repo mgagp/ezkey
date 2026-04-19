@@ -40,6 +40,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.demo` | `ezkey-core` (`EzkeyDemoProperties`) | auth-api | [core §demo](../../ezkey-core/CONFIGURATION.md#demo-ezkeydemo) |
 | `ezkey.audit.integrity` | `ezkey-core` (`AuditHmacProperties`) | admin-api, auth-api, integration-api | [core §audit-integrity](../../ezkey-core/CONFIGURATION.md#audit-log-integrity-ezkeyauditintegrity) |
 | `ezkey.audit.chain` | `ezkey-core` (`AuditChainProperties`) | admin-api | [core §audit-chain](../../ezkey-core/CONFIGURATION.md#audit-log-chain-ezkeyauditchain) |
+| `ezkey.audit.archive` | `ezkey-core` (`AuditArchiveProperties`) | admin-api | [core §audit-archive](../../ezkey-core/CONFIGURATION.md#audit-log-archive-ezkeyauditarchive) |
 
 ---
 
@@ -58,6 +59,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.encryption.*` | ✓ | ✓ | ✓ | ✓ |
 | `ezkey.audit.integrity.*` | ✓ | ✓ | ✓ | — |
 | `ezkey.audit.chain.*` | ✓ | — | — | — |
+| `ezkey.audit.archive.*` | ✓ | — | — | — |
 | `ezkey.organization.*` | ✓ | ✓ | — | — |
 | `ezkey.qr.*` | ✓ | ✓ | — | — |
 | `ezkey.enrollment.*` | ✓ | — | — | — |

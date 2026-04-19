@@ -11,6 +11,7 @@
 package org.ezkey.audit.dto;
 
 import java.time.OffsetDateTime;
+import org.ezkey.audit.integrity.CheckpointLifecycleState;
 
 /**
  * Response DTO for a single audit chain checkpoint in the search API.
@@ -36,5 +37,6 @@ public record AuditChainCheckpointResponseDto(
     String prevChainHmac,
     String chainHmac,
     OffsetDateTime createdAt,
+    CheckpointLifecycleState lifecycleState,
     CheckpointType checkpointType,
     String notes) {}

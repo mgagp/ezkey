@@ -20,6 +20,13 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.audit.integrity.hmac-key-file` | — | *(null)* | requis [docker] |
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | *(null)* | optionnel |
 | `ezkey.audit.chain.enabled` | — | `true` | optionnel |
+| `ezkey.audit.archive.auto-seal.enabled` | — | `true` | optionnel |
+| `ezkey.audit.archive.external-archival-enabled` | — | `false` | optionnel |
+| `ezkey.audit.archive.retention-period` | — | `P12M` | optionnel |
+| `ezkey.audit.archive.seal-delay` | — | `P0D` | optionnel |
+| `ezkey.audit.archive.purge-delay` | — | `P30D` | optionnel |
+| `ezkey.audit.archive.purge.enabled` | — | `true` | optionnel |
+| `ezkey.audit.archive.purge.cron` | — | `0 0 2 * * ?` | optionnel |
 | `ezkey.organization.name` | — | `Ezkey System` | optionnel |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
@@ -167,6 +174,26 @@ Auth API and Integration API set `ezkey.audit.chain.enabled=false`.
 | `ezkey.audit.chain.enabled` | `boolean` | `true` | optionnel | Enable/disable chain checkpoint job. Set to `false` in Auth API and Integration API. |
 | `ezkey.audit.chain.window-minutes` | `int` | `5` | optionnel | Time window size in minutes for each checkpoint. |
 | `ezkey.audit.chain.lookback-minutes` | `int` | `60` | optionnel | Lookback window in minutes for catch-up after restarts. |
+
+---
+
+### Audit Log Archive (`ezkey.audit.archive.*`)
+
+**Description:** system-owned policy contract for the single audit-log lifecycle. Physical
+deletion is never configured as a separate legacy mode; it is the terminal step of lifecycle
+progression.
+
+**Defined in:** `AuditArchiveProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.audit.archive.auto-seal.enabled` | `boolean` | `true` | optionnel | Declares that SEAL is intended to be executed by lifecycle automation in chain-on mode. |
+| `ezkey.audit.archive.external-archival-enabled` | `boolean` | `false` | optionnel | Enables the `SEALED -> EXPORTED -> PURGEABLE` policy branch. When `false`, the lifecycle skips `EXPORTED` but still stays lifecycle-driven. |
+| `ezkey.audit.archive.retention-period` | `Period` | `P12M` | optionnel | Archival policy horizon after which checkpoint windows become eligible for automated SEAL. |
+| `ezkey.audit.archive.seal-delay` | `Period` | `P0D` | optionnel | Optional extra delay after the retention horizon before automated SEAL becomes eligible. |
+| `ezkey.audit.archive.purge-delay` | `Period` | `P30D` | optionnel | Safety delay between lifecycle authorization and physical deletion eligibility. |
+| `ezkey.audit.archive.purge.enabled` | `boolean` | `true` | optionnel | Enables the scheduled lifecycle purge executor. |
+| `ezkey.audit.archive.purge.cron` | `String` | `0 0 2 * * ?` | optionnel | Cron schedule for the lifecycle purge executor. |
 
 ---
 

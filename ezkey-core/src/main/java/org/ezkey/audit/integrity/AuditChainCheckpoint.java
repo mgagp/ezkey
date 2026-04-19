@@ -12,6 +12,8 @@ package org.ezkey.audit.integrity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -100,6 +102,25 @@ public class AuditChainCheckpoint {
    */
   @Column(name = "notes", columnDefinition = "TEXT")
   private String notes;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "lifecycle_state", nullable = false, length = 20)
+  private CheckpointLifecycleState lifecycleState = CheckpointLifecycleState.ACTIVE;
+
+  @Column(name = "sealed_at")
+  private OffsetDateTime sealedAt;
+
+  @Column(name = "sealed_by_admin_id")
+  private Integer sealedByAdminId;
+
+  @Column(name = "exported_at")
+  private OffsetDateTime exportedAt;
+
+  @Column(name = "exported_by_admin_id")
+  private Integer exportedByAdminId;
+
+  @Column(name = "export_bundle_digest", length = 88)
+  private String exportBundleDigest;
 
   public AuditChainCheckpoint() {
     this.createdAt = OffsetDateTime.now();
@@ -201,5 +222,53 @@ public class AuditChainCheckpoint {
 
   public void setNotes(String notes) {
     this.notes = notes;
+  }
+
+  public CheckpointLifecycleState getLifecycleState() {
+    return lifecycleState;
+  }
+
+  public void setLifecycleState(CheckpointLifecycleState lifecycleState) {
+    this.lifecycleState = lifecycleState;
+  }
+
+  public OffsetDateTime getSealedAt() {
+    return sealedAt;
+  }
+
+  public void setSealedAt(OffsetDateTime sealedAt) {
+    this.sealedAt = sealedAt;
+  }
+
+  public Integer getSealedByAdminId() {
+    return sealedByAdminId;
+  }
+
+  public void setSealedByAdminId(Integer sealedByAdminId) {
+    this.sealedByAdminId = sealedByAdminId;
+  }
+
+  public OffsetDateTime getExportedAt() {
+    return exportedAt;
+  }
+
+  public void setExportedAt(OffsetDateTime exportedAt) {
+    this.exportedAt = exportedAt;
+  }
+
+  public Integer getExportedByAdminId() {
+    return exportedByAdminId;
+  }
+
+  public void setExportedByAdminId(Integer exportedByAdminId) {
+    this.exportedByAdminId = exportedByAdminId;
+  }
+
+  public String getExportBundleDigest() {
+    return exportBundleDigest;
+  }
+
+  public void setExportBundleDigest(String exportBundleDigest) {
+    this.exportBundleDigest = exportBundleDigest;
   }
 }

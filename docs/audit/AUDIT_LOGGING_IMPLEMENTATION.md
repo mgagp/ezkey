@@ -67,18 +67,19 @@ Features:
 - Multiple filter options: event type, status, API name, enrollment ID, admin ID
 - OpenAPI documentation included
 
-### ✅ Automated Retention Management
+### ✅ Automated Lifecycle Purge
 
-- Scheduled cleanup job runs daily at 2 AM (configurable)
-- Default retention period: 90 days (SOC2-ready)
-- Can be enabled/disabled via configuration
+- Scheduled purge job runs daily at 2 AM by default (configurable)
+- Physical deletion remains gated by checkpoint lifecycle state, not age-only cleanup
+- Default policy horizon uses a 90-day active retention period with a 30-day purge delay
 
 ### ✅ Configuration Properties
 
 ```properties
-ezkey.audit.retention-days=90
-ezkey.audit.cleanup.enabled=true
-ezkey.audit.cleanup.cron=0 0 2 * * ?
+ezkey.audit.archive.retention-period=P90D
+ezkey.audit.archive.purge-delay=P30D
+ezkey.audit.archive.purge.enabled=true
+ezkey.audit.archive.purge.cron=0 0 2 * * ?
 ```
 
 ## What Remains To Be Implemented

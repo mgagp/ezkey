@@ -26,6 +26,14 @@ todos:
 isProject: false
 ---
 
+> Status: COMPLETED - 2026-04-19
+
+> Closure note: the initial archive-seal / gap-declaration scope was carried forward into the
+> broader single-lifecycle refactoring. The resulting implementation now covers lifecycle states,
+> policy-driven automation, lifecycle-only purge, export-facing service/API contracts, updated
+> configuration docs, and focused unit/elective tests. External export execution and UI polish
+> remain intentionally out of scope for this completed slice.
+
 # Plan : Gestion du cycle de vie de la chaîne d'audit
 
 ## Contexte et diagnostic
