@@ -27,6 +27,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 /**
  * Centralized RFC 9457 exception handling for the Auth API. Raw exception messages are logged
@@ -161,6 +162,35 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   public ResponseEntity<ProblemDetail> handleResourceNotFound(
       ResourceNotFoundException ex, WebRequest request) {
     LOG.warn("Resource not found (detail redacted for client)");
+    return problemResponse(
+        HttpStatus.NOT_FOUND,
+        AuthApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
+        AuthApiProblemCatalog.TITLE_RESOURCE_NOT_FOUND,
+        AuthApiProblemCatalog.DETAIL_RESOURCE_NOT_FOUND,
+        pathFrom(request));
+  }
+
+  /** Missing static resources and similar; do not log at ERROR with stack (scanner noise). */
+  @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+  public ResponseEntity<ProblemDetail> handleNoResourceFoundException(
+      org.springframework.web.servlet.resource.NoResourceFoundException ex, WebRequest request) {
+    LOG.debug("No resource: {}", pathFrom(request));
+    return problemResponse(
+        HttpStatus.NOT_FOUND,
+        AuthApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
+        AuthApiProblemCatalog.TITLE_RESOURCE_NOT_FOUND,
+        AuthApiProblemCatalog.DETAIL_RESOURCE_NOT_FOUND,
+        pathFrom(request));
+  }
+
+  /**
+   * No handler for the request URL (when the dispatcher raises this); same policy as {@link
+   * #handleNoResourceFoundException}.
+   */
+  @ExceptionHandler(NoHandlerFoundException.class)
+  public ResponseEntity<ProblemDetail> handleNoHandlerFoundException(
+      NoHandlerFoundException ex, WebRequest request) {
+    LOG.debug("No handler: {} {}", ex.getHttpMethod(), ex.getRequestURL());
     return problemResponse(
         HttpStatus.NOT_FOUND,
         AuthApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,

@@ -99,6 +99,8 @@ If you previously kept **`experimental-hybrid/`** at the **home directory root**
 3. `scp` tar files to the VM (e.g. `scp … ezkey:~/`).
 4. On the VM: `docker load`.
 
+**Rolling update (single API or migration image, keep data):** after loading a new tar, **recreate** the service so `:latest` is picked up — see [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md). A plain `docker compose restart` does not switch the container to a newly loaded image.
+
 ## Phase 3 — You: VM configuration
 
 1. Ensure the **VM directory layout** matches the **VM initialization** section above (`~/ezkey` with `docker/` and `experimental-hybrid/lightsail/`).

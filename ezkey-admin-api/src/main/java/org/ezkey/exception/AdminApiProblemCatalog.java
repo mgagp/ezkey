@@ -35,6 +35,13 @@ public final class AdminApiProblemCatalog {
   public static final String TITLE_INTERNAL_ERROR = "Internal error";
   public static final String TITLE_TOO_MANY_REQUESTS = "Too many requests";
   public static final String TITLE_NOT_FOUND = "Resource not found";
+
+  /**
+   * Safe detail for unknown routes and missing static resources (e.g. scanner traffic); does not
+   * echo request paths or exception internals to the client.
+   */
+  public static final String DETAIL_NOT_FOUND = "The requested resource could not be found.";
+
   public static final String TITLE_VALIDATION_FAILED = "Validation failed";
   public static final String TITLE_INVALID_ARGUMENT = "Invalid argument";
   public static final String TITLE_STATE_CONFLICT = "State conflict";

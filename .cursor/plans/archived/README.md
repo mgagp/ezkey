@@ -12,6 +12,22 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2026-04 - Quiet 404 / missing-route handling (no ERROR log noise)
+
+**Completion Date:** April 18, 2026  
+**Status:** ✅ **COMPLETED** (implemented; unit tests per module)
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-04/quiet_404_exception_handling_08a688b4.plan.md** | `@ExceptionHandler` for `NoResourceFoundException` + `NoHandlerFoundException` → 404 `ProblemDetail` (Admin, Auth, Integration APIs); DEBUG-only logging; `QuietNotFoundExceptionHandler` on demo-acme and demo-device; `ezkey-crypto-api` out of scope | ✅ Completed |
+
+**What was implemented:**
+
+- `ezkey-admin-api` / `ezkey-auth-api` / `ezkey-integration-api`: global handlers + catalog-safe details; tests `GlobalExceptionHandlerNotFoundMvcTest`.
+- `ezkey-demo-app-acme` / `ezkey-demo-device`: [`QuietNotFoundExceptionHandler`](../../../ezkey-demo-app-acme/src/main/java/org/ezkey/demo/acme/exception/QuietNotFoundExceptionHandler.java) (duplicated per app); `QuietNotFoundExceptionHandlerTest`.
+
+---
+
 ### 2026-04 - Admin API CORS (configurable browser cross-origin)
 
 **Completion Date:** April 17, 2026  

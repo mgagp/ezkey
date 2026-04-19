@@ -5,6 +5,7 @@ This folder contains **operator-focused** artifacts to run Ezkey on **Amazon Lig
 - **Lightsail:** [`lightsail/`](lightsail/) — `docker-compose.yml`, `Caddyfile`, `.env.example`
 - **Local (optional):** [`local/`](local/) — `docker-compose.yml`, `.env.example`
 - **Runbook:** [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) — phases, **`~/ezkey` VM tree**, **`scp` from a dev clone** (default), optional clone-on-VM, Cloudflare split (manual vs repo)
+- **Single-backend image update (Lightsail):** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md) — `docker save` / `scp` / `docker load` / `compose up --force-recreate`
 
 Image build targets and behaviour match the main repo [`docker/Dockerfile`](../docker/Dockerfile) and [`docker/docker-compose.yml`](../docker/docker-compose.yml).
 
@@ -73,6 +74,8 @@ docker load -i ~/ezkey-integration-api.tar
    - **Recommended for an empty / disposable VM:** `chmod +x clean-start.sh && ./clean-start.sh` — same idea as local `ezkey-tests/clean-start.sh`: wipes Compose volumes, generates master key into the correct Docker volume (`--experimental-lightsail`), then `docker compose up -d`. **Destructive** to the database; see script `--help`.
    - **Without wiping volumes:** `bash ../../docker/generate-encryption-keys.sh --experimental-lightsail --force` then `docker compose up -d`.
    - **Ad hoc:** `docker compose up -d` only, then follow **Phase 3b** in [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) to create `master.key` before relying on encryption.
+
+**Updating one backend image** (new `docker save` / `docker load` without wiping the DB): see [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md) — use `docker compose up -d --no-deps --force-recreate <service>` after `docker load`, not `restart` alone.
 
 Caddy persists certificates and ACME state in the **`caddy-data`** volume (`/data` in the container).
 

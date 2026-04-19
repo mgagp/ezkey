@@ -11,6 +11,8 @@
 package org.ezkey.exception;
 
 import java.net.URI;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -18,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Global exception handler for the Ezkey Admin REST API.
@@ -68,6 +72,8 @@ import org.springframework.web.context.request.WebRequest;
 @Order(99)
 public class GlobalExceptionHandler {
 
+  private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
   private static String pathFrom(WebRequest request) {
     return request.getDescription(false).replace("uri=", "");
   }
@@ -116,6 +122,38 @@ public class GlobalExceptionHandler {
    * @param request the web request that caused the exception
    * @return ResponseEntity containing ProblemDetail and HTTP 404 status
    */
+  /**
+   * Unknown routes and missing static resources (e.g. internet scanners); log quietly — not ERROR
+   * with stack.
+   */
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ProblemDetail> handleNoResourceFoundException(
+      NoResourceFoundException ex, WebRequest request) {
+    LOG.debug("No resource: {}", pathFrom(request));
+    return problemResponse(
+        HttpStatus.NOT_FOUND,
+        AdminApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
+        AdminApiProblemCatalog.TITLE_NOT_FOUND,
+        AdminApiProblemCatalog.DETAIL_NOT_FOUND,
+        request);
+  }
+
+  /**
+   * No Spring MVC handler for the request (when the servlet is configured to raise this); same
+   * logging policy as {@link #handleNoResourceFoundException}.
+   */
+  @ExceptionHandler(NoHandlerFoundException.class)
+  public ResponseEntity<ProblemDetail> handleNoHandlerFoundException(
+      NoHandlerFoundException ex, WebRequest request) {
+    LOG.debug("No handler: {} {}", ex.getHttpMethod(), ex.getRequestURL());
+    return problemResponse(
+        HttpStatus.NOT_FOUND,
+        AdminApiProblemCatalog.TYPE_RESOURCE_NOT_FOUND,
+        AdminApiProblemCatalog.TITLE_NOT_FOUND,
+        AdminApiProblemCatalog.DETAIL_NOT_FOUND,
+        request);
+  }
+
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<ProblemDetail> handleResourceNotFoundException(
       ResourceNotFoundException ex, WebRequest request) {

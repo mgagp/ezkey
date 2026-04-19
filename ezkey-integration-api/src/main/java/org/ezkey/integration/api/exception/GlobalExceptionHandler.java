@@ -28,6 +28,8 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Global exception handler for the Ezkey Integration REST API.
@@ -199,6 +201,33 @@ public class GlobalExceptionHandler {
         HttpStatus.BAD_REQUEST,
         "https://ezkey.io/problems/validation/auth-attempt-wait-invalid",
         "Invalid Auth Attempt Wait Request",
+        request);
+  }
+
+  /**
+   * Unknown routes / missing resources (e.g. scanners). Log at DEBUG only — not ERROR with stack.
+   */
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ProblemDetail> handleNoResourceFoundException(
+      NoResourceFoundException ex, HttpServletRequest request) {
+    logger.debug("No resource: {}", request.getRequestURI());
+    return buildProblemDetail(
+        "The requested resource could not be found.",
+        HttpStatus.NOT_FOUND,
+        "https://ezkey.io/problems/resource/not-found",
+        "Resource Not Found",
+        request);
+  }
+
+  @ExceptionHandler(NoHandlerFoundException.class)
+  public ResponseEntity<ProblemDetail> handleNoHandlerFoundException(
+      NoHandlerFoundException ex, HttpServletRequest request) {
+    logger.debug("No handler: {} {}", ex.getHttpMethod(), ex.getRequestURL());
+    return buildProblemDetail(
+        "The requested resource could not be found.",
+        HttpStatus.NOT_FOUND,
+        "https://ezkey.io/problems/resource/not-found",
+        "Resource Not Found",
         request);
   }
 
