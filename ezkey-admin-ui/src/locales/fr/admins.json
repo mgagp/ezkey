@@ -17,6 +17,7 @@
     },
     "activeYes": "Oui",
     "activeNo": "Non",
+    "operationalWarningTooltip": "Le tenant est inactif — la connexion de cet administrateur est bloquée",
     "credentials": "Identifiants",
     "deactivate": "Désactiver"
   },
@@ -43,8 +44,7 @@
     "title": "Désactiver l'administrateur",
     "confirmMessage": "Voulez-vous vraiment désactiver {{username}} ? Tous les jetons actifs seront révoqués immédiatement.",
     "cannotUndo": "Cette action ne peut pas être annulée depuis cette interface.",
-    "reasonLabel": "Raison",
-    "reasonHint": "(min 10 caractères, pour la traçabilité)",
+    "reasonLabel": "Raison (min. 10 caractères, obligatoire pour l'audit)",
     "reasonPlaceholder": "Justification de cette action...",
     "cancel": "Annuler",
     "submit": "Désactiver",
@@ -96,7 +96,14 @@
     "recoveryCodesSavedConfirmLabel": "J'ai enregistré ces codes de récupération dans un endroit sûr",
     "close": "Fermer",
     "toastActivated": "Administrateur « {{username }} » activé.",
-    "errorActivate": "Échec de l'activation"
+    "errorActivate": "Échec de l'activation",
+    "operationalWarning": {
+      "tenantInactive": "Le tenant de cet administrateur est actuellement inactif. Les tentatives de connexion de cet admin seront rejetées jusqu'à la réactivation du tenant."
+    },
+    "contextHelp": {
+      "deactivateTitle": "Désactiver l'administrateur",
+      "deactivateContent": "Désactiver un admin révoque immédiatement toutes ses sessions actives et bloque les connexions futures. Cette action est destinée aux départs, violations de politique ou incidents de sécurité. Une raison est recommandée pour la traçabilité d'audit. Le compte peut être réactivé par un Admin global."
+    }
   },
   "create": {
     "titleGlobal": "Nouvel admin global",

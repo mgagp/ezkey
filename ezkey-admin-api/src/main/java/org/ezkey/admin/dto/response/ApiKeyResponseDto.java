@@ -53,6 +53,8 @@ import java.time.OffsetDateTime;
  * @param ipWhitelist Optional IP whitelist array (null = no restrictions)
  * @param revokedAt Timestamp when the API key was revoked (null if active)
  * @param revokedByUsername Username of the admin who revoked this key (null if active)
+ * @param operational Whether this API key is fully operational (active and not expired, with an
+ *     active integration and active tenant)
  * @author Ezkey contributors
  * @since 2025
  * @see ApiKeyCreateResponseDto
@@ -95,4 +97,10 @@ public record ApiKeyResponseDto(
     @Schema(description = "Revocation timestamp (null if active)", example = "2025-10-17T16:00:00Z")
         OffsetDateTime revokedAt,
     @Schema(description = "Admin who revoked this key (null if active)", example = "admin")
-        String revokedByUsername) {}
+        String revokedByUsername,
+    @Schema(
+            description =
+                "Whether this API key is fully operational (active, not expired, integration and"
+                    + " tenant also active)",
+            example = "true")
+        Boolean operational) {}

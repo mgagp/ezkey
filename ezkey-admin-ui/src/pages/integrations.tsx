@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw, Search } from 'lucide-react';
+import { Tooltip } from '@/components/ui/tooltip';
 import { AppShell } from '@/components/layout/app-shell';
 import { HelpInlineButton } from '@/components/help/help-inline-button';
 import { type ColumnDef } from '@/components/data-table/data-table';
@@ -29,33 +30,12 @@ import { INTEGRATION_LIFECYCLE_FILTER_PARAM } from '@/lib/dashboard-drilldown-li
 import { create, search } from '@/generated/admin-api/integrations/integrations';
 import type { IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, PagedModelIntegrationResponseDto } from '@/generated/admin-api/model';
 
-type IntegrationLifecycleStatus = 'ACTIVE' | 'INACTIVE' | 'RETIRED';
-type IntegrationListFilter = 'operational' | 'active' | 'inactive' | 'retired' | 'all';
+type IntegrationListFilter = 'active' | 'retired' | 'all';
 
 function parseLifecycleFilterFromUrl(value: string | null): IntegrationListFilter {
-  if (
-    value === 'operational'
-    || value === 'all'
-    || value === 'active'
-    || value === 'inactive'
-    || value === 'retired'
-  ) {
-    return value;
-  }
-  return 'operational';
-}
-
-type IntegrationWithLifecycleStatus = IntegrationResponseDto & {
-  lifecycleStatus?: IntegrationLifecycleStatus;
-};
-
-function getLifecycleStatus(integration: IntegrationResponseDto): IntegrationLifecycleStatus {
-  const lifecycleStatus = (integration as IntegrationWithLifecycleStatus).lifecycleStatus;
-  if (lifecycleStatus) {
-    return lifecycleStatus;
-  }
-  // Transitional fallback until the derived `active` field is removed from the API surface.
-  return integration.active ? 'ACTIVE' : 'INACTIVE';
+  if (value === 'all' || value === 'retired') return value;
+  // 'active', legacy 'operational', 'inactive', and any unknown value all default to active.
+  return 'active';
 }
 
 // ── Create dialog ─────────────────────────────────────────────────────────────
@@ -206,19 +186,12 @@ export default function IntegrationsPage() {
 
   const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<
     IntegrationResponseDto,
-    { integrationName?: string; active?: boolean; lifecycleStatus?: IntegrationLifecycleStatus; includeRetired?: boolean }
+    { integrationName?: string; lifecycleStatus?: 'ACTIVE' | 'RETIRED'; includeRetired?: boolean }
   >({
     queryKey: ['integrations', debouncedName, lifecycleFilter],
     baseParams: {
       integrationName: debouncedName || undefined,
-      lifecycleStatus:
-        lifecycleFilter === 'active'
-          ? 'ACTIVE'
-          : lifecycleFilter === 'inactive'
-            ? 'INACTIVE'
-            : lifecycleFilter === 'retired'
-              ? 'RETIRED'
-              : undefined,
+      lifecycleStatus: lifecycleFilter === 'retired' ? 'RETIRED' : undefined,
       includeRetired: lifecycleFilter === 'all' ? true : undefined,
     },
     fetchPage: (params) => search(params) as Promise<PagedModelIntegrationResponseDto>,
@@ -233,15 +206,20 @@ export default function IntegrationsPage() {
       key: 'lifecycleStatus',
       sortKey: 'lifecycleStatus',
       render: (row) => {
-        const lifecycleStatus = getLifecycleStatus(row);
-        const variant = lifecycleStatus === 'ACTIVE' ? 'success' : 'muted';
-        const label =
-          lifecycleStatus === 'ACTIVE'
-            ? t('list.statusActive')
-            : lifecycleStatus === 'INACTIVE'
-              ? t('list.statusInactive')
-              : t('list.statusRetired');
-        return <Badge variant={variant}>{label}</Badge>;
+        const isActive = row.lifecycleStatus === 'ACTIVE';
+        const showWarning = isActive && row.operational === false;
+        return showWarning ? (
+          <Tooltip content={t('list.operationalWarningTooltip')}>
+            <div className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
+              <Badge variant="success">{t('list.statusActive')}</Badge>
+              <AlertTriangle className="size-4 text-warning shrink-0" aria-hidden />
+            </div>
+          </Tooltip>
+        ) : (
+          <Badge variant={isActive ? 'success' : 'muted'}>
+            {isActive ? t('list.statusActive') : t('list.statusRetired')}
+          </Badge>
+        );
       },
     },
     { header: t('list.columns.tenant'), key: 'tenantId', className: 'w-16', render: (row) => <span className="font-mono text-xs">{row.tenantId ?? '—'}</span> },
@@ -269,10 +247,8 @@ export default function IntegrationsPage() {
               value={lifecycleFilter}
               onChange={(e) => setLifecycleFilter(e.target.value as IntegrationListFilter)}
             >
-              <option value="operational">{t('list.filterOperational')}</option>
-              <option value="all">{t('list.filterAll')}</option>
               <option value="active">{t('list.filterActive')}</option>
-              <option value="inactive">{t('list.filterInactive')}</option>
+              <option value="all">{t('list.filterAll')}</option>
               <option value="retired">{t('list.filterRetired')}</option>
             </Select>
           </div>

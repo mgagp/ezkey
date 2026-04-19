@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Key, ListOrdered, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { OperationalWarning } from '@/components/feature/operational-warning';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { AppShell } from '@/components/layout/app-shell';
+import { ContextHelp } from '@/components/ui/context-help';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
@@ -54,22 +56,6 @@ type BulkEnrollmentOperationResult = {
   skippedCount: number;
   noOp: boolean;
 };
-
-type IntegrationLifecycleStatus = 'ACTIVE' | 'INACTIVE' | 'RETIRED';
-type IntegrationWithLifecycleStatus = IntegrationResponseDto & {
-  lifecycleStatus?: IntegrationLifecycleStatus;
-};
-
-function getLifecycleStatus(
-  integration: IntegrationResponseDto,
-): IntegrationLifecycleStatus {
-  const lifecycleStatus = (integration as IntegrationWithLifecycleStatus).lifecycleStatus;
-  if (lifecycleStatus) {
-    return lifecycleStatus;
-  }
-  // Transitional fallback until the derived `active` field is removed from the API surface.
-  return integration.active ? 'ACTIVE' : 'INACTIVE';
-}
 
 function buildBulkEnrollmentOperationPath(
   integrationId: number,
@@ -226,8 +212,7 @@ export default function IntegrationDetailPage() {
 
   const name = integration ? getIntegrationName(integration) : '...';
   const isSystemIntegration = (integration as { isSystemIntegration?: boolean } | undefined)?.isSystemIntegration === true;
-  const lifecycleStatus = integration ? getLifecycleStatus(integration) : 'ACTIVE';
-  const isRetired = lifecycleStatus === 'RETIRED';
+  const isRetired = integration?.lifecycleStatus === 'RETIRED';
 
   const relatedDetails = useExpandableRelatedDetails({
     tenantId: integration?.tenantId ?? undefined,
@@ -297,12 +282,8 @@ export default function IntegrationDetailPage() {
                     </InfoRow>
                   )}
                   <InfoRow label={t('detail.infoStatus')}>
-                    <Badge variant={lifecycleStatus === 'ACTIVE' ? 'success' : 'muted'}>
-                      {lifecycleStatus === 'ACTIVE'
-                        ? t('list.statusActive')
-                        : lifecycleStatus === 'INACTIVE'
-                          ? t('list.statusInactive')
-                          : t('list.statusRetired')}
+                    <Badge variant={integration.lifecycleStatus === 'ACTIVE' ? 'success' : 'muted'}>
+                      {integration.lifecycleStatus === 'ACTIVE' ? t('list.statusActive') : t('list.statusRetired')}
                     </Badge>
                   </InfoRow>
                   <InfoRow label={t('detail.infoCreated')}>
@@ -351,6 +332,10 @@ export default function IntegrationDetailPage() {
           </div>
         )}
 
+        {integration && !isRetired && integration.operational === false && (
+          <OperationalWarning message={t('detail.operationalWarning.tenantInactive')} />
+        )}
+
         {/* Enrollments section */}
         <div className="border-2 border-fg shadow-brutal bg-surface">
           <div className="flex items-center justify-between px-4 py-3 border-b-2 border-fg bg-bg">
@@ -393,34 +378,48 @@ export default function IntegrationDetailPage() {
                   {isRetired ? t('detail.retiredIntro') : t('detail.dangerZoneIntro')}
                 </p>
                 {!isRetired && (
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('deactivate-all')}>
-                      <PowerOff className="size-3.5" />
-                      {t('detail.deactivateAll')}
-                    </Button>
-                    <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => setDangerAction('reactivate-all')}>
-                      <Power className="size-3.5" />
-                      {t('detail.reactivateAll')}
-                    </Button>
-                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('revoke-all')}>
-                      <ShieldOff className="size-3.5" />
-                      {t('detail.revokeAll')}
-                    </Button>
-                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('retire')}>
-                      <Trash2 className="size-3.5" />
-                      {t('detail.retireIntegration')}
-                    </Button>
-                  </div>
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('deactivate-all')}>
+                        <PowerOff className="size-3.5" />
+                        {t('detail.deactivateAll')}
+                      </Button>
+                      <Button variant="secondary" size="sm" className="gap-1.5" onClick={() => setDangerAction('reactivate-all')}>
+                        <Power className="size-3.5" />
+                        {t('detail.reactivateAll')}
+                      </Button>
+                      <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('revoke-all')}>
+                        <ShieldOff className="size-3.5" />
+                        {t('detail.revokeAll')}
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('retire')}>
+                        <Trash2 className="size-3.5" />
+                        {t('detail.retireIntegration')}
+                      </Button>
+                      <ContextHelp
+                        title={t('detail.contextHelp.retireTitle')}
+                        content={t('detail.contextHelp.retireContent')}
+                      />
+                    </div>
+                  </>
                 )}
                 <div className="border-t-2 border-error/20 pt-3">
                   <p className="text-xs text-fg-muted mb-2">
                     {t('detail.deleteIntro')}
                   </p>
                   {isRetired && (
-                    <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('delete')}>
-                      <Trash2 className="size-3.5" />
-                      {t('detail.deleteIntegration')}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDangerAction('delete')}>
+                        <Trash2 className="size-3.5" />
+                        {t('detail.deleteIntegration')}
+                      </Button>
+                      <ContextHelp
+                        title={t('detail.contextHelp.deleteTitle')}
+                        content={t('detail.contextHelp.deleteContent')}
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -545,8 +544,8 @@ export default function IntegrationDetailPage() {
         title={t('detail.danger.retireTitle')}
         description={t('detail.danger.retireDescription')}
         confirmLabel={t('detail.danger.retireConfirm')}
-        optionalReason
-        reasonLabel={t('detail.danger.reasonLabelOptional')}
+        requireReason
+        reasonLabel={t('detail.danger.reasonLabelRequired')}
         reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
         cancelLabel={t('detail.danger.cancel')}
         reasonPresetGroup="integration_retire"
@@ -556,10 +555,7 @@ export default function IntegrationDetailPage() {
         errorMessage=""
         renderReasonBadges={renderReasonBadges}
         onConfirm={(reason) => {
-          const path =
-            reason.trim().length >= 10
-              ? `/api/v1/integrations/${integrationId}/retire?reason=${encodeURIComponent(reason.trim())}`
-              : `/api/v1/integrations/${integrationId}/retire`;
+          const path = `/api/v1/integrations/${integrationId}/retire?reason=${encodeURIComponent(reason.trim())}`;
           api
             .post<void>(path, undefined)
             .then(() => {
@@ -579,8 +575,8 @@ export default function IntegrationDetailPage() {
         title={t('detail.danger.deleteTitle')}
         description={t('detail.danger.deleteDescription', { name: integration?.name ?? integration?.code ?? '' })}
         confirmLabel={t('detail.danger.deleteConfirm')}
-        optionalReason
-        reasonLabel={t('detail.danger.reasonLabelOptional')}
+        requireReason
+        reasonLabel={t('detail.danger.reasonLabelRequired')}
         reasonPlaceholder={t('detail.danger.reasonPlaceholder')}
         cancelLabel={t('detail.danger.cancel')}
         reasonPresetGroup="integration_delete"
@@ -590,8 +586,7 @@ export default function IntegrationDetailPage() {
         errorMessage=""
         renderReasonBadges={renderReasonBadges}
         onConfirm={(reason) => {
-          const params = reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
-          delete1(Number(integrationId), params)
+          delete1(Number(integrationId), { reason: reason.trim() })
             .then(() => {
               void queryClient.invalidateQueries({ queryKey: ['integrations'] });
               toast(t('detail.toastDeleted'));

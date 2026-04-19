@@ -40,13 +40,55 @@
     "integrations": {
       "title": "Integrations",
       "summary": "Applications protected by EZKey MFA for a tenant.",
-      "body": "Each integration has a stable code, display name, and optional description. Create a new integration when onboarding an app; open a row to see keys, settings, and enrollments.\n\nUse search and filters to find integrations in large lists.",
-      "demoExtra": "With demo mode on, “Fill demo” presets appear in the create dialog to speed up local testing."
+      "body": "Each integration has a stable code, display name, and optional description. Lifecycle states are Active (operational) and Retired (permanently withdrawn). Create a new integration when onboarding an app; open a row to see keys, settings, and enrollments.\n\nAn integration is \"operational\" when it is Active and its parent tenant is also active. If a tenant is deactivated, all its integrations show a warning indicator even if their own status is Active — authentication will be blocked until the tenant is reactivated.\n\nUse search and filters to find integrations in large lists.",
+      "demoExtra": "With demo mode on, \"Fill demo\" presets appear in the create dialog to speed up local testing."
     },
     "integration-detail": {
       "title": "Integration detail",
-      "summary": "One integration’s configuration and related objects.",
-      "body": "Review identifiers, status, and cryptographic material as exposed by your role. From here you can manage enrollments and related resources depending on permissions.\n\nTreat API and key material according to your organization’s policy.",
+      "summary": "One integration's configuration and related objects.",
+      "body": "Review identifiers, lifecycle status, and related resources. The \"operational\" state means this integration is Active and its parent tenant is active — only operational integrations can process authentications.\n\nRetiring an integration is a permanent, irreversible action that revokes all enrollments and removes it from normal listings. A reason is required. Delete is only available after retirement and should remain exceptional.\n\nFrom here you can manage enrollments, create API keys (while active), and trigger bulk enrollment operations in the danger zone.",
+      "demoExtra": ""
+    },
+    "tenants": {
+      "title": "Tenants",
+      "summary": "Organizational units that own integrations, enrollments, and their own admin accounts.",
+      "body": "Each tenant groups a set of integrations and the users enrolled across them. A tenant can be active or inactive.\n\nInactivating a tenant immediately blocks all authentication for every integration and enrollment under it — no persistent change is made to child records. Reactivating restores full access instantly. This makes tenant deactivation the right tool for rapid, reversible lockdown during security investigations.",
+      "demoExtra": ""
+    },
+    "tenant-detail": {
+      "title": "Tenant detail",
+      "summary": "One tenant's configuration, administrators, and lifecycle controls.",
+      "body": "Review contact information, linked administrators, and lifecycle status. The Danger Zone shows activate/deactivate controls for non-system tenants.\n\nDeactivating blocks all authentication downstream (integrations, enrollments) at runtime — it is reversible at any time and leaves no lasting change on child records. Use it for temporary suspension or security response.\n\nThe System Tenant is an internal Ezkey tenant used for admin MFA; it cannot be deactivated.",
+      "demoExtra": ""
+    },
+    "enrollments": {
+      "title": "Enrollments",
+      "summary": "User-device bindings that enable MFA authentication for an integration.",
+      "body": "Each enrollment links one user's device to an integration. The lifecycle goes through Created → Bound → Verified. Only Verified + active enrollments can process authentication attempts.\n\nAn enrollment is \"operational\" when it is Verified, active, and its full parent chain (integration and tenant) is also active. If an integration is retired or a tenant is deactivated, all their enrollments show an operational warning even though their own status is Verified.\n\nUse status and active filters to narrow the list. A warning triangle in the status column indicates a parent-chain degradation.",
+      "demoExtra": ""
+    },
+    "enrollment-detail": {
+      "title": "Enrollment detail",
+      "summary": "One user-device binding, its lifecycle actions, and associated cryptographic material.",
+      "body": "This screen shows the enrollment status, contact information, key tier, and proof token. Test Authentication lets you trigger a live MFA request to the enrolled device — the button is disabled when the enrollment is not operational.\n\nDeactivating suspends authentication without permanent changes; reactivating restores it immediately. Revoking is permanent and requires a reason — the device key is invalidated and a new enrollment must be created. Deleting completely removes the record and also requires a reason.\n\nRevoke is preferred over delete for security-motivated actions because it preserves a complete audit trail. Delete should be reserved for test data cleanup or erasure requests.",
+      "demoExtra": ""
+    },
+    "api-keys": {
+      "title": "API Keys",
+      "summary": "Secret keys that authenticate Integration API requests for a specific integration.",
+      "body": "API keys are scoped to one integration. Each key has a lifecycle: Active (can make API requests), Expired (past expiry date), and Revoked (permanently disabled). A maximum of 5 active keys is enforced per integration.\n\nAn API key is \"operational\" when it is active, not expired, and its parent integration and tenant chain is also active. A blocked-by-parent warning appears when the key itself is valid but authentication would fail at runtime.\n\nSecret keys are shown only once at creation. Use IP whitelists to restrict where a key can be used.",
+      "demoExtra": ""
+    },
+    "api-key-detail": {
+      "title": "API Key detail",
+      "summary": "One API key, its configuration, and revocation controls.",
+      "body": "This screen shows the key identifiers, IP whitelist, status, and usage history. You can edit the description and IP whitelist for active keys.\n\nRevoking an API key is permanent and irreversible — the key can no longer be used to authenticate integration API requests. A reason is required for audit. Plan key rotation in advance to avoid service interruption.",
+      "demoExtra": ""
+    },
+    "admins": {
+      "title": "Administrators",
+      "summary": "Global and Tenant administrators who manage Ezkey via the Admin UI.",
+      "body": "Global Admins manage instance-level resources (encryption keys, all tenants). Tenant Admins are scoped to one tenant and manage its integrations, enrollments, and API keys.\n\nEach admin authenticates using MFA via their enrolled device. A Tenant Admin's access depends on their parent tenant being active — if the tenant is deactivated, the admin is shown as not operational even if their account is marked active.\n\nDeactivating an admin blocks their login without deleting their account. Use this for offboarding or temporary suspension. A reason is recorded for the audit trail.",
       "demoExtra": ""
     },
     "encryption-keys": {

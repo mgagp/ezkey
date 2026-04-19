@@ -10,17 +10,13 @@ package org.ezkey.integration.domain;
 /**
  * Explicit lifecycle states for integrations.
  *
- * <p>The integration lifecycle is modeled as a single enum instead of multiple boolean flags to
- * preserve conceptual integrity. Operators can distinguish between integrations that are currently
- * usable, temporarily unavailable, or retired from day-to-day operations while preserving their
- * historical footprint.
+ * <p>The integration lifecycle is modeled as a two-state enum: {@code ACTIVE} integrations
+ * participate in day-to-day operations (API key validation, enrollment creation). {@code RETIRED}
+ * integrations are removed from normal operations while their historical data is preserved.
  */
 public enum IntegrationLifecycleStatus {
   /** Integration is operational and may be used for day-to-day flows. */
   ACTIVE,
-
-  /** Integration exists but is temporarily unavailable for normal operations. */
-  INACTIVE,
 
   /** Integration is retired from day-to-day use but retained for historical traceability. */
   RETIRED

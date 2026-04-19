@@ -27,6 +27,7 @@ import org.ezkey.integration.exception.ApiKeyCreateValidationException;
 import org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.ApiKeyUpdateValidationException;
+import org.ezkey.service.EntityEligibilityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -84,6 +85,7 @@ public class ApiKeyService {
   private final IntegrationRepository integrationRepository;
   private final BCryptPasswordEncoder passwordEncoder;
   private final SecureRandom secureRandom;
+  private final EntityEligibilityService eligibilityService;
 
   /**
    * Constructs a new ApiKeyService with required dependencies.
@@ -91,15 +93,18 @@ public class ApiKeyService {
    * @param apiKeyRepository the API key repository
    * @param integrationRepository the integration repository
    * @param passwordEncoder the BCrypt password encoder for secret key hashing
+   * @param eligibilityService the centralized eligibility service for entity state checks
    */
   public ApiKeyService(
       ApiKeyRepository apiKeyRepository,
       IntegrationRepository integrationRepository,
-      BCryptPasswordEncoder passwordEncoder) {
+      BCryptPasswordEncoder passwordEncoder,
+      EntityEligibilityService eligibilityService) {
     this.apiKeyRepository = apiKeyRepository;
     this.integrationRepository = integrationRepository;
     this.passwordEncoder = passwordEncoder;
     this.secureRandom = new SecureRandom();
+    this.eligibilityService = eligibilityService;
   }
 
   /**
@@ -159,15 +164,8 @@ public class ApiKeyService {
               + integrationId);
     }
 
-    // Security: Block API key creation for inactive tenants
-    if (integration.getTenant() != null && !integration.getTenant().getActive()) {
-      logger.warn(
-          "API key creation blocked: tenant (ID: {}) is inactive for integration {}",
-          integration.getTenant().getTenantId(),
-          integrationId);
-      throw new TenantInactiveException(
-          "Cannot create API key for inactive tenant. Contact your Ezkey administrator.");
-    }
+    // Security: Block API key creation when integration or its tenant is not operational
+    eligibilityService.ensureTenantOperational(integration.getTenant());
 
     // Check active key limit
     long activeKeyCount = apiKeyRepository.countByIntegration_IdAndActiveTrue(integrationId);
@@ -293,17 +291,14 @@ public class ApiKeyService {
     apiKey.setLastUsedAt(OffsetDateTime.now());
     apiKeyRepository.save(apiKey);
 
-    // Check if the parent integration's tenant is active
+    // Check if the parent integration (and its tenant) are operational
     Integration integration = apiKey.getIntegration();
-    if (!integration.isOperational()) {
+    if (!eligibilityService.isIntegrationOperational(integration)) {
       logger.warn(
-          "API key rejected: integration {} lifecycle is {}",
+          "API key rejected: integration {} not operational (status: {}, tenant active: {})",
           integration.getId(),
-          integration.getLifecycleStatus());
-      return Optional.empty();
-    }
-    if (integration.getTenant() != null && !integration.getTenant().getActive()) {
-      logger.warn("API key rejected: tenant inactive for integration: {}", integration.getId());
+          integration.getLifecycleStatus(),
+          integration.getTenant() != null ? integration.getTenant().getActive() : null);
       return Optional.empty();
     }
 

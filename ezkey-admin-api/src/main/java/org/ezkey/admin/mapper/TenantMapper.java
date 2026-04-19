@@ -14,6 +14,7 @@ import java.util.List;
 import org.ezkey.admin.dto.response.TenantResponseDto;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 /**
@@ -41,6 +42,7 @@ public interface TenantMapper {
    * @param tenant the tenant entity
    * @return the response DTO
    */
+  @Mapping(target = "operational", source = "active")
   TenantResponseDto toResponseDto(Tenant tenant);
 
   /**

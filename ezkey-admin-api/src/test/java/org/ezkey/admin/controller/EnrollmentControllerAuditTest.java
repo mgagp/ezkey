@@ -149,7 +149,6 @@ class EnrollmentControllerAuditTest {
             integrationRepository,
             enrollmentRevocationService,
             enrollmentUpdateService,
-            authAttemptRepository,
             auditEntityFkResolver);
   }
 

@@ -31,7 +31,8 @@
       "keyTier": "Key storage"
     },
     "activeYes": "Yes",
-    "activeNo": "No"
+    "activeNo": "No",
+    "operationalWarningTooltip": "Integration or tenant is inactive — authentication is blocked"
   },
   "create": {
     "title": "New Enrollment",
@@ -167,6 +168,20 @@
     "help": {
       "proofToken": "Cryptographic token used by the mobile device to bind to this enrollment.",
       "bindingChallengeCode": "One-time code the device must enter to complete enrollment."
+    },
+    "testAuthBlockedTooltip": "Authentication is currently blocked — the integration or tenant is inactive.",
+    "operationalWarning": {
+      "message": "This enrollment's parent integration or tenant is currently inactive. End-user authentication is blocked until the parent is reactivated."
+    },
+    "deleteReasonLabel": "Reason (min 10 chars, required for audit)",
+    "deleteReasonPlaceholder": "Reason for deleting this enrollment...",
+    "contextHelp": {
+      "deactivateTitle": "Deactivate / Reactivate enrollment",
+      "deactivateContent": "Deactivating temporarily suspends authentication for this enrollment without making permanent changes. The enrollment can be reactivated at any time to restore the user's access. Use this for temporary suspensions, investigations, or device loss.",
+      "revokeTitle": "Revoke enrollment",
+      "revokeContent": "Revoking permanently disables this enrollment. The user's device key association is invalidated and cannot be reactivated — a new enrollment will be required to re-enrol the user. Use this when the device is lost, stolen, or compromised. A reason is required for the audit trail.",
+      "deleteTitle": "Delete enrollment",
+      "deleteContent": "Deleting completely removes the enrollment record. This action is permanent. A reason is required for the audit trail. Prefer revoke (which preserves audit history) over delete for most security actions. Delete is typically reserved for test data cleanup or GDPR-style erasure requests."
     },
     "toastDeleted": "Enrollment deleted.",
     "toastDeactivated": "Enrollment deactivated.",

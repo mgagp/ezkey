@@ -117,6 +117,7 @@ class TenantControllerTest {
             null,
             true,
             false,
+            null,
             null);
     dto2 =
         new TenantResponseDto(
@@ -135,6 +136,7 @@ class TenantControllerTest {
             null,
             false,
             false,
+            null,
             null);
   }
 

@@ -13,6 +13,7 @@ package org.ezkey.admin.service;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.exception.EnrollmentCannotBeDeletedException;
 import org.ezkey.admin.exception.EnrollmentLinkedAsAdminException;
 import org.ezkey.admin.exception.SelfRevocationNotAllowedException;
 import org.ezkey.admin.exception.SystemIntegrationRevocationException;
@@ -22,6 +23,7 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.ClientContext;
+import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -100,6 +102,7 @@ public class EnrollmentRevocationService {
   private final AdminTokenRepository adminTokenRepository;
   private final IntegrationRepository integrationRepository;
   private final AuditLogService auditLogService;
+  private final AuthAttemptRepository authAttemptRepository;
 
   /**
    * Constructs the EnrollmentRevocationService with required dependencies.
@@ -109,18 +112,21 @@ public class EnrollmentRevocationService {
    * @param adminTokenRepository repository for bearer token invalidation
    * @param integrationRepository repository for integration metadata (system integration check)
    * @param auditLogService service for writing audit log entries
+   * @param authAttemptRepository repository for checking authentication history before deletion
    */
   public EnrollmentRevocationService(
       EnrollmentRepository enrollmentRepository,
       EzkeyAdminRepository adminRepository,
       AdminTokenRepository adminTokenRepository,
       IntegrationRepository integrationRepository,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      AuthAttemptRepository authAttemptRepository) {
     this.enrollmentRepository = enrollmentRepository;
     this.adminRepository = adminRepository;
     this.adminTokenRepository = adminTokenRepository;
     this.integrationRepository = integrationRepository;
     this.auditLogService = auditLogService;
+    this.authAttemptRepository = authAttemptRepository;
   }
 
   /**
@@ -677,6 +683,33 @@ public class EnrollmentRevocationService {
       throw new EnrollmentLinkedAsAdminException(
           "Enrollment cannot be deleted because it is linked to an administrator. Use the recovery"
               + " flow to reset that administrator enrollment first.");
+    }
+  }
+
+  /**
+   * Consolidates all pre-deletion guards into a single validation call.
+   *
+   * <p>Runs the three guards that must pass before an enrollment can be hard-deleted:
+   *
+   * <ol>
+   *   <li>{@link #assertNotSelfDeletion} — admin cannot delete their own MFA enrollment
+   *   <li>{@link #assertNotLinkedAsAdmin} — enrollment must not be linked to any admin account
+   *   <li>Auth-history check — enrollment must have no authentication attempts (use revoke instead)
+   * </ol>
+   *
+   * @param principal the admin principal performing the deletion
+   * @param enrollmentId the target enrollment ID
+   * @throws SelfRevocationNotAllowedException if the enrollment belongs to the calling admin
+   * @throws EnrollmentLinkedAsAdminException if the enrollment is linked to any administrator
+   * @throws EnrollmentCannotBeDeletedException if the enrollment has authentication history
+   */
+  public void validateDelete(AdminPrincipal principal, Integer enrollmentId) {
+    assertNotSelfDeletion(principal, enrollmentId);
+    assertNotLinkedAsAdmin(enrollmentId);
+    if (authAttemptRepository.existsByEnrollmentId(enrollmentId)) {
+      throw new EnrollmentCannotBeDeletedException(
+          "Enrollment cannot be deleted because it has authentication history. Revoke the"
+              + " enrollment instead.");
     }
   }
 

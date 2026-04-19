@@ -14,6 +14,7 @@ import java.util.List;
 import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
+import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.dto.EnrollmentCreateRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentCreateResponseDto;
@@ -65,7 +66,10 @@ import org.mapstruct.ReportingPolicy;
  * @see EnrollmentCreateRequest
  * @see EnrollmentCreateResponse
  */
-@Mapper(unmappedTargetPolicy = ReportingPolicy.WARN, componentModel = "spring")
+@Mapper(
+    unmappedTargetPolicy = ReportingPolicy.WARN,
+    componentModel = "spring",
+    imports = {EnrollmentStatus.class})
 public interface EnrollmentAdminMapper {
 
   /**
@@ -83,6 +87,11 @@ public interface EnrollmentAdminMapper {
   @Mapping(source = "active", target = "enrollmentActive")
   @Mapping(target = "integrationName", ignore = true)
   @Mapping(target = "isSystemIntegration", ignore = true)
+  @Mapping(
+      target = "operational",
+      expression =
+          "java(EnrollmentStatus.VERIFIED.equals(entity.getStatus())"
+              + " && Boolean.TRUE.equals(entity.getActive()))")
   EnrollmentResponseDto toResponse(Enrollment entity);
 
   /**
@@ -102,6 +111,16 @@ public interface EnrollmentAdminMapper {
     String name = integration != null ? integration.getName() : null;
     Boolean isSystem =
         integration != null ? Boolean.TRUE.equals(integration.getIsSystemIntegration()) : null;
+    // Full-chain operational: VERIFIED + active + integration ACTIVE + tenant active
+    boolean localOp =
+        EnrollmentStatus.VERIFIED.equals(entity.getStatus())
+            && Boolean.TRUE.equals(entity.getActive());
+    boolean integrationOp =
+        integration != null
+            && integration.isOperational()
+            && (integration.getTenant() == null
+                || Boolean.TRUE.equals(integration.getTenant().getActive()));
+    Boolean operational = localOp && integrationOp;
     return new EnrollmentResponseDto(
         base.enrollmentId(),
         base.version(),
@@ -128,7 +147,8 @@ public interface EnrollmentAdminMapper {
         base.revokedAt(),
         base.revokedByAdminId(),
         name,
-        isSystem);
+        isSystem,
+        operational);
   }
 
   /**

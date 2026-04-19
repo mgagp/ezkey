@@ -34,6 +34,7 @@ import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.service.EntityEligibilityService;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,6 +72,8 @@ class EnrollmentUniquenessTest {
   @Mock private IntegrationRepository integrationRepository;
 
   @Mock private EnrollmentBindService bindService;
+
+  @Mock private EntityEligibilityService eligibilityService;
 
   @Mock private EnrollmentVerifyService verifyService;
 

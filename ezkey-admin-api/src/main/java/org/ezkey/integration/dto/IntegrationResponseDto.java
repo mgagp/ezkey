@@ -34,9 +34,9 @@ import org.ezkey.integration.domain.IntegrationLifecycleStatus;
  * @param id Unique identifier for the integration (auto-generated primary key from the database)
  * @param code Unique business identifier code for the integration (must be unique per tenant)
  * @param tenantId Tenant ID that owns this integration (for multi-tenant isolation verification)
- * @param active Temporary compatibility flag derived from lifecycle status (`true` only when
- *     `ACTIVE`); intended to be removed after the lifecycle migration is fully completed
  * @param lifecycleStatus Explicit lifecycle status for the integration
+ * @param operational Whether the integration is currently operational: {@code ACTIVE} lifecycle
+ *     state <em>and</em> parent tenant active
  * @param createdAt Timestamp when the integration was created (used for audit trails and sorting
  *     purposes, with timezone)
  * @param name Display name for the integration
@@ -56,14 +56,14 @@ public record IntegrationResponseDto(
             example = "web-portal")
         String code,
     @Schema(description = "Tenant ID that owns this integration", example = "2") Integer tenantId,
-    @Schema(
-            description =
-                "Temporary compatibility flag derived from lifecycle status (`true` only when"
-                    + " `ACTIVE`); intended for transition only and planned for later removal",
-            example = "true")
-        Boolean active,
     @Schema(description = "Explicit integration lifecycle status", example = "ACTIVE")
         IntegrationLifecycleStatus lifecycleStatus,
+    @Schema(
+            description =
+                "Whether the integration is currently operational: ACTIVE lifecycle state and"
+                    + " parent tenant active",
+            example = "true")
+        Boolean operational,
     @Schema(
             description = "Timestamp when the integration was created (with timezone)",
             example = "2025-01-15T10:30:00+01:00")

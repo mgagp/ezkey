@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,6 +30,7 @@ import org.ezkey.integration.exception.IntegrationCreateValidationException;
 import org.ezkey.integration.exception.IntegrationHasEnrollmentsException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.ezkey.integration.mapper.IntegrationServiceMapper;
+import org.ezkey.service.EntityEligibilityService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,8 @@ class IntegrationServiceTest {
   @Mock private TenantRepository tenantRepository;
 
   @Mock private EnrollmentRepository enrollmentRepository;
+
+  @Mock private EntityEligibilityService eligibilityService;
 
   @InjectMocks private IntegrationService service;
 
@@ -122,7 +126,7 @@ class IntegrationServiceTest {
       ArgumentCaptor<Integration> captor = ArgumentCaptor.forClass(Integration.class);
       verify(repository).save(captor.capture());
       Integration toSave = captor.getValue();
-      assertThat(toSave.getActive()).isTrue();
+      assertThat(toSave.isOperational()).isTrue();
       assertThat(toSave.getCreatedAt()).isNotNull();
       assertThat(toSave.getCreatedAt()).isBeforeOrEqualTo(OffsetDateTime.now());
       assertThat(toSave.getName()).isEqualTo("Name EN");
@@ -159,7 +163,7 @@ class IntegrationServiceTest {
       Integration toSave = captor.getValue();
       assertThat(toSave.getName()).isNull();
       assertThat(toSave.getDescription()).isNull();
-      assertThat(toSave.getActive()).isTrue();
+      assertThat(toSave.isOperational()).isTrue();
       assertThat(toSave.getCreatedAt()).isNotNull();
       assertThat(toSave.getTenant()).isEqualTo(systemTenant);
       assertThat(toSave.getCreatedByAdmin()).isEqualTo(admin);
@@ -179,6 +183,9 @@ class IntegrationServiceTest {
       admin.setTenant(tenant);
 
       when(mapper.toEntity(req)).thenReturn(mapped);
+      doThrow(new TenantInactiveException("inactive tenant"))
+          .when(eligibilityService)
+          .ensureTenantOperational(any(Tenant.class));
 
       assertThatThrownBy(() -> service.createIntegration(req, admin))
           .isInstanceOf(TenantInactiveException.class)

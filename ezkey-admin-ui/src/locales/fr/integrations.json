@@ -2,10 +2,8 @@
   "list": {
     "title": "Intégrations",
     "searchPlaceholder": "Rechercher par nom...",
-    "filterOperational": "Opérationnelles seulement",
-    "filterAll": "Tous les cycles de vie",
     "filterActive": "Actives uniquement",
-    "filterInactive": "Inactives uniquement",
+    "filterAll": "Tous les cycles de vie",
     "filterRetired": "Retirées uniquement",
     "refresh": "Actualiser",
     "createIntegration": "Créer une intégration",
@@ -20,8 +18,8 @@
       "created": "Créé"
     },
     "statusActive": "Active",
-    "statusInactive": "Inactive",
-    "statusRetired": "Retired"
+    "statusRetired": "Retired",
+    "operationalWarningTooltip": "Le tenant est inactif — l'authentification est bloquée pour cette intégration"
   },
   "create": {
     "title": "Créer une intégration",
@@ -66,6 +64,15 @@
     "retireIntegration": "Retirer l'intégration",
     "deleteIntegration": "Supprimer l'intégration",
     "deleteIntro": "La suppression permanente reste exceptionnelle. Retirez d'abord pour préserver l'historique; supprimez seulement si l'enregistrement est réellement jetable et qu'il ne reste plus d'enrôlements.",
+    "operationalWarning": {
+      "tenantInactive": "Le tenant est actuellement inactif — l'authentification sera bloquée pour cette intégration jusqu'à la réactivation du tenant."
+    },
+    "contextHelp": {
+      "retireTitle": "Retirer l'intégration",
+      "retireContent": "Le retrait masque cette intégration des listes opérationnelles et révoque définitivement tous ses enrôlements. L'enregistrement est conservé pour l'historique d'audit. Cette action exige une justification et est irréversible — ne supprimez qu'après retrait, uniquement si l'enregistrement n'a plus de valeur.",
+      "deleteTitle": "Supprimer l'intégration",
+      "deleteContent": "La suppression permanente efface cette intégration retirée et toutes ses données historiques. Ne supprimez que si vous êtes certain que l'enregistrement n'a aucune valeur d'audit ou de conformité. Une justification est obligatoire."
+    },
     "infoId": "ID",
     "infoCode": "Code",
     "infoTenantId": "Tenant ID",

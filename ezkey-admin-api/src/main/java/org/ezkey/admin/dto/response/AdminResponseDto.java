@@ -71,6 +71,8 @@ import java.time.OffsetDateTime;
  * @param active Flag indicating if the administrator is currently active
  * @param createdAt Timestamp when the administrator was created (with timezone)
  * @param lastLoginAt Timestamp of last successful login (null if never logged in)
+ * @param operational Whether this administrator is fully operational (active and, for tenant
+ *     admins, tenant also active)
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.integration.domain.entity.EzkeyAdmin
@@ -115,4 +117,10 @@ public record AdminResponseDto(
             description = "Timestamp of last successful login (null if never logged in)",
             example = "2025-10-20T09:15:00Z",
             nullable = true)
-        OffsetDateTime lastLoginAt) {}
+        OffsetDateTime lastLoginAt,
+    @Schema(
+            description =
+                "Whether this administrator is fully operational (active and, for tenant admins,"
+                    + " tenant also active)",
+            example = "true")
+        Boolean operational) {}

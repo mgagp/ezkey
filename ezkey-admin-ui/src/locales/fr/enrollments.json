@@ -31,7 +31,8 @@
       "keyTier": "Stockage clé"
     },
     "activeYes": "Oui",
-    "activeNo": "Non"
+    "activeNo": "Non",
+    "operationalWarningTooltip": "L'intégration ou le tenant est inactif — l'authentification est bloquée"
   },
   "create": {
     "title": "Nouvel enrôlement",
@@ -167,6 +168,20 @@
     "help": {
       "proofToken": "Jeton cryptographique utilisé par l'appareil mobile pour se lier à cet enrôlement.",
       "bindingChallengeCode": "Code à usage unique que l'appareil doit saisir pour terminer l'enrôlement."
+    },
+    "testAuthBlockedTooltip": "L'authentification est actuellement bloquée — l'intégration ou le tenant est inactif.",
+    "operationalWarning": {
+      "message": "L'intégration ou le tenant parent de cet enrôlement est actuellement inactif. L'authentification de l'utilisateur final est bloquée jusqu'à la réactivation du parent."
+    },
+    "deleteReasonLabel": "Raison (min. 10 caractères, obligatoire pour l'audit)",
+    "deleteReasonPlaceholder": "Raison de la suppression de cet enrôlement...",
+    "contextHelp": {
+      "deactivateTitle": "Désactiver / réactiver l'enrôlement",
+      "deactivateContent": "Désactiver suspend temporairement l'authentification sans modification permanente. L'enrôlement peut être réactivé à tout moment pour rétablir l'accès. Utilisez ce contrôle pour des suspensions temporaires, des investigations ou en cas de perte d'appareil.",
+      "revokeTitle": "Révoquer l'enrôlement",
+      "revokeContent": "La révocation désactive définitivement cet enrôlement. L'association avec la clé de l'appareil est invalidée et ne peut pas être réactivée — un nouvel enrôlement sera nécessaire. À utiliser en cas de perte, vol ou compromission de l'appareil. Une raison est obligatoire pour la traçabilité d'audit.",
+      "deleteTitle": "Supprimer l'enrôlement",
+      "deleteContent": "Supprimer retire entièrement l'enregistrement de l'enrôlement. Cette action est permanente. Une raison est obligatoire pour la traçabilité d'audit. Préférez la révocation (qui conserve l'historique d'audit) plutôt que la suppression pour les actions de sécurité. La suppression est réservée au nettoyage de données de test ou aux demandes RGPD."
     },
     "toastDeleted": "Enrôlement supprimé.",
     "toastDeactivated": "Enrôlement désactivé.",

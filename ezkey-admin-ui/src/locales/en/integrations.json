@@ -2,10 +2,8 @@
   "list": {
     "title": "Integrations",
     "searchPlaceholder": "Search by name...",
-    "filterOperational": "Operational only",
-    "filterAll": "All lifecycle states",
     "filterActive": "Active only",
-    "filterInactive": "Inactive only",
+    "filterAll": "All lifecycle states",
     "filterRetired": "Retired only",
     "refresh": "Refresh",
     "createIntegration": "Create Integration",
@@ -20,8 +18,8 @@
       "created": "Created"
     },
     "statusActive": "Active",
-    "statusInactive": "Inactive",
-    "statusRetired": "Retired"
+    "statusRetired": "Retired",
+    "operationalWarningTooltip": "Tenant is inactive — authentication is blocked for this integration"
   },
   "create": {
     "title": "Create Integration",
@@ -66,6 +64,15 @@
     "retireIntegration": "Retire Integration",
     "deleteIntegration": "Delete Integration",
     "deleteIntro": "Permanent deletion is exceptional. Retire first for historical preservation; delete only when the record is truly disposable and no enrollments remain.",
+    "operationalWarning": {
+      "tenantInactive": "Tenant is currently inactive — authentication will be blocked for this integration until the tenant is reactivated."
+    },
+    "contextHelp": {
+      "retireTitle": "Retire integration",
+      "retireContent": "Retiring removes this integration from normal listings and permanently revokes all its enrollments. The record is preserved for audit history. This action requires a reason and cannot be undone — only delete it after retirement if the record is truly disposable.",
+      "deleteTitle": "Delete integration",
+      "deleteContent": "Permanent deletion erases this retired integration and all its historical data. Only delete when you are certain the record has no audit or compliance value. A reason is required."
+    },
     "infoId": "ID",
     "infoCode": "Code",
     "infoTenantId": "Tenant ID",

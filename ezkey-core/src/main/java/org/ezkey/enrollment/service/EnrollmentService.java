@@ -39,11 +39,9 @@ import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
 import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.SystemIntegrationEnrollmentCreationException;
-import org.ezkey.exception.TenantInactiveException;
-import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
-import org.ezkey.integration.exception.IntegrationLifecycleStateException;
+import org.ezkey.service.EntityEligibilityService;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.ezkey.util.PhoneNumberUtils;
@@ -141,6 +139,7 @@ public class EnrollmentService {
   private final EzkeyCoreProperties ezkeyCoreProperties;
   private final EnrollmentProperties enrollmentProperties;
   private final IntegrationRepository integrationRepository;
+  private final EntityEligibilityService eligibilityService;
 
   // Specialized services for specific operations
   private final EnrollmentBindService bindService;
@@ -154,6 +153,7 @@ public class EnrollmentService {
    * @param ezkeyCoreProperties the ezkey core configuration properties
    * @param enrollmentProperties the enrollment expiration and cleanup configuration
    * @param integrationRepository the JPA repository for integration operations
+   * @param eligibilityService the centralized eligibility service for entity state checks
    * @param bindService the specialized service for binding operations
    * @param verifyService the specialized service for verification operations
    */
@@ -163,6 +163,7 @@ public class EnrollmentService {
       EzkeyCoreProperties ezkeyCoreProperties,
       EnrollmentProperties enrollmentProperties,
       IntegrationRepository integrationRepository,
+      EntityEligibilityService eligibilityService,
       EnrollmentBindService bindService,
       EnrollmentVerifyService verifyService) {
     this.enrollmentRepository = enrollmentRepository;
@@ -170,6 +171,7 @@ public class EnrollmentService {
     this.ezkeyCoreProperties = ezkeyCoreProperties;
     this.enrollmentProperties = enrollmentProperties;
     this.integrationRepository = integrationRepository;
+    this.eligibilityService = eligibilityService;
     this.bindService = bindService;
     this.verifyService = verifyService;
   }
@@ -396,26 +398,8 @@ public class EnrollmentService {
               + " provisioning API endpoints.");
     }
 
-    if (!IntegrationLifecycleStatus.ACTIVE.equals(integration.getLifecycleStatus())) {
-      logger.warn(
-          "Enrollment creation blocked: integration {} lifecycle is {}",
-          request.getIntegrationId(),
-          integration.getLifecycleStatus());
-      throw new IntegrationLifecycleStateException(
-          "Cannot create enrollment for integration in lifecycle state "
-              + integration.getLifecycleStatus()
-              + ". Only ACTIVE integrations accept new enrollments.");
-    }
-
-    // Security: Block enrollment creation for inactive tenants
-    if (integration.getTenant() != null && !integration.getTenant().getActive()) {
-      logger.warn(
-          "Enrollment creation blocked: tenant (ID: {}) is inactive for integration {}",
-          integration.getTenant().getTenantId(),
-          request.getIntegrationId());
-      throw new TenantInactiveException(
-          "Cannot create enrollment for inactive tenant. Contact your Ezkey administrator.");
-    }
+    // Security: Block enrollment creation unless integration is ACTIVE and tenant is active
+    eligibilityService.ensureIntegrationOperational(integration);
 
     // Security validation: Check for existing VERIFIED enrollment
     List<Enrollment> existingVerifiedEnrollments;

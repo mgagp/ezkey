@@ -7,6 +7,7 @@ import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, Qr
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { OperationalWarning } from '@/components/feature/operational-warning';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { AppShell } from '@/components/layout/app-shell';
@@ -15,10 +16,12 @@ import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ContextHelp } from '@/components/ui/context-help';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/auth-context';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useToast } from '@/context/toast-context';
@@ -230,7 +233,7 @@ function DeactivateAdminDialog({
     onClose();
   };
 
-  const reasonTooShort = reason.trim().length > 0 && reason.trim().length < 10;
+  const reasonTooShort = reason.trim().length < 10;
   const params =
     reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
 
@@ -249,14 +252,10 @@ function DeactivateAdminDialog({
             inputId="deactivate-admin-reason"
             value={reason}
             onChange={setReason}
-            label={
-              <>
-                {t('deactivate.reasonLabel')}{' '}
-                <span className="text-fg-muted font-normal">{t('deactivate.reasonHint')}</span>
-              </>
-            }
+            label={t('deactivate.reasonLabel')}
             placeholder={t('deactivate.reasonPlaceholder')}
             showMinLengthError={reasonTooShort}
+            minLengthErrorTone="required"
             childrenAfterInput={<DemoReasonBadges onSelect={setReason} />}
           />
 
@@ -537,6 +536,10 @@ function AdminDetailDialog({
           </InfoRow>
         </dl>
 
+        {adm.adminType !== 'GLOBAL_ADMIN' && adm.active && adm.operational === false && (
+          <OperationalWarning message={t('detail.operationalWarning.tenantInactive')} />
+        )}
+
         {/* Actions */}
         <div className="border-t-2 border-fg/10 pt-4 space-y-3">
           <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('detail.sectionActions')}</h3>
@@ -572,15 +575,21 @@ function AdminDetailDialog({
             )}
 
             {isGlobalAdmin && adm.active && onRequestDeactivate && (
-              <Button
-                variant="destructive"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => onRequestDeactivate(adm)}
-              >
-                <PowerOff className="size-3.5" />
-                {t('detail.deactivate')}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => onRequestDeactivate(adm)}
+                >
+                  <PowerOff className="size-3.5" />
+                  {t('detail.deactivate')}
+                </Button>
+                <ContextHelp
+                  title={t('detail.contextHelp.deactivateTitle')}
+                  content={t('detail.contextHelp.deactivateContent')}
+                />
+              </div>
             )}
 
             {isGlobalAdmin && !adm.active && (
@@ -1348,7 +1357,21 @@ export default function AdminsPage() {
     { header: t('list.columns.email'), key: 'email', render: (r) => <span className="text-xs text-fg-muted">{r.email ?? '—'}</span> },
     { header: t('list.columns.phone'), key: 'phoneNumber', render: (r) => <span className="text-xs text-fg-muted">{r.phoneNumber ?? '—'}</span> },
     { header: t('list.columns.type'), key: 'adminType', sortKey: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
-    { header: t('list.columns.active'), key: 'active', sortKey: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? t('list.activeYes') : t('list.activeNo')}</Badge> },
+    {
+      header: t('list.columns.active'),
+      key: 'active',
+      sortKey: 'active',
+      render: (r) => r.active && r.operational === false ? (
+        <Tooltip content={t('list.operationalWarningTooltip')}>
+          <span className="inline-flex items-center gap-1 border border-warning/40 rounded-sm px-1.5">
+            <Badge variant="success">{t('list.activeYes')}</Badge>
+            <AlertTriangle className="size-4 text-warning" aria-hidden />
+          </span>
+        </Tooltip>
+      ) : (
+        <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? t('list.activeYes') : t('list.activeNo')}</Badge>
+      ),
+    },
     { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
     {
       header: t('list.columns.actions'),

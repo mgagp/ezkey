@@ -17,6 +17,7 @@
     },
     "activeYes": "Yes",
     "activeNo": "No",
+    "operationalWarningTooltip": "Tenant is inactive — this admin's login is blocked",
     "credentials": "Credentials",
     "deactivate": "Deactivate"
   },
@@ -43,8 +44,7 @@
     "title": "Deactivate Admin",
     "confirmMessage": "Are you sure you want to deactivate {{username}}? All active tokens will be revoked immediately.",
     "cannotUndo": "This action cannot be undone from this interface.",
-    "reasonLabel": "Reason",
-    "reasonHint": "(min 10 chars, for audit trail)",
+    "reasonLabel": "Reason (min 10 chars, required for audit)",
     "reasonPlaceholder": "Justification for this action...",
     "cancel": "Cancel",
     "submit": "Deactivate",
@@ -96,7 +96,14 @@
     "recoveryCodesSavedConfirmLabel": "I have saved these recovery codes in a secure location",
     "close": "Close",
     "toastActivated": "Admin \"{{username}}\" activated.",
-    "errorActivate": "Activation failed"
+    "errorActivate": "Activation failed",
+    "operationalWarning": {
+      "tenantInactive": "This admin's tenant is currently inactive. Login attempts by this admin will be rejected until the tenant is reactivated."
+    },
+    "contextHelp": {
+      "deactivateTitle": "Deactivate Admin",
+      "deactivateContent": "Deactivating an admin immediately revokes all their active sessions and blocks future logins. This action is intended for departures, policy violations, or security incidents. A reason is recommended for audit purposes. The account can be reactivated by a Global Admin."
+    }
   },
   "create": {
     "titleGlobal": "New Global Admin",

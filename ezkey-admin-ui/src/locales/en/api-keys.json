@@ -20,7 +20,8 @@
       "expires": "Expires",
       "lastUsed": "Last Used"
     },
-    "revokeTooltip": "Revoke this key"
+    "revokeTooltip": "Revoke this key",
+    "operationalWarningTooltip": "Integration or tenant is inactive — API calls will be rejected"
   },
   "status": {
     "labelActive": "Active",
@@ -31,7 +32,9 @@
     "helpIntegrationKey": "Public identifier for the API key pair; safe to log.",
     "helpIpWhitelist": "Requests restricted to these IP addresses/CIDR ranges.",
     "helpExpiringSoon": "Key expires within 30 days; plan rotation.",
-    "helpRevoked": "Key permanently disabled; cannot be reactivated."
+    "helpRevoked": "Key permanently disabled; cannot be reactivated.",
+    "labelBlockedByParent": "Blocked",
+    "helpBlockedByParent": "The integration or tenant is currently inactive. API requests using this key will be rejected."
   },
   "create": {
     "title": "New API Key",
@@ -69,8 +72,7 @@
     "title": "Revoke API Key",
     "confirm": "Are you sure you want to revoke key",
     "permanent": "Revoking is permanent. Any service using this key will lose access immediately.",
-    "reasonLabel": "Reason",
-    "reasonHint": "(optional — min 10 chars for audit trail)",
+    "reasonLabel": "Reason (min 10 chars, required for audit)",
     "reasonPlaceholder": "e.g. Key compromised, rotating credentials",
     "cancel": "Cancel",
     "revoke": "Revoke",
@@ -100,7 +102,14 @@
     "noActions": "This key is no longer active. No actions available.",
     "labelRevokedAt": "Revoked At",
     "labelRevokedBy": "Revoked By",
-    "toastUpdated": "API key updated."
+    "toastUpdated": "API key updated.",
+    "operationalWarning": {
+      "message": "This API key's parent integration or tenant is currently inactive. API requests using this key will be rejected until the parent is reactivated."
+    },
+    "contextHelp": {
+      "revokeTitle": "Revoke API key",
+      "revokeContent": "Revoking permanently disables this API key. Any service using it will lose Integration API access immediately. A reason is required for the audit trail. Plan key rotation in advance to avoid service interruption — create a replacement key before revoking the old one."
+    }
   },
   "editDialog": {
     "title": "Edit API Key",

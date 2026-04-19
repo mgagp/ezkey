@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
-import { Plus, QrCode, RefreshCw, Search } from 'lucide-react';
+import { AlertTriangle, Plus, QrCode, RefreshCw, Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
@@ -18,6 +18,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/demo-mode-context';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
@@ -536,7 +537,19 @@ export default function EnrollmentsPage() {
         </span>
       ),
     },
-    { header: t('list.columns.status'), key: 'enrollmentStatus', sortKey: 'status', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
+    { header: t('list.columns.status'), key: 'enrollmentStatus', sortKey: 'status', render: (r) => {
+      const showWarning = r.enrollmentStatus === 'VERIFIED' && r.enrollmentActive === true && r.operational === false;
+      return showWarning ? (
+        <Tooltip content={t('list.operationalWarningTooltip')}>
+          <span className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
+            <EnrollmentStatusBadge status={r.enrollmentStatus} />
+            <AlertTriangle className="size-4 text-warning" aria-hidden />
+          </span>
+        </Tooltip>
+      ) : (
+        <EnrollmentStatusBadge status={r.enrollmentStatus} />
+      );
+    } },
     { header: t('list.columns.active'), key: 'enrollmentActive', sortKey: 'active', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? t('list.activeYes') : t('list.activeNo')}</Badge> },
     {
       header: t('list.columns.integration'),

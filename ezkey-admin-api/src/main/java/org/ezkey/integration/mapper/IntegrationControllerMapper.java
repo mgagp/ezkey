@@ -78,6 +78,12 @@ public interface IntegrationControllerMapper {
    * @return the corresponding IntegrationResponseDto
    */
   @Mapping(source = "tenant.tenantId", target = "tenantId")
+  @Mapping(
+      target = "operational",
+      expression =
+          "java(integration.isOperational()"
+              + " && (integration.getTenant() == null"
+              + " || Boolean.TRUE.equals(integration.getTenant().getActive())))")
   IntegrationResponseDto toResponse(Integration integration);
 
   /**

@@ -22,7 +22,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto;
-import org.ezkey.admin.exception.EnrollmentCannotBeDeletedException;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
@@ -37,7 +36,6 @@ import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.audit.util.ClientContext;
-import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -125,7 +123,6 @@ public class EnrollmentController {
   private final IntegrationRepository integrationRepository;
   private final EnrollmentRevocationService enrollmentRevocationService;
   private final EnrollmentUpdateService enrollmentUpdateService;
-  private final AuthAttemptRepository authAttemptRepository;
   private final AuditEntityFkResolver auditEntityFkResolver;
 
   /**
@@ -141,7 +138,6 @@ public class EnrollmentController {
    * @param integrationRepository the integration repository for tenant resolution in audit logs
    * @param enrollmentRevocationService the service for enrollment revocation lifecycle
    * @param enrollmentUpdateService the service for enrollment metadata partial updates
-   * @param authAttemptRepository the repository to check for auth attempts before enrollment delete
    * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
    */
   public EnrollmentController(
@@ -155,7 +151,6 @@ public class EnrollmentController {
       IntegrationRepository integrationRepository,
       EnrollmentRevocationService enrollmentRevocationService,
       EnrollmentUpdateService enrollmentUpdateService,
-      AuthAttemptRepository authAttemptRepository,
       AuditEntityFkResolver auditEntityFkResolver) {
     this.enrollmentService = enrollmentService;
     this.enrollmentMapper = enrollmentMapper;
@@ -167,7 +162,6 @@ public class EnrollmentController {
     this.integrationRepository = integrationRepository;
     this.enrollmentRevocationService = enrollmentRevocationService;
     this.enrollmentUpdateService = enrollmentUpdateService;
-    this.authAttemptRepository = authAttemptRepository;
     this.auditEntityFkResolver = auditEntityFkResolver;
   }
 
@@ -645,7 +639,7 @@ public class EnrollmentController {
       @Parameter(description = "Enrollment ID to delete", example = "1") @PathVariable("id")
           Integer id,
       @Parameter(description = "Audit justification for the deletion (min 10 characters)")
-          @RequestParam(required = false)
+          @RequestParam
           @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
           String reason,
       HttpServletRequest httpRequest) {
@@ -666,13 +660,7 @@ public class EnrollmentController {
       Integer deleteTenantId = resolveTenantId(enrollment.getIntegrationId());
 
       // Business guards: return RFC 9457 instead of DB constraint violation
-      enrollmentRevocationService.assertNotSelfDeletion(principal, id);
-      enrollmentRevocationService.assertNotLinkedAsAdmin(id);
-      if (authAttemptRepository.existsByEnrollmentId(id)) {
-        throw new EnrollmentCannotBeDeletedException(
-            "Enrollment cannot be deleted because it has authentication history. Revoke the"
-                + " enrollment instead.");
-      }
+      enrollmentRevocationService.validateDelete(principal, id);
 
       // Create audit log BEFORE deletion to avoid foreign key constraint violation
       auditLogService.log(

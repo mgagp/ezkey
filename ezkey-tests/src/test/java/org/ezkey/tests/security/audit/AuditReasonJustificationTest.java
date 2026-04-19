@@ -172,6 +172,72 @@ public class AuditReasonJustificationTest extends AbstractSecurityTest {
   }
 
   // -----------------------------------------------------------------------
+  // Test 4 – DELETE integration without reason → 400
+  // -----------------------------------------------------------------------
+
+  @Test
+  @DisplayName("DELETE integration without reason – returns 400 with missing param detail")
+  public void testDeleteIntegrationWithoutReason_returns400() {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    Integer integrationId = testDataFactory.createIntegration();
+
+    Response response =
+        given()
+            .header("Authorization", "Bearer " + adminToken)
+            .when()
+            .delete("/integrations/" + integrationId)
+            .then()
+            .extract()
+            .response();
+
+    assertThat(response.getStatusCode())
+        .as("Missing required 'reason' must return 400")
+        .isEqualTo(400);
+    assertThat(response.jsonPath().getString("type"))
+        .as("Problem type must be validation-failed")
+        .isEqualTo("https://ezkey.io/problems/admin/validation-failed");
+    assertThat(response.jsonPath().getString("detail"))
+        .as("Detail must name the missing parameter")
+        .contains("reason");
+    log.info("Verified: DELETE integration without reason returns 400");
+  }
+
+  // -----------------------------------------------------------------------
+  // Test 5 – DELETE enrollment without reason → 400
+  // -----------------------------------------------------------------------
+
+  @Test
+  @DisplayName("DELETE enrollment without reason – returns 400 with missing param detail")
+  public void testDeleteEnrollmentWithoutReason_returns400() {
+    RestAssuredTestConfig.configureForAdminApi(dockerStackConfig);
+
+    Integer integrationId = testDataFactory.createIntegration();
+    Integer enrollmentId =
+        testDataFactory.createEnrollment(integrationId, "Reason guard test device", false);
+
+    Response response =
+        given()
+            .header("Authorization", "Bearer " + adminToken)
+            .when()
+            .delete("/enrollments/" + enrollmentId)
+            .then()
+            .extract()
+            .response();
+
+    assertThat(response.getStatusCode())
+        .as("Missing required 'reason' must return 400")
+        .isEqualTo(400);
+    assertThat(response.jsonPath().getString("type"))
+        .as("Problem type must be validation-failed")
+        .isEqualTo("https://ezkey.io/problems/admin/validation-failed");
+    assertThat(response.jsonPath().getString("detail"))
+        .as("Detail must name the missing parameter")
+        .contains("reason");
+    log.info("Verified: DELETE enrollment without reason returns 400");
+  }
+
+  // -----------------------------------------------------------------------
   // Helpers
   // -----------------------------------------------------------------------
 

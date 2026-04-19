@@ -296,8 +296,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 204 or 404\", function () {",
-              "    pm.expect([204, 404]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 204, 400 or 404\", function () {",
+              "    pm.expect([204, 400, 404]).to.include(pm.response.code);",
               "});",
               "",
               "if (pm.response.code === 204) {",
@@ -342,7 +342,7 @@
             }
           ]
         },
-        "description": "Immediately revokes an API key, making it unusable for authentication. The key is preserved for audit purposes with revocation metadata.\n\n**Path Parameters:**\n- `keyId` (required): API key ID to revoke\n\n**Use Cases:**\n- Compromised key security incident\n- Key rotation cleanup (after new key is deployed)\n- Decommissioning an application\n\n**Response (204 No Content):**\nNo response body. The key is immediately revoked and cannot be used for authentication.\n\n**Status Codes:**\n- 204: API key revoked successfully\n- 401: Unauthorized - admin token required\n- 404: API key not found"
+        "description": "Immediately revokes an API key, making it unusable for authentication. The key is preserved for audit purposes with revocation metadata.\n\n**Path Parameters:**\n- `keyId` (required): API key ID to revoke\n\n**Query Parameters:**\n- `reason` (optional): Audit justification (min 10, max 500 chars). Enable in Postman to include. Recommended for SOC 2 CC6.3 compliance.\n\n**Use Cases:**\n- Compromised key security incident\n- Key rotation cleanup (after new key is deployed)\n- Decommissioning an application\n\n**Response (204 No Content):**\nNo response body. The key is immediately revoked and cannot be used for authentication.\n\n**Status Codes:**\n- 204: API key revoked successfully\n- 400: Invalid `reason` when provided (must be 10-500 chars)\n- 401: Unauthorized - admin token required\n- 404: API key not found"
       },
       "response": []
     }

@@ -76,7 +76,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     // Assert
     assertThat(dto.apiKeyId()).isEqualTo(TEST_API_KEY_ID);
@@ -113,7 +114,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             revokedAt,
-            revokedBy);
+            revokedBy,
+            null);
 
     // Assert
     assertThat(dto.active()).isFalse();
@@ -139,7 +141,8 @@ class ApiKeyResponseDtoTest {
             null, // no IP whitelist
             null, // not revoked
             null // no revoker
-            );
+            ,
+            null);
 
     // Assert
     assertThat(dto.apiKeyId()).isEqualTo(TEST_API_KEY_ID);
@@ -173,7 +176,8 @@ class ApiKeyResponseDtoTest {
             // used
             TEST_IP_WHITELIST,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     // Assert
     assertThat(dto.lastUsedAt()).isNull();
@@ -197,7 +201,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     // Assert
     assertThat(dto.expiresAt()).isNull();
@@ -221,7 +226,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             null, // no IP restrictions
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     // Assert
     assertThat(dto.ipWhitelist()).isNull();
@@ -244,7 +250,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     ApiKeyResponseDto dto2 =
         new ApiKeyResponseDto(
@@ -259,7 +266,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     ApiKeyResponseDto dto3 =
         new ApiKeyResponseDto(
@@ -274,7 +282,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     // Assert
     assertThat(dto1).isEqualTo(dto2);
@@ -299,7 +308,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     ApiKeyResponseDto dto2 =
         new ApiKeyResponseDto(
@@ -314,7 +324,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     // Assert
     assertThat(dto1.hashCode()).isEqualTo(dto2.hashCode());
@@ -340,7 +351,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             emptyWhitelist,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     // Assert
     assertThat(dto.ipWhitelist()).isNotNull().isEmpty();
@@ -366,7 +378,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             orderedWhitelist,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     // Assert
     assertThat(dto.ipWhitelist()).containsExactly("10.0.0.1", "192.168.1.0/24", "172.16.0.0/16");
@@ -393,7 +406,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             revokedAt,
-            revokedBy);
+            revokedBy,
+            null);
 
     // Assert
     assertThat(dto.active()).isFalse();
@@ -419,7 +433,8 @@ class ApiKeyResponseDtoTest {
             TEST_LAST_USED_AT,
             TEST_IP_WHITELIST,
             TEST_REVOKED_AT,
-            TEST_REVOKED_BY);
+            TEST_REVOKED_BY,
+            null);
 
     // Assert - verify integration context is complete
     assertThat(dto.integrationId()).isEqualTo(TEST_INTEGRATION_ID);

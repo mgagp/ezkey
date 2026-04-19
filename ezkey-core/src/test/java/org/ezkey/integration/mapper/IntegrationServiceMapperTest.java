@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.OffsetDateTime;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
+import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,7 +56,7 @@ class IntegrationServiceMapperTest {
     integration.setCode("test-code");
     integration.setName("Test Name");
     integration.setDescription("Test Description");
-    integration.setActive(true);
+    integration.setLifecycleStatus(IntegrationLifecycleStatus.ACTIVE);
     integration.setCreatedAt(OffsetDateTime.now().minusMinutes(10));
   }
 
@@ -70,7 +71,7 @@ class IntegrationServiceMapperTest {
     assertEquals(integrationCreateRequest.getDescription(), result.getDescription());
     assertNull(result.getId());
     assertNull(result.getCreatedAt());
-    assertTrue(result.getActive());
+    assertTrue(result.isOperational());
   }
 
   @Test
@@ -117,6 +118,6 @@ class IntegrationServiceMapperTest {
 
     assertNull(result.getId());
     assertNull(result.getCreatedAt());
-    assertTrue(result.getActive());
+    assertTrue(result.isOperational());
   }
 }

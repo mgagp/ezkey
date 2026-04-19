@@ -149,7 +149,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
 
       assertThat(response.getStatusCode()).isEqualTo(200);
       assertThat(response.jsonPath().getInt("id")).isEqualTo(integrationId);
-      assertThat(response.jsonPath().getBoolean("active")).isNotNull();
+      assertThat(response.jsonPath().getBoolean("operational")).isNotNull();
       assertThat(response.jsonPath().getString("lifecycleStatus")).isEqualTo("ACTIVE");
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
@@ -506,6 +506,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
               .header(
                   "Authorization",
                   createApiKeyAuthHeader(apiKey.split(":")[0], apiKey.split(":")[1]))
+              .queryParam("reason", "Integration decommissioned during functional test run")
               .when()
               .delete("/integrations/" + integrationId)
               .then()
@@ -616,6 +617,7 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
           given()
               .contentType(ContentType.JSON)
               .header("Authorization", "Bearer " + adminToken)
+              .queryParam("reason", "Integration decommissioned during functional test run")
               .when()
               .delete("/integrations/99999")
               .then()
