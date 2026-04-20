@@ -43,7 +43,6 @@ class AuditLifecycleExceptionHandlerTest {
     assertEquals("Audit lifecycle conflict", body.getTitle());
     assertEquals(
         AdminApiProblemCatalog.BASE + "/audit-lifecycle-conflict", body.getType().toString());
-    assertEquals(
-        "/api/v1/audit-logs/lifecycle/confirm-archived", body.getProperties().get("path"));
+    assertEquals("/api/v1/audit-logs/lifecycle/confirm-archived", body.getProperties().get("path"));
   }
 }

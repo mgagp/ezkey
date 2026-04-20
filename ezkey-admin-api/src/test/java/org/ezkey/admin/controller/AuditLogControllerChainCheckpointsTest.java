@@ -235,24 +235,24 @@ class AuditLogControllerChainCheckpointsTest {
     verify(auditLifecycleService).confirmArchived(request, 1);
   }
 
-    @Test
-    @DisplayName("confirmArchived without admin principal delegates null adminId")
-    void confirmArchived_withoutAdminPrincipal_delegatesNullAdminId() {
-        ArchiveConfirmArchivedRequest request =
-                new ArchiveConfirmArchivedRequest(
-                        null, null, 1L, 2L, "digest-0123456789abcdef", WINDOW_END);
-        ArchiveConfirmArchivedResult result =
-                new ArchiveConfirmArchivedResult(
-                        WINDOW_START, WINDOW_END, 2, "digest-0123456789abcdef", WINDOW_END, 99L);
+  @Test
+  @DisplayName("confirmArchived without admin principal delegates null adminId")
+  void confirmArchived_withoutAdminPrincipal_delegatesNullAdminId() {
+    ArchiveConfirmArchivedRequest request =
+        new ArchiveConfirmArchivedRequest(
+            null, null, 1L, 2L, "digest-0123456789abcdef", WINDOW_END);
+    ArchiveConfirmArchivedResult result =
+        new ArchiveConfirmArchivedResult(
+            WINDOW_START, WINDOW_END, 2, "digest-0123456789abcdef", WINDOW_END, 99L);
 
-        when(auditLifecycleService.confirmArchived(eq(request), eq(null))).thenReturn(result);
+    when(auditLifecycleService.confirmArchived(eq(request), eq(null))).thenReturn(result);
 
-        ResponseEntity<ArchiveConfirmArchivedResult> response = controller.confirmArchived(request);
+    ResponseEntity<ArchiveConfirmArchivedResult> response = controller.confirmArchived(request);
 
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals(result, response.getBody());
-        verify(auditLifecycleService).confirmArchived(request, null);
-    }
+    assertEquals(200, response.getStatusCode().value());
+    assertEquals(result, response.getBody());
+    verify(auditLifecycleService).confirmArchived(request, null);
+  }
 
   private static AuditChainCheckpoint createCheckpoint(long id) {
     AuditChainCheckpoint c = new AuditChainCheckpoint();

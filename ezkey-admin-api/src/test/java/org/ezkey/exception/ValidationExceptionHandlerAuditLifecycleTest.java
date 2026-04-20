@@ -43,7 +43,6 @@ class ValidationExceptionHandlerAuditLifecycleTest {
     assertEquals(ex.getMessage(), body.getDetail());
     assertEquals(AdminApiProblemCatalog.TITLE_INVALID_ARGUMENT, body.getTitle());
     assertEquals(AdminApiProblemCatalog.TYPE_INVALID_ARGUMENT, body.getType().toString());
-    assertEquals(
-        "/api/v1/audit-logs/lifecycle/confirm-archived", body.getProperties().get("path"));
+    assertEquals("/api/v1/audit-logs/lifecycle/confirm-archived", body.getProperties().get("path"));
   }
 }

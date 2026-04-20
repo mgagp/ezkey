@@ -321,7 +321,7 @@ public class AuditLifecycleService {
     AuditChainCheckpoint newest = sealedCheckpoints.get(sealedCheckpoints.size() - 1);
     return new ArchiveEligibilityResult(
         archiveProperties.isExternalArchivalEnabled(),
-      confirmationRequired,
+        confirmationRequired,
         sealedCheckpoints.size(),
         oldest.getWindowStart(),
         newest.getWindowEnd(),
