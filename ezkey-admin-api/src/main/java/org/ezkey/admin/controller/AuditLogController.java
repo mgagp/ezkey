@@ -12,6 +12,8 @@ package org.ezkey.admin.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,6 +24,9 @@ import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.EventTypeFamily;
+import org.ezkey.audit.dto.ArchiveConfirmArchivedRequest;
+import org.ezkey.audit.dto.ArchiveConfirmArchivedResult;
+import org.ezkey.audit.dto.ArchiveEligibilityResult;
 import org.ezkey.audit.dto.ArchiveSealRequest;
 import org.ezkey.audit.dto.ArchiveSealResult;
 import org.ezkey.audit.dto.AuditChainCheckpointResponseDto;
@@ -44,6 +49,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -445,7 +451,7 @@ public class AuditLogController {
         @ApiResponse(responseCode = "200", description = "Integrity check completed"),
         @ApiResponse(
             responseCode = "400",
-            description = "Date range required — provide from and to as ISO-8601"),
+            description = "Date range required -- provide from and to as ISO-8601"),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
       })
@@ -544,7 +550,7 @@ public class AuditLogController {
         @ApiResponse(responseCode = "200", description = "Chain verification completed"),
         @ApiResponse(
             responseCode = "400",
-            description = "Date range required — provide from and to as ISO-8601"),
+            description = "Date range required -- provide from and to as ISO-8601"),
         @ApiResponse(responseCode = "401", description = "Not authenticated"),
         @ApiResponse(responseCode = "403", description = "Not a Global Admin")
       })
@@ -590,16 +596,16 @@ public class AuditLogController {
       summary = "Seal an audit chain period for archival",
       description =
           "Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping "
-              + "the corresponding DB partition. Runs a mandatory pre-flight integrity check — "
+              + "the corresponding DB partition. Runs a mandatory pre-flight integrity check -- "
               + "rejected if any violation is detected. Returns the seal HMAC to include in the "
               + "Git archive manifest. Global Admin only.\n\n"
-              + "**Period identification — two alternative modes:**\n"
+              + "**Period identification -- two alternative modes:**\n"
               + "- **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` "
               + "(exclusive) as ISO-8601 timestamps.\n"
               + "- **Checkpoint ID mode**: provide `checkpointIdFrom` and `checkpointIdTo` "
               + "(both inclusive integers). The service resolves the effective time range from "
               + "those checkpoints automatically. Ergonomic when working directly with the "
-              + "database — short IDs are easier to read than full timestamps.\n\n"
+              + "database -- short IDs are easier to read than full timestamps.\n\n"
               + "Exactly one mode must be used. Providing both is an error.")
   @ApiResponses(
       value = {
@@ -608,23 +614,97 @@ public class AuditLogController {
             responseCode = "400",
             description =
                 "Invalid request: conflicting modes, missing required fields, or no checkpoints "
-                    + "found for the given ID range"),
+                    + "found for the given ID range",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Chain integrity violation detected — resolve before sealing"),
-        @ApiResponse(responseCode = "401", description = "Not authenticated"),
-        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+            description = "Chain integrity violation detected -- resolve before sealing",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Not authenticated",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Not a Global Admin",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
       })
   public ResponseEntity<ArchiveSealResult> sealArchive(
       @Valid @RequestBody ArchiveSealRequest request) {
-    try {
-      ArchiveSealResult result = auditLifecycleService.sealArchive(request);
-      return ResponseEntity.ok(result);
-    } catch (IllegalArgumentException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-    } catch (IllegalStateException e) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
-    }
+    return ResponseEntity.ok(auditLifecycleService.sealArchive(request));
+  }
+
+  /**
+   * Returns the current archive-eligibility summary for future archival automation.
+   *
+   * @return archive eligibility summary for the current sealed tranche
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @GetMapping("/lifecycle/archive-eligibility")
+  @Operation(
+      summary = "Get archive eligibility summary",
+      description =
+          "Returns the current backend lifecycle summary used by future archival automation. "
+              + "This endpoint does not materialize an export bundle; it reports whether external "
+              + "archival is enabled and which sealed checkpoint tranche currently awaits "
+              + "confirmation.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Archive eligibility returned"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Not authenticated",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Not a Global Admin",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+      })
+  public ResponseEntity<ArchiveEligibilityResult> getArchiveEligibility() {
+    return ResponseEntity.ok(auditLifecycleService.getArchiveEligibility());
+  }
+
+  /**
+   * Confirms that a sealed audit tranche has been archived externally.
+   *
+   * @param request confirmation payload identifying the sealed tranche and archive digest
+   * @return confirmation result with exported checkpoint count and audit metadata
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @PostMapping("/lifecycle/confirm-archived")
+  @Operation(
+      summary = "Confirm externally archived audit tranche",
+      description =
+          "Marks a sealed checkpoint tranche as EXPORTED after an external archival workflow has"
+              + " successfully persisted the corresponding bundle. Supports both timestamp range"
+              + " and checkpoint ID identification modes, mirroring seal-archive. Global Admin"
+              + " only.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Archive confirmation recorded"),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid request: conflicting modes, missing required fields, or no checkpoints"
+                    + " found",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Checkpoint state conflict or external archival disabled by policy",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Not authenticated",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Not a Global Admin",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+      })
+  public ResponseEntity<ArchiveConfirmArchivedResult> confirmArchived(
+      @Valid @RequestBody ArchiveConfirmArchivedRequest request) {
+    return ResponseEntity.ok(
+        auditLifecycleService.confirmArchived(request, extractRequesterAdminId()));
   }
 
   /**
@@ -650,13 +730,13 @@ public class AuditLogController {
               + "it into the chain with the admin's justification. Use when the system was "
               + "offline longer than the scheduler lookback window. Must be called before the "
               + "scheduler fills the gap with regular checkpoints. Global Admin only.\n\n"
-              + "**Gap start — two alternative modes:**\n"
+              + "**Gap start -- two alternative modes:**\n"
               + "- **Timestamp mode**: provide `gapStart` as an ISO-8601 timestamp (the moment "
               + "the system went offline).\n"
               + "- **Anchor checkpoint mode**: provide `anchorCheckpointId`, the "
               + "`checkpoint_id` of the last checkpoint recorded before the downtime. The "
               + "service derives `gapStart = anchorCheckpoint.window_end` automatically. "
-              + "Ergonomic when working directly with the database — look up the last "
+              + "Ergonomic when working directly with the database -- look up the last "
               + "checkpoint ID before the gap and pass it directly, no timestamp extraction "
               + "needed.\n\n"
               + "`gapEnd` is always a timestamp when provided. In anchor checkpoint mode it is "
@@ -672,23 +752,24 @@ public class AuditLogController {
             responseCode = "400",
             description =
                 "Invalid request: conflicting modes, missing required fields, audit entries "
-                    + "found in gap period, or anchor checkpoint not found"),
+                    + "found in gap period, or anchor checkpoint not found",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "Conflicting regular checkpoints already exist in the gap period"),
-        @ApiResponse(responseCode = "401", description = "Not authenticated"),
-        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+            description = "Conflicting regular checkpoints already exist in the gap period",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Not authenticated",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Not a Global Admin",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
       })
   public ResponseEntity<GapDeclarationResult> declareGap(
       @Valid @RequestBody GapDeclarationRequest request) {
-    try {
-      GapDeclarationResult result = auditLifecycleService.declareGap(request);
-      return ResponseEntity.ok(result);
-    } catch (IllegalArgumentException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
-    } catch (IllegalStateException e) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
-    }
+    return ResponseEntity.ok(auditLifecycleService.declareGap(request));
   }
 
   /**
@@ -707,6 +788,18 @@ public class AuditLogController {
     Object principal = auth.getPrincipal();
     if (principal instanceof AdminPrincipal adminPrincipal) {
       return adminPrincipal.tenantId();
+    }
+    return null;
+  }
+
+  private Integer extractRequesterAdminId() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || auth.getPrincipal() == null) {
+      return null;
+    }
+    Object principal = auth.getPrincipal();
+    if (principal instanceof AdminPrincipal adminPrincipal) {
+      return adminPrincipal.adminId();
     }
     return null;
   }

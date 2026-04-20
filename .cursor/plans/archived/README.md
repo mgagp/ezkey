@@ -76,6 +76,31 @@ validated for operational use.
 
 ---
 
+### 2026-04 - Audit chain lifecycle → single lifecycle refactoring
+
+**Completion Date:** April 19, 2026  
+**Status:** ✅ **COMPLETED** (implemented; build/test/spec validated during iterative backend work)
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-04/audit_chain_lifecycle_b42e184a.plan.md** | Original audit chain lifecycle plan (archive seal + gap declaration) closed as part of the broader opinionated audit lifecycle refactoring | ✅ Completed |
+
+**What was implemented:**
+
+- `ezkey-core`: checkpoint lifecycle state model (`ACTIVE`, `SEALED`, `EXPORTED`, `PURGEABLE`, `PURGED`), lifecycle metadata on checkpoints, lifecycle automation service, lifecycle-aware purge scheduler, lifecycle-only purge guard.
+- `ezkey-admin-api`: lifecycle endpoints for seal, gap declaration, archive eligibility, and confirm-archived; RFC 9457 `ProblemDetail` contracts aligned in OpenAPI source annotations.
+- Configuration/docs: `ezkey.audit.archive.*` became the active policy contract; legacy age-only cleanup posture removed from active backend configuration and documentation.
+- Tests: targeted service/controller coverage and elective lifecycle observation groundwork.
+
+**Deliberately left out of this completed slice:**
+
+- actual external export execution / bundle streaming
+- Admin UI and Postman cleanup for the new lifecycle surface
+
+**Canonical references going forward:** [`docs/AUDIT_LOG_LIFECYCLE_REFRAMING.md`](../../../docs/AUDIT_LOG_LIFECYCLE_REFRAMING.md), [`docs/AUDIT_LOG_LIFECYCLE_NEXT_SESSION_BRIEF.md`](../../../docs/AUDIT_LOG_LIFECYCLE_NEXT_SESSION_BRIEF.md).
+
+---
+
 ### 2026-04 - Dashboard enrollment widget (integrity + operator story)
 
 **Completion Date:** April 14, 2026  

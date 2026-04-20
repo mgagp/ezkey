@@ -36,6 +36,8 @@ import org.springframework.stereotype.Repository;
 public interface AuditLogRepository
     extends JpaRepository<AuditLog, Long>, JpaSpecificationExecutor<AuditLog> {
 
+  boolean existsByCreatedAtBefore(OffsetDateTime cutoffDate);
+
   /**
    * Delete audit logs older than the specified date.
    *

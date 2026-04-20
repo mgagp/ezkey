@@ -20,7 +20,7 @@ In a distributed deployment with multiple Admin API instances:
 | `checkAndPromotePendingKeys()` | **5 seconds** | 🔴 Critical | Short, transactional | ~17,280 |
 | `checkAndRotate()` | Daily 2 AM | 🟡 Important | Short, transactional | 1 |
 | `processReencryptionBatches()` | Daily 3 AM | 🟡 Important | Batch, transactional | 1 |
-| `cleanupOldAuditLogs()` | Daily 2 AM | 🟢 Maintenance | Short, transactional | 1 |
+| `purgeLifecycleEligibleAuditLogs()` | Daily 2 AM | 🟢 Maintenance | Short, transactional | 1 |
 
 **Key Observations:**
 - All jobs are **short-lived** (seconds, not minutes)
@@ -87,7 +87,7 @@ ShedLock's "lock per execution" model means:
 │  │  │ KEY_PROMOTION     │ 12:00:05        │ 12:00:00      │ A      ││   │
 │  │  │ KEY_ROTATION      │ 02:01:00        │ 02:00:00      │ B      ││   │
 │  │  │ REENCRYPTION      │ 03:01:00        │ 03:00:00      │ C      ││   │
-│  │  │ AUDIT_CLEANUP     │ 02:01:00        │ 02:00:00      │ A      ││   │
+│  │  │ AUDIT_LIFECYCLE_PURGE │ 02:01:00    │ 02:00:00      │ A      ││   │
 │  │  └─────────────────────────────────────────────────────────────┘│   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                                                          │
@@ -155,7 +155,7 @@ CREATE TABLE ezkey_shedlock (
 COMMENT ON TABLE ezkey_shedlock IS 
     'Distributed lock table for scheduled job coordination (ShedLock library)';
 COMMENT ON COLUMN ezkey_shedlock.name IS 
-    'Job identifier: KEY_PROMOTION, KEY_ROTATION, REENCRYPTION, AUDIT_CLEANUP';
+    'Job identifier: KEY_PROMOTION, KEY_ROTATION, REENCRYPTION, AUDIT_LIFECYCLE_PURGE';
 COMMENT ON COLUMN ezkey_shedlock.lock_until IS 
     'Lock expiry timestamp - allows automatic failover if instance crashes';
 COMMENT ON COLUMN ezkey_shedlock.locked_at IS 
@@ -279,20 +279,20 @@ public void processReencryptionBatches() {
 }
 ```
 
-#### AuditLogCleanupScheduler.java
+#### AuditLifecyclePurgeScheduler.java
 
 ```java
 /**
- * Scheduled audit log cleanup. Daily at 2 AM.
+ * Scheduled audit lifecycle purge. Daily at 2 AM.
  * Only one instance executes at a time.
  */
-@Scheduled(cron = "${ezkey.audit.cleanup.cron:0 0 2 * * ?}")
+@Scheduled(cron = "${ezkey.audit.archive.purge.cron:0 0 2 * * ?}")
 @SchedulerLock(
-    name = "AUDIT_CLEANUP",
+    name = "AUDIT_LIFECYCLE_PURGE",
     lockAtMostFor = "PT10M",     // Max 10 minutes
     lockAtLeastFor = "PT1M"      // Min 1 minute
 )
-public void cleanupOldAuditLogs() {
+public void purgeLifecycleEligibleAuditLogs() {
     // Existing code unchanged
 }
 ```
@@ -306,7 +306,7 @@ public void cleanupOldAuditLogs() {
 | `KEY_PROMOTION` | 1 minute | 4 seconds | Runs every 5s, fast execution |
 | `KEY_ROTATION` | 10 minutes | 1 minute | Daily, includes backup |
 | `REENCRYPTION` | 30 minutes | 1 minute | Batch processing |
-| `AUDIT_CLEANUP` | 10 minutes | 1 minute | Daily maintenance |
+| `AUDIT_LIFECYCLE_PURGE` | 10 minutes | 1 minute | Daily maintenance |
 
 **lockAtMostFor**: Safety valve - if instance crashes, lock auto-releases after this duration.
 
@@ -440,7 +440,7 @@ The full design is preserved in [Appendix A](#appendix-a-custom-leader-election-
 - [ ] Add `@SchedulerLock` to `KeyRotationService.checkAndPromotePendingKeys()`
 - [ ] Add `@SchedulerLock` to `KeyRotationService.checkAndRotate()`
 - [ ] Add `@SchedulerLock` to `ReencryptionService.processReencryptionBatches()`
-- [ ] Add `@SchedulerLock` to `AuditLogCleanupScheduler.cleanupOldAuditLogs()`
+- [ ] Add `@SchedulerLock` to `AuditLifecyclePurgeScheduler.purgeLifecycleEligibleAuditLogs()`
 - [ ] Add ShedLockHealthIndicator (optional)
 - [ ] Test with 2+ Admin API instances
 - [ ] Document in OPERATIONAL.md

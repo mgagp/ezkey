@@ -21,6 +21,10 @@ import static org.mockito.Mockito.when;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.audit.dto.ArchiveConfirmArchivedRequest;
+import org.ezkey.audit.dto.ArchiveConfirmArchivedResult;
+import org.ezkey.audit.dto.ArchiveEligibilityResult;
 import org.ezkey.audit.dto.AuditChainCheckpointResponseDto;
 import org.ezkey.audit.dto.CheckpointType;
 import org.ezkey.audit.integrity.AuditChainCheckpoint;
@@ -28,9 +32,11 @@ import org.ezkey.audit.integrity.AuditChainCheckpointService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
+import org.ezkey.audit.integrity.CheckpointLifecycleState;
 import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
 import org.ezkey.audit.mapper.AuditLogMapper;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +48,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Unit tests for {@link AuditLogController#getChainCheckpoints}.
@@ -69,6 +77,7 @@ class AuditLogControllerChainCheckpointsTest {
 
   @BeforeEach
   void setUp() {
+    SecurityContextHolder.clearContext();
     controller =
         new AuditLogController(
             auditLogService,
@@ -98,6 +107,7 @@ class AuditLogControllerChainCheckpointsTest {
             "prev",
             "chain",
             OffsetDateTime.now(ZoneOffset.UTC),
+            CheckpointLifecycleState.ACTIVE,
             CheckpointType.REGULAR,
             null);
 
@@ -187,6 +197,61 @@ class AuditLogControllerChainCheckpointsTest {
         "Date range is required for verification. Provide from (inclusive) and to (exclusive) as"
             + " ISO-8601.",
         ex.getMessage());
+  }
+
+  @Test
+  @DisplayName("getArchiveEligibility returns 200 and delegates to lifecycle service")
+  void getArchiveEligibility_returnsSummary() {
+    ArchiveEligibilityResult result =
+        new ArchiveEligibilityResult(true, true, 2, WINDOW_START, WINDOW_END, 1L, 2L);
+    when(auditLifecycleService.getArchiveEligibility()).thenReturn(result);
+
+    ResponseEntity<ArchiveEligibilityResult> response = controller.getArchiveEligibility();
+
+    assertEquals(200, response.getStatusCode().value());
+    assertEquals(result, response.getBody());
+    verify(auditLifecycleService).getArchiveEligibility();
+  }
+
+  @Test
+  @DisplayName("confirmArchived returns 200 and delegates to lifecycle service")
+  void confirmArchived_delegatesToLifecycleService() {
+    Authentication auth = org.mockito.Mockito.mock(Authentication.class);
+    when(auth.getPrincipal()).thenReturn(new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
+    SecurityContextHolder.getContext().setAuthentication(auth);
+
+    ArchiveConfirmArchivedRequest request =
+        new ArchiveConfirmArchivedRequest(
+            null, null, 1L, 2L, "digest-0123456789abcdef", WINDOW_END);
+    ArchiveConfirmArchivedResult result =
+        new ArchiveConfirmArchivedResult(
+            WINDOW_START, WINDOW_END, 2, "digest-0123456789abcdef", WINDOW_END, 99L);
+    when(auditLifecycleService.confirmArchived(eq(request), eq(1))).thenReturn(result);
+
+    ResponseEntity<ArchiveConfirmArchivedResult> response = controller.confirmArchived(request);
+
+    assertEquals(200, response.getStatusCode().value());
+    assertEquals(result, response.getBody());
+    verify(auditLifecycleService).confirmArchived(request, 1);
+  }
+
+  @Test
+  @DisplayName("confirmArchived without admin principal delegates null adminId")
+  void confirmArchived_withoutAdminPrincipal_delegatesNullAdminId() {
+    ArchiveConfirmArchivedRequest request =
+        new ArchiveConfirmArchivedRequest(
+            null, null, 1L, 2L, "digest-0123456789abcdef", WINDOW_END);
+    ArchiveConfirmArchivedResult result =
+        new ArchiveConfirmArchivedResult(
+            WINDOW_START, WINDOW_END, 2, "digest-0123456789abcdef", WINDOW_END, 99L);
+
+    when(auditLifecycleService.confirmArchived(eq(request), eq(null))).thenReturn(result);
+
+    ResponseEntity<ArchiveConfirmArchivedResult> response = controller.confirmArchived(request);
+
+    assertEquals(200, response.getStatusCode().value());
+    assertEquals(result, response.getBody());
+    verify(auditLifecycleService).confirmArchived(request, null);
   }
 
   private static AuditChainCheckpoint createCheckpoint(long id) {

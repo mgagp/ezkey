@@ -82,6 +82,7 @@ public enum EventTypeFamily {
       EventType.TENANT_ACTIVATED),
   AUDIT_CHAIN(
       EventType.AUDIT_CHAIN_ARCHIVE_SEALED,
+      EventType.AUDIT_CHAIN_ARCHIVE_EXPORTED,
       EventType.AUDIT_CHAIN_GAP_DECLARED,
       EventType.AUDIT_CHAIN_GAP_PENDING);
 

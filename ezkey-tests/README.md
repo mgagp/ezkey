@@ -309,6 +309,9 @@ This test validates:
 - Allows unrestricted testing in any order and frequency
 - No rate limit constraints
 - Synchronization and retry mechanisms remain active (defense in depth)
+- Time-compressed scheduled behavior: 1-minute audit checkpoints and 10-minute lifecycle
+  automation so a default clean start exercises the audit lifecycle mechanisms instead of leaving
+  them dormant for days or months
 
 **Use Cases**:
 - Development and debugging

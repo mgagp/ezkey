@@ -103,6 +103,7 @@ public enum EventType {
 
   // Audit chain lifecycle events
   AUDIT_CHAIN_ARCHIVE_SEALED, // Audit partition sealed prior to archival and partition drop
+  AUDIT_CHAIN_ARCHIVE_EXPORTED, // External archival workflow confirmed retrieval of sealed range
   AUDIT_CHAIN_GAP_DECLARED, // Admin-declared downtime gap formally documented in the chain
   AUDIT_CHAIN_GAP_PENDING // Scheduler detected an undeclared gap before its lookback window
 }

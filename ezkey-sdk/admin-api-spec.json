@@ -1825,7 +1825,7 @@
           "Audit Logs"
         ],
         "summary": "Seal an audit chain period for archival",
-        "description": "Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping the corresponding DB partition. Runs a mandatory pre-flight integrity check — rejected if any violation is detected. Returns the seal HMAC to include in the Git archive manifest. Global Admin only.\n\n**Period identification — two alternative modes:**\n- **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` (exclusive) as ISO-8601 timestamps.\n- **Checkpoint ID mode**: provide `checkpointIdFrom` and `checkpointIdTo` (both inclusive integers). The service resolves the effective time range from those checkpoints automatically. Ergonomic when working directly with the database — short IDs are easier to read than full timestamps.\n\nExactly one mode must be used. Providing both is an error.",
+        "description": "Marks all chain checkpoints in the specified period as ARCHIVE_SEAL prior to dropping the corresponding DB partition. Runs a mandatory pre-flight integrity check -- rejected if any violation is detected. Returns the seal HMAC to include in the Git archive manifest. Global Admin only.\n\n**Period identification -- two alternative modes:**\n- **Timestamp mode**: provide `periodStart` (inclusive) and `periodEnd` (exclusive) as ISO-8601 timestamps.\n- **Checkpoint ID mode**: provide `checkpointIdFrom` and `checkpointIdTo` (both inclusive integers). The service resolves the effective time range from those checkpoints automatically. Ergonomic when working directly with the database -- short IDs are easier to read than full timestamps.\n\nExactly one mode must be used. Providing both is an error.",
         "operationId": "sealArchive",
         "requestBody": {
           "content": {
@@ -1853,17 +1853,17 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveSealResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
           },
           "409": {
-            "description": "Chain integrity violation detected — resolve before sealing",
+            "description": "Chain integrity violation detected -- resolve before sealing",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveSealResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1873,7 +1873,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveSealResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1883,7 +1883,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveSealResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1897,7 +1897,7 @@
           "Audit Logs"
         ],
         "summary": "Declare a downtime gap in the audit chain",
-        "description": "Creates a single GAP_DECLARATION checkpoint covering the specified period and signs it into the chain with the admin's justification. Use when the system was offline longer than the scheduler lookback window. Must be called before the scheduler fills the gap with regular checkpoints. Global Admin only.\n\n**Gap start — two alternative modes:**\n- **Timestamp mode**: provide `gapStart` as an ISO-8601 timestamp (the moment the system went offline).\n- **Anchor checkpoint mode**: provide `anchorCheckpointId`, the `checkpoint_id` of the last checkpoint recorded before the downtime. The service derives `gapStart = anchorCheckpoint.window_end` automatically. Ergonomic when working directly with the database — look up the last checkpoint ID before the gap and pass it directly, no timestamp extraction needed.\n\n`gapEnd` is always a timestamp when provided. In anchor checkpoint mode it is **optional**: if omitted, the service auto-derives it as the `window_start` of the first checkpoint that exists after the anchor (the boundary between the undeclared gap and the scheduler's catch-up checkpoints). If no such checkpoint exists yet, falls back to the start of the current 5-minute window. Exactly one of `gapStart` or `anchorCheckpointId` must be provided.",
+        "description": "Creates a single GAP_DECLARATION checkpoint covering the specified period and signs it into the chain with the admin's justification. Use when the system was offline longer than the scheduler lookback window. Must be called before the scheduler fills the gap with regular checkpoints. Global Admin only.\n\n**Gap start -- two alternative modes:**\n- **Timestamp mode**: provide `gapStart` as an ISO-8601 timestamp (the moment the system went offline).\n- **Anchor checkpoint mode**: provide `anchorCheckpointId`, the `checkpoint_id` of the last checkpoint recorded before the downtime. The service derives `gapStart = anchorCheckpoint.window_end` automatically. Ergonomic when working directly with the database -- look up the last checkpoint ID before the gap and pass it directly, no timestamp extraction needed.\n\n`gapEnd` is always a timestamp when provided. In anchor checkpoint mode it is **optional**: if omitted, the service auto-derives it as the `window_start` of the first checkpoint that exists after the anchor (the boundary between the undeclared gap and the scheduler's catch-up checkpoints). If no such checkpoint exists yet, falls back to the start of the current 5-minute window. Exactly one of `gapStart` or `anchorCheckpointId` must be provided.",
         "operationId": "declareGap",
         "requestBody": {
           "content": {
@@ -1925,7 +1925,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/GapDeclarationResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1935,7 +1935,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/GapDeclarationResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1945,7 +1945,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/GapDeclarationResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1955,7 +1955,79 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/GapDeclarationResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/lifecycle/confirm-archived": {
+      "post": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Confirm externally archived audit tranche",
+        "description": "Marks a sealed checkpoint tranche as EXPORTED after an external archival workflow has successfully persisted the corresponding bundle. Supports both timestamp range and checkpoint ID identification modes, mirroring seal-archive. Global Admin only.",
+        "operationId": "confirmArchived",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveConfirmArchivedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Archive confirmation recorded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveConfirmArchivedResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request: conflicting modes, missing required fields, or no checkpoints found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Checkpoint state conflict or external archival disabled by policy",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -4042,6 +4114,7 @@
                 "TENANT_DEACTIVATED",
                 "TENANT_ACTIVATED",
                 "AUDIT_CHAIN_ARCHIVE_SEALED",
+                "AUDIT_CHAIN_ARCHIVE_EXPORTED",
                 "AUDIT_CHAIN_GAP_DECLARED",
                 "AUDIT_CHAIN_GAP_PENDING"
               ]
@@ -4426,6 +4499,48 @@
         }
       }
     },
+    "/api/v1/audit-logs/lifecycle/archive-eligibility": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Get archive eligibility summary",
+        "description": "Returns the current backend lifecycle summary used by future archival automation. This endpoint does not materialize an export bundle; it reports whether external archival is enabled and which sealed checkpoint tranche currently awaits confirmation.",
+        "operationId": "getArchiveEligibility",
+        "responses": {
+          "200": {
+            "description": "Archive eligibility returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveEligibilityResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit-logs/integrity-check": {
       "get": {
         "tags": [
@@ -4468,7 +4583,7 @@
             }
           },
           "400": {
-            "description": "Date range required — provide from and to as ISO-8601",
+            "description": "Date range required -- provide from and to as ISO-8601",
             "content": {
               "*/*": {
                 "schema": {
@@ -4542,7 +4657,7 @@
             }
           },
           "400": {
-            "description": "Date range required — provide from and to as ISO-8601",
+            "description": "Date range required -- provide from and to as ISO-8601",
             "content": {
               "*/*": {
                 "schema": {
@@ -5758,6 +5873,67 @@
           },
           "justification": {
             "type": "string"
+          }
+        }
+      },
+      "ArchiveConfirmArchivedRequest": {
+        "type": "object",
+        "properties": {
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checkpointIdFrom": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "checkpointIdTo": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "exportBundleDigest": {
+            "type": "string",
+            "maxLength": 88,
+            "minLength": 16
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "exportBundleDigest"
+        ]
+      },
+      "ArchiveConfirmArchivedResult": {
+        "type": "object",
+        "properties": {
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checkpointsExported": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "exportBundleDigest": {
+            "type": "string"
+          },
+          "exportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "auditLogId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -7278,6 +7454,7 @@
               "TENANT_DEACTIVATED",
               "TENANT_ACTIVATED",
               "AUDIT_CHAIN_ARCHIVE_SEALED",
+              "AUDIT_CHAIN_ARCHIVE_EXPORTED",
               "AUDIT_CHAIN_GAP_DECLARED",
               "AUDIT_CHAIN_GAP_PENDING"
             ]
@@ -7414,6 +7591,37 @@
           }
         }
       },
+      "ArchiveEligibilityResult": {
+        "type": "object",
+        "properties": {
+          "externalArchivalEnabled": {
+            "type": "boolean"
+          },
+          "confirmationRequired": {
+            "type": "boolean"
+          },
+          "sealedCheckpointCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "oldestSealedWindowStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "newestSealedWindowEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checkpointIdFrom": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "checkpointIdTo": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ChainVerificationReport": {
         "type": "object",
         "properties": {
@@ -7532,6 +7740,16 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "lifecycleState": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SEALED",
+              "EXPORTED",
+              "PURGEABLE",
+              "PURGED"
+            ]
           },
           "checkpointType": {
             "type": "string",

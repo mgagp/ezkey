@@ -26,6 +26,22 @@ todos:
 isProject: false
 ---
 
+> Status: COMPLETED - 2026-04-19
+
+> Closure note: the initial archive-seal / gap-declaration scope was carried forward into the
+> broader single-lifecycle refactoring. The resulting implementation now covers lifecycle states,
+> policy-driven automation, lifecycle-only purge, export-facing service/API contracts, updated
+> configuration docs, and focused unit/elective tests. External export execution and UI polish
+> remain intentionally out of scope for this completed slice.
+
+> Architectural decision note - 2026-04-19: keep the lifecycle timing contract based on
+> `Period` for `ezkey.audit.archive.retention-period`, `seal-delay`, and `purge-delay`.
+> A short impact review confirmed that switching to `Duration`, or duplicating the same policy in
+> both `Period` and `Duration` forms, would mainly introduce accidental complexity for limited
+> practical gain. The current `docker-test` profile already provides a reasonable best-effort time
+> compression through scheduler cadence, which is sufficient for local exploratory testing. Longer
+> lived environments remain the preferred place to validate natural lifecycle progression.
+
 # Plan : Gestion du cycle de vie de la chaîne d'audit
 
 ## Contexte et diagnostic

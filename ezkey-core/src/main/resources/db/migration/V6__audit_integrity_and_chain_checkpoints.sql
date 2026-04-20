@@ -68,7 +68,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_missing_hmac
 -- 3. Existing entries will have entry_hmac = NULL (acceptable in dev mode)
 -- ============================================================================
 -- ============================================================================
--- Ezkey Migration V34: Create Audit Chain Checkpoint Table
+-- Consolidated audit chain checkpoint schema (full-development baseline)
 -- ============================================================================
 -- Description: Creates the checkpoint table for periodic audit log chaining.
 --              Provides completeness proof (detects row insertion, deletion,
@@ -98,6 +98,12 @@ CREATE TABLE IF NOT EXISTS ezkey_audit_chain_checkpoint (
     prev_chain_hmac  VARCHAR(88),
     chain_hmac       VARCHAR(88) NOT NULL,
     created_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    lifecycle_state  VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    sealed_at        TIMESTAMPTZ,
+    sealed_by_admin_id INT,
+    exported_at      TIMESTAMPTZ,
+    exported_by_admin_id INT,
+    export_bundle_digest VARCHAR(88),
 
     CONSTRAINT uq_chain_checkpoint_window UNIQUE (window_start, window_end)
 );
@@ -144,6 +150,24 @@ COMMENT ON COLUMN ezkey_audit_chain_checkpoint.chain_hmac IS
 COMMENT ON COLUMN ezkey_audit_chain_checkpoint.created_at IS
 'Timestamp when this checkpoint was created by the batch job';
 
+COMMENT ON COLUMN ezkey_audit_chain_checkpoint.lifecycle_state IS
+'Operational lifecycle state of this checkpoint: ACTIVE, SEALED, EXPORTED, PURGEABLE, PURGED.';
+
+COMMENT ON COLUMN ezkey_audit_chain_checkpoint.sealed_at IS
+'Timestamp when the checkpoint was transitioned to SEALED.';
+
+COMMENT ON COLUMN ezkey_audit_chain_checkpoint.sealed_by_admin_id IS
+'Optional admin identifier recorded when a manual archival confirmation stamps the checkpoint.';
+
+COMMENT ON COLUMN ezkey_audit_chain_checkpoint.exported_at IS
+'Timestamp when the checkpoint range was confirmed archived.';
+
+COMMENT ON COLUMN ezkey_audit_chain_checkpoint.exported_by_admin_id IS
+'Admin identifier that confirmed the archive export.';
+
+COMMENT ON COLUMN ezkey_audit_chain_checkpoint.export_bundle_digest IS
+'Deterministic HMAC digest of the exported archive bundle for this checkpoint range.';
+
 -- ============================================================================
 -- STEP 3: Add Indexes
 -- ============================================================================
@@ -154,11 +178,14 @@ CREATE INDEX IF NOT EXISTS idx_chain_checkpoint_window_start
 CREATE INDEX IF NOT EXISTS idx_chain_checkpoint_created_at
     ON ezkey_audit_chain_checkpoint(created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_chain_checkpoint_lifecycle_state
+    ON ezkey_audit_chain_checkpoint(lifecycle_state);
+
 -- ============================================================================
 -- Migration Complete
 -- ============================================================================
 -- ============================================================================
--- Ezkey Migration V35: Audit Chain Checkpoint Lifecycle Support
+-- Consolidated lifecycle semantics layered on the checkpoint table
 -- ============================================================================
 -- Description: Adds lifecycle management columns to the chain checkpoint table
 --              to support two operational events:

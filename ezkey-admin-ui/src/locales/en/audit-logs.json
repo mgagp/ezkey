@@ -1,16 +1,19 @@
 {
   "help": {
     "integrityLifecycle": {
-      "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verification</strong> to check chain and entry integrity. Use <strong>Seal Archive</strong> to mark a period for archival; use <strong>Declare Gap</strong> when the system was offline so the chain stays valid."
+      "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verification</strong> to check chain and entry integrity, and use <strong>Lifecycle overview</strong> to understand what is currently sealed, awaiting archive confirmation, or approaching purge eligibility. Manual lifecycle actions remain exceptional maintenance paths, not the normal operator workflow."
     },
     "sealArchive": {
       "content": "Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically."
     },
     "declareGap": {
-      "content": "When the system was offline longer than the scheduler lookback (e.g. 60 min), declare the gap so the next regular checkpoint can link correctly. Provide the last checkpoint before the outage as the anchor."
+      "content": "When the system was offline longer than the scheduler lookback (e.g. 60 min), declare the gap so lifecycle continuity remains explicit. This is a recovery action, not a normal operator workflow."
+    },
+    "exceptionalMaintenance": {
+      "content": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed; the primary UI posture is observability, not manual lifecycle orchestration."
     },
     "checkpointTimeline": {
-      "content": "Lists chain checkpoints; sort by <strong>Window start</strong> to see inline gap rows (undeclared holes between checkpoints). Other sorts show checkpoints only. Use row actions to fill SEAL range or Declare Gap anchor in the dialogs."
+      "content": "Lists chain checkpoints; sort by <strong>Window start</strong> to see inline gap rows (undeclared holes between checkpoints). Other sorts show checkpoints only. Use this table to inspect checkpoint type, lifecycle state, and anomaly boundaries."
     }
   },
   "list": {
@@ -268,7 +271,25 @@
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Undeclared gap(s)",
     "reportViolation": "Violation",
-    "lifecycleOperations": "Lifecycle Operations",
+    "lifecycleOverview": "Lifecycle Overview",
+    "lifecyclePolicyTitle": "Policy-driven lifecycle",
+    "lifecyclePolicyHint": "The system progresses checkpoint lifecycle states automatically. This panel is primarily for operator visibility.",
+    "policyDriven": "Policy-driven",
+    "loadingLifecycleOverview": "Loading lifecycle overview…",
+    "noLifecycleOverview": "No lifecycle overview is currently available.",
+    "externalArchival": "External archival",
+    "confirmationRequired": "Confirmation required",
+    "sealedCheckpointCount": "Sealed checkpoints",
+    "awaitingArchiveWindow": "Awaiting archive window",
+    "awaitingArchiveCheckpointRange": "Awaiting archive checkpoint range",
+    "lifecycleWindowFromTo": "{{from}} → {{to}}",
+    "lifecycleCheckpointRange": "#{{from}} → #{{to}}",
+    "noLifecycleWindow": "No sealed tranche currently awaiting confirmation.",
+    "statusEnabled": "Enabled",
+    "statusDisabled": "Disabled",
+    "statusYes": "Yes",
+    "statusNo": "No",
+    "exceptionalMaintenance": "Exceptional Maintenance",
     "sealArchive": "Seal Archive",
     "declareGap": "Declare Gap",
     "undeclaredGapsForConsultation": "Undeclared gaps for consultation",
@@ -294,18 +315,20 @@
     "timelineColWindowEnd": "Window end",
     "timelineColEntries": "Entries",
     "timelineColType": "Type",
+    "timelineColLifecycleState": "Lifecycle",
     "timelineColNotes": "Notes",
-    "timelineColActions": "Actions",
-    "sealFrom": "SEAL from",
-    "sealTo": "SEAL to",
-    "useAsAnchor": "Use as anchor",
     "anchorBadge": "Anchor",
     "afterGapBadge": "After gap",
     "checkpointTypeRegular": "Regular",
     "checkpointTypeSealed": "Sealed",
     "checkpointTypeGap": "Gap",
+    "lifecycleStateActive": "Active",
+    "lifecycleStateSealed": "Sealed",
+    "lifecycleStateExported": "Exported",
+    "lifecycleStatePurgeable": "Purgeable",
+    "lifecycleStatePurged": "Purged",
     "helpCheckpointRegular": "Automatic checkpoint created by the scheduler.",
-    "helpCheckpointArchiveSeal": "Checkpoints sealed for archival by an operator.",
+    "helpCheckpointArchiveSeal": "Checkpoints sealed for archival as part of lifecycle progression or exceptional maintenance.",
     "helpCheckpointGapDeclaration": "Declared gap covering a period the system was offline.",
     "toastSealSuccess": "Archive sealed — {{count}} checkpoints",
     "toastGapSuccess": "Gap declared successfully",
