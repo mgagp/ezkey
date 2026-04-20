@@ -1854,7 +1854,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveSealResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1864,7 +1864,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveSealResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1874,7 +1874,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveSealResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1884,7 +1884,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveSealResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1926,7 +1926,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/GapDeclarationResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1936,7 +1936,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/GapDeclarationResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1946,7 +1946,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/GapDeclarationResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1956,7 +1956,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/GapDeclarationResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -1998,7 +1998,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveConfirmArchivedResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -2008,7 +2008,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveConfirmArchivedResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -2018,7 +2018,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveConfirmArchivedResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -2028,7 +2028,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveConfirmArchivedResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -4524,7 +4524,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveEligibilityResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -4534,7 +4534,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArchiveEligibilityResult"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }

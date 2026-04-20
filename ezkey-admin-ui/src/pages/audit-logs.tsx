@@ -36,6 +36,7 @@ import { useToast } from '@/context/toast-context';
 import {
   checkChainIntegrity,
   checkIntegrity,
+  getArchiveEligibility,
   getAuditLogContext,
   getAuditLogs,
   getChainCheckpoints,
@@ -45,6 +46,7 @@ import {
 import type {
   AuditLogContextResponseDto,
   AuditChainCheckpointResponseDto,
+  ArchiveEligibilityResult,
   AuditLogResponseDto,
   ChainVerificationReport,
   GetAuditLogContextParams,
@@ -373,26 +375,29 @@ function CheckpointTypeBadge({ type }: { type?: string }) {
   return <span className="text-fg-muted">—</span>;
 }
 
+function CheckpointLifecycleStateBadge({ state }: { state?: string }) {
+  const { t } = useTranslation('audit-logs');
+
+  if (state === 'ACTIVE') return <Badge variant="muted">{t('integrity.lifecycleStateActive')}</Badge>;
+  if (state === 'SEALED') return <Badge variant="success">{t('integrity.lifecycleStateSealed')}</Badge>;
+  if (state === 'EXPORTED') return <Badge variant="muted">{t('integrity.lifecycleStateExported')}</Badge>;
+  if (state === 'PURGEABLE') return <Badge variant="warning">{t('integrity.lifecycleStatePurgeable')}</Badge>;
+  if (state === 'PURGED') return <Badge variant="error">{t('integrity.lifecycleStatePurged')}</Badge>;
+
+  return <span className="text-fg-muted">—</span>;
+}
+
 function CheckpointTimelineTable({
   rows,
   isLoading,
   currentSort,
   onSort,
-  onSetSealFrom,
-  onSetSealTo,
-  onSetAnchor,
   focusGap,
 }: {
   rows: CheckpointRowItem[];
   isLoading: boolean;
   currentSort: string;
   onSort: (s: string) => void;
-  /** Set checkpoint as SEAL "from" (selection only; does not open dialog). */
-  onSetSealFrom: (id: number) => void;
-  /** Set checkpoint as SEAL "to" (selection only; does not open dialog). */
-  onSetSealTo: (id: number) => void;
-  /** Set checkpoint as Declare Gap anchor (selection only; does not open dialog). */
-  onSetAnchor: (id: number) => void;
   /** When set, highlight checkpoint rows immediately before/after this gap (bordering rows). */
   focusGap?: { gapStart: string; gapEnd: string } | null;
 }) {
@@ -429,8 +434,8 @@ function CheckpointTimelineTable({
             {sortable('windowEnd', t('integrity.timelineColWindowEnd'))}
             {sortable('entryCount', t('integrity.timelineColEntries'), 'w-20')}
             {sortable('checkpointType', t('integrity.timelineColType'), 'w-24')}
+            {sortable('lifecycleState', t('integrity.timelineColLifecycleState'), 'w-24')}
             <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider">{t('integrity.timelineColNotes')}</th>
-            <th className="px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider w-40">{t('integrity.timelineColActions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -462,7 +467,6 @@ function CheckpointTimelineTable({
                 );
               }
               const r = item.row;
-              const nextIsGap = rows[index + 1]?.kind === 'gap';
               const gapStartMs = focusGap ? new Date(focusGap.gapStart).getTime() : null;
               const gapEndMs = focusGap ? new Date(focusGap.gapEnd).getTime() : null;
               const rowEndMs = r.windowEnd ? new Date(r.windowEnd).getTime() : null;
@@ -494,38 +498,11 @@ function CheckpointTimelineTable({
                   <td className="px-3 py-2">
                     <CheckpointTypeBadge type={r.checkpointType} />
                   </td>
+                  <td className="px-3 py-2">
+                    <CheckpointLifecycleStateBadge state={r.lifecycleState} />
+                  </td>
                   <td className="px-3 py-2 text-xs text-fg-muted max-w-32 truncate" title={r.notes ?? undefined}>
                     {r.notes ?? '—'}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs p-1 h-auto"
-                        onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onSetSealFrom(r.checkpointId); }}
-                      >
-                        {t('integrity.sealFrom')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs p-1 h-auto"
-                        onClick={(e) => { e.stopPropagation(); if (r.checkpointId != null) onSetSealTo(r.checkpointId); }}
-                      >
-                        {t('integrity.sealTo')}
-                      </Button>
-                      {nextIsGap && r.checkpointId != null && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs p-1 h-auto text-warning"
-                          onClick={(e) => { e.stopPropagation(); onSetAnchor(r.checkpointId!); }}
-                        >
-                          {t('integrity.useAsAnchor')}
-                        </Button>
-                      )}
-                    </div>
                   </td>
                 </tr>
               );
@@ -580,13 +557,18 @@ function IntegrityPanel() {
   const [timelineExpanded, setTimelineExpanded] = useState(false);
   const [checkpointRange, setCheckpointRange] = useState({ from: '', to: '' });
   const [checkpointTypeFilter, setCheckpointTypeFilter] = useState('');
-  /** Selected checkpoints from the timeline table (selection only; dialog opens via explicit button). */
-  const [selectedSealFromId, setSelectedSealFromId] = useState<number | null>(null);
-  const [selectedSealToId, setSelectedSealToId] = useState<number | null>(null);
-  const [selectedGapAnchorId, setSelectedGapAnchorId] = useState<number | null>(null);
   /** Focused gap from "Undeclared gaps for consultation" – highlights bordering checkpoints in timeline */
   const [focusedGap, setFocusedGap] = useState<{ gapStart: string; gapEnd: string; gapMinutes: number } | null>(null);
   const [gapsListExpanded, setGapsListExpanded] = useState(true);
+
+  const {
+    data: archiveEligibility,
+    isLoading: archiveEligibilityLoading,
+  } = useQuery({
+    queryKey: ['audit-archive-eligibility'],
+    queryFn: () => getArchiveEligibility() as Promise<ArchiveEligibilityResult>,
+    enabled: expanded,
+  });
 
   /** When a gap is focused, request a narrow window (gapStart − 1h to gapEnd + 1h) so page 0 contains the anchor and first checkpoint after the gap. Otherwise use the date-range filter. */
   const checkpointApiParams = useMemo(() => {
@@ -656,21 +638,6 @@ function IntegrityPanel() {
     }
     return out;
   }, [checkpointData, checkpointPagination.sort]);
-
-  /** Opens Seal Archive dialog with current selection (from timeline) or empty form. */
-  function openSealDialogWithSelection() {
-    setSealCheckpointFrom(selectedSealFromId != null ? String(selectedSealFromId) : '');
-    setSealCheckpointTo(selectedSealToId != null ? String(selectedSealToId) : '');
-    setSealResult(null);
-    setSealOpen(true);
-  }
-
-  /** Opens Declare Gap dialog with current anchor selection (from timeline) or empty form. */
-  function openGapDialogWithSelection() {
-    setGapAnchorId(selectedGapAnchorId != null ? String(selectedGapAnchorId) : '');
-    setGapResult(null);
-    setGapOpen(true);
-  }
 
   /** Format Date to YYYY-MM-DD for checkpoint range filter. */
   function toYYYYMMDD(d: Date): string {
@@ -758,6 +725,7 @@ function IntegrityPanel() {
         toast(t('integrity.toastSealSuccess', { count: result.checkpointsSealed }), 'success');
         queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
         queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
+        queryClient.invalidateQueries({ queryKey: ['audit-archive-eligibility'] });
       },
       onError: (e) => toast(getTranslatedApiError(e, t, t('integrity.errorSeal')), 'error'),
     },
@@ -770,6 +738,7 @@ function IntegrityPanel() {
         toast(t('integrity.toastGapSuccess'), 'success');
         queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
         queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
+        queryClient.invalidateQueries({ queryKey: ['audit-archive-eligibility'] });
       },
       onError: (e) => toast(getTranslatedApiError(e, t, t('integrity.errorGap')), 'error'),
     },
@@ -919,8 +888,70 @@ function IntegrityPanel() {
 
           {/* ── Lifecycle section ── */}
           <div className="space-y-3">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.lifecycleOperations')}</h3>
-            <div className="flex gap-3 flex-wrap items-center">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.lifecycleOverview')}</h3>
+            <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.lifecyclePolicyTitle')}</p>
+                  <p className="text-xs text-fg-muted">{t('integrity.lifecyclePolicyHint')}</p>
+                </div>
+                <Badge variant="muted">{t('integrity.policyDriven')}</Badge>
+              </div>
+
+              {archiveEligibilityLoading ? (
+                <div className="text-xs text-fg-muted">{t('integrity.loadingLifecycleOverview')}</div>
+              ) : archiveEligibility ? (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <Stat label={t('integrity.sealedCheckpointCount')} value={archiveEligibility.sealedCheckpointCount ?? 0} />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-fg-muted">{t('integrity.externalArchival')}</p>
+                      <p className="font-bold text-fg">{archiveEligibility.externalArchivalEnabled ? t('integrity.statusEnabled') : t('integrity.statusDisabled')}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-fg-muted">{t('integrity.confirmationRequired')}</p>
+                      <p className="font-bold text-fg">{archiveEligibility.confirmationRequired ? t('integrity.statusYes') : t('integrity.statusNo')}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 text-xs text-fg-muted sm:grid-cols-2">
+                    <div className="border border-fg/10 p-2">
+                      <p className="font-bold uppercase tracking-wider text-[10px] text-fg-muted">{t('integrity.awaitingArchiveWindow')}</p>
+                      <p>
+                        {archiveEligibility.oldestSealedWindowStart && archiveEligibility.newestSealedWindowEnd
+                          ? t('integrity.lifecycleWindowFromTo', {
+                              from: formatDateWithTimezone(archiveEligibility.oldestSealedWindowStart),
+                              to: formatDateWithTimezone(archiveEligibility.newestSealedWindowEnd),
+                            })
+                          : t('integrity.noLifecycleWindow')}
+                      </p>
+                    </div>
+                    <div className="border border-fg/10 p-2">
+                      <p className="font-bold uppercase tracking-wider text-[10px] text-fg-muted">{t('integrity.awaitingArchiveCheckpointRange')}</p>
+                      <p>
+                        {archiveEligibility.checkpointIdFrom != null && archiveEligibility.checkpointIdTo != null
+                          ? t('integrity.lifecycleCheckpointRange', {
+                              from: archiveEligibility.checkpointIdFrom,
+                              to: archiveEligibility.checkpointIdTo,
+                            })
+                          : t('integrity.noLifecycleWindow')}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-fg-muted">{t('integrity.noLifecycleOverview')}</div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.exceptionalMaintenance')}</p>
+                <span onClick={(e) => e.stopPropagation()}>
+                  <ContextHelp title={t('integrity.exceptionalMaintenance')} content={<Trans i18nKey="audit-logs:help.exceptionalMaintenance.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.exceptionalMaintenance') })} />
+                </span>
+              </div>
+              <div className="flex gap-3 flex-wrap items-center">
               <Button size="sm" variant="secondary" onClick={() => { resetSealForm(); setSealOpen(true); }} className="gap-1.5">
                 <Archive className="size-3.5" />
                 {t('integrity.sealArchive')}
@@ -935,6 +966,7 @@ function IntegrityPanel() {
               <span onClick={(e) => e.stopPropagation()}>
                 <ContextHelp title={t('integrity.declareGap')} content={<Trans i18nKey="audit-logs:help.declareGap.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.declareGap') })} />
               </span>
+            </div>
             </div>
 
             {/* Undeclared gaps for consultation (from last chain verification) */}
@@ -1030,37 +1062,6 @@ function IntegrityPanel() {
                     })}
                   </p>
                 )}
-                {(selectedSealFromId != null || selectedSealToId != null || selectedGapAnchorId != null) && (
-                  <div className="flex flex-wrap items-center gap-3 p-2 border-2 border-accent/30 bg-surface">
-                    <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">{t('integrity.selection')}</span>
-                    {(selectedSealFromId != null || selectedSealToId != null) && (
-                      <span className="text-sm">
-                        {t('integrity.sealRangeLabel')}: {t('integrity.sealRangeFrom')} <span className="font-mono font-bold">#{selectedSealFromId ?? '—'}</span>
-                        {' · '}
-                        {t('integrity.sealRangeTo')} <span className="font-mono font-bold">#{selectedSealToId ?? '—'}</span>
-                        <button type="button" onClick={() => { setSelectedSealFromId(null); setSelectedSealToId(null); }} className="ml-2 text-xs text-fg-muted hover:text-fg underline">{t('integrity.clear')}</button>
-                      </span>
-                    )}
-                    {selectedSealFromId != null || selectedSealToId != null ? (
-                      <Button size="sm" className="gap-1.5" onClick={openSealDialogWithSelection}>
-                        <Archive className="size-3.5" />
-                        {t('integrity.openSealArchive')}
-                      </Button>
-                    ) : null}
-                    {selectedGapAnchorId != null && (
-                      <>
-                        <span className="text-sm">
-                          {t('integrity.anchor')}: <span className="font-mono font-bold">#{selectedGapAnchorId}</span>
-                          <button type="button" onClick={() => setSelectedGapAnchorId(null)} className="ml-2 text-xs text-fg-muted hover:text-fg underline">{t('integrity.clear')}</button>
-                        </span>
-                        <Button size="sm" variant="secondary" className="gap-1.5" onClick={openGapDialogWithSelection}>
-                          <AlertTriangle className="size-3.5" />
-                          {t('integrity.declareGap')}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                )}
                 <div className="flex items-center gap-2">
                   <Info className="size-3.5 text-fg-muted shrink-0" aria-hidden />
                   <p className="text-xs text-fg-muted italic">{t('integrity.timelineHint')}</p>
@@ -1084,9 +1085,6 @@ function IntegrityPanel() {
                   isLoading={checkpointLoading}
                   currentSort={checkpointPagination.sort}
                   onSort={checkpointPagination.setSort}
-                  onSetSealFrom={(id) => setSelectedSealFromId(id)}
-                  onSetSealTo={(id) => setSelectedSealToId(id)}
-                  onSetAnchor={(id) => setSelectedGapAnchorId(id)}
                   focusGap={focusedGap}
                 />
                 <Pagination

@@ -235,10 +235,16 @@ ezkey.audit.chain.cron=0 */5 * * * ?
 | `GET /api/v1/audit-logs/chain-checkpoints` | Global Admin | Search audit chain checkpoints with filters and pagination |
 | `GET /api/v1/audit-logs/integrity-check` | Global Admin | Verify per-entry HMAC signatures |
 | `GET /api/v1/audit-logs/chain-integrity` | Global Admin | Verify chain checkpoint linkage |
+| `GET /api/v1/audit-logs/lifecycle/archive-eligibility` | Global Admin | Read lifecycle archive eligibility and awaiting-confirmation tranche |
+| `POST /api/v1/audit-logs/lifecycle/confirm-archived` | Global Admin | Record that a sealed tranche was archived externally |
 | `POST /api/v1/audit-logs/lifecycle/seal-archive` | Global Admin | Seal a period for archival |
 | `POST /api/v1/audit-logs/lifecycle/declare-gap` | Global Admin | Declare a downtime gap |
 
-**Chain checkpoints search** (`GET /api/v1/audit-logs/chain-checkpoints`): Paginated search with optional filters: `windowStartAfter`, `windowStartBefore` (ISO-8601), `entryCountMin`, `entryCountMax`, `checkpointType` (REGULAR, ARCHIVE_SEAL, GAP_DECLARATION), `createdAfter`, `createdBefore` (ISO-8601). Default sort: `windowStart,asc`. Use this to discover checkpoints for SEAL range selection (e.g. `checkpointIdFrom` / `checkpointIdTo`) and Declare Gap (anchor checkpoint).
+**Chain checkpoints search** (`GET /api/v1/audit-logs/chain-checkpoints`): Paginated search with optional filters: `windowStartAfter`, `windowStartBefore` (ISO-8601), `entryCountMin`, `entryCountMax`, `checkpointType` (REGULAR, ARCHIVE_SEAL, GAP_DECLARATION), `createdAfter`, `createdBefore` (ISO-8601). Default sort: `windowStart,asc`. Use this primarily for lifecycle observability, anomaly investigation, and archive-confirmation context. It can also support exceptional maintenance flows such as `seal-archive` and `declare-gap` when needed.
+
+**Archive eligibility** (`GET /api/v1/audit-logs/lifecycle/archive-eligibility`): Read-only lifecycle summary for observability. Returns whether external archival is enabled, whether confirmation is required, and which sealed tranche is currently awaiting confirmation.
+
+**Archive confirmation** (`POST /api/v1/audit-logs/lifecycle/confirm-archived`): Records successful external archival by marking a sealed tranche as `EXPORTED`. This is the lifecycle confirmation step, not the external export workflow itself.
 
 Both verification endpoints **require** `from` and `to` query parameters (ISO-8601). Omitting either returns 400 Bad Request with a message that a date range is required.
 

@@ -428,13 +428,17 @@ Too many login attempts. Please try again later.
 
 **GET /api/v1/audit-logs** — Paginated audit log list. Optional filters: `eventType` (a single event type enum value), `eventTypeFamily` (all types in a logical family: `ADMIN`, `ENROLLMENT`, `AUTH_ATTEMPT`, `API_KEY`, `SYSTEM`, `ENCRYPTION_KEY`, `REENCRYPTION`, `INTEGRATION`, `TENANT`, `AUDIT_CHAIN`). `eventType` and `eventTypeFamily` are mutually exclusive; sending both returns **400 Bad Request**. Also: `eventStatus`, `apiName`, `enrollmentId`, `adminId`, `targetAdminId`, `tenantId` (Global Admin scope), `createdAfter`, `createdBefore` (ISO-8601), plus standard `page`, `size`, `sort`.
 
-**GET /api/v1/audit-logs/chain-checkpoints** — Search audit chain checkpoints with pagination and optional filters. Use for operator visibility, SEAL range selection, and Declare Gap (anchor checkpoint) workflows.
+**GET /api/v1/audit-logs/chain-checkpoints** — Search audit chain checkpoints with pagination and optional filters. Use primarily for lifecycle observability, anomaly investigation, and archive-confirmation context. Exceptional maintenance workflows may still use this surface when needed.
 
 **Query parameters (all optional):** `windowStartAfter`, `windowStartBefore` (ISO-8601), `entryCountMin`, `entryCountMax`, `checkpointType` (REGULAR, ARCHIVE_SEAL, GAP_DECLARATION), `createdAfter`, `createdBefore` (ISO-8601), plus `page`, `size`, `sort` (e.g. `sort=windowStart,asc`). Default: `size=20`, `sort=windowStart,asc`.
 
-**Response (200 OK):** Paginated response with `content` (array of checkpoint objects: `checkpointId`, `windowStart`, `windowEnd`, `entryCount`, `firstEntryId`, `lastEntryId`, `entriesDigest`, `prevChainHmac`, `chainHmac`, `createdAt`, `checkpointType`, `notes`), `totalElements`, `totalPages`, etc.
+**Response (200 OK):** Paginated response with `content` (array of checkpoint objects: `checkpointId`, `windowStart`, `windowEnd`, `entryCount`, `firstEntryId`, `lastEntryId`, `entriesDigest`, `prevChainHmac`, `chainHmac`, `createdAt`, `checkpointType`, `lifecycleState`, `notes`), `totalElements`, `totalPages`, etc.
 
-See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md) for integrity verification, seal-archive, and declare-gap endpoints.
+**GET /api/v1/audit-logs/lifecycle/archive-eligibility** — Read lifecycle archive observability state. Returns whether external archival is enabled, whether confirmation is required, and the sealed checkpoint tranche currently awaiting confirmation.
+
+**POST /api/v1/audit-logs/lifecycle/confirm-archived** — Record successful external archival for a sealed tranche by marking it `EXPORTED`. This confirms the result of an external archival workflow; it does not perform the export itself.
+
+See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md) for integrity verification, lifecycle observability, archive confirmation, and exceptional maintenance endpoints.
 
 ---
 

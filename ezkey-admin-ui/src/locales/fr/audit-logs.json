@@ -1,16 +1,19 @@
 {
   "help": {
     "integrityLifecycle": {
-      "content": "Les checkpoints de chaîne scellent des lots d'entrées d'audit toutes les 5 minutes. Utilisez <strong>Vérification</strong> pour contrôler l'intégrité de la chaîne et des entrées. Utilisez <strong>Sceller l'archive</strong> pour marquer une période pour archivage ; utilisez <strong>Déclarer une lacune</strong> lorsque le système a été indisponible pour garder la chaîne valide."
+      "content": "Les checkpoints de chaîne scellent des lots d'entrées d'audit toutes les 5 minutes. Utilisez <strong>Vérification</strong> pour contrôler l'intégrité de la chaîne et des entrées, et <strong>Vue lifecycle</strong> pour comprendre ce qui est scellé, en attente de confirmation d'archive, ou proche de l'éligibilité à la purge. Les actions manuelles restent des chemins de maintenance exceptionnels, pas le workflow opérateur normal."
     },
     "sealArchive": {
       "content": "Scelle une plage de checkpoints pour archivage (ex. avant suppression d'une partition BDD). Vous pouvez indiquer la période par horodatages ou par ID de checkpoints. Une vérification d'intégrité préalable s'exécute automatiquement."
     },
     "declareGap": {
-      "content": "Lorsque le système a été indisponible plus longtemps que la fenêtre du planificateur (ex. 60 min), déclarez la lacune pour que le prochain checkpoint régulier puisse se lier correctement. Indiquez le dernier checkpoint avant l'arrêt comme ancre."
+      "content": "Lorsque le système a été indisponible plus longtemps que la fenêtre du planificateur (ex. 60 min), déclarez la lacune pour rendre la continuité lifecycle explicite. C'est une action de récupération, pas un workflow opérateur normal."
+    },
+    "exceptionalMaintenance": {
+      "content": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système ; la posture principale de l'UI doit rester l'observabilité."
     },
     "checkpointTimeline": {
-      "content": "Affiche les checkpoints de chaîne ; triez par <strong>Début de fenêtre</strong> pour voir les lignes de lacune (trous non déclarés entre checkpoints). Les autres tris n'affichent que les checkpoints. Utilisez les actions de ligne pour renseigner la plage SEAL ou l'ancre Déclarer une lacune dans les dialogues."
+      "content": "Affiche les checkpoints de chaîne ; triez par <strong>Début de fenêtre</strong> pour voir les lignes de lacune (trous non déclarés entre checkpoints). Les autres tris n'affichent que les checkpoints. Utilisez ce tableau pour inspecter le type de checkpoint, l'état lifecycle et les limites d'anomalie."
     }
   },
   "list": {
@@ -268,7 +271,25 @@
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Lacune(s) non déclarée(s)",
     "reportViolation": "Violation",
-    "lifecycleOperations": "Opérations de cycle de vie",
+    "lifecycleOverview": "Vue lifecycle",
+    "lifecyclePolicyTitle": "Lifecycle piloté par policy",
+    "lifecyclePolicyHint": "Le système fait progresser automatiquement les états lifecycle des checkpoints. Ce panneau sert d'abord à la visibilité opérateur.",
+    "policyDriven": "Policy-driven",
+    "loadingLifecycleOverview": "Chargement de la vue lifecycle…",
+    "noLifecycleOverview": "Aucune vue lifecycle n'est actuellement disponible.",
+    "externalArchival": "Archivage externe",
+    "confirmationRequired": "Confirmation requise",
+    "sealedCheckpointCount": "Checkpoints scellés",
+    "awaitingArchiveWindow": "Fenêtre en attente d'archivage",
+    "awaitingArchiveCheckpointRange": "Plage de checkpoints en attente d'archivage",
+    "lifecycleWindowFromTo": "{{from}} → {{to}}",
+    "lifecycleCheckpointRange": "#{{from}} → #{{to}}",
+    "noLifecycleWindow": "Aucune tranche scellée n'attend actuellement de confirmation.",
+    "statusEnabled": "Activé",
+    "statusDisabled": "Désactivé",
+    "statusYes": "Oui",
+    "statusNo": "Non",
+    "exceptionalMaintenance": "Maintenance exceptionnelle",
     "sealArchive": "Sceller l'archive",
     "declareGap": "Déclarer une lacune",
     "undeclaredGapsForConsultation": "Lacunes non déclarées (consultation)",
@@ -294,18 +315,20 @@
     "timelineColWindowEnd": "Fin fenêtre",
     "timelineColEntries": "Entrées",
     "timelineColType": "Type",
+    "timelineColLifecycleState": "Lifecycle",
     "timelineColNotes": "Notes",
-    "timelineColActions": "Actions",
-    "sealFrom": "SCELLER de",
-    "sealTo": "SCELLER à",
-    "useAsAnchor": "Utiliser comme ancre",
     "anchorBadge": "Ancre",
     "afterGapBadge": "Après lacune",
     "checkpointTypeRegular": "Régulier",
     "checkpointTypeSealed": "Scellé",
     "checkpointTypeGap": "Lacune",
+    "lifecycleStateActive": "Actif",
+    "lifecycleStateSealed": "Scellé",
+    "lifecycleStateExported": "Exporté",
+    "lifecycleStatePurgeable": "Purgeable",
+    "lifecycleStatePurged": "Purgé",
     "helpCheckpointRegular": "Checkpoint automatique créé par le planificateur.",
-    "helpCheckpointArchiveSeal": "Checkpoints scellés pour archivage par un opérateur.",
+    "helpCheckpointArchiveSeal": "Checkpoints scellés pour archivage dans le cadre de la progression lifecycle ou d'une maintenance exceptionnelle.",
     "helpCheckpointGapDeclaration": "Lacune déclarée couvrant une période d'indisponibilité du système.",
     "toastSealSuccess": "Archive scellée — {{count}} checkpoints",
     "toastGapSuccess": "Lacune déclarée avec succès",
