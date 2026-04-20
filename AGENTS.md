@@ -26,6 +26,8 @@ entrypoint from a Windows-hosted shell is `scripts/build-local.cmd`, because it 
 Git Bash + JDK 25 + Maven path before delegating to `./scripts/build.sh`. See
 `.cursor/rules/maven-build.mdc` for the authoritative rule.
 
+**Local Maven version properties:** The parent POM defines `revision`, `changelist`, and an empty default `buildQualifier`. To override from the CLI for all reactor builds (for example a per–git-worktree suffix such as `-wt1` so local `install` artifacts do not clash), copy `.mvn/maven.config.example` to `.mvn/maven.config` and edit the last line. That file is gitignored and is not committed; CI and clones without the file use POM defaults only.
+
 ---
 
 ## Java Javadoc and Checkstyle (`@param` on types)
