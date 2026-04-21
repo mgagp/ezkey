@@ -4,6 +4,21 @@ This runbook supports deploying the Vite/React Admin UI from [`ezkey-admin-ui/`]
 
 Cross-links: [admin-ui-security.md](../admin-ui-security.md) (CSP, token model), [ezkey-admin-api/CONFIGURATION.md](../../ezkey-admin-api/CONFIGURATION.md) (CORS properties).
 
+## 0. Pages projects — one instance, one project (Ezkey convention)
+
+**What you are choosing:** how Cloudflare Pages maps to **which Admin API** the built SPA calls. `VITE_API_BASE_URL` is fixed at **build time**, so the wrong project or wrong variables means the UI talks to the **wrong** API.
+
+**Recommended (default for Ezkey):** **one Pages project per Admin UI deployment** — e.g. a project dedicated to `exp1` (custom domain `exp1-admin-ui.ezkey.org`) and, when you add it, a **separate** project for `demo1`. Each project has its own production branch, custom domain, Transform Rules / CSP for **that** API origin, and **Environment variables** in the Pages dashboard:
+
+- `VITE_API_BASE_URL` → `https://<same-instance>-admin-api.ezkey.org`
+- `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE` → `true` when that API uses the HttpOnly session cookie
+
+This keeps mental load low: open the project → you see exactly one API target.
+
+**Alternative:** a **single** Pages project with multiple branches and branch-specific variables (or previews). Fewer projects in the dashboard, but easier to misconfigure merges or variables — use only if you explicitly want that operational model.
+
+**Operator source of truth:** this document (§2–3 for build and deploy, §5 for `connect-src`), repo root [`.env.example`](../../.env.example) for script-based deploys, and the **Pages project → Settings → Environment variables** for Git-connected builds.
+
 ## 1. Runtime CORS on the Admin API (Lightsail / VM)
 
 When the SPA and API are on **different origins**, the browser requires CORS. The Admin API exposes `ezkey.admin.cors.*` (see CONFIGURATION.md).
@@ -18,6 +33,18 @@ When the SPA and API are on **different origins**, the browser requires CORS. Th
 3. For **rotating preview URLs**, either add each preview origin when testing, use a **stable preview hostname**, or restrict previews to environments where you can update env quickly.
 
 If `allowed-origins` is empty, the API does **not** send CORS headers (same as pre–split-ui behavior).
+
+### HttpOnly session cookie (recommended for custom-domain UI)
+
+For **`https://<instance>-admin-ui.ezkey.org`** calling **`https://<instance>-admin-api.ezkey.org`**, you can use the **browser session cookie** so the opaque token is not exposed to JavaScript:
+
+1. On the **Admin API** VM: set **`EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true`**, **`EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true`**, and **`EZKEY_ADMIN_CORS_ALLOWED_ORIGINS`** to the **exact** UI origin (e.g. `https://exp1-admin-ui.ezkey.org` or `https://demo1-admin-ui.ezkey.org`). Restart the API.
+2. On the **Admin UI** build: set **`VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`** (see [`.env.cloudflare`](../../ezkey-admin-ui/.env.cloudflare); for Git-connected Pages, add the variable in the project settings). Rebuild and deploy.
+3. **CSP** `connect-src` must still include that instance’s API origin (see §5).
+
+The same steps apply to **demo1**, **exp1**, or any other prefix — only origins and URLs change.
+
+**Rollback:** turn off the API cookie flag and deploy a UI build without `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE`.
 
 ## 2. Build the static bundle locally
 

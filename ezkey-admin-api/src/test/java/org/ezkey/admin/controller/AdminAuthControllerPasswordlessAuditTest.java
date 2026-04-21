@@ -13,7 +13,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
+import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
@@ -22,6 +24,7 @@ import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.security.AdminRateLimitFilter;
+import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.service.AdminRecoveryService;
 import org.ezkey.audit.domain.EventStatus;
@@ -53,7 +56,10 @@ class AdminAuthControllerPasswordlessAuditTest {
   @Mock private AdminRateLimitFilter rateLimitFilter;
   @Mock private AdminRecoveryProperties recoveryProperties;
   @Mock private EzkeyAdminRepository adminRepository;
+  @Mock private AdminBrowserSessionCookieProperties browserSessionCookieProperties;
+  @Mock private AdminSessionCookieService sessionCookieService;
   @Mock private HttpServletRequest httpRequest;
+  @Mock private HttpServletResponse httpResponse;
 
   @Captor private ArgumentCaptor<AuditLog> auditCaptor;
 
@@ -70,7 +76,10 @@ class AdminAuthControllerPasswordlessAuditTest {
             auditLogService,
             rateLimitFilter,
             recoveryProperties,
-            adminRepository);
+            adminRepository,
+            browserSessionCookieProperties,
+            sessionCookieService);
+    when(browserSessionCookieProperties.isBrowserSessionCookieEnabled()).thenReturn(false);
     when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
     when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
@@ -91,7 +100,8 @@ class AdminAuthControllerPasswordlessAuditTest {
     when(authService.waitForPasswordlessAuth(10, 7)).thenReturn(ok);
 
     ResponseEntity<AdminLoginResponseDto> response =
-        controller.passwordlessWait(new AdminPasswordlessWaitRequestDto(10, 7), httpRequest);
+        controller.passwordlessWait(
+            new AdminPasswordlessWaitRequestDto(10, 7), httpRequest, httpResponse);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
     verify(auditLogService).log(auditCaptor.capture());
@@ -110,7 +120,8 @@ class AdminAuthControllerPasswordlessAuditTest {
         .thenThrow(new AdminAuthenticationExpiredException("expired"));
 
     try {
-      controller.passwordlessWait(new AdminPasswordlessWaitRequestDto(10, null), httpRequest);
+      controller.passwordlessWait(
+          new AdminPasswordlessWaitRequestDto(10, null), httpRequest, httpResponse);
     } catch (AdminAuthenticationExpiredException e) {
       // expected
     }
@@ -129,7 +140,8 @@ class AdminAuthControllerPasswordlessAuditTest {
         .thenThrow(new AdminAuthenticationRejectedException("no"));
 
     try {
-      controller.passwordlessWait(new AdminPasswordlessWaitRequestDto(10, null), httpRequest);
+      controller.passwordlessWait(
+          new AdminPasswordlessWaitRequestDto(10, null), httpRequest, httpResponse);
     } catch (AdminAuthenticationRejectedException e) {
       // expected
     }
@@ -146,7 +158,8 @@ class AdminAuthControllerPasswordlessAuditTest {
         .thenThrow(new AdminAuthenticationExpiredException("expired"));
 
     try {
-      controller.passwordlessWait(new AdminPasswordlessWaitRequestDto(10, null), httpRequest);
+      controller.passwordlessWait(
+          new AdminPasswordlessWaitRequestDto(10, null), httpRequest, httpResponse);
     } catch (AdminAuthenticationExpiredException e) {
       // expected
     }
@@ -167,7 +180,8 @@ class AdminAuthControllerPasswordlessAuditTest {
         .thenThrow(new AdminAuthenticationExpiredException("expired"));
 
     try {
-      controller.passwordlessWait(new AdminPasswordlessWaitRequestDto(99, null), httpRequest);
+      controller.passwordlessWait(
+          new AdminPasswordlessWaitRequestDto(99, null), httpRequest, httpResponse);
     } catch (AdminAuthenticationExpiredException e) {
       // expected
     }

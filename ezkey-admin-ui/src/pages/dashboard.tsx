@@ -245,7 +245,7 @@ export default function DashboardPage() {
                 <StatNum value={intActive} isLoading={overviewLoading} /> {t('dashboard:stats.active')}
               </DashboardStatBadgeLink>
               <DashboardStatBadgeLink
-                to={buildIntegrationsDrilldownUrl('inactive')}
+                to={buildIntegrationsDrilldownUrl('retired')}
                 variant="muted"
                 ariaLabel={t('dashboard:drilldown.integrationsInactive')}
               >

@@ -17,6 +17,7 @@ import { I18N_STORAGE_KEY } from '@/i18n';
 import type { FetchOptions } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { mapPasswordlessWaitError } from '@/lib/map-passwordless-wait-error';
+import { isBrowserSessionCookieBuild } from '@/lib/auth';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
 import { LoginRecoverySection } from '@/components/feature/login-recovery-section';
 import { getRecoverySession } from '@/lib/recovery-session';
@@ -133,13 +134,16 @@ export default function LoginPage() {
         // Ignore result if the countdown or cancel already set a final state
         if (finalStatusRef.current !== null) return;
 
-        if (data.success && data.token && data.username && data.adminType && data.expiresAt) {
+        const cookieBuild = isBrowserSessionCookieBuild();
+        const hasSecretOrCookie =
+          cookieBuild || (typeof data.token === 'string' && data.token.length > 0);
+        if (data.success && hasSecretOrCookie && data.username && data.adminType && data.expiresAt) {
           finalStatusRef.current = 'ACCEPTED';
           login({
-            token: data.token,
+            ...(typeof data.token === 'string' && data.token.length > 0 ? { token: data.token } : {}),
             username: data.username,
             adminType: data.adminType,
-            expiresAt: data.expiresAt,
+            expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : String(data.expiresAt),
             ...(data.adminId != null && { adminId: data.adminId }),
             ...(data.tenantId != null && { tenantId: data.tenantId }),
           });

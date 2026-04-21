@@ -1,16 +1,38 @@
 # Admin UI — security (token storage, HTTP headers, deployment)
 
-This document implements the operational guidance from the security hardening plan for the Ezkey Admin UI. It is the canonical reference for **browser security headers**, **local vs QA workflows**, **split UI/API deployments**, **optional HTTPS (mkcert)**, and a **future HttpOnly cookie** model.
+This document implements the operational guidance from the security hardening plan for the Ezkey Admin UI. It is the canonical reference for **browser security headers**, **local vs QA workflows**, **split UI/API deployments**, **optional HTTPS (mkcert)**, and the optional **HttpOnly cookie** session model.
 
 **New to this area?** Use **[admin-ui-security-validation.md](admin-ui-security-validation.md)** for a short **where to start** guide, **Path A vs B**, and a **step-by-step checklist** (DevTools, `curl`, Postman) to validate headers and token behavior without reading the full plan.
 
-## Token storage and transport (current)
+## Token storage and transport
+
+### Mode A — local / default (Bearer in JavaScript)
 
 | Mechanism | Detail |
 |-----------|--------|
 | **Storage** | Opaque bearer token in **`sessionStorage`** (key `ezkey_admin_auth`), not `localStorage`. |
 | **Transport** | `Authorization: Bearer` on API requests (`ezkey-admin-ui/src/lib/api-client.ts`). |
-| **Cookies** | No session cookie today; login response returns the token in JSON. |
+| **Build** | `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE` unset or not `true`. |
+
+### Mode B — split HTTPS UI/API (HttpOnly cookie, recommended for Cloudflare + API VM)
+
+| Mechanism | Detail |
+|-----------|--------|
+| **Storage** | **No secret in JS.** `sessionStorage` holds only **metadata** (username, `adminType`, `expiresAt`, ids). The opaque token is in an **HttpOnly** cookie on the **API host** (host-only, e.g. `exp1-admin-api.ezkey.org`). |
+| **Transport** | Browser sends the cookie on cross-origin requests with **`fetch(..., { credentials: 'include' })`**. `Authorization` is still used for recovery / explicit bearer flows. |
+| **API** | `ezkey.admin.auth.browser-session-cookie-enabled=true`; login JSON **omits** `token` when this is on. |
+| **UI build** | `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true` (e.g. in `.env.cloudflare` for production-like bundles). |
+| **CORS** | `ezkey.admin.cors.allow-credentials=true` and **explicit** `allowed-origins` (see [ezkey-admin-api/CONFIGURATION.md](../ezkey-admin-api/CONFIGURATION.md) §11–12). |
+
+**Per-instance repeatability:** each pair such as `https://demo1-admin-ui.ezkey.org` + `https://demo1-admin-api.ezkey.org` uses the same pattern: configure that UI origin in CORS, point the UI build at that API, and set CSP `connect-src` to that API origin. Cookies do not leak across API hosts.
+
+**Environment matrix**
+
+| Environment | Auth mode | Admin UI | Admin API flags |
+|-------------|-----------|----------|-----------------|
+| Path A Vite dev | A (Bearer) | `http://localhost:5173` | Cookie **off** (default) |
+| Path B Caddy | A unless you opt in | Same-origin or proxy | Usually cookie **off** |
+| Split Cloudflare + VM | B (cookie) + optional A for tools | `VITE_API_BASE_URL` + cookie build flag | Cookie **on**, CORS credentials **on** |
 
 **Last username preference (optional)**
 
@@ -19,8 +41,15 @@ This document implements the operational guidance from the security hardening pl
 
 **Implications**
 
-- **XSS**: Any script running in the page origin can read `sessionStorage`. **CSP** and safe rendering (React, no unsafe HTML) are the primary mitigations. **HttpOnly cookies** (future) reduce token theft via XSS if combined with a correct backend and deployment model.
-- **CSRF**: Bearer tokens sent only from application code are not sent automatically on cross-site navigations like classic cookie sessions; CSRF patterns differ if you migrate to cookies.
+- **XSS**: Any script running in the page origin can read `sessionStorage`. **CSP** and safe rendering (React, no unsafe HTML) are the primary mitigations. **Mode B** removes the session secret from JS, reducing XSS token theft when correctly deployed over **HTTPS** with **`Secure`** cookies.
+- **CSRF**: Mode A (Bearer only) avoids classic cross-site cookie CSRF. Mode B uses **`SameSite=Lax`** on the session cookie and strict CORS origins. **Ezkey default:** no extra Spring CSRF / double-submit for this SPA; add it only if a compliance or threat review requires it.
+
+## Session navigateur (cookie HttpOnly) — résumé technique
+
+- Cookie **host-only** on the API hostname (default when issuing from `Set-Cookie` without a `Domain` attribute). Avoid widening to `Domain=.ezkey.org` unless there is a clear requirement.
+- **`SameSite=Lax`**: appropriate for same-site subdomains under `ezkey.org` with the UI on another subdomain.
+- **Lifetime:** the cookie’s `Max-Age` follows **`expiresAt`** on the login / passwordless-wait success response, driven by **`ezkey.admin.token.expiration-hours`** and related token rules — see [ezkey-admin-api/CONFIGURATION.md](../ezkey-admin-api/CONFIGURATION.md) §12 (cookie vs sliding window).
+- **Rollback:** disable `ezkey.admin.auth.browser-session-cookie-enabled` on the API and redeploy a UI build **without** `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE` to return to Bearer-in-JSON behavior.
 
 ## Where security headers are applied
 
@@ -59,9 +88,9 @@ The Admin UI **Caddyfile** sets an **enforced** CSP for the SPA, tuned for the V
 
 | Topic | Action |
 |-------|--------|
-| **CORS** | Admin API must allow the **browser origin** of the Admin UI (`Access-Control-Allow-Origin`, credentials if using cookies later). Configure via **`ezkey.admin.cors.*`** in the Admin API (see [ezkey-admin-api/CONFIGURATION.md](../ezkey-admin-api/CONFIGURATION.md) §11). |
+| **CORS** | Admin API must allow the **browser origin** of the Admin UI (`Access-Control-Allow-Origin`, **`allow-credentials`** when using Mode B). Configure via **`ezkey.admin.cors.*`** in the Admin API (see [ezkey-admin-api/CONFIGURATION.md](../ezkey-admin-api/CONFIGURATION.md) §11). |
 | **CSP `connect-src`** | Include the API base origin (scheme + host + port). |
-| **Cookies (future)** | `SameSite`, `Secure`, and registrable domain rules depend on whether UI and API share a **site**; a **BFF** on one origin often simplifies this. |
+| **Cookies (Mode B)** | Enable **`ezkey.admin.auth.*`** and CORS credentials; see §12 in CONFIGURATION.md. |
 
 ## Iframe policy
 
@@ -74,17 +103,6 @@ The Admin UI is **not** intended to be embedded in iframes. Headers: **`frame-an
 - **mkcert** gives **locally trusted** certificates without browser warning spam. Typical flow: `mkcert -install`, then `mkcert localhost 127.0.0.1 ::1`, mount PEM files into the container or host Caddy, add a `tls` block, then enable the **`@https` HSTS** snippet in the Caddyfile.
 
 For **Path A** with HTTPS **and** HMR, you can run **Caddy on the host** in front of Vite (`reverse_proxy` to `http://127.0.0.1:5173`) and configure Vite **`server.hmr`** for `wss` — optional and higher setup cost; most teams rely on Path B or staging for HTTPS parity.
-
-## Future: HttpOnly session cookie (design sketch)
-
-If you move from **Bearer in JSON + sessionStorage** to **HttpOnly** session cookies:
-
-1. **Issue** the session via **`Set-Cookie`** from a **BFF** or Admin API response over **HTTPS** (`Secure`, `HttpOnly`, `SameSite` appropriate to your layout).
-2. **Browser requests**: use **`fetch(..., { credentials: 'include' })`** and ensure **CORS** allows credentials and reflects the UI origin.
-3. **Logout**: implement **server-side** session invalidation and clear the cookie (`Set-Cookie` with `Max-Age=0` or similar).
-4. **CSRF**: with cookies, add **SameSite** where possible; for state-changing requests consider **anti-CSRF tokens** or **double-submit cookie** patterns as required by your threat model.
-
-This is a **cross-cutting** change (API, BFF, CORS, UI client). The current bearer model avoids classic cross-site cookie CSRF but remains XSS-sensitive via `sessionStorage`.
 
 ## Mirroring headers at the edge (Cloudflare / AWS)
 

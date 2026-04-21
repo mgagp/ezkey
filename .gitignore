@@ -109,3 +109,5 @@ yarn-error.log*
 ezkey.json
 ezkey-admin-ui/playwright-report/
 ezkey-admin-ui/test-results/
+/origin-key.pem
+/origin.pem

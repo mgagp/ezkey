@@ -72,9 +72,13 @@ services:
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-https://exp1-auth-api.ezkey.org}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
       EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE: ${EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE:-full}
-      EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
       # Required when Admin UI is on another origin (e.g. Cloudflare Pages). Comma-separated origins.
       EZKEY_ADMIN_CORS_ALLOWED_ORIGINS: ${EZKEY_ADMIN_CORS_ALLOWED_ORIGINS:-}
+      # Required for credentialed browser requests (HttpOnly session cookie on the API host).
+      EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS: ${EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS:-false}
+      EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED: ${EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED:-false}
+      EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE: ${EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE:-true}
     volumes:
       - encryption-secrets:/etc/ezkey
       - bootstrap-artifacts:/var/lib/ezkey/bootstrap
@@ -106,7 +110,7 @@ services:
       EZKEY_DEMO_MITM_SIGNATURE_ENABLED: ${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-https://exp1-auth-api.ezkey.org}
       EZKEY_ORGANIZATION_ABOUT_URL: ${EZKEY_ORGANIZATION_ABOUT_URL:-}
-      EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
     volumes:
       - encryption-secrets:/etc/ezkey
     networks:
@@ -136,7 +140,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
       MANAGEMENT_SERVER_PORT: 7081
-      EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
     volumes:
       - encryption-secrets:/etc/ezkey
     networks:
@@ -157,6 +161,8 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Cloudflare Origin CA PEMs (origin.pem, origin-key.pem) — created in dashboard, not in git.
+      - ./caddy-certs:/etc/caddy/certs:ro
       - caddy-data:/data
     command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
     depends_on:

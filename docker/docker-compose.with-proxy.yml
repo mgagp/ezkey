@@ -1,7 +1,7 @@
 # Trusted-proxy override: adds Caddy in front of Admin, Auth, and Integration APIs.
 # Use with: ./docker/start.sh --with-proxy
 #
-# Host ports via Caddy (client IP from X-Forwarded-For when EZKEY_TRUSTED_PROXIES is set):
+# Host ports via Caddy (client IP from headers when EZKEY_TRUSTED_PROXIES_CIDRS is set):
 #   - Admin API:  http://localhost:19080
 #   - Auth API:   http://localhost:18080
 #   - Integration API: http://localhost:17080
@@ -12,15 +12,15 @@
 services:
   admin-api:
     environment:
-      EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8}
 
   auth-api:
     environment:
-      EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8}
 
   integration-api:
     environment:
-      EZKEY_TRUSTED_PROXIES: ${EZKEY_TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8}
+      EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8}
 
   caddy:
     image: caddy:2-alpine

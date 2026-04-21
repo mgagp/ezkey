@@ -30,6 +30,9 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.bootstrap.export.enabled` | — | `false` | optionnel |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(empty list)* | optionnel |
+| `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `false` | optionnel |
+| `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
+| `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | `true` | optionnel |
 
 ---
 
@@ -227,7 +230,7 @@ direct TCP connection originates from an IP in this list.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies (e.g. `10.0.0.0/8`, `172.16.0.0/12`). |
+| `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies (e.g. `10.0.0.0/8`, `172.16.0.0/12`). In Docker, set comma-separated **`EZKEY_TRUSTED_PROXIES_CIDRS`**. |
 
 **YAML example:**
 
@@ -262,6 +265,28 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 
 - List each production UI origin (and preview URLs if you allow them); wildcard `*` is not used for origins.
 - The Admin UI still needs an API base URL (e.g. `VITE_API_BASE_URL`); **CSP** `connect-src` on the edge must allow the API origin separately from CORS.
+
+---
+
+### 12. Browser HttpOnly session cookie
+
+**Prefix:** `ezkey.admin.auth.*`
+
+**Description:** optional mode for **browser** sessions when the Admin UI and Admin API are on different **HTTPS** origins (e.g. `https://exp1-admin-ui.ezkey.org` → `https://exp1-admin-api.ezkey.org`). When enabled, successful login and passwordless-wait responses set an **HttpOnly** cookie on the API host with the same opaque value as today’s bearer token; the JSON body **omits** `token` so JavaScript cannot read the secret. The authentication filter accepts **either** `Authorization: Bearer` (priority if present) **or** the session cookie. **Postman and scripts** can keep using Bearer only.
+
+**Defined in:** `AdminBrowserSessionCookieProperties`, `AdminBrowserSessionCookieConfig`, `AdminSessionCookieService`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.admin.auth.browser-session-cookie-enabled` | `boolean` | `false` | optionnel | Enable HttpOnly cookie + strip token from login JSON. |
+| `ezkey.admin.auth.browser-session-cookie-name` | `String` | `EZKEY_ADMIN_SESSION` | optionnel | Cookie name (host-only on API). |
+| `ezkey.admin.auth.browser-session-cookie-secure` | `boolean` | `true` | optionnel | `Secure` flag; set `false` only for special local TLS tests. |
+
+**Operational pairing:** set `ezkey.admin.cors.allow-credentials=true` and explicit `allowed-origins` for the UI. Build the Admin UI with `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true` and `fetch` credentials (see [docs/admin-ui-security.md](../docs/admin-ui-security.md)).
+
+**Cookie `Max-Age` vs token in the database:** On successful login or passwordless-wait, `Set-Cookie` uses a `Max-Age` derived from the response **`expiresAt`** (same instant as for Bearer mode). That initial window comes from **`ezkey.admin.token.expiration-hours`** (see §9 — sliding expiration also **extends the token row** on each validated request). The HttpOnly cookie is **not** re-issued on every API call today, so the browser’s cookie lifetime stays tied to **`expiresAt` at authentication success**. If the cookie expires, the browser stops sending it even though the server might still have considered an extended token valid in edge cases — operators usually fix perceived “short sessions” by increasing **`expiration-hours`** or by planning a future enhancement to refresh `Set-Cookie` when the token slides.
+
+**Concrete example (default `expiration-hours=2`):** Suppose login succeeds at **14:00** UTC. The API creates a token with **`expiresAt` = 16:00** UTC. The `Set-Cookie` header sets **`Max-Age`** to the number of seconds from 14:00 to 16:00 (7200 seconds). The browser keeps sending that cookie on API requests until about **16:00** — then the cookie is gone and the next call behaves as **unauthenticated** unless the user logs in again. If you change **`ezkey.admin.token.expiration-hours`** to `8`, the same login at 14:00 would yield **`expiresAt`** 22:00 and a longer **`Max-Age`** (~8 hours) for that cookie.
 
 ---
 
@@ -309,7 +334,12 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(empty)* |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(empty)* |
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | `admin-api` |
+| `ezkey.trusted-proxies.cidrs` | `EZKEY_TRUSTED_PROXIES_CIDRS` | *(see compose; comma-separated CIDRs)* |
 | `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(unset)* |
+| `ezkey.admin.cors.allow-credentials` | `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS` | *(unset)* |
+| `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | *(unset)* |
+| `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | *(unset)* |
+| `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | *(unset)* |
 
 ---
 
@@ -321,4 +351,5 @@ The following ezkey-core prefixes are also active in Admin API. See
 4. Set `ezkey.admin.bootstrap.export.enabled=false` unless Docker clean-start automation is needed.
 5. Configure `ezkey.trusted-proxies.cidrs` when Admin API is behind a reverse proxy.
 6. For split UI/API hosting, set `ezkey.admin.cors.allowed-origins` to the Admin UI origin(s); align CSP `connect-src` on the static host.
-7. Configure `ezkey.encryption.master-key-file` and `ezkey.audit.integrity.hmac-key-file` via volume mounts.
+7. If using the HttpOnly browser session cookie, set `ezkey.admin.auth.browser-session-cookie-enabled=true`, `ezkey.admin.cors.allow-credentials=true`, and deploy a matching Admin UI build (`VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`).
+8. Configure `ezkey.encryption.master-key-file` and `ezkey.audit.integrity.hmac-key-file` via volume mounts.

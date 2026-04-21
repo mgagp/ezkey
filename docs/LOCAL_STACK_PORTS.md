@@ -18,7 +18,7 @@ For **what to test** on each URL (headers, Postman, `curl`), see **[admin-ui-sec
 
 **Default for day-to-day manual testing (Postman, curl, OpenAPI links):** use **direct** URLs (`8080`, `9080`, `7080`, …). Same semantics as the services; minimal moving parts.
 
-**When to use Caddy ports (`19xxx` / `18xxx` / `17xxx`):** when you need to exercise the **reverse-proxy path**: baseline **response headers** on API JSON, `X-Forwarded-*`, `EZKEY_TRUSTED_PROXIES` / client IP behavior, or other **prod-like** behavior from the host.
+**When to use Caddy ports (`19xxx` / `18xxx` / `17xxx`):** when you need to exercise the **reverse-proxy path**: baseline **response headers** on API JSON, `X-Forwarded-*`, `EZKEY_TRUSTED_PROXIES_CIDRS` / client IP behavior, or other **prod-like** behavior from the host.
 
 **Clean start:** By default, `clean-start.sh` includes the Caddy overlay **in addition to** direct ports. You are not forced to use Caddy for every call. To run without the proxy stack: `./clean-start.sh --no-proxy`.
 

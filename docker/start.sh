@@ -7,7 +7,7 @@
 #   --no-cache: Force rebuild without using cache (default: uses BuildKit cache for optimization)
 #   --debug-cache: Build only the first service (migration) and stop - for cache validation
 #   --native: Use native compiled images instead of JVM images (requires pre-built native images)
-#   --with-proxy: Add Caddy reverse proxy; APIs use EZKEY_TRUSTED_PROXIES for client IP (ports 19080, 18080, 17080)
+#   --with-proxy: Add Caddy reverse proxy; APIs use EZKEY_TRUSTED_PROXIES_CIDRS for client IP (ports 19080, 18080, 17080)
 
 set -e
 
@@ -89,8 +89,8 @@ fi
 if [ -n "$WITH_PROXY" ]; then
     COMPOSE_ARGS="${COMPOSE_ARGS} -f ${SCRIPT_DIR}/docker-compose.with-proxy.yml"
     echo "🔧 Trusted-proxy mode: Caddy in front of APIs (Admin: 19080, Auth: 18080, Integration API: 17080)"
-    if [ -z "${EZKEY_TRUSTED_PROXIES:-}" ]; then
-        export EZKEY_TRUSTED_PROXIES="172.16.0.0/12,10.0.0.0/8"
+    if [ -z "${EZKEY_TRUSTED_PROXIES_CIDRS:-}" ]; then
+        export EZKEY_TRUSTED_PROXIES_CIDRS="172.16.0.0/12,10.0.0.0/8"
     fi
 fi
 

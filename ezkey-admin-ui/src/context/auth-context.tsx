@@ -1,6 +1,12 @@
 import { createContext, useCallback, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import { type AuthSession, clearSession, getSession, saveSession } from '@/lib/auth';
+import {
+  type AuthSession,
+  clearSession,
+  getSession,
+  isBrowserSessionCookieBuild,
+  saveSession,
+} from '@/lib/auth';
 import { queryClient } from '@/lib/query-client';
 
 interface AuthContextValue {
@@ -28,7 +34,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, isAuthenticated: session !== null, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        isAuthenticated:
+          session !== null &&
+          (isBrowserSessionCookieBuild() || Boolean(session.token && session.token.length > 0)),
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

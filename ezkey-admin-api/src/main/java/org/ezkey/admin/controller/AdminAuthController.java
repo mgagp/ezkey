@@ -14,11 +14,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.audit.RecoveryAuditDetails;
+import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
@@ -33,6 +36,7 @@ import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
 import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
 import org.ezkey.admin.security.AdminRateLimitFilter;
+import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
@@ -43,6 +47,8 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -85,19 +91,27 @@ public class AdminAuthController {
 
   private final EzkeyAdminRepository adminRepository;
 
+  private final AdminBrowserSessionCookieProperties browserSessionCookieProperties;
+
+  private final AdminSessionCookieService sessionCookieService;
+
   public AdminAuthController(
       AdminAuthService authService,
       org.ezkey.admin.service.AdminRecoveryService recoveryService,
       AuditLogService auditLogService,
       AdminRateLimitFilter rateLimitFilter,
       AdminRecoveryProperties recoveryProperties,
-      EzkeyAdminRepository adminRepository) {
+      EzkeyAdminRepository adminRepository,
+      AdminBrowserSessionCookieProperties browserSessionCookieProperties,
+      AdminSessionCookieService sessionCookieService) {
     this.authService = authService;
     this.recoveryService = recoveryService;
     this.auditLogService = auditLogService;
     this.rateLimitFilter = rateLimitFilter;
     this.recoveryProperties = recoveryProperties;
     this.adminRepository = adminRepository;
+    this.browserSessionCookieProperties = browserSessionCookieProperties;
+    this.sessionCookieService = sessionCookieService;
   }
 
   /**
@@ -251,7 +265,9 @@ public class AdminAuthController {
       })
   @PostMapping("/login")
   public ResponseEntity<AdminLoginResponseDto> login(
-      @Valid @RequestBody AdminLoginRequestDto request, HttpServletRequest httpRequest) {
+      @Valid @RequestBody AdminLoginRequestDto request,
+      HttpServletRequest httpRequest,
+      HttpServletResponse httpResponse) {
 
     logger.info("🌐 Login request received for username: {}", request.username());
 
@@ -283,7 +299,7 @@ public class AdminAuthController {
               .eventDetails("Username: " + request.username())
               .build());
 
-      return ResponseEntity.ok(response);
+      return ResponseEntity.ok(wrapWithSessionCookie(response, httpResponse));
     } else if ("pending".equals(response.status())) {
       logger.info(
           "⏳ Login pending (challenge required) for username: {} from IP: {}",
@@ -336,18 +352,20 @@ public class AdminAuthController {
    */
   @PostMapping("/logout")
   public ResponseEntity<Void> logout(
-      @RequestHeader("Authorization") String authorization, HttpServletRequest httpRequest) {
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+      HttpServletRequest httpRequest,
+      HttpServletResponse httpResponse) {
     try {
-      // Extract bearer token from authorization header
-      String bearerToken = authorization.replace(AdminAuditConstants.BEARER_PREFIX, "");
-      // Resolve admin ID for audit before invalidating the token
+      Optional<String> bearerOpt = resolveBearerForLogout(httpRequest, authorization);
+      if (bearerOpt.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      }
+      String bearerToken = bearerOpt.get();
       Integer adminIdForAudit = authService.getAdminIdForToken(bearerToken);
       authService.logout(bearerToken);
 
-      // Extract client context for audit logging
       ClientContext context = ClientContext.from(httpRequest);
 
-      // Audit logout
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context, EventType.ADMIN_LOGOUT, AdminAuditConstants.LOGOUT_SUCCESS, null)
@@ -355,6 +373,7 @@ public class AdminAuthController {
               .adminId(adminIdForAudit)
               .build());
 
+      sessionCookieService.clearSessionCookie(httpResponse);
       return ResponseEntity.ok().build();
     } catch (Exception e) {
       return ResponseEntity.badRequest().build();
@@ -467,7 +486,9 @@ public class AdminAuthController {
       })
   @PostMapping("/passwordless-wait")
   public ResponseEntity<AdminLoginResponseDto> passwordlessWait(
-      @Valid @RequestBody AdminPasswordlessWaitRequestDto request, HttpServletRequest httpRequest) {
+      @Valid @RequestBody AdminPasswordlessWaitRequestDto request,
+      HttpServletRequest httpRequest,
+      HttpServletResponse httpResponse) {
 
     logger.info("🔐 Passwordless wait request for authAttemptId: {}", request.authAttemptId());
 
@@ -493,7 +514,7 @@ public class AdminAuthController {
                       .build()));
 
       logger.info("✅ Passwordless authentication successful");
-      return ResponseEntity.ok(response);
+      return ResponseEntity.ok(wrapWithSessionCookie(response, httpResponse));
     } catch (AdminAuthenticationExpiredException e) {
       logPasswordlessMfaFailure(
           auditCtx, context, AdminAuditConstants.LOGIN_MFA_EXPIRED, e.getMessage());
@@ -723,6 +744,43 @@ public class AdminAuthController {
       return ResponseEntity.status(500)
           .body(new AdminRecoveryResponseDto("An error occurred during recovery"));
     }
+  }
+
+  private AdminLoginResponseDto wrapWithSessionCookie(
+      AdminLoginResponseDto response, HttpServletResponse httpResponse) {
+    if (!browserSessionCookieProperties.isBrowserSessionCookieEnabled()
+        || !Boolean.TRUE.equals(response.success())
+        || !"approved".equals(response.status())
+        || response.token() == null
+        || response.expiresAt() == null) {
+      return response;
+    }
+    sessionCookieService.addSessionCookie(httpResponse, response.token(), response.expiresAt());
+    return response.withoutSecretToken();
+  }
+
+  private Optional<String> resolveBearerForLogout(
+      HttpServletRequest httpRequest, String authorization) {
+    if (authorization != null && authorization.startsWith(AdminAuditConstants.BEARER_PREFIX)) {
+      return Optional.of(authorization.substring(AdminAuditConstants.BEARER_PREFIX.length()));
+    }
+    if (!browserSessionCookieProperties.isBrowserSessionCookieEnabled()) {
+      return Optional.empty();
+    }
+    Cookie[] cookies = httpRequest.getCookies();
+    if (cookies == null) {
+      return Optional.empty();
+    }
+    String name = browserSessionCookieProperties.getBrowserSessionCookieName();
+    for (Cookie c : cookies) {
+      if (name.equals(c.getName())) {
+        String v = c.getValue();
+        if (v != null && !v.isBlank()) {
+          return Optional.of(v);
+        }
+      }
+    }
+    return Optional.empty();
   }
 
   /**

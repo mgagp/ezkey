@@ -1,4 +1,4 @@
-import { clearSession, getToken } from './auth';
+import { clearSession, getToken, isBrowserSessionCookieBuild } from './auth';
 
 /**
  * In development, BASE_URL is empty and Vite proxies /api/v1 → localhost:9080.
@@ -93,7 +93,15 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+  const credentials: RequestCredentials | undefined = isBrowserSessionCookieBuild()
+    ? 'include'
+    : undefined;
+
+  const response = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: init.credentials ?? credentials,
+  });
 
   const contentType = response.headers.get('content-type') ?? '';
   const isJson =
@@ -151,8 +159,12 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
  */
 export async function fetchBlobUrl(path: string): Promise<string> {
   const token = getToken();
+  const credentials: RequestCredentials | undefined = isBrowserSessionCookieBuild()
+    ? 'include'
+    : undefined;
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials,
   });
   if (response.status === 401) {
     clearSession();

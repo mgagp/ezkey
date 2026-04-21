@@ -6,12 +6,13 @@ This folder contains **operator-focused** artifacts to run Ezkey on **Amazon Lig
 - **Local (optional):** [`local/`](local/) — `docker-compose.yml`, `.env.example`
 - **Runbook:** [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) — phases, **`~/ezkey` VM tree**, **`scp` from a dev clone** (default), optional clone-on-VM, Cloudflare split (manual vs repo)
 - **Single-backend image update (Lightsail):** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md) — `docker save` / `scp` / `docker load` / `compose up --force-recreate`
+- **Scripted full export + optional clean-start + optional UI deploy:** [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh), [`experimental-hybrid/scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) — see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*
 
 Image build targets and behaviour match the main repo [`docker/Dockerfile`](../docker/Dockerfile) and [`docker/docker-compose.yml`](../docker/docker-compose.yml).
 
 ## Prerequisites
 
-- Docker and Docker Compose on the **build machine** and on the **VM**. On the VM, use a **non-root** login that can run Docker (e.g. user in the **`docker`** group); [`lightsail/clean-start.sh`](lightsail/clean-start.sh) does not call `sudo` and checks `docker info` before running.
+- Docker and Docker Compose on the **build machine** and on the **VM**. On a **new** Amazon Linux 2023 Lightsail instance, install Docker and add **`ec2-user`** to the **`docker`** group — see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) **Phase 0**. On the VM, use a **non-root** login that can run Docker; [`lightsail/clean-start.sh`](lightsail/clean-start.sh) does not call `sudo` and checks `docker info` before running.
 - SSH access to the VM (e.g. `Host ezkey` in `~/.ssh/config`)
 - DNS **A** records for your API hostnames pointing at the Lightsail **public** IP, **DNS only** (grey cloud) if Let’s Encrypt should reach Caddy directly
 - Ports **80** and **443** open on the instance firewall for HTTP-01 / HTTPS
@@ -63,6 +64,8 @@ docker load -i ~/ezkey-auth-api.tar
 docker load -i ~/ezkey-integration-api.tar
 ```
 
+To automate **save → scp → load** (and optionally **remote `clean-start.sh`**), use [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh). For a **single command** that can also **`docker compose build`**, push images to the VM, **clean-start**, and **deploy the Admin UI to Cloudflare**, see [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*.
+
 ## Run on Lightsail
 
 **First-time VM layout:** use a single root **`~/ezkey`** on the instance that mirrors the repo (contains **`docker/`** and **`experimental-hybrid/lightsail/`**). The documented default is to **`scp`** from a machine that already has the **Git clone** (repo root → `ssh`/`mkdir`/`scp`); an optional **clone on the VM** is described in the same place. Full steps and migration from an older folder layout are in [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) (*VM initialization*).
@@ -95,7 +98,7 @@ Environment variables follow the main Docker stack. See:
 - [`ezkey-auth-api/CONFIGURATION.md`](../ezkey-auth-api/CONFIGURATION.md)
 - [`ezkey-integration-api/CONFIGURATION.md`](../ezkey-integration-api/CONFIGURATION.md)
 
-`EZKEY_TRUSTED_PROXIES` is set for traffic **behind Caddy**. Adjust if your Docker bridge CIDR differs.
+Set **`EZKEY_TRUSTED_PROXIES_CIDRS`** (comma-separated CIDRs) so Spring trusts `CF-Connecting-IP` / `X-Forwarded-For` when the direct peer is Caddy on the Docker network (see `lightsail/.env.example`).
 
 ## Optional local stack (`local/`)
 

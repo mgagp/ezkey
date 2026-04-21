@@ -1,6 +1,20 @@
+/**
+ * When true (split HTTPS UI/API build), the API stores the opaque token in an HttpOnly cookie;
+ * this app keeps only non-secret session metadata in sessionStorage.
+ */
+export function isBrowserSessionCookieBuild(): boolean {
+  const v = import.meta.env.VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE;
+  if (v == null || v === '') return false;
+  return String(v).toLowerCase() === 'true';
+}
+
 /** Auth session stored in sessionStorage — cleared when the tab is closed. */
 export interface AuthSession {
-  token: string;
+  /**
+   * Opaque bearer token; omitted when {@link isBrowserSessionCookieBuild} is true (cookie holds
+   * the secret).
+   */
+  token?: string;
   username: string;
   adminType: string;
   /** ISO-8601 — token expiration from the Admin API. */
@@ -26,6 +40,10 @@ export function getSession(): AuthSession | null {
       clearSession();
       return null;
     }
+    if (!isBrowserSessionCookieBuild() && (!session.token || session.token === '')) {
+      clearSession();
+      return null;
+    }
     return session;
   } catch {
     return null;
@@ -42,7 +60,7 @@ export function clearSession(): void {
   sessionStorage.removeItem(AUTH_KEY);
 }
 
-/** Convenience accessor for the bearer token. */
+/** Convenience accessor for the bearer token (empty in cookie-build mode). */
 export function getToken(): string | null {
   return getSession()?.token ?? null;
 }

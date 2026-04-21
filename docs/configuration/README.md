@@ -9,7 +9,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | Module | CONFIGURATION.md | Role |
 |---|---|---|
 | `ezkey-core` | [ezkey-core/CONFIGURATION.md](../../ezkey-core/CONFIGURATION.md) | Shared library — defines all `ezkey.encryption.*`, `ezkey.audit.*`, `ezkey.organization.*`, `ezkey.qr.*`, `ezkey.enrollment.*`, `ezkey.demo.*`, and `ezkey.core.*` prefixes |
-| `ezkey-admin-api` | [ezkey-admin-api/CONFIGURATION.md](../../ezkey-admin-api/CONFIGURATION.md) | Defines `ezkey.admin.*` (including `ezkey.admin.cors.*`), `ezkey.admin-operations.*`, `ezkey.security.admin.*`, `ezkey.api-key.*`, `ezkey.trusted-proxies.*` |
+| `ezkey-admin-api` | [ezkey-admin-api/CONFIGURATION.md](../../ezkey-admin-api/CONFIGURATION.md) | Defines `ezkey.admin.*` (including `ezkey.admin.cors.*`, `ezkey.admin.auth.*`), `ezkey.admin-operations.*`, `ezkey.security.admin.*`, `ezkey.api-key.*`, `ezkey.trusted-proxies.*` |
 | `ezkey-auth-api` | [ezkey-auth-api/CONFIGURATION.md](../../ezkey-auth-api/CONFIGURATION.md) | Defines `ezkey.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-integration-api` | [ezkey-integration-api/CONFIGURATION.md](../../ezkey-integration-api/CONFIGURATION.md) | Defines `ezkey.api-key.rate-limit.*`, `ezkey.trusted-proxies.*`; inherits core prefixes |
 | `ezkey-crypto-api` | [ezkey-crypto-api/CONFIGURATION.md](../../ezkey-crypto-api/CONFIGURATION.md) | No database; inherits `ezkey.encryption.*` from core |
@@ -31,6 +31,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.security.admin` | `ezkey-admin-api` | admin-api | [admin-api §8](../../ezkey-admin-api/CONFIGURATION.md#8-admin-security-limits-ezkeysecurityadmin) |
 | `ezkey.admin.bootstrap.export` | `ezkey-admin-api` | admin-api | [admin-api §9](../../ezkey-admin-api/CONFIGURATION.md#9-bootstrap-credentials-export-ezkeyadminbootstrapexport) |
 | `ezkey.admin.cors` | `ezkey-admin-api` | admin-api | [admin-api §11](../../ezkey-admin-api/CONFIGURATION.md#11-admin-cors--browser-cross-origin-ezkeyadmincors) |
+| `ezkey.admin.auth` | `ezkey-admin-api` | admin-api | [admin-api §12](../../ezkey-admin-api/CONFIGURATION.md#12-browser-httponly-session-cookie) |
 | `ezkey.trusted-proxies` | `ezkey-admin-api` (copy ×3) | admin-api, auth-api, integration-api | [admin-api §10](../../ezkey-admin-api/CONFIGURATION.md#10-trusted-proxies-ezkeytrusted-proxies) · [auth-api §2](../../ezkey-auth-api/CONFIGURATION.md#2-trusted-proxies-ezkeytrusted-proxies) · [integration-api §2](../../ezkey-integration-api/CONFIGURATION.md#2-trusted-proxies-ezkeytrusted-proxies) |
 | `ezkey.rate-limit` | `ezkey-auth-api` | auth-api | [auth-api §1](../../ezkey-auth-api/CONFIGURATION.md#1-auth-api-rate-limiting-ezkeyrate-limit) |
 | `ezkey.encryption` | `ezkey-core` (`TinkProperties`) | admin-api, auth-api, integration-api, crypto-api | [core §encryption](../../ezkey-core/CONFIGURATION.md#encryption-at-rest-ezkeyencryption) |
@@ -91,6 +92,8 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `EZKEY_ORGANIZATION_ABOUT_URL` | `ezkey.organization.about-url` | admin-api and auth-api docker profile |
 | `EZKEY_ADMIN_MFA_BOOTSTRAP_CREDENTIALS_OUTPUT_MODE` | `ezkey.admin.mfa.bootstrap.credentials-output-mode` | admin-api docker profile |
 | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | `ezkey.admin.cors.allowed-origins` | admin-api (split UI/API only; unset for clean-start) |
+| `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS` | `ezkey.admin.cors.allow-credentials` | admin-api (with HttpOnly cookie + credentialed `fetch`) |
+| `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `ezkey.admin.auth.browser-session-cookie-enabled` | admin-api (split HTTPS UI/API optional) |
 | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `ezkey.demo.mitm-signature-enabled` | auth-api docker profile |
 | `EZKEY_INSTANCE_ID` | `ezkey.audit.integrity.instance-id` | all API modules |
 

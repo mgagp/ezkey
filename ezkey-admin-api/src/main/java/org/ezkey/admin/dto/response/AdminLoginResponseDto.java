@@ -12,6 +12,7 @@ package org.ezkey.admin.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import java.time.OffsetDateTime;
 
 /**
@@ -50,8 +51,11 @@ public record AdminLoginResponseDto(
             allowableValues = {"pending", "accepted", "rejected"})
         String status,
     @Schema(
-            description = "Bearer token for authenticated API requests",
-            example = "ezkey_abc123def456...")
+            description =
+                "Bearer token for authenticated API requests. Omitted when the API issues an"
+                    + " HttpOnly session cookie (browser split UI/API).",
+            example = "ezkey_abc123def456...",
+            requiredMode = RequiredMode.NOT_REQUIRED)
         String token,
     @Schema(
             description = "Type of administrator",
@@ -192,6 +196,30 @@ public record AdminLoginResponseDto(
   public static AdminLoginResponseDto error(String message) {
     return new AdminLoginResponseDto(
         false, message, null, null, null, null, null, null, null, null, null);
+  }
+
+  /**
+   * Same payload as this response but with {@link #token} removed for JSON serialization when the
+   * opaque value was already sent as an HttpOnly cookie.
+   *
+   * @return a copy with {@code token == null}, or {@code this} if there was no token
+   */
+  public AdminLoginResponseDto withoutSecretToken() {
+    if (token == null) {
+      return this;
+    }
+    return new AdminLoginResponseDto(
+        success,
+        message,
+        status,
+        null,
+        adminType,
+        username,
+        expiresAt,
+        authAttemptId,
+        challengeCode,
+        adminId,
+        tenantId);
   }
 
   @Override

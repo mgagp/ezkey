@@ -4,11 +4,13 @@ const replace = vi.fn();
 const authMocks = vi.hoisted(() => ({
   clearSession: vi.fn(),
   getToken: vi.fn(),
+  isBrowserSessionCookieBuild: vi.fn(() => false),
 }));
 
 vi.mock('./auth', () => ({
   clearSession: authMocks.clearSession,
   getToken: authMocks.getToken,
+  isBrowserSessionCookieBuild: authMocks.isBrowserSessionCookieBuild,
 }));
 
 import { ApiError, fetchApi, fetchBlobUrl } from './api-client';
@@ -32,11 +34,25 @@ describe('fetchApi', () => {
     vi.stubGlobal('fetch', vi.fn());
     authMocks.clearSession.mockReset();
     authMocks.getToken.mockReset();
+    authMocks.isBrowserSessionCookieBuild.mockReturnValue(false);
     replace.mockReset();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('when HttpOnly cookie mode, sends credentials include on requests', async () => {
+    authMocks.isBrowserSessionCookieBuild.mockReturnValue(true);
+    authMocks.getToken.mockReturnValue(null);
+    vi.mocked(globalThis.fetch).mockResolvedValue(jsonResponse(200, { ok: true }));
+
+    await fetchApi('/api/v1/overview');
+
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ credentials: 'include' }),
+    );
   });
 
   it('on 401 with requireAuth (default) and no bearerToken, clears session and redirects to login even without a token', async () => {

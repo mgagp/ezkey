@@ -1,202 +1,207 @@
-# Deployment playbook — experimental hybrid (Lightsail + Cloudflare + optional local)
+# Deployment playbook — experimental hybrid (Lightsail + Cloudflare)
 
-This document splits **what you do manually** (account, DNS, secrets, smoke tests) from **what lives in the repo** (compose, Caddyfile, env templates).
+This document records the **target path** for a disposable Ezkey stack on **Amazon Lightsail** with **Cloudflare** in front (proxied / orange), **TLS 1.3** on the APIs, and **Admin UI** on **Cloudflare Pages**. It separates **operator actions** (DNS, secrets, dashboard) from **repo artifacts** (Compose, Caddyfile, scripts).
 
-## Phase 1 — Repo artifacts (maintained in Git)
+**Traffic model:** browser → **Cloudflare** (public TLS) → **Lightsail** (Caddy terminates TLS to the origin using a **Cloudflare Origin Certificate**) → **Spring APIs** in Docker. Postgres is not exposed publicly.
 
-- `lightsail/docker-compose.yml` — services, volumes, healthchecks
-- `lightsail/clean-start.sh` — **optional operator script** on the VM: full stack reset (`docker compose down -v`), seed encryption keys in the correct Compose volume via [`docker/generate-encryption-keys.sh`](../docker/generate-encryption-keys.sh) (`--experimental-lightsail`), then `docker compose up -d` (same role as local `ezkey-tests/clean-start.sh`, but for this cloud stack; **destructive** to volumes)
-- `lightsail/Caddyfile` — public hostnames → internal services (TLS via Caddy / Let’s Encrypt; **TLS 1.3 only** at the edge)
-- `lightsail/.env.example` — copy to `.env` on the VM; **no secrets committed**
-- `local/docker-compose.yml` — optional Crypto / Demo Device / Demo ACME
-- `local/.env.example` — public API base URLs for local companions
-- `README.md` — build, `docker save`, `scp`, `docker load`, run commands
+---
 
-## VM initialization — `~/ezkey` tree, `scp`, and remote commands
+## Phase 0 — Fresh Lightsail instance (Amazon Linux 2023): Docker and `ec2-user`
 
-Use a **single top-level directory on the VM** (here **`~/ezkey`**) that matches the **repository layout**: the root must contain both **`docker/`** (for [`docker/generate-encryption-keys.sh`](../docker/generate-encryption-keys.sh)) and **`experimental-hybrid/`** (for [`lightsail/clean-start.sh`](lightsail/clean-start.sh), which resolves `../../docker/...` from `experimental-hybrid/lightsail/`). That layout matches a **full Git clone** of Ezkey at `~/ezkey`, but **this runbook assumes you populate the VM from a development workstation** that already has the repo cloned (build images there, run `scp` from the repo root). You do **not** need Git on the Lightsail instance for the default path.
+Use when the VM is **new** or rebuilt (new disk, new public IPv4). Default user: **`ec2-user`**. Day-to-day Docker commands should run **without** `sudo` after group setup.
 
-### Canonical directory tree (operator view)
+### 0a — Lightsail networking
+
+In **Lightsail** → instance → **Networking** → **IPv4 firewall**:
+
+- **SSH (22)** — restrict to your IP or bastion if you can.
+- **HTTPS (443)** — required. **Recommended** with Cloudflare orange: allow **only** [Cloudflare IPv4 ranges](https://www.cloudflare.com/ips-v4) (and IPv6 if you use it) so only Cloudflare can reach the origin. Maintain the list when Cloudflare updates it.
+- **HTTP (80)** — **optional** for this model. With **SSL/TLS = Full (strict)** and **Origin CA** on Caddy, Cloudflare talks to the origin on **443**. You may **omit 80** on the instance firewall to reduce surface area (no HTTP-01 Let’s Encrypt on the origin in the default path).
+
+### 0b — Install Docker and Compose (v2)
+
+```bash
+sudo dnf update -y
+sudo dnf install -y docker
+sudo systemctl enable --now docker
+sudo docker info >/dev/null && echo "Docker daemon OK"
+```
+
+On many AMIs, **`docker-compose-plugin`** is missing from `dnf`. If `docker compose version` fails, install the **Compose v2** CLI plugin:
+
+```bash
+sudo mkdir -p /usr/local/lib/docker/cli-plugins
+sudo curl -sSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+docker compose version
+```
+
+Ezkey expects **`docker compose`** (v2), not the old `docker-compose` binary name.
+
+### 0c — `ec2-user` in the `docker` group
+
+```bash
+sudo usermod -aG docker ec2-user
+```
+
+New SSH session or `newgrp docker`, then `docker info` and `docker compose version` **without** sudo.
+
+### 0d — Public IP and DNS
+
+After a rebuild, set each API **A** record in Cloudflare to the **new** Lightsail IPv4 before expecting traffic to work.
+
+---
+
+## Phase 1 — Repo artifacts (Git)
+
+| Artifact | Role |
+|----------|------|
+| [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) | Stack: Postgres, migration, APIs, Caddy |
+| [`lightsail/Caddyfile`](lightsail/Caddyfile) | Hostnames → `reverse_proxy`; **TLS 1.3 only**; cert files: `tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem` |
+| [`lightsail/caddy-certs/`](lightsail/caddy-certs/) | On the VM only: **Origin CA** PEMs from Cloudflare (**not** in git; `.gitignore` keeps the folder) |
+| [`lightsail/clean-start.sh`](lightsail/clean-start.sh) | Optional **destructive** reset: `down -v`, keygen, `up -d` |
+| [`lightsail/.env.example`](lightsail/.env.example) | Template for `lightsail/.env` |
+| [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) | `docker save` → `scp` → `docker load`; with `--clean-start`, syncs `docker-compose.yml`, `Caddyfile`, `clean-start.sh` then runs `clean-start.sh` |
+| [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) | Optional: local build + export + clean-start + Pages deploy |
+
+---
+
+## Phase 1b — Cloudflare: Origin CA, orange proxy, SSL
+
+**Goal:** Browsers trust **Cloudflare’s** certificate; the origin trusts **Cloudflare Origin CA** (issued in the dashboard, long-lived).
+
+1. **SSL/TLS** → **Full** or **Full (strict)** (strict once the origin presents the Origin cert correctly).
+2. **Origin Server** → **Create certificate** → hostnames: your three API FQDNs (e.g. `exp1-auth-api`, `exp1-admin-api`, `exp1-integration-api` under your zone) → save **`origin.pem`** and **`origin-key.pem`** locally (never commit).
+3. On the VM: `mkdir -p ~/ezkey/experimental-hybrid/lightsail/caddy-certs`, `chmod 700`, copy PEMs, `chmod 600` on the key.
+4. **DNS:** set API **A** records to the Lightsail IP, then enable **proxied (orange)**.
+5. **HSTS** (optional): start with a **short** `max-age` or disable until stable; add **`includeSubDomains`** / **preload** only when the whole zone is ready. Enable **No-Sniff** if offered in the same UI.
+6. **Let’s Encrypt on the origin:** not used in this path. Repeated `docker compose down -v` **without** preserving `caddy-data` was what burned **Let’s Encrypt production** rate limits when Caddy used automatic LE; **Origin CA** avoids that. Keep **`caddy-data`** if you still use local Caddy state; TLS for public names is primarily at Cloudflare.
+
+---
+
+## VM initialization — `~/ezkey` layout
+
+Single directory **`~/ezkey`** matching the repo: `docker/generate-encryption-keys.sh` and `experimental-hybrid/lightsail/`. **Git on the VM is optional** if you copy from a workstation.
+
+### Directory tree
 
 ```text
-~/ezkey/                              # same role as repo root on your dev machine
+~/ezkey/
 ├── docker/
-│   └── generate-encryption-keys.sh   # required for clean-start / --experimental-lightsail
+│   └── generate-encryption-keys.sh
 └── experimental-hybrid/
-    ├── DEPLOYMENT_PLAYBOOK.md        # optional copy for offline reading
-    ├── README.md
-    ├── lightsail/
-    │   ├── .env                      # from .env.example; not committed
-    │   ├── .env.example
-    │   ├── Caddyfile
-    │   ├── clean-start.sh            # chmod +x
-    │   └── docker-compose.yml
-    └── local/                        # optional; hybrid companions on your PC (see Phase 5)
-        └── …
+    └── lightsail/
+        ├── .env                 # from .env.example
+        ├── .env.example
+        ├── docker-compose.yml
+        ├── Caddyfile
+        ├── clean-start.sh
+        └── caddy-certs/         # origin.pem, origin-key.pem (VM only)
 ```
 
-**Operational rule:** run **`docker compose`** and **`./clean-start.sh`** only from **`~/ezkey/experimental-hybrid/lightsail/`** so paths and Compose project name (`name: ezkey-experimental-lightsail` in the compose file) stay consistent.
+Run **`docker compose`** and **`./clean-start.sh`** only from **`~/ezkey/experimental-hybrid/lightsail/`**.
 
-### Default path — from your PC (Git clone on the workstation, `scp` to the VM)
-
-**Prerequisite:** clone the Ezkey repository on your **development machine** and use a shell whose working directory is the **repository root** (same level as `docker/` and `experimental-hybrid/`). Replace **`ezkey`** with your SSH host alias (`Host ezkey` in `~/.ssh/config`).
-
-**1. Create the tree on the VM**
+### Copy from your PC (repo root; `ezkey` = SSH host alias)
 
 ```bash
-ssh ezkey "mkdir -p ezkey/docker ezkey/experimental-hybrid/lightsail"
-```
+ssh ezkey "mkdir -p ezkey/docker ezkey/experimental-hybrid/lightsail/caddy-certs"
 
-**2. Copy the files `clean-start.sh` depends on**
-
-```bash
 scp docker/generate-encryption-keys.sh ezkey:ezkey/docker/
 scp experimental-hybrid/lightsail/clean-start.sh ezkey:ezkey/experimental-hybrid/lightsail/
 scp experimental-hybrid/lightsail/docker-compose.yml ezkey:ezkey/experimental-hybrid/lightsail/
 scp experimental-hybrid/lightsail/Caddyfile ezkey:ezkey/experimental-hybrid/lightsail/
 scp experimental-hybrid/lightsail/.env.example ezkey:ezkey/experimental-hybrid/lightsail/
+
+scp origin.pem origin-key.pem ezkey:ezkey/experimental-hybrid/lightsail/caddy-certs/
+ssh ezkey "chmod 700 ezkey/experimental-hybrid/lightsail/caddy-certs && chmod 600 ezkey/experimental-hybrid/lightsail/caddy-certs/origin-key.pem"
 ```
 
-**3. On the VM — finalize env and permissions**
+### On the VM
 
 ```bash
-ssh ezkey
 cd ~/ezkey/experimental-hybrid/lightsail
 cp .env.example .env
-# Edit .env (editor of your choice)
+# Edit .env — see .env.example; required: EZKEY_TRUSTED_PROXIES_CIDRS, CORS, URLs, etc.
 chmod +x clean-start.sh
 ```
 
-**4. Optional — copy the whole `local/` tree** (if you use hybrid local companions later):
+**`EZKEY_TRUSTED_PROXIES_CIDRS`:** comma-separated CIDRs that include the **Docker bridge** (see `.env.example`). Spring maps this to `ezkey.trusted-proxies.cidrs`. With **orange** Cloudflare, the path is **browser → Cloudflare → Caddy → API**; Caddy is the direct TCP peer to Spring, so those CIDRs must cover Caddy’s network. The apps then read **`CF-Connecting-IP`** / **`X-Forwarded-For`** for the real client. **If audit logs show only Caddy’s IP**, the variable is missing or wrong in the container — recreate the API services after fixing `.env`.
 
-```bash
-scp -r experimental-hybrid/local ezkey:ezkey/experimental-hybrid/
-```
+Then **Phase 2** (images) and **Phase 3** (start).
 
-**5. Optional — documentation** in `~/ezkey/experimental-hybrid/` (`README.md`, this playbook) can be copied the same way if you want them on the server.
+---
 
-Then continue with **Phase 2** (images) and **Phase 3** (start / clean-start).
+## Phase 2 — Build and transfer images
 
-### Alternative — Git clone directly on the VM
+1. On the workstation: `docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api` (or targets you need).
+2. `docker save` → tars; `scp` to VM; on VM: `docker load`.
 
-If you prefer **not** to use `scp` from a PC, you may install **Git** on the instance and clone the repository into **`~/ezkey`**. The resulting tree matches the diagram above; then `cp .env.example .env`, edit `.env`, and `chmod +x experimental-hybrid/lightsail/clean-start.sh`. Image build and transfer (**Phase 2**) still typically happen on a workstation with Docker, unless you build on the VM by choice.
+**Scripted:** [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) — use `--clean-start` for a full sync of compose + Caddyfile + `clean-start.sh` and a **destructive** VM reset. **`caddy-certs/` and `.env` are not copied** by the script (secrets / operator files).
 
-### Migrating from an older layout
+**Preset:** [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) — optional build, export, clean-start, Pages deploy (see script `usage`).
 
-If you previously kept **`experimental-hybrid/`** at the **home directory root** (without `~/ezkey`), move or copy **`lightsail/`** contents (at least `.env`, `Caddyfile`, `docker-compose.yml`) into **`~/ezkey/experimental-hybrid/lightsail/`**, and ensure **`~/ezkey/docker/generate-encryption-keys.sh`** exists. Remove or archive the old tree once you confirm the new paths work to avoid editing the wrong `.env`.
+**Rolling update without wipe:** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
 
-### After initialization
+---
 
-- **Phase 2:** load container images (`docker load` / tars under `~/` or a chosen directory).
-- **Phase 3:** from **`~/ezkey/experimental-hybrid/lightsail`**, run **`./clean-start.sh`** (full reset + encryption seed) or follow the non-wipe paths described there.
+## Phase 3 — Start stack and encryption
 
-## Phase 2 — You: build and transfer images
+1. Layout and `lightsail/.env` as above; **`EZKEY_QR_AUTH_BASE_URL`** = public `https://` Auth API base.
+2. **Caddyfile** hostnames must match DNS.
+3. **First start / disposable DB:** from `lightsail/`, `./clean-start.sh` (wipes volumes — see script `--help`).
+4. **Encryption:** keys live in the **`encryption-secrets`** volume; use `clean-start` or [`docker/generate-encryption-keys.sh --experimental-lightsail`](../docker/generate-encryption-keys.sh). Details: **Phase 3b** below (manual seeding if you did not wipe).
 
-**Docker on the VM (non-root operator):** day-to-day `docker compose` / `docker load` / [`lightsail/clean-start.sh`](lightsail/clean-start.sh) should run as a **normal** user with access to the Docker socket — typically add that user to the **`docker`** group once (`sudo usermod -aG docker "$USER"`, then re-login). You do **not** need to run these scripts as **root** on the host; the stack matches the usual “non-root human + Docker group” practice.
+### Phase 3b — Encryption secrets (`/etc/ezkey` volume)
 
-1. Build images from repo root (`docker compose build` or `docker build --target …`).
-2. `docker save` → tar files.
-3. `scp` tar files to the VM (e.g. `scp … ezkey:~/`).
-4. On the VM: `docker load`.
+Without **`/etc/ezkey/secrets/master.key`**, Tink may stay disabled. Prefer **`clean-start`** or **`generate-encryption-keys.sh --experimental-lightsail`** on the VM. Do **not** use [`scripts/generate-master-key.sh`](../scripts/generate-master-key.sh) as-is for this Compose layout (host paths differ). Manual seed example and re-encryption notes remain as in the previous playbook revision — see [`ezkey-admin-api/CONFIGURATION.md`](../ezkey-admin-api/CONFIGURATION.md).
 
-**Rolling update (single API or migration image, keep data):** after loading a new tar, **recreate** the service so `:latest` is picked up — see [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md). A plain `docker compose restart` does not switch the container to a newly loaded image.
+---
 
-## Phase 3 — You: VM configuration
+## TLS 1.3 (API hostnames on Caddy)
 
-1. Ensure the **VM directory layout** matches the **VM initialization** section above (`~/ezkey` with `docker/` and `experimental-hybrid/lightsail/`).
-2. Create `lightsail/.env` from `.env.example`; set **`EZKEY_QR_AUTH_BASE_URL`** to the **public** `https://` Auth API base (must match DNS + `Caddyfile`).
-3. Edit **`Caddyfile`** hostnames if they differ from the examples.
-4. Ensure **80** and **443** are allowed on the instance network.
-5. Start the stack **with encryption enabled from the first API startup** using **one** of:
-   - **Full reset (empty slate or “like clean-start”):** from `lightsail/`, run `./clean-start.sh` (see script header for `--no-down` / `--no-keygen`). This runs `docker compose down -v` (removes **Postgres and all** named volumes), generates the master key into `ezkey-experimental-lightsail_encryption-secrets`, then `docker compose up -d`. **Do not** use this if you need to keep existing DB data.
-   - **Bring up without wiping:** `bash ../../docker/generate-encryption-keys.sh --experimental-lightsail --force` then `docker compose up -d` (requires the repo `docker/` tree on the VM). The generator creates the volume if needed **before** APIs start.
-   - **Minimal:** `docker compose up -d` only — then you **must** seed keys (Phase 3b manual) before relying on encryption at rest.
+[`lightsail/Caddyfile`](lightsail/Caddyfile) uses **TLS 1.3 only** on the origin certificate block. **Public users** see **Cloudflare’s** TLS when DNS is orange; **Cloudflare → origin** uses your **Origin CA** + Full (strict).
 
-### Phase 3b — Encryption secrets (Docker volume `/etc/ezkey`)
+**Admin UI (Pages):** set zone **Minimum TLS 1.3** for the UI hostname. See [`docs/cloudflare/admin-ui-pages.md`](../docs/cloudflare/admin-ui-pages.md).
 
-**Why:** Admin, Auth, and Integration APIs mount the **`encryption-secrets`** volume at **`/etc/ezkey`**. Without **`/etc/ezkey/secrets/master.key`**, Tink logs *Master key file not found. Encryption will be disabled* and sensitive columns stay **plaintext** in Postgres.
+**Check:** `openssl s_client -connect <api-host>:443 -tls1_2` should fail; `-tls1_3` should succeed when hitting the origin or through CF as applicable.
 
-**Do not rely on** [`scripts/generate-master-key.sh`](../scripts/generate-master-key.sh) **as-is on the VM host** for this stack: that script writes to the **host** filesystem (`/etc/ezkey`, user `ezkey`). Compose expects key material **inside the named volume** consumed by the containers (runtime user **`spring`**). Prefer **`docker/generate-encryption-keys.sh --experimental-lightsail`** (used by `lightsail/clean-start.sh`) or the manual steps below.
+---
 
-**Manual seeding** (e.g. stack already running and you cannot wipe volumes — adjust container name if needed):
-
-1. Create the master key **inside** the Admin API container (adjust the container name if yours differs from `ezkey-exp-admin-api`):
-
-```bash
-docker exec -u 0 ezkey-exp-admin-api sh -c '
-  apk add --no-cache openssl
-  mkdir -p /etc/ezkey/secrets /etc/ezkey/keysets
-  if [ ! -s /etc/ezkey/secrets/master.key ]; then
-    openssl rand -base64 32 > /etc/ezkey/secrets/master.key
-    chmod 600 /etc/ezkey/secrets/master.key
-  fi
-  chown -R spring:spring /etc/ezkey
-'
-```
-
-2. Restart the three API services so they all reload the shared volume:
-
-```bash
-docker compose restart admin-api auth-api integration-api
-```
-
-3. Confirm in logs: look for **Tink encryption ready** (or equivalent) and **no** *Encryption will be disabled* warning from `TinkKeyManager` on **admin-api** at least.
-
-4. **Backup** `master.key` securely (e.g. `docker cp ezkey-exp-admin-api:/etc/ezkey/secrets/master.key` to an encrypted store). Loss of this file with no backup means loss of ability to decrypt existing ciphertext.
-
-5. **Optional — audit HMAC key:** Docker profile expects [`/etc/ezkey/secrets/audit-hmac.key`](../ezkey-admin-api/config/application-docker.properties). If missing, the application may **generate** one at startup (see `AuditHmacService`); you can also create a second random file the same way as `master.key` under a different filename if you prefer provisioning it explicitly.
-
-6. **Data written while encryption was off:** Once the master key exists and services are healthy, configured **re-encryption** jobs can encrypt existing rows; see [`ezkey-admin-api/CONFIGURATION.md`](../ezkey-admin-api/CONFIGURATION.md) (`ezkey.encryption.reencryption.*`). Plan a follow-up verification pass on representative tables or logs.
-
-## TLS 1.3 only (opinionated edge)
-
-Ezkey’s experimental hybrid stack is **opinionated**: public HTTPS for the **three API hostnames** (Auth, Admin API, Integration API) is terminated by **Caddy** with **TLS 1.3 only** — no TLS 1.2. Older HTTP clients cannot negotiate a connection. This matches a greenfield posture (modern browsers and mobile OS stacks).
-
-**Implemented in repo:** [`lightsail/Caddyfile`](lightsail/Caddyfile) — each site block includes:
-
-```caddy
-tls {
-    protocols tls1.3 tls1.3
-}
-```
-
-**Admin UI (Cloudflare Pages):** the SPA is served over HTTPS by **Cloudflare**, not by this Caddy instance. Set **Minimum TLS Version** to **1.3** in the Cloudflare **SSL/TLS** settings for the **zone** (and any custom domain used for Pages) so the browser↔Cloudflare leg matches the same policy. See also [`docs/cloudflare/admin-ui-pages.md`](../docs/cloudflare/admin-ui-pages.md) (*TLS version*).
-
-**Verify after deploy:** `openssl s_client -connect <host>:443 -tls1_2` should fail to negotiate; `-tls1_3` should succeed. Reload Caddy after editing the Caddyfile: `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile` (from `lightsail/`), or restart the `caddy` container.
-
-## Phase 4 — You: Cloudflare and Admin UI (complement)
+## Phase 4 — Cloudflare Pages, CORS, cookies, smoke tests
 
 | Action | Owner |
 |--------|--------|
-| Create/verify **DNS** A (or CNAME) records for each API hostname → Lightsail public IP | You |
-| Keep records **DNS only** (grey) while using direct Let’s Encrypt to the origin | You |
-| Cloudflare **Pages** (or Workers) for Admin UI: set build env (e.g. `VITE_API_BASE_URL` → public Admin API URL); **SSL/TLS** minimum version **1.3** for the zone / custom domain (see *TLS 1.3 only* above) | You |
-| API **tokens** / dashboard login — never commit to the repo | You |
-| Confirm **CORS** on Admin API allows your Pages **origin** (see Java CORS configuration / tests in repo) | You + code changes in repo when needed |
-| Smoke test from browser and mobile against **public** Auth URL | You |
+| **A** records for APIs → Lightsail IP, **proxied** | You |
+| **SSL/TLS** Full (strict), **Origin CA** on Caddy | You |
+| **Pages** Admin UI: **one Pages project per instance** (see [`docs/cloudflare/admin-ui-pages.md`](../docs/cloudflare/admin-ui-pages.md) §0); per project: `VITE_API_BASE_URL`, optional `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true` (repo root `.env` for script deploys) | You |
+| Admin API **CORS** origins + **`EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS`** when using cookie sessions | `.env` on VM |
+| **API tokens** — never commit | You |
+| `curl -sI https://<admin-api>/api/v1/public/instance-info` → **200**, `Server: cloudflare` | You |
+| Audit log **client IP** = real visitor (not Docker Caddy IP) when **`EZKEY_TRUSTED_PROXIES_CIDRS`** is set | You |
 
-Reference script pattern (do not commit secrets): [`scripts/cloudflare/deploy-admin-ui-preview.sh`](../scripts/cloudflare/deploy-admin-ui-preview.sh).
+---
 
 ## Phase 5 — Optional local companions
 
-1. Configure `local/.env` with public `EZKEY_AUTH_API_URL` / `EZKEY_ADMIN_API_URL`.
-2. Sync **`/etc/ezkey`** from the VM for **crypto-api** if you run it locally (`README.md`).
-3. `docker compose up -d --build` from `local/`.
+[`local/docker-compose.yml`](local/docker-compose.yml) — see [`README.md`](README.md).
+
+---
 
 ## Phase 6 — Checkpoint
 
-- Confirm HTTPS on all three API hostnames (**TLS 1.3 only** to origin — see *TLS 1.3 only* section).
-- Confirm Admin UI (if on Cloudflare) talks to the Admin API with CORS OK.
-- Confirm **encryption at rest** is active (no *Master key file not found* / *Encryption will be disabled* from `TinkKeyManager` after Phase 3b).
-- If using SSH tunnel to Postgres (`localhost:6432` on PC), confirm tunnel and optional DBeaver connectivity.
+- HTTPS on all three API hostnames through **Cloudflare**; origin presents **Origin CA** to Cloudflare.
+- **Encryption** active (no permanent *Encryption will be disabled* from Tink on admin-api).
+- **Audit** shows **client** IPs (trusted proxy + headers).
+- Admin UI login and API **CORS** / **cookie** mode as configured.
+
+---
 
 ## Automation vs manual (summary)
 
-| Automated / versioned in repo | Manual (operator) |
-|------------------------------|---------------------|
-| Compose, Caddyfile (TLS 1.3 only on API hostnames), `.env.example` | Cloudflare login, API tokens, DNS UI, **minimum TLS 1.3** for Pages zone |
-| Build instructions | `docker save` / `scp` / `docker load` timing |
-| CORS / Java changes when implemented in PRs | Choosing hostnames and TLS/DNS-only policy |
-| `lightsail/clean-start.sh`, `docker/generate-encryption-keys.sh --experimental-lightsail` | Run on VM; choosing wipe vs preserve DB |
-| Repo `scripts/generate-master-key.*` (host-oriented) | Bare-metal paths only; not sufficient by itself for Compose volume |
-| | Phone / real-device smoke tests |
+| In repo / scripted | Manual (operator) |
+|--------------------|-------------------|
+| Compose, Caddyfile, `.env.example`, export / full-upgrade scripts | Cloudflare account, Origin CA creation, DNS orange, firewall CIDRs, HSTS choices |
+| `clean-start.sh`, `generate-encryption-keys.sh` | Run on VM; wipe vs keep DB |
+| | `caddy-certs` PEM placement, root `.env` for Pages deploy |
+| | Device / browser smoke tests |

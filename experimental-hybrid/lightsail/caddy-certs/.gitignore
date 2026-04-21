@@ -1,0 +1,3 @@
+# Origin certificate and private key live here on the VM only. Never commit PEM material.
+*
+!.gitignore
