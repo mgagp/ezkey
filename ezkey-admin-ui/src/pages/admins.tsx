@@ -64,7 +64,6 @@ interface AdminOnboardingShape {
 /** UI-facing shape for create admin response (API returns provisioning DTO with optional recovery codes). */
 interface AdminProvisioningShape {
   username?: string;
-  recoveryCodes?: string[];
   onboardingMode?: AdminCreateRequestDto['onboardingMode'];
   lifecycleStatus?: AdminResponseDto['lifecycleStatus'];
   activationCode?: string;
@@ -80,6 +79,8 @@ interface AdminRecoveryCodesRegenerationShape {
   invalidatedPreviousCodes?: boolean;
   message?: string;
 }
+
+type RecoveryAwareAdmin = AdminResponseDto & { hasRecoveryCodes?: boolean };
 
 function isPendingActivationAdmin(
   admin: Pick<AdminResponseDto, 'lifecycleStatus'> | null | undefined,
@@ -105,9 +106,20 @@ function canShowOnboardingCredentials(
 }
 
 function canRegenerateAdminRecoveryCodes(
-  admin: Pick<AdminResponseDto, 'active' | 'lifecycleStatus'>,
+  admin: Pick<RecoveryAwareAdmin, 'active' | 'lifecycleStatus' | 'hasRecoveryCodes'>,
 ): boolean {
-  return admin.active === true && admin.lifecycleStatus === 'ACTIVE';
+  return admin.active === true && admin.lifecycleStatus === 'ACTIVE' && admin.hasRecoveryCodes === true;
+}
+
+function canIssueInitialAdminRecoveryCodes(
+  admin: Pick<RecoveryAwareAdmin, 'active' | 'lifecycleStatus' | 'lastLoginAt' | 'hasRecoveryCodes'>,
+): boolean {
+  return (
+    admin.active === true
+    && admin.lifecycleStatus === 'ACTIVE'
+    && admin.hasRecoveryCodes !== true
+    && admin.lastLoginAt != null
+  );
 }
 
 function renderAdminStatusBadge(
@@ -383,14 +395,15 @@ function AdminDetailDialog({
   const [regeneratedCodes, setRegeneratedCodes] = useState<AdminRecoveryCodesRegenerationShape | null>(null);
   const [regeneratedCodesCopied, setRegeneratedCodesCopied] = useState(false);
   const [regeneratedCodesSavedConfirmed, setRegeneratedCodesSavedConfirmed] = useState(false);
+  const [recoveryCodesDialogMode, setRecoveryCodesDialogMode] = useState<'issue-initial' | 'regenerate'>('regenerate');
 
   // Fetch live detail from API to ensure fresh data
-  const { data: detail } = useGetAdminById<AdminResponseDto>(
+  const { data: detail } = useGetAdminById<RecoveryAwareAdmin>(
     admin?.adminId ?? 0,
     { query: { enabled: admin !== null } },
   );
 
-  const adm = detail ?? admin;
+  const adm = (detail ?? admin) as RecoveryAwareAdmin | null;
 
   const relatedDetails = useExpandableRelatedDetails({
     tenantId: adm?.tenantId ?? undefined,
@@ -445,6 +458,23 @@ function AdminDetailDialog({
       toast(getTranslatedApiError(e, t, t('detail.errorRecoveryCodesRegenerate')), 'error'),
   });
 
+  const issueInitialRecoveryCodesMutation = useMutation({
+    mutationFn: async (id: number) =>
+      fetchApi<AdminRecoveryCodesRegenerationShape>(`/api/v1/admins/${id}/recovery-codes/issue-initial`, {
+        method: 'POST',
+      }),
+    onSuccess: async (data) => {
+      setRegeneratedCodes(data);
+      setRegeneratedCodesCopied(false);
+      setRegeneratedCodesSavedConfirmed(false);
+      toast(t('detail.toastRecoveryCodesIssued', { username: adm!.username }), 'success');
+      await queryClient.invalidateQueries({ queryKey: ['admins'] });
+      await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
+    },
+    onError: (e: unknown) =>
+      toast(getTranslatedApiError(e, t, t('detail.errorRecoveryCodesIssue')), 'error'),
+  });
+
   if (!adm) return null;
 
   const activateReasonTooShort = activateReason.trim().length > 0 && activateReason.trim().length < 10;
@@ -460,6 +490,15 @@ function AdminDetailDialog({
   };
 
   const openRegenerateDialog = () => {
+    setRecoveryCodesDialogMode('regenerate');
+    setRegeneratedCodes(null);
+    setRegeneratedCodesCopied(false);
+    setRegeneratedCodesSavedConfirmed(false);
+    setRegenerateOpen(true);
+  };
+
+  const openIssueInitialDialog = () => {
+    setRecoveryCodesDialogMode('issue-initial');
     setRegeneratedCodes(null);
     setRegeneratedCodesCopied(false);
     setRegeneratedCodesSavedConfirmed(false);
@@ -470,7 +509,7 @@ function AdminDetailDialog({
     if (regeneratedCodes && !regeneratedCodesSavedConfirmed) {
       return;
     }
-    if (regenerateRecoveryCodesMutation.isPending) {
+    if (regenerateRecoveryCodesMutation.isPending || issueInitialRecoveryCodesMutation.isPending) {
       return;
     }
     setRegenerateOpen(false);
@@ -478,6 +517,7 @@ function AdminDetailDialog({
     setRegeneratedCodesCopied(false);
     setRegeneratedCodesSavedConfirmed(false);
     regenerateRecoveryCodesMutation.reset();
+    issueInitialRecoveryCodesMutation.reset();
   };
 
   const handleCopyRegeneratedCodes = async () => {
@@ -616,6 +656,17 @@ function AdminDetailDialog({
               <Pencil className="size-3.5" />
               {t('detail.editProfile')}
             </Button>
+            {canIssueInitialAdminRecoveryCodes(adm) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-1.5"
+                onClick={openIssueInitialDialog}
+              >
+                <KeyRound className="size-3.5" />
+                {t('detail.issueInitialRecoveryCodes')}
+              </Button>
+            )}
             {canRegenerateAdminRecoveryCodes(adm) && (
               <Button
                 variant="secondary"
@@ -693,20 +744,35 @@ function AdminDetailDialog({
       <Dialog
         open={regenerateOpen}
         onClose={handleCloseRegenerateDialog}
-        title={t('detail.regenerateRecoveryCodesDialogTitle', { username: adm.username })}
+        title={
+          recoveryCodesDialogMode === 'issue-initial'
+            ? t('detail.issueInitialRecoveryCodesDialogTitle', { username: adm.username })
+            : t('detail.regenerateRecoveryCodesDialogTitle', { username: adm.username })
+        }
         size="md"
         dismissible={false}
       >
         {regeneratedCodes ? (
           <div className="space-y-4">
             <Alert variant="success">
-              {regeneratedCodes.message ?? t('detail.regenerateRecoveryCodesSuccess')}
+              {regeneratedCodes.message
+                ?? (recoveryCodesDialogMode === 'issue-initial'
+                  ? t('detail.issueInitialRecoveryCodesSuccess')
+                  : t('detail.regenerateRecoveryCodesSuccess'))}
             </Alert>
             <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
               <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-black text-error">{t('detail.regenerateRecoveryCodesWarningTitle')}</p>
-                <p className="text-xs text-error/80 mt-0.5">{t('detail.regenerateRecoveryCodesWarningBody')}</p>
+                <p className="text-sm font-black text-error">
+                  {recoveryCodesDialogMode === 'issue-initial'
+                    ? t('detail.issueInitialRecoveryCodesWarningTitle')
+                    : t('detail.regenerateRecoveryCodesWarningTitle')}
+                </p>
+                <p className="text-xs text-error/80 mt-0.5">
+                  {recoveryCodesDialogMode === 'issue-initial'
+                    ? t('detail.issueInitialRecoveryCodesWarningBody')
+                    : t('detail.regenerateRecoveryCodesWarningBody')}
+                </p>
               </div>
             </div>
             <div className="space-y-2 border-2 border-accent/40 bg-bg p-3">
@@ -754,21 +820,33 @@ function AdminDetailDialog({
         ) : (
           <div className="space-y-4">
             <Alert variant="warning">
-              {t('detail.regenerateRecoveryCodesIntro')}
+              {recoveryCodesDialogMode === 'issue-initial'
+                ? t('detail.issueInitialRecoveryCodesIntro')
+                : t('detail.regenerateRecoveryCodesIntro')}
             </Alert>
             <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
               <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-black text-error">{t('detail.regenerateRecoveryCodesWarningTitle')}</p>
-                <p className="text-xs text-error/80 mt-0.5">{t('detail.regenerateRecoveryCodesWarningBody')}</p>
+                <p className="text-sm font-black text-error">
+                  {recoveryCodesDialogMode === 'issue-initial'
+                    ? t('detail.issueInitialRecoveryCodesWarningTitle')
+                    : t('detail.regenerateRecoveryCodesWarningTitle')}
+                </p>
+                <p className="text-xs text-error/80 mt-0.5">
+                  {recoveryCodesDialogMode === 'issue-initial'
+                    ? t('detail.issueInitialRecoveryCodesWarningBody')
+                    : t('detail.regenerateRecoveryCodesWarningBody')}
+                </p>
               </div>
             </div>
-            {regenerateRecoveryCodesMutation.isError && (
+            {(regenerateRecoveryCodesMutation.isError || issueInitialRecoveryCodesMutation.isError) && (
               <Alert variant="error">
                 {getTranslatedApiError(
-                  regenerateRecoveryCodesMutation.error,
+                  regenerateRecoveryCodesMutation.error ?? issueInitialRecoveryCodesMutation.error,
                   t,
-                  t('detail.errorRecoveryCodesRegenerate'),
+                  recoveryCodesDialogMode === 'issue-initial'
+                    ? t('detail.errorRecoveryCodesIssue')
+                    : t('detail.errorRecoveryCodesRegenerate'),
                 )}
               </Alert>
             )}
@@ -777,16 +855,24 @@ function AdminDetailDialog({
                 variant="ghost"
                 type="button"
                 onClick={handleCloseRegenerateDialog}
-                disabled={regenerateRecoveryCodesMutation.isPending}
+                disabled={regenerateRecoveryCodesMutation.isPending || issueInitialRecoveryCodesMutation.isPending}
               >
                 {t('detail.editCancel')}
               </Button>
               <Button
                 type="button"
-                isLoading={regenerateRecoveryCodesMutation.isPending}
-                onClick={() => regenerateRecoveryCodesMutation.mutate(adm.adminId!)}
+                isLoading={regenerateRecoveryCodesMutation.isPending || issueInitialRecoveryCodesMutation.isPending}
+                onClick={() => {
+                  if (recoveryCodesDialogMode === 'issue-initial') {
+                    issueInitialRecoveryCodesMutation.mutate(adm.adminId!);
+                    return;
+                  }
+                  regenerateRecoveryCodesMutation.mutate(adm.adminId!);
+                }}
               >
-                {t('detail.regenerateRecoveryCodesConfirm')}
+                {recoveryCodesDialogMode === 'issue-initial'
+                  ? t('detail.issueInitialRecoveryCodesConfirm')
+                  : t('detail.regenerateRecoveryCodesConfirm')}
               </Button>
             </div>
           </div>
@@ -1023,14 +1109,8 @@ function CreateAdminDialog({
 
   const mapProvisioningResponse = (data: unknown): AdminProvisioningShape => {
     const r = data as Record<string, unknown>;
-    const codes = r.recoveryCodes;
-    const recoveryCodes =
-      Array.isArray(codes) && codes.every((c) => typeof c === 'string')
-        ? (codes as string[])
-        : undefined;
     return {
       username: typeof r.username === 'string' ? r.username : undefined,
-      recoveryCodes,
       onboardingMode:
         r.onboardingMode === 'IMMEDIATE' || r.onboardingMode === 'ACTIVATION_CODE'
           ? (r.onboardingMode as AdminCreateRequestDto['onboardingMode'])
@@ -1079,13 +1159,10 @@ function CreateAdminDialog({
 
   const handleCopyProvisioningMaterial = async () => {
     const activationCode = createdAdmin?.activationCode;
-    const codes = createdAdmin?.recoveryCodes;
     const text =
       typeof activationCode === 'string' && activationCode.length > 0
         ? activationCode
-        : codes != null && codes.length > 0
-          ? codes.join('\n')
-          : null;
+        : null;
     if (text == null) return;
     try {
       await navigator.clipboard.writeText(text);
@@ -1098,10 +1175,7 @@ function CreateAdminDialog({
 
   const createdAdminHasActivationCode =
     createdAdmin?.activationCode != null && createdAdmin.activationCode.length > 0;
-  const createdAdminHasRecoveryCodes =
-    createdAdmin?.recoveryCodes != null && createdAdmin.recoveryCodes.length > 0;
-  const requiresProvisioningMaterialConfirmation =
-    createdAdminHasActivationCode || createdAdminHasRecoveryCodes;
+  const requiresProvisioningMaterialConfirmation = createdAdminHasActivationCode;
 
   const handleClose = () => {
     if (createdAdmin && requiresProvisioningMaterialConfirmation && !provisioningMaterialSavedConfirmed) {
@@ -1187,48 +1261,6 @@ function CreateAdminDialog({
                 />
                 <label htmlFor="activation-code-saved" className="text-sm font-bold cursor-pointer select-none">
                   {t('create.activationCodeSavedConfirmLabel')}
-                </label>
-              </div>
-            </div>
-          )}
-          {createdAdminHasRecoveryCodes && (
-            <div className="space-y-2 border-2 border-accent/40 bg-bg p-3">
-              <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
-                <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-black text-error">{t('create.recoveryCodesWarningTitle')}</p>
-                  <p className="text-xs text-error/80 mt-0.5">{t('create.recoveryCodesWarningBody')}</p>
-                </div>
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
-                {t('create.recoveryCodesTitle')}
-              </p>
-              <p className="text-xs text-fg-muted">{t('create.recoveryCodesHint')}</p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void handleCopyProvisioningMaterial()}
-                className="gap-1.5"
-              >
-                {provisioningMaterialCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                {provisioningMaterialCopied ? t('onboarding.copied') : t('create.copyAllRecoveryCodes')}
-              </Button>
-              <ul className="font-mono text-xs space-y-1 break-all max-h-48 overflow-y-auto border-2 border-fg/20 p-2 bg-surface">
-                {(createdAdmin.recoveryCodes ?? []).map((code) => (
-                  <li key={code}>{code}</li>
-                ))}
-              </ul>
-              <div className="flex items-center gap-2.5 p-3 border-2 border-fg/20 bg-bg">
-                <input
-                  id="recovery-codes-saved"
-                  type="checkbox"
-                  className="size-4 border-2 border-fg accent-accent"
-                  checked={provisioningMaterialSavedConfirmed}
-                  onChange={(e) => setProvisioningMaterialSavedConfirmed(e.target.checked)}
-                />
-                <label htmlFor="recovery-codes-saved" className="text-sm font-bold cursor-pointer select-none">
-                  {t('create.recoveryCodesSavedConfirmLabel')}
                 </label>
               </div>
             </div>

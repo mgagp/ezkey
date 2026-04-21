@@ -10,6 +10,12 @@
     "requireChallengeCode": "Require challenge code",
     "submit": "Login with EZKey"
   },
+  "chooser": {
+    "label": "Access path",
+    "passwordless": "Passwordless",
+    "recovery": "Recovery",
+    "activation": "Activation"
+  },
   "validation": {
     "minLength": "At least 3 characters"
   },
@@ -93,7 +99,7 @@
     "previewNoticeTitle": "Security posture: bootstrap mode, not production-grade onboarding",
     "previewNotice": "Technology preview: this screen shows the enrollment QR, binding challenge, and proof token together for bootstrap convenience. Ezkey does not automatically deliver email or SMS in this flow yet. A production-grade onboarding flow should deliver activation and binding material through controlled or separate channels. This hosted build is a demonstrator, not a production security baseline.",
     "recoveryCodesDeferredTitle": "Recovery codes are intentionally deferred",
-    "recoveryCodesDeferredBody": "Recovery codes are generated server-side but are no longer revealed in this unauthenticated bootstrap step. Reveal or regenerate them later from an authenticated admin-management flow after first sign-in.",
+    "recoveryCodesDeferredBody": "Recovery codes are not created in this unauthenticated bootstrap step. Issue them later from an authenticated admin-management flow after the administrator has completed a first sign-in.",
     "qrTitle": "Bind with QR code",
     "qrLoading": "Generating QR code…",
     "qrHint": "Open EZKey on your phone and scan this code to continue enrollment.",

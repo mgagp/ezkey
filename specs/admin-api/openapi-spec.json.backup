@@ -2271,6 +2271,71 @@
         }
       }
     },
+    "/api/v1/admins/{id}/recovery-codes/issue-initial": {
+      "post": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Issue initial administrator recovery codes",
+        "description": "Generates the first set of single-use recovery codes for an administrator after first authenticated sign-in. This flow is distinct from regeneration and is only available when no recovery-code set exists yet.",
+        "operationId": "issueInitialRecoveryCodes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Administrator ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Initial recovery codes issued successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Administrator is not eligible yet",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Administrator not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admins/{id}/deactivate": {
       "post": {
         "tags": [
@@ -4127,6 +4192,7 @@
                 "ADMIN_LOGOUT",
                 "ADMIN_PASSWORD_CHANGE",
                 "ADMIN_RECOVERY_USE",
+                "ADMIN_RECOVERY_CODES_ISSUED",
                 "ADMIN_RECOVERY_CODES_REGENERATED",
                 "ADMIN_ACTIVATION",
                 "ADMIN_RECOVERY_ENROLLMENT_RESET",
@@ -6893,6 +6959,11 @@
             "description": "Timestamp of last successful login (null if never logged in)",
             "example": "2025-10-20T09:15:00Z"
           },
+          "hasRecoveryCodes": {
+            "type": "boolean",
+            "description": "Whether this administrator currently has a recovery-code set stored server-side",
+            "example": false
+          },
           "operational": {
             "type": "boolean",
             "description": "Whether this administrator is fully operational (active and, for tenant admins, tenant also active)",
@@ -7544,6 +7615,7 @@
               "ADMIN_LOGOUT",
               "ADMIN_PASSWORD_CHANGE",
               "ADMIN_RECOVERY_USE",
+              "ADMIN_RECOVERY_CODES_ISSUED",
               "ADMIN_RECOVERY_CODES_REGENERATED",
               "ADMIN_ACTIVATION",
               "ADMIN_RECOVERY_ENROLLMENT_RESET",

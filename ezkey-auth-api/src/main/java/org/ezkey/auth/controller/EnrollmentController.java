@@ -34,7 +34,10 @@ import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
+import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
+import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
@@ -247,6 +250,25 @@ public class EnrollmentController {
               .build());
 
       return ResponseEntity.ok(enrollmentMapper.toEnrollmentBindResponseDto(response));
+    } catch (EnrollmentBindingFailedException
+        | EnrollmentAlreadyBoundException
+        | EnrollmentInvitationExpiredException
+        | EnrollmentNotAvailableAfterLockException e) {
+      auditLogService.log(
+          AuditLog.builder()
+              .eventType(EventType.ENROLLMENT_BIND)
+              .eventAction("enrollment_bind_failed")
+              .eventStatus(EventStatus.FAILURE)
+              .apiName(ApiName.AUTH_API)
+              .ipAddress(clientIp)
+              .userAgent(userAgent)
+              .enrollmentId(request.enrollmentId())
+              .integrationId(resolveIntegrationId(request.enrollmentId()))
+              .tenantId(auditTenantId)
+              .errorMessage(e.getMessage())
+              .build());
+
+      throw e;
     } catch (Exception e) {
       auditLogService.log(
           AuditLog.builder()
@@ -432,8 +454,8 @@ public class EnrollmentController {
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_VERIFY)
-              .eventAction("enrollment_verify_failed")
-              .eventStatus(EventStatus.FAILURE)
+              .eventAction("enrollment_verify_error")
+              .eventStatus(EventStatus.ERROR)
               .apiName(ApiName.AUTH_API)
               .ipAddress(clientIp)
               .userAgent(userAgent)

@@ -10,6 +10,7 @@
 
 package org.ezkey.enrollment.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -86,8 +87,15 @@ class EnrollmentVerifyServiceEligibilityTest {
     when(enrollmentRepository.findById(100)).thenReturn(Optional.of(enrollment));
     when(ezkeyAdminRepository.findByEnrollmentId(100)).thenReturn(Optional.of(admin));
 
-    assertThrows(
-        EnrollmentVerifyFailedException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+    EnrollmentVerifyFailedException exception =
+        assertThrows(
+            EnrollmentVerifyFailedException.class,
+            () -> enrollmentVerifyService.verify(verifyRequest));
+
+    assertEquals(
+        "Enrollment verification failed: linked administrator lifecycle status is"
+            + " PENDING_ACTIVATION",
+        exception.getMessage());
 
     verify(ezkeyAdminRepository).findByEnrollmentId(100);
     verify(signatureService, never())

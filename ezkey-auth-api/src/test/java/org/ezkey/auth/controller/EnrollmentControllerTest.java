@@ -10,6 +10,7 @@
 
 package org.ezkey.auth.controller;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -17,6 +18,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.auth.config.TrustedProxyConfig;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
@@ -37,6 +40,7 @@ import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -220,6 +224,35 @@ class EnrollmentControllerTest {
   }
 
   @Test
+  @DisplayName(
+      "POST /api/v1/enrollments/bind - Should audit expected business rejection as failure")
+  void bind_WhenBusinessRuleRejects_ShouldAuditFailure() throws Exception {
+    when(enrollmentMapper.toEnrollmentBindRequest(any(EnrollmentBindRequestDto.class)))
+        .thenReturn(bindRequest);
+    when(enrollmentService.bind(any(EnrollmentBindRequest.class)))
+        .thenThrow(
+            new EnrollmentBindingFailedException(
+                "Enrollment binding failed: linked administrator lifecycle status is"
+                    + " PENDING_ACTIVATION"));
+
+    String json = objectMapper.writeValueAsString(bindRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/bind").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isBadRequest());
+
+    ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(auditLogCaptor.capture());
+
+    AuditLog auditLog = auditLogCaptor.getValue();
+    assertEquals("enrollment_bind_failed", auditLog.getEventAction());
+    assertEquals(EventStatus.FAILURE, auditLog.getEventStatus());
+    assertEquals(
+        "Enrollment binding failed: linked administrator lifecycle status is PENDING_ACTIVATION",
+        auditLog.getErrorMessage());
+  }
+
+  @Test
   @DisplayName("POST /api/v1/enrollments/bind - Should return 409 when enrollment already bound")
   void bind_WhenEnrollmentAlreadyBound_ShouldReturn409() throws Exception {
     // Arrange
@@ -326,5 +359,28 @@ class EnrollmentControllerTest {
 
     // Verify service interactions
     verify(enrollmentService, times(1)).verify(any(EnrollmentVerifyRequest.class));
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/enrollments/verify - Should audit unexpected errors as error")
+  void verify_WhenUnexpectedError_ShouldAuditError() throws Exception {
+    when(enrollmentMapper.toEnrollmentVerifyRequest(any(EnrollmentVerifyRequestDto.class)))
+        .thenReturn(verifyRequest);
+    when(enrollmentService.verify(any(EnrollmentVerifyRequest.class)))
+        .thenThrow(new RuntimeException("Database unavailable"));
+
+    String json = objectMapper.writeValueAsString(verifyRequestDto);
+
+    mockMvc
+        .perform(post(BASE_URL + "/verify").contentType(MediaType.APPLICATION_JSON).content(json))
+        .andExpect(status().isInternalServerError());
+
+    ArgumentCaptor<AuditLog> auditLogCaptor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(auditLogCaptor.capture());
+
+    AuditLog auditLog = auditLogCaptor.getValue();
+    assertEquals("enrollment_verify_error", auditLog.getEventAction());
+    assertEquals(EventStatus.ERROR, auditLog.getEventStatus());
+    assertEquals("Database unavailable", auditLog.getErrorMessage());
   }
 }

@@ -10,12 +10,16 @@ package org.ezkey.integration.api.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.support.AuditEntityFkResolver;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
@@ -25,6 +29,7 @@ import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.integration.api.security.AccessControlService;
 import org.ezkey.integration.api.security.RateLimitService;
@@ -127,6 +132,43 @@ class IntegrationApiAuthAttemptControllerTest {
 
     assertEquals(
         "No verified enrollment found for userIdentifier 'alice'.", exception.getMessage());
+  }
+
+  @Test
+  @DisplayName("create() - Should audit enrollment inactive as failure before rethrowing")
+  void create_ShouldAuditFailure_WhenEnrollmentIsInactive() {
+    setupApiKeyAuthentication(77);
+    when(rateLimitService.canCreateAuthAttempt(any())).thenReturn(true);
+
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(123);
+    enrollment.setIntegrationId(77);
+    enrollment.setActive(false);
+    enrollment.setStatus(EnrollmentStatus.REVOKED);
+    Integration integration = new Integration();
+    integration.setId(77);
+
+    when(enrollmentRepository.findById(123)).thenReturn(Optional.of(enrollment));
+    when(integrationRepository.findById(77)).thenReturn(Optional.of(integration));
+    HttpServletRequest request = new MockHttpServletRequest();
+    AuthAttemptCreateRequestDto dto =
+        new AuthAttemptCreateRequestDto(123, null, false, null, null, null);
+
+    EnrollmentInactiveException exception =
+        assertThrows(EnrollmentInactiveException.class, () -> controller.create(dto, request));
+
+    assertEquals(
+        "Enrollment is not active for authentication. Enrollment ID: 123", exception.getMessage());
+    verify(auditLogService)
+        .log(
+            argThat(
+                (AuditLog auditLog) ->
+                    auditLog.getEventStatus() == EventStatus.FAILURE
+                        && "auth_attempt_creation_failed".equals(auditLog.getEventAction())
+                        && "Enrollment is not active for authentication. Enrollment ID: 123"
+                            .equals(auditLog.getErrorMessage())
+                        && Integer.valueOf(123).equals(auditLog.getEnrollmentId())
+                        && Integer.valueOf(77).equals(auditLog.getIntegrationId())));
   }
 
   private void setupApiKeyAuthentication(Integer integrationId) {

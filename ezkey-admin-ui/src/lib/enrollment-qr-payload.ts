@@ -5,8 +5,11 @@
 export function buildEnrollmentQrPayloadJson(
   enrollmentId: number,
   enrollmentProofToken: string,
+  authBaseUrl?: string | null,
 ): string {
-  const authBase = (import.meta.env.VITE_QR_AUTH_BASE_URL as string | undefined)?.trim();
+  const authBase =
+    authBaseUrl?.trim()
+    || (import.meta.env.VITE_QR_AUTH_BASE_URL as string | undefined)?.trim();
   const payload: Record<string, string> = {
     enrollmentId: String(enrollmentId),
     enrollmentProofToken,

@@ -128,9 +128,15 @@ public final class AdminAuditConstants {
   /** Audit action for successful regeneration of recovery codes. */
   public static final String RECOVERY_CODES_REGENERATED = "recovery_codes_regenerated";
 
+  /** Audit action for successful initial issuance of recovery codes. */
+  public static final String RECOVERY_CODES_ISSUED = "recovery_codes_issued";
+
   /** Audit action for failed regeneration of recovery codes. */
   public static final String RECOVERY_CODES_REGENERATION_FAILED =
       "recovery_codes_regeneration_failed";
+
+  /** Audit action for failed initial issuance of recovery codes. */
+  public static final String RECOVERY_CODES_ISSUANCE_FAILED = "recovery_codes_issuance_failed";
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Enrollment Management Actions
@@ -270,6 +276,9 @@ public final class AdminAuditConstants {
 
   /** Audit action for failed integration creation. */
   public static final String INTEGRATION_CREATION_FAILED = "integration_creation_failed";
+
+  /** Audit action for unexpected integration creation errors. */
+  public static final String INTEGRATION_CREATION_ERROR = "integration_creation_error";
 
   /** Audit action for successful integration retirement. */
   public static final String INTEGRATION_RETIRED = "integration_retired";

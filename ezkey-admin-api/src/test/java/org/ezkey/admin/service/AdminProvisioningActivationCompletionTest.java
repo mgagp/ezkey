@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -95,20 +96,17 @@ class AdminProvisioningActivationCompletionTest {
 
     String activationCode = AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "abc123xyz";
     String tokenHash = SensitiveDataHasher.sha256Hex(activationCode);
-    AdminToken token = new AdminToken(tokenHash, admin, admin.getAdminType().name(), OffsetDateTime.now().plusDays(1));
+    AdminToken token =
+        new AdminToken(
+            tokenHash, admin, admin.getAdminType().name(), OffsetDateTime.now().plusDays(1));
     token.setActive(true);
     token.setTenant(tenant);
 
-    AdminRecoveryService.RecoveryCodesResult recoveryCodes =
-        new AdminRecoveryService.RecoveryCodesResult(
-            List.of("1111-2222-3333-4444-5555-6666-7777-8888"),
-            List.of("hashed-code"));
-
     when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(tokenHash))
         .thenReturn(Optional.of(token));
-    when(integrationRepository.findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE))
+    when(integrationRepository.findByIsSystemIntegrationTrueAndLifecycleStatus(
+            IntegrationLifecycleStatus.ACTIVE))
         .thenReturn(Optional.of(integration));
-    when(recoveryService.generateRecoveryCodes()).thenReturn(recoveryCodes);
     when(signatureService.generateEd25519KeyPair())
         .thenReturn(new Ed25519KeyPair("privb64", "pubb64"));
     when(signatureService.generateProofToken()).thenReturn("ezkey_proof_demo");
@@ -127,16 +125,19 @@ class AdminProvisioningActivationCompletionTest {
             });
     when(adminRepository.save(any(EzkeyAdmin.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
-    when(tokenRepository.save(any(AdminToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(tokenRepository.save(any(AdminToken.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
-    AdminProvisioningService.ProvisioningResult result = service.activatePendingAdmin(activationCode);
+    AdminProvisioningService.ProvisioningResult result =
+        service.activatePendingAdmin(activationCode);
 
     assertEquals(AdminLifecycleStatus.ACTIVE, result.admin().getLifecycleStatus());
     assertNotNull(result.enrollment());
     assertEquals(123, result.enrollment().getEnrollmentId());
     assertEquals("ezkey_proof_demo", result.enrollmentProofToken());
     assertEquals(654321, result.enrollmentChallenge());
-    assertEquals(recoveryCodes.getPlainCodes(), result.recoveryCodes());
+    assertEquals(null, result.recoveryCodes());
+    verify(recoveryService, never()).generateRecoveryCodes();
     verify(tokenRepository).save(any(AdminToken.class));
   }
 
@@ -150,14 +151,17 @@ class AdminProvisioningActivationCompletionTest {
 
     String activationCode = AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "expired123";
     String tokenHash = SensitiveDataHasher.sha256Hex(activationCode);
-    AdminToken token = new AdminToken(tokenHash, admin, admin.getAdminType().name(), OffsetDateTime.now().minusMinutes(1));
+    AdminToken token =
+        new AdminToken(
+            tokenHash, admin, admin.getAdminType().name(), OffsetDateTime.now().minusMinutes(1));
     token.setActive(true);
 
     when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(tokenHash))
         .thenReturn(Optional.of(token));
 
     AuthenticationException exception =
-        assertThrows(AuthenticationException.class, () -> service.activatePendingAdmin(activationCode));
+        assertThrows(
+            AuthenticationException.class, () -> service.activatePendingAdmin(activationCode));
 
     assertEquals("Activation code has expired", exception.getMessage());
   }

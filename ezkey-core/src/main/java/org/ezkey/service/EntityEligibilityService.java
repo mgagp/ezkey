@@ -168,7 +168,31 @@ public class EntityEligibilityService {
    * @return {@code true} if no admin is linked or the linked admin is operational
    */
   public boolean isAdminLinkedEnrollmentEligible(EzkeyAdmin admin) {
-    return admin == null || isAdminOperational(admin);
+    return adminLinkedEnrollmentIneligibilityReason(admin) == null;
+  }
+
+  /**
+   * Returns the ineligibility reason for an admin-linked enrollment, or {@code null} when the
+   * linked administrator is currently operational.
+   *
+   * @param admin the admin linked to the enrollment; may be {@code null}
+   * @return a human-readable operator/audit reason, or {@code null} when eligible
+   */
+  public String adminLinkedEnrollmentIneligibilityReason(EzkeyAdmin admin) {
+    if (admin == null) {
+      return null;
+    }
+    if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {
+      return "linked administrator lifecycle status is " + admin.getLifecycleStatus();
+    }
+    if (!Boolean.TRUE.equals(admin.getActive())) {
+      return "linked administrator is inactive";
+    }
+    if (admin.getAdminType() != EzkeyAdmin.AdminType.GLOBAL_ADMIN
+        && !isTenantOperational(admin.getTenant())) {
+      return "linked administrator tenant is inactive";
+    }
+    return null;
   }
 
   /**

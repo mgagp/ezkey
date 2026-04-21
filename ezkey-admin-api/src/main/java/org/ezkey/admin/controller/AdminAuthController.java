@@ -185,7 +185,9 @@ public class AdminAuthController {
                       + ", username: "
                       + result.admin().getUsername()
                       + ", enrollmentId: "
-                      + (result.enrollment() != null ? result.enrollment().getEnrollmentId() : null))
+                      + (result.enrollment() != null
+                          ? result.enrollment().getEnrollmentId()
+                          : null))
               .build());
 
       return ResponseEntity.ok(response);
@@ -218,10 +220,7 @@ public class AdminAuthController {
     } catch (Exception e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
-                  context,
-                  EventType.ADMIN_ACTIVATION,
-                  AdminAuditConstants.ACTIVATION_ERROR,
-                  null)
+                  context, EventType.ADMIN_ACTIVATION, AdminAuditConstants.ACTIVATION_ERROR, null)
               .eventStatus(EventStatus.ERROR)
               .errorMessage(e.getMessage())
               .eventDetails("Activation unexpected error: " + e.getClass().getSimpleName())

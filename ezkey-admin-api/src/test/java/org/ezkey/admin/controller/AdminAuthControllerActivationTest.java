@@ -18,7 +18,6 @@ import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.Optional;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.domain.AdminOnboardingMode;
@@ -82,7 +81,8 @@ class AdminAuthControllerActivationTest {
         new org.ezkey.enrollment.domain.entity.Enrollment();
     enrollment.setEnrollmentId(123);
 
-    when(provisioningService.activatePendingAdmin(AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "demo123"))
+    when(provisioningService.activatePendingAdmin(
+            AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "demo123"))
         .thenReturn(
             new AdminProvisioningService.ProvisioningResult(
                 admin,
@@ -113,7 +113,8 @@ class AdminAuthControllerActivationTest {
   @Test
   @DisplayName("activate returns 403 on invalid activation code")
   void activateReturnsForbiddenOnInvalidCode() {
-    when(provisioningService.activatePendingAdmin(AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "bad123"))
+    when(provisioningService.activatePendingAdmin(
+            AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + "bad123"))
         .thenThrow(new AuthenticationException("Invalid activation code"));
 
     ResponseEntity<AdminActivationResponseDto> response =

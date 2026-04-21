@@ -33,6 +33,8 @@ import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.audit.util.ClientContext;
 import org.ezkey.exception.ResourceNotFoundException;
+import org.ezkey.exception.SystemTenantNotConfiguredException;
+import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.IntegrationCreateRequest;
 import org.ezkey.integration.domain.IntegrationCreateResponse;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
@@ -43,6 +45,8 @@ import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.dto.IntegrationCreateRequestDto;
 import org.ezkey.integration.dto.IntegrationCreateResponseDto;
 import org.ezkey.integration.dto.IntegrationResponseDto;
+import org.ezkey.integration.exception.IntegrationCodeAlreadyExistsException;
+import org.ezkey.integration.exception.IntegrationCreateValidationException;
 import org.ezkey.integration.exception.SystemIntegrationLifecycleException;
 import org.ezkey.integration.mapper.IntegrationControllerMapper;
 import org.ezkey.integration.service.IntegrationService;
@@ -375,15 +379,14 @@ public class IntegrationController {
           IntegrationCreateRequestDto request,
       HttpServletRequest httpRequest) {
     ClientContext context = ClientContext.from(httpRequest);
-    // Get authenticated admin from security context
     EzkeyAdmin currentAdmin = getCurrentAdmin();
+    Integer requestedTenantId = resolveRequestedIntegrationTenantId(currentAdmin);
+    String requestAuditDetails = integrationCreateAuditDetails(request, currentAdmin).toJson();
 
     try {
-      // Create integration with tenant automatically assigned based on admin type
       IntegrationCreateResponse savedIntegration =
           service.createIntegration(mapper.toCreateRequest(request), currentAdmin);
 
-      // Resolve tenant ID from the newly created integration for audit
       Integer tenantId =
           service
               .getById(savedIntegration.getId())
@@ -399,22 +402,69 @@ public class IntegrationController {
               .eventStatus(EventStatus.SUCCESS)
               .adminId(currentAdmin.getAdminId())
               .integrationId(savedIntegration.getId())
-              .eventDetails("Integration code: " + savedIntegration.getCode())
+              .eventDetails(
+                  integrationCreateAuditDetails(request, currentAdmin)
+                      .custom("created_integration_id", savedIntegration.getId())
+                      .custom("created_integration_code", savedIntegration.getCode())
+                      .toJson())
               .build());
 
       URI location = URI.create("/api/v1/integrations/" + savedIntegration.getId());
       return ResponseEntity.created(location).body(mapper.toCreateResponseDto(savedIntegration));
 
-    } catch (Exception e) {
-      logger.warn("Integration creation failed: {}", e.getMessage());
+    } catch (IntegrationCreateValidationException
+        | IntegrationCodeAlreadyExistsException
+        | TenantInactiveException e) {
+      logger.warn("Integration creation rejected: {}", e.getMessage());
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
                   EventType.INTEGRATION_CREATED,
-                  AdminAuditConstants.INTEGRATION_CREATION_FAILED)
+                  AdminAuditConstants.INTEGRATION_CREATION_FAILED,
+                  requestedTenantId)
               .eventStatus(EventStatus.FAILURE)
               .adminId(currentAdmin.getAdminId())
               .errorMessage(e.getMessage())
+              .eventDetails(integrationCreateFailureAuditDetails(request, currentAdmin, e).toJson())
+              .build());
+      throw e;
+
+    } catch (SystemTenantNotConfiguredException e) {
+      logger.error(
+          "Integration creation failed due to system configuration error: {}", e.getMessage());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.INTEGRATION_CREATED,
+                  AdminAuditConstants.INTEGRATION_CREATION_ERROR)
+              .eventStatus(EventStatus.ERROR)
+              .adminId(currentAdmin.getAdminId())
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  integrationCreateAuditDetails(request, currentAdmin)
+                      .errorType(e.getClass().getSimpleName())
+                      .errorSummary(
+                          "System tenant configuration unavailable during integration creation")
+                      .toJson())
+              .build());
+      throw e;
+
+    } catch (Exception e) {
+      logger.error("Integration creation failed unexpectedly", e);
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.INTEGRATION_CREATED,
+                  AdminAuditConstants.INTEGRATION_CREATION_ERROR,
+                  requestedTenantId)
+              .eventStatus(EventStatus.ERROR)
+              .adminId(currentAdmin.getAdminId())
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  integrationCreateAuditDetails(request, currentAdmin)
+                      .errorType(e.getClass().getSimpleName())
+                      .errorSummary("Unexpected exception during integration creation")
+                      .toJson())
               .build());
       throw e;
     }
@@ -681,6 +731,52 @@ public class IntegrationController {
   private boolean hasRole(Authentication authentication, String role) {
     return authentication.getAuthorities().stream()
         .anyMatch(authority -> authority.getAuthority().equals(role));
+  }
+
+  private Integer resolveRequestedIntegrationTenantId(EzkeyAdmin currentAdmin) {
+    if (currentAdmin.getTenant() != null) {
+      return currentAdmin.getTenant().getTenantId();
+    }
+    return null;
+  }
+
+  private AuditDetailsBuilder integrationCreateAuditDetails(
+      IntegrationCreateRequestDto request, EzkeyAdmin currentAdmin) {
+    AuditDetailsBuilder builder =
+        AuditDetailsBuilder.builder()
+            .custom("requested_integration_code", request.code())
+            .custom("requested_integration_name", request.name())
+            .custom(
+                "requested_description_present",
+                request.description() != null && !request.description().isBlank())
+            .custom("admin_id", currentAdmin.getAdminId())
+            .custom("admin_type", currentAdmin.getAdminType().name());
+
+    if (currentAdmin.getTenant() != null) {
+      builder
+          .custom("requested_tenant_id", currentAdmin.getTenant().getTenantId())
+          .custom("requested_tenant_name", currentAdmin.getTenant().getTenantName());
+    } else if (currentAdmin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN) {
+      builder.custom("requested_scope", "system_tenant");
+    }
+
+    return builder;
+  }
+
+  private AuditDetailsBuilder integrationCreateFailureAuditDetails(
+      IntegrationCreateRequestDto request, EzkeyAdmin currentAdmin, Exception exception) {
+    AuditDetailsBuilder builder =
+        integrationCreateAuditDetails(request, currentAdmin)
+            .errorType(exception.getClass().getSimpleName())
+            .errorSummary("Integration creation rejected by business or validation rules");
+
+    if (exception instanceof IntegrationCodeAlreadyExistsException duplicateCodeException) {
+      builder
+          .custom("conflicting_integration_code", duplicateCodeException.getCode())
+          .custom("conflicting_tenant_name", duplicateCodeException.getTenantName());
+    }
+
+    return builder;
   }
 
   /**

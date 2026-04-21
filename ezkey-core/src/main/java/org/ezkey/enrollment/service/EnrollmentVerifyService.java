@@ -222,15 +222,20 @@ public class EnrollmentVerifyService {
         .findByEnrollmentId(enrollment.getEnrollmentId())
         .ifPresent(
             admin -> {
-              if (!eligibilityService.isAdminLinkedEnrollmentEligible(admin)) {
+              String ineligibilityReason =
+                  eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
+              if (ineligibilityReason != null) {
                 logger.warn(
                     "Validation failed: Admin-linked enrollment is not eligible for verify -"
-                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {}",
+                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
+                        + " reason: {}",
                     enrollment.getEnrollmentId(),
                     admin.getAdminId(),
                     admin.getLifecycleStatus(),
-                    admin.getActive());
-                throw new EnrollmentVerifyFailedException("Enrollment verification failed");
+                    admin.getActive(),
+                    ineligibilityReason);
+                throw new EnrollmentVerifyFailedException(
+                    "Enrollment verification failed: " + ineligibilityReason);
               }
             });
   }

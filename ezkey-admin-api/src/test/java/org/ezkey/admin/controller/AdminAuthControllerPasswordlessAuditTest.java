@@ -74,7 +74,7 @@ class AdminAuthControllerPasswordlessAuditTest {
     controller =
         new AdminAuthController(
             authService,
-        provisioningService,
+            provisioningService,
             recoveryService,
             auditLogService,
             rateLimitFilter,

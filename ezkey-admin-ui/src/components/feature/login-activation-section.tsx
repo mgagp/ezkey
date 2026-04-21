@@ -24,10 +24,12 @@ interface AdminActivationResponseShape {
 
 interface LoginActivationSectionProps {
   onBackToPasswordless: () => void;
+  authApiPublicBaseUrl?: string | null;
 }
 
 export function LoginActivationSection({
   onBackToPasswordless,
+  authApiPublicBaseUrl,
 }: LoginActivationSectionProps) {
   const { t } = useTranslation(['login']);
 
@@ -87,7 +89,11 @@ export function LoginActivationSection({
     setQrError(false);
     void (async () => {
       try {
-        const payload = buildEnrollmentQrPayloadJson(enrollmentId, proof);
+        const payload = buildEnrollmentQrPayloadJson(
+          enrollmentId,
+          proof,
+          authApiPublicBaseUrl,
+        );
         const url = await enrollmentPayloadToQrDataUrl(payload);
         if (!cancelled) {
           setQrDataUrl(url);
@@ -105,7 +111,7 @@ export function LoginActivationSection({
     return () => {
       cancelled = true;
     };
-  }, [activationResult]);
+  }, [activationResult, authApiPublicBaseUrl]);
 
   const onActivate = async (values: ActivationForm) => {
     setSubmitting(true);

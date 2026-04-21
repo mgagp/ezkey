@@ -35,11 +35,13 @@ interface LoginRecoverySectionProps {
   onBackToPasswordless: () => void;
   /** Prefill username from the main login field when switching flows */
   initialUsername: string;
+  authApiPublicBaseUrl?: string | null;
 }
 
 export function LoginRecoverySection({
   onBackToPasswordless,
   initialUsername,
+  authApiPublicBaseUrl,
 }: LoginRecoverySectionProps) {
   const { t } = useTranslation(['login', 'common']);
 
@@ -126,7 +128,11 @@ export function LoginRecoverySection({
     setQrError(false);
     void (async () => {
       try {
-        const json = buildEnrollmentQrPayloadJson(enrollmentId, proof);
+        const json = buildEnrollmentQrPayloadJson(
+          enrollmentId,
+          proof,
+          authApiPublicBaseUrl,
+        );
         const url = await enrollmentPayloadToQrDataUrl(json);
         if (!cancelled) {
           setQrDataUrl(url);
@@ -143,7 +149,7 @@ export function LoginRecoverySection({
     return () => {
       cancelled = true;
     };
-  }, [resetResult]);
+  }, [resetResult, authApiPublicBaseUrl]);
 
   const onRecover = async (values: RecoveryForm) => {
     setSubmitting(true);

@@ -228,15 +228,20 @@ public class EnrollmentBindService {
         .findByEnrollmentId(enrollment.getEnrollmentId())
         .ifPresent(
             admin -> {
-              if (!eligibilityService.isAdminLinkedEnrollmentEligible(admin)) {
+              String ineligibilityReason =
+                  eligibilityService.adminLinkedEnrollmentIneligibilityReason(admin);
+              if (ineligibilityReason != null) {
                 logger.warn(
                     "Validation failed: Admin-linked enrollment is not eligible for bind -"
-                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {}",
+                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {},"
+                        + " reason: {}",
                     enrollment.getEnrollmentId(),
                     admin.getAdminId(),
                     admin.getLifecycleStatus(),
-                    admin.getActive());
-                throw new EnrollmentBindingFailedException("Enrollment binding failed");
+                    admin.getActive(),
+                    ineligibilityReason);
+                throw new EnrollmentBindingFailedException(
+                    "Enrollment binding failed: " + ineligibilityReason);
               }
             });
   }

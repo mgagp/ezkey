@@ -454,7 +454,20 @@ public class AuthAttemptController {
               .build());
       throw e;
     } catch (EnrollmentInactiveException e) {
-      // Rethrow so EnrollmentExceptionHandler returns 403 with enrollment-inactive ProblemDetail
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  AdminAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(adminIdForAudit)
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
+              .errorMessage(e.getMessage())
+              .build());
       throw e;
     } catch (Exception e) {
       auditLogService.log(

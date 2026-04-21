@@ -140,7 +140,7 @@ class AdminProvisioningActivationCodeTest {
                     7, new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null)));
 
     assertEquals(
-        "Cannot regenerate recovery codes before administrator activation is complete",
+        "Cannot manage recovery codes before administrator activation is complete",
         exception.getMessage());
     verify(recoveryService, never()).rotateRecoveryCodes(any());
   }

@@ -10,6 +10,12 @@
     "requireChallengeCode": "Exiger un code défi",
     "submit": "Connexion avec EZKey"
   },
+  "chooser": {
+    "label": "Parcours d'accès",
+    "passwordless": "Sans mot de passe",
+    "recovery": "Récupération",
+    "activation": "Activation"
+  },
   "validation": {
     "minLength": "Au moins 3 caractères"
   },
@@ -93,7 +99,7 @@
     "previewNoticeTitle": "Posture de sécurité : mode bootstrap, pas un onboarding production",
     "previewNotice": "Préversion technique : cet écran affiche ensemble le QR d'enrôlement, le défi de liaison et le jeton de preuve pour simplifier le bootstrap. Ezkey n'envoie pas encore automatiquement les courriels ou les SMS dans ce flux. Un onboarding de niveau production devrait distribuer l'activation et les éléments de liaison par des canaux séparés ou contrôlés. Cette instance hébergée sert de démonstrateur, pas comme référence de sécurité de production.",
     "recoveryCodesDeferredTitle": "Les codes de récupération sont volontairement différés",
-    "recoveryCodesDeferredBody": "Les codes de récupération sont générés côté serveur mais ne sont plus révélés dans cette étape de bootstrap non authentifiée. Révélez-les ou régénérez-les plus tard depuis un flux d'administration authentifié après la première connexion.",
+    "recoveryCodesDeferredBody": "Les codes de récupération ne sont pas créés pendant cette étape de bootstrap non authentifiée. Émettez-les plus tard depuis un flux d'administration authentifié après une première connexion réussie de l'administrateur.",
     "qrTitle": "Liaison par code QR",
     "qrLoading": "Génération du code QR…",
     "qrHint": "Ouvrez EZKey sur votre téléphone et scannez ce code pour poursuivre l'inscription.",

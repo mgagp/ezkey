@@ -195,6 +195,31 @@ public final class RecoveryAuditDetails {
     return b.toJson();
   }
 
+  public static String initialRecoveryCodesIssued(
+      Integer actorAdminId,
+      Integer targetAdminId,
+      String targetUsername,
+      Integer tenantId,
+      int newCodesCount,
+      boolean selfService) {
+    AuditDetailsBuilder b =
+        AuditDetailsBuilder.builder()
+            .custom("schema_version", 1)
+            .custom("flow", "admin_recovery")
+            .custom("step", "recovery_codes_issued")
+            .custom("target_admin_id", targetAdminId)
+            .custom("target_username", targetUsername)
+            .custom("tenant_id", tenantId)
+            .custom("previous_codes_count", 0)
+            .custom("new_codes_count", newCodesCount)
+            .custom("invalidated_previous_codes", false)
+            .custom("self_service", selfService);
+    if (actorAdminId != null) {
+      b.custom("actor_admin_id", actorAdminId);
+    }
+    return b.toJson();
+  }
+
   public static String recoveryCodesRegenerationRejected(
       Integer actorAdminId,
       Integer targetAdminId,
@@ -206,6 +231,27 @@ public final class RecoveryAuditDetails {
             .custom("schema_version", 1)
             .custom("flow", "admin_recovery")
             .custom("step", "recovery_codes_regeneration_rejected")
+            .custom("target_admin_id", targetAdminId)
+            .custom("tenant_id", tenantId)
+            .custom("reason_code", reasonCode)
+            .custom("message", message);
+    if (actorAdminId != null) {
+      b.custom("actor_admin_id", actorAdminId);
+    }
+    return b.toJson();
+  }
+
+  public static String initialRecoveryCodesIssuanceRejected(
+      Integer actorAdminId,
+      Integer targetAdminId,
+      Integer tenantId,
+      String reasonCode,
+      String message) {
+    AuditDetailsBuilder b =
+        AuditDetailsBuilder.builder()
+            .custom("schema_version", 1)
+            .custom("flow", "admin_recovery")
+            .custom("step", "recovery_codes_issuance_rejected")
             .custom("target_admin_id", targetAdminId)
             .custom("tenant_id", tenantId)
             .custom("reason_code", reasonCode)

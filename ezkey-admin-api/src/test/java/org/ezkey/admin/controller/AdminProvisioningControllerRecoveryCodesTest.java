@@ -66,6 +66,40 @@ class AdminProvisioningControllerRecoveryCodesTest {
   }
 
   @Test
+  @DisplayName("issueInitialRecoveryCodes returns new codes and writes success audit")
+  void issueInitialRecoveryCodesReturnsNewCodesAndWritesSuccessAudit() {
+    AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+    when(authentication.getPrincipal()).thenReturn(principal);
+
+    Tenant tenant = new Tenant();
+    tenant.setTenantId(7);
+
+    EzkeyAdmin admin = new EzkeyAdmin("tenant.admin", AdminType.TENANT_ADMIN);
+    admin.setAdminId(42);
+    admin.setTenant(tenant);
+    admin.setActive(true);
+
+    RecoveryCodesRegenerationResult result =
+        new RecoveryCodesRegenerationResult(
+            admin, List.of("1111-2222-3333-4444-5555-6666-7777-8888"), 0);
+    when(provisioningService.issueInitialRecoveryCodes(42, principal)).thenReturn(result);
+
+    ResponseEntity<?> response =
+        controller.issueInitialRecoveryCodes(42, authentication, httpRequest);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService, times(1)).log(captor.capture());
+    AuditLog logged = captor.getValue();
+    assertEquals(EventType.ADMIN_RECOVERY_CODES_ISSUED, logged.getEventType());
+    assertEquals(AdminAuditConstants.RECOVERY_CODES_ISSUED, logged.getEventAction());
+    assertEquals(EventStatus.SUCCESS, logged.getEventStatus());
+    assertEquals(1, logged.getAdminId());
+    assertEquals(42, logged.getTargetAdminId());
+  }
+
+  @Test
   @DisplayName("regenerateRecoveryCodes returns new codes and writes success audit")
   void regenerateRecoveryCodesReturnsNewCodesAndWritesSuccessAudit() {
     AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);

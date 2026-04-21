@@ -52,6 +52,19 @@ The symptom is a clean compile but a startup failure — not caught by unit test
 
 ---
 
+## Contract refresh and Postman collections
+
+`scripts/update-specs.sh` refreshes the generated OpenAPI artifacts under `specs/` and dispatched
+copies such as the Admin UI and SDK specs. It does **not** update Postman collections under
+`postman/collections/`.
+
+**Rule:** whenever an endpoint, DTO, validation contract, example payload, or operator workflow
+changes and you run `update-specs`, review and update every impacted Postman collection in the
+same change set. A backend contract refresh is not considered complete until both the generated
+OpenAPI files and the affected Postman collections describe the same behavior.
+
+---
+
 ## Project values (analysis and design)
 
 - **Simplicity and pragmatism**: 80–20 rule — target ~80% of the value with ~20% of the complexity. Prefer the simplest solution that meets the need.

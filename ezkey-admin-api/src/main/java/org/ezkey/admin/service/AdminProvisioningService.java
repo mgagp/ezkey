@@ -291,14 +291,12 @@ public class AdminProvisioningService {
     admin.setChallengeRequired(false);
 
     AdminOnboardingMode effectiveOnboardingMode = normalizeOnboardingMode(onboardingMode);
-    AdminRecoveryService.RecoveryCodesResult recoveryCodes = null;
     if (effectiveOnboardingMode == AdminOnboardingMode.ACTIVATION_CODE) {
       admin.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
       admin.setRecoveryCodes(null);
     } else {
       admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
-      recoveryCodes = recoveryService.generateRecoveryCodes();
-      admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+      admin.setRecoveryCodes(null);
     }
 
     admin = adminRepository.save(admin);
@@ -321,8 +319,7 @@ public class AdminProvisioningService {
           integrationRepository
               .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
               .orElseThrow(() -> new RuntimeException("System integration not found"));
-      result =
-          createAdminEnrollment(admin, systemIntegration, recoveryCodes, effectiveOnboardingMode);
+      result = createAdminEnrollment(admin, systemIntegration, null, effectiveOnboardingMode);
     }
 
     logger.info("✅ Global admin created: {} (ID: {})", username, admin.getAdminId());
@@ -434,14 +431,12 @@ public class AdminProvisioningService {
     admin.setChallengeRequired(false);
 
     AdminOnboardingMode effectiveOnboardingMode = normalizeOnboardingMode(onboardingMode);
-    AdminRecoveryService.RecoveryCodesResult recoveryCodes = null;
     if (effectiveOnboardingMode == AdminOnboardingMode.ACTIVATION_CODE) {
       admin.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
       admin.setRecoveryCodes(null);
     } else {
       admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
-      recoveryCodes = recoveryService.generateRecoveryCodes();
-      admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+      admin.setRecoveryCodes(null);
     }
 
     admin = adminRepository.save(admin);
@@ -464,8 +459,7 @@ public class AdminProvisioningService {
           integrationRepository
               .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
               .orElseThrow(() -> new RuntimeException("System integration not found"));
-      result =
-          createAdminEnrollment(admin, systemIntegration, recoveryCodes, effectiveOnboardingMode);
+      result = createAdminEnrollment(admin, systemIntegration, null, effectiveOnboardingMode);
     }
 
     logger.info(
@@ -588,7 +582,7 @@ public class AdminProvisioningService {
         enrollment,
         enrollmentProofToken,
         enrollmentChallenge,
-        recoveryCodes.getPlainCodes(),
+        recoveryCodes != null ? recoveryCodes.getPlainCodes() : null,
         onboardingMode,
         null,
         null);
@@ -685,12 +679,11 @@ public class AdminProvisioningService {
             .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
             .orElseThrow(() -> new RuntimeException("System integration not found"));
 
-    AdminRecoveryService.RecoveryCodesResult recoveryCodes = recoveryService.generateRecoveryCodes();
     admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
-    admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+    admin.setRecoveryCodes(null);
 
     ProvisioningResult result =
-        createAdminEnrollment(admin, systemIntegration, recoveryCodes, AdminOnboardingMode.ACTIVATION_CODE);
+        createAdminEnrollment(admin, systemIntegration, null, AdminOnboardingMode.ACTIVATION_CODE);
 
     activationToken.setActive(false);
     activationToken.setLastUsedAt(OffsetDateTime.now());
@@ -1100,6 +1093,36 @@ public class AdminProvisioningService {
   public record RecoveryCodesRegenerationResult(
       EzkeyAdmin admin, java.util.List<String> recoveryCodes, int previousCodesCount) {}
 
+  @Transactional
+  public RecoveryCodesRegenerationResult issueInitialRecoveryCodes(
+      Integer adminId, AdminPrincipal requesterPrincipal) {
+    EzkeyAdmin admin = loadAdminAuthorizedForRecoveryCodeManagement(adminId, requesterPrincipal);
+    validateRecoveryCodeManagementEligibility(admin);
+
+    if (admin.getLastLoginAt() == null) {
+      throw new IllegalStateException(
+          "Cannot issue initial recovery codes before administrator completes first authenticated"
+              + " sign-in");
+    }
+    if (admin.getRecoveryCodes() != null && admin.getRecoveryCodes().length > 0) {
+      throw new IllegalStateException(
+          "Initial recovery codes already exist for this administrator; use regeneration instead");
+    }
+
+    AdminRecoveryService.RecoveryCodesResult recoveryCodes =
+        recoveryService.generateRecoveryCodes();
+    admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+    adminRepository.save(admin);
+
+    logger.info(
+        "✅ Initial recovery codes issued for admin {} by admin {} (count={})",
+        admin.getUsername(),
+        requesterPrincipal.adminId(),
+        recoveryCodes.getPlainCodes().size());
+
+    return new RecoveryCodesRegenerationResult(admin, recoveryCodes.getPlainCodes(), 0);
+  }
+
   /**
    * Regenerates recovery codes for an administrator within the caller's authorization scope.
    *
@@ -1117,34 +1140,14 @@ public class AdminProvisioningService {
   @Transactional
   public RecoveryCodesRegenerationResult regenerateRecoveryCodes(
       Integer adminId, AdminPrincipal requesterPrincipal) {
-    EzkeyAdmin admin =
-        adminRepository
-            .findById(adminId)
-            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
-
-    if (requesterPrincipal.isGlobalAdmin()) {
-      logger.debug("GlobalAdmin regenerating recovery codes for admin {}", adminId);
-    } else if (requesterPrincipal.isTenantAdmin()) {
-      Integer requesterTenantId = requesterPrincipal.tenantId();
-      Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
-      if (requesterTenantId == null || !requesterTenantId.equals(adminTenantId)) {
-        throw new AccessDeniedException(
-            "Tenant administrators can only regenerate recovery codes for admins in their tenant");
-      }
-    } else {
-      throw new AccessDeniedException("Only administrators can regenerate recovery codes");
-    }
-
-    if (!Boolean.TRUE.equals(admin.getActive())) {
-      throw new IllegalStateException(
-          "Cannot regenerate recovery codes for an inactive administrator");
-    }
-    if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {
-      throw new IllegalStateException(
-          "Cannot regenerate recovery codes before administrator activation is complete");
-    }
+    EzkeyAdmin admin = loadAdminAuthorizedForRecoveryCodeManagement(adminId, requesterPrincipal);
+    validateRecoveryCodeManagementEligibility(admin);
 
     int previousCodesCount = admin.getRecoveryCodes() != null ? admin.getRecoveryCodes().length : 0;
+    if (previousCodesCount == 0) {
+      throw new IllegalStateException(
+          "No recovery codes exist yet for this administrator; use initial issuance instead");
+    }
     AdminRecoveryService.RecoveryCodesResult recoveryCodes =
         recoveryService.rotateRecoveryCodes(admin);
 
@@ -1157,6 +1160,39 @@ public class AdminProvisioningService {
 
     return new RecoveryCodesRegenerationResult(
         admin, recoveryCodes.getPlainCodes(), previousCodesCount);
+  }
+
+  private EzkeyAdmin loadAdminAuthorizedForRecoveryCodeManagement(
+      Integer adminId, AdminPrincipal requesterPrincipal) {
+    EzkeyAdmin admin =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
+
+    if (requesterPrincipal.isGlobalAdmin()) {
+      logger.debug("GlobalAdmin managing recovery codes for admin {}", adminId);
+      return admin;
+    }
+    if (requesterPrincipal.isTenantAdmin()) {
+      Integer requesterTenantId = requesterPrincipal.tenantId();
+      Integer adminTenantId = admin.getTenant() != null ? admin.getTenant().getTenantId() : null;
+      if (requesterTenantId == null || !requesterTenantId.equals(adminTenantId)) {
+        throw new AccessDeniedException(
+            "Tenant administrators can only manage recovery codes for admins in their tenant");
+      }
+      return admin;
+    }
+    throw new AccessDeniedException("Only administrators can manage recovery codes");
+  }
+
+  private void validateRecoveryCodeManagementEligibility(EzkeyAdmin admin) {
+    if (!Boolean.TRUE.equals(admin.getActive())) {
+      throw new IllegalStateException("Cannot manage recovery codes for an inactive administrator");
+    }
+    if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {
+      throw new IllegalStateException(
+          "Cannot manage recovery codes before administrator activation is complete");
+    }
   }
 
   /**

@@ -160,6 +160,7 @@ public class AdminProvisioningController {
         admin.getLifecycleStatus().name(),
         admin.getCreatedAt(),
         admin.getLastLoginAt(),
+        admin.getRecoveryCodes() != null && admin.getRecoveryCodes().length > 0,
         operational);
   }
 
@@ -883,6 +884,134 @@ public class AdminProvisioningController {
           httpRequest,
           e.getMessage() != null ? e.getMessage() : "Invalid request.",
           "admin-inactive",
+          "Invalid Request");
+    }
+  }
+
+  @PostMapping("/{id}/recovery-codes/issue-initial")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Issue initial administrator recovery codes",
+      description =
+          "Generates the first set of single-use recovery codes for an administrator after first"
+              + " authenticated sign-in. This flow is distinct from regeneration and is only"
+              + " available when no recovery-code set exists yet.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Initial recovery codes issued successfully"),
+    @ApiResponse(responseCode = "400", description = "Administrator is not eligible yet"),
+    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
+    @ApiResponse(responseCode = "404", description = "Administrator not found")
+  })
+  public ResponseEntity<?> issueInitialRecoveryCodes(
+      @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    if (principal == null || (!principal.isGlobalAdmin() && !principal.isTenantAdmin())) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      RecoveryCodesRegenerationResult result =
+          provisioningService.issueInitialRecoveryCodes(id, principal);
+      int newCodesCount = result.recoveryCodes() != null ? result.recoveryCodes().size() : 0;
+      boolean selfService = principal.adminId().equals(result.admin().getAdminId());
+
+      AdminRecoveryCodesRegenerationResponseDto response =
+          new AdminRecoveryCodesRegenerationResponseDto(
+              result.admin().getAdminId(),
+              result.admin().getUsername(),
+              result.recoveryCodes(),
+              newCodesCount,
+              false,
+              "Initial recovery codes issued. No previous codes existed.");
+
+      Integer tenantId =
+          result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null;
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_CODES_ISSUED,
+                  AdminAuditConstants.RECOVERY_CODES_ISSUED,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
+              .targetAdminId(result.admin().getAdminId())
+              .eventDetails(
+                  RecoveryAuditDetails.initialRecoveryCodesIssued(
+                      principal.adminId(),
+                      result.admin().getAdminId(),
+                      result.admin().getUsername(),
+                      tenantId,
+                      newCodesCount,
+                      selfService))
+              .build());
+
+      return ResponseEntity.ok(response);
+    } catch (ResourceNotFoundException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_CODES_ISSUED,
+                  AdminAuditConstants.RECOVERY_CODES_ISSUANCE_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage("Administrator not found: " + id)
+              .eventDetails(
+                  RecoveryAuditDetails.initialRecoveryCodesIssuanceRejected(
+                      principal.adminId(),
+                      id,
+                      principal.tenantId(),
+                      "admin_not_found",
+                      "Administrator not found"))
+              .build());
+      throw e;
+    } catch (AccessDeniedException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_CODES_ISSUED,
+                  AdminAuditConstants.RECOVERY_CODES_ISSUANCE_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  RecoveryAuditDetails.initialRecoveryCodesIssuanceRejected(
+                      principal.adminId(),
+                      id,
+                      principal.tenantId(),
+                      "access_denied",
+                      e.getMessage()))
+              .build());
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    } catch (IllegalStateException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_RECOVERY_CODES_ISSUED,
+                  AdminAuditConstants.RECOVERY_CODES_ISSUANCE_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  RecoveryAuditDetails.initialRecoveryCodesIssuanceRejected(
+                      principal.adminId(),
+                      id,
+                      principal.tenantId(),
+                      "invalid_state",
+                      e.getMessage()))
+              .build());
+      return badRequest(
+          httpRequest,
+          e.getMessage() != null ? e.getMessage() : "Invalid request.",
+          "initial-recovery-codes-issuance-failed",
           "Invalid Request");
     }
   }

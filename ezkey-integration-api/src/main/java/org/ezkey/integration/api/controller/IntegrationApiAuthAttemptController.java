@@ -39,6 +39,7 @@ import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
@@ -205,6 +206,23 @@ public class IntegrationApiAuthAttemptController {
     Integer effectiveEnrollmentId;
     try {
       effectiveEnrollmentId = resolveEnrollmentId(request);
+    } catch (EnrollmentInactiveException e) {
+      Integer rejectedEnrollmentId = request.enrollmentId();
+      Integer rejectedTenantId = resolveTenantIdFromEnrollment(rejectedEnrollmentId);
+      auditLogService.log(
+          AuditHelper.createIntegrationApiAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  IntegrationApiAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
+                  rejectedTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(rejectedEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(rejectedEnrollmentId)))
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
     } catch (AuthAttemptCreateValidationException e) {
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
@@ -277,6 +295,22 @@ public class IntegrationApiAuthAttemptController {
       return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
 
     } catch (AuthAttemptCreateValidationException e) {
+      auditLogService.log(
+          AuditHelper.createIntegrationApiAudit(
+                  context,
+                  EventType.AUTH_ATTEMPT_CREATED,
+                  IntegrationApiAuditConstants.AUTH_ATTEMPT_CREATION_FAILED,
+                  auditTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
+              .integrationId(
+                  auditEntityFkResolver.integrationIdForAuditOrNull(
+                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
+              .errorMessage(e.getMessage())
+              .build());
+      throw e;
+
+    } catch (EnrollmentInactiveException e) {
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
                   context,

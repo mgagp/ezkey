@@ -265,7 +265,7 @@ export default function LoginPage() {
       <div
         className={cn(
           'w-full border border-[#3076DF] p-4 sm:p-6',
-          expandedLayout ? 'max-w-4xl' : 'max-w-sm',
+          expandedLayout ? 'max-w-4xl' : 'max-w-lg',
         )}
       >
         <div className="relative">
@@ -333,13 +333,17 @@ export default function LoginPage() {
           )}
         >
           {authFlow === 'activation' && (
-            <LoginActivationSection onBackToPasswordless={() => setAuthFlow('passwordless')} />
+            <LoginActivationSection
+              onBackToPasswordless={() => setAuthFlow('passwordless')}
+              authApiPublicBaseUrl={publicInstanceInfo?.authApiPublicBaseUrl ?? null}
+            />
           )}
 
           {authFlow === 'recovery' && (
             <LoginRecoverySection
               initialUsername={recoveryUsernamePrefill}
               onBackToPasswordless={() => setAuthFlow('passwordless')}
+              authApiPublicBaseUrl={publicInstanceInfo?.authApiPublicBaseUrl ?? null}
             />
           )}
 
@@ -421,7 +425,7 @@ export default function LoginPage() {
                 {t('login:form.submit')}
               </Button>
 
-              <div className="text-center pt-1 space-y-2">
+              <div className="border-t-2 border-fg/10 pt-4 space-y-2">
                 <button
                   type="button"
                   data-testid="login-recovery-link"

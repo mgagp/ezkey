@@ -669,6 +669,31 @@ class AdminProvisioningServiceTest {
   class RecoveryCodeRegenerationTests {
 
     @Test
+    @DisplayName("GlobalAdmin can issue initial recovery codes after first login")
+    void globalAdminCanIssueInitialRecoveryCodes() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      tenantAdmin1.setRecoveryCodes(null);
+      tenantAdmin1.setLastLoginAt(java.time.OffsetDateTime.now());
+
+      AdminRecoveryService.RecoveryCodesResult recoveryCodes =
+          new AdminRecoveryService.RecoveryCodesResult(
+              List.of("1111-2222-3333-4444-5555-6666-7777-8888"), List.of("$2a$10$newHash"));
+
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(tenantAdmin1));
+      when(recoveryService.generateRecoveryCodes()).thenReturn(recoveryCodes);
+
+      AdminProvisioningService.RecoveryCodesRegenerationResult result =
+          service.issueInitialRecoveryCodes(2, principal);
+
+      assertEquals(0, result.previousCodesCount());
+      assertEquals(tenantAdmin1, result.admin());
+      assertEquals(recoveryCodes.getPlainCodes(), result.recoveryCodes());
+      verify(adminRepository).findById(2);
+      verify(adminRepository).save(tenantAdmin1);
+      verify(recoveryService).generateRecoveryCodes();
+    }
+
+    @Test
     @DisplayName("GlobalAdmin can regenerate recovery codes for any admin")
     void globalAdminCanRegenerateRecoveryCodes() {
       AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
@@ -712,6 +737,24 @@ class AdminProvisioningServiceTest {
       assertThrows(
           IllegalStateException.class, () -> service.regenerateRecoveryCodes(2, principal));
       verify(adminRepository).findById(2);
+    }
+
+    @Test
+    @DisplayName("Regeneration is rejected before the initial recovery-code issuance")
+    void regenerationRejectedBeforeInitialRecoveryCodeIssuance() {
+      AdminPrincipal principal = new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null);
+      tenantAdmin1.setRecoveryCodes(null);
+      tenantAdmin1.setLastLoginAt(java.time.OffsetDateTime.now());
+      when(adminRepository.findById(2)).thenReturn(java.util.Optional.of(tenantAdmin1));
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class, () -> service.regenerateRecoveryCodes(2, principal));
+
+      assertEquals(
+          "No recovery codes exist yet for this administrator; use initial issuance instead",
+          exception.getMessage());
+      verify(recoveryService, org.mockito.Mockito.never()).rotateRecoveryCodes(any());
     }
   }
 }
