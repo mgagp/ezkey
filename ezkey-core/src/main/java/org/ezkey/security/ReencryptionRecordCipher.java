@@ -19,10 +19,10 @@ public class ReencryptionRecordCipher {
 
   private static final Logger logger = LoggerFactory.getLogger(ReencryptionRecordCipher.class);
 
-  private final EncryptionService encryptionService;
+  private final EncryptionOperations encryptionOperations;
 
-  public ReencryptionRecordCipher(EncryptionService encryptionService) {
-    this.encryptionService = encryptionService;
+  public ReencryptionRecordCipher(EncryptionOperations encryptionOperations) {
+    this.encryptionOperations = encryptionOperations;
   }
 
   /**
@@ -83,8 +83,8 @@ public class ReencryptionRecordCipher {
     Map<String, String> encryptedFields = record.getEncryptedFields();
     String encryptedValue = encryptedFields.get(column);
 
-    String plaintext = encryptionService.decrypt(encryptedValue);
-    String reencrypted = encryptionService.encrypt(plaintext);
+    String plaintext = encryptionOperations.decrypt(encryptedValue);
+    String reencrypted = encryptionOperations.encrypt(plaintext);
 
     record.setEncryptedField(column, reencrypted);
 

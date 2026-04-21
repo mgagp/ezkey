@@ -22,6 +22,10 @@
 			<groupId>org.ezkey</groupId>
 			<artifactId>ezkey-core</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.ezkey</groupId>
+			<artifactId>ezkey-core-security</artifactId>
+		</dependency>
 
 		<!-- Spring Boot Starters -->
 		<dependency>

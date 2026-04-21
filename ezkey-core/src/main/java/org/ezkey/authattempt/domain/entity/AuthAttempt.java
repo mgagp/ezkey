@@ -25,7 +25,8 @@ import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
 import org.ezkey.security.EncryptionEntityListener;
-import org.ezkey.security.EncryptionService;
+import org.ezkey.security.EncryptionOperations;
+import org.ezkey.security.EncryptionOperationsHolder;
 import org.ezkey.security.Reencryptable;
 import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.LoggerFactory;
@@ -223,11 +224,11 @@ public class AuthAttempt implements Reencryptable {
       return null;
     }
 
-    EncryptionService service = getEncryptionService();
-    if (service != null && service.isEncryptionAvailable()) {
-      if (service.isEncrypted(encryptedAuthAttemptProofToken)) {
+    EncryptionOperations operations = getEncryptionOperations();
+    if (operations != null && operations.isEncryptionAvailable()) {
+      if (operations.isEncrypted(encryptedAuthAttemptProofToken)) {
         try {
-          authAttemptProofToken = service.decrypt(encryptedAuthAttemptProofToken);
+          authAttemptProofToken = operations.decrypt(encryptedAuthAttemptProofToken);
           return authAttemptProofToken;
         } catch (Exception exception) {
           LoggerFactory.getLogger(AuthAttempt.class)
@@ -270,11 +271,11 @@ public class AuthAttempt implements Reencryptable {
       return null;
     }
 
-    EncryptionService service = getEncryptionService();
-    if (service != null && service.isEncryptionAvailable()) {
-      if (service.isEncrypted(encryptedDeviceProofToken)) {
+    EncryptionOperations operations = getEncryptionOperations();
+    if (operations != null && operations.isEncryptionAvailable()) {
+      if (operations.isEncrypted(encryptedDeviceProofToken)) {
         try {
-          deviceProofToken = service.decrypt(encryptedDeviceProofToken);
+          deviceProofToken = operations.decrypt(encryptedDeviceProofToken);
           return deviceProofToken;
         } catch (Exception exception) {
           LoggerFactory.getLogger(AuthAttempt.class)
@@ -427,16 +428,8 @@ public class AuthAttempt implements Reencryptable {
     this.deviceProofTokenHash = deviceProofTokenHash;
   }
 
-  private EncryptionService getEncryptionService() {
-    try {
-      java.lang.reflect.Field field =
-          Class.forName("org.ezkey.security.EncryptionEntityListener")
-              .getDeclaredField("encryptionService");
-      field.setAccessible(true);
-      return (EncryptionService) field.get(null);
-    } catch (Exception exception) {
-      return null;
-    }
+  private EncryptionOperations getEncryptionOperations() {
+    return EncryptionOperationsHolder.get();
   }
 
   @Override

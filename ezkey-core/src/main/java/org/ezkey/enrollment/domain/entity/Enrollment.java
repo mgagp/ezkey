@@ -26,7 +26,8 @@ import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
-import org.ezkey.security.EncryptionService;
+import org.ezkey.security.EncryptionOperations;
+import org.ezkey.security.EncryptionOperationsHolder;
 import org.ezkey.security.Reencryptable;
 import org.ezkey.security.SensitiveDataHasher;
 import org.slf4j.LoggerFactory;
@@ -336,11 +337,11 @@ public class Enrollment implements Reencryptable {
       return null;
     }
 
-    EncryptionService service = getEncryptionService();
-    if (service != null && service.isEncryptionAvailable()) {
-      if (service.isEncrypted(encryptedEnrollmentProofToken)) {
+    EncryptionOperations operations = getEncryptionOperations();
+    if (operations != null && operations.isEncryptionAvailable()) {
+      if (operations.isEncrypted(encryptedEnrollmentProofToken)) {
         try {
-          enrollmentProofToken = service.decrypt(encryptedEnrollmentProofToken);
+          enrollmentProofToken = operations.decrypt(encryptedEnrollmentProofToken);
           return enrollmentProofToken;
         } catch (Exception exception) {
           LoggerFactory.getLogger(Enrollment.class)
@@ -394,11 +395,11 @@ public class Enrollment implements Reencryptable {
     }
 
     // Decrypt on first access
-    EncryptionService service = getEncryptionService();
-    if (service != null && service.isEncryptionAvailable()) {
-      if (service.isEncrypted(encryptedIntegrationPrivateKey)) {
+    EncryptionOperations operations = getEncryptionOperations();
+    if (operations != null && operations.isEncryptionAvailable()) {
+      if (operations.isEncrypted(encryptedIntegrationPrivateKey)) {
         try {
-          String decrypted = service.decrypt(encryptedIntegrationPrivateKey);
+          String decrypted = operations.decrypt(encryptedIntegrationPrivateKey);
           // Cache in transient field to avoid repeated decryption
           integrationPrivateKey = decrypted;
           return decrypted;
@@ -438,26 +439,15 @@ public class Enrollment implements Reencryptable {
   }
 
   /**
-   * Gets the encryption service for decrypting private keys.
+   * Gets the encryption operations for decrypting private keys.
    *
-   * <p>Uses a static access pattern similar to {@link EncryptionEntityListener} since JPA entities
-   * cannot use dependency injection directly.
+   * <p>JPA entities cannot use dependency injection directly, so runtime encryption access goes
+   * through a lightweight holder populated by the entity listener.
    *
-   * @return the encryption service, or null if not available
+   * @return the encryption operations, or null if not available
    */
-  private static EncryptionService getEncryptionService() {
-    // Access via EncryptionEntityListener's static field
-    // This is a simple pattern to avoid complex injection in entities
-    try {
-      java.lang.reflect.Field field =
-          Class.forName("org.ezkey.security.EncryptionEntityListener")
-              .getDeclaredField("encryptionService");
-      field.setAccessible(true);
-      return (EncryptionService) field.get(null);
-    } catch (Exception e) {
-      // If reflection fails, return null (encryption unavailable)
-      return null;
-    }
+  private static EncryptionOperations getEncryptionOperations() {
+    return EncryptionOperationsHolder.get();
   }
 
   public String getIntegrationPublicKey() {

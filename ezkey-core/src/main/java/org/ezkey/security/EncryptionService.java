@@ -29,7 +29,7 @@ import org.springframework.stereotype.Service;
  * @since 2025
  */
 @Service
-public class EncryptionService {
+public class EncryptionService implements EncryptionOperations {
 
   private static final Logger logger = LoggerFactory.getLogger(EncryptionService.class);
 

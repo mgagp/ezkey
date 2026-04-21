@@ -13,7 +13,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
-import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,14 +23,14 @@ import org.springframework.stereotype.Component;
  *
  * <p>Currently encrypts/decrypts: Enrollment.integrationPrivateKey.
  *
- * <p>This listener uses a static field to store the EncryptionService because JPA entity listeners
- * are not managed by Spring and cannot use dependency injection directly. The service is injected
- * via a setter method and also retrieved from ApplicationContext as a fallback.
+ * <p>This listener uses a static field to store {@link EncryptionOperations} because JPA entity
+ * listeners are not managed by Spring and cannot use dependency injection directly. The runtime
+ * implementation is injected via a setter method and also retrieved from ApplicationContext as a
+ * fallback.
  *
  * @since 2025
  */
 @Component
-@DependsOn({"encryptionService", "tinkKeyManager"})
 public class EncryptionEntityListener implements ApplicationContextAware {
 
   private static final Logger logger = LoggerFactory.getLogger(EncryptionEntityListener.class);
@@ -39,12 +38,8 @@ public class EncryptionEntityListener implements ApplicationContextAware {
   /** Transient field name for {@link Enrollment#integrationPrivateKey} (diagnostics only). */
   private static final String INTEGRATION_PRIVATE_KEY_TRANSIENT = "integrationPrivateKey";
 
-  /**
-   * Static field for EncryptionService, accessible via reflection from Enrollment entity.
-   *
-   * <p>Made static with package-private accessor to allow access from Enrollment.
-   */
-  private static EncryptionService encryptionService;
+  /** Static field for encryption operations used by unmanaged JPA callbacks. */
+  private static EncryptionOperations encryptionOperations;
 
   private static ApplicationContext applicationContext;
 
@@ -60,72 +55,77 @@ public class EncryptionEntityListener implements ApplicationContextAware {
   }
 
   /**
-   * Initialize the encryption service after Spring context is ready.
+   * Initialize the encryption operations after Spring context is ready.
    *
-   * <p>This method tries multiple approaches to get the EncryptionService: 1. Direct injection via
-   * setter (preferred) 2. Retrieval from ApplicationContext (fallback)
+   * <p>This method tries multiple approaches to get the runtime encryption operations: 1. Direct
+   * injection via setter (preferred) 2. Retrieval from ApplicationContext (fallback)
    */
   @PostConstruct
   public void initializeEncryptionService() {
     // Try to get from ApplicationContext if not already injected
-    if (encryptionService == null && applicationContext != null) {
-      ObjectProvider<EncryptionService> provider =
-          applicationContext.getBeanProvider(EncryptionService.class);
-      EncryptionService service = provider.getIfAvailable();
-      if (service != null) {
-        EncryptionEntityListener.encryptionService = service;
-        logger.info("EncryptionService retrieved from ApplicationContext");
+    if (encryptionOperations == null && applicationContext != null) {
+      ObjectProvider<EncryptionOperations> provider =
+          applicationContext.getBeanProvider(EncryptionOperations.class);
+      EncryptionOperations operations = provider.getIfAvailable();
+      if (operations != null) {
+        EncryptionEntityListener.encryptionOperations = operations;
+        EncryptionOperationsHolder.set(operations);
+        logger.info("Encryption operations retrieved from ApplicationContext");
       }
     }
 
     // Log final state
-    if (encryptionService != null) {
+    if (encryptionOperations != null) {
       logger.info(
-          "EncryptionEntityListener initialized with EncryptionService. "
+          "EncryptionEntityListener initialized with encryption operations. "
               + "Encryption available: {}",
-          encryptionService.isEncryptionAvailable());
+          encryptionOperations.isEncryptionAvailable());
     } else {
       logger.warn(
-          "EncryptionEntityListener initialized but EncryptionService is null. "
+          "EncryptionEntityListener initialized but encryption operations are null. "
               + "Encryption will be disabled. "
               + "This is normal if encryption is disabled or master key is not configured.");
     }
   }
 
   /**
-   * Set the encryption service (injected by Spring).
+   * Set the encryption operations (injected by Spring).
    *
-   * <p>This method is called by Spring's dependency injection framework. The service is stored in a
-   * static field for access from JPA entity listener callbacks.
+   * <p>This method is called by Spring's dependency injection framework. The implementation is
+   * stored in a static field and in {@link EncryptionOperationsHolder} for access from unmanaged
+   * JPA entity and listener callbacks.
    *
-   * @param service the encryption service to use (may be null if encryption is disabled)
+   * @param operations the encryption operations to use (may be null if encryption is disabled)
    */
   @Autowired(required = false)
-  public void setEncryptionService(EncryptionService service) {
-    EncryptionEntityListener.encryptionService = service;
-    if (service != null) {
-      logger.info("EncryptionService injected via @Autowired setter");
+  public void setEncryptionService(EncryptionOperations operations) {
+    EncryptionEntityListener.encryptionOperations = operations;
+    EncryptionOperationsHolder.set(operations);
+    if (operations != null) {
+      logger.info("Encryption operations injected via @Autowired setter");
     }
   }
 
   /**
-   * Get the encryption service (with lazy fallback to ApplicationContext).
+   * Get the encryption operations (with lazy fallback to ApplicationContext).
    *
-   * @return the encryption service, or null if not available
+   * @return the encryption operations, or null if not available
    */
-  private static EncryptionService getEncryptionService() {
-    if (encryptionService != null) {
-      return encryptionService;
+  private static EncryptionOperations getEncryptionOperations() {
+    EncryptionOperations cachedOperations = encryptionOperations;
+    if (cachedOperations != null) {
+      return cachedOperations;
     }
     // Lazy fallback: try to get from ApplicationContext
     if (applicationContext != null) {
-      ObjectProvider<EncryptionService> provider =
-          applicationContext.getBeanProvider(EncryptionService.class);
-      EncryptionService service = provider.getIfAvailable();
-      if (service != null) {
-        encryptionService = service; // Cache for future use
-        logger.debug("EncryptionService retrieved from ApplicationContext (lazy)");
-        return service;
+      ObjectProvider<EncryptionOperations> provider =
+          applicationContext.getBeanProvider(EncryptionOperations.class);
+      EncryptionOperations operations = provider.getIfAvailable();
+      if (operations != null) {
+        encryptionOperations = operations;
+        EncryptionOperationsHolder.set(operations);
+        logger.debug("Encryption operations retrieved from ApplicationContext (lazy)");
+        return operations;
       }
     }
     return null;
@@ -134,33 +134,33 @@ public class EncryptionEntityListener implements ApplicationContextAware {
   @PrePersist
   @PreUpdate
   public void encrypt(Object entity) {
-    EncryptionService service = getEncryptionService();
+    EncryptionOperations operations = getEncryptionOperations();
 
     if (entity instanceof Enrollment enrollment) {
       encryptField(
           enrollment,
           "integrationPrivateKey",
           "encryptedIntegrationPrivateKey",
-          service,
+          operations,
           () -> "integration private key for enrollment " + enrollment.getEnrollmentId());
       encryptField(
           enrollment,
           "enrollmentProofToken",
           "encryptedEnrollmentProofToken",
-          service,
+          operations,
           () -> "enrollment proof token for enrollment " + enrollment.getEnrollmentId());
     } else if (entity instanceof AuthAttempt authAttempt) {
       encryptField(
           authAttempt,
           "authAttemptProofToken",
           "encryptedAuthAttemptProofToken",
-          service,
+          operations,
           () -> "auth attempt proof token for authAttempt " + authAttempt.getAuthAttemptId());
       encryptField(
           authAttempt,
           "deviceProofToken",
           "encryptedDeviceProofToken",
-          service,
+          operations,
           () -> "device proof token for authAttempt " + authAttempt.getAuthAttemptId());
     }
   }
@@ -169,14 +169,19 @@ public class EncryptionEntityListener implements ApplicationContextAware {
       Object entity,
       String transientFieldName,
       String persistentFieldName,
-      EncryptionService service,
+      EncryptionOperations operations,
       Supplier<String> contextSupplier) {
 
     String context = contextSupplier.get();
     String plaintext = getFieldValue(entity, transientFieldName);
 
     logIntegrationPrivateKeyDiagnostics(
-        entity, transientFieldName, persistentFieldName, plaintext, service, "afterTransientRead");
+        entity,
+        transientFieldName,
+        persistentFieldName,
+        plaintext,
+        operations,
+        "afterTransientRead");
 
     // When transient is null/blank, use persistent field as fallback source (setter wrote
     // plaintext to the mapped column; reflection may not see @Transient at PrePersist/flush).
@@ -187,7 +192,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
         String fromPersistent = getFieldValue(entity, persistentFieldName);
         if (fromPersistent != null
             && !fromPersistent.isBlank()
-            && (service == null || !service.isEncrypted(fromPersistent))) {
+            && (operations == null || !operations.isEncrypted(fromPersistent))) {
           plaintext = fromPersistent;
         }
       } catch (Exception e) {
@@ -211,7 +216,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
         String fromPersistent = getFieldValue(entity, persistentFieldName);
         if (fromPersistent != null
             && !fromPersistent.isBlank()
-            && (service == null || !service.isEncrypted(fromPersistent))) {
+            && (operations == null || !operations.isEncrypted(fromPersistent))) {
           plaintext = fromPersistent;
         }
       } catch (Exception e) {
@@ -224,33 +229,33 @@ public class EncryptionEntityListener implements ApplicationContextAware {
     }
 
     logIntegrationPrivateKeyDiagnostics(
-        entity, transientFieldName, persistentFieldName, plaintext, service, "afterFallbacks");
+        entity, transientFieldName, persistentFieldName, plaintext, operations, "afterFallbacks");
 
     if (plaintext == null || plaintext.isBlank()) {
       warnIfIntegrationPrivateKeyTransientBlankButPersistentPlaintext(
-          entity, transientFieldName, persistentFieldName, service);
+          entity, transientFieldName, persistentFieldName, operations);
       logger.trace("Field {} is null or blank for {}", transientFieldName, context);
       return;
     }
 
-    if (service == null || !service.isEncryptionAvailable()) {
+    if (operations == null || !operations.isEncryptionAvailable()) {
       logger.debug("Encryption unavailable, storing plaintext for {}", context);
       setFieldValue(entity, persistentFieldName, plaintext);
       return;
     }
 
-    if (service.isEncrypted(plaintext)) {
+    if (operations.isEncrypted(plaintext)) {
       logger.trace("Field {} already encrypted for {}", transientFieldName, context);
       setFieldValue(entity, persistentFieldName, plaintext);
       return;
     }
 
     try {
-      String encrypted = service.encrypt(plaintext);
+      String encrypted = operations.encrypt(plaintext);
       setFieldValue(entity, persistentFieldName, encrypted);
       logger.debug("Encrypted {}", context);
       logIntegrationPrivateKeyDiagnostics(
-          entity, transientFieldName, persistentFieldName, plaintext, service, "afterEncrypt");
+          entity, transientFieldName, persistentFieldName, plaintext, operations, "afterEncrypt");
     } catch (Exception exception) {
       logger.error("Failed to encrypt {}", context, exception);
       setFieldValue(entity, persistentFieldName, plaintext);
@@ -269,7 +274,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
       String transientFieldName,
       String persistentFieldName,
       String plaintextFromTransient,
-      EncryptionService service,
+      EncryptionOperations operations,
       String phase) {
 
     if (!INTEGRATION_PRIVATE_KEY_TRANSIENT.equals(transientFieldName)
@@ -281,9 +286,9 @@ public class EncryptionEntityListener implements ApplicationContextAware {
     }
 
     String persistent = getFieldValue(entity, persistentFieldName);
-    boolean encryptionAvailable = service != null && service.isEncryptionAvailable();
+    boolean encryptionAvailable = operations != null && operations.isEncryptionAvailable();
     boolean persistentLooksEncrypted =
-        service != null && persistent != null && service.isEncrypted(persistent);
+        operations != null && persistent != null && operations.isEncrypted(persistent);
     boolean transientPresent = plaintextFromTransient != null && !plaintextFromTransient.isBlank();
     int persistentLen = persistent != null ? persistent.length() : 0;
 
@@ -311,7 +316,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
       Object entity,
       String transientFieldName,
       String persistentFieldName,
-      EncryptionService service) {
+      EncryptionOperations operations) {
 
     if (!INTEGRATION_PRIVATE_KEY_TRANSIENT.equals(transientFieldName)
         || !(entity instanceof Enrollment enrollment)) {
@@ -322,11 +327,11 @@ public class EncryptionEntityListener implements ApplicationContextAware {
     if (persistent == null || persistent.isBlank()) {
       return;
     }
-    if (service != null && service.isEncrypted(persistent)) {
+    if (operations != null && operations.isEncrypted(persistent)) {
       return;
     }
 
-    boolean encryptionAvailable = service != null && service.isEncryptionAvailable();
+    boolean encryptionAvailable = operations != null && operations.isEncryptionAvailable();
     logger.warn(
         "Enrollment integration_private_key: transient integrationPrivateKey is blank but "
             + "encryptedIntegrationPrivateKey holds an unencrypted value; listener will skip "

@@ -49,7 +49,7 @@ public class ReencryptionService {
 
   private static final Logger logger = LoggerFactory.getLogger(ReencryptionService.class);
 
-  private final EncryptionService encryptionService;
+  private final EncryptionOperations encryptionOperations;
   private final EncryptionKeyRepository keyRepository;
   private final ReencryptionBatchRepository batchRepository;
   private final TinkProperties properties;
@@ -59,7 +59,7 @@ public class ReencryptionService {
   private final ReencryptionBatchParallelRunner parallelRunner;
 
   public ReencryptionService(
-      EncryptionService encryptionService,
+      EncryptionOperations encryptionOperations,
       EncryptionKeyRepository keyRepository,
       ReencryptionBatchRepository batchRepository,
       TinkProperties properties,
@@ -67,7 +67,7 @@ public class ReencryptionService {
       ReencryptionBatchCreationService batchCreationService,
       ReencryptionBatchProcessingService batchProcessingService,
       ReencryptionBatchParallelRunner parallelRunner) {
-    this.encryptionService = encryptionService;
+    this.encryptionOperations = encryptionOperations;
     this.keyRepository = keyRepository;
     this.batchRepository = batchRepository;
     this.properties = properties;
@@ -86,7 +86,7 @@ public class ReencryptionService {
       return;
     }
 
-    if (!encryptionService.isEncryptionAvailable()) {
+    if (!encryptionOperations.isEncryptionAvailable()) {
       logger.warn("Encryption not available, skipping re-encryption batch processing");
       return;
     }
@@ -173,7 +173,7 @@ public class ReencryptionService {
   }
 
   public ReencryptionSummary triggerFullReencryption() {
-    if (!encryptionService.isEncryptionAvailable()) {
+    if (!encryptionOperations.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
     }
 
@@ -220,7 +220,7 @@ public class ReencryptionService {
   }
 
   public ReencryptionSummary triggerReencryptionForKey(Long keyId) {
-    if (!encryptionService.isEncryptionAvailable()) {
+    if (!encryptionOperations.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
     }
 

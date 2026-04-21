@@ -40,6 +40,7 @@
 	<modules>
 		<module>checkstyle-config</module>
 		<module>ezkey-core</module>
+		<module>ezkey-core-security</module>
 		<module>ezkey-migration</module>
 		<module>ezkey-admin-api</module>
 		<module>ezkey-auth-api</module>
@@ -135,6 +136,11 @@
 			<dependency>
 				<groupId>org.ezkey</groupId>
 				<artifactId>ezkey-core</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.ezkey</groupId>
+				<artifactId>ezkey-core-security</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>

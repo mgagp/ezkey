@@ -1,5 +1,5 @@
 
-Lists of 170 third-party dependencies.
+Lists of 174 third-party dependencies.
      (Eclipse Public License - v 2.0) (GNU Lesser General Public License) Logback Classic Module (ch.qos.logback:logback-classic:1.5.32 - http://logback.qos.ch/logback-classic)
      (Eclipse Public License - v 2.0) (GNU Lesser General Public License) Logback Core Module (ch.qos.logback:logback-core:1.5.32 - http://logback.qos.ch/logback-core)
      (The Apache Software License, Version 2.0) bucket4j_jdk17-core (com.bucket4j:bucket4j_jdk17-core:8.18.0 - http://github.com/bucket4j/bucket4j/bucket4j_jdk17-core)
@@ -128,6 +128,7 @@ Lists of 170 third-party dependencies.
      (The Apache Software License, Version 2.0) spring-boot-micrometer-metrics (org.springframework.boot:spring-boot-micrometer-metrics:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-micrometer-observation (org.springframework.boot:spring-boot-micrometer-observation:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-persistence (org.springframework.boot:spring-boot-persistence:4.0.5 - https://spring.io/projects/spring-boot)
+     (The Apache Software License, Version 2.0) spring-boot-resttestclient (org.springframework.boot:spring-boot-resttestclient:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-security (org.springframework.boot:spring-boot-security:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-security-test (org.springframework.boot:spring-boot-security-test:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-servlet (org.springframework.boot:spring-boot-servlet:4.0.5 - https://spring.io/projects/spring-boot)
@@ -137,6 +138,7 @@ Lists of 170 third-party dependencies.
      (The Apache Software License, Version 2.0) spring-boot-starter-data-jpa (org.springframework.boot:spring-boot-starter-data-jpa:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-starter-data-jpa-test (org.springframework.boot:spring-boot-starter-data-jpa-test:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-starter-jackson (org.springframework.boot:spring-boot-starter-jackson:4.0.5 - https://spring.io/projects/spring-boot)
+     (The Apache Software License, Version 2.0) spring-boot-starter-jackson-test (org.springframework.boot:spring-boot-starter-jackson-test:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-starter-jdbc (org.springframework.boot:spring-boot-starter-jdbc:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-starter-jdbc-test (org.springframework.boot:spring-boot-starter-jdbc-test:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-starter-logging (org.springframework.boot:spring-boot-starter-logging:4.0.5 - https://spring.io/projects/spring-boot)
@@ -148,6 +150,7 @@ Lists of 170 third-party dependencies.
      (The Apache Software License, Version 2.0) spring-boot-starter-tomcat-runtime (org.springframework.boot:spring-boot-starter-tomcat-runtime:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-starter-validation (org.springframework.boot:spring-boot-starter-validation:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-starter-webmvc (org.springframework.boot:spring-boot-starter-webmvc:4.0.5 - https://spring.io/projects/spring-boot)
+     (The Apache Software License, Version 2.0) spring-boot-starter-webmvc-test (org.springframework.boot:spring-boot-starter-webmvc-test:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-test (org.springframework.boot:spring-boot-test:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-test-autoconfigure (org.springframework.boot:spring-boot-test-autoconfigure:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-tomcat (org.springframework.boot:spring-boot-tomcat:4.0.5 - https://spring.io/projects/spring-boot)
@@ -155,6 +158,7 @@ Lists of 170 third-party dependencies.
      (The Apache Software License, Version 2.0) spring-boot-validation (org.springframework.boot:spring-boot-validation:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-web-server (org.springframework.boot:spring-boot-web-server:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-webmvc (org.springframework.boot:spring-boot-webmvc:4.0.5 - https://spring.io/projects/spring-boot)
+     (The Apache Software License, Version 2.0) spring-boot-webmvc-test (org.springframework.boot:spring-boot-webmvc-test:4.0.5 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) Spring Data Core (org.springframework.data:spring-data-commons:4.0.4 - https://spring.io/projects/spring-data)
      (The Apache Software License, Version 2.0) Spring Data JPA (org.springframework.data:spring-data-jpa:4.0.4 - https://projects.spring.io/spring-data-jpa)
      (The Apache Software License, Version 2.0) spring-security-config (org.springframework.security:spring-security-config:7.0.4 - https://spring.io/projects/spring-security)

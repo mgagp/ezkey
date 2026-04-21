@@ -29,7 +29,7 @@ import org.mockito.quality.Strictness;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class EncryptionEntityListenerTest {
 
-  @Mock private EncryptionService encryptionService;
+  @Mock private EncryptionOperations encryptionOperations;
 
   private EncryptionEntityListener listener;
 
@@ -38,22 +38,23 @@ class EncryptionEntityListenerTest {
   @BeforeEach
   void setUp() {
     listener = new EncryptionEntityListener();
-    listener.setEncryptionService(encryptionService);
-    when(encryptionService.isEncryptionAvailable()).thenReturn(true);
-    when(encryptionService.isEncrypted(anyString()))
+    listener.setEncryptionService(encryptionOperations);
+    when(encryptionOperations.isEncryptionAvailable()).thenReturn(true);
+    when(encryptionOperations.isEncrypted(anyString()))
         .thenAnswer(
             invocation -> {
               String arg = invocation.getArgument(0);
               return arg != null && arg.startsWith("ENC:");
             });
-    when(encryptionService.encrypt(anyString())).thenReturn(CIPHERTEXT);
+    when(encryptionOperations.encrypt(anyString())).thenReturn(CIPHERTEXT);
   }
 
   @AfterEach
   void tearDown() throws Exception {
-    Field field = EncryptionEntityListener.class.getDeclaredField("encryptionService");
+    Field field = EncryptionEntityListener.class.getDeclaredField("encryptionOperations");
     field.setAccessible(true);
     field.set(null, null);
+    EncryptionOperationsHolder.clear();
   }
 
   @Test
@@ -74,8 +75,8 @@ class EncryptionEntityListenerTest {
     persistentField.setAccessible(true);
     assertEquals(CIPHERTEXT, persistentField.get(enrollment));
 
-    verify(encryptionService, times(2)).encrypt(anyString());
-    verify(encryptionService).encrypt(eq(pkcs8Plaintext));
+    verify(encryptionOperations, times(2)).encrypt(anyString());
+    verify(encryptionOperations).encrypt(eq(pkcs8Plaintext));
     assertTrue(((String) persistentField.get(enrollment)).startsWith("ENC:"));
   }
 }
