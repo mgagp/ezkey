@@ -26,6 +26,7 @@ import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.security.SensitiveDataHasher;
+import org.ezkey.service.EntityEligibilityService;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,7 @@ public class EnrollmentBindService {
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
   private final EzkeyAdminRepository ezkeyAdminRepository;
+  private final EntityEligibilityService eligibilityService;
   private final EnrollmentTxHelper enrollmentTxHelper;
   private final SignatureService signatureService;
 
@@ -80,6 +82,7 @@ public class EnrollmentBindService {
    * @param enrollmentRepository the JPA repository for enrollment operations
    * @param integrationRepository the JPA repository for integration operations
    * @param ezkeyAdminRepository the JPA repository for admin lookup (admin MFA enrollments)
+   * @param eligibilityService centralized eligibility checks for admin-linked enrollments
    * @param enrollmentTxHelper the transactional helper for marking expired and emitting audit in a
    *     separate transaction
    * @param signatureService the signature service for normalizing integration public key to
@@ -89,11 +92,13 @@ public class EnrollmentBindService {
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
       EzkeyAdminRepository ezkeyAdminRepository,
+      EntityEligibilityService eligibilityService,
       EnrollmentTxHelper enrollmentTxHelper,
       SignatureService signatureService) {
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
     this.ezkeyAdminRepository = ezkeyAdminRepository;
+    this.eligibilityService = eligibilityService;
     this.enrollmentTxHelper = enrollmentTxHelper;
     this.signatureService = signatureService;
   }
@@ -212,8 +217,28 @@ public class EnrollmentBindService {
       throw new EnrollmentInvitationExpiredException("Enrollment invitation has expired");
     }
 
+    validateAdminLinkedEnrollmentEligibility(enrollment);
+
     logger.debug("Enrollment status validation passed: Status is CREATED");
     return enrollment;
+  }
+
+  private void validateAdminLinkedEnrollmentEligibility(Enrollment enrollment) {
+    ezkeyAdminRepository
+        .findByEnrollmentId(enrollment.getEnrollmentId())
+        .ifPresent(
+            admin -> {
+              if (!eligibilityService.isAdminLinkedEnrollmentEligible(admin)) {
+                logger.warn(
+                    "Validation failed: Admin-linked enrollment is not eligible for bind -"
+                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {}",
+                    enrollment.getEnrollmentId(),
+                    admin.getAdminId(),
+                    admin.getLifecycleStatus(),
+                    admin.getActive());
+                throw new EnrollmentBindingFailedException("Enrollment binding failed");
+              }
+            });
   }
 
   /**

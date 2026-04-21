@@ -31,6 +31,7 @@ import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
@@ -341,6 +342,7 @@ class AdminProvisioningServiceTest {
       verify(adminRepository).save(target);
       verify(tokenRepository).deactivateAllTokensForAdmin(2);
       assertFalse(target.getActive());
+      assertEquals(AdminLifecycleStatus.DEACTIVATED, target.getLifecycleStatus());
     }
 
     @Test
@@ -566,6 +568,7 @@ class AdminProvisioningServiceTest {
       service.activateAdmin(2, principal);
 
       assertTrue(target.getActive());
+      assertEquals(AdminLifecycleStatus.ACTIVE, target.getLifecycleStatus());
       verify(adminRepository).findById(2);
       verify(adminRepository).save(target);
     }

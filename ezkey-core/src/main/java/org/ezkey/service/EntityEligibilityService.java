@@ -17,6 +17,7 @@ import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
@@ -130,8 +131,8 @@ public class EntityEligibilityService {
   }
 
   /**
-   * Returns {@code true} when the administrator account is active and, for tenant-scoped admins,
-   * when their tenant is also active.
+   * Returns {@code true} when the administrator account is in the ACTIVE lifecycle state, locally
+   * active, and, for tenant-scoped admins, when their tenant is also active.
    *
    * <p>Global admins (type {@code GLOBAL_ADMIN}) are considered operational as long as their
    * account is active, regardless of tenant state.
@@ -143,6 +144,9 @@ public class EntityEligibilityService {
     if (admin == null) {
       return false;
     }
+    if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {
+      return false;
+    }
     if (!Boolean.TRUE.equals(admin.getActive())) {
       return false;
     }
@@ -150,6 +154,21 @@ public class EntityEligibilityService {
       return true;
     }
     return isTenantOperational(admin.getTenant());
+  }
+
+  /**
+   * Returns {@code true} when an admin-linked enrollment is allowed to progress through bind or
+   * verify.
+   *
+   * <p>The rule is intentionally simple: if the enrollment belongs to an administrator, that
+   * administrator must currently be operational. This prevents suspended, pending-activation, or
+   * tenant-blocked administrators from progressing their MFA enrollment toward use.
+   *
+   * @param admin the admin linked to the enrollment; may be {@code null}
+   * @return {@code true} if no admin is linked or the linked admin is operational
+   */
+  public boolean isAdminLinkedEnrollmentEligible(EzkeyAdmin admin) {
+    return admin == null || isAdminOperational(admin);
   }
 
   /**

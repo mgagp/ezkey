@@ -34,6 +34,7 @@ import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.security.SensitiveDataHasher;
@@ -174,6 +175,11 @@ public class AdminAuthService {
 
     if (!admin.getActive()) {
       throw new AdminAccountInactiveException("Account has been deactivated");
+    }
+
+    if (admin.getLifecycleStatus() == AdminLifecycleStatus.PENDING_ACTIVATION) {
+      throw new AdminAccountInactiveException(
+          "Account activation is still pending. Complete first-time setup before logging in.");
     }
 
     // Check if admin's tenant is active (tenant deactivation blocks login)

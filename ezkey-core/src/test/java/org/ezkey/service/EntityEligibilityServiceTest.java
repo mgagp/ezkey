@@ -18,6 +18,9 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
@@ -269,6 +272,59 @@ class EntityEligibilityServiceTest {
       enrollment.setStatus(EnrollmentStatus.VERIFIED);
       enrollment.setActive(true);
       service.ensureEnrollmentOperational(enrollment); // should not throw
+    }
+  }
+
+  // ===== isAdminOperational =====
+
+  @Nested
+  @DisplayName("isAdminOperational")
+  class IsAdminOperational {
+
+    @Test
+    @DisplayName("returns false for pending activation admin")
+    void pendingActivationAdmin_returnsFalse() {
+      EzkeyAdmin admin = new EzkeyAdmin("pending", AdminType.TENANT_ADMIN);
+      admin.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
+      admin.setActive(true);
+      Tenant tenant = new Tenant("Acme", "test");
+      tenant.setActive(true);
+      admin.setTenant(tenant);
+
+      assertThat(service.isAdminOperational(admin)).isFalse();
+    }
+
+    @Test
+    @DisplayName("returns false for deactivated admin")
+    void deactivatedAdmin_returnsFalse() {
+      EzkeyAdmin admin = new EzkeyAdmin("off", AdminType.GLOBAL_ADMIN);
+      admin.setLifecycleStatus(AdminLifecycleStatus.DEACTIVATED);
+      admin.setActive(false);
+
+      assertThat(service.isAdminOperational(admin)).isFalse();
+    }
+
+    @Test
+    @DisplayName("returns false for active tenant admin with inactive tenant")
+    void activeTenantAdminInactiveTenant_returnsFalse() {
+      EzkeyAdmin admin = new EzkeyAdmin("tenant.admin", AdminType.TENANT_ADMIN);
+      admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+      admin.setActive(true);
+      Tenant tenant = new Tenant("Acme", "test");
+      tenant.setActive(false);
+      admin.setTenant(tenant);
+
+      assertThat(service.isAdminOperational(admin)).isFalse();
+    }
+
+    @Test
+    @DisplayName("returns true for active global admin")
+    void activeGlobalAdmin_returnsTrue() {
+      EzkeyAdmin admin = new EzkeyAdmin("global.admin", AdminType.GLOBAL_ADMIN);
+      admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+      admin.setActive(true);
+
+      assertThat(service.isAdminOperational(admin)).isTrue();
     }
   }
 }

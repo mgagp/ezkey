@@ -11,8 +11,12 @@
 package org.ezkey.admin.service;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 import org.ezkey.admin.config.AdminSecurityProperties;
+import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.domain.AdminOnboardingMode;
 import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
@@ -23,7 +27,9 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
+import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
@@ -31,6 +37,7 @@ import org.ezkey.integration.domain.repository.AdminTokenRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.domain.repository.TenantRepository;
+import org.ezkey.security.SensitiveDataHasher;
 import org.ezkey.signature.Ed25519KeyPair;
 import org.ezkey.signature.SignatureService;
 import org.ezkey.util.PhoneNumberUtils;
@@ -82,6 +89,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminProvisioningService {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminProvisioningService.class);
+  private static final long ACTIVATION_CODE_TTL_DAYS = 7;
 
   private final TenantRepository tenantRepository;
   private final EzkeyAdminRepository adminRepository;
@@ -122,13 +130,21 @@ public class AdminProvisioningService {
    * @param enrollmentProofToken Enrollment proof token (shown once - save securely)
    * @param enrollmentChallenge Enrollment challenge code (6 digits, shown once - save securely)
    * @param recoveryCodes List of recovery codes (shown once, single-use - save securely)
+   * @param onboardingMode Effective onboarding mode used during provisioning
+   * @param activationCode One-time activation code shown once for deferred onboarding
+   * @param activationCodeExpiresAt Activation code expiration timestamp for deferred onboarding
    */
   public record ProvisioningResult(
       EzkeyAdmin admin,
       Enrollment enrollment,
       String enrollmentProofToken,
       Integer enrollmentChallenge,
-      java.util.List<String> recoveryCodes) {}
+      java.util.List<String> recoveryCodes,
+      AdminOnboardingMode onboardingMode,
+      String activationCode,
+      OffsetDateTime activationCodeExpiresAt) {}
+
+  private record ActivationCodeResult(String activationCode, OffsetDateTime expiresAt) {}
 
   /**
    * Creates a new tenant.
@@ -223,6 +239,7 @@ public class AdminProvisioningService {
       String phoneNumber,
       String firstName,
       String lastName,
+      AdminOnboardingMode onboardingMode,
       AdminPrincipal creatorPrincipal) {
     logger.info("Creating global admin: {} (creator: {})", username, creatorPrincipal.adminId());
 
@@ -260,12 +277,6 @@ public class AdminProvisioningService {
             .findByIsSystemTenantTrue()
             .orElseThrow(() -> new RuntimeException("System tenant not found"));
 
-    // Get system integration (for admin enrollment)
-    Integration systemIntegration =
-        integrationRepository
-            .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
-            .orElseThrow(() -> new RuntimeException("System integration not found"));
-
     // Create admin
     EzkeyAdmin admin = new EzkeyAdmin(username, AdminType.GLOBAL_ADMIN);
     admin.setEmail(email);
@@ -278,15 +289,40 @@ public class AdminProvisioningService {
     admin.setActive(true);
     admin.setChallengeRequired(false);
 
-    // Generate recovery codes
-    AdminRecoveryService.RecoveryCodesResult recoveryCodes =
-        recoveryService.generateRecoveryCodes();
-    admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+    AdminOnboardingMode effectiveOnboardingMode = normalizeOnboardingMode(onboardingMode);
+    AdminRecoveryService.RecoveryCodesResult recoveryCodes = null;
+    if (effectiveOnboardingMode == AdminOnboardingMode.ACTIVATION_CODE) {
+      admin.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
+      admin.setRecoveryCodes(null);
+    } else {
+      admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+      recoveryCodes = recoveryService.generateRecoveryCodes();
+      admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+    }
 
     admin = adminRepository.save(admin);
 
-    // Create enrollment
-    ProvisioningResult result = createAdminEnrollment(admin, systemIntegration, recoveryCodes);
+    ProvisioningResult result;
+    if (effectiveOnboardingMode == AdminOnboardingMode.ACTIVATION_CODE) {
+      ActivationCodeResult activationCodeResult = issueActivationCode(admin);
+      result =
+          new ProvisioningResult(
+              admin,
+              null,
+              null,
+              null,
+              null,
+              effectiveOnboardingMode,
+              activationCodeResult.activationCode(),
+              activationCodeResult.expiresAt());
+    } else {
+      Integration systemIntegration =
+          integrationRepository
+              .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
+              .orElseThrow(() -> new RuntimeException("System integration not found"));
+      result =
+          createAdminEnrollment(admin, systemIntegration, recoveryCodes, effectiveOnboardingMode);
+    }
 
     logger.info("✅ Global admin created: {} (ID: {})", username, admin.getAdminId());
 
@@ -318,6 +354,7 @@ public class AdminProvisioningService {
       String firstName,
       String lastName,
       Integer tenantId,
+      AdminOnboardingMode onboardingMode,
       AdminPrincipal creatorPrincipal) {
     logger.info(
         "Creating tenant admin: {} for tenant {} (creator: {})",
@@ -383,12 +420,6 @@ public class AdminProvisioningService {
             .findById(creatorPrincipal.adminId())
             .orElseThrow(() -> new ResourceNotFoundException("Admin", creatorPrincipal.adminId()));
 
-    // Get system integration (for admin enrollment)
-    Integration systemIntegration =
-        integrationRepository
-            .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
-            .orElseThrow(() -> new RuntimeException("System integration not found"));
-
     // Create admin
     EzkeyAdmin admin = new EzkeyAdmin(username, AdminType.TENANT_ADMIN);
     admin.setEmail(email);
@@ -401,15 +432,40 @@ public class AdminProvisioningService {
     admin.setActive(true);
     admin.setChallengeRequired(false);
 
-    // Generate recovery codes
-    AdminRecoveryService.RecoveryCodesResult recoveryCodes =
-        recoveryService.generateRecoveryCodes();
-    admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+    AdminOnboardingMode effectiveOnboardingMode = normalizeOnboardingMode(onboardingMode);
+    AdminRecoveryService.RecoveryCodesResult recoveryCodes = null;
+    if (effectiveOnboardingMode == AdminOnboardingMode.ACTIVATION_CODE) {
+      admin.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
+      admin.setRecoveryCodes(null);
+    } else {
+      admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+      recoveryCodes = recoveryService.generateRecoveryCodes();
+      admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+    }
 
     admin = adminRepository.save(admin);
 
-    // Create enrollment
-    ProvisioningResult result = createAdminEnrollment(admin, systemIntegration, recoveryCodes);
+    ProvisioningResult result;
+    if (effectiveOnboardingMode == AdminOnboardingMode.ACTIVATION_CODE) {
+      ActivationCodeResult activationCodeResult = issueActivationCode(admin);
+      result =
+          new ProvisioningResult(
+              admin,
+              null,
+              null,
+              null,
+              null,
+              effectiveOnboardingMode,
+              activationCodeResult.activationCode(),
+              activationCodeResult.expiresAt());
+    } else {
+      Integration systemIntegration =
+          integrationRepository
+              .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
+              .orElseThrow(() -> new RuntimeException("System integration not found"));
+      result =
+          createAdminEnrollment(admin, systemIntegration, recoveryCodes, effectiveOnboardingMode);
+    }
 
     logger.info(
         "✅ Tenant admin created: {} (ID: {}) for tenant: {}",
@@ -435,7 +491,8 @@ public class AdminProvisioningService {
   private ProvisioningResult createAdminEnrollment(
       EzkeyAdmin admin,
       Integration systemIntegration,
-      AdminRecoveryService.RecoveryCodesResult recoveryCodes) {
+      AdminRecoveryService.RecoveryCodesResult recoveryCodes,
+      AdminOnboardingMode onboardingMode) {
     logger.debug("Creating enrollment for admin: {}", admin.getUsername());
 
     // Generate Ed25519 key pair for integration signing (enrollment)
@@ -530,7 +587,40 @@ public class AdminProvisioningService {
         enrollment,
         enrollmentProofToken,
         enrollmentChallenge,
-        recoveryCodes.getPlainCodes());
+        recoveryCodes.getPlainCodes(),
+        onboardingMode,
+        null,
+        null);
+  }
+
+  private AdminOnboardingMode normalizeOnboardingMode(AdminOnboardingMode onboardingMode) {
+    return onboardingMode != null ? onboardingMode : AdminOnboardingMode.IMMEDIATE;
+  }
+
+  private ActivationCodeResult issueActivationCode(EzkeyAdmin admin) {
+    String activationCode =
+        AdminAuditConstants.ACTIVATION_TOKEN_PREFIX + UUID.randomUUID().toString().replace("-", "");
+    String tokenHash = SensitiveDataHasher.sha256Hex(activationCode);
+    if (tokenHash == null) {
+      throw new IllegalStateException("Activation code hash could not be computed");
+    }
+
+    OffsetDateTime expiresAt = OffsetDateTime.now().plus(ACTIVATION_CODE_TTL_DAYS, ChronoUnit.DAYS);
+    AdminToken activationToken =
+        new AdminToken(tokenHash, admin, admin.getAdminType().name(), expiresAt);
+    activationToken.setTenant(admin.getTenant());
+    activationToken.setIntegration(admin.getIntegration());
+    activationToken.setCreatedAt(OffsetDateTime.now());
+    activationToken.setActive(true);
+    tokenRepository.save(activationToken);
+
+    logger.info(
+        "✅ Activation code issued for pending admin: {} (adminId: {}, expiresAt: {})",
+        admin.getUsername(),
+        admin.getAdminId(),
+        expiresAt);
+
+    return new ActivationCodeResult(activationCode, expiresAt);
   }
 
   /**
@@ -859,6 +949,7 @@ public class AdminProvisioningService {
 
     // Deactivate the admin
     adminToDeactivate.setActive(false);
+    adminToDeactivate.setLifecycleStatus(AdminLifecycleStatus.DEACTIVATED);
     adminRepository.save(adminToDeactivate);
 
     // Revoke all active tokens for this admin
@@ -896,6 +987,7 @@ public class AdminProvisioningService {
     }
 
     admin.setActive(true);
+    admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
     adminRepository.save(admin);
 
     logger.info("✅ Admin {} activated by admin {}", admin.getUsername(), principal.adminId());
@@ -964,6 +1056,10 @@ public class AdminProvisioningService {
     if (!Boolean.TRUE.equals(admin.getActive())) {
       throw new IllegalStateException(
           "Cannot regenerate recovery codes for an inactive administrator");
+    }
+    if (admin.getLifecycleStatus() != AdminLifecycleStatus.ACTIVE) {
+      throw new IllegalStateException(
+          "Cannot regenerate recovery codes before administrator activation is complete");
     }
 
     int previousCodesCount = admin.getRecoveryCodes() != null ? admin.getRecoveryCodes().length : 0;

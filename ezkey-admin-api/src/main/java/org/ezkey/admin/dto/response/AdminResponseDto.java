@@ -69,6 +69,7 @@ import java.time.OffsetDateTime;
  * @param tenantId Tenant ID (null for global admins)
  * @param enrollmentId MFA enrollment ID (null if not linked)
  * @param active Flag indicating if the administrator is currently active
+ * @param lifecycleStatus Explicit lifecycle status (PENDING_ACTIVATION, ACTIVE, DEACTIVATED)
  * @param createdAt Timestamp when the administrator was created (with timezone)
  * @param lastLoginAt Timestamp of last successful login (null if never logged in)
  * @param operational Whether this administrator is fully operational (active and, for tenant
@@ -109,6 +110,11 @@ public record AdminResponseDto(
             description = "Flag indicating if the administrator is currently active",
             example = "true")
         Boolean active,
+    @Schema(
+            description = "Explicit lifecycle status for the administrator account",
+            example = "ACTIVE",
+            allowableValues = {"PENDING_ACTIVATION", "ACTIVE", "DEACTIVATED"})
+        String lifecycleStatus,
     @Schema(
             description = "Timestamp when the administrator was created",
             example = "2025-10-15T14:30:00Z")

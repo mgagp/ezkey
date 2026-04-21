@@ -19,7 +19,9 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.security.SensitiveDataHasher;
+import org.ezkey.service.EntityEligibilityService;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +66,8 @@ public class EnrollmentVerifyService {
   private static final Logger logger = LoggerFactory.getLogger(EnrollmentVerifyService.class);
 
   private final EnrollmentRepository enrollmentRepository;
+  private final EzkeyAdminRepository ezkeyAdminRepository;
+  private final EntityEligibilityService eligibilityService;
   private final SignatureService signatureService;
   private final EnrollmentTxHelper enrollmentTxHelper;
 
@@ -71,15 +75,21 @@ public class EnrollmentVerifyService {
    * Constructs the verify service with required dependencies.
    *
    * @param enrollmentRepository the JPA repository for enrollment operations
+   * @param ezkeyAdminRepository the admin repository for admin-linked enrollment checks
+   * @param eligibilityService centralized eligibility checks for admin-linked enrollments
    * @param signatureService the signature service for cryptographic operations
    * @param enrollmentTxHelper the transactional helper for marking expired and emitting audit in a
    *     separate transaction
    */
   public EnrollmentVerifyService(
       EnrollmentRepository enrollmentRepository,
+      EzkeyAdminRepository ezkeyAdminRepository,
+      EntityEligibilityService eligibilityService,
       SignatureService signatureService,
       EnrollmentTxHelper enrollmentTxHelper) {
     this.enrollmentRepository = enrollmentRepository;
+    this.ezkeyAdminRepository = ezkeyAdminRepository;
+    this.eligibilityService = eligibilityService;
     this.signatureService = signatureService;
     this.enrollmentTxHelper = enrollmentTxHelper;
   }
@@ -201,8 +211,28 @@ public class EnrollmentVerifyService {
       throw new EnrollmentVerifyFailedException("Enrollment invitation has expired");
     }
 
+    validateAdminLinkedEnrollmentEligibility(enrollment);
+
     logger.debug("Enrollment status validation passed: Status is BOUND");
     return enrollment;
+  }
+
+  private void validateAdminLinkedEnrollmentEligibility(Enrollment enrollment) {
+    ezkeyAdminRepository
+        .findByEnrollmentId(enrollment.getEnrollmentId())
+        .ifPresent(
+            admin -> {
+              if (!eligibilityService.isAdminLinkedEnrollmentEligible(admin)) {
+                logger.warn(
+                    "Validation failed: Admin-linked enrollment is not eligible for verify -"
+                        + " enrollmentId: {}, adminId: {}, lifecycleStatus: {}, active: {}",
+                    enrollment.getEnrollmentId(),
+                    admin.getAdminId(),
+                    admin.getLifecycleStatus(),
+                    admin.getActive());
+                throw new EnrollmentVerifyFailedException("Enrollment verification failed");
+              }
+            });
   }
 
   /**

@@ -141,6 +141,7 @@ public class AdminProvisioningController {
         admin.getEnrollment() != null ? admin.getEnrollment().getEnrollmentId() : null;
     boolean operational =
         Boolean.TRUE.equals(admin.getActive())
+            && admin.getLifecycleStatus() == EzkeyAdmin.AdminLifecycleStatus.ACTIVE
             && (admin.getAdminType() == EzkeyAdmin.AdminType.GLOBAL_ADMIN
                 || (admin.getTenant() != null
                     && Boolean.TRUE.equals(admin.getTenant().getActive())));
@@ -156,6 +157,7 @@ public class AdminProvisioningController {
         admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
         enrollmentId,
         admin.getActive(),
+        admin.getLifecycleStatus().name(),
         admin.getCreatedAt(),
         admin.getLastLoginAt(),
         operational);
@@ -165,8 +167,8 @@ public class AdminProvisioningController {
    * Creates a new global administrator (peer admin).
    *
    * <p>Only global administrators can create other global administrators. The operation enforces
-   * maximum limit and returns onboarding credentials (enrollment proof token, challenge code, and
-   * recovery codes).
+   * maximum limit. The default onboarding mode creates enrollment + recovery codes immediately. The
+   * activation-code mode creates a pending admin and returns a one-time activation code instead.
    *
    * @param request the admin creation request
    * @param auth the authentication context
@@ -176,7 +178,11 @@ public class AdminProvisioningController {
   @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
   @Operation(
       summary = "Create a peer global administrator",
-      description = "Creates a new global administrator. GlobalAdmin only. Enforces max limit.")
+      description =
+          "Creates a new global administrator. GlobalAdmin only. Enforces max limit."
+              + " onboardingMode=IMMEDIATE returns enrollment/recovery bootstrap data;"
+              + " onboardingMode=ACTIVATION_CODE returns a one-time activation code and leaves"
+              + " the admin pending activation.")
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Global administrator created successfully"),
     @ApiResponse(
@@ -230,6 +236,7 @@ public class AdminProvisioningController {
               request.phoneNumber(),
               request.firstName(),
               request.lastName(),
+              request.onboardingMode(),
               principal);
 
       AdminProvisioningResponseDto response =
@@ -242,7 +249,11 @@ public class AdminProvisioningController {
               result.admin().getLastName(),
               result.admin().getAdminType().name(),
               result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
-              result.enrollment().getEnrollmentId(),
+              result.enrollment() != null ? result.enrollment().getEnrollmentId() : null,
+              result.admin().getLifecycleStatus().name(),
+              result.onboardingMode().name(),
+              result.activationCode(),
+              result.activationCodeExpiresAt(),
               result.admin().getCreatedAt(),
               result.recoveryCodes());
 
@@ -259,7 +270,9 @@ public class AdminProvisioningController {
                   "Admin ID: "
                       + result.admin().getAdminId()
                       + ", username: "
-                      + result.admin().getUsername())
+                      + result.admin().getUsername()
+                      + ", onboardingMode: "
+                      + result.onboardingMode().name())
               .build());
 
       return ResponseEntity.created(URI.create("/api/v1/admins/" + result.admin().getAdminId()))
@@ -284,7 +297,7 @@ public class AdminProvisioningController {
    *
    * <p>Global administrators can create tenant admins for any tenant. Tenant administrators can
    * create peer tenant admins for their own tenant only. The operation enforces maximum limit and
-   * returns onboarding credentials.
+   * supports both immediate and activation-code onboarding modes.
    *
    * @param request the admin creation request (must include tenantId)
    * @param auth the authentication context
@@ -296,7 +309,10 @@ public class AdminProvisioningController {
       summary = "Create a peer tenant administrator",
       description =
           "Creates a new tenant administrator. GlobalAdmin can create for any tenant. TenantAdmin"
-              + " can create for same tenant only. Enforces max limit.")
+              + " can create for same tenant only. Enforces max limit."
+              + " onboardingMode=IMMEDIATE returns enrollment/recovery bootstrap data;"
+              + " onboardingMode=ACTIVATION_CODE returns a one-time activation code and leaves"
+              + " the admin pending activation.")
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Tenant administrator created successfully"),
     @ApiResponse(
@@ -342,6 +358,7 @@ public class AdminProvisioningController {
               request.firstName(),
               request.lastName(),
               effectiveTenantId,
+              request.onboardingMode(),
               principal);
 
       AdminProvisioningResponseDto response =
@@ -354,7 +371,11 @@ public class AdminProvisioningController {
               result.admin().getLastName(),
               result.admin().getAdminType().name(),
               result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null,
-              result.enrollment().getEnrollmentId(),
+              result.enrollment() != null ? result.enrollment().getEnrollmentId() : null,
+              result.admin().getLifecycleStatus().name(),
+              result.onboardingMode().name(),
+              result.activationCode(),
+              result.activationCodeExpiresAt(),
               result.admin().getCreatedAt(),
               result.recoveryCodes());
 
@@ -373,7 +394,9 @@ public class AdminProvisioningController {
                       + ", username: "
                       + result.admin().getUsername()
                       + ", tenantId: "
-                      + request.tenantId())
+                      + request.tenantId()
+                      + ", onboardingMode: "
+                      + result.onboardingMode().name())
               .build());
 
       return ResponseEntity.created(URI.create("/api/v1/admins/" + result.admin().getAdminId()))

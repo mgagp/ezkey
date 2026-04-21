@@ -297,17 +297,32 @@ This is the most important operational distinction in Ezkey:
 - **Global Admin** — Manages platform-wide concerns: encryption keys, system configuration, global admin provisioning. Not scoped to any single tenant.
 - **Tenant Admin** — Manages day-to-day operations for a specific tenant: integrations, enrollments, API keys, tenant-level admin provisioning.
 
-**Lifecycle.** Admins have an active/inactive toggle similar to tenants. The critical distinction is that **admin identity lifecycle and admin MFA enrollment lifecycle are separate concerns:**
+**Lifecycle.** Admins now have an explicit lifecycle with three operationally meaningful states:
 
+- **PENDING_ACTIVATION** — The admin identity exists, but first-time setup is not complete yet.
+- **ACTIVE** — The admin identity is operational and may use the normal passwordless flow.
+- **DEACTIVATED** — The admin identity is suspended by an operator.
+
+The critical distinction is that **admin identity lifecycle and admin MFA enrollment lifecycle are separate concerns:**
+
+- A pending admin identity may exist before any real MFA enrollment exists.
 - Deactivating an admin suspends their ability to perform administrative actions. Their MFA enrollment remains intact.
 - Revoking an admin's MFA enrollment invalidates their login credential. Their admin identity remains in the system.
-- To fully lock out an admin, you deactivate their identity **and** revoke their MFA enrollment. This two-step approach is intentional — it lets you investigate (deactivate the identity) before making a final decision (revoke the credential).
+- To fully lock out an already active admin, you deactivate their identity **and** revoke their MFA enrollment. This two-step approach is intentional — it lets you investigate (deactivate the identity) before making a final decision (revoke the credential).
+
+**Activation vs. recovery.** Ezkey treats first activation and recovery as separate concepts:
+
+- **Activation** establishes the first normal enrollment for an admin who does not yet have one.
+- **Recovery** re-establishes access for an admin who already had a normal enrollment path.
+
+The UI may reuse related onboarding shells, but the domain semantics, tokens, and audit events remain distinct.
 
 **Available actions:**
 
 | Action | Allowed | Reversible | Reason | Effect |
 |--------|---------|------------|--------|--------|
 | Create / Provision | Yes | — | — | Creates admin identity |
+| Create / Provision in activation mode | Yes | — | — | Creates admin identity in `PENDING_ACTIVATION` without creating the first enrollment yet |
 | Deactivate | Yes ¹ | Yes | Optional | Suspends admin access; revokes active sessions |
 | Activate / Reactivate | Yes | Yes | Optional | Restores admin access |
 | Delete | No ² | — | — | — |
@@ -320,9 +335,18 @@ This is the most important operational distinction in Ezkey:
 - **Cannot deactivate yourself.** An admin accidentally locking themselves out would require external intervention. This guard prevents it.
 - **Minimum-admin rules.** The system ensures at least one active global admin exists at all times. You cannot deactivate the last global admin.
 - **Identity and credential separation.** This is a deliberate design choice. In a real investigation, you may want to suspend an admin's access immediately (deactivate) while preserving their credential for forensic purposes. Or you may want to revoke a compromised device credential without removing the person's admin identity. Coupling these would force all-or-nothing decisions.
+- **Pending activation is not deactivation.** A pending admin is not yet operational because first-time setup has not been completed. This is distinct from an already-active admin being later deactivated.
 - **No delete.** Admin identities are attached to audit trails — every action they performed is logged under their identity. Deleting the admin would orphan those audit records.
 
-**Operational status for Tenant Admins.** A tenant admin's operational status depends on both their own active state and their tenant's active state. If the tenant is deactivated, the tenant admin cannot operate — even if their own admin identity is active. Global admins are not affected by tenant deactivation.
+**Operational status for admins.** An admin is operational only when:
+
+- their lifecycle state is `ACTIVE`;
+- their local active flag is true;
+- and, for tenant-scoped admins, their tenant is also active.
+
+If the admin is `PENDING_ACTIVATION`, they are not operational. If the tenant is inactive, a tenant admin is not operational even if their own admin identity is active.
+
+**Admin-linked enrollment guard.** When an enrollment is the MFA enrollment of an admin, the platform should not allow bind or verify to proceed if that admin is not operational. This prevents a suspended or not-yet-activated admin identity from progressing its MFA credential toward operational use.
 
 ---
 

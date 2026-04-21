@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.ezkey.admin.domain.AdminOnboardingMode;
 
 /**
  * Request DTO for creating an administrator (global or tenant).
@@ -33,6 +34,7 @@ import jakarta.validation.constraints.Size;
  * @param firstName First name (required for global admins, optional for tenant admins)
  * @param lastName Last name (required for global admins, optional for tenant admins)
  * @param tenantId Tenant ID (required for tenant admin creation, ignored for global admin)
+ * @param onboardingMode Onboarding mode. Defaults to IMMEDIATE when omitted.
  * @author Ezkey contributors
  * @since 2025
  */
@@ -77,4 +79,13 @@ public record AdminCreateRequestDto(
                 "Tenant ID (required for tenant admin creation, ignored for global admin)",
             example = "1",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        Integer tenantId) {}
+        Integer tenantId,
+    @Schema(
+            description =
+                "Onboarding mode. IMMEDIATE creates enrollment and recovery codes now."
+                    + " ACTIVATION_CODE creates a pending admin and returns a one-time activation"
+                    + " code instead.",
+            example = "ACTIVATION_CODE",
+            allowableValues = {"IMMEDIATE", "ACTIVATION_CODE"},
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        AdminOnboardingMode onboardingMode) {}

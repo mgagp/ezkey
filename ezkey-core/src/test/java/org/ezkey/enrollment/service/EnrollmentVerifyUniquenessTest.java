@@ -28,6 +28,8 @@ import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.service.EntityEligibilityService;
 import org.ezkey.signature.SignatureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +59,10 @@ class EnrollmentVerifyUniquenessTest {
 
   @Mock private SignatureService signatureService;
 
+  @Mock private EzkeyAdminRepository ezkeyAdminRepository;
+
+  @Mock private EntityEligibilityService eligibilityService;
+
   @Mock private EnrollmentTxHelper enrollmentTxHelper;
 
   @InjectMocks private EnrollmentVerifyService enrollmentVerifyService;
@@ -66,6 +72,8 @@ class EnrollmentVerifyUniquenessTest {
 
   @BeforeEach
   void setUp() {
+    when(ezkeyAdminRepository.findByEnrollmentId(200)).thenReturn(Optional.empty());
+
     // Setup enrollment being verified
     enrollment = new Enrollment();
     enrollment.setEnrollmentId(200);

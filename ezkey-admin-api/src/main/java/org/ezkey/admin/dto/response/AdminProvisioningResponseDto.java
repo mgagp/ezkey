@@ -36,16 +36,23 @@ import java.util.List;
  * @param lastName Last name
  * @param adminType Type of administrator (GLOBAL_ADMIN, TENANT_ADMIN)
  * @param tenantId Tenant ID (null for global admins)
- * @param enrollmentId Enrollment ID for passwordless authentication (use this to retrieve
- *     onboarding credentials)
+ * @param enrollmentId Enrollment ID for passwordless authentication when immediate onboarding is
+ *     used; null for activation-code onboarding
+ * @param lifecycleStatus Lifecycle status of the newly created administrator
+ * @param onboardingMode Effective onboarding mode used during provisioning
+ * @param activationCode One-time activation code shown once for deferred onboarding; null for
+ *     immediate onboarding
+ * @param activationCodeExpiresAt Expiration timestamp for the one-time activation code; null for
+ *     immediate onboarding
  * @param createdAt Timestamp when the administrator was created
  * @author Ezkey contributors
  * @since 2025
  */
 @Schema(
     description =
-        "Response DTO for administrator provisioning. Recovery codes are present once at"
-            + " creation; enrollment token/challenge via GET /api/v1/admins/{id}/onboarding.")
+        "Response DTO for administrator provisioning. Immediate onboarding returns recovery codes"
+            + " once and an enrollmentId. Activation-code onboarding returns a one-time"
+            + " activation code instead and leaves enrollmentId null until activation succeeds.")
 public record AdminProvisioningResponseDto(
     @Schema(description = "Unique identifier for the administrator", example = "1") Integer adminId,
     @Schema(description = "Username for the administrator", example = "john.doe") String username,
@@ -61,16 +68,39 @@ public record AdminProvisioningResponseDto(
     @Schema(description = "Tenant ID (null for global admins)", example = "1") Integer tenantId,
     @Schema(
             description =
-                "Enrollment ID for passwordless authentication. Use this ID to retrieve onboarding"
-                    + " credentials via GET /api/v1/admins/{id}/onboarding",
+                "Enrollment ID for passwordless authentication when immediate onboarding is used."
+                    + " Null for activation-code onboarding until activation creates the first"
+                    + " enrollment.",
             example = "123")
         Integer enrollmentId,
+    @Schema(
+            description = "Lifecycle status of the newly created administrator",
+            example = "PENDING_ACTIVATION",
+            allowableValues = {"PENDING_ACTIVATION", "ACTIVE", "DEACTIVATED"})
+        String lifecycleStatus,
+    @Schema(
+            description = "Effective onboarding mode used during provisioning",
+            example = "ACTIVATION_CODE",
+            allowableValues = {"IMMEDIATE", "ACTIVATION_CODE"})
+        String onboardingMode,
+    @Schema(
+            description =
+                "One-time activation code shown once for deferred onboarding. Null for immediate"
+                    + " onboarding.")
+        String activationCode,
+    @Schema(
+            description =
+                "Expiration timestamp for the activation code when deferred onboarding is used."
+                    + " Null for immediate onboarding.",
+            example = "2026-04-27T14:30:00Z")
+        OffsetDateTime activationCodeExpiresAt,
     @Schema(
             description = "Timestamp when the administrator was created",
             example = "2025-10-15T14:30:00Z")
         OffsetDateTime createdAt,
     @Schema(
             description =
-                "Single-use recovery codes (plain text). Shown once at creation; save securely."
-                    + " Null if none are available.")
+                "Single-use recovery codes (plain text). Shown once at creation for immediate"
+                    + " onboarding; null for activation-code onboarding until first activation"
+                    + " succeeds.")
         List<String> recoveryCodes) {}

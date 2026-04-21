@@ -93,6 +93,26 @@ public class EzkeyAdmin {
   }
 
   /**
+   * Lifecycle status of an administrator account.
+   *
+   * <p>This status distinguishes a pending first activation from a fully active administrator and a
+   * deactivated administrator. It exists to keep admin lifecycle semantics explicit instead of
+   * overloading the {@code active} flag with multiple business meanings.
+   */
+  public enum AdminLifecycleStatus {
+    /**
+     * Administrator identity exists but first-time activation and enrollment are not complete yet.
+     */
+    PENDING_ACTIVATION,
+
+    /** Administrator is active and may use the normal passwordless flow. */
+    ACTIVE,
+
+    /** Administrator has been deactivated by an operator. */
+    DEACTIVATED
+  }
+
+  /**
    * Primary key identifier for the administrator.
    *
    * <p>This field is auto-generated using the database identity column.
@@ -258,6 +278,16 @@ public class EzkeyAdmin {
    */
   @Column(name = "active", nullable = false)
   private Boolean active = true;
+
+  /**
+   * Explicit lifecycle status for the administrator account.
+   *
+   * <p>This field keeps pending activation semantics distinct from operational activation and
+   * explicit deactivation. Existing administrators default to {@link AdminLifecycleStatus#ACTIVE}.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "lifecycle_status", nullable = false, length = 32)
+  private AdminLifecycleStatus lifecycleStatus = AdminLifecycleStatus.ACTIVE;
 
   /**
    * List of bearer tokens for this administrator.
@@ -582,6 +612,18 @@ public class EzkeyAdmin {
    */
   public void setActive(Boolean active) {
     this.active = active;
+  }
+
+  public AdminLifecycleStatus getLifecycleStatus() {
+    return lifecycleStatus;
+  }
+
+  public void setLifecycleStatus(AdminLifecycleStatus lifecycleStatus) {
+    this.lifecycleStatus = lifecycleStatus;
+  }
+
+  public boolean isPendingActivation() {
+    return lifecycleStatus == AdminLifecycleStatus.PENDING_ACTIVATION;
   }
 
   /**

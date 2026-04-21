@@ -826,8 +826,17 @@ Activates a previously deactivated tenant: sets `active = true`. Idempotent if t
 Administrator provisioning endpoints allow GlobalAdmins and TenantAdmins to create peer administrators with proper limits enforcement and secure onboarding credential management.
 
 **Security Pattern:**
-- Creation endpoints return basic admin information plus **one-time plain recovery codes** (`recoveryCodes`). Enrollment proof token and challenge are **not** in this response; they are retrieved via GET `/api/v1/admins/{id}/onboarding`.
-- Follows the same split as the enrollment API: bind credentials via a dedicated retrieval path; recovery codes are shown once at creation.
+- Creation endpoints accept an optional `onboardingMode` field. `IMMEDIATE` is the default and
+  preserves the existing behavior. `ACTIVATION_CODE` creates a pending administrator and returns a
+  one-time activation code instead of immediate enrollment bootstrap data.
+- In `IMMEDIATE`, the creation response returns basic admin information plus **one-time plain
+  recovery codes** (`recoveryCodes`). Enrollment proof token and challenge are **not** in this
+  response; they are retrieved via GET `/api/v1/admins/{id}/onboarding`.
+- In `ACTIVATION_CODE`, the creation response returns `lifecycleStatus`, `onboardingMode`,
+  `activationCode`, and `activationCodeExpiresAt`; `enrollmentId` and `recoveryCodes` stay null
+  until the activation code is consumed and the first enrollment exists.
+- Follows the same split as the enrollment API: bind credentials via a dedicated retrieval path;
+  recovery codes are shown once at creation only when the first enrollment is created immediately.
 - The default recovery-code set size is **5** and remains configurable via `ezkey.admin.recovery.codes-count`.
 
 **Multi-Tenancy:**
@@ -853,11 +862,12 @@ Content-Type: application/json
   "username": "new.global.admin",
   "email": "newglobal@example.com",
   "firstName": "New",
-  "lastName": "GlobalAdmin"
+  "lastName": "GlobalAdmin",
+  "onboardingMode": "IMMEDIATE"
 }
 ```
 
-**Success Response (201 Created):**
+**Success Response (201 Created, `onboardingMode = IMMEDIATE`):**
 ```json
 {
   "adminId": 2,
@@ -876,7 +886,27 @@ Content-Type: application/json
 }
 ```
 
-**Note:** `recoveryCodes` are plain text, single-use, and **shown only in this response**; save them immediately. Enrollment proof token and challenge are **not** returned here — use `GET /api/v1/admins/{id}/onboarding` for bind credentials.
+**Alternative Success Response (201 Created, `onboardingMode = ACTIVATION_CODE`):**
+```json
+{
+  "adminId": 2,
+  "username": "new.global.admin",
+  "email": "newglobal@example.com",
+  "firstName": "New",
+  "lastName": "GlobalAdmin",
+  "adminType": "GLOBAL_ADMIN",
+  "tenantId": null,
+  "enrollmentId": null,
+  "lifecycleStatus": "PENDING_ACTIVATION",
+  "onboardingMode": "ACTIVATION_CODE",
+  "activationCode": "ezkey_activation_550e8400-e29b-41d4-a716-446655440000",
+  "activationCodeExpiresAt": "2026-01-02T14:30:00Z",
+  "createdAt": "2025-12-26T14:30:00Z",
+  "recoveryCodes": null
+}
+```
+
+**Note:** In `IMMEDIATE`, `recoveryCodes` are plain text, single-use, and **shown only in this response**; save them immediately. In `ACTIVATION_CODE`, no enrollment exists yet, so use the returned activation code for first-time setup and do not call `GET /api/v1/admins/{id}/onboarding` until activation has produced the first enrollment.
 
 **Status Codes:**
 - 201: Global administrator created successfully
@@ -904,11 +934,12 @@ Content-Type: application/json
   "email": "newtenant@example.com",
   "firstName": "New",
   "lastName": "TenantAdmin",
-  "tenantId": 2
+  "tenantId": 2,
+  "onboardingMode": "IMMEDIATE"
 }
 ```
 
-**Success Response (201 Created):**
+**Success Response (201 Created, `onboardingMode = IMMEDIATE`):**
 ```json
 {
   "adminId": 3,
@@ -927,7 +958,27 @@ Content-Type: application/json
 }
 ```
 
-**Note:** Same as global admin: save `recoveryCodes` immediately; onboarding token/challenge via `GET /api/v1/admins/{id}/onboarding`.
+**Alternative Success Response (201 Created, `onboardingMode = ACTIVATION_CODE`):**
+```json
+{
+  "adminId": 3,
+  "username": "new.tenant.admin",
+  "email": "newtenant@example.com",
+  "firstName": "New",
+  "lastName": "TenantAdmin",
+  "adminType": "TENANT_ADMIN",
+  "tenantId": 2,
+  "enrollmentId": null,
+  "lifecycleStatus": "PENDING_ACTIVATION",
+  "onboardingMode": "ACTIVATION_CODE",
+  "activationCode": "ezkey_activation_550e8400-e29b-41d4-a716-446655440111",
+  "activationCodeExpiresAt": "2026-01-02T14:35:00Z",
+  "createdAt": "2025-12-26T14:35:00Z",
+  "recoveryCodes": null
+}
+```
+
+**Note:** Same rule as global admin: `IMMEDIATE` returns one-time `recoveryCodes`; `ACTIVATION_CODE` defers the first enrollment and therefore defers onboarding retrieval and recovery-code issuance until activation has completed.
 
 **Status Codes:**
 - 201: Tenant administrator created successfully
@@ -943,6 +994,10 @@ Content-Type: application/json
 **GET /api/v1/admins/{id}/onboarding**
 
 Retrieves sensitive onboarding credentials for an administrator. These credentials are separated from the creation response for security reasons.
+
+This endpoint only applies after the administrator already has a first enrollment. Administrators
+created with `onboardingMode = ACTIVATION_CODE` remain in `PENDING_ACTIVATION` with no
+`enrollmentId`, so this endpoint is not applicable until the activation code has been consumed.
 
 **Permissions:**
 - **GlobalAdmin**: Can retrieve onboarding credentials for any admin

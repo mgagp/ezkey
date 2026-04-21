@@ -224,6 +224,9 @@ public final class AdminAuditConstants {
   /** Prefix for recovery tokens to distinguish them from bearer tokens. */
   public static final String RECOVERY_TOKEN_PREFIX = "ezkey_recovery_";
 
+  /** Prefix for activation tokens to distinguish them from bearer and recovery tokens. */
+  public static final String ACTIVATION_TOKEN_PREFIX = "ezkey_activation_";
+
   /** Prefix for bearer tokens in Authorization header. */
   public static final String BEARER_PREFIX = "Bearer ";
 

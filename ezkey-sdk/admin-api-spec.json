@@ -2370,7 +2370,7 @@
           "Administrator Provisioning"
         ],
         "summary": "Create a peer tenant administrator",
-        "description": "Creates a new tenant administrator. GlobalAdmin can create for any tenant. TenantAdmin can create for same tenant only. Enforces max limit.",
+        "description": "Creates a new tenant administrator. GlobalAdmin can create for any tenant. TenantAdmin can create for same tenant only. Enforces max limit. onboardingMode=IMMEDIATE returns enrollment/recovery bootstrap data; onboardingMode=ACTIVATION_CODE returns a one-time activation code and leaves the admin pending activation.",
         "operationId": "createTenantAdmin",
         "requestBody": {
           "content": {
@@ -2422,7 +2422,7 @@
           "Administrator Provisioning"
         ],
         "summary": "Create a peer global administrator",
-        "description": "Creates a new global administrator. GlobalAdmin only. Enforces max limit.",
+        "description": "Creates a new global administrator. GlobalAdmin only. Enforces max limit. onboardingMode=IMMEDIATE returns enrollment/recovery bootstrap data; onboardingMode=ACTIVATION_CODE returns a one-time activation code and leaves the admin pending activation.",
         "operationId": "createGlobalAdmin",
         "requestBody": {
           "content": {
@@ -6076,6 +6076,15 @@
             "format": "int32",
             "description": "Tenant ID (required for tenant admin creation, ignored for global admin)",
             "example": 1
+          },
+          "onboardingMode": {
+            "type": "string",
+            "description": "Onboarding mode. IMMEDIATE creates enrollment and recovery codes now. ACTIVATION_CODE creates a pending admin and returns a one-time activation code instead.",
+            "enum": [
+              "IMMEDIATE",
+              "ACTIVATION_CODE"
+            ],
+            "example": "ACTIVATION_CODE"
           }
         },
         "required": [
@@ -6738,6 +6747,16 @@
             "type": "boolean",
             "description": "Flag indicating if the administrator is currently active",
             "example": true
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "description": "Explicit lifecycle status for the administrator account",
+            "enum": [
+              "PENDING_ACTIVATION",
+              "ACTIVE",
+              "DEACTIVATED"
+            ],
+            "example": "ACTIVE"
           },
           "createdAt": {
             "type": "string",
