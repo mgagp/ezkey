@@ -25,6 +25,7 @@ import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
+import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
@@ -44,6 +45,7 @@ import org.springframework.http.ResponseEntity;
 class AdminAuthControllerBrowserSessionCookieTest {
 
   @Mock private AdminAuthService authService;
+  @Mock private AdminProvisioningService provisioningService;
   @Mock private AdminRecoveryService recoveryService;
   @Mock private AuditLogService auditLogService;
   @Mock private AdminRateLimitFilter rateLimitFilter;
@@ -61,6 +63,7 @@ class AdminAuthControllerBrowserSessionCookieTest {
     controller =
         new AdminAuthController(
             authService,
+            provisioningService,
             recoveryService,
             auditLogService,
             rateLimitFilter,

@@ -2717,7 +2717,7 @@
           {
             "name": "Authorization",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             }
@@ -6363,7 +6363,7 @@
           },
           "token": {
             "type": "string",
-            "description": "Bearer token for authenticated API requests",
+            "description": "Bearer token for authenticated API requests. Omitted when the API issues an HttpOnly session cookie (browser split UI/API).",
             "example": "ezkey_abc123def456..."
           },
           "adminType": {

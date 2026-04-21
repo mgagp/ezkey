@@ -124,9 +124,9 @@ public class AdminAuthController {
   /**
    * Activates a pending administrator with a one-time activation code.
    *
-    * <p>This public endpoint consumes the activation code issued during deferred onboarding and
-    * returns the first enrollment credentials. Recovery codes are generated server-side but remain
-    * deferred from this unauthenticated bootstrap response.
+   * <p>This public endpoint consumes the activation code issued during deferred onboarding and
+   * returns the first enrollment credentials. Recovery codes are generated server-side but remain
+   * deferred from this unauthenticated bootstrap response.
    *
    * @param request the activation request containing the one-time activation code
    * @param httpRequest the HTTP servlet request for IP extraction
