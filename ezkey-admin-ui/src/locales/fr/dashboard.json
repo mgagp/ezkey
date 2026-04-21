@@ -41,7 +41,7 @@
   },
   "drilldown": {
     "integrationsActive": "Voir les intégrations actives",
-    "integrationsInactive": "Voir les intégrations inactives",
+    "integrationsInactive": "Voir les intégrations retirées",
     "enrollmentsVerified": "Voir les enrôlements actifs vérifiés",
     "enrollmentsInProgress": "Voir les enrôlements en cours (créés ou liés)",
     "enrollmentsExpired": "Voir les enrôlements actifs expirés",

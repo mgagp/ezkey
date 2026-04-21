@@ -20,9 +20,9 @@ import java.util.List;
  * <p>This DTO contains basic information about the newly created administrator. Enrollment proof
  * token and challenge are still retrieved via GET /api/v1/admins/{id}/onboarding.
  *
- * <p><b>Recovery codes:</b> Plain recovery codes are included once in this response at creation
- * time only (same moment as provisioning). They cannot be retrieved later from the API. Clients
- * must display them immediately and instruct the operator to store them securely.
+ * <p><b>Recovery codes:</b> Recovery codes are generated server-side when the first enrollment is
+ * created, but plain recovery codes are intentionally omitted from this bootstrap response. They
+ * should be revealed later through an authenticated recovery-code management flow.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
@@ -50,9 +50,10 @@ import java.util.List;
  */
 @Schema(
     description =
-        "Response DTO for administrator provisioning. Immediate onboarding returns recovery codes"
-            + " once and an enrollmentId. Activation-code onboarding returns a one-time"
-            + " activation code instead and leaves enrollmentId null until activation succeeds.")
+        "Response DTO for administrator provisioning. Immediate onboarding returns an"
+            + " enrollmentId. Activation-code onboarding returns a one-time activation code"
+            + " instead and leaves enrollmentId null until activation succeeds. Recovery codes"
+            + " remain deferred in both bootstrap variants.")
 public record AdminProvisioningResponseDto(
     @Schema(description = "Unique identifier for the administrator", example = "1") Integer adminId,
     @Schema(description = "Username for the administrator", example = "john.doe") String username,
@@ -100,7 +101,7 @@ public record AdminProvisioningResponseDto(
         OffsetDateTime createdAt,
     @Schema(
             description =
-                "Single-use recovery codes (plain text). Shown once at creation for immediate"
-                    + " onboarding; null for activation-code onboarding until first activation"
-                    + " succeeds.")
+                "Single-use recovery codes are intentionally omitted from bootstrap responses and"
+                    + " must be revealed later through an authenticated recovery-code"
+                    + " management flow.")
         List<String> recoveryCodes) {}

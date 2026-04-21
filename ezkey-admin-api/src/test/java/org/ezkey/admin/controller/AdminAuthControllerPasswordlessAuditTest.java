@@ -26,6 +26,7 @@ import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
+import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.service.AdminRecoveryService;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -51,6 +52,7 @@ import org.springframework.http.ResponseEntity;
 class AdminAuthControllerPasswordlessAuditTest {
 
   @Mock private AdminAuthService authService;
+  @Mock private AdminProvisioningService provisioningService;
   @Mock private AdminRecoveryService recoveryService;
   @Mock private AuditLogService auditLogService;
   @Mock private AdminRateLimitFilter rateLimitFilter;
@@ -72,6 +74,7 @@ class AdminAuthControllerPasswordlessAuditTest {
     controller =
         new AdminAuthController(
             authService,
+        provisioningService,
             recoveryService,
             auditLogService,
             rateLimitFilter,

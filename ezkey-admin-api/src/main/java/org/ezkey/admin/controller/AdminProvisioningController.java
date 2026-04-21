@@ -255,7 +255,7 @@ public class AdminProvisioningController {
               result.activationCode(),
               result.activationCodeExpiresAt(),
               result.admin().getCreatedAt(),
-              result.recoveryCodes());
+              null);
 
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -377,7 +377,7 @@ public class AdminProvisioningController {
               result.activationCode(),
               result.activationCodeExpiresAt(),
               result.admin().getCreatedAt(),
-              result.recoveryCodes());
+              null);
 
       auditLogService.log(
           AuditHelper.createAdminAudit(

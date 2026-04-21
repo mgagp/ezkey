@@ -79,5 +79,40 @@
       "codeRequired": "Enter a recovery code",
       "codeFormat": "Use 32 digits in the format XXXX-XXXX-…-XXXX (digits only is fine when pasting)"
     }
+  },
+  "activation": {
+    "useActivationLink": "Have an activation code? Activate your account",
+    "intro": "First-time setup: enter the one-time activation code you received from an administrator. EZKey will create your first device enrollment and return the binding material needed to complete setup.",
+    "activationCodeLabel": "Activation code",
+    "activationCodePlaceholder": "ezkey_activation_...",
+    "submitActivate": "Activate and bind first device",
+    "backToPasswordless": "Back to passwordless login",
+    "activateFailed": "Activation failed. Check the code and try again.",
+    "successTitle": "Activation completed",
+    "successBody": "First-time setup is ready for {{username}}. Bind your first device now, then use the authenticated admin flow for recovery-code management.",
+    "previewNoticeTitle": "Security posture: bootstrap mode, not production-grade onboarding",
+    "previewNotice": "Technology preview: this screen shows the enrollment QR, binding challenge, and proof token together for bootstrap convenience. Ezkey does not automatically deliver email or SMS in this flow yet. A production-grade onboarding flow should deliver activation and binding material through controlled or separate channels. This hosted build is a demonstrator, not a production security baseline.",
+    "recoveryCodesDeferredTitle": "Recovery codes are intentionally deferred",
+    "recoveryCodesDeferredBody": "Recovery codes are generated server-side but are no longer revealed in this unauthenticated bootstrap step. Reveal or regenerate them later from an authenticated admin-management flow after first sign-in.",
+    "qrTitle": "Bind with QR code",
+    "qrLoading": "Generating QR code…",
+    "qrHint": "Open EZKey on your phone and scan this code to continue enrollment.",
+    "qrCodeAlt": "Activation binding QR code",
+    "qrErrorTitle": "Could not build QR image",
+    "qrErrorBody": "Use the binding challenge and manual enrollment proof token below, or try refreshing the page.",
+    "manualEntry": "Manual entry (enrollment ID & proof token)",
+    "manualEntryHint": "Use this if you cannot scan the QR. Enter the enrollment ID and proof token where your client expects them. Keep these values confidential.",
+    "enrollmentIdLabel": "Enrollment ID",
+    "enrollmentProofToken": "Enrollment proof token",
+    "bindingChallenge": "Binding challenge",
+    "copyEnrollmentId": "Copy enrollment ID",
+    "copyToken": "Copy token",
+    "copied": "Copied",
+    "thenPasswordless": "After binding your device, return here and use “Login with EZKey” as usual.",
+    "backToLogin": "Back to login",
+    "validation": {
+      "codeRequired": "Enter an activation code",
+      "codeFormat": "Use an activation code in the format ezkey_activation_..."
+    }
   }
 }

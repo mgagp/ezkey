@@ -2370,7 +2370,7 @@
           "Administrator Provisioning"
         ],
         "summary": "Create a peer tenant administrator",
-        "description": "Creates a new tenant administrator. GlobalAdmin can create for any tenant. TenantAdmin can create for same tenant only. Enforces max limit.",
+        "description": "Creates a new tenant administrator. GlobalAdmin can create for any tenant. TenantAdmin can create for same tenant only. Enforces max limit. onboardingMode=IMMEDIATE returns enrollment/recovery bootstrap data; onboardingMode=ACTIVATION_CODE returns a one-time activation code and leaves the admin pending activation.",
         "operationId": "createTenantAdmin",
         "requestBody": {
           "content": {
@@ -2422,7 +2422,7 @@
           "Administrator Provisioning"
         ],
         "summary": "Create a peer global administrator",
-        "description": "Creates a new global administrator. GlobalAdmin only. Enforces max limit.",
+        "description": "Creates a new global administrator. GlobalAdmin only. Enforces max limit. onboardingMode=IMMEDIATE returns enrollment/recovery bootstrap data; onboardingMode=ACTIVATION_CODE returns a one-time activation code and leaves the admin pending activation.",
         "operationId": "createGlobalAdmin",
         "requestBody": {
           "content": {
@@ -2750,6 +2750,68 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AdminLoginResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/activate": {
+      "post": {
+        "tags": [
+          "Admin Authentication"
+        ],
+        "summary": "Activate pending administrator with one-time activation code",
+        "description": "Consumes a one-time activation code issued during deferred onboarding. Returns the first enrollment binding credentials while keeping recovery codes deferred from this unauthenticated bootstrap response.",
+        "operationId": "activate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminActivationRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Activation successful",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivationResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or activation cannot proceed in the current state",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivationResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid, expired, or unusable activation code",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivationResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivationResponseDto"
                 }
               }
             }
@@ -4066,6 +4128,7 @@
                 "ADMIN_PASSWORD_CHANGE",
                 "ADMIN_RECOVERY_USE",
                 "ADMIN_RECOVERY_CODES_REGENERATED",
+                "ADMIN_ACTIVATION",
                 "ADMIN_RECOVERY_ENROLLMENT_RESET",
                 "ADMIN_CREATED",
                 "ADMIN_PROFILE_UPDATED",
@@ -6076,6 +6139,15 @@
             "format": "int32",
             "description": "Tenant ID (required for tenant admin creation, ignored for global admin)",
             "example": 1
+          },
+          "onboardingMode": {
+            "type": "string",
+            "description": "Onboarding mode. IMMEDIATE creates enrollment and recovery codes now. ACTIVATION_CODE creates a pending admin and returns a one-time activation code instead.",
+            "enum": [
+              "IMMEDIATE",
+              "ACTIVATION_CODE"
+            ],
+            "example": "ACTIVATION_CODE"
           }
         },
         "required": [
@@ -6300,6 +6372,63 @@
         "required": [
           "username"
         ]
+      },
+      "AdminActivationRequestDto": {
+        "type": "object",
+        "properties": {
+          "activationCode": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^ezkey_activation_[A-Za-z0-9]+$"
+          }
+        },
+        "required": [
+          "activationCode"
+        ]
+      },
+      "AdminActivationResponseDto": {
+        "type": "object",
+        "description": "Response for first-time administrator activation",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates whether activation succeeded",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "description": "Response message"
+          },
+          "username": {
+            "type": "string",
+            "description": "Activated administrator username",
+            "example": "pending.admin"
+          },
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID created during activation",
+            "example": 123
+          },
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Enrollment proof token shown once for binding",
+            "example": "ezkey_proof_a1b2c3d4e5f6g7h8i9j0"
+          },
+          "enrollmentChallenge": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment challenge code shown once for binding",
+            "example": 123456
+          },
+          "recoveryCodes": {
+            "type": "array",
+            "description": "Recovery codes are intentionally omitted from this unauthenticated activation response and must be revealed later through an authenticated recovery-code management flow",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
       "EnrollmentUpdateRequestDto": {
         "type": "object",
@@ -6738,6 +6867,16 @@
             "type": "boolean",
             "description": "Flag indicating if the administrator is currently active",
             "example": true
+          },
+          "lifecycleStatus": {
+            "type": "string",
+            "description": "Explicit lifecycle status for the administrator account",
+            "enum": [
+              "PENDING_ACTIVATION",
+              "ACTIVE",
+              "DEACTIVATED"
+            ],
+            "example": "ACTIVE"
           },
           "createdAt": {
             "type": "string",
@@ -7406,6 +7545,7 @@
               "ADMIN_PASSWORD_CHANGE",
               "ADMIN_RECOVERY_USE",
               "ADMIN_RECOVERY_CODES_REGENERATED",
+              "ADMIN_ACTIVATION",
               "ADMIN_RECOVERY_ENROLLMENT_RESET",
               "ADMIN_CREATED",
               "ADMIN_PROFILE_UPDATED",

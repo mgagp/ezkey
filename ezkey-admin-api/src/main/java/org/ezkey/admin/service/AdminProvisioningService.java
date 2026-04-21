@@ -20,6 +20,7 @@ import org.ezkey.admin.domain.AdminOnboardingMode;
 import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
 import org.ezkey.admin.exception.AdminLimitException;
 import org.ezkey.admin.exception.AdminNotAllowedException;
+import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.exception.GlobalAdminLimitException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
@@ -621,6 +622,87 @@ public class AdminProvisioningService {
         expiresAt);
 
     return new ActivationCodeResult(activationCode, expiresAt);
+  }
+
+  /**
+   * Consumes a one-time activation code and creates the first enrollment for a pending admin.
+   *
+   * <p>This is the deferred counterpart to immediate onboarding. It validates the one-time token,
+   * generates recovery codes, creates the first enrollment, marks the admin active, and deactivates
+   * the activation token.
+   *
+   * @param activationCode the one-time activation code
+   * @return provisioning result with first enrollment credentials and recovery codes
+   */
+  @Transactional
+  public ProvisioningResult activatePendingAdmin(String activationCode) {
+    logger.info("Activating pending administrator with activation code");
+
+    if (activationCode == null
+        || activationCode.isBlank()
+        || !activationCode.startsWith(AdminAuditConstants.ACTIVATION_TOKEN_PREFIX)) {
+      throw new AuthenticationException("Invalid activation code");
+    }
+
+    String tokenHash = SensitiveDataHasher.sha256Hex(activationCode);
+    if (tokenHash == null) {
+      throw new AuthenticationException("Invalid activation code");
+    }
+
+    AdminToken activationToken =
+        tokenRepository
+            .findByBearerTokenHashAndActiveTrueWithRelations(tokenHash)
+            .orElseThrow(() -> new AuthenticationException("Invalid activation code"));
+
+    if (activationToken.getExpiresAt() == null
+        || activationToken.getExpiresAt().isBefore(OffsetDateTime.now())) {
+      throw new AuthenticationException("Activation code has expired");
+    }
+
+    EzkeyAdmin admin = activationToken.getAdmin();
+    if (admin == null) {
+      throw new AuthenticationException("Invalid activation code");
+    }
+
+    if (!Boolean.TRUE.equals(admin.getActive())) {
+      throw new AuthenticationException("Account is inactive");
+    }
+
+    if (admin.getTenant() != null && !Boolean.TRUE.equals(admin.getTenant().getActive())) {
+      throw new AuthenticationException("Tenant is inactive");
+    }
+
+    if (admin.getLifecycleStatus() != AdminLifecycleStatus.PENDING_ACTIVATION) {
+      throw new AuthenticationException("Account activation is not pending");
+    }
+
+    if (admin.getEnrollment() != null) {
+      throw new IllegalStateException("Pending administrator already has an enrollment");
+    }
+
+    Integration systemIntegration =
+        integrationRepository
+            .findByIsSystemIntegrationTrueAndLifecycleStatus(IntegrationLifecycleStatus.ACTIVE)
+            .orElseThrow(() -> new RuntimeException("System integration not found"));
+
+    AdminRecoveryService.RecoveryCodesResult recoveryCodes = recoveryService.generateRecoveryCodes();
+    admin.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+    admin.setRecoveryCodes(recoveryCodes.getHashedCodes().toArray(new String[0]));
+
+    ProvisioningResult result =
+        createAdminEnrollment(admin, systemIntegration, recoveryCodes, AdminOnboardingMode.ACTIVATION_CODE);
+
+    activationToken.setActive(false);
+    activationToken.setLastUsedAt(OffsetDateTime.now());
+    tokenRepository.save(activationToken);
+
+    logger.info(
+        "✅ Pending administrator activated: {} (adminId: {}, enrollmentId: {})",
+        result.admin().getUsername(),
+        result.admin().getAdminId(),
+        result.enrollment() != null ? result.enrollment().getEnrollmentId() : null);
+
+    return result;
   }
 
   /**

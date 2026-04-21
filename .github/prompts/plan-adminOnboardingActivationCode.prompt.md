@@ -104,9 +104,10 @@ This feature is a controlled onboarding mode for administrator creation.
 3. They indicate that they have an activation code.
 4. They submit the activation code.
 5. If valid, the platform creates the first real enrollment.
-6. The platform generates the initial recovery codes.
+6. The platform generates the initial recovery codes server-side but does not reveal them yet.
 7. The platform returns the QR/manual setup payload for first-time device binding.
-8. After binding, the administrator uses the normal passwordless login flow.
+8. After binding and first sign-in, recovery codes are revealed or regenerated from an authenticated admin-management flow.
+9. The administrator then uses the normal passwordless login flow.
 
 ---
 
@@ -123,6 +124,7 @@ The following invariants should be treated as non-negotiable unless a hard imple
 7. The login UI may reuse the recovery funnel shell, but the domain model, endpoints, token types, and audit semantics must remain distinct.
 8. Activation must stay reusable as a durable platform primitive for future onboarding modes.
 9. If an enrollment is the MFA enrollment of an admin, bind and verify must be blocked whenever that admin is not operational.
+10. Bootstrap responses must not reveal recovery codes; recovery-code revelation should be deferred to a later authenticated admin-management step.
 
 ---
 
@@ -340,8 +342,20 @@ Recommended behavior:
 
 - allow the user to enter an activation code;
 - on success, display the QR/manual first-time setup payload;
+- defer recovery-code revelation until after first authenticated access;
 - reuse existing QR/manual presentation patterns where practical;
 - avoid implying that activation code itself is a login credential.
+
+### 4. Login surface simplification
+
+The login page is becoming heavier as passwordless login, recovery, and activation flows coexist.
+
+Recommended direction:
+
+- keep the default screen focused on normal passwordless login;
+- treat recovery and activation as secondary branches behind a clearer chooser or segmented switch;
+- consider a second-step branch selector or a lightweight dedicated sub-route if the card becomes too dense;
+- do not stack all exceptional flows with equal visual weight on first paint.
 
 ---
 

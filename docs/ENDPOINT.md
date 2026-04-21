@@ -829,14 +829,16 @@ Administrator provisioning endpoints allow GlobalAdmins and TenantAdmins to crea
 - Creation endpoints accept an optional `onboardingMode` field. `IMMEDIATE` is the default and
   preserves the existing behavior. `ACTIVATION_CODE` creates a pending administrator and returns a
   one-time activation code instead of immediate enrollment bootstrap data.
-- In `IMMEDIATE`, the creation response returns basic admin information plus **one-time plain
-  recovery codes** (`recoveryCodes`). Enrollment proof token and challenge are **not** in this
-  response; they are retrieved via GET `/api/v1/admins/{id}/onboarding`.
+- In `IMMEDIATE`, the creation response returns basic admin information plus the first
+  `enrollmentId`. Enrollment proof token and challenge are **not** in this response; they are
+  retrieved via GET `/api/v1/admins/{id}/onboarding`. Recovery codes are generated server-side but
+  intentionally remain deferred from bootstrap responses.
 - In `ACTIVATION_CODE`, the creation response returns `lifecycleStatus`, `onboardingMode`,
   `activationCode`, and `activationCodeExpiresAt`; `enrollmentId` and `recoveryCodes` stay null
   until the activation code is consumed and the first enrollment exists.
 - Follows the same split as the enrollment API: bind credentials via a dedicated retrieval path;
-  recovery codes are shown once at creation only when the first enrollment is created immediately.
+  recovery codes are no longer revealed during unauthenticated/bootstrap steps and should be
+  revealed later through an authenticated admin-management flow.
 - The default recovery-code set size is **5** and remains configurable via `ezkey.admin.recovery.codes-count`.
 
 **Multi-Tenancy:**

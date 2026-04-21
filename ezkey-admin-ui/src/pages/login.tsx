@@ -19,6 +19,7 @@ import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { mapPasswordlessWaitError } from '@/lib/map-passwordless-wait-error';
 import { isBrowserSessionCookieBuild } from '@/lib/auth';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
+import { LoginActivationSection } from '@/components/feature/login-activation-section';
 import { LoginRecoverySection } from '@/components/feature/login-recovery-section';
 import { getRecoverySession } from '@/lib/recovery-session';
 import { cn, formatChallengeCode, formatCountdown } from '@/lib/utils';
@@ -74,8 +75,10 @@ export default function LoginPage() {
     defaultValues: loginDefaults,
   });
 
-  /** Passwordless vs recovery funnel (recovery is not a full admin session). */
-  const [authFlow, setAuthFlow] = useState<'passwordless' | 'recovery'>('passwordless');
+  /** Passwordless vs public fallback funnels. */
+  const [authFlow, setAuthFlow] = useState<'passwordless' | 'recovery' | 'activation'>(
+    'passwordless',
+  );
   const [recoveryUsernamePrefill, setRecoveryUsernamePrefill] = useState('');
 
   // Redirect if already authenticated
@@ -249,20 +252,20 @@ export default function LoginPage() {
     window.localStorage.setItem(I18N_STORAGE_KEY, lng);
   };
 
-  const recoveryLayout = authFlow === 'recovery';
+  const expandedLayout = authFlow !== 'passwordless';
 
   return (
     <div
       data-testid="login-page"
       className={cn(
         'min-h-screen bg-bg flex justify-center p-4',
-        recoveryLayout ? 'items-start py-6 sm:py-10' : 'items-center',
+        expandedLayout ? 'items-start py-6 sm:py-10' : 'items-center',
       )}
     >
       <div
         className={cn(
           'w-full border border-[#3076DF] p-4 sm:p-6',
-          recoveryLayout ? 'max-w-4xl' : 'max-w-sm',
+          expandedLayout ? 'max-w-4xl' : 'max-w-sm',
         )}
       >
         <div className="relative">
@@ -301,8 +304,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Brand header — tighter when recovery so bind-after-reset fits common viewports */}
-        <div className={cn('text-center', recoveryLayout ? 'mb-4 sm:mb-6' : 'mb-8')}>
+        {/* Brand header — tighter when extended flows are active. */}
+        <div className={cn('text-center', expandedLayout ? 'mb-4 sm:mb-6' : 'mb-8')}>
           <img
             src="/logo.svg"
             alt=""
@@ -322,13 +325,17 @@ export default function LoginPage() {
           ) : null}
         </div>
 
-        {/* Main card — wider padding when recovery so bind-after-reset fits without excessive scroll */}
+        {/* Main card — wider padding when extended flows are active. */}
         <div
           className={cn(
             'bg-surface border-2 border-sidebar-bg shadow-brutal-lg',
-            recoveryLayout ? 'p-4 sm:p-6' : 'p-6',
+            expandedLayout ? 'p-4 sm:p-6' : 'p-6',
           )}
         >
+          {authFlow === 'activation' && (
+            <LoginActivationSection onBackToPasswordless={() => setAuthFlow('passwordless')} />
+          )}
+
           {authFlow === 'recovery' && (
             <LoginRecoverySection
               initialUsername={recoveryUsernamePrefill}
@@ -414,17 +421,25 @@ export default function LoginPage() {
                 {t('login:form.submit')}
               </Button>
 
-              <div className="text-center pt-1">
+              <div className="text-center pt-1 space-y-2">
                 <button
                   type="button"
                   data-testid="login-recovery-link"
-                  className="text-sm text-fg-muted hover:text-accent underline underline-offset-2"
+                  className="block w-full text-sm text-fg-muted hover:text-accent underline underline-offset-2"
                   onClick={() => {
                     setRecoveryUsernamePrefill(watch('username').trim());
                     setAuthFlow('recovery');
                   }}
                 >
                   {t('login:recovery.useRecoveryLink')}
+                </button>
+                <button
+                  type="button"
+                  data-testid="login-activation-link"
+                  className="block w-full text-sm text-fg-muted hover:text-accent underline underline-offset-2"
+                  onClick={() => setAuthFlow('activation')}
+                >
+                  {t('login:activation.useActivationLink')}
                 </button>
               </div>
             </form>

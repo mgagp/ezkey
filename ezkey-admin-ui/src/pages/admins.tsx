@@ -45,6 +45,7 @@ import {
   useUpdateAdmin,
 } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import { useListTenants } from '@/generated/admin-api/tenants/tenants';
+import { AdminCreateRequestDtoOnboardingMode } from '@/generated/admin-api/model';
 import type {
   AdminCreateRequestDto,
   AdminUpdateRequestDto,
@@ -64,6 +65,10 @@ interface AdminOnboardingShape {
 interface AdminProvisioningShape {
   username?: string;
   recoveryCodes?: string[];
+  onboardingMode?: AdminCreateRequestDto['onboardingMode'];
+  lifecycleStatus?: AdminResponseDto['lifecycleStatus'];
+  activationCode?: string;
+  activationCodeExpiresAt?: string;
 }
 
 /** UI-facing shape for recovery-code regeneration response. */
@@ -74,6 +79,49 @@ interface AdminRecoveryCodesRegenerationShape {
   codesCount?: number;
   invalidatedPreviousCodes?: boolean;
   message?: string;
+}
+
+function isPendingActivationAdmin(
+  admin: Pick<AdminResponseDto, 'lifecycleStatus'> | null | undefined,
+): boolean {
+  return admin?.lifecycleStatus === 'PENDING_ACTIVATION';
+}
+
+function shouldShowTenantOperationalWarning(
+  admin: Pick<AdminResponseDto, 'adminType' | 'active' | 'operational' | 'lifecycleStatus'>,
+): boolean {
+  return (
+    admin.adminType !== 'GLOBAL_ADMIN'
+    && admin.active === true
+    && admin.lifecycleStatus === 'ACTIVE'
+    && admin.operational === false
+  );
+}
+
+function canShowOnboardingCredentials(
+  admin: Pick<AdminResponseDto, 'enrollmentId' | 'lifecycleStatus'>,
+): boolean {
+  return admin.enrollmentId != null && !isPendingActivationAdmin(admin);
+}
+
+function canRegenerateAdminRecoveryCodes(
+  admin: Pick<AdminResponseDto, 'active' | 'lifecycleStatus'>,
+): boolean {
+  return admin.active === true && admin.lifecycleStatus === 'ACTIVE';
+}
+
+function renderAdminStatusBadge(
+  admin: Pick<AdminResponseDto, 'active' | 'lifecycleStatus'>,
+  t: ReturnType<typeof useTranslation<'admins'>>['t'],
+  scope: 'list' | 'detail',
+) {
+  if (admin.lifecycleStatus === 'PENDING_ACTIVATION') {
+    return <Badge variant="warning">{t(`${scope}.statusPendingActivation`)}</Badge>;
+  }
+  if (admin.active) {
+    return <Badge variant="success">{t(`${scope}.statusActive`)}</Badge>;
+  }
+  return <Badge variant="muted">{t(`${scope}.statusInactive`)}</Badge>;
 }
 
 // ── Admin type badge ───────────────────────────────────────────────────────────
@@ -522,7 +570,7 @@ function AdminDetailDialog({
               </Link>
             </InfoRow>
           )}
-          <InfoRow label={t('detail.labelStatus')}><Badge variant={adm.active ? 'success' : 'muted'}>{adm.active ? t('detail.statusActive') : t('detail.statusInactive')}</Badge></InfoRow>
+          <InfoRow label={t('detail.labelStatus')}>{renderAdminStatusBadge(adm, t, 'detail')}</InfoRow>
           <InfoRow label={t('detail.labelCreated')}>{adm.createdAt ? formatDate(adm.createdAt) : '—'}</InfoRow>
           <InfoRow label={t('detail.labelLastLogin')}>
             {adm.lastLoginAt ? (
@@ -536,7 +584,11 @@ function AdminDetailDialog({
           </InfoRow>
         </dl>
 
-        {adm.adminType !== 'GLOBAL_ADMIN' && adm.active && adm.operational === false && (
+        {isPendingActivationAdmin(adm) && (
+          <Alert variant="info">{t('detail.pendingActivationNotice')}</Alert>
+        )}
+
+        {shouldShowTenantOperationalWarning(adm) && (
           <OperationalWarning message={t('detail.operationalWarning.tenantInactive')} />
         )}
 
@@ -544,15 +596,17 @@ function AdminDetailDialog({
         <div className="border-t-2 border-fg/10 pt-4 space-y-3">
           <h3 className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('detail.sectionActions')}</h3>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => onShowCredentials(adm.adminId!, adm.username!)}
-            >
-              <KeyRound className="size-3.5" />
-              {t('detail.credentials')}
-            </Button>
+            {canShowOnboardingCredentials(adm) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => onShowCredentials(adm.adminId!, adm.username!)}
+              >
+                <KeyRound className="size-3.5" />
+                {t('detail.credentials')}
+              </Button>
+            )}
             <Button
               variant="secondary"
               size="sm"
@@ -562,7 +616,7 @@ function AdminDetailDialog({
               <Pencil className="size-3.5" />
               {t('detail.editProfile')}
             </Button>
-            {adm.active && (
+            {canRegenerateAdminRecoveryCodes(adm) && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -849,9 +903,12 @@ function CreateAdminDialog({
   const { toast } = useToast();
   const { sessionDemoOn } = useDemoModeSession();
   const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningShape | null>(null);
-  const [recoveryCodesCopied, setRecoveryCodesCopied] = useState(false);
-  const [recoveryCodesSavedConfirmed, setRecoveryCodesSavedConfirmed] = useState(false);
+  const [provisioningMaterialCopied, setProvisioningMaterialCopied] = useState(false);
+  const [provisioningMaterialSavedConfirmed, setProvisioningMaterialSavedConfirmed] = useState(false);
   const [isGlobalType, setIsGlobalType] = useState(defaultGlobal);
+  const [onboardingMode, setOnboardingMode] = useState<AdminCreateRequestDto['onboardingMode']>(
+    AdminCreateRequestDtoOnboardingMode.IMMEDIATE,
+  );
 
   const [tenantFilter, setTenantFilter] = useState('');
 
@@ -917,8 +974,9 @@ function CreateAdminDialog({
     reset(defaultFormValues);
     setTenantFilter('');
     setCreatedAdmin(null);
-    setRecoveryCodesCopied(false);
-    setRecoveryCodesSavedConfirmed(false);
+    setProvisioningMaterialCopied(false);
+    setProvisioningMaterialSavedConfirmed(false);
+    setOnboardingMode(AdminCreateRequestDtoOnboardingMode.IMMEDIATE);
     if (defaultTenantId != null && defaultTenantId > 0) {
       setIsGlobalType(false);
       setValue('tenantId', String(defaultTenantId));
@@ -973,6 +1031,19 @@ function CreateAdminDialog({
     return {
       username: typeof r.username === 'string' ? r.username : undefined,
       recoveryCodes,
+      onboardingMode:
+        r.onboardingMode === 'IMMEDIATE' || r.onboardingMode === 'ACTIVATION_CODE'
+          ? (r.onboardingMode as AdminCreateRequestDto['onboardingMode'])
+          : undefined,
+      lifecycleStatus:
+        r.lifecycleStatus === 'PENDING_ACTIVATION'
+          || r.lifecycleStatus === 'ACTIVE'
+          || r.lifecycleStatus === 'DEACTIVATED'
+          ? (r.lifecycleStatus as AdminResponseDto['lifecycleStatus'])
+          : undefined,
+      activationCode: typeof r.activationCode === 'string' ? r.activationCode : undefined,
+      activationCodeExpiresAt:
+        typeof r.activationCodeExpiresAt === 'string' ? r.activationCodeExpiresAt : undefined,
     };
   };
 
@@ -1006,25 +1077,42 @@ function CreateAdminDialog({
     },
   };
 
-  const handleCopyAllRecoveryCodes = async () => {
+  const handleCopyProvisioningMaterial = async () => {
+    const activationCode = createdAdmin?.activationCode;
     const codes = createdAdmin?.recoveryCodes;
-    if (codes == null || codes.length === 0) return;
+    const text =
+      typeof activationCode === 'string' && activationCode.length > 0
+        ? activationCode
+        : codes != null && codes.length > 0
+          ? codes.join('\n')
+          : null;
+    if (text == null) return;
     try {
-      await navigator.clipboard.writeText(codes.join('\n'));
-      setRecoveryCodesCopied(true);
-      setTimeout(() => setRecoveryCodesCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setProvisioningMaterialCopied(true);
+      setTimeout(() => setProvisioningMaterialCopied(false), 2000);
     } catch {
       /* ignore clipboard API errors */
     }
   };
 
+  const createdAdminHasActivationCode =
+    createdAdmin?.activationCode != null && createdAdmin.activationCode.length > 0;
+  const createdAdminHasRecoveryCodes =
+    createdAdmin?.recoveryCodes != null && createdAdmin.recoveryCodes.length > 0;
+  const requiresProvisioningMaterialConfirmation =
+    createdAdminHasActivationCode || createdAdminHasRecoveryCodes;
+
   const handleClose = () => {
-    if (createdAdmin && !recoveryCodesSavedConfirmed) return;
+    if (createdAdmin && requiresProvisioningMaterialConfirmation && !provisioningMaterialSavedConfirmed) {
+      return;
+    }
     reset();
     setCreatedAdmin(null);
-    setRecoveryCodesCopied(false);
-    setRecoveryCodesSavedConfirmed(false);
+    setProvisioningMaterialCopied(false);
+    setProvisioningMaterialSavedConfirmed(false);
     setIsGlobalType(defaultTenantId != null && defaultTenantId > 0 ? false : defaultGlobal);
+    setOnboardingMode(AdminCreateRequestDtoOnboardingMode.IMMEDIATE);
     setTenantFilter('');
     createMutation.reset();
     onClose();
@@ -1042,6 +1130,7 @@ function CreateAdminDialog({
         phoneNumber: normalizePhoneNumberInput(values.phoneNumber),
         firstName: values.firstName || undefined,
         lastName: values.lastName || undefined,
+        onboardingMode,
         ...(tenantId !== undefined ? { tenantId } : {}),
       },
       isGlobal: isGlobalType,
@@ -1055,7 +1144,54 @@ function CreateAdminDialog({
           <Alert variant="success">
             {t('create.successMessage', { username: String(createdAdmin.username ?? '') })}
           </Alert>
-          {createdAdmin.recoveryCodes != null && createdAdmin.recoveryCodes.length > 0 && (
+          {createdAdminHasActivationCode && (
+            <div className="space-y-2 border-2 border-warning/40 bg-bg p-3">
+              <div className="border-2 border-warning bg-warning/10 p-3 flex gap-2">
+                <AlertTriangle className="size-4 text-warning shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-black text-warning">{t('create.activationCodeWarningTitle')}</p>
+                  <p className="text-xs text-warning/80 mt-0.5">{t('create.activationCodeWarningBody')}</p>
+                </div>
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">
+                {t('create.activationCodeTitle')}
+              </p>
+              <p className="text-xs text-fg-muted">{t('create.activationCodeHint')}</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void handleCopyProvisioningMaterial()}
+                className="gap-1.5"
+              >
+                {provisioningMaterialCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+                {provisioningMaterialCopied ? t('onboarding.copied') : t('create.copyActivationCode')}
+              </Button>
+              <div className="font-mono text-xs break-all border-2 border-fg/20 p-3 bg-surface">
+                {createdAdmin.activationCode}
+              </div>
+              {createdAdmin.activationCodeExpiresAt && (
+                <p className="text-xs text-fg-muted">
+                  {t('create.activationCodeExpiresAt', {
+                    expiresAt: formatDate(createdAdmin.activationCodeExpiresAt),
+                  })}
+                </p>
+              )}
+              <div className="flex items-center gap-2.5 p-3 border-2 border-fg/20 bg-bg">
+                <input
+                  id="activation-code-saved"
+                  type="checkbox"
+                  className="size-4 border-2 border-fg accent-accent"
+                  checked={provisioningMaterialSavedConfirmed}
+                  onChange={(e) => setProvisioningMaterialSavedConfirmed(e.target.checked)}
+                />
+                <label htmlFor="activation-code-saved" className="text-sm font-bold cursor-pointer select-none">
+                  {t('create.activationCodeSavedConfirmLabel')}
+                </label>
+              </div>
+            </div>
+          )}
+          {createdAdminHasRecoveryCodes && (
             <div className="space-y-2 border-2 border-accent/40 bg-bg p-3">
               <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
                 <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
@@ -1072,14 +1208,14 @@ function CreateAdminDialog({
                 type="button"
                 variant="secondary"
                 size="sm"
-                onClick={() => void handleCopyAllRecoveryCodes()}
+                onClick={() => void handleCopyProvisioningMaterial()}
                 className="gap-1.5"
               >
-                {recoveryCodesCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
-                {recoveryCodesCopied ? t('onboarding.copied') : t('create.copyAllRecoveryCodes')}
+                {provisioningMaterialCopied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+                {provisioningMaterialCopied ? t('onboarding.copied') : t('create.copyAllRecoveryCodes')}
               </Button>
               <ul className="font-mono text-xs space-y-1 break-all max-h-48 overflow-y-auto border-2 border-fg/20 p-2 bg-surface">
-                {createdAdmin.recoveryCodes.map((code) => (
+                {(createdAdmin.recoveryCodes ?? []).map((code) => (
                   <li key={code}>{code}</li>
                 ))}
               </ul>
@@ -1088,8 +1224,8 @@ function CreateAdminDialog({
                   id="recovery-codes-saved"
                   type="checkbox"
                   className="size-4 border-2 border-fg accent-accent"
-                  checked={recoveryCodesSavedConfirmed}
-                  onChange={(e) => setRecoveryCodesSavedConfirmed(e.target.checked)}
+                  checked={provisioningMaterialSavedConfirmed}
+                  onChange={(e) => setProvisioningMaterialSavedConfirmed(e.target.checked)}
                 />
                 <label htmlFor="recovery-codes-saved" className="text-sm font-bold cursor-pointer select-none">
                   {t('create.recoveryCodesSavedConfirmLabel')}
@@ -1098,10 +1234,13 @@ function CreateAdminDialog({
             </div>
           )}
           <p className="text-sm text-fg-muted">
-            {t('create.successHint')}
+            {createdAdminHasActivationCode ? t('create.activationCodeSuccessHint') : t('create.successHint')}
           </p>
           <div className="flex justify-end pt-2">
-            <Button onClick={handleClose} disabled={!recoveryCodesSavedConfirmed}>
+            <Button
+              onClick={handleClose}
+              disabled={requiresProvisioningMaterialConfirmation && !provisioningMaterialSavedConfirmed}
+            >
               {t('create.done')}
             </Button>
           </div>
@@ -1159,6 +1298,28 @@ function CreateAdminDialog({
               </label>
             </div>
           )}
+          <div className="space-y-1">
+            <Label htmlFor="adm-onboarding-mode">{t('create.onboardingModeLabel')}</Label>
+            <Select
+              id="adm-onboarding-mode"
+              value={onboardingMode}
+              onChange={(e) =>
+                setOnboardingMode(e.target.value as AdminCreateRequestDto['onboardingMode'])
+              }
+            >
+              <option value={AdminCreateRequestDtoOnboardingMode.IMMEDIATE}>
+                {t('create.onboardingModeImmediate')}
+              </option>
+              <option value={AdminCreateRequestDtoOnboardingMode.ACTIVATION_CODE}>
+                {t('create.onboardingModeActivationCode')}
+              </option>
+            </Select>
+            <p className="text-xs text-fg-muted">
+              {onboardingMode === AdminCreateRequestDtoOnboardingMode.ACTIVATION_CODE
+                ? t('create.onboardingModeActivationCodeHelp')
+                : t('create.onboardingModeImmediateHelp')}
+            </p>
+          </div>
           {tenantAdminNeedsTenant && (
             <>
               {eligibleTenants.length === 0 ? (
@@ -1361,7 +1522,11 @@ export default function AdminsPage() {
       header: t('list.columns.active'),
       key: 'active',
       sortKey: 'active',
-      render: (r) => r.active && r.operational === false ? (
+      render: (r) => isPendingActivationAdmin(r) ? (
+        <Tooltip content={t('list.pendingActivationTooltip')}>
+          {renderAdminStatusBadge(r, t, 'list')}
+        </Tooltip>
+      ) : shouldShowTenantOperationalWarning(r) ? (
         <Tooltip content={t('list.operationalWarningTooltip')}>
           <span className="inline-flex items-center gap-1 border border-warning/40 rounded-sm px-1.5">
             <Badge variant="success">{t('list.activeYes')}</Badge>
@@ -1369,7 +1534,7 @@ export default function AdminsPage() {
           </span>
         </Tooltip>
       ) : (
-        <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? t('list.activeYes') : t('list.activeNo')}</Badge>
+        renderAdminStatusBadge(r, t, 'list')
       ),
     },
     { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
@@ -1378,15 +1543,17 @@ export default function AdminsPage() {
       key: 'actions',
       render: (r) => (
         <div className="flex items-center gap-1.5">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="gap-1"
-            onClick={(e) => { e.stopPropagation(); setOnboardingTarget({ id: r.adminId!, username: r.username! }); }}
-          >
-            <KeyRound className="size-3" />
-            {t('list.credentials')}
-          </Button>
+          {canShowOnboardingCredentials(r) && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1"
+              onClick={(e) => { e.stopPropagation(); setOnboardingTarget({ id: r.adminId!, username: r.username! }); }}
+            >
+              <KeyRound className="size-3" />
+              {t('list.credentials')}
+            </Button>
+          )}
           {isGlobalAdmin && r.active && (
             <Button
               variant="ghost"

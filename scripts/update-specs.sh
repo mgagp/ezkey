@@ -131,13 +131,26 @@ update_link() {
     local source=$1
     local target=$2
     local target_dir=$(dirname "$target")
+    local running_in_wsl=false
+    local windows_mounted_workspace=false
+
+    if [ -n "$WSL_DISTRO_NAME" ] || grep -qi microsoft /proc/version 2>/dev/null; then
+        running_in_wsl=true
+    fi
+
+    if [[ "$PROJECT_ROOT" =~ ^/mnt/[a-zA-Z]/ ]]; then
+        windows_mounted_workspace=true
+    fi
     
     # Ensure target directory exists
     mkdir -p "$target_dir"
     
-    # Check if we're on Windows (Git Bash, MSYS, or WSL)
-    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
-        # Windows: use copy
+    # On Windows and WSL workspaces mounted from Windows, prefer copies.
+    # Native Windows tools (PowerShell, Node, Orval) can fail to resolve Linux symlinks.
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]] \
+        || [ "$running_in_wsl" = true ] \
+        || [ "$windows_mounted_workspace" = true ]; then
+        rm -f "$target"
         cp "$source" "$target"
         print_status "Copied to $(basename "$target")"
     else

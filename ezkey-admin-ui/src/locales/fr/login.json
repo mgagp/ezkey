@@ -79,5 +79,40 @@
       "codeRequired": "Saisissez un code de récupération",
       "codeFormat": "Utilisez 32 chiffres au format XXXX-XXXX-…-XXXX (les chiffres seuls suffisent au collage)"
     }
+  },
+  "activation": {
+    "useActivationLink": "Vous avez un code d'activation ? Activez votre compte",
+    "intro": "Configuration initiale : saisissez le code d'activation à usage unique reçu d'un administrateur. EZKey créera votre premier enrôlement d'appareil et retournera les éléments nécessaires pour terminer la liaison.",
+    "activationCodeLabel": "Code d'activation",
+    "activationCodePlaceholder": "ezkey_activation_...",
+    "submitActivate": "Activer et lier le premier appareil",
+    "backToPasswordless": "Retour à la connexion sans mot de passe",
+    "activateFailed": "Échec de l'activation. Vérifiez le code et réessayez.",
+    "successTitle": "Activation terminée",
+    "successBody": "La configuration initiale est prête pour {{username}}. Liez maintenant votre premier appareil, puis utilisez le flux d'administration authentifié pour gérer les codes de récupération.",
+    "previewNoticeTitle": "Posture de sécurité : mode bootstrap, pas un onboarding production",
+    "previewNotice": "Préversion technique : cet écran affiche ensemble le QR d'enrôlement, le défi de liaison et le jeton de preuve pour simplifier le bootstrap. Ezkey n'envoie pas encore automatiquement les courriels ou les SMS dans ce flux. Un onboarding de niveau production devrait distribuer l'activation et les éléments de liaison par des canaux séparés ou contrôlés. Cette instance hébergée sert de démonstrateur, pas comme référence de sécurité de production.",
+    "recoveryCodesDeferredTitle": "Les codes de récupération sont volontairement différés",
+    "recoveryCodesDeferredBody": "Les codes de récupération sont générés côté serveur mais ne sont plus révélés dans cette étape de bootstrap non authentifiée. Révélez-les ou régénérez-les plus tard depuis un flux d'administration authentifié après la première connexion.",
+    "qrTitle": "Liaison par code QR",
+    "qrLoading": "Génération du code QR…",
+    "qrHint": "Ouvrez EZKey sur votre téléphone et scannez ce code pour poursuivre l'inscription.",
+    "qrCodeAlt": "Code QR de liaison d'activation",
+    "qrErrorTitle": "Impossible de générer le code QR",
+    "qrErrorBody": "Utilisez le défi de liaison et le jeton de preuve manuel ci-dessous, ou rechargez la page.",
+    "manualEntry": "Saisie manuelle (ID d'enrôlement et jeton)",
+    "manualEntryHint": "Utilisez cette option si vous ne pouvez pas scanner le QR. Saisissez l'ID d'enrôlement et le jeton de preuve là où votre client les attend. Gardez ces valeurs confidentielles.",
+    "enrollmentIdLabel": "ID d'enrôlement",
+    "enrollmentProofToken": "Jeton de preuve d'inscription",
+    "bindingChallenge": "Défi de liaison",
+    "copyEnrollmentId": "Copier l'ID d'enrôlement",
+    "copyToken": "Copier le jeton",
+    "copied": "Copié",
+    "thenPasswordless": "Après la liaison de l'appareil, revenez ici et utilisez « Connexion avec EZKey » comme d'habitude.",
+    "backToLogin": "Retour à la connexion",
+    "validation": {
+      "codeRequired": "Saisissez un code d'activation",
+      "codeFormat": "Utilisez un code d'activation au format ezkey_activation_..."
+    }
   }
 }

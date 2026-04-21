@@ -25,9 +25,11 @@ import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
 import org.ezkey.admin.config.AdminRecoveryProperties;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
+import org.ezkey.admin.dto.request.AdminActivationRequestDto;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.request.AdminPasswordlessWaitRequestDto;
 import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
+import org.ezkey.admin.dto.response.AdminActivationResponseDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
 import org.ezkey.admin.exception.AdminAuthenticationException;
@@ -35,9 +37,11 @@ import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
 import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
+import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
+import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.util.AuditHelper;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -80,6 +84,7 @@ public class AdminAuthController {
   private static final Logger logger = LoggerFactory.getLogger(AdminAuthController.class);
 
   private final AdminAuthService authService;
+  private final AdminProvisioningService provisioningService;
 
   private final org.ezkey.admin.service.AdminRecoveryService recoveryService;
 
@@ -97,6 +102,7 @@ public class AdminAuthController {
 
   public AdminAuthController(
       AdminAuthService authService,
+      AdminProvisioningService provisioningService,
       org.ezkey.admin.service.AdminRecoveryService recoveryService,
       AuditLogService auditLogService,
       AdminRateLimitFilter rateLimitFilter,
@@ -105,6 +111,7 @@ public class AdminAuthController {
       AdminBrowserSessionCookieProperties browserSessionCookieProperties,
       AdminSessionCookieService sessionCookieService) {
     this.authService = authService;
+    this.provisioningService = provisioningService;
     this.recoveryService = recoveryService;
     this.auditLogService = auditLogService;
     this.rateLimitFilter = rateLimitFilter;
@@ -112,6 +119,116 @@ public class AdminAuthController {
     this.adminRepository = adminRepository;
     this.browserSessionCookieProperties = browserSessionCookieProperties;
     this.sessionCookieService = sessionCookieService;
+  }
+
+  /**
+   * Activates a pending administrator with a one-time activation code.
+   *
+    * <p>This public endpoint consumes the activation code issued during deferred onboarding and
+    * returns the first enrollment credentials. Recovery codes are generated server-side but remain
+    * deferred from this unauthenticated bootstrap response.
+   *
+   * @param request the activation request containing the one-time activation code
+   * @param httpRequest the HTTP servlet request for IP extraction
+   * @return ResponseEntity containing first-time enrollment credentials or an error response
+   */
+  @Operation(
+      summary = "Activate pending administrator with one-time activation code",
+      description =
+          "Consumes a one-time activation code issued during deferred onboarding. Returns the first"
+              + " enrollment binding credentials while keeping recovery codes deferred from this"
+              + " unauthenticated bootstrap response.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Activation successful"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Validation error or activation cannot proceed in the current state"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Invalid, expired, or unusable activation code"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  @PostMapping("/activate")
+  public ResponseEntity<AdminActivationResponseDto> activate(
+      @Valid @RequestBody AdminActivationRequestDto request, HttpServletRequest httpRequest) {
+
+    ClientContext context = ClientContext.from(httpRequest);
+
+    try {
+      AdminProvisioningService.ProvisioningResult result =
+          provisioningService.activatePendingAdmin(request.activationCode());
+
+      AdminActivationResponseDto response =
+          AdminActivationResponseDto.success(
+              result.admin().getUsername(),
+              result.enrollment() != null ? result.enrollment().getEnrollmentId() : null,
+              result.enrollmentProofToken(),
+              result.enrollmentChallenge(),
+              null);
+
+      rateLimitFilter.recordSuccessfulAttempt(context.clientIp());
+
+      Integer tenantId =
+          result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null;
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION,
+                  AdminAuditConstants.ACTIVATION_CODE_USED,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(result.admin().getAdminId())
+              .eventDetails(
+                  "Activation completed for adminId: "
+                      + result.admin().getAdminId()
+                      + ", username: "
+                      + result.admin().getUsername()
+                      + ", enrollmentId: "
+                      + (result.enrollment() != null ? result.enrollment().getEnrollmentId() : null))
+              .build());
+
+      return ResponseEntity.ok(response);
+    } catch (AuthenticationException e) {
+      rateLimitFilter.recordFailedAttempt(context.clientIp());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION,
+                  AdminAuditConstants.ACTIVATION_CODE_FAILED,
+                  null)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .eventDetails("Activation rejected: " + e.getMessage())
+              .build());
+      return ResponseEntity.status(403).body(AdminActivationResponseDto.error(e.getMessage()));
+    } catch (IllegalStateException e) {
+      rateLimitFilter.recordFailedAttempt(context.clientIp());
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION,
+                  AdminAuditConstants.ACTIVATION_CODE_FAILED,
+                  null)
+              .eventStatus(EventStatus.FAILURE)
+              .errorMessage(e.getMessage())
+              .eventDetails("Activation blocked: " + e.getMessage())
+              .build());
+      return ResponseEntity.badRequest().body(AdminActivationResponseDto.error(e.getMessage()));
+    } catch (Exception e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION,
+                  AdminAuditConstants.ACTIVATION_ERROR,
+                  null)
+              .eventStatus(EventStatus.ERROR)
+              .errorMessage(e.getMessage())
+              .eventDetails("Activation unexpected error: " + e.getClass().getSimpleName())
+              .build());
+      return ResponseEntity.status(500)
+          .body(AdminActivationResponseDto.error("An error occurred during activation"));
+    }
   }
 
   /**

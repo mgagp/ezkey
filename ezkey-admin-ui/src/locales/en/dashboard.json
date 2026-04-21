@@ -41,7 +41,7 @@
   },
   "drilldown": {
     "integrationsActive": "View active integrations",
-    "integrationsInactive": "View inactive integrations",
+    "integrationsInactive": "View retired integrations",
     "enrollmentsVerified": "View verified active enrollments",
     "enrollmentsInProgress": "View enrollments in progress (created or bound)",
     "enrollmentsExpired": "View expired active enrollments",
