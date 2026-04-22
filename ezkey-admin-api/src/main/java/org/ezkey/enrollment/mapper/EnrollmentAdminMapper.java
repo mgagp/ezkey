@@ -48,7 +48,8 @@ import org.mapstruct.ReportingPolicy;
  *
  * <ul>
  *   <li><b>Component Model:</b> Spring integration for dependency injection
- *   <li><b>Unmapped Reporting:</b> IGNORE for flexible mapping configuration
+ *   <li><b>Unmapped Reporting:</b> WARN so missing mappings surface at compile time; intentional
+ *       gaps must use explicit {@code @Mapping(target = "...", ignore = true)}
  *   <li><b>Type Safety:</b> Compile-time validation of all mapping configurations
  *   <li><b>Performance:</b> Generated implementation for optimal runtime performance
  * </ul>
@@ -170,11 +171,15 @@ public interface EnrollmentAdminMapper {
    * <p>This method maps the request DTO from the API layer to the domain request object used by the
    * service layer for enrollment creation operations.
    *
+   * <p>{@code createdByAdminId} is not part of the public DTO; the admin API controller sets it
+   * from the authenticated principal after mapping (see {@code EnrollmentController}).
+   *
    * @param request the EnrollmentCreateRequestDto from the API layer
    * @return the corresponding EnrollmentCreateRequest domain object
    * @see EnrollmentCreateRequestDto
    * @see EnrollmentCreateRequest
    */
+  @Mapping(target = "createdByAdminId", ignore = true)
   EnrollmentCreateRequest toCreateRequest(EnrollmentCreateRequestDto request);
 
   /**
