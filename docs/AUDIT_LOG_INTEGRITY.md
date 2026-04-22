@@ -248,6 +248,23 @@ ezkey.audit.chain.cron=0 */5 * * * ?
 
 Both verification endpoints **require** `from` and `to` query parameters (ISO-8601). Omitting either returns 400 Bad Request with a message that a date range is required.
 
+**Declare gap** (`POST /api/v1/audit-logs/lifecycle/declare-gap`): Closes an undeclared gap by writing a `GAP_DECLARATION` checkpoint covering `[gapStart, gapEnd)` with a mandatory `justification` (min 10 chars). The endpoint accepts two equivalent modes:
+
+- **Detected-gap mode (preferred for the Admin UI):** `{ gapStart, gapEnd, justification }`. The service binds the gap to the checkpoint immediately preceding `gapStart`. This is the only mode surfaced in the Admin UI, where each undeclared gap returned by `chain-integrity` is declared individually from its own row.
+- **Anchor mode (CLI / scripted recovery):** `{ gapStart, gapEnd, anchorCheckpointId, justification }`. Use this when bootstrapping the chain or when scripting against a known checkpoint id. Available via the API and Postman collection; intentionally not exposed in the UI to keep the operator flow focused on what the chain check actually reports.
+
+### Operator workflow (Admin UI)
+
+The Integrity panel (Global Admin only) drives gap declaration from detection, not from manual input:
+
+1. Open the panel and select a date range, then run **Chain integrity**.
+2. Review the **Undeclared gaps for consultation** list. For each row:
+   - **Locate in timeline** focuses the audit-log table on the gap window for context (toggle off with **Clear focus**).
+   - **Declare** opens a dialog prefilled with the detected period and duration; the operator only enters a justification.
+3. On success the dialog reports the new `GAP_DECLARATION` checkpoint and the chain check is automatically re-run, removing the row from the list.
+
+When no undeclared gaps remain for the selected range the panel shows an explicit "no undeclared gaps detected" confirmation rather than an empty list, so operators can distinguish "nothing to do" from "not yet checked".
+
 ---
 
 ## 5. What This Does NOT Cover (Accepted Limitations)

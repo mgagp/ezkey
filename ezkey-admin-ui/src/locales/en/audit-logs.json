@@ -7,7 +7,7 @@
       "content": "Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically."
     },
     "declareGap": {
-      "content": "When the system was offline longer than the scheduler lookback (e.g. 60 min), declare the gap so lifecycle continuity remains explicit. This is a recovery action, not a normal operator workflow."
+      "content": "When the system was offline longer than the scheduler lookback (e.g. 60 min), declare each detected gap from the list below to keep lifecycle continuity explicit. Use <strong>Locate in timeline</strong> to see the gap in context, then <strong>Declare</strong> to formally close it with a justification. This is a recovery action, not a normal operator workflow."
     },
     "exceptionalMaintenance": {
       "content": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed; the primary UI posture is observability, not manual lifecycle orchestration."
@@ -292,7 +292,15 @@
     "exceptionalMaintenance": "Exceptional Maintenance",
     "sealArchive": "Seal Archive",
     "declareGap": "Declare Gap",
+    "declareGapHint": "Detected gaps appear below — use the per-gap actions to declare them.",
     "undeclaredGapsForConsultation": "Undeclared gaps for consultation",
+    "noUndeclaredGaps": "No undeclared gaps detected for the selected period.",
+    "noUndeclaredGapsHint": "The chain is continuous over this window. Re-run with a wider range if you need a deeper scan.",
+    "gapAction": {
+      "declare": "Declare",
+      "locate": "Locate in timeline",
+      "clearFocus": "Clear focus"
+    },
     "gapLabel": "Gap {{n}}:",
     "focus": "Focus",
     "clearFocus": "Clear focus",
@@ -359,19 +367,17 @@
     "optionalPlaceholder": "optional"
   },
   "gapDialog": {
-    "title": "Declare Gap",
+    "title": "Declare detected gap",
     "successTitle": "Gap declared successfully",
     "done": "Done",
-    "intro": "Declare a gap when the system was offline longer than the scheduler lookback window (default 60 min). Must be called before the scheduler creates regular checkpoints for the gap period.",
-    "gapStart": "Gap Start",
-    "gapEnd": "Gap End",
-    "anchorCheckpointId": "Anchor Checkpoint ID",
-    "anchorPlaceholder": "optional — last checkpoint before outage",
+    "intro": "You are about to formally declare this detected gap. Describe what happened during this period (crash, planned maintenance, etc.). If multiple events occurred in the same window, mention each in the justification.",
+    "detectedPeriod": "Detected period",
+    "detectedDuration": "Duration: ~{{minutes}} min",
     "justification": "Justification",
     "justificationHint": "(min 10 chars, required)",
     "justificationPlaceholder": "Planned maintenance window — DB migration",
     "cancel": "Cancel",
-    "submit": "Declare Gap",
+    "submit": "Declare gap",
     "submitting": "Declaring…",
     "resultGapPeriod": "Gap period",
     "resultGapCheckpoint": "Gap checkpoint",

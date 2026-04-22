@@ -7,7 +7,7 @@
       "content": "Scelle une plage de checkpoints pour archivage (ex. avant suppression d'une partition BDD). Vous pouvez indiquer la période par horodatages ou par ID de checkpoints. Une vérification d'intégrité préalable s'exécute automatiquement."
     },
     "declareGap": {
-      "content": "Lorsque le système a été indisponible plus longtemps que la fenêtre du planificateur (ex. 60 min), déclarez la lacune pour rendre la continuité lifecycle explicite. C'est une action de récupération, pas un workflow opérateur normal."
+      "content": "Lorsque le système a été indisponible plus longtemps que la fenêtre du planificateur (ex. 60 min), déclarez chaque lacune détectée dans la liste ci-dessous afin de rendre la continuité lifecycle explicite. Utilisez <strong>Localiser dans la chronologie</strong> pour situer la lacune, puis <strong>Déclarer</strong> pour la clôturer formellement avec une justification. C'est une action de récupération, pas un workflow opérateur normal."
     },
     "exceptionalMaintenance": {
       "content": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système ; la posture principale de l'UI doit rester l'observabilité."
@@ -292,7 +292,15 @@
     "exceptionalMaintenance": "Maintenance exceptionnelle",
     "sealArchive": "Sceller l'archive",
     "declareGap": "Déclarer une lacune",
+    "declareGapHint": "Les lacunes détectées apparaissent ci-dessous — utilisez les actions par lacune pour les déclarer.",
     "undeclaredGapsForConsultation": "Lacunes non déclarées (consultation)",
+    "noUndeclaredGaps": "Aucune lacune non déclarée détectée pour la période sélectionnée.",
+    "noUndeclaredGapsHint": "La chaîne est continue sur cette fenêtre. Relancez avec une plage plus large pour un balayage plus profond.",
+    "gapAction": {
+      "declare": "Déclarer",
+      "locate": "Localiser dans la chronologie",
+      "clearFocus": "Retirer le focus"
+    },
     "gapLabel": "Lacune {{n}} :",
     "focus": "Focus",
     "clearFocus": "Effacer le focus",
@@ -359,14 +367,12 @@
     "optionalPlaceholder": "optionnel"
   },
   "gapDialog": {
-    "title": "Déclarer une lacune",
+    "title": "Déclarer la lacune détectée",
     "successTitle": "Lacune déclarée avec succès",
     "done": "Terminé",
-    "intro": "Déclarez une lacune lorsque le système a été indisponible plus longtemps que la fenêtre du planificateur (par défaut 60 min). À faire avant que le planificateur crée des checkpoints réguliers pour cette période.",
-    "gapStart": "Début lacune",
-    "gapEnd": "Fin lacune",
-    "anchorCheckpointId": "ID checkpoint ancre",
-    "anchorPlaceholder": "optionnel — dernier checkpoint avant l'arrêt",
+    "intro": "Vous êtes sur le point de déclarer formellement cette lacune détectée. Décrivez ce qui s'est passé durant cette période (crash, maintenance planifiée, etc.). Si plusieurs événements se sont produits dans la même fenêtre, mentionnez-les tous dans la justification.",
+    "detectedPeriod": "Période détectée",
+    "detectedDuration": "Durée : ~{{minutes}} min",
     "justification": "Justification",
     "justificationHint": "(min. 10 caractères, obligatoire)",
     "justificationPlaceholder": "Fenêtre de maintenance planifiée — migration BDD",

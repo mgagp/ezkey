@@ -547,10 +547,10 @@ function IntegrityPanel() {
   const [sealCheckpointTo, setSealCheckpointTo] = useState('');
   const [sealJustification, setSealJustification] = useState('');
 
-  // ── Gap declaration form state ──
-  const [gapStart, setGapStart] = useState('');
-  const [gapEnd, setGapEnd] = useState('');
-  const [gapAnchorId, setGapAnchorId] = useState('');
+  // ── Gap declaration state (driven by selection from the detected-gaps list) ──
+  const [selectedGapForDeclaration, setSelectedGapForDeclaration] = useState<
+    { gapStart: string; gapEnd: string; gapMinutes: number } | null
+  >(null);
   const [gapJustification, setGapJustification] = useState('');
 
   // ── Checkpoint timeline (nested expandable) ──
@@ -660,18 +660,30 @@ function IntegrityPanel() {
     setTimelineExpanded(true);
   }
 
-  async function runChainCheck() {
+  /**
+   * Compute the default 7-day lookback window used by the auto-run on expand.
+   * UI-side default; the backend policy belongs in a future slice (see plan).
+   */
+  function defaultGapScanRange(): { from: string; to: string } {
+    const now = new Date();
+    const past = new Date(now);
+    past.setDate(past.getDate() - 7);
+    return { from: toYYYYMMDD(past), to: toYYYYMMDD(now) };
+  }
+
+  async function runChainCheck(rangeOverride?: { from: string; to: string }) {
+    const range = rangeOverride ?? checkRange;
     setChainLoading(true);
     setChainReport(null);
     setChainReportRange(null);
     setFocusedGap(null);
     try {
       const params =
-        checkRange.from && checkRange.to
+        range.from && range.to
           ? (() => {
               const { createdAfter, createdBefore } = dateRangeToApiParams(
-                checkRange.from,
-                checkRange.to,
+                range.from,
+                range.to,
                 effectiveTimeZoneId,
               );
               return { from: createdAfter, to: createdBefore };
@@ -679,8 +691,8 @@ function IntegrityPanel() {
           : { from: undefined as string | undefined, to: undefined as string | undefined };
       const report = await checkChainIntegrity(params) as unknown as ChainVerificationReport;
       setChainReport(report);
-      if (checkRange.from && checkRange.to) {
-        setChainReportRange({ from: checkRange.from, to: checkRange.to });
+      if (range.from && range.to) {
+        setChainReportRange({ from: range.from, to: range.to });
       }
     } catch (e) {
       toast(getTranslatedApiError(e, t, t('integrity.errorChainCheck')), 'error');
@@ -733,12 +745,26 @@ function IntegrityPanel() {
 
   const gapMutation = useDeclareGap({
     mutation: {
-      onSuccess: (data) => {
-        setGapResult(data as unknown as GapDeclarationResult);
+      onSuccess: (data, variables) => {
+        const result = data as unknown as GapDeclarationResult;
+        setGapResult(result);
         toast(t('integrity.toastGapSuccess'), 'success');
         queryClient.invalidateQueries({ queryKey: queryKeys.auditLogs });
         queryClient.invalidateQueries({ queryKey: queryKeys.auditChainCheckpoints });
         queryClient.invalidateQueries({ queryKey: ['audit-archive-eligibility'] });
+        // Post-declaration refresh sequence (see plan):
+        //   1) clear focus if it matched the declared gap,
+        //   2) re-run the chain integrity check so the declared gap drops off the list.
+        const declaredStart = variables?.data?.gapStart;
+        const declaredEnd = variables?.data?.gapEnd;
+        if (
+          focusedGap !== null &&
+          declaredStart === focusedGap.gapStart &&
+          declaredEnd === focusedGap.gapEnd
+        ) {
+          setFocusedGap(null);
+        }
+        void runChainCheck();
       },
       onError: (e) => toast(getTranslatedApiError(e, t, t('integrity.errorGap')), 'error'),
     },
@@ -754,12 +780,37 @@ function IntegrityPanel() {
   }
 
   function resetGapForm() {
-    setGapStart('');
-    setGapEnd('');
-    setGapAnchorId('');
+    setSelectedGapForDeclaration(null);
     setGapJustification('');
     setGapResult(null);
   }
+
+  /** Open the declaration dialog for a specific detected gap (timestamps prefilled). */
+  function openDeclareDialogFor(g: { gapStart: string; gapEnd: string; gapMinutes: number }) {
+    setSelectedGapForDeclaration(g);
+    setGapJustification('');
+    setGapResult(null);
+    setGapOpen(true);
+  }
+
+  function closeGapDialog() {
+    setGapOpen(false);
+    resetGapForm();
+  }
+
+  // Auto-run chain check on integrity section expand: populates the gaps list
+  // without requiring the operator to click *Run integrity check* first.
+  // UX shortcut only — backend discoverability is owned by AuditChainScheduler.
+  useEffect(() => {
+    if (!expanded) return;
+    if (chainReport || chainLoading) return;
+    const fallback = defaultGapScanRange();
+    if (!checkRange.from || !checkRange.to) {
+      setCheckRange(fallback);
+    }
+    void runChainCheck(checkRange.from && checkRange.to ? checkRange : fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
 
   function ReportBadge({ intact, status }: { intact?: boolean; status?: string }) {
     if (intact === true) return <Badge variant="success"><CheckCircle className="size-3 mr-1" />{t('integrity.reportIntact')}</Badge>;
@@ -804,7 +855,7 @@ function IntegrityPanel() {
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={runChainCheck}
+                onClick={() => runChainCheck()}
                 disabled={chainLoading || !checkRange.from || !checkRange.to}
                 className="gap-1.5"
                 title={!checkRange.from || !checkRange.to ? t('integrity.selectDateRangeToRun') : undefined}
@@ -959,10 +1010,7 @@ function IntegrityPanel() {
               <span onClick={(e) => e.stopPropagation()}>
                 <ContextHelp title={t('integrity.sealArchive')} content={<Trans i18nKey="audit-logs:help.sealArchive.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.sealArchive') })} />
               </span>
-              <Button size="sm" variant="secondary" onClick={() => { resetGapForm(); setGapOpen(true); }} className="gap-1.5">
-                <AlertTriangle className="size-3.5" />
-                {t('integrity.declareGap')}
-              </Button>
+              <span className="text-xs text-fg-muted italic">{t('integrity.declareGapHint')}</span>
               <span onClick={(e) => e.stopPropagation()}>
                 <ContextHelp title={t('integrity.declareGap')} content={<Trans i18nKey="audit-logs:help.declareGap.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.declareGap') })} />
               </span>
@@ -970,7 +1018,15 @@ function IntegrityPanel() {
             </div>
 
             {/* Undeclared gaps for consultation (from last chain verification) */}
-            {((chainReport as { undeclaredGaps?: Array<{ gapStart: string; gapEnd: string; gapMinutes: number }> } | null)?.undeclaredGaps?.length ?? 0) > 0 && (
+            {chainReport && (((chainReport as { undeclaredGaps?: unknown[] }).undeclaredGaps?.length ?? 0) === 0 ? (
+              <div className="border-2 border-fg/10 bg-bg p-3">
+                <div className="flex items-center gap-2 text-success">
+                  <CheckCircle className="size-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">{t('integrity.noUndeclaredGaps')}</span>
+                </div>
+                <p className="text-xs text-fg-muted mt-1">{t('integrity.noUndeclaredGapsHint')}</p>
+              </div>
+            ) : (
               <div className="border-2 border-fg/10 bg-bg p-3 space-y-2">
                 <button
                   type="button"
@@ -994,34 +1050,52 @@ function IntegrityPanel() {
                     {((chainReport as { undeclaredGaps?: Array<{ gapStart: string; gapEnd: string; gapMinutes: number }> }).undeclaredGaps ?? []).map((g, idx) => {
                       const isFocused = focusedGap !== null && focusedGap.gapStart === g.gapStart && focusedGap.gapEnd === g.gapEnd;
                       return (
-                        <li key={`${g.gapStart}-${g.gapEnd}`}>
-                          <button
-                            type="button"
-                            onClick={() => (isFocused ? setFocusedGap(null) : focusGapAndNavigate(g))}
-                            className={cn(
-                              'w-full text-left text-xs p-2 border-2 transition-colors',
-                              isFocused ? 'border-warning bg-warning/10 font-bold' : 'border-fg/20 hover:border-warning/50 hover:bg-warning/5',
-                            )}
-                          >
-                            <span className="text-fg-muted">{t('integrity.gapLabel', { n: idx + 1 })}</span>{' '}
-                            {formatDateWithTimezone(g.gapStart)} → {formatDateWithTimezone(g.gapEnd)}
-                            <span className="text-fg-muted ml-2">(~{Number(g.gapMinutes).toLocaleString()} min)</span>
-                            {isFocused && <span className="ml-2 text-warning font-bold">· {t('integrity.focus')}</span>}
-                          </button>
+                        <li
+                          key={`${g.gapStart}-${g.gapEnd}`}
+                          className={cn(
+                            'p-2 border-2 transition-colors',
+                            isFocused ? 'border-warning bg-warning/10' : 'border-fg/20',
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="text-xs">
+                              <span className="text-fg-muted">{t('integrity.gapLabel', { n: idx + 1 })}</span>{' '}
+                              <span className={isFocused ? 'font-bold' : ''}>
+                                {formatDateWithTimezone(g.gapStart)} → {formatDateWithTimezone(g.gapEnd)}
+                              </span>
+                              <span className="text-fg-muted ml-2">(~{Number(g.gapMinutes).toLocaleString()} min)</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-7 gap-1.5"
+                                onClick={() => (isFocused ? setFocusedGap(null) : focusGapAndNavigate(g))}
+                              >
+                                <ListOrdered className="size-3.5" />
+                                {isFocused
+                                  ? t('integrity.gapAction.clearFocus')
+                                  : t('integrity.gapAction.locate')}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="text-xs h-7 gap-1.5"
+                                onClick={() => openDeclareDialogFor(g)}
+                              >
+                                <AlertTriangle className="size-3.5" />
+                                {t('integrity.gapAction.declare')}
+                              </Button>
+                            </div>
+                          </div>
                         </li>
                       );
                     })}
                   </ul>
                 )}
-                {focusedGap !== null && (
-                  <div className="flex items-center gap-2 flex-wrap text-xs p-2 border-2 border-warning/50 bg-warning/5">
-                    <span className="font-bold text-warning">{t('integrity.focus')}:</span>
-                    <span>{formatDateWithTimezone(focusedGap.gapStart)} → {formatDateWithTimezone(focusedGap.gapEnd)} (~{Number(focusedGap.gapMinutes).toLocaleString()} min)</span>
-                    <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={() => setFocusedGap(null)}>{t('integrity.clearFocus')}</Button>
-                  </div>
-                )}
               </div>
-            )}
+            ))}
           </div>
 
           {/* ── Checkpoint timeline (nested expandable) ── */}
@@ -1192,7 +1266,7 @@ function IntegrityPanel() {
       </Dialog>
 
       {/* ── Gap Declaration Dialog ── */}
-      <Dialog open={gapOpen} onClose={() => setGapOpen(false)} title={t('gapDialog.title')} size="lg" dismissible={false}>
+      <Dialog open={gapOpen} onClose={closeGapDialog} title={t('gapDialog.title')} size="md" dismissible={false}>
         {gapResult ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-success">
@@ -1206,40 +1280,38 @@ function IntegrityPanel() {
               <InfoPair label={t('gapDialog.resultAuditLogId')} value={String(gapResult.auditLogId ?? '—')} />
             </dl>
             <div className="flex justify-end pt-2">
-              <Button onClick={() => setGapOpen(false)}>{t('gapDialog.done')}</Button>
+              <Button onClick={closeGapDialog}>{t('gapDialog.done')}</Button>
             </div>
           </div>
-        ) : (
+        ) : selectedGapForDeclaration ? (
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              if (!selectedGapForDeclaration) return;
               gapMutation.mutate({
                 data: {
-                  gapStart: gapStart ? new Date(gapStart).toISOString() : undefined,
-                  gapEnd: gapEnd ? new Date(gapEnd).toISOString() : undefined,
-                  anchorCheckpointId: gapAnchorId ? Number(gapAnchorId) : undefined,
+                  gapStart: selectedGapForDeclaration.gapStart,
+                  gapEnd: selectedGapForDeclaration.gapEnd,
                   justification: gapJustification.trim(),
                 },
               });
             }}
             className="space-y-4"
           >
-            <p className="text-xs text-fg-muted">
-              {t('gapDialog.intro')}
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="gap-start" className="text-xs">{t('gapDialog.gapStart')}</Label>
-                <Input id="gap-start" type="datetime-local" value={gapStart} onChange={(e) => setGapStart(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="gap-end" className="text-xs">{t('gapDialog.gapEnd')}</Label>
-                <Input id="gap-end" type="datetime-local" value={gapEnd} onChange={(e) => setGapEnd(e.target.value)} />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="gap-anchor" className="text-xs">{t('gapDialog.anchorCheckpointId')}</Label>
-              <Input id="gap-anchor" type="number" placeholder={t('gapDialog.anchorPlaceholder')} value={gapAnchorId} onChange={(e) => setGapAnchorId(e.target.value)} />
+            <p className="text-xs text-fg-muted">{t('gapDialog.intro')}</p>
+            <div className="border-2 border-warning/40 bg-warning/5 p-3 space-y-1">
+              <p className="text-[10px] uppercase tracking-wider text-fg-muted font-bold">
+                {t('gapDialog.detectedPeriod')}
+              </p>
+              <p className="text-sm font-bold">
+                {formatDateWithTimezone(selectedGapForDeclaration.gapStart)} →{' '}
+                {formatDateWithTimezone(selectedGapForDeclaration.gapEnd)}
+              </p>
+              <p className="text-xs text-fg-muted">
+                {t('gapDialog.detectedDuration', {
+                  minutes: Number(selectedGapForDeclaration.gapMinutes).toLocaleString(),
+                })}
+              </p>
             </div>
             <ReasonFieldRow
               presetGroup="audit_chain_justification"
@@ -1260,13 +1332,13 @@ function IntegrityPanel() {
               minLengthErrorTone="justification"
             />
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" onClick={() => setGapOpen(false)}>{t('gapDialog.cancel')}</Button>
+              <Button type="button" variant="secondary" onClick={closeGapDialog}>{t('gapDialog.cancel')}</Button>
               <Button type="submit" disabled={gapMutation.isPending || gapJustification.trim().length < 10}>
                 {gapMutation.isPending ? t('gapDialog.submitting') : t('gapDialog.submit')}
               </Button>
             </div>
           </form>
-        )}
+        ) : null}
       </Dialog>
     </div>
   );
