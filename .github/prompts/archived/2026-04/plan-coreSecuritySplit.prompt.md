@@ -1,5 +1,10 @@
 # Plan: Scission `ezkey-core` → `ezkey-core` + `ezkey-core-security`
 
+## Statut
+
+Plan complété et archivé en avril 2026. Le split `ezkey-core` / `ezkey-core-security` a été
+implémenté et validé, y compris la validation Docker Clean Start et les tests fonctionnels.
+
 **TL;DR** — Le split reste pertinent, mais le plan initial sous-estimait le couplage actuel.
 Le verrou n'est pas seulement `EncryptionEntityListener` : `Enrollment` et `AuthAttempt`
 dépendent aussi directement de `EncryptionService`, et `ezkey-auth-api` / `ezkey-integration-api`

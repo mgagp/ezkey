@@ -125,7 +125,6 @@ public class EncryptionService implements EncryptionOperations {
       logger.debug("Encryption not available, returning plaintext unchanged");
       return plaintext;
     }
-    // Skip encryption if already encrypted (prevents double encryption)
     if (isEncrypted(plaintext)) {
       logger.debug("Value already encrypted, skipping re-encryption");
       return plaintext;
@@ -135,8 +134,6 @@ public class EncryptionService implements EncryptionOperations {
       byte[] ct = aead.encrypt(plaintext.getBytes(StandardCharsets.UTF_8), null);
       String encryptedBase64 = Base64.getEncoder().encodeToString(ct);
 
-      // Get primary key ID (Tink uses unsigned 64-bit, Java long is signed)
-      // Use toUnsignedString to handle values > Long.MAX_VALUE correctly
       long keyId = keyManager.getCurrentPrimaryKeyId();
       String keyIdStr = Long.toUnsignedString(keyId);
       return "ENC:" + keyIdStr + ":" + encryptedBase64;
@@ -174,13 +171,11 @@ public class EncryptionService implements EncryptionOperations {
       logger.debug("Encryption not available, assuming plaintext");
       return encryptedValue;
     }
-    // If not encrypted (no prefix), return as-is
     if (!isEncrypted(encryptedValue)) {
       logger.debug("Value not encrypted (no prefix), returning as plaintext");
       return encryptedValue;
     }
 
-    // Validate format integrity before attempting decryption
     String ciphertextBase64 = extractCiphertext(encryptedValue);
     if (ciphertextBase64 == null) {
       logger.warn(
@@ -188,7 +183,6 @@ public class EncryptionService implements EncryptionOperations {
       return encryptedValue;
     }
 
-    // Validate key ID (for security monitoring and audit trail)
     Long keyId = parseKeyIdFromPrefix(encryptedValue);
     if (keyId == null) {
       logger.warn(
@@ -204,17 +198,14 @@ public class EncryptionService implements EncryptionOperations {
       byte[] pt = aead.decrypt(ct, null);
       return new String(pt, StandardCharsets.UTF_8);
     } catch (IllegalArgumentException e) {
-      // Base64 decoding failed (should not happen after validation, but defensive)
       logger.warn(
           "Base64 decoding failed during decryption (validation should have caught this): {}",
           e.getMessage());
       logger.debug("Base64 decoding error", e);
       return encryptedValue;
     } catch (GeneralSecurityException e) {
-      // Decryption failed - try defensive recovery
       return handleDecryptionFailureWithSync(encryptedValue, ciphertextBase64, keyId, e);
     } catch (Exception e) {
-      // Other errors (corrupted data, etc.)
       logger.warn("Decryption failed, returning original value: {}", e.getMessage());
       logger.debug("Decryption error details", e);
       return encryptedValue;
@@ -244,7 +235,6 @@ public class EncryptionService implements EncryptionOperations {
       String ciphertextBase64,
       Long keyId,
       GeneralSecurityException originalException) {
-
     logger.warn(
         "Decryption failed for key ID {}. Attempting defensive recovery...",
         keyId != null ? Long.toUnsignedString(keyId) : "unknown");
@@ -408,30 +398,30 @@ public class EncryptionService implements EncryptionOperations {
       return null;
     }
 
-    String base64 = matcher.group(2);
+    String ciphertextBase64 = matcher.group(2);
 
     // Validate Base64 is not empty
-    if (base64 == null || base64.isEmpty()) {
+    if (ciphertextBase64 == null || ciphertextBase64.isEmpty()) {
       logger.warn("Empty Base64 ciphertext in encrypted value");
       return null;
     }
 
     // Validate minimum length
-    if (base64.length() < MIN_CIPHERTEXT_BASE64_LENGTH) {
+    if (ciphertextBase64.length() < MIN_CIPHERTEXT_BASE64_LENGTH) {
       logger.warn(
           "Base64 ciphertext too short: {} characters (minimum: {})",
-          base64.length(),
+          ciphertextBase64.length(),
           MIN_CIPHERTEXT_BASE64_LENGTH);
       return null;
     }
 
     // Validate Base64 encoding
-    if (!isValidBase64(base64)) {
+    if (!isValidBase64(ciphertextBase64)) {
       logger.warn("Invalid Base64 encoding in encrypted value");
       return null;
     }
 
-    return base64;
+    return ciphertextBase64;
   }
 
   /**

@@ -22,8 +22,8 @@ import org.springframework.stereotype.Repository;
  * <p>Provides data access operations for the encrypted keyset blob stored in the database. The
  * keyset blob table is designed as a single-row table (id=1) to store the current Tink keyset.
  *
- * <p><b>Usage:</b> This repository is used by TinkKeyManager for database-backed keyset storage,
- * enabling distributed synchronization across multiple application instances.
+ * <p><b>Usage:</b> This repository is used by the key management implementation for database-backed
+ * keyset storage, enabling distributed synchronization across multiple application instances.
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *

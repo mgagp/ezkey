@@ -27,7 +27,6 @@ import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.DependsOn;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,12 +64,11 @@ import org.springframework.transaction.annotation.Transactional;
  * @since 2025
  */
 @Service
-@DependsOn("tinkKeyManager")
 public class KeyRotationService {
 
   private static final Logger logger = LoggerFactory.getLogger(KeyRotationService.class);
 
-  private final TinkKeyManager keyManager;
+  private final KeyManagementOperations keyManagementOperations;
   private final EncryptionKeyRepository keyRepository;
   private final TinkProperties properties;
   private final AuditLogService auditLogService;
@@ -78,13 +76,13 @@ public class KeyRotationService {
   private final KeyUsageVerificationService keyUsageVerificationService;
 
   public KeyRotationService(
-      TinkKeyManager keyManager,
+      KeyManagementOperations keyManagementOperations,
       EncryptionKeyRepository keyRepository,
       TinkProperties properties,
       AuditLogService auditLogService,
       EncryptionKeyMigrationScopeService migrationScopeService,
       KeyUsageVerificationService keyUsageVerificationService) {
-    this.keyManager = keyManager;
+    this.keyManagementOperations = keyManagementOperations;
     this.keyRepository = keyRepository;
     this.properties = properties;
     this.auditLogService = auditLogService;
@@ -109,8 +107,8 @@ public class KeyRotationService {
    * </ul>
    *
    * <p><b>Note:</b> This synchronization runs independently of rotation.enabled setting, as it is
-   * necessary for the system to function correctly. The @DependsOn("tinkKeyManager") annotation
-   * ensures TinkKeyManager is fully initialized before this method runs.
+   * necessary for the system to function correctly. Constructor wiring ensures the key management
+   * dependency is initialized before this method runs.
    */
   @PostConstruct
   @Transactional
@@ -121,12 +119,12 @@ public class KeyRotationService {
       return;
     }
 
-    // Wait for TinkKeyManager to be initialized (guaranteed by @DependsOn, but double-check)
-    if (!keyManager.isInitialized()) {
+    // Wait for key management to be initialized before syncing state.
+    if (!keyManagementOperations.isInitialized()) {
       logger.warn(
           "⚠️  Tink encryption not initialized yet. This may indicate a timing issue. "
               + "Keyset synchronization will be skipped. "
-              + "If this persists, check TinkKeyManager initialization logs.");
+              + "If this persists, check key management initialization logs.");
       return;
     }
 
@@ -180,7 +178,7 @@ public class KeyRotationService {
       return; // Encryption disabled
     }
 
-    if (!keyManager.isInitialized()) {
+    if (!keyManagementOperations.isInitialized()) {
       return; // Not initialized
     }
 
@@ -236,7 +234,7 @@ public class KeyRotationService {
     // This updates the keyset file and database blob so all instances will use the new key
     Long oldPrimaryKeyId = null;
     try {
-      oldPrimaryKeyId = keyManager.promoteToPrimary(pendingKey.getKeyId());
+      oldPrimaryKeyId = keyManagementOperations.promoteToPrimary(pendingKey.getKeyId());
       logger.info(
           "✅ Tink keyset updated: key {} is now PRIMARY (old primary was {})",
           Long.toUnsignedString(pendingKey.getKeyId()),
@@ -351,7 +349,7 @@ public class KeyRotationService {
       return;
     }
 
-    if (!keyManager.isInitialized()) {
+    if (!keyManagementOperations.isInitialized()) {
       logger.warn("Tink encryption not initialized, skipping rotation check");
       return;
     }
@@ -397,7 +395,7 @@ public class KeyRotationService {
    * @return true if rotation is due, false otherwise
    */
   public boolean isRotationDue() {
-    if (!keyManager.isInitialized()) {
+    if (!keyManagementOperations.isInitialized()) {
       return false;
     }
 
@@ -407,7 +405,7 @@ public class KeyRotationService {
       logger.warn(
           "⚠️  Found {} PRIMARY keys in database (expected 1). Correcting inconsistency...",
           primaryKeys.size());
-      long keysetPrimaryKeyId = keyManager.getCurrentPrimaryKeyId();
+      long keysetPrimaryKeyId = keyManagementOperations.getCurrentPrimaryKeyId();
       ensureSinglePrimaryKey(keysetPrimaryKeyId, "ROTATION_CHECK_CORRECTION");
       // Re-fetch after correction
       primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
@@ -442,7 +440,7 @@ public class KeyRotationService {
    * <ol>
    *   <li>Corrects multiple PRIMARY keys if detected (defensive measure)
    *   <li>Creates backup if configured
-   *   <li>Rotates keyset using TinkKeyManager
+   *   <li>Rotates keyset using the configured key management implementation
    *   <li>Creates key record with PENDING status and effective_at timestamp
    *   <li>Emits audit log events
    * </ol>
@@ -505,7 +503,7 @@ public class KeyRotationService {
       logger.warn(
           "⚠️  Found {} PRIMARY keys before rotation (expected 1). Correcting inconsistency...",
           primaryKeys.size());
-      long currentKeysetPrimaryId = keyManager.getCurrentPrimaryKeyId();
+      long currentKeysetPrimaryId = keyManagementOperations.getCurrentPrimaryKeyId();
       ensureSinglePrimaryKey(currentKeysetPrimaryId, "PRE_ROTATION_CORRECTION");
       // Re-fetch after correction
       primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);
@@ -523,7 +521,7 @@ public class KeyRotationService {
 
     if (immediatePromotion) {
       // Immediate promotion: use rotateKey() which adds AND promotes in one step
-      newKeyId = keyManager.rotateKey();
+      newKeyId = keyManagementOperations.rotateKey();
 
       // Sync keyset metadata to database with PRIMARY status
       syncKeyMetadataToDatabase(newKeyId, oldPrimaryKeyId, createdBy);
@@ -535,7 +533,7 @@ public class KeyRotationService {
     } else {
       // PENDING workflow: add key WITHOUT promotion
       // This ensures all instances have the key before it becomes active
-      newKeyId = keyManager.addKeyWithoutPromotion();
+      newKeyId = keyManagementOperations.addKeyWithoutPromotion();
 
       // Create PENDING record with sync window
       int syncWindowSeconds = properties.getRotation().getSyncWindowSeconds();
@@ -578,7 +576,7 @@ public class KeyRotationService {
   private void syncAllKeysFromKeyset(String createdBy) {
     logger.info("🔄 Starting synchronization of keyset to database (triggered by: {})", createdBy);
 
-    long primaryKeyId = keyManager.getCurrentPrimaryKeyId();
+    long primaryKeyId = keyManagementOperations.getCurrentPrimaryKeyId();
     logger.info(
         "Primary key ID from keyset: {} (unsigned: {})",
         primaryKeyId,
@@ -608,7 +606,7 @@ public class KeyRotationService {
     }
 
     // Get all key IDs from keyset
-    var allKeyIds = keyManager.getAllKeyIds();
+    var allKeyIds = keyManagementOperations.getAllKeyIds();
     logger.info("Found {} keys in keyset to synchronize", allKeyIds.size());
 
     for (Long keyId : allKeyIds) {
@@ -783,7 +781,7 @@ public class KeyRotationService {
     }
 
     // FOURTH: Sync all other keys in keyset (ensure they are ENABLED, not PRIMARY)
-    var allKeyIds = keyManager.getAllKeyIds();
+    var allKeyIds = keyManagementOperations.getAllKeyIds();
     for (Long keyId : allKeyIds) {
       if (!keyId.equals(newPrimaryKeyId)) {
         keyRepository
@@ -903,14 +901,14 @@ public class KeyRotationService {
   /**
    * Create a backup of the keyset file.
    *
-   * <p>Backup is created by TinkKeyManager.createBackup() which handles timestamped naming and
-   * cleanup of old backups.
+   * <p>Backup is created by the configured key management implementation, which handles timestamped
+   * naming and cleanup of old backups.
    *
    * @param reason reason for backup (e.g., "rotation", "manual")
    */
   private void createBackup(String reason) {
     try {
-      // Backup is handled by TinkKeyManager.saveKeyset() which calls createBackup()
+      // Backup is handled by the key management implementation during keyset save.
       // This method is here for future extensibility if needed
       logger.debug("Backup will be created during keyset save (reason: {})", reason);
     } catch (Exception e) {
@@ -1076,8 +1074,8 @@ public class KeyRotationService {
       logger.warn(
           "⚠️  Found {} PRIMARY keys (expected 1). Using keyset primary as source of truth...",
           primaryKeys.size());
-      if (keyManager.isInitialized()) {
-        long keysetPrimaryId = keyManager.getCurrentPrimaryKeyId();
+      if (keyManagementOperations.isInitialized()) {
+        long keysetPrimaryId = keyManagementOperations.getCurrentPrimaryKeyId();
         ensureSinglePrimaryKey(keysetPrimaryId, "GET_CURRENT_PRIMARY_CORRECTION");
         // Re-fetch after correction
         primaryKeys = keyRepository.findByKeyStatus(KeyStatus.PRIMARY);

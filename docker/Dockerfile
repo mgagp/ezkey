@@ -10,6 +10,7 @@ WORKDIR /build
 COPY pom.xml ./pom.xml
 COPY checkstyle-config/pom.xml ./checkstyle-config/pom.xml
 COPY ezkey-core/pom.xml ./ezkey-core/pom.xml
+COPY ezkey-core-security/pom.xml ./ezkey-core-security/pom.xml
 COPY ezkey-migration/pom.xml ./ezkey-migration/pom.xml
 COPY ezkey-admin-api/pom.xml ./ezkey-admin-api/pom.xml
 COPY ezkey-auth-api/pom.xml ./ezkey-auth-api/pom.xml
@@ -28,13 +29,14 @@ COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "📦 Downloading Maven dependencies (using BuildKit cache)..." && \
     mvn dependency:go-offline -Pno-checkstyle -B \
-        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
+        -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
         -am || true && \
     echo "✅ Dependencies cached in BuildKit cache"
 
 # Copy all source code
 COPY checkstyle-config/src ./checkstyle-config/src
 COPY ezkey-core/src ./ezkey-core/src
+COPY ezkey-core-security/src ./ezkey-core-security/src
 COPY ezkey-migration/src ./ezkey-migration/src
 COPY ezkey-admin-api/src ./ezkey-admin-api/src
 COPY ezkey-admin-api/config ./ezkey-admin-api/config
@@ -57,7 +59,7 @@ COPY ezkey-demo-app-acme/config ./ezkey-demo-app-acme/config
 RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
     echo "🔨 Building all modules (using cached dependencies)..." && \
     mvn clean package -DskipTests -Pno-checkstyle -B \
-        -pl checkstyle-config,ezkey-core,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
+        -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
         -am && \
     echo "✅ Build completed successfully"
 

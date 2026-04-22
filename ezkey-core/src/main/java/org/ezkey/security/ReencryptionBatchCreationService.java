@@ -44,7 +44,7 @@ public class ReencryptionBatchCreationService {
   /** Table name for {@link org.ezkey.authattempt.domain.entity.AuthAttempt}. */
   public static final String EZKEY_AUTH_ATTEMPT_TABLE = "ezkey_auth_attempt";
 
-  private final TinkKeyManager keyManager;
+  private final KeyManagementOperations keyManagementOperations;
   private final EncryptionKeyRepository keyRepository;
   private final ReencryptionBatchRepository batchRepository;
   private final AuditLogService auditLogService;
@@ -52,13 +52,13 @@ public class ReencryptionBatchCreationService {
   private final TinkProperties tinkProperties;
 
   public ReencryptionBatchCreationService(
-      TinkKeyManager keyManager,
+      KeyManagementOperations keyManagementOperations,
       EncryptionKeyRepository keyRepository,
       ReencryptionBatchRepository batchRepository,
       AuditLogService auditLogService,
       ReencryptionTargetQueryService targetQueryService,
       TinkProperties tinkProperties) {
-    this.keyManager = keyManager;
+    this.keyManagementOperations = keyManagementOperations;
     this.keyRepository = keyRepository;
     this.batchRepository = batchRepository;
     this.auditLogService = auditLogService;
@@ -213,12 +213,12 @@ public class ReencryptionBatchCreationService {
   }
 
   public EncryptionKey getPrimaryKeyFromKeyset() {
-    if (!keyManager.isInitialized()) {
+    if (!keyManagementOperations.isInitialized()) {
       logger.warn("Tink keyset not initialized, cannot determine PRIMARY key");
       return null;
     }
 
-    long primaryKeyId = keyManager.getCurrentPrimaryKeyId();
+    long primaryKeyId = keyManagementOperations.getCurrentPrimaryKeyId();
 
     EncryptionKey primaryKey = keyRepository.findById(primaryKeyId).orElse(null);
     if (primaryKey == null) {

@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
@@ -29,7 +30,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,13 +54,13 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>Error handling scenarios
  * </ul>
  *
- * <p><b>Note:</b> These tests use mocked TinkKeyManager to avoid dependencies on filesystem keyset
- * files. The focus is on testing the service logic and database interactions.
+ * <p><b>Note:</b> These tests use mocked key management operations to avoid dependencies on
+ * filesystem keysets. The focus is on testing the service logic and database interactions.
  *
  * @author Ezkey contributors
  * @since 2025
  */
-@SpringBootTest
+@SpringBootTest(classes = KeyRotationServiceIntegrationTest.TestConfiguration.class)
 @TestPropertySource(
     properties = {
       "ezkey.encryption.enabled=false",
@@ -66,7 +73,28 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class KeyRotationServiceIntegrationTest {
 
-  @MockitoBean private TinkKeyManager tinkKeyManager;
+  @SpringBootConfiguration
+  @EnableAutoConfiguration
+  @EntityScan(basePackageClasses = EncryptionKey.class)
+  @EnableJpaRepositories(basePackageClasses = EncryptionKeyRepository.class)
+  @Import(KeyRotationService.class)
+  static class TestConfiguration {
+
+    @Bean
+    TinkProperties tinkProperties() {
+      return new TinkProperties();
+    }
+  }
+
+  @MockitoBean private KeyManagementOperations keyManagementOperations;
+
+  @MockitoBean private EncryptionOperations encryptionOperations;
+
+  @MockitoBean private AuditLogService auditLogService;
+
+  @MockitoBean private EncryptionKeyMigrationScopeService migrationScopeService;
+
+  @MockitoBean private KeyUsageVerificationService keyUsageVerificationService;
 
   @Autowired private KeyRotationService keyRotationService;
 
@@ -79,16 +107,19 @@ class KeyRotationServiceIntegrationTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    // Setup mock TinkKeyManager behavior
-    org.mockito.Mockito.when(tinkKeyManager.isInitialized()).thenReturn(true);
-    org.mockito.Mockito.when(tinkKeyManager.getCurrentPrimaryKeyId()).thenReturn(PRIMARY_KEY_ID_1);
-    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds()).thenReturn(List.of(PRIMARY_KEY_ID_1));
+    // Setup mock key management behavior
+    org.mockito.Mockito.when(keyManagementOperations.isInitialized()).thenReturn(true);
+    org.mockito.Mockito.when(keyManagementOperations.getCurrentPrimaryKeyId())
+        .thenReturn(PRIMARY_KEY_ID_1);
+    org.mockito.Mockito.when(keyManagementOperations.getAllKeyIds())
+        .thenReturn(List.of(PRIMARY_KEY_ID_1));
     // Mock for PENDING workflow (default): adds key without promotion
-    org.mockito.Mockito.when(tinkKeyManager.addKeyWithoutPromotion()).thenReturn(PRIMARY_KEY_ID_2);
+    org.mockito.Mockito.when(keyManagementOperations.addKeyWithoutPromotion())
+        .thenReturn(PRIMARY_KEY_ID_2);
     // Mock for immediate promotion workflow
-    org.mockito.Mockito.when(tinkKeyManager.rotateKey()).thenReturn(PRIMARY_KEY_ID_2);
+    org.mockito.Mockito.when(keyManagementOperations.rotateKey()).thenReturn(PRIMARY_KEY_ID_2);
     // Mock for promotion of PENDING key
-    org.mockito.Mockito.when(tinkKeyManager.promoteToPrimary(PRIMARY_KEY_ID_2))
+    org.mockito.Mockito.when(keyManagementOperations.promoteToPrimary(PRIMARY_KEY_ID_2))
         .thenReturn(PRIMARY_KEY_ID_1);
   }
 
@@ -106,7 +137,7 @@ class KeyRotationServiceIntegrationTest {
     keyRepository.save(initialKey);
 
     // Update mock to return both keys after adding
-    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
+    org.mockito.Mockito.when(keyManagementOperations.getAllKeyIds())
         .thenReturn(List.of(PRIMARY_KEY_ID_1, PRIMARY_KEY_ID_2));
 
     // Act - Default behavior creates PENDING key (not immediately promoted)
@@ -146,7 +177,7 @@ class KeyRotationServiceIntegrationTest {
     keyRepository.save(initialKey);
 
     // Update mock to return both keys after rotation
-    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
+    org.mockito.Mockito.when(keyManagementOperations.getAllKeyIds())
         .thenReturn(List.of(PRIMARY_KEY_ID_1, PRIMARY_KEY_ID_2));
 
     // Act - Immediate promotion uses rotateKey() and sets PRIMARY immediately
@@ -179,7 +210,8 @@ class KeyRotationServiceIntegrationTest {
     assertThat(keyRepository.count()).isZero();
 
     // Update mock to return only new key after adding
-    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds()).thenReturn(List.of(PRIMARY_KEY_ID_2));
+    org.mockito.Mockito.when(keyManagementOperations.getAllKeyIds())
+        .thenReturn(List.of(PRIMARY_KEY_ID_2));
 
     // Act - Default workflow creates PENDING key
     long newKeyId = keyRotationService.introduceNewKey("TEST_USER");
@@ -242,9 +274,10 @@ class KeyRotationServiceIntegrationTest {
     // Arrange - Empty database, keyset has multiple keys
     assertThat(keyRepository.count()).isZero();
     long keyId3 = 5555555555L;
-    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
+    org.mockito.Mockito.when(keyManagementOperations.getAllKeyIds())
         .thenReturn(List.of(PRIMARY_KEY_ID_1, keyId3));
-    org.mockito.Mockito.when(tinkKeyManager.getCurrentPrimaryKeyId()).thenReturn(PRIMARY_KEY_ID_1);
+    org.mockito.Mockito.when(keyManagementOperations.getCurrentPrimaryKeyId())
+        .thenReturn(PRIMARY_KEY_ID_1);
 
     // Act - Initialize sync (this happens via @PostConstruct, but we can test the logic)
     // Since we can't easily test @PostConstruct, we'll test the sync method directly
@@ -284,7 +317,7 @@ class KeyRotationServiceIntegrationTest {
     initialKey.setCreatedBy("INITIAL");
     keyRepository.save(initialKey);
 
-    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
+    org.mockito.Mockito.when(keyManagementOperations.getAllKeyIds())
         .thenReturn(List.of(PRIMARY_KEY_ID_1, PRIMARY_KEY_ID_2));
 
     // Act - Use immediate promotion
@@ -328,9 +361,9 @@ class KeyRotationServiceIntegrationTest {
     keyRepository.save(key2);
 
     // Mock keyset with all three keys
-    org.mockito.Mockito.when(tinkKeyManager.getAllKeyIds())
+    org.mockito.Mockito.when(keyManagementOperations.getAllKeyIds())
         .thenReturn(List.of(keyId1, keyId2, keyId3));
-    org.mockito.Mockito.when(tinkKeyManager.getCurrentPrimaryKeyId()).thenReturn(keyId3);
+    org.mockito.Mockito.when(keyManagementOperations.getCurrentPrimaryKeyId()).thenReturn(keyId3);
 
     // Act - Use immediate promotion
     keyRotationService.introduceNewKey("ROTATION_USER", true);

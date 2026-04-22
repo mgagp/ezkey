@@ -65,7 +65,7 @@
  * <h2>Key entry points</h2>
  *
  * <ul>
- *   <li>{@link org.ezkey.security.TinkKeyManager}
+ *   <li>{@link org.ezkey.security.KeyManagementOperations}
  *   <li>{@link org.ezkey.security.EncryptionService}
  *   <li>{@link org.ezkey.security.EncryptionEntityListener}
  *   <li>{@link org.ezkey.security.KeyRotationService}

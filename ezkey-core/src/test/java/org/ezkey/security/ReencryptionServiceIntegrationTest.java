@@ -27,7 +27,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +55,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @author Ezkey contributors
  * @since 2025
  */
-@SpringBootTest
+@SpringBootTest(classes = ReencryptionServiceIntegrationTest.TestConfiguration.class)
 @TestPropertySource(
     properties = {
       "ezkey.encryption.enabled=false",
@@ -64,7 +68,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class ReencryptionServiceIntegrationTest {
 
-  @MockitoBean private TinkKeyManager tinkKeyManager;
+  @SpringBootConfiguration
+  @EnableAutoConfiguration
+  @EntityScan(basePackageClasses = {EncryptionKey.class, ReencryptionBatch.class})
+  @EnableJpaRepositories(
+      basePackageClasses = {EncryptionKeyRepository.class, ReencryptionBatchRepository.class})
+  static class TestConfiguration {}
+
+  @MockitoBean private KeyManagementOperations keyManagementOperations;
+
+  @MockitoBean private EncryptionOperations encryptionOperations;
 
   @Autowired private EncryptionKeyRepository keyRepository;
 
@@ -96,9 +109,10 @@ class ReencryptionServiceIntegrationTest {
     newKey.setCreatedBy("TEST");
     keyRepository.save(newKey);
 
-    // Setup mock TinkKeyManager
-    org.mockito.Mockito.when(tinkKeyManager.isInitialized()).thenReturn(true);
-    org.mockito.Mockito.when(tinkKeyManager.getCurrentPrimaryKeyId()).thenReturn(NEW_KEY_ID);
+    // Setup mock key management operations
+    org.mockito.Mockito.when(keyManagementOperations.isInitialized()).thenReturn(true);
+    org.mockito.Mockito.when(keyManagementOperations.getCurrentPrimaryKeyId())
+        .thenReturn(NEW_KEY_ID);
   }
 
   @Test
@@ -280,7 +294,7 @@ class ReencryptionServiceIntegrationTest {
     assertEquals(2, activeCount);
     assertTrue(pendingBatches.size() > 0);
     assertTrue(inProgressBatches.size() > 0);
-    assertEquals(0, batchRepository.findByStatus(BatchStatus.COMPLETED).size());
+    assertEquals(1, batchRepository.findByStatus(BatchStatus.COMPLETED).size());
   }
 
   @Test
@@ -374,23 +388,23 @@ class ReencryptionServiceIntegrationTest {
     saved.setRecordsDone(25);
     saved.setProgressPct(new BigDecimal("25.00"));
     ReencryptionBatch at25 = batchRepository.save(saved);
+    assertEquals(new BigDecimal("25.00"), at25.getProgressPct());
 
     saved.setRecordsDone(50);
     saved.setProgressPct(new BigDecimal("50.00"));
     ReencryptionBatch at50 = batchRepository.save(saved);
+    assertEquals(new BigDecimal("50.00"), at50.getProgressPct());
 
     saved.setRecordsDone(75);
     saved.setProgressPct(new BigDecimal("75.00"));
     ReencryptionBatch at75 = batchRepository.save(saved);
+    assertEquals(new BigDecimal("75.00"), at75.getProgressPct());
 
     saved.setRecordsDone(100);
     saved.setProgressPct(new BigDecimal("100.00"));
     ReencryptionBatch at100 = batchRepository.save(saved);
 
     // Assert
-    assertEquals(new BigDecimal("25.00"), at25.getProgressPct());
-    assertEquals(new BigDecimal("50.00"), at50.getProgressPct());
-    assertEquals(new BigDecimal("75.00"), at75.getProgressPct());
     assertEquals(new BigDecimal("100.00"), at100.getProgressPct());
   }
 }

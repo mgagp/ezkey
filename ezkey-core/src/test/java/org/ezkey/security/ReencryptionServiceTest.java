@@ -90,8 +90,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @DisplayName("ReencryptionService Critical Unit Tests")
 class ReencryptionServiceTest {
 
-    @Mock private EncryptionOperations encryptionOperations;
-  @Mock private TinkKeyManager keyManager;
+  @Mock private EncryptionOperations encryptionOperations;
+  @Mock private KeyManagementOperations keyManagementOperations;
   @Mock private EncryptionKeyRepository keyRepository;
   @Mock private ReencryptionBatchRepository batchRepository;
   @Mock private EnrollmentRepository enrollmentRepository;
@@ -120,7 +120,7 @@ class ReencryptionServiceTest {
   void setUp() {
     lenient().when(meterRegistryProvider.getIfAvailable()).thenReturn(null);
 
-        recordCipher = new ReencryptionRecordCipher(encryptionOperations);
+    recordCipher = new ReencryptionRecordCipher(encryptionOperations);
     targetQueryService =
         new ReencryptionTargetQueryService(enrollmentRepository, authAttemptRepository);
     rowPersistence =
@@ -144,7 +144,7 @@ class ReencryptionServiceTest {
     reencryptionBatchExecutor.initialize();
     batchCreationService =
         new ReencryptionBatchCreationService(
-            keyManager,
+            keyManagementOperations,
             keyRepository,
             batchRepository,
             auditLogService,
@@ -201,8 +201,8 @@ class ReencryptionServiceTest {
     // Use lenient() for stubbings that may not be used by all tests
     lenient().when(properties.getReencryption()).thenReturn(reencryptionConfig);
     lenient().when(encryptionOperations.isEncryptionAvailable()).thenReturn(true);
-    lenient().when(keyManager.isInitialized()).thenReturn(true);
-    lenient().when(keyManager.getCurrentPrimaryKeyId()).thenReturn(2222222222L);
+    lenient().when(keyManagementOperations.isInitialized()).thenReturn(true);
+    lenient().when(keyManagementOperations.getCurrentPrimaryKeyId()).thenReturn(2222222222L);
     lenient().when(keyRepository.findById(2222222222L)).thenReturn(java.util.Optional.of(newKey));
     lenient().when(batchRepository.findById(1)).thenReturn(Optional.of(batch));
   }
@@ -306,13 +306,13 @@ class ReencryptionServiceTest {
   void reencryptRecord_ShouldHandleDecryptionError() {
     // Arrange
     Enrollment enrollment = createMockEnrollment(123, "ENC:1111111111:corrupted-data");
-        when(encryptionOperations.decrypt("ENC:1111111111:corrupted-data"))
+    when(encryptionOperations.decrypt("ENC:1111111111:corrupted-data"))
         .thenThrow(new RuntimeException("Decryption failed"));
 
     // Act & Assert
     assertThrows(RuntimeException.class, () -> invokeReencryptRecord(batch, enrollment));
-        verify(encryptionOperations).decrypt("ENC:1111111111:corrupted-data");
-        verify(encryptionOperations, never()).encrypt(anyString());
+    verify(encryptionOperations).decrypt("ENC:1111111111:corrupted-data");
+    verify(encryptionOperations, never()).encrypt(anyString());
     // Note: save() is no longer called here, records are batch saved in processBatch()
   }
 
@@ -321,14 +321,15 @@ class ReencryptionServiceTest {
   void reencryptRecord_ShouldHandleEncryptionError() {
     // Arrange
     Enrollment enrollment = createMockEnrollment(123, "ENC:1111111111:encrypted-data");
-        when(encryptionOperations.decrypt("ENC:1111111111:encrypted-data")).thenReturn("plaintext-data");
-        when(encryptionOperations.encrypt("plaintext-data"))
+    when(encryptionOperations.decrypt("ENC:1111111111:encrypted-data"))
+        .thenReturn("plaintext-data");
+    when(encryptionOperations.encrypt("plaintext-data"))
         .thenThrow(new RuntimeException("Encryption failed"));
 
     // Act & Assert
     assertThrows(RuntimeException.class, () -> invokeReencryptRecord(batch, enrollment));
-        verify(encryptionOperations).decrypt("ENC:1111111111:encrypted-data");
-        verify(encryptionOperations).encrypt("plaintext-data");
+    verify(encryptionOperations).decrypt("ENC:1111111111:encrypted-data");
+    verify(encryptionOperations).encrypt("plaintext-data");
     // Note: save() is no longer called here, records are batch saved in processBatch()
   }
 
@@ -386,8 +387,8 @@ class ReencryptionServiceTest {
         .thenReturn(List.of(enrollment1, enrollment2))
         .thenReturn(List.of());
 
-        when(encryptionOperations.decrypt(anyString())).thenReturn("plaintext");
-        when(encryptionOperations.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
+    when(encryptionOperations.decrypt(anyString())).thenReturn("plaintext");
+    when(encryptionOperations.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
     when(enrollmentRepository.findByIdForReencryptionUpdate(1))
         .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
     when(enrollmentRepository.findByIdForReencryptionUpdate(2))
@@ -484,9 +485,9 @@ class ReencryptionServiceTest {
         .thenReturn(List.of(enrollment1, enrollment2))
         .thenReturn(List.of());
 
-        when(encryptionOperations.decrypt("ENC:1111111111:data1")).thenReturn("plaintext1");
-        when(encryptionOperations.encrypt("plaintext1")).thenReturn("ENC:2222222222:reencrypted1");
-        when(encryptionOperations.decrypt("ENC:1111111111:data2"))
+    when(encryptionOperations.decrypt("ENC:1111111111:data1")).thenReturn("plaintext1");
+    when(encryptionOperations.encrypt("plaintext1")).thenReturn("ENC:2222222222:reencrypted1");
+    when(encryptionOperations.decrypt("ENC:1111111111:data2"))
         .thenThrow(new RuntimeException("Decryption failed"));
     when(enrollmentRepository.findByIdForReencryptionUpdate(1))
         .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
@@ -555,8 +556,7 @@ class ReencryptionServiceTest {
         .thenReturn(List.of());
 
     when(encryptionOperations.decrypt("ENC:1111111111:data1")).thenReturn("plaintext1");
-    when(encryptionOperations.encrypt("plaintext1"))
-        .thenReturn("ENC:2222222222:reencrypted1");
+    when(encryptionOperations.encrypt("plaintext1")).thenReturn("ENC:2222222222:reencrypted1");
     when(enrollmentRepository.findByIdForReencryptionUpdate(1))
         .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
     lenient()
@@ -868,9 +868,9 @@ class ReencryptionServiceTest {
             anyString(), anyString(), anyLong(), any(), any()))
         .thenReturn(List.of());
 
-    // Mock TinkKeyManager to return PRIMARY key ID
-    when(keyManager.isInitialized()).thenReturn(true);
-    when(keyManager.getCurrentPrimaryKeyId()).thenReturn(9999999999L);
+    // Mock key management to return PRIMARY key ID
+    when(keyManagementOperations.isInitialized()).thenReturn(true);
+    when(keyManagementOperations.getCurrentPrimaryKeyId()).thenReturn(9999999999L);
 
     // Mock: Each old key has records to re-encrypt
     when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike("ENC:1111111111:%"))
@@ -969,8 +969,8 @@ class ReencryptionServiceTest {
             anyString(), anyString(), anyLong(), any(), any()))
         .thenReturn(List.of());
 
-    when(keyManager.isInitialized()).thenReturn(true);
-    when(keyManager.getCurrentPrimaryKeyId()).thenReturn(9999999999L);
+    when(keyManagementOperations.isInitialized()).thenReturn(true);
+    when(keyManagementOperations.getCurrentPrimaryKeyId()).thenReturn(9999999999L);
 
     when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike(anyString())).thenReturn(0);
     when(enrollmentRepository.countByEncryptedEnrollmentProofTokenLike(anyString())).thenReturn(0);
