@@ -32,6 +32,9 @@ export const colors = {
   overlay: 'rgba(0, 0, 0, 0.6)',
   errorBg: 'rgba(255, 120, 120, 0.15)',
   cardHeaderBg: 'rgba(18, 39, 92, 0.6)',
+
+  /** Faint tint inside the home-screen installation frame (behind enrollment cards). */
+  installationShellBg: 'rgba(48, 118, 223, 0.06)',
 } as const;
 
 export const spacing = {
