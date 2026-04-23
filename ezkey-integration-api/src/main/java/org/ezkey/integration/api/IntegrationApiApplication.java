@@ -41,6 +41,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
       "org.ezkey.enrollment",
       "org.ezkey.integration",
       "org.ezkey.audit",
+      "org.ezkey.alert",
       "org.ezkey.config",
       "org.ezkey.security",
       "org.ezkey.exception",

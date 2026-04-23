@@ -21,7 +21,8 @@ import java.util.List;
  * Global Admin (instance-wide stats plus alerts).
  *
  * <p><b>Alerts:</b> When the principal is a Global Admin, {@code alerts} is populated with recent
- * {@code AUDIT_CHAIN_GAP_PENDING} entries. For Tenant Admin, {@code alerts} is null or empty.
+ * open operator-facing alerts (e.g. undeclared audit chain gaps). For Tenant Admin, {@code alerts}
+ * is null or empty.
  */
 @Schema(description = "Aggregated dashboard overview (stats, recent activity, optional alerts)")
 public class DashboardOverviewDto {

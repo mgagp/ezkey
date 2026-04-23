@@ -14,6 +14,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.EnumSet;
 import java.util.List;
+import org.ezkey.alert.domain.AlertResolutionReason;
+import org.ezkey.alert.service.AlertService;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
@@ -79,6 +81,7 @@ public class AuditLifecycleService {
   private final AuditLogService auditLogService;
   private final AuditChainProperties chainProperties;
   private final AuditArchiveProperties archiveProperties;
+  private final AlertService alertService;
 
   /**
    * Constructs the lifecycle service with required dependencies.
@@ -90,6 +93,7 @@ public class AuditLifecycleService {
    * @param auditLogService audit log service for creating meta-audit entries
    * @param chainProperties chain configuration (window size for gapEnd auto-derivation)
    * @param archiveProperties archive lifecycle policy configuration
+   * @param alertService alert subsystem entry point for auto-resolving matching gap alerts
    */
   public AuditLifecycleService(
       AuditChainCheckpointRepository checkpointRepository,
@@ -98,7 +102,8 @@ public class AuditLifecycleService {
       AuditChainVerificationService chainVerificationService,
       AuditLogService auditLogService,
       AuditChainProperties chainProperties,
-      AuditArchiveProperties archiveProperties) {
+      AuditArchiveProperties archiveProperties,
+      AlertService alertService) {
     this.checkpointRepository = checkpointRepository;
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
@@ -106,6 +111,7 @@ public class AuditLifecycleService {
     this.auditLogService = auditLogService;
     this.chainProperties = chainProperties;
     this.archiveProperties = archiveProperties;
+    this.alertService = alertService;
   }
 
   /**
@@ -621,6 +627,21 @@ public class AuditLifecycleService {
             .reason(request.justification())
             .build();
     auditLogService.log(metaEntry);
+
+    // Auto-resolve the matching open AUDIT_CHAIN_GAP_PENDING alert (if any). The scheduler keys
+    // its alert dedupe on the checkpoint id that was the latest at detection time, which is
+    // exactly the chain anchor preceding the declared gap.
+    Long alertAnchorId =
+        anchorMode
+            ? anchor.getCheckpointId()
+            : checkpointRepository
+                .findLatestBefore(gapStart)
+                .map(AuditChainCheckpoint::getCheckpointId)
+                .orElse(null);
+    if (alertAnchorId != null) {
+      alertService.resolveByDedupeKey(
+          "AUDIT_CHAIN_GAP_PENDING:" + alertAnchorId, AlertResolutionReason.GAP_DECLARED, null);
+    }
 
     return new GapDeclarationResult(
         gapStart,

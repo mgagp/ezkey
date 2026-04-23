@@ -52,6 +52,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
       "org.ezkey.integration",
       "org.ezkey.exception",
       "org.ezkey.audit", //
+      "org.ezkey.alert", // Operator-facing alert subsystem (ezkey_alert)
       "org.ezkey.signature",
       "org.ezkey.config",
       "org.ezkey.instance",

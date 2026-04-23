@@ -64,7 +64,8 @@
     "detectedMessage": "detected. Declare the gap in Audit Logs to restore chain continuity.",
     "anchorCheckpointLabel": "Anchor checkpoint",
     "gapMinutes": "~{{count}} min gap",
-    "openAuditLogs": "Open Audit Logs →"
+    "openAuditLogs": "Open Audit Logs →",
+    "openAlerts": "Open Alerts →"
   },
   "recentActivity": {
     "title": "Recent Activity",

@@ -46,7 +46,7 @@ public class DashboardController {
    * Returns the aggregated dashboard overview for the current admin.
    *
    * <p>Tenant Admin: tenant-scoped stats and recent activity. Global Admin: instance-wide stats,
-   * recent activity, and optional alerts (e.g. AUDIT_CHAIN_GAP_PENDING).
+   * recent activity, and optional open operator-facing alerts (e.g. undeclared audit chain gaps).
    *
    * @return dashboard overview DTO
    */

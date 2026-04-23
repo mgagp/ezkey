@@ -265,6 +265,17 @@ The Integrity panel (Global Admin only) drives gap declaration from detection, n
 
 When no undeclared gaps remain for the selected range the panel shows an explicit "no undeclared gaps detected" confirmation rather than an empty list, so operators can distinguish "nothing to do" from "not yet checked".
 
+### Operator alerts (`AUDIT_CHAIN_GAP_PENDING`)
+
+When the audit-chain scheduler detects an undeclared gap during one of its periodic runs, it raises an
+`AUDIT_CHAIN_GAP_PENDING` entry in the **alerts subsystem** (`/api/v1/alerts`, see [docs/ALERTS.md](ALERTS.md)).
+The alert payload carries the anchor checkpoint id, the detected gap window, and an estimated duration.
+While the gap remains undeclared, repeated detections **touch** the same open alert (incrementing
+`occurrenceCount` and `lastSeenAt`) instead of producing duplicates. As soon as a Global Admin runs
+**Declare gap** for that anchor (either from the Integrity panel or via `POST /api/v1/audit-logs/lifecycle/declare-gap`),
+the matching open alert is automatically resolved with reason `GAP_DECLARED`. This is the canonical
+operator signal for chain-continuity issues; the dashboard surfaces the most recent open alerts for Global Admins.
+
 ---
 
 ## 5. What This Does NOT Cover (Accepted Limitations)

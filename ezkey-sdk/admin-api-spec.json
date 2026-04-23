@@ -35,32 +35,20 @@
       "description": "Encryption key lifecycle management and rotation operations"
     },
     {
-      "name": "Administrator Provisioning",
-      "description": "Administrator provisioning API"
-    },
-    {
       "name": "Dashboard",
       "description": "Dashboard overview and aggregated stats for Admin UI"
-    },
-    {
-      "name": "Enrollments",
-      "description": "Enrollment management API"
     },
     {
       "name": "Admin Enrollment Management",
       "description": "Administrator enrollment management and device recovery after loss"
     },
     {
+      "name": "Alerts",
+      "description": "Operator-facing alert subsystem (Global Admin only). Surfaces internal Ezkey signals such as undeclared audit chain gaps; resolved automatically by the matching producer workflow."
+    },
+    {
       "name": "Auth Attempts",
       "description": "Authentication attempt management API"
-    },
-    {
-      "name": "API Keys",
-      "description": "API key management for machine-to-machine (Integration API) authentication"
-    },
-    {
-      "name": "Integrations",
-      "description": "Integration management API"
     },
     {
       "name": "Admin Authentication",
@@ -71,12 +59,28 @@
       "description": "Audit log query and reporting API for security monitoring and compliance"
     },
     {
-      "name": "Public",
-      "description": "Unauthenticated instance metadata"
-    },
-    {
       "name": "Tenants",
       "description": "Tenant management API"
+    },
+    {
+      "name": "Administrator Provisioning",
+      "description": "Administrator provisioning API"
+    },
+    {
+      "name": "Enrollments",
+      "description": "Enrollment management API"
+    },
+    {
+      "name": "API Keys",
+      "description": "API key management for machine-to-machine (Integration API) authentication"
+    },
+    {
+      "name": "Integrations",
+      "description": "Integration management API"
+    },
+    {
+      "name": "Public",
+      "description": "Unauthenticated instance metadata"
     }
   ],
   "paths": {
@@ -4245,7 +4249,8 @@
                 "AUDIT_CHAIN_ARCHIVE_SEALED",
                 "AUDIT_CHAIN_ARCHIVE_EXPORTED",
                 "AUDIT_CHAIN_GAP_DECLARED",
-                "AUDIT_CHAIN_GAP_PENDING"
+                "ALERT_RAISED",
+                "ALERT_RESOLVED"
               ]
             }
           },
@@ -4266,7 +4271,8 @@
                 "REENCRYPTION",
                 "INTEGRATION",
                 "TENANT",
-                "AUDIT_CHAIN"
+                "AUDIT_CHAIN",
+                "ALERT"
               ]
             }
           },
@@ -5061,6 +5067,220 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PagedModelApiKeyResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "List alerts",
+        "description": "Returns a paginated list of operator-facing alerts. Supports filtering by status, alert type, severity, dedupe key, and creation-time range. Default sort is by createdAt descending (newest first). Sortable fields: createdAt, lastSeenAt, severity, status. Restricted to Global Admin.",
+        "operationId": "listAlerts",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by alert status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "RESOLVED"
+              ]
+            }
+          },
+          {
+            "name": "alertType",
+            "in": "query",
+            "description": "Filter by alert type",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "AUDIT_CHAIN_GAP_PENDING"
+              ]
+            }
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "description": "Filter by severity",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INFO",
+                "WARNING",
+                "CRITICAL"
+              ]
+            }
+          },
+          {
+            "name": "dedupeKey",
+            "in": "query",
+            "description": "Exact dedupe-key match (debug / forensic aid)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "description": "Filter by creation time (inclusive start), ISO-8601",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "createdBefore",
+            "in": "query",
+            "description": "Filter by creation time (inclusive end), ISO-8601",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alerts retrieved",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAlertResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAlertResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (not a Global Admin)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAlertResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alertId}": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Get alert by id",
+        "description": "Returns the alert with the given id. Restricted to Global Admin.",
+        "operationId": "getAlert",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alert returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (not a Global Admin)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alert not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponseDto"
                 }
               }
             }
@@ -7308,22 +7528,38 @@
         "type": "object",
         "description": "Admin console alert for dashboard overview (Global Admin only)",
         "properties": {
-          "auditLogId": {
+          "alertId": {
             "type": "integer",
             "format": "int64"
           },
-          "eventType": {
-            "type": "string"
+          "alertType": {
+            "type": "string",
+            "enum": [
+              "AUDIT_CHAIN_GAP_PENDING"
+            ]
           },
-          "eventStatus": {
-            "type": "string"
+          "severity": {
+            "type": "string",
+            "enum": [
+              "INFO",
+              "WARNING",
+              "CRITICAL"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED"
+            ]
           },
           "createdAt": {
             "type": "string",
             "format": "date-time"
           },
-          "eventDetails": {
-            "$ref": "#/components/schemas/DashboardGapPendingDetailsDto"
+          "payload": {
+            "type": "string",
+            "description": "Producer-defined JSON payload (string). Shape depends on alertType; clients aware of the type render structured fields."
           }
         }
       },
@@ -7433,29 +7669,6 @@
             "type": "integer",
             "format": "int64",
             "description": "Active enrollments with status INVALID or REVOKED"
-          }
-        }
-      },
-      "DashboardGapPendingDetailsDto": {
-        "type": "object",
-        "description": "Details for audit chain gap pending alert",
-        "properties": {
-          "gapStart": {
-            "type": "string"
-          },
-          "estimatedGapEnd": {
-            "type": "string"
-          },
-          "estimatedGapMinutes": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "anchorCheckpointId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "message": {
-            "type": "string"
           }
         }
       },
@@ -7668,7 +7881,8 @@
               "AUDIT_CHAIN_ARCHIVE_SEALED",
               "AUDIT_CHAIN_ARCHIVE_EXPORTED",
               "AUDIT_CHAIN_GAP_DECLARED",
-              "AUDIT_CHAIN_GAP_PENDING"
+              "ALERT_RAISED",
+              "ALERT_RESOLVED"
             ]
           },
           "eventAction": {
@@ -7997,6 +8211,85 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ApiKeyResponseDto"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "AlertResponseDto": {
+        "type": "object",
+        "description": "Operator-facing alert (read model).",
+        "properties": {
+          "alertId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "alertType": {
+            "type": "string",
+            "enum": [
+              "AUDIT_CHAIN_GAP_PENDING"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "INFO",
+              "WARNING",
+              "CRITICAL"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED"
+            ]
+          },
+          "dedupeKey": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "string",
+            "description": "Producer-defined JSON payload (string). Shape depends on alertType; clients aware of the type render structured fields, others fall back to raw display."
+          },
+          "occurrenceCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedByAdminId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resolutionReason": {
+            "type": "string",
+            "enum": [
+              "GAP_DECLARED",
+              "MANUAL"
+            ]
+          }
+        }
+      },
+      "PagedModelAlertResponseDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertResponseDto"
             }
           },
           "page": {

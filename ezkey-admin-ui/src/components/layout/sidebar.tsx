@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Dialog } from '@/components/ui/dialog';
 import type { AdminResponseDtoAdminType } from '@/generated/admin-api/model';
 import {
+  AlertTriangle,
   Building2,
   FileText,
   Key,
@@ -27,6 +28,7 @@ type NavLabelKey =
   | 'enrollments'
   | 'authAttempts'
   | 'auditLogs'
+  | 'alerts'
   | 'admins'
   | 'apiKeys'
   | 'encryptionKeys';
@@ -46,6 +48,7 @@ const navItems: NavItem[] = [
   { labelKey: 'enrollments', path: '/enrollments', icon: Users },
   { labelKey: 'authAttempts', path: '/auth-attempts', icon: ShieldCheck },
   { labelKey: 'auditLogs', path: '/audit-logs', icon: FileText },
+  { labelKey: 'alerts', path: '/alerts', icon: AlertTriangle, roles: ['GLOBAL_ADMIN'] },
   { labelKey: 'admins', path: '/admins', icon: UserCog },
   { labelKey: 'apiKeys', path: '/api-keys', icon: Key },
   { labelKey: 'encryptionKeys', path: '/encryption-keys', icon: KeyRound, roles: ['GLOBAL_ADMIN'] },

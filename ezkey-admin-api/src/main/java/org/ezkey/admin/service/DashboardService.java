@@ -10,24 +10,20 @@
 
 package org.ezkey.admin.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.ezkey.admin.dto.response.DashboardAlertItemDto;
 import org.ezkey.admin.dto.response.DashboardAuth24hStatsDto;
 import org.ezkey.admin.dto.response.DashboardEnrollmentStatsDto;
-import org.ezkey.admin.dto.response.DashboardGapPendingDetailsDto;
 import org.ezkey.admin.dto.response.DashboardIntegrationStatsDto;
 import org.ezkey.admin.dto.response.DashboardOverviewDto;
 import org.ezkey.admin.dto.response.DashboardRecentActivityItemDto;
 import org.ezkey.admin.security.AdminPrincipal;
-import org.ezkey.audit.domain.EventType;
+import org.ezkey.alert.domain.entity.Alert;
+import org.ezkey.alert.service.AlertService;
 import org.ezkey.audit.domain.entity.AuditLog;
-import org.ezkey.audit.integrity.AuditChainCheckpointRepository;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.authattempt.domain.AuthAttemptDashboard24hStats;
 import org.ezkey.authattempt.service.AuthAttemptService;
@@ -46,7 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Builds the aggregated dashboard overview for the Admin UI.
  *
  * <p>Role-aware: Tenant Admin receives tenant-scoped stats and no alerts. Global Admin receives
- * instance-wide stats and instance-level alerts (e.g. {@code AUDIT_CHAIN_GAP_PENDING}).
+ * instance-wide stats and the most recent open operator-facing alerts.
  *
  * <p>Uses parallel execution (CompletableFuture) to fetch integration, enrollment, auth-24h, and
  * recent-activity data in one overview call.
@@ -59,38 +55,36 @@ public class DashboardService {
   private static final int RECENT_ACTIVITY_SIZE = 5;
   private static final int ALERTS_SIZE = 10;
 
-  /** Used only for parsing GAP_PENDING eventDetails JSON; not injected to avoid bean dependency. */
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-  private static final String CHECKPOINT_TYPE_GAP_DECLARATION = "GAP_DECLARATION";
-
   private final IntegrationService integrationService;
   private final EnrollmentService enrollmentService;
   private final AuthAttemptService authAttemptService;
   private final AuditLogService auditLogService;
-  private final AuditChainCheckpointRepository checkpointRepository;
+  private final AlertService alertService;
 
+  /**
+   * Constructs the dashboard service.
+   *
+   * @param integrationService integration aggregate stats
+   * @param enrollmentService enrollment aggregate stats
+   * @param authAttemptService 24h authentication aggregate stats
+   * @param auditLogService recent-activity feed
+   * @param alertService open operator-facing alerts (Global Admin)
+   */
   public DashboardService(
       IntegrationService integrationService,
       EnrollmentService enrollmentService,
       AuthAttemptService authAttemptService,
       AuditLogService auditLogService,
-      AuditChainCheckpointRepository checkpointRepository) {
+      AlertService alertService) {
     this.integrationService = integrationService;
     this.enrollmentService = enrollmentService;
     this.authAttemptService = authAttemptService;
     this.auditLogService = auditLogService;
-    this.checkpointRepository = checkpointRepository;
+    this.alertService = alertService;
   }
 
   /**
    * Builds the dashboard overview for the given principal.
-   *
-   * <p>Tenant Admin: tenant-scoped integrations, enrollments, auth 24h, recent activity; alerts
-   * null/empty.
-   *
-   * <p>Global Admin: instance-wide stats, recent activity across tenants, and alerts (e.g. audit
-   * chain gap pending).
    *
    * @param principal the authenticated admin principal
    * @return the dashboard overview DTO
@@ -119,8 +113,7 @@ public class DashboardService {
 
     CompletableFuture<List<DashboardAlertItemDto>> alertsFuture =
         principal.isGlobalAdmin()
-            ? CompletableFuture.supplyAsync(
-                () -> buildAlerts(PageRequest.of(0, ALERTS_SIZE, createdAtDesc)))
+            ? CompletableFuture.supplyAsync(this::buildAlerts)
             : CompletableFuture.completedFuture(null);
 
     DashboardOverviewDto dto = new DashboardOverviewDto();
@@ -208,90 +201,19 @@ public class DashboardService {
     return list;
   }
 
-  private List<DashboardAlertItemDto> buildAlerts(PageRequest pageRequest) {
-    var page =
-        auditLogService.findByFilters(
-            EventType.AUDIT_CHAIN_GAP_PENDING,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            pageRequest);
-    List<DashboardAlertItemDto> list = new ArrayList<>();
-    for (AuditLog log : page.getContent()) {
-      DashboardGapPendingDetailsDto details = parseGapPendingDetails(log.getEventDetails());
-      if (details != null && isGapDeclared(details)) {
-        continue;
-      }
+  private List<DashboardAlertItemDto> buildAlerts() {
+    List<Alert> openAlerts = alertService.findRecentOpen(ALERTS_SIZE);
+    List<DashboardAlertItemDto> list = new ArrayList<>(openAlerts.size());
+    for (Alert a : openAlerts) {
       DashboardAlertItemDto item = new DashboardAlertItemDto();
-      item.setAuditLogId(log.getAuditLogId());
-      item.setEventType(log.getEventType() != null ? log.getEventType().name() : null);
-      item.setEventStatus(log.getEventStatus() != null ? log.getEventStatus().name() : null);
-      item.setCreatedAt(log.getCreatedAt());
-      item.setEventDetails(details);
+      item.setAlertId(a.getAlertId());
+      item.setAlertType(a.getAlertType());
+      item.setSeverity(a.getSeverity());
+      item.setStatus(a.getStatus());
+      item.setCreatedAt(a.getCreatedAt());
+      item.setPayload(a.getPayload());
       list.add(item);
     }
     return list;
-  }
-
-  /**
-   * Returns true if a GAP_DECLARATION checkpoint exists for the period described in the alert
-   * details, meaning the gap has been formally declared and the alert should not be shown.
-   */
-  private boolean isGapDeclared(DashboardGapPendingDetailsDto details) {
-    if (details.getGapStart() == null
-        || details.getGapStart().isBlank()
-        || details.getEstimatedGapEnd() == null
-        || details.getEstimatedGapEnd().isBlank()) {
-      return false;
-    }
-    try {
-      OffsetDateTime windowStart = OffsetDateTime.parse(details.getGapStart().trim());
-      OffsetDateTime windowEnd = OffsetDateTime.parse(details.getEstimatedGapEnd().trim());
-      return checkpointRepository
-          .findByWindowStartAndWindowEndAndCheckpointType(
-              windowStart, windowEnd, CHECKPOINT_TYPE_GAP_DECLARATION)
-          .isPresent();
-    } catch (DateTimeParseException e) {
-      logger.debug("Could not parse gap window for declared check: {}", e.getMessage());
-      return false;
-    }
-  }
-
-  private DashboardGapPendingDetailsDto parseGapPendingDetails(String eventDetailsJson) {
-    if (eventDetailsJson == null || eventDetailsJson.isBlank()) {
-      return null;
-    }
-    try {
-      JsonNode root = OBJECT_MAPPER.readTree(eventDetailsJson);
-      DashboardGapPendingDetailsDto dto = new DashboardGapPendingDetailsDto();
-      if (root.has("gapStart")) {
-        dto.setGapStart(root.get("gapStart").asText());
-      }
-      if (root.has("estimatedGapEnd")) {
-        dto.setEstimatedGapEnd(root.get("estimatedGapEnd").asText());
-      }
-      if (root.has("estimatedGapMinutes")) {
-        dto.setEstimatedGapMinutes(root.get("estimatedGapMinutes").asLong());
-      }
-      if (root.has("anchorCheckpointId")) {
-        dto.setAnchorCheckpointId(root.get("anchorCheckpointId").asLong());
-      }
-      if (root.has("message")) {
-        dto.setMessage(root.get("message").asText());
-      }
-      return dto;
-    } catch (Exception e) {
-      logger.warn("Failed to parse AUDIT_CHAIN_GAP_PENDING eventDetails: {}", e.getMessage());
-      return null;
-    }
   }
 }

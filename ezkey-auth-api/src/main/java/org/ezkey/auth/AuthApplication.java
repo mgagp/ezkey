@@ -31,6 +31,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
       "org.ezkey.enrollment", //
       "org.ezkey.exception", //
       "org.ezkey.audit", //
+      "org.ezkey.alert", // Operator-facing alert subsystem (raised by audit chain scheduler)
       "org.ezkey.signature", //
       "org.ezkey.config", // Configuration properties
       "org.ezkey.instance", // Public instance metadata (instance-info)

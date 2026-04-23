@@ -1,0 +1,75 @@
+{
+  "list": {
+    "title": "Alerts",
+    "subtitle": "Operator-facing alerts raised by the platform.",
+    "refresh": "Refresh",
+    "filterStatus": "Status",
+    "filterStatusOpen": "Open",
+    "filterStatusResolved": "Resolved",
+    "filterStatusAll": "All",
+    "filterSeverity": "Severity",
+    "filterSeverityAll": "All severities",
+    "filterAlertType": "Type",
+    "filterAlertTypeAll": "All types",
+    "columns": {
+      "id": "Id",
+      "type": "Type",
+      "severity": "Severity",
+      "status": "Status",
+      "occurrences": "Occurrences",
+      "createdAt": "Raised",
+      "lastSeenAt": "Last seen",
+      "resolvedAt": "Resolved"
+    },
+    "emptyMessage": "No alerts match the current filters.",
+    "help": {
+      "topic": "About alerts",
+      "body": "Alerts are operator-facing signals raised by the platform (for example when the audit chain detects an undeclared gap). Alerts are deduplicated while open: identical conditions touch the existing open alert (incrementing occurrence count) instead of creating duplicates. Most alert types resolve automatically when their underlying condition is addressed (for example, declaring a gap resolves the matching audit-chain alert)."
+    }
+  },
+  "detail": {
+    "title": "Alert #{{id}}",
+    "fallbackTitle": "Alert",
+    "breadcrumb": "Alerts",
+    "cardDetails": "Details",
+    "cardPayload": "Payload",
+    "cardResolution": "Resolution",
+    "labelId": "Id",
+    "labelType": "Type",
+    "labelSeverity": "Severity",
+    "labelStatus": "Status",
+    "labelDedupeKey": "Dedupe key",
+    "labelOccurrences": "Occurrences",
+    "labelCreatedAt": "First raised",
+    "labelLastSeenAt": "Last seen",
+    "labelResolvedAt": "Resolved at",
+    "labelResolvedBy": "Resolved by admin",
+    "labelResolutionReason": "Resolution reason",
+    "payloadEmpty": "No payload.",
+    "payloadRawHeading": "Raw payload",
+    "auditChainGap": {
+      "anchorCheckpointId": "Anchor checkpoint",
+      "gapStart": "Gap start",
+      "estimatedGapEnd": "Estimated gap end",
+      "estimatedGapMinutes": "Estimated duration (min)",
+      "message": "Message",
+      "viewAuditLogs": "Open in audit logs"
+    }
+  },
+  "severity": {
+    "INFO": "Info",
+    "WARNING": "Warning",
+    "CRITICAL": "Critical"
+  },
+  "status": {
+    "OPEN": "Open",
+    "RESOLVED": "Resolved"
+  },
+  "resolutionReason": {
+    "GAP_DECLARED": "Gap declared",
+    "MANUAL": "Manual"
+  },
+  "type": {
+    "AUDIT_CHAIN_GAP_PENDING": "Audit chain — undeclared gap"
+  }
+}

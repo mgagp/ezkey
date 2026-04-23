@@ -16,10 +16,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.ezkey.audit.domain.ApiName;
-import org.ezkey.audit.domain.EventStatus;
-import org.ezkey.audit.domain.EventType;
-import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.alert.domain.AlertSeverity;
+import org.ezkey.alert.domain.AlertType;
+import org.ezkey.alert.service.AlertService;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.service.AuditLogService;
 import org.slf4j.Logger;
@@ -52,9 +51,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Defensive gap detection:</b> Before processing the lookback window, the scheduler checks
  * whether the latest checkpoint in the database pre-dates the start of the lookback window. If so,
  * an undeclared gap exists that falls outside the scheduler's catch-up range. A WARNING is logged
- * and an {@code AUDIT_CHAIN_GAP_PENDING} audit entry is emitted on every scheduler tick until an
- * admin calls {@code POST /lifecycle/declare-gap} to formally close the gap. Regular checkpoints
- * for the lookback window are still created to ensure new post-restart activity is signed.
+ * and an {@code AUDIT_CHAIN_GAP_PENDING} alert is raised (or touched) in the {@code ezkey_alert}
+ * table on every scheduler tick until an admin calls {@code POST /lifecycle/declare-gap} to
+ * formally close the gap. Regular checkpoints for the lookback window are still created to ensure
+ * new post-restart activity is signed.
  *
  * <p><b>HA Safety:</b> Uses ShedLock to ensure only one instance creates checkpoints at a time.
  *
@@ -83,6 +83,7 @@ public class AuditChainScheduler {
   private final AuditLogRepository auditLogRepository;
   private final AuditHmacService auditHmacService;
   private final AuditLogService auditLogService;
+  private final AlertService alertService;
 
   /**
    * Constructs the scheduler with required dependencies.
@@ -91,19 +92,22 @@ public class AuditChainScheduler {
    * @param checkpointRepository checkpoint persistence
    * @param auditLogRepository audit log entry repository
    * @param auditHmacService HMAC signing service
-   * @param auditLogService audit log service for emitting gap-pending alerts
+   * @param auditLogService audit log service for emitting checkpoint meta-entries
+   * @param alertService alert subsystem entry point for raising undeclared-gap alerts
    */
   public AuditChainScheduler(
       AuditChainProperties chainProperties,
       AuditChainCheckpointRepository checkpointRepository,
       AuditLogRepository auditLogRepository,
       AuditHmacService auditHmacService,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      AlertService alertService) {
     this.chainProperties = chainProperties;
     this.checkpointRepository = checkpointRepository;
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
     this.auditLogService = auditLogService;
+    this.alertService = alertService;
   }
 
   /**
@@ -177,9 +181,10 @@ public class AuditChainScheduler {
    * Detects whether the latest checkpoint in the database predates the start of the current
    * lookback window, indicating an undeclared gap that the scheduler cannot cover.
    *
-   * <p>When a gap is detected, a WARNING is logged and an {@code AUDIT_CHAIN_GAP_PENDING} audit
-   * entry is emitted. This entry is visible to the TUI dashboard alert widget and signals to the
-   * Global Admin that {@code POST /lifecycle/declare-gap} must be called to formally close the gap.
+   * <p>When a gap is detected, a WARNING is logged and an {@code AUDIT_CHAIN_GAP_PENDING} alert is
+   * raised (or touched if already open) in the {@code ezkey_alert} table. Operators see this alert
+   * in the Admin UI and must call {@code POST /lifecycle/declare-gap} to formally close the gap;
+   * that workflow auto-resolves the matching alert.
    *
    * <p>Regular checkpoints for the lookback window are still created even when a gap is detected:
    * post-restart audit activity must be signed and checkpointed regardless.
@@ -229,16 +234,11 @@ public class AuditChainScheduler {
                 + " Admin action required: POST /lifecycle/declare-gap\""
                 + "}";
 
-        AuditLog alert =
-            AuditLog.builder()
-                .eventType(EventType.AUDIT_CHAIN_GAP_PENDING)
-                .eventAction("audit-chain-scheduler")
-                .eventStatus(EventStatus.FAILURE)
-                .apiName(ApiName.ADMIN_API)
-                .eventDetails(eventDetails)
-                .build();
-
-        auditLogService.log(alert);
+        alertService.raiseOrTouch(
+            AlertType.AUDIT_CHAIN_GAP_PENDING,
+            AlertSeverity.WARNING,
+            "AUDIT_CHAIN_GAP_PENDING:" + latest.getCheckpointId(),
+            eventDetails);
       }
     } catch (Exception e) {
       logger.error("Failed to check for pre-lookback gap: {}", e.getMessage(), e);
