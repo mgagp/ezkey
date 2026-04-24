@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Activity, AlertTriangle, FileText, Key, Puzzle, RefreshCw, ShieldCheck, Users } from 'lucide-react';
@@ -77,8 +77,9 @@ function getUpdatedLabelKeyAndParams(
 // ── Dashboard page ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { t } = useTranslation(['dashboard', 'layout', 'audit-logs']);
+  const { t } = useTranslation(['dashboard', 'layout', 'audit-logs', 'alerts']);
   const { session } = useAuth();
+  const navigate = useNavigate();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
   const {
@@ -195,35 +196,44 @@ export default function DashboardPage() {
                 {' '}{t('dashboard:auditChain.detectedMessage')}
               </p>
               <ul className="space-y-2">
-                {alerts.map((alert) => (
-                  <li
-                    key={alert.auditLogId}
-                    className="flex flex-wrap items-baseline gap-2 text-sm border-b border-fg/10 pb-2 last:border-0 last:pb-0"
-                  >
-                    <Badge variant="error">
-                      {getAuditEventTypeLabel(alert.eventType ?? undefined, t)}
-                    </Badge>
-                    <span className="text-fg-muted shrink-0">
-                      {formatRelativeTime(alert.createdAt ?? '')}
-                    </span>
-                    {alert.eventDetails?.anchorCheckpointId != null && (
-                      <span className="text-fg">
-                        <Tooltip content={t('dashboard:auditChain.help.anchorCheckpoint')}>
-                          <span className="underline decoration-dotted cursor-help">{t('dashboard:auditChain.anchorCheckpointLabel')}</span>
-                        </Tooltip>
-                        : {alert.eventDetails.anchorCheckpointId}
-                        {alert.eventDetails.estimatedGapMinutes != null &&
-                          ` · ${t('dashboard:auditChain.gapMinutes', { count: alert.eventDetails.estimatedGapMinutes })}`}
+                {alerts.map((alert) => {
+                  let parsed: { anchorCheckpointId?: number; estimatedGapMinutes?: number } | null = null;
+                  if (alert.payload) {
+                    try { parsed = JSON.parse(alert.payload); } catch { parsed = null; }
+                  }
+                  return (
+                    <li
+                      key={alert.alertId}
+                      className="flex flex-wrap items-baseline gap-2 text-sm border-b border-fg/10 pb-2 last:border-0 last:pb-0 cursor-pointer hover:bg-fg/5 -mx-1 px-1 rounded-sm"
+                      onClick={() => { navigate(`/alerts/${alert.alertId}`); }}
+                    >
+                      <Badge variant="error">
+                        {alert.alertType
+                          ? t(`alerts:type.${alert.alertType}`, { defaultValue: alert.alertType })
+                          : '—'}
+                      </Badge>
+                      <span className="text-fg-muted shrink-0">
+                        {formatRelativeTime(alert.createdAt ?? '')}
                       </span>
-                    )}
-                  </li>
-                ))}
+                      {parsed?.anchorCheckpointId != null && (
+                        <span className="text-fg">
+                          <Tooltip content={t('dashboard:auditChain.help.anchorCheckpoint')}>
+                            <span className="underline decoration-dotted cursor-help">{t('dashboard:auditChain.anchorCheckpointLabel')}</span>
+                          </Tooltip>
+                          : {parsed.anchorCheckpointId}
+                          {parsed.estimatedGapMinutes != null &&
+                            ` · ${t('dashboard:auditChain.gapMinutes', { count: parsed.estimatedGapMinutes })}`}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
               <Link
-                to="/audit-logs"
+                to="/alerts"
                 className="mt-3 inline-block text-sm font-bold text-accent hover:underline"
               >
-                {t('dashboard:auditChain.openAuditLogs')}
+                {t('dashboard:auditChain.openAlerts')}
               </Link>
             </CardContent>
           </Card>

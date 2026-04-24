@@ -3,6 +3,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 
 import enAdmins from '@/locales/en/admins.json';
+import enAlerts from '@/locales/en/alerts.json';
 import enApiKeys from '@/locales/en/api-keys.json';
 import enAuditLogs from '@/locales/en/audit-logs.json';
 import enEncryptionKeys from '@/locales/en/encryption-keys.json';
@@ -19,6 +20,7 @@ import enLogin from '@/locales/en/login.json';
 import enTenants from '@/locales/en/tenants.json';
 import enReasonPresets from '@/locales/en/reasonPresets.json';
 import frAdmins from '@/locales/fr/admins.json';
+import frAlerts from '@/locales/fr/alerts.json';
 import frApiKeys from '@/locales/fr/api-keys.json';
 import frAuditLogs from '@/locales/fr/audit-logs.json';
 import frEncryptionKeys from '@/locales/fr/encryption-keys.json';
@@ -44,6 +46,7 @@ i18n
     resources: {
       en: {
         admins: enAdmins as Record<string, unknown>,
+        alerts: enAlerts as Record<string, unknown>,
         'api-keys': enApiKeys as Record<string, unknown>,
         'audit-logs': enAuditLogs as Record<string, unknown>,
         'encryption-keys': enEncryptionKeys as Record<string, unknown>,
@@ -62,6 +65,7 @@ i18n
       },
       fr: {
         admins: frAdmins as Record<string, unknown>,
+        alerts: frAlerts as Record<string, unknown>,
         'api-keys': frApiKeys as Record<string, unknown>,
         'audit-logs': frAuditLogs as Record<string, unknown>,
         'encryption-keys': frEncryptionKeys as Record<string, unknown>,
@@ -81,7 +85,7 @@ i18n
     },
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['admins', 'api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'demo', 'errors', 'enrollments', 'help', 'integrations', 'layout', 'login', 'reasonPresets', 'tenants'],
+    ns: ['admins', 'alerts', 'api-keys', 'audit-logs', 'auth-attempts', 'common', 'encryption-keys', 'dashboard', 'demo', 'errors', 'enrollments', 'help', 'integrations', 'layout', 'login', 'reasonPresets', 'tenants'],
     interpolation: {
       escapeValue: false,
     },

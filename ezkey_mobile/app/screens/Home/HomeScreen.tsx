@@ -208,7 +208,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
   onToggle,
   onSelectEnrollment,
 }) => (
-  <View style={styles.installationSection}>
+  <View style={styles.installationShell}>
     <TouchableOpacity
       style={styles.installationHeader}
       onPress={() => onToggle(group.installationId)}
@@ -302,15 +302,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    gap: spacing.md,
+    gap: spacing.xl,
     paddingBottom: spacing.xxl,
   },
-  installationSection: {
-    gap: spacing.sm,
+  installationShell: {
+    borderWidth: 1,
+    borderColor: colors.borderFocusStrong,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: colors.installationShellBg,
   },
   installationHeader: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
     padding: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
@@ -339,10 +342,12 @@ const styles = StyleSheet.create({
   installationToggle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: colors.textSecondary,
+    color: colors.primaryLight,
   },
   installationBody: {
     gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
   },
   tenantHeader: {
     marginTop: spacing.sm,
@@ -365,7 +370,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
   },

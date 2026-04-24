@@ -4,6 +4,8 @@ This document records the **target path** for a disposable Ezkey stack on **Amaz
 
 **Traffic model:** browser → **Cloudflare** (public TLS) → **Lightsail** (Caddy terminates TLS to the origin using a **Cloudflare Origin Certificate**) → **Spring APIs** in Docker. Postgres is not exposed publicly.
 
+**SSH (experimental hybrid):** scripts use **`LIGHTSAIL_SSH_HOST`**, default **`ezkey`**. See [`README.md`](README.md#default-lightsail-ssh-host-ezkey).
+
 ---
 
 ## Phase 0 — Fresh Lightsail instance (Amazon Linux 2023): Docker and `ec2-user`
@@ -102,7 +104,7 @@ Single directory **`~/ezkey`** matching the repo: `docker/generate-encryption-ke
 
 Run **`docker compose`** and **`./clean-start.sh`** only from **`~/ezkey/experimental-hybrid/lightsail/`**.
 
-### Copy from your PC (repo root; `ezkey` = SSH host alias)
+### Copy from your PC (repo root; default SSH `Host` name is `ezkey` — see README)
 
 ```bash
 ssh ezkey "mkdir -p ezkey/docker ezkey/experimental-hybrid/lightsail/caddy-certs"

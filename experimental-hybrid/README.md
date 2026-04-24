@@ -12,10 +12,14 @@ The same Lightsail stack can also expose `demo-app-acme` behind a dedicated host
 
 Image build targets and behaviour match the main repo [`docker/Dockerfile`](../docker/Dockerfile) and [`docker/docker-compose.yml`](../docker/docker-compose.yml).
 
+## Default Lightsail SSH host: ezkey
+
+For the **experimental hybrid** path, **`LIGHTSAIL_SSH_HOST`** in [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) and [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) **defaults to `ezkey`** (the `Host` in `~/.ssh/config` for this VM). Doc examples use the same name to keep steps short. *If your alias differs, set `LIGHTSAIL_SSH_HOST` when running those scripts.*
+
 ## Prerequisites
 
 - Docker and Docker Compose on the **build machine** and on the **VM**. On a **new** Amazon Linux 2023 Lightsail instance, install Docker and add **`ec2-user`** to the **`docker`** group — see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) **Phase 0**. On the VM, use a **non-root** login that can run Docker; [`lightsail/clean-start.sh`](lightsail/clean-start.sh) does not call `sudo` and checks `docker info` before running.
-- SSH access to the VM (e.g. `Host ezkey` in `~/.ssh/config`)
+- **SSH** to the VM: default alias **`ezkey`** (see [above](#default-lightsail-ssh-host-ezkey)).
 - DNS **A** records for your API hostnames pointing at the Lightsail **public** IP, **DNS only** (grey cloud) if Let’s Encrypt should reach Caddy directly
 - Ports **80** and **443** open on the instance firewall for HTTP-01 / HTTPS
 
@@ -47,8 +51,6 @@ docker save -o docker/export/ezkey-integration-api.tar ezkey-integration-api:lat
 ```
 
 ## Copy to the VM and load
-
-Replace `ezkey` with your SSH host alias:
 
 ```bash
 scp docker/export/ezkey-migration.tar ezkey:~/

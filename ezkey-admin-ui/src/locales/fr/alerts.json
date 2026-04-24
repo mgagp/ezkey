@@ -1,0 +1,75 @@
+{
+  "list": {
+    "title": "Alertes",
+    "subtitle": "Alertes opérationnelles émises par la plateforme.",
+    "refresh": "Actualiser",
+    "filterStatus": "Statut",
+    "filterStatusOpen": "Ouvertes",
+    "filterStatusResolved": "Résolues",
+    "filterStatusAll": "Toutes",
+    "filterSeverity": "Sévérité",
+    "filterSeverityAll": "Toutes sévérités",
+    "filterAlertType": "Type",
+    "filterAlertTypeAll": "Tous types",
+    "columns": {
+      "id": "Id",
+      "type": "Type",
+      "severity": "Sévérité",
+      "status": "Statut",
+      "occurrences": "Occurrences",
+      "createdAt": "Émise",
+      "lastSeenAt": "Dernière vue",
+      "resolvedAt": "Résolue"
+    },
+    "emptyMessage": "Aucune alerte ne correspond aux filtres.",
+    "help": {
+      "topic": "À propos des alertes",
+      "body": "Les alertes sont des signaux opérationnels émis par la plateforme (par exemple lorsque la chaîne d'audit détecte une coupure non déclarée). Tant qu'elles sont ouvertes, les alertes sont dédupliquées : des conditions identiques mettent à jour l'alerte ouverte existante (incrément du compteur d'occurrences) plutôt que d'en créer de nouvelles. La plupart des types d'alerte se résolvent automatiquement lorsque la cause sous-jacente est traitée (par exemple, déclarer une coupure d'audit résout l'alerte correspondante)."
+    }
+  },
+  "detail": {
+    "title": "Alerte n°{{id}}",
+    "fallbackTitle": "Alerte",
+    "breadcrumb": "Alertes",
+    "cardDetails": "Détails",
+    "cardPayload": "Charge utile",
+    "cardResolution": "Résolution",
+    "labelId": "Id",
+    "labelType": "Type",
+    "labelSeverity": "Sévérité",
+    "labelStatus": "Statut",
+    "labelDedupeKey": "Clé de déduplication",
+    "labelOccurrences": "Occurrences",
+    "labelCreatedAt": "Première émission",
+    "labelLastSeenAt": "Dernière vue",
+    "labelResolvedAt": "Résolue le",
+    "labelResolvedBy": "Résolue par",
+    "labelResolutionReason": "Motif de résolution",
+    "payloadEmpty": "Aucune charge utile.",
+    "payloadRawHeading": "Charge utile brute",
+    "auditChainGap": {
+      "anchorCheckpointId": "Checkpoint d'ancrage",
+      "gapStart": "Début de la coupure",
+      "estimatedGapEnd": "Fin estimée",
+      "estimatedGapMinutes": "Durée estimée (min)",
+      "message": "Message",
+      "viewAuditLogs": "Ouvrir dans les journaux d'audit"
+    }
+  },
+  "severity": {
+    "INFO": "Info",
+    "WARNING": "Avertissement",
+    "CRITICAL": "Critique"
+  },
+  "status": {
+    "OPEN": "Ouverte",
+    "RESOLVED": "Résolue"
+  },
+  "resolutionReason": {
+    "GAP_DECLARED": "Coupure déclarée",
+    "MANUAL": "Manuelle"
+  },
+  "type": {
+    "AUDIT_CHAIN_GAP_PENDING": "Chaîne d'audit — coupure non déclarée"
+  }
+}

@@ -12,6 +12,7 @@
     "enrollments": "Enrollments",
     "authAttempts": "Auth Attempts",
     "auditLogs": "Audit Logs",
+    "alerts": "Alerts",
     "admins": "Admins",
     "apiKeys": "API Keys",
     "encryptionKeys": "Encryption Keys"

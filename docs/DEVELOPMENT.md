@@ -372,6 +372,21 @@ See plan in `.cursor/plans/maven_pom_versioning_no_branch_collisions_3e7551eb.pl
 - **Code Duplication**: Duplicate code detection
 - **Technical Debt**: SonarQube analysis
 
+### MapStruct compile warnings
+MapStruct runs as a javac annotation processor. Several API mappers use
+`unmappedTargetPolicy = ReportingPolicy.WARN`, so unmapped target properties produce **compiler
+warnings** during `mvn compile` (for example: `Unmapped target property: "fieldName"`).
+
+**Team convention:**
+- Run a **full reactor** compile from the repository root when checking for these warnings (for
+  example `mvn clean compile`), then scan the log for `Unmapped target` / `Unmapped source`.
+- For each warning, confirm whether the gap is **intentional** (field filled elsewhere: controller
+  security context, service layer, JPA callbacks). If intentional, add an explicit
+  `@Mapping(target = "...", ignore = true)` on the mapping method and document why in Javadoc.
+  If not intentional, add a real mapping or fix the model.
+- **`ReportingPolicy.ERROR`** is optional hardening for a mapper once all intentional gaps are
+  explicit; until then, **WARN** keeps the build green while still surfacing new omissions.
+
 ### Performance Monitoring
 - **Response Times**: API response time monitoring
 - **Memory Usage**: Memory consumption tracking

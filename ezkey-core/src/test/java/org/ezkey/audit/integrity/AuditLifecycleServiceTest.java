@@ -39,6 +39,7 @@ class AuditLifecycleServiceTest {
   @Mock private AuditLogRepository auditLogRepository;
   @Mock private AuditChainVerificationService chainVerificationService;
   @Mock private AuditLogService auditLogService;
+  @Mock private org.ezkey.alert.service.AlertService alertService;
 
   private AuditLifecycleService lifecycleService;
   private AuditHmacService hmacService;
@@ -57,7 +58,8 @@ class AuditLifecycleServiceTest {
             chainVerificationService,
             auditLogService,
             chainProperties,
-            archiveProperties);
+            archiveProperties,
+            alertService);
   }
 
   @Test

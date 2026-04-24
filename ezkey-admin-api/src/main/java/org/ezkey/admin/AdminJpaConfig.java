@@ -65,7 +65,8 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
       "org.ezkey.enrollment.domain.repository",
       "org.ezkey.audit.domain.repository",
       "org.ezkey.audit.integrity",
-      "org.ezkey.security.domain.repository"
+      "org.ezkey.security.domain.repository",
+      "org.ezkey.alert.repository"
     })
 @EntityScan(
     basePackages = {
@@ -74,7 +75,8 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerial
       "org.ezkey.enrollment.domain.entity",
       "org.ezkey.audit.domain.entity",
       "org.ezkey.audit.integrity",
-      "org.ezkey.security.domain.entity"
+      "org.ezkey.security.domain.entity",
+      "org.ezkey.alert.domain.entity"
     })
 @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
 public class AdminJpaConfig {

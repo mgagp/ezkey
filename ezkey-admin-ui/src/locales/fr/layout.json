@@ -12,6 +12,7 @@
     "enrollments": "Enrôlements",
     "authAttempts": "Tentatives d'auth.",
     "auditLogs": "Journaux d'audit",
+    "alerts": "Alertes",
     "admins": "Administrateurs",
     "apiKeys": "Clés API",
     "encryptionKeys": "Clés de chiffrement"

@@ -15,6 +15,8 @@ const EnrollmentDetailPage = lazy(() => import('@/pages/enrollment-detail'));
 const AdminsPage = lazy(() => import('@/pages/admins'));
 const AuthAttemptsPage = lazy(() => import('@/pages/auth-attempts'));
 const AuditLogsPage = lazy(() => import('@/pages/audit-logs'));
+const AlertsPage = lazy(() => import('@/pages/alerts'));
+const AlertDetailPage = lazy(() => import('@/pages/alert-detail'));
 const ApiKeysPage = lazy(() => import('@/pages/api-keys'));
 const ApiKeyDetailPage = lazy(() => import('@/pages/api-key-detail'));
 const EncryptionKeysPage = lazy(() => import('@/pages/encryption-keys'));
@@ -153,6 +155,26 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <SuspensePage>
           <AuditLogsPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/alerts',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <AlertsPage />
+        </SuspensePage>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/alerts/:alertId',
+    element: (
+      <ProtectedRoute>
+        <SuspensePage>
+          <AlertDetailPage />
         </SuspensePage>
       </ProtectedRoute>
     ),

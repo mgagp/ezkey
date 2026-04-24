@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 #
 # Export Ezkey backend images (docker save), copy to Lightsail (scp), docker load on the VM.
-# Intended to run from a dev machine with Docker; the VM uses SSH host alias (default: ezkey).
+# LIGHTSAIL_SSH_HOST defaults to ezkey (experimental hybrid). Override if your SSH Host name differs.
 #
-# Prerequisites:
-#   - Images already built locally (e.g. docker compose build …) unless you use a wrapper script
-#   - ssh / scp to LIGHTSAIL_SSH_HOST
+# Prerequisites: built images; ssh/scp to LIGHTSAIL_SSH_HOST.
 #
-# Operator files (docker-compose.yml, Caddyfile, clean-start.sh) under experimental-hybrid/lightsail/
-# are copied to the VM before --clean-start so the remote stack matches the repo (images alone do not
-# update compose). Override path with LIGHTSAIL_REMOTE_DIR if your tree differs.
+# With --clean-start, syncs lightsail operator files to the VM then runs clean-start.sh (destructive).
+# Override remote path with LIGHTSAIL_REMOTE_DIR if needed.
 #
 # Usage (from repository root):
 #   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh
-#   LIGHTSAIL_SSH_HOST=ezkey ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --clean-start
+#   ./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --clean-start
 #
 # Options:
 #   --apis-only       Export only admin-api, auth-api, integration-api (no migration image).

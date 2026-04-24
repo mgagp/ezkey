@@ -5,53 +5,67 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * DTO: DashboardAlertItemDto
- * Description: Single admin-console alert (e.g. AUDIT_CHAIN_GAP_PENDING) for dashboard overview.
+ * Description: Single admin-console alert (read model) projected from ezkey_alert.
  */
 
 package org.ezkey.admin.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
+import org.ezkey.alert.domain.AlertSeverity;
+import org.ezkey.alert.domain.AlertStatus;
+import org.ezkey.alert.domain.AlertType;
 
 /**
- * A single alert intended for the admin console (e.g. undeclared audit chain gap).
+ * A single alert intended for the dashboard overview (Global Admin only).
  *
- * <p>Populated only for Global Admin. Currently supports {@code AUDIT_CHAIN_GAP_PENDING} with
- * structured {@code eventDetails}.
+ * <p>Projected from the operator-facing {@code ezkey_alert} table. The {@code payload} is surfaced
+ * as a JSON-encoded string; clients render it according to {@link AlertType}.
+ *
+ * @since 2026
  */
 @Schema(description = "Admin console alert for dashboard overview (Global Admin only)")
 public class DashboardAlertItemDto {
 
-  private Long auditLogId;
-  private String eventType;
-  private String eventStatus;
+  private Long alertId;
+  private AlertType alertType;
+  private AlertSeverity severity;
+  private AlertStatus status;
   private OffsetDateTime createdAt;
-  private DashboardGapPendingDetailsDto eventDetails;
+  private String payload;
 
   public DashboardAlertItemDto() {}
 
-  public Long getAuditLogId() {
-    return auditLogId;
+  public Long getAlertId() {
+    return alertId;
   }
 
-  public void setAuditLogId(Long auditLogId) {
-    this.auditLogId = auditLogId;
+  public void setAlertId(Long alertId) {
+    this.alertId = alertId;
   }
 
-  public String getEventType() {
-    return eventType;
+  public AlertType getAlertType() {
+    return alertType;
   }
 
-  public void setEventType(String eventType) {
-    this.eventType = eventType;
+  public void setAlertType(AlertType alertType) {
+    this.alertType = alertType;
   }
 
-  public String getEventStatus() {
-    return eventStatus;
+  public AlertSeverity getSeverity() {
+    return severity;
   }
 
-  public void setEventStatus(String eventStatus) {
-    this.eventStatus = eventStatus;
+  public void setSeverity(AlertSeverity severity) {
+    this.severity = severity;
+  }
+
+  public AlertStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(AlertStatus status) {
+    this.status = status;
   }
 
   public OffsetDateTime getCreatedAt() {
@@ -62,11 +76,15 @@ public class DashboardAlertItemDto {
     this.createdAt = createdAt;
   }
 
-  public DashboardGapPendingDetailsDto getEventDetails() {
-    return eventDetails;
+  @Schema(
+      description =
+          "Producer-defined JSON payload (string). Shape depends on alertType; clients aware of"
+              + " the type render structured fields.")
+  public String getPayload() {
+    return payload;
   }
 
-  public void setEventDetails(DashboardGapPendingDetailsDto eventDetails) {
-    this.eventDetails = eventDetails;
+  public void setPayload(String payload) {
+    this.payload = payload;
   }
 }
