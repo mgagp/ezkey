@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <title th:text="${pageTitle}">Dashboard - ACME Inc</title>
     <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
     <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
@@ -774,6 +776,8 @@
     <script>
         // Per-scenario state: { attemptId, approver }
         const bizState = {};
+        const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
 
         /**
          * Sends a business-approval request for the given scenario to the specified approver.
@@ -800,7 +804,10 @@
             try {
                 const resp = await fetch('/api/business-approval', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        [csrfHeader]: csrfToken
+                    },
                     body: JSON.stringify({ scenario, approverIdentifier })
                 });
                 const data = await resp.json();

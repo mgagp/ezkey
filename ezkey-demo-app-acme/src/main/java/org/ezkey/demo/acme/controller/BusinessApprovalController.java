@@ -98,7 +98,7 @@ public class BusinessApprovalController {
           .body(new BusinessApprovalStartResponse(null, null, null, "Not authenticated."));
     }
 
-    EzkeyClient client = ezkeyClientProvider.getClient();
+    EzkeyClient client = ezkeyClientProvider.getClient(session);
     if (client == null) {
       return ResponseEntity.status(503)
           .body(
@@ -199,7 +199,7 @@ public class BusinessApprovalController {
           new BusinessApprovalStatusResponse("error", "No pending approval request."));
     }
 
-    EzkeyClient client = ezkeyClientProvider.getClient();
+    EzkeyClient client = ezkeyClientProvider.getClient(session);
     if (client == null) {
       return ResponseEntity.ok(
           new BusinessApprovalStatusResponse("error", "EZKey SDK not configured."));

@@ -39,6 +39,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class HomeController {
 
+  private static final String USER_ATTRIBUTE = "user";
+  private static final String AUTH_ATTEMPT_FINAL_STATUS_ATTRIBUTE = "authAttemptFinalStatus";
+  private static final String PENDING_AUTH_ATTEMPT_ID_ATTRIBUTE = "pendingAuthAttemptId";
+  private static final String PENDING_CHALLENGE_CODE_ATTRIBUTE = "pendingChallengeCode";
+  private static final String PENDING_USERNAME_ATTRIBUTE = "pendingUsername";
+  private static final String PENDING_DISPLAY_NAME_ATTRIBUTE = "pendingDisplayName";
+  private static final String PENDING_ENROLLMENT_ID_ATTRIBUTE = "pendingEnrollmentId";
+  private static final String PENDING_TIMEOUT_SECONDS_ATTRIBUTE = "pendingTimeoutSeconds";
+  private static final String PENDING_EXPIRES_AT_ATTRIBUTE = "pendingExpiresAt";
+
   /**
    * Redirects root URL to login page.
    *
@@ -61,7 +71,7 @@ public class HomeController {
    */
   @GetMapping("/dashboard")
   public String dashboard(HttpSession session, Model model) {
-    AuthenticatedUser user = (AuthenticatedUser) session.getAttribute("user");
+    AuthenticatedUser user = (AuthenticatedUser) session.getAttribute(USER_ATTRIBUTE);
 
     if (user == null) {
       return "redirect:/login";
@@ -73,14 +83,27 @@ public class HomeController {
   }
 
   /**
-   * Handles logout by invalidating session and redirecting to login page.
+   * Handles logout by clearing authenticated-user state while preserving demo API key configuration
+   * for the current browser session.
    *
    * @param session the HTTP session
    * @return redirect to login page
    */
   @GetMapping("/logout")
   public String logout(HttpSession session) {
-    session.invalidate();
+    clearAuthenticationState(session);
     return "redirect:/login?logout=true";
+  }
+
+  private void clearAuthenticationState(HttpSession session) {
+    session.removeAttribute(USER_ATTRIBUTE);
+    session.removeAttribute(AUTH_ATTEMPT_FINAL_STATUS_ATTRIBUTE);
+    session.removeAttribute(PENDING_AUTH_ATTEMPT_ID_ATTRIBUTE);
+    session.removeAttribute(PENDING_CHALLENGE_CODE_ATTRIBUTE);
+    session.removeAttribute(PENDING_USERNAME_ATTRIBUTE);
+    session.removeAttribute(PENDING_DISPLAY_NAME_ATTRIBUTE);
+    session.removeAttribute(PENDING_ENROLLMENT_ID_ATTRIBUTE);
+    session.removeAttribute(PENDING_TIMEOUT_SECONDS_ATTRIBUTE);
+    session.removeAttribute(PENDING_EXPIRES_AT_ATTRIBUTE);
   }
 }

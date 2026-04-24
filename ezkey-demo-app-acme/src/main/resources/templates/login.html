@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <title th:text="${pageTitle}">Login - ACME Inc</title>
     <link rel="stylesheet" th:href="@{/css/neo-brutalism.css}">
     <link rel="stylesheet" th:href="@{/css/acme-theme.css}">
@@ -43,6 +45,7 @@
                     
                     <!-- Login Form -->
                     <form method="post" action="/login" class="login-form">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                         <div class="form-group">
                             <label for="username">USERNAME</label>
                             <input type="text" id="username" name="username" 
@@ -73,14 +76,30 @@
                 <!-- Info Card -->
                 <div class="info-card">
                     <div class="info-card-header">
-                        <h3>HOW IT WORKS</h3>
+                        <h3>ABOUT THIS DEMO</h3>
                         <div class="info-card-buttons">
                             <button type="button" id="api-key-btn" class="reload-config-btn" onclick="openApiKeyDialog()">
                                 🔑 CONFIGURE API KEY
                             </button>
                         </div>
                     </div>
+                    <details class="info-accordion" open>
+                        <summary>How the demo session works</summary>
+                        <div class="info-accordion-body">
+                            <p>
+                                Configure your integration key and secret once for this browser session,
+                                then reuse them for multiple login attempts.
+                            </p>
+                            <ul class="demo-facts-list">
+                                <li>The API key is temporary and stays only in this browser session.</li>
+                                <li>Logging out signs out the demo user but keeps the demo API key for another login cycle.</li>
+                                <li>You can test different usernames and both challenge and non-challenge login flows.</li>
+                                <li>If the browser session expires, you may need to enter the API key again.</li>
+                            </ul>
+                        </div>
+                    </details>
                     <ol class="steps-list">
+                        <li>Configure the API key for this browser session</li>
                         <li>Enter your username</li>
                         <li>Click "Login with EZKey"</li>
                         <li>Approve on your EZKey device</li>
@@ -93,7 +112,7 @@
                     <div class="info-note" style="margin-top: 1rem;">
                         <p style="margin: 0; font-size: 0.85rem;">
                             <strong>Configuration:</strong> Use "Configure API Key" to set integration key and secret.
-                            Enter the username you enrolled via the TUI or demo device.
+                            The key remains available across logout in the same browser session. Enter the username you enrolled via the TUI or demo device.
                         </p>
                     </div>
                 </div>
@@ -109,7 +128,7 @@
                 <button type="button" class="modal-close" onclick="closeApiKeyDialog()" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <p class="modal-hint">Enter API key credentials for demo testing. Applied immediately, no restart needed.</p>
+                <p class="modal-hint">Enter API key credentials for demo testing. Applied immediately for this browser session, no restart needed.</p>
                 <div class="form-group">
                     <label for="api-key-integration">INTEGRATION KEY</label>
                     <input type="text" id="api-key-integration" placeholder="ezkey_ikey_xxx"
@@ -156,6 +175,8 @@
             const secretKey = document.getElementById('api-key-secret').value.trim();
             const status = document.getElementById('api-key-status');
             const btn = document.getElementById('apply-api-key-btn');
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
 
             status.classList.remove('hidden');
             status.className = 'reload-status';
@@ -163,12 +184,18 @@
             btn.disabled = true;
 
             try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (csrfToken && csrfHeader) {
+                    headers[csrfHeader] = csrfToken;
+                }
+
                 const response = await fetch('/api/apply-api-key', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify({ integrationKey: integrationKey, secretKey: secretKey })
                 });
-                const result = await response.json();
+                const result = await response.json().catch(() => ({}));
+                const errorMessage = result.message || result.error || `Request failed with status ${response.status}`;
 
                 if (result.success) {
                     status.className = 'reload-status success';
@@ -176,7 +203,9 @@
                     setTimeout(closeApiKeyDialog, 1500);
                 } else {
                     status.className = 'reload-status error';
-                    status.textContent = '❌ ' + result.message;
+                    status.textContent = response.status === 403
+                        ? '❌ Session expired or invalid security token. Reload the page and try again.'
+                        : '❌ ' + errorMessage;
                 }
             } catch (error) {
                 status.className = 'reload-status error';
@@ -443,6 +472,56 @@
             align-items: center;
             justify-content: center;
             border: 2px solid var(--acme-dark);
+        }
+
+        .info-accordion {
+            margin-bottom: 1.5rem;
+            border: 3px solid var(--acme-dark);
+            background-color: var(--acme-light);
+            box-shadow: 4px 4px 0 var(--acme-dark);
+        }
+
+        .info-accordion summary {
+            cursor: pointer;
+            list-style: none;
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: 1rem 1.25rem;
+            background-color: var(--acme-accent);
+        }
+
+        .info-accordion summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .info-accordion summary::after {
+            content: '+';
+            float: right;
+            font-size: 1.25rem;
+        }
+
+        .info-accordion[open] summary::after {
+            content: '-';
+        }
+
+        .info-accordion-body {
+            padding: 1rem 1.25rem 1.25rem;
+            border-top: 3px solid var(--acme-dark);
+        }
+
+        .info-accordion-body p {
+            margin: 0 0 0.75rem;
+            font-weight: 600;
+        }
+
+        .demo-facts-list {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+
+        .demo-facts-list li {
+            margin-bottom: 0.5rem;
+            font-weight: 600;
         }
         
         .info-note {

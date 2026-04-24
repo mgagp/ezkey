@@ -10,15 +10,18 @@
 
 package org.ezkey.demo.acme.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.ezkey.demo.acme.config.EzkeyClientProvider;
 import org.ezkey.demo.acme.dto.AuthenticatedUser;
+import org.ezkey.demo.acme.security.DemoRateLimitService;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
 import org.ezkey.sdk.EzkeyClient;
 import org.ezkey.sdk.EzkeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,15 +46,25 @@ public class LoginController {
 
   private static final String SDK_NOT_CONFIGURED_MSG =
       "Ezkey SDK is not configured. Set credentials via config file or use the 'Apply API Key' "
-          + "dialog in the How it Works section.";
+          + "dialog in the About This Demo section.";
+
+  private static final String RATE_LIMIT_LOGIN_MSG =
+      "Too many login attempts from your network. Please wait a moment and try again.";
+
+  private static final String RATE_LIMIT_APPLY_API_KEY_MSG =
+      "Too many API key apply attempts from your network. Please wait and try again.";
 
   private final EzkeyClientProvider ezkeyClientProvider;
   private final DemoApiKeyConfigService demoApiKeyConfigService;
+  private final DemoRateLimitService demoRateLimitService;
 
   public LoginController(
-      EzkeyClientProvider ezkeyClientProvider, DemoApiKeyConfigService demoApiKeyConfigService) {
+      EzkeyClientProvider ezkeyClientProvider,
+      DemoApiKeyConfigService demoApiKeyConfigService,
+      DemoRateLimitService demoRateLimitService) {
     this.ezkeyClientProvider = ezkeyClientProvider;
     this.demoApiKeyConfigService = demoApiKeyConfigService;
+    this.demoRateLimitService = demoRateLimitService;
   }
 
   /**
@@ -79,8 +92,20 @@ public class LoginController {
   public String login(
       @RequestParam("username") String username,
       @RequestParam(value = "challengeRequested", required = false) Boolean challengeRequested,
+      HttpServletRequest request,
       HttpSession session,
       RedirectAttributes redirectAttributes) {
+
+    DemoRateLimitService.RateLimitDecision rateLimitDecision =
+        demoRateLimitService.checkLogin(request);
+    if (!rateLimitDecision.allowed()) {
+      logger.warn(
+          "Login rate limit exceeded for clientIp={} retryAfterSeconds={}",
+          rateLimitDecision.clientId(),
+          rateLimitDecision.retryAfterSeconds());
+      redirectAttributes.addFlashAttribute("error", RATE_LIMIT_LOGIN_MSG);
+      return "redirect:/login?error=ratelimited";
+    }
 
     logger.info("Login attempt for username: {}", username);
 
@@ -95,7 +120,7 @@ public class LoginController {
     session.removeAttribute("pendingTimeoutSeconds");
     session.removeAttribute("pendingExpiresAt");
 
-    EzkeyClient client = ezkeyClientProvider.getClient();
+    EzkeyClient client = ezkeyClientProvider.getClient(session);
     if (client == null) {
       logger.error("Login attempt rejected — Ezkey SDK not configured");
       redirectAttributes.addFlashAttribute("error", SDK_NOT_CONFIGURED_MSG);
@@ -157,9 +182,11 @@ public class LoginController {
   public String loginPage(
       @RequestParam(value = "error", required = false) String error,
       @RequestParam(value = "logout", required = false) String logout,
+      CsrfToken csrfToken,
       Model model) {
 
     model.addAttribute("pageTitle", "Login - ACME Inc");
+    model.addAttribute("csrfToken", csrfToken);
 
     if (error != null) {
       model.addAttribute("hasError", true);
@@ -183,12 +210,17 @@ public class LoginController {
         case "notfound":
           model.addAttribute("error", "User not found. Please check your username.");
           break;
+        case "ratelimited":
+          model.addAttribute("error", RATE_LIMIT_LOGIN_MSG);
+          break;
         default:
           model.addAttribute("error", "Authentication failed. Please try again.");
       }
     }
     if (logout != null) {
-      model.addAttribute("logoutMessage", "You have been logged out successfully.");
+      model.addAttribute(
+          "logoutMessage",
+          "You have been logged out. The demo API key remains available in this browser session.");
     }
 
     return "login";
@@ -204,16 +236,32 @@ public class LoginController {
    * @return JSON response indicating success or failure
    */
   @PostMapping("/api/apply-api-key")
-  public ResponseEntity<ApplyApiKeyResponse> applyApiKey(@RequestBody ApplyApiKeyRequest request) {
-    if (request == null || request.integrationKey() == null || request.secretKey() == null) {
+  public ResponseEntity<ApplyApiKeyResponse> applyApiKey(
+      @RequestBody ApplyApiKeyRequest body, HttpServletRequest request, HttpSession session) {
+    DemoRateLimitService.RateLimitDecision rateLimitDecision =
+        demoRateLimitService.checkApplyApiKey(request);
+    if (!rateLimitDecision.allowed()) {
+      logger.warn(
+          "Apply API key rate limit exceeded for clientIp={} retryAfterSeconds={}",
+          rateLimitDecision.clientId(),
+          rateLimitDecision.retryAfterSeconds());
+      return ResponseEntity.status(429)
+          .header("Retry-After", String.valueOf(rateLimitDecision.retryAfterSeconds()))
+          .body(new ApplyApiKeyResponse(false, RATE_LIMIT_APPLY_API_KEY_MSG));
+    }
+
+    if (body == null || body.integrationKey() == null || body.secretKey() == null) {
       return ResponseEntity.badRequest()
           .body(new ApplyApiKeyResponse(false, "Integration key and secret key are required."));
     }
     boolean applied =
-        demoApiKeyConfigService.applyApiKey(request.integrationKey(), request.secretKey());
+        demoApiKeyConfigService.applyApiKey(session, body.integrationKey(), body.secretKey());
     if (applied) {
       return ResponseEntity.ok(
-          new ApplyApiKeyResponse(true, "API key applied. You can now test login."));
+          new ApplyApiKeyResponse(
+              true,
+              "API key applied. You can now test multiple login attempts in this browser"
+                  + " session."));
     }
     return ResponseEntity.badRequest()
         .body(
@@ -318,7 +366,7 @@ public class LoginController {
       return ResponseEntity.ok(new AuthStatusResponse("expired", null, "Session expired"));
     }
 
-    EzkeyClient client = ezkeyClientProvider.getClient();
+    EzkeyClient client = ezkeyClientProvider.getClient(session);
     if (client == null) {
       return ResponseEntity.ok(
           new AuthStatusResponse("error", "/login?error=authfailed", SDK_NOT_CONFIGURED_MSG));

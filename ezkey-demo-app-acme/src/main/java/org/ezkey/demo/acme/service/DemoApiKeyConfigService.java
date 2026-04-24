@@ -10,6 +10,7 @@
 
 package org.ezkey.demo.acme.service;
 
+import jakarta.servlet.http.HttpSession;
 import org.ezkey.demo.acme.config.AcmeProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,17 +33,16 @@ import org.springframework.stereotype.Service;
 public class DemoApiKeyConfigService {
 
   private static final Logger LOG = LoggerFactory.getLogger(DemoApiKeyConfigService.class);
+  static final String SESSION_INTEGRATION_KEY = "demoIntegrationKey";
+  static final String SESSION_SECRET_KEY = "demoSecretKey";
 
-  private volatile String integrationKey;
-  private volatile String secretKey;
+  private final DemoApiKeyCredentials configuredCredentials;
 
   public DemoApiKeyConfigService(AcmeProperties properties) {
-    this.integrationKey = properties.getIntegrationKey();
-    this.secretKey = properties.getSecretKey();
-    if (isConfigured()) {
-      LOG.info(
-          "Demo API key loaded from config — Integration Key: {}...",
-          integrationKey.substring(0, Math.min(20, integrationKey.length())));
+    this.configuredCredentials =
+        buildCredentials(properties.getIntegrationKey(), properties.getSecretKey());
+    if (configuredCredentials != null) {
+      LOG.info("Demo API key loaded from config for local/dev mode.");
     } else {
       LOG.warn(
           "EZKEY SDK not configured. Set credentials via config or use the 'Apply API Key'"
@@ -57,38 +57,67 @@ public class DemoApiKeyConfigService {
    * immediately for subsequent {@link org.ezkey.demo.acme.config.EzkeyClientProvider#getClient()}
    * calls.
    *
+   * <p>Credentials are stored only in the caller's HTTP session so concurrent demo users can use
+   * different integration keys without affecting each other.
+   *
+   * @param session the current HTTP session
    * @param integrationKeyParam the integration key (e.g. ezkey_ikey_xxx)
    * @param secretKeyParam the secret key (e.g. ezkey_skey_xxx)
    * @return true if both values are non-blank and were applied
    */
-  public boolean applyApiKey(String integrationKeyParam, String secretKeyParam) {
-    if (integrationKeyParam == null
-        || integrationKeyParam.isBlank()
-        || secretKeyParam == null
-        || secretKeyParam.isBlank()) {
+  public boolean applyApiKey(
+      HttpSession session, String integrationKeyParam, String secretKeyParam) {
+    if (session == null) {
       return false;
     }
-    this.integrationKey = integrationKeyParam.trim();
-    this.secretKey = secretKeyParam.trim();
-    LOG.info(
-        "API key applied via demo UI — Integration Key: {}...",
-        this.integrationKey.substring(0, Math.min(20, this.integrationKey.length())));
+
+    DemoApiKeyCredentials sessionCredentials =
+        buildCredentials(integrationKeyParam, secretKeyParam);
+    if (sessionCredentials == null) {
+      return false;
+    }
+
+    session.setAttribute(SESSION_INTEGRATION_KEY, sessionCredentials.integrationKey());
+    session.setAttribute(SESSION_SECRET_KEY, sessionCredentials.secretKey());
+    LOG.info("Session-scoped demo API key applied via demo UI.");
     return true;
   }
 
-  public String getIntegrationKey() {
-    return integrationKey;
+  public DemoApiKeyCredentials resolveCredentials(HttpSession session) {
+    if (session != null) {
+      Object sessionIntegrationKey = session.getAttribute(SESSION_INTEGRATION_KEY);
+      Object sessionSecretKey = session.getAttribute(SESSION_SECRET_KEY);
+      DemoApiKeyCredentials sessionCredentials =
+          buildCredentials(
+              sessionIntegrationKey instanceof String ? (String) sessionIntegrationKey : null,
+              sessionSecretKey instanceof String ? (String) sessionSecretKey : null);
+      if (sessionCredentials != null) {
+        return sessionCredentials;
+      }
+    }
+    return configuredCredentials;
   }
 
-  public String getSecretKey() {
-    return secretKey;
+  /** Returns true if either session-scoped or configured credentials are available. */
+  public boolean isConfigured(HttpSession session) {
+    return resolveCredentials(session) != null;
   }
 
-  /** Returns true if both integration key and secret key are configured (non-blank). */
-  public boolean isConfigured() {
-    return integrationKey != null
-        && !integrationKey.isBlank()
-        && secretKey != null
-        && !secretKey.isBlank();
+  private DemoApiKeyCredentials buildCredentials(String integrationKey, String secretKey) {
+    if (integrationKey == null
+        || integrationKey.isBlank()
+        || secretKey == null
+        || secretKey.isBlank()) {
+      return null;
+    }
+    return new DemoApiKeyCredentials(integrationKey.trim(), secretKey.trim());
   }
+
+  /**
+   * Session- or configuration-scoped API key credentials used to build the Ezkey client.
+   *
+   * @param integrationKey the integration key presented to the Admin API
+   * @param secretKey the companion secret key presented to the Admin API
+   */
+  public record DemoApiKeyCredentials(String integrationKey, String secretKey) {}
 }

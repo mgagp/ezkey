@@ -1,12 +1,14 @@
 # Experimental hybrid deployment (Lightsail + optional local)
 
-This folder contains **operator-focused** artifacts to run Ezkey on **Amazon Lightsail** (Postgres, migration, Admin API, Auth API, Integration API, **Caddy** with Let’s Encrypt) and optionally run **local** companions (Crypto API, Demo Device, Demo ACME) against the **public** HTTPS APIs.
+This folder contains **operator-focused** artifacts to run Ezkey on **Amazon Lightsail** (Postgres, migration, Admin API, Auth API, Integration API, optional Demo ACME, **Caddy** with Let’s Encrypt) and optionally run **local** companions (Crypto API, Demo Device, Demo ACME) against the **public** HTTPS APIs.
 
 - **Lightsail:** [`lightsail/`](lightsail/) — `docker-compose.yml`, `Caddyfile`, `.env.example`
 - **Local (optional):** [`local/`](local/) — `docker-compose.yml`, `.env.example`
 - **Runbook:** [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) — phases, **`~/ezkey` VM tree**, **`scp` from a dev clone** (default), optional clone-on-VM, Cloudflare split (manual vs repo)
 - **Single-backend image update (Lightsail):** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md) — `docker save` / `scp` / `docker load` / `compose up --force-recreate`
 - **Scripted full export + optional clean-start + optional UI deploy:** [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh), [`experimental-hybrid/scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) — see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*
+
+The same Lightsail stack can also expose `demo-app-acme` behind a dedicated hostname such as `https://exp1-demo-acme.ezkey.org`. This keeps the public evaluation surface separate from the Admin UI and API hostnames while reusing the same Caddy + Docker operational model.
 
 Image build targets and behaviour match the main repo [`docker/Dockerfile`](../docker/Dockerfile) and [`docker/docker-compose.yml`](../docker/docker-compose.yml).
 

@@ -12,6 +12,8 @@ package org.ezkey.demo.acme;
 
 import java.nio.file.Path;
 import org.ezkey.demo.acme.config.AcmeProperties;
+import org.ezkey.demo.acme.config.AcmeRateLimitProperties;
+import org.ezkey.demo.acme.config.TrustedProxyProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -44,7 +46,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  * @since 2025
  */
 @SpringBootApplication
-@EnableConfigurationProperties(AcmeProperties.class)
+@EnableConfigurationProperties({
+  AcmeProperties.class,
+  AcmeRateLimitProperties.class,
+  TrustedProxyProperties.class
+})
 public class DemoAcmeApplication {
 
   private static final Logger logger = LoggerFactory.getLogger(DemoAcmeApplication.class);
@@ -71,13 +77,8 @@ public class DemoAcmeApplication {
     AcmeProperties properties = appContext.getBean(AcmeProperties.class);
     logger.info("Configuration loaded - Admin API URL: {}", properties.getAdminApiUrl());
     logger.info(
-        "Configuration loaded - Integration Key: {}",
-        properties.getIntegrationKey() != null && !properties.getIntegrationKey().isBlank()
-            ? properties
-                    .getIntegrationKey()
-                    .substring(0, Math.min(20, properties.getIntegrationKey().length()))
-                + "..."
-            : "NOT SET");
+        "Configuration loaded - Integration Key configured: {}",
+        properties.getIntegrationKey() != null && !properties.getIntegrationKey().isBlank());
     logger.info(
         "Configuration loaded - Secret Key: {}",
         properties.getSecretKey() != null && !properties.getSecretKey().isBlank()
@@ -87,8 +88,9 @@ public class DemoAcmeApplication {
     // Also check environment directly
     org.springframework.core.env.Environment env = appContext.getEnvironment();
     logger.info(
-        "Environment property ezkey.integration-key: {}",
-        env.getProperty("ezkey.integration-key", "NOT FOUND"));
+        "Environment property ezkey.integration-key configured: {}",
+        env.getProperty("ezkey.integration-key") != null
+            && !env.getProperty("ezkey.integration-key", "").isBlank());
     logger.info(
         "Environment property ezkey.secret-key: {}",
         env.getProperty("ezkey.secret-key", "NOT FOUND") != null

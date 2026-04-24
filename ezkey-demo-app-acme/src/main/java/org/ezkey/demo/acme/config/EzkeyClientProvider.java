@@ -10,6 +10,7 @@
 
 package org.ezkey.demo.acme.config;
 
+import jakarta.servlet.http.HttpSession;
 import org.ezkey.demo.acme.service.DemoApiKeyConfigService;
 import org.ezkey.sdk.EzkeyClient;
 import org.ezkey.sdk.EzkeyConfig;
@@ -19,9 +20,10 @@ import org.springframework.stereotype.Component;
  * Provides {@link EzkeyClient} instances built from current credentials held by {@link
  * DemoApiKeyConfigService}.
  *
- * <p>Each call to {@link #getClient()} builds a fresh client from the current integration key and
- * secret key. This allows runtime credential changes (via the demo "Apply API Key" dialog) to take
- * effect without restart.
+ * <p>Each call to {@link #getClient(HttpSession)} builds a fresh client from the current
+ * session-scoped integration key and secret key, falling back to configured values when the session
+ * does not provide an override. This allows runtime credential changes (via the demo "Apply API
+ * Key" dialog) to take effect without restart while keeping concurrent sessions isolated.
  *
  * <p>The Ezkey SDK {@link EzkeyClient} remains the single source for Admin API calls with API key;
  * this provider merely decides which credentials to use when constructing it.
@@ -43,16 +45,19 @@ public class EzkeyClientProvider {
   /**
    * Returns an {@link EzkeyClient} configured with current credentials, or null if not configured.
    *
+   * @param session the current HTTP session, used to resolve session-scoped credentials
    * @return configured client, or null if integration key or secret key are not set
    */
-  public EzkeyClient getClient() {
-    if (!credentials.isConfigured()) {
+  public EzkeyClient getClient(HttpSession session) {
+    DemoApiKeyConfigService.DemoApiKeyCredentials resolvedCredentials =
+        credentials.resolveCredentials(session);
+    if (resolvedCredentials == null) {
       return null;
     }
     String baseUrl = acmeProperties.getAdminApiUrl();
     return EzkeyClient.builder()
-        .integrationKey(credentials.getIntegrationKey())
-        .secretKey(credentials.getSecretKey())
+        .integrationKey(resolvedCredentials.integrationKey())
+        .secretKey(resolvedCredentials.secretKey())
         .baseUrl(baseUrl != null && !baseUrl.isBlank() ? baseUrl : EzkeyConfig.DEFAULT_BASE_URL)
         .build();
   }

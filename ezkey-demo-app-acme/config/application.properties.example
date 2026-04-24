@@ -2,8 +2,6 @@
 # Ezkey Demo App ACME - External Configuration Override
 # =============================================================================
 # This file overrides properties from the JAR's application.properties
-# Changes can be hot-reloaded via the "RELOAD CONFIG" button on the login page
-# or by calling: POST /actuator/refresh
 #
 # Location:
 #   - Docker: /app/config/application.properties (mounted volume)
@@ -38,9 +36,26 @@ ezkey.integration-key=
 ezkey.secret-key=
 
 # =============================================================================
+# Internet-exposed demo hardening
+# =============================================================================
+ezkey.rate-limit.enabled=true
+ezkey.rate-limit.login.requests=10
+ezkey.rate-limit.login.window-minutes=5
+ezkey.rate-limit.apply-api-key.requests=5
+ezkey.rate-limit.apply-api-key.window-minutes=10
+
+# Trusted reverse proxy CIDRs for client IP resolution.
+# In Cloudflare + Caddy deployments, configure the direct proxy/network CIDRs here so
+# CF-Connecting-IP is trusted. Leave empty for local runs.
+# ezkey.trusted-proxies.cidrs=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+
+# =============================================================================
 # Optional Overrides
 # =============================================================================
 
 # Logging level (uncomment to enable debug logging)
 # logging.level.org.ezkey.demo.acme=DEBUG
 # logging.level.org.springframework.web=DEBUG
+
+# Session cookie security for HTTPS deployments (recommended true behind Caddy/TLS)
+# EZKEY_DEMO_APP_SESSION_COOKIE_SECURE=true

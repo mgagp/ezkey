@@ -19,6 +19,10 @@ export EZKEY_SECRET_KEY=ezkey_skey_xxx
 # data/acme-users.json
 ```
 
+For the internet-facing demo mode, the login page also supports entering the integration key and
+secret interactively. Those credentials are stored only for the current browser session and can be
+reused across multiple login/logout cycles in that same session.
+
 ### IDE / Local
 
 ```bash
@@ -83,6 +87,14 @@ curl -X POST http://localhost:8082/actuator/refresh
 
 **Authentication Format**: `Authorization: Basic base64(integrationKey:secretKey)`
 
+## Demo Session Model
+
+- API key credentials entered in the UI are scoped to the current browser session only.
+- Logging out clears the authenticated demo user and pending auth flow state, but keeps the demo
+  API key available for the next login attempt in that same browser session.
+- A different browser or browser profile does not inherit another session's demo API key.
+- Session expiry or losing the browser session can require re-entering the API key.
+
 ## Users Mapping File
 
 Create `data/acme-users.json`:
@@ -121,6 +133,7 @@ The file is hot-reloadable - changes are detected and reloaded automatically (if
 
 - **Backend-side authentication**: Server calls Admin API using API key (machine-to-machine) authentication
 - **HTTP session**: Secure server-side session management
+- **Session-scoped demo credentials**: API keys entered in the UI are isolated per browser session
 - **User mapping**: External JSON file maps usernames to enrollment IDs
 - **Hot-reload**: Users file changes detected and reloaded automatically
 
