@@ -16,7 +16,7 @@
 # --ui-preview, --apis-only).
 #
 # Environment:
-#   LIGHTSAIL_SSH_HOST   default: ezkey (exported for child scripts)
+#   LIGHTSAIL_SSH_HOST   default ezkey; set only if your SSH Host alias differs (experimental hybrid).
 #   EXPORT_DIR           passed through to export script (default: docker/export)
 #   Root .env            CLOUDFLARE_* and VITE_API_BASE_URL for UI deploy (see scripts/cloudflare/*.sh)
 #   PREVIEW_BRANCH       for preview UI deploy (default: timestamped); set e.g. exp1-admin-ui-preview

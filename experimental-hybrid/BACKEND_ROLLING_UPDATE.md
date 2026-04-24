@@ -27,7 +27,7 @@ Other backends — same pattern; only the `--target` and tar filename change (se
 
 ## 2. Copy to the VM
 
-Replace `ezkey` with your SSH host alias:
+Default SSH host for this environment is **`ezkey`** (see [`README.md`](README.md#default-lightsail-ssh-host-ezkey)). Otherwise set `LIGHTSAIL_SSH_HOST` for the export script.
 
 ```bash
 scp docker/export/ezkey-auth-api.tar ezkey:~/
