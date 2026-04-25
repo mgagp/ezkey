@@ -234,7 +234,8 @@
             Play, and the <strong>ezkey.org website</strong>. The project is in active development.
         </p>
         <p>
-            Contact: <a href="mailto:support@ezkey.org">support@ezkey.org</a>
+            Privacy inquiries: <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a> &mdash;
+            General: <a href="mailto:support@ezkey.org">support@ezkey.org</a>
         </p>
 
         <h2>2. The two-layer model — what Ezkey is and is not</h2>
@@ -267,11 +268,16 @@
                 in the Android Keystore (hardware-backed when available). Never transmitted off
                 your device; used only to sign authentication challenges.</li>
             <li><strong>Enrollment metadata</strong> &mdash; The name and URL of each organization
-                you have enrolled with, and a device label you choose. This information is stored
-                in the device&rsquo;s secure credential storage.</li>
+                you have enrolled with, and the enrollment display name assigned by your
+                organization&rsquo;s administrator. This information is stored in the
+                device&rsquo;s secure credential storage.</li>
             <li><strong>Pending authentication state</strong> &mdash; Temporary data held in memory
-                or on-device storage while you are responding to an authentication challenge.
-                Not retained after the session completes.</li>
+                while you are responding to an authentication challenge. This may include
+                contextual information provided by your organization&rsquo;s backend about the
+                action to approve (e.g. a title such as &ldquo;Document Signature Request&rdquo;
+                and a message describing the specific action). This data originates from your
+                organization, not from the Ezkey project, and is not retained after the session
+                completes.</li>
         </ul>
         <p>
             <strong>Uninstalling the app removes all of the above data from your device.</strong>
@@ -286,10 +292,29 @@
             self-hosted Ezkey server. The app sends:
         </p>
         <ul>
-            <li>The public key generated on your device during enrollment (bind operation)</li>
-            <li>Cryptographic signatures of authentication challenges (verify operation)</li>
-            <li>A device-specific proof token used to authenticate each request</li>
+            <li><strong>During enrollment (verify step):</strong> the device public key
+                (EC P-256), a cryptographic signature proving possession of the corresponding
+                private key, and a device security capability label indicating the hardware
+                protection tier of the key storage (e.g. <code>STANDARD</code> or
+                <code>STRONG</code>), as reported by the device.</li>
+            <li><strong>During each authentication poll:</strong> a stable enrollment
+                identifier and a freshly generated signed one-time device proof token &mdash;
+                together identifying the enrollment and proving device participation for that
+                specific request.</li>
+            <li><strong>When approving or denying:</strong> the decision (approved or denied)
+                and a cryptographic signature over it. No personal or contextual data originates
+                from the device.</li>
         </ul>
+        <p>
+            The app also <strong>receives</strong> data from your organization&rsquo;s server.
+            When a contextual approval request is initiated by your organization, the pending
+            response may include a title and message describing the action to approve (for
+            example: &ldquo;Document Signature Request &mdash; Please approve the signing of the
+            NDA with partner Acme Corp.&rdquo;). This data originates from your organization&rsquo;s
+            backend, is displayed to you after the app verifies its cryptographic signature, and
+            is not stored beyond the authentication session. The Ezkey project has no visibility
+            into this content.
+        </p>
         <p>No data is sent to any server operated by the Ezkey project.</p>
         <p>No analytics, crash reports, telemetry, or advertising data is transmitted by the app.</p>
 
@@ -316,10 +341,12 @@
                 </tr>
                 <tr>
                     <td><strong>Biometric / Fingerprint</strong>
-                        <br><em>(optional)</em></td>
-                    <td>To unlock the app or confirm authentication using the device&rsquo;s
-                        biometric sensor. The biometric template never leaves the device;
-                        it is managed entirely by Android.</td>
+                        <br><em>(declared, not active in v0.0.1)</em></td>
+                    <td>This permission is declared in the app manifest by a third-party
+                        library dependency (<code>androidx.biometric</code>, used for secure
+                        credential storage). The current version of the app does not present
+                        any biometric prompt to the user. Biometric-gated operations are
+                        planned for a future release.</td>
                     <td>No</td>
                 </tr>
             </tbody>
@@ -340,6 +367,8 @@
             <li>react-native-keychain &mdash; secure credential storage</li>
             <li>Conscrypt (Android) &mdash; cryptographic primitives (Ed25519)</li>
             <li>MLKit Barcode Scanning (on-device) &mdash; QR decoding without network calls</li>
+            <li>axios &mdash; HTTP client used exclusively to communicate with your organization&rsquo;s self-hosted backend; transmits no data to third parties</li>
+            <li>AsyncStorage &mdash; on-device persistent storage used for enrollment metadata; data never leaves the device</li>
         </ul>
         <p>None of these libraries transmit data to their authors or any third party.</p>
 
@@ -382,7 +411,7 @@
         <p>
             As the Ezkey project does not collect personal information, there is no personal
             information held by us to access, correct, or delete. If you have questions or
-            concerns, contact us at <a href="mailto:support@ezkey.org">support@ezkey.org</a>.
+            concerns, contact us at <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a>.
         </p>
 
         <h3>EU residents (GDPR)</h3>
@@ -428,7 +457,8 @@
             <p>For questions about this privacy policy:</p>
             <p>
                 <strong>Ezkey Project &mdash; Marc Gagnon</strong><br>
-                <a href="mailto:support@ezkey.org">support@ezkey.org</a><br>
+                <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a> &mdash; privacy inquiries<br>
+                <a href="mailto:support@ezkey.org">support@ezkey.org</a> &mdash; general support<br>
                 Pincourt, Qu&eacute;bec, Canada
             </p>
             <p style="margin-top:10px;font-size:0.88rem;color:#555;">

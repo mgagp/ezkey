@@ -236,7 +236,8 @@
             développement actif.
         </p>
         <p>
-            Contact&nbsp;: <a href="mailto:support@ezkey.org">support@ezkey.org</a>
+            Confidentialité&nbsp;: <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a> &mdash;
+            Général&nbsp;: <a href="mailto:support@ezkey.org">support@ezkey.org</a>
         </p>
 
         <h2>2. Le modèle à deux couches — ce qu&rsquo;Ezkey est et n&rsquo;est pas</h2>
@@ -271,13 +272,18 @@
                 lorsque disponible). Jamais transmises hors de votre appareil&nbsp;; utilisées
                 uniquement pour signer les défis d&rsquo;authentification.</li>
             <li><strong>Métadonnées d&rsquo;inscription</strong> &mdash; Le nom et l&rsquo;URL
-                de chaque organisation auprès de laquelle vous vous êtes inscrit, ainsi qu&rsquo;un
-                libellé d&rsquo;appareil que vous choisissez. Ces informations sont stockées dans
-                le stockage sécurisé des identifiants de l&rsquo;appareil.</li>
+                de chaque organisation auprès de laquelle vous vous êtes inscrit, ainsi que
+                le nom d&rsquo;inscription assigné par l&rsquo;administrateur de votre organisation.
+                Ces informations sont stockées dans le stockage sécurisé des identifiants
+                de l&rsquo;appareil.</li>
             <li><strong>État d&rsquo;authentification en attente</strong> &mdash; Données
-                temporaires conservées en mémoire ou sur l&rsquo;appareil pendant que vous
-                répondez à un défi d&rsquo;authentification. Non conservées après la fin de la
-                session.</li>
+                temporaires conservées en mémoire pendant que vous répondez à un défi
+                d&rsquo;authentification. Cela peut inclure des informations contextuelles
+                fournies par le serveur de votre organisation sur l&rsquo;action à approuver
+                (p.&nbsp;ex. un titre tel que &laquo;&nbsp;Demande de signature de document&nbsp;&raquo;
+                et un message décrivant l&rsquo;action spécifique). Ces données proviennent de
+                votre organisation, non du projet Ezkey, et ne sont pas conservées après la fin
+                de la session.</li>
         </ul>
         <p>
             <strong>La désinstallation de l&rsquo;application supprime toutes les données
@@ -294,10 +300,31 @@
             L&rsquo;application envoie&nbsp;:
         </p>
         <ul>
-            <li>La clé publique générée sur votre appareil lors de l&rsquo;inscription (opération bind)</li>
-            <li>Les signatures cryptographiques des défis d&rsquo;authentification (opération verify)</li>
-            <li>Un jeton de preuve propre à l&rsquo;appareil pour authentifier chaque requête</li>
+            <li><strong>Lors de l&rsquo;inscription (étape verify)&nbsp;:</strong> la clé
+                publique de l&rsquo;appareil (EC P-256), une signature cryptographique prouvant
+                la possession de la clé privée correspondante, et une étiquette de niveau de
+                protection matérielle indiquant le niveau de sécurité du stockage de la clé
+                (p.&nbsp;ex. <code>STANDARD</code> ou <code>STRONG</code>), telle que rapportée
+                par l&rsquo;appareil.</li>
+            <li><strong>Lors de chaque sondage d&rsquo;authentification&nbsp;:</strong> un
+                identifiant d&rsquo;inscription stable et un jeton de preuve signé unique généré
+                à la volée &mdash; identifiant conjointement l&rsquo;inscription et attestant la
+                participation de l&rsquo;appareil pour cette requête spécifique.</li>
+            <li><strong>Lors de l&rsquo;approbation ou du refus&nbsp;:</strong> la décision
+                (approuvé ou refusé) et une signature cryptographique sur celle-ci. Aucune donnée
+                personnelle ni contextuelle ne provient de l&rsquo;appareil.</li>
         </ul>
+        <p>
+            L&rsquo;application <strong>reçoit</strong> également des données du serveur de votre
+            organisation. Lorsqu&rsquo;une demande d&rsquo;approbation contextuelle est initiée
+            par votre organisation, la réponse peut inclure un titre et un message décrivant
+            l&rsquo;action à approuver (par exemple&nbsp;: &laquo;&nbsp;Demande de signature de
+            document &mdash; Veuillez approuver la signature du NDA avec le partenaire Acme
+            Corp.&nbsp;&raquo;). Ces données proviennent du serveur de votre organisation, sont
+            affichées après vérification de leur signature cryptographique par l&rsquo;application,
+            et ne sont pas conservées au-delà de la session d&rsquo;authentification. Le projet
+            Ezkey n&rsquo;a aucune visibilité sur ce contenu.
+        </p>
         <p>Aucune donnée n&rsquo;est envoyée à un serveur exploité par le projet Ezkey.</p>
         <p>Aucune donnée d&rsquo;analyse, de rapport de plantage, de télémétrie ou de publicité
             n&rsquo;est transmise par l&rsquo;application.</p>
@@ -326,10 +353,13 @@
                 </tr>
                 <tr>
                     <td><strong>Biométrie / Empreinte</strong>
-                        <br><em>(optionnel)</em></td>
-                    <td>Pour déverrouiller l&rsquo;application ou confirmer une authentification
-                        via le capteur biométrique de l&rsquo;appareil. Le gabarit biométrique ne
-                        quitte jamais l&rsquo;appareil&nbsp;; il est géré entièrement par Android.</td>
+                        <br><em>(déclarée, non active dans la v0.0.1)</em></td>
+                    <td>Cette permission est déclarée dans le manifeste de l&rsquo;application
+                        par une dépendance tierce (<code>androidx.biometric</code>, utilisée
+                        pour le stockage sécurisé des identifiants). La version actuelle de
+                        l&rsquo;application n&rsquo;affiche aucune invite biométrique à
+                        l&rsquo;utilisateur. Les opérations protégées par biométrie sont
+                        prévues dans une version future.</td>
                     <td>Non</td>
                 </tr>
             </tbody>
@@ -351,6 +381,8 @@
             <li>react-native-keychain &mdash; stockage sécurisé des identifiants</li>
             <li>Conscrypt (Android) &mdash; primitives cryptographiques (Ed25519)</li>
             <li>MLKit Barcode Scanning (sur l&rsquo;appareil) &mdash; décodage QR sans appel réseau</li>
+            <li>axios &mdash; client HTTP utilisé exclusivement pour communiquer avec le serveur auto-hébergé de votre organisation&nbsp;; ne transmet aucune donnée à des tiers</li>
+            <li>AsyncStorage &mdash; stockage persistant sur l&rsquo;appareil utilisé pour les métadonnées d&rsquo;inscription&nbsp;; les données ne quittent jamais l&rsquo;appareil</li>
         </ul>
         <p>Aucune de ces bibliothèques ne transmet de données à leurs auteurs ni à un tiers.</p>
 
@@ -397,7 +429,7 @@
             Le projet Ezkey ne collectant pas de renseignements personnels, il n&rsquo;existe
             aucun renseignement personnel détenu par nous qui serait accessible, rectifiable ou
             supprimable. Pour toute question ou préoccupation, contactez-nous à
-            <a href="mailto:support@ezkey.org">support@ezkey.org</a>.
+            <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a>.
         </p>
 
         <h3>Résidents de l&rsquo;Union européenne (RGPD)</h3>
@@ -447,7 +479,8 @@
             <p>Pour toute question relative à la présente politique de confidentialité&nbsp;:</p>
             <p>
                 <strong>Projet Ezkey &mdash; Marc Gagnon</strong><br>
-                <a href="mailto:support@ezkey.org">support@ezkey.org</a><br>
+                <a href="mailto:privacy@ezkey.org">privacy@ezkey.org</a> &mdash; demandes de confidentialité<br>
+                <a href="mailto:support@ezkey.org">support@ezkey.org</a> &mdash; support général<br>
                 Pincourt, Québec, Canada
             </p>
             <p style="margin-top:10px;font-size:0.88rem;color:#555;">
