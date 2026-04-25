@@ -15,6 +15,7 @@
 #   CLOUDFLARE_PAGES_PROJECT=ezkey-org ./scripts/cloudflare/deploy-ezkey-org-preview.sh
 #
 # Production (after preview approval): deploy-ezkey-org-production.sh (same directory)
+# Bulk cleanup of old preview deployments: cleanup-ezkey-org-previews.sh (same directory)
 #
 # Preview vs production: Wrangler uses --branch. A branch name other than the project's
 # production branch (e.g. main) creates a preview deployment with its own *.pages.dev URL.
