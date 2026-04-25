@@ -204,7 +204,7 @@ yarn android:install:debug
 If the device still behaves inconsistently, uninstall the app before reinstalling:
 
 ```bash
-adb uninstall com.ezkeymobile
+adb uninstall org.ezkey.mobile
 ```
 
 This is the preferred first-line reset for mobile dependency/build drift. Do this before assuming a recent TypeScript or API-layer change caused a native startup regression.

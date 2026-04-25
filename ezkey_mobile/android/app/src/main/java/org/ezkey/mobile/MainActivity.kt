@@ -11,7 +11,7 @@
  * @since 2025
  */
 
-package com.ezkeymobile
+package org.ezkey.mobile
 
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen

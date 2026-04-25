@@ -11,7 +11,7 @@
  * @since 2025
  */
 
-package com.ezkeymobile.crypto
+package org.ezkey.mobile.crypto
 
 import java.nio.charset.StandardCharsets
 import java.security.KeyPairGenerator

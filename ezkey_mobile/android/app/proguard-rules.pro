@@ -21,7 +21,7 @@
 # rule here, then re-run `bundletool install-apks` and exercise the affected
 # screen end-to-end.
 
--keep class com.ezkeymobile.crypto.** { *; }
+-keep class org.ezkey.mobile.crypto.** { *; }
 
 -keep class org.conscrypt.** { *; }
 -dontwarn org.conscrypt.**

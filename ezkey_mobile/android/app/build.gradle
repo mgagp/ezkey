@@ -122,9 +122,9 @@ android {
         buildConfig true
     }
 
-    namespace "com.ezkeymobile"
+    namespace "org.ezkey.mobile"
     defaultConfig {
-        applicationId "com.ezkeymobile"
+        applicationId "org.ezkey.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

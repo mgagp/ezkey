@@ -10,7 +10,7 @@
  * @since 2025
  */
 
-package com.ezkeymobile.crypto
+package org.ezkey.mobile.crypto
 
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
@@ -23,7 +23,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
-import com.ezkeymobile.BuildConfig
+import org.ezkey.mobile.BuildConfig
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.KeyPairGenerator

@@ -12,7 +12,7 @@
  * @since 2025
  */
 
-package com.ezkeymobile.qr
+package org.ezkey.mobile.qr
 
 import android.util.Log
 import com.google.android.gms.tasks.Tasks

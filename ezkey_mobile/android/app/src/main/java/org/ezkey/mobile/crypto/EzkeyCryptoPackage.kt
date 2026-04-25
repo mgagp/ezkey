@@ -11,7 +11,7 @@
  * @since 2025
  */
 
-package com.ezkeymobile.crypto
+package org.ezkey.mobile.crypto
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule

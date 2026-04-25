@@ -207,7 +207,7 @@ class EzkeyCryptoModule: NSObject, RCTBridgeModule {
   private let keySize = 2048
 
   private func keyTag(alias: String, suffix: String) -> Data {
-    Data(("com.ezkeymobile.keys." + alias + suffix).utf8)
+    Data(("org.ezkey.mobile.keys." + alias + suffix).utf8)
   }
 
   private func fetchKey(alias: String, keyClass: CFString) throws -> SecKey? {

@@ -12,11 +12,11 @@
  * @since 2025
  */
 
-package com.ezkeymobile
+package org.ezkey.mobile
 
 import android.app.Application
-import com.ezkeymobile.crypto.EzkeyCryptoPackage
-import com.ezkeymobile.qr.EzkeyQrFrameProcessorPlugin
+import org.ezkey.mobile.crypto.EzkeyCryptoPackage
+import org.ezkey.mobile.qr.EzkeyQrFrameProcessorPlugin
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost

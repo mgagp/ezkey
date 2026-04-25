@@ -13,7 +13,7 @@
 
 import * as Keychain from 'react-native-keychain';
 
-const SERVICE_PREFIX = 'com.ezkeymobile.secure';
+const SERVICE_PREFIX = 'org.ezkey.mobile.secure';
 
 const serviceFor = (key: string) => `${SERVICE_PREFIX}.${key}`;
 
