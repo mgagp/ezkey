@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/confidentialite.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/privacy.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/privacy.html">
+    <title>Politique de confidentialité — Ezkey</title>
+    <meta name="description" content="Politique de confidentialité de l'application mobile Ezkey et du site ezkey.org. Ezkey ne collecte aucune donnée personnelle.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.65;
+        }
+
+        .shell {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        .nav-top {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .nav-top a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: underline;
+        }
+
+        .lang-switch {
+            float: right;
+        }
+
+        article {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+            padding: 40px 36px 48px;
+            text-align: left;
+        }
+
+        @media (max-width: 600px) {
+            article { padding: 28px 20px 36px; }
+            .lang-switch { float: none; display: block; margin-top: 6px; }
+        }
+
+        .doc-meta {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .hero-title {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .hero-title .label {
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .hero-title h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #111;
+            line-height: 1.25;
+            margin: 0 0 12px;
+        }
+
+        .hero-title .tagline {
+            font-size: 1.0rem;
+            color: #444;
+            font-weight: 400;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #222;
+            margin: 32px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #eee;
+        }
+
+        h3 {
+            font-size: 1.0rem;
+            font-weight: 600;
+            color: #333;
+            margin: 18px 0 8px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            font-size: 0.97rem;
+        }
+
+        ul {
+            margin: 8px 0 14px 1.25rem;
+        }
+
+        li {
+            margin-bottom: 7px;
+            font-size: 0.97rem;
+        }
+
+        .callout {
+            margin: 16px 0;
+            padding: 14px 18px;
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.96rem;
+        }
+
+        .callout.important {
+            background: #fffbf0;
+            border-left-color: #f0a500;
+        }
+
+        .no-data-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+            border: 1px solid #c8cfe8;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 16px 0;
+            font-size: 0.96rem;
+            width: 100%;
+        }
+
+        .no-data-badge strong {
+            display: block;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        table.perms {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 20px;
+            font-size: 0.92rem;
+        }
+
+        table.perms th,
+        table.perms td {
+            border: 1px solid #dde1ee;
+            padding: 10px 12px;
+            vertical-align: top;
+        }
+
+        table.perms thead th {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.10) 0%, rgba(118, 75, 162, 0.10) 100%);
+            font-weight: 700;
+            text-align: left;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 0.9rem;
+        }
+
+        .history-table th,
+        .history-table td {
+            border: 1px solid #eee;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .history-table thead th {
+            background: #f5f5f7;
+            font-weight: 700;
+        }
+
+        .contact-box {
+            margin-top: 24px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .contact-box p { margin-bottom: 6px; }
+        .contact-box p:last-child { margin-bottom: 0; }
+
+        a { color: #667eea; }
+        a:hover { color: #764ba2; }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <div class="nav-top">
+        <a href="/fr/">&larr; ezkey.org</a>
+        <span class="lang-switch"><a href="/privacy.html">English</a></span>
+    </div>
+
+    <article>
+        <div class="doc-meta">Dernière mise à jour&nbsp;: 24 avril 2026</div>
+
+        <div class="hero-title">
+            <div class="label">Légal</div>
+            <h1>Politique de confidentialité</h1>
+            <p class="tagline">Application mobile Ezkey &amp; site ezkey.org</p>
+        </div>
+
+        <div class="no-data-badge">
+            <strong>Version abrégée</strong>
+            Le projet Ezkey ne collecte, ne stocke et ne traite aucune donnée personnelle sur ses
+            propres serveurs &mdash; parce qu&rsquo;il n&rsquo;exploite aucun serveur central.
+            Toutes les données restent sur votre appareil ou transitent directement vers le serveur
+            auto-hébergé de votre organisation.
+        </div>
+
+        <h2>1. Qui sommes-nous</h2>
+        <p>
+            Ezkey est un projet logiciel indépendant dirigé par Marc Gagnon (Pincourt, Québec,
+            Canada). Il produit l&rsquo;<strong>application mobile Android Ezkey</strong>,
+            disponible sur Google Play, et le <strong>site ezkey.org</strong>. Le projet est en
+            développement actif.
+        </p>
+        <p>
+            Contact&nbsp;: <a href="mailto:support@ezkey.org">support@ezkey.org</a>
+        </p>
+
+        <h2>2. Le modèle à deux couches — ce qu&rsquo;Ezkey est et n&rsquo;est pas</h2>
+        <div class="callout important">
+            <strong>Distinction importante.</strong> Ezkey est une <em>plateforme logicielle</em>,
+            non un service. Comprendre cette distinction est essentiel pour comprendre la présente
+            politique.
+        </div>
+        <p>
+            <strong>Couche 1 &mdash; Ezkey le projet (cette politique).</strong> Le projet Ezkey
+            publie des logiciels. Il n&rsquo;exploite aucun service infonuagique, aucun serveur
+            d&rsquo;authentification central et aucune base de données centrale. Il n&rsquo;a
+            aucune visibilité sur votre utilisation de l&rsquo;application.
+        </p>
+        <p>
+            <strong>Couche 2 &mdash; Le serveur auto-hébergé de votre organisation.</strong>
+            Pour utiliser Ezkey, vous vous inscrivez auprès d&rsquo;une organisation qui exploite
+            son propre serveur Ezkey sur sa propre infrastructure. Cette organisation est le
+            responsable du traitement des données personnelles traitées sur son serveur. Consultez
+            <em>leur</em> politique de confidentialité pour savoir comment ils gèrent vos données.
+        </p>
+        <p>
+            La présente politique couvre uniquement l&rsquo;application mobile Ezkey et le site
+            ezkey.org. Elle ne couvre pas le serveur Ezkey auto-hébergé d&rsquo;une organisation.
+        </p>
+
+        <h2>3. Données stockées sur votre appareil</h2>
+        <p>L&rsquo;application Ezkey stocke les données suivantes localement sur votre appareil uniquement&nbsp;:</p>
+        <ul>
+            <li><strong>Paires de clés cryptographiques</strong> &mdash; Générées lors de
+                l&rsquo;inscription et stockées dans le trousseau Android (protégé par le matériel
+                lorsque disponible). Jamais transmises hors de votre appareil&nbsp;; utilisées
+                uniquement pour signer les défis d&rsquo;authentification.</li>
+            <li><strong>Métadonnées d&rsquo;inscription</strong> &mdash; Le nom et l&rsquo;URL
+                de chaque organisation auprès de laquelle vous vous êtes inscrit, ainsi qu&rsquo;un
+                libellé d&rsquo;appareil que vous choisissez. Ces informations sont stockées dans
+                le stockage sécurisé des identifiants de l&rsquo;appareil.</li>
+            <li><strong>État d&rsquo;authentification en attente</strong> &mdash; Données
+                temporaires conservées en mémoire ou sur l&rsquo;appareil pendant que vous
+                répondez à un défi d&rsquo;authentification. Non conservées après la fin de la
+                session.</li>
+        </ul>
+        <p>
+            <strong>La désinstallation de l&rsquo;application supprime toutes les données
+            ci-dessus de votre appareil.</strong> Tout enregistrement de votre inscription sur
+            le serveur de votre organisation est soumis à leur propre politique de conservation
+            des données.
+        </p>
+
+        <h2>4. Données transmises sur le réseau</h2>
+        <p>
+            L&rsquo;application communique exclusivement avec l&rsquo;URL du serveur obtenue
+            depuis le code QR que vous scannez lors de l&rsquo;inscription. Cette URL correspond
+            au point d&rsquo;accès du serveur Ezkey auto-hébergé de votre organisation.
+            L&rsquo;application envoie&nbsp;:
+        </p>
+        <ul>
+            <li>La clé publique générée sur votre appareil lors de l&rsquo;inscription (opération bind)</li>
+            <li>Les signatures cryptographiques des défis d&rsquo;authentification (opération verify)</li>
+            <li>Un jeton de preuve propre à l&rsquo;appareil pour authentifier chaque requête</li>
+        </ul>
+        <p>Aucune donnée n&rsquo;est envoyée à un serveur exploité par le projet Ezkey.</p>
+        <p>Aucune donnée d&rsquo;analyse, de rapport de plantage, de télémétrie ou de publicité
+            n&rsquo;est transmise par l&rsquo;application.</p>
+
+        <h2>5. Permissions Android</h2>
+        <table class="perms">
+            <thead>
+                <tr>
+                    <th>Permission</th>
+                    <th>Pourquoi elle est demandée</th>
+                    <th>Données conservées&nbsp;?</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Appareil photo</strong></td>
+                    <td>Pour scanner le code QR affiché lors de l&rsquo;inscription. Les images
+                        sont traitées sur l&rsquo;appareil et immédiatement supprimées&nbsp;; aucune
+                        image n&rsquo;est stockée ni transmise.</td>
+                    <td>Non</td>
+                </tr>
+                <tr>
+                    <td><strong>Internet</strong></td>
+                    <td>Pour communiquer avec le serveur auto-hébergé de votre organisation.</td>
+                    <td>Non (voir section&nbsp;4)</td>
+                </tr>
+                <tr>
+                    <td><strong>Biométrie / Empreinte</strong>
+                        <br><em>(optionnel)</em></td>
+                    <td>Pour déverrouiller l&rsquo;application ou confirmer une authentification
+                        via le capteur biométrique de l&rsquo;appareil. Le gabarit biométrique ne
+                        quitte jamais l&rsquo;appareil&nbsp;; il est géré entièrement par Android.</td>
+                    <td>Non</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>6. Bibliothèques tierces et services externes</h2>
+        <p>
+            L&rsquo;application Ezkey n&rsquo;intègre aucun SDK collectant des données
+            utilisateur, notamment aucun SDK publicitaire, analytique (Firebase Analytics,
+            Mixpanel, etc.) ni de rapport de plantage (Crashlytics, Sentry, etc.).
+        </p>
+        <p>
+            L&rsquo;application utilise les bibliothèques libres suivantes à des fins
+            strictement techniques&nbsp;:
+        </p>
+        <ul>
+            <li>React Native &mdash; cadriciel d&rsquo;interface utilisateur</li>
+            <li>react-native-vision-camera &mdash; accès à la caméra pour la lecture de QR</li>
+            <li>react-native-keychain &mdash; stockage sécurisé des identifiants</li>
+            <li>Conscrypt (Android) &mdash; primitives cryptographiques (Ed25519)</li>
+            <li>MLKit Barcode Scanning (sur l&rsquo;appareil) &mdash; décodage QR sans appel réseau</li>
+        </ul>
+        <p>Aucune de ces bibliothèques ne transmet de données à leurs auteurs ni à un tiers.</p>
+
+        <h2>7. Le site ezkey.org</h2>
+        <p>
+            Le site ezkey.org est un site statique hébergé sur Cloudflare Pages. Il n&rsquo;utilise
+            pas de témoins (cookies), ne pose pas de pixels de suivi et ne charge pas de scripts
+            d&rsquo;analyse tiers.
+        </p>
+        <p>
+            Cloudflare peut collecter des journaux standard de serveur web (adresse IP, agent
+            utilisateur, horodatage) à des fins de sécurité et d&rsquo;infrastructure, conformément
+            à la <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener noreferrer">politique de confidentialité de Cloudflare</a>.
+            Le projet Ezkey ne reçoit ni ne traite ces journaux.
+        </p>
+
+        <h2>8. Mineurs</h2>
+        <p>
+            L&rsquo;application Ezkey ne s&rsquo;adresse pas aux enfants de moins de 13 ans.
+            Nous ne collectons pas sciemment de renseignements personnels auprès d&rsquo;enfants
+            de moins de 13 ans. Si vous avez moins de 13 ans, veuillez ne pas utiliser
+            l&rsquo;application.
+        </p>
+
+        <h2>9. Vos droits</h2>
+        <h3>Données sur votre appareil</h3>
+        <p>
+            Vous pouvez supprimer toutes les données stockées par l&rsquo;application à tout moment
+            en la désinstallant. La fonction «&nbsp;Effacer les données&nbsp;» d&rsquo;Android dans
+            les paramètres de l&rsquo;application produit le même résultat sans désinstallation.
+        </p>
+
+        <h3>Données sur le serveur de votre organisation</h3>
+        <p>
+            Tout enregistrement d&rsquo;inscription ou historique d&rsquo;authentification détenu
+            par le serveur Ezkey de votre organisation est soumis à leurs propres politiques de
+            conservation et de suppression. Contactez l&rsquo;administrateur de votre organisation
+            pour exercer vos droits (accès, rectification, effacement, portabilité) concernant
+            ces données.
+        </p>
+
+        <h3>Résidents du Québec (Loi 25 &mdash; Loi sur la protection des renseignements personnels dans le secteur privé)</h3>
+        <p>
+            Le projet Ezkey ne collectant pas de renseignements personnels, il n&rsquo;existe
+            aucun renseignement personnel détenu par nous qui serait accessible, rectifiable ou
+            supprimable. Pour toute question ou préoccupation, contactez-nous à
+            <a href="mailto:support@ezkey.org">support@ezkey.org</a>.
+        </p>
+
+        <h3>Résidents de l&rsquo;Union européenne (RGPD)</h3>
+        <p>
+            Le projet Ezkey n&rsquo;agissant pas en tant que responsable du traitement ou
+            sous-traitant de données personnelles (il n&rsquo;exploite aucun serveur et ne reçoit
+            aucune donnée utilisateur), les obligations RGPD de responsable du traitement ne
+            s&rsquo;appliquent pas au projet. Le serveur auto-hébergé de votre organisation est
+            le responsable du traitement pertinent. Pour les données personnelles détenues par
+            Cloudflare (journaux de serveur web), référez-vous à la documentation RGPD de
+            Cloudflare.
+        </p>
+
+        <h2>10. Sécurité des données</h2>
+        <p>
+            Les clés cryptographiques générées par l&rsquo;application sont stockées dans le
+            trousseau Android, qui offre une protection matérielle sur les appareils compatibles.
+            La communication réseau avec le serveur de votre organisation utilise HTTPS. Le projet
+            Ezkey recommande aux organisations de configurer leur serveur avec un certificat TLS
+            valide.
+        </p>
+
+        <h2>11. Modifications de la présente politique</h2>
+        <p>
+            Nous pouvons mettre à jour cette politique au fil de l&rsquo;évolution du projet.
+            Les modifications significatives seront consignées dans le tableau ci-dessous.
+            La version en vigueur est toujours disponible à l&rsquo;adresse
+            <a href="https://ezkey.org/fr/confidentialite.html">https://ezkey.org/fr/confidentialite.html</a>.
+        </p>
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Modification</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>24 avril 2026</td>
+                    <td>Publication initiale &mdash; première soumission Google Play.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="contact-box">
+            <h2 style="margin-top:0;border:none;padding:0;font-size:1.05rem;">12. Contact</h2>
+            <p>Pour toute question relative à la présente politique de confidentialité&nbsp;:</p>
+            <p>
+                <strong>Projet Ezkey &mdash; Marc Gagnon</strong><br>
+                <a href="mailto:support@ezkey.org">support@ezkey.org</a><br>
+                Pincourt, Québec, Canada
+            </p>
+            <p style="margin-top:10px;font-size:0.88rem;color:#555;">
+                Nous nous engageons à répondre aux demandes liées à la confidentialité dans un délai de 30 jours.
+            </p>
+        </div>
+    </article>
+</div>
+</body>
+</html>
