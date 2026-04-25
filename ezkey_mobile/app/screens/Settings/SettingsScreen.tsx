@@ -11,6 +11,7 @@ import {StackScreenProps} from '@react-navigation/stack';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {RootStackParamList} from '../../navigation/types';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
+import {APP_DISPLAY_NAME, APP_VERSION} from '../../config/appInfo';
 
 type Props = StackScreenProps<RootStackParamList, 'Settings'>;
 
@@ -80,6 +81,12 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
           </View>
         </View>
       ) : null}
+      <Text
+        style={styles.versionFooter}
+        accessibilityRole="text"
+        accessibilityLabel={`${APP_DISPLAY_NAME} version ${APP_VERSION}`}>
+        {APP_DISPLAY_NAME} v{APP_VERSION}
+      </Text>
     </ScrollView>
   );
 };
@@ -142,5 +149,12 @@ const styles = StyleSheet.create({
     marginTop: -12,
     fontSize: 22,
     color: colors.textMuted,
+  },
+  versionFooter: {
+    marginTop: spacing.xl,
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    textAlign: 'center',
+    opacity: 0.7,
   },
 });

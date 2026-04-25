@@ -7,4 +7,28 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Add any project specific keep options here:
+# ----- Ezkey app rules ------------------------------------------------------
+# React Native, Hermes, MLKit, Vision Camera, Keychain, AsyncStorage and other
+# RN ecosystem libraries ship their own consumer ProGuard rules through their
+# AAR consumer-rules.pro files, so they are applied automatically.
+#
+# The rules below cover Ezkey-specific concerns:
+#   - The native EzkeyCryptoModule is invoked from JS via @ReactMethod reflection,
+#     so its public surface must survive shrinking.
+#   - Conscrypt registers Ed25519 providers at runtime through reflection.
+#
+# When you add a new native module or a new reflective dependency, add a -keep
+# rule here, then re-run `bundletool install-apks` and exercise the affected
+# screen end-to-end.
+
+-keep class com.ezkeymobile.crypto.** { *; }
+
+-keep class org.conscrypt.** { *; }
+-dontwarn org.conscrypt.**
+
+# Strip android.util.Log debug/verbose calls from release binaries.
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+}
+

@@ -10,4 +10,15 @@
         <item name="android:windowLightNavigationBar">false</item>
     </style>
 
+    <!--
+      Android 12+ native splash screen, backported via androidx.core:core-splashscreen.
+      Renders the launcher icon foreground centered on the app shell background, then transitions
+      to AppTheme via installSplashScreen() in MainActivity.
+    -->
+    <style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/app_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+    </style>
+
 </resources>

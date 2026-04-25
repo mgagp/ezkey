@@ -160,13 +160,26 @@ export const HomeScreen: React.FC = () => {
 };
 
 /**
- * Fallback component rendered when no enrollments exist locally.
+ * Fallback component rendered when no enrollments exist locally. Acts as the first-launch onboarding
+ * surface, explaining the app's purpose and the QR-scan entry point.
  *
  * @since 2025
  */
 const EmptyState: React.FC = () => (
-  <View style={styles.emptyState} accessibilityRole="text" accessibilityLabel="No enrollments yet. Tap add to create one.">
-    <Text style={styles.emptyText}>No enrollments yet. Tap + to add one.</Text>
+  <View
+    style={styles.emptyState}
+    accessibilityRole="text"
+    accessibilityLabel="Welcome to Ezkey. No enrollments yet. Tap the plus button to scan a QR code and add your first device.">
+    <Text style={styles.emptyTitle}>Welcome to Ezkey</Text>
+    <Text style={styles.emptySubtitle}>
+      Approve sign-ins from your trusted device.
+    </Text>
+    <View style={styles.emptyHintCard}>
+      <Text style={styles.emptyHintBadge}>QR</Text>
+      <Text style={styles.emptyHintText}>
+        Tap the + button below and scan a QR code from your Ezkey-enabled service to enroll your first device.
+      </Text>
+    </View>
   </View>
 );
 
@@ -404,13 +417,52 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 64,
+    paddingVertical: 48,
+    paddingHorizontal: spacing.lg,
   },
-  emptyText: {
-    color: colors.textMuted,
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.title,
+    fontWeight: typography.fontWeight.semibold,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    color: colors.textSecondary,
     fontSize: typography.fontSize.lg,
     textAlign: 'center',
-    paddingHorizontal: spacing.xl,
+    marginTop: spacing.sm,
+    lineHeight: 22,
+  },
+  emptyHintCard: {
+    marginTop: spacing.xl,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    alignSelf: 'stretch',
+  },
+  emptyHintBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceElevated,
+    color: colors.primaryLight,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    lineHeight: 44,
+    overflow: 'hidden',
+  },
+  emptyHintText: {
+    flex: 1,
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.base,
+    lineHeight: 20,
   },
   fab: {
     position: 'absolute',

@@ -57,8 +57,44 @@ react {
 
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ * Enabled by default for release: shrinks the APK/AAB, removes unused classes, and applies the
+ * shipped consumer ProGuard rules from React Native, Hermes, and other dependencies. App-specific
+ * exceptions live in `proguard-rules.pro`.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
+
+/**
+ * Reads the release signing credentials from Gradle properties (which also pick up
+ * `ORG_GRADLE_PROJECT_*` environment variables, useful for CI). Returns null when any required
+ * property is missing so we can fall back to debug signing locally with a loud warning instead of
+ * failing every assembleDebug. Source the keystore from outside the repo (e.g. ~/.gradle).
+ *
+ * Required properties:
+ *   EZKEY_UPLOAD_STORE_FILE      Absolute path to the upload keystore (.keystore / .jks)
+ *   EZKEY_UPLOAD_STORE_PASSWORD  Keystore password
+ *   EZKEY_UPLOAD_KEY_ALIAS       Key alias inside the keystore
+ *   EZKEY_UPLOAD_KEY_PASSWORD    Key password
+ */
+def releaseSigningProps = {
+    def storeFilePath = project.findProperty('EZKEY_UPLOAD_STORE_FILE')
+    def storePassword = project.findProperty('EZKEY_UPLOAD_STORE_PASSWORD')
+    def keyAlias = project.findProperty('EZKEY_UPLOAD_KEY_ALIAS')
+    def keyPassword = project.findProperty('EZKEY_UPLOAD_KEY_PASSWORD')
+    if (!storeFilePath || !storePassword || !keyAlias || !keyPassword) {
+        return null
+    }
+    def storeFile = file(storeFilePath)
+    if (!storeFile.exists()) {
+        logger.warn("Ezkey: EZKEY_UPLOAD_STORE_FILE points to ${storeFilePath} but the file does not exist; falling back to debug signing for release builds.")
+        return null
+    }
+    return [
+        storeFile: storeFile,
+        storePassword: storePassword,
+        keyAlias: keyAlias,
+        keyPassword: keyPassword,
+    ]
+}.call()
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -116,6 +152,14 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (releaseSigningProps != null) {
+            release {
+                storeFile releaseSigningProps.storeFile
+                storePassword releaseSigningProps.storePassword
+                keyAlias releaseSigningProps.keyAlias
+                keyPassword releaseSigningProps.keyPassword
+            }
+        }
     }
     buildTypes {
         debug {
@@ -123,11 +167,21 @@ android {
             buildConfigField "boolean", "USE_DEVELOPER_SUPPORT", String.valueOf(ezkeyUseMetroInDebug)
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Release builds use the upload signing key when EZKEY_UPLOAD_* properties are set
+            // (Google Play App Signing then re-signs with its managed key). When credentials are
+            // absent we fall back to the debug keystore with a loud warning so that local debug
+            // workflows keep working but the resulting AAB cannot be uploaded to the Play Console.
+            if (releaseSigningProps != null) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn("Ezkey: release signing credentials not provided (set EZKEY_UPLOAD_* gradle properties); falling back to debug keystore. The resulting artifact CANNOT be uploaded to the Play Console.")
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            shrinkResources enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            // Release builds never load the Metro dev server.
+            buildConfigField "boolean", "USE_DEVELOPER_SUPPORT", "false"
         }
     }
 }
@@ -136,6 +190,8 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
     implementation "com.google.mlkit:barcode-scanning:17.2.0"
+    // Backports the Android 12+ splash screen API to older devices for a consistent first launch.
+    implementation "androidx.core:core-splashscreen:1.0.1"
 
     // Ed25519 integration signing verification on older API levels (JCA parity with Auth API JDK path).
     implementation 'org.conscrypt:conscrypt-android:2.5.3'

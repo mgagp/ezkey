@@ -13,6 +13,8 @@
 
 package com.ezkeymobile
 
+import android.os.Bundle
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -24,6 +26,18 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
  * @since 2025
  */
 class MainActivity : ReactActivity() {
+
+  /**
+   * Installs the Android 12+ native splash screen (backported via androidx.core.splashscreen)
+   * before the React Native surface attaches, then transitions to [AppTheme]. Keeps the splash
+   * visible only while React Native bootstraps to avoid the default white/black flash.
+   *
+   * @since 2025
+   */
+  override fun onCreate(savedInstanceState: Bundle?) {
+    installSplashScreen()
+    super.onCreate(savedInstanceState)
+  }
 
   /**
    * Returns the main React Native component name used by the navigation host.

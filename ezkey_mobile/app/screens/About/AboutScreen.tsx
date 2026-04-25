@@ -6,13 +6,13 @@
  */
 
 import React, {useEffect, useState} from 'react';
-import {Text, StyleSheet, ScrollView, TouchableOpacity, Linking} from 'react-native';
+import {Text, StyleSheet, ScrollView, TouchableOpacity, Linking, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {colors, spacing, typography} from '../../config/theme';
+import {borderRadius, colors, spacing, typography} from '../../config/theme';
 import {EzkeyLogo} from '../../components/EzkeyLogo';
 import {nativeCrypto} from '../../services/crypto';
+import {APP_VERSION} from '../../config/appInfo';
 
-const APP_VERSION = '0.0.1';
 const EZKEY_SITE_URL = 'https://ezkey.org';
 
 /**
@@ -57,17 +57,36 @@ export const AboutScreen: React.FC = () => {
       accessibilityLabel="About Ezkey Authenticator">
       <EzkeyLogo size={120} />
       <Text style={styles.title}>Ezkey Authenticator</Text>
-      <Text style={styles.version}>Version {APP_VERSION}</Text>
-      <Text style={styles.buildTimestamp} selectable accessibilityLabel="Native app build time UTC">
-        {buildTimestampUtc === 'loading'
-          ? 'Build (UTC): …'
-          : buildTimestampUtc === 'unavailable'
-            ? 'Build (UTC): unavailable'
-            : `Build (UTC): ${buildTimestampUtc}`}
-      </Text>
+      <Text style={styles.tagline}>Cryptographic MFA — backend-first, self-hosted, open source.</Text>
+      <View style={styles.metaCard}>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>Version</Text>
+          <Text style={styles.metaValue} selectable accessibilityLabel={`App version ${APP_VERSION}`}>
+            {APP_VERSION}
+          </Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>Build (UTC)</Text>
+          <Text
+            style={styles.metaValue}
+            selectable
+            accessibilityLabel="Native app build time UTC">
+            {buildTimestampUtc === 'loading'
+              ? '…'
+              : buildTimestampUtc === 'unavailable'
+                ? 'unavailable'
+                : buildTimestampUtc}
+          </Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>License</Text>
+          <Text style={styles.metaValue}>MIT — Open Source</Text>
+        </View>
+      </View>
       <Text style={styles.description}>
-        Ezkey is a cryptographic MFA platform, intentionally distinct from FIDO2/WebAuthn and passkey protocols. This
-        app lets you enroll devices and approve sign-in requests from your admin console.
+        Ezkey lets you enroll trusted devices and approve sign-in requests from your admin console. It is a
+        proprietary cryptographic protocol, intentionally distinct from FIDO2/WebAuthn and passkeys, designed for
+        operators who want full control over their authentication backend.
       </Text>
       <TouchableOpacity
         style={styles.linkButton}
@@ -97,18 +116,39 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.lg,
   },
-  version: {
+  tagline: {
     fontSize: typography.fontSize.base,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  buildTimestamp: {
-    fontSize: typography.fontSize.sm,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.xs,
     paddingHorizontal: spacing.md,
+    lineHeight: 20,
+  },
+  metaCard: {
+    alignSelf: 'stretch',
+    marginTop: spacing.xl,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  metaLabel: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textMuted,
+    fontWeight: typography.fontWeight.medium,
+  },
+  metaValue: {
+    fontSize: typography.fontSize.base,
+    color: colors.textPrimary,
+    fontWeight: typography.fontWeight.medium,
   },
   description: {
     fontSize: typography.fontSize.base,
