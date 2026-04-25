@@ -65,7 +65,15 @@ cd C:\github\ezkey
 npx wrangler pages deploy sites/ezkey-org --project-name=ezkey-org --branch=preview-manual-1
 ```
 
-**Production deployment** (after you approve a preview) is a separate step: deploy **without** using a non-production preview branch, or use the dashboard’s production branch / promotion flow, consistent with your Pages settings. Document the exact promotion command when you lock it in.
+**Production deployment** (after you approve a preview) uses the same Wrangler direct upload, targeting the project’s **production branch** (usually `main`):
+
+```bash
+export CLOUDFLARE_API_TOKEN="your_token_here"
+export CLOUDFLARE_ACCOUNT_ID="your_account_id_here"
+./scripts/cloudflare/deploy-ezkey-org-production.sh
+```
+
+The script is **[scripts/cloudflare/deploy-ezkey-org-production.sh](../../scripts/cloudflare/deploy-ezkey-org-production.sh)**. Override the branch with `CLOUDFLARE_PAGES_PRODUCTION_BRANCH` if your Pages project uses something other than `main`. The live public URL is **`https://ezkey.org`** (custom domain on the `ezkey-org` project), not the `*.pages.dev` link Wrangler may print.
 
 ## Medium term — repository and assistant conventions
 

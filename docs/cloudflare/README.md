@@ -24,6 +24,7 @@ Wrangler deploy scripts source a gitignored **`.env`** at the **repository root*
 | Script | Purpose |
 |--------|---------|
 | [deploy-ezkey-org-preview.sh](../../scripts/cloudflare/deploy-ezkey-org-preview.sh) | Deploy `sites/ezkey-org/` to Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` on your machine). |
+| [deploy-ezkey-org-production.sh](../../scripts/cloudflare/deploy-ezkey-org-production.sh) | Deploy `sites/ezkey-org/` to the Pages **production** branch (default `main` via `CLOUDFLARE_PAGES_PRODUCTION_BRANCH`); same credentials as preview. Serves the custom domain (e.g. `ezkey.org`) when the project is configured for it. |
 | [deploy-admin-ui-preview.sh](../../scripts/cloudflare/deploy-admin-ui-preview.sh) | Deploy `ezkey-admin-ui/dist` to Pages as a **preview** after `npm run build:cloudflare`. Optional `--build` runs the build first using `VITE_API_BASE_URL` from `.env` or the exp1 default. |
 | [deploy-admin-ui-production.sh](../../scripts/cloudflare/deploy-admin-ui-production.sh) | Deploy `ezkey-admin-ui/dist` to the Pages **production** branch (default `main`). Same `--build` and `.env` behavior. Use after custom domain (e.g. `exp1-admin-ui.ezkey.org`) is configured. |
 
