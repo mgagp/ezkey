@@ -2,7 +2,7 @@
 name: Dashboard enrollment widget
 overview: Fix enrollment dashboard stats so the headline number and badge counts form a consistent, operator-friendly partition (same design discipline as auth-attempt dashboard aggregation), backed by a single grouped aggregation in the backend and updated Admin UI copy/layout.
 status: completed
-completedAt: "2026-04-14"
+completedAt: "2026-04-25"
 todos:
   - id: analyze-scope
     content: "Confirm dashboard universe (active=true vs all) and bucket list with product: Verified, InProgress (CREATED+BOUND), Expired; optional Invalid if in scope"
@@ -114,3 +114,32 @@ flowchart LR
 - `ezkey-core`: `EnrollmentDashboardStats`, `EnrollmentService.aggregateDashboardEnrollmentStats`, unit test `EnrollmentDashboardStatsTest`.
 - `ezkey-admin-api`: `DashboardEnrollmentStatsDto` bucket fields; `DashboardService` uses aggregation.
 - `ezkey-admin-ui`: dashboard enrollments stat card, i18n EN/FR; generated model type updated for Orval alignment until spec regen.
+
+## Drilldown coherence analysis (2026-04-25)
+
+Functional test (clean-start, one CREATED enrollment not completed) revealed that clicking the "in progress" badge did show the correct enrollment, but exposed two alignment issues between dashboard aggregation and list queries. Full circuit analysis per badge:
+
+| Badge | URL generated | List mode | Dashboard count (backend) | List query (actual) | List query (correct) | Consistent? |
+|---|---|---|---|---|---|---|
+| **in progress** | `?active=true&bucket=inProgress` | bucket | CREATED(any active) + BOUND(any active) | CREATED+active=true, BOUND+active=true | CREATED(any), BOUND(any) | ❌ see fixes below |
+| **suspended** | `?status=VERIFIED&active=false` | normal | VERIFIED + active=false | VERIFIED + active=false | same | ✅ |
+| **expired** | `?status=EXPIRED` | normal | EXPIRED (any active) | EXPIRED, no active filter | same | ✅ |
+| **incidents** | `?bucket=incidents` | bucket | INVALID(any) + REVOKED(any) | INVALID(no active), REVOKED(no active) | same | ✅ |
+
+**Corrections applied (frontend only — no backend gap):**
+
+1. `enrollments.tsx` — removed `active: true` from CREATED and BOUND bucket queries. Dashboard aggregation uses `getAll()` (any active state); queries now match.
+2. `enrollments.tsx` — `activeFilter` initialization changed from `enrollmentBucket ? 'true' : searchParams.get('active') ?? ''` to always reading from the URL. The dropdown now reflects the actual filter: "Any" for inProgress/incidents (no active param in URL), "Inactive" for suspended (`active=false` in URL).
+3. `dashboard-drilldown-links.ts` — removed the `else if (options.bucket && options.bucket !== 'incidents')` branch that added `active=true` to the inProgress URL. No longer needed and was the source of the misleading filter state.
+
+## Post-delivery correction (2026-04-25)
+
+**Observation (functional test after clean-start):** after the session relaunch, the headline number showed a dash (—) or the incidents badge was non-zero, and the i18n hint still evoked "badges totalling this figure". Separately, the widget showed the `verified` count **twice**: once as the large headline (`<StatNum value={enrVerified}>`), and once as the first badge (variant `success`, same value). The second occurrence is entirely redundant — clicking it navigates to the same filtered list as the headline's implied scope.
+
+**Root cause:** the `sum=total` constraint was correctly eliminated, but the design did not decide what role the headline vs. the badges would each play. The headline was repurposed as `verified` (active devices ready for MFA), which is the right KPI number. The first badge then duplicated that number with a `success` variant, adding visual clutter and no new information.
+
+**Decision / fix:** remove the `verified` badge. The widget now has:
+- **Headline (large):** VERIFIED + active=true — the single most important KPI.
+- **4 operational badges (deviation from ideal):** in progress, suspended, expired, incidents.
+
+This follows the same pattern as the integrations widget (headline = total; badges = active + inactive as deviation details). The `drilldown.enrollmentsVerified` i18n key was also removed (EN + FR) as it was only referenced by the deleted badge's `ariaLabel`.

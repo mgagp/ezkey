@@ -11,7 +11,7 @@ export const ROLLING_24H_PRESET_VALUE = 'rolling24h';
 
 /** Enrollment list: combined status buckets without a single API status filter. */
 export const ENROLLMENT_BUCKET_PARAM = 'bucket';
-export type EnrollmentDrilldownBucket = 'inProgress' | 'unavailable';
+export type EnrollmentDrilldownBucket = 'inProgress' | 'unavailable' | 'incidents';
 
 /** Integration list filter key (matches {@link IntegrationListFilter} in integrations page). */
 export const INTEGRATION_LIFECYCLE_FILTER_PARAM = 'lifecycleFilter';
@@ -53,13 +53,14 @@ export function buildAuthAttemptsDrilldownUrl(options: {
 
 export function buildEnrollmentsDrilldownUrl(options: {
   status?: string;
-  activeTrue?: boolean;
+  /** Explicit active flag — use false for suspended (VERIFIED + inactive) drilldown. */
+  active?: boolean;
   bucket?: EnrollmentDrilldownBucket;
 }): string {
   const params = new URLSearchParams();
   appendIfDefined(params, 'status', options.status);
-  if (options.activeTrue || options.bucket) {
-    params.set('active', 'true');
+  if (options.active === false) {
+    params.set('active', 'false');
   }
   if (options.bucket) {
     params.set(ENROLLMENT_BUCKET_PARAM, options.bucket);

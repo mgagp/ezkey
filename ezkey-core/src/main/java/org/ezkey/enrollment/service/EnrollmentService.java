@@ -20,6 +20,7 @@ import jakarta.persistence.criteria.Root;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -301,50 +302,50 @@ public class EnrollmentService {
   }
 
   /**
-   * Aggregates active enrollment row counts by status for the Admin UI dashboard.
+   * Aggregates enrollment row counts by status and active flag for the Admin UI dashboard.
    *
-   * <p>Uses a single grouped query with the same tenant scoping as {@link #findByFilters}. Buckets
-   * are derived in {@link EnrollmentDashboardStats}.
+   * <p>Uses a single grouped query ({@code GROUP BY status, active}) with the same tenant scoping
+   * as {@link #findByFilters}. No {@code active} pre-filter is applied so all operational states
+   * are visible. Buckets are derived in {@link EnrollmentDashboardStats}.
    *
    * @param tenantId optional tenant scope; {@code null} means all tenants (Global Admin)
-   * @return counts where {@code total} equals the sum of status counts and of the bucket fields
+   * @return operational bucket counts covering all enrollment states
    */
   @Transactional(readOnly = true)
   public EnrollmentDashboardStats aggregateDashboardEnrollmentStats(Integer tenantId) {
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
     CriteriaQuery<Tuple> cq = cb.createTupleQuery();
     Root<Enrollment> root = cq.from(Enrollment.class);
-    cq.multiselect(root.get("status"), cb.count(root));
-    cq.where(buildEnrollmentDashboardPredicate(root, cq, cb, tenantId));
-    cq.groupBy(root.get("status"));
+    cq.multiselect(root.get("status"), root.get("active"), cb.count(root));
+    Predicate tenantPredicate = buildEnrollmentDashboardPredicate(root, cq, cb, tenantId);
+    if (tenantPredicate != null) {
+      cq.where(tenantPredicate);
+    }
+    cq.groupBy(root.get("status"), root.get("active"));
     List<Tuple> tuples = entityManager.createQuery(cq).getResultList();
 
-    Map<EnrollmentStatus, Long> counts = new EnumMap<>(EnrollmentStatus.class);
-    for (EnrollmentStatus s : EnrollmentStatus.values()) {
-      counts.put(s, 0L);
-    }
+    Map<EnrollmentStatus, Map<Boolean, Long>> counts = new EnumMap<>(EnrollmentStatus.class);
     for (Tuple tuple : tuples) {
       EnrollmentStatus status = (EnrollmentStatus) tuple.get(0);
-      long cnt = (Long) tuple.get(1);
-      counts.put(status, cnt);
+      Boolean active = (Boolean) tuple.get(1);
+      long cnt = (Long) tuple.get(2);
+      counts.computeIfAbsent(status, k -> new HashMap<>()).put(active, cnt);
     }
-    return EnrollmentDashboardStats.fromStatusCounts(counts);
+    return EnrollmentDashboardStats.fromStatusActiveCounts(counts);
   }
 
   private Predicate buildEnrollmentDashboardPredicate(
       Root<Enrollment> root, CriteriaQuery<?> query, CriteriaBuilder cb, Integer tenantId) {
-    List<Predicate> predicates = new ArrayList<>();
-    predicates.add(cb.equal(root.get("active"), Boolean.TRUE));
-    if (tenantId != null) {
-      var subquery = query.subquery(Integer.class);
-      var integrationRoot = subquery.from(Integration.class);
-      subquery.select(integrationRoot.get("id"));
-      subquery.where(
-          cb.equal(integrationRoot.get("tenant").get("tenantId"), tenantId),
-          cb.equal(integrationRoot.get("id"), root.get("integrationId")));
-      predicates.add(cb.exists(subquery));
+    if (tenantId == null) {
+      return null;
     }
-    return cb.and(predicates.toArray(new Predicate[0]));
+    var subquery = query.subquery(Integer.class);
+    var integrationRoot = subquery.from(Integration.class);
+    subquery.select(integrationRoot.get("id"));
+    subquery.where(
+        cb.equal(integrationRoot.get("tenant").get("tenantId"), tenantId),
+        cb.equal(integrationRoot.get("id"), root.get("integrationId")));
+    return cb.exists(subquery);
   }
 
   /**

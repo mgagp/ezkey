@@ -116,11 +116,11 @@ export default function DashboardPage() {
   const intActive = overview?.integrations?.active;
   const intInactive = overview?.integrations?.inactive;
 
-  const enrTotal = overview?.enrollments?.total;
   const enrVerified = overview?.enrollments?.verified;
   const enrInProgress = overview?.enrollments?.inProgress;
+  const enrSuspended = overview?.enrollments?.suspended;
   const enrExpired = overview?.enrollments?.expired;
-  const enrUnavailable = overview?.enrollments?.unavailable;
+  const enrIncidents = overview?.enrollments?.incidents;
 
   const authTotal = overview?.auth24h?.total;
   const authAccepted = overview?.auth24h?.accepted;
@@ -266,19 +266,12 @@ export default function DashboardPage() {
 
           <StatCard title={t('dashboard:stats.enrollments')} icon={Users} isLoading={overviewLoading}>
             <p className="text-4xl font-black text-fg">
-              <StatNum value={enrTotal} isLoading={overviewLoading} />
+              <StatNum value={enrVerified} isLoading={overviewLoading} />
             </p>
             <p className="text-xs text-fg-muted mt-2 font-medium">
               {t('dashboard:stats.enrollmentsHint')}
             </p>
             <div className="flex gap-1 mt-2 flex-wrap">
-              <DashboardStatBadgeLink
-                to={buildEnrollmentsDrilldownUrl({ status: 'VERIFIED', activeTrue: true })}
-                variant="success"
-                ariaLabel={t('dashboard:drilldown.enrollmentsVerified')}
-              >
-                <StatNum value={enrVerified} isLoading={overviewLoading} /> {t('dashboard:stats.verified')}
-              </DashboardStatBadgeLink>
               <Tooltip content={t('dashboard:stats.enrollmentInProgressHelp')}>
                 <DashboardStatBadgeLink
                   to={buildEnrollmentsDrilldownUrl({ bucket: 'inProgress' })}
@@ -288,19 +281,28 @@ export default function DashboardPage() {
                   <StatNum value={enrInProgress} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentInProgress')}
                 </DashboardStatBadgeLink>
               </Tooltip>
+              <Tooltip content={t('dashboard:stats.enrollmentSuspendedHelp')}>
+                <DashboardStatBadgeLink
+                  to={buildEnrollmentsDrilldownUrl({ status: 'VERIFIED', active: false })}
+                  variant={(enrSuspended ?? 0) > 0 ? 'warning' : 'muted'}
+                  ariaLabel={t('dashboard:drilldown.enrollmentsSuspended')}
+                >
+                  <StatNum value={enrSuspended} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentSuspended')}
+                </DashboardStatBadgeLink>
+              </Tooltip>
               <DashboardStatBadgeLink
-                to={buildEnrollmentsDrilldownUrl({ status: 'EXPIRED', activeTrue: true })}
+                to={buildEnrollmentsDrilldownUrl({ status: 'EXPIRED' })}
                 variant={(enrExpired ?? 0) > 0 ? 'warning' : 'muted'}
                 ariaLabel={t('dashboard:drilldown.enrollmentsExpired')}
               >
                 <StatNum value={enrExpired} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentExpired')}
               </DashboardStatBadgeLink>
               <DashboardStatBadgeLink
-                to={buildEnrollmentsDrilldownUrl({ bucket: 'unavailable' })}
-                variant={(enrUnavailable ?? 0) > 0 ? 'error' : 'muted'}
-                ariaLabel={t('dashboard:drilldown.enrollmentsUnavailable')}
+                to={buildEnrollmentsDrilldownUrl({ bucket: 'incidents' })}
+                variant={(enrIncidents ?? 0) > 0 ? 'error' : 'muted'}
+                ariaLabel={t('dashboard:drilldown.enrollmentsIncidents')}
               >
-                <StatNum value={enrUnavailable} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentUnavailable')}
+                <StatNum value={enrIncidents} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentIncidents')}
               </DashboardStatBadgeLink>
             </div>
           </StatCard>

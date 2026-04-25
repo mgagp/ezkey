@@ -147,7 +147,7 @@ public class DashboardService {
   private DashboardEnrollmentStatsDto buildEnrollmentStats(Integer tenantId) {
     EnrollmentDashboardStats s = enrollmentService.aggregateDashboardEnrollmentStats(tenantId);
     return new DashboardEnrollmentStatsDto(
-        s.total(), s.verified(), s.inProgress(), s.expired(), s.unavailable());
+        s.verified(), s.inProgress(), s.suspended(), s.expired(), s.incidents());
   }
 
   private DashboardAuth24hStatsDto buildAuth24hStats(Integer tenantId, OffsetDateTime since24h) {

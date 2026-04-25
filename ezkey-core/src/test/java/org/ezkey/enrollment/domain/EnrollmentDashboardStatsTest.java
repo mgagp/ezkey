@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Test Class: EnrollmentDashboardStatsTest
- * Description: Unit tests for dashboard enrollment bucket aggregation.
+ * Description: Unit tests for dashboard enrollment operational bucket aggregation.
  */
 
 package org.ezkey.enrollment.domain;
@@ -13,6 +13,7 @@ package org.ezkey.enrollment.domain;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,39 +21,119 @@ import org.junit.jupiter.api.Test;
 @DisplayName("EnrollmentDashboardStats")
 class EnrollmentDashboardStatsTest {
 
-  @Test
-  @DisplayName("fromStatusCounts partitions statuses into buckets and total matches sum")
-  void fromStatusCounts_partitionsAndTotals() {
-    Map<EnrollmentStatus, Long> counts = new EnumMap<>(EnrollmentStatus.class);
-    counts.put(EnrollmentStatus.CREATED, 3L);
-    counts.put(EnrollmentStatus.BOUND, 2L);
-    counts.put(EnrollmentStatus.VERIFIED, 10L);
-    counts.put(EnrollmentStatus.EXPIRED, 1L);
-    counts.put(EnrollmentStatus.INVALID, 4L);
-    counts.put(EnrollmentStatus.REVOKED, 5L);
-
-    EnrollmentDashboardStats s = EnrollmentDashboardStats.fromStatusCounts(counts);
-
-    assertEquals(25L, s.total());
-    assertEquals(10L, s.verified());
-    assertEquals(5L, s.inProgress());
-    assertEquals(1L, s.expired());
-    assertEquals(9L, s.unavailable());
-    assertEquals(s.total(), s.verified() + s.inProgress() + s.expired() + s.unavailable());
+  private static Map<EnrollmentStatus, Map<Boolean, Long>> counts(Object... triplets) {
+    Map<EnrollmentStatus, Map<Boolean, Long>> result = new EnumMap<>(EnrollmentStatus.class);
+    for (int i = 0; i < triplets.length; i += 3) {
+      EnrollmentStatus status = (EnrollmentStatus) triplets[i];
+      Boolean active = (Boolean) triplets[i + 1];
+      Long count = (Long) triplets[i + 2];
+      result.computeIfAbsent(status, k -> new HashMap<>()).put(active, count);
+    }
+    return result;
   }
 
   @Test
-  @DisplayName("fromStatusCounts treats missing statuses as zero")
-  void fromStatusCounts_missingStatusesZero() {
-    Map<EnrollmentStatus, Long> counts = new EnumMap<>(EnrollmentStatus.class);
-    counts.put(EnrollmentStatus.VERIFIED, 7L);
+  @DisplayName("fromStatusActiveCounts splits VERIFIED by active flag into verified and suspended")
+  void fromStatusActiveCounts_verifiedSplitByActive() {
+    Map<EnrollmentStatus, Map<Boolean, Long>> c =
+        counts(
+            EnrollmentStatus.VERIFIED,
+            Boolean.TRUE,
+            10L,
+            EnrollmentStatus.VERIFIED,
+            Boolean.FALSE,
+            3L);
 
-    EnrollmentDashboardStats s = EnrollmentDashboardStats.fromStatusCounts(counts);
+    EnrollmentDashboardStats s = EnrollmentDashboardStats.fromStatusActiveCounts(c);
 
-    assertEquals(7L, s.total());
-    assertEquals(7L, s.verified());
+    assertEquals(10L, s.verified());
+    assertEquals(3L, s.suspended());
     assertEquals(0L, s.inProgress());
     assertEquals(0L, s.expired());
-    assertEquals(0L, s.unavailable());
+    assertEquals(0L, s.incidents());
+  }
+
+  @Test
+  @DisplayName("fromStatusActiveCounts aggregates CREATED and BOUND (any active) into inProgress")
+  void fromStatusActiveCounts_inProgressAnyActive() {
+    Map<EnrollmentStatus, Map<Boolean, Long>> c =
+        counts(
+            EnrollmentStatus.CREATED, Boolean.FALSE, 3L, EnrollmentStatus.BOUND, Boolean.FALSE, 2L);
+
+    EnrollmentDashboardStats s = EnrollmentDashboardStats.fromStatusActiveCounts(c);
+
+    assertEquals(5L, s.inProgress());
+    assertEquals(0L, s.verified());
+    assertEquals(0L, s.suspended());
+  }
+
+  @Test
+  @DisplayName("fromStatusActiveCounts aggregates INVALID and REVOKED (any active) into incidents")
+  void fromStatusActiveCounts_incidentsAnyActive() {
+    Map<EnrollmentStatus, Map<Boolean, Long>> c =
+        counts(
+            EnrollmentStatus.INVALID,
+            Boolean.FALSE,
+            4L,
+            EnrollmentStatus.REVOKED,
+            Boolean.FALSE,
+            5L);
+
+    EnrollmentDashboardStats s = EnrollmentDashboardStats.fromStatusActiveCounts(c);
+
+    assertEquals(9L, s.incidents());
+    assertEquals(0L, s.verified());
+    assertEquals(0L, s.suspended());
+  }
+
+  @Test
+  @DisplayName("fromStatusActiveCounts covers all buckets with mixed active states")
+  void fromStatusActiveCounts_allBucketsMixed() {
+    Map<EnrollmentStatus, Map<Boolean, Long>> c =
+        counts(
+            EnrollmentStatus.VERIFIED,
+            Boolean.TRUE,
+            10L,
+            EnrollmentStatus.VERIFIED,
+            Boolean.FALSE,
+            2L,
+            EnrollmentStatus.CREATED,
+            Boolean.FALSE,
+            3L,
+            EnrollmentStatus.BOUND,
+            Boolean.FALSE,
+            2L,
+            EnrollmentStatus.EXPIRED,
+            Boolean.FALSE,
+            1L,
+            EnrollmentStatus.INVALID,
+            Boolean.FALSE,
+            4L,
+            EnrollmentStatus.REVOKED,
+            Boolean.FALSE,
+            5L);
+
+    EnrollmentDashboardStats s = EnrollmentDashboardStats.fromStatusActiveCounts(c);
+
+    assertEquals(10L, s.verified());
+    assertEquals(2L, s.suspended());
+    assertEquals(5L, s.inProgress());
+    assertEquals(1L, s.expired());
+    assertEquals(9L, s.incidents());
+  }
+
+  @Test
+  @DisplayName("fromStatusActiveCounts treats missing statuses as zero")
+  void fromStatusActiveCounts_missingStatusesZero() {
+    Map<EnrollmentStatus, Map<Boolean, Long>> c =
+        counts(EnrollmentStatus.VERIFIED, Boolean.TRUE, 7L);
+
+    EnrollmentDashboardStats s = EnrollmentDashboardStats.fromStatusActiveCounts(c);
+
+    assertEquals(7L, s.verified());
+    assertEquals(0L, s.suspended());
+    assertEquals(0L, s.inProgress());
+    assertEquals(0L, s.expired());
+    assertEquals(0L, s.incidents());
   }
 }

@@ -39,7 +39,7 @@ import type {
 } from '@/generated/admin-api/model';
 
 function parseEnrollmentBucket(value: string | null): EnrollmentDrilldownBucket | '' {
-  if (value === 'inProgress' || value === 'unavailable') {
+  if (value === 'inProgress' || value === 'unavailable' || value === 'incidents') {
     return value;
   }
   return '';
@@ -356,9 +356,7 @@ export default function EnrollmentsPage() {
     enrollmentBucket ? '' : (searchParams.get('status') ?? ''),
   );
   const [integrationFilter, setIntegrationFilter] = useState(searchParams.get('integrationId') ?? '');
-  const [activeFilter, setActiveFilter] = useState(() =>
-    enrollmentBucket ? 'true' : (searchParams.get('active') ?? ''),
-  );
+  const [activeFilter, setActiveFilter] = useState(() => searchParams.get('active') ?? '');
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const debouncedName = useDebounce(nameInput, 300);
@@ -420,7 +418,6 @@ export default function EnrollmentsPage() {
         queryFn: () =>
           search1({
             status: 'CREATED',
-            active: true,
             page: 0,
             size: 500,
             sort: ['createdAt,DESC'],
@@ -433,7 +430,6 @@ export default function EnrollmentsPage() {
         queryFn: () =>
           search1({
             status: 'BOUND',
-            active: true,
             page: 0,
             size: 500,
             sort: ['createdAt,DESC'],
@@ -467,6 +463,30 @@ export default function EnrollmentsPage() {
           } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
         enabled: enrollmentBucket === 'unavailable',
       },
+      {
+        queryKey: ['enrollments', 'bucket', 'INVALID-incidents', integrationFilter],
+        queryFn: () =>
+          search1({
+            status: 'INVALID',
+            page: 0,
+            size: 500,
+            sort: ['createdAt,DESC'],
+            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+        enabled: enrollmentBucket === 'incidents',
+      },
+      {
+        queryKey: ['enrollments', 'bucket', 'REVOKED-incidents', integrationFilter],
+        queryFn: () =>
+          search1({
+            status: 'REVOKED',
+            page: 0,
+            size: 500,
+            sort: ['createdAt,DESC'],
+            integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
+          } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
+        enabled: enrollmentBucket === 'incidents',
+      },
     ],
   });
 
@@ -481,6 +501,11 @@ export default function EnrollmentsPage() {
       const b = bucketQueries[3].data?.content ?? [];
       return [...a, ...b].sort((x, y) => (y.createdAt ?? '').localeCompare(x.createdAt ?? ''));
     }
+    if (enrollmentBucket === 'incidents') {
+      const a = bucketQueries[4].data?.content ?? [];
+      const b = bucketQueries[5].data?.content ?? [];
+      return [...a, ...b].sort((x, y) => (y.createdAt ?? '').localeCompare(x.createdAt ?? ''));
+    }
     return [];
   }, [bucketQueries, enrollmentBucket]);
 
@@ -490,7 +515,10 @@ export default function EnrollmentsPage() {
         || (bucketQueries[1].data?.page?.totalElements ?? 0) > 500))
     || (enrollmentBucket === 'unavailable'
       && ((bucketQueries[2].data?.page?.totalElements ?? 0) > 500
-        || (bucketQueries[3].data?.page?.totalElements ?? 0) > 500));
+        || (bucketQueries[3].data?.page?.totalElements ?? 0) > 500))
+    || (enrollmentBucket === 'incidents'
+      && ((bucketQueries[4].data?.page?.totalElements ?? 0) > 500
+        || (bucketQueries[5].data?.page?.totalElements ?? 0) > 500));
 
   const bucketSlice = useMemo(() => {
     const start = bucketPage * bucketPageSize;
@@ -502,7 +530,9 @@ export default function EnrollmentsPage() {
   const bucketIsLoading = enrollmentBucket
     ? bucketQueries.some((q, i) => {
         const enabled =
-          (enrollmentBucket === 'inProgress' && i < 2) || (enrollmentBucket === 'unavailable' && i >= 2);
+          (enrollmentBucket === 'inProgress' && i < 2)
+          || (enrollmentBucket === 'unavailable' && i >= 2 && i < 4)
+          || (enrollmentBucket === 'incidents' && i >= 4);
         return enabled && q.isLoading;
       })
     : false;

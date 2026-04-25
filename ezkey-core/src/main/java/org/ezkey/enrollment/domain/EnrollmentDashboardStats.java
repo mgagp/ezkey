@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Record: EnrollmentDashboardStats
- * Description: Aggregated active enrollment counts for dashboard (grouped buckets).
+ * Description: Operational enrollment counts for dashboard (grouped by status and active flag).
  */
 
 package org.ezkey.enrollment.domain;
@@ -13,41 +13,72 @@ package org.ezkey.enrollment.domain;
 import java.util.Map;
 
 /**
- * Aggregated enrollment statistics for the Admin UI dashboard.
+ * Operational enrollment statistics for the Admin UI dashboard.
  *
- * <p>Counts are scoped by the caller (e.g. tenant vs instance) and restricted to {@code active =
- * true}. Buckets partition that universe: {@code verified}, {@code inProgress} ({@link
- * EnrollmentStatus#CREATED} + {@link EnrollmentStatus#BOUND}), {@code expired}, and {@code
- * unavailable} ({@link EnrollmentStatus#INVALID} + {@link EnrollmentStatus#REVOKED}). The {@link
- * #total()} equals the sum of per-status counts and equals the sum of the four bucket fields.
+ * <p>Each bucket represents a distinct operational state, independent of the {@code active} flag:
  *
- * @param total all active enrollments in scope
- * @param verified enrollments with status {@link EnrollmentStatus#VERIFIED}
- * @param inProgress enrollments in {@link EnrollmentStatus#CREATED} or {@link
- *     EnrollmentStatus#BOUND}
- * @param expired enrollments with status {@link EnrollmentStatus#EXPIRED}
- * @param unavailable enrollments with status {@link EnrollmentStatus#INVALID} or {@link
- *     EnrollmentStatus#REVOKED}
+ * <ul>
+ *   <li>{@link #verified()} — devices ready for MFA ({@link EnrollmentStatus#VERIFIED} + {@code
+ *       active = true})
+ *   <li>{@link #inProgress()} — onboarding in progress ({@link EnrollmentStatus#CREATED} or {@link
+ *       EnrollmentStatus#BOUND}, any {@code active})
+ *   <li>{@link #suspended()} — admin-disabled devices ({@link EnrollmentStatus#VERIFIED} + {@code
+ *       active = false})
+ *   <li>{@link #expired()} — abandoned before completion ({@link EnrollmentStatus#EXPIRED}, any
+ *       {@code active})
+ *   <li>{@link #incidents()} — security events ({@link EnrollmentStatus#INVALID} or {@link
+ *       EnrollmentStatus#REVOKED}, any {@code active})
+ * </ul>
+ *
+ * <p>Buckets do not sum to a single total by design: each represents an independent operational
+ * question.
+ *
+ * @param verified VERIFIED + active=true — devices currently serving authentication
+ * @param inProgress CREATED or BOUND (any active) — onboarding awaiting completion
+ * @param suspended VERIFIED + active=false — valid devices temporarily disabled by an admin
+ * @param expired EXPIRED (any active) — enrollments that timed out before verification
+ * @param incidents INVALID or REVOKED (any active) — security-relevant events
+ * @since 2025
  */
 public record EnrollmentDashboardStats(
-    long total, long verified, long inProgress, long expired, long unavailable) {
+    long verified, long inProgress, long suspended, long expired, long incidents) {
 
   /**
-   * Builds dashboard stats from per-status counts (missing statuses treated as zero).
+   * Builds dashboard stats from per-status, per-active counts (missing entries treated as zero).
    *
-   * @param counts map of status to count from a grouped query
-   * @return bucket totals with {@code total} equal to the sum of all status counts
+   * <p>The outer map key is the enrollment status; the inner map key is the {@code active} flag
+   * ({@code true} = active, {@code false} = inactive).
+   *
+   * @param counts map of status → (active flag → count) from a grouped query
+   * @return operational bucket counts
    */
-  public static EnrollmentDashboardStats fromStatusCounts(Map<EnrollmentStatus, Long> counts) {
-    long created = counts.getOrDefault(EnrollmentStatus.CREATED, 0L);
-    long bound = counts.getOrDefault(EnrollmentStatus.BOUND, 0L);
-    long verified = counts.getOrDefault(EnrollmentStatus.VERIFIED, 0L);
-    long expired = counts.getOrDefault(EnrollmentStatus.EXPIRED, 0L);
-    long invalid = counts.getOrDefault(EnrollmentStatus.INVALID, 0L);
-    long revoked = counts.getOrDefault(EnrollmentStatus.REVOKED, 0L);
-    long total = created + bound + verified + expired + invalid + revoked;
-    long inProgress = created + bound;
-    long unavailable = invalid + revoked;
-    return new EnrollmentDashboardStats(total, verified, inProgress, expired, unavailable);
+  public static EnrollmentDashboardStats fromStatusActiveCounts(
+      Map<EnrollmentStatus, Map<Boolean, Long>> counts) {
+    long verified = get(counts, EnrollmentStatus.VERIFIED, Boolean.TRUE);
+    long suspended = get(counts, EnrollmentStatus.VERIFIED, Boolean.FALSE);
+    long inProgress =
+        getAll(counts, EnrollmentStatus.CREATED) + getAll(counts, EnrollmentStatus.BOUND);
+    long expired = getAll(counts, EnrollmentStatus.EXPIRED);
+    long incidents =
+        getAll(counts, EnrollmentStatus.INVALID) + getAll(counts, EnrollmentStatus.REVOKED);
+    return new EnrollmentDashboardStats(verified, inProgress, suspended, expired, incidents);
+  }
+
+  private static long get(
+      Map<EnrollmentStatus, Map<Boolean, Long>> counts, EnrollmentStatus status, Boolean active) {
+    Map<Boolean, Long> inner = counts.get(status);
+    if (inner == null) {
+      return 0L;
+    }
+    return inner.getOrDefault(active, 0L);
+  }
+
+  private static long getAll(
+      Map<EnrollmentStatus, Map<Boolean, Long>> counts, EnrollmentStatus status) {
+    Map<Boolean, Long> inner = counts.get(status);
+    if (inner == null) {
+      return 0L;
+    }
+    return inner.getOrDefault(Boolean.TRUE, 0L) + inner.getOrDefault(Boolean.FALSE, 0L);
   }
 }
