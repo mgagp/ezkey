@@ -40,7 +40,6 @@ import {
 import {cryptoService} from '../../services/crypto';
 import {generateProofToken} from '../../utils/generateProofToken';
 import {sha256HexUtf8} from '../../utils/sha256HexUtf8';
-import {RespondMitmLabControl} from '../../components/RespondMitmLabControl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
@@ -147,8 +146,6 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const [challengeFailedMessage, setChallengeFailedMessage] = useState<string | undefined>();
   const [isProcessing, setIsProcessing] = useState(false);
   const [loading, setLoading] = useState(false);
-  /** Lab: send authAttemptAccepted opposite to signed payload (invalid device signature on server). */
-  const [simulateRespondMitmMismatch, setSimulateRespondMitmMismatch] = useState(false);
   /** On-screen debug info when an error occurs (no server/file needed). */
   const [debugInfo, setDebugInfo] = useState<{
     /** ISO 8601 timestamp when this debug snapshot started (confirms JS bundle / screen code version). */
@@ -352,16 +349,11 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         // Ensure root key exists
         const enrollmentKeyId = enrollment.id.toString();
         await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
-        /** User's real decision — always what we sign (proofToken|accepted). */
-        const signAccepted = accepted;
-        /** Wire value: MITM sim sends the opposite flag so JSON ≠ signed payload. */
-        const wireAccepted =
-          env.labRespondMitmSimulator && simulateRespondMitmMismatch ? !accepted : accepted;
-        const respondPayload = buildRespondPayload(attempt.authAttemptProofToken, signAccepted);
+        const respondPayload = buildRespondPayload(attempt.authAttemptProofToken, accepted);
         const proofTokenSigned = await cryptoService.sign(enrollmentKeyId, respondPayload);
         const response = await authAttemptsApi.respond({
           authAttemptId: attempt.authAttemptId,
-          authAttemptAccepted: wireAccepted,
+          authAttemptAccepted: accepted,
           authAttemptProofTokenSignedByDevice: proofTokenSigned,
           authAttemptChallengeResponse: challengeInput.trim() || undefined,
         }, enrollment.authUrl);
@@ -412,7 +404,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         setIsProcessing(false);
       }
     },
-    [attempt, challengeInput, enrollment, extractErrorMessage, simulateRespondMitmMismatch, state],
+    [attempt, challengeInput, enrollment, extractErrorMessage, state],
   );
 
   const hasSecureInfo = true; // With Ed25519, keys are always available if root key exists
@@ -626,12 +618,6 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
                   </Text>
                 </TouchableOpacity>
               </View>
-              {env.labRespondMitmSimulator ? (
-                <RespondMitmLabControl
-                  enabled={simulateRespondMitmMismatch}
-                  onEnabledChange={setSimulateRespondMitmMismatch}
-                />
-              ) : null}
             </View>
           </ScrollView>
         )
