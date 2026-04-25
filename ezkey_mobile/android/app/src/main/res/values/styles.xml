@@ -4,8 +4,9 @@
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
-        <item name="android:statusBarColor">@color/app_background</item>
-        <item name="android:navigationBarColor">@color/app_background</item>
+        <!-- statusBarColor and navigationBarColor removed: Android 15 (API 35) forces edge-to-edge
+             and ignores these attributes. Bar appearance is handled via StatusBar (translucent)
+             and useSafeAreaInsets in the React Native layer. -->
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>

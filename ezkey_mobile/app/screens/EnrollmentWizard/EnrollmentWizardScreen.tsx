@@ -579,10 +579,14 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         visible={scannerVisible}
         onDismiss={() => setScannerVisible(false)}
         onScanned={value => {
-          console.log('[EnrollmentWizard] Raw QR value:', JSON.stringify(value));
+          if (__DEV__) {
+            console.log('[EnrollmentWizard] Raw QR value:', JSON.stringify(value));
+          }
           try {
             const parsed = parseQrPayload(value);
-            console.log('[EnrollmentWizard] Parsed QR payload:', JSON.stringify(parsed));
+            if (__DEV__) {
+              console.log('[EnrollmentWizard] Parsed QR payload:', JSON.stringify(parsed));
+            }
             setAuthUrl(parsed.authUrl);
             setBindForm(() => ({
               enrollmentId: parsed.enrollmentId,
