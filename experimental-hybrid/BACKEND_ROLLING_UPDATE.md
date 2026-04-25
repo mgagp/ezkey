@@ -1,8 +1,10 @@
 # Rolling update — single backend image (Lightsail)
 
-Use this when you **already run** the experimental Lightsail stack ([`README.md`](README.md), [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md)) and only need to deploy a **new image** for **one** API (or migration) **without** wiping volumes or running a full `clean-start.sh`.
+Use this when you **already run** the experimental Lightsail stack ([`README.md`](README.md), [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md)) and only need to deploy a **new image** for **one** API, **migration**, or the **ACME demo app** **without** wiping volumes or running a full `clean-start.sh`.
 
-**Not covered here:** database schema changes that require a **new migration** image and an explicit migration run — follow your usual Flyway process (`migration` service) if the codebase added migrations.
+**Full stack in one go (Caddy, Compose, migration, all backends, optional demo):** from the repo root run **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling`** (add **`--include-demo-acme`** for the demo). That builds the images, loads them on the VM, syncs `docker-compose.yml` / `Caddyfile` / `clean-start.sh`, and runs **`docker compose up -d`** remotely — **Postgres data and other named volumes are kept**; the **`migration`** service runs Flyway from the new image. Alternatively call [`export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) with **`--sync-operator-files`**, **`--remote-up`**, and the image flags you need.
+
+**Per-service notes:** if you only changed one service, you can still use **`docker compose up -d --no-deps --force-recreate <service>`** after `docker load` instead of a full `up` (smaller blast radius). If schema changed, always deploy a new **migration** image before or with the API upgrades.
 
 ## Image tag
 
@@ -41,7 +43,7 @@ cd ~/ezkey/experimental-hybrid/lightsail
 docker compose up -d --no-deps --force-recreate auth-api
 ```
 
-- **`--no-deps`** — avoids restarting Postgres, Caddy, or other services when only this API changed.
+- **`--no-deps`** — avoids restarting Postgres, Caddy, or other services when only this service changed.
 - **`--force-recreate`** — ensures the container is built from the image you just loaded.
 
 **Optional — watch startup:**
@@ -66,8 +68,11 @@ docker compose exec auth-api curl -sf http://localhost:8085/actuator/health
 | `auth-api`        | `auth-api`           | `ezkey-auth-api:latest`   | `ezkey-auth-api.tar`          |
 | `integration-api` | `integration-api`    | `ezkey-integration-api:latest` | `ezkey-integration-api.tar` |
 | `migration`       | `migration`          | `ezkey-migration:latest`  | `ezkey-migration.tar`         |
+| `demo-app-acme`   | `demo-app-acme`     | `ezkey-demo-app-acme:latest` | `ezkey-demo-app-acme.tar`     |
 
 Use the **service** name in `docker compose … <service>` (first column).
+
+**`demo-app-acme`:** after `docker load`, use `docker compose up -d --no-deps --force-recreate demo-app-acme`. Recreate **Caddy** only if you changed [`lightsail/Caddyfile`](lightsail/Caddyfile) or origin TLS PEMs, e.g. `docker compose up -d --no-deps --force-recreate caddy` — not required for a demo image-only update.
 
 ## Multiple backends in one pass
 
@@ -90,5 +95,5 @@ docker image prune -f
 
 ## See also
 
-- Full build/save/load flow for **all** images: [`README.md`](README.md) *Build and export images*
+- Full build/save/load flow for **all** images (optional **`--include-demo-acme`**): [`README.md`](README.md) *Build and export images*
 - VM tree and `scp` defaults: [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *VM initialization* and *Phase 2*

@@ -98,6 +98,11 @@ EZKEY_EVALUATION.md
 .ezkey-test/
 
 # ==========================
+# Cloudflare Wrangler (local cache; not for commit)
+# ==========================
+.wrangler/
+
+# ==========================
 # Node.js / JavaScript
 # ==========================
 node_modules/

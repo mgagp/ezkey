@@ -6,7 +6,8 @@ This folder contains **operator-focused** artifacts to run Ezkey on **Amazon Lig
 - **Local (optional):** [`local/`](local/) — `docker-compose.yml`, `.env.example`
 - **Runbook:** [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) — phases, **`~/ezkey` VM tree**, **`scp` from a dev clone** (default), optional clone-on-VM, Cloudflare split (manual vs repo)
 - **Single-backend image update (Lightsail):** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md) — `docker save` / `scp` / `docker load` / `compose up --force-recreate`
-- **Scripted full export + optional clean-start + optional UI deploy:** [`experimental-hybrid/scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh), [`experimental-hybrid/scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) — see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*
+- **Scripted export + optional clean-start or rolling (no DB wipe) + optional UI deploy:** [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) (`--sync-operator-files`, `--remote-up`), [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) subcommand **`rolling`** — see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*
+- **One-command stack upgrade (EXP1 / Lightsail, keeps Postgres data):** from repo root, **`./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling`** — builds **migration + all backend APIs**, saves/loads images (including Flyway), copies **Caddyfile** + **`docker-compose.yml`** + `clean-start.sh` to the VM, then runs **`docker compose up -d`** remotely. Use **`rolling --include-demo-acme`** to add the ACME demo image to the build/export. This does **not** run `clean-start` and does **not** remove volumes.
 
 The same Lightsail stack can also expose `demo-app-acme` behind a dedicated hostname such as `https://exp1-demo-acme.ezkey.org`. This keeps the public evaluation surface separate from the Admin UI and API hostnames while reusing the same Caddy + Docker operational model.
 
@@ -68,7 +69,18 @@ docker load -i ~/ezkey-auth-api.tar
 docker load -i ~/ezkey-integration-api.tar
 ```
 
-To automate **save → scp → load** (and optionally **remote `clean-start.sh`**), use [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh). For a **single command** that can also **`docker compose build`**, push images to the VM, **clean-start**, and **deploy the Admin UI to Cloudflare**, see [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*.
+To automate **save → scp → load**, use [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh). Add **`--sync-operator-files`** to push **Caddy** + **Compose** files (no DB wipe), and **`--remote-up`** to run **`docker compose up -d`** on the VM after load (rolling apply: new **migration** image runs Flyway against the existing database). Do **not** combine those with **`--clean-start`** (destructive). Optional **`--include-demo-acme`**. For **`docker compose build`** + full rolling pipeline or **`full`** (destructive) + **Cloudflare** UI deploy, see [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) and [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 2b*.
+
+## Progressive introduction of the ACME demo (Lightsail, no database wipe)
+
+Use this when the stack and Postgres data **already run** and you only add or update the public **ACME demo** (`exp1-demo-acme` in the default [`lightsail/Caddyfile`](lightsail/Caddyfile)). Do **not** use [`lightsail/clean-start.sh`](lightsail/clean-start.sh) or **`--clean-start`** on [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) if you need to keep existing volumes.
+
+1. **Cloudflare DNS** — Add **`exp1-demo-acme.ezkey.org`** (or your zone) as an **A** record to the Lightsail public IP (or a **CNAME** to another `exp1-*` name that already points there). Enable **proxied (orange)** like the other experimental hosts. See [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *Phase 0d* / *1b*.
+2. **Origin certificate** — Include the demo FQDN in the **Cloudflare Origin Server** cert SAN list, redeploy **`origin.pem`** / **`origin-key.pem`** to **`lightsail/caddy-certs/`** on the VM, then recreate Caddy: `docker compose up -d --no-deps --force-recreate caddy` from [`lightsail/`](lightsail/) (see [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md)). Without this, TLS from Cloudflare to the origin will fail for the new hostname.
+3. **Build and transfer** — `docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .`, then run **`./experimental-hybrid/scripts/export-backend-images-to-lightsail.sh --include-demo-acme`** (optionally with **`--apis-only`** if you skip migration tars), or `docker save` / `scp` / `docker load` manually per [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
+4. **Sync files** — If the VM is older than the repo, **`scp`** current [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) and [`lightsail/Caddyfile`](lightsail/Caddyfile) to `~/ezkey/experimental-hybrid/lightsail/` (see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md) *VM initialization*). Do not run a destructive `clean-start`.
+5. **Recreate services** — On the VM: `docker compose up -d --no-deps --force-recreate demo-app-acme` after `docker load`; add `--force-recreate caddy` if Caddyfile or TLS PEMs changed. See [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
+6. **App configuration** — Ensure `/app/data/acme-users.json` exists (volume **`demo-app-acme-data`**), set **API key** credentials for the Admin API (`EZKEY_INTEGRATION_KEY` / `EZKEY_SECRET_KEY` in `.env` or `demo-app-acme-config`), and IP whitelist the integration for the container network. **`EZKEY_TRUSTED_PROXIES_CIDRS`** is set in [`lightsail/docker-compose.yml`](lightsail/docker-compose.yml) for the demo; align with [`lightsail/.env`](lightsail/.env.example) if you override. End-to-end login still needs a **device approval** path (e.g. mobile app) against your public Auth API.
 
 ## Run on Lightsail
 
@@ -88,7 +100,7 @@ Caddy persists certificates and ACME state in the **`caddy-data`** volume (`/dat
 
 Postgres is published only on **loopback** (`127.0.0.1:5432:5432`) for optional **SSH tunnel** access (e.g. DBeaver from your PC).
 
-**TLS:** Caddy terminates HTTPS for the three API hostnames with **TLS 1.3 only** (see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md)). For the **Admin UI** on Cloudflare Pages, set **minimum TLS 1.3** in the Cloudflare zone — [`docs/cloudflare/admin-ui-pages.md`](../docs/cloudflare/admin-ui-pages.md).
+**TLS:** Caddy terminates HTTPS for the API hostnames and (if enabled) the ACME demo hostname with **TLS 1.3 only** (see [`DEPLOYMENT_PLAYBOOK.md`](DEPLOYMENT_PLAYBOOK.md)). For the **Admin UI** on Cloudflare Pages, set **minimum TLS 1.3** in the Cloudflare zone — [`docs/cloudflare/admin-ui-pages.md`](../docs/cloudflare/admin-ui-pages.md).
 
 ### CORS (Admin UI on a different origin)
 

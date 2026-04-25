@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 #
 # One-shot operator flow: build backend images (optional), export/load to Lightsail (optional),
-# remote clean-start (optional), deploy Admin UI to Cloudflare (optional).
-#
-# Experimental / disposable Lightsail: assumes DB wipe on --clean-start is acceptable.
+# optional no-wipe sync of Caddy/Compose to the VM and remote docker compose up (optional),
+# remote clean-start (optional, destructive), deploy Admin UI to Cloudflare (optional).
 #
 # Usage (from repository root, Git Bash):
 #   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh
 #   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh full
+#   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh rolling
 #   ./experimental-hybrid/scripts/full-exp-environment-upgrade.sh --help
 #
 # With no arguments, or with the "full" subcommand first, runs the destructive "everything"
-# preset (same idea as --build --export --clean-start --remove-remote-tars --deploy-ui
-# --ui-production --ui-build). Additional flags after "full" can narrow or adjust (e.g.
-# --ui-preview, --apis-only).
+# preset (build + export + clean-start + remove remote tars + deploy UI production + build).
+#
+# Subcommand "rolling" (EXPerimental / Lightsail, no database wipe):
+#   --build --export --include-demo-acme is available via --include-demo-acme
+#   default: build migration + all APIs, export all images including migration, --remove-remote-tars,
+#   --sync-operator-files, --remote-up on LIGHTSAIL_SSH_HOST (Caddy + Compose from repo, then
+#   docker compose up -d; Postgres and named volumes are preserved; Flyway runs from new image).
 #
 # Environment:
 #   LIGHTSAIL_SSH_HOST   default ezkey; set only if your SSH Host alias differs (experimental hybrid).
@@ -39,28 +43,40 @@ DO_DEPLOY_UI=""
 UI_MODE="preview"
 APIS_ONLY=""
 REMOVE_REMOTE_TARS=""
+DO_SYNC_OP=""
+DO_REMOTE_UP=""
+INCLUDE_DEMO_ACME=""
 
 usage() {
   cat <<EOF
-Usage: $0 [full] [options]
+Usage: $0 [full|rolling] [options]
 
-  full             Shorthand for the full destructive refresh preset (see below). Optional if you
-                   pass no arguments at all — same as running with zero args.
+  full             Destructive preset: --build --export --clean-start --remove-remote-tars
+                   --deploy-ui --ui-production --ui-build (same as no arguments).
   (no arguments)   Same as: $0 full
+  rolling          No-wipe Lightsail stack upgrade: --build --export --remove-remote-tars
+                   --sync-operator-files --remote-up (Caddy, Compose, migration + backends + demo
+                   if --include-demo-acme, then remote docker compose up -d). Does NOT run clean-start.
 
-  Preset "full" applies before option flags; flags listed after "full" can override parts, e.g.:
+  After "full" or "rolling", option flags can override or add, e.g.:
     $0 full --ui-preview
-    $0 full --apis-only
+    $0 rolling --include-demo-acme
+    $0 --build --export --sync-operator-files --remote-up
 
-  --build          Run: docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api
-  --export         Run export-backend-images-to-lightsail.sh (save, scp, docker load)
-  --apis-only      Pass --apis-only to export (no migration tar; use only if Flyway image unchanged)
-  --clean-start    Pass --clean-start to export (remote clean-start.sh; wipes volumes on VM)
-  --remove-remote-tars  Pass --remove-remote-tars to export (delete tars on VM after load)
-  --deploy-ui      Deploy Admin UI via Cloudflare (requires CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID)
-  --ui-preview     Use deploy-admin-ui-preview.sh (default when not using preset full)
-  --ui-production  Use deploy-admin-ui-production.sh instead of preview
-  --ui-build       Pass --build to the deploy script (npm run build:cloudflare)
+  --build            Run docker compose -f docker/docker-compose.yml build (see preset / flags).
+  --export           Run export-backend-images-to-lightsail.sh
+  --apis-only        Pass --apis-only to export (skip migration image; use when Flyway unchanged)
+  --sync-operator-files  Pass to export: scp lightsail docker-compose.yml, Caddyfile, clean-start.sh
+  --remote-up        Pass to export: ssh to VM and run docker compose up -d (rolling apply, DB kept)
+  --include-demo-acme  Pass to export and add demo-app-acme to the local docker compose build
+  --clean-start      Pass to export (DESTRUCTIVE: remote clean-start.sh). Incompatible with rolling preset.
+  --remove-remote-tars  Pass to export
+  --deploy-ui        Deploy Admin UI to Cloudflare (requires CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID)
+  --ui-preview|production|...   (unchanged, see below)
+
+  --ui-preview      Use deploy-admin-ui-preview.sh (default when not using preset full)
+  --ui-production   Use deploy-admin-ui-production.sh
+  --ui-build        Pass --build to the deploy script
 
 Preset "full" enables:
   --build --export --clean-start --remove-remote-tars --deploy-ui --ui-production --ui-build
@@ -68,8 +84,9 @@ Preset "full" enables:
 Examples:
   $0
   $0 full
-  $0 --build --export --clean-start --deploy-ui --ui-production --ui-build --remove-remote-tars
-  $0 full --apis-only
+  $0 rolling
+  $0 rolling --include-demo-acme
+  $0 --build --export --sync-operator-files --remote-up --remove-remote-tars
   $0 --export --clean-start
   $0 --deploy-ui --ui-build
 EOF
@@ -78,7 +95,12 @@ EOF
 UI_BUILD=""
 
 PRESET_FULL=""
-if [[ $# -eq 0 ]]; then
+PRESET_ROLLING=""
+
+if [[ $# -gt 0 && "$1" == "rolling" ]]; then
+  PRESET_ROLLING=1
+  shift
+elif [[ $# -eq 0 ]]; then
   PRESET_FULL=1
 elif [[ "${1:-}" == "full" ]]; then
   PRESET_FULL=1
@@ -95,11 +117,22 @@ if [[ -n "$PRESET_FULL" ]]; then
   UI_BUILD="--build"
 fi
 
+if [[ -n "$PRESET_ROLLING" ]]; then
+  DO_BUILD="1"
+  DO_EXPORT="1"
+  REMOVE_REMOTE_TARS="1"
+  DO_SYNC_OP="1"
+  DO_REMOTE_UP="1"
+fi
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --build) DO_BUILD="1" ;;
     --export) DO_EXPORT="1" ;;
     --apis-only) APIS_ONLY="1" ;;
+    --sync-operator-files) DO_SYNC_OP="1" ;;
+    --remote-up) DO_REMOTE_UP="1" ;;
+    --include-demo-acme) INCLUDE_DEMO_ACME="1" ;;
     --clean-start) DO_CLEAN_START="1" ;;
     --remove-remote-tars) REMOVE_REMOTE_TARS="1" ;;
     --deploy-ui) DO_DEPLOY_UI="1" ;;
@@ -116,6 +149,12 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+if [[ -n "$PRESET_ROLLING" && -n "$DO_CLEAN_START" ]]; then
+  echo "error: preset 'rolling' is for no-wipe upgrades. Do not pass --clean-start." >&2
+  echo "  Use subcommand or flags 'full' / --clean-start for a destructive reset." >&2
+  exit 1
+fi
+
 cd "${REPO_ROOT}"
 
 echo "=========================================="
@@ -123,14 +162,21 @@ echo "  Full experimental environment upgrade"
 echo "  Repo: ${REPO_ROOT}"
 echo "  LIGHTSAIL_SSH_HOST: ${LIGHTSAIL_SSH_HOST}"
 if [[ -n "${PRESET_FULL:-}" ]]; then
-  echo "  Preset: full"
+  echo "  Preset: full (destructive clean-start on export)"
+fi
+if [[ -n "${PRESET_ROLLING:-}" ]]; then
+  echo "  Preset: rolling (no DB wipe: sync Caddy/Compose, load images, remote compose up)"
 fi
 echo "=========================================="
 echo ""
 
 if [[ -n "$DO_BUILD" ]]; then
-  echo "→ docker compose build (migration + APIs)..."
-  docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api
+  BUILD_TARGETS=(migration admin-api auth-api integration-api)
+  if [[ -n "$INCLUDE_DEMO_ACME" ]]; then
+    BUILD_TARGETS+=(demo-app-acme)
+  fi
+  echo "→ docker compose build ${BUILD_TARGETS[*]} ..."
+  docker compose -f docker/docker-compose.yml build "${BUILD_TARGETS[@]}"
   echo ""
 fi
 
@@ -139,6 +185,9 @@ if [[ -n "$DO_EXPORT" ]]; then
   [[ -n "$APIS_ONLY" ]] && ex_args+=(--apis-only)
   [[ -n "$DO_CLEAN_START" ]] && ex_args+=(--clean-start)
   [[ -n "${REMOVE_REMOTE_TARS:-}" ]] && ex_args+=(--remove-remote-tars)
+  [[ -n "$INCLUDE_DEMO_ACME" ]] && ex_args+=(--include-demo-acme)
+  [[ -n "$DO_SYNC_OP" ]] && ex_args+=(--sync-operator-files)
+  [[ -n "$DO_REMOTE_UP" ]] && ex_args+=(--remote-up)
   bash "${EXPORT_SCRIPT}" "${ex_args[@]}"
   echo ""
 fi

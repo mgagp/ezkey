@@ -64,7 +64,7 @@ After a rebuild, set each API **A** record in Cloudflare to the **new** Lightsai
 | [`lightsail/caddy-certs/`](lightsail/caddy-certs/) | On the VM only: **Origin CA** PEMs from Cloudflare (**not** in git; `.gitignore` keeps the folder) |
 | [`lightsail/clean-start.sh`](lightsail/clean-start.sh) | Optional **destructive** reset: `down -v`, keygen, `up -d` |
 | [`lightsail/.env.example`](lightsail/.env.example) | Template for `lightsail/.env` |
-| [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) | `docker save` → `scp` → `docker load`; with `--clean-start`, syncs `docker-compose.yml`, `Caddyfile`, `clean-start.sh` then runs `clean-start.sh` |
+| [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) | `docker save` → `scp` → `docker load`; optional **`--include-demo-acme`**. **`--sync-operator-files`**: scp `docker-compose.yml`, `Caddyfile`, `clean-start.sh` without volume wipe. **`--remote-up`**: `docker compose up -d` on the VM (rolling stack refresh). Incompatible with `--clean-start` (use one path or the other). With `--clean-start`, syncs then runs `clean-start.sh` (destructive) |
 | [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) | Optional: local build + export + clean-start + Pages deploy |
 
 ---
@@ -74,7 +74,7 @@ After a rebuild, set each API **A** record in Cloudflare to the **new** Lightsai
 **Goal:** Browsers trust **Cloudflare’s** certificate; the origin trusts **Cloudflare Origin CA** (issued in the dashboard, long-lived).
 
 1. **SSL/TLS** → **Full** or **Full (strict)** (strict once the origin presents the Origin cert correctly).
-2. **Origin Server** → **Create certificate** → hostnames: your three API FQDNs (e.g. `exp1-auth-api`, `exp1-admin-api`, `exp1-integration-api` under your zone) → save **`origin.pem`** and **`origin-key.pem`** locally (never commit).
+2. **Origin Server** → **Create certificate** → hostnames: your **API** FQDNs (e.g. `exp1-auth-api`, `exp1-admin-api`, `exp1-integration-api` under your zone) and, if you use it, the **ACME demo** hostname (e.g. `exp1-demo-acme.ezkey.org` — see [`lightsail/Caddyfile`](lightsail/Caddyfile)) so Caddy can present the cert for that site block. Save **`origin.pem`** and **`origin-key.pem`** locally (never commit). Re-issue the Origin cert when you add a new hostname.
 3. On the VM: `mkdir -p ~/ezkey/experimental-hybrid/lightsail/caddy-certs`, `chmod 700`, copy PEMs, `chmod 600` on the key.
 4. **DNS:** set API **A** records to the Lightsail IP, then enable **proxied (orange)**.
 5. **HSTS** (optional): start with a **short** `max-age` or disable until stable; add **`includeSubDomains`** / **preload** only when the whole zone is ready. Enable **No-Sniff** if offered in the same UI.
@@ -136,14 +136,14 @@ Then **Phase 2** (images) and **Phase 3** (start).
 
 ## Phase 2 — Build and transfer images
 
-1. On the workstation: `docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api` (or targets you need).
+1. On the workstation: `docker compose -f docker/docker-compose.yml build migration admin-api auth-api integration-api` (or targets you need). For the **ACME demo** image: `docker build -f docker/Dockerfile --target demo-app-acme -t ezkey-demo-app-acme:latest .`
 2. `docker save` → tars; `scp` to VM; on VM: `docker load`.
 
-**Scripted:** [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) — use `--clean-start` for a full sync of compose + Caddyfile + `clean-start.sh` and a **destructive** VM reset. **`caddy-certs/` and `.env` are not copied** by the script (secrets / operator files).
+**Scripted:** [`scripts/export-backend-images-to-lightsail.sh`](scripts/export-backend-images-to-lightsail.sh) — add **`--include-demo-acme`** to push `ezkey-demo-app-acme` tars in the same pass (after a local `demo-app-acme` build). For a **no-wipe** refresh of Caddy, Compose, and all loaded images: **`--sync-operator-files --remote-up`** (optionally with **`--include-demo-acme`**). Use **`--clean-start`** only for a **destructive** VM reset (do not mix with `--sync-operator-files` or `--remote-up`). **`caddy-certs/` and `.env` are not copied** by the script (secrets / operator files).
 
-**Preset:** [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh) — optional build, export, clean-start, Pages deploy (see script `usage`).
+**Presets — [`scripts/full-exp-environment-upgrade.sh`](scripts/full-exp-environment-upgrade.sh):** subcommand **`rolling`** = build (migration + APIs) + export + remove remote tars + **`--sync-operator-files` + `--remote-up`** (single delegated command, DB preserved, Flyway from new image). Add **`--include-demo-acme`** for the ACME demo. Subcommand **`full`** or no args = destructive build + export + `clean-start` + UI deploy. See script **`--help`**.
 
-**Rolling update without wipe:** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
+**Per-service or manual rolling:** [`BACKEND_ROLLING_UPDATE.md`](BACKEND_ROLLING_UPDATE.md).
 
 ---
 
