@@ -134,14 +134,19 @@ public class DashboardService {
       Integer tenantId, PageRequest pageOne) {
     long total =
         integrationService
-            .findByFilters(null, null, false, null, null, tenantId, pageOne)
+            .findByFilters(null, null, true, null, null, tenantId, pageOne)
             .getTotalElements();
     long active =
         integrationService
             .findByFilters(
                 null, IntegrationLifecycleStatus.ACTIVE, false, null, null, tenantId, pageOne)
             .getTotalElements();
-    return new DashboardIntegrationStatsDto(total, active, total - active);
+    long retired =
+        integrationService
+            .findByFilters(
+                null, IntegrationLifecycleStatus.RETIRED, false, null, null, tenantId, pageOne)
+            .getTotalElements();
+    return new DashboardIntegrationStatsDto(total, active, retired);
   }
 
   private DashboardEnrollmentStatsDto buildEnrollmentStats(Integer tenantId) {
