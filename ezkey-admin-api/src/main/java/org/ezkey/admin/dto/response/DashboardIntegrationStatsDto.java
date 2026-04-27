@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 /**
  * Integration counts for the dashboard overview.
  *
- * <p>Provides total, active, and inactive integration counts for the current scope (tenant or
+ * <p>Provides total, active, and retired integration counts for the current scope (tenant or
  * instance).
  */
 @Schema(description = "Integration counts for dashboard overview")
@@ -23,14 +23,14 @@ public class DashboardIntegrationStatsDto {
 
   private long total;
   private long active;
-  private long inactive;
+  private long retired;
 
   public DashboardIntegrationStatsDto() {}
 
-  public DashboardIntegrationStatsDto(long total, long active, long inactive) {
+  public DashboardIntegrationStatsDto(long total, long active, long retired) {
     this.total = total;
     this.active = active;
-    this.inactive = inactive;
+    this.retired = retired;
   }
 
   public long getTotal() {
@@ -49,11 +49,11 @@ public class DashboardIntegrationStatsDto {
     this.active = active;
   }
 
-  public long getInactive() {
-    return inactive;
+  public long getRetired() {
+    return retired;
   }
 
-  public void setInactive(long inactive) {
-    this.inactive = inactive;
+  public void setRetired(long retired) {
+    this.retired = retired;
   }
 }
