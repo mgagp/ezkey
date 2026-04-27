@@ -7,7 +7,8 @@
 export interface DashboardIntegrationStats {
   total: number;
   active: number;
-  inactive: number;
+  retired: number;
+  inactive?: number;
 }
 
 /** Active enrollment counts (grouped buckets) for dashboard overview. */

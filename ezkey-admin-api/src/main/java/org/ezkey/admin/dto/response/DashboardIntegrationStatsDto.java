@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 /**
  * Integration counts for the dashboard overview.
  *
- * <p>Provides total, active, and inactive integration counts for the current scope (tenant or
+ * <p>Provides total, active, and retired integration counts for the current scope (tenant or
  * instance).
  */
 @Schema(description = "Integration counts for dashboard overview")
@@ -23,14 +23,14 @@ public class DashboardIntegrationStatsDto {
 
   private long total;
   private long active;
-  private long inactive;
+  private long retired;
 
   public DashboardIntegrationStatsDto() {}
 
-  public DashboardIntegrationStatsDto(long total, long active, long inactive) {
+  public DashboardIntegrationStatsDto(long total, long active, long retired) {
     this.total = total;
     this.active = active;
-    this.inactive = inactive;
+    this.retired = retired;
   }
 
   public long getTotal() {
@@ -49,11 +49,36 @@ public class DashboardIntegrationStatsDto {
     this.active = active;
   }
 
-  public long getInactive() {
-    return inactive;
+  public long getRetired() {
+    return retired;
   }
 
+  public void setRetired(long retired) {
+    this.retired = retired;
+  }
+
+  /**
+   * Deprecated alias for {@link #getRetired()} kept for API compatibility during the terminology
+   * transition.
+   *
+   * @return the retired integration count
+   * @deprecated use {@link #getRetired()}
+   */
+  @Deprecated(since = "2025")
+  @Schema(description = "Deprecated alias for retired integration count", deprecated = true)
+  public long getInactive() {
+    return retired;
+  }
+
+  /**
+   * Deprecated alias for {@link #setRetired(long)} kept for API compatibility during the
+   * terminology transition.
+   *
+   * @param inactive the retired integration count
+   * @deprecated use {@link #setRetired(long)}
+   */
+  @Deprecated(since = "2025")
   public void setInactive(long inactive) {
-    this.inactive = inactive;
+    this.retired = inactive;
   }
 }

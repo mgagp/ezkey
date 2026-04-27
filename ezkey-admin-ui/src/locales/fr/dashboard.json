@@ -19,7 +19,7 @@
     "expired": "expirées",
     "denied": "refus (utilisateur)",
     "active": "actives",
-    "inactive": "inactives",
+    "retired": "retirées",
     "verified": "vérifiés",
     "bound": "liés",
     "created": "créés",
@@ -43,7 +43,7 @@
   },
   "drilldown": {
     "integrationsActive": "Voir les intégrations actives",
-    "integrationsInactive": "Voir les intégrations retirées",
+    "integrationsRetired": "Voir les intégrations retirées",
     "enrollmentsInProgress": "Voir les enrôlements en cours (créés ou liés)",
     "enrollmentsSuspended": "Voir les enrôlements suspendus (vérifiés mais désactivés)",
     "enrollmentsExpired": "Voir les enrôlements expirés",

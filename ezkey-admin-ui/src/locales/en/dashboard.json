@@ -19,7 +19,7 @@
     "expired": "expired",
     "denied": "denied",
     "active": "active",
-    "inactive": "inactive",
+    "retired": "retired",
     "verified": "verified",
     "bound": "bound",
     "created": "created",
@@ -43,7 +43,7 @@
   },
   "drilldown": {
     "integrationsActive": "View active integrations",
-    "integrationsInactive": "View retired integrations",
+    "integrationsRetired": "View retired integrations",
     "enrollmentsInProgress": "View enrollments in progress (created or bound)",
     "enrollmentsSuspended": "View suspended enrollments (verified but disabled by admin)",
     "enrollmentsExpired": "View expired enrollments",

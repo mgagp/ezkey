@@ -21,6 +21,7 @@ import {
   buildEnrollmentsDrilldownUrl,
   buildIntegrationsDrilldownUrl,
 } from '@/lib/dashboard-drilldown-links';
+import { getRetiredIntegrationCount } from '@/lib/dashboard-integration-stats';
 
 const REFRESH_INTERVAL_OVERVIEW_MS = 60_000;
 
@@ -114,7 +115,7 @@ export default function DashboardPage() {
 
   const intTotal = overview?.integrations?.total;
   const intActive = overview?.integrations?.active;
-  const intInactive = overview?.integrations?.inactive;
+  const intRetired = getRetiredIntegrationCount(overview?.integrations);
 
   const enrVerified = overview?.enrollments?.verified;
   const enrInProgress = overview?.enrollments?.inProgress;
@@ -257,9 +258,9 @@ export default function DashboardPage() {
               <DashboardStatBadgeLink
                 to={buildIntegrationsDrilldownUrl('retired')}
                 variant="muted"
-                ariaLabel={t('dashboard:drilldown.integrationsInactive')}
+                ariaLabel={t('dashboard:drilldown.integrationsRetired')}
               >
-                <StatNum value={intInactive} isLoading={overviewLoading} /> {t('dashboard:stats.inactive')}
+                <StatNum value={intRetired} isLoading={overviewLoading} /> {t('dashboard:stats.retired')}
               </DashboardStatBadgeLink>
             </div>
           </StatCard>
