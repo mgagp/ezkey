@@ -56,29 +56,4 @@ public class DashboardIntegrationStatsDto {
   public void setRetired(long retired) {
     this.retired = retired;
   }
-
-  /**
-   * Deprecated alias for {@link #getRetired()} kept for API compatibility during the terminology
-   * transition.
-   *
-   * @return the retired integration count
-   * @deprecated use {@link #getRetired()}
-   */
-  @Deprecated(since = "2025")
-  @Schema(description = "Deprecated alias for retired integration count", deprecated = true)
-  public long getInactive() {
-    return retired;
-  }
-
-  /**
-   * Deprecated alias for {@link #setRetired(long)} kept for API compatibility during the
-   * terminology transition.
-   *
-   * @param inactive the retired integration count
-   * @deprecated use {@link #setRetired(long)}
-   */
-  @Deprecated(since = "2025")
-  public void setInactive(long inactive) {
-    this.retired = inactive;
-  }
 }

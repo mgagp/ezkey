@@ -115,6 +115,5 @@ class DashboardServiceTest {
     assertThat(overview.getIntegrations().getTotal()).isEqualTo(5);
     assertThat(overview.getIntegrations().getActive()).isEqualTo(3);
     assertThat(overview.getIntegrations().getRetired()).isEqualTo(2);
-    assertThat(overview.getIntegrations().getInactive()).isEqualTo(2);
   }
 }

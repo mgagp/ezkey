@@ -21,7 +21,6 @@ import {
   buildEnrollmentsDrilldownUrl,
   buildIntegrationsDrilldownUrl,
 } from '@/lib/dashboard-drilldown-links';
-import { getRetiredIntegrationCount } from '@/lib/dashboard-integration-stats';
 
 const REFRESH_INTERVAL_OVERVIEW_MS = 60_000;
 
@@ -115,7 +114,7 @@ export default function DashboardPage() {
 
   const intTotal = overview?.integrations?.total;
   const intActive = overview?.integrations?.active;
-  const intRetired = getRetiredIntegrationCount(overview?.integrations);
+  const intRetired = overview?.integrations?.retired;
 
   const enrVerified = overview?.enrollments?.verified;
   const enrInProgress = overview?.enrollments?.inProgress;
