@@ -258,7 +258,7 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 |---|---|---|---|---|
 | `ezkey.admin.cors.allowed-origins` | `List<String>` | *(empty)* | optionnel | Exact browser origins (scheme + host + port), e.g. `https://my-app.pages.dev`. Comma-separated in env. |
 | `ezkey.admin.cors.allowed-methods` | `List<String>` | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | optionnel | Methods allowed for CORS. |
-| `ezkey.admin.cors.allowed-headers` | `List<String>` | `Authorization`, `Content-Type`, `Accept`, `Origin`, `Access-Control-Request-Method`, `Access-Control-Request-Headers` | optionnel | Request headers the browser may send on cross-origin requests. |
+| `ezkey.admin.cors.allowed-headers` | `List<String>` | `Authorization`, `Content-Type`, `Accept`, `Origin`, `X-CSRF-TOKEN`, `Access-Control-Request-Method`, `Access-Control-Request-Headers` | optionnel | Request headers the browser may send on cross-origin requests. |
 | `ezkey.admin.cors.allow-credentials` | `boolean` | `false` | optionnel | Set `true` only if you use credentialed requests (e.g. cookies); requires explicit origins (not `*`). |
 
 **Split deployment notes:**
@@ -281,8 +281,13 @@ enforce CORS. If `allowed-origins` is **empty**, the API does **not** emit CORS 
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `boolean` | `false` | optionnel | Enable HttpOnly cookie + strip token from login JSON. |
 | `ezkey.admin.auth.browser-session-cookie-name` | `String` | `EZKEY_ADMIN_SESSION` | optionnel | Cookie name (host-only on API). |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `boolean` | `true` | optionnel | `Secure` flag; set `false` only for special local TLS tests. |
+| `ezkey.admin.auth.browser-session-cookie-same-site` | `String` | `Strict` | optionnel | SameSite policy for Admin browser session and CSRF cookies. Prefer `Strict` for production split deployments. |
+| `ezkey.admin.auth.browser-csrf-cookie-name` | `String` | `EZKEY_ADMIN_CSRF` | optionnel | Readable non-secret CSRF cookie name used by the Admin UI in cookie mode. |
+| `ezkey.admin.auth.browser-csrf-header-name` | `String` | `X-CSRF-TOKEN` | optionnel | Header name required on unsafe cookie-authenticated browser requests. |
 
-**Operational pairing:** set `ezkey.admin.cors.allow-credentials=true` and explicit `allowed-origins` for the UI. Build the Admin UI with `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true` and `fetch` credentials (see [docs/admin-ui-security.md](../docs/admin-ui-security.md)).
+**Operational pairing:** set `ezkey.admin.cors.allow-credentials=true` and explicit `allowed-origins` for the UI. Build the Admin UI with `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true` and `fetch` credentials (see [docs/admin-ui-security.md](../docs/admin-ui-security.md)). If you override the CSRF cookie or header names, mirror them in the Admin UI build variables `VITE_ADMIN_AUTH_CSRF_COOKIE_NAME` and `VITE_ADMIN_AUTH_CSRF_HEADER_NAME`.
+
+**Session rehydration and CSRF:** `GET /api/v1/admin/auth/me` returns non-secret session metadata for a valid cookie or Bearer session. In browser cookie mode, login/passwordless-wait and `/me` also issue a signed double-submit CSRF token. The Admin UI sends that token in `X-CSRF-TOKEN` for unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`). CSRF validation applies only to requests authenticated by the browser session cookie; explicit Bearer requests remain compatible for tools and recovery flows.
 
 **Cookie `Max-Age` vs token in the database:** On successful login or passwordless-wait, `Set-Cookie` uses a `Max-Age` derived from the response **`expiresAt`** (same instant as for Bearer mode). That initial window comes from **`ezkey.admin.token.expiration-hours`** (see §9 — sliding expiration also **extends the token row** on each validated request). The HttpOnly cookie is **not** re-issued on every API call today, so the browser’s cookie lifetime stays tied to **`expiresAt` at authentication success**. If the cookie expires, the browser stops sending it even though the server might still have considered an extended token valid in edge cases — operators usually fix perceived “short sessions” by increasing **`expiration-hours`** or by planning a future enhancement to refresh `Set-Cookie` when the token slides.
 
@@ -340,6 +345,9 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | *(unset)* |
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | *(unset)* |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | *(unset)* |
+| `ezkey.admin.auth.browser-session-cookie-same-site` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SAME_SITE` | *(unset)* |
+| `ezkey.admin.auth.browser-csrf-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_COOKIE_NAME` | *(unset)* |
+| `ezkey.admin.auth.browser-csrf-header-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_HEADER_NAME` | *(unset)* |
 
 ---
 
@@ -351,5 +359,5 @@ The following ezkey-core prefixes are also active in Admin API. See
 4. Set `ezkey.admin.bootstrap.export.enabled=false` unless Docker clean-start automation is needed.
 5. Configure `ezkey.trusted-proxies.cidrs` when Admin API is behind a reverse proxy.
 6. For split UI/API hosting, set `ezkey.admin.cors.allowed-origins` to the Admin UI origin(s); align CSP `connect-src` on the static host.
-7. If using the HttpOnly browser session cookie, set `ezkey.admin.auth.browser-session-cookie-enabled=true`, `ezkey.admin.cors.allow-credentials=true`, and deploy a matching Admin UI build (`VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`).
+7. If using the HttpOnly browser session cookie, set `ezkey.admin.auth.browser-session-cookie-enabled=true`, `ezkey.admin.cors.allow-credentials=true`, keep `SameSite=Strict` unless a documented deployment requires otherwise, and deploy a matching Admin UI build (`VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`).
 8. Configure `ezkey.encryption.master-key-file` and `ezkey.audit.integrity.hmac-key-file` via volume mounts.

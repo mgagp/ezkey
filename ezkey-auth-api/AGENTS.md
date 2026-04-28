@@ -12,8 +12,9 @@ This file is intended for coding agents working in `ezkey-auth-api/`.
 - **Errors:** HTTP **4xx/5xx** use **RFC 9457** `ProblemDetail` (`application/problem+json`). Map named
   exceptions in `GlobalExceptionHandler` with **safe** `detail`/`title` strings from
   `AuthApiProblemCatalog` — never copy `Throwable#getMessage()` to the client for security-sensitive
-  flows. OpenAPI references `ProblemDetail`; generated specs under `specs/` are produced by the
-  maintainer (`scripts/update-specs.sh` after a clean start).
+  flows. OpenAPI references `ProblemDetail`; generated specs under `specs/` are produced by
+  `scripts/update-specs.sh` after a clean start. Agents may run that script only when explicitly
+  authorized for the current task; never hand-edit generated spec files.
 
 ## Module responsibilities
 

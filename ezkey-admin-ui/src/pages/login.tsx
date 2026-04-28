@@ -132,7 +132,7 @@ export default function LoginPage() {
           },
           waitOptions,
         );
-        const data = response as unknown as AdminLoginResponseDto;
+        const data = response as unknown as AdminLoginResponseDto & { csrfToken?: string };
 
         // Ignore result if the countdown or cancel already set a final state
         if (finalStatusRef.current !== null) return;
@@ -149,6 +149,7 @@ export default function LoginPage() {
             expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : String(data.expiresAt),
             ...(data.adminId != null && { adminId: data.adminId }),
             ...(data.tenantId != null && { tenantId: data.tenantId }),
+            ...(data.csrfToken != null && { csrfToken: data.csrfToken }),
           });
           navigate('/dashboard', { replace: true });
         } else if (data.status === 'rejected') {

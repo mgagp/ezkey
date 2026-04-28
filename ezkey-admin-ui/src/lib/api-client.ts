@@ -1,4 +1,11 @@
-import { clearSession, getToken, isBrowserSessionCookieBuild } from './auth';
+import {
+  clearSession,
+  getBrowserCredentials,
+  getCsrfHeaderName,
+  getCsrfToken,
+  getToken,
+  isUnsafeHttpMethod,
+} from './auth';
 
 /**
  * In development, BASE_URL is empty and Vite proxies /api/v1 → localhost:9080.
@@ -93,9 +100,12 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const credentials: RequestCredentials | undefined = isBrowserSessionCookieBuild()
-    ? 'include'
-    : undefined;
+  const csrfToken = getCsrfToken();
+  if (!bearerToken && isUnsafeHttpMethod(init.method) && csrfToken) {
+    headers[getCsrfHeaderName()] = csrfToken;
+  }
+
+  const credentials = getBrowserCredentials();
 
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
@@ -159,9 +169,7 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
  */
 export async function fetchBlobUrl(path: string): Promise<string> {
   const token = getToken();
-  const credentials: RequestCredentials | undefined = isBrowserSessionCookieBuild()
-    ? 'include'
-    : undefined;
+  const credentials = getBrowserCredentials();
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials,

@@ -82,7 +82,13 @@ public record AdminLoginResponseDto(
                 "Tenant scope ID when the administrator is tenant- or integration-scoped; null for"
                     + " global administrators",
             example = "3")
-        Integer tenantId) {
+        Integer tenantId,
+    @Schema(
+            description =
+                "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe"
+                    + " requests. Present only in browser session cookie mode.",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String csrfToken) {
 
   /**
    * Constructor for error responses.
@@ -90,7 +96,7 @@ public record AdminLoginResponseDto(
    * @param message the error message
    */
   public AdminLoginResponseDto(String message) {
-    this(false, message, null, null, null, null, null, null, null, null, null);
+    this(false, message, null, null, null, null, null, null, null, null, null, null);
   }
 
   /**
@@ -121,7 +127,8 @@ public record AdminLoginResponseDto(
         null,
         null,
         adminId,
-        tenantId);
+        tenantId,
+        null);
   }
 
   /**
@@ -151,6 +158,7 @@ public record AdminLoginResponseDto(
         expiresAt,
         authAttemptId,
         challengeCode,
+        null,
         null,
         null);
   }
@@ -184,7 +192,8 @@ public record AdminLoginResponseDto(
         null,
         null,
         adminId,
-        tenantId);
+        tenantId,
+        null);
   }
 
   /**
@@ -195,7 +204,7 @@ public record AdminLoginResponseDto(
    */
   public static AdminLoginResponseDto error(String message) {
     return new AdminLoginResponseDto(
-        false, message, null, null, null, null, null, null, null, null, null);
+        false, message, null, null, null, null, null, null, null, null, null, null);
   }
 
   /**
@@ -219,7 +228,31 @@ public record AdminLoginResponseDto(
         authAttemptId,
         challengeCode,
         adminId,
-        tenantId);
+        tenantId,
+        csrfToken);
+  }
+
+  /**
+   * Same payload as this response but with a CSRF token included for cookie-authenticated browser
+   * requests.
+   *
+   * @param newCsrfToken non-secret CSRF token bound to the session cookie
+   * @return a copy including the CSRF token
+   */
+  public AdminLoginResponseDto withCsrfToken(String newCsrfToken) {
+    return new AdminLoginResponseDto(
+        success,
+        message,
+        status,
+        token,
+        adminType,
+        username,
+        expiresAt,
+        authAttemptId,
+        challengeCode,
+        adminId,
+        tenantId,
+        newCsrfToken);
   }
 
   @Override

@@ -32,12 +32,16 @@ import org.ezkey.admin.dto.request.AdminRecoveryRequestDto;
 import org.ezkey.admin.dto.response.AdminActivationResponseDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
 import org.ezkey.admin.dto.response.AdminRecoveryResponseDto;
+import org.ezkey.admin.dto.response.AdminSessionResponseDto;
 import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
 import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
 import org.ezkey.admin.exception.AuthenticationException;
+import org.ezkey.admin.security.AdminAuthRequestAttributes;
+import org.ezkey.admin.security.AdminCsrfTokenService;
+import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
@@ -54,6 +58,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -100,6 +107,8 @@ public class AdminAuthController {
 
   private final AdminSessionCookieService sessionCookieService;
 
+  private final AdminCsrfTokenService csrfTokenService;
+
   public AdminAuthController(
       AdminAuthService authService,
       AdminProvisioningService provisioningService,
@@ -109,7 +118,8 @@ public class AdminAuthController {
       AdminRecoveryProperties recoveryProperties,
       EzkeyAdminRepository adminRepository,
       AdminBrowserSessionCookieProperties browserSessionCookieProperties,
-      AdminSessionCookieService sessionCookieService) {
+      AdminSessionCookieService sessionCookieService,
+      AdminCsrfTokenService csrfTokenService) {
     this.authService = authService;
     this.provisioningService = provisioningService;
     this.recoveryService = recoveryService;
@@ -119,6 +129,7 @@ public class AdminAuthController {
     this.adminRepository = adminRepository;
     this.browserSessionCookieProperties = browserSessionCookieProperties;
     this.sessionCookieService = sessionCookieService;
+    this.csrfTokenService = csrfTokenService;
   }
 
   /**
@@ -454,6 +465,55 @@ public class AdminAuthController {
 
       throw new IllegalStateException("Unexpected authentication response: " + response.status());
     }
+  }
+
+  /**
+   * Returns non-secret metadata for the currently authenticated administrator session.
+   *
+   * <p>This endpoint lets the Admin UI restore its React auth state after a hard refresh when the
+   * HttpOnly browser session cookie is still valid.
+   *
+   * @param httpRequest request containing authentication attributes from the token filter
+   * @param httpResponse response used to refresh the readable CSRF cookie in cookie mode
+   * @return current session metadata or 401 when authentication is missing
+   */
+  @Operation(
+      summary = "Get current administrator session metadata",
+      description =
+          "Returns non-secret session metadata for the authenticated administrator. Browser cookie"
+              + " sessions also receive a non-secret CSRF token for unsafe requests.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Current session metadata"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated")
+      })
+  @GetMapping("/me")
+  public ResponseEntity<AdminSessionResponseDto> me(
+      HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(authentication);
+    if (principal == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    String username = (String) httpRequest.getAttribute(AdminAuthRequestAttributes.USERNAME);
+    OffsetDateTime expiresAt =
+        (OffsetDateTime) httpRequest.getAttribute(AdminAuthRequestAttributes.EXPIRES_AT);
+    String plainToken = (String) httpRequest.getAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN);
+    String csrfToken =
+        httpRequest.getAttribute(AdminAuthRequestAttributes.AUTH_SOURCE)
+                == AdminAuthRequestAttributes.AuthSource.COOKIE
+            ? issueCsrfTokenIfPossible(httpResponse, plainToken, expiresAt)
+            : null;
+
+    return ResponseEntity.ok(
+        new AdminSessionResponseDto(
+            username,
+            principal.adminType().name(),
+            expiresAt,
+            principal.adminId(),
+            principal.tenantId(),
+            csrfToken));
   }
 
   /**
@@ -872,7 +932,22 @@ public class AdminAuthController {
       return response;
     }
     sessionCookieService.addSessionCookie(httpResponse, response.token(), response.expiresAt());
-    return response.withoutSecretToken();
+    String csrfToken =
+        issueCsrfTokenIfPossible(httpResponse, response.token(), response.expiresAt());
+    return response.withCsrfToken(csrfToken).withoutSecretToken();
+  }
+
+  private String issueCsrfTokenIfPossible(
+      HttpServletResponse httpResponse, String plainToken, OffsetDateTime expiresAt) {
+    if (!browserSessionCookieProperties.isBrowserSessionCookieEnabled()
+        || plainToken == null
+        || plainToken.isBlank()
+        || expiresAt == null) {
+      return null;
+    }
+    String csrfToken = csrfTokenService.createToken(plainToken);
+    sessionCookieService.addCsrfCookie(httpResponse, csrfToken, expiresAt);
+    return csrfToken;
   }
 
   private Optional<String> resolveBearerForLogout(

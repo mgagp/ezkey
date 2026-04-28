@@ -24,6 +24,10 @@ import {
 
 const REFRESH_INTERVAL_OVERVIEW_MS = 60_000;
 
+type DashboardIntegrationStatsWithRetired = NonNullable<DashboardOverviewDto['integrations']> & {
+  retired?: number;
+};
+
 // ── Shared ────────────────────────────────────────────────────────────────────
 
 function StatNum({ value, isLoading }: { value: number | undefined; isLoading: boolean }) {
@@ -114,7 +118,8 @@ export default function DashboardPage() {
 
   const intTotal = overview?.integrations?.total;
   const intActive = overview?.integrations?.active;
-  const intRetired = overview?.integrations?.retired;
+  const integrationStats = overview?.integrations as DashboardIntegrationStatsWithRetired | undefined;
+  const intRetired = integrationStats?.retired;
 
   const enrVerified = overview?.enrollments?.verified;
   const enrInProgress = overview?.enrollments?.inProgress;

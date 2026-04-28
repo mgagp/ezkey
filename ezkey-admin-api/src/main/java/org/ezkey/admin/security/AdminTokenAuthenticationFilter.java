@@ -16,10 +16,12 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminBrowserSessionCookieProperties;
+import org.ezkey.admin.security.AdminAuthRequestAttributes.AuthSource;
 import org.ezkey.admin.service.AdminTokenValidationService;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
@@ -78,11 +80,13 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
             ? Optional.of(authHeader.substring(BEARER_PREFIX.length()))
             : Optional.empty();
 
-    Optional<String> tokenToValidate =
-        tokenFromHeader.or(() -> readTokenFromSessionCookie(request));
+    Optional<String> tokenFromCookie =
+        tokenFromHeader.isEmpty() ? readTokenFromSessionCookie(request) : Optional.empty();
+    Optional<String> tokenToValidate = tokenFromHeader.or(() -> tokenFromCookie);
 
     if (tokenToValidate.isPresent()) {
-      tryAuthenticateWithPlainToken(tokenToValidate.get());
+      AuthSource authSource = tokenFromHeader.isPresent() ? AuthSource.BEARER : AuthSource.COOKIE;
+      tryAuthenticateWithPlainToken(tokenToValidate.get(), authSource, request);
     }
 
     filterChain.doFilter(request, response);
@@ -109,7 +113,8 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
     return Optional.empty();
   }
 
-  private void tryAuthenticateWithPlainToken(String token) {
+  private void tryAuthenticateWithPlainToken(
+      String token, AuthSource authSource, HttpServletRequest request) {
     try {
       Optional<AdminToken> tokenOptional = tokenValidationService.validateTokenWithRelations(token);
 
@@ -142,7 +147,12 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        tokenValidationService.updateTokenLastUsed(token);
+        OffsetDateTime updatedExpiresAt =
+            tokenValidationService.updateTokenLastUsed(token).orElse(adminToken.getExpiresAt());
+        request.setAttribute(AdminAuthRequestAttributes.AUTH_SOURCE, authSource);
+        request.setAttribute(AdminAuthRequestAttributes.PLAIN_TOKEN, token);
+        request.setAttribute(AdminAuthRequestAttributes.EXPIRES_AT, updatedExpiresAt);
+        request.setAttribute(AdminAuthRequestAttributes.USERNAME, admin.getUsername());
 
         logger.debug(
             "✅ Token validated successfully for admin: {} (type: {}, tenant: {}, integration:"

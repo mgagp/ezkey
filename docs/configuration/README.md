@@ -94,6 +94,9 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | `ezkey.admin.cors.allowed-origins` | admin-api (split UI/API only; unset for clean-start) |
 | `EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS` | `ezkey.admin.cors.allow-credentials` | admin-api (with HttpOnly cookie + credentialed `fetch`) |
 | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `ezkey.admin.auth.browser-session-cookie-enabled` | admin-api (split HTTPS UI/API optional) |
+| `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SAME_SITE` | `ezkey.admin.auth.browser-session-cookie-same-site` | admin-api (optional; default `Strict`) |
+| `EZKEY_ADMIN_AUTH_BROWSER_CSRF_COOKIE_NAME` | `ezkey.admin.auth.browser-csrf-cookie-name` | admin-api (optional; mirror in Admin UI build if changed) |
+| `EZKEY_ADMIN_AUTH_BROWSER_CSRF_HEADER_NAME` | `ezkey.admin.auth.browser-csrf-header-name` | admin-api (optional; mirror in Admin UI build if changed) |
 | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `ezkey.demo.mitm-signature-enabled` | auth-api docker profile |
 | `EZKEY_INSTANCE_ID` | `ezkey.audit.integrity.instance-id` | all API modules |
 

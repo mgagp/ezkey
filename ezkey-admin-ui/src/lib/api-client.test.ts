@@ -3,14 +3,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const replace = vi.fn();
 const authMocks = vi.hoisted(() => ({
   clearSession: vi.fn(),
+  getBrowserCredentials: vi.fn<() => RequestCredentials | undefined>(() => undefined),
+  getCsrfHeaderName: vi.fn(() => 'X-CSRF-TOKEN'),
+  getCsrfToken: vi.fn<() => string | null>(() => null),
   getToken: vi.fn(),
-  isBrowserSessionCookieBuild: vi.fn(() => false),
+  isUnsafeHttpMethod: vi.fn((method?: string) => !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes((method ?? 'GET').toUpperCase())),
 }));
 
 vi.mock('./auth', () => ({
   clearSession: authMocks.clearSession,
+  getBrowserCredentials: authMocks.getBrowserCredentials,
+  getCsrfHeaderName: authMocks.getCsrfHeaderName,
+  getCsrfToken: authMocks.getCsrfToken,
   getToken: authMocks.getToken,
-  isBrowserSessionCookieBuild: authMocks.isBrowserSessionCookieBuild,
+  isUnsafeHttpMethod: authMocks.isUnsafeHttpMethod,
 }));
 
 import { ApiError, fetchApi, fetchBlobUrl } from './api-client';
@@ -33,8 +39,14 @@ describe('fetchApi', () => {
     vi.stubGlobal('window', { location: { replace } });
     vi.stubGlobal('fetch', vi.fn());
     authMocks.clearSession.mockReset();
+    authMocks.getBrowserCredentials.mockReset();
+    authMocks.getBrowserCredentials.mockReturnValue(undefined);
+    authMocks.getCsrfHeaderName.mockReset();
+    authMocks.getCsrfHeaderName.mockReturnValue('X-CSRF-TOKEN');
+    authMocks.getCsrfToken.mockReset();
+    authMocks.getCsrfToken.mockReturnValue(null);
     authMocks.getToken.mockReset();
-    authMocks.isBrowserSessionCookieBuild.mockReturnValue(false);
+    authMocks.isUnsafeHttpMethod.mockImplementation((method?: string) => !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes((method ?? 'GET').toUpperCase()));
     replace.mockReset();
   });
 
@@ -43,7 +55,7 @@ describe('fetchApi', () => {
   });
 
   it('when HttpOnly cookie mode, sends credentials include on requests', async () => {
-    authMocks.isBrowserSessionCookieBuild.mockReturnValue(true);
+    authMocks.getBrowserCredentials.mockReturnValue('include');
     authMocks.getToken.mockReturnValue(null);
     vi.mocked(globalThis.fetch).mockResolvedValue(jsonResponse(200, { ok: true }));
 
@@ -52,6 +64,21 @@ describe('fetchApi', () => {
     expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ credentials: 'include' }),
+    );
+  });
+
+  it('when CSRF token is available, sends it on unsafe cookie-mode requests', async () => {
+    authMocks.getBrowserCredentials.mockReturnValue('include');
+    authMocks.getCsrfToken.mockReturnValue('csrf-token');
+    vi.mocked(globalThis.fetch).mockResolvedValue(jsonResponse(200, { ok: true }));
+
+    await fetchApi('/api/v1/admin/auth/logout', { method: 'POST' });
+
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'X-CSRF-TOKEN': 'csrf-token' }),
+      }),
     );
   });
 
@@ -105,6 +132,12 @@ describe('fetchBlobUrl', () => {
     vi.stubGlobal('window', { location: { replace } });
     vi.stubGlobal('fetch', vi.fn());
     authMocks.clearSession.mockReset();
+    authMocks.getBrowserCredentials.mockReset();
+    authMocks.getBrowserCredentials.mockReturnValue(undefined);
+    authMocks.getCsrfHeaderName.mockReset();
+    authMocks.getCsrfHeaderName.mockReturnValue('X-CSRF-TOKEN');
+    authMocks.getCsrfToken.mockReset();
+    authMocks.getCsrfToken.mockReturnValue(null);
     authMocks.getToken.mockReset();
     replace.mockReset();
   });

@@ -10,6 +10,7 @@
 
 package org.ezkey.admin.config;
 
+import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
 import org.ezkey.admin.security.ApiKeyAuthenticationFilter;
@@ -64,14 +65,17 @@ public class SecurityConfig {
   private final AdminTokenAuthenticationFilter adminTokenAuthenticationFilter;
   private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
   private final AdminRateLimitFilter adminRateLimitFilter;
+  private final AdminCookieCsrfFilter adminCookieCsrfFilter;
 
   public SecurityConfig(
       AdminTokenAuthenticationFilter adminTokenAuthenticationFilter,
       ApiKeyAuthenticationFilter apiKeyAuthenticationFilter,
-      AdminRateLimitFilter adminRateLimitFilter) {
+      AdminRateLimitFilter adminRateLimitFilter,
+      AdminCookieCsrfFilter adminCookieCsrfFilter) {
     this.adminTokenAuthenticationFilter = adminTokenAuthenticationFilter;
     this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
     this.adminRateLimitFilter = adminRateLimitFilter;
+    this.adminCookieCsrfFilter = adminCookieCsrfFilter;
   }
 
   /**
@@ -97,8 +101,19 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             authz ->
                 authz
-                    // Allow public access to authentication endpoints
-                    .requestMatchers("/api/v1/admin/auth/**")
+                    // Allow public access to authentication bootstrap endpoints
+                    .requestMatchers(
+                        "/api/v1/admin/auth/activate",
+                        "/api/v1/admin/auth/login",
+                        "/api/v1/admin/auth/passwordless-wait",
+                        "/api/v1/admin/auth/recover")
+                    .permitAll()
+                    // Current session metadata requires an authenticated browser or bearer session
+                    .requestMatchers("/api/v1/admin/auth/me")
+                    .authenticated()
+                    // Logout accepts the token from Authorization or cookie and handles missing
+                    // credentials itself.
+                    .requestMatchers("/api/v1/admin/auth/logout")
                     .permitAll()
                     // Allow public access to MFA endpoints (temp token in body)
                     .requestMatchers("/api/v1/admin/mfa/**")
@@ -131,6 +146,9 @@ public class SecurityConfig {
     // Add bearer token authentication filter
     http.addFilterBefore(
         adminTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+    // Validate CSRF only for unsafe requests authenticated via the browser session cookie.
+    http.addFilterAfter(adminCookieCsrfFilter, AdminTokenAuthenticationFilter.class);
 
     // Add API key authentication filter BEFORE bearer token filter
     // This ensures API keys (HTTP Basic) are checked before bearer tokens

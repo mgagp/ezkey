@@ -24,6 +24,15 @@
     "title": "Page Not Found",
     "description": "The page you're looking for doesn't exist."
   },
+  "routeError": {
+    "appUpdatedEyebrow": "Application updated",
+    "appUpdatedTitle": "Reloading the Admin UI",
+    "appUpdatedDescription": "A new Admin UI build is available and the previous page bundle is no longer present. The app will reload once to fetch the current version.",
+    "errorEyebrow": "Application error",
+    "genericTitle": "Something went wrong",
+    "genericDescription": "The Admin UI hit an unexpected error. Reload the page and try again.",
+    "reload": "Reload"
+  },
   "date": {
     "justNow": "just now",
     "minutesAgo_one": "1 min ago",

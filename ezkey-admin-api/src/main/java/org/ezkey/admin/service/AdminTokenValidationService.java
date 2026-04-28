@@ -140,13 +140,14 @@ public class AdminTokenValidationService {
    * session stays valid as long as the user is active. Recovery tokens are not extended.
    *
    * @param token the bearer token to update
+   * @return updated expiration timestamp when the token was found and updated
    */
   @Transactional
-  public void updateTokenLastUsed(String token) {
+  public Optional<OffsetDateTime> updateTokenLastUsed(String token) {
     try {
       String hash = SensitiveDataHasher.sha256Hex(token);
       if (hash == null) {
-        return;
+        return Optional.empty();
       }
       Optional<AdminToken> tokenOptional = tokenRepository.findByBearerTokenHashAndActiveTrue(hash);
       if (tokenOptional.isPresent()) {
@@ -164,9 +165,11 @@ public class AdminTokenValidationService {
         }
         tokenRepository.save(adminToken);
         logger.debug("✅ Updated last used and expiration for token");
+        return Optional.ofNullable(adminToken.getExpiresAt());
       }
     } catch (Exception e) {
       logger.error("❌ Error updating token timestamp: {}", e.getMessage());
     }
+    return Optional.empty();
   }
 }

@@ -66,6 +66,11 @@ changes and you run `update-specs`, review and update every impacted Postman col
 same change set. A backend contract refresh is not considered complete until both the generated
 OpenAPI files and the affected Postman collections describe the same behavior.
 
+Agents must never hand-edit generated OpenAPI artifacts under `specs/**`. When the user explicitly
+authorizes autonomous contract refresh and a clean-start stack is freshly running, agents may run
+`./scripts/update-specs.sh` and then regenerate dependent clients such as the Admin UI Orval client.
+Generated output should be reviewed for obvious scope drift and reported in the close-out.
+
 ---
 
 ## Project values (analysis and design)

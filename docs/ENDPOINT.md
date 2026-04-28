@@ -630,6 +630,36 @@ Invalid or expired token
 - Subsequent requests with same token will return 401
 - Recommended to call on explicit logout or session timeout
 
+#### GET /me
+Return non-secret metadata for the current Admin UI session.
+
+**Request:**
+```http
+GET /api/v1/admin/auth/me
+Cookie: EZKEY_ADMIN_SESSION=...
+```
+
+Bearer clients may also call this endpoint with `Authorization: Bearer ...`.
+
+**Success Response (200 OK):**
+```json
+{
+  "username": "admin",
+  "adminType": "GLOBAL_ADMIN",
+  "expiresAt": "2026-04-28T14:00:00Z",
+  "adminId": 2,
+  "tenantId": null,
+  "csrfToken": "non-secret-csrf-token"
+}
+```
+
+`csrfToken` is present in browser cookie mode and must be sent as `X-CSRF-TOKEN` on unsafe cookie-authenticated requests (`POST`, `PUT`, `PATCH`, `DELETE`). The opaque session token is never returned by `/me`.
+
+**Unauthorized Response:**
+```http
+HTTP/1.1 401 Unauthorized
+```
+
 #### Using Bearer Token
 All authenticated Admin API endpoints require the bearer token in the Authorization header:
 

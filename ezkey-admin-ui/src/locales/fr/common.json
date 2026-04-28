@@ -24,6 +24,15 @@
     "title": "Page introuvable",
     "description": "La page que vous recherchez n'existe pas."
   },
+  "routeError": {
+    "appUpdatedEyebrow": "Application mise à jour",
+    "appUpdatedTitle": "Rechargement de l'Admin UI",
+    "appUpdatedDescription": "Une nouvelle version de l'Admin UI est disponible et l'ancien bundle de cette page n'est plus présent. L'application va se recharger une fois pour récupérer la version courante.",
+    "errorEyebrow": "Erreur applicative",
+    "genericTitle": "Une erreur est survenue",
+    "genericDescription": "L'Admin UI a rencontré une erreur inattendue. Rechargez la page et réessayez.",
+    "reload": "Recharger"
+  },
   "date": {
     "justNow": "À l'instant",
     "minutesAgo_one": "Il y a 1 min",

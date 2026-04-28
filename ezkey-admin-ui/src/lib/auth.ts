@@ -26,9 +26,31 @@ export interface AuthSession {
    * administrators and legacy sessions saved before this field existed.
    */
   tenantId?: number | null;
+  /** Non-secret CSRF token used only by cookie-authenticated browser sessions. */
+  csrfToken?: string;
 }
 
 const AUTH_KEY = 'ezkey_admin_auth';
+const CSRF_COOKIE_NAME =
+  (import.meta.env.VITE_ADMIN_AUTH_CSRF_COOKIE_NAME as string | undefined) ?? 'EZKEY_ADMIN_CSRF';
+const CSRF_HEADER_NAME =
+  (import.meta.env.VITE_ADMIN_AUTH_CSRF_HEADER_NAME as string | undefined) ?? 'X-CSRF-TOKEN';
+
+/** HTTP methods that can change server state and therefore need CSRF in cookie mode. */
+export function isUnsafeHttpMethod(method: string | undefined): boolean {
+  const normalized = (method ?? 'GET').toUpperCase();
+  return !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(normalized);
+}
+
+/** Browser credential mode for the current build. */
+export function getBrowserCredentials(): RequestCredentials | undefined {
+  return isBrowserSessionCookieBuild() ? 'include' : undefined;
+}
+
+/** Header name expected by the Admin API for cookie-mode CSRF validation. */
+export function getCsrfHeaderName(): string {
+  return CSRF_HEADER_NAME;
+}
 
 /** Retrieve the current session, validating expiration. Returns null if absent or expired. */
 export function getSession(): AuthSession | null {
@@ -63,4 +85,21 @@ export function clearSession(): void {
 /** Convenience accessor for the bearer token (empty in cookie-build mode). */
 export function getToken(): string | null {
   return getSession()?.token ?? null;
+}
+
+/** Returns the non-secret CSRF token from session metadata or the readable CSRF cookie. */
+export function getCsrfToken(): string | null {
+  const sessionToken = getSession()?.csrfToken;
+  if (sessionToken) {
+    return sessionToken;
+  }
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  const prefix = `${CSRF_COOKIE_NAME}=`;
+  const cookie = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
 }

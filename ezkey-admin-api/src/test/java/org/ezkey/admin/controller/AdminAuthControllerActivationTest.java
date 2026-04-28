@@ -25,6 +25,7 @@ import org.ezkey.admin.domain.AdminOnboardingMode;
 import org.ezkey.admin.dto.request.AdminActivationRequestDto;
 import org.ezkey.admin.dto.response.AdminActivationResponseDto;
 import org.ezkey.admin.exception.AuthenticationException;
+import org.ezkey.admin.security.AdminCsrfTokenService;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminSessionCookieService;
 import org.ezkey.admin.service.AdminAuthService;
@@ -55,6 +56,7 @@ class AdminAuthControllerActivationTest {
   @Mock private EzkeyAdminRepository adminRepository;
   @Mock private AdminBrowserSessionCookieProperties browserSessionCookieProperties;
   @Mock private AdminSessionCookieService sessionCookieService;
+  @Mock private AdminCsrfTokenService csrfTokenService;
   @Mock private HttpServletRequest httpRequest;
 
   private AdminAuthController controller;
@@ -71,7 +73,8 @@ class AdminAuthControllerActivationTest {
             recoveryProperties,
             adminRepository,
             browserSessionCookieProperties,
-            sessionCookieService);
+            sessionCookieService,
+            csrfTokenService);
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
   }
 

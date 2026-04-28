@@ -12,6 +12,7 @@ Cross-links: [admin-ui-security.md](../admin-ui-security.md) (CSP, token model),
 
 - `VITE_API_BASE_URL` → `https://<same-instance>-admin-api.ezkey.org`
 - `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE` → `true` when that API uses the HttpOnly session cookie
+- Optional only if the API defaults are changed: `VITE_ADMIN_AUTH_CSRF_COOKIE_NAME` and `VITE_ADMIN_AUTH_CSRF_HEADER_NAME`
 
 This keeps mental load low: open the project → you see exactly one API target.
 
@@ -38,9 +39,11 @@ If `allowed-origins` is empty, the API does **not** send CORS headers (same as p
 
 For **`https://<instance>-admin-ui.ezkey.org`** calling **`https://<instance>-admin-api.ezkey.org`**, you can use the **browser session cookie** so the opaque token is not exposed to JavaScript:
 
-1. On the **Admin API** VM: set **`EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true`**, **`EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true`**, and **`EZKEY_ADMIN_CORS_ALLOWED_ORIGINS`** to the **exact** UI origin (e.g. `https://exp1-admin-ui.ezkey.org` or `https://demo1-admin-ui.ezkey.org`). Restart the API.
+1. On the **Admin API** VM: set **`EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED=true`**, **`EZKEY_ADMIN_CORS_ALLOW_CREDENTIALS=true`**, and **`EZKEY_ADMIN_CORS_ALLOWED_ORIGINS`** to the **exact** UI origin (e.g. `https://exp1-admin-ui.ezkey.org` or `https://demo1-admin-ui.ezkey.org`). Restart the API. The default cookie policy is host-only, `Secure`, `HttpOnly` for the session cookie, and `SameSite=Strict`.
 2. On the **Admin UI** build: set **`VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true`** (see [`.env.cloudflare`](../../ezkey-admin-ui/.env.cloudflare); for Git-connected Pages, add the variable in the project settings). Rebuild and deploy.
 3. **CSP** `connect-src` must still include that instance’s API origin (see §5).
+
+In cookie mode, the UI restores state after refresh with `GET /api/v1/admin/auth/me` and sends `X-CSRF-TOKEN` on unsafe requests. Ensure custom edge/CORS rules do not strip that header.
 
 The same steps apply to **demo1**, **exp1**, or any other prefix — only origins and URLs change.
 

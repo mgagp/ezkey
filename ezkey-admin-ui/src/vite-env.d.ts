@@ -7,6 +7,10 @@ interface ImportMetaEnv {
    * `credentials: 'include'` and do not require `token` in login JSON (HttpOnly cookie on API host).
    */
   readonly VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE?: string;
+  /** Optional override matching Admin API `ezkey.admin.auth.browser-csrf-cookie-name`. */
+  readonly VITE_ADMIN_AUTH_CSRF_COOKIE_NAME?: string;
+  /** Optional override matching Admin API `ezkey.admin.auth.browser-csrf-header-name`. */
+  readonly VITE_ADMIN_AUTH_CSRF_HEADER_NAME?: string;
   /** When 'true', enables demo mode (Fill-demo in create dialogs, Ctrl+click on sidebar). Stripped in production. */
   readonly VITE_DEMO_MODE?: string;
   /** Optional `authUrl` in enrollment QR JSON; mirrors Admin API `ezkey.qr.auth-base-url` when set. */

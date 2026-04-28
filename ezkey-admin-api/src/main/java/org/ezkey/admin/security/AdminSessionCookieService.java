@@ -50,7 +50,13 @@ public class AdminSessionCookieService {
     if (maxAgeSeconds < 0) {
       maxAgeSeconds = 0;
     }
-    ResponseCookie cookie = buildCookie(plainToken, maxAgeSeconds);
+    ResponseCookie cookie =
+        buildCookie(
+            properties.getBrowserSessionCookieName(),
+            plainToken,
+            maxAgeSeconds,
+            true,
+            properties.getBrowserSessionCookieSameSite());
     response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
   }
 
@@ -59,16 +65,59 @@ public class AdminSessionCookieService {
     if (!properties.isBrowserSessionCookieEnabled()) {
       return;
     }
-    ResponseCookie cookie = buildCookie("", 0);
+    ResponseCookie sessionCookie =
+        buildCookie(
+            properties.getBrowserSessionCookieName(),
+            "",
+            0,
+            true,
+            properties.getBrowserSessionCookieSameSite());
+    ResponseCookie csrfCookie =
+        buildCookie(
+            properties.getBrowserCsrfCookieName(),
+            "",
+            0,
+            false,
+            properties.getBrowserSessionCookieSameSite());
+    response.addHeader(HttpHeaders.SET_COOKIE, sessionCookie.toString());
+    response.addHeader(HttpHeaders.SET_COOKIE, csrfCookie.toString());
+  }
+
+  /**
+   * Adds a readable CSRF cookie. The token is non-secret and is still validated against the
+   * HttpOnly session cookie on unsafe requests.
+   *
+   * @param response servlet response
+   * @param csrfToken signed CSRF token bound to the session token
+   * @param expiresAt token expiry (UTC)
+   */
+  public void addCsrfCookie(
+      HttpServletResponse response, String csrfToken, OffsetDateTime expiresAt) {
+    if (!properties.isBrowserSessionCookieEnabled()) {
+      return;
+    }
+    long maxAgeSeconds =
+        Duration.between(OffsetDateTime.now(ZoneOffset.UTC), expiresAt).getSeconds();
+    if (maxAgeSeconds < 0) {
+      maxAgeSeconds = 0;
+    }
+    ResponseCookie cookie =
+        buildCookie(
+            properties.getBrowserCsrfCookieName(),
+            csrfToken,
+            maxAgeSeconds,
+            false,
+            properties.getBrowserSessionCookieSameSite());
     response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
   }
 
-  private ResponseCookie buildCookie(String value, long maxAgeSeconds) {
-    return ResponseCookie.from(properties.getBrowserSessionCookieName(), value)
+  private ResponseCookie buildCookie(
+      String name, String value, long maxAgeSeconds, boolean httpOnly, String sameSite) {
+    return ResponseCookie.from(name, value)
         .path("/")
-        .httpOnly(true)
+        .httpOnly(httpOnly)
         .secure(properties.isBrowserSessionCookieSecure())
-        .sameSite("Lax")
+        .sameSite(sameSite)
         .maxAge(maxAgeSeconds)
         .build();
   }

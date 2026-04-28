@@ -45,6 +45,7 @@ public class AdminCorsProperties {
               "Content-Type",
               "Accept",
               "Origin",
+              "X-CSRF-TOKEN",
               "Access-Control-Request-Method",
               "Access-Control-Request-Headers"));
 

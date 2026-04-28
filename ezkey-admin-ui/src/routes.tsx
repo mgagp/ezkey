@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/context/auth-context';
 import { HelpProvider } from '@/context/help-context';
+import { RouteErrorBoundary } from '@/components/route-error-boundary';
 import type { ReactNode } from 'react';
 
 const LoginPage = lazy(() => import('@/pages/login'));
@@ -25,7 +26,8 @@ const NotFoundPage = lazy(() => import('@/pages/not-found'));
 // ── Guards ───────────────────────────────────────────────────────────────────
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isSessionChecking } = useAuth();
+  if (isSessionChecking) return <PageLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
@@ -57,6 +59,7 @@ function RootLayout() {
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
   // Public
   {

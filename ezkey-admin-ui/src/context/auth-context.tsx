@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   type AuthSession,
@@ -7,11 +7,13 @@ import {
   isBrowserSessionCookieBuild,
   saveSession,
 } from '@/lib/auth';
+import { fetchApi } from '@/lib/api-client';
 import { queryClient } from '@/lib/query-client';
 
 interface AuthContextValue {
   session: AuthSession | null;
   isAuthenticated: boolean;
+  isSessionChecking: boolean;
   login: (session: AuthSession) => void;
   logout: () => void;
 }
@@ -21,6 +23,38 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 /** Provides auth state to the component tree. Wrap at the app root. */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(() => getSession());
+  const [isSessionChecking, setIsSessionChecking] = useState(() => isBrowserSessionCookieBuild());
+
+  useEffect(() => {
+    if (!isBrowserSessionCookieBuild()) {
+      setIsSessionChecking(false);
+      return;
+    }
+
+    let cancelled = false;
+    const restoreSession = async () => {
+      try {
+        const restored = await fetchApi<AuthSession>('/api/v1/admin/auth/me', { method: 'GET' });
+        if (cancelled) return;
+        saveSession(restored);
+        setSession(restored);
+      } catch {
+        if (cancelled) return;
+        clearSession();
+        queryClient.clear();
+        setSession(null);
+      } finally {
+        if (!cancelled) {
+          setIsSessionChecking(false);
+        }
+      }
+    };
+
+    void restoreSession();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const login = useCallback((newSession: AuthSession) => {
     saveSession(newSession);
@@ -40,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated:
           session !== null &&
           (isBrowserSessionCookieBuild() || Boolean(session.token && session.token.length > 0)),
+        isSessionChecking,
         login,
         logout,
       }}

@@ -385,6 +385,38 @@
       "response": []
     },
     {
+      "name": "me",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admin/auth/me",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admin",
+            "auth",
+            "me"
+          ]
+        },
+        "description": "Returns non-secret metadata for the current administrator session. Browser cookie mode uses this endpoint to rehydrate the Admin UI after refresh; Postman can call it with the normal bearer token.\n\n**Response (200 OK):**\n- `username`: Administrator username\n- `adminType`: Type of administrator\n- `expiresAt`: Current session expiration timestamp\n- `adminId`: Administrator ID\n- `tenantId`: Tenant scope when applicable\n- `csrfToken`: Present for cookie-authenticated browser sessions; not required for bearer-only Postman usage"
+      },
+      "response": []
+    },
+    {
       "name": "logout",
       "event": [
         {

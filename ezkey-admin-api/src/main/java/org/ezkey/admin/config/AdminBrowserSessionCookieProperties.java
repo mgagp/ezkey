@@ -37,6 +37,12 @@ public class AdminBrowserSessionCookieProperties {
 
   private String browserSessionCookieName = "EZKEY_ADMIN_SESSION";
 
+  private String browserSessionCookieSameSite = "Strict";
+
+  private String browserCsrfCookieName = "EZKEY_ADMIN_CSRF";
+
+  private String browserCsrfHeaderName = "X-CSRF-TOKEN";
+
   /**
    * When true, the cookie is marked Secure (required for HTTPS split UI/API). Disable only for
    * exceptional local HTTPS experiments.
@@ -57,6 +63,33 @@ public class AdminBrowserSessionCookieProperties {
 
   public void setBrowserSessionCookieName(String browserSessionCookieName) {
     this.browserSessionCookieName = browserSessionCookieName;
+  }
+
+  public String getBrowserSessionCookieSameSite() {
+    return browserSessionCookieSameSite;
+  }
+
+  public void setBrowserSessionCookieSameSite(String browserSessionCookieSameSite) {
+    this.browserSessionCookieSameSite =
+        browserSessionCookieSameSite == null || browserSessionCookieSameSite.isBlank()
+            ? "Strict"
+            : browserSessionCookieSameSite;
+  }
+
+  public String getBrowserCsrfCookieName() {
+    return browserCsrfCookieName;
+  }
+
+  public void setBrowserCsrfCookieName(String browserCsrfCookieName) {
+    this.browserCsrfCookieName = browserCsrfCookieName;
+  }
+
+  public String getBrowserCsrfHeaderName() {
+    return browserCsrfHeaderName;
+  }
+
+  public void setBrowserCsrfHeaderName(String browserCsrfHeaderName) {
+    this.browserCsrfHeaderName = browserCsrfHeaderName;
   }
 
   public boolean isBrowserSessionCookieSecure() {

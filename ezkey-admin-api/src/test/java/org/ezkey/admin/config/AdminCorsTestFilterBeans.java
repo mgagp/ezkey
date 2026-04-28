@@ -19,6 +19,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import java.io.IOException;
+import org.ezkey.admin.security.AdminCookieCsrfFilter;
 import org.ezkey.admin.security.AdminRateLimitFilter;
 import org.ezkey.admin.security.AdminTokenAuthenticationFilter;
 import org.ezkey.admin.security.ApiKeyAuthenticationFilter;
@@ -53,6 +54,12 @@ public class AdminCorsTestFilterBeans {
   @Primary
   AdminRateLimitFilter adminRateLimitFilter() {
     return passThrough(AdminRateLimitFilter.class);
+  }
+
+  @Bean
+  @Primary
+  AdminCookieCsrfFilter adminCookieCsrfFilter() {
+    return passThrough(AdminCookieCsrfFilter.class);
   }
 
   private static <T extends Filter> T passThrough(Class<T> clazz) {

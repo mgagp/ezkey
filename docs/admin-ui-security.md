@@ -19,7 +19,7 @@ This document implements the operational guidance from the security hardening pl
 | Mechanism | Detail |
 |-----------|--------|
 | **Storage** | **No secret in JS.** `sessionStorage` holds only **metadata** (username, `adminType`, `expiresAt`, ids). The opaque token is in an **HttpOnly** cookie on the **API host** (host-only, e.g. `exp1-admin-api.ezkey.org`). |
-| **Transport** | Browser sends the cookie on cross-origin requests with **`fetch(..., { credentials: 'include' })`**. `Authorization` is still used for recovery / explicit bearer flows. |
+| **Transport** | Browser sends the cookie on cross-origin requests with **`fetch(..., { credentials: 'include' })`**. `Authorization` is still used for recovery / explicit bearer flows. Unsafe cookie-authenticated requests send `X-CSRF-TOKEN`. |
 | **API** | `ezkey.admin.auth.browser-session-cookie-enabled=true`; login JSON **omits** `token` when this is on. |
 | **UI build** | `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE=true` (e.g. in `.env.cloudflare` for production-like bundles). |
 | **CORS** | `ezkey.admin.cors.allow-credentials=true` and **explicit** `allowed-origins` (see [ezkey-admin-api/CONFIGURATION.md](../ezkey-admin-api/CONFIGURATION.md) §11–12). |
@@ -42,12 +42,14 @@ This document implements the operational guidance from the security hardening pl
 **Implications**
 
 - **XSS**: Any script running in the page origin can read `sessionStorage`. **CSP** and safe rendering (React, no unsafe HTML) are the primary mitigations. **Mode B** removes the session secret from JS, reducing XSS token theft when correctly deployed over **HTTPS** with **`Secure`** cookies.
-- **CSRF**: Mode A (Bearer only) avoids classic cross-site cookie CSRF. Mode B uses **`SameSite=Lax`** on the session cookie and strict CORS origins. **Ezkey default:** no extra Spring CSRF / double-submit for this SPA; add it only if a compliance or threat review requires it.
+- **CSRF**: Mode A (Bearer only) avoids classic cross-site cookie CSRF. Mode B uses **`SameSite=Strict`** by default, strict CORS origins, and a signed double-submit CSRF token for unsafe cookie-authenticated requests.
 
 ## Session navigateur (cookie HttpOnly) — résumé technique
 
 - Cookie **host-only** on the API hostname (default when issuing from `Set-Cookie` without a `Domain` attribute). Avoid widening to `Domain=.ezkey.org` unless there is a clear requirement.
-- **`SameSite=Lax`**: appropriate for same-site subdomains under `ezkey.org` with the UI on another subdomain.
+- **`SameSite=Strict`** by default: appropriate for the production split deployment where the Admin UI and Admin API are same-site subdomains under `ezkey.org`; change only if a documented deployment needs a looser policy.
+- **CSRF**: login/passwordless-wait and `GET /api/v1/admin/auth/me` issue a non-secret CSRF value. The Admin UI sends it in `X-CSRF-TOKEN` for `POST`, `PUT`, `PATCH`, and `DELETE` calls when using the browser cookie mode. The API validates the token against the HttpOnly session cookie and skips CSRF for explicit Bearer requests.
+- **Rehydration**: after a hard refresh or reopened tab, the Admin UI calls `GET /api/v1/admin/auth/me` with credentials. The response contains only non-secret metadata (`username`, `adminType`, `expiresAt`, ids, and CSRF token), never the opaque session token.
 - **Lifetime:** the cookie’s `Max-Age` follows **`expiresAt`** on the login / passwordless-wait success response, driven by **`ezkey.admin.token.expiration-hours`** and related token rules — see [ezkey-admin-api/CONFIGURATION.md](../ezkey-admin-api/CONFIGURATION.md) §12 (cookie vs sliding window).
 - **Rollback:** disable `ezkey.admin.auth.browser-session-cookie-enabled` on the API and redeploy a UI build **without** `VITE_ADMIN_AUTH_USE_HTTP_ONLY_SESSION_COOKIE` to return to Bearer-in-JSON behavior.
 
