@@ -125,16 +125,6 @@ goto end
 :build_images
 echo Building Docker images for HA stack...
 
-REM Create Maven cache volume if it doesn't exist
-docker volume inspect maven-cache >nul 2>&1
-if errorlevel 1 (
-    echo Creating Maven cache volume...
-    docker volume create maven-cache
-    echo   Maven cache volume created
-) else (
-    echo   Using existing Maven cache volume
-)
-
 echo.
 cd /d "%SCRIPT_DIR%.."
 %DOCKER_COMPOSE% -f "%COMPOSE_FILE%" build

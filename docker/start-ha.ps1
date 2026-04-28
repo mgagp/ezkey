@@ -60,15 +60,7 @@ try {
 $env:DOCKER_BUILDKIT = "1"
 $env:COMPOSE_DOCKER_CLI_BUILD = "1"
 
-# Create Maven cache volume if it doesn't exist
-try {
-    docker volume inspect maven-cache | Out-Null
-    Write-Host "  Using existing Maven cache volume"
-} catch {
-    Write-Host "Creating Maven cache volume..."
-    docker volume create maven-cache
-    Write-Host "  Maven cache volume created"
-}
+# Maven dependencies use BuildKit cache mounts in docker/Dockerfile (not a named Docker volume).
 
 Write-Host ""
 Write-Host "========================================"

@@ -178,15 +178,6 @@ function Clean-All {
 function Build-Images {
     Write-Host "Building Docker images for HA stack..."
 
-    try {
-        docker volume inspect maven-cache | Out-Null
-        Write-Host "  Using existing Maven cache volume"
-    } catch {
-        Write-Host "Creating Maven cache volume..."
-        docker volume create maven-cache | Out-Null
-        Write-Host "  Maven cache volume created"
-    }
-
     Set-Location (Split-Path -Parent $ScriptDir)
     Invoke-DockerCompose @("-f", $ComposeFile, "build")
     Write-Host "Build completed"

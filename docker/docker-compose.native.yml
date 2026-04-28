@@ -312,7 +312,6 @@ volumes:
   demo-device-data-native:
   demo-app-acme-data-native:
   demo-app-acme-config-native:
-  maven-cache:
   encryption-secrets-native:
   bootstrap-artifacts-native:
   cli-config:

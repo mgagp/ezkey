@@ -70,14 +70,7 @@ fi
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
-# Create Maven cache volume if it doesn't exist
-if ! docker volume inspect maven-cache > /dev/null 2>&1; then
-    echo "📦 Creating Maven cache volume..."
-    docker volume create maven-cache
-    echo "  ✅ Maven cache volume created"
-else
-    echo "  ✅ Using existing Maven cache volume"
-fi
+# Maven dependencies use BuildKit cache mounts in docker/Dockerfile (not a named Docker volume).
 
 echo ""
 echo "========================================"

@@ -148,16 +148,7 @@ function clean_all() {
 
 function build_images() {
     echo "📦 Building Docker images for HA stack..."
-    
-    # Create Maven cache volume if it doesn't exist
-    if ! docker volume inspect maven-cache > /dev/null 2>&1; then
-        echo "📦 Creating Maven cache volume..."
-        docker volume create maven-cache
-        echo "  ✅ Maven cache volume created"
-    else
-        echo "  ✅ Using existing Maven cache volume"
-    fi
-    
+
     echo ""
     cd "${SCRIPT_DIR}/.."
     ${DOCKER_COMPOSE} -f "${COMPOSE_FILE}" build

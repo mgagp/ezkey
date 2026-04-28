@@ -289,6 +289,18 @@ docker\manage.bat clean
 
 **Warning**: The `clean` command removes all containers, networks, and volumes, including database data.
 
+## Maven cache and Docker-only reactor build
+
+Service image builds use **BuildKit** cache mounts in [`Dockerfile`](Dockerfile) (`RUN --mount=type=cache,target=/root/.m2,...`). That cache is **internal to BuildKit** and is not the same as a Docker named volume.
+
+To validate the Java reactor without installing JDK/Maven on the host (equivalent intent to `./scripts/build.sh`):
+
+```bash
+./scripts/build-docker.sh
+```
+
+See also [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) (Docker-only validation). The formatter step uses a named volume for container `~/.m2` (default `ezkey-maven-spotless-cache`) because `spotless:apply` must write back to the Git checkout via a bind mount.
+
 ## Direct Docker Compose Usage
 
 You can also use Docker Compose directly:

@@ -1,38 +1,34 @@
-#!/bin/bash
-
-# Ezkey Docker Cache Validation Script
-# This script helps validate that BuildKit cache is working correctly
-# Usage: check-cache.sh
+#!/usr/bin/env bash
+#
+# BuildKit cache validation helper for Ezkey Docker image builds.
+# Usage: ./docker/check-cache.sh
+#
 
 echo "========================================"
 echo "BuildKit Cache Validation"
 echo "========================================"
 echo ""
-echo "This script helps you verify that BuildKit cache is working."
+echo "Maven dependencies for service images are cached via BuildKit RUN --mount"
+echo "in docker/Dockerfile (cache id maven-cache inside BuildKit — not a Docker volume)."
 echo ""
-echo "To validate the cache:"
-echo "1. Run a first build: docker/start.sh minimal"
-echo "2. Note the build time (especially dependency download time)"
-echo "3. Run a second build: docker/start.sh minimal"
-echo "4. Compare the times - the second build should be MUCH faster"
+echo "Bind-mounted Spotless runs (./scripts/build-docker.sh) use a separate named volume"
+echo "for /root/.m2 (default: ezkey-maven-spotless-cache) because Apply must write to the host checkout."
 echo ""
-echo "Expected behavior:"
-echo "- First build: Downloads all dependencies (slow)"
-echo "- Second build: Uses cached dependencies (fast)"
+echo "To validate BuildKit Maven cache behavior:"
+echo "  1. Run a first build: ./docker/start.sh --debug-cache"
+echo "  2. Note the build time (especially dependency download time)"
+echo "  3. Run again: ./docker/start.sh --debug-cache"
+echo "  4. Second build should be much faster when cache is warm"
 echo ""
 echo "Checking BuildKit status..."
 if docker buildx version >/dev/null 2>&1; then
-    echo "✅ BuildKit is available"
+    echo "✅ BuildKit / buildx is available"
 else
-    echo "⚠️  WARNING: BuildKit may not be available"
+    echo "⚠️  WARNING: docker buildx may not be available"
     echo "   Make sure Docker Desktop is running and BuildKit is enabled"
 fi
 echo ""
-echo "Checking Docker BuildKit cache..."
-echo "Note: BuildKit cache is managed internally and not visible as a Docker volume"
-echo "However, you can verify it's working by comparing build times."
-echo ""
-echo "To clear BuildKit cache (if needed):"
+echo "BuildKit cache is managed internally and is not listed as a normal Docker volume."
+echo "To clear BuildKit build cache (aggressive):"
 echo "  docker builder prune -a"
 echo ""
-

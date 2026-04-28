@@ -145,16 +145,6 @@ goto end
 :build_images
 echo Building Docker images...
 
-REM Create Maven cache volume if it doesn't exist
-docker volume inspect maven-cache >nul 2>&1
-if errorlevel 1 (
-    echo Creating Maven cache volume...
-    docker volume create maven-cache
-    echo   Maven cache volume created (visible in Docker Desktop)
-) else (
-    echo   Using existing Maven cache volume
-)
-
 echo.
 echo ========================================
 echo Building Docker images with BuildKit

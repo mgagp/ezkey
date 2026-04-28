@@ -23,6 +23,7 @@ COPY ezkey-demo-app-acme/pom.xml ./ezkey-demo-app-acme/pom.xml
 COPY ezkey-tests/pom.xml ./ezkey-tests/pom.xml
 
 # Download all dependencies with shared Maven cache (shared across all parallel builds)
+# BuildKit cache mount: id=maven-cache is a *cache ID* inside BuildKit, not the Docker named volume.
 # Using BuildKit cache mount - cache persists between builds and is shared across parallel builds
 # This step downloads dependencies and caches them for subsequent builds
 # Using -pl to explicitly list modules (excludes ezkey-tests which uses Karate/TestContainers)
@@ -62,6 +63,23 @@ RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
         -pl checkstyle-config,ezkey-core,ezkey-core-security,ezkey-migration,ezkey-admin-api,ezkey-auth-api,ezkey-integration-api,ezkey-crypto-api,ezkey-sdk/java,ezkey-demo-app-acme,ezkey-demo-device \
         -am && \
     echo "✅ Build completed successfully"
+
+# ============================================
+# Stage: reactor validation (scripts/build-docker.sh)
+# Extends the compile tree from build, adds ezkey-tests sources for full reactor install/tests.
+# Uses the same BuildKit cache mount id=maven-cache as the build stage (BuildKit cache, not a Docker volume).
+# ============================================
+FROM build AS build-validation
+COPY ezkey-tests/src ./ezkey-tests/src
+RUN --mount=type=cache,target=/root/.m2,id=maven-cache,sharing=shared \
+    echo "🔍 Validating reactor (Spotless check, Checkstyle, install, unit tests)..." && \
+    mvn install -pl checkstyle-config -DskipTests -B && \
+    mvn spotless:check -B && \
+    mvn checkstyle:check -B && \
+    mvn clean -B && \
+    mvn install -DskipTests -B && \
+    mvn test -pl '!ezkey-tests' -B && \
+    echo "✅ Reactor validation completed successfully"
 
 # ============================================
 # Stage 2: Runtime image for migration service

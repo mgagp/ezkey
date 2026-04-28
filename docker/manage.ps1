@@ -166,15 +166,6 @@ function Clean-All {
 function Build-Images {
     Write-Host "Building Docker images..."
 
-    try {
-        docker volume inspect maven-cache | Out-Null
-        Write-Host "  Using existing Maven cache volume"
-    } catch {
-        Write-Host "Creating Maven cache volume..."
-        docker volume create maven-cache | Out-Null
-        Write-Host "  Maven cache volume created (visible in Docker Desktop)"
-    }
-
     Write-Host ""
     Write-Host "========================================"
     Write-Host "Building Docker images with BuildKit"

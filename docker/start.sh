@@ -134,14 +134,8 @@ fi
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
-# Create Maven cache volume if it doesn't exist
-if ! docker volume inspect maven-cache > /dev/null 2>&1; then
-    echo "📦 Creating Maven cache volume..."
-    docker volume create maven-cache
-    echo "  ✅ Maven cache volume created (visible in Docker Desktop)"
-else
-    echo "  ✅ Using existing Maven cache volume"
-fi
+# Maven dependencies are cached via BuildKit (RUN --mount=type=cache in docker/Dockerfile).
+# That cache is not a Docker named volume. For bind-mounted spotless:apply see scripts/build-docker.sh.
 
 echo ""
 echo "========================================"

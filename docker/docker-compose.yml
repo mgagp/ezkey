@@ -334,7 +334,6 @@ volumes:
   demo-device-data:
   demo-app-acme-data:
   demo-app-acme-config:
-  maven-cache:
   encryption-secrets:
   bootstrap-artifacts:
   cli-config:

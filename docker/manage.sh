@@ -157,15 +157,6 @@ function clean_all() {
 function build_images() {
     echo "📦 Building Docker images..."
 
-    # Create Maven cache volume if it doesn't exist
-    if ! docker volume inspect maven-cache > /dev/null 2>&1; then
-        echo "📦 Creating Maven cache volume..."
-        docker volume create maven-cache
-        echo "  ✅ Maven cache volume created (visible in Docker Desktop)"
-    else
-        echo "  ✅ Using existing Maven cache volume"
-    fi
-
     echo ""
     echo "========================================"
     echo "Building Docker images with BuildKit"

@@ -267,6 +267,31 @@ workflow. On this Windows workstation, `scripts/build-local.cmd` is available as
 wrapper and should be the default entrypoint from Windows-hosted automation, because it forces Git
 Bash plus the local JDK 25 / Maven installation before delegating to `./scripts/build.sh`.
 
+### Docker-only Java validation (no host JDK/Maven)
+
+When you only have Docker (or want a reproducible path on QA machines), use:
+
+```bash
+./scripts/build-docker.sh
+```
+
+This mirrors `./scripts/build.sh`: it runs `spotless:apply` against the bind-mounted checkout, then
+builds the Docker `build-validation` target in [`docker/Dockerfile`](../docker/Dockerfile) (Spotless
+check, Checkstyle, clean, `install -DskipTests`, `test` excluding `ezkey-tests`). On **Git Bash for
+Windows**, the script sets `MSYS_NO_PATHCONV` so `docker run -w /workspace` is not rewritten to a
+host path.
+
+Options:
+
+- `--check-only` — skip `spotless:apply`; validation only (reports formatting drift without rewriting files).
+- `--no-cache` — pass `--no-cache` to the validation `docker build`.
+- `--diagnose-only` — print Docker/compose discovery and exit.
+
+Maven cache notes:
+
+- Image builds and the `build-validation` target use **BuildKit** cache mounts (`RUN --mount=type=cache` in the Dockerfile). That is not a Docker named volume.
+- `spotless:apply` uses a **named volume** for container `/root/.m2` (default `ezkey-maven-spotless-cache`; override with `EZKEY_SPOTLESS_MAVEN_VOLUME`).
+
 Only after that baseline succeeds should you run targeted follow-up commands, for example:
 
 ```bash
