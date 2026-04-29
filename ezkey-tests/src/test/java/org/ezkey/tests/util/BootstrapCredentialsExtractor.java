@@ -15,8 +15,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -82,6 +84,7 @@ public class BootstrapCredentialsExtractor {
   private static final String CREDENTIALS_FILE_PATH =
       System.getProperty("ezkey.test.state.dir", ".ezkey-test") + "/bootstrap-credentials.json";
   private static final String SHEDLOCK_LOCK_NAME = "ADMIN_STARTUP_BOOTSTRAP";
+  private static final Pattern ANSI_ESCAPE_PATTERN = Pattern.compile("\\u001B\\[[;\\d]*m");
 
   // Patterns for parsing logs
   private static final Pattern ENROLLMENT_ID_PATTERN = Pattern.compile("Enrollment ID:\\s*(\\d+)");
@@ -152,8 +155,8 @@ public class BootstrapCredentialsExtractor {
   /**
    * Loads bootstrap credentials from saved file if available.
    *
-   * <p>Checks if credentials file exists and loads it, otherwise extracts from logs. Validates that
-   * the token has the correct format (3 parts separated by dots).
+  * <p>Checks if credentials file exists and loads it, otherwise extracts from logs. Validates that
+  * the token has the correct format (2 parts separated by dots).
    *
    * @return BootstrapCredentials from file or logs
    */
@@ -165,13 +168,14 @@ public class BootstrapCredentialsExtractor {
         log.info("Loading bootstrap credentials from file: {}", CREDENTIALS_FILE_PATH);
         BootstrapCredentials credentials = loadCredentialsFromFile(credentialsPath);
 
-        // Validate token format before using cached credentials
+        // Validate token format before using cached credentials.
+        // Enrollment proof tokens are generated as randomPart.saltPart.
         String token = credentials.enrollmentProofToken();
         if (token != null) {
           String[] parts = token.split("\\.");
-          if (parts.length != 3) {
+          if (parts.length != 2) {
             log.warn(
-                "Cached token has invalid format (expected 3 parts, got {}). Re-extracting from"
+                "Cached token has invalid format (expected 2 parts, got {}). Re-extracting from"
                     + " logs.",
                 parts.length);
             log.warn(
@@ -183,6 +187,19 @@ public class BootstrapCredentialsExtractor {
               log.info("Deleted invalid credentials cache file");
             } catch (IOException e) {
               log.warn("Failed to delete invalid cache file: {}", e.getMessage());
+            }
+            return extractCredentials();
+          }
+
+          if (!matchesDatabaseHash(credentials.enrollmentId(), token)) {
+            log.warn(
+                "Cached bootstrap credentials do not match the current database token hash."
+                    + " Re-extracting from logs.");
+            try {
+              Files.delete(credentialsPath);
+              log.info("Deleted stale credentials cache file");
+            } catch (IOException e) {
+              log.warn("Failed to delete stale credentials cache file: {}", e.getMessage());
             }
             return extractCredentials();
           }
@@ -568,7 +585,7 @@ public class BootstrapCredentialsExtractor {
               + containerName);
     }
 
-    return logs.toString();
+    return ANSI_ESCAPE_PATTERN.matcher(logs.toString()).replaceAll("");
   }
 
   /**
@@ -582,7 +599,7 @@ public class BootstrapCredentialsExtractor {
     log.debug("Parsing credentials from logs...");
 
     // Find the bootstrap credentials section
-    int credentialsStart = logs.indexOf("GLOBAL ADMIN PASSWORDLESS ENROLLMENT");
+    int credentialsStart = logs.lastIndexOf("GLOBAL ADMIN PASSWORDLESS ENROLLMENT");
     if (credentialsStart == -1) {
       throw new IllegalStateException(
           "Bootstrap credentials section not found in logs. "
@@ -663,6 +680,40 @@ public class BootstrapCredentialsExtractor {
 
     return new BootstrapCredentials(
         enrollmentId, enrollmentProofToken, enrollmentChallengeCode, recoveryCodes);
+  }
+
+  private boolean matchesDatabaseHash(Integer enrollmentId, String enrollmentProofToken) {
+    try {
+      String dbHash = new DatabaseHelper().getEnrollmentProofTokenHash(enrollmentId);
+      if (dbHash == null || dbHash.isBlank()) {
+        return true;
+      }
+      String extractedHash = calculateSha256Hex(enrollmentProofToken);
+      return dbHash.equals(extractedHash);
+    } catch (Exception e) {
+      log.debug(
+          "Could not validate cached bootstrap credentials against database for enrollment {}: {}",
+          enrollmentId,
+          e.getMessage());
+      return true;
+    }
+  }
+
+  private String calculateSha256Hex(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+      StringBuilder hex = new StringBuilder(hash.length * 2);
+      for (byte currentByte : hash) {
+        hex.append(String.format("%02x", currentByte));
+      }
+      return hex.toString();
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to calculate SHA-256 hash", e);
+    }
   }
 
   /**

@@ -21,6 +21,7 @@ class EnrollmentBindResponse {
     required this.enrollmentProofToken,
     required this.integrationPublicKey,
     required this.enrollmentBindPayloadSignedByIntegration,
+    required this.authAttemptChallengeRequiredByPolicy,
     this.integrationKeyAlgorithm,
     this.integrationName,
     this.integrationDescription,
@@ -35,6 +36,7 @@ class EnrollmentBindResponse {
   final String integrationPublicKey;
   /// Ed25519 (Base64URL) over the canonical bind payload string.
   final String enrollmentBindPayloadSignedByIntegration;
+  final bool authAttemptChallengeRequiredByPolicy;
   final String? integrationKeyAlgorithm;
   final String? integrationName;
   final String? integrationDescription;
@@ -44,6 +46,12 @@ class EnrollmentBindResponse {
   final String? tenantDescription;
 
   factory EnrollmentBindResponse.fromJson(Map<String, dynamic> json) {
+    final challengeRequiredByPolicy = json['authAttemptChallengeRequiredByPolicy'];
+    if (challengeRequiredByPolicy is! bool) {
+      throw FormatException(
+        'Missing or invalid authAttemptChallengeRequiredByPolicy in bind response',
+      );
+    }
     return EnrollmentBindResponse(
       enrollmentId: _requiredString(json, 'enrollmentId'),
       enrollmentProofToken: _requiredString(json, 'enrollmentProofToken'),
@@ -52,6 +60,7 @@ class EnrollmentBindResponse {
         json,
         'enrollmentBindPayloadSignedByIntegration',
       ),
+      authAttemptChallengeRequiredByPolicy: challengeRequiredByPolicy,
       integrationKeyAlgorithm: _optionalString(json, 'integrationKeyAlgorithm'),
       integrationName: _optionalString(json, 'integrationName'),
       integrationDescription: _optionalString(json, 'integrationDescription'),
@@ -144,6 +153,7 @@ class PendingAuthResponse {
     required this.authAttemptProofToken,
     required this.authAttemptProofTokenSignedByIntegration,
     required this.authAttemptChallengeRequired,
+    required this.authAttemptChallengeRequiredByPolicy,
     this.contextTitle,
     this.contextMessage,
   });
@@ -152,14 +162,21 @@ class PendingAuthResponse {
   final String authAttemptProofToken;
   final String authAttemptProofTokenSignedByIntegration;
   final bool authAttemptChallengeRequired;
+  final bool authAttemptChallengeRequiredByPolicy;
   final String? contextTitle;
   final String? contextMessage;
 
   factory PendingAuthResponse.fromJson(Map<String, dynamic> json) {
     final challengeRequired = json['authAttemptChallengeRequired'];
+    final challengeRequiredByPolicy = json['authAttemptChallengeRequiredByPolicy'];
     if (challengeRequired is! bool) {
       throw FormatException(
         'Missing or invalid authAttemptChallengeRequired in pending response',
+      );
+    }
+    if (challengeRequiredByPolicy is! bool) {
+      throw FormatException(
+        'Missing or invalid authAttemptChallengeRequiredByPolicy in pending response',
       );
     }
     return PendingAuthResponse(
@@ -170,6 +187,7 @@ class PendingAuthResponse {
         'authAttemptProofTokenSignedByIntegration',
       ),
       authAttemptChallengeRequired: challengeRequired,
+      authAttemptChallengeRequiredByPolicy: challengeRequiredByPolicy,
       contextTitle: _optionalString(json, 'contextTitle'),
       contextMessage: _optionalString(json, 'contextMessage'),
     );

@@ -81,6 +81,7 @@ class _FakeAuthApi implements EzkeyAuthApi {
       enrollmentId: int.parse(request.enrollmentId),
       integrationPublicKey: integrationPublicKey,
       integrationKeyAlgorithm: 'ed25519',
+      authAttemptChallengeRequiredByPolicy: true,
       integrationName: 'Acme Demo',
       tenantName: 'Acme Tenant',
     );
@@ -90,6 +91,7 @@ class _FakeAuthApi implements EzkeyAuthApi {
       enrollmentProofToken: request.enrollmentProofToken,
       integrationPublicKey: integrationPublicKey,
       enrollmentBindPayloadSignedByIntegration: bindSig,
+      authAttemptChallengeRequiredByPolicy: true,
       integrationKeyAlgorithm: 'ed25519',
       integrationName: 'Acme Demo',
       tenantName: 'Acme Tenant',
@@ -101,6 +103,7 @@ class _FakeAuthApi implements EzkeyAuthApi {
     final payload = buildPendingPayload(
       'pending.proof.token',
       true,
+      true,
       'Payment Approval',
       'Authorize test batch',
     );
@@ -110,6 +113,7 @@ class _FakeAuthApi implements EzkeyAuthApi {
       authAttemptProofToken: 'pending.proof.token',
       authAttemptProofTokenSignedByIntegration: signature,
       authAttemptChallengeRequired: true,
+      authAttemptChallengeRequiredByPolicy: true,
       contextTitle: 'Payment Approval',
       contextMessage: 'Authorize test batch',
     );

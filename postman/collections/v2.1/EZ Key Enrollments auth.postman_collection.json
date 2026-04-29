@@ -25,6 +25,7 @@
               "    pm.environment.set(\"integrationKeyAlgorithm\", jsonData.integrationKeyAlgorithm);",
               "    pm.environment.set(\"enrollmentProofToken\", jsonData.enrollmentProofToken);",
               "    pm.environment.set(\"enrollmentBindPayloadSignedByIntegration\", jsonData.enrollmentBindPayloadSignedByIntegration);",
+              "    pm.environment.set(\"bind_authAttemptChallengeRequiredByPolicy\", jsonData.authAttemptChallengeRequiredByPolicy);",
               "    pm.environment.set(\"bind_integrationName\", jsonData.integrationName != null ? jsonData.integrationName : \"\");",
               "    pm.environment.set(\"bind_integrationDescription\", jsonData.integrationDescription != null ? jsonData.integrationDescription : \"\");",
               "    pm.environment.set(\"bind_enrollmentName\", jsonData.enrollmentName != null ? jsonData.enrollmentName : \"\");",
@@ -36,6 +37,7 @@
               "        pm.expect(jsonData).to.have.property('integrationPublicKey');",
               "        pm.expect(jsonData).to.have.property('integrationKeyAlgorithm');",
               "        pm.expect(jsonData).to.have.property('enrollmentProofToken');",
+              "        pm.expect(jsonData).to.have.property('authAttemptChallengeRequiredByPolicy');",
               "        pm.expect(jsonData).to.have.property('enrollmentBindPayloadSignedByIntegration');",
               "    });",
               "}"
@@ -92,7 +94,8 @@
               "    enrollmentName: pm.environment.get(\"bind_enrollmentName\") || null,",
               "    tenantId: tid === \"\" || tid === undefined ? null : Number(tid),",
               "    tenantName: pm.environment.get(\"bind_tenantName\") || null,",
-              "    tenantDescription: pm.environment.get(\"bind_tenantDescription\") || null",
+              "    tenantDescription: pm.environment.get(\"bind_tenantDescription\") || null,",
+              "    challengeRequiredByPolicy: pm.environment.get(\"bind_authAttemptChallengeRequiredByPolicy\") === \"true\"",
               "};",
               "pm.request.body.raw = JSON.stringify(body);"
             ],

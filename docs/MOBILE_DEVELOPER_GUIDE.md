@@ -378,6 +378,7 @@ Successful response:
   "integrationName": "Acme Bank",
   "integrationDescription": "Acme Bank provides secure online banking services.",
   "enrollmentName": "John's Android",
+  "authAttemptChallengeRequiredByPolicy": false,
   "enrollmentBindPayloadSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
 ```
@@ -392,6 +393,7 @@ Critical response fields:
 | `integrationKeyAlgorithm` | Required string; phase 1 is exactly `ed25519` (lowercase) | **Validate** before decoding `integrationPublicKey` or verifying the bind signature. If the value is missing or not `ed25519`, **abort enrollment** (fail closed). See [CRYPTO.md](CRYPTO.md) and [ENDPOINT.md](ENDPOINT.md). Reference implementation: [`ezkey_mobile/app/utils/integrationKeyAlgorithm.ts`](../ezkey_mobile/app/utils/integrationKeyAlgorithm.ts) |
 | `enrollmentProofToken` | Enrollment proof token | Store in secure storage |
 | `enrollmentName` | Human label for the enrollment | Optional display metadata |
+| `authAttemptChallengeRequiredByPolicy` | Whether the enrollment policy always requires challenge validation | Store as the initial policy snapshot from bind |
 
 Implementation note:
 
@@ -407,6 +409,7 @@ What the mobile app should store after `bind`:
 - `enrollmentId`
 - `enrollmentProofToken`
 - `integrationPublicKey`
+- `authAttemptChallengeRequiredByPolicy`
 - integration display metadata if useful in UI
 
 After `verify`, also persist the `devicePrivateKeyStorageTier` value you sent (if any) so the app can show consistent local posture and support future UX.
@@ -581,6 +584,7 @@ Example `200 OK` response:
   "authAttemptProofToken": "abc123-def456-ghi789",
   "authAttemptProofTokenSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
   "authAttemptChallengeRequired": true,
+  "authAttemptChallengeRequiredByPolicy": true,
   "contextTitle": "Payment Authorization",
   "contextMessage": "Authorize payment of $5,000 to Suppliers Ltd. for invoice INV-2025-042."
 }
@@ -594,6 +598,7 @@ Critical response fields:
 | `authAttemptProofToken` | One-time attempt token | Use later when building the respond payload |
 | `authAttemptProofTokenSignedByIntegration` | Integration signature over the pending payload | Verify before trusting the response |
 | `authAttemptChallengeRequired` | Whether user must enter a challenge code | Drive UI and respond payload |
+| `authAttemptChallengeRequiredByPolicy` | Whether the current challenge requirement comes from enrollment policy | Refresh local policy snapshot when a non-empty pending response is received |
 | `contextTitle` / `contextMessage` | Context shown to the user | Normalize only for signature building, not for display rewrite |
 
 ### Canonical Pending Payload
@@ -601,12 +606,13 @@ Critical response fields:
 The mobile app must verify this exact payload:
 
 ```text
-{proofToken}|{challengeRequired}|{contextTitle}|{contextMessage}
+{proofToken}|{challengeRequired}|{challengeRequiredByPolicy}|{contextTitle}|{contextMessage}
 ```
 
 Rules:
 
 - `challengeRequired` must be `true` or `false` in lowercase.
+- `challengeRequiredByPolicy` must be `true` or `false` in lowercase.
 - `contextTitle` becomes an empty string if null.
 - `contextMessage` becomes an empty string if null.
 - `contextTitle` and `contextMessage` must be NFC-normalized before concatenation.
@@ -614,7 +620,7 @@ Rules:
 Example:
 
 ```text
-abc123token|true|Payment Authorization|Authorize payment of $5,000 to Suppliers Ltd.
+abc123token|true|true|Payment Authorization|Authorize payment of $5,000 to Suppliers Ltd.
 ```
 
 Pending verification flow:

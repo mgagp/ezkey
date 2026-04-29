@@ -42,6 +42,8 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
  * @param tenantName The tenant display name of the integration associated with this enrollment
  * @param tenantDescription The tenant description of the integration associated with this
  *     enrollment
+ * @param authAttemptChallengeRequiredByPolicy whether challenge is always required by enrollment
+ *     policy
  * @param enrollmentBindPayloadSignedByIntegration Ed25519 signature over the canonical bind payload
  * @author Ezkey contributors
  * @since 2025
@@ -103,6 +105,11 @@ public record EnrollmentBindResponseDto(
             example = "Acme Corp tenant workspace",
             requiredMode = RequiredMode.NOT_REQUIRED)
         String tenantDescription,
+    @Schema(
+            description = "Whether authentication challenge is always required by enrollment policy",
+            example = "false",
+            requiredMode = RequiredMode.REQUIRED)
+        Boolean authAttemptChallengeRequiredByPolicy,
     @Schema(
             description =
                 "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind"

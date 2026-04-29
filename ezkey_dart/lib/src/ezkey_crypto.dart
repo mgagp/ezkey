@@ -44,12 +44,14 @@ class EzKeyCrypto {
   static String buildPendingPayload(
     String proofToken,
     bool challengeRequired,
+    bool challengeRequiredByPolicy,
     String? contextTitle,
     String? contextMessage,
   ) {
     return payloads.buildPendingPayload(
       proofToken,
       challengeRequired,
+      challengeRequiredByPolicy,
       contextTitle,
       contextMessage,
     );
@@ -79,6 +81,7 @@ class EzKeyCrypto {
     required int enrollmentId,
     required String integrationPublicKey,
     required String integrationKeyAlgorithm,
+    required bool authAttemptChallengeRequiredByPolicy,
     String? integrationName,
     String? integrationDescription,
     String? enrollmentName,
@@ -91,6 +94,7 @@ class EzKeyCrypto {
       enrollmentId: enrollmentId,
       integrationPublicKey: integrationPublicKey,
       integrationKeyAlgorithm: integrationKeyAlgorithm,
+      authAttemptChallengeRequiredByPolicy: authAttemptChallengeRequiredByPolicy,
       integrationName: integrationName,
       integrationDescription: integrationDescription,
       enrollmentName: enrollmentName,

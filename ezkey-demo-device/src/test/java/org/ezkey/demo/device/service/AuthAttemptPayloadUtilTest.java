@@ -14,6 +14,14 @@ import org.junit.jupiter.api.Test;
 class AuthAttemptPayloadUtilTest {
 
   @Test
+  void buildPendingPayload_matches_backend_canonical_form() {
+    assertThat(
+            AuthAttemptPayloadUtil.buildPendingPayload(
+                "pt", true, false, "Payment Approval", "Authorize invoice #42"))
+        .isEqualTo("pt|true|false|Payment Approval|Authorize invoice #42");
+  }
+
+  @Test
   void buildRespondResultPayload_matches_backend_canonical_form() {
     assertThat(
             AuthAttemptPayloadUtil.buildRespondResultPayload(

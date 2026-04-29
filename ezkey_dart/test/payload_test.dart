@@ -3,18 +3,19 @@ import 'package:test/test.dart';
 
 void main() {
   test('buildPendingPayload uses empty strings for null text fields', () {
-    expect(buildPendingPayload('tok', false, null, null), 'tok|false||');
+    expect(buildPendingPayload('tok', false, false, null, null), 'tok|false|false||');
   });
 
   test('buildPendingPayload normalizes title and message to NFC', () {
     final payload = buildPendingPayload(
       'tok',
       true,
+      false,
       'Cafe\u0301',
       'Resume\u0301',
     );
 
-    expect(payload, 'tok|true|Café|Resumé');
+    expect(payload, 'tok|true|false|Café|Resumé');
   });
 
   test('buildRespondPayload uses lowercase booleans', () {
@@ -47,10 +48,11 @@ void main() {
         enrollmentId: 1,
         integrationPublicKey: 'ipk',
         integrationKeyAlgorithm: 'ed25519',
+        authAttemptChallengeRequiredByPolicy: true,
         integrationName: 'Cafe\u0301',
         tenantId: 9,
       ),
-      't|1|ipk|ed25519|Café|||9||',
+      't|1|ipk|ed25519|Café|||9|||true',
     );
   });
 

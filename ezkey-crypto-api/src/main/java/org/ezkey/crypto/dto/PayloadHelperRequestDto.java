@@ -36,6 +36,13 @@ public class PayloadHelperRequestDto {
   @Schema(description = "Whether a challenge is required for the pending payload", example = "true")
   private Boolean challengeRequired;
 
+    @Schema(
+      description =
+        "Whether the challenge requirement is enforced by enrollment policy for pending or"
+          + " enrollment-bind payloads",
+      example = "false")
+    private Boolean challengeRequiredByPolicy;
+
   @Schema(
       description = "Optional context title for the pending payload",
       example = "Payment Approval")
@@ -128,6 +135,14 @@ public class PayloadHelperRequestDto {
 
   public void setChallengeRequired(Boolean challengeRequired) {
     this.challengeRequired = challengeRequired;
+  }
+
+  public Boolean getChallengeRequiredByPolicy() {
+    return challengeRequiredByPolicy;
+  }
+
+  public void setChallengeRequiredByPolicy(Boolean challengeRequiredByPolicy) {
+    this.challengeRequiredByPolicy = challengeRequiredByPolicy;
   }
 
   public String getContextTitle() {

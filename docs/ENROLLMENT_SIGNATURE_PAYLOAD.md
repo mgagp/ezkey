@@ -12,7 +12,7 @@ See also [AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) 
 ## Bind response (integration signs)
 
 **Payload to sign:**  
-`{enrollmentProofToken}|{enrollmentId}|{integrationPublicKey}|{integrationKeyAlgorithm}|{integrationName}|{integrationDescription}|{enrollmentName}|{tenantId}|{tenantName}|{tenantDescription}`
+`{enrollmentProofToken}|{enrollmentId}|{integrationPublicKey}|{integrationKeyAlgorithm}|{integrationName}|{integrationDescription}|{enrollmentName}|{tenantId}|{tenantName}|{tenantDescription}|{authAttemptChallengeRequiredByPolicy}`
 
 - **Separator**: Single character `|` (U+007C). No spaces.
 - **enrollmentProofToken**: Exact token string (unchanged).
@@ -21,6 +21,7 @@ See also [AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) 
 - **integrationKeyAlgorithm**: Literal from JSON (e.g. `ed25519`).
 - **integrationName**, **integrationDescription**, **enrollmentName**, **tenantName**, **tenantDescription**: NFC-normalized; null becomes `""`.
 - **tenantId**: Decimal string of the tenant id, or `""` if null.
+- **authAttemptChallengeRequiredByPolicy**: Literal string `"true"` or `"false"` (lowercase), matching the JSON field of the same name.
 
 The mobile device receives `enrollmentBindPayloadSignedByIntegration` (Base64URL Ed25519 signature). It reconstructs the same UTF-8 string from the JSON fields, then verifies the signature with `integrationPublicKey` (same encoding rules as Pending).
 

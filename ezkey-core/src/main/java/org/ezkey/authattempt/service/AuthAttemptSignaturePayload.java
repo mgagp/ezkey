@@ -31,21 +31,37 @@ public final class AuthAttemptSignaturePayload {
   /**
    * Builds the payload signed by the integration when returning the Pending response.
    *
-   * <p>Format: {@code proofToken|challengeRequired|contextTitle|contextMessage}. Null title/message
-   * become empty string. Challenge and text are canonical (NFC for text).
+   * <p>Format: {@code proofToken|challengeRequired|challengeRequiredByPolicy|contextTitle
+   * |contextMessage}. Null title/message become empty string. Challenge flags and text are
+   * canonical (NFC for text).
    *
    * @param proofToken the auth attempt proof token (must not be null)
    * @param challengeRequired whether a challenge is required
+   * @param challengeRequiredByPolicy whether the challenge requirement is enforced by enrollment
+   *     policy
    * @param contextTitle optional context title (null → "")
    * @param contextMessage optional context message (null → "")
    * @return the canonical payload string (UTF-8)
    */
   public static String buildPendingPayload(
-      String proofToken, boolean challengeRequired, String contextTitle, String contextMessage) {
+      String proofToken,
+      boolean challengeRequired,
+      boolean challengeRequiredByPolicy,
+      String contextTitle,
+      String contextMessage) {
     String challengeStr = challengeRequired ? TRUE : FALSE;
+    String challengeByPolicyStr = challengeRequiredByPolicy ? TRUE : FALSE;
     String title = nfcOrEmpty(contextTitle);
     String message = nfcOrEmpty(contextMessage);
-    return proofToken + SEP + challengeStr + SEP + title + SEP + message;
+    return proofToken
+        + SEP
+        + challengeStr
+        + SEP
+        + challengeByPolicyStr
+        + SEP
+        + title
+        + SEP
+        + message;
   }
 
   /**

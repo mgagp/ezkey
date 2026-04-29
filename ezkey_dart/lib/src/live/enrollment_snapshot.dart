@@ -12,6 +12,7 @@ class EnrollmentSnapshot {
     this.enrollmentActive,
     this.enrollmentProofToken,
     this.authAttemptChallengeRequired,
+    this.authAttemptChallengeRequiredByPolicy,
     this.integrationPublicKey,
     this.devicePublicKey,
     this.verifiedAt,
@@ -29,6 +30,7 @@ class EnrollmentSnapshot {
   final bool? enrollmentActive;
   final String? enrollmentProofToken;
   final bool? authAttemptChallengeRequired;
+  final bool? authAttemptChallengeRequiredByPolicy;
   final String? integrationPublicKey;
   final String? devicePublicKey;
   final String? verifiedAt;
@@ -48,6 +50,8 @@ class EnrollmentSnapshot {
       enrollmentProofToken: json['enrollmentProofToken'] as String?,
       authAttemptChallengeRequired:
           json['authAttemptChallengeRequired'] as bool?,
+        authAttemptChallengeRequiredByPolicy:
+          json['authAttemptChallengeRequiredByPolicy'] as bool?,
       integrationPublicKey: json['integrationPublicKey'] as String?,
       devicePublicKey: json['devicePublicKey'] as String?,
       verifiedAt: json['verifiedAt'] as String?,
@@ -69,6 +73,7 @@ class EnrollmentSnapshot {
       'enrollmentActive': enrollmentActive,
       'enrollmentProofToken': token,
       'authAttemptChallengeRequired': authAttemptChallengeRequired,
+      'authAttemptChallengeRequiredByPolicy': authAttemptChallengeRequiredByPolicy,
       'integrationPublicKey': integrationPublicKey,
       'devicePublicKey': devicePublicKey,
       'verifiedAt': verifiedAt,

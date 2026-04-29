@@ -11,15 +11,16 @@ Enrollment bind and verify use a separate spec: [ENROLLMENT_SIGNATURE_PAYLOAD.md
 
 ## Pending (integration signs)
 
-**Payload to sign:** `{proofToken}|{challengeRequired}|{contextTitle}|{contextMessage}`
+**Payload to sign:** `{proofToken}|{challengeRequired}|{challengeRequiredByPolicy}|{contextTitle}|{contextMessage}`
 
 - **Separator**: Single character `|` (U+007C). No spaces.
 - **proofToken**: The auth attempt proof token value (unchanged).
 - **challengeRequired**: Literal string `"true"` or `"false"` (lowercase), matching the JSON field `authAttemptChallengeRequired`.
+- **challengeRequiredByPolicy**: Literal string `"true"` or `"false"` (lowercase), matching the JSON field `authAttemptChallengeRequiredByPolicy`.
 - **contextTitle**: Value of the context title, or empty string if null. Must be NFC-normalized before concatenation.
 - **contextMessage**: Value of the context message, or empty string if null. Must be NFC-normalized before concatenation.
 
-**Example:** `abc123token|true|Virement|Virement de 50€` (NFC-normalized French text).
+**Example:** `abc123token|true|true|Virement|Virement de 50€` (NFC-normalized French text).
 
 Clients must build this exact string (with NFC for title/message), then verify the integration signature over it. If verification fails, reject the pending response.
 

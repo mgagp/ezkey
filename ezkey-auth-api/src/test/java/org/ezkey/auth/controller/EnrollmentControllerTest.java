@@ -139,6 +139,7 @@ class EnrollmentControllerTest {
     bindResponse.setEnrollmentProofToken("test-proof-token");
     bindResponse.setIntegrationPublicKey("test-public-key");
     bindResponse.setIntegrationKeyAlgorithm("ed25519");
+    bindResponse.setAuthAttemptChallengeRequiredByPolicy(true);
     bindResponse.setEnrollmentBindPayloadSignedByIntegration("bind-signature");
 
     bindResponseDto =
@@ -153,6 +154,7 @@ class EnrollmentControllerTest {
             null,
             null,
             null,
+            true,
             "bind-signature");
 
     // Setup verify request test data

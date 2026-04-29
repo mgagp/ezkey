@@ -27,14 +27,20 @@ public final class AuthAttemptPayloadUtil {
 
   /**
    * Builds the payload that the integration signed for the Pending response. Used to verify the
-   * integration signature. Format: proofToken|challengeRequired|contextTitle|contextMessage.
+   * integration signature. Format: proofToken|challengeRequired|challengeRequiredByPolicy
+   * |contextTitle|contextMessage.
    */
   public static String buildPendingPayload(
-      String proofToken, boolean challengeRequired, String contextTitle, String contextMessage) {
+      String proofToken,
+      boolean challengeRequired,
+      boolean challengeRequiredByPolicy,
+      String contextTitle,
+      String contextMessage) {
     String challengeStr = challengeRequired ? TRUE : FALSE;
+    String challengeByPolicyStr = challengeRequiredByPolicy ? TRUE : FALSE;
     String title = nfcOrEmpty(contextTitle);
     String message = nfcOrEmpty(contextMessage);
-    return proofToken + SEP + challengeStr + SEP + title + SEP + message;
+    return proofToken + SEP + challengeStr + SEP + challengeByPolicyStr + SEP + title + SEP + message;
   }
 
   /**
