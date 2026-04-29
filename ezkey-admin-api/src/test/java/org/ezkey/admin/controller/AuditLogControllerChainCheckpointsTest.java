@@ -29,6 +29,7 @@ import org.ezkey.audit.dto.AuditChainCheckpointResponseDto;
 import org.ezkey.audit.dto.CheckpointType;
 import org.ezkey.audit.integrity.AuditChainCheckpoint;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
+import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
@@ -67,6 +68,7 @@ class AuditLogControllerChainCheckpointsTest {
   @Mock private AuditIntegrityService auditIntegrityService;
   @Mock private AuditChainVerificationService auditChainVerificationService;
   @Mock private AuditLifecycleService auditLifecycleService;
+  @Mock private AuditChainIncidentService auditChainIncidentService;
 
   private AuditLogController controller;
 
@@ -86,7 +88,8 @@ class AuditLogControllerChainCheckpointsTest {
             auditChainCheckpointMapper,
             auditIntegrityService,
             auditChainVerificationService,
-            auditLifecycleService);
+            auditLifecycleService,
+            auditChainIncidentService);
   }
 
   @Test

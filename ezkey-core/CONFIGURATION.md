@@ -175,6 +175,31 @@ Auth API and Integration API set `ezkey.audit.chain.enabled=false`.
 | `ezkey.audit.chain.window-minutes` | `int` | `5` | optionnel | Time window size in minutes for each checkpoint. |
 | `ezkey.audit.chain.lookback-minutes` | `int` | `60` | optionnel | Lookback window in minutes for catch-up after restarts. |
 
+**Multi-instance coherence (Admin API vs peripheral APIs)**
+
+- Only **Admin API** runs the checkpoint scheduler (`ezkey.audit.chain.enabled=true`). Auth API and Integration API set `enabled=false` but still bind `AuditChainProperties`.
+- **`ezkey.audit.chain.window-minutes` must match Admin API** on every JVM that evaluates peripheral heartbeat supervision (`AuditChainHeartbeatGuardService` compares wall-clock time to `latest.window_end` using `AuditChainProperties#getWindowMinutes()`). Relying on the Java default (`5`) without an explicit property is fragile — Docker profiles pin the same numeric value on Admin API, Auth API, and Integration API.
+- Changing **`ezkey.audit.chain.heartbeat.grace-windows`** or **`stop-before-next-window`** affects fail-closed timing relative to those windows; tune deliberately and keep heartbeat-related settings aligned across Auth API, Integration API, and Admin API (including `docker-test`, which relaxes rate limits but keeps heartbeat semantics).
+
+### Peripheral heartbeat (`ezkey.audit.chain.heartbeat.*`)
+
+**Description:** Latest checkpoint acts as Admin API heartbeat for Auth API and Integration API supervision.
+Fails closed on selected peripheral routes when checkpoints appear stalled beyond grace thresholds.
+Grace durations are expressed as multiples of **`ezkey.audit.chain.window-minutes`** — keep that value aligned with Admin API (see **Multi-instance coherence** above).
+
+**Defined in:** `AuditChainHeartbeatProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.audit.chain.heartbeat.enabled` | `boolean` | `true` | optionnel | Master enable for heartbeat evaluation and MVC interceptor registration in peripherals. |
+| `ezkey.audit.chain.heartbeat.required` | `boolean` | `true` | optionnel | When `false`, peripherals never HTTP-block — local troubleshooting only (not for shared stacks). |
+| `ezkey.audit.chain.heartbeat.grace-windows` | `int` | `2` | optionnel | Checkpoint-window multiples after `latest.window_end` forming outer supervision boundary. |
+| `ezkey.audit.chain.heartbeat.stop-before-next-window` | `Duration` | `PT1M` | optionnel | Safety buffer subtracted before fail-closed threshold. |
+| `ezkey.audit.chain.heartbeat.cache-ttl` | `Duration` | `PT5S` | optionnel | Cached evaluation TTL to reduce DB reads per request. |
+| `ezkey.audit.chain.heartbeat.bootstrap-grace` | `Duration` | `PT10M` | optionnel | Startup tolerance before checkpoints exist (clean install). |
+| `ezkey.audit.chain.heartbeat.admin-evaluate-scheduler-enabled` | `boolean` | `true` | optionnel | Admin API scheduler ping (`@Scheduled`) — keeps incidents/alerts fresh without peripheral traffic. |
+| `ezkey.audit.chain.heartbeat.admin-evaluate-fixed-delay-ms` | `long` | `30000` | optionnel | Delay between Admin heartbeat evaluations (milliseconds). |
+
 ---
 
 ### Audit Log Archive (`ezkey.audit.archive.*`)

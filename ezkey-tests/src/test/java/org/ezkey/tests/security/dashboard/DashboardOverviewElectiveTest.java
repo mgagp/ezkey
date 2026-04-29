@@ -78,13 +78,26 @@ public class DashboardOverviewElectiveTest extends AbstractSecurityTest {
     Assumptions.assumeTrue(adminToken != null && !adminToken.isBlank(), "Admin token required");
 
     // --- 1) DB counts (instance-wide, matching Global Admin scope) ---
+    // Match DashboardService: total includes non-system integrations in any lifecycle (ACTIVE +
+    // RETIRED are the only states).
     long dbIntegrationsTotal =
         queryLong(
             "SELECT COUNT(*) FROM ezkey_integration "
+                + "WHERE (is_system_integration IS NULL OR is_system_integration = false)");
+    long dbIntegrationsRetired =
+        queryLong(
+            "SELECT COUNT(*) FROM ezkey_integration "
                 + "WHERE (is_system_integration IS NULL OR is_system_integration = false) "
-                + "AND integration_lifecycle_status <> 'RETIRED'");
-    long dbEnrollmentsActive =
-        queryLong("SELECT COUNT(*) FROM ezkey_enrollment WHERE enrollment_active = true");
+                + "AND integration_lifecycle_status = 'RETIRED'");
+    long dbIntegrationsActive =
+        queryLong(
+            "SELECT COUNT(*) FROM ezkey_integration "
+                + "WHERE (is_system_integration IS NULL OR is_system_integration = false) "
+                + "AND integration_lifecycle_status = 'ACTIVE'");
+    long dbEnrollmentsVerified =
+        queryLong(
+            "SELECT COUNT(*) FROM ezkey_enrollment "
+                + "WHERE enrollment_status = 'VERIFIED' AND enrollment_active = true");
     long dbAuth24h =
         queryLong(
             "SELECT COUNT(*) FROM ezkey_auth_attempt "
@@ -93,9 +106,12 @@ public class DashboardOverviewElectiveTest extends AbstractSecurityTest {
         queryLong("SELECT COUNT(*) FROM ezkey_auth_attempt WHERE auth_attempt_status = 'PENDING'");
 
     logger.info(
-        "DB snapshot: integrations={}, enrollments(active)={}, auth24h={}, pending={}",
+        "DB snapshot: integrations(total)={}, integrations(active)={}, integrations(retired)={},"
+            + " enrollments(verified)={}, auth24h={}, pending={}",
         dbIntegrationsTotal,
-        dbEnrollmentsActive,
+        dbIntegrationsActive,
+        dbIntegrationsRetired,
+        dbEnrollmentsVerified,
         dbAuth24h,
         dbPending);
     if (dbIntegrationsTotal == 0 && dbAuth24h == 0 && dbPending == 0) {
@@ -116,31 +132,35 @@ public class DashboardOverviewElectiveTest extends AbstractSecurityTest {
 
     int apiIntTotal = overviewResponse.jsonPath().getInt("integrations.total");
     int apiIntActive = overviewResponse.jsonPath().getInt("integrations.active");
-    int apiIntInactive = overviewResponse.jsonPath().getInt("integrations.inactive");
-    int apiEnrTotal = overviewResponse.jsonPath().getInt("enrollments.total");
+    int apiIntRetired = overviewResponse.jsonPath().getInt("integrations.retired");
+    int apiEnrVerified = overviewResponse.jsonPath().getInt("enrollments.verified");
     int apiAuth24hTotal = overviewResponse.jsonPath().getInt("auth24h.total");
     // recentActivity and alerts: structure only, no DB cross-check (alerts not validated)
 
     logger.info(
-        "API overview: integrations(total={}, active={}, inactive={}), enrollments(total={}),"
+        "API overview: integrations(total={}, active={}, retired={}), enrollments(verified={}),"
             + " auth24h(total={})",
         apiIntTotal,
         apiIntActive,
-        apiIntInactive,
-        apiEnrTotal,
+        apiIntRetired,
+        apiEnrVerified,
         apiAuth24hTotal);
 
     assertThat(apiIntTotal)
-        .as(
-            "Overview integrations.total must match DB count (non-system, non-retired"
-                + " integrations)")
+        .as("Overview integrations.total must match DB count (non-system; ACTIVE + RETIRED)")
         .isEqualTo((int) dbIntegrationsTotal);
-    assertThat(apiIntActive + apiIntInactive)
-        .as("Overview active + inactive must equal total")
+    assertThat(apiIntActive)
+        .as("Overview integrations.active must match DB count of ACTIVE non-system integrations")
+        .isEqualTo((int) dbIntegrationsActive);
+    assertThat(apiIntRetired)
+        .as("Overview integrations.retired must match DB count of RETIRED non-system integrations")
+        .isEqualTo((int) dbIntegrationsRetired);
+    assertThat(apiIntActive + apiIntRetired)
+        .as("Overview active + retired must equal total (only two lifecycle states)")
         .isEqualTo(apiIntTotal);
-    assertThat(apiEnrTotal)
-        .as("Overview enrollments.total must match DB count (active enrollments)")
-        .isEqualTo((int) dbEnrollmentsActive);
+    assertThat(apiEnrVerified)
+        .as("Overview enrollments.verified must match DB (VERIFIED + active)")
+        .isEqualTo((int) dbEnrollmentsVerified);
     assertThat(apiAuth24hTotal)
         .as("Overview auth24h.total must match DB count (last 24h); small race allowed")
         .isEqualTo((int) dbAuth24h);

@@ -85,7 +85,8 @@ public enum EventTypeFamily {
   AUDIT_CHAIN(
       EventType.AUDIT_CHAIN_ARCHIVE_SEALED,
       EventType.AUDIT_CHAIN_ARCHIVE_EXPORTED,
-      EventType.AUDIT_CHAIN_GAP_DECLARED),
+      EventType.AUDIT_CHAIN_GAP_DECLARED,
+      EventType.AUDIT_CHAIN_INCIDENT_DECLARED),
   ALERT(EventType.ALERT_RAISED, EventType.ALERT_RESOLVED);
 
   private final Set<EventType> members;

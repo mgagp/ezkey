@@ -1,7 +1,18 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
-import { Activity, AlertTriangle, FileText, Key, Puzzle, RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Activity,
+  AlertTriangle,
+  ClipboardList,
+  FileText,
+  Key,
+  Puzzle,
+  RefreshCw,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +32,15 @@ import {
   buildEnrollmentsDrilldownUrl,
   buildIntegrationsDrilldownUrl,
 } from '@/lib/dashboard-drilldown-links';
+import { api } from '@/lib/api-client';
+
+/** Minimal row shape for dashboard follow-up widget (lifecycle incidents API). */
+type AuditChainIncidentDashboardRow = {
+  incidentId: number;
+  status: string;
+  anchorCheckpointId: number | null;
+  recoveredAt: string | null;
+};
 
 const REFRESH_INTERVAL_OVERVIEW_MS = 60_000;
 
@@ -98,6 +118,20 @@ export default function DashboardPage() {
       refetchInterval: REFRESH_INTERVAL_OVERVIEW_MS,
     },
   });
+
+  const { data: incidentsPage } = useQuery({
+    queryKey: ['audit-chain-incidents'],
+    queryFn: () =>
+      api.get<{ content: AuditChainIncidentDashboardRow[] }>(
+        '/api/v1/audit-logs/lifecycle/incidents?page=0&size=50&sort=createdAt,DESC',
+      ),
+    enabled: isGlobalAdmin,
+    staleTime: REFRESH_INTERVAL_OVERVIEW_MS,
+    refetchInterval: REFRESH_INTERVAL_OVERVIEW_MS,
+  });
+
+  const pendingIncidentDeclarations =
+    incidentsPage?.content?.filter((r) => r.status === 'RECOVERED_PENDING_DECLARATION') ?? [];
 
   const [secondsUntilNext, setSecondsUntilNext] = useState(0);
   useEffect(() => {
@@ -239,6 +273,45 @@ export default function DashboardPage() {
                 className="mt-3 inline-block text-sm font-bold text-accent hover:underline"
               >
                 {t('dashboard:auditChain.openAlerts')}
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Operational follow-up: heartbeat incidents awaiting operator declaration (Global Admin only) */}
+        {isGlobalAdmin && pendingIncidentDeclarations.length > 0 && (
+          <Card className="border-2 border-warning/50 bg-warning/5">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-warning">
+                  <ClipboardList className="size-5 shrink-0" />
+                  {t('dashboard:followUp.title')}
+                </CardTitle>
+                <Badge variant="warning" className="shrink-0">
+                  {pendingIncidentDeclarations.length}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-fg-muted">{t('dashboard:followUp.description')}</p>
+              <ul className="space-y-1.5 text-sm border border-fg/10 rounded-sm p-2 bg-bg">
+                {pendingIncidentDeclarations.map((row) => (
+                  <li key={row.incidentId} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="font-mono font-bold">#{row.incidentId}</span>
+                    <span className="text-fg-muted">{t('dashboard:followUp.awaitingDeclaration')}</span>
+                    {row.anchorCheckpointId != null && (
+                      <span className="text-fg">
+                        {t('dashboard:followUp.anchorCheckpoint', { id: row.anchorCheckpointId })}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/audit-logs?integrity=1#integrity-lifecycle-panel"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-accent hover:underline"
+              >
+                {t('dashboard:followUp.openIntegrity')}
               </Link>
             </CardContent>
           </Card>

@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react
 import { useTranslation, Trans } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
 import { DataTable, type ColumnDef } from '@/components/data-table/data-table';
 import { Pagination } from '@/components/data-table/pagination';
@@ -17,6 +17,7 @@ import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
@@ -27,6 +28,7 @@ import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { EventStatusBadge } from '@/components/feature/event-status-badge';
 import { AUDIT_EVENT_TYPE_GROUPS, auditEventFilterToApiParams } from '@/lib/audit-event-type-family';
+import { api } from '@/lib/api-client';
 import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDate, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
@@ -66,6 +68,30 @@ type AuditLogQueryParams = GetAuditLogsParams & {
 type AuditEventStatusFilter = NonNullable<GetAuditLogsParams['eventStatus']> | '';
 type AuditApiNameFilter = NonNullable<GetAuditLogsParams['apiName']> | '';
 type ContextEntityType = 'enrollment' | 'authAttempt' | 'integration' | '';
+
+/** Operational heartbeat incident row (Admin API lifecycle). */
+type AuditChainIncidentRow = {
+  incidentId: number;
+  status: 'IN_PROGRESS' | 'RECOVERED_PENDING_DECLARATION' | 'CLOSED';
+  anchorCheckpointId: number | null;
+  staleSince: string | null;
+  degradedSince: string | null;
+  recoveredAt: string | null;
+  justification: string | null;
+  rootCause: string | null;
+  declaredAt: string | null;
+  declaredByAdminId: number | null;
+  createdAt: string | null;
+};
+
+const AUDIT_CHAIN_INCIDENT_ROOT_CAUSES = [
+  'ADMIN_API_DOWN',
+  'SCHEDULER_FAILURE',
+  'DB_UNAVAILABLE',
+  'NETWORK_PARTITION',
+  'MISCONFIGURATION',
+  'UNKNOWN',
+] as const;
 
 function parseEventStatusFilter(value: string | null | undefined): AuditEventStatusFilter {
   if (value === 'SUCCESS' || value === 'FAILURE' || value === 'ERROR') {
@@ -516,12 +542,25 @@ function CheckpointTimelineTable({
 
 // ── Integrity Panel (GLOBAL_ADMIN only) ───────────────────────────────────────
 
-function IntegrityPanel() {
+function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean }) {
   const { t } = useTranslation('audit-logs');
   const { effectiveTimeZoneId } = useDisplayTimezone();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(expandFromQuery);
+
+  /** Deep-link from Dashboard (?integrity=1): keep panel open when query requests it. */
+  useEffect(() => {
+    if (expandFromQuery) setExpanded(true);
+  }, [expandFromQuery]);
+
+  /** Scroll integrity section into view after opening from dashboard link. */
+  useEffect(() => {
+    if (!expanded || !expandFromQuery) return;
+    requestAnimationFrame(() => {
+      document.getElementById('integrity-lifecycle-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [expanded, expandFromQuery]);
 
   // ── Check results ──
   const [chainReport, setChainReport] = useState<ChainVerificationReport | null>(null);
@@ -561,6 +600,12 @@ function IntegrityPanel() {
   const [focusedGap, setFocusedGap] = useState<{ gapStart: string; gapEnd: string; gapMinutes: number } | null>(null);
   const [gapsListExpanded, setGapsListExpanded] = useState(true);
 
+  const [incidentDeclareOpen, setIncidentDeclareOpen] = useState(false);
+  const [incidentActive, setIncidentActive] = useState<AuditChainIncidentRow | null>(null);
+  const [incidentJustification, setIncidentJustification] = useState('');
+  const [incidentRootCause, setIncidentRootCause] =
+    useState<(typeof AUDIT_CHAIN_INCIDENT_ROOT_CAUSES)[number]>('UNKNOWN');
+
   const {
     data: archiveEligibility,
     isLoading: archiveEligibilityLoading,
@@ -568,6 +613,46 @@ function IntegrityPanel() {
     queryKey: ['audit-archive-eligibility'],
     queryFn: () => getArchiveEligibility() as Promise<ArchiveEligibilityResult>,
     enabled: expanded,
+  });
+
+  const {
+    data: incidentsPage,
+    isLoading: incidentsLoading,
+    refetch: refetchIncidents,
+  } = useQuery({
+    queryKey: ['audit-chain-incidents'],
+    queryFn: () =>
+      api.get<{ content: AuditChainIncidentRow[] }>(
+        '/api/v1/audit-logs/lifecycle/incidents?page=0&size=50&sort=createdAt,DESC',
+      ),
+    enabled: expanded,
+  });
+
+  const declareIncidentMutation = useMutation({
+    mutationFn: ({
+      incidentId,
+      justification,
+      rootCause,
+    }: {
+      incidentId: number;
+      justification: string;
+      rootCause: string;
+    }) =>
+      api.post<AuditChainIncidentRow>(
+        `/api/v1/audit-logs/lifecycle/incidents/${incidentId}/declare`,
+        { justification, rootCause },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['audit-chain-incidents'] });
+      setIncidentDeclareOpen(false);
+      setIncidentActive(null);
+      setIncidentJustification('');
+      setIncidentRootCause('UNKNOWN');
+      toast(t('integrity.incidents.declareSuccess'), 'success');
+    },
+    onError: (e: unknown) => {
+      toast(getTranslatedApiError(e, t, t('integrity.incidents.declareError')), 'error');
+    },
   });
 
   /** When a gap is focused, request a narrow window (gapStart − 1h to gapEnd + 1h) so page 0 contains the anchor and first checkpoint after the gap. Otherwise use the date-range filter. */
@@ -820,7 +905,7 @@ function IntegrityPanel() {
   }
 
   return (
-    <div className="border-2 border-fg/20 bg-main shadow-brutal">
+    <div id="integrity-lifecycle-panel" className="border-2 border-fg/20 bg-main shadow-brutal scroll-mt-4">
       {/* Header — always visible */}
       <button
         type="button"
@@ -1015,6 +1100,87 @@ function IntegrityPanel() {
                 <ContextHelp title={t('integrity.declareGap')} content={<Trans i18nKey="audit-logs:help.declareGap.content" components={{ strong: <strong /> }} />} ariaLabel={t('common:help.ariaLabel', { title: t('integrity.declareGap') })} />
               </span>
             </div>
+            </div>
+
+            {/* Operational heartbeat incidents (distinct from cryptographic gap declarations) */}
+            <div className="border-2 border-fg/10 bg-bg p-3 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs uppercase tracking-wider text-fg-muted">{t('integrity.incidents.title')}</span>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <ContextHelp
+                      title={t('integrity.incidents.title')}
+                      content={<Trans i18nKey="audit-logs:help.incidents.content" components={{ strong: <strong /> }} />}
+                      ariaLabel={t('common:help.ariaLabel', { title: t('integrity.incidents.title') })}
+                    />
+                  </span>
+                </div>
+                <Button type="button" size="sm" variant="secondary" className="gap-1.5" onClick={() => void refetchIncidents()}>
+                  {incidentsLoading ? t('integrity.incidents.refreshing') : t('integrity.incidents.refresh')}
+                </Button>
+              </div>
+              {incidentsLoading && (
+                <p className="text-xs text-fg-muted">{t('integrity.incidents.loading')}</p>
+              )}
+              {!incidentsLoading && (incidentsPage?.content?.length ?? 0) === 0 && (
+                <p className="text-xs text-fg-muted">{t('integrity.incidents.empty')}</p>
+              )}
+              {!incidentsLoading && (incidentsPage?.content?.length ?? 0) > 0 && (
+                <ul className="space-y-2 pl-0 list-none">
+                  {(incidentsPage?.content ?? []).map((row) => (
+                    <li key={row.incidentId} className="border-2 border-fg/15 p-2 text-xs space-y-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono font-bold">#{row.incidentId}</span>
+                        <Badge
+                          variant={
+                            row.status === 'IN_PROGRESS'
+                              ? 'warning'
+                              : row.status === 'RECOVERED_PENDING_DECLARATION'
+                                ? 'warning'
+                                : 'default'
+                          }
+                        >
+                          {t(`integrity.incidents.status.${row.status}`)}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-fg-muted">
+                        {row.anchorCheckpointId != null && (
+                          <span>{t('integrity.incidents.anchorCheckpoint', { id: row.anchorCheckpointId })}</span>
+                        )}
+                        {row.staleSince && (
+                          <span>{t('integrity.incidents.staleSince', { ts: formatDateWithTimezone(row.staleSince) })}</span>
+                        )}
+                        {row.degradedSince && (
+                          <span>{t('integrity.incidents.degradedSince', { ts: formatDateWithTimezone(row.degradedSince) })}</span>
+                        )}
+                        {row.recoveredAt && (
+                          <span>{t('integrity.incidents.recoveredAt', { ts: formatDateWithTimezone(row.recoveredAt) })}</span>
+                        )}
+                      </div>
+                      {row.status === 'CLOSED' && row.justification && (
+                        <p className="text-xs text-fg pt-1 border-t border-fg/10">{row.justification}</p>
+                      )}
+                      {row.status === 'RECOVERED_PENDING_DECLARATION' && (
+                        <div className="flex justify-end pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setIncidentActive(row);
+                              setIncidentJustification('');
+                              setIncidentRootCause('UNKNOWN');
+                              setIncidentDeclareOpen(true);
+                            }}
+                          >
+                            {t('integrity.incidents.declare')}
+                          </Button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Undeclared gaps for consultation (from last chain verification) */}
@@ -1335,6 +1501,79 @@ function IntegrityPanel() {
               <Button type="button" variant="secondary" onClick={closeGapDialog}>{t('gapDialog.cancel')}</Button>
               <Button type="submit" disabled={gapMutation.isPending || gapJustification.trim().length < 10}>
                 {gapMutation.isPending ? t('gapDialog.submitting') : t('gapDialog.submit')}
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Dialog>
+
+      <Dialog
+        open={incidentDeclareOpen}
+        onClose={() => {
+          setIncidentDeclareOpen(false);
+          setIncidentActive(null);
+        }}
+        title={t('integrity.incidents.declareTitle')}
+        size="md"
+        dismissible={false}
+      >
+        {incidentActive ? (
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!incidentActive) return;
+              declareIncidentMutation.mutate({
+                incidentId: incidentActive.incidentId,
+                justification: incidentJustification.trim(),
+                rootCause: incidentRootCause,
+              });
+            }}
+          >
+            <p className="text-xs text-fg-muted">{t('integrity.incidents.declareIntro')}</p>
+            <div className="space-y-1">
+              <Label htmlFor="incident-root-cause" className="text-xs">{t('integrity.incidents.rootCause')}</Label>
+              <Select
+                id="incident-root-cause"
+                value={incidentRootCause}
+                onChange={(e) =>
+                  setIncidentRootCause(e.target.value as (typeof AUDIT_CHAIN_INCIDENT_ROOT_CAUSES)[number])
+                }
+              >
+                {AUDIT_CHAIN_INCIDENT_ROOT_CAUSES.map((rc) => (
+                  <option key={rc} value={rc}>{t(`integrity.incidents.rootCauses.${rc}`)}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="incident-justification" className="text-xs">{t('integrity.incidents.justification')}</Label>
+              <Textarea
+                id="incident-justification"
+                value={incidentJustification}
+                onChange={(e) => setIncidentJustification(e.target.value)}
+                rows={4}
+                placeholder={t('integrity.incidents.justificationPlaceholder')}
+              />
+              <p className="text-[10px] text-fg-muted">{t('integrity.incidents.justificationHint')}</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setIncidentDeclareOpen(false);
+                  setIncidentActive(null);
+                }}
+              >
+                {t('integrity.incidents.cancel')}
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  declareIncidentMutation.isPending || incidentJustification.trim().length < 10 || incidentJustification.trim().length > 500
+                }
+              >
+                {declareIncidentMutation.isPending ? t('integrity.incidents.submitting') : t('integrity.incidents.submit')}
               </Button>
             </div>
           </form>
@@ -2050,7 +2289,9 @@ export default function AuditLogsPage() {
       </div>
 
       {/* Integrity panel — visible only for GLOBAL_ADMIN */}
-      {isGlobalAdmin && <IntegrityPanel />}
+      {isGlobalAdmin && (
+        <IntegrityPanel expandFromQuery={searchParams.get('integrity') === '1'} />
+      )}
 
       <AuditLogDetailDialog
         log={selectedLog}

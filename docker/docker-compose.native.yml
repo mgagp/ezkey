@@ -222,13 +222,13 @@ services:
       target: demo-app-acme
     container_name: ezkey-demo-app-acme-native
     depends_on:
-      admin-api:
+      integration-api:
         condition: service_healthy
     environment:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/,optional:file:./config/
-      EZKEY_ADMIN_API_URL: http://admin-api:9080
+      EZKEY_ADMIN_API_URL: http://integration-api:7080
     volumes:
       - demo-app-acme-data-native:/app/data
       - demo-app-acme-config-native:/app/config

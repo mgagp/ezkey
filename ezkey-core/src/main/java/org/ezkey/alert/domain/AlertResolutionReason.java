@@ -25,6 +25,12 @@ public enum AlertResolutionReason {
    */
   GAP_DECLARED,
 
+  /**
+   * Resolved automatically because periodic audit-chain checkpoints advanced again after a
+   * heartbeat-stale episode (peripheral supervision recovered).
+   */
+  HEARTBEAT_RESTORED,
+
   /** Resolved manually by an administrator (reserved; no producer in the current iteration). */
   MANUAL
 }

@@ -39,8 +39,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  *   <li><b>Port:</b> 8082
  * </ul>
  *
- * <p><b>Integration:</b> Communicates with ezkey-admin-api (port 9080) using API key authentication
- * to create auth attempts and wait for device approval.
+ * <p><b>Integration:</b> Uses {@link org.ezkey.sdk.EzkeyClient} against the Ezkey Integration API
+ * (same {@code /api/v1/auth-attempts} contract as documented for API-key flows; Docker default base
+ * URL {@code http://integration-api:7080}). to create auth attempts and wait for device approval.
  *
  * @author Ezkey contributors
  * @since 2025

@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.EventTypeFamily;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
+import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
@@ -48,6 +49,7 @@ class AuditLogControllerGetAuditLogsTest {
   @Mock private AuditIntegrityService auditIntegrityService;
   @Mock private AuditChainVerificationService auditChainVerificationService;
   @Mock private AuditLifecycleService auditLifecycleService;
+  @Mock private AuditChainIncidentService auditChainIncidentService;
 
   private AuditLogController controller;
 
@@ -61,7 +63,8 @@ class AuditLogControllerGetAuditLogsTest {
             auditChainCheckpointMapper,
             auditIntegrityService,
             auditChainVerificationService,
-            auditLifecycleService);
+            auditLifecycleService,
+            auditChainIncidentService);
   }
 
   @Test

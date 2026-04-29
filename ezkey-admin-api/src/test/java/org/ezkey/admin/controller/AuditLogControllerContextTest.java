@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import org.ezkey.audit.dto.AuditLogContextResponseDto;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
+import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
@@ -46,6 +47,7 @@ class AuditLogControllerContextTest {
   @Mock private AuditIntegrityService auditIntegrityService;
   @Mock private AuditChainVerificationService auditChainVerificationService;
   @Mock private AuditLifecycleService auditLifecycleService;
+  @Mock private AuditChainIncidentService auditChainIncidentService;
 
   private AuditLogController controller;
 
@@ -59,7 +61,8 @@ class AuditLogControllerContextTest {
             auditChainCheckpointMapper,
             auditIntegrityService,
             auditChainVerificationService,
-            auditLifecycleService);
+            auditLifecycleService,
+            auditChainIncidentService);
   }
 
   @Test

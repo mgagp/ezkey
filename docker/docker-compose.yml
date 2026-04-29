@@ -238,7 +238,7 @@ services:
       target: demo-app-acme
     container_name: ezkey-demo-app-acme
     depends_on:
-      admin-api:
+      integration-api:
         condition: service_healthy
     environment:
       <<: *container-tz
@@ -247,7 +247,8 @@ services:
       # Spring Boot automatically searches in ./config/ relative to working directory (/app/config/)
       # But we explicitly set it to ensure it's loaded
       SPRING_CONFIG_ADDITIONAL_LOCATION: optional:file:/app/config/,optional:file:./config/
-      EZKEY_ADMIN_API_URL: http://admin-api:9080
+      # Ezkey SDK base URL (same REST paths). Tenant API-key flows live on Integration API (7080), not Admin API (9080).
+      EZKEY_ADMIN_API_URL: http://integration-api:7080
       # EZKEY_INTEGRATION_KEY and EZKEY_SECRET_KEY: Leave unset initially - configure via /app/config/application.properties after creating integration
       # Format: Authorization: Basic base64(integrationKey:secretKey)
     volumes:

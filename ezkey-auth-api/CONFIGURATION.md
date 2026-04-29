@@ -101,7 +101,7 @@ for the full description.
 |---|---|---|
 | `ezkey.encryption.*` | ✓ | Rotation and re-encryption **disabled** (`enabled=false`). Keyset loaded from DATABASE. |
 | `ezkey.audit.integrity.*` | ✓ | HMAC signing of all audit events. |
-| `ezkey.audit.chain.*` | disabled | `ezkey.audit.chain.enabled=false` in docker profile. |
+| `ezkey.audit.chain.*` | disabled | Scheduler off (`enabled=false`). **`window-minutes`** still set explicitly in Docker profiles — must match Admin API (`AuditChainHeartbeatGuardService`). See [ezkey-core §audit-chain](../ezkey-core/CONFIGURATION.md#audit-log-chain-ezkeyauditchain). |
 | `ezkey.organization.*` | ✓ | Exposed via `GET /api/v1/public/instance-info` (same contract as Admin API). |
 | `ezkey.qr.*` | ✓ | Embedded in `GET /api/v1/public/instance-info` response. |
 | `ezkey.core.*` | ✓ | Auth-attempt challenge digits and TTL. |
@@ -113,15 +113,18 @@ for the full description.
 
 | Property | default | docker | docker-test |
 |---|---|---|---|
-| `ezkey.rate-limit.enabled` | `false` | `true` | *(inherits docker)* |
+| `ezkey.rate-limit.enabled` | `false` | `true` | `false` |
 | `ezkey.rate-limit.pending.key-strategy` | `client-ip` | `enrollment-id` | `enrollment-id` |
 | `ezkey.rate-limit.respond.requests` | `1` | `1` | `1` |
 | `ezkey.rate-limit.respond.key-strategy` | `auth-attempt-id` | `auth-attempt-id` | `auth-attempt-id` |
 | `ezkey.encryption.rotation.enabled` | `true` | `false` | `false` |
 | `ezkey.encryption.reencryption.enabled` | `true` | `false` | `false` |
 | `ezkey.audit.chain.enabled` | `true` | `false` | `false` |
+| `ezkey.audit.chain.window-minutes` | `5` | `5` | `5` |
 | `ezkey.demo.mitm-signature-enabled` | `false` | `${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}` | `${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}` |
 | `ezkey.qr.auth-base-url` | *(null)* | `${EZKEY_QR_AUTH_BASE_URL:}` | `${EZKEY_QR_AUTH_BASE_URL:}` |
+
+**docker-test:** HTTP rate limiting is disabled for churn-friendly tests; peripheral audit-chain heartbeat supervision keeps the same defaults as `docker` (`ezkey.audit.chain.heartbeat.enabled=true`, `required=true`). See `config/application-docker-test.properties`.
 
 ---
 

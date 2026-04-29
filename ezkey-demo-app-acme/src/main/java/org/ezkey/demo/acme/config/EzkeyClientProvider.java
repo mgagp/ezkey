@@ -25,8 +25,9 @@ import org.springframework.stereotype.Component;
  * does not provide an override. This allows runtime credential changes (via the demo "Apply API
  * Key" dialog) to take effect without restart while keeping concurrent sessions isolated.
  *
- * <p>The Ezkey SDK {@link EzkeyClient} remains the single source for Admin API calls with API key;
- * this provider merely decides which credentials to use when constructing it.
+ * <p>The Ezkey SDK {@link EzkeyClient} targets the configured Integration API base URL for API-key
+ * auth attempts; {@link AcmeProperties#getAdminApiUrl()} supplies that URL despite the legacy
+ * {@code admin} naming.
  *
  * @author Ezkey contributors
  * @since 2025

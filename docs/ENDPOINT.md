@@ -438,7 +438,15 @@ Too many login attempts. Please try again later.
 
 **POST /api/v1/audit-logs/lifecycle/confirm-archived** — Record successful external archival for a sealed tranche by marking it `EXPORTED`. This confirms the result of an external archival workflow; it does not perform the export itself.
 
-See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md) for integrity verification, lifecycle observability, archive confirmation, and exceptional maintenance endpoints.
+**GET /api/v1/audit-logs/lifecycle/incidents** — Paginated operational heartbeat incidents (distinct from cryptographic gap declarations). Standard Spring Data `page`, `size`, `sort` (default newest first).
+
+**POST /api/v1/audit-logs/lifecycle/incidents/{incidentId}/declare** — Supplies justification (10–500 chars) and classified `rootCause` enum when status is `RECOVERED_PENDING_DECLARATION`.
+
+See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md) for integrity verification, lifecycle observability, archive confirmation, heartbeat supervision, and exceptional maintenance endpoints.
+
+**Auth API degraded mode (heartbeat fail-closed):** When supervision blocks **new pending polling**, `POST /api/v1/auth-attempts/pending` returns **503 Service Unavailable** with RFC 9457 type `https://ezkey.io/problems/system/audit-chain-heartbeat-degraded` and **`Retry-After: 60`**.
+
+**Integration API degraded mode:** `POST /api/v1/auth-attempts` (create attempt) returns the same **503** contract when heartbeat supervision requires blocking new MFA work.
 
 ---
 

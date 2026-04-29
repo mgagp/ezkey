@@ -5,7 +5,7 @@
 # 1. Stops Docker Compose stack including volumes
 # 2. Cleans test state files in .ezkey-test directory
 # 3. Generates master encryption key
-# 4. Starts Docker Compose stack with test profiles (no rate limiting)
+# 4. Starts Docker Compose stack with test profiles (relaxed HTTP/API-key rate limits; audit-chain heartbeat supervision matches docker defaults)
 # 5. Extracts bootstrap credentials
 # 6. Initializes admin token
 #

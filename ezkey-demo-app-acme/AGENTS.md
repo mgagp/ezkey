@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Demo application for EZKey passwordless login. Demonstrates backend-side authentication using API key (machine-to-machine) communication with Admin API.
+Demo application for EZKey passwordless login. Demonstrates backend-side authentication using API key (machine-to-machine) against the **Integration API** via the Ezkey Java SDK (`EzkeyClient`).
 
 ## Key Files
 
@@ -20,7 +20,7 @@ Demo application for EZKey passwordless login. Demonstrates backend-side authent
 
 ## Architecture
 
-- **Mode**: Backend-side (server calls Admin API via Ezkey SDK)
+- **Mode**: Backend-side (server calls Integration API via Ezkey SDK; base URL `ezkey.admin-api-url`)
 - **Port**: 8082
 - **Auth**: HTTP session (server-side)
 - **API Key**: API key authentication via EzkeyClient (from EzkeyClientProvider); credentials from config or "Apply API Key" dialog
@@ -49,9 +49,10 @@ Properties can be hot-reloaded via Actuator `/refresh` endpoint (see Hot-Reload 
 ### Configuration Properties
 
 ```properties
-# Admin API URL (internal Docker network or localhost)
-ezkey.admin.api.url=http://admin-api:9080  # Docker
-ezkey.admin.api.url=http://localhost:9080  # IDE
+# Ezkey SDK base URL — Integration API (Docker internal hostname). Env override:
+# EZKEY_ADMIN_API_URL=http://integration-api:7080  (legacy variable name).
+ezkey.admin-api-url=http://integration-api:7080  # Docker
+ezkey.admin-api-url=http://localhost:7080          # IDE — Integration API on localhost:7080
 
 # API Key credentials for Integration API (machine-to-machine) authentication
 # Format: Authorization: Basic base64(integrationKey:secretKey)
@@ -171,9 +172,9 @@ If you see `401 UNAUTHORIZED` errors when creating auth attempts, check the foll
    - Verify `enrollmentId` in `acme-users.json` belongs to the integration associated with the API key
    - Check Admin API logs for: `API key from integration X attempted to create auth attempt for enrollment Y belonging to integration Z`
 
-5. **Check Admin API Logs**:
+5. **Check Integration API Logs** (Ezkey SDK targets Integration API for auth attempts):
    ```bash
-   docker compose logs admin-api | grep -i "api key\|authentication\|401"
+   docker compose logs integration-api | grep -i "api key\|authentication\|401"
    ```
    Look for:
    - `✅ API key authentication successful` (success)
@@ -182,7 +183,7 @@ If you see `401 UNAUTHORIZED` errors when creating auth attempts, check the foll
 
 #### General Debugging
 1. Check application logs for API errors
-2. Verify Admin API is accessible: `curl http://localhost:9080/actuator/health`
+2. Verify Integration API is reachable: `curl http://localhost:7081/actuator/health` (management port)
 3. Verify API Key credentials are configured: Check `ezkey.integration.key` and `ezkey.secret.key` properties
 4. Verify users file exists and is readable
 5. Check enrollmentId in users file matches actual enrollment

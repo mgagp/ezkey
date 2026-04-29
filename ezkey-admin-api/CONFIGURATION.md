@@ -304,7 +304,7 @@ The following ezkey-core prefixes are also active in Admin API. See
 |---|---|---|
 | `ezkey.encryption.*` | ✓ | Rotation and re-encryption jobs run **only** in Admin API. |
 | `ezkey.audit.integrity.*` | ✓ | HMAC signing of all audit events. |
-| `ezkey.audit.chain.*` | ✓ | Chain checkpoint job runs **only** in Admin API. |
+| `ezkey.audit.chain.*` | ✓ | Chain checkpoint job runs **only** in Admin API. **`window-minutes`** must stay aligned with Auth API and Integration API profiles — peripherals use it for heartbeat math even though they disable `enabled`. |
 | `ezkey.organization.*` | ✓ | Exposed via `GET /api/v1/public/instance-info`. |
 | `ezkey.qr.*` | ✓ | Auth URL embedded in enrollment QR codes. |
 | `ezkey.enrollment.*` | ✓ | Enrollment expiration and cleanup job. |
@@ -324,6 +324,7 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin-operations.rate-limit.enabled` | `true` | `true` | `false` |
 | `ezkey.admin.bootstrap.export.enabled` | `false` | `true` | `true` |
 | `ezkey.admin.token.expiration-hours` | `2` | `2` | `2` |
+| `ezkey.audit.chain.window-minutes` | `5` | `5` | `5` |
 
 ---
 

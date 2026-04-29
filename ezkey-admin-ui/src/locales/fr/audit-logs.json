@@ -12,6 +12,9 @@
     "exceptionalMaintenance": {
       "content": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système ; la posture principale de l'UI doit rester l'observabilité."
     },
+    "incidents": {
+      "content": "Les incidents opérationnels décrivent des périodes où des entrées d'audit peuvent exister alors que la supervision périphérique a détecté des checkpoints bloqués (battement). Ils sont distincts de <strong>Déclarer une lacune</strong>, qui couvre une indisponibilité sans activité réelle. Déclarez la clôture ici après rétablissement lorsqu'un incident attend une justification."
+    },
     "checkpointTimeline": {
       "content": "Affiche les checkpoints de chaîne ; triez par <strong>Début de fenêtre</strong> pour voir les lignes de lacune (trous non déclarés entre checkpoints). Les autres tris n'affichent que les checkpoints. Utilisez ce tableau pour inspecter le type de checkpoint, l'état lifecycle et les limites d'anomalie."
     }
@@ -293,6 +296,42 @@
     "sealArchive": "Sceller l'archive",
     "declareGap": "Déclarer une lacune",
     "declareGapHint": "Les lacunes détectées apparaissent ci-dessous — utilisez les actions par lacune pour les déclarer.",
+    "incidents": {
+      "title": "Incidents opérationnels",
+      "loading": "Chargement des incidents…",
+      "empty": "Aucun incident de battement enregistré.",
+      "refresh": "Actualiser",
+      "refreshing": "Actualisation…",
+      "declare": "Déclarer la clôture",
+      "declareTitle": "Déclarer un incident de battement",
+      "declareIntro": "Indiquez une justification et une cause racine classée pour la traçabilité SOC.",
+      "declareSuccess": "Incident déclaré clos",
+      "declareError": "Impossible de déclarer l'incident",
+      "rootCause": "Cause racine",
+      "justification": "Justification",
+      "justificationPlaceholder": "Décrivez ce qui s'est passé et comment la supervision était affectée…",
+      "justificationHint": "10 à 500 caractères.",
+      "cancel": "Annuler",
+      "submit": "Soumettre la déclaration",
+      "submitting": "Envoi…",
+      "anchorCheckpoint": "Checkpoint d'ancrage #{{id}}",
+      "staleSince": "Battement périmé depuis {{ts}}",
+      "degradedSince": "Mode dégradé depuis {{ts}}",
+      "recoveredAt": "Rétabli {{ts}}",
+      "status": {
+        "IN_PROGRESS": "En cours",
+        "RECOVERED_PENDING_DECLARATION": "En attente de déclaration",
+        "CLOSED": "Clos"
+      },
+      "rootCauses": {
+        "ADMIN_API_DOWN": "Admin API indisponible",
+        "SCHEDULER_FAILURE": "Échec du planificateur",
+        "DB_UNAVAILABLE": "Base de données indisponible",
+        "NETWORK_PARTITION": "Partition réseau",
+        "MISCONFIGURATION": "Mauvaise configuration",
+        "UNKNOWN": "Inconnue"
+      }
+    },
     "undeclaredGapsForConsultation": "Lacunes non déclarées (consultation)",
     "noUndeclaredGaps": "Aucune lacune non déclarée détectée pour la période sélectionnée.",
     "noUndeclaredGapsHint": "La chaîne est continue sur cette fenêtre. Relancez avec une plage plus large pour un balayage plus profond.",

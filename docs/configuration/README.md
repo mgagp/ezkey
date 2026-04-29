@@ -42,6 +42,7 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.demo` | `ezkey-core` (`EzkeyDemoProperties`) | auth-api | [core §demo](../../ezkey-core/CONFIGURATION.md#demo-ezkeydemo) |
 | `ezkey.audit.integrity` | `ezkey-core` (`AuditHmacProperties`) | admin-api, auth-api, integration-api | [core §audit-integrity](../../ezkey-core/CONFIGURATION.md#audit-log-integrity-ezkeyauditintegrity) |
 | `ezkey.audit.chain` | `ezkey-core` (`AuditChainProperties`) | admin-api | [core §audit-chain](../../ezkey-core/CONFIGURATION.md#audit-log-chain-ezkeyauditchain) |
+| `ezkey.audit.chain.heartbeat` | `ezkey-core` (`AuditChainHeartbeatProperties`) | admin-api, auth-api, integration-api | [core §heartbeat](../../ezkey-core/CONFIGURATION.md#peripheral-heartbeat-ezkeyauditchainheartbeat) |
 | `ezkey.audit.archive` | `ezkey-core` (`AuditArchiveProperties`) | admin-api | [core §audit-archive](../../ezkey-core/CONFIGURATION.md#audit-log-archive-ezkeyauditarchive) |
 
 ---
@@ -60,13 +61,16 @@ Central registry for all `ezkey.*` configuration properties across the backend m
 | `ezkey.trusted-proxies.*` | ✓ | ✓ | ✓ | — |
 | `ezkey.encryption.*` | ✓ | ✓ | ✓ | ✓ |
 | `ezkey.audit.integrity.*` | ✓ | ✓ | ✓ | — |
-| `ezkey.audit.chain.*` | ✓ | — | — | — |
+| `ezkey.audit.chain.*` | ✓ | ✓¹ | ✓¹ | — |
+| `ezkey.audit.chain.heartbeat.*` | ✓ | ✓ | ✓ | — |
 | `ezkey.audit.archive.*` | ✓ | — | — | — |
 | `ezkey.organization.*` | ✓ | ✓ | — | — |
 | `ezkey.qr.*` | ✓ | ✓ | — | — |
 | `ezkey.enrollment.*` | ✓ | — | — | — |
 | `ezkey.demo.*` | — | ✓ | — | — |
 | `ezkey.core.*` | ✓ | ✓ | — | — |
+
+¹ Auth API and Integration API set `ezkey.audit.chain.enabled=false` (no scheduler) but still bind `AuditChainProperties`; **`ezkey.audit.chain.window-minutes` must match Admin API** wherever heartbeat supervision runs — Docker profiles declare it explicitly on all three services.
 
 ---
 

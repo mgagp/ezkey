@@ -225,6 +225,32 @@ ezkey.audit.chain.lookback-minutes=60
 ezkey.audit.chain.cron=0 */5 * * * ?
 ```
 
+### Peripheral heartbeat supervision (`ezkey.audit.chain.heartbeat.*`)
+
+Auth API and Integration API treat the **latest completed checkpoint** as an operational heartbeat from Admin API.
+Peripheral processes compare wall-clock time against the checkpoint schedule window plus configurable grace phases.
+
+**Semantic distinction:**
+
+- **`GAP_DECLARATION` checkpoints** (`declare-gap`): temporal holes where **no audit activity exists** (total downtime).
+- **Operational incidents** (`lifecycle/incidents`): audit entries may exist (cryptographic chain intact), but peripheral supervision detected stalled checkpoints — operators declare closure after recovery.
+
+When peripherals enter fail-closed mode they respond with **HTTP 503** and stable RFC 9457 problem type
+`https://ezkey.io/problems/system/audit-chain-heartbeat-degraded`, plus `Retry-After: 60` on blocked routes.
+
+**Defined in:** `AuditChainHeartbeatProperties` (shared core); evaluated by `AuditChainHeartbeatGuardService`.
+
+| Property | Type | Default | Notes |
+|---|---|---|---|
+| `ezkey.audit.chain.heartbeat.enabled` | `boolean` | `true` | Disable entirely only for isolated local troubleshooting (`docker-test` clean-start keeps peripheral heartbeat enabled). |
+| `ezkey.audit.chain.heartbeat.required` | `boolean` | `true` | When `false`, MVC interceptor never blocks — incidents/alerts still evaluated when enabled. |
+| `ezkey.audit.chain.heartbeat.grace-windows` | `int` | `2` | Outer supervision boundary measured in checkpoint window lengths after `latest.window_end`. |
+| `ezkey.audit.chain.heartbeat.stop-before-next-window` | `Duration` | `PT1M` | Safety buffer subtracted before fail-closed threshold (inside grace boundary). |
+| `ezkey.audit.chain.heartbeat.cache-ttl` | `Duration` | `PT5S` | Evaluation cache TTL to limit DB reads under load. |
+| `ezkey.audit.chain.heartbeat.bootstrap-grace` | `Duration` | `PT10M` | After startup, tolerate missing checkpoints until first scheduler tick / empty DB. |
+| `ezkey.audit.chain.heartbeat.admin-evaluate-scheduler-enabled` | `boolean` | `true` | Admin API-only fixed-delay ping so incidents/alerts sync without peripheral traffic. |
+| `ezkey.audit.chain.heartbeat.admin-evaluate-fixed-delay-ms` | `long` | `30000` | Delay between Admin API heartbeat evaluations when scheduler enabled. |
+
 ---
 
 ## 4. API Endpoints Summary
@@ -239,6 +265,8 @@ ezkey.audit.chain.cron=0 */5 * * * ?
 | `POST /api/v1/audit-logs/lifecycle/confirm-archived` | Global Admin | Record that a sealed tranche was archived externally |
 | `POST /api/v1/audit-logs/lifecycle/seal-archive` | Global Admin | Seal a period for archival |
 | `POST /api/v1/audit-logs/lifecycle/declare-gap` | Global Admin | Declare a downtime gap |
+| `GET /api/v1/audit-logs/lifecycle/incidents` | Global Admin | List operational heartbeat incidents |
+| `POST /api/v1/audit-logs/lifecycle/incidents/{id}/declare` | Global Admin | Declare closure after recovery |
 
 **Chain checkpoints search** (`GET /api/v1/audit-logs/chain-checkpoints`): Paginated search with optional filters: `windowStartAfter`, `windowStartBefore` (ISO-8601), `entryCountMin`, `entryCountMax`, `checkpointType` (REGULAR, ARCHIVE_SEAL, GAP_DECLARATION), `createdAfter`, `createdBefore` (ISO-8601). Default sort: `windowStart,asc`. Use this primarily for lifecycle observability, anomaly investigation, and archive-confirmation context. It can also support exceptional maintenance flows such as `seal-archive` and `declare-gap` when needed.
 
@@ -275,6 +303,13 @@ While the gap remains undeclared, repeated detections **touch** the same open al
 **Declare gap** for that anchor (either from the Integrity panel or via `POST /api/v1/audit-logs/lifecycle/declare-gap`),
 the matching open alert is automatically resolved with reason `GAP_DECLARED`. This is the canonical
 operator signal for chain-continuity issues; the dashboard surfaces the most recent open alerts for Global Admins.
+
+### Operator alerts (`AUDIT_CHAIN_HEARTBEAT_STALE`)
+
+When peripheral supervision detects fail-closed thresholds (checkpoint heartbeat stalled relative to configured grace),
+the subsystem raises **`AUDIT_CHAIN_HEARTBEAT_STALE`** (`/api/v1/alerts`). Auto-resolution uses **`HEARTBEAT_RESTORED`**
+once a fresh checkpoint advances the heartbeat again. Separate **`AUDIT_CHAIN_INCIDENT_DECLARED`** audit events record
+operator declaration via `POST /api/v1/audit-logs/lifecycle/incidents/{id}/declare`.
 
 ---
 

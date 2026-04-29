@@ -12,6 +12,9 @@
     "exceptionalMaintenance": {
       "content": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed; the primary UI posture is observability, not manual lifecycle orchestration."
     },
+    "incidents": {
+      "content": "Operational incidents explain periods where audit entries may exist but peripheral supervision detected stalled checkpoints (heartbeat). They are separate from <strong>Declare gap</strong>, which covers true no-activity downtime. Declare closure here after recovery when an incident awaits justification."
+    },
     "checkpointTimeline": {
       "content": "Lists chain checkpoints; sort by <strong>Window start</strong> to see inline gap rows (undeclared holes between checkpoints). Other sorts show checkpoints only. Use this table to inspect checkpoint type, lifecycle state, and anomaly boundaries."
     }
@@ -293,6 +296,42 @@
     "sealArchive": "Seal Archive",
     "declareGap": "Declare Gap",
     "declareGapHint": "Detected gaps appear below — use the per-gap actions to declare them.",
+    "incidents": {
+      "title": "Operational incidents",
+      "loading": "Loading incidents…",
+      "empty": "No heartbeat incidents recorded.",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing…",
+      "declare": "Declare closure",
+      "declareTitle": "Declare heartbeat incident",
+      "declareIntro": "Provide a justification and classified root cause for SOC traceability.",
+      "declareSuccess": "Incident declared closed",
+      "declareError": "Could not declare incident",
+      "rootCause": "Root cause",
+      "justification": "Justification",
+      "justificationPlaceholder": "Describe what happened and how supervision was impaired…",
+      "justificationHint": "10–500 characters.",
+      "cancel": "Cancel",
+      "submit": "Submit declaration",
+      "submitting": "Submitting…",
+      "anchorCheckpoint": "Anchor checkpoint #{{id}}",
+      "staleSince": "Stale since {{ts}}",
+      "degradedSince": "Degraded since {{ts}}",
+      "recoveredAt": "Recovered {{ts}}",
+      "status": {
+        "IN_PROGRESS": "In progress",
+        "RECOVERED_PENDING_DECLARATION": "Awaiting declaration",
+        "CLOSED": "Closed"
+      },
+      "rootCauses": {
+        "ADMIN_API_DOWN": "Admin API unavailable",
+        "SCHEDULER_FAILURE": "Scheduler failure",
+        "DB_UNAVAILABLE": "Database unavailable",
+        "NETWORK_PARTITION": "Network partition",
+        "MISCONFIGURATION": "Misconfiguration",
+        "UNKNOWN": "Unknown"
+      }
+    },
     "undeclaredGapsForConsultation": "Undeclared gaps for consultation",
     "noUndeclaredGaps": "No undeclared gaps detected for the selected period.",
     "noUndeclaredGapsHint": "The chain is continuous over this window. Re-run with a wider range if you need a deeper scan.",

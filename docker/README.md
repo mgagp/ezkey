@@ -433,8 +433,9 @@ All services use the `docker` Spring profile by default, which loads configurati
  - Uses a dedicated management port: `8085` (not published by default)
 
 **Optional: `docker-test` (Test Mode)**
-- Rate limiting disabled or very permissive
-- Allows unrestricted testing in any order and frequency
+- Rate limiting disabled or very permissive (HTTP/API-key limits)
+- Peripheral audit-chain heartbeat supervision stays enabled on Auth API and Integration API unless explicitly overridden — stack integrity semantics match production docker profiles for checkpoint staleness gates
+- Allows unrestricted churn testing without 429 noise from rate limits
 - Useful for development and debugging
 
 #### Using Test Mode

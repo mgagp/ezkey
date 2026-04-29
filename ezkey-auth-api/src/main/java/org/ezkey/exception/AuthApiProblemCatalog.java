@@ -37,11 +37,17 @@ public final class AuthApiProblemCatalog {
   public static final String TYPE_INVALID_REQUEST_BODY = BASE + "/invalid-request-body";
   public static final String TYPE_INTERNAL_ERROR = BASE + "/internal-error";
 
+  /** Stable problem type when audit-chain supervision cannot confirm checkpoint progress. */
+  public static final String TYPE_AUDIT_CHAIN_HEARTBEAT_DEGRADED =
+      "https://ezkey.io/problems/system/audit-chain-heartbeat-degraded";
+
   public static final String TITLE_RESOURCE_NOT_FOUND = "Resource not found";
   public static final String TITLE_CONFLICT = "Request cannot be completed";
   public static final String TITLE_BAD_REQUEST = "Request not acceptable";
   public static final String TITLE_VALIDATION_FAILED = "Validation failed";
   public static final String TITLE_INTERNAL_ERROR = "Internal error";
+
+  public static final String TITLE_SERVICE_UNAVAILABLE = "Service unavailable";
 
   /** Safe detail when the resource type must not be disclosed. */
   public static final String DETAIL_RESOURCE_NOT_FOUND =
@@ -71,6 +77,10 @@ public final class AuthApiProblemCatalog {
       "One or more fields are invalid or missing.";
   public static final String DETAIL_INVALID_JSON = "The request body could not be read.";
   public static final String DETAIL_INTERNAL = "An unexpected error occurred. Please try again.";
+
+  public static final String DETAIL_AUDIT_CHAIN_HEARTBEAT_DEGRADED =
+      "Authentication is temporarily unavailable because audit-chain supervision cannot confirm "
+          + "checkpoint progress. Retry later.";
 
   private AuthApiProblemCatalog() {}
 }

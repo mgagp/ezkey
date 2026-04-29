@@ -54,7 +54,7 @@ ezkey.api-key.rate-limit.wait-auth-attempt.requests=200
 ezkey.api-key.rate-limit.wait-auth-attempt.window-minutes=1
 ```
 
-**`docker-test` profile:** rate limiting disabled (`ezkey.api-key.rate-limit.enabled=false`).
+**`docker-test` profile:** API-key rate limiting disabled (`ezkey.api-key.rate-limit.enabled=false`). Peripheral heartbeat supervision (`ezkey.audit.chain.heartbeat.*`) follows docker defaults (`enabled=true`, `required=true`) so Integration API stays fail-closed when checkpoints stall — alignment with `AuditChainHeartbeatGuardService`.
 
 ---
 
@@ -78,7 +78,7 @@ for the full description.
 |---|---|---|
 | `ezkey.encryption.*` | ✓ | Rotation and re-encryption **disabled** (`enabled=false`). Keyset loaded from DATABASE, synchronized by Admin API. |
 | `ezkey.audit.integrity.*` | ✓ | HMAC signing of audit events. |
-| `ezkey.audit.chain.*` | disabled | `ezkey.audit.chain.enabled=false` in docker profile. |
+| `ezkey.audit.chain.*` | disabled | Scheduler off (`enabled=false`). **`window-minutes`** still set explicitly in Docker profiles — must match Admin API (`AuditChainHeartbeatGuardService`). See [ezkey-core §audit-chain](../ezkey-core/CONFIGURATION.md#audit-log-chain-ezkeyauditchain). |
 
 ---
 
@@ -92,6 +92,7 @@ for the full description.
 | `ezkey.encryption.rotation.enabled` | `true` | `false` | `false` |
 | `ezkey.encryption.reencryption.enabled` | `true` | `false` | `false` |
 | `ezkey.audit.chain.enabled` | `true` | `false` | `false` |
+| `ezkey.audit.chain.window-minutes` | `5` | `5` | `5` |
 
 ---
 

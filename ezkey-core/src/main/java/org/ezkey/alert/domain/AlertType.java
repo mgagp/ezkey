@@ -28,5 +28,12 @@ public enum AlertType {
    * Audit chain scheduler detected an undeclared gap before its lookback window. Resolved when a
    * matching {@code GAP_DECLARATION} checkpoint is created.
    */
-  AUDIT_CHAIN_GAP_PENDING
+  AUDIT_CHAIN_GAP_PENDING,
+
+  /**
+   * Peripheral APIs detected stalled periodic audit-chain checkpoints relative to configured grace
+   * windows (Admin API scheduler appears stalled). Resolved automatically when checkpoints advance
+   * again.
+   */
+  AUDIT_CHAIN_HEARTBEAT_STALE
 }

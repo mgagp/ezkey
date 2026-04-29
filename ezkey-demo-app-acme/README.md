@@ -28,7 +28,7 @@ reused across multiple login/logout cycles in that same session.
 ```bash
 cd ezkey-demo-app-acme
 mvn spring-boot:run
-# Requires Admin API running on localhost:9080
+# Requires Integration API reachable (default http://localhost:7080 — map ezkey.admin-api-url if different)
 # Requires EZKEY_INTEGRATION_KEY and EZKEY_SECRET_KEY environment variables
 # Requires data/acme-users.json file
 ```
@@ -47,16 +47,16 @@ mvn spring-boot:run
 sequenceDiagram
     participant Browser
     participant AcmeBackend
-    participant AdminAPI
+    participant IntegrationAPI
     participant Device
 
     Browser->>AcmeBackend: POST /login (username)
     AcmeBackend->>AcmeBackend: Lookup enrollmentId from users.json
-    AcmeBackend->>AdminAPI: POST /api/v1/auth-attempts (HTTP Basic Auth: integrationKey:secretKey)
-    AdminAPI-->>AcmeBackend: authAttemptId
-    AcmeBackend->>AdminAPI: GET /auth-attempts/{id}/wait
+    AcmeBackend->>IntegrationAPI: POST /api/v1/auth-attempts (HTTP Basic Auth: integrationKey:secretKey)
+    IntegrationAPI-->>AcmeBackend: authAttemptId
+    AcmeBackend->>IntegrationAPI: GET /auth-attempts/{id}/wait
     Note over Device: User approves
-    AdminAPI-->>AcmeBackend: status ACCEPTED
+    IntegrationAPI-->>AcmeBackend: status ACCEPTED
     AcmeBackend->>AcmeBackend: Create HTTP session
     AcmeBackend-->>Browser: Redirect to /dashboard
 ```
@@ -79,7 +79,7 @@ curl -X POST http://localhost:8082/actuator/refresh
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `ezkey.admin.api.url` | `http://localhost:9080` | Admin API URL (use `http://admin-api:9080` in Docker) |
+| `ezkey.admin-api-url` | `http://localhost:7080` | Ezkey SDK base URL — **Integration API** (`http://integration-api:7080` in Docker Compose). Legacy env: `EZKEY_ADMIN_API_URL`. |
 | `ezkey.integration.key` | (required) | Integration key for API key authentication (e.g., `ezkey_ikey_xxx`) |
 | `ezkey.secret.key` | (required) | Secret key for API key authentication (e.g., `ezkey_skey_xxx`) |
 | `ezkey.users.file` | `data/acme-users.json` | Path to users mapping file |

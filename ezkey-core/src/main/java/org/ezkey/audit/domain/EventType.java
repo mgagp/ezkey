@@ -107,6 +107,7 @@ public enum EventType {
   AUDIT_CHAIN_ARCHIVE_SEALED, // Audit partition sealed prior to archival and partition drop
   AUDIT_CHAIN_ARCHIVE_EXPORTED, // External archival workflow confirmed retrieval of sealed range
   AUDIT_CHAIN_GAP_DECLARED, // Admin-declared downtime gap formally documented in the chain
+  AUDIT_CHAIN_INCIDENT_DECLARED, // Admin-declared heartbeat outage narrative (operational overlay)
 
   // Alert subsystem lifecycle events (raised/resolved by org.ezkey.alert.service.AlertService)
   ALERT_RAISED, // A new operator-facing alert row was created in ezkey_alert

@@ -76,6 +76,7 @@ $env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
 - ✅ Allows unrestricted testing in any order and frequency
 - ✅ No rate limit constraints
 - ✅ Synchronization and retry mechanisms remain active (defense in depth)
+- ✅ **Audit-chain peripheral heartbeat supervision stays enabled** (`ezkey.audit.chain.heartbeat.enabled=true`, `required=true`) — Auth API and Integration API still fail-close MFA gates when checkpoints stall; only operational churn mitigations (HTTP/API-key rate limits) are relaxed.
 
 **Rate Limit Configuration**:
 - All rate limits disabled (`ezkey.rate-limit.enabled=false`)
@@ -98,7 +99,7 @@ Spring Boot profiles work hierarchically:
 2. `application-docker.properties` - Docker-specific (production values)
 3. `application-docker-test.properties` - Test mode overrides (disables rate limits)
 
-When `docker-test` profile is active, it **extends** `docker` profile and overrides rate limiting settings.
+When `docker-test` profile is active, it **extends** `docker` profile and overrides **rate limiting** settings only — heartbeat thresholds inherit docker defaults unless explicitly overridden.
 
 ### Configuration Files
 
@@ -165,7 +166,7 @@ Regardless of the mode, tests include built-in resilience:
 - ✅ Development and debugging
 - ✅ Ad-hoc API exploration
 - ✅ Rapid test iteration
-- ✅ Testing without constraints
+- ✅ Testing without rate-limit constraints (heartbeat gates unchanged)
 - ✅ Learning and experimentation
 
 ---

@@ -157,7 +157,7 @@ services:
 This means:
 - `docker` profile is always active in Docker Compose
 - `docker-dev` adds development diagnostics (Actuator exposure)
-- `docker-test` disables rate limiting for testing
+- `docker-test` disables HTTP/API-key rate limiting for testing — peripheral audit-chain heartbeat supervision stays enabled (`ezkey.audit.chain.heartbeat.enabled=true`) unless explicitly overridden
 
 ---
 

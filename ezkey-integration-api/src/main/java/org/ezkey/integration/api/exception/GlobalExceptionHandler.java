@@ -13,9 +13,11 @@ package org.ezkey.integration.api.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
+import java.time.OffsetDateTime;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.TenantInactiveException;
+import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
 import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
@@ -23,6 +25,7 @@ import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -229,6 +232,32 @@ public class GlobalExceptionHandler {
         "https://ezkey.io/problems/resource/not-found",
         "Resource Not Found",
         request);
+  }
+
+  /**
+   * Fail-closed Integration auth-attempt creation when audit-chain checkpoints appear stalled.
+   *
+   * @param ex degraded heartbeat guard signal
+   * @param request HTTP servlet request for path extraction
+   * @return HTTP 503 with stable problem type and Retry-After
+   */
+  @ExceptionHandler(AuditChainHeartbeatDegradedException.class)
+  public ResponseEntity<ProblemDetail> handleAuditChainHeartbeatDegraded(
+      AuditChainHeartbeatDegradedException ex, HttpServletRequest request) {
+    logger.warn(
+        "Integration API: audit chain heartbeat degraded (fail-closed create), path={}",
+        request.getRequestURI());
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            IntegrationApiProblemCatalog.DETAIL_AUDIT_CHAIN_HEARTBEAT_DEGRADED);
+    problem.setType(URI.create(IntegrationApiProblemCatalog.TYPE_AUDIT_CHAIN_HEARTBEAT_DEGRADED));
+    problem.setTitle(IntegrationApiProblemCatalog.TITLE_SERVICE_UNAVAILABLE);
+    problem.setProperty("path", request.getRequestURI());
+    problem.setProperty("timestamp", OffsetDateTime.now().toString());
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .header(HttpHeaders.RETRY_AFTER, "60")
+        .body(problem);
   }
 
   /**

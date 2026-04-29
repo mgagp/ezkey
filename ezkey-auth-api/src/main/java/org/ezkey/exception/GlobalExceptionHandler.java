@@ -7,6 +7,9 @@
 
 package org.ezkey.exception;
 
+import java.net.URI;
+import java.time.OffsetDateTime;
+import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
@@ -19,6 +22,7 @@ import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -253,6 +257,23 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         AuthApiProblemCatalog.TITLE_CONFLICT,
         AuthApiProblemCatalog.DETAIL_AUTH_ATTEMPT_STATE_CONFLICT,
         pathFrom(request));
+  }
+
+  @ExceptionHandler(AuditChainHeartbeatDegradedException.class)
+  public ResponseEntity<ProblemDetail> handleAuditChainHeartbeatDegraded(
+      AuditChainHeartbeatDegradedException ex, WebRequest request) {
+    LOG.warn("Audit chain heartbeat degraded (fail-closed peripheral write)");
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            AuthApiProblemCatalog.DETAIL_AUDIT_CHAIN_HEARTBEAT_DEGRADED);
+    problem.setType(URI.create(AuthApiProblemCatalog.TYPE_AUDIT_CHAIN_HEARTBEAT_DEGRADED));
+    problem.setTitle(AuthApiProblemCatalog.TITLE_SERVICE_UNAVAILABLE);
+    problem.setProperty("path", pathFrom(request));
+    problem.setProperty("timestamp", OffsetDateTime.now().toString());
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .header(HttpHeaders.RETRY_AFTER, "60")
+        .body(problem);
   }
 
   @ExceptionHandler(RuntimeException.class)

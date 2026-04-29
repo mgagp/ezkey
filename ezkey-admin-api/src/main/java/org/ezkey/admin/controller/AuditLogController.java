@@ -30,12 +30,15 @@ import org.ezkey.audit.dto.ArchiveEligibilityResult;
 import org.ezkey.audit.dto.ArchiveSealRequest;
 import org.ezkey.audit.dto.ArchiveSealResult;
 import org.ezkey.audit.dto.AuditChainCheckpointResponseDto;
+import org.ezkey.audit.dto.AuditChainIncidentResponseDto;
 import org.ezkey.audit.dto.AuditLogContextResponseDto;
 import org.ezkey.audit.dto.AuditLogResponseDto;
 import org.ezkey.audit.dto.CheckpointType;
+import org.ezkey.audit.dto.DeclareAuditChainIncidentRequest;
 import org.ezkey.audit.dto.GapDeclarationRequest;
 import org.ezkey.audit.dto.GapDeclarationResult;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
+import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
@@ -111,6 +114,7 @@ public class AuditLogController {
   private final AuditIntegrityService auditIntegrityService;
   private final AuditChainVerificationService auditChainVerificationService;
   private final AuditLifecycleService auditLifecycleService;
+  private final AuditChainIncidentService auditChainIncidentService;
 
   /**
    * Constructs the audit log controller with required dependencies.
@@ -123,6 +127,7 @@ public class AuditLogController {
    * @param auditChainVerificationService the chain checkpoint verification service
    * @param auditLifecycleService the chain lifecycle service for archive sealing and gap
    *     declaration
+   * @param auditChainIncidentService heartbeat operational incident listing and declaration
    */
   public AuditLogController(
       AuditLogService auditLogService,
@@ -131,7 +136,8 @@ public class AuditLogController {
       AuditChainCheckpointMapper auditChainCheckpointMapper,
       AuditIntegrityService auditIntegrityService,
       AuditChainVerificationService auditChainVerificationService,
-      AuditLifecycleService auditLifecycleService) {
+      AuditLifecycleService auditLifecycleService,
+      AuditChainIncidentService auditChainIncidentService) {
     this.auditLogService = auditLogService;
     this.auditLogMapper = auditLogMapper;
     this.auditChainCheckpointService = auditChainCheckpointService;
@@ -139,6 +145,7 @@ public class AuditLogController {
     this.auditIntegrityService = auditIntegrityService;
     this.auditChainVerificationService = auditChainVerificationService;
     this.auditLifecycleService = auditLifecycleService;
+    this.auditChainIncidentService = auditChainIncidentService;
   }
 
   /**
@@ -770,6 +777,64 @@ public class AuditLogController {
   public ResponseEntity<GapDeclarationResult> declareGap(
       @Valid @RequestBody GapDeclarationRequest request) {
     return ResponseEntity.ok(auditLifecycleService.declareGap(request));
+  }
+
+  /**
+   * Lists audit-chain heartbeat operational incidents (cryptographically separate from checkpoint
+   * rows).
+   *
+   * @param pageable paging (default newest first)
+   * @return paginated incidents
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @GetMapping("/lifecycle/incidents")
+  @Operation(
+      summary = "List audit-chain heartbeat incidents",
+      description =
+          "Paginated list of operational incidents raised when peripheral supervision detected"
+              + " stalled checkpoints (bounded unsupervised activity / degraded mode). Separate"
+              + " from GAP_DECLARATION checkpoints. Global Admin only.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Incidents retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+      })
+  public ResponseEntity<Page<AuditChainIncidentResponseDto>> listLifecycleIncidents(
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+    return ResponseEntity.ok(auditChainIncidentService.search(pageable));
+  }
+
+  /**
+   * Declares closure for an incident awaiting operator justification after heartbeat recovery.
+   *
+   * @param incidentId incident primary key
+   * @param request justification and root cause
+   * @return updated incident
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @PostMapping("/lifecycle/incidents/{incidentId}/declare")
+  @Operation(
+      summary = "Declare an audit-chain heartbeat incident closed",
+      description =
+          "Supplies justification and classified root cause for an incident in "
+              + "RECOVERED_PENDING_DECLARATION. Global Admin only.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Incident declared closed"),
+        @ApiResponse(responseCode = "400", description = "Invalid payload or wrong incident state"),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin"),
+        @ApiResponse(responseCode = "404", description = "Incident not found")
+      })
+  public ResponseEntity<AuditChainIncidentResponseDto> declareLifecycleIncident(
+      @Parameter(description = "Incident identifier", required = true, example = "1") @PathVariable
+          long incidentId,
+      @Valid @RequestBody DeclareAuditChainIncidentRequest request) {
+    return ResponseEntity.ok(
+        auditChainIncidentService.declareIncident(incidentId, request, extractRequesterAdminId()));
   }
 
   /**
