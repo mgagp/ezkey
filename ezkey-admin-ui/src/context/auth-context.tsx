@@ -34,7 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     const restoreSession = async () => {
       try {
-        const restored = await fetchApi<AuthSession>('/api/v1/admin/auth/me', { method: 'GET' });
+        const restored = await fetchApi<AuthSession>('/api/v1/admin/auth/me', {
+          method: 'GET',
+          requireAuth: false,
+        });
         if (cancelled) return;
         saveSession(restored);
         setSession(restored);

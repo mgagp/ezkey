@@ -14,10 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tooltip } from '@/components/ui/tooltip';
 import { I18N_STORAGE_KEY } from '@/i18n';
-import type { FetchOptions } from '@/lib/api-client';
+import { fetchApi, type FetchOptions } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { mapPasswordlessWaitError } from '@/lib/map-passwordless-wait-error';
-import { isBrowserSessionCookieBuild } from '@/lib/auth';
+import { isBrowserSessionCookieBuild, type AuthSession } from '@/lib/auth';
 import { persistUsernamePref, readUsernamePref } from '@/lib/last-username-pref';
 import { LoginActivationSection } from '@/components/feature/login-activation-section';
 import { LoginRecoverySection } from '@/components/feature/login-recovery-section';
@@ -140,7 +140,15 @@ export default function LoginPage() {
         const cookieBuild = isBrowserSessionCookieBuild();
         const hasSecretOrCookie =
           cookieBuild || (typeof data.token === 'string' && data.token.length > 0);
-        if (data.success && hasSecretOrCookie && data.username && data.adminType && data.expiresAt) {
+        if (data.success && cookieBuild) {
+          const restored = await fetchApi<AuthSession>('/api/v1/admin/auth/me', {
+            method: 'GET',
+            requireAuth: false,
+          });
+          finalStatusRef.current = 'ACCEPTED';
+          login(restored);
+          navigate('/dashboard', { replace: true });
+        } else if (data.success && hasSecretOrCookie && data.username && data.adminType && data.expiresAt) {
           finalStatusRef.current = 'ACCEPTED';
           login({
             ...(typeof data.token === 'string' && data.token.length > 0 ? { token: data.token } : {}),
