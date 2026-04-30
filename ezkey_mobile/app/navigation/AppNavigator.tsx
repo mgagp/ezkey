@@ -5,7 +5,6 @@ import {HomeScreen} from '../screens/Home';
 import {PendingAuthScreen} from '../screens/PendingAuth';
 import {EnrollmentWizardScreen} from '../screens/EnrollmentWizard';
 import {RootStackParamList} from './types';
-import {DiagnosticsScreen} from '../screens/Diagnostics';
 import {DangerZoneScreen} from '../screens/DangerZone';
 import {SettingsScreen} from '../screens/Settings';
 import {AboutScreen} from '../screens/About';
@@ -55,9 +54,6 @@ export const AppNavigator: React.FC = () => (
     <Stack.Screen name="Settings" component={SettingsScreen} options={{title: 'Settings'}} />
     <Stack.Screen name="About" component={AboutScreen} options={{title: 'About'}} />
     <Stack.Screen name="Licenses" component={LicensesScreen} options={{title: 'Open Source Licenses'}} />
-    {__DEV__ ? (
-      <Stack.Screen name="Diagnostics" component={DiagnosticsScreen} options={{title: 'Diagnostics'}} />
-    ) : null}
     <Stack.Screen name="DangerZone" component={DangerZoneScreen} options={{title: 'Danger Zone'}} />
   </Stack.Navigator>
 );

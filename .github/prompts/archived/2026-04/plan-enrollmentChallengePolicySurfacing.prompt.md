@@ -1,3 +1,15 @@
+# Plan: Enrollment Challenge Policy Surfacing
+
+> **Status : COMPLETED — 2026-04-29**
+
+## Result Achieved
+
+- Auth API/backend contract updated with `authAttemptChallengeRequiredByPolicy` on bind and pending.
+- Bind and pending canonical signed payloads extended and aligned across first-party clients.
+- Demo Device and experimental Dart support updated for the new signed contract shape.
+- Specs, docs, and impacted supporting artifacts were refreshed for the new field and stale-snapshot semantics.
+- Mobile follow-up was completed in the same workstream closure: local persistence, UI surfacing, detail-view badge alignment, pending-flow stabilization, and removal of the obsolete dev-only Diagnostics screen.
+
 ## Plan: Enrollment Challenge Policy Surfacing
 
 Implement a focused protocol change for active-development mode where breaking changes are acceptable because nothing is released publicly yet. The approved scope for this plan is: Auth API/backend contract updates, signed payload updates, docs/spec/Postman refresh, DemoDevice alignment/testing, and keeping the experimental Dart crypto/client support code aligned with the new signed contract. The React Native mobile application work is intentionally split into a separate follow-up plan after the contract/spec work is complete and validated with DemoDevice.

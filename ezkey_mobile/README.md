@@ -35,7 +35,7 @@ ezkey_mobile/
 │   ├── hooks/                   # React Query + storage orchestration
 │   ├── navigation/              # Stack navigator + types
 │   ├── providers/               # App-wide context providers
-│   ├── screens/                 # Feature screens (Home, Enrollment Wizard, Pending Auth, Diagnostics)
+│   ├── screens/                 # Feature screens (Home, Enrollment Wizard, Pending Auth, Settings)
 │   ├── services/
 │   │   ├── api/                 # Generated Auth API client, wrappers, problems, DTOs
 │   │   ├── crypto/              # Native crypto integration layer

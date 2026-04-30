@@ -67,20 +67,6 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
           ))}
         </View>
       </View>
-      {__DEV__ ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Developer</Text>
-          <View style={styles.card}>
-            <Pressable
-              style={({pressed}) => [styles.item, styles.itemLast, pressed && styles.itemPressed]}
-              onPress={() => navigation.navigate('Diagnostics')}>
-              <Text style={styles.itemLabel}>Diagnostics</Text>
-              <Text style={styles.itemSubtitle}>Crypto self-tests and native build info</Text>
-              <Text style={styles.chevron}>›</Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
       <Text
         style={styles.versionFooter}
         accessibilityRole="text"

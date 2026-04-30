@@ -6,6 +6,5 @@ export type RootStackParamList = {
   Settings: undefined;
   About: undefined;
   Licenses: undefined;
-  Diagnostics: undefined;
   DangerZone: undefined;
 };
