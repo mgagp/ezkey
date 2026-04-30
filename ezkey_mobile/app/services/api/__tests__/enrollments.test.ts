@@ -27,6 +27,7 @@ describe('enrollmentsApi', () => {
       integrationPublicKey: 'public-key',
       integrationKeyAlgorithm: 'ed25519',
       integrationName: 'Acme Bank',
+      authAttemptChallengeRequiredByPolicy: true,
       enrollmentBindPayloadSignedByIntegration: 'bind-signature',
     };
     mockedBind.mockResolvedValueOnce({data: responseData, status: 200, headers: new Headers()});
@@ -51,6 +52,7 @@ describe('enrollmentsApi', () => {
       integrationPublicKey: 'pk',
       integrationKeyAlgorithm: 'ed25519',
       integrationName: 'Globex Corp',
+      authAttemptChallengeRequiredByPolicy: false,
       enrollmentBindPayloadSignedByIntegration: 'bind-signature',
     };
     mockedBind.mockResolvedValueOnce({data: responseData, status: 200, headers: new Headers()});

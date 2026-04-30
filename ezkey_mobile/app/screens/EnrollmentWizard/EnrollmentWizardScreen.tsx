@@ -58,6 +58,7 @@ type EnrollmentDraft = {
   tenantDescription?: string;
   enrollmentProofToken: string;
   integrationPublicKey: string;
+  authAttemptChallengeRequiredByPolicy: boolean;
   integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
@@ -252,6 +253,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         tenantDescription: response.tenantDescription,
         enrollmentProofToken: response.enrollmentProofToken ?? request.enrollmentProofToken,
         integrationPublicKey: response.integrationPublicKey,
+        authAttemptChallengeRequiredByPolicy:
+          response.authAttemptChallengeRequiredByPolicy ?? false,
         integrationDescription: response.integrationDescription,
         enrollmentName: response.enrollmentName,
         deviceLabel: response.enrollmentName,
@@ -407,6 +410,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         lastActivityAt: now,
         status,
         favorited: false,
+        authAttemptChallengeRequiredByPolicy: draft.authAttemptChallengeRequiredByPolicy,
         enrollmentProofToken: draft.enrollmentProofToken,
         enrollmentId: enrollmentId,
         integrationPublicKey: draft.integrationPublicKey,

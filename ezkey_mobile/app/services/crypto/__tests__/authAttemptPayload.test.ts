@@ -11,14 +11,18 @@ import {
  */
 describe('authAttemptPayload', () => {
   describe('buildPendingPayload', () => {
-    it('uses proofToken|challengeRequired|contextTitle|contextMessage with true/false and NFC on context', () => {
+    it('uses proofToken|challengeRequired|challengeRequiredByPolicy|contextTitle|contextMessage with true/false and NFC on context', () => {
       expect(
-        buildPendingPayload('apt', true, 'caf\u0301e', 'caf\u0301'),
-      ).toBe(`apt|true|${'caf\u0301e'.normalize('NFC')}|${'caf\u0301'.normalize('NFC')}`);
+        buildPendingPayload('apt', true, true, 'caf\u0301e', 'caf\u0301'),
+      ).toBe(
+        `apt|true|true|${'caf\u0301e'.normalize('NFC')}|${'caf\u0301'.normalize('NFC')}`,
+      );
     });
 
-    it('uses false when challenge not required and empty NFC segments for missing context', () => {
-      expect(buildPendingPayload('x', false, undefined, undefined)).toBe('x|false||');
+    it('uses false when challenge is not required by request or policy and empty NFC segments for missing context', () => {
+      expect(buildPendingPayload('x', false, false, undefined, undefined)).toBe(
+        'x|false|false||',
+      );
     });
   });
 

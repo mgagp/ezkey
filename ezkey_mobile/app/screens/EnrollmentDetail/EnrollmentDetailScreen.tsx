@@ -16,6 +16,7 @@ import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
+import {EnrollmentPolicyBadge} from '../../components/EnrollmentPolicyBadge';
 import {shouldShowInstallationHostHint} from '../../utils/installationMetadata';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
@@ -89,9 +90,12 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         {enrollment.tenantName ? (
           <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
         ) : null}
-        <View style={styles.identityRow}>
-          <Text style={styles.integrationName}>{enrollment.integrationName}</Text>
-          <Text style={styles.statusBadge}>{enrollment.status.toUpperCase()}</Text>
+        <Text style={styles.integrationName}>{enrollment.integrationName}</Text>
+        <View style={styles.challengePolicySection}>
+          <EnrollmentPolicyBadge
+            challengeRequiredByPolicy={!!enrollment.authAttemptChallengeRequiredByPolicy}
+            showLabel
+          />
         </View>
         {enrollment.enrollmentName ? (
           <Text style={styles.deviceLine}>{enrollment.enrollmentName}</Text>
@@ -135,12 +139,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(54, 115, 223, 0.15)',
   },
-  identityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-  },
   installationLine: {
     fontSize: 14,
     fontWeight: '600',
@@ -155,17 +153,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#f4f7ff',
-  },
-  statusBadge: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#61d095',
-    letterSpacing: 0.5,
+    marginTop: 10,
   },
   tenantLine: {
     fontSize: 14,
     color: '#9aa3b6',
     marginTop: 6,
+  },
+  challengePolicySection: {
+    marginTop: 10,
   },
   deviceLine: {
     fontSize: 13,

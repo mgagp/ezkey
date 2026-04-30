@@ -17,16 +17,25 @@ with comprehensive validation.
  * OpenAPI spec version: 1.0.0
  */
 
-export * from './authAttemptPendingRequestDto';
-export * from './authAttemptPendingResponseDto';
-export * from './authAttemptRespondRequestDto';
-export * from './authAttemptRespondResponseDto';
-export * from './authAttemptRespondResponseDtoAuthAttemptResult';
-export * from './enrollmentBindRequestDto';
-export * from './enrollmentBindResponseDto';
-export * from './enrollmentVerifyRequestDto';
-export * from './enrollmentVerifyRequestDtoDevicePrivateKeyStorageTier';
-export * from './enrollmentVerifyResponseDto';
-export * from './problemDetail';
-export * from './problemDetailProperties';
-export * from './publicInstanceInfoResponseDto';
+/**
+ * Public instance metadata (branding, optional public Auth API URL for QR alignment)
+ */
+export interface PublicInstanceInfoResponseDto {
+  /**
+     * Public base URL of the Auth API (same as authUrl in enrollment QR JSON when configured)
+     * @nullable
+     */
+  authApiPublicBaseUrl?: string | null;
+  /** Instance / organization display name */
+  instanceName?: string;
+  /**
+     * Optional instance or organization description
+     * @nullable
+     */
+  instanceDescription?: string | null;
+  /**
+     * Optional URL for About / learn more (e.g. company instance page)
+     * @nullable
+     */
+  aboutUrl?: string | null;
+}

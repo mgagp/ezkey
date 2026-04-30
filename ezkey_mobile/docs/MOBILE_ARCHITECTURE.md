@@ -61,6 +61,7 @@ Presentation uses a single scrollable flow: **Scan** (QR + bind) and **Verify** 
 Security alignment:
 - Proof tokens are handled in memory or secure storage only.
 - Challenge enforcement follows the API contract and remains user-driven.
+- The bind response's `authAttemptChallengeRequiredByPolicy` value is stored as a local snapshot for enrollment UI.
 
 ### Pending Authentication (`app/screens/PendingAuth`)
 
@@ -72,12 +73,14 @@ Security alignment:
 Security alignment:
 - Polling is user-initiated only, following the pull model described in [`docs/features/AUTH_SECURITY.md`](../../docs/features/AUTH_SECURITY.md).
 - Mobile wording should not imply FIDO2/WebAuthn or attestation guarantees.
+- When a non-empty pending response is received and its signature verifies, the app opportunistically refreshes the local `authAttemptChallengeRequiredByPolicy` snapshot.
 
 ### Home and Enrollment Detail (`app/screens/Home`, `app/screens/EnrollmentDetail`)
 
 - Provide entry points to the wizard and pending-auth flows.
 - Use Zustand to share the selected enrollment across navigation.
 - Remove enrollment metadata separately from native key material when clearing device state.
+- Surface challenge policy as a local enrollment fact, not as a claim about live server state.
 
 ## Cross-Cutting Concerns
 

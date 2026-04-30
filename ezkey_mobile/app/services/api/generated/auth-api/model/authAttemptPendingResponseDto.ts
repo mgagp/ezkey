@@ -29,6 +29,8 @@ export interface AuthAttemptPendingResponseDto {
   authAttemptProofTokenSignedByIntegration: string;
   /** Whether additional challenge validation is required */
   authAttemptChallengeRequired: boolean;
+  /** Whether challenge validation is required by enrollment policy */
+  authAttemptChallengeRequiredByPolicy: boolean;
   /** Optional short title for the approval request (null if no context provided). Example: "Payment Approval" */
   contextTitle?: string;
   /** Optional descriptive message for the approver (null if no context provided). Example: "Authorize payment batch #1497 to Acme Corp for $1,400" */

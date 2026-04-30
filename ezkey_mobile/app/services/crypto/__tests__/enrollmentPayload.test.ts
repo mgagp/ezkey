@@ -5,7 +5,7 @@ import {
 } from '../enrollmentPayload';
 
 describe('enrollmentPayload', () => {
-  it('buildBindPayload joins fields and NFC-normalizes user-facing segments', () => {
+  it('buildBindPayload joins fields, includes challenge policy, and NFC-normalizes user-facing segments', () => {
     const p = buildBindPayload({
       enrollmentProofToken: 'pt',
       enrollmentId: 1,
@@ -17,9 +17,10 @@ describe('enrollmentPayload', () => {
       tenantId: 2,
       tenantName: 'tn',
       tenantDescription: 'td',
+      authAttemptChallengeRequiredByPolicy: true,
     });
     expect(p.startsWith('pt|1|pk|ed25519|')).toBe(true);
-    expect(p.endsWith('|d|n|2|tn|td')).toBe(true);
+    expect(p.endsWith('|d|n|2|tn|td|true')).toBe(true);
     expect(p).toContain('caf\u00e9');
   });
 

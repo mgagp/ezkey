@@ -30,7 +30,7 @@ import axios from 'axios';
 import {Buffer} from 'buffer';
 import {env} from '../../config/env';
 import {RootStackParamList} from '../../navigation/types';
-import {useEnrollmentById} from '../../hooks/useEnrollments';
+import {useEnrollmentById, useSaveEnrollment} from '../../hooks/useEnrollments';
 import {authAttemptsApi} from '../../services/api/authAttempts';
 import {
   buildPendingPayload,
@@ -53,6 +53,7 @@ type PendingAttempt = {
   tenantName?: string;
   createdAt: string;
   challengeRequired: boolean;
+  challengeRequiredByPolicy: boolean;
   contextTitle?: string;
   contextMessage?: string;
 };
@@ -138,6 +139,9 @@ const AuthChallengeCodeInput: React.FC<AuthChallengeCodeInputProps> = ({
 export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const {enrollmentId} = route.params;
   const {data: enrollment, isLoading: isEnrollmentLoading} = useEnrollmentById(enrollmentId);
+  const saveEnrollment = useSaveEnrollment();
+  const loadingRef = useRef(false);
+  const autoLoadedEnrollmentIdRef = useRef<string | null>(null);
   const [attempt, setAttempt] = useState<PendingAttempt | undefined>();
   const [state, setState] = useState<AttemptState>('pending');
   const [challengeInput, setChallengeInput] = useState('');
@@ -184,9 +188,10 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   }, []);
 
   const loadPendingAttempt = useCallback(async () => {
-    if (!enrollment) {
+    if (!enrollment || loadingRef.current) {
       return;
     }
+    loadingRef.current = true;
     setLoading(true);
     setGlobalError(undefined);
     setChallengeFailedMessage(undefined);
@@ -222,7 +227,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           : {lastStep: 'after_pending', capturedAtIso: debugSnapshotAt},
       );
 
-      // Verify integration signature over canonical payload (NFC + proofToken|challenge|title|message)
+      // Verify integration signature over canonical payload.
       const integrationPublicKey = enrollment.integrationPublicKey;
       if (!integrationPublicKey) {
         setGlobalError('Enrollment missing integration public key; cannot verify pending response.');
@@ -230,9 +235,12 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         setState('pending');
         return;
       }
+      const challengeRequiredByPolicy =
+        response.authAttemptChallengeRequiredByPolicy ?? false;
       const pendingPayload = buildPendingPayload(
         response.authAttemptProofToken,
         response.authAttemptChallengeRequired ?? false,
+        challengeRequiredByPolicy,
         response.contextTitle,
         response.contextMessage,
       );
@@ -289,11 +297,26 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         return;
       }
 
+      if (enrollment.authAttemptChallengeRequiredByPolicy !== challengeRequiredByPolicy) {
+        try {
+          await saveEnrollment.mutateAsync({
+            ...enrollment,
+            authAttemptChallengeRequiredByPolicy: challengeRequiredByPolicy,
+          });
+        } catch (persistError) {
+          console.warn(
+            '[PendingAuthScreen] Failed to refresh local challenge policy snapshot:',
+            persistError,
+          );
+        }
+      }
+
       setAttempt({
         authAttemptId: String(response.authAttemptId),
         authAttemptProofToken: response.authAttemptProofToken,
         authAttemptProofTokenSignedByIntegration: response.authAttemptProofTokenSignedByIntegration,
         challengeRequired: response.authAttemptChallengeRequired,
+        challengeRequiredByPolicy,
         integrationName: enrollment.integrationName,
         tenantName: enrollment.tenantName,
         createdAt: new Date().toISOString(),
@@ -317,14 +340,19 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       );
       setGlobalError(msg);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
-  }, [enrollment, extractErrorMessage]);
+  }, [enrollment, extractErrorMessage, saveEnrollment]);
 
   useEffect(() => {
     if (isEnrollmentLoading || !enrollment) {
       return;
     }
+    if (autoLoadedEnrollmentIdRef.current === enrollment.id) {
+      return;
+    }
+    autoLoadedEnrollmentIdRef.current = enrollment.id;
     loadPendingAttempt();
   }, [enrollment, isEnrollmentLoading, loadPendingAttempt]);
 

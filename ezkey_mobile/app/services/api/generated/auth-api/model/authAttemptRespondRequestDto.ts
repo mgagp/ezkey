@@ -25,8 +25,11 @@ export interface AuthAttemptRespondRequestDto {
   authAttemptId: number;
   /** Device-signed proof token for authentication validation */
   authAttemptProofTokenSignedByDevice: string;
-  /** User's response to authentication challenge (if required) */
-  authAttemptChallengeResponse?: number;
+  /**
+     * User's response to authentication challenge (if required)
+     * @nullable
+     */
+  authAttemptChallengeResponse?: number | null;
   /** User's decision: true to approve, false to deny */
   authAttemptAccepted: boolean;
 }
