@@ -15,7 +15,7 @@ isProject: false
 
 **Scope:** Response of `POST /api/v1/auth-attempts/respond` only. No change to request or to other endpoints.
 
-**Client update requirement (mandatory):** Because the response fields are renamed (`result` → `authAttemptResult`, `message` → `authAttemptMessage`) and new fields are added (`authAttemptId`, `authAttemptProofTokenResultSignedByIntegration`), existing clients that read the Respond response will break if they are not updated. Updating the **Demo Device** and **both mobile apps** (ezkey_mobile and ezkey_mobile_app) is therefore **not optional**—it is an integral part of this plan. All three clients must be revised in lockstep with the backend and Auth API DTO so they remain functional. (If we had kept `result` and `message` and only added the signature, client updates could have been optional; the renaming makes them mandatory.)
+**Client update requirement (mandatory):** Because the response fields are renamed (`result` → `authAttemptResult`, `message` → `authAttemptMessage`) and new fields are added (`authAttemptId`, `authAttemptProofTokenResultSignedByIntegration`), existing clients that read the Respond response will break if they are not updated. Updating the **Demo Device** and the **mobile app** (ezkey_mobile) is therefore **not optional**—it is an integral part of this plan. All three clients must be revised in lockstep with the backend and Auth API DTO so they remain functional. (If we had kept `result` and `message` and only added the signature, client updates could have been optional; the renaming makes them mandatory.)
 
 ---
 
@@ -111,7 +111,7 @@ Including the proof token in the Respond response signed payload:
 2. **Message source:** Today messages are backend-defined (default or exception message). If later they are localized (i18n), NFC applies to the string that goes into the payload (same as context in Pending).
 3. **Replay:** The payload includes `authAttemptId` and `result`/`message`. Replaying an old response would match a past attempt; the mobile typically does not reuse the same attempt id for a new flow, so replay is limited. No need to add a timestamp to the payload for this feature.
 4. **Order of fields:** Fix order as `authAttemptProofToken|authAttemptId|result|message` in a short spec (e.g. in `docs/`) so all stacks (Java, Kotlin, JS) build the same string.
-5. **Backward compatibility:** Per plan “Critical observations,” we are in full development; no compatibility contract. Renaming `result` → `authAttemptResult` and `message` → `authAttemptMessage` and adding two fields is a breaking change for the Auth API response; Demo Device and both mobile apps (ezkey_mobile, ezkey_mobile_app) must be updated as part of this plan—their update is mandatory for the feature to work, not optional.
+5. **Backward compatibility:** Per plan “Critical observations,” we are in full development; no compatibility contract. Renaming `result` → `authAttemptResult` and `message` → `authAttemptMessage` and adding two fields is a breaking change for the Auth API response; Demo Device and the mobile app (ezkey_mobile) must be updated as part of this plan—their update is mandatory for the feature to work, not optional.
 
 ---
 
@@ -123,11 +123,11 @@ Contribution remains modest: after verifying the signature, the app shows a fina
 
 ## 8. Implementation outline (for later)
 
-**Note:** Demo Device and both mobile apps (ezkey_mobile, ezkey_mobile_app) are **required** to be updated with this plan; see §1 "Client update requirement (mandatory)."
+**Note:** Demo Device and the mobile app (ezkey_mobile) are **required** to be updated with this plan; see §1 "Client update requirement (mandatory)."
 
 - **Backend (ezkey-core):** In `AuthAttemptRespondService.buildResponse` (and in the catch path that builds FAILED), after building the domain response, build the canonical payload; call `signatureService.generateSignature(payload, integrationPrivateKey)` (integration from enrollment). Attach signature to response. Need to pass enrollment/integration key into the response builder (or have the service set the signature on the response before return). Domain object may need a new field `authAttemptProofTokenResultSignedByIntegration`; alternatively the signature is added at the DTO layer if the controller has access to integration key (cleaner: keep signing in core, domain response carries the signature).
 - **Auth API DTO:** Extend `AuthAttemptRespondResponseDto` with `authAttemptId`, rename `result` → `authAttemptResult`, `message` → `authAttemptMessage`, add `authAttemptProofTokenResultSignedByIntegration`. Mapper and domain updated accordingly.
-- **Mobile (ezkey_mobile, ezkey_mobile_app):** **Mandatory.** Update response handling to use `authAttemptResult`, `authAttemptMessage`, `authAttemptId`, and `authAttemptProofTokenResultSignedByIntegration` (no longer `result` / `message`). After receiving the respond response, build payload from `authAttemptProofToken` (from Pending), `authAttemptId`, `authAttemptResult`, `authAttemptMessage` (NFC on message), verify with existing native `verify(data, signatureBase64, integrationPublicKey)`. If verification fails, treat as invalid and do not trust the result.
+- **Mobile (ezkey_mobile):** **Mandatory.** Update response handling to use `authAttemptResult`, `authAttemptMessage`, `authAttemptId`, and `authAttemptProofTokenResultSignedByIntegration` (no longer `result` / `message`). After receiving the respond response, build payload from `authAttemptProofToken` (from Pending), `authAttemptId`, `authAttemptResult`, `authAttemptMessage` (NFC on message), verify with existing native `verify(data, signatureBase64, integrationPublicKey)`. If verification fails, treat as invalid and do not trust the result.
 - **Demo device:** **Mandatory.** Same as mobile: update to new response field names and add signature verification; build payload, verify with integration public key, then show result.
 - **Docs:** Update [ENDPOINT.md](docs/ENDPOINT.md) and add a short canonical-payload spec (or extend the one for Proof Token) to include Respond response payload format.
 
@@ -143,7 +143,7 @@ Contribution remains modest: after verifying the signature, the app shows a fina
 | **Signer**                 | Integration (same as Pending). Mobile verifies with integration public key.                                                           |
 | **FAILED without attempt** | Set `authAttemptId` from request in catch path so response is always verifiable.                                                      |
 | **Spec**                   | Document payload order and NFC/UTF-8 in `docs/` and reference from all clients.                                                       |
-| **Clients**                | Demo Device, ezkey_mobile, and ezkey_mobile_app must be updated in lockstep (mandatory; renaming breaks existing response handling).  |
+| **Clients**                | Demo Device and ezkey_mobile must be updated in lockstep (mandatory; renaming breaks existing response handling).  |
 
 
 This keeps the Auth API naming consistent (auth-attempt-related fields prefixed), reuses the same canonical and signing approach as the Proof Token Payload Binding, and completes the cryptographic chain from Pending to Respond without changing the protocol’s structure.

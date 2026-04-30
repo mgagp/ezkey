@@ -87,7 +87,7 @@ If in the future the signed payload is extended to a **structured object** (e.g.
 
 **Backend** ([AuthAttemptPendingService.buildPendingResponse](ezkey-core/src/main/java/org/ezkey/authattempt/service/AuthAttemptPendingService.java)): Compute this string (using the same logic as today for `authAttemptChallengeRequired`), then call `signatureService.generateSignature(payload, integrationPrivateKey)`. The proof token value itself does not change; only the signed payload is extended.
 
-**Clients (demo device, ezkey_mobile, ezkey_mobile_app)**: Before trusting the pending response, verify the integration signature over this same canonical payload. If verification fails, reject the response (do not show context or allow respond).
+**Clients (demo device, ezkey_mobile)**: Before trusting the pending response, verify the integration signature over this same canonical payload. If verification fails, reject the response (do not show context or allow respond).
 
 ### 3.5 Respond — device signs
 
@@ -119,19 +119,13 @@ The proof token (random value) stays as-is. The **signed payload** is what we ex
 | **Backend (ezkey-core)**            | Build extended payload; sign it in `buildPendingResponse`.                                    | Verify signature over `proofToken |
 | **Demo device (ezkey-demo-device)** | Verify integration signature over extended payload before showing pending UI.                 | Sign `proofToken                  |
 | **ezkey_mobile**                    | Verify integration signature over extended payload (need native `verify`); reject if invalid. | Sign `proofToken                  |
-| **ezkey_mobile_app**                | Same as ezkey_mobile.                                                                         | Same as ezkey_mobile.             |
 
 
-### 5.1 Kotlin crypto modules (ezkey_mobile vs ezkey_mobile_app)
-
-Confirmed: the two Android native modules are effectively the same:
+### 5.1 Kotlin crypto module (ezkey_mobile)
 
 - [ezkey_mobile EzkeyCryptoModule.kt](ezkey_mobile/android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt)
-- [ezkey_mobile_app EzkeyCryptoModule.kt](ezkey_mobile_app/android/app/src/main/java/com/ezkeymobileapp/crypto/EzkeyCryptoModule.kt)
 
-Only the package name differs (`com.ezkeymobile.crypto` vs `com.ezkeymobileapp.crypto`). They expose the same API: `sign(enrollmentId, data)` (no `verify` today). So:
-
-- **Same change in both**: add a `verify(data: String, signatureBase64: String, publicKeyBase64: String): Boolean` (or equivalent) for ECDSA-SHA256, and use the same canonical payload construction in the JS/TS layer for both pending verification and respond signing.
+The module exposes the API: `sign(enrollmentId, data)` (no `verify` today). Required change: add a `verify(data: String, signatureBase64: String, publicKeyBase64: String): Boolean` (or equivalent) for ECDSA-SHA256, and use the same canonical payload construction in the JS/TS layer for both pending verification and respond signing.
 
 ---
 
@@ -147,9 +141,9 @@ Only the package name differs (`com.ezkeymobile.crypto` vs `com.ezkeymobileapp.c
 - **EzkeyAppController** (pending): Build the same canonical string from `pendingResponse`; apply **NFC** to non-null `contextTitle` / `contextMessage`. Use **UTF-8** for the payload. Call `cryptoService.validateSignature(payload, pendingResponse.getAuthAttemptProofTokenSignedByIntegration(), integrationPublicKey)`. On failure, return error and do not show pending UI.
 - **EzkeyAppController** (respond): Build `payload = authAttemptProofToken + "|" + (approved ? "true" : "false")` (UTF-8). Call `cryptoService.signStringToBase64(payload, rec.devicePrivateKey())` and send that as `authAttemptProofTokenSignedByDevice`.
 
-### 6.3 Mobile apps (ezkey_mobile, ezkey_mobile_app)
+### 6.3 Mobile app (ezkey_mobile)
 
-- **Native (Kotlin)**: Add `verify(data, signatureBase64, publicKeyBase64)` in both EzkeyCryptoModule implementations (ECDSA-SHA256, UTF-8). Expose to JS/TS.
+- **Native (Kotlin)**: Add `verify(data, signatureBase64, publicKeyBase64)` in EzkeyCryptoModule (ECDSA-SHA256, UTF-8). Expose to JS/TS.
 - **JS/TS (pending)**: After receiving pending response, normalize `contextTitle` and `contextMessage` with `**string.normalize('NFC')`** when building the payload. Use UTF-8 (default in JS). Build the same canonical payload and call native `verify(payload, authAttemptProofTokenSignedByIntegration, integrationPublicKey)`. If false, do not set attempt (treat as invalid / show error).
 - **JS/TS (respond)**: Build `payload = attempt.authAttemptProofToken + "|" + (accepted ? "true" : "false")` (UTF-8). Call `crypto.sign(enrollmentId, payload)`. Send result as `authAttemptProofTokenSignedByDevice`.
 
@@ -176,8 +170,8 @@ Today the **response** of Respond (result: APPROVED/DENIED/FAILED) is plain JSON
 
 **Context**: Full development only — no production deployment. No backward-compatibility or transition plan is required; we are defining the current and future behaviour.
 
-1. **Canonical encoding**: Backend, demo device, and both mobile apps must use the **exact** same string: separator `|`, null→`""`, boolean `"true"`/`"false"`, and **Unicode NFC** for `contextTitle`/`contextMessage` plus **UTF-8** for the payload. Any mismatch (e.g. "True" vs "true", or NFD vs NFC for "é") will break verification. Recommendation: define a small shared spec (e.g. in `docs/`) that specifies NFC + UTF-8 and reference it from all four codebases.
-2. **ezkey_mobile / ezkey_mobile_app do not verify integration signature today**: They receive and display context but do not verify `authAttemptProofTokenSignedByIntegration`. Adding verification is required for V4; otherwise a MITM can still change context and the app would display it. So the plan correctly includes “verify integration signature on pending” for both apps.
+1. **Canonical encoding**: Backend, demo device, and the mobile app must use the **exact** same string: separator `|`, null→`""`, boolean `"true"`/`"false"`, and **Unicode NFC** for `contextTitle`/`contextMessage` plus **UTF-8** for the payload. Any mismatch (e.g. "True" vs "true", or NFD vs NFC for "é") will break verification. Recommendation: define a small shared spec (e.g. in `docs/`) that specifies NFC + UTF-8 and reference it from all four codebases.
+2. **ezkey_mobile does not verify integration signature today**: It receives and displays context but does not verify `authAttemptProofTokenSignedByIntegration`. Adding verification is required for V4; otherwise a MITM can still change context and the app would display it. So the plan correctly includes "verify integration signature on pending".
 3. **No ambiguity in the design**: Binding context and challengeRequired to the integration signature, and accepted to the device signature, gives end-to-end integrity for the data that drives the user’s decision and the backend’s outcome. An auditor can see that no security-relevant field is transmitted without being covered by a signature.
 
 ---

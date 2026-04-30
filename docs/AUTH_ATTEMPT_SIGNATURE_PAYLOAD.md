@@ -1,6 +1,6 @@
 # Auth attempt signature payload (canonical format)
 
-This document defines the canonical payload format used when signing or verifying auth attempt Pending and Respond messages. Backend (ezkey-core), demo device (ezkey-demo-device), and mobile apps (ezkey_mobile, ezkey_mobile_app) must all build and verify payloads identically.
+This document defines the canonical payload format used when signing or verifying auth attempt Pending and Respond messages. Backend (ezkey-core), demo device (ezkey-demo-device), and the mobile app (ezkey_mobile) must all build and verify payloads identically.
 
 Enrollment bind and verify use a separate spec: [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md).
 
