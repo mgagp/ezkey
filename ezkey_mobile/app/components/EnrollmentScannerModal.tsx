@@ -62,7 +62,7 @@ const scanEzkeyPlugin: FrameProcessorPlugin | undefined =
 export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onScanned}) => {
   const device = useCameraDevice('back');
   const [isActive, setIsActive] = useState(false);
-  const lastScannedRef = useRef<string | undefined>();
+  const lastScannedRef = useRef<string | undefined>(undefined);
   const frameCounter = useSharedValue(0);
 
   useEffect(() => {
