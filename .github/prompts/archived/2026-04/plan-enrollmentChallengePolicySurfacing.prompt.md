@@ -1,12 +1,41 @@
 # Plan: Enrollment Challenge Policy Surfacing
 
 > **Status : ROLLED BACK — 2026-04-30**
+> This archived plan documents a direction that was intentionally rejected because it introduced non-essential policy disclosure into the mobile protocol.
 
 ## Outcome
 
 - This workstream was implemented experimentally, then rolled back before release.
 - The rollback removed `authAttemptChallengeRequiredByPolicy` from the protocol-facing contract and client surfaces to restore the prior minimal protocol and eliminate non-essential policy disclosure to mobile clients.
 - The plan is kept here only as historical traceability for the explored direction and the subsequent rollback decision.
+
+## Why This Was Rolled Back
+
+The rollback reason was not a failure of the cryptographic chain itself. The issue was architectural.
+
+This change introduced `authAttemptChallengeRequiredByPolicy` as a mobile-visible protocol field even though that value was not required for the client to complete `bind`, `verify`, `pending`, or `respond` correctly. It explained backend policy, but it did not participate in protocol execution or cryptographic verification.
+
+That violated a core Ezkey design rule:
+
+- mobile protocol fields should exist only when they are strictly necessary for protocol correctness or cryptographic verification
+- informational or UX-oriented policy explanation does not belong in the mobile protocol surface
+- protocol minimalism is treated as a security property, not as a style preference
+
+This plan is therefore preserved only as a historical record of an explored direction that was intentionally rejected.
+
+## Lesson Learned
+
+This workstream is an example of what future Ezkey protocol evolution should avoid:
+
+- adding mobile-visible fields that explain server-side policy without being required for protocol execution
+- extending signed payloads for UX convenience rather than protocol necessity
+- persisting mutable backend policy on the client when the protocol can function without it
+
+The design question for future protocol additions should remain strict:
+
+> If this field is removed, does the protocol stop functioning correctly?
+
+If the answer is no, the default posture should be to keep it out of the protocol.
 
 ## Plan: Enrollment Challenge Policy Surfacing
 
