@@ -29,7 +29,10 @@ function toHeaders(headers?: HeaderInput) {
 
 function toResponseHeaders(headers: RawAxiosResponseHeaders | AxiosResponseHeaders): Headers {
   return new Headers(
-    Object.entries(headers).map(([key, value]) => [key, Array.isArray(value) ? value.join(', ') : String(value)]),
+    Object.entries(headers).map<[string, string]>(([key, value]) => [
+      key,
+      Array.isArray(value) ? value.join(', ') : String(value),
+    ]),
   );
 }
 
