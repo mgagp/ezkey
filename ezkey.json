@@ -1,8 +1,0 @@
-{
-  "adminUrl": "http://localhost:9080",
-  "authUrl": "http://localhost:8080",
-  "cryptoUrl": "http://localhost:9090",
-  "prettyPrint": true,
-  "timeout": 30000,
-  "bearerToken": "ezkey_cd35eefdb015470dac9e2cdd4b9795eb"
-}
