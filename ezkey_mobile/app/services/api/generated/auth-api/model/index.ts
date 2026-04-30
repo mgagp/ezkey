@@ -29,4 +29,3 @@ export * from './enrollmentVerifyRequestDtoDevicePrivateKeyStorageTier';
 export * from './enrollmentVerifyResponseDto';
 export * from './problemDetail';
 export * from './problemDetailProperties';
-export * from './publicInstanceInfoResponseDto';

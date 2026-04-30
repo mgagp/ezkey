@@ -71,4 +71,3 @@ Implement a focused protocol change for active-development mode where breaking c
 1. Future protocol evolution: once Ezkey approaches public releases, add a separate phase for protocol versioning and breaking-change governance.
 2. Naming remains sound: `authAttemptChallengeRequiredByPolicy` is long but the clearest additive name because it avoids semantic collision with the existing effective per-attempt field.
 3. Mobile app follow-up: the next plan should focus only on local persistence, UI wording, and user-facing display of the new policy snapshot/refresh behavior.
-4. Approved mobile UI wording: in enrollment detail, surface challenge policy with a compact contextual label (`Enrollment policy`) and a short state badge (`Challenge required` / `Challenge optional`) rather than a long explanatory sentence. This keeps semantic clarity while aligning the detail screen with the summary-screen badge language.

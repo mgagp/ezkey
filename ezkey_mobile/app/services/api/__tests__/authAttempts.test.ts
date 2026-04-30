@@ -33,7 +33,6 @@ describe('authAttemptsApi', () => {
       authAttemptProofToken: 'attempt-proof-token',
       authAttemptProofTokenSignedByIntegration: 'signed-proof',
       authAttemptChallengeRequired: true,
-      authAttemptChallengeRequiredByPolicy: true,
     };
     mockedPending.mockResolvedValueOnce({
       data: responseData,
@@ -67,7 +66,6 @@ describe('authAttemptsApi', () => {
       authAttemptProofToken: 'apt',
       authAttemptProofTokenSignedByIntegration: 'signed-apt',
       authAttemptChallengeRequired: false,
-      authAttemptChallengeRequiredByPolicy: false,
     };
     mockedPending.mockResolvedValueOnce({
       data: responseData,

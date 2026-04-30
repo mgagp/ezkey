@@ -14,20 +14,18 @@ function nfcOrEmpty(s: string | null | undefined): string {
 
 /**
  * Builds the payload that the integration signed for the Pending response.
- * Format: proofToken|challengeRequired|challengeRequiredByPolicy|contextTitle|contextMessage.
+ * Format: proofToken|challengeRequired|contextTitle|contextMessage.
  */
 export function buildPendingPayload(
   proofToken: string,
   challengeRequired: boolean,
-  challengeRequiredByPolicy: boolean,
   contextTitle: string | null | undefined,
   contextMessage: string | null | undefined,
 ): string {
   const challengeStr = challengeRequired ? TRUE : FALSE;
-  const challengeRequiredByPolicyStr = challengeRequiredByPolicy ? TRUE : FALSE;
   const title = nfcOrEmpty(contextTitle);
   const message = nfcOrEmpty(contextMessage);
-  return `${proofToken}${SEP}${challengeStr}${SEP}${challengeRequiredByPolicyStr}${SEP}${title}${SEP}${message}`;
+  return `${proofToken}${SEP}${challengeStr}${SEP}${title}${SEP}${message}`;
 }
 
 /**

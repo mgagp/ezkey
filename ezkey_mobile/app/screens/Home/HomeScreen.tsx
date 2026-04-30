@@ -31,7 +31,6 @@ import {
   groupEnrollmentsByTenant,
   type InstallationGroup,
 } from '../../utils/tenantGrouping';
-import {EnrollmentPolicyBadge} from '../../components/EnrollmentPolicyBadge';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 
 /**
@@ -286,14 +285,12 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPr
     style={styles.card}
     onPress={() => onPress(enrollment)}
     accessibilityRole="button"
-    accessibilityLabel={enrollment.integrationName}
+    accessibilityLabel={`${enrollment.integrationName}, ${enrollment.status}`}
     accessibilityHint="Opens enrollment details">
     <View style={styles.cardHeader}>
       <Text style={styles.cardTitle}>{enrollment.integrationName}</Text>
+      <Text style={styles.status}>{enrollment.status.toUpperCase()}</Text>
     </View>
-    <EnrollmentPolicyBadge
-      challengeRequiredByPolicy={!!enrollment.authAttemptChallengeRequiredByPolicy}
-    />
     {enrollment.enrollmentName ? (
       <Text style={styles.cardSubtitle}>{enrollment.enrollmentName}</Text>
     ) : null}
@@ -400,6 +397,11 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
     color: colors.textPrimary,
+  },
+  status: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.success,
   },
   cardSubtitle: {
     fontSize: typography.fontSize.base,

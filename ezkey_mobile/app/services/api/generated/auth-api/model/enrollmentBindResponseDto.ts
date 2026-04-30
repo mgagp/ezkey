@@ -41,8 +41,6 @@ export interface EnrollmentBindResponseDto {
   tenantName?: string;
   /** Tenant description of the integration associated with this enrollment */
   tenantDescription?: string;
-  /** Whether authentication challenge is always required by enrollment policy */
-  authAttemptChallengeRequiredByPolicy: boolean;
   /** Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind payload (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md) */
   enrollmentBindPayloadSignedByIntegration: string;
 }

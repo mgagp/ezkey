@@ -23,7 +23,6 @@ export type BindEnrollmentResponseLike = {
   tenantId?: number | null;
   tenantName?: string | null;
   tenantDescription?: string | null;
-  authAttemptChallengeRequiredByPolicy?: boolean | null;
 };
 
 /**
@@ -41,8 +40,6 @@ export function buildBindPayload(response: BindEnrollmentResponseLike): string {
     response.tenantId !== undefined && response.tenantId !== null
       ? String(response.tenantId)
       : '';
-  const challengeRequiredByPolicy =
-    response.authAttemptChallengeRequiredByPolicy === true ? 'true' : 'false';
   return [
     pt,
     idStr,
@@ -54,7 +51,6 @@ export function buildBindPayload(response: BindEnrollmentResponseLike): string {
     tenantIdStr,
     nfcOrEmpty(response.tenantName),
     nfcOrEmpty(response.tenantDescription),
-    challengeRequiredByPolicy,
   ].join(SEP);
 }
 
