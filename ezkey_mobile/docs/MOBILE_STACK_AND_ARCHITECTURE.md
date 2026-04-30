@@ -1,0 +1,146 @@
+# Ezkey Mobile Stack and Architecture
+
+## Purpose and Reading Scope
+
+This document consolidates the stable technical structure of the React Native reference app: the selected stack,
+runtime layers, trust boundaries, code-generation workflow, and the responsibilities shared across UI, hooks,
+API services, storage, and native crypto bridges.
+
+It is the architectural reading layer for the mobile app itself. It does not replace the canonical Auth API,
+cryptographic, or payload-format documentation at the repository root, and it does not try to carry the detailed
+screen-by-screen behavior already covered by the flow and mapping documents.
+
+## Technology Stack Summary
+
+| Concern | Technology | Why it is used | Notes |
+| --- | --- | --- | --- |
+| Runtime UI | React Native 0.76.0 | Shared iOS/Android UI codebase | Current workspace manifest uses React Native 0.76.0 for the reference app. |
+| React runtime | React 18.3.1 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json`. |
+| Language | TypeScript | Typed mobile domain and service layer | Thin wrapper types sit above generated DTOs. |
+| Navigation | React Navigation stack | Simple screen-to-screen mobile flow control | Current stack includes Home, Enrollment, Pending, and supporting screens. |
+| Remote data orchestration | React Query | Query/mutation lifecycle and cache invalidation | Used for enrollments hydration and local mutation coordination. |
+| Local UI state | Zustand | Lightweight cross-screen state for selected enrollment | Small surface, no large global state machine. |
+| HTTP contract client | Orval-generated Auth API client plus local facades | Keep contract aligned with OpenAPI while preserving mobile-friendly wrappers | `app/services/api/types.ts` stays intentionally thin. |
+| Durable metadata storage | AsyncStorage-backed enrollment collection | Persist local enrollment records and installation metadata | Wrapped by `enrollmentStorage`. |
+| Secure item storage | `react-native-keychain` wrapper | Device-local secure storage for small secret values | Present as a secure delegate; private key path remains native. |
+| Device crypto | Native bridge (`EzkeyCryptoModule`) | Key generation, signing, public key retrieval, proof token generation | Android path is the current reference-strength implementation. |
+| QR capture | Vision Camera plus native Android frame processor | QR-first enrollment entry point | iOS parity remains more conservative. |
+| Testing | Jest / RTL / optional Detox | Unit/component/e2e coverage path | Native test surface still evolves separately. |
+
+## Runtime Architecture at a Glance
+
+```mermaid
+flowchart TD
+  UI[Screens and components] --> Hooks[Hooks and local orchestration]
+  Hooks --> Query[React Query cache]
+  Hooks --> Store[Zustand store]
+  Hooks --> ApiFacade[API facades]
+  Hooks --> Storage[Enrollment storage]
+  Hooks --> Crypto[Native crypto service]
+  ApiFacade --> AuthApi[Auth API]
+  Storage --> AsyncStore[AsyncStorage]
+  Storage --> SecureDelegate[Keychain-backed secure delegate]
+  Crypto --> NativeModules[Android/iOS native modules]
+```
+
+The app is intentionally layered. Screens remain mostly declarative and route user actions into hooks and service
+facades. Contract-specific serialization stays in the API layer, durable record handling stays in the storage layer,
+and cryptographic operations stay behind the native crypto bridge. This separation is what makes the flow docs and
+API mapping docs practical: the screen does not reinvent protocol semantics.
+
+## Repository and Module Structure
+
+| Path area | Responsibility | Notes |
+| --- | --- | --- |
+| `app/screens` | Primary and supporting mobile screens | Houses Home, Enrollment Wizard, Enrollment Detail, Pending Authentication, and settings-adjacent screens. |
+| `app/components` | Reusable UI pieces | Includes items such as the scanner modal and shared display components. |
+| `app/navigation` | Screen registration and route typing | `RootStackParamList` is the route contract. |
+| `app/hooks` | React Query coordination and storage-facing orchestration | `useEnrollments` and related mutations are the main local data gateway. |
+| `app/state` | Lightweight app state | Current main role is selected enrollment sharing. |
+| `app/services/api` | Generated client, facades, mobile wrappers | Owns the thin interpretation layer on top of generated Auth API types. |
+| `app/services/storage` | Enrollment persistence and secure item wrappers | Keeps local record handling out of screen code. |
+| `app/services/crypto` | Native crypto abstraction and payload helpers | Owns device signing, verification, and payload construction. |
+| `app/utils` | Focused derivation logic and formatting helpers | Installation metadata normalization, tenant grouping, proof token generation, URL validation. |
+| `android` | Android native project | Current reference-strength native crypto path and QR frame processor. |
+| `ios` | iOS native project | Native parity is in progress and documented conservatively. |
+| `docs` | Mobile-specific documentation | Primary conceptual corpus plus supporting technical and operational notes. |
+
+## Data Flow Across UI, Hooks, API, Storage, and Native Crypto
+
+```mermaid
+flowchart LR
+  Screen[Screen action] --> Hook[Hook or screen orchestration]
+  Hook --> Api[API facade]
+  Hook --> Storage[Storage facade]
+  Hook --> Crypto[Crypto service]
+  Api --> Backend[Auth API]
+  Storage --> Local[AsyncStorage collection]
+  Crypto --> Native[Native crypto module]
+```
+
+| Stage | Primary component | Input | Output | Notes |
+| --- | --- | --- | --- | --- |
+| Home hydration | `useEnrollments` | Local enrollment collection | `StoredEnrollment[]` query result | Silent installation metadata refresh may run after hydration. |
+| Enrollment bind | Enrollment Wizard plus `enrollmentsApi.bind` | QR payload and effective `authUrl` | Bind response draft | No durable local write yet. |
+| Enrollment verify | Enrollment Wizard plus `cryptoService` plus `enrollmentsApi.verify` | User challenge, device public key, device signature | Verify response and persisted enrollment record | Durable write occurs only after verify-result trust check. |
+| Installation refresh | `useRefreshInstallationMetadata` | Persisted enrollments | Refreshed installation summary fields | Uses public instance-info endpoint opportunistically. |
+| Pending load | Pending screen plus `authAttemptsApi.pending` plus `cryptoService` | Enrollment proof token, fresh device proof token, signature | Pending attempt in memory | Request context is shown only after signature verification. |
+| Respond submit | Pending screen plus `authAttemptsApi.respond` plus `cryptoService` | User decision, optional challenge, one-time proof token signature | Trusted terminal result state | Current implementation does not persist detailed auth history. |
+
+## Trust Boundaries and Security-Sensitive Responsibilities
+
+| Component | Responsibility | Sensitive data/material | Failure impact |
+| --- | --- | --- | --- |
+| Screen layer | Collect user intent and display trusted state only | User-entered challenges, contextual request text | Misleading UI if trust checks are bypassed or presentation overstates certainty. |
+| API facades | Serialize mobile wrapper inputs into Auth API DTOs | Enrollment IDs, proof tokens, signed payloads | Contract drift or wrong field coercion can break protocol correctness. |
+| Storage layer | Persist local enrollment records and installation metadata | `enrollmentProofToken`, `integrationPublicKey`, local timestamps, routing URL | Data loss or stale local model can break later auth flows. |
+| Native crypto service | Generate key pairs, retrieve public keys, sign payloads, verify integration signatures | Device private key path, signatures, proof token generation | Trust chain breaks if signing or verification is incorrect. |
+| Generated OpenAPI client | Mirror backend contract | DTO structures, HTTP typing | Silent contract drift if spec refresh discipline is not maintained. |
+| Auth API | Backend verification and lifecycle authority | Proof-token semantics, integration-signed payloads, final state | The mobile app must not try to replace backend authority with UI assumptions. |
+
+Practical trust rule: the UI may present context only after the mobile client has performed the local trust checks
+it is responsible for, but the backend remains authoritative for state transitions and validation outcomes.
+
+## Contract Generation and OpenAPI Workflow
+
+| Step | Source | Artifact | Owner rule |
+| --- | --- | --- | --- |
+| Auth API contract refresh | Root scripts `scripts/update-specs.*` | `ezkey_mobile/openapi-spec.json` | Never hand-edit the local spec copy. |
+| Client regeneration | Local mobile command `yarn generate:api` | Generated client and generated models | Run after spec refresh only. |
+| Mobile wrapper typing | `app/services/api/types.ts` | Thin local types | Keep thin; do not build a second hand-maintained contract universe. |
+| API facade layer | `app/services/api/*.ts` | Mobile-friendly bind/verify/pending/respond helpers | Owns serialization details and optional per-enrollment base URL routing. |
+
+Warnings:
+
+- The generated models are the DTO source of truth for Auth API request and response shapes.
+- The local `openapi-spec.json` is versioned for reproducibility, but it is still refreshed only through the root workflow.
+- Mobile conceptual docs should map the contract, not restate the entire contract canonically.
+
+## Architecture Decisions and Non-Goals
+
+Key decisions:
+
+- The mobile client consumes only the Auth API; admin concerns stay server-side.
+- Enrollment entry is QR-first and intentionally narrow.
+- Polling for pending auth remains user-initiated; there is no background polling loop.
+- Device signing stays in native modules rather than reimplementing cryptography in JavaScript.
+- The app stores enough local enrollment metadata to function across restarts and to verify later integration signatures.
+- Installation branding is attached to enrollments and refreshed opportunistically rather than modeled as a full remote domain.
+
+Non-goals:
+
+- No second manually maintained copy of the Auth API contract.
+- No claims of FIDO2/WebAuthn equivalence or attestation-backed hardware proof.
+- No broad admin-management surface inside the mobile app.
+- No push-notification architecture in the current flow model.
+- No assumption of full Android/iOS native crypto parity in documentation when parity is not yet proven.
+
+## Links to Deeper Technical References
+
+- [README.md](README.md): entry point and reading order for the mobile documentation corpus.
+- [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md): precise field and ownership mapping between screens, internal structures, and Auth API operations.
+- [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md): nominal and exception flow execution across enrollment and authentication.
+- [NATIVE_MODULES.md](NATIVE_MODULES.md): lower-level native bridge responsibilities and platform specifics.
+- [MOBILE_CRYPTO_REFERENCE.md](MOBILE_CRYPTO_REFERENCE.md): mobile-specific crypto wording guardrails and storage-tier caveats.
+- [../../docs/CRYPTO.md](../../docs/CRYPTO.md): canonical shared cryptographic wording.
+- [../../docs/ENDPOINT.md](../../docs/ENDPOINT.md): canonical Auth API semantics.

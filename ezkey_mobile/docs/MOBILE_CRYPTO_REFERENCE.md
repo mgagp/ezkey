@@ -24,6 +24,7 @@ Device **signing** of that string (EC P-256) remains in the native module as els
 Ezkey uses EC P-256 for device-side signing because it maps to native mobile platform APIs more naturally than Ed25519 for the current architecture.
 
 Key reasons:
+
 - Android supports EC P-256 through `Android Keystore`
 - The wire format fits the existing backend contract for device signatures
 - It keeps the mobile signing path straightforward and auditable
@@ -31,6 +32,7 @@ Key reasons:
 ## Wording Guardrails
 
 Use these phrases in mobile documentation:
+
 - `Android Keystore`
 - `StrongBox when available`
 - `private key material is not exposed to application code`
@@ -38,6 +40,7 @@ Use these phrases in mobile documentation:
 - `iOS native secure-hardware-backed parity is still in progress`
 
 Avoid these phrases unless a future implementation and verification justify them:
+
 - `hardware-backed everywhere`
 - `Secure Enclave parity`
 - `guaranteed StrongBox`
@@ -48,6 +51,7 @@ Avoid these phrases unless a future implementation and verification justify them
 ## Android Summary
 
 The current Android implementation:
+
 - generates one EC P-256 key pair per enrollment
 - uses `Android Keystore`
 - requests `StrongBox` on supported devices
@@ -64,6 +68,14 @@ The Auth API accepts optional `devicePrivateKeyStorageTier` on enrollment verify
 - Do **not** market or document Admin-visible tier as “server-verified hardware” or “cryptographically attested” until a future protocol adds verification (e.g. Key Attestation with server-side chain validation).
 
 See **`docs/MOBILE_DEVELOPER_GUIDE.md`** (Device private key storage tier — trust model and proof boundary) and **`docs/CRYPTO.md`**.
+
+## Integration signature verification note
+
+When the mobile app verifies integration-signed bind, verify-result, pending, or respond-result payloads, the
+stored `integrationPublicKey` should be treated as canonical verification input. Avoid verification paths that
+parse a key and then re-serialize it into a different byte representation before verification. The practical rule is
+simple: validate the algorithm tag, store the canonical key material received from the trusted flow, and verify later
+signatures against that canonical material rather than against a transformed encoding.
 
 ## iOS Summary
 

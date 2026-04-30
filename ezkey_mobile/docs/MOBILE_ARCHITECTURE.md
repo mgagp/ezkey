@@ -10,7 +10,7 @@
 
 ## Context
 
-- **Platform**: React Native 0.76 targeting iOS 15+ and Android 8+
+- **Platform**: React Native 0.76.0 targeting iOS 15+ and Android 8+
 - **Language**: TypeScript with strict compiler options
 - **Security references**:
   - [`docs/CRYPTO.md`](../../docs/CRYPTO.md) - canonical cryptographic wording and current guarantees
@@ -20,7 +20,7 @@
 ## Layer Overview
 
 | Layer | Responsibility | Key directories |
-|-------|----------------|-----------------|
+| --- | --- | --- |
 | Presentation | Screens, components, navigation, theming | `app/screens`, `app/components`, `app/navigation` |
 | State and Hooks | Query caching, local state, storage orchestration | `app/hooks`, `app/state` |
 | Services | API clients, crypto adapters, storage facades | `app/services/api`, `app/services/crypto`, `app/services/storage` |
@@ -59,6 +59,7 @@ Presentation uses a single scrollable flow: **Scan** (QR + bind) and **Verify** 
 6. Completes verification through `enrollmentsApi.verify` and persists enrollment metadata with `enrollmentStorage`.
 
 Security alignment:
+
 - Proof tokens are handled in memory or secure storage only.
 - Challenge enforcement follows the API contract and remains user-driven.
 
@@ -70,6 +71,7 @@ Security alignment:
 4. Responds with the user's decision while respecting challenge requirements.
 
 Security alignment:
+
 - Polling is user-initiated only, following the pull model described in [`docs/features/AUTH_SECURITY.md`](../../docs/features/AUTH_SECURITY.md).
 - Mobile wording should not imply FIDO2/WebAuthn or attestation guarantees.
 
@@ -96,14 +98,15 @@ Security alignment:
 ## Documentation Guardrail
 
 When describing the mobile security model, prefer:
+
 - `Android Keystore`
 - `StrongBox when available`
 - `private key material is not exposed to application code`
 
 Avoid unqualified claims such as:
+
 - `hardware-backed everywhere`
 - `Secure Enclave parity`
 - `passkey-equivalent security`
 
-@since 2025
-
+For current guarantees and wording, defer to [`docs/CRYPTO.md`](../../docs/CRYPTO.md).

@@ -4,7 +4,7 @@
 
 ## Overview
 
-- **Stack**: React Native 0.76 + TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
+- **Stack**: React Native 0.76.0, React 18.3.1, and TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
 - **Primary Flows**: Enrollment via QR, secure key generation, pending authentication approvals/denials, challenge handling
 - **APIs Consumed**: `auth-api` endpoints documented in [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)
 - **Security Alignment**: Tracks the current guarantees and constraints documented in [`docs/CRYPTO.md`](../docs/CRYPTO.md) and [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md)
@@ -28,7 +28,7 @@
 
 ## Project Structure
 
-```
+```text
 ezkey_mobile/
 ├── app/
 │   ├── components/              # Reusable UI (e.g., QR modal)
@@ -49,7 +49,7 @@ ezkey_mobile/
 
 ## Prerequisites
 
-- Node.js 20 LTS and Yarn 4 (Berry)
+- Node.js 18+ and Yarn 4 (Berry)
 - Java 17+ and Android Studio Giraffe (SDK 34)
 - Xcode 15.x with CocoaPods 1.15+ (macOS)
 - Watchman (macOS), Git Bash or another POSIX shell on Windows
@@ -67,7 +67,7 @@ yarn install
 
 Create `.env` inside `ezkey_mobile/` (see `.env.example`):
 
-```
+```dotenv
 EZKEY_API_BASE_URL=http://127.0.0.1:8080
 EZKEY_REQUEST_TIMEOUT=10000
 ```
@@ -125,16 +125,20 @@ To work with **Metro + fast refresh** on a debug build, set `ezkey.useMetroInDeb
 
 1. On the phone, enable **Developer options → USB debugging** and connect via USB (accept the computer’s RSA prompt when prompted).
 2. Confirm the device is visible:
-   ```bash
-   adb devices
-   ```
-3. From `ezkey_mobile/`, install the debug APK on the connected device:
-   ```bash
-   yarn android:install:debug
-   ```
-   On Windows, if Gradle fails with a JDK version error, set `JAVA_HOME` to Android Studio’s bundled JBR (JDK 17), then run the command again — see [Android build troubleshooting](#android-build-troubleshooting).
 
-**Alternative — build the APK, then push to the phone**
+    ```bash
+    adb devices
+    ```
+
+3. From `ezkey_mobile/`, install the debug APK on the connected device:
+
+    ```bash
+    yarn android:install:debug
+    ```
+
+    On Windows, if Gradle fails with a JDK version error, set `JAVA_HOME` to Android Studio’s bundled JBR (JDK 17), then run the command again — see [Android build troubleshooting](#android-build-troubleshooting).
+
+### Alternative: build the APK, then push to the phone
 
 ```bash
 yarn android:assemble:debug
@@ -157,11 +161,13 @@ yarn test                  # Jest unit/component tests
 If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. React Native 0.76 requires **JDK 17 or 21**.
 
 **Option 1 – Use the helper script (Git Bash or terminal):**
+
 ```bash
 yarn android:jdk17
 ```
 
 **Option 2 – Set JAVA_HOME manually:**
+
 ```powershell
 # Windows (Android Studio bundled JBR)
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
@@ -218,11 +224,31 @@ This is the preferred first-line reset for mobile dependency/build drift. Do thi
 
 ## Documentation
 
-- [`docs/MOBILE_ARCHITECTURE.md`](docs/MOBILE_ARCHITECTURE.md) – high-level architecture and directory conventions *(created in this revision)*
-- [`docs/NATIVE_MODULES.md`](docs/NATIVE_MODULES.md) – native module responsibilities and communication flow *(created in this revision)*
-- [`docs/PRD.md`](docs/PRD.md) – product requirements for the mobile experience
-- [`docs/CRYPTO.md`](../docs/CRYPTO.md) – shared cryptographic reference
-- [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md) – security analysis for pending/respond endpoints
+Start with the local mobile corpus:
+
+- [`docs/README.md`](docs/README.md) - primary index and reading order for the mobile conceptual documentation set
+- [`docs/MOBILE_API_MAPPINGS.md`](docs/MOBILE_API_MAPPINGS.md) - mapping of Auth API fields, screens, local models, and trust checks
+- [`docs/MOBILE_FUNCTIONAL_FLOWS.md`](docs/MOBILE_FUNCTIONAL_FLOWS.md) - nominal and exception flows for enrollment and authentication
+- [`docs/MOBILE_DATA_MODEL.md`](docs/MOBILE_DATA_MODEL.md) - conceptual internal entities, persistence rules, and source-of-truth boundaries
+- [`docs/MOBILE_SCREENS_AND_WIREFLOWS.md`](docs/MOBILE_SCREENS_AND_WIREFLOWS.md) - primary screens, navigation model, and data visibility
+- [`docs/MOBILE_STACK_AND_ARCHITECTURE.md`](docs/MOBILE_STACK_AND_ARCHITECTURE.md) - technical structure, runtime layers, and generation workflow
+- [`docs/MOBILE_POSITIONING.md`](docs/MOBILE_POSITIONING.md) - mobile product positioning and scope boundaries
+
+Supporting mobile-specific references:
+
+- [`docs/MOBILE_ARCHITECTURE.md`](docs/MOBILE_ARCHITECTURE.md) - earlier high-level architecture and directory conventions
+- [`docs/NATIVE_MODULES.md`](docs/NATIVE_MODULES.md) - native module responsibilities and communication flow
+- [`docs/MOBILE_CRYPTO_REFERENCE.md`](docs/MOBILE_CRYPTO_REFERENCE.md) - mobile-specific crypto wording guardrails and storage-tier caveats
+- [`docs/MOBILE_PLAY_RELEASE_READINESS_AUDIT.md`](docs/MOBILE_PLAY_RELEASE_READINESS_AUDIT.md) - focused audit of current Play release readiness from the workspace state
+- [`docs/MOBILE_RELEASE_DECISION_MEMO.md`](docs/MOBILE_RELEASE_DECISION_MEMO.md) - decision framing for release-now versus upgrade-first on the current stack
+- [`PRD.md`](PRD.md) - product requirements for the mobile experience
+
+Shared repository-level references:
+
+- [`../docs/MOBILE_DEVELOPER_GUIDE.md`](../docs/MOBILE_DEVELOPER_GUIDE.md) - shared protocol implementation guide for mobile clients beyond the reference app
+- [`../docs/CRYPTO.md`](../docs/CRYPTO.md) - shared cryptographic reference
+- [`../docs/ENDPOINT.md`](../docs/ENDPOINT.md) - canonical Auth API endpoint semantics
+- [`../docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md) - security analysis for pending/respond endpoints
 
 ---
 

@@ -1,5 +1,9 @@
 # EZKey Protocol - Mobile Developer Implementation Guide
 
+> Status: shared repository-level protocol guide for third-party or alternative mobile clients.
+> For the Ezkey React Native reference app itself, start with `ezkey_mobile/docs/README.md` and use this guide as the
+> shared protocol and cryptography companion, not as the primary product or screen-flow document.
+
 ## Executive Summary
 
 EZKey is a self-hosted, backend-first cryptographic MFA platform. It is not FIDO2, not WebAuthn,
