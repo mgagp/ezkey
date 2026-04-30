@@ -511,14 +511,9 @@ public class CryptoController {
     if (request.getChallengeRequired() == null) {
       throw new IllegalArgumentException("challengeRequired is required for pending payloads");
     }
-    if (request.getChallengeRequiredByPolicy() == null) {
-      throw new IllegalArgumentException(
-          "challengeRequiredByPolicy is required for pending payloads");
-    }
     return AuthAttemptSignaturePayload.buildPendingPayload(
         request.getProofToken(),
         request.getChallengeRequired(),
-        request.getChallengeRequiredByPolicy(),
         request.getContextTitle(),
         request.getContextMessage());
   }
@@ -567,10 +562,6 @@ public class CryptoController {
       throw new IllegalArgumentException(
           "integrationKeyAlgorithm is required for enrollment-bind payloads");
     }
-    if (request.getChallengeRequiredByPolicy() == null) {
-      throw new IllegalArgumentException(
-        "challengeRequiredByPolicy is required for enrollment-bind payloads");
-    }
     return EnrollmentSignaturePayload.buildBindPayload(
         request.getProofToken(),
         request.getEnrollmentId(),
@@ -581,8 +572,7 @@ public class CryptoController {
         request.getEnrollmentName(),
         request.getTenantId(),
         request.getTenantName(),
-          request.getTenantDescription(),
-          request.getChallengeRequiredByPolicy());
+        request.getTenantDescription());
   }
 
   private static String buildEnrollmentVerifyDevicePayload(PayloadHelperRequestDto request) {

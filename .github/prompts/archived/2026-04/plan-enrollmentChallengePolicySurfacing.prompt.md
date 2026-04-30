@@ -1,14 +1,12 @@
 # Plan: Enrollment Challenge Policy Surfacing
 
-> **Status : COMPLETED — 2026-04-29**
+> **Status : ROLLED BACK — 2026-04-30**
 
-## Result Achieved
+## Outcome
 
-- Auth API/backend contract updated with `authAttemptChallengeRequiredByPolicy` on bind and pending.
-- Bind and pending canonical signed payloads extended and aligned across first-party clients.
-- Demo Device and experimental Dart support updated for the new signed contract shape.
-- Specs, docs, and impacted supporting artifacts were refreshed for the new field and stale-snapshot semantics.
-- Mobile follow-up was completed in the same workstream closure: local persistence, UI surfacing, detail-view badge alignment, pending-flow stabilization, and removal of the obsolete dev-only Diagnostics screen.
+- This workstream was implemented experimentally, then rolled back before release.
+- The rollback removed `authAttemptChallengeRequiredByPolicy` from the protocol-facing contract and client surfaces to restore the prior minimal protocol and eliminate non-essential policy disclosure to mobile clients.
+- The plan is kept here only as historical traceability for the explored direction and the subsequent rollback decision.
 
 ## Plan: Enrollment Challenge Policy Surfacing
 

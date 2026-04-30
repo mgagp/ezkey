@@ -25,24 +25,21 @@ class AuthAttemptSignaturePayloadTest {
     @Test
     void formats_with_all_fields() {
       String payload =
-          AuthAttemptSignaturePayload.buildPendingPayload(
-              "token123", true, true, "Title", "Message");
-      assertThat(payload).isEqualTo("token123|true|true|Title|Message");
+          AuthAttemptSignaturePayload.buildPendingPayload("token123", true, "Title", "Message");
+      assertThat(payload).isEqualTo("token123|true|Title|Message");
     }
 
     @Test
     void null_title_and_message_become_empty() {
-      String payload =
-          AuthAttemptSignaturePayload.buildPendingPayload("t", false, false, null, null);
-      assertThat(payload).isEqualTo("t|false|false||");
+      String payload = AuthAttemptSignaturePayload.buildPendingPayload("t", false, null, null);
+      assertThat(payload).isEqualTo("t|false||");
     }
 
     @Test
     void preserves_accented_text_in_payload() {
       String payload =
-          AuthAttemptSignaturePayload.buildPendingPayload(
-              "t", true, false, "Virement", "Payé");
-      assertThat(payload).isEqualTo("t|true|false|Virement|Payé");
+          AuthAttemptSignaturePayload.buildPendingPayload("t", true, "Virement", "Payé");
+      assertThat(payload).isEqualTo("t|true|Virement|Payé");
     }
   }
 

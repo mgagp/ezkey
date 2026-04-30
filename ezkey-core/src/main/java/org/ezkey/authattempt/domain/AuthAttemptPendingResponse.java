@@ -84,14 +84,6 @@ public class AuthAttemptPendingResponse {
   private Boolean authAttemptChallengeRequired;
 
   /**
-   * Indicates whether the current challenge requirement originates from enrollment policy.
-   *
-   * <p>When true, the enrollment is configured to always require challenge validation for
-   * authentication attempts. When false, any current challenge requirement is per-attempt only.
-   */
-  private Boolean authAttemptChallengeRequiredByPolicy;
-
-  /**
    * Timestamp when the authentication attempt was created.
    *
    * <p>Required for foreign key reference to partitioned table. Used in audit logs to maintain
@@ -194,24 +186,6 @@ public class AuthAttemptPendingResponse {
    */
   public void setAuthAttemptChallengeRequired(Boolean authAttemptChallengeRequired) {
     this.authAttemptChallengeRequired = authAttemptChallengeRequired;
-  }
-
-  /**
-   * Gets whether challenge is required by enrollment policy.
-   *
-   * @return true when enrollment policy always requires challenge validation
-   */
-  public Boolean getAuthAttemptChallengeRequiredByPolicy() {
-    return authAttemptChallengeRequiredByPolicy;
-  }
-
-  /**
-   * Sets whether challenge is required by enrollment policy.
-   *
-   * @param authAttemptChallengeRequiredByPolicy true when enrollment policy requires challenge
-   */
-  public void setAuthAttemptChallengeRequiredByPolicy(Boolean authAttemptChallengeRequiredByPolicy) {
-    this.authAttemptChallengeRequiredByPolicy = authAttemptChallengeRequiredByPolicy;
   }
 
   /**

@@ -82,19 +82,6 @@ public record AuthAttemptPendingResponseDto(
         Boolean authAttemptChallengeRequired,
 
     /**
-     * Indicates whether the challenge requirement is enforced by enrollment policy.
-     *
-     * <p>When true, the enrollment is configured to always require challenge validation on
-     * authentication attempts. When false, any challenge required for this pending attempt is
-     * elective for this request only.
-     */
-    @Schema(
-            description = "Whether challenge validation is required by enrollment policy",
-            example = "true",
-            requiredMode = RequiredMode.REQUIRED)
-        Boolean authAttemptChallengeRequiredByPolicy,
-
-    /**
      * Optional short title for the approval request, displayed as the card header on the mobile
      * device. Null when no context was attached to this authentication attempt.
      */

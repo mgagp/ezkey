@@ -45,7 +45,7 @@ public final class EnrollmentSignaturePayload {
    * Builds the payload signed by the integration in the bind response.
    *
    * <p>Format: {@code
-     * enrollmentProofToken|enrollmentId|integrationPublicKey|algorithm|integrationName|integrationDescription|enrollmentName|tenantId|tenantName|tenantDescription|authAttemptChallengeRequiredByPolicy}
+   * enrollmentProofToken|enrollmentId|integrationPublicKey|algorithm|integrationName|integrationDescription|enrollmentName|tenantId|tenantName|tenantDescription}
    */
   public static String buildBindPayload(
       String enrollmentProofToken,
@@ -57,14 +57,12 @@ public final class EnrollmentSignaturePayload {
       String enrollmentName,
       Integer tenantId,
       String tenantName,
-      String tenantDescription,
-      Boolean authAttemptChallengeRequiredByPolicy) {
+      String tenantDescription) {
     String pt = enrollmentProofToken != null ? enrollmentProofToken : "";
     String idStr = enrollmentId != null ? String.valueOf(enrollmentId) : "";
     String integPk = integrationPublicKeyNormalized != null ? integrationPublicKeyNormalized : "";
     String algo = integrationKeyAlgorithm != null ? integrationKeyAlgorithm : "";
     String tenantIdStr = tenantId != null ? String.valueOf(tenantId) : "";
-    String challengeByPolicy = Boolean.TRUE.equals(authAttemptChallengeRequiredByPolicy) ? "true" : "false";
     return pt
         + SEP
         + idStr
@@ -83,9 +81,7 @@ public final class EnrollmentSignaturePayload {
         + SEP
         + nfcOrEmpty(tenantName)
         + SEP
-          + nfcOrEmpty(tenantDescription)
-          + SEP
-          + challengeByPolicy;
+        + nfcOrEmpty(tenantDescription);
   }
 
   /**

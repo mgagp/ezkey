@@ -136,11 +136,6 @@ public class EnrollmentBindResponse {
   private String enrollmentBindPayloadSignedByIntegration;
 
   /**
-   * Indicates whether authentication challenge is always required by enrollment policy.
-   */
-  private Boolean authAttemptChallengeRequiredByPolicy;
-
-  /**
    * Gets the enrollment ID.
    *
    * @return the enrollment ID
@@ -337,23 +332,5 @@ public class EnrollmentBindResponse {
   public void setEnrollmentBindPayloadSignedByIntegration(
       String enrollmentBindPayloadSignedByIntegration) {
     this.enrollmentBindPayloadSignedByIntegration = enrollmentBindPayloadSignedByIntegration;
-  }
-
-  /**
-   * Gets whether authentication challenge is always required by enrollment policy.
-   *
-   * @return true when enrollment policy requires challenge on every auth attempt
-   */
-  public Boolean getAuthAttemptChallengeRequiredByPolicy() {
-    return authAttemptChallengeRequiredByPolicy;
-  }
-
-  /**
-   * Sets whether authentication challenge is always required by enrollment policy.
-   *
-   * @param authAttemptChallengeRequiredByPolicy true when enrollment policy requires challenge
-   */
-  public void setAuthAttemptChallengeRequiredByPolicy(Boolean authAttemptChallengeRequiredByPolicy) {
-    this.authAttemptChallengeRequiredByPolicy = authAttemptChallengeRequiredByPolicy;
   }
 }

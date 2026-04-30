@@ -278,19 +278,6 @@ public class DatabaseHelper {
   }
 
   /**
-   * Gets the current device public key stored for an enrollment.
-   *
-   * @param enrollmentId Enrollment ID to check
-   * @return Device public key, or null if not found or not yet bound
-   */
-  public String getEnrollmentDevicePublicKey(Integer enrollmentId) {
-    String sqlQuery =
-        "SELECT device_public_key FROM ezkey_enrollment WHERE enrollment_id = %d;"
-            .formatted(enrollmentId);
-    return executeQuerySingleValue(sqlQuery);
-  }
-
-  /**
    * Returns enrollment IDs whose proof token is stored as plaintext (no ENC: prefix).
    *
    * <p>Used for opportunistic verification of encryption-at-rest: all enrollment proof tokens

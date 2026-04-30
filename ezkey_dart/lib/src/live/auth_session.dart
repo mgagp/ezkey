@@ -63,8 +63,6 @@ class EzkeyAuthSession {
       enrollmentId: int.parse(bindResponse.enrollmentId),
       integrationPublicKey: bindResponse.integrationPublicKey,
       integrationKeyAlgorithm: bindResponse.integrationKeyAlgorithm?.trim() ?? '',
-      authAttemptChallengeRequiredByPolicy:
-          bindResponse.authAttemptChallengeRequiredByPolicy,
       integrationName: bindResponse.integrationName,
       integrationDescription: bindResponse.integrationDescription,
       enrollmentName: bindResponse.enrollmentName,
@@ -167,7 +165,6 @@ class EzkeyAuthSession {
     final pendingPayload = buildPendingPayload(
       response.authAttemptProofToken,
       response.authAttemptChallengeRequired,
-      response.authAttemptChallengeRequiredByPolicy,
       response.contextTitle,
       response.contextMessage,
     );
@@ -252,9 +249,6 @@ class VerifiedPendingAuthAttempt {
   String get authAttemptProofToken => response.authAttemptProofToken;
 
   bool get challengeRequired => response.authAttemptChallengeRequired;
-
-  bool get challengeRequiredByPolicy =>
-      response.authAttemptChallengeRequiredByPolicy;
 
   String? get contextTitle => response.contextTitle;
 

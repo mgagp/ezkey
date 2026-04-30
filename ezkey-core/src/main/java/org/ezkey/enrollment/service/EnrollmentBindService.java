@@ -362,7 +362,6 @@ public class EnrollmentBindService {
     response.setEnrollmentProofToken(enrollment.getEnrollmentProofToken());
     response.setIntegrationName(integrationName);
     response.setIntegrationDescription(integrationDescription);
-    response.setAuthAttemptChallengeRequiredByPolicy(enrollment.getAuthAttemptChallengeRequired());
 
     // Tenant resolution: use scalar queries only to avoid loading Tenant entity and its
     // administrators collection (prevents "Found shared references to collection:
@@ -399,8 +398,7 @@ public class EnrollmentBindService {
             response.getEnrollmentName(),
             response.getTenantId(),
             response.getTenantName(),
-            response.getTenantDescription(),
-            response.getAuthAttemptChallengeRequiredByPolicy());
+            response.getTenantDescription());
     String bindSignature =
         signatureService.signIntegrationPayload(bindPayload, enrollment.getIntegrationPrivateKey());
     response.setEnrollmentBindPayloadSignedByIntegration(bindSignature);

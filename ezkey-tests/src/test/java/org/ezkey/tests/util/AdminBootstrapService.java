@@ -147,7 +147,7 @@ public class AdminBootstrapService {
 
     // Tier 2: Try to reuse device credentials to create new token
     log.info("Tier 2: Checking for device credentials...");
-    DeviceCredentials deviceCredentials = loadCurrentDeviceCredentials();
+    DeviceCredentials deviceCredentials = loadDeviceCredentials();
     if (deviceCredentials != null) {
       log.info("✅ Device credentials found, creating new admin token...");
       log.info("   Enrollment ID from credentials: {}", deviceCredentials.enrollmentId());
@@ -190,7 +190,7 @@ public class AdminBootstrapService {
     bootstrapLock.lock();
     try {
       // Double-check: maybe another thread already completed bootstrap while we waited
-      DeviceCredentials existingCredentials = loadCurrentDeviceCredentials();
+      DeviceCredentials existingCredentials = loadDeviceCredentials();
       if (existingCredentials != null) {
         log.info("Device credentials were created by another thread while waiting for lock");
         return existingCredentials;
@@ -284,37 +284,14 @@ public class AdminBootstrapService {
         // Enrollment already verified - check if we have matching device credentials
         log.info(
             "   ⚠️  Enrollment already VERIFIED - Checking for existing device credentials...");
-        String enrolledDevicePublicKey =
-            databaseHelper.getEnrollmentDevicePublicKey(credentials.enrollmentId());
         DeviceCredentials existingCredentials = loadDeviceCredentials();
 
-        if (existingCredentials != null
-            && !existingCredentials.enrollmentId().equals(credentials.enrollmentId())) {
-          existingCredentials = null;
-        }
-
-        if (existingCredentials != null
-            && enrolledDevicePublicKey != null
-            && !enrolledDevicePublicKey.equals(existingCredentials.publicKey())) {
-          log.warn(
-              "   ⚠️  Cached device credentials do not match the enrollment public key - "
-                  + "forcing rebind");
-          existingCredentials = null;
-        }
-
         // If not found locally, try loading from bootstrap volume (created by bootstrap-init)
-        if (existingCredentials == null) {
+        if (existingCredentials == null
+            || !existingCredentials.enrollmentId().equals(credentials.enrollmentId())) {
           log.info("   ⚠️  Device credentials not found locally - Checking bootstrap volume...");
           DeviceCredentials bootstrapCredentials =
               loadDeviceCredentialsFromBootstrapVolume(credentials.enrollmentId());
-          if (bootstrapCredentials != null
-              && enrolledDevicePublicKey != null
-              && !enrolledDevicePublicKey.equals(bootstrapCredentials.publicKey())) {
-            log.warn(
-                "   ⚠️  Bootstrap-volume device credentials do not match the enrollment public"
-                    + " key - forcing rebind");
-            bootstrapCredentials = null;
-          }
           if (bootstrapCredentials != null) {
             log.info(
                 "   ✅ Found device credentials in bootstrap volume (created by bootstrap-init)");
@@ -1259,39 +1236,6 @@ public class AdminBootstrapService {
       log.warn("Failed to load device credentials from file: {}", e.getMessage());
       return null;
     }
-  }
-
-  /**
-   * Loads cached device credentials only when they still match the enrollment public key stored in
-   * the database.
-   *
-   * @return current device credentials, or null when the cache is stale
-   */
-  private DeviceCredentials loadCurrentDeviceCredentials() {
-    DeviceCredentials credentials = loadDeviceCredentials();
-    if (credentials == null) {
-      return null;
-    }
-
-    String enrolledDevicePublicKey =
-        databaseHelper.getEnrollmentDevicePublicKey(credentials.enrollmentId());
-    if (enrolledDevicePublicKey == null) {
-      log.warn(
-          "Cached device credentials belong to enrollment {} but no device public key is stored"
-              + " in database",
-          credentials.enrollmentId());
-      return null;
-    }
-
-    if (!enrolledDevicePublicKey.equals(credentials.publicKey())) {
-      log.warn(
-          "Cached device credentials for enrollment {} do not match the current database public"
-              + " key",
-          credentials.enrollmentId());
-      return null;
-    }
-
-    return credentials;
   }
 
   /**

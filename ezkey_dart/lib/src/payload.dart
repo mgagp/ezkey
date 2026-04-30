@@ -6,7 +6,6 @@ String buildEnrollmentBindPayload({
   required int enrollmentId,
   required String integrationPublicKey,
   required String integrationKeyAlgorithm,
-  required bool authAttemptChallengeRequiredByPolicy,
   String? integrationName,
   String? integrationDescription,
   String? enrollmentName,
@@ -26,7 +25,6 @@ String buildEnrollmentBindPayload({
     tenantIdStr,
     _nfc(tenantName ?? ''),
     _nfc(tenantDescription ?? ''),
-    '$authAttemptChallengeRequiredByPolicy',
   ].join('|');
 }
 
@@ -53,11 +51,10 @@ String buildEnrollmentVerifyResultPayload(
 String buildPendingPayload(
   String proofToken,
   bool challengeRequired,
-  bool challengeRequiredByPolicy,
   String? contextTitle,
   String? contextMessage,
 ) {
-  return '$proofToken|$challengeRequired|$challengeRequiredByPolicy|${_nfc(contextTitle ?? '')}|${_nfc(contextMessage ?? '')}';
+  return '$proofToken|$challengeRequired|${_nfc(contextTitle ?? '')}|${_nfc(contextMessage ?? '')}';
 }
 
 String buildRespondPayload(String proofToken, bool accepted) {

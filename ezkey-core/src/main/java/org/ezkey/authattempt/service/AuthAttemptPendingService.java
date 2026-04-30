@@ -267,25 +267,20 @@ public class AuthAttemptPendingService {
     response.setAuthAttemptProofToken(authAttempt.getAuthAttemptProofToken());
 
     // Determine challenge requirements (same logic as response fields)
-    boolean challengeRequiredByPolicy =
-      Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired());
     boolean challengeRequired =
-      authAttempt.getAuthAttemptChallenge() != null || challengeRequiredByPolicy;
+        authAttempt.getAuthAttemptChallenge() != null
+            || Boolean.TRUE.equals(enrollment.getAuthAttemptChallengeRequired());
     response.setAuthAttemptChallengeRequired(challengeRequired);
-    response.setAuthAttemptChallengeRequiredByPolicy(challengeRequiredByPolicy);
 
     // Forward optional contextual authentication fields to the mobile device
     response.setContextTitle(authAttempt.getContextTitle());
     response.setContextMessage(authAttempt.getContextMessage());
 
-    // Sign canonical payload
-    // (proofToken|challengeRequired|challengeRequiredByPolicy|contextTitle|contextMessage)
-    // with NFC
+    // Sign canonical payload (proofToken|challengeRequired|contextTitle|contextMessage) with NFC
     String payload =
         AuthAttemptSignaturePayload.buildPendingPayload(
             authAttempt.getAuthAttemptProofToken(),
             challengeRequired,
-        challengeRequiredByPolicy,
             authAttempt.getContextTitle(),
             authAttempt.getContextMessage());
     // Diagnostic: SHA-256 (hex) of UTF-8 bytes — must match mobile pendingPayload

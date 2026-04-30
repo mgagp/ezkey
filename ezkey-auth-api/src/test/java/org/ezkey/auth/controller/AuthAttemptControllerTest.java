@@ -157,7 +157,6 @@ class AuthAttemptControllerTest {
             "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofToken
             "eyJhbGciOiJSUzI1NiJ9...", // authAttemptProofTokenSignedByIntegration
             true, // authAttemptChallengeRequired
-            true, // authAttemptChallengeRequiredByPolicy
             null, // contextTitle
             null); // contextMessage
 

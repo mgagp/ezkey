@@ -10,7 +10,6 @@ import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.AuthAttemptPayloadUtil;
 import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.DeviceCryptoService.ECP256DeviceKeyPair;
-import org.ezkey.demo.device.service.EnrollmentBindPayloadUtil;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.ezkey.demo.device.service.EnrollmentVerifyPayloadUtil;
@@ -140,30 +139,6 @@ public class EzkeyAppController {
         Integer tenantId = bindResponse.getTenantId();
         String tenantName = bindResponse.getTenantName();
         String tenantDescription = bindResponse.getTenantDescription();
-        Boolean challengeRequiredByPolicy = bindResponse.getAuthAttemptChallengeRequiredByPolicy();
-
-        String bindPayload =
-          EnrollmentBindPayloadUtil.buildBindPayload(
-            bindResponse.getEnrollmentProofToken(),
-            bindResponse.getEnrollmentId(),
-            integrationPublicKey,
-            bindResponse.getIntegrationKeyAlgorithm(),
-            integrationName,
-            integrationDescription,
-            enrollmentName,
-            tenantId,
-            tenantName,
-            tenantDescription,
-            challengeRequiredByPolicy);
-        boolean bindSignatureValid =
-          cryptoService.validateSignature(
-            bindPayload,
-            bindResponse.getEnrollmentBindPayloadSignedByIntegration(),
-            integrationPublicKey);
-        if (!bindSignatureValid) {
-          model.addAttribute("error", "Invalid bind signature");
-          return "phone/ezkey/new_enrollment";
-        }
 
         logger.info(
             "Using integration info for enrollment {}: name={}, description={},"
@@ -187,7 +162,7 @@ public class EzkeyAppController {
                 responseProofToken, // Store the proof token (not signed)
                 devicePublicKeyB64,
                 devicePrivateKeyB64,
-                challengeRequiredByPolicy,
+                null,
                 "Device",
                 null,
                 integrationName,
@@ -328,7 +303,7 @@ public class EzkeyAppController {
                   rec.enrollmentProofToken(),
                   rec.devicePublicKey(),
                   rec.devicePrivateKey(),
-                  rec.authAttemptChallengeRequired(),
+                  true, // authAttemptChallengeRequired
                   rec.deviceLabel(),
                   rec.createdAt(),
                   rec.integrationName(),
@@ -418,13 +393,11 @@ public class EzkeyAppController {
         // There's a pending authentication attempt
         logger.info("Found pending auth attempt: {}", pendingResponse);
 
-        // Build canonical payload
-        // (proofToken|challengeRequired|challengeRequiredByPolicy|contextTitle|contextMessage, NFC)
+        // Build canonical payload (proofToken|challengeRequired|contextTitle|contextMessage, NFC)
         String pendingPayload =
             AuthAttemptPayloadUtil.buildPendingPayload(
                 pendingResponse.getAuthAttemptProofToken(),
                 Boolean.TRUE.equals(pendingResponse.getAuthAttemptChallengeRequired()),
-          Boolean.TRUE.equals(pendingResponse.getAuthAttemptChallengeRequiredByPolicy()),
                 pendingResponse.getContextTitle(),
                 pendingResponse.getContextMessage());
         // Validate the integration signature over the full payload
