@@ -9,7 +9,6 @@ function makeEnrollment(overrides: Partial<StoredEnrollment> = {}): StoredEnroll
     tenantName: 'Tenant A',
     createdAt: '2025-01-01T00:00:00.000Z',
     lastActivityAt: '2025-01-01T00:00:00.000Z',
-    status: 'active',
     enrollmentProofToken: 'token',
     authUrl: 'https://tenant-a.example.com',
     installationId: 'https://tenant-a.example.com',

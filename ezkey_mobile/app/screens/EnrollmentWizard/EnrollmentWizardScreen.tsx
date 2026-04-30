@@ -30,7 +30,7 @@ import {useSaveEnrollment} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {enrollmentsApi} from '../../services/api/enrollments';
 import {instanceInfoApi} from '../../services/api/instanceInfo';
-import {BindEnrollmentResponse, EnrollmentStatus} from '../../services/api/types';
+import {BindEnrollmentResponse} from '../../services/api/types';
 import {cryptoService} from '../../services/crypto';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
@@ -61,7 +61,6 @@ type EnrollmentDraft = {
   integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
-  status: EnrollmentStatus;
 };
 
 type EnrollmentInfoCardProps = {
@@ -255,7 +254,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         integrationDescription: response.integrationDescription,
         enrollmentName: response.enrollmentName,
         deviceLabel: response.enrollmentName,
-        status: 'pending',
       };
     },
     [],
@@ -383,7 +381,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         setEnrollmentChallenge('');
         return;
       }
-      const status: EnrollmentStatus = verifyResponse.active ? 'active' : 'pending';
       let installationSummary =
         effectiveAuthUrl != null ? buildInstallationSummary(effectiveAuthUrl, undefined, now) : {};
 
@@ -405,7 +402,6 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         tenantDescription: draft.tenantDescription,
         createdAt: now,
         lastActivityAt: now,
-        status,
         favorited: false,
         enrollmentProofToken: draft.enrollmentProofToken,
         enrollmentId: enrollmentId,

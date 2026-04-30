@@ -11,8 +11,6 @@ import type {
   EnrollmentVerifyResponseDto,
 } from './generated/auth-api/model';
 
-export type EnrollmentStatus = 'active' | 'pending';
-
 export type PublicInstanceInfoResponse = {
   authApiPublicBaseUrl?: string | null;
   instanceName?: string | null;
@@ -38,7 +36,6 @@ export type EnrollmentSummary = InstallationSummary & {
   tenantDescription?: string;
   createdAt: string;
   lastActivityAt: string;
-  status: EnrollmentStatus;
   favorited?: boolean;
   /** Base URL of the Ezkey Auth API for this enrollment (e.g. "https://ezkey.acme.com"). */
   authUrl?: string;
