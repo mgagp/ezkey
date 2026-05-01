@@ -10,19 +10,11 @@
  */
 
 import type {StoredEnrollment} from '../services/storage/enrollmentStorage';
+import type {Installation} from '../services/api/types';
 import {
   hydrateInstallationMetadata,
   shouldShowInstallationHostHint,
 } from './installationMetadata';
-
-type InstallationBranding = {
-  installationId: string;
-  installationName: string;
-  installationDescription?: string;
-  installationHost?: string;
-  installationAboutUrl?: string;
-  showHostHint: boolean;
-};
 
 /**
  * Group of enrollments belonging to a single tenant.
@@ -40,7 +32,9 @@ export type TenantGroup = {
   enrollments: StoredEnrollment[];
 };
 
-export type InstallationGroup = InstallationBranding & {
+export type InstallationGroup = {
+  installation: Installation;
+  showHostHint: boolean;
   tenantGroups: TenantGroup[];
   ungroupedEnrollments: StoredEnrollment[];
 };
@@ -74,15 +68,15 @@ function sortEnrollmentsWithinGroup(items: StoredEnrollment[]): StoredEnrollment
   });
 }
 
-function sortInstallations(left: InstallationBranding, right: InstallationBranding): number {
-  const nameCmp = left.installationName.localeCompare(right.installationName, undefined, {
+function sortInstallations(left: InstallationGroup, right: InstallationGroup): number {
+  const nameCmp = left.installation.name.localeCompare(right.installation.name, undefined, {
     sensitivity: 'base',
   });
   if (nameCmp !== 0) {
     return nameCmp;
   }
 
-  return (left.installationHost ?? '').localeCompare(right.installationHost ?? '', undefined, {
+  return (left.installation.host ?? '').localeCompare(right.installation.host ?? '', undefined, {
     sensitivity: 'base',
   });
 }
@@ -98,16 +92,16 @@ function sortTenantGroups(left: TenantGroup, right: TenantGroup): number {
   return (left.tenantId ?? 0) - (right.tenantId ?? 0);
 }
 
-function buildInstallationBranding(enrollment: StoredEnrollment): InstallationBranding {
+function buildInstallationGroup(enrollment: StoredEnrollment): Pick<InstallationGroup, 'installation' | 'showHostHint'> {
   const hydrated = hydrateInstallationMetadata(enrollment);
+  const installation = hydrated.installation ?? {
+    id: hydrated.id,
+    name: 'Ezkey installation',
+  };
 
   return {
-    installationId: hydrated.installationId ?? hydrated.id,
-    installationName: hydrated.installationName ?? 'Ezkey installation',
-    installationDescription: hydrated.installationDescription,
-    installationHost: hydrated.installationHost,
-    installationAboutUrl: hydrated.installationAboutUrl,
-    showHostHint: shouldShowInstallationHostHint(hydrated),
+    installation,
+    showHostHint: shouldShowInstallationHostHint(installation),
   };
 }
 
@@ -118,12 +112,12 @@ function buildInstallationBranding(enrollment: StoredEnrollment): InstallationBr
  * @return Ordered list of installation groups
  * @since 2025
  */
-export function groupEnrollmentsByTenant(enrollments: StoredEnrollment[]): InstallationGroup[] {
+export function groupEnrollmentsByInstallation(enrollments: StoredEnrollment[]): InstallationGroup[] {
   const grouped = new Map<string, StoredEnrollment[]>();
 
   for (const enrollment of enrollments) {
     const hydrated = hydrateInstallationMetadata(enrollment);
-    const installationId = hydrated.installationId ?? hydrated.id;
+    const installationId = hydrated.installation?.id ?? hydrated.id;
     const list = grouped.get(installationId) ?? [];
     list.push(hydrated);
     grouped.set(installationId, list);
@@ -169,7 +163,7 @@ export function groupEnrollmentsByTenant(enrollments: StoredEnrollment[]): Insta
       .sort(sortTenantGroups);
 
     return {
-      ...buildInstallationBranding(first),
+      ...buildInstallationGroup(first),
       tenantGroups: normalizedTenantGroups,
       ungroupedEnrollments: sortEnrollmentsWithinGroup(ungroupedEnrollments),
     };
@@ -177,3 +171,5 @@ export function groupEnrollmentsByTenant(enrollments: StoredEnrollment[]): Insta
 
   return groups.sort(sortInstallations);
 }
+
+export const groupEnrollmentsByTenant = groupEnrollmentsByInstallation;

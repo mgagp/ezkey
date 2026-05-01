@@ -15,7 +15,7 @@ persists, derives, and displays those values locally.
 | Concept | Purpose | Source | Persisted | Sensitive |
 | --- | --- | --- | --- | --- |
 | `PublicInstanceInfoResponse` | Public installation branding metadata from Auth API | `instanceInfoApi.get(...)` | Indirectly, after normalization into installation summary fields | No |
-| `InstallationSummary` | Stable local installation branding attached to an enrollment | Derived from `authUrl` and optional public instance-info response | Yes | No |
+| `Installation` | Canonical local trust-zone object for an Ezkey installation | Derived from normalized `authUrl` and optional public instance-info response | Yes, nested inside each enrollment record | No |
 | `EnrollmentSummary` | Core local view of an enrolled device and its business metadata | Local mobile contract layer in `app/services/api/types.ts` | Yes | Mostly no |
 | `StoredEnrollment` | Persisted enrollment record used by Home, Detail, and auth flows | `EnrollmentSummary` plus sensitive enrollment metadata | Yes | Yes, because it contains `enrollmentProofToken` and `integrationPublicKey` |
 | Enrollment draft | Temporary bind-stage object before enrollment is verified | Enrollment Wizard bind response mapping | No | Yes |
@@ -30,7 +30,7 @@ persists, derives, and displays those values locally.
 ```mermaid
 flowchart TD
   PublicInstanceInfo[Public instance info response]
-  InstallationSummary[InstallationSummary]
+  Installation[Installation]
   EnrollmentSummary[EnrollmentSummary]
   StoredEnrollment[StoredEnrollment]
   EnrollmentDraft[Enrollment draft]
@@ -38,8 +38,8 @@ flowchart TD
   RespondIntent[Respond intent]
   DeviceCrypto[Device crypto material]
 
-  PublicInstanceInfo --> InstallationSummary
-  InstallationSummary --> EnrollmentSummary
+  PublicInstanceInfo --> Installation
+  Installation --> EnrollmentSummary
   EnrollmentSummary --> StoredEnrollment
   EnrollmentDraft --> StoredEnrollment
   StoredEnrollment --> PendingAttempt
@@ -49,7 +49,7 @@ flowchart TD
 ```
 
 The durable center of the local model is `StoredEnrollment`. Everything else is either a thinner contract view
-(`EnrollmentSummary`, `InstallationSummary`) or transient flow state (`EnrollmentDraft`, pending attempt,
+(`EnrollmentSummary`, `Installation`) or transient flow state (`EnrollmentDraft`, pending attempt,
 respond intent).
 
 ## Installation Metadata
@@ -58,19 +58,38 @@ Installation metadata exists to make Home and Detail truthful and human-readable
 an admin client. The app derives it from the effective Auth API URL and refreshes it opportunistically through the
 public `instance-info` endpoint.
 
+`Installation` is the mobile app's first-class local representation of an Ezkey site / trust zone. The object is
+persisted inside each enrollment record because the installation remains subordinate to the enrollment lifecycle, but
+the object itself is explicit and canonical. The identity anchor is always the normalized Auth API URL, never the
+mutable public branding returned by `instance-info`.
+
 | Field/concept | Meaning | Source | Persisted | Displayed where |
 | --- | --- | --- | --- | --- |
-| `installationId` | Normalized stable installation identifier | Derived from `authUrl` via URL normalization | Yes | Not shown directly |
-| `installationHost` | Host component of the effective Auth API URL | Derived from `authUrl` | Yes | Home installation headers, Detail hint |
-| `installationName` | Human-facing installation name | Public instance-info response or host fallback | Yes | Home installation headers, Detail identity zone |
-| `installationDescription` | Installation description text | Public instance-info response | Yes | Home installation headers, Detail description line |
-| `installationAboutUrl` | About URL for the installation | Public instance-info response | Yes | Not currently displayed in primary flow |
-| `installationLastRefreshedAt` | Timestamp for local metadata freshness | Local refresh process | Yes | Not shown directly |
-| `authUrl` | Effective Auth API base URL for this enrollment | QR payload override or global environment fallback | Yes | Detail screen when custom server is shown |
+| `installation.id` | Normalized stable installation identifier | Derived from `authUrl` via URL normalization | Yes | Not shown directly |
+| `installation.authUrl` | Effective Auth API base URL for the installation | QR payload override or global environment fallback | Yes | Detail screen technical server block |
+| `installation.host` | Host component of the effective Auth API URL | Derived from `authUrl` | Yes | Home installation headers, Detail hint |
+| `installation.name` | Human-facing installation name | Public instance-info response or host fallback | Yes | Home installation headers, Detail identity zone |
+| `installation.description` | Installation description text | Public instance-info response | Yes | Home installation headers, Detail description line |
+| `installation.aboutUrl` | About URL for the installation | Public instance-info response | Yes | Not currently displayed in primary flow |
+| `installation.lastRefreshedAt` | Timestamp for local metadata freshness | Local refresh process | Yes | Not shown directly |
 
 Important rule: installation metadata is local presentation metadata attached to an enrollment. The app refreshes it
 silently when stale, but it is still subordinate to the enrollment record and not treated as a standalone persisted
 entity.
+
+## Installation Association Pipeline
+
+The association from enrollment to installation is intentional and specification-driven:
+
+1. Resolve the effective `authUrl` from the QR payload override or the configured mobile environment fallback.
+2. Normalize that URL with the same rules used by `validateAuthUrl()` / `normalizeInstallationId()`.
+3. Build or hydrate the `Installation` object from the normalized URL plus any cached or freshly fetched public
+  instance-info metadata.
+4. Persist the resulting `installation` object inside `StoredEnrollment`.
+5. Group Home data by `installation.id`, then by tenant metadata inside each installation.
+
+The important invariant is that two enrollments with equivalent normalized Auth API URLs belong to the same
+installation, even if they arrived independently and even if branding was missing during one of the flows.
 
 ## Enrollment Summary and Stored Enrollment
 
@@ -82,10 +101,10 @@ proof token and integration verification material needed for later auth flows.
 | Identity | `id`, `integrationId` | same | `id` is the main local enrollment identifier used in navigation and storage. |
 | Integration display | `integrationName` | same | Primary end-user label across Home, Detail, and Pending flows. |
 | Tenant grouping | `tenantName`, `tenantId`, `tenantDescription` | same | Supports tenant grouping in Home. |
-| Installation branding | `installation*` fields | same | Hydrated from `authUrl` and public instance info. |
+| Installation association | `installation` object | same | Hydrated from `authUrl` and public instance info. |
 | Activity timestamps | `createdAt`, `lastActivityAt` | same | Current app uses these as the minimal durable activity snapshot. |
 | Favorites | `favorited` | same | A purely local ordering preference. |
-| Server routing | `authUrl` | same | Allows per-enrollment server targeting. |
+| Server routing | `installation.authUrl` | same | Allows per-installation server targeting. |
 | Proof token | absent | `enrollmentProofToken` | Needed for later `pending` requests. |
 | Integration verification key | absent | `integrationPublicKey` | Needed to verify bind, verify result, pending, and respond result signatures. |
 | Device naming | absent | `enrollmentName`, `deviceLabel` | Friendly local display material originating from bind. |
@@ -160,7 +179,7 @@ been directly observed during a flow.
 | --- | --- | --- | --- | --- |
 | `createdAt` | Observed at local enrollment completion | Yes | Home ordering, Detail meta line | Local completion timestamp, not a full lifecycle audit. |
 | `lastActivityAt` | Locally recorded when enrollment is saved | Yes | Detail meta line | Not currently updated for every later auth outcome. |
-| Installation freshness | Derived from `installationLastRefreshedAt` | Yes | Silent refresh logic | Not shown directly. |
+| Installation freshness | Derived from `installation.lastRefreshedAt` | Yes | Silent refresh logic | Not shown directly. |
 | Grouping by installation and tenant | Derived from persisted enrollment metadata | No, render-time only | Home structure | Pure UI derivation. |
 | Empty pending state | Observed from `pending` empty result | No | Pending screen | Not persisted as durable local history. |
 | Approved / rejected / failed result state | Observed from trusted `respond` result | No | Pending screen | Terminal for the current screen session only. |
@@ -175,7 +194,7 @@ revocation, or readiness states that it cannot prove.
 | --- | --- | --- | --- | --- |
 | Enrollment draft | Bind response passes algorithm and signature checks | Bind is retried or bind form is rescanned | Wizard cancel, verify completion, or bind reset | Purely in-memory workflow state. |
 | `StoredEnrollment` | Verify-result signature passes and save mutation succeeds | Installation metadata refresh, future local edits, favorite changes | Individual delete or clear-all destructive action | Core durable local record. |
-| Installation summary fields | Enrollment save or silent metadata refresh | When metadata is stale or incomplete | Enrollment deletion / clear all | Subordinate to the enrollment record. |
+| `installation` object | Enrollment save or silent metadata refresh | When metadata is stale or incomplete | Enrollment deletion / clear all | Subordinate to the enrollment record, but explicit in the local model. |
 | Pending attempt | Pending response passes signature verification | Re-check overwrites it | Empty result, failed state, leaving screen, or new load cycle | In-memory only. |
 | Respond intent | User starts entering challenge or taps approve/deny | User edits challenge input or retries | After result or retry cycle | In-memory only. |
 | Device key pair | First verify or first later ensure call for that enrollment | Not meaningfully updated in normal flow | External keystore reset or app/device reset | Managed outside AsyncStorage. |

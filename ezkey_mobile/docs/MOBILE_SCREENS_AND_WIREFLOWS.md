@@ -180,15 +180,15 @@ screen dedicated to the auth decision rather than background polling from elsewh
 
 | Field/concept | Home | Enrollment Wizard | Enrollment Detail | Pending Authentication | Supporting screens |
 | --- | --- | --- | --- | --- | --- |
-| `installationName` | Shown in installation headers | Not primary, but derived server shown optionally | Shown | Not normally shown except fallback identity context | No |
-| `installationHost` | Optional host hint in installation header | Optional server URL in info card | Optional host hint | No | No |
+| `installation.name` | Shown in installation headers | Not primary, but derived server shown optionally | Shown | Not normally shown except fallback identity context | No |
+| `installation.host` | Optional host hint in installation header | Optional server URL in info card | Optional host hint | No | No |
 | `tenantName` | Shown in grouping headers | Shown in info card after bind | Shown | Shown as fallback identity | Danger Zone shows a minimal tenant line |
 | `integrationName` | Shown on enrollment cards | Shown in info card after bind | Shown | Shown in enrollment box or result | Danger Zone row title |
 | `integrationDescription` | Shown on enrollment cards when present | Shown in info card | Not shown directly | No | No |
 | `enrollmentName` | Shown on cards when present | Shown in info card | Shown | Shown in result fallback state | No |
 | `createdAt` | Not shown | Not shown | Shown in meta line | Used in result fallback meta | No |
 | `lastActivityAt` | Not shown | Not shown | Shown in meta line | Used in result fallback meta | No |
-| `authUrl` | Hidden | Optional server line during draft stage | Shown when custom server exists | Used for routing, not display | No |
+| `installation.authUrl` | Hidden | Optional server line during draft stage | Shown when custom server exists | Used for routing, not display | No |
 | `enrollmentProofToken` | Hidden | Hidden | Hidden | Hidden | Hidden |
 | `integrationPublicKey` | Hidden | Hidden | Hidden | Hidden | Hidden |
 | `contextTitle` / `contextMessage` | No | No | No | Shown only after pending signature verification | No |

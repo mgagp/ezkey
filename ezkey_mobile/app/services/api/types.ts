@@ -18,16 +18,24 @@ export type PublicInstanceInfoResponse = {
   aboutUrl?: string | null;
 };
 
-export type InstallationSummary = {
-  installationId?: string;
-  installationHost?: string;
-  installationName?: string;
-  installationDescription?: string;
-  installationAboutUrl?: string;
-  installationLastRefreshedAt?: string;
+/**
+ * Canonical local representation of an Ezkey installation trust zone.
+ *
+ * The installation identity is derived from the normalized Auth API URL. Public
+ * instance-info fields enrich presentation only; they are not a cryptographic
+ * trust anchor.
+ */
+export type Installation = {
+  id: string;
+  authUrl?: string;
+  host?: string;
+  name: string;
+  description?: string;
+  aboutUrl?: string;
+  lastRefreshedAt?: string;
 };
 
-export type EnrollmentSummary = InstallationSummary & {
+export type EnrollmentSummary = {
   id: string;
   integrationId: string;
   integrationName: string;
@@ -37,8 +45,7 @@ export type EnrollmentSummary = InstallationSummary & {
   createdAt: string;
   lastActivityAt: string;
   favorited?: boolean;
-  /** Base URL of the Ezkey Auth API for this enrollment (e.g. "https://ezkey.acme.com"). */
-  authUrl?: string;
+  installation?: Installation;
 };
 
 export type BindEnrollmentRequest = {

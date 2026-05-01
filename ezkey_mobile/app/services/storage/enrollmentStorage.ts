@@ -22,7 +22,8 @@ const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
  * Local representation of enrollment records including proof tokens.
  *
  * With EC P-256, device keys are stored through the native platform keystore path per enrollment,
- * so no device alias needs to be stored.
+ * so no device alias needs to be stored. Installation routing and branding metadata now live in the
+ * nested `installation` object and legacy flattened installation fields are normalized on read.
  *
  * @since 2025
  */
@@ -75,7 +76,10 @@ class EnrollmentStorage {
   /**
    * Lists all persisted enrollments.
    *
-   * @return Array of stored enrollments.
+    * Rehydrates the nested installation object even when older local records still use flattened
+    * installation fields.
+    *
+    * @return Array of stored enrollments.
    * @since 2025
    */
   async listEnrollments(): Promise<StoredEnrollment[]> {

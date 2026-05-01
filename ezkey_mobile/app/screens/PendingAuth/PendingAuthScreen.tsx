@@ -209,7 +209,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         enrollmentProofToken: enrollment.enrollmentProofToken,
         deviceProofToken,
         deviceProofTokenSigned,
-      }, enrollment.authUrl);
+      }, enrollment.installation?.authUrl);
 
       if (!response) {
         setAttempt(undefined);
@@ -356,7 +356,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           authAttemptAccepted: accepted,
           authAttemptProofTokenSignedByDevice: proofTokenSigned,
           authAttemptChallengeResponse: challengeInput.trim() || undefined,
-        }, enrollment.authUrl);
+        }, enrollment.installation?.authUrl);
 
         const integrationPublicKey = enrollment.integrationPublicKey;
         if (!integrationPublicKey) {

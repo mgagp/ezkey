@@ -15,7 +15,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {instanceInfoApi} from '../services/api/instanceInfo';
 import {enrollmentStorage, StoredEnrollment} from '../services/storage/enrollmentStorage';
 import {
-  buildInstallationSummary,
+  buildInstallation,
   isInstallationMetadataStale,
   needsInstallationMetadataRefresh,
   resolveEnrollmentAuthUrl,
@@ -47,8 +47,8 @@ const refreshInstallationMetadata = async (
       return;
     }
 
-    const authUrl = resolveEnrollmentAuthUrl(enrollment.authUrl);
-    const installationId = enrollment.installationId ?? authUrl;
+    const authUrl = resolveEnrollmentAuthUrl(enrollment.installation?.authUrl);
+    const installationId = enrollment.installation?.id ?? authUrl;
     if (!authUrl || !installationId) {
       return;
     }
@@ -73,7 +73,7 @@ const refreshInstallationMetadata = async (
     try {
       const instanceInfo = await instanceInfoApi.get(installation.authUrl);
       const refreshedAt = new Date().toISOString();
-      const installationSummary = buildInstallationSummary(
+      const nextInstallation = buildInstallation(
         installation.authUrl,
         instanceInfo,
         refreshedAt,
@@ -82,8 +82,7 @@ const refreshInstallationMetadata = async (
       installation.indices.forEach(index => {
         nextItems[index] = {
           ...nextItems[index],
-          authUrl: installation.authUrl,
-          ...installationSummary,
+          installation: nextInstallation,
         };
       });
       updated = true;

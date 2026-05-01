@@ -12,7 +12,7 @@
 import {env} from '../config/env';
 import type {
   EnrollmentSummary,
-  InstallationSummary,
+  Installation,
   PublicInstanceInfoResponse,
 } from '../services/api/types';
 import {normalizeInstallationId, validateAuthUrl} from './urlValidation';
@@ -21,8 +21,19 @@ const DEFAULT_INSTALLATION_NAME = 'Ezkey installation';
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 const GENERIC_INSTALLATION_NAMES = new Set(['ezkey installation', 'ezkey system']);
 
-type InstallationCarrier = Partial<InstallationSummary> & {
+type LegacyInstallationSummary = {
+  installationId?: string;
+  installationHost?: string;
+  installationName?: string;
+  installationDescription?: string;
+  installationAboutUrl?: string;
+  installationLastRefreshedAt?: string;
+};
+
+type InstallationCarrier = LegacyInstallationSummary & {
+  id?: string;
   authUrl?: string;
+  installation?: Partial<Installation>;
 };
 
 function normalizeText(value: string | null | undefined): string | undefined {
@@ -47,46 +58,87 @@ export function getInstallationHost(authUrl?: string): string | undefined {
   return normalized.replace(/^https?:\/\//, '').split('/')[0];
 }
 
-export function buildInstallationSummary(
+function normalizeInstallation(input?: Partial<Installation>): Partial<Installation> {
+  if (!input) {
+    return {};
+  }
+
+  return {
+    id: normalizeText(input.id),
+    authUrl: validateAuthUrl(input.authUrl),
+    host: normalizeText(input.host),
+    name: normalizeText(input.name),
+    description: normalizeText(input.description),
+    aboutUrl: normalizeText(input.aboutUrl),
+    lastRefreshedAt: normalizeText(input.lastRefreshedAt),
+  };
+}
+
+export function buildInstallation(
   authUrl: string,
   instanceInfo?: PublicInstanceInfoResponse,
   refreshedAt: string = new Date().toISOString(),
-): InstallationSummary {
+): Installation {
   const installationId = normalizeInstallationId(authUrl);
   const installationHost = getInstallationHost(authUrl);
   const installationName = normalizeText(instanceInfo?.instanceName) ?? installationHost ?? DEFAULT_INSTALLATION_NAME;
 
   return {
-    installationId,
-    installationHost,
-    installationName,
-    installationDescription: normalizeText(instanceInfo?.instanceDescription),
-    installationAboutUrl: normalizeText(instanceInfo?.aboutUrl),
-    installationLastRefreshedAt: refreshedAt,
+    id: installationId ?? authUrl,
+    authUrl: validateAuthUrl(authUrl) ?? authUrl,
+    host: installationHost,
+    name: installationName,
+    description: normalizeText(instanceInfo?.instanceDescription),
+    aboutUrl: normalizeText(instanceInfo?.aboutUrl),
+    lastRefreshedAt: refreshedAt,
   };
 }
 
+export const buildInstallationSummary = buildInstallation;
+
 export function hydrateInstallationMetadata<T extends InstallationCarrier>(record: T): T {
-  const effectiveAuthUrl = resolveEnrollmentAuthUrl(record.authUrl);
-  const installationId = record.installationId ?? normalizeInstallationId(effectiveAuthUrl);
-  const installationHost = normalizeText(record.installationHost) ?? getInstallationHost(effectiveAuthUrl);
+  const normalizedInstallation = normalizeInstallation(record.installation);
+  const effectiveAuthUrl = resolveEnrollmentAuthUrl(normalizedInstallation.authUrl ?? record.authUrl);
+  const installationId =
+    normalizedInstallation.id ??
+    normalizeText(record.installationId) ??
+    normalizeInstallationId(effectiveAuthUrl) ??
+    normalizeText(record.id);
+  const installationHost =
+    normalizedInstallation.host ??
+    normalizeText(record.installationHost) ??
+    getInstallationHost(effectiveAuthUrl);
   const installationName =
-    normalizeText(record.installationName) ?? installationHost ?? DEFAULT_INSTALLATION_NAME;
+    normalizedInstallation.name ??
+    normalizeText(record.installationName) ??
+    installationHost ??
+    DEFAULT_INSTALLATION_NAME;
+  const installation = installationId
+    ? {
+        id: installationId,
+        authUrl: effectiveAuthUrl ?? normalizedInstallation.authUrl,
+        host: installationHost,
+        name: installationName,
+        description:
+          normalizedInstallation.description ?? normalizeText(record.installationDescription),
+        aboutUrl:
+          normalizedInstallation.aboutUrl ?? normalizeText(record.installationAboutUrl),
+        lastRefreshedAt:
+          normalizedInstallation.lastRefreshedAt ??
+          normalizeText(record.installationLastRefreshedAt),
+      }
+    : undefined;
 
   return {
     ...record,
-    authUrl: effectiveAuthUrl ?? record.authUrl,
-    installationId,
-    installationHost,
-    installationName,
-    installationDescription: normalizeText(record.installationDescription),
-    installationAboutUrl: normalizeText(record.installationAboutUrl),
-    installationLastRefreshedAt: normalizeText(record.installationLastRefreshedAt),
+    installation,
   };
 }
 
 export function isInstallationMetadataStale(record: InstallationCarrier, now: number = Date.now()): boolean {
-  const lastRefreshedAt = normalizeText(record.installationLastRefreshedAt);
+  const lastRefreshedAt =
+    normalizeInstallation(record.installation).lastRefreshedAt ??
+    normalizeText(record.installationLastRefreshedAt);
   if (!lastRefreshedAt) {
     return true;
   }
@@ -100,9 +152,11 @@ export function isInstallationMetadataStale(record: InstallationCarrier, now: nu
 }
 
 export function needsInstallationMetadataRefresh(record: InstallationCarrier): boolean {
-  const installationHost = normalizeText(record.installationHost) ?? getInstallationHost(record.authUrl);
-  const installationName = normalizeText(record.installationName);
-  const installationDescription = normalizeText(record.installationDescription);
+  const installation = normalizeInstallation(record.installation);
+  const installationHost = installation.host ?? normalizeText(record.installationHost) ?? getInstallationHost(installation.authUrl ?? record.authUrl);
+  const installationName = installation.name ?? normalizeText(record.installationName);
+  const installationDescription =
+    installation.description ?? normalizeText(record.installationDescription);
 
   if (!installationName) {
     return true;
@@ -116,10 +170,30 @@ export function needsInstallationMetadataRefresh(record: InstallationCarrier): b
 }
 
 export function shouldShowInstallationHostHint(
-  installation: Pick<EnrollmentSummary, 'installationHost' | 'installationName'>,
+  installation:
+    | Pick<Installation, 'host' | 'name'>
+    | Pick<EnrollmentSummary, 'installation'>
+    | Pick<LegacyInstallationSummary, 'installationHost' | 'installationName'>,
 ): boolean {
-  const installationHost = normalizeText(installation.installationHost);
-  const installationName = normalizeText(installation.installationName);
+  let normalizedInstallation: Partial<Installation>;
+
+  if ('installation' in installation) {
+    normalizedInstallation = normalizeInstallation(installation.installation);
+  } else if ('host' in installation || 'name' in installation) {
+    normalizedInstallation = normalizeInstallation(installation);
+  } else {
+    const legacyInstallation = installation as Pick<
+      LegacyInstallationSummary,
+      'installationHost' | 'installationName'
+    >;
+    normalizedInstallation = {
+      host: normalizeText(legacyInstallation.installationHost),
+      name: normalizeText(legacyInstallation.installationName),
+    };
+  }
+
+  const installationHost = normalizedInstallation.host;
+  const installationName = normalizedInstallation.name;
   if (!installationHost) {
     return false;
   }

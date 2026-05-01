@@ -35,6 +35,7 @@ Rules:
 | Enrollment verify | `POST /api/v1/enrollments/verify` | `EnrollmentVerifyRequestDto` | `EnrollmentVerifyResponseDto` | Enrollment Wizard |
 | Auth attempt pending | `POST /api/v1/auth-attempts/pending` | `AuthAttemptPendingRequestDto` | `AuthAttemptPendingResponseDto` or `204 No Content` | Pending Authentication |
 | Auth attempt respond | `POST /api/v1/auth-attempts/respond` | `AuthAttemptRespondRequestDto` | `AuthAttemptRespondResponseDto` | Pending Authentication |
+| Installation public info | `GET /api/v1/public/instance-info` | none | `PublicInstanceInfoResponseDto` | Enrollment Wizard and installation metadata refresh |
 
 ## Enrollment Bind Mapping
 
@@ -139,8 +140,32 @@ hydrates local installation metadata when an Auth API base URL is known.
 | `StoredEnrollment.id` | Draft ID | Home, Detail, Pending | Primary local identifier. |
 | `StoredEnrollment.integrationPublicKey` | Bind response | Pending and respond verification | Stored for future integration-signature checks. |
 | `StoredEnrollment.enrollmentProofToken` | Draft proof token | Pending flow | Sensitive enrollment token stored in the local record. |
-| `StoredEnrollment.authUrl` | QR or resolved installation URL | All subsequent API calls | Allows per-enrollment server targeting. |
-| `StoredEnrollment.installation*` fields | `instanceInfoApi.get(...)` and URL derivation | Home and Detail | Supports installation grouping and display. |
+| `StoredEnrollment.installation.authUrl` | QR or resolved installation URL | All subsequent API calls | Allows per-installation server targeting. |
+| `StoredEnrollment.installation` | `instanceInfoApi.get(...)` plus URL derivation | Home and Detail | Supports installation grouping and display as a first-class object. |
+
+### Installation Association and Refresh Mapping
+
+The mobile app does not wait for the backend to send a dedicated installation DTO during bind or verify. Instead it
+builds the local `Installation` object intentionally from the enrollment context.
+
+| Local installation field | Derived from | Stage | Notes |
+| --- | --- | --- | --- |
+| `installation.id` | Normalized effective `authUrl` | Enrollment verify and later hydration | Canonical trust-zone identity used for grouping. |
+| `installation.authUrl` | QR payload override or configured base URL | Enrollment verify and later hydration | Canonical routing base URL for later Auth API calls. |
+| `installation.host` | Normalized effective `authUrl` | Enrollment verify and later hydration | Used for fallback display and ambiguity hints. |
+| `installation.name` | `instanceInfo.instanceName` or host fallback | Enrollment verify and background refresh | Display-layer metadata only, not a cryptographic anchor. |
+| `installation.description` | `instanceInfo.instanceDescription` | Enrollment verify and background refresh | Optional supporting text. |
+| `installation.aboutUrl` | `instanceInfo.aboutUrl` | Enrollment verify and background refresh | Reserved for low-prominence informational affordances. |
+| `installation.lastRefreshedAt` | Local refresh timestamp | Enrollment verify and background refresh | Drives stale-while-revalidate behavior. |
+
+Association pipeline:
+
+1. Resolve the effective `authUrl` from QR or environment fallback.
+2. Normalize it into the canonical installation identity.
+3. Build `installation` immediately, even if only host fallback metadata is available.
+4. Enrich it with `GET /api/v1/public/instance-info` when the call succeeds.
+5. Refresh stale installations opportunistically by installation ID so all enrollments sharing the same
+	installation receive the same updated metadata.
 
 ### Verify Trigger and Ownership
 

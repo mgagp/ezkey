@@ -124,7 +124,7 @@ const wasRecentlyActive = (enrollment: StoredEnrollment, now: number = Date.now(
 
 const buildDeleteMessage = (enrollment: StoredEnrollment) => {
   const lines = [
-    `Remove \"${getEnrollmentDisplayName(enrollment)}\"?`,
+    `Remove "${getEnrollmentDisplayName(enrollment)}"?`,
     '',
     `Integration: ${enrollment.integrationName}`,
   ];
@@ -133,7 +133,7 @@ const buildDeleteMessage = (enrollment: StoredEnrollment) => {
     lines.push(`Tenant: ${enrollment.tenantName}`);
   }
 
-  const installationLabel = enrollment.installationName || enrollment.installationHost;
+  const installationLabel = enrollment.installation?.name || enrollment.installation?.host;
   if (installationLabel) {
     lines.push(`Installation: ${installationLabel}`);
   }
@@ -271,9 +271,9 @@ export const DangerZoneScreen: React.FC = () => {
         renderItem={({item}) => {
           const displayName = getEnrollmentDisplayName(item);
           const showHostHint = shouldShowInstallationHostHint(item);
-          const installationLabel = showHostHint && item.installationHost
-            ? `${item.installationName} · ${item.installationHost}`
-            : item.installationName;
+          const installationLabel = showHostHint && item.installation?.host
+            ? `${item.installation?.name ?? 'Ezkey installation'} · ${item.installation.host}`
+            : item.installation?.name;
 
           return (
             <View style={styles.row}>
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 102, 102, 0.12)',
     borderWidth: 1,
     borderColor: 'rgba(255, 102, 102, 0.25)',
-    borderRadius: borderRadius.pill,
+    borderRadius: borderRadius.xl,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
   },

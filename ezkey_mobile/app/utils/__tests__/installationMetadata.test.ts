@@ -25,6 +25,94 @@ describe('resolveEnrollmentAuthUrl', () => {
   });
 });
 
+describe('buildInstallation', () => {
+  const loadBuildInstallation = () => {
+    jest.resetModules();
+
+    return require('../installationMetadata').buildInstallation as (
+      authUrl: string,
+      instanceInfo?: {
+        instanceName?: string | null;
+        instanceDescription?: string | null;
+        aboutUrl?: string | null;
+      },
+      refreshedAt?: string,
+    ) => {
+      id: string;
+      authUrl?: string;
+      host?: string;
+      name: string;
+      description?: string;
+      aboutUrl?: string;
+      lastRefreshedAt?: string;
+    };
+  };
+
+  it('builds a first-class installation from authUrl and public instance info', () => {
+    const buildInstallation = loadBuildInstallation();
+
+    expect(
+      buildInstallation(
+        'https://EZKEY.Example.com:443/',
+        {
+          instanceName: 'Acme EU',
+          instanceDescription: 'Primary European Ezkey installation',
+          aboutUrl: 'https://acme.example/about',
+        },
+        '2026-05-01T12:00:00.000Z',
+      ),
+    ).toEqual({
+      id: 'https://ezkey.example.com',
+      authUrl: 'https://ezkey.example.com',
+      host: 'ezkey.example.com',
+      name: 'Acme EU',
+      description: 'Primary European Ezkey installation',
+      aboutUrl: 'https://acme.example/about',
+      lastRefreshedAt: '2026-05-01T12:00:00.000Z',
+    });
+  });
+});
+
+describe('hydrateInstallationMetadata', () => {
+  const loadHydrateInstallationMetadata = () => {
+    jest.resetModules();
+
+    return require('../installationMetadata').hydrateInstallationMetadata as <T>(record: T) => T & {
+      installation?: {
+        id: string;
+        authUrl?: string;
+        host?: string;
+        name: string;
+        description?: string;
+        aboutUrl?: string;
+        lastRefreshedAt?: string;
+      };
+    };
+  };
+
+  it('hydrates a nested installation from legacy flat fields', () => {
+    const hydrateInstallationMetadata = loadHydrateInstallationMetadata();
+
+    const result = hydrateInstallationMetadata({
+      id: 'enrollment-1',
+      authUrl: 'https://EZKEY.Example.com:443/',
+      installationName: 'Acme EU',
+      installationDescription: 'Primary European Ezkey installation',
+      installationAboutUrl: 'https://acme.example/about',
+    });
+
+    expect(result.installation).toEqual({
+      id: 'https://ezkey.example.com',
+      authUrl: 'https://ezkey.example.com',
+      host: 'ezkey.example.com',
+      name: 'Acme EU',
+      description: 'Primary European Ezkey installation',
+      aboutUrl: 'https://acme.example/about',
+      lastRefreshedAt: undefined,
+    });
+  });
+});
+
 describe('needsInstallationMetadataRefresh', () => {
   const loadNeedsInstallationMetadataRefresh = () => {
     jest.resetModules();
@@ -32,9 +120,12 @@ describe('needsInstallationMetadataRefresh', () => {
     return require('../installationMetadata')
       .needsInstallationMetadataRefresh as (record: {
       authUrl?: string;
-      installationHost?: string;
-      installationName?: string;
-      installationDescription?: string;
+      installation?: {
+        authUrl?: string;
+        host?: string;
+        name?: string;
+        description?: string;
+      };
     }) => boolean;
   };
 
@@ -43,8 +134,10 @@ describe('needsInstallationMetadataRefresh', () => {
 
     expect(
       needsInstallationMetadataRefresh({
-        authUrl: 'https://ezkey.example.com',
-        installationName: 'ezkey.example.com',
+        installation: {
+          authUrl: 'https://ezkey.example.com',
+          name: 'ezkey.example.com',
+        },
       }),
     ).toBe(true);
   });
@@ -54,9 +147,11 @@ describe('needsInstallationMetadataRefresh', () => {
 
     expect(
       needsInstallationMetadataRefresh({
-        authUrl: 'https://ezkey.example.com',
-        installationName: 'Ezkey System',
-        installationDescription: 'Ezkey MFA instance for your organization',
+        installation: {
+          authUrl: 'https://ezkey.example.com',
+          name: 'Ezkey System',
+          description: 'Ezkey MFA instance for your organization',
+        },
       }),
     ).toBe(false);
   });

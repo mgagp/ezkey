@@ -28,7 +28,7 @@ import {RootStackParamList} from '../../navigation/types';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {
-  groupEnrollmentsByTenant,
+  groupEnrollmentsByInstallation,
   type InstallationGroup,
 } from '../../utils/tenantGrouping';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
@@ -71,7 +71,7 @@ export const HomeScreen: React.FC = () => {
   const installationGroups = useMemo(() => {
     if (!data || data.length === 0) return [];
     const sorted = sortEnrollments(data);
-    return groupEnrollmentsByTenant(sorted);
+    return groupEnrollmentsByInstallation(sorted);
   }, [data]);
 
   useEffect(() => {
@@ -82,14 +82,14 @@ export const HomeScreen: React.FC = () => {
 
     setExpandedInstallations(previous => {
       if (installationGroups.length === 1) {
-        return [installationGroups[0].installationId];
+        return [installationGroups[0].installation.id];
       }
 
       const kept = previous.filter(id =>
-        installationGroups.some(group => group.installationId === id),
+        installationGroups.some(group => group.installation.id === id),
       );
 
-      return kept.length > 0 ? kept : [installationGroups[0].installationId];
+      return kept.length > 0 ? kept : [installationGroups[0].installation.id];
     });
   }, [installationGroups]);
 
@@ -136,9 +136,9 @@ export const HomeScreen: React.FC = () => {
           ) : (
             installationGroups.map(group => (
               <InstallationSection
-                key={group.installationId}
+                key={group.installation.id}
                 group={group}
-                expanded={expandedInstallations.includes(group.installationId)}
+                expanded={expandedInstallations.includes(group.installation.id)}
                 onToggle={toggleInstallation}
                 onSelectEnrollment={handleSelect}
               />
@@ -224,17 +224,17 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
   <View style={styles.installationShell}>
     <TouchableOpacity
       style={styles.installationHeader}
-      onPress={() => onToggle(group.installationId)}
+      onPress={() => onToggle(group.installation.id)}
       accessibilityRole="button"
-      accessibilityLabel={`${group.installationName} installation`}
+      accessibilityLabel={`${group.installation.name} installation`}
       accessibilityHint={expanded ? 'Collapses this installation section' : 'Expands this installation section'}>
       <View style={styles.installationHeaderContent}>
-        <Text style={styles.installationName}>{group.installationName}</Text>
-        {group.installationDescription ? (
-          <Text style={styles.installationDescription}>{group.installationDescription}</Text>
+        <Text style={styles.installationName}>{group.installation.name}</Text>
+        {group.installation.description ? (
+          <Text style={styles.installationDescription}>{group.installation.description}</Text>
         ) : null}
-        {group.showHostHint && group.installationHost ? (
-          <Text style={styles.installationHost}>{group.installationHost}</Text>
+        {group.showHostHint && group.installation.host ? (
+          <Text style={styles.installationHost}>{group.installation.host}</Text>
         ) : null}
       </View>
       <Text style={styles.installationToggle}>{expanded ? '−' : '+'}</Text>
@@ -242,7 +242,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
     {expanded ? (
       <View style={styles.installationBody}>
         {group.tenantGroups.map(tenantGroup => (
-          <View key={`${group.installationId}:${tenantGroup.tenantId ?? tenantGroup.tenantName}`}>
+          <View key={`${group.installation.id}:${tenantGroup.tenantId ?? tenantGroup.tenantName}`}>
             <TenantSectionHeader
               tenantName={tenantGroup.tenantName}
               tenantDescription={tenantGroup.tenantDescription}

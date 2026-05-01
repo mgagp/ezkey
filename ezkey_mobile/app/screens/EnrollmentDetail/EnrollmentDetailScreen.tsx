@@ -76,15 +76,16 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     dateStyle: 'medium',
     timeStyle: 'short',
   });
-  const hasCustomServer = !!enrollment.authUrl;
+  const installation = enrollment.installation;
+  const hasCustomServer = !!installation?.authUrl;
   const showHostHint = shouldShowInstallationHostHint(enrollment);
 
   return (
     <View style={styles.container}>
       <View style={styles.identityZone}>
-        <Text style={styles.installationLine}>{enrollment.installationName}</Text>
-        {showHostHint && enrollment.installationHost ? (
-          <Text style={styles.installationHint}>{enrollment.installationHost}</Text>
+        <Text style={styles.installationLine}>{installation?.name ?? 'Ezkey installation'}</Text>
+        {showHostHint && installation?.host ? (
+          <Text style={styles.installationHint}>{installation.host}</Text>
         ) : null}
         {enrollment.tenantName ? (
           <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
@@ -93,8 +94,8 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         {enrollment.enrollmentName ? (
           <Text style={styles.deviceLine}>{enrollment.enrollmentName}</Text>
         ) : null}
-        {enrollment.installationDescription ? (
-          <Text style={styles.descriptionLine}>{enrollment.installationDescription}</Text>
+        {installation?.description ? (
+          <Text style={styles.descriptionLine}>{installation.description}</Text>
         ) : null}
       </View>
 
@@ -107,7 +108,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
       {hasCustomServer ? (
         <View style={styles.serverZone}>
           <Text style={styles.serverLabel}>Server</Text>
-          <Text style={styles.serverValue}>{enrollment.authUrl}</Text>
+          <Text style={styles.serverValue}>{installation?.authUrl}</Text>
         </View>
       ) : null}
 

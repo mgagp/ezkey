@@ -37,7 +37,7 @@ import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import {env} from '../../config/env';
 import {integrationKeyAlgorithmBindError} from '../../utils/integrationKeyAlgorithm';
 import {
-  buildInstallationSummary,
+  buildInstallation,
   resolveEnrollmentAuthUrl,
 } from '../../utils/installationMetadata';
 import {validateAuthUrl} from '../../utils/urlValidation';
@@ -381,13 +381,13 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         setEnrollmentChallenge('');
         return;
       }
-      let installationSummary =
-        effectiveAuthUrl != null ? buildInstallationSummary(effectiveAuthUrl, undefined, now) : {};
+      let installation =
+        effectiveAuthUrl != null ? buildInstallation(effectiveAuthUrl, undefined, now) : undefined;
 
       if (effectiveAuthUrl) {
         try {
           const instanceInfo = await instanceInfoApi.get(effectiveAuthUrl);
-          installationSummary = buildInstallationSummary(effectiveAuthUrl, instanceInfo, now);
+          installation = buildInstallation(effectiveAuthUrl, instanceInfo, now);
         } catch (error) {
           console.warn('[EnrollmentWizard] Failed to fetch installation metadata:', error);
         }
@@ -408,8 +408,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         integrationPublicKey: draft.integrationPublicKey,
         enrollmentName: draft.enrollmentName,
         deviceLabel: draft.deviceLabel,
-        authUrl: effectiveAuthUrl,
-        ...installationSummary,
+        installation,
       };
       await saveEnrollment.mutateAsync(record);
       setDraft(undefined);
