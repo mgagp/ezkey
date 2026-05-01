@@ -26,6 +26,11 @@
 -keep class org.conscrypt.** { *; }
 -dontwarn org.conscrypt.**
 
+# RN 0.80 can still initialize inspector flags on startup; R8 must not strip
+# or rename the native bridge class loaded from libreact_devsupportjni.
+-keep class com.facebook.react.devsupport.CxxInspectorPackagerConnection { *; }
+-keep class com.facebook.react.devsupport.InspectorFlags { *; }
+
 # Strip android.util.Log debug/verbose calls from release binaries.
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
