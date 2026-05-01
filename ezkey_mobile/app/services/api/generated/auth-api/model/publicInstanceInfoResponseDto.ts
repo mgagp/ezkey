@@ -16,13 +16,26 @@ with comprehensive validation.
 
  * OpenAPI spec version: 1.0.0
  */
-import type { ProblemDetailProperties } from './problemDetailProperties';
 
-export interface ProblemDetail {
-  type?: string;
-  title?: string;
-  status?: number;
-  detail?: string;
-  instance?: string;
-  properties?: ProblemDetailProperties;
+/**
+ * Public instance metadata (branding, optional public Auth API URL for QR alignment)
+ */
+export interface PublicInstanceInfoResponseDto {
+  /**
+     * Public base URL of the Auth API (same as authUrl in enrollment QR JSON when configured)
+     * @nullable
+     */
+  authApiPublicBaseUrl?: string | null;
+  /** Instance / organization display name */
+  instanceName?: string;
+  /**
+     * Optional instance or organization description
+     * @nullable
+     */
+  instanceDescription?: string | null;
+  /**
+     * Optional URL for About / learn more (e.g. company instance page)
+     * @nullable
+     */
+  aboutUrl?: string | null;
 }
