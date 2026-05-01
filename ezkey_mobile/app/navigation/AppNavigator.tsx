@@ -9,8 +9,10 @@ import {DangerZoneScreen} from '../screens/DangerZone';
 import {SettingsScreen} from '../screens/Settings';
 import {AboutScreen} from '../screens/About';
 import {LicensesScreen} from '../screens/Licenses';
+import {LanguageScreen} from '../screens/Language';
 import {colors} from '../config/theme';
 import {HeaderSettingsButton} from '../components/HeaderSettingsButton';
+import {useTranslation} from 'react-i18next';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -21,39 +23,60 @@ const stackScreenOptions = {
   cardStyle: {backgroundColor: colors.background},
 };
 
-export const AppNavigator: React.FC = () => (
-  <Stack.Navigator screenOptions={stackScreenOptions}>
-    <Stack.Screen
-      name="Home"
-      component={HomeScreen}
-      options={({navigation}) => ({
-        title: 'Ezkey Authenticator',
-        headerBackTitle: 'Back',
-        /* React Navigation headerRight API uses a render function; not an inline component type. */
-        // eslint-disable-next-line react/no-unstable-nested-components
-        headerRight: () => (
-          <HeaderSettingsButton onPress={() => navigation.navigate('Settings')} />
-        ),
-      })}
-    />
-    <Stack.Screen
-      name="EnrollmentDetail"
-      component={EnrollmentDetailScreen}
-      options={{title: 'Enrollment Detail'}}
-    />
-    <Stack.Screen
-      name="PendingAuth"
-      component={PendingAuthScreen}
-      options={{title: 'Pending Authentication'}}
-    />
-    <Stack.Screen
-      name="EnrollmentWizard"
-      component={EnrollmentWizardScreen}
-      options={{title: 'Add Enrollment'}}
-    />
-    <Stack.Screen name="Settings" component={SettingsScreen} options={{title: 'Settings'}} />
-    <Stack.Screen name="About" component={AboutScreen} options={{title: 'About'}} />
-    <Stack.Screen name="Licenses" component={LicensesScreen} options={{title: 'Open Source Licenses'}} />
-    <Stack.Screen name="DangerZone" component={DangerZoneScreen} options={{title: 'Danger Zone'}} />
-  </Stack.Navigator>
-);
+export const AppNavigator: React.FC = () => {
+  const {t} = useTranslation();
+
+  return (
+    <Stack.Navigator screenOptions={stackScreenOptions}>
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={({navigation}) => ({
+          title: t('navigation.home'),
+          headerBackTitle: t('common.back'),
+          /* React Navigation headerRight API uses a render function; not an inline component type. */
+          // eslint-disable-next-line react/no-unstable-nested-components
+          headerRight: () => (
+            <HeaderSettingsButton onPress={() => navigation.navigate('Settings')} />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="EnrollmentDetail"
+        component={EnrollmentDetailScreen}
+        options={{title: t('navigation.enrollmentDetail')}}
+      />
+      <Stack.Screen
+        name="PendingAuth"
+        component={PendingAuthScreen}
+        options={{title: t('navigation.pendingAuth')}}
+      />
+      <Stack.Screen
+        name="EnrollmentWizard"
+        component={EnrollmentWizardScreen}
+        options={{title: t('navigation.enrollmentWizard')}}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{title: t('navigation.settings')}}
+      />
+      <Stack.Screen name="About" component={AboutScreen} options={{title: t('navigation.about')}} />
+      <Stack.Screen
+        name="Licenses"
+        component={LicensesScreen}
+        options={{title: t('navigation.licenses')}}
+      />
+      <Stack.Screen
+        name="DangerZone"
+        component={DangerZoneScreen}
+        options={{title: t('navigation.dangerZone')}}
+      />
+      <Stack.Screen
+        name="Language"
+        component={LanguageScreen}
+        options={{title: t('navigation.language')}}
+      />
+    </Stack.Navigator>
+  );
+};

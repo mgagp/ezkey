@@ -4,7 +4,7 @@ For agents working in `ezkey_mobile/`.
 
 ## Purpose
 
-React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollments, approve or deny authentication requests. All user-facing content must stay in English.
+React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollments, approve or deny authentication requests. User-facing content supports English and French, with English as the default runtime language and a manual language switch in Settings.
 
 ## Documentation Routing
 

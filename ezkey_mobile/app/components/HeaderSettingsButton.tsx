@@ -7,6 +7,7 @@
 
 import React from 'react';
 import {StyleSheet, Text, TouchableOpacity} from 'react-native';
+import {useTranslation} from 'react-i18next';
 import {colors, spacing} from '../config/theme';
 
 type Props = {
@@ -18,16 +19,20 @@ type Props = {
  *
  * @since 2025
  */
-export const HeaderSettingsButton: React.FC<Props> = ({onPress}) => (
-  <TouchableOpacity
-    onPress={onPress}
-    style={styles.button}
-    accessibilityRole="button"
-    accessibilityLabel="Settings"
-    hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-    <Text style={styles.icon}>⚙</Text>
-  </TouchableOpacity>
-);
+export const HeaderSettingsButton: React.FC<Props> = ({onPress}) => {
+  const {t} = useTranslation();
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={styles.button}
+      accessibilityRole="button"
+      accessibilityLabel={t('navigation.settings')}
+      hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+      <Text style={styles.icon}>⚙</Text>
+    </TouchableOpacity>
+  );
+};
 
 const styles = StyleSheet.create({
   button: {

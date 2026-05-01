@@ -13,6 +13,7 @@
 import React, {useEffect, useMemo} from 'react';
 import {ActivityIndicator, Button, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {useTranslation} from 'react-i18next';
 import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
@@ -27,6 +28,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
  * @since 2025
  */
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
+  const {t} = useTranslation();
   const {enrollmentId} = route.params;
   const {data, isLoading} = useEnrollments();
   const selectedId = useEnrollmentStore(store => store.selectedId);
@@ -51,8 +53,8 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator />
+      <View style={styles.loadingContainer} accessibilityLabel={t('enrollmentDetail.loading')}>
+        <ActivityIndicator accessibilityLabel={t('common.loading')} />
       </View>
     );
   }
@@ -60,10 +62,8 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   if (!enrollment) {
     return (
       <View style={styles.missingContainer}>
-        <Text style={styles.missingText}>
-          Unable to locate the selected enrollment. Return to Home and try again.
-        </Text>
-        <Button title="Back to Home" onPress={() => navigation.popToTop()} />
+        <Text style={styles.missingText}>{t('enrollmentDetail.missing')}</Text>
+        <Button title={t('enrollmentDetail.backToHome')} onPress={() => navigation.popToTop()} />
       </View>
     );
   }
@@ -83,7 +83,9 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   return (
     <View style={styles.container}>
       <View style={styles.identityZone}>
-        <Text style={styles.installationLine}>{installation?.name ?? 'Ezkey installation'}</Text>
+        <Text style={styles.installationLine}>
+          {installation?.name ?? t('enrollmentDetail.installationFallback')}
+        </Text>
         {showHostHint && installation?.host ? (
           <Text style={styles.installationHint}>{installation.host}</Text>
         ) : null}
@@ -101,19 +103,19 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
 
       <View style={styles.metaZone}>
         <Text style={styles.metaLine}>
-          Created {createdStr} · Last {lastStr}
+          {t('enrollmentDetail.createdLast', {created: createdStr, last: lastStr})}
         </Text>
       </View>
 
       {hasCustomServer ? (
         <View style={styles.serverZone}>
-          <Text style={styles.serverLabel}>Server</Text>
+          <Text style={styles.serverLabel}>{t('enrollmentDetail.server')}</Text>
           <Text style={styles.serverValue}>{installation?.authUrl}</Text>
         </View>
       ) : null}
 
       <TouchableOpacity style={styles.primaryButton} onPress={navigateToPending}>
-        <Text style={styles.primaryLabel}>Check pending</Text>
+        <Text style={styles.primaryLabel}>{t('enrollmentDetail.checkPending')}</Text>
       </TouchableOpacity>
     </View>
   );

@@ -21,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import {useTranslation} from 'react-i18next';
 import {useDeleteEnrollment, useEnrollments} from '../../hooks/useEnrollments';
 import {enrollmentStorage, StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
@@ -60,7 +61,11 @@ const formatAbsoluteDateTime = (value?: string) => {
   });
 };
 
-const formatRelativeAge = (value?: string, now: number = Date.now()) => {
+const formatRelativeAge = (
+  value: string | undefined,
+  t: (key: string, options?: Record<string, string | number>) => string,
+  now: number = Date.now(),
+) => {
   if (!value) {
     return undefined;
   }
@@ -74,43 +79,47 @@ const formatRelativeAge = (value?: string, now: number = Date.now()) => {
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
 
   if (diffDays <= 0) {
-    return 'today';
+    return t('dangerZone.today');
   }
   if (diffDays === 1) {
-    return '1 day ago';
+    return t('dangerZone.oneDayAgo');
   }
   if (diffDays < 7) {
-    return `${diffDays} days ago`;
+    return t('dangerZone.daysAgo', {count: diffDays});
   }
 
   const diffWeeks = Math.floor(diffDays / 7);
   if (diffWeeks === 1) {
-    return '1 week ago';
+    return t('dangerZone.oneWeekAgo');
   }
   if (diffWeeks < 5) {
-    return `${diffWeeks} weeks ago`;
+    return t('dangerZone.weeksAgo', {count: diffWeeks});
   }
 
   const diffMonths = Math.floor(diffDays / 30);
   if (diffMonths === 1) {
-    return '1 month ago';
+    return t('dangerZone.oneMonthAgo');
   }
 
-  return `${diffMonths} months ago`;
+  return t('dangerZone.monthsAgo', {count: diffMonths});
 };
 
-const buildRecencyLabel = (enrollment: StoredEnrollment, now: number = Date.now()) => {
-  const lastActivity = formatRelativeAge(enrollment.lastActivityAt, now);
+const buildRecencyLabel = (
+  enrollment: StoredEnrollment,
+  t: (key: string, options?: Record<string, string | number>) => string,
+  now: number = Date.now(),
+) => {
+  const lastActivity = formatRelativeAge(enrollment.lastActivityAt, t, now);
   if (lastActivity) {
-    return `Last active ${lastActivity}`;
+    return t('dangerZone.lastActive', {value: lastActivity});
   }
 
-  const created = formatRelativeAge(enrollment.createdAt, now);
+  const created = formatRelativeAge(enrollment.createdAt, t, now);
   if (created) {
-    return `Enrolled ${created}`;
+    return t('dangerZone.enrolled', {value: created});
   }
 
-  return 'Enrollment date unavailable';
+  return t('dangerZone.enrollmentDateUnavailable');
 };
 
 const wasRecentlyActive = (enrollment: StoredEnrollment, now: number = Date.now()) => {
@@ -122,36 +131,39 @@ const wasRecentlyActive = (enrollment: StoredEnrollment, now: number = Date.now(
   return now - lastActivityAt <= RECENT_ACTIVITY_THRESHOLD_MS;
 };
 
-const buildDeleteMessage = (enrollment: StoredEnrollment) => {
+const buildDeleteMessage = (
+  enrollment: StoredEnrollment,
+  t: (key: string, options?: Record<string, string | number>) => string,
+) => {
   const lines = [
-    `Remove "${getEnrollmentDisplayName(enrollment)}"?`,
+    t('dangerZone.removeQuestion', {name: getEnrollmentDisplayName(enrollment)}),
     '',
-    `Integration: ${enrollment.integrationName}`,
+    t('dangerZone.integration', {value: enrollment.integrationName}),
   ];
 
   if (enrollment.tenantName) {
-    lines.push(`Tenant: ${enrollment.tenantName}`);
+    lines.push(t('dangerZone.tenant', {value: enrollment.tenantName}));
   }
 
   const installationLabel = enrollment.installation?.name || enrollment.installation?.host;
   if (installationLabel) {
-    lines.push(`Installation: ${installationLabel}`);
+    lines.push(t('dangerZone.installation', {value: installationLabel}));
   }
 
   const lastActivity = formatAbsoluteDateTime(enrollment.lastActivityAt);
   if (lastActivity) {
-    lines.push(`Last activity: ${lastActivity}`);
+    lines.push(t('dangerZone.lastActivity', {value: lastActivity}));
   }
 
   if (enrollment.favorited) {
-    lines.push('Marked as favorite on this device.');
+    lines.push(t('dangerZone.markedFavorite'));
   }
 
   if (wasRecentlyActive(enrollment)) {
-    lines.push('Used recently on this device.');
+    lines.push(t('dangerZone.usedRecently'));
   }
 
-  lines.push('', 'This will unlink this device and cannot be undone.');
+  lines.push('', t('dangerZone.unlinkWarning'));
   return lines.join('\n');
 };
 
@@ -162,6 +174,7 @@ const buildDeleteMessage = (enrollment: StoredEnrollment) => {
  * @since 2025
  */
 export const DangerZoneScreen: React.FC = () => {
+  const {t} = useTranslation();
   const navigation = useNavigation();
   const {data: enrollments, isLoading, refetch} = useEnrollments();
   const deleteMutation = useDeleteEnrollment();
@@ -174,12 +187,12 @@ export const DangerZoneScreen: React.FC = () => {
   const handleDelete = useCallback(
     (enrollment: StoredEnrollment) => {
       Alert.alert(
-        'Delete enrollment',
-        buildDeleteMessage(enrollment),
+        t('dangerZone.deleteTitle'),
+        buildDeleteMessage(enrollment, t),
         [
-          {text: 'Cancel', style: 'cancel'},
+          {text: t('dangerZone.cancel'), style: 'cancel'},
           {
-            text: 'Delete',
+            text: t('dangerZone.delete'),
             style: 'destructive',
             onPress: async () => {
               try {
@@ -187,24 +200,24 @@ export const DangerZoneScreen: React.FC = () => {
                 navigation.goBack();
               } catch (error) {
                 console.error('[DangerZone] Failed to delete', error);
-                Alert.alert('Deletion failed', 'Unable to delete. Please try again.');
+                Alert.alert(t('dangerZone.deleteFailedTitle'), t('dangerZone.deleteFailedMessage'));
               }
             },
           },
         ],
       );
     },
-    [deleteMutation, navigation],
+    [deleteMutation, navigation, t],
   );
 
   const handleClearAllData = useCallback(() => {
     Alert.alert(
-      'Clear all data',
-      'This will delete all enrollments and reset local enrollment data on this device. This action cannot be undone.',
+      t('dangerZone.clearAllTitle'),
+      t('dangerZone.clearAllMessage'),
       [
-        {text: 'Cancel', style: 'cancel'},
+        {text: t('dangerZone.cancel'), style: 'cancel'},
         {
-          text: 'Clear all',
+          text: t('dangerZone.clearAll'),
           style: 'destructive',
           onPress: async () => {
             setClearAllPending(true);
@@ -213,8 +226,10 @@ export const DangerZoneScreen: React.FC = () => {
               await refetch();
             } catch (error) {
               Alert.alert(
-                'Error',
-                `Failed to clear data: ${error instanceof Error ? error.message : String(error)}`,
+                t('dangerZone.errorTitle'),
+                t('dangerZone.clearAllFailed', {
+                  message: error instanceof Error ? error.message : String(error),
+                }),
               );
             } finally {
               setClearAllPending(false);
@@ -223,12 +238,12 @@ export const DangerZoneScreen: React.FC = () => {
         },
       ],
     );
-  }, [refetch]);
+  }, [refetch, t]);
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer} accessibilityLabel="Loading danger zone">
-        <ActivityIndicator color={colors.primaryLight} accessibilityLabel="Loading" />
+      <View style={styles.loadingContainer} accessibilityLabel={t('dangerZone.loading')}>
+        <ActivityIndicator color={colors.primaryLight} accessibilityLabel={t('common.loading')} />
       </View>
     );
   }
@@ -236,19 +251,17 @@ export const DangerZoneScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.banner}>
-        <Text style={styles.bannerTitle}>Danger Zone</Text>
-        <Text style={styles.bannerHint}>
-          Delete enrollments to unlink this device, or clear all local enrollment data. These actions cannot be undone.
-        </Text>
+        <Text style={styles.bannerTitle}>{t('dangerZone.title')}</Text>
+        <Text style={styles.bannerHint}>{t('dangerZone.hint')}</Text>
       </View>
       <FlatList
         data={sortedEnrollments}
         keyExtractor={item => item.id}
-        accessibilityLabel="Enrollments that can be deleted"
+        accessibilityLabel={t('dangerZone.listAccessibility')}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No enrollments to delete individually.</Text>
+            <Text style={styles.emptyText}>{t('dangerZone.empty')}</Text>
           </View>
         }
         ListFooterComponent={
@@ -258,21 +271,18 @@ export const DangerZoneScreen: React.FC = () => {
               onPress={handleClearAllData}
               disabled={clearAllPending}
               accessibilityRole="button"
-              accessibilityLabel="Clear all enrollment data"
-              accessibilityHint="Removes every enrollment from this device">
-              <Text style={styles.clearAllLabel}>Clear all enrollment data</Text>
+              accessibilityLabel={t('dangerZone.clearAllAccessibility')}
+              accessibilityHint={t('dangerZone.clearAllHint')}>
+              <Text style={styles.clearAllLabel}>{t('dangerZone.clearAllLabel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.footerHint}>
-              Removes every enrollment from this device at once. Use individual delete above when you only need to
-              remove one.
-            </Text>
+            <Text style={styles.footerHint}>{t('dangerZone.footerHint')}</Text>
           </View>
         }
         renderItem={({item}) => {
           const displayName = getEnrollmentDisplayName(item);
           const showHostHint = shouldShowInstallationHostHint(item);
           const installationLabel = showHostHint && item.installation?.host
-            ? `${item.installation?.name ?? 'Ezkey installation'} · ${item.installation.host}`
+            ? `${item.installation?.name ?? t('dangerZone.installationFallback')} · ${item.installation.host}`
             : item.installation?.name;
 
           return (
@@ -280,7 +290,7 @@ export const DangerZoneScreen: React.FC = () => {
               <View style={styles.rowInfo}>
                 <View style={styles.rowTitleLine}>
                   <Text style={styles.rowTitle}>{displayName}</Text>
-                  {item.favorited ? <Text style={styles.favoriteBadge}>Favorite</Text> : null}
+                  {item.favorited ? <Text style={styles.favoriteBadge}>{t('dangerZone.favorite')}</Text> : null}
                 </View>
                 <Text style={styles.rowMeta}>{item.integrationName}</Text>
                 <Text style={styles.rowMeta}>
@@ -291,7 +301,7 @@ export const DangerZoneScreen: React.FC = () => {
                     styles.rowRecency,
                     wasRecentlyActive(item) && styles.rowRecencyRecent,
                   ]}>
-                  {buildRecencyLabel(item)}
+                  {buildRecencyLabel(item, t)}
                 </Text>
               </View>
               <TouchableOpacity
@@ -299,9 +309,9 @@ export const DangerZoneScreen: React.FC = () => {
                 onPress={() => handleDelete(item)}
                 disabled={deleteMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={`Delete enrollment ${displayName}`}
-                accessibilityHint="Unlinks this device from this enrollment">
-                <Text style={styles.deleteLabel}>Delete</Text>
+                accessibilityLabel={t('dangerZone.deleteAccessibility', {name: displayName})}
+                accessibilityHint={t('dangerZone.deleteAccessibilityHint')}>
+                <Text style={styles.deleteLabel}>{t('dangerZone.delete')}</Text>
               </TouchableOpacity>
             </View>
           );

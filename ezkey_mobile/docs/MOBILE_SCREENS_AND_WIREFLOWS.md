@@ -18,6 +18,7 @@ flowchart TD
   EnrollmentDetail --> PendingAuth
   Home --> Settings
   Settings --> About
+  Settings --> Language
   Settings --> DangerZone
   Settings --> Licenses
   PendingAuth --> PendingAuthResult[Pending result state]
@@ -34,7 +35,7 @@ server context, and Pending Authentication owns polling plus approve/deny. The a
 | Enrollment Wizard | Bind and verify a new enrollment from QR payload | Scan QR, bind, enter challenge, complete enrollment | `enrollmentsApi`, `instanceInfoApi`, `cryptoService`, save mutation | Yes |
 | Enrollment Detail | Show selected enrollment identity and route into auth polling | Check pending | `useEnrollments`, navigation store, installation host hint utility | Yes |
 | Pending Authentication | Poll for pending auth, verify context, approve or deny | Check again, approve, deny | `authAttemptsApi`, `cryptoService`, payload builders | Yes |
-| Settings | Secondary navigation hub | Open About, Danger Zone, or Licenses | Navigation only | No |
+| Settings | Secondary navigation hub | Open About, Language, Danger Zone, or Licenses | Navigation only | No |
 | About | Show app metadata and project link | Open `ezkey.org` | Native build timestamp, app info constants | No |
 | Danger Zone | Perform destructive local actions | Delete one enrollment, clear all local data | `useEnrollments`, delete mutation, storage clear-all | No |
 | Licenses | Show generated third-party dependency list | Scroll/read only | `thirdPartyLicenses.json` snapshot | No |
@@ -171,7 +172,8 @@ screen dedicated to the auth decision rather than background polling from elsewh
 
 | Screen | Purpose | Why secondary | Notes |
 | --- | --- | --- | --- |
-| Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow | Routes to About, Danger Zone, and Licenses. |
+| Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow | Routes to About, Language, Danger Zone, and Licenses. |
+| Language | Manual language selection | Secondary preference only | Persists English/French selection and asks for app restart to apply the change everywhere. |
 | About | App metadata and project context | Informational only | Shows version, native build timestamp, MIT/open-source note, and link to `ezkey.org`. |
 | Danger Zone | Destructive local maintenance | Explicitly separated to avoid accidental deletion in the main flow | Supports deleting one enrollment or clearing all local enrollment data. |
 | Licenses | Third-party package inventory | Compliance/information surface only | Reads generated JSON snapshot from `yarn license:app-data`. |
@@ -213,6 +215,7 @@ flowchart TD
 flowchart TD
   Home --> Settings
   Settings --> About
+  Settings --> Language
   Settings --> DangerZone
   Settings --> Licenses
 ```

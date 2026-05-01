@@ -23,6 +23,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
+import {useTranslation} from 'react-i18next';
 import {useEnrollments, useRefreshInstallationMetadata} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
@@ -59,6 +60,7 @@ type HomeNavigation = StackNavigationProp<RootStackParamList, 'Home'>;
  * @since 2025
  */
 export const HomeScreen: React.FC = () => {
+  const {t} = useTranslation();
   const navigation = useNavigation<HomeNavigation>();
   const insets = useSafeAreaInsets();
   const {data, isLoading} = useEnrollments();
@@ -124,13 +126,13 @@ export const HomeScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {isLoading ? (
-        <View style={styles.loadingContainer} accessibilityLabel="Loading enrollments">
-          <ActivityIndicator color={colors.primaryLight} accessibilityLabel="Loading" />
+        <View style={styles.loadingContainer} accessibilityLabel={t('home.loadingEnrollments')}>
+          <ActivityIndicator color={colors.primaryLight} accessibilityLabel={t('home.loading')} />
         </View>
       ) : (
         <ScrollView
           contentContainerStyle={[styles.listContent, {paddingBottom: fabBottom + 56 + spacing.md}]}
-          accessibilityLabel="Enrollments grouped by Ezkey installation">
+          accessibilityLabel={t('home.groupedByInstallation')}>
           {installationGroups.length === 0 ? (
             <EmptyState />
           ) : (
@@ -151,8 +153,8 @@ export const HomeScreen: React.FC = () => {
         onPress={navigateToWizard}
         activeOpacity={0.85}
         accessibilityRole="button"
-        accessibilityLabel="Add enrollment"
-        accessibilityHint="Starts enrollment with QR scan">
+        accessibilityLabel={t('home.addEnrollment')}
+        accessibilityHint={t('home.addEnrollmentHint')}>
         <Text style={styles.fabLabel}>+</Text>
       </TouchableOpacity>
     </View>
@@ -165,23 +167,23 @@ export const HomeScreen: React.FC = () => {
  *
  * @since 2025
  */
-const EmptyState: React.FC = () => (
-  <View
-    style={styles.emptyState}
-    accessibilityRole="text"
-    accessibilityLabel="Welcome to Ezkey. No enrollments yet. Tap the plus button to scan a QR code and add your first device.">
-    <Text style={styles.emptyTitle}>Welcome to Ezkey</Text>
-    <Text style={styles.emptySubtitle}>
-      Approve sign-ins from your trusted device.
-    </Text>
-    <View style={styles.emptyHintCard}>
-      <Text style={styles.emptyHintBadge}>QR</Text>
-      <Text style={styles.emptyHintText}>
-        Tap the + button below and scan a QR code from your Ezkey-enabled service to enroll your first device.
-      </Text>
+const EmptyState: React.FC = () => {
+  const {t} = useTranslation();
+
+  return (
+    <View
+      style={styles.emptyState}
+      accessibilityRole="text"
+      accessibilityLabel={t('home.emptyAccessibilityLabel')}>
+      <Text style={styles.emptyTitle}>{t('home.emptyTitle')}</Text>
+      <Text style={styles.emptySubtitle}>{t('home.emptySubtitle')}</Text>
+      <View style={styles.emptyHintCard}>
+        <Text style={styles.emptyHintBadge}>QR</Text>
+        <Text style={styles.emptyHintText}>{t('home.emptyHint')}</Text>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 type TenantSectionHeaderProps = {
   tenantName: string;
@@ -198,15 +200,21 @@ type TenantSectionHeaderProps = {
 const TenantSectionHeader: React.FC<TenantSectionHeaderProps> = ({
   tenantName,
   tenantDescription,
-}) => (
-  <View style={styles.tenantHeader} accessibilityLabel={`Section ${tenantName}`}>
-    <Text style={styles.tenantName}>{tenantName}</Text>
-    {tenantDescription ? (
-      <Text style={styles.tenantDescription}>{tenantDescription}</Text>
-    ) : null}
-    <View style={styles.tenantDivider} />
-  </View>
-);
+}) => {
+  const {t} = useTranslation();
+
+  return (
+    <View
+      style={styles.tenantHeader}
+      accessibilityLabel={t('home.tenantSection', {tenantName})}>
+      <Text style={styles.tenantName}>{tenantName}</Text>
+      {tenantDescription ? (
+        <Text style={styles.tenantDescription}>{tenantDescription}</Text>
+      ) : null}
+      <View style={styles.tenantDivider} />
+    </View>
+  );
+};
 
 type InstallationSectionProps = {
   group: InstallationGroup;
@@ -220,53 +228,59 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
   expanded,
   onToggle,
   onSelectEnrollment,
-}) => (
-  <View style={styles.installationShell}>
-    <TouchableOpacity
-      style={styles.installationHeader}
-      onPress={() => onToggle(group.installation.id)}
-      accessibilityRole="button"
-      accessibilityLabel={`${group.installation.name} installation`}
-      accessibilityHint={expanded ? 'Collapses this installation section' : 'Expands this installation section'}>
-      <View style={styles.installationHeaderContent}>
-        <Text style={styles.installationName}>{group.installation.name}</Text>
-        {group.installation.description ? (
-          <Text style={styles.installationDescription}>{group.installation.description}</Text>
-        ) : null}
-        {group.showHostHint && group.installation.host ? (
-          <Text style={styles.installationHost}>{group.installation.host}</Text>
-        ) : null}
-      </View>
-      <Text style={styles.installationToggle}>{expanded ? '−' : '+'}</Text>
-    </TouchableOpacity>
-    {expanded ? (
-      <View style={styles.installationBody}>
-        {group.tenantGroups.map(tenantGroup => (
-          <View key={`${group.installation.id}:${tenantGroup.tenantId ?? tenantGroup.tenantName}`}>
-            <TenantSectionHeader
-              tenantName={tenantGroup.tenantName}
-              tenantDescription={tenantGroup.tenantDescription}
-            />
-            {tenantGroup.enrollments.map(enrollment => (
-              <EnrollmentListItem
-                key={enrollment.id}
-                enrollment={enrollment}
-                onPress={onSelectEnrollment}
+}) => {
+  const {t} = useTranslation();
+
+  return (
+    <View style={styles.installationShell}>
+      <TouchableOpacity
+        style={styles.installationHeader}
+        onPress={() => onToggle(group.installation.id)}
+        accessibilityRole="button"
+        accessibilityLabel={t('home.installationLabel', {name: group.installation.name})}
+        accessibilityHint={
+          expanded ? t('home.collapseInstallation') : t('home.expandInstallation')
+        }>
+        <View style={styles.installationHeaderContent}>
+          <Text style={styles.installationName}>{group.installation.name}</Text>
+          {group.installation.description ? (
+            <Text style={styles.installationDescription}>{group.installation.description}</Text>
+          ) : null}
+          {group.showHostHint && group.installation.host ? (
+            <Text style={styles.installationHost}>{group.installation.host}</Text>
+          ) : null}
+        </View>
+        <Text style={styles.installationToggle}>{expanded ? '−' : '+'}</Text>
+      </TouchableOpacity>
+      {expanded ? (
+        <View style={styles.installationBody}>
+          {group.tenantGroups.map(tenantGroup => (
+            <View key={`${group.installation.id}:${tenantGroup.tenantId ?? tenantGroup.tenantName}`}>
+              <TenantSectionHeader
+                tenantName={tenantGroup.tenantName}
+                tenantDescription={tenantGroup.tenantDescription}
               />
-            ))}
-          </View>
-        ))}
-        {group.ungroupedEnrollments.map(enrollment => (
-          <EnrollmentListItem
-            key={enrollment.id}
-            enrollment={enrollment}
-            onPress={onSelectEnrollment}
-          />
-        ))}
-      </View>
-    ) : null}
-  </View>
-);
+              {tenantGroup.enrollments.map(enrollment => (
+                <EnrollmentListItem
+                  key={enrollment.id}
+                  enrollment={enrollment}
+                  onPress={onSelectEnrollment}
+                />
+              ))}
+            </View>
+          ))}
+          {group.ungroupedEnrollments.map(enrollment => (
+            <EnrollmentListItem
+              key={enrollment.id}
+              enrollment={enrollment}
+              onPress={onSelectEnrollment}
+            />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+};
 
 type EnrollmentListItemProps = {
   enrollment: StoredEnrollment;
@@ -280,26 +294,30 @@ type EnrollmentListItemProps = {
  * @param onPress Callback invoked when the item is selected.
  * @since 2025
  */
-const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPress}) => (
-  <TouchableOpacity
-    style={styles.card}
-    onPress={() => onPress(enrollment)}
-    accessibilityRole="button"
-    accessibilityLabel={enrollment.integrationName}
-    accessibilityHint="Opens enrollment details">
-    <View style={styles.cardHeader}>
-      <Text style={styles.cardTitle}>{enrollment.integrationName}</Text>
-    </View>
-    {enrollment.enrollmentName ? (
-      <Text style={styles.cardSubtitle}>{enrollment.enrollmentName}</Text>
-    ) : null}
-    {enrollment.integrationDescription ? (
-      <Text numberOfLines={2} style={styles.cardDescription}>
-        {enrollment.integrationDescription}
-      </Text>
-    ) : null}
-  </TouchableOpacity>
-);
+const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPress}) => {
+  const {t} = useTranslation();
+
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => onPress(enrollment)}
+      accessibilityRole="button"
+      accessibilityLabel={enrollment.integrationName}
+      accessibilityHint={t('home.openEnrollmentDetails')}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardTitle}>{enrollment.integrationName}</Text>
+      </View>
+      {enrollment.enrollmentName ? (
+        <Text style={styles.cardSubtitle}>{enrollment.enrollmentName}</Text>
+      ) : null}
+      {enrollment.integrationDescription ? (
+        <Text numberOfLines={2} style={styles.cardDescription}>
+          {enrollment.integrationDescription}
+        </Text>
+      ) : null}
+    </TouchableOpacity>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {

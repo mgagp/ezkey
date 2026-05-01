@@ -8,6 +8,7 @@
 import React from 'react';
 import {View, Text, StyleSheet, ScrollView} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useTranslation} from 'react-i18next';
 import {colors, spacing, typography, borderRadius} from '../../config/theme';
 import thirdPartyData from '../../data/thirdPartyLicenses.json';
 
@@ -27,18 +28,22 @@ const PACKAGES: LicenseRow[] = thirdPartyData.packages;
  */
 export const LicensesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const {t} = useTranslation();
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + spacing.xxl}]}
-      accessibilityLabel="Open source licenses">
+      accessibilityLabel={t('licenses.accessibilityLabel')}>
       <Text style={styles.intro} accessibilityRole="text">
-        This app bundles the following direct npm dependencies. Run yarn license:app-data in the project to refresh this
-        list after dependency changes.
+        {t('licenses.intro')}
       </Text>
       {thirdPartyData.generatedAt ? (
-        <Text style={styles.meta} accessibilityLabel={`Data generated at ${thirdPartyData.generatedAt}`}>
-          Data snapshot: {thirdPartyData.generatedAt}
+        <Text
+          style={styles.meta}
+          accessibilityLabel={t('licenses.generatedAtAccessibility', {
+            value: thirdPartyData.generatedAt,
+          })}>
+          {t('licenses.snapshot', {value: thirdPartyData.generatedAt})}
         </Text>
       ) : null}
       <View style={styles.list} accessibilityRole="list">
@@ -46,7 +51,11 @@ export const LicensesScreen: React.FC = () => {
           <View
             key={item.name}
             style={[styles.row, index === PACKAGES.length - 1 && styles.rowLast]}
-            accessibilityLabel={`${item.name} version ${item.version}, ${item.license} license`}>
+            accessibilityLabel={t('licenses.rowAccessibility', {
+              name: item.name,
+              version: item.version,
+              license: item.license,
+            })}>
             <View style={styles.rowText}>
               <Text style={styles.name}>{item.name}</Text>
               {item.version ? <Text style={styles.version}>{item.version}</Text> : null}

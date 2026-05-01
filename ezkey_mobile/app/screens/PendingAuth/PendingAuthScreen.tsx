@@ -28,6 +28,7 @@ import {
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import axios from 'axios';
 import {Buffer} from 'buffer';
+import {useTranslation} from 'react-i18next';
 import {env} from '../../config/env';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentById} from '../../hooks/useEnrollments';
@@ -78,6 +79,7 @@ const AuthChallengeCodeInput: React.FC<AuthChallengeCodeInputProps> = ({
   onClearError,
   editable = true,
 }) => {
+  const {t} = useTranslation();
   const inputRef = useRef<TextInput>(null);
   const digits = value.split('').concat(Array(AUTH_CHALLENGE_LENGTH).fill('')).slice(0, AUTH_CHALLENGE_LENGTH);
 
@@ -95,8 +97,8 @@ const AuthChallengeCodeInput: React.FC<AuthChallengeCodeInputProps> = ({
     <Pressable
       onPress={() => editable && inputRef.current?.focus()}
       style={styles.challengeContainer}
-      accessibilityLabel="Challenge code input"
-      accessibilityHint="Enter the 2-digit code shown in the admin console">
+      accessibilityLabel={t('pendingAuth.challengeInput')}
+      accessibilityHint={t('pendingAuth.challengeInputHint')}>
       <View style={styles.challengeBoxes}>
         {digits.map((digit, i) => (
           <View
@@ -136,6 +138,7 @@ const AuthChallengeCodeInput: React.FC<AuthChallengeCodeInputProps> = ({
  * @since 2025
  */
 export const PendingAuthScreen: React.FC<Props> = ({route}) => {
+  const {t} = useTranslation();
   const {enrollmentId} = route.params;
   const {data: enrollment, isLoading: isEnrollmentLoading} = useEnrollmentById(enrollmentId);
   const [attempt, setAttempt] = useState<PendingAttempt | undefined>();
@@ -174,14 +177,14 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         error.response?.data?.message ??
         error.response?.data?.error ??
         error.message ??
-        'Request failed.';
+        t('pendingAuth.requestFailed');
       return message;
     }
     if (error instanceof Error) {
       return error.message;
     }
-    return 'Unexpected error.';
-  }, []);
+    return t('pendingAuth.unexpectedError');
+  }, [t]);
 
   const loadPendingAttempt = useCallback(async () => {
     if (!enrollment) {
@@ -225,7 +228,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       // Verify integration signature over canonical payload (NFC + proofToken|challenge|title|message)
       const integrationPublicKey = enrollment.integrationPublicKey;
       if (!integrationPublicKey) {
-        setGlobalError('Enrollment missing integration public key; cannot verify pending response.');
+        setGlobalError(t('pendingAuth.missingPendingPublicKey'));
         setAttempt(undefined);
         setState('pending');
         return;
@@ -283,7 +286,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           : {lastStep: 'after_verify', signatureValid, capturedAtIso: debugSnapshotAt},
       );
       if (!signatureValid) {
-        setGlobalError('Invalid integration signature on pending response.');
+        setGlobalError(t('pendingAuth.invalidPendingSignature'));
         setAttempt(undefined);
         setState('pending');
         return;
@@ -319,7 +322,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     } finally {
       setLoading(false);
     }
-  }, [enrollment, extractErrorMessage]);
+  }, [enrollment, extractErrorMessage, t]);
 
   useEffect(() => {
     if (isEnrollmentLoading || !enrollment) {
@@ -339,7 +342,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         attempt.challengeRequired &&
         challengeInput.trim().length !== AUTH_CHALLENGE_LENGTH
       ) {
-        setFormError('Enter the 2-digit code from the admin console.');
+        setFormError(t('pendingAuth.enterChallenge'));
         return;
       }
       setIsProcessing(true);
@@ -360,12 +363,12 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
 
         const integrationPublicKey = enrollment.integrationPublicKey;
         if (!integrationPublicKey) {
-          setGlobalError('Enrollment missing integration public key; cannot verify respond response.');
+          setGlobalError(t('pendingAuth.missingRespondPublicKey'));
           return;
         }
         const respondSig = response.authAttemptProofTokenResultSignedByIntegration?.trim() ?? '';
         if (!respondSig) {
-          setGlobalError('Missing integration signature on respond response.');
+          setGlobalError(t('pendingAuth.missingRespondSignature'));
           return;
         }
         const respondResultPayload = buildRespondResultPayload(
@@ -380,7 +383,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           integrationPublicKey,
         );
         if (!respondSignatureValid) {
-          setGlobalError('Invalid integration signature on respond response.');
+          setGlobalError(t('pendingAuth.invalidRespondSignature'));
           return;
         }
 
@@ -395,7 +398,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           setState('failed');
           setChallengeFailedMessage(
             response.authAttemptMessage ??
-              'Challenge code did not match. This attempt is final.',
+              t('pendingAuth.challengeDidNotMatch'),
           );
         }
       } catch (error) {
@@ -404,7 +407,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         setIsProcessing(false);
       }
     },
-    [attempt, challengeInput, enrollment, extractErrorMessage, state],
+    [attempt, challengeInput, enrollment, extractErrorMessage, state, t],
   );
 
   const hasSecureInfo = true; // With Ed25519, keys are always available if root key exists
@@ -421,7 +424,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Pending authentication</Text>
+      <Text style={styles.heading}>{t('pendingAuth.heading')}</Text>
       {enrollment && !showResultState && !attempt?.contextTitle ? (
         <View style={styles.enrollmentBox}>
           <Text style={styles.enrollmentIntegration}>{enrollment.integrationName}</Text>
@@ -433,83 +436,83 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       {isEnrollmentLoading || loading ? (
         <View style={styles.loading}>
           <ActivityIndicator />
-          <Text style={styles.loadingText}>Contacting Ezkey Auth API…</Text>
+          <Text style={styles.loadingText}>{t('pendingAuth.loading')}</Text>
         </View>
       ) : globalError ? (
         <View style={styles.errorState}>
-          <Text style={styles.errorTitle}>Unable to load request</Text>
+          <Text style={styles.errorTitle}>{t('pendingAuth.errorTitle')}</Text>
           <Text style={styles.errorBody}>{globalError}</Text>
           {env.pendingAuthDebugPanel && debugInfo ? (
             <View style={styles.debugBox}>
-              <Text style={styles.debugTitle}>Debug (for support)</Text>
+              <Text style={styles.debugTitle}>{t('pendingAuth.debugTitle')}</Text>
               {debugInfo.capturedAtIso != null && debugInfo.capturedAtIso !== '' && (
                 <Text style={styles.debugTimestamp} selectable>
-                  Captured at: {debugInfo.capturedAtIso}
+                  {t('pendingAuth.debugCapturedAt', {value: debugInfo.capturedAtIso})}
                 </Text>
               )}
-              <Text style={styles.debugLine}>Last step: {debugInfo.lastStep}</Text>
+              <Text style={styles.debugLine}>{t('pendingAuth.debugLastStep', {value: debugInfo.lastStep})}</Text>
               {debugInfo.integrationPublicKeyLength != null && (
-                <Text style={styles.debugLine}>integrationPublicKey length: {debugInfo.integrationPublicKeyLength}</Text>
+                <Text style={styles.debugLine}>{t('pendingAuth.debugIntegrationKeyLength', {value: debugInfo.integrationPublicKeyLength})}</Text>
               )}
               {debugInfo.integrationPublicKeyPrefix != null && (
-                <Text style={styles.debugLine} selectable>integrationPublicKey prefix: {debugInfo.integrationPublicKeyPrefix}</Text>
+                <Text style={styles.debugLine} selectable>{t('pendingAuth.debugIntegrationKeyPrefix', {value: debugInfo.integrationPublicKeyPrefix})}</Text>
               )}
               {debugInfo.integrationPublicKeySha256Utf8Hex != null &&
                 debugInfo.integrationPublicKeySha256Utf8Hex !== '' && (
                   <Text style={styles.debugLine} selectable>
-                    integrationPublicKey SHA256 (UTF-8 hex): {debugInfo.integrationPublicKeySha256Utf8Hex}
+                    {t('pendingAuth.debugIntegrationKeySha', {value: debugInfo.integrationPublicKeySha256Utf8Hex})}
                   </Text>
                 )}
               {debugInfo.pendingPayloadLength != null && (
-                <Text style={styles.debugLine}>pendingPayload length: {debugInfo.pendingPayloadLength}</Text>
+                <Text style={styles.debugLine}>{t('pendingAuth.debugPendingPayloadLength', {value: debugInfo.pendingPayloadLength})}</Text>
               )}
               {debugInfo.pendingPayloadSha256Utf8Hex != null && debugInfo.pendingPayloadSha256Utf8Hex !== '' && (
                 <Text style={styles.debugLine} selectable>
-                  pendingPayload SHA256 (UTF-8 hex): {debugInfo.pendingPayloadSha256Utf8Hex}
+                  {t('pendingAuth.debugPendingPayloadSha', {value: debugInfo.pendingPayloadSha256Utf8Hex})}
                 </Text>
               )}
               {debugInfo.pendingPayloadPreview != null && (
-                <Text style={styles.debugLine} selectable>pendingPayload preview: {debugInfo.pendingPayloadPreview}</Text>
+                <Text style={styles.debugLine} selectable>{t('pendingAuth.debugPendingPayloadPreview', {value: debugInfo.pendingPayloadPreview})}</Text>
               )}
               {debugInfo.pendingPayloadBase64 != null && (
-                <Text style={styles.debugLine} selectable>pendingPayload base64: {debugInfo.pendingPayloadBase64}</Text>
+                <Text style={styles.debugLine} selectable>{t('pendingAuth.debugPendingPayloadBase64', {value: debugInfo.pendingPayloadBase64})}</Text>
               )}
               {debugInfo.signatureLength != null && (
-                <Text style={styles.debugLine}>signature length: {debugInfo.signatureLength}</Text>
+                <Text style={styles.debugLine}>{t('pendingAuth.debugSignatureLength', {value: debugInfo.signatureLength})}</Text>
               )}
               {debugInfo.signatureSha256Utf8Hex != null && debugInfo.signatureSha256Utf8Hex !== '' && (
                 <Text style={styles.debugLine} selectable>
-                  integration signature SHA256 (UTF-8 hex): {debugInfo.signatureSha256Utf8Hex}
+                  {t('pendingAuth.debugSignatureSha', {value: debugInfo.signatureSha256Utf8Hex})}
                 </Text>
               )}
               {debugInfo.signaturePrefix != null && (
-                <Text style={styles.debugLine} selectable>signature prefix: {debugInfo.signaturePrefix}</Text>
+                <Text style={styles.debugLine} selectable>{t('pendingAuth.debugSignaturePrefix', {value: debugInfo.signaturePrefix})}</Text>
               )}
               {debugInfo.signatureValid != null && (
-                <Text style={styles.debugLine}>signature valid: {String(debugInfo.signatureValid)}</Text>
+                <Text style={styles.debugLine}>{t('pendingAuth.debugSignatureValid', {value: String(debugInfo.signatureValid)})}</Text>
               )}
               {debugInfo.errorMessage != null && (
-                <Text style={styles.debugLine} selectable>Error: {debugInfo.errorMessage}</Text>
+                <Text style={styles.debugLine} selectable>{t('pendingAuth.debugError', {value: debugInfo.errorMessage})}</Text>
               )}
             </View>
           ) : null}
           <TouchableOpacity onPress={loadPendingAttempt} style={styles.secondaryButton}>
-            <Text style={styles.secondaryLabel}>Try again</Text>
+            <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
           </TouchableOpacity>
         </View>
       ) : showChallengeFailed ? (
         <View style={styles.challengeFailedState}>
-          <Text style={styles.challengeFailedTitle}>Authentication failed</Text>
+          <Text style={styles.challengeFailedTitle}>{t('pendingAuth.failedTitle')}</Text>
           <Text style={styles.challengeFailedBody}>{challengeFailedMessage}</Text>
           <TouchableOpacity onPress={loadPendingAttempt} style={styles.checkAgainButton}>
-            <Text style={styles.checkAgainLabel}>Check again</Text>
+            <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
           </TouchableOpacity>
         </View>
       ) : showEmptyState ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>No pending requests</Text>
+          <Text style={styles.emptyTitle}>{t('pendingAuth.noPending')}</Text>
           <TouchableOpacity onPress={loadPendingAttempt} style={styles.checkAgainButton}>
-            <Text style={styles.checkAgainLabel}>Check again</Text>
+            <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
           </TouchableOpacity>
         </View>
       ) : showResultState ? (
@@ -523,7 +526,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
                   state === 'accepted' ? styles.badgeApproved : styles.badgeRejected,
                 ]}>
                 {' '}
-                {state === 'accepted' ? 'Approved' : 'Rejected'}
+                {state === 'accepted' ? t('pendingAuth.approved') : t('pendingAuth.rejected')}
               </Text>
             </Text>
             {attempt?.contextMessage ? (
@@ -541,20 +544,22 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           </View>
           <View style={styles.metaZone}>
             <Text style={styles.metaLine}>
-              Created {new Date(enrollment.createdAt).toLocaleString(undefined, {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              })}{' '}
-              · Last {new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
-                dateStyle: 'medium',
-                timeStyle: 'short',
+              {t('pendingAuth.metaLine', {
+                created: new Date(enrollment.createdAt).toLocaleString(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                }),
+                last: new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                }),
               })}
             </Text>
           </View>
           <TouchableOpacity
             onPress={loadPendingAttempt}
             style={[styles.checkAgainButton, styles.checkAgainButtonFull]}>
-            <Text style={styles.checkAgainLabel}>Check again</Text>
+            <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -567,7 +572,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>
                   {attempt.contextTitle ?? attempt.integrationName}
-                  <Text style={styles.cardTitlePending}> Pending</Text>
+                  <Text style={styles.cardTitlePending}> {t('pendingAuth.pendingSuffix')}</Text>
                 </Text>
               </View>
 
@@ -587,7 +592,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
 
               {attempt.challengeRequired ? (
                 <View style={styles.challengeSection}>
-                  <Text style={styles.challengeHeading}>Enter the 2-digit code from the admin console</Text>
+                  <Text style={styles.challengeHeading}>{t('pendingAuth.challengeHeading')}</Text>
                   <AuthChallengeCodeInput
                     value={challengeInput}
                     onChangeText={setChallengeInput}
@@ -607,14 +612,14 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
                   onPress={() => handleRespond(false)}
                   style={[styles.actionButton, styles.rejectButton]}
                   disabled={isProcessing}>
-                  <Text style={styles.rejectLabel}>Deny</Text>
+                  <Text style={styles.rejectLabel}>{t('pendingAuth.deny')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleRespond(true)}
                   style={[styles.actionButton, styles.approveButton]}
                   disabled={isProcessing}>
                   <Text style={styles.approveLabel}>
-                    {isProcessing ? 'Sending…' : 'Approve'}
+                    {isProcessing ? t('pendingAuth.sending') : t('pendingAuth.approve')}
                   </Text>
                 </TouchableOpacity>
               </View>

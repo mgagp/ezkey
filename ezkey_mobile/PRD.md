@@ -33,7 +33,7 @@ Deliver a cross-platform (iOS + Android) React Native mobile application that ma
 7. **Operational docs** – No shared documentation or credentials distribution is needed (single maintainer scenario).
 8. **Mocking** – No mock mode; the app always talks to real endpoints.
 9. **Destructive actions** – Enrollment deletion, reset, or destructive flows are deferred; v1 provides read-only management.
-10. **Localization** – English-only runtime; no live locale switching.
+10. **Localization** – English and French runtime. Default to English, allow manual language selection in Settings, and keep the first implementation simple by applying language changes after app restart rather than live-switching the full UI.
 11. **Data retention** – Local activity snapshots purge after 30 days; no additional compliance hooks required.
 12. **Analytics** – No telemetry/analytics collection in v1; keep implementation minimal.
 
@@ -172,7 +172,7 @@ sequenceDiagram
 - **Security**: No sensitive tokens stored in plain AsyncStorage; clear data on sign-out (future feature) and provide “reset app” debug action.
 - **Reliability**: Retry policies for network operations (3 attempts with exponential backoff). App gracefully handles offline state with banners and cached data.
 - **Accessibility**: WCAG AA color contrast, VoiceOver/TalkBack labels, dynamic font size support.
-- **Localization**: English-only copy for MVP; text centralized in message catalog for future translations.
+- **Localization**: English and French copy, centralized in a message catalog. English is the default; the user can switch language manually in Settings, and the change is applied after the next app restart.
 - **Telemetry**: Minimal local event log for QA builds; production builds omit verbose logs.
 
 ## 8. Success Metrics

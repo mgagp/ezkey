@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import {StackScreenProps} from '@react-navigation/stack';
 import axios from 'axios';
+import {useTranslation} from 'react-i18next';
 import {useCameraPermission} from 'react-native-vision-camera';
 import {useSaveEnrollment} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
@@ -82,51 +83,55 @@ const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
   showServerUrl,
   serverUrl,
   compact,
-}) => (
-  <View style={[styles.infoCard, compact && styles.infoCardCompact]}>
-    <View style={[styles.infoCardHeader, compact && styles.infoCardHeaderCompact]}>
-      <Text style={styles.infoCardTitle}>{draft.integrationName}</Text>
+}) => {
+  const {t} = useTranslation();
+
+  return (
+    <View style={[styles.infoCard, compact && styles.infoCardCompact]}>
+      <View style={[styles.infoCardHeader, compact && styles.infoCardHeaderCompact]}>
+        <Text style={styles.infoCardTitle}>{draft.integrationName}</Text>
+      </View>
+      <View style={[styles.infoCardBody, compact && styles.infoCardBodyCompact]}>
+        {draft.integrationDescription ? (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>{t('enrollmentWizard.description')}</Text>
+            <Text style={styles.infoValue}>{draft.integrationDescription}</Text>
+          </View>
+        ) : null}
+        {draft.tenantName ? (
+          <>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{t('enrollmentWizard.organization')}</Text>
+              <Text style={styles.infoValue}>{draft.tenantName}</Text>
+            </View>
+            {draft.tenantDescription ? (
+              <Text style={styles.infoValueMuted}>{draft.tenantDescription}</Text>
+            ) : null}
+          </>
+        ) : null}
+        {draft.enrollmentName ? (
+          <>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{t('enrollmentWizard.device')}</Text>
+              <Text style={styles.infoValue}>{draft.enrollmentName}</Text>
+            </View>
+          </>
+        ) : null}
+        {showServerUrl && serverUrl ? (
+          <>
+            <View style={styles.infoDivider} />
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{t('enrollmentWizard.server')}</Text>
+              <Text style={styles.infoValueSmall}>{serverUrl}</Text>
+            </View>
+          </>
+        ) : null}
+      </View>
     </View>
-    <View style={[styles.infoCardBody, compact && styles.infoCardBodyCompact]}>
-      {draft.integrationDescription ? (
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Description</Text>
-          <Text style={styles.infoValue}>{draft.integrationDescription}</Text>
-        </View>
-      ) : null}
-      {draft.tenantName ? (
-        <>
-          <View style={styles.infoDivider} />
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Organization</Text>
-            <Text style={styles.infoValue}>{draft.tenantName}</Text>
-          </View>
-          {draft.tenantDescription ? (
-            <Text style={styles.infoValueMuted}>{draft.tenantDescription}</Text>
-          ) : null}
-        </>
-      ) : null}
-      {draft.enrollmentName ? (
-        <>
-          <View style={styles.infoDivider} />
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Device</Text>
-            <Text style={styles.infoValue}>{draft.enrollmentName}</Text>
-          </View>
-        </>
-      ) : null}
-      {showServerUrl && serverUrl ? (
-        <>
-          <View style={styles.infoDivider} />
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Server</Text>
-            <Text style={styles.infoValueSmall}>{serverUrl}</Text>
-          </View>
-        </>
-      ) : null}
-    </View>
-  </View>
-);
+  );
+};
 
 type ChallengeCodeInputProps = {
   value: string;
@@ -149,6 +154,7 @@ const ChallengeCodeInput: React.FC<ChallengeCodeInputProps> = ({
   onClearError,
   editable = true,
 }) => {
+  const {t} = useTranslation();
   const inputRef = useRef<TextInput>(null);
   const digits = value.split('').concat(Array(CHALLENGE_LENGTH).fill('')).slice(0, CHALLENGE_LENGTH);
 
@@ -166,8 +172,8 @@ const ChallengeCodeInput: React.FC<ChallengeCodeInputProps> = ({
     <Pressable
       onPress={() => editable && inputRef.current?.focus()}
       style={styles.challengeContainer}
-      accessibilityLabel="Challenge code input"
-      accessibilityHint="Enter the 6-digit code shown in the admin console">
+      accessibilityLabel={t('enrollmentWizard.challengeInput')}
+      accessibilityHint={t('enrollmentWizard.challengeInputHint')}>
       <View style={styles.challengeBoxes}>
         {digits.map((digit, i) => (
           <View
@@ -201,6 +207,7 @@ const ChallengeCodeInput: React.FC<ChallengeCodeInputProps> = ({
  * @since 2025
  */
 export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
+  const {t} = useTranslation();
   const {hasPermission: hasCameraPermission, requestPermission} = useCameraPermission();
   const [draft, setDraft] = useState<EnrollmentDraft | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -226,14 +233,14 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         (typeof data?.error === 'string' ? data.error : null) ??
         (typeof data?.code === 'string' ? data.code : null) ??
         error.message ??
-        'Request failed.';
+        t('enrollmentWizard.requestFailed');
       return message;
     }
     if (error instanceof Error) {
       return error.message;
     }
-    return 'Unexpected error.';
-  }, []);
+    return t('enrollmentWizard.unexpectedError');
+  }, [t]);
 
   const buildDraft = useCallback(
     (
@@ -245,7 +252,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       return {
         id: enrollmentId,
         integrationId: enrollmentId,
-        integrationName: response.integrationName ?? 'Integration',
+        integrationName: response.integrationName ?? t('enrollmentWizard.integrationFallback'),
         tenantName: response.tenantName ?? undefined,
         tenantId: response.tenantId,
         tenantDescription: response.tenantDescription,
@@ -256,7 +263,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         deviceLabel: response.enrollmentName,
       };
     },
-    [],
+    [t],
   );
 
   const performBinding = useCallback(
@@ -268,7 +275,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       const enrollmentProofToken = (override?.enrollmentProofToken ?? bindForm.enrollmentProofToken).trim();
       if (!enrollmentId || !enrollmentProofToken) {
         setScannerVisible(false);
-        setBindError('Enrollment ID and proof token are required.');
+        setBindError(t('enrollmentWizard.missingIdOrToken'));
         return;
       }
       const urlForBind =
@@ -276,9 +283,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       const hasGlobalBase = Boolean(env.configuredApiBaseUrl?.trim());
       if (!urlForBind && !hasGlobalBase) {
         setScannerVisible(false);
-        setBindError(
-          'No Auth API URL: scan a QR that includes authUrl (set ezkey.qr.auth-base-url on the server), or set EZKEY_API_BASE_URL in .env and rebuild.',
-        );
+        setBindError(t('enrollmentWizard.missingAuthUrl'));
         return;
       }
       setBindError(undefined);
@@ -312,7 +317,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           response.integrationPublicKey,
         );
         if (!bindSigOk) {
-          setBindError('Could not verify server identity (integration signature).');
+          setBindError(t('enrollmentWizard.invalidServerIdentity'));
           setScannerVisible(false);
           return;
         }
@@ -326,17 +331,17 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         setIsBinding(false);
       }
     },
-    [authUrl, bindForm, buildDraft, extractErrorMessage, isBinding],
+    [authUrl, bindForm, buildDraft, extractErrorMessage, isBinding, t],
   );
 
   const finalizeEnrollment = useCallback(async () => {
     if (!draft) {
-      Alert.alert('Missing scan', 'Scan the enrollment QR before finishing.');
+      Alert.alert(t('enrollmentWizard.missingScanTitle'), t('enrollmentWizard.missingScanBody'));
       return;
     }
     const challengeResponse = enrollmentChallenge.trim();
     if (challengeResponse.length !== 6) {
-      setChallengeError('Enrollment challenge must be 6 characters.');
+      setChallengeError(t('enrollmentWizard.challengeLength'));
       return;
     }
     const enrollmentId = draft.id.toString();
@@ -377,7 +382,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         draft.integrationPublicKey,
       );
       if (!verifyResultOk) {
-        setChallengeError('Could not verify enrollment result (integration signature).');
+        setChallengeError(t('enrollmentWizard.invalidEnrollmentResult'));
         setEnrollmentChallenge('');
         return;
       }
@@ -428,6 +433,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     extractErrorMessage,
     navigation,
     saveEnrollment,
+    t,
   ]);
 
   const handlePrimary = useCallback(() => {
@@ -441,19 +447,19 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           if (granted) {
             setScannerVisible(true);
           } else {
-            setCameraError('Camera access is required. Enable it in Settings to scan the QR code.');
+            setCameraError(t('enrollmentWizard.cameraRequired'));
           }
         });
       }
       return;
     }
     if (enrollmentChallenge.trim().length !== 6) {
-      setChallengeError('Enrollment challenge must be 6 characters.');
+      setChallengeError(t('enrollmentWizard.challengeLength'));
       return;
     }
     setChallengeError(undefined);
     finalizeEnrollment().catch(() => {});
-  }, [draft, enrollmentChallenge, finalizeEnrollment, hasCameraPermission, requestPermission]);
+  }, [draft, enrollmentChallenge, finalizeEnrollment, hasCameraPermission, requestPermission, t]);
 
   const handleSecondary = useCallback(() => {
     if (draft) {
@@ -466,10 +472,10 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       return;
     }
     Alert.alert(
-      'Why we need camera access',
-      'The QR holds temporary enrollment credentials. The app never stores raw images; it only processes the encoded payload locally.',
+      t('enrollmentWizard.cameraWhyTitle'),
+      t('enrollmentWizard.cameraWhyBody'),
     );
-  }, [draft, isBinding, isSubmitting, navigation]);
+  }, [draft, isBinding, isSubmitting, navigation, t]);
 
   const handleBack = useCallback(() => {
     if (isSubmitting || isBinding) {
@@ -491,12 +497,28 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   const secondaryDisabled = (hasDraft && isSubmitting) || (!hasDraft && isBinding);
   const primaryLabel = hasDraft
     ? isSubmitting
-      ? 'Finishing…'
-      : 'Complete enrollment'
+      ? t('enrollmentWizard.finishing')
+      : t('enrollmentWizard.complete')
     : isBinding
-      ? 'Binding…'
-      : 'Open scanner';
-  const secondaryLabel = hasDraft ? 'Cancel' : 'Learn more';
+      ? t('enrollmentWizard.binding')
+      : t('enrollmentWizard.openScanner');
+  const secondaryLabel = hasDraft ? t('enrollmentWizard.cancel') : t('enrollmentWizard.learnMore');
+
+  const localizeQrError = useCallback(
+    (message: string) => {
+      switch (message) {
+        case 'Empty payload':
+          return t('enrollmentWizard.qrEmptyPayload');
+        case 'Invalid Auth API URL in QR payload.':
+          return t('enrollmentWizard.qrInvalidAuthUrl');
+        case 'Unsupported QR format':
+          return t('enrollmentWizard.qrUnsupportedFormat');
+        default:
+          return message;
+      }
+    },
+    [t],
+  );
 
   return (
     <>
@@ -511,16 +533,14 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Text style={styles.backLabel}>Back</Text>
+            <Text style={styles.backLabel}>{t('enrollmentWizard.back')}</Text>
           </TouchableOpacity>
           <View style={styles.backButton} />
         </View>
         <View style={styles.stepContainer}>
-          <Text style={styles.flowSectionLabel}>Scan</Text>
-          <Text style={styles.stepTitle}>Scan the QR code</Text>
-          <Text style={styles.stepDescription}>
-            Have the enrollment QR visible on your workstation. Tap Open scanner to use the camera.
-          </Text>
+          <Text style={styles.flowSectionLabel}>{t('enrollmentWizard.scanLabel')}</Text>
+          <Text style={styles.stepTitle}>{t('enrollmentWizard.scanTitle')}</Text>
+          <Text style={styles.stepDescription}>{t('enrollmentWizard.scanDescription')}</Text>
           <View style={styles.scanInstructions}>
             {(bindError || cameraError) ? (
               <View style={styles.errorBanner}>
@@ -531,11 +551,11 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           {hasDraft && draft ? (
             <>
               <View style={styles.flowDivider} />
-              <Text style={styles.flowSectionLabel}>Verify</Text>
+              <Text style={styles.flowSectionLabel}>{t('enrollmentWizard.verifyLabel')}</Text>
               <View style={styles.challengeSection}>
-                <Text style={styles.challengeHeading}>Enter the 6-digit code from the admin console</Text>
+                <Text style={styles.challengeHeading}>{t('enrollmentWizard.verifyTitle')}</Text>
                 <Text style={styles.challengeHint}>
-                  Tap Complete enrollment below to finish linking this device to {draft.integrationName}.
+                  {t('enrollmentWizard.verifyHint', {name: draft.integrationName})}
                 </Text>
                 <ChallengeCodeInput
                   value={enrollmentChallenge}
@@ -549,7 +569,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                   </View>
                 ) : null}
               </View>
-              <Text style={styles.enrollmentDetailsLabel}>Enrollment details</Text>
+              <Text style={styles.enrollmentDetailsLabel}>{t('enrollmentWizard.enrollmentDetails')}</Text>
               <EnrollmentInfoCard draft={draft} compact />
             </>
           ) : null}
@@ -590,10 +610,14 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
             setBindError(undefined);
             performBinding(parsed);
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
+            const rawMessage = error instanceof Error ? error.message : String(error);
+            const message = localizeQrError(rawMessage);
             setScannerVisible(false);
-            console.warn('[EnrollmentWizard] Invalid QR payload:', message, '| raw:', JSON.stringify(value));
-            Alert.alert('Invalid QR', `The scanned code is not a valid Ezkey enrollment.\n\nDetails: ${message}`);
+            console.warn('[EnrollmentWizard] Invalid QR payload:', rawMessage, '| raw:', JSON.stringify(value));
+            Alert.alert(
+              t('enrollmentWizard.invalidQrTitle'),
+              t('enrollmentWizard.invalidQrBody', {details: message}),
+            );
           }
         }}
       />

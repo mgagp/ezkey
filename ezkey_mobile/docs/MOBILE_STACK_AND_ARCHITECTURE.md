@@ -18,10 +18,11 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 | React runtime | React 18.3.1 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json`. |
 | Language | TypeScript | Typed mobile domain and service layer | Thin wrapper types sit above generated DTOs. |
 | Navigation | React Navigation stack | Simple screen-to-screen mobile flow control | Current stack includes Home, Enrollment, Pending, and supporting screens. |
+| Localization | `i18next` plus `react-i18next` | Static message catalog, manual EN/FR language selection, and predictable fallback behavior | English is the default locale; locale preference is persisted locally and applied on next app restart. |
 | Remote data orchestration | React Query | Query/mutation lifecycle and cache invalidation | Used for enrollments hydration and local mutation coordination. |
 | Local UI state | Zustand | Lightweight cross-screen state for selected enrollment | Small surface, no large global state machine. |
 | HTTP contract client | Orval-generated Auth API client plus local facades | Keep contract aligned with OpenAPI while preserving mobile-friendly wrappers | `app/services/api/types.ts` stays intentionally thin. |
-| Durable metadata storage | AsyncStorage-backed enrollment collection | Persist local enrollment records and installation metadata | Wrapped by `enrollmentStorage`. |
+| Durable metadata storage | AsyncStorage-backed enrollment collection and preferences | Persist local enrollment records, installation metadata, and language preference | Wrapped by `enrollmentStorage` and preference-specific storage facades. |
 | Secure item storage | `react-native-keychain` wrapper | Device-local secure storage for small secret values | Present as a secure delegate; private key path remains native. |
 | Device crypto | Native bridge (`EzkeyCryptoModule`) | Key generation, signing, public key retrieval, proof token generation | Android path is the current reference-strength implementation. |
 | QR capture | Vision Camera plus native Android frame processor | QR-first enrollment entry point | iOS parity remains more conservative. |

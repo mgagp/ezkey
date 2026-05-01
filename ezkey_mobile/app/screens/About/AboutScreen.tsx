@@ -8,6 +8,7 @@
 import React, {useEffect, useState} from 'react';
 import {Text, StyleSheet, ScrollView, TouchableOpacity, Linking, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useTranslation} from 'react-i18next';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 import {EzkeyLogo} from '../../components/EzkeyLogo';
 import {nativeCrypto} from '../../services/crypto';
@@ -22,6 +23,7 @@ const EZKEY_SITE_URL = 'https://ezkey.org';
  */
 export const AboutScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const {t} = useTranslation();
   const [buildTimestampUtc, setBuildTimestampUtc] = useState<string | 'loading' | 'unavailable'>(
     'loading',
   );
@@ -54,47 +56,43 @@ export const AboutScreen: React.FC = () => {
     <ScrollView
       style={styles.container}
       contentContainerStyle={[styles.content, {paddingBottom: insets.bottom + spacing.xxl}]}
-      accessibilityLabel="About Ezkey Authenticator">
+      accessibilityLabel={t('about.accessibilityLabel')}>
       <EzkeyLogo size={120} />
-      <Text style={styles.title}>Ezkey Authenticator</Text>
-      <Text style={styles.tagline}>Cryptographic MFA — backend-first, self-hosted, open source.</Text>
+      <Text style={styles.title}>{t('about.title')}</Text>
+      <Text style={styles.tagline}>{t('about.tagline')}</Text>
       <View style={styles.metaCard}>
         <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Version</Text>
+          <Text style={styles.metaLabel}>{t('about.version')}</Text>
           <Text style={styles.metaValue} selectable accessibilityLabel={`App version ${APP_VERSION}`}>
             {APP_VERSION}
           </Text>
         </View>
         <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Build (UTC)</Text>
+          <Text style={styles.metaLabel}>{t('about.buildUtc')}</Text>
           <Text
             style={styles.metaValue}
             selectable
-            accessibilityLabel="Native app build time UTC">
+            accessibilityLabel={t('about.buildTimeAccessibility')}>
             {buildTimestampUtc === 'loading'
               ? '…'
               : buildTimestampUtc === 'unavailable'
-                ? 'unavailable'
+                ? t('about.unavailable')
                 : buildTimestampUtc}
           </Text>
         </View>
         <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>License</Text>
-          <Text style={styles.metaValue}>MIT — Open Source</Text>
+          <Text style={styles.metaLabel}>{t('about.license')}</Text>
+          <Text style={styles.metaValue}>{t('about.licenseValue')}</Text>
         </View>
       </View>
-      <Text style={styles.description}>
-        Ezkey lets you enroll trusted devices and approve sign-in requests from your admin console. It is a
-        proprietary cryptographic protocol, intentionally distinct from FIDO2/WebAuthn and passkeys, designed for
-        operators who want full control over their authentication backend.
-      </Text>
+      <Text style={styles.description}>{t('about.description')}</Text>
       <TouchableOpacity
         style={styles.linkButton}
         onPress={openSite}
         accessibilityRole="link"
-        accessibilityLabel="Open Ezkey website"
-        accessibilityHint="Opens ezkey.org in the browser">
-        <Text style={styles.linkText}>ezkey.org — project site and updates</Text>
+        accessibilityLabel={t('about.openWebsite')}
+        accessibilityHint={t('about.openWebsiteHint')}>
+        <Text style={styles.linkText}>{t('about.projectSite')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

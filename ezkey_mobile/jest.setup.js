@@ -13,6 +13,47 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
+jest.mock('react-i18next', () => {
+  const {resources} = require('./app/i18n/resources');
+
+  const getValue = (path, source) =>
+    path.split('.').reduce((accumulator, segment) => {
+      if (accumulator == null || typeof accumulator !== 'object') {
+        return undefined;
+      }
+      return accumulator[segment];
+    }, source);
+
+  const interpolate = (value, options = {}) =>
+    value.replace(/{{\s*([^}]+)\s*}}/g, (_, key) => {
+      const normalizedKey = String(key).trim();
+      const replacement = options[normalizedKey];
+      return replacement == null ? '' : String(replacement);
+    });
+
+  return {
+    useTranslation: () => ({
+      t: (key, options) => {
+        const template =
+          getValue(key, resources.en.translation) ??
+          getValue(key, resources.en) ??
+          key;
+
+        return typeof template === 'string' ? interpolate(template, options) : key;
+      },
+      i18n: {
+        language: 'en',
+        resolvedLanguage: 'en',
+        changeLanguage: jest.fn().mockResolvedValue(undefined),
+      },
+    }),
+    initReactI18next: {
+      type: '3rdParty',
+      init: () => {},
+    },
+  };
+});
+
 /** ESM in node_modules — mock so Jest does not parse the real module. */
 jest.mock('react-native-config', () => ({
   __esModule: true,

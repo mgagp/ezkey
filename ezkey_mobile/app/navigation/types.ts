@@ -7,4 +7,5 @@ export type RootStackParamList = {
   About: undefined;
   Licenses: undefined;
   DangerZone: undefined;
+  Language: undefined;
 };

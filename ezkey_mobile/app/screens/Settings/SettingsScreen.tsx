@@ -9,33 +9,20 @@ import React from 'react';
 import {View, Text, StyleSheet, Pressable, ScrollView} from 'react-native';
 import {StackScreenProps} from '@react-navigation/stack';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useTranslation} from 'react-i18next';
 import {RootStackParamList} from '../../navigation/types';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 import {APP_DISPLAY_NAME, APP_VERSION} from '../../config/appInfo';
 
 type Props = StackScreenProps<RootStackParamList, 'Settings'>;
 
-type SettingsScreenName = 'About' | 'DangerZone' | 'Licenses';
+type SettingsScreenName = 'About' | 'DangerZone' | 'Licenses' | 'Language';
 
 type SettingsItem = {
   key: SettingsScreenName;
   label: string;
   subtitle?: string;
 };
-
-const SETTINGS_ITEMS: SettingsItem[] = [
-  {key: 'About', label: 'About', subtitle: 'App version and project info'},
-  {
-    key: 'DangerZone',
-    label: 'Danger Zone',
-    subtitle: 'Delete enrollments or clear all data',
-  },
-  {
-    key: 'Licenses',
-    label: 'Open Source Licenses',
-    subtitle: 'Third-party license listing',
-  },
-];
 
 /**
  * Hub for secondary actions: about, licenses, and destructive operations.
@@ -44,19 +31,43 @@ const SETTINGS_ITEMS: SettingsItem[] = [
  */
 export const SettingsScreen: React.FC<Props> = ({navigation}) => {
   const insets = useSafeAreaInsets();
+  const {t} = useTranslation();
+  const settingsItems: SettingsItem[] = [
+    {
+      key: 'About',
+      label: t('settings.aboutLabel'),
+      subtitle: t('settings.aboutSubtitle'),
+    },
+    {
+      key: 'Language',
+      label: t('settings.languageLabel'),
+      subtitle: t('settings.languageSubtitle'),
+    },
+    {
+      key: 'DangerZone',
+      label: t('settings.dangerZoneLabel'),
+      subtitle: t('settings.dangerZoneSubtitle'),
+    },
+    {
+      key: 'Licenses',
+      label: t('settings.licensesLabel'),
+      subtitle: t('settings.licensesSubtitle'),
+    },
+  ];
+
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={{paddingBottom: insets.bottom + spacing.xl}}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>General</Text>
+        <Text style={styles.sectionTitle}>{t('settings.general')}</Text>
         <View style={styles.card}>
-          {SETTINGS_ITEMS.map((item, index) => (
+          {settingsItems.map((item, index) => (
             <Pressable
               key={item.key}
               style={({pressed}) => [
                 styles.item,
-                index === SETTINGS_ITEMS.length - 1 && styles.itemLast,
+                index === settingsItems.length - 1 && styles.itemLast,
                 pressed && styles.itemPressed,
               ]}
               onPress={() => navigation.navigate(item.key)}>
