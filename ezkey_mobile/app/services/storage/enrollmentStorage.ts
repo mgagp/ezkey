@@ -147,6 +147,37 @@ class EnrollmentStorage {
   }
 
   /**
+   * Updates the local last-activity timestamp for a stored enrollment.
+   *
+   * @param id Enrollment identifier.
+   * @param lastActivityAt ISO timestamp to persist.
+   * @return Updated enrollment when found.
+   * @since 2025
+   */
+  async updateEnrollmentLastActivity(id: string, lastActivityAt: string) {
+    const items = await this.listEnrollments();
+    let updatedRecord: StoredEnrollment | undefined;
+    const nextItems = items.map(item => {
+      if (item.id !== id) {
+        return item;
+      }
+
+      updatedRecord = {
+        ...item,
+        lastActivityAt,
+      };
+      return updatedRecord;
+    });
+
+    if (!updatedRecord) {
+      return undefined;
+    }
+
+    await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
+    return updatedRecord;
+  }
+
+  /**
    * Clears all enrollment data from storage.
    *
    * Useful for development/testing or complete reset scenarios.

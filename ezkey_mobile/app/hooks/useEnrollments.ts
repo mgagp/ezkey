@@ -156,6 +156,40 @@ export const useDeleteEnrollment = () => {
 };
 
 /**
+ * Persists the timestamp of the last user-initiated pending check for an enrollment.
+ *
+ * @return React Query mutation handler that keeps enrollment caches synchronized locally.
+ * @since 2025
+ */
+export const useMarkEnrollmentPendingChecked = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({id, checkedAt}: {id: string; checkedAt: string}) =>
+      enrollmentStorage.updateEnrollmentLastActivity(id, checkedAt),
+    onSuccess: (updatedRecord, variables) => {
+      if (!updatedRecord) {
+        return;
+      }
+
+      queryClient.setQueryData<StoredEnrollment[] | undefined>(['enrollments'], current => {
+        if (!current) {
+          return current;
+        }
+        return current.map(item =>
+          item.id === variables.id ? {...item, lastActivityAt: variables.checkedAt} : item,
+        );
+      });
+      queryClient.setQueryData<StoredEnrollment | undefined>(['enrollments', variables.id], current => {
+        if (!current) {
+          return current;
+        }
+        return {...current, lastActivityAt: variables.checkedAt};
+      });
+    },
+  });
+};
+
+/**
  * Opportunistically refreshes stale Ezkey installation metadata from the public instance-info endpoint.
  *
  * @return React Query mutation handler for silent installation metadata refresh.

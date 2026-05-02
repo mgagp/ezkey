@@ -17,7 +17,6 @@ import {useTranslation} from 'react-i18next';
 import {useEnrollments} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
-import {shouldShowInstallationHostHint} from '../../utils/installationMetadata';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
@@ -78,7 +77,6 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   });
   const installation = enrollment.installation;
   const hasCustomServer = !!installation?.authUrl;
-  const showHostHint = shouldShowInstallationHostHint(enrollment);
 
   return (
     <View style={styles.container}>
@@ -86,9 +84,6 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         <Text style={styles.installationLine}>
           {installation?.name ?? t('enrollmentDetail.installationFallback')}
         </Text>
-        {showHostHint && installation?.host ? (
-          <Text style={styles.installationHint}>{installation.host}</Text>
-        ) : null}
         {enrollment.tenantName ? (
           <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
         ) : null}
@@ -102,8 +97,9 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
       </View>
 
       <View style={styles.metaZone}>
+        <Text style={styles.metaLine}>{t('enrollmentDetail.createdAt', {value: createdStr})}</Text>
         <Text style={styles.metaLine}>
-          {t('enrollmentDetail.createdLast', {created: createdStr, last: lastStr})}
+          {t('enrollmentDetail.lastVerificationAt', {value: lastStr})}
         </Text>
       </View>
 
@@ -140,11 +136,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#dfe6f7',
   },
-  installationHint: {
-    fontSize: 12,
-    color: '#7e91b9',
-    marginTop: 2,
-  },
   integrationName: {
     fontSize: 18,
     fontWeight: '600',
@@ -169,10 +160,12 @@ const styles = StyleSheet.create({
   },
   metaZone: {
     paddingHorizontal: 4,
+    gap: 4,
   },
   metaLine: {
     fontSize: 12,
     color: '#9aa3b6',
+    lineHeight: 18,
   },
   serverZone: {
     backgroundColor: '#0f1628',

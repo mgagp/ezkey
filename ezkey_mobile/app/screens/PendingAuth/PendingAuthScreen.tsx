@@ -31,7 +31,7 @@ import {Buffer} from 'buffer';
 import {useTranslation} from 'react-i18next';
 import {env} from '../../config/env';
 import {RootStackParamList} from '../../navigation/types';
-import {useEnrollmentById} from '../../hooks/useEnrollments';
+import {useEnrollmentById, useMarkEnrollmentPendingChecked} from '../../hooks/useEnrollments';
 import {authAttemptsApi} from '../../services/api/authAttempts';
 import {
   buildPendingPayload,
@@ -141,6 +141,8 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
   const {t} = useTranslation();
   const {enrollmentId} = route.params;
   const {data: enrollment, isLoading: isEnrollmentLoading} = useEnrollmentById(enrollmentId);
+  const markEnrollmentPendingChecked = useMarkEnrollmentPendingChecked();
+  const autoLoadEnrollmentRef = useRef<string | undefined>(undefined);
   const [attempt, setAttempt] = useState<PendingAttempt | undefined>();
   const [state, setState] = useState<AttemptState>('pending');
   const [challengeInput, setChallengeInput] = useState('');
@@ -196,6 +198,14 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     setDebugInfo(undefined);
     try {
       const debugSnapshotAt = new Date().toISOString();
+      try {
+        await markEnrollmentPendingChecked.mutateAsync({
+          id: enrollment.id,
+          checkedAt: debugSnapshotAt,
+        });
+      } catch (storageError) {
+        console.warn('[PendingAuth] Failed to persist last verification timestamp:', storageError);
+      }
       setDebugInfo({lastStep: 'start', capturedAtIso: debugSnapshotAt});
       const enrollmentKeyId = enrollment.id.toString();
       // Ensure EC P-256 key pair exists for this enrollment
@@ -322,14 +332,28 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     } finally {
       setLoading(false);
     }
-  }, [enrollment, extractErrorMessage, t]);
+  }, [
+    enrollment?.enrollmentProofToken,
+    enrollment?.id,
+    enrollment?.installation?.authUrl,
+    enrollment?.integrationName,
+    enrollment?.integrationPublicKey,
+    enrollment?.tenantName,
+    extractErrorMessage,
+    markEnrollmentPendingChecked,
+    t,
+  ]);
 
   useEffect(() => {
     if (isEnrollmentLoading || !enrollment) {
       return;
     }
+    if (autoLoadEnrollmentRef.current === enrollment.id) {
+      return;
+    }
+    autoLoadEnrollmentRef.current = enrollment.id;
     loadPendingAttempt();
-  }, [enrollment, isEnrollmentLoading, loadPendingAttempt]);
+  }, [enrollment?.id, isEnrollmentLoading, loadPendingAttempt]);
 
   const handleRespond = useCallback(
     async (accepted: boolean) => {
@@ -544,12 +568,16 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
           </View>
           <View style={styles.metaZone}>
             <Text style={styles.metaLine}>
-              {t('pendingAuth.metaLine', {
-                created: new Date(enrollment.createdAt).toLocaleString(undefined, {
+              {t('pendingAuth.createdAt', {
+                value: new Date(enrollment.createdAt).toLocaleString(undefined, {
                   dateStyle: 'medium',
                   timeStyle: 'short',
                 }),
-                last: new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
+              })}
+            </Text>
+            <Text style={styles.metaLine}>
+              {t('pendingAuth.lastVerificationAt', {
+                value: new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
                   dateStyle: 'medium',
                   timeStyle: 'short',
                 }),
@@ -907,10 +935,12 @@ const styles = StyleSheet.create({
   },
   metaLine: {
     fontSize: 12,
+    gap: 4,
     color: '#9aa3b6',
   },
   secondaryButton: {
     alignItems: 'center',
+    lineHeight: 18,
   },
   secondaryLabel: {
     fontSize: 14,

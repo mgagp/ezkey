@@ -121,7 +121,7 @@ flowchart TD
 | Bind success | `EnrollmentDraft` | Bind form state | None | Prior draft/error state |
 | Verify request preparation | Device public key/signature in memory | Challenge state | Draft | None |
 | Verify success | `StoredEnrollment` local record | Installation metadata snapshot | Integration public key, proof token, auth URL | Draft and challenge state |
-| Pending request preparation | Fresh `deviceProofToken` and signature | Debug/loading state | Persisted enrollment record | Prior global error |
+| Pending request preparation | Fresh `deviceProofToken` and signature | Debug/loading state and local last-verification timestamp | Persisted enrollment record | Prior global error |
 | Pending success | `PendingAttempt` in memory | Challenge-required UI state | Persisted enrollment record | Empty/error state |
 | Respond success | Result UI state | Challenge failure or result message state | Persisted enrollment record | `PendingAttempt` may be cleared on failed outcomes |
 

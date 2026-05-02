@@ -115,8 +115,8 @@ device the user is about to use, and exposes the single primary action `Check pe
 
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
-| Identity zone | Installation name, optional host hint, tenant name, integration name, enrollment/device name, installation description | Persisted enrollment record |
-| Meta line | Created and last activity timestamps | Persisted enrollment timestamps |
+| Identity zone | Installation name, tenant name, integration name, enrollment/device name, installation description | Persisted enrollment record |
+| Meta lines | Created and last verification timestamps | Persisted enrollment timestamps |
 | Server zone | Custom Auth API URL when present | Persisted `authUrl` |
 | Primary button | `Check pending` | Static action |
 
