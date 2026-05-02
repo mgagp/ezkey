@@ -73,7 +73,7 @@
     "title": "Operational follow-up",
     "description": "Audit-chain supervision has recovered, but one or more operational incidents still need a formal closure declaration (justification and root cause). This is distinct from urgent alerts.",
     "awaitingDeclaration": "Awaiting declaration",
-    "anchorCheckpoint": "Anchor checkpoint · #{id}",
+    "anchorCheckpoint": "Anchor checkpoint · #{{id}}",
     "openIntegrity": "Open Audit Logs → Integrity & lifecycle →"
   },
   "recentActivity": {

@@ -73,7 +73,7 @@
     "title": "Suivi opérationnel",
     "description": "La supervision de la chaîne d'audit est rétablie, mais il reste au moins un incident opérationnel à clôturer par une déclaration formelle (justification et cause racine). Ceci est distinct des alertes urgentes.",
     "awaitingDeclaration": "En attente de déclaration",
-    "anchorCheckpoint": "Point d'ancrage · #{id}",
+    "anchorCheckpoint": "Point d'ancrage · #{{id}}",
     "openIntegrity": "Ouvrir les journaux d'audit → Intégrité et cycle de vie →"
   },
   "recentActivity": {
