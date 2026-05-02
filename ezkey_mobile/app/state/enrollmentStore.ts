@@ -12,10 +12,13 @@
  */
 
 import {create} from 'zustand';
+import type {RecentAuthResult} from '../services/pendingAuth/types';
 
 type EnrollmentStore = {
   selectedId?: string;
+  recentAuthResults: Record<string, RecentAuthResult | undefined>;
   setSelected: (enrollmentId: string) => void;
+  setRecentAuthResult: (enrollmentId: string, result: RecentAuthResult) => void;
   clear: () => void;
 };
 
@@ -26,6 +29,14 @@ type EnrollmentStore = {
  */
 export const useEnrollmentStore = create<EnrollmentStore>(set => ({
   selectedId: undefined,
+  recentAuthResults: {},
   setSelected: enrollmentId => set({selectedId: enrollmentId}),
-  clear: () => set({selectedId: undefined}),
+  setRecentAuthResult: (enrollmentId, result) =>
+    set(state => ({
+      recentAuthResults: {
+        ...state.recentAuthResults,
+        [enrollmentId]: result,
+      },
+    })),
+  clear: () => set({selectedId: undefined, recentAuthResults: {}}),
 }));

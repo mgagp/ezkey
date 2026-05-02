@@ -9,3 +9,10 @@ export type PendingAttempt = {
   contextTitle?: string;
   contextMessage?: string;
 };
+
+export type RecentAuthResult = {
+  status: 'approved' | 'rejected' | 'failed';
+  title: string;
+  message?: string;
+  completedAt: string;
+};

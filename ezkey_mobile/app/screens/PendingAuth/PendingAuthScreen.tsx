@@ -42,10 +42,9 @@ import {cryptoService} from '../../services/crypto';
 import {PendingAttempt} from '../../services/pendingAuth/types';
 import {generateProofToken} from '../../utils/generateProofToken';
 import {sha256HexUtf8} from '../../utils/sha256HexUtf8';
+import {useEnrollmentStore} from '../../state/enrollmentStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
-
-type AttemptState = 'pending' | 'accepted' | 'rejected' | 'expired' | 'failed';
 
 const AUTH_CHALLENGE_LENGTH = 2;
 
@@ -131,13 +130,12 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
   const {enrollmentId, initialAttempt} = route.params;
   const {data: enrollment, isLoading: isEnrollmentLoading} = useEnrollmentById(enrollmentId);
   const markEnrollmentPendingChecked = useMarkEnrollmentPendingChecked();
+  const setRecentAuthResult = useEnrollmentStore(store => store.setRecentAuthResult);
   const autoLoadEnrollmentRef = useRef<string | undefined>(undefined);
   const [attempt, setAttempt] = useState<PendingAttempt | undefined>(initialAttempt);
-  const [state, setState] = useState<AttemptState>('pending');
   const [challengeInput, setChallengeInput] = useState('');
   const [formError, setFormError] = useState<string | undefined>();
   const [globalError, setGlobalError] = useState<string | undefined>();
-  const [challengeFailedMessage, setChallengeFailedMessage] = useState<string | undefined>();
   const [isProcessing, setIsProcessing] = useState(false);
   const [loading, setLoading] = useState(false);
   /** On-screen debug info when an error occurs (no server/file needed). */
@@ -178,25 +176,22 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
   }, [t]);
 
   const handleNoPendingResult = useCallback(() => {
-    const shouldReturnToPreviousScreen =
-      !!initialAttempt || state === 'accepted' || state === 'rejected' || state === 'failed';
-
     setAttempt(undefined);
     setChallengeInput('');
     setFormError(undefined);
-    setChallengeFailedMessage(undefined);
-    setState('pending');
 
-    if (shouldReturnToPreviousScreen && navigation.canGoBack()) {
+    if (initialAttempt && navigation.canGoBack()) {
       navigation.goBack();
     }
-  }, [initialAttempt, navigation, state]);
+  }, [initialAttempt, navigation]);
 
-  const handleCheckAgainFromResolvedState = useCallback(() => {
-    navigation.navigate('EnrollmentDetail', {
-      enrollmentId,
-      autoCheckPendingNonce: new Date().toISOString(),
-    });
+  const handleReturnToEnrollmentDetail = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('EnrollmentDetail', {enrollmentId});
   }, [enrollmentId, navigation]);
 
   const loadPendingAttempt = useCallback(async () => {
@@ -205,7 +200,6 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     }
     setLoading(true);
     setGlobalError(undefined);
-    setChallengeFailedMessage(undefined);
     setDebugInfo(undefined);
     try {
       const debugSnapshotAt = new Date().toISOString();
@@ -250,7 +244,6 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
       if (!integrationPublicKey) {
         setGlobalError(t('pendingAuth.missingPendingPublicKey'));
         setAttempt(undefined);
-        setState('pending');
         return;
       }
       const pendingPayload = buildPendingPayload(
@@ -308,7 +301,6 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
       if (!signatureValid) {
         setGlobalError(t('pendingAuth.invalidPendingSignature'));
         setAttempt(undefined);
-        setState('pending');
         return;
       }
 
@@ -325,7 +317,6 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
       });
       setChallengeInput('');
       setFormError(undefined);
-      setState('pending');
       setDebugInfo(prev =>
         prev
           ? {...prev, lastStep: 'after_verify'}
@@ -372,7 +363,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
 
   const handleRespond = useCallback(
     async (accepted: boolean) => {
-      if (!enrollment || !attempt || state !== 'pending') {
+      if (!enrollment || !attempt || isProcessing) {
         return;
       }
       // With Ed25519, keys are derived on-demand, so we just need to ensure root key exists
@@ -427,44 +418,52 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
         }
 
         const outcome = response.authAttemptResult;
-        if (outcome === 'APPROVED') {
-          setState('accepted');
-        } else if (outcome === 'DENIED') {
-          setState('rejected');
-        } else {
-          setAttempt(undefined);
-          setChallengeInput('');
-          setState('failed');
-          setChallengeFailedMessage(
-            response.authAttemptMessage ??
-              t('pendingAuth.challengeDidNotMatch'),
-          );
-        }
+        const title = attempt.contextTitle ?? enrollment.integrationName;
+        const message = response.authAttemptMessage ?? attempt.contextMessage;
+        const status =
+          outcome === 'APPROVED'
+            ? 'approved'
+            : outcome === 'DENIED'
+              ? 'rejected'
+              : 'failed';
+
+        setRecentAuthResult(enrollment.id, {
+          status,
+          title,
+          message: status === 'failed' ? message ?? t('pendingAuth.challengeDidNotMatch') : message,
+          completedAt: new Date().toISOString(),
+        });
+        handleReturnToEnrollmentDetail();
       } catch (error) {
         setGlobalError(extractErrorMessage(error));
       } finally {
         setIsProcessing(false);
       }
     },
-    [attempt, challengeInput, enrollment, extractErrorMessage, state, t],
+    [
+      attempt,
+      challengeInput,
+      enrollment,
+      extractErrorMessage,
+      handleReturnToEnrollmentDetail,
+      isProcessing,
+      setRecentAuthResult,
+      t,
+    ],
   );
 
   const hasSecureInfo = true; // With Ed25519, keys are always available if root key exists
-  const showChallengeFailed = state === 'failed' && !!challengeFailedMessage;
   const showEmptyState =
     !loading &&
     !attempt &&
     !globalError &&
-    !challengeFailedMessage &&
     !isEnrollmentLoading &&
     hasSecureInfo;
-
-  const showResultState = (state === 'accepted' || state === 'rejected') && enrollment;
 
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>{t('pendingAuth.heading')}</Text>
-      {enrollment && !showResultState && !attempt?.contextTitle ? (
+      {enrollment && !attempt?.contextTitle ? (
         <View style={styles.enrollmentBox}>
           <Text style={styles.enrollmentIntegration}>{enrollment.integrationName}</Text>
           {enrollment.tenantName ? (
@@ -539,69 +538,10 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
             <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
           </TouchableOpacity>
         </View>
-      ) : showChallengeFailed ? (
-        <View style={styles.challengeFailedState}>
-          <Text style={styles.challengeFailedTitle}>{t('pendingAuth.failedTitle')}</Text>
-          <Text style={styles.challengeFailedBody}>{challengeFailedMessage}</Text>
-          <TouchableOpacity onPress={handleCheckAgainFromResolvedState} style={styles.checkAgainButton}>
-            <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
-          </TouchableOpacity>
-        </View>
       ) : showEmptyState ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>{t('pendingAuth.noPending')}</Text>
           <TouchableOpacity onPress={loadPendingAttempt} style={styles.checkAgainButton}>
-            <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : showResultState ? (
-        <View style={styles.resultContainer}>
-          <View style={styles.identityZone}>
-            <Text style={styles.resultTitleLine}>
-              {attempt?.contextTitle ?? enrollment.integrationName}
-              <Text
-                style={[
-                  styles.resultStatusSuffix,
-                  state === 'accepted' ? styles.badgeApproved : styles.badgeRejected,
-                ]}>
-                {' '}
-                {state === 'accepted' ? t('pendingAuth.approved') : t('pendingAuth.rejected')}
-              </Text>
-            </Text>
-            {attempt?.contextMessage ? (
-              <Text style={styles.contextMessageLine}>{attempt.contextMessage}</Text>
-            ) : (
-              <>
-                {enrollment.tenantName ? (
-                  <Text style={styles.tenantLine}>{enrollment.tenantName}</Text>
-                ) : null}
-                {enrollment.enrollmentName ? (
-                  <Text style={styles.deviceLine}>{enrollment.enrollmentName}</Text>
-                ) : null}
-              </>
-            )}
-          </View>
-          <View style={styles.metaZone}>
-            <Text style={styles.metaLine}>
-              {t('pendingAuth.createdAt', {
-                value: new Date(enrollment.createdAt).toLocaleString(undefined, {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                }),
-              })}
-            </Text>
-            <Text style={styles.metaLine}>
-              {t('pendingAuth.lastVerificationAt', {
-                value: new Date(enrollment.lastActivityAt).toLocaleString(undefined, {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                }),
-              })}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleCheckAgainFromResolvedState}
-            style={[styles.checkAgainButton, styles.checkAgainButtonFull]}>
             <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
           </TouchableOpacity>
         </View>
@@ -640,7 +580,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                     value={challengeInput}
                     onChangeText={setChallengeInput}
                     onClearError={() => setFormError(undefined)}
-                    editable={state === 'pending' && !isProcessing}
+                    editable={!isProcessing}
                   />
                   {formError ? (
                     <View style={styles.errorBanner}>
@@ -717,24 +657,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9aa3b6',
   },
-  challengeFailedState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    paddingHorizontal: 24,
-  },
-  challengeFailedTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#ff7878',
-    textAlign: 'center',
-  },
-  challengeFailedBody: {
-    fontSize: 15,
-    color: '#9aa3b6',
-    textAlign: 'center',
-  },
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -753,12 +675,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 24,
     marginTop: 12,
-  },
-  checkAgainButtonFull: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginTop: 0,
   },
   checkAgainLabel: {
     fontSize: 16,
@@ -781,29 +697,9 @@ const styles = StyleSheet.create({
     color: '#61d095',
     fontWeight: '700',
   },
-  badge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#61d095',
-    flexShrink: 0,
-  },
   cardSubtitle: {
     fontSize: 14,
     color: '#c2c8d5',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  metaLabel: {
-    fontSize: 12,
-    color: '#9aa3b6',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  metaValue: {
-    fontSize: 14,
-    color: '#f4f7ff',
   },
   challengeSection: {
     gap: 12,
@@ -819,8 +715,7 @@ const styles = StyleSheet.create({
   },
   challengeBoxes: {
     flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
+    gap: 12,
   },
   challengeBox: {
     width: 44,
@@ -887,71 +782,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#0b0d11',
-  },
-  resultContainer: {
-    flex: 1,
-    paddingTop: 8,
-    gap: 16,
-  },
-  identityZone: {
-    backgroundColor: '#151923',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.15)',
-  },
-  identityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  integrationName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#f4f7ff',
-  },
-  resultTitleLine: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#f4f7ff',
-  },
-  resultStatusSuffix: {
-    fontWeight: '700',
-  },
-  statusBadge: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  badgeApproved: {
-    color: '#61d095',
-  },
-  badgeRejected: {
-    color: '#ff7878',
-  },
-  tenantLine: {
-    fontSize: 14,
-    color: '#9aa3b6',
-    marginTop: 6,
-  },
-  contextMessageLine: {
-    fontSize: 14,
-    color: '#c2c8d5',
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  deviceLine: {
-    fontSize: 13,
-    color: '#c2c8d5',
-    marginTop: 2,
-  },
-  metaZone: {
-    paddingHorizontal: 4,
-  },
-  metaLine: {
-    fontSize: 12,
-    gap: 4,
-    color: '#9aa3b6',
   },
   secondaryButton: {
     alignItems: 'center',

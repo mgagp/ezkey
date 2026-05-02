@@ -10,7 +10,7 @@
  * @since 2025
  */
 
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ActivityIndicator, Button, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import axios from 'axios';
@@ -33,14 +33,16 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
  */
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {t} = useTranslation();
-  const {enrollmentId, autoCheckPendingNonce} = route.params;
+  const {enrollmentId} = route.params;
   const {data, isLoading} = useEnrollments();
   const markEnrollmentPendingChecked = useMarkEnrollmentPendingChecked();
   const selectedId = useEnrollmentStore(store => store.selectedId);
+  const recentAuthResult = useEnrollmentStore(store =>
+    enrollmentId ? store.recentAuthResults[enrollmentId] : undefined,
+  );
   const targetId = enrollmentId ?? selectedId;
   const [isCheckingPending, setIsCheckingPending] = useState(false);
   const [inlineFeedback, setInlineFeedback] = useState<string | undefined>();
-  const lastAutoCheckNonceRef = useRef<string | undefined>(undefined);
 
   const enrollment = useMemo(() => {
     if (!targetId || !data) {
@@ -161,18 +163,6 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     t,
   ]);
 
-  useEffect(() => {
-    if (!autoCheckPendingNonce || !enrollment || isCheckingPending) {
-      return;
-    }
-    if (lastAutoCheckNonceRef.current === autoCheckPendingNonce) {
-      return;
-    }
-
-    lastAutoCheckNonceRef.current = autoCheckPendingNonce;
-    handleCheckPending();
-  }, [autoCheckPendingNonce, enrollment, handleCheckPending, isCheckingPending]);
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer} accessibilityLabel={t('enrollmentDetail.loading')}>
@@ -200,6 +190,26 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   });
   const installation = enrollment.installation;
   const hasCustomServer = !!installation?.authUrl;
+  const recentResultTimeStr = recentAuthResult
+    ? new Date(recentAuthResult.completedAt).toLocaleString(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+    : undefined;
+  const recentResultStatusLabel = recentAuthResult
+    ? recentAuthResult.status === 'approved'
+      ? t('enrollmentDetail.recentActionApproved')
+      : recentAuthResult.status === 'rejected'
+        ? t('enrollmentDetail.recentActionRejected')
+        : t('enrollmentDetail.recentActionFailed')
+    : undefined;
+  const recentResultBadgeStyle = recentAuthResult
+    ? recentAuthResult.status === 'approved'
+      ? styles.recentActionBadgeApproved
+      : recentAuthResult.status === 'rejected'
+        ? styles.recentActionBadgeRejected
+        : styles.recentActionBadgeFailed
+    : undefined;
 
   return (
     <View style={styles.container}>
@@ -247,6 +257,27 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
           {isCheckingPending ? t('enrollmentDetail.checkingPending') : t('enrollmentDetail.checkPending')}
         </Text>
       </TouchableOpacity>
+
+      {recentAuthResult ? (
+        <View style={styles.recentActionCard}>
+          <Text style={styles.recentActionEyebrow}>{t('enrollmentDetail.recentActionLabel')}</Text>
+          <Text style={styles.recentActionTitleLine}>
+            {recentAuthResult.title}
+            <Text style={[styles.recentActionBadge, recentResultBadgeStyle]}>
+              {' '}
+              {recentResultStatusLabel}
+            </Text>
+          </Text>
+          {recentAuthResult.message ? (
+            <Text style={styles.recentActionMessage}>{recentAuthResult.message}</Text>
+          ) : null}
+          {recentResultTimeStr ? (
+            <Text style={styles.recentActionMeta}>
+              {t('enrollmentDetail.recentActionAt', {value: recentResultTimeStr})}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -347,6 +378,48 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  recentActionCard: {
+    backgroundColor: '#151923',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(54, 115, 223, 0.18)',
+    gap: 8,
+  },
+  recentActionEyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    color: '#9aa3b6',
+  },
+  recentActionTitleLine: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#f4f7ff',
+  },
+  recentActionBadge: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  recentActionBadgeApproved: {
+    color: '#61d095',
+  },
+  recentActionBadgeRejected: {
+    color: '#ff8d8d',
+  },
+  recentActionBadgeFailed: {
+    color: '#f5c26b',
+  },
+  recentActionMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#dfe6f7',
+  },
+  recentActionMeta: {
+    fontSize: 13,
+    color: '#9aa3b6',
   },
   missingContainer: {
     flex: 1,

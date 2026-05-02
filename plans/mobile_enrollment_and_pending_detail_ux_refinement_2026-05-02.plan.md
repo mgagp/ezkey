@@ -308,6 +308,33 @@ The strongest next refinement direction is:
 - `PendingAuthScreen` now accepts a preloaded verified pending request so it remains the dedicated review/respond screen rather than the generic empty-result screen.
 - The updated debug build including this workflow fix was installed successfully on the connected Pixel 7 Pro on 2026-05-02 for manual functional testing.
 
+## Follow-up Decision On Trusted Respond Confirmation
+
+### Product conclusion
+
+- We are not introducing a durable local history of past responses.
+- A durable history is explicitly considered unnecessary complexity for the current mobile product scope.
+- The only new UX surface is a volatile local summary of the latest verified response for the currently selected enrollment.
+
+### Agreed mental model
+
+1. `EnrollmentDetail` remains the single screen that owns `Check pending`.
+2. `PendingAuth` exists only to review and answer the currently pending request.
+3. After a verified `approve`, `deny`, or verified failed outcome, the app returns immediately to `EnrollmentDetail`.
+4. `EnrollmentDetail` displays a boxed summary of the latest verified response so the user still sees what just happened without entering a separate terminal screen.
+
+### Why this direction was chosen
+
+- It removes the extra terminal screen as a destination.
+- It avoids presenting two different places that seem to offer the same next action.
+- It uses currently underused space on the detail screen for useful context.
+- It keeps the flow linear and easier to understand: detail -> respond -> detail.
+
+### Implementation note
+
+- The latest response summary is held only in volatile local UI state keyed by enrollment.
+- It is intentionally not persisted to storage and is not treated as product history.
+
 ## Relevant Files
 
 - `ezkey_mobile/app/screens/EnrollmentWizard/EnrollmentWizardScreen.tsx`

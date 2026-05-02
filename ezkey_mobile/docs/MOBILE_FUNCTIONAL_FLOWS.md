@@ -72,7 +72,7 @@ flowchart TD
   H --> I[Sign respond payload]
   I --> J[POST auth-attempts/respond]
   J --> K[Verify respond-result signature]
-  K --> L[Show approved / rejected / failed terminal state]
+  K --> L[Return to Enrollment Detail with latest response summary]
 ```
 
 | Step | Screen | User/system action | API call | Data mutation | Trust check | Result |
@@ -84,7 +84,7 @@ flowchart TD
 | 5 | Pending Authentication | User reviews context and chooses approve or deny | None | User intent stored in component state | Local challenge presence check when required | Respond can start |
 | 6 | Pending Authentication | App signs canonical respond payload | None | Respond signature prepared in memory | Device signs one-time auth attempt proof token payload | Respond request ready |
 | 7 | Pending Authentication | App submits respond | `POST /api/v1/auth-attempts/respond` | None yet | None before response | Respond result received |
-| 8 | Pending Authentication | App validates respond result | None | Result state moved to `accepted`, `rejected`, or `failed` | Result signature verified with stored integration public key | Trusted outcome shown to user |
+| 8 | Pending Authentication | App validates respond result | None | Volatile local `RecentAuthResult` summary updated for this enrollment | Result signature verified with stored integration public key | App returns immediately to Enrollment Detail, which displays the latest response summary |
 
 ## Authentication Exception Flow
 
@@ -99,7 +99,7 @@ flowchart TD
 | Respond request failure | Pending Authentication | Backend or transport failure | Global error shown | Retry if attempt still valid |
 | Missing respond-result signature | Pending Authentication after respond | Outcome cannot be trusted | Global error shown | No trusted outcome displayed |
 | Invalid respond-result signature | Pending Authentication after respond | Outcome cannot be trusted | Global error shown | No trusted outcome displayed |
-| Verified failed result | Pending Authentication after respond | Attempt ended unsuccessfully | Failure state shown with message | User must start a new auth attempt from the integrating app |
+| Verified failed result | Pending Authentication after respond | Attempt ended unsuccessfully | Detail screen shows the latest failed response summary | User can review it and start any future check from Enrollment Detail |
 
 ## Screen Transition Tables
 
@@ -110,8 +110,8 @@ flowchart TD
 | Cancel wizard | Enrollment Wizard | Home or previous state | User cancels while not submitting |
 | Select enrollment | Home | Enrollment Detail | Enrollment exists locally |
 | Tap `Check pending` | Enrollment Detail | Pending Authentication | Enrollment exists locally |
-| Respond approved / denied / failed | Pending Authentication | Pending Authentication result state | Trusted respond result received |
-| Retry empty/error/failed auth state | Pending Authentication | Pending Authentication | User taps retry/check again |
+| Respond approved / denied / failed | Pending Authentication | Enrollment Detail | Trusted respond result received and summarized on the detail screen |
+| Retry load/error state | Pending Authentication | Pending Authentication | User taps retry while still resolving the current request |
 
 ## Data Mutation Tables
 
