@@ -4,6 +4,7 @@
 
 - Enrollment screen refinement: implemented and deployed on device.
 - Enrollment detail / pending-check entry screen: implemented and deployed on device.
+- Pending authentication decision screen redundancy cleanup: implemented and validated on device.
 
 ## Scope
 
@@ -57,6 +58,31 @@ The recent discussion converged on a deliberately simple and pragmatic UX direct
 - The visible labels are now `Created` / `Last verification` in English and `Créé` / `Dernière vérification` in French.
 - `lastActivityAt` is now updated when the mobile app initiates a pending-check operation.
 - The updated debug build was installed successfully on the connected Pixel 7 Pro on 2026-05-02 for manual functional testing.
+
+### Pending authentication decision screen conclusion
+
+- When a real pending authentication exists, the screen should not repeat both the screen title and the enrollment identity in the body.
+- The navigation bar already establishes the screen context; the card content should focus on the current decision only.
+- The refined direction is:
+  - remove the duplicate body heading while an active attempt is displayed,
+  - remove the extra enrollment summary block in that same state,
+  - keep a single primary title in the card,
+  - show `Pending` / `En attente` as a compact badge instead of repeating it inline in a larger title treatment.
+
+### Pending authentication decision screen implementation record
+
+- Applied in `ezkey_mobile/app/screens/PendingAuth/PendingAuthScreen.tsx`.
+- The body-level `Pending authentication` heading is now hidden while a real attempt is being reviewed.
+- The separate enrollment summary block is also hidden in that state to avoid repeating the integration name.
+- The card header now uses a compact pending-status badge plus a single information hierarchy:
+  - primary title: context title when distinct, otherwise integration name,
+  - secondary line: integration or tenant only when it adds non-duplicate context.
+- This keeps the screen aligned with the agreed product direction: sober, direct, and low-friction for a fast approve / deny decision.
+
+### Pending authentication decision screen validation
+
+- No editor errors were reported on the updated screen file after the refinement.
+- Manual functional validation feedback on 2026-05-02: the adjusted screen works well.
 
 ## Part 1 - Enrollment Screen After QR Scan
 

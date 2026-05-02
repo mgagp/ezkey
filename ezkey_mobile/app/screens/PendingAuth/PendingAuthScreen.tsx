@@ -460,11 +460,15 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     !globalError &&
     !isEnrollmentLoading &&
     hasSecureInfo;
+  const primaryTitle = attempt?.contextTitle?.trim() || attempt?.integrationName;
+  const secondaryTitle =
+    attempt?.contextTitle?.trim() && attempt.integrationName !== attempt.contextTitle.trim()
+      ? attempt.integrationName
+      : attempt?.tenantName;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>{t('pendingAuth.heading')}</Text>
-      {enrollment && !attempt?.contextTitle ? (
+      {!attempt && enrollment ? (
         <View style={styles.enrollmentBox}>
           <Text style={styles.enrollmentIntegration}>{enrollment.integrationName}</Text>
           {enrollment.tenantName ? (
@@ -552,22 +556,15 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.pendingScrollContent}>
             <View style={styles.card}>
-              {/* Card header: context title (when present) or integration name + Pending */}
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>
-                  {attempt.contextTitle ?? attempt.integrationName}
-                  <Text style={styles.cardTitlePending}> {t('pendingAuth.pendingSuffix')}</Text>
-                </Text>
+                <Text style={styles.cardStatusBadge}>{t('pendingAuth.pendingSuffix')}</Text>
+                <Text style={styles.cardTitle}>{primaryTitle}</Text>
               </View>
 
-              {/* Subtitle: tenant name only when no context (context card is self-contained) */}
-              {!attempt.contextTitle ? (
-                attempt.tenantName ? (
-                  <Text style={styles.cardSubtitle}>{attempt.tenantName}</Text>
-                ) : null
+              {secondaryTitle ? (
+                <Text style={styles.cardSubtitle}>{secondaryTitle}</Text>
               ) : null}
 
-              {/* Context message */}
               {attempt.contextMessage ? (
                 <View style={[styles.contextMessageBox, styles.borderInfo]}>
                   <Text style={styles.contextMessageText}>{attempt.contextMessage}</Text>
@@ -688,15 +685,25 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
-  cardHeader: {},
+  cardHeader: {
+    gap: 8,
+  },
+  cardStatusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(97, 208, 149, 0.14)',
+    color: '#61d095',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
   cardTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#f4f7ff',
-  },
-  cardTitlePending: {
-    color: '#61d095',
-    fontWeight: '700',
   },
   cardSubtitle: {
     fontSize: 14,
