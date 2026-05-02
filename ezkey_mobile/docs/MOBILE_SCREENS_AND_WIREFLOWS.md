@@ -21,7 +21,7 @@ flowchart TD
   Settings --> Language
   Settings --> DangerZone
   Settings --> Licenses
-  PendingAuth --> PendingAuthResult[Pending result state]
+  PendingAuth --> EnrollmentDetail
 ```
 
 The main operational path is intentionally narrow: Home lists enrollments, Enrollment Detail confirms identity and
@@ -33,7 +33,7 @@ server context, and Pending Authentication owns polling plus approve/deny. The a
 | --- | --- | --- | --- | --- |
 | Home | List locally stored enrollments grouped by installation and tenant | Open enrollment, start enrollment wizard | `useEnrollments`, `useRefreshInstallationMetadata`, tenant grouping utilities | Yes |
 | Enrollment Wizard | Bind and verify a new enrollment from QR payload | Scan QR, bind, enter challenge, complete enrollment | `enrollmentsApi`, `instanceInfoApi`, `cryptoService`, save mutation | Yes |
-| Enrollment Detail | Show selected enrollment identity and route into auth polling | Check pending | `useEnrollments`, navigation store, installation host hint utility | Yes |
+| Enrollment Detail | Show selected enrollment identity, own auth polling entry, and surface the latest local response summary | Check pending | `useEnrollments`, navigation store, volatile recent-auth summary state | Yes |
 | Pending Authentication | Poll for pending auth, verify context, approve or deny | Check again, approve, deny | `authAttemptsApi`, `cryptoService`, payload builders | Yes |
 | Settings | Secondary navigation hub | Open About, Language, Danger Zone, or Licenses | Navigation only | No |
 | About | Show app metadata and project link | Open `ezkey.org` | Native build timestamp, app info constants | No |
@@ -119,6 +119,7 @@ device the user is about to use, and exposes the single primary action `Check pe
 | Meta lines | Created and last verification timestamps | Persisted enrollment timestamps |
 | Server zone | Custom Auth API URL when present | Persisted `authUrl` |
 | Primary button | `Check pending` | Static action |
+| Latest response card | Most recent verified local response summary for this enrollment, when available | Volatile local UI state |
 
 | User action | Effect | Next state/navigation |
 | --- | --- | --- |
@@ -134,7 +135,7 @@ device the user is about to use, and exposes the single primary action `Check pe
 ## Pending Authentication
 
 Pending Authentication owns the trusted review/respond branch once a real pending request exists. It is the trust gate
-for request context and final outcome.
+for request context and respond submission, then returns control to Enrollment Detail.
 
 | Entry condition | Description |
 | --- | --- |
@@ -147,7 +148,6 @@ for request context and final outcome.
 | Request context block | `contextTitle`, `contextMessage`, challenge requirement | Trusted pending response |
 | Two-digit challenge input | Challenge entry when required | User input |
 | Action buttons | Approve, deny, retry/check again | Screen state |
-| Result state | Approved, rejected, or failed trusted outcome | Verified respond result |
 | Debug panel | Optional diagnostics when `pendingAuthDebugPanel` is enabled | Screen debug snapshot |
 
 | User action | Effect | Next state/navigation |
@@ -155,8 +155,8 @@ for request context and final outcome.
 | Wait for initial load | Screen may use a preloaded verified pending request or call `pending` when entered directly | Remains on screen |
 | Tap `Check again` | Repeats `pending` load cycle | Remains on screen |
 | Enter challenge | Satisfies local precondition for approve | Remains on screen |
-| Tap approve | Signs and submits respond payload with accepted decision | Remains on screen in result state |
-| Tap deny | Signs and submits respond payload with denied decision | Remains on screen in result state |
+| Tap approve | Signs and submits respond payload with accepted decision | Returns to Enrollment Detail with latest response summary |
+| Tap deny | Signs and submits respond payload with denied decision | Returns to Enrollment Detail with latest response summary |
 
 | State type | How it appears | User consequence |
 | --- | --- | --- |
@@ -164,8 +164,7 @@ for request context and final outcome.
 | Global error | Error body plus retry button | User can retry loading |
 | Empty | `No pending requests` plus `Check again` | No auth attempt available now |
 | Pending request | Request context and actions | User can approve or deny |
-| Challenge failed / failed | Failure state with message | User must start again from a new server-side attempt |
-| Accepted / rejected | Result card with trusted outcome | User can check again for later requests |
+| Verified respond result | Immediate return to Enrollment Detail | User sees the latest response summary in the detail screen |
 
 ## Supporting Screens Appendix
 
@@ -184,11 +183,12 @@ for request context and final outcome.
 | `installation.name` | Shown in installation headers | Not primary, but derived server shown optionally | Shown | Not normally shown except fallback identity context | No |
 | `installation.host` | Optional host hint in installation header | Optional server URL in info card | Optional host hint | No | No |
 | `tenantName` | Shown in grouping headers | Shown in info card after bind | Shown | Shown as fallback identity | Danger Zone shows a minimal tenant line |
-| `integrationName` | Shown on enrollment cards | Shown in info card after bind | Shown | Shown in enrollment box or result | Danger Zone row title |
+| `integrationName` | Shown on enrollment cards | Shown in info card after bind | Shown | Shown in enrollment box | Danger Zone row title |
 | `integrationDescription` | Shown on enrollment cards when present | Shown in info card | Not shown directly | No | No |
-| `enrollmentName` | Shown on cards when present | Shown in info card | Shown | Shown in result fallback state | No |
-| `createdAt` | Not shown | Not shown | Shown in meta line | Used in result fallback meta | No |
-| `lastActivityAt` | Not shown | Not shown | Shown in meta line | Used in result fallback meta | No |
+| `enrollmentName` | Shown on cards when present | Shown in info card | Shown | No | No |
+| `createdAt` | Not shown | Not shown | Shown in meta line | No | No |
+| `lastActivityAt` | Not shown | Not shown | Shown in meta line | No | No |
+| Latest verified response summary | No | No | Shown when available | No | No |
 | `installation.authUrl` | Hidden | Optional server line during draft stage | Shown when custom server exists | Used for routing, not display | No |
 | `enrollmentProofToken` | Hidden | Hidden | Hidden | Hidden | Hidden |
 | `integrationPublicKey` | Hidden | Hidden | Hidden | Hidden | Hidden |
@@ -203,11 +203,9 @@ flowchart TD
   WizardChallenge -->|verify succeeds| Home
   Home -->|tap enrollment| Detail
   Detail -->|Check pending| Pending
-  Pending -->|no request| PendingEmpty[Empty state]
+  Pending -->|no request| Detail
   Pending -->|request found| PendingDecision[Decision state]
-  PendingDecision -->|approve or deny| PendingResult[Trusted result state]
-  PendingEmpty -->|Check again| Pending
-  PendingResult -->|Check again| Pending
+  PendingDecision -->|approve or deny| DetailWithSummary[Detail with latest response summary]
 ```
 
 ```mermaid

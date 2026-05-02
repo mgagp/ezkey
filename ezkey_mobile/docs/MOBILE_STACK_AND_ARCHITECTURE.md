@@ -86,7 +86,7 @@ flowchart LR
 | Enrollment verify | Enrollment Wizard plus `cryptoService` plus `enrollmentsApi.verify` | User challenge, device public key, device signature | Verify response and persisted enrollment record | Durable write occurs only after verify-result trust check. |
 | Installation refresh | `useRefreshInstallationMetadata` | Persisted enrollments | Refreshed nested installation objects | Uses public instance-info endpoint opportunistically. |
 | Pending load | Pending screen plus `authAttemptsApi.pending` plus `cryptoService` | Enrollment proof token, fresh device proof token, signature | Pending attempt in memory | Request context is shown only after signature verification. |
-| Respond submit | Pending screen plus `authAttemptsApi.respond` plus `cryptoService` | User decision, optional challenge, one-time proof token signature | Trusted terminal result state | Current implementation does not persist detailed auth history. |
+| Respond submit | Pending screen plus `authAttemptsApi.respond` plus `cryptoService` | User decision, optional challenge, one-time proof token signature | Trusted latest-response summary on Enrollment Detail | Current implementation does not persist detailed auth history. |
 
 ## Trust Boundaries and Security-Sensitive Responsibilities
 

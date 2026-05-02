@@ -254,7 +254,7 @@ rebuilds the canonical pending payload and verifies the integration Ed25519 sign
 - Service facade: `app/services/api/authAttempts.ts`
 - Wrapper types: `RespondAuthRequest`, `RespondAuthResponse`
 - Primary trigger: Pending Authentication screen after explicit user approve or deny action
-- Primary local output: result state in component memory
+- Primary local output: volatile latest-response summary on Enrollment Detail
 
 ### Respond Request Fields
 
@@ -278,15 +278,15 @@ rebuilds the canonical pending payload and verifies the integration Ed25519 sign
 
 The Pending Authentication screen signs the canonical respond payload with the enrollment device key and sends the
 decision. It then verifies the integration-signed result with the stored `integrationPublicKey`. A verified
-`APPROVED` response moves the screen into an accepted result state. A verified `DENIED` response moves it into a
-rejected state. Other verified outcomes are treated as failed terminal states with no retry for the same attempt.
+response updates a volatile latest-response summary for the enrollment and returns immediately to Enrollment Detail.
+`APPROVED`, `DENIED`, and other verified outcomes are summarized there without creating a durable local history.
 
 | Local concept | Mapped from | Used by | Notes |
 | --- | --- | --- | --- |
 | Accept / deny decision | User action | Respond request body | Chosen explicitly on the pending screen. |
 | Challenge input | User input | Optional respond field | Used only when challenge is required. |
-| Result state | `authAttemptResult` | Pending screen UI | Not persisted today. |
-| Failure message | `authAttemptMessage` | Pending screen UI | Used for challenge failure or generic failed state. |
+| Latest response summary | `authAttemptResult`, `authAttemptMessage`, context title/message | Enrollment Detail UI | Volatile only; not persisted. |
+| Failure message | `authAttemptMessage` | Enrollment Detail summary or Pending screen error UI | Used for failed summaries or request errors. |
 
 ### Respond Trigger and Ownership
 
@@ -300,9 +300,9 @@ rejected state. Other verified outcomes are treated as failed terminal states wi
 
 | Condition | Technical outcome | User-visible outcome | Persistence impact |
 | --- | --- | --- | --- |
-| Verified `APPROVED` | Accepted result state | Approved UI shown | None |
-| Verified `DENIED` | Rejected result state | Rejected UI shown | None |
-| Verified non-success result | Failed terminal state | Failure/challenge-failed UI shown | None |
+| Verified `APPROVED` | Latest response summary updated | Approved summary shown on Enrollment Detail | None |
+| Verified `DENIED` | Latest response summary updated | Rejected summary shown on Enrollment Detail | None |
+| Verified non-success result | Latest response summary updated | Failed summary shown on Enrollment Detail | None |
 | Missing result signature | Flow blocked locally | Global error shown | None |
 | Invalid result signature | Flow fails closed | Global error shown | None |
 | Request failure / transport failure | Error surfaced | Global error shown | None |
@@ -340,8 +340,8 @@ rejected state. Other verified outcomes are treated as failed terminal states wi
 | Pending | `204 No Content` | No available auth attempt | Empty state with manual re-check |
 | Pending | Invalid integration signature | Cannot trust request context | Global error |
 | Pending | Request failure | Loading failed | Global error with retry |
-| Respond | Verified approved/denied result | Final trusted outcome received | Result state shown |
-| Respond | Verified failed result | Attempt ended unsuccessfully | Failure state shown |
+| Respond | Verified approved/denied result | Final trusted outcome received | Latest response summary shown on Enrollment Detail |
+| Respond | Verified failed result | Attempt ended unsuccessfully | Failed summary shown on Enrollment Detail |
 | Respond | Missing/invalid result signature | Cannot trust outcome payload | Global error |
 | Respond | Request failure | Response submission failed | Global error |
 

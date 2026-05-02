@@ -114,13 +114,14 @@ const AuthChallengeCodeInput: React.FC<AuthChallengeCodeInputProps> = ({
 };
 
 /**
- * Presents pending authentication attempts for a selected enrollment and enables the user to accept or deny them.
+ * Presents the current pending authentication attempt for a selected enrollment and enables the user to accept or deny it.
  *
  * - Builds each `deviceProofToken` with `generateProofToken()` (same algorithm as backend
  *   `SignatureService.generateProofToken()`; see `docs/CRYPTO.md`), then signs it with the device key
  *   (EC P-256) via `cryptoService`.
  * - Verifies integration Ed25519 signatures on the pending response payload before displaying context.
  * - Surfaces meaningful errors to maintain the human-in-the-loop posture emphasised in `docs/features/AUTH_SECURITY.md`.
+ * - Returns immediately to Enrollment Detail after a verified respond result, where the latest response summary is shown.
  *
  * @param route React Navigation route containing the target enrollment identifier.
  * @since 2025

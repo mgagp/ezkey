@@ -26,7 +26,7 @@ import {generateProofToken} from '../../utils/generateProofToken';
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
 /**
- * Screen that surfaces enrollment metadata and routes to pending auth.
+ * Screen that surfaces enrollment metadata, owns pending checks, and shows the latest verified local response summary.
  * Primary action: Check pending. Delete moved to Danger Zone.
  *
  * @since 2025

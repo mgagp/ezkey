@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Module: enrollmentStore
- * Description: UI-facing state store tracking the active enrollment selection.
+ * Description: UI-facing state store tracking the active enrollment selection and volatile per-enrollment auth summaries.
  * Security Context: Complements the polling guidelines in docs/features/AUTH_SECURITY.md by keeping enrollment
  *                   selection explicit and avoiding implicit reuse of proof tokens.
  * @since 2025
@@ -23,7 +23,8 @@ type EnrollmentStore = {
 };
 
 /**
- * Global Zustand store that tracks the currently selected enrollment for navigation-aware flows.
+ * Global Zustand store that tracks the currently selected enrollment for navigation-aware flows
+ * and the latest non-durable verified auth result shown on Enrollment Detail.
  *
  * @since 2025
  */

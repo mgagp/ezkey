@@ -160,15 +160,15 @@ The response side is split between what the user chooses locally and what the se
 
 | Item | Origin | Sent to API? | Displayed? | Notes |
 | --- | --- | --- | --- | --- |
-| Approve / deny choice | User action on Pending screen | Yes, as `authAttemptAccepted` | Indirectly, through result state | Primary human decision. |
+| Approve / deny choice | User action on Pending screen | Yes, as `authAttemptAccepted` | Indirectly, through latest response summary | Primary human decision. |
 | 2-digit challenge input | User input on Pending screen | Yes, when present | Yes while editing | Required only when `challengeRequired` is true. |
 | Canonical respond payload | Built locally from `authAttemptProofToken` and decision | Signed, not sent raw | No | Device signs this payload. |
 | `authAttemptProofTokenSignedByDevice` | Local device signature | Yes | No | Cryptographic proof of the decision. |
-| `authAttemptResult` | `respond` response | No further | Yes | Drives accepted, rejected, or failed UI state. |
-| `authAttemptMessage` | `respond` response | No further | Yes in failure-oriented states | Human-readable server message. |
+| `authAttemptResult` | `respond` response | No further | Yes | Drives the latest approved, rejected, or failed summary. |
+| `authAttemptMessage` | `respond` response | No further | Yes in failed summaries or error states | Human-readable server message. |
 | `authAttemptProofTokenResultSignedByIntegration` | `respond` response | No further | No | Must verify before the result is trusted. |
 
-The current implementation treats respond results as terminal UI state, not as durable local history.
+The current implementation treats respond results as a volatile latest-response summary on Enrollment Detail, not as durable local history.
 
 ## Local Activity and Derived State
 
@@ -181,8 +181,8 @@ been directly observed during a flow.
 | `lastActivityAt` | Locally recorded when enrollment is saved | Yes | Detail meta line | Not currently updated for every later auth outcome. |
 | Installation freshness | Derived from `installation.lastRefreshedAt` | Yes | Silent refresh logic | Not shown directly. |
 | Grouping by installation and tenant | Derived from persisted enrollment metadata | No, render-time only | Home structure | Pure UI derivation. |
-| Empty pending state | Observed from `pending` empty result | No | Pending screen | Not persisted as durable local history. |
-| Approved / rejected / failed result state | Observed from trusted `respond` result | No | Pending screen | Terminal for the current screen session only. |
+| Empty pending state | Observed from `pending` empty result | No | Detail or Pending screen depending on entry path | Not persisted as durable local history. |
+| Latest approved / rejected / failed response summary | Observed from trusted `respond` result | No | Enrollment Detail | Volatile only; replaced by the next verified local response. |
 | Favorite ordering | Local user preference | Yes | Home ordering | Purely local and non-protocol. |
 
 This is an intentional honesty boundary: the app should show recent local facts, not invent server-side availability,
