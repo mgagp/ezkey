@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery, type Query } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 /**
  * Shape of the JSON body returned by Admin API paginated list endpoints.
@@ -92,14 +92,29 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
     refetchInterval,
   } = options;
 
-  const [page, setPageState] = useState(0);
+  const pageResetKey = JSON.stringify(queryKey);
+  const [pageState, setPageState] = useState(() => ({
+    page: 0,
+    pageResetKey,
+  }));
   const [size, setSizeState] = useState(defaultSize);
   const [sort, setSortState] = useState(defaultSort);
-  const pageResetKey = JSON.stringify(queryKey);
+  const page = pageState.pageResetKey === pageResetKey ? pageState.page : 0;
 
-  useEffect(() => {
-    setPageState(0);
-  }, [pageResetKey]);
+  const setPageForCurrentKey = useCallback(
+    (nextPage: number | ((previousPage: number) => number)) => {
+      setPageState((previous) => {
+        const currentPage = previous.pageResetKey === pageResetKey ? previous.page : 0;
+        const pageValue =
+          typeof nextPage === 'function' ? nextPage(currentPage) : nextPage;
+        return {
+          page: pageValue,
+          pageResetKey,
+        };
+      });
+    },
+    [pageResetKey],
+  );
 
   const params = {
     ...baseParams,
@@ -119,22 +134,22 @@ export function usePaginatedFromOrval<T, P extends Record<string, unknown>>(opti
   const totalPages = body?.page?.totalPages ?? 0;
   const currentPageNum = body?.page?.number ?? page;
 
-  const goToPage = useCallback((p: number) => setPageState(p), []);
+  const goToPage = useCallback((p: number) => setPageForCurrentKey(p), [setPageForCurrentKey]);
   const firstPage = useCallback(() => goToPage(0), [goToPage]);
   const lastPage = useCallback(
     () => goToPage(Math.max(0, totalPages - 1)),
     [goToPage, totalPages],
   );
-  const nextPage = useCallback(() => setPageState((prev) => prev + 1), []);
-  const prevPage = useCallback(() => setPageState((prev) => Math.max(0, prev - 1)), []);
+  const nextPage = useCallback(() => setPageForCurrentKey((prev) => prev + 1), [setPageForCurrentKey]);
+  const prevPage = useCallback(() => setPageForCurrentKey((prev) => Math.max(0, prev - 1)), [setPageForCurrentKey]);
   const setPageSize = useCallback((s: number) => {
     setSizeState(s);
-    setPageState(0);
-  }, []);
+    setPageForCurrentKey(0);
+  }, [setPageForCurrentKey]);
   const setSort = useCallback((s: string) => {
     setSortState(s);
-    setPageState(0);
-  }, []);
+    setPageForCurrentKey(0);
+  }, [setPageForCurrentKey]);
 
   return {
     data: body?.content ?? [],

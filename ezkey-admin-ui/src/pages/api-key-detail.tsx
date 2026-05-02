@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
 import { ContextHelp } from '@/components/ui/context-help';
-import { useToast } from '@/context/toast-context';
+import { useToast } from '@/context/use-toast';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
@@ -48,10 +48,11 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 function StatusBadge({ apiKey }: { apiKey: ApiKeyResponseDto }) {
   const { t } = useTranslation('api-keys');
+  const [now] = useState(() => Date.now());
   if (apiKey.revokedAt) return <Badge variant="error">{t('status.labelRevoked')}</Badge>;
-  if (apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date()) return <Badge variant="muted">{t('status.labelExpired')}</Badge>;
+  if (apiKey.expiresAt && new Date(apiKey.expiresAt).getTime() < now) return <Badge variant="muted">{t('status.labelExpired')}</Badge>;
   if (apiKey.active && apiKey.expiresAt) {
-    const daysLeft = (new Date(apiKey.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    const daysLeft = (new Date(apiKey.expiresAt).getTime() - now) / (1000 * 60 * 60 * 24);
     if (daysLeft <= 7) return <Badge variant="warning">{t('status.labelExpiringSoon')}</Badge>;
   }
   if (apiKey.active && apiKey.operational === false) return <Badge variant="warning">{t('status.labelBlockedByParent')}</Badge>;

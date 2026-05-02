@@ -20,8 +20,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ContextHelp } from '@/components/ui/context-help';
 import { Tooltip } from '@/components/ui/tooltip';
-import { useDemoModeSession } from '@/context/demo-mode-context';
-import { useToast } from '@/context/toast-context';
+import { useDemoModeSession } from '@/context/use-demo-mode-session';
+import { useToast } from '@/context/use-toast';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
@@ -126,13 +126,34 @@ function TestAuthDialog({
   const [contextMessage, setContextMessage] = useState('');
   const [demoMitmSignatureRequested, setDemoMitmSignatureRequested] = useState(false);
   const [createdAttempt, setCreatedAttempt] = useState<AuthAttemptCreateResponse | null>(null);
-  const [isFinal, setIsFinal] = useState(false);
   const [doneReason, setDoneReason] = useState<DoneReason | null>(null);
   const [countdown, setCountdown] = useState(0);
 
-  // Countdown drives from expiresAt, stops when final
+  // Live status — polls every 3 s, stops automatically on final state
+  const { data: liveStatus } = useGetById2<AuthAttemptDto>(
+    createdAttempt?.authAttemptId ?? 0,
+    {
+      query: {
+        enabled: step === 'live' && createdAttempt !== null && doneReason === null,
+        refetchInterval: (query) => {
+          const status = (query.state.data as AuthAttemptDto | undefined)?.authAttemptStatus;
+          return status && FINAL_STATUSES.includes(status) ? false : 3_000;
+        },
+      },
+    },
+  );
+
+  const liveDoneReason =
+    liveStatus && FINAL_STATUSES.includes(liveStatus.authAttemptStatus)
+      ? liveStatus.authAttemptStatus.toLowerCase() as DoneReason
+      : null;
+  const effectiveDoneReason = doneReason ?? liveDoneReason;
+  const effectiveStep = liveDoneReason ? 'done' : step;
+  const isFinal = effectiveDoneReason !== null;
+
+  // Countdown drives from expiresAt, stops when final.
   useEffect(() => {
-    if (step !== 'live' || !createdAttempt || isFinal) return;
+    if (effectiveStep !== 'live' || !createdAttempt || isFinal) return;
     const tick = () => {
       const rem = Math.max(
         0,
@@ -143,28 +164,7 @@ function TestAuthDialog({
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [step, createdAttempt, isFinal]);
-
-  // Live status — polls every 3 s, stops automatically on final state
-  const { data: liveStatus } = useGetById2<AuthAttemptDto>(
-    createdAttempt?.authAttemptId ?? 0,
-    {
-      query: {
-        enabled: step === 'live' && createdAttempt !== null,
-        refetchInterval: isFinal ? false : 3_000,
-      },
-    },
-  );
-
-  // Transition to done when status becomes final
-  useEffect(() => {
-    if (!liveStatus || isFinal) return;
-    if (FINAL_STATUSES.includes(liveStatus.authAttemptStatus)) {
-      setIsFinal(true);
-      setDoneReason(liveStatus.authAttemptStatus.toLowerCase() as DoneReason);
-      setStep('done');
-    }
-  }, [liveStatus, isFinal]);
+  }, [effectiveStep, createdAttempt, isFinal]);
 
   const createMutation = useCreate2({
     mutation: {
@@ -180,7 +180,6 @@ function TestAuthDialog({
   const cancelMutation = useCancel({
     mutation: {
       onSuccess: () => {
-        setIsFinal(true);
         setDoneReason('cancelled');
         setStep('done');
       },
@@ -194,7 +193,6 @@ function TestAuthDialog({
     setContextMessage('');
     setDemoMitmSignatureRequested(false);
     setCreatedAttempt(null);
-    setIsFinal(false);
     setDoneReason(null);
     setCountdown(0);
     createMutation.reset();
@@ -207,7 +205,7 @@ function TestAuthDialog({
     <Dialog open={open} onClose={handleClose} title={t('testAuth.title')} size="md" dismissible={false}>
 
       {/* ── Step 1: Configure ── */}
-      {step === 'configure' && (
+      {effectiveStep === 'configure' && (
         <div className="space-y-4">
           <p className="text-sm text-fg">
             {t('testAuth.intro', { name: enrollment.enrollmentName })}
@@ -328,7 +326,7 @@ function TestAuthDialog({
       )}
 
       {/* ── Step 2: Live ── */}
-      {step === 'live' && createdAttempt && (
+      {effectiveStep === 'live' && createdAttempt && (
         <div className="space-y-4">
           {liveStatus?.demoMitmSignatureEnabled && (
             <Alert variant="warning">{t('testAuth.demoMitmLiveHint')}</Alert>
@@ -408,21 +406,21 @@ function TestAuthDialog({
       )}
 
       {/* ── Step 3: Done ── */}
-      {step === 'done' && (
+      {effectiveStep === 'done' && (
         <div className="space-y-4">
-          {doneReason === 'accepted' && (
+          {effectiveDoneReason === 'accepted' && (
             <Alert variant="success">{t('testAuth.doneAccepted')}</Alert>
           )}
-          {doneReason === 'rejected' && (
+          {effectiveDoneReason === 'rejected' && (
             <Alert variant="error">{t('testAuth.doneRejected')}</Alert>
           )}
-          {doneReason === 'expired' && (
+          {effectiveDoneReason === 'expired' && (
             <Alert variant="warning">{t('testAuth.doneExpired')}</Alert>
           )}
-          {doneReason === 'invalid' && (
+          {effectiveDoneReason === 'invalid' && (
             <Alert variant="error">{t('testAuth.doneInvalid')}</Alert>
           )}
-          {doneReason === 'cancelled' && (
+          {effectiveDoneReason === 'cancelled' && (
             <Alert variant="info">{t('testAuth.doneCancelled')}</Alert>
           )}
 

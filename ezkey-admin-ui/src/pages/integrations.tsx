@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useDemoModeSession } from '@/context/demo-mode-context';
+import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { useDebounce } from '@/hooks/use-debounce';
 import { getIntegrationName } from '@/hooks/use-integrations';
@@ -41,10 +41,10 @@ function parseLifecycleFilterFromUrl(value: string | null): IntegrationListFilte
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
 function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t, i18n } = useTranslation(['integrations', 'demo']);
+  const { t } = useTranslation(['integrations', 'demo']);
   const integrationPresetsForLocale = useMemo(
     () => integrationDemoPresets.map((preset) => resolveIntegrationDemoPresetForLocale(preset, t)),
-    [t, i18n.language],
+    [t],
   );
   const queryClient = useQueryClient();
   const { sessionDemoOn } = useDemoModeSession();

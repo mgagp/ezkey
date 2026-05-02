@@ -1,7 +1,7 @@
 import { LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/auth-context';
+import { useAuth } from '@/context/use-auth';
 import { logout as logoutApi } from '@/generated/admin-api/admin-authentication/admin-authentication';
 
 /**

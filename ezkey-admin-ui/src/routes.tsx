@@ -1,9 +1,7 @@
-import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '@/context/auth-context';
-import { HelpProvider } from '@/context/help-context';
+import { lazy } from 'react';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RouteErrorBoundary } from '@/components/route-error-boundary';
-import type { ReactNode } from 'react';
+import { ProtectedRoute, RootLayout, SuspensePage } from '@/route-shells';
 
 const LoginPage = lazy(() => import('@/pages/login'));
 const DashboardPage = lazy(() => import('@/pages/dashboard'));
@@ -22,37 +20,6 @@ const ApiKeysPage = lazy(() => import('@/pages/api-keys'));
 const ApiKeyDetailPage = lazy(() => import('@/pages/api-key-detail'));
 const EncryptionKeysPage = lazy(() => import('@/pages/encryption-keys'));
 const NotFoundPage = lazy(() => import('@/pages/not-found'));
-
-// ── Guards ───────────────────────────────────────────────────────────────────
-
-function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isSessionChecking } = useAuth();
-  if (isSessionChecking) return <PageLoader />;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
-
-// ── Loading states ───────────────────────────────────────────────────────────
-
-function PageLoader() {
-  return (
-    <div className="flex items-center justify-center h-64">
-      <span className="size-6 border-2 border-fg border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
-}
-
-function SuspensePage({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
-}
-
-function RootLayout() {
-  return (
-    <HelpProvider>
-      <Outlet />
-    </HelpProvider>
-  );
-}
 
 // ── Router ────────────────────────────────────────────────────────────────────
 

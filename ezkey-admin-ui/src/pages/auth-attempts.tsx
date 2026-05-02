@@ -9,6 +9,7 @@ import { AuthAttemptStatusBadge } from '@/components/feature/auth-attempt-status
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
+import { DetailInfoRow } from '@/components/ui/detail-info-row';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -17,7 +18,7 @@ import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
-import { useDisplayTimezone } from '@/context/display-timezone-context';
+import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -89,15 +90,6 @@ function AttemptDetailDialog({
 
   if (!attempt) return null;
 
-  function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-      <div className="flex gap-4">
-        <dt className="w-36 font-black uppercase text-[10px] tracking-wider text-fg-muted pt-0.5 shrink-0">{label}</dt>
-        <dd className="text-sm">{children}</dd>
-      </div>
-    );
-  }
-
   return (
     <Dialog
       open={attempt !== null}
@@ -137,37 +129,37 @@ function AttemptDetailDialog({
           )}
         </div>
         <dl className="space-y-3">
-          <InfoRow label={t('detail.labelId')}><span className="font-mono">{attempt.authAttemptId}</span></InfoRow>
-          <InfoRow label={t('detail.labelStatus')}><AuthAttemptStatusBadge status={attempt.authAttemptStatus} /></InfoRow>
-          <InfoRow label={t('detail.labelEnrollment')}>
+          <DetailInfoRow label={t('detail.labelId')}><span className="font-mono">{attempt.authAttemptId}</span></DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelStatus')}><AuthAttemptStatusBadge status={attempt.authAttemptStatus} /></DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelEnrollment')}>
             <span className="font-mono">#{attempt.enrollmentId}</span>
-          </InfoRow>
+          </DetailInfoRow>
           {relatedDetails.isExpanded && relatedDetails.enrollment && (
-            <InfoRow label={t('common:detail.relatedEnrollment')}>
+            <DetailInfoRow label={t('common:detail.relatedEnrollment')}>
               <Link
                 to={`/enrollments/${relatedDetails.enrollment.enrollmentId}`}
                 className="font-medium text-accent hover:underline"
               >
                 {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId} (ID {relatedDetails.enrollment.enrollmentId})
               </Link>
-            </InfoRow>
+            </DetailInfoRow>
           )}
-        <InfoRow label={t('detail.labelChallenge')}>
+        <DetailInfoRow label={t('detail.labelChallenge')}>
           {attempt.authAttemptChallenge != null
             ? <span className="font-mono font-bold">{String(attempt.authAttemptChallenge).padStart(2, '0')}</span>
             : <span className="text-fg-muted">—</span>}
-        </InfoRow>
+        </DetailInfoRow>
         {attempt.demoMitmSignatureEnabled && (
-          <InfoRow label={t('detail.labelDemoMitm')}>
+          <DetailInfoRow label={t('detail.labelDemoMitm')}>
             <Badge variant="warning">{t('detail.demoMitmOn')}</Badge>
-          </InfoRow>
+          </DetailInfoRow>
         )}
-        <InfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(attempt.createdAt)}</span></InfoRow>
-        <InfoRow label={t('detail.labelExpires')}><span className="text-fg-muted">{formatDate(attempt.expiresAt)}</span></InfoRow>
+        <DetailInfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(attempt.createdAt)}</span></DetailInfoRow>
+        <DetailInfoRow label={t('detail.labelExpires')}><span className="text-fg-muted">{formatDate(attempt.expiresAt)}</span></DetailInfoRow>
         {attempt.authAttemptProofToken && (
-          <InfoRow label={t('detail.labelProofToken')}>
+          <DetailInfoRow label={t('detail.labelProofToken')}>
             <span className="font-mono text-xs break-all text-success">{attempt.authAttemptProofToken}</span>
-          </InfoRow>
+          </DetailInfoRow>
         )}
         </dl>
         <div className="flex justify-end pt-4">
@@ -295,12 +287,6 @@ export default function AuthAttemptsPage() {
       return i < data.length - 1 ? i + 1 : i;
     });
   }, [data.length]);
-
-  useEffect(() => {
-    if (selectedIndex !== null && (selectedIndex >= data.length || data.length === 0)) {
-      setSelectedIndex(null);
-    }
-  }, [selectedIndex, data.length]);
 
   const columns: ColumnDef<AuthAttemptDto>[] = [
     { header: t('list.columns.id'), key: 'authAttemptId', className: 'w-14', sortKey: 'authAttemptId', render: (r) => <span className="font-mono text-xs">{r.authAttemptId}</span> },

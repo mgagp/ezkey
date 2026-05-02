@@ -18,8 +18,8 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
-import { useDemoModeSession } from '@/context/demo-mode-context';
-import { useToast } from '@/context/toast-context';
+import { useDemoModeSession } from '@/context/use-demo-mode-session';
+import { useToast } from '@/context/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
@@ -35,10 +35,10 @@ import type { PagedModelTenantResponseDto, TenantResponseDto } from '@/generated
 // ── Create dialog ─────────────────────────────────────────────────────────────
 
 function CreateTenantDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t, i18n } = useTranslation(['tenants', 'demo']);
+  const { t } = useTranslation(['tenants', 'demo']);
   const tenantPresetsForLocale = useMemo(
     () => tenantDemoPresets.map((preset) => resolveTenantDemoPresetForLocale(preset, t)),
-    [t, i18n.language],
+    [t],
   );
   const queryClient = useQueryClient();
   const { toast } = useToast();

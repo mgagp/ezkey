@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -9,7 +7,7 @@ import {
 } from 'react';
 import { useGetTenant } from '@/generated/admin-api/tenants/tenants';
 import type { TenantResponseDto } from '@/generated/admin-api/model';
-import { useAuth } from '@/context/auth-context';
+import { useAuth } from '@/context/use-auth';
 import {
   defaultDisplayTimezoneMode,
   type DisplayTimezoneMode,
@@ -17,18 +15,8 @@ import {
   writeDisplayTimezoneMode,
 } from '@/lib/display-timezone-pref';
 import { setDisplayTimeZoneResolver } from '@/lib/display-timezone-resolver';
-
-export interface DisplayTimezoneContextValue {
-  /** User preference: browser local vs tenant business timezone. */
-  mode: DisplayTimezoneMode;
-  setMode: (mode: DisplayTimezoneMode) => void;
-  /** Resolved IANA id passed to Intl when in tenant mode; undefined means browser local. */
-  effectiveTimeZoneId: string | undefined;
-  /** Tenant record timezone string when loaded (may be empty). */
-  tenantTimeZoneRaw: string | undefined;
-}
-
-const DisplayTimezoneContext = createContext<DisplayTimezoneContextValue | null>(null);
+import { DisplayTimezoneContext } from '@/context/display-timezone-context-value';
+import type { DisplayTimezoneContextValue } from '@/context/display-timezone-context-value';
 
 function isValidIanaZone(id: string): boolean {
   try {
@@ -43,17 +31,12 @@ export function DisplayTimezoneProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const tenantId = session?.tenantId;
 
-  const [mode, setModeState] = useState<DisplayTimezoneMode>('local');
-
-  useEffect(() => {
-    if (!session) {
-      setModeState('local');
-      return;
-    }
-    const saved = readDisplayTimezoneMode();
-    const def = defaultDisplayTimezoneMode(session.adminType);
-    setModeState(saved ?? def);
-  }, [session]);
+  const [modeOverride, setModeState] = useState<DisplayTimezoneMode | null>(() =>
+    readDisplayTimezoneMode(),
+  );
+  const mode = session
+    ? modeOverride ?? defaultDisplayTimezoneMode(session.adminType)
+    : 'local';
 
   const { data: tenant } = useGetTenant<TenantResponseDto>(
     typeof tenantId === 'number' && !Number.isNaN(tenantId) ? tenantId : 0,
@@ -104,10 +87,3 @@ export function DisplayTimezoneProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useDisplayTimezone(): DisplayTimezoneContextValue {
-  const ctx = useContext(DisplayTimezoneContext);
-  if (!ctx) {
-    throw new Error('useDisplayTimezone must be used within DisplayTimezoneProvider');
-  }
-  return ctx;
-}

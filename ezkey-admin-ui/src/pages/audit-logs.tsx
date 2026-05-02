@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Info, ShieldAlert, Archive, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, ListOrdered, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
@@ -15,6 +15,7 @@ import { ContextHelp } from '@/components/ui/context-help';
 import { Tooltip } from '@/components/ui/tooltip';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
+import { DetailInfoRow } from '@/components/ui/detail-info-row';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,9 +33,9 @@ import { api } from '@/lib/api-client';
 import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
 import { cn, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
-import { useAuth } from '@/context/auth-context';
-import { useDisplayTimezone } from '@/context/display-timezone-context';
-import { useToast } from '@/context/toast-context';
+import { useAuth } from '@/context/use-auth';
+import { useDisplayTimezone } from '@/context/use-display-timezone';
+import { useToast } from '@/context/use-toast';
 import {
   checkChainIntegrity,
   checkIntegrity,
@@ -202,15 +203,6 @@ function AuditLogDetailDialog({
 
   if (!log) return null;
 
-  function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-      <div className="flex gap-4 min-w-0">
-        <dt className="w-36 font-black uppercase text-[10px] tracking-wider text-fg-muted pt-0.5 shrink-0">{label}</dt>
-        <dd className="min-w-0 flex-1 text-sm break-all">{children}</dd>
-      </div>
-    );
-  }
-
   return (
     <Dialog
       open={log !== null}
@@ -256,99 +248,99 @@ function AuditLogDetailDialog({
           )}
         </div>
         <dl className="space-y-2.5">
-          <InfoRow label={t('detail.labelId')}><span className="font-mono">{log.auditLogId}</span></InfoRow>
-          <InfoRow label={t('detail.labelEventType')}>
+          <DetailInfoRow label={t('detail.labelId')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all"><span className="font-mono">{log.auditLogId}</span></DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelEventType')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             <span className="text-sm">{getAuditEventTypeLabel(log.eventType ?? undefined, t)}</span>
             {log.eventType && (
               <span className="ml-2 font-mono text-xs text-fg-muted">({log.eventType})</span>
             )}
-          </InfoRow>
-          <InfoRow label={t('detail.labelStatus')}><EventStatusBadge status={log.eventStatus} /></InfoRow>
-          <InfoRow label={t('detail.labelApi')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelStatus')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all"><EventStatusBadge status={log.eventStatus} /></DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelApi')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.apiName ? (
               <Badge variant="muted">{log.apiName.replace('_API', '')}</Badge>
             ) : (
               <span className="text-fg-muted">—</span>
             )}
-          </InfoRow>
-          <InfoRow label={t('detail.labelAdminId')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelAdminId')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.adminId != null ? (
               <span className="font-mono">#{log.adminId}</span>
             ) : (
               <span className="text-fg-muted">—</span>
             )}
-          </InfoRow>
+          </DetailInfoRow>
           {relatedDetails.isExpanded && relatedDetails.admin && (
-            <InfoRow label={t('common:detail.relatedAdmin')}>
+            <DetailInfoRow label={t('common:detail.relatedAdmin')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
               <span className="font-medium">
                 {relatedDetails.admin.username ?? relatedDetails.admin.adminId} (ID {relatedDetails.admin.adminId})
               </span>
-            </InfoRow>
+            </DetailInfoRow>
           )}
-          <InfoRow label={t('detail.labelIntegration')}>
+          <DetailInfoRow label={t('detail.labelIntegration')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.integrationId != null ? (
               <span className="font-mono">#{log.integrationId}</span>
             ) : (
               <span className="text-fg-muted">—</span>
             )}
-          </InfoRow>
+          </DetailInfoRow>
           {relatedDetails.isExpanded && relatedDetails.integration && (
-            <InfoRow label={t('common:detail.relatedIntegration')}>
+            <DetailInfoRow label={t('common:detail.relatedIntegration')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
               <Link
                 to={`/integrations/${relatedDetails.integration.id}`}
                 className="font-medium text-accent hover:underline"
               >
                 {getIntegrationName(relatedDetails.integration)} (ID {relatedDetails.integration.id})
               </Link>
-            </InfoRow>
+            </DetailInfoRow>
           )}
-          <InfoRow label={t('detail.labelEnrollment')}>
+          <DetailInfoRow label={t('detail.labelEnrollment')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.enrollmentId != null ? (
               <span className="font-mono">#{log.enrollmentId}</span>
             ) : (
               <span className="text-fg-muted">—</span>
             )}
-          </InfoRow>
+          </DetailInfoRow>
           {relatedDetails.isExpanded && relatedDetails.enrollment && (
-            <InfoRow label={t('common:detail.relatedEnrollment')}>
+            <DetailInfoRow label={t('common:detail.relatedEnrollment')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
               <Link
                 to={`/enrollments/${relatedDetails.enrollment.enrollmentId}`}
                 className="font-medium text-accent hover:underline"
               >
                 {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId} (ID {relatedDetails.enrollment.enrollmentId})
               </Link>
-            </InfoRow>
+            </DetailInfoRow>
           )}
-          <InfoRow label={t('detail.labelAuthAttempt')}>
+          <DetailInfoRow label={t('detail.labelAuthAttempt')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.authAttemptId != null ? (
               <span className="font-mono">#{log.authAttemptId}</span>
             ) : (
               <span className="text-fg-muted">—</span>
             )}
-          </InfoRow>
-          <InfoRow label={t('detail.labelIpAddress')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelIpAddress')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.ipAddress ? (
               <span className="font-mono text-xs">{log.ipAddress}</span>
             ) : (
               <span className="text-fg-muted">—</span>
             )}
-          </InfoRow>
-          <InfoRow label={t('detail.labelUserAgent')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelUserAgent')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             <pre className="font-mono text-xs leading-snug text-fg-muted bg-fg/5 p-2 border border-fg/10 whitespace-pre-wrap break-words min-h-[3.25rem] max-w-full">
               {log.userAgent?.trim() ? log.userAgent : '—'}
             </pre>
-          </InfoRow>
-          <InfoRow label={t('detail.labelReason')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelReason')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             <pre className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 whitespace-pre-wrap border border-fg/10">
               {log.reason?.trim() ? log.reason : '—'}
             </pre>
-          </InfoRow>
-          <InfoRow label={t('detail.labelDetails')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelDetails')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             <pre className="text-xs leading-normal bg-fg/5 p-2 overflow-auto max-h-32 min-h-[5.5rem] whitespace-pre-wrap border border-fg/10">
               {log.eventDetails?.trim() ? log.eventDetails : '—'}
             </pre>
-          </InfoRow>
-          <InfoRow label={t('detail.labelError')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelError')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             <div className="text-xs bg-fg/5 p-2 overflow-auto max-h-32 border border-fg/10">
               {log.errorMessage ? (
                 <span className="text-error">{log.errorMessage}</span>
@@ -356,13 +348,13 @@ function AuditLogDetailDialog({
                 <span className="text-fg-muted">—</span>
               )}
             </div>
-          </InfoRow>
-          <InfoRow label={t('detail.labelCreated')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelCreated')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             <span className="text-fg-muted">
               {log.createdAt ? formatDateWithTimezone(log.createdAt) : '—'}
             </span>
-          </InfoRow>
-          <InfoRow label={t('detail.labelHmacIntegrity')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelHmacIntegrity')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.entryHmac ? (
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="size-3.5 text-success" />
@@ -371,14 +363,14 @@ function AuditLogDetailDialog({
             ) : (
               <span className="text-xs text-fg-muted">{t('detail.notAvailable')}</span>
             )}
-          </InfoRow>
-          <InfoRow label={t('detail.labelInstance')}>
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelInstance')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.instanceId ? (
               <span className="font-mono text-xs text-fg-muted">{log.instanceId}</span>
             ) : (
               <span className="text-fg-muted">—</span>
             )}
-          </InfoRow>
+          </DetailInfoRow>
         </dl>
         <div className="flex justify-end pt-4">
           <Button onClick={onClose}>{t('detail.close')}</Button>
@@ -396,12 +388,27 @@ type CheckpointRowItem =
 
 function CheckpointTypeBadge({ type }: { type?: string }) {
   const { t } = useTranslation('audit-logs');
-  const TooltipWrap = ({ content, badge }: { content: string; badge: ReactNode }) => (
-    <Tooltip content={content}>{badge}</Tooltip>
-  );
-  if (type === 'REGULAR') return <TooltipWrap content={t('integrity.helpCheckpointRegular')} badge={<Badge variant="muted">{t('integrity.checkpointTypeRegular')}</Badge>} />;
-  if (type === 'ARCHIVE_SEAL') return <TooltipWrap content={t('integrity.helpCheckpointArchiveSeal')} badge={<Badge variant="success">{t('integrity.checkpointTypeSealed')}</Badge>} />;
-  if (type === 'GAP_DECLARATION') return <TooltipWrap content={t('integrity.helpCheckpointGapDeclaration')} badge={<Badge variant="warning">{t('integrity.checkpointTypeGap')}</Badge>} />;
+  if (type === 'REGULAR') {
+    return (
+      <Tooltip content={t('integrity.helpCheckpointRegular')}>
+        <Badge variant="muted">{t('integrity.checkpointTypeRegular')}</Badge>
+      </Tooltip>
+    );
+  }
+  if (type === 'ARCHIVE_SEAL') {
+    return (
+      <Tooltip content={t('integrity.helpCheckpointArchiveSeal')}>
+        <Badge variant="success">{t('integrity.checkpointTypeSealed')}</Badge>
+      </Tooltip>
+    );
+  }
+  if (type === 'GAP_DECLARATION') {
+    return (
+      <Tooltip content={t('integrity.helpCheckpointGapDeclaration')}>
+        <Badge variant="warning">{t('integrity.checkpointTypeGap')}</Badge>
+      </Tooltip>
+    );
+  }
   return <span className="text-fg-muted">—</span>;
 }
 
@@ -1879,12 +1886,6 @@ export default function AuditLogsPage() {
       return i < activeData.length - 1 ? i + 1 : i;
     });
   }, [activeData.length]);
-
-  useEffect(() => {
-    if (selectedIndex !== null && (selectedIndex >= activeData.length || activeData.length === 0)) {
-      setSelectedIndex(null);
-    }
-  }, [selectedIndex, activeData.length]);
 
   const expandEntityContext = useCallback(() => {
     if (contextualDateRange) {

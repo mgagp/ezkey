@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useDisplayTimezone } from '@/context/display-timezone-context';
+import { useDisplayTimezone } from '@/context/use-display-timezone';
 import {
   DATE_RANGE_PRESET_OPTIONS,
   getPresetDateRange,

@@ -1,21 +1,6 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { isDemoMode } from '@/lib/demo-mode';
-
-interface DemoModeContextValue {
-  sessionDemoOn: boolean;
-  toggleSessionDemo: () => void;
-}
-
-const defaultValue: DemoModeContextValue = {
-  sessionDemoOn: false,
-  toggleSessionDemo: () => {},
-};
-
-const DemoModeContext = createContext<DemoModeContextValue>(defaultValue);
-
-export function useDemoModeSession(): DemoModeContextValue {
-  return useContext(DemoModeContext);
-}
+import { DemoModeContext } from '@/context/demo-mode-context-value';
 
 interface DemoModeProviderProps {
   children: ReactNode;

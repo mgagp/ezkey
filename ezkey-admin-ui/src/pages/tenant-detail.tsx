@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/context/toast-context';
+import { useToast } from '@/context/use-toast';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';

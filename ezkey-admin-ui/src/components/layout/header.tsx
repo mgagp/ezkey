@@ -1,8 +1,8 @@
 import { CircleHelp, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useHelp } from '@/context/help-context';
-import { useAuth } from '@/context/auth-context';
-import { useDemoModeSession } from '@/context/demo-mode-context';
+import { useHelp } from '@/context/use-help';
+import { useAuth } from '@/context/use-auth';
+import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
 import { I18N_STORAGE_KEY } from '@/i18n';
 import { isDemoMode } from '@/lib/demo-mode';

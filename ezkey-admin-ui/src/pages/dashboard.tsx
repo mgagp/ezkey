@@ -22,7 +22,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { EventStatusBadge } from '@/components/feature/event-status-badge';
 import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { formatCountdown, formatRelativeTime } from '@/lib/utils';
-import { useAuth } from '@/context/auth-context';
+import { useAuth } from '@/context/use-auth';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
 import type { DashboardOverviewDto } from '@/generated/admin-api/model';
 import { DashboardStatBadgeLink } from '@/components/feature/dashboard-stat-badge-link';

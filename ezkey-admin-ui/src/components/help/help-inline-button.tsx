@@ -1,6 +1,6 @@
 import { CircleHelp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useHelp } from '@/context/help-context';
+import { useHelp } from '@/context/use-help';
 import type { HelpPatternId, HelpTopicId } from '@/lib/help-topics';
 
 interface HelpInlineButtonProps {

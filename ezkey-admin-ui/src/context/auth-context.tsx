@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   type AuthSession,
@@ -9,16 +9,7 @@ import {
 } from '@/lib/auth';
 import { fetchApi } from '@/lib/api-client';
 import { queryClient } from '@/lib/query-client';
-
-interface AuthContextValue {
-  session: AuthSession | null;
-  isAuthenticated: boolean;
-  isSessionChecking: boolean;
-  login: (session: AuthSession) => void;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { AuthContext } from '@/context/auth-context-value';
 
 /** Provides auth state to the component tree. Wrap at the app root. */
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -87,9 +78,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Access auth state and actions. Must be used inside AuthProvider. */
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-}

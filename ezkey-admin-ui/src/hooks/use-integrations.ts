@@ -23,7 +23,7 @@ export function useIntegrations(): {
     staleTime: 60_000,
   });
 
-  const list = data?.content ?? [];
+  const list = useMemo(() => data?.content ?? [], [data?.content]);
 
   const lookup = useMemo(() => {
     const map = new Map<number, string>();

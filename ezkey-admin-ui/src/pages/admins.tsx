@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, QrCode, RefreshCw, UserX } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { OperationalWarning } from '@/components/feature/operational-warning';
@@ -18,13 +18,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ContextHelp } from '@/components/ui/context-help';
 import { Dialog } from '@/components/ui/dialog';
+import { DetailInfoRow } from '@/components/ui/detail-info-row';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Tooltip } from '@/components/ui/tooltip';
-import { useAuth } from '@/context/auth-context';
-import { useDemoModeSession } from '@/context/demo-mode-context';
-import { useToast } from '@/context/toast-context';
+import { useAuth } from '@/context/use-auth';
+import { useDemoModeSession } from '@/context/use-demo-mode-session';
+import { useToast } from '@/context/use-toast';
 import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
@@ -532,15 +533,6 @@ function AdminDetailDialog({
     }
   };
 
-  function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-      <div className="flex gap-4">
-        <dt className="w-36 font-black uppercase text-[10px] tracking-wider text-fg-muted pt-0.5 shrink-0">{label}</dt>
-        <dd className="text-sm break-all">{children}</dd>
-      </div>
-    );
-  }
-
   return (
     <Dialog
       open={admin !== null}
@@ -575,32 +567,32 @@ function AdminDetailDialog({
         )}
         {/* Info section */}
         <dl className="space-y-2.5">
-          <InfoRow label={t('detail.labelAdminId')}><span className="font-mono">{adm.adminId}</span></InfoRow>
-          <InfoRow label={t('detail.labelUsername')}><span className="font-medium">{adm.username}</span></InfoRow>
-          <InfoRow label={t('detail.labelName')}>{fullName || <span className="text-fg-muted">—</span>}</InfoRow>
-          <InfoRow label={t('detail.labelEmail')}>{adm.email || <span className="text-fg-muted">—</span>}</InfoRow>
-          <InfoRow label={t('detail.labelPhone')}>{adm.phoneNumber || <span className="text-fg-muted">—</span>}</InfoRow>
-          <InfoRow label={t('detail.labelType')}><AdminTypeBadge type={adm.adminType} /></InfoRow>
+          <DetailInfoRow label={t('detail.labelAdminId')} valueClassName="break-all"><span className="font-mono">{adm.adminId}</span></DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelUsername')} valueClassName="break-all"><span className="font-medium">{adm.username}</span></DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelName')} valueClassName="break-all">{fullName || <span className="text-fg-muted">—</span>}</DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelEmail')} valueClassName="break-all">{adm.email || <span className="text-fg-muted">—</span>}</DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelPhone')} valueClassName="break-all">{adm.phoneNumber || <span className="text-fg-muted">—</span>}</DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelType')} valueClassName="break-all"><AdminTypeBadge type={adm.adminType} /></DetailInfoRow>
           {adm.tenantId != null && (
-            <InfoRow label={t('detail.labelTenantId')}><span className="font-mono">{adm.tenantId}</span></InfoRow>
+            <DetailInfoRow label={t('detail.labelTenantId')} valueClassName="break-all"><span className="font-mono">{adm.tenantId}</span></DetailInfoRow>
           )}
           {adm.enrollmentId != null && (
-            <InfoRow label={t('detail.labelEnrollmentId')}>
+            <DetailInfoRow label={t('detail.labelEnrollmentId')} valueClassName="break-all">
               <span className="font-mono">{adm.enrollmentId}</span>
-            </InfoRow>
+            </DetailInfoRow>
           )}
           {relatedDetails.isExpanded && relatedDetails.tenant && (
-            <InfoRow label={t('common:detail.relatedTenant')}>
+            <DetailInfoRow label={t('common:detail.relatedTenant')} valueClassName="break-all">
               <Link
                 to={`/tenants/${relatedDetails.tenant.tenantId}`}
                 className="font-medium text-accent hover:underline"
               >
                 {relatedDetails.tenant.tenantName ?? relatedDetails.tenant.tenantId} (ID {relatedDetails.tenant.tenantId})
               </Link>
-            </InfoRow>
+            </DetailInfoRow>
           )}
           {relatedDetails.isExpanded && relatedDetails.enrollment && adm.enrollmentId != null && (
-            <InfoRow label={t('common:detail.relatedEnrollment')}>
+            <DetailInfoRow label={t('common:detail.relatedEnrollment')} valueClassName="break-all">
               <Link
                 to={`/enrollments/${adm.enrollmentId}`}
                 className="font-medium text-accent hover:underline"
@@ -608,11 +600,11 @@ function AdminDetailDialog({
                 {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId}{' '}
                 (ID {relatedDetails.enrollment.enrollmentId})
               </Link>
-            </InfoRow>
+            </DetailInfoRow>
           )}
-          <InfoRow label={t('detail.labelStatus')}>{renderAdminStatusBadge(adm, t, 'detail')}</InfoRow>
-          <InfoRow label={t('detail.labelCreated')}>{adm.createdAt ? formatDate(adm.createdAt) : '—'}</InfoRow>
-          <InfoRow label={t('detail.labelLastLogin')}>
+          <DetailInfoRow label={t('detail.labelStatus')} valueClassName="break-all">{renderAdminStatusBadge(adm, t, 'detail')}</DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelCreated')} valueClassName="break-all">{adm.createdAt ? formatDate(adm.createdAt) : '—'}</DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelLastLogin')} valueClassName="break-all">
             {adm.lastLoginAt ? (
               <span>
                 {formatDate(adm.lastLoginAt)}
@@ -621,7 +613,7 @@ function AdminDetailDialog({
             ) : (
               <span className="text-fg-muted italic">{t('detail.lastLoginNever')}</span>
             )}
-          </InfoRow>
+          </DetailInfoRow>
         </dl>
 
         {isPendingActivationAdmin(adm) && (
@@ -991,7 +983,9 @@ function CreateAdminDialog({
   const [createdAdmin, setCreatedAdmin] = useState<AdminProvisioningShape | null>(null);
   const [provisioningMaterialCopied, setProvisioningMaterialCopied] = useState(false);
   const [provisioningMaterialSavedConfirmed, setProvisioningMaterialSavedConfirmed] = useState(false);
-  const [isGlobalType, setIsGlobalType] = useState(defaultGlobal);
+  const [isGlobalType, setIsGlobalType] = useState(
+    defaultTenantId != null && defaultTenantId > 0 ? false : defaultGlobal,
+  );
   const [onboardingMode, setOnboardingMode] = useState<AdminCreateRequestDto['onboardingMode']>(
     AdminCreateRequestDtoOnboardingMode.IMMEDIATE,
   );
@@ -999,7 +993,10 @@ function CreateAdminDialog({
   const [tenantFilter, setTenantFilter] = useState('');
 
   const { data: tenantsData } = useListTenants({ page: 0, size: 100, sort: ['tenantName,asc'] });
-  const allTenants = (tenantsData as PagedModelTenantResponseDto | undefined)?.content ?? [];
+  const allTenants = useMemo(
+    () => (tenantsData as PagedModelTenantResponseDto | undefined)?.content ?? [],
+    [tenantsData],
+  );
   const eligibleTenants = useMemo(
     () => allTenants.filter((t) => !t.isSystemTenant),
     [allTenants],
@@ -1048,30 +1045,23 @@ function CreateAdminDialog({
   );
   type AdminFormValues = z.infer<typeof adminSchema>;
 
-  const defaultFormValues: AdminFormValues = { username: '', email: '', phoneNumber: '', firstName: '', lastName: '', tenantId: '' };
-  const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors } } = useForm<AdminFormValues>({
+  const defaultFormValues = useMemo<AdminFormValues>(
+    () => ({
+      username: '',
+      email: '',
+      phoneNumber: '',
+      firstName: '',
+      lastName: '',
+      tenantId: defaultTenantId != null && defaultTenantId > 0 ? String(defaultTenantId) : '',
+    }),
+    [defaultTenantId],
+  );
+  const { register, handleSubmit, reset, control, setValue, getValues, formState: { errors } } = useForm<AdminFormValues>({
     resolver: zodResolver(adminSchema),
     defaultValues: defaultFormValues,
   });
 
-  // Fresh state each time the dialog opens
-  useEffect(() => {
-    if (!open) return;
-    reset(defaultFormValues);
-    setTenantFilter('');
-    setCreatedAdmin(null);
-    setProvisioningMaterialCopied(false);
-    setProvisioningMaterialSavedConfirmed(false);
-    setOnboardingMode(AdminCreateRequestDtoOnboardingMode.IMMEDIATE);
-    if (defaultTenantId != null && defaultTenantId > 0) {
-      setIsGlobalType(false);
-      setValue('tenantId', String(defaultTenantId));
-    } else {
-      setIsGlobalType(defaultGlobal);
-    }
-  }, [open, defaultGlobal, defaultTenantId, reset, setValue]);
-
-  const watchedTenantId = watch('tenantId');
+  const watchedTenantId = useWatch({ control, name: 'tenantId' });
   const tenantAdminNeedsTenant = callerIsGlobal && !isGlobalType;
 
   const filteredTenants = useMemo(() => {
@@ -1512,19 +1502,6 @@ export default function AdminsPage() {
     });
   }, [data.length]);
 
-  useEffect(() => {
-    if (selectedIndex !== null && (selectedIndex >= data.length || data.length === 0)) {
-      setSelectedIndex(null);
-    }
-  }, [selectedIndex, data.length]);
-
-  /** Open create dialog when arriving from tenant detail (?tenantId=&createTenantAdmin=1). */
-  useEffect(() => {
-    if (defaultTenantIdFromUrl != null) {
-      setCreateOpen(true);
-    }
-  }, [defaultTenantIdFromUrl]);
-
   const handleCloseCreateDialog = () => {
     setCreateOpen(false);
     if (searchParams.has('createTenantAdmin') || searchParams.has('tenantId')) {
@@ -1661,12 +1638,14 @@ export default function AdminsPage() {
         showNav={showRowNav}
         showEndOfPageHint={showEndOfPageHint}
       />
-      <CreateAdminDialog
-        open={createOpen}
-        onClose={handleCloseCreateDialog}
-        defaultGlobal={defaultTenantIdFromUrl != null ? false : isGlobalAdmin}
-        defaultTenantId={defaultTenantIdFromUrl}
-      />
+      {(createOpen || defaultTenantIdFromUrl != null) && (
+        <CreateAdminDialog
+          open
+          onClose={handleCloseCreateDialog}
+          defaultGlobal={defaultTenantIdFromUrl != null ? false : isGlobalAdmin}
+          defaultTenantId={defaultTenantIdFromUrl}
+        />
+      )}
       <OnboardingDialog
         open={onboardingTarget !== null}
         onClose={() => setOnboardingTarget(null)}

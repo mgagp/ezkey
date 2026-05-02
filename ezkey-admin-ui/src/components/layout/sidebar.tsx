@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/context/auth-context';
-import { useDemoModeSession } from '@/context/demo-mode-context';
+import { useAuth } from '@/context/use-auth';
+import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { usePublicInstanceInfo } from '@/hooks/use-public-instance-info';
 import { isDemoMode } from '@/lib/demo-mode';
 import { cn } from '@/lib/utils';

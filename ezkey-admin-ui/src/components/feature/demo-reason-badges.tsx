@@ -5,7 +5,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { isDemoMode, reasonDemoPresets } from '@/lib/demo-mode';
-import { useDemoModeSession } from '@/context/demo-mode-context';
+import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { Button } from '@/components/ui/button';
 
 interface DemoReasonBadgesProps {

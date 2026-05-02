@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Clock } from 'lucide-react';
-import { useAuth } from '@/context/auth-context';
-import { useDisplayTimezone } from '@/context/display-timezone-context';
+import { useAuth } from '@/context/use-auth';
+import { useDisplayTimezone } from '@/context/use-display-timezone';
 import type { DisplayTimezoneMode } from '@/lib/display-timezone-pref';
 
 /**

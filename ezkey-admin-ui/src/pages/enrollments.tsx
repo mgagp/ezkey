@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Tooltip } from '@/components/ui/tooltip';
-import { useDemoModeSession } from '@/context/demo-mode-context';
+import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -348,7 +348,20 @@ export default function EnrollmentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const enrollmentBucket = parseEnrollmentBucket(searchParams.get(ENROLLMENT_BUCKET_PARAM));
-  const [bucketPage, setBucketPage] = useState(0);
+  const bucketKey = enrollmentBucket ?? 'none';
+  const [bucketPageState, setBucketPageState] = useState(() => ({ bucketKey, page: 0 }));
+  const bucketPage = bucketPageState.bucketKey === bucketKey ? bucketPageState.page : 0;
+  const setBucketPage = useCallback(
+    (nextPage: number | ((previousPage: number) => number)) => {
+      setBucketPageState((previous) => {
+        const currentPage = previous.bucketKey === bucketKey ? previous.page : 0;
+        const page =
+          typeof nextPage === 'function' ? nextPage(currentPage) : nextPage;
+        return { bucketKey, page };
+      });
+    },
+    [bucketKey],
+  );
   const bucketPageSize = 20;
 
   const [nameInput, setNameInput] = useState('');
@@ -372,10 +385,6 @@ export default function EnrollmentsPage() {
       { replace: true },
     );
   }, [setSearchParams]);
-
-  useEffect(() => {
-    setBucketPage(0);
-  }, [enrollmentBucket]);
 
   useEffect(() => {
     if (debouncedName) {

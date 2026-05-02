@@ -11,6 +11,7 @@
     "build:cloudflare:verify": "npm run build:cloudflare && bash scripts/assert-no-demo-in-build.sh dist",
     "build:test": "tsc -b && vite build --mode test",
     "lint": "eslint .",
+    "lint:diagnostics": "eslint . --format stylish",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

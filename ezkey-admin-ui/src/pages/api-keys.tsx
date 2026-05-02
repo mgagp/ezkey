@@ -457,19 +457,15 @@ export default function ApiKeysPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
   const [descriptionInput, setDescriptionInput] = useState('');
   const debouncedDescription = useDebounce(descriptionInput, 300);
-
-  useEffect(() => {
+  const createFromUrlIntegrationId = useMemo(() => {
     const create = searchParams.get('create');
     const idParam = searchParams.get('integrationId');
-    if (create === '1' && idParam) {
-      const id = Number(idParam);
-      if (!Number.isNaN(id)) {
-        setCreateOpen(true);
-        setPrefillIntegrationId(id);
-        setSearchParams({}, { replace: true });
-      }
+    if (create !== '1' || !idParam) {
+      return undefined;
     }
-  }, [searchParams, setSearchParams]);
+    const id = Number(idParam);
+    return Number.isNaN(id) ? undefined : id;
+  }, [searchParams]);
 
   const { list: integrations, lookup } = useIntegrations();
 
@@ -641,13 +637,16 @@ export default function ApiKeysPage() {
       </div>
 
       <CreateApiKeyDialog
-        key={prefillIntegrationId ?? 'new'}
-        open={createOpen}
+        key={prefillIntegrationId ?? createFromUrlIntegrationId ?? 'new'}
+        open={createOpen || createFromUrlIntegrationId !== undefined}
         onClose={() => {
           setCreateOpen(false);
           setPrefillIntegrationId(undefined);
+          if (searchParams.has('create') || searchParams.has('integrationId')) {
+            setSearchParams({}, { replace: true });
+          }
         }}
-        defaultIntegrationId={prefillIntegrationId}
+        defaultIntegrationId={prefillIntegrationId ?? createFromUrlIntegrationId}
       />
       <RevokeApiKeyDialog apiKey={revokeTarget} onClose={() => setRevokeTarget(null)} />
     </AppShell>

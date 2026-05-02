@@ -23,7 +23,10 @@ function isEditableTarget(target: EventTarget | null): boolean {
  */
 export function useDetailNavigation(isActive: boolean, options: DetailNavigationOptions): void {
   const optsRef = useRef(options);
-  optsRef.current = options;
+
+  useEffect(() => {
+    optsRef.current = options;
+  });
 
   useEffect(() => {
     if (!isActive) return;

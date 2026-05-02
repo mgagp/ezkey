@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation, Trans } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ContextHelp } from '@/components/ui/context-help';
 import { Dialog } from '@/components/ui/dialog';
+import { DetailInfoRow } from '@/components/ui/detail-info-row';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -33,8 +34,8 @@ import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useDebounce } from '@/hooks/use-debounce';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
-import { useToast } from '@/context/toast-context';
-import { useDisplayTimezone } from '@/context/display-timezone-context';
+import { useToast } from '@/context/use-toast';
+import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { usePaginatedFromOrval, type PagedBody } from '@/hooks/use-paginated-orval';
 import {
   listKeys,
@@ -316,15 +317,6 @@ function KeyDetailDialog({
 
   if (keyId === null) return null;
 
-  function Row({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-      <div className="flex gap-4">
-        <dt className="w-40 font-black uppercase text-[10px] tracking-wider text-fg-muted pt-0.5 shrink-0">{label}</dt>
-        <dd className="text-sm break-all">{children}</dd>
-      </div>
-    );
-  }
-
   return (
     <Dialog
       open={keyId !== null}
@@ -354,43 +346,43 @@ function KeyDetailDialog({
       ) : (
         <>
           <dl className="space-y-2.5">
-            <Row label={t('keyDetail.labelKeyId')}><span className="font-mono">{keyData.keyId}</span></Row>
-            <Row label={t('keyDetail.labelStatus')}><KeyStatusBadge status={keyData.keyStatus} /></Row>
-            <Row label={t('keyDetail.labelLifecycleStage')}>
+            <DetailInfoRow label={t('keyDetail.labelKeyId')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{keyData.keyId}</span></DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelStatus')} labelClassName="w-40" valueClassName="break-all"><KeyStatusBadge status={keyData.keyStatus} /></DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelLifecycleStage')} labelClassName="w-40" valueClassName="break-all">
               <LifecycleStageBadge stage={keyData.lifecycleStage} />
-            </Row>
-            <Row label={t('keyDetail.labelRemainingRecords')}>
+            </DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelRemainingRecords')} labelClassName="w-40" valueClassName="break-all">
               <span className="font-mono text-xs">
                 {keyData.remainingRecords != null ? keyData.remainingRecords : '—'}
               </span>
-            </Row>
-            <Row label={t('keyDetail.labelRemainingTargets')}>
+            </DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelRemainingTargets')} labelClassName="w-40" valueClassName="break-all">
               <span className="font-mono text-xs">
                 {keyData.remainingTargets != null ? keyData.remainingTargets : '—'}
               </span>
-            </Row>
-            <Row label={t('keyDetail.labelVerificationState')}>
+            </DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelVerificationState')} labelClassName="w-40" valueClassName="break-all">
               <span className="text-xs">{verificationStateLabel(keyData.verificationState, t)}</span>
-            </Row>
-            <Row label={t('keyDetail.labelLastVerifiedAt')}>
+            </DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelLastVerifiedAt')} labelClassName="w-40" valueClassName="break-all">
               <span className="text-xs text-fg-muted">
                 {keyData.lastVerifiedAt ? formatRelativeTime(keyData.lastVerifiedAt) : '—'}
               </span>
-            </Row>
-            <Row label={t('keyDetail.labelDecommissionEligible')}>
+            </DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelDecommissionEligible')} labelClassName="w-40" valueClassName="break-all">
               {keyData.decommissionEligible ? t('keyDetail.yes') : t('keyDetail.no')}
-            </Row>
-            <Row label={t('keyDetail.labelIncompleteMigrationBatches')}>
+            </DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelIncompleteMigrationBatches')} labelClassName="w-40" valueClassName="break-all">
               {keyData.incompleteMigrationBatches ? t('keyDetail.yes') : t('keyDetail.no')}
-            </Row>
-            <Row label={t('keyDetail.labelAlgorithm')}><span className="font-mono text-xs">{keyData.algorithm ?? '—'}</span></Row>
-            <Row label={t('keyDetail.labelIntroduced')}><span className="text-fg-muted">{keyData.introducedAt ? formatDate(keyData.introducedAt) : '—'}</span></Row>
-            <Row label={t('keyDetail.labelPromotedPrimary')}>{keyData.promotedPrimaryAt ? formatDate(keyData.promotedPrimaryAt) : '—'}</Row>
-            <Row label={t('keyDetail.labelDisabled')}>{keyData.disabledAt ? formatDate(keyData.disabledAt) : '—'}</Row>
-            <Row label={t('keyDetail.labelRecordsEncrypted')}><span className="font-mono">{formatMigrationBaselineDetail(keyData)}</span></Row>
-            <Row label={t('keyDetail.labelRecordsReencrypted')}><span className="font-mono">{keyData.recordsReencrypted ?? 0}</span></Row>
-            <Row label={t('keyDetail.labelCreatedBy')}>{keyData.createdBy ?? '—'}</Row>
-            {keyData.notes && <Row label={t('keyDetail.labelNotes')}><span className="text-xs text-fg-muted">{keyData.notes}</span></Row>}
+            </DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelAlgorithm')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono text-xs">{keyData.algorithm ?? '—'}</span></DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelIntroduced')} labelClassName="w-40" valueClassName="break-all"><span className="text-fg-muted">{keyData.introducedAt ? formatDate(keyData.introducedAt) : '—'}</span></DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelPromotedPrimary')} labelClassName="w-40" valueClassName="break-all">{keyData.promotedPrimaryAt ? formatDate(keyData.promotedPrimaryAt) : '—'}</DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelDisabled')} labelClassName="w-40" valueClassName="break-all">{keyData.disabledAt ? formatDate(keyData.disabledAt) : '—'}</DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelRecordsEncrypted')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{formatMigrationBaselineDetail(keyData)}</span></DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelRecordsReencrypted')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{keyData.recordsReencrypted ?? 0}</span></DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelCreatedBy')} labelClassName="w-40" valueClassName="break-all">{keyData.createdBy ?? '—'}</DetailInfoRow>
+            {keyData.notes && <DetailInfoRow label={t('keyDetail.labelNotes')} labelClassName="w-40" valueClassName="break-all"><span className="text-xs text-fg-muted">{keyData.notes}</span></DetailInfoRow>}
           </dl>
           <div className="flex justify-end gap-2 pt-4">
             {shouldShowReencryptButton(keyData) && (
@@ -454,15 +446,6 @@ function BatchDetailDialog({
       ? (batch.recordsDone ?? 0) / wallDurationSec
       : null;
 
-  function Row({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-      <div className="flex gap-4">
-        <dt className="w-40 font-black uppercase text-[10px] tracking-wider text-fg-muted pt-0.5 shrink-0">{label}</dt>
-        <dd className="text-sm break-all">{children}</dd>
-      </div>
-    );
-  }
-
   return (
     <Dialog
       open={batch !== null}
@@ -486,56 +469,56 @@ function BatchDetailDialog({
         </p>
       )}
       <dl className="space-y-2.5">
-        <Row label={t('batchDetail.labelBatchId')}><span className="font-mono">{batch.batchId}</span></Row>
-        <Row label={t('batchDetail.labelStatus')}><BatchStatusBadge status={batch.status} /></Row>
-        <Row label={t('batchDetail.labelTargetTable')}><span className="font-mono text-xs">{batch.targetTable}</span></Row>
-        <Row label={t('batchDetail.labelTargetColumn')}><span className="font-mono text-xs">{batch.targetColumn}</span></Row>
+        <DetailInfoRow label={t('batchDetail.labelBatchId')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{batch.batchId}</span></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelStatus')} labelClassName="w-40" valueClassName="break-all"><BatchStatusBadge status={batch.status} /></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelTargetTable')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono text-xs">{batch.targetTable}</span></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelTargetColumn')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono text-xs">{batch.targetColumn}</span></DetailInfoRow>
         {batch.shardCount != null && batch.shardCount > 1 && batch.shardIndex != null && (
-          <Row label={t('batchDetail.labelShard')}>
+          <DetailInfoRow label={t('batchDetail.labelShard')} labelClassName="w-40" valueClassName="break-all">
             <span className="font-mono text-xs">{batch.shardIndex} / {batch.shardCount}</span>
-          </Row>
+          </DetailInfoRow>
         )}
-        <Row label={t('batchDetail.labelOldKey')}><span className="font-mono">#{batch.oldKeyId}</span></Row>
-        <Row label={t('batchDetail.labelNewKey')}><span className="font-mono">#{batch.newKeyId}</span></Row>
-        <Row label={t('batchDetail.labelProgress')}><ProgressBar pct={batch.progressPct} /></Row>
-        <Row label={t('batchDetail.labelRecordsTotal')}><span className="font-mono">{batch.recordsTotal ?? 0}</span></Row>
-        <Row label={t('batchDetail.labelRecordsDone')}><span className="font-mono">{batch.recordsDone ?? 0}</span></Row>
-        <Row label={t('batchDetail.labelRecordsFailed')}>
+        <DetailInfoRow label={t('batchDetail.labelOldKey')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">#{batch.oldKeyId}</span></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelNewKey')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">#{batch.newKeyId}</span></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelProgress')} labelClassName="w-40" valueClassName="break-all"><ProgressBar pct={batch.progressPct} /></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelRecordsTotal')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{batch.recordsTotal ?? 0}</span></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelRecordsDone')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{batch.recordsDone ?? 0}</span></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelRecordsFailed')} labelClassName="w-40" valueClassName="break-all">
           <span className={`font-mono ${(batch.recordsFailed ?? 0) > 0 ? 'text-error font-bold' : ''}`}>
             {batch.recordsFailed ?? 0}
           </span>
-        </Row>
-        <Row label={t('batchDetail.labelRecordsSkipped')}><span className="font-mono">{batch.recordsSkipped ?? 0}</span></Row>
-        <Row label={t('batchDetail.labelRetryCount')}><span className="font-mono">{batch.retryCount ?? 0}</span></Row>
-        <Row label={t('batchDetail.labelStarted')}>{batch.startedAt ? formatDate(batch.startedAt) : '—'}</Row>
-        <Row label={t('batchDetail.labelCompleted')}>{batch.completedAt ? formatDate(batch.completedAt) : '—'}</Row>
+        </DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelRecordsSkipped')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{batch.recordsSkipped ?? 0}</span></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelRetryCount')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{batch.retryCount ?? 0}</span></DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelStarted')} labelClassName="w-40" valueClassName="break-all">{batch.startedAt ? formatDate(batch.startedAt) : '—'}</DetailInfoRow>
+        <DetailInfoRow label={t('batchDetail.labelCompleted')} labelClassName="w-40" valueClassName="break-all">{batch.completedAt ? formatDate(batch.completedAt) : '—'}</DetailInfoRow>
         {elapsedRunningSec != null && (
-          <Row label={t('batchDetail.labelElapsed')}>
+          <DetailInfoRow label={t('batchDetail.labelElapsed')} labelClassName="w-40" valueClassName="break-all">
             <span className="font-mono text-xs">
               {t('batchDetail.durationSeconds', { seconds: Math.round(elapsedRunningSec) })}
             </span>
-          </Row>
+          </DetailInfoRow>
         )}
         {wallDurationSec != null && (
           <>
-            <Row label={t('batchDetail.labelDuration')}>
+            <DetailInfoRow label={t('batchDetail.labelDuration')} labelClassName="w-40" valueClassName="break-all">
               <span className="font-mono text-xs">
                 {t('batchDetail.durationSeconds', { seconds: Math.round(wallDurationSec) })}
               </span>
-            </Row>
-            <Row label={t('batchDetail.labelThroughput')}>
+            </DetailInfoRow>
+            <DetailInfoRow label={t('batchDetail.labelThroughput')} labelClassName="w-40" valueClassName="break-all">
               <span className="font-mono text-xs">
                 {throughputRate != null
                   ? t('batchDetail.throughputRecordsPerSec', { rate: formatRecordsPerSecond(throughputRate) })
                   : '—'}
               </span>
-            </Row>
+            </DetailInfoRow>
           </>
         )}
         {batch.errorMessage && (
-          <Row label={t('batchDetail.labelError')}>
+          <DetailInfoRow label={t('batchDetail.labelError')} labelClassName="w-40" valueClassName="break-all">
             <span className="text-xs text-error font-mono">{batch.errorMessage}</span>
-          </Row>
+          </DetailInfoRow>
         )}
       </dl>
       <div className="flex justify-end pt-4">
@@ -642,7 +625,6 @@ function ReencryptionBatchesSection() {
   const [newKeyIdInput, setNewKeyIdInput] = useState('');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [selectedBatchIndex, setSelectedBatchIndex] = useState<number | null>(null);
-  const [headerTotal, setHeaderTotal] = useState(0);
 
   const debouncedTable = useDebounce(targetTableInput, 400);
   const debouncedColumn = useDebounce(targetColumnInput, 400);
@@ -731,17 +713,7 @@ function ReencryptionBatchesSection() {
     });
   }, [data.length]);
 
-  useEffect(() => {
-    if (selectedBatchIndex !== null && (selectedBatchIndex >= data.length || data.length === 0)) {
-      setSelectedBatchIndex(null);
-    }
-  }, [selectedBatchIndex, data.length]);
-
-  useEffect(() => {
-    if (expanded) {
-      setHeaderTotal(pagination.totalElements);
-    }
-  }, [expanded, pagination.totalElements]);
+  const headerTotal = pagination.totalElements;
 
   const hasFilters = Boolean(
     statusFilter
@@ -1130,12 +1102,6 @@ export default function EncryptionKeysPage() {
       return i < data.length - 1 ? i + 1 : i;
     });
   }, [data.length]);
-
-  useEffect(() => {
-    if (selectedKeyIndex !== null && (selectedKeyIndex >= data.length || data.length === 0)) {
-      setSelectedKeyIndex(null);
-    }
-  }, [selectedKeyIndex, data.length]);
 
   const columns: ColumnDef<EncryptionKeyResponse>[] = [
     {
