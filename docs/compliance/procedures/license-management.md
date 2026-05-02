@@ -203,7 +203,10 @@ Before adding any dependency:
 
 **Output**: 
 - `ezkey_mobile/third-party-notices.txt`
-- `ezkey_mobile/THIRD-PARTY-LICENSES.txt`
+- `ezkey_mobile/app/data/thirdPartyLicenses.json`
+
+**Verification Command**:
+- `yarn license:check`
 
 **Frequency**:
 - On each dependency addition/update

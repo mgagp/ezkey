@@ -59,7 +59,7 @@ grep -i "GNU General Public License" THIRD-PARTY.txt | grep -v "Classpath Except
 
 **npm**:
 ```bash
-license-checker --onlyAllow "MIT;Apache-2.0;BSD;ISC;EPL-1.0;EPL-2.0;LGPL-2.1"
+cd ezkey_mobile && yarn license:check
 ```
 
 ### 3. License Change Detection
@@ -136,7 +136,7 @@ jobs:
       - name: Check License Files Up-to-Date
         working-directory: ezkey_mobile
         run: |
-          if [ -n "$(git diff THIRD-PARTY-LICENSES.txt third-party-notices.txt)" ]; then
+          if [ -n "$(git diff third-party-notices.txt app/data/thirdPartyLicenses.json)" ]; then
             echo "License files are out of date. Please run: yarn license:generate"
             exit 1
           fi

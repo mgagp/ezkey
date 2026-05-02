@@ -98,15 +98,15 @@ Ezkey implements a comprehensive license management strategy to ensure complianc
 - Output: `THIRD-PARTY.txt` in root directory
 - Manual mappings: `src/license/THIRD-PARTY.properties`
 
-#### React Native: @rnx-kit/third-party-notices + license-checker
+#### React Native: @rnx-kit/third-party-notices + app data snapshot
 
 **Why**: 
 - `@rnx-kit/third-party-notices`: Microsoft-maintained, React Native-specific, generates app store compliant notices
-- `license-checker`: Comprehensive npm license auditing
+- `scripts/generate-third-party-licenses.mjs`: generates the direct runtime dependency inventory shown inside the app
 
 **Configuration**:
-- Both tools used for complete coverage
-- Output: `third-party-notices.txt` and `THIRD-PARTY-LICENSES.txt`
+- `yarn license:generate` produces `third-party-notices.txt` plus `app/data/thirdPartyLicenses.json`
+- `yarn license:check` validates direct runtime dependency licenses against the allowed local policy
 
 #### Python: pip-licenses
 

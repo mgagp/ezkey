@@ -21,8 +21,8 @@
     "test": "jest",
     "validate": "yarn lint && yarn typecheck && yarn test",
     "hooks:install": "git config core.hooksPath ezkey_mobile/.husky",
-    "license:check": "license-checker --summary",
-    "license:generate": "npx @rnx-kit/third-party-notices --output third-party-notices.txt && npx license-checker --csv > THIRD-PARTY-LICENSES.txt",
+    "license:check": "node scripts/check-third-party-licenses.mjs",
+    "license:generate": "npx @rnx-kit/third-party-notices --output third-party-notices.txt && node scripts/generate-third-party-licenses.mjs",
     "license:app-data": "node scripts/generate-third-party-licenses.mjs"
   },
   "dependencies": {
@@ -67,7 +67,6 @@
     "eslint-config-prettier": "9.1.2",
     "husky": "9.1.7",
     "jest": "29.7.0",
-    "license-checker": "25.0.1",
     "lint-staged": "16.4.0",
     "orval": "8.9.0",
     "prettier": "3.8.3",

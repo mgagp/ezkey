@@ -13,7 +13,7 @@ This document provides a comprehensive inventory of all third-party dependencies
 | Ecosystem | Direct Dependencies | Transitive Dependencies | Total | License Files |
 |-----------|---------------------|------------------------|-------|---------------|
 | Maven (Java) | ~50 | ~143 | 193 | `THIRD-PARTY.txt` |
-| npm (React Native) | 13 | ~900+ | ~950 | `ezkey_mobile/THIRD-PARTY-LICENSES.txt` |
+| npm (React Native) | 13 | ~900+ | ~950 | `ezkey_mobile/third-party-notices.txt` |
 | Python (CLI) | 4 | ~10 | ~14 | `ezkey-cli-python/THIRD-PARTY-LICENSES.txt` |
 | JavaScript SDK | 1 | ~50 | ~51 | `ezkey-sdk/javascript/THIRD-PARTY-LICENSES.txt` |
 | Docker Base Images | 3 | N/A | 3 | Documented below |
@@ -60,8 +60,8 @@ This document provides a comprehensive inventory of all third-party dependencies
 
 ## npm Dependencies (React Native Mobile)
 
-**License File**: `ezkey_mobile/THIRD-PARTY-LICENSES.txt`  
-**Generation**: `yarn license:generate`
+**License Files**: `ezkey_mobile/third-party-notices.txt`, `ezkey_mobile/app/data/thirdPartyLicenses.json`  
+**Generation**: `yarn license:generate` and `yarn license:check`
 
 ### Primary Dependencies
 
