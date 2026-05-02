@@ -51,7 +51,7 @@ ezkey_mobile/
 
 - Node.js 18+ and Yarn 4 (Berry)
 - Java 17+ and Android Studio Giraffe (SDK 34)
-- Xcode 15.x with CocoaPods 1.15+ (macOS)
+- Xcode 16.1+ with CocoaPods 1.16.x recommended (macOS)
 - Watchman (macOS), Git Bash or another POSIX shell on Windows
 - Access to a running Ezkey backend (see [`docs/ENDPOINT.md`](../docs/ENDPOINT.md) for endpoint details)
 
@@ -76,7 +76,7 @@ EZKEY_REQUEST_TIMEOUT=10000
 
 **Public instance metadata:** `GET /api/v1/public/instance-info` on the **Auth API** (same path and JSON as on the Admin API) returns `authApiPublicBaseUrl` and organization fields. Mobile should call this endpoint on the same Auth base URL used for bind/verify (no Admin API required).
 
-> Run setup commands from Git Bash (or another POSIX-compatible shell) when working on Windows to avoid path issues.
+> Run setup commands from Git Bash (or another POSIX-compatible shell) when working on Windows to avoid path issues. For iOS, the current React Native baseline expects a minimum deployment target of iOS 15.1 and an Xcode 16.1-class toolchain on macOS.
 
 ### Run the app
 
