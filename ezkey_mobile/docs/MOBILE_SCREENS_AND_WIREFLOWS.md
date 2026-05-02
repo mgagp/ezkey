@@ -82,7 +82,7 @@ in memory, collects the six-digit challenge, then persists the record only after
 
 | Content block | What it shows/collects | Data source |
 | --- | --- | --- |
-| Scan stage | CTA to open scanner, camera-permission guidance, bind errors | Local wizard state |
+| Scan stage | CTA to open scanner, camera-permission guidance, bind errors; hidden after a successful bind | Local wizard state |
 | Enrollment info card | Integration name, description, organization, device label, optional server URL | Trusted bind response draft |
 | Challenge stage | Six-box challenge input | User input |
 | Primary/secondary actions | Open scanner, complete enrollment, cancel, learn more | Local wizard state |
@@ -90,7 +90,7 @@ in memory, collects the six-digit challenge, then persists the record only after
 | User action | Effect | Next state/navigation |
 | --- | --- | --- |
 | Open scanner | Requests camera access and opens QR modal | Remains in wizard |
-| Successful scan/bind | Draft becomes available | Wizard switches from scan stage to challenge stage |
+| Successful scan/bind | Draft becomes available | Wizard hides scan guidance and switches focus to the challenge stage |
 | Enter 6-digit challenge | Enables verify path | Remains in wizard |
 | Complete enrollment | Runs verify and save flow | On success, returns to Home |
 | Cancel after draft exists | Clears draft and challenge state | Stays in wizard reset state or returns |
@@ -99,7 +99,7 @@ in memory, collects the six-digit challenge, then persists the record only after
 | --- | --- | --- |
 | Pre-bind idle | Scan-focused CTA | User can start the flow |
 | Binding | Primary CTA shows `Binding...` | User waits for bind result |
-| Draft ready | Info card plus challenge input | User can inspect context and complete enrollment |
+| Draft ready | Challenge input first, then enrollment info card; scan guidance is removed | User can inspect context and complete enrollment |
 | Verify error | Challenge error below challenge stage | User can correct/retry |
 | Submitting | Primary CTA shows `Finishing...` | User waits for final verification and persistence |
 

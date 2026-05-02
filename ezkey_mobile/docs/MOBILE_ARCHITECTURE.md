@@ -49,7 +49,7 @@ flowchart TD
 
 ### Enrollment Wizard (`app/screens/EnrollmentWizard`)
 
-Presentation uses a single scrollable flow: **Scan** (QR + bind) and **Verify** (6-digit challenge + enrollment summary) appear in one screen after bind succeeds; the protocol sequence below is unchanged.
+Presentation uses a single scrollable flow: **Scan** (QR + bind) is shown only until a trusted bind draft exists, then the screen pivots to **Verify** (6-digit challenge + enrollment summary) without keeping obsolete scan instructions visible. The protocol sequence below is unchanged.
 
 1. Requests camera permission and launches `EnrollmentScannerModal`.
 2. Parses QR payloads while validating proof-token structure.

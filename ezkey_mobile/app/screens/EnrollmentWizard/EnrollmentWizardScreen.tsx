@@ -538,19 +538,22 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
           <View style={styles.backButton} />
         </View>
         <View style={styles.stepContainer}>
-          <Text style={styles.flowSectionLabel}>{t('enrollmentWizard.scanLabel')}</Text>
-          <Text style={styles.stepTitle}>{t('enrollmentWizard.scanTitle')}</Text>
-          <Text style={styles.stepDescription}>{t('enrollmentWizard.scanDescription')}</Text>
-          <View style={styles.scanInstructions}>
-            {(bindError || cameraError) ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorBannerText}>{bindError ?? cameraError}</Text>
+          {!hasDraft ? (
+            <>
+              <Text style={styles.flowSectionLabel}>{t('enrollmentWizard.scanLabel')}</Text>
+              <Text style={styles.stepTitle}>{t('enrollmentWizard.scanTitle')}</Text>
+              <Text style={styles.stepDescription}>{t('enrollmentWizard.scanDescription')}</Text>
+              <View style={styles.scanInstructions}>
+                {(bindError || cameraError) ? (
+                  <View style={styles.errorBanner}>
+                    <Text style={styles.errorBannerText}>{bindError ?? cameraError}</Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-          </View>
+            </>
+          ) : null}
           {hasDraft && draft ? (
             <>
-              <View style={styles.flowDivider} />
               <Text style={styles.flowSectionLabel}>{t('enrollmentWizard.verifyLabel')}</Text>
               <View style={styles.challengeSection}>
                 <Text style={styles.challengeHeading}>{t('enrollmentWizard.verifyTitle')}</Text>
