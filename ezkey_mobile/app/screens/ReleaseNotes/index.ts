@@ -1,0 +1,1 @@
+export {ReleaseNotesScreen} from './ReleaseNotesScreen';

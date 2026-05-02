@@ -8,6 +8,7 @@ import {RootStackParamList} from './types';
 import {DangerZoneScreen} from '../screens/DangerZone';
 import {SettingsScreen} from '../screens/Settings';
 import {AboutScreen} from '../screens/About';
+import {ReleaseNotesScreen} from '../screens/ReleaseNotes';
 import {LicensesScreen} from '../screens/Licenses';
 import {LanguageScreen} from '../screens/Language';
 import {colors} from '../config/theme';
@@ -62,6 +63,11 @@ export const AppNavigator: React.FC = () => {
         options={{title: t('navigation.settings')}}
       />
       <Stack.Screen name="About" component={AboutScreen} options={{title: t('navigation.about')}} />
+      <Stack.Screen
+        name="ReleaseNotes"
+        component={ReleaseNotesScreen}
+        options={{title: t('navigation.releaseNotes')}}
+      />
       <Stack.Screen
         name="Licenses"
         component={LicensesScreen}

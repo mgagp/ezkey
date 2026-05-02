@@ -104,6 +104,7 @@ export const HomeScreen: React.FC = () => {
   }, [data, isRefreshingInstallationMetadata, refreshInstallations]);
 
   const navigateToWizard = () => navigation.navigate('EnrollmentWizard');
+  const navigateToReleaseNotes = () => navigation.navigate('ReleaseNotes');
 
   const handleSelect = useCallback(
     (enrollment: StoredEnrollment) => {
@@ -133,6 +134,18 @@ export const HomeScreen: React.FC = () => {
         <ScrollView
           contentContainerStyle={[styles.listContent, {paddingBottom: fabBottom + 56 + spacing.md}]}
           accessibilityLabel={t('home.groupedByInstallation')}>
+          <TouchableOpacity
+            style={styles.releaseBanner}
+            onPress={navigateToReleaseNotes}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityLabel={t('home.releaseBannerTitle')}
+            accessibilityHint={t('home.releaseBannerHint')}>
+            <Text style={styles.releaseBannerEyebrow}>{t('home.releaseBannerEyebrow')}</Text>
+            <Text style={styles.releaseBannerTitle}>{t('home.releaseBannerTitle')}</Text>
+            <Text style={styles.releaseBannerBody}>{t('home.releaseBannerBody')}</Text>
+            <Text style={styles.releaseBannerLink}>{t('home.releaseBannerAction')}</Text>
+          </TouchableOpacity>
           {installationGroups.length === 0 ? (
             <EmptyState />
           ) : (
@@ -334,6 +347,37 @@ const styles = StyleSheet.create({
   listContent: {
     gap: spacing.xl,
     paddingBottom: spacing.xxl,
+  },
+  releaseBanner: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.borderFocus,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  releaseBannerEyebrow: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.warning,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  releaseBannerTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  releaseBannerBody: {
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  releaseBannerLink: {
+    marginTop: spacing.xs,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primaryLight,
   },
   installationShell: {
     borderWidth: 1,

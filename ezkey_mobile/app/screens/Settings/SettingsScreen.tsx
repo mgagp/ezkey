@@ -16,7 +16,7 @@ import {APP_DISPLAY_NAME, APP_VERSION} from '../../config/appInfo';
 
 type Props = StackScreenProps<RootStackParamList, 'Settings'>;
 
-type SettingsScreenName = 'About' | 'DangerZone' | 'Licenses' | 'Language';
+type SettingsScreenName = 'About' | 'ReleaseNotes' | 'DangerZone' | 'Licenses' | 'Language';
 
 type SettingsItem = {
   key: SettingsScreenName;
@@ -37,6 +37,11 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
       key: 'About',
       label: t('settings.aboutLabel'),
       subtitle: t('settings.aboutSubtitle'),
+    },
+    {
+      key: 'ReleaseNotes',
+      label: t('settings.releaseNotesLabel'),
+      subtitle: t('settings.releaseNotesSubtitle'),
     },
     {
       key: 'Language',
