@@ -10,16 +10,16 @@ This audit is intentionally practical. It focuses on the current repository stat
 
 Status: **partially ready, not yet release-complete**.
 
-The Android project already has a credible Play-oriented foundation, especially around target API level and release signing hooks. The main unresolved items are release operations, listing/compliance inputs, and the product decision about whether React Native `0.76.0` is an acceptable first-public-release baseline.
+The Android project already has a credible Play-oriented foundation, especially around target API level and release signing hooks. The main unresolved items are release operations, listing/compliance inputs, and the product decision about whether React Native `0.85.2` is an acceptable first-public-release baseline.
 
 ## What Looks Ready
 
 ### Android target and build posture
 
-- `compileSdkVersion = 35` in `ezkey_mobile/android/build.gradle`
-- `targetSdkVersion = 35` in `ezkey_mobile/android/build.gradle`
+- `compileSdkVersion = 36` in `ezkey_mobile/android/build.gradle`
+- `targetSdkVersion = 36` in `ezkey_mobile/android/build.gradle`
 - `minSdkVersion = 24` in `ezkey_mobile/android/build.gradle`
-- Android Gradle Plugin `8.6.0` and Kotlin `1.9.24` are already configured in the workspace
+- Android Gradle Plugin `8.12.0` and Kotlin `2.1.20` are already configured in the workspace
 
 Conclusion: the Android API posture does not look like the immediate blocker for Play submission.
 
@@ -29,7 +29,7 @@ Conclusion: the Android API posture does not look like the immediate blocker for
 - fallback behavior is explicit and loud when credentials are missing
 - `ezkey_mobile/docs/MOBILE_RELEASE_SIGNING.md` already documents the upload-key workflow
 
-Conclusion: the release-signing process is designed, but its operational completion still depends on real credentials and a real signed AAB run.
+Conclusion: the release-signing process is designed and has now been exercised locally with a real signed AAB and device installation. Operational release readiness still depends on keeping credentials managed safely and repeating the same flow for the final publication candidate.
 
 ### Permission surface is narrow
 
@@ -68,23 +68,26 @@ Required action:
 - align `package.json` and Android `versionName`,
 - set a release-ready `versionCode` policy.
 
-### 2. Release signing is supported but not yet proven complete
+### 2. Release signing is supported and now proven locally, but not yet operationally closed
 
 Evidence:
 
 - the build falls back to the debug keystore if `EZKEY_UPLOAD_*` properties are absent,
 - the docs explicitly state that such an artifact cannot be uploaded to Play.
+- on this workstation, the real `EZKEY_UPLOAD_*` properties are configured outside the repo,
+- a signed release AAB was built successfully,
+- the signed AAB was converted to device-specific APKs with `bundletool` and installed on a connected Pixel 7 Pro.
 
 Why it matters:
 
-- the existence of the code path is not the same as having actual release credentials configured,
-- a real signed AAB should be built and verified before calling the release path complete.
+- proving the local signed path reduces uncertainty around release tooling,
+- but Play readiness still depends on repeatability, key management hygiene, and final candidate validation rather than a single successful local installation.
 
 Required action:
 
-- configure the real upload key outside the repo,
-- build a signed AAB,
-- verify the signature and perform a release-mode device run.
+- preserve and document the upload-key operational process,
+- repeat the signed AAB build and device validation for the final publication candidate,
+- keep the final Play upload artifact and its validation logs as release evidence.
 
 ### 3. Listing and compliance inputs are not evidenced in the workspace
 
@@ -121,9 +124,9 @@ Required action:
 
 Evidence:
 
-- `ezkey_mobile/package.json` still uses React Native `0.76.0`
-- the same file still uses React `18.3.1`
-- the React Native CLI dependencies remain on `15.0.0-alpha.2`
+- `ezkey_mobile/package.json` uses React Native `0.85.2`
+- the same file uses React `19.2.3`
+- the React Native CLI dependencies are aligned on `20.1.3`
 - the current runtime also depends on `react-native-vision-camera` `^4.2.3` and `react-native-worklets-core` `^1.6.2`
 
 Why it matters:
