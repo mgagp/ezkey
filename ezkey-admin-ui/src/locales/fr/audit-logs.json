@@ -63,7 +63,7 @@
       "admin": "Admin",
       "reason": "Motif",
       "hmac": "HMAC",
-      "time": "Heure"
+      "time": "Horodatage"
     },
     "anchorBadge": "Ancre",
     "focusedContextBadge": "Contexte initial",

@@ -31,7 +31,7 @@ import { AUDIT_EVENT_TYPE_GROUPS, auditEventFilterToApiParams } from '@/lib/audi
 import { api } from '@/lib/api-client';
 import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
-import { cn, formatDate, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
+import { cn, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useDisplayTimezone } from '@/context/display-timezone-context';
 import { useToast } from '@/context/toast-context';
@@ -357,7 +357,11 @@ function AuditLogDetailDialog({
               )}
             </div>
           </InfoRow>
-          <InfoRow label={t('detail.labelCreated')}><span className="text-fg-muted">{formatDate(log.createdAt ?? '')}</span></InfoRow>
+          <InfoRow label={t('detail.labelCreated')}>
+            <span className="text-fg-muted">
+              {log.createdAt ? formatDateWithTimezone(log.createdAt) : '—'}
+            </span>
+          </InfoRow>
           <InfoRow label={t('detail.labelHmacIntegrity')}>
             {log.entryHmac ? (
               <div className="flex items-center gap-1.5">
@@ -2053,7 +2057,21 @@ export default function AuditLogsPage() {
           <span className="text-fg-muted text-xs">—</span>
         ),
     },
-    { header: t('list.columns.time'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt ?? '')}</span> },
+    {
+      header: t('list.columns.time'),
+      key: 'createdAt',
+      sortKey: 'createdAt',
+      className: 'min-w-[12rem]',
+      render: (r) =>
+        r.createdAt ? (
+          <span className="flex flex-col gap-0.5">
+            <span className="text-xs text-fg">{formatDateWithTimezone(r.createdAt)}</span>
+            <span className="text-[10px] text-fg-muted">{formatRelativeTime(r.createdAt)}</span>
+          </span>
+        ) : (
+          <span className="text-xs text-fg-muted">—</span>
+        ),
+    },
     {
       header: '',
       key: 'detail',
