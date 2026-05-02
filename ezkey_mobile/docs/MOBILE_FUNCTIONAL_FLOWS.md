@@ -78,14 +78,13 @@ flowchart TD
 | Step | Screen | User/system action | API call | Data mutation | Trust check | Result |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Home | User selects an enrollment | None | Selected enrollment stored in navigation/store context | None | Detail screen opens |
-| 2 | Enrollment Detail | User taps `Check pending` | None | None | None | Pending Authentication opens |
-| 3 | Pending Authentication | Screen loads and prepares poll | None | Fresh `deviceProofToken` generated in memory | Device signs the proof token | Pending request can be sent |
-| 4 | Pending Authentication | App submits pending | `POST /api/v1/auth-attempts/pending` | None yet | None before response | Either request payload or empty result |
-| 5 | Pending Authentication | App validates pending result | None | `PendingAttempt` created in memory only if signature passes | Pending payload signature verified with stored integration public key | Request details become displayable |
-| 6 | Pending Authentication | User reviews context and chooses approve or deny | None | User intent stored in component state | Local challenge presence check when required | Respond can start |
-| 7 | Pending Authentication | App signs canonical respond payload | None | Respond signature prepared in memory | Device signs one-time auth attempt proof token payload | Respond request ready |
-| 8 | Pending Authentication | App submits respond | `POST /api/v1/auth-attempts/respond` | None yet | None before response | Respond result received |
-| 9 | Pending Authentication | App validates respond result | None | Result state moved to `accepted`, `rejected`, or `failed` | Result signature verified with stored integration public key | Trusted outcome shown to user |
+| 2 | Enrollment Detail | User taps `Check pending` | None | Fresh `deviceProofToken` generated in memory and local last-verification timestamp updated | Device signs the proof token | Pending request can be sent |
+| 3 | Enrollment Detail | App submits pending | `POST /api/v1/auth-attempts/pending` | None yet | None before response | Either request payload or empty result |
+| 4 | Enrollment Detail | App validates pending result | None | `PendingAttempt` created in memory only if signature passes | Pending payload signature verified with stored integration public key | Stay on detail when empty; navigate to Pending Authentication when request exists |
+| 5 | Pending Authentication | User reviews context and chooses approve or deny | None | User intent stored in component state | Local challenge presence check when required | Respond can start |
+| 6 | Pending Authentication | App signs canonical respond payload | None | Respond signature prepared in memory | Device signs one-time auth attempt proof token payload | Respond request ready |
+| 7 | Pending Authentication | App submits respond | `POST /api/v1/auth-attempts/respond` | None yet | None before response | Respond result received |
+| 8 | Pending Authentication | App validates respond result | None | Result state moved to `accepted`, `rejected`, or `failed` | Result signature verified with stored integration public key | Trusted outcome shown to user |
 
 ## Authentication Exception Flow
 
@@ -94,7 +93,7 @@ flowchart TD
 | Enrollment missing locally | Pending Authentication before poll | Screen cannot target a valid enrollment | Error or missing state shown | Return to Home and reselect |
 | Enrollment missing integration public key | Pending Authentication after API response | App cannot verify pending or respond signatures | Global error shown | Re-enroll or repair local record |
 | Pending request failure | Pending Authentication | Backend or transport failure | Global error with retry | Tap `Try again` |
-| No pending request | Pending Authentication | `204 No Content` / no usable pending body | Empty state shown | Tap `Check again` later |
+| No pending request | Enrollment Detail pending check | `204 No Content` / no usable pending body | User stays on Enrollment Detail with lightweight feedback | Tap `Check pending` again later |
 | Invalid pending signature | Pending Authentication | Request context cannot be trusted | Global error shown | Retry only if a new request is expected |
 | Missing required 2-digit challenge | Pending Authentication before respond | Local validation failure | Inline form error shown | Enter code and retry |
 | Respond request failure | Pending Authentication | Backend or transport failure | Global error shown | Retry if attempt still valid |

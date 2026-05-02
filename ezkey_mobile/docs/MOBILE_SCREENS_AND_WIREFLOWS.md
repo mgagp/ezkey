@@ -122,24 +122,23 @@ device the user is about to use, and exposes the single primary action `Check pe
 
 | User action | Effect | Next state/navigation |
 | --- | --- | --- |
-| Tap `Check pending` | Starts auth polling flow for this enrollment | Navigates to Pending Authentication |
+| Tap `Check pending` | Starts the pending check for this enrollment | Stays on Enrollment Detail when nothing is pending; navigates to Pending Authentication only when a request exists |
 | Tap back | Returns to previous screen | Usually Home |
 
 | State type | How it appears | User consequence |
 | --- | --- | --- |
 | Loading | Full-screen spinner | Wait for enrollments query to hydrate |
 | Missing enrollment | Error text and `Back to Home` button | User must recover by returning to Home |
-| Normal detail view | Identity card plus primary action | User can intentionally enter polling flow |
+| Normal detail view | Identity card plus primary action | User can intentionally trigger a pending check |
 
 ## Pending Authentication
 
-Pending Authentication owns both `pending` and `respond`. It is the trust gate for request context and final outcome.
-The screen loads a pending attempt immediately once the enrollment is available, but the user remains in an explicit
-screen dedicated to the auth decision rather than background polling from elsewhere.
+Pending Authentication owns the trusted review/respond branch once a real pending request exists. It is the trust gate
+for request context and final outcome.
 
 | Entry condition | Description |
 | --- | --- |
-| User comes from Enrollment Detail | Enrollment ID is available via route params. |
+| User comes from Enrollment Detail with a real pending request | Enrollment ID is available via route params and the request exists. |
 | Persisted enrollment contains proof token and integration public key | Screen can call `pending` and verify signatures. |
 
 | Content block | What it shows/collects | Data source |
@@ -153,7 +152,7 @@ screen dedicated to the auth decision rather than background polling from elsewh
 
 | User action | Effect | Next state/navigation |
 | --- | --- | --- |
-| Wait for initial load | Screen calls `pending` | Remains on screen |
+| Wait for initial load | Screen may use a preloaded verified pending request or call `pending` when entered directly | Remains on screen |
 | Tap `Check again` | Repeats `pending` load cycle | Remains on screen |
 | Enter challenge | Satisfies local precondition for approve | Remains on screen |
 | Tap approve | Signs and submits respond payload with accepted decision | Remains on screen in result state |

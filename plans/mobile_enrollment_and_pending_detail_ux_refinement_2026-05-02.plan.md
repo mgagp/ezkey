@@ -258,6 +258,56 @@ The strongest current recommendation is:
 
 No open decision remains for this refinement slice. The next step is manual functional validation on device.
 
+## Follow-up Analysis Triggered By Device Test
+
+### Observed behavior on device
+
+- The user opens the enrollment detail screen.
+- The user taps `Check pending`.
+- When no pending request exists, the app still navigates to the dedicated pending-auth screen.
+- That screen then shows an empty-state result for `No pending requests` and offers `Check again`.
+
+### Why this is now considered a workflow issue
+
+- The dedicated pending-auth screen behaves like an extra step when there is nothing to review or approve.
+- In the no-pending case, the user’s mental model is still “I checked whether something was waiting.”
+- The current navigation makes it feel like the user entered a second workflow stage without a meaningful object to act on.
+- This weakens the minimal, pragmatic flow the recent refinement was trying to reinforce.
+
+### Working diagnosis
+
+- `EnrollmentDetailScreen` currently routes immediately to `PendingAuth` when the CTA is tapped.
+- `PendingAuthScreen` currently owns both the fetch operation and all result branches, including the empty state.
+- This design is defensible when a real pending request exists, but feels excessive when the result is “nothing pending”.
+
+### Recommended next direction
+
+The strongest next refinement direction is:
+
+1. keep `PendingAuthScreen` as the dedicated screen only when a real pending request exists or when a trusted respond/result state must be shown,
+2. move the initial `pending` check decision point up to the detail-screen workflow,
+3. when no pending request exists, keep the user on the detail screen and show a lightweight inline or transient feedback instead of navigating away.
+
+### Rationale
+
+- This preserves the dedicated screen for the real task: reviewing and answering a pending request.
+- It removes the “blank extra screen” feeling in the no-pending case.
+- It matches the user’s intent more closely: checking is an action from the detail screen; reviewing a request is a separate state that only exists when there is actually something to review.
+
+### Scope note
+
+- This follow-up is a complementary workflow refinement, not a rejection of the previous slice.
+- The recent timestamp and detail-screen work remains valid.
+- The new issue is about screen ownership of the no-pending branch.
+
+### Implementation record for follow-up refinement
+
+- The initial `pending` check decision now starts from `EnrollmentDetailScreen`.
+- When no pending request exists, the user now remains on the detail screen and receives lightweight inline feedback.
+- Navigation to `PendingAuthScreen` now happens only when a real pending request exists.
+- `PendingAuthScreen` now accepts a preloaded verified pending request so it remains the dedicated review/respond screen rather than the generic empty-result screen.
+- The updated debug build including this workflow fix was installed successfully on the connected Pixel 7 Pro on 2026-05-02 for manual functional testing.
+
 ## Relevant Files
 
 - `ezkey_mobile/app/screens/EnrollmentWizard/EnrollmentWizardScreen.tsx`

@@ -10,13 +10,18 @@
  * @since 2025
  */
 
-import React, {useEffect, useMemo} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ActivityIndicator, Button, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import axios from 'axios';
 import {useTranslation} from 'react-i18next';
-import {useEnrollments} from '../../hooks/useEnrollments';
+import {useEnrollments, useMarkEnrollmentPendingChecked} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
+import {authAttemptsApi} from '../../services/api/authAttempts';
+import {buildPendingPayload} from '../../services/crypto/authAttemptPayload';
+import {cryptoService} from '../../services/crypto';
+import {generateProofToken} from '../../utils/generateProofToken';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
@@ -28,10 +33,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
  */
 export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {t} = useTranslation();
-  const {enrollmentId} = route.params;
+  const {enrollmentId, autoCheckPendingNonce} = route.params;
   const {data, isLoading} = useEnrollments();
+  const markEnrollmentPendingChecked = useMarkEnrollmentPendingChecked();
   const selectedId = useEnrollmentStore(store => store.selectedId);
   const targetId = enrollmentId ?? selectedId;
+  const [isCheckingPending, setIsCheckingPending] = useState(false);
+  const [inlineFeedback, setInlineFeedback] = useState<string | undefined>();
+  const lastAutoCheckNonceRef = useRef<string | undefined>(undefined);
 
   const enrollment = useMemo(() => {
     if (!targetId || !data) {
@@ -46,9 +55,123 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     }
   }, [enrollment, navigation]);
 
-  const navigateToPending = () => {
-    navigation.navigate('PendingAuth', {enrollmentId});
-  };
+  const extractErrorMessage = useCallback(
+    (error: unknown) => {
+      if (axios.isAxiosError(error)) {
+        return (
+          error.response?.data?.message ??
+          error.response?.data?.error ??
+          error.message ??
+          t('pendingAuth.requestFailed')
+        );
+      }
+      if (error instanceof Error) {
+        return error.message;
+      }
+      return t('pendingAuth.unexpectedError');
+    },
+    [t],
+  );
+
+  const handleCheckPending = useCallback(async () => {
+    if (!enrollment || isCheckingPending) {
+      return;
+    }
+
+    setInlineFeedback(undefined);
+    setIsCheckingPending(true);
+    try {
+      const checkedAt = new Date().toISOString();
+      try {
+        await markEnrollmentPendingChecked.mutateAsync({
+          id: enrollment.id,
+          checkedAt,
+        });
+      } catch (storageError) {
+        console.warn('[EnrollmentDetail] Failed to persist last verification timestamp:', storageError);
+      }
+
+      const enrollmentKeyId = enrollment.id.toString();
+      await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
+      const deviceProofToken = await generateProofToken();
+      const deviceProofTokenSigned = await cryptoService.sign(enrollmentKeyId, deviceProofToken);
+      const response = await authAttemptsApi.pending(
+        {
+          enrollmentId: enrollment.id,
+          enrollmentProofToken: enrollment.enrollmentProofToken,
+          deviceProofToken,
+          deviceProofTokenSigned,
+        },
+        enrollment.installation?.authUrl,
+      );
+
+      if (!response) {
+        setInlineFeedback(t('pendingAuth.noPending'));
+        return;
+      }
+
+      const integrationPublicKey = enrollment.integrationPublicKey;
+      if (!integrationPublicKey) {
+        setInlineFeedback(t('pendingAuth.missingPendingPublicKey'));
+        return;
+      }
+
+      const pendingPayload = buildPendingPayload(
+        response.authAttemptProofToken,
+        response.authAttemptChallengeRequired ?? false,
+        response.contextTitle,
+        response.contextMessage,
+      );
+      const signatureValid = await cryptoService.verify(
+        pendingPayload,
+        response.authAttemptProofTokenSignedByIntegration,
+        integrationPublicKey,
+      );
+      if (!signatureValid) {
+        setInlineFeedback(t('pendingAuth.invalidPendingSignature'));
+        return;
+      }
+
+      navigation.navigate('PendingAuth', {
+        enrollmentId,
+        initialAttempt: {
+          authAttemptId: String(response.authAttemptId),
+          authAttemptProofToken: response.authAttemptProofToken,
+          authAttemptProofTokenSignedByIntegration: response.authAttemptProofTokenSignedByIntegration,
+          challengeRequired: response.authAttemptChallengeRequired,
+          integrationName: enrollment.integrationName,
+          tenantName: enrollment.tenantName,
+          createdAt: checkedAt,
+          contextTitle: response.contextTitle,
+          contextMessage: response.contextMessage,
+        },
+      });
+    } catch (error) {
+      setInlineFeedback(extractErrorMessage(error));
+    } finally {
+      setIsCheckingPending(false);
+    }
+  }, [
+    enrollment,
+    enrollmentId,
+    extractErrorMessage,
+    isCheckingPending,
+    markEnrollmentPendingChecked,
+    navigation,
+    t,
+  ]);
+
+  useEffect(() => {
+    if (!autoCheckPendingNonce || !enrollment || isCheckingPending) {
+      return;
+    }
+    if (lastAutoCheckNonceRef.current === autoCheckPendingNonce) {
+      return;
+    }
+
+    lastAutoCheckNonceRef.current = autoCheckPendingNonce;
+    handleCheckPending();
+  }, [autoCheckPendingNonce, enrollment, handleCheckPending, isCheckingPending]);
 
   if (isLoading) {
     return (
@@ -110,8 +233,19 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         </View>
       ) : null}
 
-      <TouchableOpacity style={styles.primaryButton} onPress={navigateToPending}>
-        <Text style={styles.primaryLabel}>{t('enrollmentDetail.checkPending')}</Text>
+      {inlineFeedback ? (
+        <View style={styles.feedbackBanner}>
+          <Text style={styles.feedbackText}>{inlineFeedback}</Text>
+        </View>
+      ) : null}
+
+      <TouchableOpacity
+        style={[styles.primaryButton, isCheckingPending ? styles.disabledButton : undefined]}
+        onPress={handleCheckPending}
+        disabled={isCheckingPending}>
+        <Text style={styles.primaryLabel}>
+          {isCheckingPending ? t('enrollmentDetail.checkingPending') : t('enrollmentDetail.checkPending')}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -186,12 +320,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5a9cf7',
   },
+  feedbackBanner: {
+    backgroundColor: 'rgba(54, 115, 223, 0.12)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#5a9cf7',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  feedbackText: {
+    fontSize: 14,
+    color: '#d6e6ff',
+    lineHeight: 20,
+  },
   primaryButton: {
     backgroundColor: '#3076df',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
   primaryLabel: {
     fontSize: 17,

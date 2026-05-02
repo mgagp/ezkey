@@ -39,24 +39,13 @@ import {
   buildRespondResultPayload,
 } from '../../services/crypto/authAttemptPayload';
 import {cryptoService} from '../../services/crypto';
+import {PendingAttempt} from '../../services/pendingAuth/types';
 import {generateProofToken} from '../../utils/generateProofToken';
 import {sha256HexUtf8} from '../../utils/sha256HexUtf8';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
 type AttemptState = 'pending' | 'accepted' | 'rejected' | 'expired' | 'failed';
-
-type PendingAttempt = {
-  authAttemptId: string;
-  authAttemptProofToken: string;
-  authAttemptProofTokenSignedByIntegration: string;
-  integrationName: string;
-  tenantName?: string;
-  createdAt: string;
-  challengeRequired: boolean;
-  contextTitle?: string;
-  contextMessage?: string;
-};
 
 const AUTH_CHALLENGE_LENGTH = 2;
 
@@ -137,13 +126,13 @@ const AuthChallengeCodeInput: React.FC<AuthChallengeCodeInputProps> = ({
  * @param route React Navigation route containing the target enrollment identifier.
  * @since 2025
  */
-export const PendingAuthScreen: React.FC<Props> = ({route}) => {
+export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
   const {t} = useTranslation();
-  const {enrollmentId} = route.params;
+  const {enrollmentId, initialAttempt} = route.params;
   const {data: enrollment, isLoading: isEnrollmentLoading} = useEnrollmentById(enrollmentId);
   const markEnrollmentPendingChecked = useMarkEnrollmentPendingChecked();
   const autoLoadEnrollmentRef = useRef<string | undefined>(undefined);
-  const [attempt, setAttempt] = useState<PendingAttempt | undefined>();
+  const [attempt, setAttempt] = useState<PendingAttempt | undefined>(initialAttempt);
   const [state, setState] = useState<AttemptState>('pending');
   const [challengeInput, setChallengeInput] = useState('');
   const [formError, setFormError] = useState<string | undefined>();
@@ -188,6 +177,28 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     return t('pendingAuth.unexpectedError');
   }, [t]);
 
+  const handleNoPendingResult = useCallback(() => {
+    const shouldReturnToPreviousScreen =
+      !!initialAttempt || state === 'accepted' || state === 'rejected' || state === 'failed';
+
+    setAttempt(undefined);
+    setChallengeInput('');
+    setFormError(undefined);
+    setChallengeFailedMessage(undefined);
+    setState('pending');
+
+    if (shouldReturnToPreviousScreen && navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [initialAttempt, navigation, state]);
+
+  const handleCheckAgainFromResolvedState = useCallback(() => {
+    navigation.navigate('EnrollmentDetail', {
+      enrollmentId,
+      autoCheckPendingNonce: new Date().toISOString(),
+    });
+  }, [enrollmentId, navigation]);
+
   const loadPendingAttempt = useCallback(async () => {
     if (!enrollment) {
       return;
@@ -225,8 +236,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
       }, enrollment.installation?.authUrl);
 
       if (!response) {
-        setAttempt(undefined);
-        setState('pending');
+        handleNoPendingResult();
         return;
       }
       setDebugInfo(prev =>
@@ -340,6 +350,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     enrollment?.integrationPublicKey,
     enrollment?.tenantName,
     extractErrorMessage,
+    handleNoPendingResult,
     markEnrollmentPendingChecked,
     t,
   ]);
@@ -348,12 +359,16 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
     if (isEnrollmentLoading || !enrollment) {
       return;
     }
+    if (initialAttempt) {
+      autoLoadEnrollmentRef.current = enrollment.id;
+      return;
+    }
     if (autoLoadEnrollmentRef.current === enrollment.id) {
       return;
     }
     autoLoadEnrollmentRef.current = enrollment.id;
     loadPendingAttempt();
-  }, [enrollment?.id, isEnrollmentLoading, loadPendingAttempt]);
+  }, [enrollment?.id, initialAttempt, isEnrollmentLoading, loadPendingAttempt]);
 
   const handleRespond = useCallback(
     async (accepted: boolean) => {
@@ -528,7 +543,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
         <View style={styles.challengeFailedState}>
           <Text style={styles.challengeFailedTitle}>{t('pendingAuth.failedTitle')}</Text>
           <Text style={styles.challengeFailedBody}>{challengeFailedMessage}</Text>
-          <TouchableOpacity onPress={loadPendingAttempt} style={styles.checkAgainButton}>
+          <TouchableOpacity onPress={handleCheckAgainFromResolvedState} style={styles.checkAgainButton}>
             <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
           </TouchableOpacity>
         </View>
@@ -585,7 +600,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route}) => {
             </Text>
           </View>
           <TouchableOpacity
-            onPress={loadPendingAttempt}
+            onPress={handleCheckAgainFromResolvedState}
             style={[styles.checkAgainButton, styles.checkAgainButtonFull]}>
             <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
           </TouchableOpacity>

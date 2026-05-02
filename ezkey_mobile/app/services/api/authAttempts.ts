@@ -28,6 +28,22 @@ import {
  * @since 2025
  */
 export const authAttemptsApi = {
+  
+  isUsablePendingResponse: (value: unknown): value is PendingAuthResponse => {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+
+    const candidate = value as Partial<PendingAuthResponse>;
+    return (
+      typeof candidate.authAttemptId === 'number' &&
+      typeof candidate.authAttemptProofToken === 'string' &&
+      candidate.authAttemptProofToken.length > 0 &&
+      typeof candidate.authAttemptProofTokenSignedByIntegration === 'string' &&
+      candidate.authAttemptProofTokenSignedByIntegration.length > 0
+    );
+  },
+
   /**
    * Retrieves a pending authentication attempt for the provided enrollment proof tokens.
    *
@@ -50,7 +66,14 @@ export const authAttemptsApi = {
       body,
       (authUrl ? {baseURL: authUrl} : undefined) as RequestInit | undefined,
     );
-    return response.data as PendingAuthResponse;
+
+    if (response.status === 204) {
+      return undefined;
+    }
+
+    return authAttemptsApi.isUsablePendingResponse(response.data)
+      ? response.data
+      : undefined;
   },
   /**
    * Submits the device decision (approve or reject) for a specific authentication attempt.
