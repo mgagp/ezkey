@@ -127,7 +127,7 @@ Evidence:
 - `ezkey_mobile/package.json` uses React Native `0.85.2`
 - the same file uses React `19.2.3`
 - the React Native CLI dependencies are aligned on `20.1.3`
-- the current runtime also depends on `react-native-vision-camera` `^4.2.3` and `react-native-worklets-core` `^1.6.2`
+- the current runtime also depends on `react-native-vision-camera` `4.7.2` and `react-native-worklets-core` `1.6.3`
 
 Why it matters:
 

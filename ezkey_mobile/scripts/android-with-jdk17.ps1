@@ -1,4 +1,4 @@
-# Run Android build with JDK 17 (required for React Native 0.76).
+# Run Android build with JDK 17 (required on this workstation for the current React Native 0.85.2 Android toolchain).
 # Use this if you see "Error resolving plugin" or "Unsupported class file major version 69".
 $jbr = "C:\Program Files\Android\Android Studio\jbr"
 if (-not (Test-Path $jbr)) {

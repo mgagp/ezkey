@@ -10,7 +10,7 @@
 
 ## Context
 
-- **Platform**: React Native 0.76.0 targeting iOS 15+ and Android 8+
+- **Platform**: React Native 0.85.2 targeting iOS 15.1+ and Android API 24+
 - **Language**: TypeScript with strict compiler options
 - **Security references**:
   - [`docs/CRYPTO.md`](../../docs/CRYPTO.md) - canonical cryptographic wording and current guarantees
