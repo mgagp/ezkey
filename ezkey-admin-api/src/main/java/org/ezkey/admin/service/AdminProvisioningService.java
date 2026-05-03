@@ -804,14 +804,11 @@ public class AdminProvisioningService {
     if (tenantId == null) {
       // GlobalAdmin: return all admins
       logger.debug("GlobalAdmin listing all admins");
-      page = adminRepository.findAll(pageable);
+      page = adminRepository.findAllForAdminProvisioningList(pageable);
     } else {
       // TenantAdmin: return only admins from their tenant
       logger.debug("TenantAdmin listing admins for tenant: {}", tenantId);
-      page = adminRepository.findByTenantTenantId(tenantId, pageable);
-    }
-    for (EzkeyAdmin admin : page.getContent()) {
-      loadAdminResponseAssociations(admin);
+      page = adminRepository.findByTenantTenantIdForAdminProvisioningList(tenantId, pageable);
     }
     return page;
   }

@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.auth.config.TrustedProxyConfig;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
@@ -98,6 +99,8 @@ class EnrollmentControllerTest {
   @MockitoBean private EnrollmentAuthMapper enrollmentMapper;
 
   @MockitoBean private org.ezkey.audit.service.AuditLogService auditLogService;
+
+  @MockitoBean private AuditChainHeartbeatGuardService auditChainHeartbeatGuardService;
 
   @MockitoBean private org.ezkey.enrollment.service.EnrollmentTxHelper enrollmentTxHelper;
 

@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/use-toast';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -29,7 +30,7 @@ import { ContextHelp } from '@/components/ui/context-help';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import {
   getGetTenantQueryKey,
@@ -342,6 +343,7 @@ function AdminTypeBadge({ type }: { type: AdminResponseDto['adminType'] }) {
 
 export default function TenantDetailPage() {
   const { t } = useTranslation('tenants');
+  const { t: tAdm } = useTranslation('admins');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const tenantId = Number(id);
@@ -368,13 +370,69 @@ export default function TenantDetailPage() {
     fetchPage: (params) => listAdmins(params) as Promise<PagedModelAdminResponseDto>,
   });
 
-  const adminColumns: ColumnDef<AdminResponseDto>[] = [
-    { header: t('detail.adminColumns.id'), key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
-    { header: t('detail.adminColumns.username'), key: 'username', sortKey: 'username', render: (r) => <span className="font-medium">{r.username}</span> },
-    { header: t('detail.adminColumns.type'), key: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
-    { header: t('detail.adminColumns.active'), key: 'active', render: (r) => <Badge variant={r.active ? 'success' : 'muted'}>{r.active ? t('detail.activeYes') : t('detail.activeNo')}</Badge> },
-    { header: t('detail.adminColumns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
-  ];
+  const adminColumns: ColumnDef<AdminResponseDto>[] = useMemo(
+    () => [
+      {
+        header: t('detail.adminColumns.username'),
+        key: 'username',
+        sortKey: 'username',
+        render: (r) => <span className="font-medium">{r.username}</span>,
+      },
+      {
+        header: t('detail.adminColumns.name'),
+        key: 'name',
+        render: (r) => (
+          <span className="text-fg-muted text-xs">
+            {[r.firstName, r.lastName].filter(Boolean).join(' ') || '—'}
+          </span>
+        ),
+      },
+      {
+        header: t('detail.adminColumns.email'),
+        key: 'email',
+        render: (r) => <span className="text-xs text-fg-muted">{r.email ?? '—'}</span>,
+      },
+      {
+        header: t('detail.adminColumns.type'),
+        key: 'adminType',
+        sortKey: 'adminType',
+        render: (r) => <AdminTypeBadge type={r.adminType} />,
+      },
+      {
+        header: t('detail.adminColumns.status'),
+        key: 'active',
+        sortKey: 'active',
+        render: (r) => (r.lifecycleStatus === 'PENDING_ACTIVATION' ? (
+          <Tooltip content={tAdm('list.pendingActivationTooltip')}>
+            <Badge variant="warning">{tAdm('list.statusPendingActivation')}</Badge>
+          </Tooltip>
+        ) : r.active ? (
+          <Badge variant="success">{tAdm('list.statusActive')}</Badge>
+        ) : (
+          <Badge variant="muted">{tAdm('list.statusInactive')}</Badge>
+        )),
+      },
+      {
+        header: t('detail.adminColumns.lastLogin'),
+        key: 'lastLoginAt',
+        render: (r) => (r.lastLoginAt ? (
+          <span className="text-xs text-fg-muted">
+            {formatDate(r.lastLoginAt)}
+            <span className="ml-1">({formatRelativeTime(r.lastLoginAt)})</span>
+          </span>
+        ) : (
+          <span className="text-xs text-fg-muted italic">{tAdm('detail.lastLoginNever')}</span>
+        )),
+      },
+      {
+        header: t('detail.adminColumns.created'),
+        key: 'createdAt',
+        sortKey: 'createdAt',
+        render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span>,
+      },
+    ],
+    [t, tAdm],
+  );
 
   return (
     <AppShell

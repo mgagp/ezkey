@@ -172,7 +172,7 @@ class AdminProvisioningServiceTest {
           List.of(globalAdmin, tenantAdmin1, tenantAdmin2, otherTenantAdmin);
       Page<EzkeyAdmin> expectedPage = new PageImpl<>(allAdmins, pageable, allAdmins.size());
 
-      when(adminRepository.findAll(pageable)).thenReturn(expectedPage);
+      when(adminRepository.findAllForAdminProvisioningList(pageable)).thenReturn(expectedPage);
 
       // Act
       Page<EzkeyAdmin> result = service.listAdmins(null, pageable);
@@ -181,8 +181,8 @@ class AdminProvisioningServiceTest {
       assertNotNull(result);
       assertEquals(4, result.getTotalElements());
       assertEquals(allAdmins, result.getContent());
-      verify(adminRepository).findAll(pageable);
-      verify(adminRepository).findAll(any(Pageable.class));
+      verify(adminRepository).findAllForAdminProvisioningList(pageable);
+      verify(adminRepository).findAllForAdminProvisioningList(any(Pageable.class));
     }
 
     @Test
@@ -193,7 +193,7 @@ class AdminProvisioningServiceTest {
       List<EzkeyAdmin> pageContent = List.of(globalAdmin, tenantAdmin1);
       Page<EzkeyAdmin> expectedPage = new PageImpl<>(pageContent, pageable, 4);
 
-      when(adminRepository.findAll(pageable)).thenReturn(expectedPage);
+      when(adminRepository.findAllForAdminProvisioningList(pageable)).thenReturn(expectedPage);
 
       // Act
       Page<EzkeyAdmin> result = service.listAdmins(null, pageable);
@@ -203,7 +203,7 @@ class AdminProvisioningServiceTest {
       assertEquals(4, result.getTotalElements());
       assertEquals(2, result.getContent().size());
       assertEquals(pageContent, result.getContent());
-      verify(adminRepository).findAll(pageable);
+      verify(adminRepository).findAllForAdminProvisioningList(pageable);
     }
   }
 
@@ -220,7 +220,8 @@ class AdminProvisioningServiceTest {
       List<EzkeyAdmin> tenantAdmins = List.of(tenantAdmin1, tenantAdmin2);
       Page<EzkeyAdmin> expectedPage = new PageImpl<>(tenantAdmins, pageable, tenantAdmins.size());
 
-      when(adminRepository.findByTenantTenantId(eq(tenantId), any(Pageable.class)))
+      when(adminRepository.findByTenantTenantIdForAdminProvisioningList(
+              eq(tenantId), any(Pageable.class)))
           .thenReturn(expectedPage);
 
       // Act
@@ -232,7 +233,8 @@ class AdminProvisioningServiceTest {
       assertEquals(tenantAdmins, result.getContent());
       // Verify that only admins from the specified tenant are returned
       result.getContent().forEach(admin -> assertEquals(tenantId, admin.getTenant().getTenantId()));
-      verify(adminRepository).findByTenantTenantId(eq(tenantId), eq(pageable));
+      verify(adminRepository)
+          .findByTenantTenantIdForAdminProvisioningList(eq(tenantId), eq(pageable));
     }
 
     @Test
@@ -244,7 +246,8 @@ class AdminProvisioningServiceTest {
       List<EzkeyAdmin> tenantAdmins = List.of(tenantAdmin1, tenantAdmin2);
       Page<EzkeyAdmin> expectedPage = new PageImpl<>(tenantAdmins, pageable, tenantAdmins.size());
 
-      when(adminRepository.findByTenantTenantId(eq(tenantId), any(Pageable.class)))
+      when(adminRepository.findByTenantTenantIdForAdminProvisioningList(
+              eq(tenantId), any(Pageable.class)))
           .thenReturn(expectedPage);
 
       // Act
@@ -258,7 +261,8 @@ class AdminProvisioningServiceTest {
           result.getContent().stream()
               .anyMatch(admin -> admin.getAdminId().equals(otherTenantAdmin.getAdminId()));
       assertEquals(false, containsOtherTenantAdmin);
-      verify(adminRepository).findByTenantTenantId(eq(tenantId), eq(pageable));
+      verify(adminRepository)
+          .findByTenantTenantIdForAdminProvisioningList(eq(tenantId), eq(pageable));
     }
 
     @Test
@@ -270,7 +274,8 @@ class AdminProvisioningServiceTest {
       List<EzkeyAdmin> pageContent = List.of(tenantAdmin1);
       Page<EzkeyAdmin> expectedPage = new PageImpl<>(pageContent, pageable, 2);
 
-      when(adminRepository.findByTenantTenantId(eq(tenantId), any(Pageable.class)))
+      when(adminRepository.findByTenantTenantIdForAdminProvisioningList(
+              eq(tenantId), any(Pageable.class)))
           .thenReturn(expectedPage);
 
       // Act
@@ -281,7 +286,8 @@ class AdminProvisioningServiceTest {
       assertEquals(2, result.getTotalElements());
       assertEquals(1, result.getContent().size());
       assertEquals(pageContent, result.getContent());
-      verify(adminRepository).findByTenantTenantId(eq(tenantId), eq(pageable));
+      verify(adminRepository)
+          .findByTenantTenantIdForAdminProvisioningList(eq(tenantId), eq(pageable));
     }
 
     @Test
@@ -292,7 +298,8 @@ class AdminProvisioningServiceTest {
       Pageable pageable = PageRequest.of(0, 20);
       Page<EzkeyAdmin> expectedPage = new PageImpl<>(List.of(), pageable, 0);
 
-      when(adminRepository.findByTenantTenantId(eq(tenantId), any(Pageable.class)))
+      when(adminRepository.findByTenantTenantIdForAdminProvisioningList(
+              eq(tenantId), any(Pageable.class)))
           .thenReturn(expectedPage);
 
       // Act
@@ -302,7 +309,8 @@ class AdminProvisioningServiceTest {
       assertNotNull(result);
       assertEquals(0, result.getTotalElements());
       assertEquals(true, result.getContent().isEmpty());
-      verify(adminRepository).findByTenantTenantId(eq(tenantId), eq(pageable));
+      verify(adminRepository)
+          .findByTenantTenantIdForAdminProvisioningList(eq(tenantId), eq(pageable));
     }
   }
 

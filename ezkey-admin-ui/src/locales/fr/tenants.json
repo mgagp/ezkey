@@ -96,10 +96,12 @@
     "adminsSectionTitle": "Administrateurs de ce tenant",
     "adminsEmpty": "Aucun administrateur pour ce tenant.",
     "adminColumns": {
-      "id": "ID",
-      "username": "Nom d'utilisateur",
+      "username": "Identifiant",
+      "name": "Nom",
+      "email": "E-mail",
       "type": "Type",
-      "active": "Actif",
+      "status": "Statut",
+      "lastLogin": "Dernière connexion",
       "created": "Créé"
     },
     "adminTypeGlobal": "Global",

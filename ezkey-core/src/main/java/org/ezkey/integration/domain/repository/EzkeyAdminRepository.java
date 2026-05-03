@@ -16,6 +16,7 @@ import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -116,6 +117,35 @@ public interface EzkeyAdminRepository extends JpaRepository<EzkeyAdmin, Integer>
    * @return page of administrators belonging to the tenant
    */
   Page<EzkeyAdmin> findByTenantTenantId(Integer tenantId, Pageable pageable);
+
+  /**
+   * Paginates all administrators with {@code tenant} and {@code enrollment} associations loaded in
+   * the same round-trip, avoiding N+1 queries when mapping administrator list DTOs.
+   *
+   * <p>Uses explicit JPQL so Spring Data does not parse {@code findAllFor…} as a derived property
+   * path (which fails at repository bootstrap).
+   *
+   * @param pageable pagination and sorting parameters
+   * @return page of administrators with associations initialized
+   */
+  @EntityGraph(attributePaths = {"tenant", "enrollment"})
+  @Query("SELECT a FROM EzkeyAdmin a")
+  Page<EzkeyAdmin> findAllForAdminProvisioningList(Pageable pageable);
+
+  /**
+   * Paginates administrators for a tenant with {@code tenant} and {@code enrollment} associations
+   * loaded in the same round-trip.
+   *
+   * <p>Uses explicit JPQL for the same reason as {@link #findAllForAdminProvisioningList}.
+   *
+   * @param tenantId the tenant ID
+   * @param pageable pagination and sorting parameters
+   * @return page of administrators with associations initialized
+   */
+  @EntityGraph(attributePaths = {"tenant", "enrollment"})
+  @Query("SELECT a FROM EzkeyAdmin a WHERE a.tenant.tenantId = :tenantId")
+  Page<EzkeyAdmin> findByTenantTenantIdForAdminProvisioningList(
+      @Param("tenantId") Integer tenantId, Pageable pageable);
 
   /**
    * Finds administrators by integration.

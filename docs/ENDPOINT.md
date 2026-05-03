@@ -1178,40 +1178,46 @@ Authorization: Bearer ezkey_admin_token...
 ```
 
 **Query Parameters:**
+- `tenantId` (optional, **GlobalAdmin only**): When provided, limits results to that tenant. Ignored for TenantAdmin (tenant scope comes from the authenticated principal).
 - `page` (optional, default: 0): Page number (zero-based)
 - `size` (optional, default: 20): Number of items per page
-- `sort` (optional, default: createdAt,DESC): Sort field and direction
-- `active` (optional): Filter by active status
-- `adminType` (optional): Filter by admin type (GLOBAL_ADMIN, TENANT_ADMIN)
+- `sort` (optional, default: createdAt,DESC): Sort field and direction (see Spring Data `Pageable`). Commonly used fields include `adminId`, `username`, `adminType`, `tenantId`, `active`, and `createdAt`.
 
-**Success Response (200 OK):**
+**Success Response (200 OK):** Spring Data page JSON with a `content` array and **nested** pagination metadata under `page` (the Admin UI consumes this “pattern B” shape):
+
 ```json
 {
   "content": [
     {
       "adminId": 1,
+      "version": 0,
       "username": "admin.docker",
       "email": "admin@example.com",
+      "phoneNumber": "+15145551234",
       "firstName": "Admin",
       "lastName": "Docker",
       "adminType": "GLOBAL_ADMIN",
       "tenantId": null,
+      "tenantName": null,
       "enrollmentId": 42,
       "active": true,
+      "lifecycleStatus": "ACTIVE",
       "createdAt": "2025-12-26T10:00:00Z",
-      "lastLoginAt": "2025-12-28T09:15:00Z"
+      "lastLoginAt": "2025-12-28T09:15:00Z",
+      "hasRecoveryCodes": true,
+      "operational": true
     }
   ],
-  "totalElements": 1,
-  "totalPages": 1,
-  "size": 20,
-  "number": 0,
-  "first": true,
-  "last": true
+  "page": {
+    "size": 20,
+    "number": 0,
+    "totalElements": 1,
+    "totalPages": 1
+  }
 }
 ```
 
-**Response fields:** `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). Useful for access reviews and SOC 2 procedures.
+**Response fields:** `tenantName` is the display name of the tenant (`ezkey_tenant.tenant_name`) when `tenantId` is set; it is `null` for global administrators. `enrollmentId` is the MFA enrollment linked to this administrator (passwordless identity); null if not linked. `lastLoginAt` is the timestamp of the administrator's last successful login (null if never logged in). `operational` summarizes whether the admin account and (for tenant-scoped admins) the tenant are in an operable state for login. Useful for access reviews and SOC 2 procedures.
 
 **Status Codes:**
 - 200: List of administrators retrieved successfully
@@ -1235,7 +1241,7 @@ GET /api/v1/admins/2
 Authorization: Bearer ezkey_admin_token...
 ```
 
-**Success Response (200 OK):** Same fields as a list item: `adminId`, `username`, `email`, `firstName`, `lastName`, `adminType`, `tenantId`, `enrollmentId`, `active`, `createdAt`, `lastLoginAt`.
+**Success Response (200 OK):** Same fields as a list item: `adminId`, `version`, `username`, `email`, `phoneNumber`, `firstName`, `lastName`, `adminType`, `tenantId`, `tenantName`, `enrollmentId`, `active`, `lifecycleStatus`, `createdAt`, `lastLoginAt`, `hasRecoveryCodes`, `operational`.
 
 **Status Codes:**
 - 200: Administrator retrieved successfully

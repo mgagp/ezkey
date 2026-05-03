@@ -39,6 +39,7 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 | **2026-05/audit_log_timestamps_38aab43b.plan.md** | Audit log list/detail absolute timezone-explicit timestamps for incident correlation | ✅ Completed |
 | **2026-05/ezkey-doc-system_f1e8054a.plan.md** | Spec-first `product-docs` system (global + component packs) | ✅ Completed |
 | **2026-05/admin_ui_lint_cleanup_2e576db8.plan.md** | Admin UI ESLint remediation + diagnostics | ✅ Completed |
+| **2026-05/admin_administrators_list_operational_closeout.plan.md** | Administrators list: `tenantName` on list/detail, N+1-safe repository queries, Admin UI platform/tenant columns, Demo Device parity, Postman/docs, migration + auth test hardening | ✅ Completed |
 
 ---
 

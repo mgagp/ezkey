@@ -73,6 +73,12 @@ public class EzkeyAppController {
 
   private static final Logger logger = LoggerFactory.getLogger(EzkeyAppController.class);
 
+  /**
+   * Fallback label when the Auth API omits tenant display name for a global (platform-scoped)
+   * administrator enrollment — matches Admin UI {@code admins.tenantPlatform} (English locale).
+   */
+  private static final String PLATFORM_TENANT_DISPLAY_NAME = "Platform";
+
   private static final String UNKNOWN_TENANT_NAME = "Unknown tenant";
 
   private final AuthApiService authApiService;
@@ -182,7 +188,7 @@ public class EzkeyAppController {
         model.addAttribute("integrationDescription", integrationDescription);
         model.addAttribute("integrationLogo", integrationLogo);
         model.addAttribute("tenantId", tenantId);
-        model.addAttribute("tenantName", tenantName);
+        model.addAttribute("tenantName", normalizeTenantName(tenantName, tenantId));
         model.addAttribute("tenantDescription", tenantDescription);
         model.addAttribute("success", "Bind successful! Enter the challenge code to verify.");
       } else {
@@ -593,7 +599,8 @@ public class EzkeyAppController {
 
     for (Record enrollment : enrollments) {
       Integer tenantId = enrollment.tenantId();
-      String tenantName = normalizeTenantName(enrollment.tenantName());
+      String tenantName =
+          normalizeTenantName(enrollment.tenantName(), enrollment.tenantId());
       String tenantDescription = normalizeTenantDescription(enrollment.tenantDescription());
 
       TenantKey key = new TenantKey(tenantId, tenantName, tenantDescription);
@@ -631,11 +638,25 @@ public class EzkeyAppController {
         .toList();
   }
 
-  private static String normalizeTenantName(String tenantName) {
-    if (tenantName == null || tenantName.isBlank()) {
-      return UNKNOWN_TENANT_NAME;
+  /**
+   * Resolves tenant list / bind UI display name.
+   *
+   * <p>Global administrator enrollments have no {@code tenantId} and often no tenant name in bind
+   * responses; those map to {@link #PLATFORM_TENANT_DISPLAY_NAME} instead of {@link
+   * #UNKNOWN_TENANT_NAME}, consistent with the Admin UI administrators list.
+   *
+   * @param tenantName raw name from API or stored record (may be null/blank)
+   * @param tenantId tenant id or null for platform scope
+   * @return trimmed name, {@link #PLATFORM_TENANT_DISPLAY_NAME}, or {@link #UNKNOWN_TENANT_NAME}
+   */
+  private static String normalizeTenantName(String tenantName, Integer tenantId) {
+    if (tenantName != null && !tenantName.isBlank()) {
+      return tenantName.trim();
     }
-    return tenantName.trim();
+    if (tenantId == null) {
+      return PLATFORM_TENANT_DISPLAY_NAME;
+    }
+    return UNKNOWN_TENANT_NAME;
   }
 
   private static String normalizeTenantDescription(String tenantDescription) {
@@ -652,7 +673,8 @@ public class EzkeyAppController {
    * the tenant ID, name, and description to create a unique key for grouping operations.
    *
    * @param tenantId the unique identifier of the tenant, or null if unknown
-   * @param tenantName the display name of the tenant, or "Unknown tenant" if not available
+   * @param tenantName the display name of the tenant, {@link #PLATFORM_TENANT_DISPLAY_NAME}, or
+   *     {@link #UNKNOWN_TENANT_NAME} if not available
    * @param tenantDescription optional description of the tenant
    * @since 2025
    */

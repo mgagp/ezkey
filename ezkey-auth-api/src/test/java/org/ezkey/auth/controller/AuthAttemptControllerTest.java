@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.auth.config.SecurityConfig;
 import org.ezkey.auth.config.TrustedProxyConfig;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
@@ -103,6 +104,8 @@ class AuthAttemptControllerTest {
   @MockitoBean private AuthAttemptAuthApiMapper authAttemptMapper;
 
   @MockitoBean private org.ezkey.audit.service.AuditLogService auditLogService;
+
+  @MockitoBean private AuditChainHeartbeatGuardService auditChainHeartbeatGuardService;
 
   @MockitoBean
   private org.ezkey.authattempt.domain.repository.AuthAttemptRepository authAttemptRepository;

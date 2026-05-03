@@ -4,7 +4,7 @@
 
 This document describes how the Admin UI maps its internal state and user actions onto the Admin API contract. It is a **boundary document**: the left side is the UI (components, forms, state), the right side is the Admin API (endpoints, DTOs, problem types).
 
-Phase 1 seeds two representative mappings. Additional mappings will be added using the [mapping matrix template](../../templates/mapping-matrix.template.md).
+Representative mappings are listed below; additional mappings can be added using the [mapping matrix template](../../templates/mapping-matrix.template.md).
 
 ## Mapping Index
 
@@ -12,6 +12,7 @@ Phase 1 seeds two representative mappings. Additional mappings will be added usi
 |----|-------|-----------|--------|
 | `M-admin-auth` | Admin UI ↔ Admin API passwordless auth | bidirectional | `implemented` |
 | `M-integrations` | Admin UI ↔ Admin API integrations | bidirectional | `implemented` |
+| `M-admins` | Admin UI ↔ Admin API administrators list/detail | bidirectional | `implemented` |
 
 ---
 
@@ -149,3 +150,54 @@ Translate integration list/create/retire/delete UI actions into Admin API calls,
 - [`functional-flows.md#w-ui-integration-create`](functional-flows.md#w-ui-integration-create).
 - [`../../global/lifecycle-model.md`](../../global/lifecycle-model.md).
 - [`exception-and-error-model.md`](exception-and-error-model.md).
+
+---
+
+## `M-admins` — Administrators List and Detail
+
+### Intent
+
+Expose a legible, role-aware view of administrators so operators can triage scope (especially **which tenant** for tenant-scoped admins when acting as Global Admin), status, recency (`lastLoginAt`), and next actions (credentials, deactivate) without overloading the paginated table.
+
+### Boundary
+
+- **Left side.** `AdminsPage` and tenant detail administrators subsection (`tenant-detail.tsx`); detail dialog uses `AdminDetailDialog` patterns (Orval `listAdmins`, `getAdminById`, mutations).
+- **Right side.** `GET /api/v1/admins`, `GET /api/v1/admins/{id}`, and related provisioning endpoints under `/api/v1/admins`.
+- **Direction.** Bidirectional.
+- **Trigger.** Operator opens Administrators or the tenant-scoped admin table; row click opens detail.
+
+### Reference Artifacts
+
+- Admin API: [`../../../docs/ENDPOINT.md`](../../../docs/ENDPOINT.md) (List / Get Administrator).
+- OpenAPI: [`../../../specs/admin-api/openapi-spec.json`](../../../specs/admin-api/openapi-spec.json) — `AdminResponseDto` includes `tenantId`, `tenantName`, lifecycle and operational fields.
+
+### Field Mapping — List row (Global Admin)
+
+| Admin API field | UI column | Notes |
+|-----------------|-----------|-------|
+| `username` | Username | Sortable (`sort=username`). |
+| `firstName` / `lastName` | Name | Display-only composite. |
+| `email` | Email | |
+| `tenantName` / `tenantId` | Tenant | Platform label for `GLOBAL_ADMIN`; link to tenant detail when `tenantId` present; fallback label if name missing. |
+| `adminType` | Type | Badge; sortable. |
+| `active` / `lifecycleStatus` / `operational` | Status | Badges + tooltips (pending activation, tenant inactive warning). |
+| `lastLoginAt` | Last login | Relative + absolute; not sortable unless backend adds sort field. |
+| `createdAt` | Created | Sortable. |
+| — | Actions | Credentials when onboarding exists; Deactivate for Global Admin when active. |
+
+### Field Mapping — List row (Tenant Admin)
+
+Same as above **except** the **Tenant** column is omitted (redundant with tenant-scoped token).
+
+### Field Mapping — Detail dialog
+
+All non-sensitive `AdminResponseDto` fields; **Tenant** row shows `tenantName` with ID when available. Expandable related entities unchanged.
+
+### Constraints and Invariants
+
+- Pagination sort is **server-side**; list columns with `sortKey` must match backend `Pageable` property names.
+- `tenantName` is denormalized for operator clarity; API remains authoritative for `tenantId`.
+
+### Related Documents
+
+- [`../../../docs/ADMIN_UI.md`](../../../docs/ADMIN_UI.md) (operator roles).

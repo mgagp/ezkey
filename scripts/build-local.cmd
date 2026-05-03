@@ -3,7 +3,7 @@ setlocal
 
 set "REPO_ROOT=%~dp0.."
 set "GIT_BASH=C:\Program Files\Git\bin\bash.exe"
-set "JAVA_HOME=C:\Tools\jdk25"
+set "JAVA_HOME=C:\Tools\jdk-25.0.3+9"
 set "MAVEN_HOME=C:\Tools\apache-maven"
 set "PATH=%JAVA_HOME%\bin;%MAVEN_HOME%\bin;%PATH%"
 

@@ -146,6 +146,30 @@ function AdminTypeBadge({ type }: { type: AdminResponseDto['adminType'] }) {
   return <Badge variant="muted">{t('adminType.tenant')}</Badge>;
 }
 
+function renderAdminListTenantCell(
+  r: AdminResponseDto,
+  t: ReturnType<typeof useTranslation<'admins'>>['t'],
+) {
+  if (r.adminType === 'GLOBAL_ADMIN') {
+    return <span className="text-xs text-fg-muted">{t('list.tenantPlatform')}</span>;
+  }
+  if (r.tenantId == null) {
+    return <span className="text-fg-muted">—</span>;
+  }
+  const label =
+    r.tenantName != null && r.tenantName.trim() !== ''
+      ? r.tenantName.trim()
+      : t('list.tenantFallback', { id: r.tenantId });
+  return (
+    <Link
+      to={`/tenants/${r.tenantId}`}
+      className="text-xs font-medium text-accent hover:underline"
+    >
+      {label}
+    </Link>
+  );
+}
+
 // ── Onboarding credentials dialog ─────────────────────────────────────────────
 
 function OnboardingDialog({
@@ -574,7 +598,16 @@ function AdminDetailDialog({
           <DetailInfoRow label={t('detail.labelPhone')} valueClassName="break-all">{adm.phoneNumber || <span className="text-fg-muted">—</span>}</DetailInfoRow>
           <DetailInfoRow label={t('detail.labelType')} valueClassName="break-all"><AdminTypeBadge type={adm.adminType} /></DetailInfoRow>
           {adm.tenantId != null && (
-            <DetailInfoRow label={t('detail.labelTenantId')} valueClassName="break-all"><span className="font-mono">{adm.tenantId}</span></DetailInfoRow>
+            <DetailInfoRow label={t('detail.labelTenant')} valueClassName="break-all">
+              {adm.tenantName != null && adm.tenantName.trim() !== '' ? (
+                <>
+                  <span className="font-medium">{adm.tenantName.trim()}</span>
+                  <span className="text-fg-muted font-mono text-xs ml-1.5">(ID {adm.tenantId})</span>
+                </>
+              ) : (
+                <span className="font-mono">{adm.tenantId}</span>
+              )}
+            </DetailInfoRow>
           )}
           {adm.enrollmentId != null && (
             <DetailInfoRow label={t('detail.labelEnrollmentId')} valueClassName="break-all">
@@ -1512,10 +1545,14 @@ export default function AdminsPage() {
     }
   };
 
-  const columns: ColumnDef<AdminResponseDto>[] = [
-    { header: t('list.columns.id'), key: 'adminId', className: 'w-14', sortKey: 'adminId', render: (r) => <span className="font-mono text-xs">{r.adminId}</span> },
-    { header: t('list.columns.username'), key: 'username', sortKey: 'username', render: (r) => <span className="font-medium">{r.username}</span> },
-    {
+  const columns: ColumnDef<AdminResponseDto>[] = useMemo(() => {
+    const usernameCol: ColumnDef<AdminResponseDto> = {
+      header: t('list.columns.username'),
+      key: 'username',
+      sortKey: 'username',
+      render: (r) => <span className="font-medium">{r.username}</span>,
+    };
+    const nameCol: ColumnDef<AdminResponseDto> = {
       header: t('list.columns.name'),
       key: 'name',
       render: (r) => (
@@ -1523,15 +1560,23 @@ export default function AdminsPage() {
           {[r.firstName, r.lastName].filter(Boolean).join(' ') || '—'}
         </span>
       ),
-    },
-    { header: t('list.columns.email'), key: 'email', render: (r) => <span className="text-xs text-fg-muted">{r.email ?? '—'}</span> },
-    { header: t('list.columns.phone'), key: 'phoneNumber', render: (r) => <span className="text-xs text-fg-muted">{r.phoneNumber ?? '—'}</span> },
-    { header: t('list.columns.type'), key: 'adminType', sortKey: 'adminType', render: (r) => <AdminTypeBadge type={r.adminType} /> },
-    {
-      header: t('list.columns.active'),
+    };
+    const emailCol: ColumnDef<AdminResponseDto> = {
+      header: t('list.columns.email'),
+      key: 'email',
+      render: (r) => <span className="text-xs text-fg-muted">{r.email ?? '—'}</span>,
+    };
+    const typeCol: ColumnDef<AdminResponseDto> = {
+      header: t('list.columns.type'),
+      key: 'adminType',
+      sortKey: 'adminType',
+      render: (r) => <AdminTypeBadge type={r.adminType} />,
+    };
+    const statusCol: ColumnDef<AdminResponseDto> = {
+      header: t('list.columns.status'),
       key: 'active',
       sortKey: 'active',
-      render: (r) => isPendingActivationAdmin(r) ? (
+      render: (r) => (isPendingActivationAdmin(r) ? (
         <Tooltip content={t('list.pendingActivationTooltip')}>
           {renderAdminStatusBadge(r, t, 'list')}
         </Tooltip>
@@ -1544,10 +1589,32 @@ export default function AdminsPage() {
         </Tooltip>
       ) : (
         renderAdminStatusBadge(r, t, 'list')
-      ),
-    },
-    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
-    {
+      )),
+    };
+    const lastLoginCol: ColumnDef<AdminResponseDto> = {
+      header: t('list.columns.lastLogin'),
+      key: 'lastLoginAt',
+      render: (r) => (r.lastLoginAt ? (
+        <span className="text-xs text-fg-muted">
+          {formatDate(r.lastLoginAt)}
+          <span className="text-fg-muted/80 ml-1">({formatRelativeTime(r.lastLoginAt)})</span>
+        </span>
+      ) : (
+        <span className="text-xs text-fg-muted italic">{t('detail.lastLoginNever')}</span>
+      )),
+    };
+    const createdCol: ColumnDef<AdminResponseDto> = {
+      header: t('list.columns.created'),
+      key: 'createdAt',
+      sortKey: 'createdAt',
+      render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span>,
+    };
+    const tenantCol: ColumnDef<AdminResponseDto> = {
+      header: t('list.columns.tenant'),
+      key: 'tenantId',
+      render: (r) => renderAdminListTenantCell(r, t),
+    };
+    const actionsCol: ColumnDef<AdminResponseDto> = {
       header: t('list.columns.actions'),
       key: 'actions',
       render: (r) => (
@@ -1576,8 +1643,32 @@ export default function AdminsPage() {
           )}
         </div>
       ),
-    },
-  ];
+    };
+
+    if (isGlobalAdmin) {
+      return [
+        usernameCol,
+        nameCol,
+        emailCol,
+        tenantCol,
+        typeCol,
+        statusCol,
+        lastLoginCol,
+        createdCol,
+        actionsCol,
+      ];
+    }
+    return [
+      usernameCol,
+      nameCol,
+      emailCol,
+      typeCol,
+      statusCol,
+      lastLoginCol,
+      createdCol,
+      actionsCol,
+    ];
+  }, [isGlobalAdmin, t, setOnboardingTarget]);
 
   return (
     <AppShell title={t('list.title')}>

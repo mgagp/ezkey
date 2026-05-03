@@ -190,6 +190,25 @@ class AdminProvisioningControllerTest {
       assertNotNull(responseBody);
       assertEquals(4, responseBody.getTotalElements());
       assertEquals(4, responseBody.getContent().size());
+      AdminResponseDto globalRow =
+          responseBody.getContent().stream()
+              .filter(a -> a.adminId().equals(globalAdmin.getAdminId()))
+              .findFirst()
+              .orElseThrow();
+      assertNull(globalRow.tenantId());
+      assertNull(globalRow.tenantName());
+      AdminResponseDto tenantOneRow =
+          responseBody.getContent().stream()
+              .filter(a -> a.adminId().equals(tenantAdmin1.getAdminId()))
+              .findFirst()
+              .orElseThrow();
+      assertEquals("Test Tenant", tenantOneRow.tenantName());
+      AdminResponseDto tenantTwoRow =
+          responseBody.getContent().stream()
+              .filter(a -> a.adminId().equals(otherTenantAdmin.getAdminId()))
+              .findFirst()
+              .orElseThrow();
+      assertEquals("Other Tenant", tenantTwoRow.tenantName());
       verify(provisioningService).listAdmins(isNull(), eq(pageable));
     }
 
