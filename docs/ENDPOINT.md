@@ -1326,6 +1326,43 @@ GET /api/v1/admins/2/onboarding
 Authorization: Bearer ezkey_admin_token...
 ```
 
+#### **POST /api/v1/enrollments** (Create Enrollment)
+
+Creates a pending enrollment (`CREATED`) for an integration. Returns identifiers needed for mobile bind/verify.
+
+**Request body:**
+
+| Field | Required | Notes |
+| ----- | -------- | ----- |
+| `integrationId` | yes | Target integration |
+| `name` | yes | Enrollment display name |
+| `authAttemptChallengeRequired` | no | Default false |
+| `contactEmail`, `contactPhoneNumber`, `userIdentifier` | no | Optional metadata |
+| `expiresAt` | no | ISO-8601 UTC instant; invitation expires after this time during the **pending** bind/verify phase only. Must be strictly in the future when provided. When omitted, the server sets expiry using `ezkey.enrollment.pending-expiration-days` (**default 7**). Use instance property `0` to disable default pending expiry (explicit `expiresAt` still honored). |
+
+**Example:**
+
+```http
+POST /api/v1/enrollments
+Authorization: Bearer ezkey_admin_token...
+Content-Type: application/json
+
+{
+  "integrationId": 1,
+  "name": "John's iPhone",
+  "authAttemptChallengeRequired": false,
+  "expiresAt": "2026-12-31T23:59:59Z"
+}
+```
+
+**Response (201 Created):**
+
+| Field | Notes |
+| ----- | ----- |
+| `enrollmentId` | New enrollment id |
+| `enrollmentChallenge` | Challenge shown during verify |
+| `expiresAt` | Pending invitation expiry when set on the stored enrollment (typically present when default or explicit expiry applies) |
+
 #### **GET /api/v1/enrollments/{id}** (For General Enrollment Management)
 
 **Use this API when:**

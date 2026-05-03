@@ -32,11 +32,14 @@ import org.springframework.validation.annotation.Validated;
 public class EnrollmentProperties {
 
   /**
-   * Optional number of days after creation before a pending enrollment expires. When set (e.g. 30),
-   * new enrollments get {@code expires_at = created_at + this many days}. Null or not set means no
-   * expiration (current behavior).
+   * Days after creation before a pending enrollment expires when the create request does not
+   * specify {@code expiresAt}. New enrollments get {@code expires_at = created_at + this many days}.
+   *
+   * <p>Use {@code 0} to disable default expiration for new enrollments (operators may still pass an
+   * explicit {@code expiresAt} on create). The Java field defaults to {@code 7} when no property is
+   * bound.
    */
-  private Integer pendingExpirationDays;
+  private Integer pendingExpirationDays = 7;
 
   /**
    * Cron expression for the job that marks expired pending enrollments (CREATED + expires_at &lt;

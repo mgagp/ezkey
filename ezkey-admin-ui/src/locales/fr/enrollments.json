@@ -60,6 +60,10 @@
     "showQrCode": "Afficher le code QR",
     "hideQrCode": "Masquer le code QR",
     "bindingChallengeCode": "Code défi de liaison",
+    "invitationExpiresAt": "Expiration de l'invitation",
+    "customInvitationExpiry": "Définir une échéance d'invitation personnalisée",
+    "customInvitationExpiryHint": "Si non coché, le serveur applique la valeur par défaut de l'instance (en général quelques jours). Activez cette option pour choisir une date et une heure précises avant la liaison / la vérification.",
+    "invitationExpiryDatetime": "Échéance de l'invitation (heure locale)",
     "viewEnrollment": "Voir l'enrôlement",
     "done": "Terminé"
   },
@@ -91,7 +95,10 @@
     "nameRequired": "Le nom est obligatoire",
     "nameMax": "Max. {{n}} caractères",
     "invalidEmail": "Adresse e-mail invalide",
-    "invalidPhone": "Utilisez un numéro international avec indicatif pays (exemple : +1 514 555 1234)"
+    "invalidPhone": "Utilisez un numéro international avec indicatif pays (exemple : +1 514 555 1234)",
+    "invitationExpiryRequired": "Choisissez une date et une heure lorsque vous utilisez une échéance personnalisée.",
+    "invitationExpiryInvalid": "Cette date et heure ne sont pas valides.",
+    "invitationExpiryFuture": "L'échéance doit être dans le futur."
   },
   "detail": {
     "fallbackTitle": "Détail de l'enrôlement",

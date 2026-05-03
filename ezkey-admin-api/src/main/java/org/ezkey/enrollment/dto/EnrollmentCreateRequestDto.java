@@ -12,8 +12,10 @@ package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.time.OffsetDateTime;
 
 /**
  * Request DTO for creating enrollments in admin API.
@@ -41,7 +43,11 @@ import jakarta.validation.constraints.NotNull;
  * @param integrationId The integration ID to which this enrollment belongs (required)
  * @param name Human-readable name for the enrollment (e.g., "John's iPhone")
  * @param authAttemptChallengeRequired Whether authentication attempts require challenge validation
+ * @param contactEmail Optional contact email for the end-user
  * @param contactPhoneNumber Optional contact phone number for the end-user
+ * @param userIdentifier Optional user identifier from the integrating application
+ * @param expiresAt Optional invitation expiry for the pending bind/verify window; must be in the
+ *     future when provided
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentCreateRequest
@@ -94,4 +100,15 @@ public record EnrollmentCreateRequestDto(
      * for lookup. Enables future auth attempt creation by userIdentifier.
      */
     @Schema(description = "Optional user identifier from the integrating application")
-        String userIdentifier) {}
+        String userIdentifier,
+    /**
+     * Optional expiration for the pending enrollment invitation (bind/verify window only). When
+     * omitted, the instance uses {@code ezkey.enrollment.pending-expiration-days} (default 7 days).
+     */
+    @Schema(
+            description =
+                "Optional invitation expiry (UTC instant). Pending phase only; must be in the"
+                    + " future when set. Omit to use ezkey.enrollment.pending-expiration-days.",
+            example = "2026-12-31T23:59:59Z")
+        @Future(message = "expiresAt must be in the future")
+        OffsetDateTime expiresAt) {}

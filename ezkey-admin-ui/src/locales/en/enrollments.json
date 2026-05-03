@@ -60,6 +60,10 @@
     "showQrCode": "Show QR Code",
     "hideQrCode": "Hide QR Code",
     "bindingChallengeCode": "Binding Challenge Code",
+    "invitationExpiresAt": "Invitation expires",
+    "customInvitationExpiry": "Set a custom invitation deadline",
+    "customInvitationExpiryHint": "When unchecked, the server applies the instance default (typically several days). Enable this to choose an exact date and time before bind/verify must complete.",
+    "invitationExpiryDatetime": "Invitation deadline (local)",
     "viewEnrollment": "View enrollment",
     "done": "Done"
   },
@@ -91,7 +95,10 @@
     "nameRequired": "Name is required",
     "nameMax": "Max {{n}} characters",
     "invalidEmail": "Invalid email address",
-    "invalidPhone": "Use an international phone number with country code (example: +1 514 555 1234)"
+    "invalidPhone": "Use an international phone number with country code (example: +1 514 555 1234)",
+    "invitationExpiryRequired": "Choose a date and time when using a custom invitation deadline.",
+    "invitationExpiryInvalid": "That date and time is not valid.",
+    "invitationExpiryFuture": "The invitation deadline must be in the future."
   },
   "detail": {
     "fallbackTitle": "Enrollment Detail",

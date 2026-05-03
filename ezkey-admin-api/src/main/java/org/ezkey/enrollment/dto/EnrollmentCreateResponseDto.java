@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.OffsetDateTime;
 
 /**
  * Response DTO for enrollment creation in admin API.
@@ -38,6 +39,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *     in subsequent operations
  * @param enrollmentChallenge Challenge number generated for enrollment verification used during the
  *     enrollment binding and verification process
+ * @param expiresAt Invitation expiry for the pending bind/verify window, if configured or explicitly
+ *     set
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentCreateResponse
@@ -48,4 +51,8 @@ public record EnrollmentCreateResponseDto(
     @Schema(description = "Unique identifier of the created enrollment", example = "21")
         Integer enrollmentId,
     @Schema(description = "Challenge number for enrollment verification", example = "154982")
-        Integer enrollmentChallenge) {}
+        Integer enrollmentChallenge,
+    @Schema(
+            description =
+                "Invitation expiry (UTC) for the pending enrollment phase, when set on the server")
+        OffsetDateTime expiresAt) {}

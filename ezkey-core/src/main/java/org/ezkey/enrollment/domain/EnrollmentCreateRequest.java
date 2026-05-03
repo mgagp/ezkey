@@ -10,6 +10,8 @@
 
 package org.ezkey.enrollment.domain;
 
+import java.time.OffsetDateTime;
+
 /**
  * Domain request object for creating new device enrollments.
  *
@@ -88,6 +90,14 @@ public class EnrollmentCreateRequest {
    * for lookup. Enables future auth attempt creation by userIdentifier (Phase 3).
    */
   private String userIdentifier;
+
+  /**
+   * Optional expiration for the pending enrollment invitation (creation through bind/verify only).
+   *
+   * <p>When set, stored as {@code expires_at} on the new enrollment and must be strictly after the
+   * creation instant. When omitted, {@code ezkey.enrollment.pending-expiration-days} applies.
+   */
+  private OffsetDateTime expiresAt;
 
   /**
    * Admin who created this enrollment. Set by the controller when request comes from admin (bearer
@@ -201,6 +211,24 @@ public class EnrollmentCreateRequest {
    */
   public void setUserIdentifier(String userIdentifier) {
     this.userIdentifier = userIdentifier;
+  }
+
+  /**
+   * Gets the optional invitation expiry instant for the pending enrollment phase.
+   *
+   * @return expires at instant, or null to derive from instance configuration
+   */
+  public OffsetDateTime getExpiresAt() {
+    return expiresAt;
+  }
+
+  /**
+   * Sets the optional invitation expiry instant for the pending enrollment phase.
+   *
+   * @param expiresAt invitation expiry, or null to derive from instance configuration
+   */
+  public void setExpiresAt(OffsetDateTime expiresAt) {
+    this.expiresAt = expiresAt;
   }
 
   /**

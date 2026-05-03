@@ -71,6 +71,7 @@ flowchart LR
 - **Routes.** `/enrollments`, `/enrollments/:id`.
 - **Primary actor.** Both roles (scope applies).
 - **Purpose.** Manage enrollment lifecycle (deactivate, reactivate, revoke, delete when conditions are met).
+- **Create dialog.** Operators may set an optional pending-phase invitation expiry (`expiresAt`) or rely on the instance default (`ezkey.enrollment.pending-expiration-days`, default 7 days).
 - **Detail page features.** Trigger a **Test Authentication** attempt and poll until a final status. Cancel outstanding attempt on exit.
 
 ### Admins List and Detail

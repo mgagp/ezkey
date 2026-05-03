@@ -68,35 +68,85 @@ function EnrollmentCreateDialog({
 
   const createSchema = useMemo(
     () =>
-      z.object({
-        integrationId: z.string().min(1, t('validation.selectIntegration')),
-        name: z.string().min(1, t('validation.nameRequired')).max(100, t('validation.nameMax', { n: 100 })),
-        authAttemptChallengeRequired: z.boolean(),
-        contactEmail: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
-        contactPhoneNumber: z
-          .string()
-          .refine((value) => value === '' || isPhoneNumberInputValid(value), t('validation.invalidPhone'))
-          .optional()
-          .or(z.literal('')),
-        userIdentifier: z.string().max(100).optional().or(z.literal('')),
-      }),
+      z
+        .object({
+          integrationId: z.string().min(1, t('validation.selectIntegration')),
+          name: z.string().min(1, t('validation.nameRequired')).max(100, t('validation.nameMax', { n: 100 })),
+          authAttemptChallengeRequired: z.boolean(),
+          contactEmail: z.string().email(t('validation.invalidEmail')).optional().or(z.literal('')),
+          contactPhoneNumber: z
+            .string()
+            .refine((value) => value === '' || isPhoneNumberInputValid(value), t('validation.invalidPhone'))
+            .optional()
+            .or(z.literal('')),
+          userIdentifier: z.string().max(100).optional().or(z.literal('')),
+          useCustomInvitationExpiry: z.boolean(),
+          invitationExpiresLocal: z.string().optional(),
+        })
+        .superRefine((data, ctx) => {
+          if (!data.useCustomInvitationExpiry) {
+            return;
+          }
+          const raw = data.invitationExpiresLocal?.trim() ?? '';
+          if (raw === '') {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('validation.invitationExpiryRequired'),
+              path: ['invitationExpiresLocal'],
+            });
+            return;
+          }
+          const parsed = new Date(raw);
+          if (Number.isNaN(parsed.getTime())) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('validation.invitationExpiryInvalid'),
+              path: ['invitationExpiresLocal'],
+            });
+            return;
+          }
+          if (parsed.getTime() <= Date.now()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('validation.invitationExpiryFuture'),
+              path: ['invitationExpiresLocal'],
+            });
+          }
+        }),
     [t],
   );
   type CreateFormValues = z.infer<typeof createSchema>;
+
+  const freshDefaults = useMemo(
+    (): CreateFormValues => ({
+      integrationId: initialIntegrationId ?? '',
+      name: '',
+      contactEmail: '',
+      contactPhoneNumber: '',
+      userIdentifier: '',
+      authAttemptChallengeRequired: false,
+      useCustomInvitationExpiry: false,
+      invitationExpiresLocal: '',
+    }),
+    [initialIntegrationId],
+  );
 
   const {
     register,
     handleSubmit,
     reset,
     getValues,
+    watch,
     formState: { errors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
-    defaultValues: {
-      authAttemptChallengeRequired: false,
-      integrationId: initialIntegrationId ?? '',
-    },
+    defaultValues: freshDefaults,
   });
+
+  useEffect(() => {
+    if (!open) return;
+    reset(freshDefaults);
+  }, [open, freshDefaults, reset]);
 
   const createMutation = useMutation({
     mutationFn: async (data: EnrollmentCreateRequestDto) => {
@@ -113,7 +163,7 @@ function EnrollmentCreateDialog({
 
   const handleClose = () => {
     if (qrCodeUrl) URL.revokeObjectURL(qrCodeUrl);
-    reset();
+    reset(freshDefaults);
     setCreatedEnrollment(null);
     setCreatedEnrollmentName(null);
     setQrCodeUrl(null);
@@ -123,14 +173,18 @@ function EnrollmentCreateDialog({
   };
 
   const onSubmit = (values: CreateFormValues) => {
-    createMutation.mutate({
+    const payload: EnrollmentCreateRequestDto = {
       integrationId: parseInt(values.integrationId, 10),
       name: values.name,
       authAttemptChallengeRequired: values.authAttemptChallengeRequired,
       contactEmail: values.contactEmail || undefined,
       contactPhoneNumber: normalizePhoneNumberInput(values.contactPhoneNumber),
       userIdentifier: values.userIdentifier || undefined,
-    });
+    };
+    if (values.useCustomInvitationExpiry && values.invitationExpiresLocal?.trim()) {
+      payload.expiresAt = new Date(values.invitationExpiresLocal.trim()).toISOString();
+    }
+    createMutation.mutate(payload);
   };
 
   // Revoke blob URL on unmount or when QR is hidden
@@ -210,6 +264,15 @@ function EnrollmentCreateDialog({
             </div>
           )}
 
+          {createdEnrollment.expiresAt != null && createdEnrollment.expiresAt !== '' && (
+            <div className="border-2 border-fg/30 p-3 bg-bg">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-1">
+                {t('create.invitationExpiresAt')}
+              </p>
+              <p className="text-sm font-medium">{formatDate(createdEnrollment.expiresAt)}</p>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={handleViewEnrollment}>
               {t('create.viewEnrollment')}
@@ -238,6 +301,8 @@ function EnrollmentCreateDialog({
                     reset({
                       ...preset.values,
                       integrationId: getValues('integrationId') || initialIntegrationId || '',
+                      useCustomInvitationExpiry: false,
+                      invitationExpiresLocal: '',
                     })
                   }
                 >
@@ -306,6 +371,35 @@ function EnrollmentCreateDialog({
               error={errors.userIdentifier?.message}
               {...register('userIdentifier')}
             />
+          </div>
+
+          {/* Invitation expiry (pending phase) */}
+          <div className="space-y-2 border-2 border-fg/20 p-3">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                id="enr-custom-invite-expiry"
+                type="checkbox"
+                className="mt-0.5 size-4 accent-accent"
+                {...register('useCustomInvitationExpiry')}
+              />
+              <div>
+                <p className="text-sm font-bold">{t('create.customInvitationExpiry')}</p>
+                <p className="text-xs text-fg-muted mt-0.5 leading-relaxed">
+                  {t('create.customInvitationExpiryHint')}
+                </p>
+              </div>
+            </label>
+            {watch('useCustomInvitationExpiry') && (
+              <div className="space-y-1 pt-1">
+                <Label htmlFor="enr-invite-exp">{t('create.invitationExpiryDatetime')}</Label>
+                <Input
+                  id="enr-invite-exp"
+                  type="datetime-local"
+                  error={errors.invitationExpiresLocal?.message}
+                  {...register('invitationExpiresLocal')}
+                />
+              </div>
+            )}
           </div>
 
           {/* Challenge required */}

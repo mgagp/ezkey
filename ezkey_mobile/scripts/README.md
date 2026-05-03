@@ -29,6 +29,8 @@ Requirements:
 
 This script is intended as a practical investigation aid, not as a formal cryptographic proof.
 
+**Pitfall:** One-liners such as `adb shell run-as … strings …/RKStorage | grep …` often exit with **255** and produce no useful output: the app UID sandbox typically does **not** ship `strings`, `sqlite3`, or a full `grep`. Prefer this script (host-side parsing via `adb exec-out`) or the flows in `docs/MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md`.
+
 ## `generate_android_launcher_icons.py`
 
 Rasters the repository root **`logo.svg`** into Android **`mipmap-*`** assets:

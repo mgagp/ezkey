@@ -1895,6 +1895,91 @@
         }
       }
     },
+    "/api/v1/audit-logs/lifecycle/incidents/{incidentId}/declare": {
+      "post": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Declare an audit-chain heartbeat incident closed",
+        "description": "Supplies justification and classified root cause for an incident in RECOVERED_PENDING_DECLARATION. Global Admin only.",
+        "operationId": "declareLifecycleIncident",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "description": "Incident identifier",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "example": 1
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclareAuditChainIncidentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Incident declared closed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditChainIncidentResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload or wrong incident state",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditChainIncidentResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditChainIncidentResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditChainIncidentResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Incident not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditChainIncidentResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit-logs/lifecycle/declare-gap": {
       "post": {
         "tags": [
@@ -4249,6 +4334,7 @@
                 "AUDIT_CHAIN_ARCHIVE_SEALED",
                 "AUDIT_CHAIN_ARCHIVE_EXPORTED",
                 "AUDIT_CHAIN_GAP_DECLARED",
+                "AUDIT_CHAIN_INCIDENT_DECLARED",
                 "ALERT_RAISED",
                 "ALERT_RESOLVED"
               ]
@@ -4627,6 +4713,89 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AuditLogContextResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs/lifecycle/incidents": {
+      "get": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "List audit-chain heartbeat incidents",
+        "description": "Paginated list of operational incidents raised when peripheral supervision detected stalled checkpoints (bounded unsupervised activity / degraded mode). Separate from GAP_DECLARATION checkpoints. Global Admin only.",
+        "operationId": "listLifecycleIncidents",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Incidents retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAuditChainIncidentResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAuditChainIncidentResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelAuditChainIncidentResponseDto"
                 }
               }
             }
@@ -5104,7 +5273,8 @@
             "schema": {
               "type": "string",
               "enum": [
-                "AUDIT_CHAIN_GAP_PENDING"
+                "AUDIT_CHAIN_GAP_PENDING",
+                "AUDIT_CHAIN_HEARTBEAT_STALE"
               ]
             }
           },
@@ -5484,6 +5654,38 @@
               "*/*": {
                 "schema": {
                   "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/auth/me": {
+      "get": {
+        "tags": [
+          "Admin Authentication"
+        ],
+        "summary": "Get current administrator session metadata",
+        "description": "Returns non-secret session metadata for the authenticated administrator. Browser cookie sessions also receive a non-secret CSRF token for unsafe requests.",
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "Current session metadata",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSessionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSessionResponseDto"
                 }
               }
             }
@@ -6173,6 +6375,95 @@
           }
         }
       },
+      "DeclareAuditChainIncidentRequest": {
+        "type": "object",
+        "properties": {
+          "justification": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10
+          },
+          "rootCause": {
+            "type": "string",
+            "enum": [
+              "ADMIN_API_DOWN",
+              "SCHEDULER_FAILURE",
+              "DB_UNAVAILABLE",
+              "NETWORK_PARTITION",
+              "MISCONFIGURATION",
+              "UNKNOWN"
+            ]
+          }
+        },
+        "required": [
+          "justification",
+          "rootCause"
+        ]
+      },
+      "AuditChainIncidentResponseDto": {
+        "type": "object",
+        "description": "Operational audit-chain heartbeat incident summary",
+        "properties": {
+          "incidentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "IN_PROGRESS",
+              "RECOVERED_PENDING_DECLARATION",
+              "CLOSED"
+            ]
+          },
+          "anchorCheckpointId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "staleSince": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "degradedSince": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recoveredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "justification": {
+            "type": "string"
+          },
+          "rootCause": {
+            "type": "string",
+            "enum": [
+              "ADMIN_API_DOWN",
+              "SCHEDULER_FAILURE",
+              "DB_UNAVAILABLE",
+              "NETWORK_PARTITION",
+              "MISCONFIGURATION",
+              "UNKNOWN"
+            ]
+          },
+          "declaredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "declaredByAdminId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "GapDeclarationRequest": {
         "type": "object",
         "properties": {
@@ -6630,6 +6921,10 @@
             "format": "int32",
             "description": "Tenant scope ID when the administrator is tenant- or integration-scoped; null for global administrators",
             "example": 3
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe requests. Present only in browser session cookie mode."
           }
         }
       },
@@ -7140,6 +7435,14 @@
             "description": "Tenant ID (null for global admins)",
             "example": 1
           },
+          "tenantName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Tenant display name from the tenant record (null for global administrators)",
+            "example": "Acme Corp"
+          },
           "enrollmentId": {
             "type": [
               "integer",
@@ -7188,12 +7491,6 @@
             "type": "boolean",
             "description": "Whether this administrator is fully operational (active and, for tenant admins, tenant also active)",
             "example": true
-          },
-          "tenantName": {
-            "type": "string",
-            "description": "Tenant display name from the tenant record (null for global administrators).",
-            "nullable": true,
-            "example": "Acme Corp"
           }
         }
       },
@@ -7541,7 +7838,8 @@
           "alertType": {
             "type": "string",
             "enum": [
-              "AUDIT_CHAIN_GAP_PENDING"
+              "AUDIT_CHAIN_GAP_PENDING",
+              "AUDIT_CHAIN_HEARTBEAT_STALE"
             ]
           },
           "severity": {
@@ -7887,6 +8185,7 @@
               "AUDIT_CHAIN_ARCHIVE_SEALED",
               "AUDIT_CHAIN_ARCHIVE_EXPORTED",
               "AUDIT_CHAIN_GAP_DECLARED",
+              "AUDIT_CHAIN_INCIDENT_DECLARED",
               "ALERT_RAISED",
               "ALERT_RESOLVED"
             ]
@@ -8020,6 +8319,20 @@
             "items": {
               "$ref": "#/components/schemas/AuditLogResponseDto"
             }
+          }
+        }
+      },
+      "PagedModelAuditChainIncidentResponseDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditChainIncidentResponseDto"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
           }
         }
       },
@@ -8235,7 +8548,8 @@
           "alertType": {
             "type": "string",
             "enum": [
-              "AUDIT_CHAIN_GAP_PENDING"
+              "AUDIT_CHAIN_GAP_PENDING",
+              "AUDIT_CHAIN_HEARTBEAT_STALE"
             ]
           },
           "severity": {
@@ -8284,6 +8598,7 @@
             "type": "string",
             "enum": [
               "GAP_DECLARED",
+              "HEARTBEAT_RESTORED",
               "MANUAL"
             ]
           }
@@ -8314,6 +8629,48 @@
           },
           "page": {
             "$ref": "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "AdminSessionResponseDto": {
+        "type": "object",
+        "description": "Current administrator session metadata",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "Administrator username",
+            "example": "admin"
+          },
+          "adminType": {
+            "type": "string",
+            "description": "Type of administrator",
+            "enum": [
+              "GLOBAL_ADMIN",
+              "TENANT_ADMIN",
+              "INTEGRATION_ADMIN"
+            ],
+            "example": "GLOBAL_ADMIN"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Current session expiration timestamp",
+            "example": "2026-04-28T14:00:00Z"
+          },
+          "adminId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Administrator ID for the authenticated session",
+            "example": 2
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant scope ID when applicable; null for global administrators"
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "Non-secret CSRF token to send in X-CSRF-TOKEN for cookie-authenticated unsafe requests"
           }
         }
       }

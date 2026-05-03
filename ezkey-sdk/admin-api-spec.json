@@ -6089,6 +6089,12 @@
           "userIdentifier": {
             "type": "string",
             "description": "Optional user identifier from the integrating application"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional invitation expiry (UTC instant). Pending phase only; must be in the future when set. Omit to use ezkey.enrollment.pending-expiration-days.",
+            "example": "2026-12-31T23:59:59Z"
           }
         },
         "required": [
@@ -6111,6 +6117,11 @@
             "format": "int32",
             "description": "Challenge number for enrollment verification",
             "example": 154982
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Invitation expiry (UTC) for the pending enrollment phase, when set on the server"
           }
         }
       },

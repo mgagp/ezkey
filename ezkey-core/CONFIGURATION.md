@@ -30,7 +30,7 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | `ezkey.organization.name` | — | `Ezkey System` | optionnel |
 | `ezkey.organization.about-url` | `EZKEY_ORGANIZATION_ABOUT_URL` | *(null)* | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
-| `ezkey.enrollment.pending-expiration-days` | — | *(null)* | optionnel |
+| `ezkey.enrollment.pending-expiration-days` | — | `7` | optionnel |
 | `ezkey.demo.mitm-signature-enabled` | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `false` | optionnel |
 | `ezkey.core.crypto.rsa-key-size` | — | `2048` | optionnel |
 | `ezkey.core.auth-attempt.challenge-digits` | — | `2` | optionnel |
@@ -263,7 +263,7 @@ enrollments. Used only by Admin API.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.enrollment.pending-expiration-days` | `Integer` | *(null)* | optionnel | Days after creation before a pending enrollment expires. `null` means no expiration. |
+| `ezkey.enrollment.pending-expiration-days` | `Integer` | `7` | optionnel | Days after creation before a pending enrollment expires when `POST /api/v1/enrollments` omits `expiresAt`. Use `0` to disable this default (explicit `expiresAt` on create still applies). |
 | `ezkey.enrollment.expired-cleanup-cron` | `String` | `0 0 1 * * ?` | optionnel | Cron expression for the job that marks expired enrollments and emits `ENROLLMENT_EXPIRED` events. |
 
 ---

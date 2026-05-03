@@ -10,6 +10,8 @@
 
 package org.ezkey.enrollment.domain;
 
+import java.time.OffsetDateTime;
+
 /**
  * Domain response object containing new enrollment initialization data.
  *
@@ -63,6 +65,12 @@ public class EnrollmentCreateResponse {
   private Integer enrollmentChallenge;
 
   /**
+   * Invitation expiry for the pending enrollment phase ({@code expires_at}), when set on the stored
+   * enrollment.
+   */
+  private OffsetDateTime expiresAt;
+
+  /**
    * Gets the unique identifier of the newly created enrollment.
    *
    * @return the enrollment ID
@@ -96,5 +104,23 @@ public class EnrollmentCreateResponse {
    */
   public void setEnrollmentChallenge(Integer enrollmentChallenge) {
     this.enrollmentChallenge = enrollmentChallenge;
+  }
+
+  /**
+   * Gets the invitation expiry instant for the pending enrollment phase, if any.
+   *
+   * @return expires at, or null when the enrollment has no invitation deadline
+   */
+  public OffsetDateTime getExpiresAt() {
+    return expiresAt;
+  }
+
+  /**
+   * Sets the invitation expiry instant returned to API clients after creation.
+   *
+   * @param expiresAt invitation expiry, or null
+   */
+  public void setExpiresAt(OffsetDateTime expiresAt) {
+    this.expiresAt = expiresAt;
   }
 }

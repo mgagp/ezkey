@@ -23,6 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.config.EnrollmentProperties;
@@ -392,6 +393,49 @@ class EnrollmentServiceTest {
   @DisplayName("create() - Should not set expiresAt when pendingExpirationDays is null")
   void create_WhenPendingExpirationDaysNull_ShouldNotSetExpiresAt() {
     when(enrollmentProperties.getPendingExpirationDays()).thenReturn(null);
+    when(signatureService.generateProofToken()).thenReturn("generated-proof-token");
+    when(signatureService.generateEd25519KeyPair()).thenReturn(ed25519KeyPair);
+    when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    enrollmentService.create(createRequest);
+
+    verify(enrollmentRepository).save(enrollmentCaptor.capture());
+    assertNull(enrollmentCaptor.getValue().getExpiresAt());
+  }
+
+  @Test
+  @DisplayName("create() - Should use explicit expiresAt when provided")
+  void create_WhenExpiresAtProvided_ShouldUseExplicitExpiry() {
+    OffsetDateTime explicit = OffsetDateTime.now().plusDays(14).truncatedTo(ChronoUnit.SECONDS);
+    createRequest.setExpiresAt(explicit);
+    when(enrollmentProperties.getPendingExpirationDays()).thenReturn(30);
+    when(signatureService.generateProofToken()).thenReturn("generated-proof-token");
+    when(signatureService.generateEd25519KeyPair()).thenReturn(ed25519KeyPair);
+    when(signatureService.generateSecureChallenge(6)).thenReturn(123456);
+    when(enrollmentRepository.save(any(Enrollment.class))).thenAnswer(i -> i.getArgument(0));
+
+    EnrollmentCreateResponse response = enrollmentService.create(createRequest);
+
+    verify(enrollmentRepository).save(enrollmentCaptor.capture());
+    Enrollment saved = enrollmentCaptor.getValue();
+    assertEquals(explicit, saved.getExpiresAt().truncatedTo(ChronoUnit.SECONDS));
+    assertEquals(explicit, response.getExpiresAt().truncatedTo(ChronoUnit.SECONDS));
+  }
+
+  @Test
+  @DisplayName("create() - Should reject expiresAt in the past")
+  void create_WhenExpiresAtInPast_ShouldThrowEnrollmentCreateValidationException() {
+    createRequest.setExpiresAt(OffsetDateTime.now().minusDays(1));
+    assertThrows(
+        EnrollmentCreateValidationException.class, () -> enrollmentService.create(createRequest));
+    verify(enrollmentRepository, never()).save(any(Enrollment.class));
+  }
+
+  @Test
+  @DisplayName("create() - Should not set expiresAt when pendingExpirationDays is zero")
+  void create_WhenPendingExpirationDaysZero_ShouldNotSetExpiresAt() {
+    when(enrollmentProperties.getPendingExpirationDays()).thenReturn(0);
     when(signatureService.generateProofToken()).thenReturn("generated-proof-token");
     when(signatureService.generateEd25519KeyPair()).thenReturn(ed25519KeyPair);
     when(signatureService.generateSecureChallenge(6)).thenReturn(123456);

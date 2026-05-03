@@ -449,10 +449,21 @@ public class EnrollmentService {
             : false);
     OffsetDateTime createdAt = OffsetDateTime.now();
     enrollment.setCreatedAt(createdAt);
-    if (enrollmentProperties.getPendingExpirationDays() != null
-        && enrollmentProperties.getPendingExpirationDays() > 0) {
-      enrollment.setExpiresAt(createdAt.plusDays(enrollmentProperties.getPendingExpirationDays()));
+
+    OffsetDateTime invitationExpiresAt = null;
+    if (request.getExpiresAt() != null) {
+      if (!request.getExpiresAt().isAfter(createdAt)) {
+        throw new EnrollmentCreateValidationException(
+            "expiresAt must be in the future. Got: " + request.getExpiresAt());
+      }
+      invitationExpiresAt = request.getExpiresAt();
+    } else {
+      Integer pendingDays = enrollmentProperties.getPendingExpirationDays();
+      if (pendingDays != null && pendingDays > 0) {
+        invitationExpiresAt = createdAt.plusDays(pendingDays);
+      }
     }
+    enrollment.setExpiresAt(invitationExpiresAt);
     enrollment.setContactEmail(
         request.getContactEmail() != null && !request.getContactEmail().isBlank()
             ? request.getContactEmail().trim()
@@ -475,6 +486,7 @@ public class EnrollmentService {
     EnrollmentCreateResponse response = new EnrollmentCreateResponse();
     response.setEnrollmentId(savedEnrollment.getEnrollmentId());
     response.setEnrollmentChallenge(savedEnrollment.getEnrollmentChallenge());
+    response.setExpiresAt(savedEnrollment.getExpiresAt());
     return response;
   }
 

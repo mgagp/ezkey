@@ -106,7 +106,7 @@ class EnrollmentControllerAuditTest {
 
   @BeforeEach
   void setUp() {
-    requestDto = new EnrollmentCreateRequestDto(1, "Test Enrollment", false, null, null, null);
+    requestDto = new EnrollmentCreateRequestDto(1, "Test Enrollment", false, null, null, null, null);
     createRequest = new EnrollmentCreateRequest();
     createRequest.setIntegrationId(1);
     createRequest.setName("Test Enrollment");
@@ -215,7 +215,7 @@ class EnrollmentControllerAuditTest {
 
     when(enrollmentService.create(createRequest)).thenReturn(createResponse);
     when(enrollmentMapper.toCreateResponseDto(any(EnrollmentCreateResponse.class)))
-        .thenReturn(new org.ezkey.enrollment.dto.EnrollmentCreateResponseDto(200, 123456));
+        .thenReturn(new org.ezkey.enrollment.dto.EnrollmentCreateResponseDto(200, 123456, null));
 
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
             eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
@@ -254,7 +254,7 @@ class EnrollmentControllerAuditTest {
 
     when(enrollmentService.create(createRequest)).thenReturn(createResponse);
     when(enrollmentMapper.toCreateResponseDto(any(EnrollmentCreateResponse.class)))
-        .thenReturn(new org.ezkey.enrollment.dto.EnrollmentCreateResponseDto(200, 123456));
+        .thenReturn(new org.ezkey.enrollment.dto.EnrollmentCreateResponseDto(200, 123456, null));
 
     when(enrollmentRepository.findByIntegrationIdAndEnrollmentNameAndStatus(
             eq(1), eq("Test Enrollment"), eq(EnrollmentStatus.VERIFIED)))
@@ -291,7 +291,7 @@ class EnrollmentControllerAuditTest {
     int missingIntegrationId = 99999;
     EnrollmentCreateRequestDto badDto =
         new EnrollmentCreateRequestDto(
-            missingIntegrationId, "Test Enrollment", false, null, null, null);
+            missingIntegrationId, "Test Enrollment", false, null, null, null, null);
     EnrollmentCreateRequest badCreate = new EnrollmentCreateRequest();
     badCreate.setIntegrationId(missingIntegrationId);
     badCreate.setName("Test Enrollment");
