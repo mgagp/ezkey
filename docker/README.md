@@ -434,7 +434,7 @@ All services use the `docker` Spring profile by default, which loads configurati
 
 **Optional: `docker-test` (Test Mode)**
 - Rate limiting disabled or very permissive (HTTP/API-key limits)
-- Peripheral audit-chain heartbeat supervision stays enabled on Auth API and Integration API unless explicitly overridden — stack integrity semantics match production docker profiles for checkpoint staleness gates
+- Peripheral audit-chain heartbeat supervision stays enabled on Auth API and Integration API unless explicitly overridden — stack integrity semantics match production docker profiles for checkpoint staleness gates (default thresholds align with **`latest.window_end + 9 minutes`** for five-minute checkpoints; see **`docs/AUDIT_LOG_INTEGRITY.md`**).
 - Allows unrestricted churn testing without 429 noise from rate limits
 - Useful for development and debugging
 

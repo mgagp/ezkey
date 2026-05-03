@@ -13,7 +13,7 @@
       "content": "Utilisez ces actions uniquement pour une maintenance exceptionnelle ou une récupération. La progression normale du lifecycle est pilotée par policy et exécutée par le système ; la posture principale de l'UI doit rester l'observabilité."
     },
     "incidents": {
-      "content": "Les incidents opérationnels décrivent des périodes où des entrées d'audit peuvent exister alors que la supervision périphérique a détecté des checkpoints bloqués (battement). Ils sont distincts de <strong>Déclarer une lacune</strong>, qui couvre une indisponibilité sans activité réelle. Déclarez la clôture ici après rétablissement lorsqu'un incident attend une justification."
+      "content": "Les incidents opérationnels enregistrent des checkpoints Admin API jugés bloqués par la supervision périphérique (battement). En configuration Docker par défaut, les périphériques refusent seulement les <strong>nouveaux travaux MFA</strong> (routes HTTP étroites — voir <strong>docs/AUDIT_LOG_INTEGRITY.md</strong>) après environ <strong>9 minutes au-delà du dernier <code>window_end</code> de checkpoint</strong> ; d'autres écritures d'audit peuvent continuer. Utilisez <strong>Déclarer une lacune</strong> pour les trous temporels <em>cryptographiques</em> non déclarés — un autre lifecycle. Après rétablissement, déclarez la clôture ici lorsqu'une justification est encore requise."
     },
     "checkpointTimeline": {
       "content": "Affiche les checkpoints de chaîne ; triez par <strong>Début de fenêtre</strong> pour voir les lignes de lacune (trous non déclarés entre checkpoints). Les autres tris n'affichent que les checkpoints. Utilisez ce tableau pour inspecter le type de checkpoint, l'état lifecycle et les limites d'anomalie."

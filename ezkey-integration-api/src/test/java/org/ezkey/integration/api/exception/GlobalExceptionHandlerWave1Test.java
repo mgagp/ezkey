@@ -9,7 +9,9 @@ package org.ezkey.integration.api.exception;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
 
+import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
@@ -23,7 +25,8 @@ import org.springframework.mock.web.MockHttpServletRequest;
 @DisplayName("Integration API GlobalExceptionHandler Wave 1")
 class GlobalExceptionHandlerWave1Test {
 
-  private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+  private final GlobalExceptionHandler handler =
+      new GlobalExceptionHandler(mock(AuditChainHeartbeatGuardService.class));
 
   @Test
   @DisplayName("Maps tenant inactive exception to HTTP 403")

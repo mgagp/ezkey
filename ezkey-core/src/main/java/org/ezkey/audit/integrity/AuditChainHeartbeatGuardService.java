@@ -15,11 +15,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Objects;
 import java.util.Optional;
 import org.ezkey.alert.domain.AlertResolutionReason;
 import org.ezkey.alert.domain.AlertSeverity;
 import org.ezkey.alert.domain.AlertType;
 import org.ezkey.alert.service.AlertService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -42,6 +45,8 @@ public class AuditChainHeartbeatGuardService {
   /** Dedupe key for singleton heartbeat-stale alerts across an outage episode. */
   public static final String HEARTBEAT_STALE_ALERT_DEDUPE_KEY = "AUDIT_CHAIN_HEARTBEAT_STALE";
 
+  private static final Logger LOG = LoggerFactory.getLogger(AuditChainHeartbeatGuardService.class);
+
   private static final AuditChainHeartbeatEvaluation ALWAYS_OK =
       new AuditChainHeartbeatEvaluation(AuditChainHeartbeatPhase.OK, null, null, null, null, false);
 
@@ -55,6 +60,9 @@ public class AuditChainHeartbeatGuardService {
 
   private volatile AuditChainHeartbeatEvaluation cachedEvaluation;
   private volatile Instant cacheExpiryMonotonic = Instant.EPOCH;
+
+  /** Last supervision phase emitted to application logs (transition-only diagnostics). */
+  private volatile AuditChainHeartbeatPhase lastLoggedPhase;
 
   private OffsetDateTime applicationStartedAt;
 
@@ -81,8 +89,62 @@ public class AuditChainHeartbeatGuardService {
   }
 
   @PostConstruct
-  void captureStartupTimestamp() {
+  void configureHeartbeatDiagnostics() {
     applicationStartedAt = OffsetDateTime.now(ZoneOffset.UTC);
+    validateHeartbeatConfiguration();
+  }
+
+  private void validateHeartbeatConfiguration() {
+    if (!heartbeatProperties.isEnabled()) {
+      LOG.info(
+          "Audit chain heartbeat supervision is disabled"
+              + " (ezkey.audit.chain.heartbeat.enabled=false)");
+      return;
+    }
+
+    int windowMinutes = chainProperties.getWindowMinutes();
+    if (windowMinutes <= 0) {
+      LOG.warn(
+          "Misconfigured audit-chain heartbeat: ezkey.audit.chain.window-minutes ({}) "
+              + "must be positive — peripheral supervision thresholds are unreliable",
+          windowMinutes);
+      return;
+    }
+
+    int graceWindowsConfigured = heartbeatProperties.getGraceWindows();
+    int graceWindows = Math.max(1, graceWindowsConfigured);
+
+    Duration stop = heartbeatProperties.getStopBeforeNextWindow();
+    if (stop == null || stop.isNegative()) {
+      stop = Duration.ofMinutes(1);
+    }
+    long stopMinutes = Math.max(0L, stop.toMinutes());
+
+    // After latest.window_end, fail-closed threshold is computed as:
+    // windowEnd + graceWindows*windowMinutes - stopBeforeNextWindow.
+    // Stale (unbounded-risk) supervision starts at windowEnd + windowMinutes.
+    // Prefer a strictly positive UNSUPERVISED_ACTIVITY interval: failClosedNotBefore >
+    // staleStartsAt.
+    boolean suspicious =
+        heartbeatThresholdsCollapseUnsupervisedWindow(windowMinutes, graceWindows, stopMinutes);
+
+    if (suspicious) {
+      LOG.warn(
+          "Audit chain heartbeat thresholds may behave poorly: ezkey.audit.chain.window-minutes={},"
+              + " effective grace-windows={}, ezkey.audit.chain.heartbeat.stop-before-next-window"
+              + " (~{} minute(s)) leaves little or no unsupervised cushion after first stale"
+              + " boundary — inspect ezkey-core CONFIGURATION docs for intended timing semantics",
+          windowMinutes,
+          graceWindows,
+          stopMinutes);
+    } else {
+      LOG.info(
+          "Audit chain heartbeat supervision thresholds: windowMinutes={}, grace-windows={}, "
+              + "stop-before-next-window~={} minute(s)",
+          windowMinutes,
+          graceWindowsConfigured,
+          stopMinutes);
+    }
   }
 
   /**
@@ -113,6 +175,8 @@ public class AuditChainHeartbeatGuardService {
       synchronized (incidentMonitor) {
         syncIncidentAndAlert(fresh);
       }
+
+      logPhaseTransitionIfNeeded(fresh);
 
       cachedEvaluation = fresh;
       Duration ttl = heartbeatProperties.getCacheTtl();
@@ -190,6 +254,40 @@ public class AuditChainHeartbeatGuardService {
 
     return new AuditChainHeartbeatEvaluation(
         phase, anchorId, windowEnd, staleStartsAt, failClosedNotBefore, peripheralFailClosed);
+  }
+
+  /**
+   * When thresholds leave no slack between staleness onset and earliest fail-closed time,
+   * peripherals may jump straight to degraded right after staleness begins.
+   */
+  static boolean heartbeatThresholdsCollapseUnsupervisedWindow(
+      long windowMinutes, int graceWindowsAtLeastOne, long stopBeforeNextWindowMinutes) {
+    long outerSpanMinutes = (long) graceWindowsAtLeastOne * windowMinutes;
+    long earliestFailClosedOffsetMinutes = outerSpanMinutes - stopBeforeNextWindowMinutes;
+    return earliestFailClosedOffsetMinutes <= windowMinutes;
+  }
+
+  /**
+   * Emits INFO log lines only when the derived supervision phase changes (reduces chatter under TTL
+   * cache churn).
+   */
+  private void logPhaseTransitionIfNeeded(AuditChainHeartbeatEvaluation fresh) {
+    AuditChainHeartbeatPhase previous = lastLoggedPhase;
+    if (Objects.equals(previous, fresh.phase())) {
+      return;
+    }
+    lastLoggedPhase = fresh.phase();
+
+    LOG.info(
+        "Audit chain heartbeat phase transition: {} -> {} (failClosed={}, anchorCheckpointId={}, "
+            + "latestWindowEnd={}, stalePhaseStartsAt={}, failClosedNotBefore={})",
+        previous == null ? "initial" : previous.name(),
+        fresh.phase(),
+        fresh.peripheralFailClosed(),
+        fresh.anchorCheckpointId(),
+        fresh.latestWindowEnd(),
+        fresh.stalePhaseStartsAt(),
+        fresh.failClosedNotBefore());
   }
 
   private void syncIncidentAndAlert(AuditChainHeartbeatEvaluation ev) {

@@ -251,6 +251,33 @@ When peripherals enter fail-closed mode they respond with **HTTP 503** and stabl
 | `ezkey.audit.chain.heartbeat.admin-evaluate-scheduler-enabled` | `boolean` | `true` | Admin API-only fixed-delay ping so incidents/alerts sync without peripheral traffic. |
 | `ezkey.audit.chain.heartbeat.admin-evaluate-fixed-delay-ms` | `long` | `30000` | Delay between Admin API heartbeat evaluations when scheduler enabled. |
 
+**How the timing math lines up with Docker defaults (`window-minutes=5`, `grace-windows=2`, `stop-before-next-window=PT1M`):**
+
+Relative to **`latest.window_end`** (exclusive end boundary of the most recent persisted checkpoint):
+
+- **OK:** `now < latest.window_end + window_minutes`. The next periodic checkpoint interval has not elapsed yet relative to anchoring semantics — peripherals still treat checkpoints as punctual.
+- **UNSUPERVISED_ACTIVITY:** starting at `latest.window_end + window_minutes` through `fail_closed_not_before_exclusive`, inclusive of the staleness onset but excluding the peripheral fail-close instant. Peripheral APIs **stay open** unless other controls apply.
+- **Earliest peripheral fail-close instant:**  
+  `fail_closed_not_before = latest.window_end + grace_windows × window_minutes − stop_before_next_window`  
+  For the defaults above, that is **`latest.window_end + 9 minutes`**. Peripheral HTTP fail-closing is evaluated from that instant onward whenever `heartbeat.enabled=true` **and** `heartbeat.required=true`.
+- **Operational reminder:** peripherals look only at **`latest.checkpoint` timestamps** combined with **`ezkey.audit.chain.window-minutes`**. Misaligned `window-minutes` across Admin API vs Auth API / Integration API produces false-positive fail-closes; Docker profiles intentionally pin **`5`** on all three.
+
+**Verifying cryptographic continuity across the last rolling hour:**
+
+1. **Chain integrity (includes temporal + crypto checks):** `GET /api/v1/audit-logs/chain-integrity?from=...&to=...` (Global Admin). Choose `from/to` spanning the observation window — for an informal “past 60 minutes” pass, bracket the UTC hour boundary you care about. `intact=true` implies both valid chain linkage/HMAC recomputation inside the queried coverage window **and** no undeclared gaps inside that bounded range interpretation (see temporal gap rules documented above for boundary semantics).
+
+2. **Checkpoint inventory:** complement with `GET /api/v1/audit-logs/chain-checkpoints?windowStartAfter=...` (pagination) when you expect **exactly twelve** contiguous `window_minutes` checkpoints for idle-but-healthy workloads during that hour — empty windows still checkpoint because `EMPTY_WINDOW` digests seal quiet periods.
+
+**Runtime diagnostics:**
+
+- Processes log `Audit chain heartbeat phase transition` at **INFO** only when supervision phase changes (`OK ↔ UNSERVISED_ACTIVITY ↔ DEGRADED_SERVICE` / bootstrapping).
+- On startup (`heartbeat.enabled=true`), `AuditChainHeartbeatGuardService` emits a WARN when derived thresholds collapse the UNSUPERVISED_ACTIVITY cushion (typically `grace-windows=1` with default `stop-before-next-window`).
+- Blocking interceptors/handlers log WARN lines with **`anchorCheckpointId`**, staleness timestamps, and the stable degraded problem **`type`** for each rejected peripheral request carrying new MFA work (`Auth API /pending`, `Integration API POST /auth-attempts`).
+- **Recommended operator drill (clean-start Docker):**
+  - **steady state (~10 min):** run **Chain integrity** for a bounded hour window and confirm checkpoints appear every **`window-minutes`** in **Chain checkpoints**.
+  - **simulated stalled Admin API:** pause only `admin-api`; after wall-clock time exceeds the derived peripheral fail-close threshold (**default ≈ `latest.window_end + 9 minutes` with five-minute windows**) expect peripheral **503 heartbeat-degraded**, an open **`AUDIT_CHAIN_HEARTBEAT_STALE`** alert, and an **`IN_PROGRESS`** heartbeat incident row; Auth API / Integration API logs emit phase transitions describing the move into **`DEGRADED_SERVICE`**.
+  - **recovery:** resume `admin-api` — once checkpoints advance again, alerts auto-resolve (**`HEARTBEAT_RESTORED`**), incidents advance to **`RECOVERED_PENDING_DECLARATION`** awaiting formal operator closure, and peripherals accept new MFA initiation traffic again.
+
 ---
 
 ## 4. API Endpoints Summary

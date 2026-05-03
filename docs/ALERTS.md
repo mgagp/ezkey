@@ -12,9 +12,9 @@ re-using the immutable audit chain as an alert queue.
   an **occurrenceCount**, and timestamps for `createdAt`, `lastSeenAt`, and (when applicable) `resolvedAt`.
 - While an alert is `OPEN`, identical conditions **touch** the existing alert (incrementing
   `occurrenceCount` and `lastSeenAt`) instead of creating duplicates.
-- Alerts are **auto-resolved** by their natural resolution path. For `AUDIT_CHAIN_GAP_PENDING`,
-  declaring the matching gap (`POST /api/v1/audit-logs/lifecycle/declare-gap`) resolves the alert with
-  reason `GAP_DECLARED`.
+- Alerts are **auto-resolved** by their natural resolution path. For example, `AUDIT_CHAIN_GAP_PENDING`
+  resolves via gap declaration (`POST /api/v1/audit-logs/lifecycle/declare-gap`, reason **`GAP_DECLARED`**),
+  and `AUDIT_CHAIN_HEARTBEAT_STALE` resolves automatically when checkpoints advance again (reason **`HEARTBEAT_RESTORED`**).
 - Alert lifecycle actions emit audit log entries (`ALERT_RAISED` on first creation, `ALERT_RESOLVED`
   on resolution) so the audit chain still records what happened — but the alert itself is **not** an
   audit row.
@@ -39,15 +39,18 @@ view at `/alerts/{alertId}`. The Dashboard alerts widget links into the same pag
 
 ## Producers
 
-Today the only producer is the audit-chain scheduler:
+Producers include **automated lifecycle checks** (`AuditChainScheduler`) and **checkpoint heartbeat supervision** (`AuditChainHeartbeatGuardService`):
 
-- `AUDIT_CHAIN_GAP_PENDING` — raised by `AuditChainScheduler` when an undeclared gap is detected
-  before the lookback window. Severity: `WARNING`. `dedupeKey = "AUDIT_CHAIN_GAP_PENDING:" + anchorCheckpointId`.
-  Payload (JSON string): `anchorCheckpointId`, `gapStart`, `estimatedGapEnd`, `estimatedGapMinutes`,
-  `message`.
+| Alert type | Raised by | `dedupeKey` | Severity | Typical resolution |
+|------------|-----------|-------------|---------|---------------------|
+| `AUDIT_CHAIN_GAP_PENDING` | `AuditChainScheduler` detects an undeclared temporal gap (`window_start`/`window_end` holes) spanning completed audit epochs | `"AUDIT_CHAIN_GAP_PENDING:" + anchorCheckpointId` | `WARNING` | Global Admin declares the gap (`POST /api/v1/audit-logs/lifecycle/declare-gap`). Auto-resolution reason `GAP_DECLARED`. |
+| `AUDIT_CHAIN_HEARTBEAT_STALE` | `AuditChainHeartbeatGuardService` observes peripheral-ready fail-closing because Admin API checkpoints stalled past grace semantics | Stable singleton **`AUDIT_CHAIN_HEARTBEAT_STALE`** (see [`AuditChainHeartbeatGuardService`](../ezkey-core/src/main/java/org/ezkey/audit/integrity/AuditChainHeartbeatGuardService.java)) | `WARNING` | A fresh advancing checkpoint restores heartbeat; subsystem auto-resolves with reason `HEARTBEAT_RESTORED`. Operators subsequently close **`RECOVERED_PENDING_DECLARATION`** incidents via lifecycle APIs. |
 
-`AuditLifecycleService.declareGap` resolves the matching open alert by dedupe key when a gap is
-formally declared.
+`AUDIT_CHAIN_GAP_PENDING` payload (JSON string): `anchorCheckpointId`, `gapStart`, `estimatedGapEnd`, `estimatedGapMinutes`, `message`.
+
+`AUDIT_CHAIN_HEARTBEAT_STALE` payload (JSON string): `phase`, `anchorCheckpointId`, `latestWindowEnd`.
+
+`AuditLifecycleService.declareGap` resolves matching `AUDIT_CHAIN_GAP_PENDING` alerts by anchor dedupe key when a gap is formally declared.
 
 ## Adding a new alert type
 

@@ -14,6 +14,8 @@ package org.ezkey.integration.api.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.OffsetDateTime;
+import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
+import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.EnrollmentInactiveException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.TenantInactiveException;
@@ -74,6 +76,18 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
   private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+  private final AuditChainHeartbeatGuardService auditChainHeartbeatGuardService;
+
+  /**
+   * Creates the global Integration API exception handler.
+   *
+   * @param heartbeatGuardService guard used for heartbeat-degraded diagnostic context on 503
+   *     responses
+   */
+  public GlobalExceptionHandler(AuditChainHeartbeatGuardService heartbeatGuardService) {
+    this.auditChainHeartbeatGuardService = heartbeatGuardService;
+  }
 
   /**
    * Handles EnrollmentInactiveException and returns HTTP 403 Forbidden.
@@ -244,9 +258,17 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(AuditChainHeartbeatDegradedException.class)
   public ResponseEntity<ProblemDetail> handleAuditChainHeartbeatDegraded(
       AuditChainHeartbeatDegradedException ex, HttpServletRequest request) {
+    AuditChainHeartbeatEvaluation ev = auditChainHeartbeatGuardService.evaluate();
     logger.warn(
-        "Integration API: audit chain heartbeat degraded (fail-closed create), path={}",
-        request.getRequestURI());
+        "Integration API 503 heartbeat-degraded (path={}, phase={}, anchorCheckpointId={}, "
+            + "latestWindowEnd={}, stalePhaseStartsAt={}, failClosedNotBefore={}, "
+            + "problemType=https://ezkey.io/problems/system/audit-chain-heartbeat-degraded)",
+        request.getRequestURI(),
+        ev.phase(),
+        ev.anchorCheckpointId(),
+        ev.latestWindowEnd(),
+        ev.stalePhaseStartsAt(),
+        ev.failClosedNotBefore());
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(
             HttpStatus.SERVICE_UNAVAILABLE,

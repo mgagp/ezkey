@@ -9,6 +9,8 @@ package org.ezkey.exception;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
+import org.ezkey.audit.integrity.AuditChainHeartbeatEvaluation;
+import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
 import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
@@ -42,6 +44,18 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+  private final AuditChainHeartbeatGuardService auditChainHeartbeatGuardService;
+
+  /**
+   * Creates the global Auth API exception handler.
+   *
+   * @param auditChainHeartbeatGuardService guard used for heartbeat-degraded diagnostic context on
+   *     503 responses
+   */
+  public GlobalExceptionHandler(AuditChainHeartbeatGuardService auditChainHeartbeatGuardService) {
+    this.auditChainHeartbeatGuardService = auditChainHeartbeatGuardService;
+  }
 
   private static String pathFrom(WebRequest request) {
     return request.getDescription(false).replace("uri=", "");
@@ -262,14 +276,25 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
   @ExceptionHandler(AuditChainHeartbeatDegradedException.class)
   public ResponseEntity<ProblemDetail> handleAuditChainHeartbeatDegraded(
       AuditChainHeartbeatDegradedException ex, WebRequest request) {
-    LOG.warn("Audit chain heartbeat degraded (fail-closed peripheral write)");
+    String path = pathFrom(request);
+    AuditChainHeartbeatEvaluation ev = auditChainHeartbeatGuardService.evaluate();
+    LOG.warn(
+        "Auth API 503 heartbeat-degraded (path={}, phase={}, anchorCheckpointId={},"
+            + " latestWindowEnd={}, stalePhaseStartsAt={}, failClosedNotBefore={},"
+            + " problemType=https://ezkey.io/problems/system/audit-chain-heartbeat-degraded)",
+        path,
+        ev.phase(),
+        ev.anchorCheckpointId(),
+        ev.latestWindowEnd(),
+        ev.stalePhaseStartsAt(),
+        ev.failClosedNotBefore());
     ProblemDetail problem =
         ProblemDetail.forStatusAndDetail(
             HttpStatus.SERVICE_UNAVAILABLE,
             AuthApiProblemCatalog.DETAIL_AUDIT_CHAIN_HEARTBEAT_DEGRADED);
     problem.setType(URI.create(AuthApiProblemCatalog.TYPE_AUDIT_CHAIN_HEARTBEAT_DEGRADED));
     problem.setTitle(AuthApiProblemCatalog.TITLE_SERVICE_UNAVAILABLE);
-    problem.setProperty("path", pathFrom(request));
+    problem.setProperty("path", path);
     problem.setProperty("timestamp", OffsetDateTime.now().toString());
     return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
         .header(HttpHeaders.RETRY_AFTER, "60")

@@ -12,6 +12,36 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ## ✅ Archived Plans
 
+### 2026-05 - Audit chain heartbeat clarity
+
+**Completion Date:** May 2, 2026  
+**Status:** ✅ **COMPLETED** (logging, docs, peripheral handlers, tests; builds on the 2026-04 heartbeat dossier)
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-05/audit_chain_heartbeat_clarity_d4a8b2c1.plan.md** | Clarify ~5m/~9m heartbeat semantics for operators; startup threshold sanity; transition + blocked-request WARN logs; CONFIGURATION + integrity/alert/endpoint docs; minimal Admin UI incidents copy; guard unit tests | ✅ Completed |
+
+**What was implemented (summary):**
+
+- `AuditChainHeartbeatGuardService`: startup validation, collapsed-threshold warning, phase transition INFO only; incidents/alerts unchanged in role.
+- `AuditChainHeartbeatPeripheralInterceptor`: WARN with path/phase/checkpoint correlation before fail-closed.
+- Auth + Integration `GlobalExceptionHandler`: heartbeat 503 diagnostics; Checkstyle-safe imports + constructor Javadoc summary.
+- Documentation and EN/FR audit-logs help text aligned with the clarified supervision model.
+
+**Related prior plan:** [.cursor/plans/archived/2026-04/audit_chain_heartbeat_20b04a41.plan.md](2026-04/audit_chain_heartbeat_20b04a41.plan.md).
+
+---
+
+### 2026-05 - Other plans archived this month
+
+| File | Purpose | Status |
+|------|---------|--------|
+| **2026-05/audit_log_timestamps_38aab43b.plan.md** | Audit log list/detail absolute timezone-explicit timestamps for incident correlation | ✅ Completed |
+| **2026-05/ezkey-doc-system_f1e8054a.plan.md** | Spec-first `product-docs` system (global + component packs) | ✅ Completed |
+| **2026-05/admin_ui_lint_cleanup_2e576db8.plan.md** | Admin UI ESLint remediation + diagnostics | ✅ Completed |
+
+---
+
 ### 2026-04 - Quiet 404 / missing-route handling (no ERROR log noise)
 
 **Completion Date:** April 18, 2026  

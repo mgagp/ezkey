@@ -444,9 +444,11 @@ Too many login attempts. Please try again later.
 
 See [AUDIT_LOG_INTEGRITY.md](AUDIT_LOG_INTEGRITY.md) for integrity verification, lifecycle observability, archive confirmation, heartbeat supervision, and exceptional maintenance endpoints.
 
-**Auth API degraded mode (heartbeat fail-closed):** When supervision blocks **new pending polling**, `POST /api/v1/auth-attempts/pending` returns **503 Service Unavailable** with RFC 9457 type `https://ezkey.io/problems/system/audit-chain-heartbeat-degraded` and **`Retry-After: 60`**.
+**Peripheral degraded mode — audit-chain heartbeat fail-closed (Auth API / Integration API):**
 
-**Integration API degraded mode:** `POST /api/v1/auth-attempts` (create attempt) returns the same **503** contract when heartbeat supervision requires blocking new MFA work.
+- **Scope intentionally narrow:** `AuditChainHeartbeatPeripheralInterceptor` only blocks **`POST /api/v1/auth-attempts/pending`** (Auth API — “new pending claim / polling that starts work”) and **`POST /api/v1/auth-attempts`** (Integration API — “create MFA attempt”).
+- **`POST /api/v1/auth-attempts/respond`**, **enrollment binds/verify**, **wait**, **cancel**, and Integration API retrieval endpoints continue to behave normally even while supervision is degraded — this matches the product posture “finish in-flight work, stop starting new MFA” without accidentally freezing device responses attached to attempts already minted earlier.
+- **HTTP contract:** impacted routes respond **503 Service Unavailable** with RFC 9457 type **`https://ezkey.io/problems/system/audit-chain-heartbeat-degraded`** and **`Retry-After: 60`** whenever `ezkey.audit.chain.heartbeat.enabled=true` **and** `required=true`, and checkpoints appear stalled relative to **`latest.window_end` + grace thresholds** documented in [**AUDIT_LOG_INTEGRITY.md**](AUDIT_LOG_INTEGRITY.md).
 
 ---
 

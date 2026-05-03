@@ -13,7 +13,7 @@
       "content": "Use these actions only for exceptional maintenance or recovery. Normal lifecycle progression is policy-driven and system-executed; the primary UI posture is observability, not manual lifecycle orchestration."
     },
     "incidents": {
-      "content": "Operational incidents explain periods where audit entries may exist but peripheral supervision detected stalled checkpoints (heartbeat). They are separate from <strong>Declare gap</strong>, which covers true no-activity downtime. Declare closure here after recovery when an incident awaits justification."
+      "content": "Operational incidents record stalled Admin API checkpoints as seen by peripheral supervision (heartbeat). With default Docker settings, peripherals refuse only <strong>new MFA work</strong> (narrow HTTP routes — see <strong>docs/AUDIT_LOG_INTEGRITY.md</strong>) after about <strong>9 minutes beyond the latest checkpoint <code>window_end</code></strong>; audit rows elsewhere may continue. Use <strong>Declare gap</strong> for undeclared <em>cryptographic</em> time holes — a different lifecycle. After recovery, declare closure here whenever an incident still awaits justification."
     },
     "checkpointTimeline": {
       "content": "Lists chain checkpoints; sort by <strong>Window start</strong> to see inline gap rows (undeclared holes between checkpoints). Other sorts show checkpoints only. Use this table to inspect checkpoint type, lifecycle state, and anomaly boundaries."

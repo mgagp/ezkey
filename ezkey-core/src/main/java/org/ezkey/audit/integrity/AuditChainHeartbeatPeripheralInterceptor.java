@@ -13,6 +13,8 @@ package org.ezkey.audit.integrity;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.ezkey.exception.audit.AuditChainHeartbeatDegradedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -30,6 +32,9 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * @since 2026
  */
 public class AuditChainHeartbeatPeripheralInterceptor implements HandlerInterceptor {
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(AuditChainHeartbeatPeripheralInterceptor.class);
 
   private final AuditChainHeartbeatGuardService guardService;
 
@@ -64,6 +69,19 @@ public class AuditChainHeartbeatPeripheralInterceptor implements HandlerIntercep
     if (!blockAuthPending && !blockIntegrationCreate) {
       return true;
     }
+
+    AuditChainHeartbeatEvaluation diagnostic = guardService.evaluate();
+    LOG.warn(
+        "Peripheral MFA request blocked — audit-chain heartbeat fail-closed (path={}, phase={},"
+            + " anchorCheckpointId={}, latestWindowEnd={}, stalePhaseStartsAt={},"
+            + " failClosedNotBefore={}, "
+            + "problemType=https://ezkey.io/problems/system/audit-chain-heartbeat-degraded)",
+        path,
+        diagnostic.phase(),
+        diagnostic.anchorCheckpointId(),
+        diagnostic.latestWindowEnd(),
+        diagnostic.stalePhaseStartsAt(),
+        diagnostic.failClosedNotBefore());
 
     throw new AuditChainHeartbeatDegradedException();
   }

@@ -174,6 +174,9 @@ Auth API and Integration API set `ezkey.audit.chain.enabled=false`.
 | `ezkey.audit.chain.enabled` | `boolean` | `true` | optionnel | Enable/disable chain checkpoint job. Set to `false` in Auth API and Integration API. |
 | `ezkey.audit.chain.window-minutes` | `int` | `5` | optionnel | Time window size in minutes for each checkpoint. |
 | `ezkey.audit.chain.lookback-minutes` | `int` | `60` | optionnel | Lookback window in minutes for catch-up after restarts. |
+| `ezkey.audit.chain.cron` | `String` | `0 */5 * * * ?` | optionnel | Quartz-style cron controlling how often **`AuditChainScheduler`** attempts catch-up checkpoints (runs **only when** `enabled=true`; Admin API Docker profile sets this explicitly — see [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md)). |
+
+**Derived peripheral timing reminder:** Auth API / Integration APIs compute earliest peripheral HTTP fail-close time as **`latest.window_end + grace_windows × window_minutes − stop_before_next_window`** (see **`ezkey.audit.chain.heartbeat.*`** plus [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md)). Keeping **`window-minutes`** identical everywhere guards against configuration-driven false positives.
 
 **Multi-instance coherence (Admin API vs peripheral APIs)**
 
@@ -191,7 +194,7 @@ Grace durations are expressed as multiples of **`ezkey.audit.chain.window-minute
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.chain.heartbeat.enabled` | `boolean` | `true` | optionnel | Master enable for heartbeat evaluation and MVC interceptor registration in peripherals. |
+| `ezkey.audit.chain.heartbeat.enabled` | `boolean` | `true` | optionnel | Master toggle for **`AuditChainHeartbeatGuardService`** (when `false`, evaluation short-circuits to OK and MVC interceptors no-op — incidents/alerts likewise silent). |
 | `ezkey.audit.chain.heartbeat.required` | `boolean` | `true` | optionnel | When `false`, peripherals never HTTP-block — local troubleshooting only (not for shared stacks). |
 | `ezkey.audit.chain.heartbeat.grace-windows` | `int` | `2` | optionnel | Checkpoint-window multiples after `latest.window_end` forming outer supervision boundary. |
 | `ezkey.audit.chain.heartbeat.stop-before-next-window` | `Duration` | `PT1M` | optionnel | Safety buffer subtracted before fail-closed threshold. |

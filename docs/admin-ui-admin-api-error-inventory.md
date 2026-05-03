@@ -46,3 +46,13 @@ These are allowlisted in `shouldPreferI18nOverDetail` because messages are fixed
 ## Maintenance
 
 When adding a new problem `type` in **ezkey-admin-api**, add matching keys under `errors` in **en** and **fr**, and update this table if the type is user-visible from the Admin UI.
+
+## Peripheral API problem types (`Auth API` / `Integration API`)
+
+These URIs originate from **`ezkey-auth-api`** / **`ezkey-integration-api`** (mobile + machine clients), not **`ezkey-admin-api`**.
+
+| Stable `type` URI suffix | Typical HTTP status | Typical consumer | Translation posture |
+|---|---|---|---|
+| `system/audit-chain-heartbeat-degraded` | `503 Service Unavailable` | Mobile MFA polling (`Auth API /pending`), Integrations minting MFA attempts (`Integration API POST /auth-attempts`) | **Admin UI catalogs usually omit** unless we later surface delegated integration telemetry — track server logs + alerts (`AUDIT_CHAIN_HEARTBEAT_STALE`) + lifecycle incidents (`/api/v1/audit-logs/lifecycle/incidents`). Response includes **`Retry-After` header (60 seconds)** aligned with degraded guidance. |
+
+See [`docs/AUDIT_LOG_INTEGRITY.md`](AUDIT_LOG_INTEGRITY.md) and [`docs/ENDPOINT.md`](ENDPOINT.md) for semantics of heartbeat supervision vs declared gaps.

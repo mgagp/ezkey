@@ -9,8 +9,10 @@ package org.ezkey.exception;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
 
 import java.net.URI;
+import org.ezkey.audit.integrity.AuditChainHeartbeatGuardService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -29,7 +31,8 @@ class GlobalExceptionHandlerNotFoundMvcTest {
   @Test
   @DisplayName("NoResourceFoundException maps to 404 ProblemDetail with catalog-safe detail")
   void noResourceFound_mapsTo404() {
-    GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    GlobalExceptionHandler handler =
+        new GlobalExceptionHandler(mock(AuditChainHeartbeatGuardService.class));
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setRequestURI("/probe");
 
@@ -50,7 +53,8 @@ class GlobalExceptionHandlerNotFoundMvcTest {
   @Test
   @DisplayName("NoHandlerFoundException maps to 404 ProblemDetail")
   void noHandlerFound_mapsTo404() {
-    GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    GlobalExceptionHandler handler =
+        new GlobalExceptionHandler(mock(AuditChainHeartbeatGuardService.class));
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setRequestURI("/nope");
 

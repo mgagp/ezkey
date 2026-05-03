@@ -34,7 +34,10 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "ezkey.audit.chain.heartbeat")
 public class AuditChainHeartbeatProperties {
 
-  /** When false, heartbeat guards are not registered (development convenience). */
+  /**
+   * When false, heartbeat evaluation short-circuits to OK ({@link
+   * AuditChainHeartbeatGuardService}).
+   */
   private boolean enabled = true;
 
   /** When false, heartbeat evaluation runs but peripheral servlet filters never block requests. */
