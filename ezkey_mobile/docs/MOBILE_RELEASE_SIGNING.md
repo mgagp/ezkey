@@ -86,17 +86,24 @@ release mode, it is almost always a missing ProGuard `-keep` rule; add it to
 
 ## 5. Version bumping
 
-Edit **`ezkey_mobile/android/app/build.gradle`** and bump both fields together
-before each Play Store upload:
+Edit **`ezkey_mobile/package.json`** and bump the semantic version there before each
+Play Store upload. Android `versionName` is injected from that file during the build,
+so `package.json` is the human-readable source of truth:
 
 ```gradle
 versionCode 2     // monotonically increasing integer; +1 per upload
-versionName "1.0.1"  // semver string shown to users (also surfaced in About screen)
 ```
 
-Also bump the matching field in **`ezkey_mobile/package.json`** (`version`) so
-that the in-app About screen and the Android `versionName` stay in lockstep —
-the About screen reads `package.json` as the source of truth.
+Then update **`ezkey_mobile/android/app/build.gradle`** only for the Android-specific
+counter:
+
+```gradle
+versionCode 2
+```
+
+Example: if `package.json` contains `"version": "1.0.1"`, Android will package
+that same value as `versionName`, and the About screen will surface `1.0.1` from
+the same source.
 
 > Play Console rejects an AAB whose `versionCode` is not strictly greater than
 > the previously published one in the same track.

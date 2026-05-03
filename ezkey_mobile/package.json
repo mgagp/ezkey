@@ -1,6 +1,6 @@
 {
   "name": "ezkey-mobile",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "yarn@4.10.3",
   "scripts": {

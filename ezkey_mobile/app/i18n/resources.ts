@@ -32,7 +32,7 @@ export const resources = {
       },
       releaseNotes: {
         accessibilityLabel: 'What is new in Ezkey Mobile',
-        eyebrow: 'Version 1.0',
+        eyebrow: 'Experimental release',
         title: 'First experimental release',
         intro: 'Ezkey Mobile is now available for a limited experimental audience.',
         siteLinkText: 'Read the article and activation guide on ezkey.org',
@@ -299,7 +299,7 @@ export const resources = {
       },
       releaseNotes: {
         accessibilityLabel: 'Nouveautés de Ezkey Mobile',
-        eyebrow: 'Version 1.0',
+        eyebrow: 'Version expérimentale',
         title: 'Première version expérimentale',
         intro: 'Ezkey Mobile est maintenant disponible pour un auditoire expérimental limité.',
         siteLinkText: 'Lire l’article et le guide d’activation sur ezkey.org',

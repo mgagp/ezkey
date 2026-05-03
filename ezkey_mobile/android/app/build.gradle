@@ -3,6 +3,8 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply from: project(":react-native-config").projectDir.getPath() + "/dotenv.gradle"
 
+import groovy.json.JsonSlurper
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -109,6 +111,9 @@ def releaseSigningProps = {
  */
 def jscFlavor = 'org.webkit:android-jsc:+'
 
+def packageJson = new JsonSlurper().parse(file("$rootDir/../package.json"))
+def appVersionName = packageJson.version
+
 /** When false, debug builds behave like offline installs: JS from APK assets only (no Metro). */
 def ezkeyUseMetroInDebug =
         (project.findProperty("ezkey.useMetroInDebug") ?: "false").toString().toBoolean()
@@ -128,7 +133,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName appVersionName
         def buildTimeUtc = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
         buildTimeUtc.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
         buildConfigField "String", "BUILD_TIMESTAMP", "\"${buildTimeUtc.format(new Date())}\""
