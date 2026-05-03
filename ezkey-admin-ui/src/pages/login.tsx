@@ -74,6 +74,7 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
     defaultValues: loginDefaults,
   });
+  const challengeRequested = watch('challengeRequested');
 
   /** Passwordless vs public fallback funnels. */
   const [authFlow, setAuthFlow] = useState<'passwordless' | 'recovery' | 'activation'>(
@@ -414,6 +415,7 @@ export default function LoginPage() {
                   type="checkbox"
                   data-testid="login-challenge-toggle"
                   className="size-4 border-2 border-sidebar-bg accent-sidebar-bg cursor-pointer"
+                  aria-checked={challengeRequested}
                   {...register('challengeRequested')}
                 />
                 <label

@@ -98,9 +98,9 @@
         </div>
       </div>
       
-      <!-- Messages -->
-      <div th:if="${message}" class="message message-info" data-testid="demo-device-auth-message" th:text="${message}">No pending authentication requests</div>
-      <div th:if="${error}" class="message message-error" data-testid="demo-device-auth-error" th:text="${error}">Error message</div>
+      <!-- Messages — aria-live helps AT / automation snapshot tools notice idle ↔ pending transitions after reload -->
+      <div th:if="${message}" class="message message-info" data-testid="demo-device-auth-message" th:text="${message}" aria-live="polite" aria-atomic="true">No pending authentication requests</div>
+      <div th:if="${error}" class="message message-error" data-testid="demo-device-auth-error" th:text="${error}" aria-live="polite" aria-atomic="true">Error message</div>
       
       <!-- Action Buttons -->
       <div class="mt-auto">

@@ -256,6 +256,15 @@ Use **start.sh** to build and run the Admin UI in Docker:
 - Do **not** default to running browser tests for every minor UI text or layout tweak.
 - Keep instrumentation **secondary**. The default path should continue to exercise the real Docker stack and real Demo Device behavior.
 
+### Cursor IDE browser (MCP) spot checks
+
+Agents using the embedded browser tools should mirror the **same sequencing as Playwright**, not invent a parallel protocol:
+
+- After `browser_navigate`, take **`browser_snapshot` with `interactive: true`** when you need clickable element refs; a non-interactive snapshot can look nearly empty on first paint.
+- **Passwordless login + Demo Device**: drive `POST` login from the Admin UI, wait until the UI shows the waiting state, then on the Demo Device open **`/phone/ezkey/enrollments/{id}/auth`** (same pattern as `e2e/support/auth-flow.ts`: repeated navigations / reloads until the pending shell appears). Relying only on a single “Check for Authentication Requests” click may not refresh the accessibility tree the way a full navigation does in every runtime.
+- URLs and ports match the Playwright harness: Admin UI (`EZKEY_ADMIN_UI_URL`, often dev `http://127.0.0.1:5173` or preview `http://127.0.0.1:4173`), Demo Device (`EZKEY_DEMO_DEVICE_URL`, default `http://127.0.0.1:8083`), bootstrap admin **`admin.docker`** (`EZKEY_ADMIN_UI_TEST_USERNAME`).
+- When MCP proves flaky, treat **`./scripts/run-ui-tests.sh`** (or `PLAYWRIGHT_SKIP_WEBSERVER=1` against an already-running dev server) as the **ground-truth** device-backed check.
+
 ### Autonomy and recommendations
 
 - For UI changes with meaningful workflow risk, do not stop at "browser tests exist" — explicitly judge whether:
