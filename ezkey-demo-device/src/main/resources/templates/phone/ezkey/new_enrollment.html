@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title th:text="${pageTitle}">New Enrollment</title>
-  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
   <style>
     body { min-height: 100vh; display: grid; place-items: center; background:#f2f2f2; padding:1.5rem; }
     .app-shell { width: 380px; height: 780px; border-radius: 36px; background:#0a0a0a; color:#f5f5f7; position: relative; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,.35); }
@@ -54,7 +54,23 @@
       margin-top: 12px;
     }
     .btn-secondary:hover { background: rgba(255,255,255,.15); }
-    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; }
+    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; display: block; text-decoration: none; color: inherit; }
+    .btn-secondary-link {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 12px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+    .btn-secondary-link:hover { background: rgba(255,255,255,.15); color: #fff; }
     .qr-import-section { margin-bottom: 20px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px dashed rgba(255,255,255,.2); }
     .qr-import-label { font-size: 0.9rem; color: #ccc; margin-bottom: 8px; display: block; }
     .qr-drop-zone {
@@ -67,15 +83,14 @@
       background: rgba(220, 53, 69, 0.2); border: 1px solid rgba(220, 53, 69, 0.35); color: #f8a8b3; }
     .qr-import-warning { display: none; margin-top: 10px; padding: 10px 12px; border-radius: 12px; font-size: 0.8rem;
       background: rgba(255, 193, 7, 0.12); border: 1px solid rgba(255, 193, 7, 0.35); color: #ffd666; }
+    .qr-import-success { display: none; margin-top: 10px; padding: 10px 12px; border-radius: 12px; font-size: 0.85rem;
+      background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.35); color: #6be89b; }
     #qrImportPreview { margin-top: 10px; text-align: center; min-height: 0; }
     .qr-import-preview-img { max-width: 100%; max-height: 120px; object-fit: contain; border-radius: 8px; }
   </style>
-  <script>
-    function exitToSetup(){ window.location.href = '/phone/ezkey'; }
-  </script>
 </head>
 <body th:attr="data-auth-api-base=${configuredAuthApiBase}">
-  <div class="app-shell">
+  <div class="app-shell" data-testid="demo-device-new-enrollment-screen">
     <div class="status-bar">
       <div>Ezkey</div>
       <div>9:41</div>
@@ -86,35 +101,40 @@
         <div class="text-muted" style="font-size:.85rem; opacity:.8;">Enter enrollment ID and proof token from a <strong>newly created</strong> enrollment (Admin UI). Already-bound enrollments cannot be bound again.</div>
       </div>
       <div class="form-container">
-        <div class="qr-import-section">
+        <div class="qr-import-section" data-testid="demo-device-qr-import-section">
           <span class="qr-import-label">Import from QR image (optional)</span>
-          <div id="qrDropZone" class="qr-drop-zone" title="Drop a screenshot, click to choose a file, or paste an image">
+          <div id="qrDropZone" class="qr-drop-zone" tabindex="0" role="button" aria-label="Import enrollment QR from image" data-testid="demo-device-qr-drop-zone" title="Drop a screenshot, click to choose a file, or paste an image">
             Drop a screenshot here, click to browse, or paste (Ctrl+V) an image of the enrollment QR from the Admin UI.
           </div>
           <input type="file" id="qrFileInput" accept="image/*" hidden>
-          <div id="qrImportPreview"></div>
+          <div id="qrImportPreview" data-testid="demo-device-qr-import-preview"></div>
+          <div id="qrImportSuccess" class="qr-import-success" role="status" data-testid="demo-device-qr-import-success"></div>
           <div id="qrImportError" class="qr-import-error" role="alert"></div>
           <div id="qrImportWarning" class="qr-import-warning" role="status"></div>
           <p class="qr-import-hint">Clipboard paste works when the image is on the clipboard (e.g. Snipping Tool). If decoding fails, use manual entry below.</p>
         </div>
-        <form action="/phone/ezkey/enrollment/bind" method="post">
+        <form action="/phone/ezkey/enrollment/bind" method="post" data-testid="demo-device-new-enrollment-form">
           <div class="form-group">
             <label for="enrollmentId" class="form-label">Enrollment ID</label>
-            <input type="number" id="enrollmentId" name="enrollmentId" class="form-input" placeholder="Enter enrollment ID" required>
+            <input type="number" id="enrollmentId" name="enrollmentId" class="form-input" placeholder="Enter enrollment ID" required data-testid="demo-device-enrollment-id-input">
           </div>
           <div class="form-group">
             <label for="enrollmentProofToken" class="form-label">Enrollment Proof Token</label>
-            <input type="text" id="enrollmentProofToken" name="enrollmentProofToken" class="form-input" placeholder="Enter enrollment proof token" required>
+            <input type="text" id="enrollmentProofToken" name="enrollmentProofToken" class="form-input" placeholder="Enter enrollment proof token" required data-testid="demo-device-enrollment-token-input">
             <div style="font-size: 0.8rem; color: #888; margin-top: 4px;">
               The proof token provided during enrollment creation
             </div>
           </div>
-          <button type="submit" class="btn-primary">Start Enrollment</button>
+          <button type="submit" class="btn-primary" data-testid="demo-device-start-enrollment">Start Enrollment</button>
         </form>
-        <button class="btn-secondary" onclick="exitToSetup()">Cancel</button>
+        <a th:href="@{/phone/ezkey}" class="btn-secondary-link" data-testid="demo-device-new-enrollment-cancel">Cancel</a>
       </div>
     </div>
-    <div class="side-exit" onclick="exitToSetup()" title="Exit"></div>
+    <a th:href="@{/phone/ezkey}"
+       class="side-exit"
+       title="Back to enrollments"
+       aria-label="Back to enrollments"
+       data-testid="demo-device-exit-side"></a>
   </div>
   <script th:src="@{/webjars/jsqr/1.4.0/dist/jsQR.js}"></script>
   <script th:src="@{/js/enrollment-qr-import.js}"></script>

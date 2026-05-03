@@ -181,6 +181,7 @@
     var tokenEl = document.getElementById('enrollmentProofToken');
     var errEl = document.getElementById('qrImportError');
     var warnEl = document.getElementById('qrImportWarning');
+    var successEl = document.getElementById('qrImportSuccess');
     var previewEl = document.getElementById('qrImportPreview');
     var body = document.body;
     var configuredBase = body.getAttribute('data-auth-api-base') || '';
@@ -192,6 +193,10 @@
     if (warnEl) {
       warnEl.textContent = '';
       warnEl.style.display = 'none';
+    }
+    if (successEl) {
+      successEl.textContent = '';
+      successEl.style.display = 'none';
     }
 
     return loadImageFromBlob(blob)
@@ -214,6 +219,11 @@
         }
         if (tokenEl) {
           tokenEl.value = payload.enrollmentProofToken;
+        }
+        if (successEl) {
+          successEl.textContent =
+            'QR decoded. Review the fields below, then tap Start Enrollment.';
+          successEl.style.display = 'block';
         }
         var warn = authUrlMismatchWarning(configuredBase, payload.authUrl);
         if (warn && warnEl) {

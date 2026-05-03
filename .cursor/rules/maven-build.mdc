@@ -26,6 +26,9 @@ When you have implemented or changed Java or other Spotless-covered code, start 
 On this Windows workstation, when the agent is driving Maven from a Windows-hosted shell, prefer
 `scripts/build-local.cmd` as the default entrypoint instead of launching bare `bash`.
 
+**Canonical JDK 25 on this machine:** see [`jdk-25-windows-workstation.mdc`](jdk-25-windows-workstation.mdc)
+(`C:\Tools\jdk-25.0.3+9` — do not substitute another JDK for Ezkey validation).
+
 Why:
 
 - bare `bash` may resolve to WSL (`C:\Windows\System32\bash.exe`) instead of Git Bash

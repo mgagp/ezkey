@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title th:text="${pageTitle}">Enrollment - Success</title>
-  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
   <style>
     body { min-height: 100vh; display: grid; place-items: center; background:#f2f2f2; padding:1.5rem; }
     .app-shell { width: 380px; height: 780px; border-radius: 36px; background:#0a0a0a; color:#f5f5f7; position: relative; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,.35); }
@@ -43,16 +43,17 @@
       border: none; 
       font-size: 1rem; 
       cursor: pointer; 
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
     }
-    .btn-primary:hover { background: #0b5ed7; }
-    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; }
+    .btn-primary:hover { background: #0b5ed7; color: #fff; }
+    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; display: block; text-decoration: none; color: inherit; }
   </style>
-  <script>
-    function exitToSetup(){ window.location.href = '/phone/ezkey'; }
-  </script>
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" data-testid="demo-device-verify-success">
     <div class="status-bar">
       <div>Ezkey</div>
       <div>9:41</div>
@@ -65,10 +66,14 @@
         <div class="success-icon">✓</div>
         <div class="success-message" th:text="${success}">Enrollment verified successfully!</div>
         <div class="enrollment-id">Enrollment #<span th:text="${enrollmentId}">123</span> is now active</div>
-        <button class="btn-primary" onclick="exitToSetup()">Back to Enrollments</button>
+        <a class="btn-primary" th:href="@{/phone/ezkey}" data-testid="demo-device-back-to-enrollments">Back to Enrollments</a>
       </div>
     </div>
-    <div class="side-exit" onclick="exitToSetup()" title="Exit"></div>
+    <a th:href="@{/phone/ezkey}"
+       class="side-exit"
+       title="Back to enrollments"
+       aria-label="Back to enrollments"
+       data-testid="demo-device-exit-side"></a>
   </div>
 </body>
 </html>

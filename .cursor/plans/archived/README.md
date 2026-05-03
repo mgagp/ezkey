@@ -40,6 +40,7 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 | **2026-05/ezkey-doc-system_f1e8054a.plan.md** | Spec-first `product-docs` system (global + component packs) | ✅ Completed |
 | **2026-05/admin_ui_lint_cleanup_2e576db8.plan.md** | Admin UI ESLint remediation + diagnostics | ✅ Completed |
 | **2026-05/admin_administrators_list_operational_closeout.plan.md** | Administrators list: `tenantName` on list/detail, N+1-safe repository queries, Admin UI platform/tenant columns, Demo Device parity, Postman/docs, migration + auth test hardening | ✅ Completed |
+| **2026-05/demo_device_acme_stack_closeout_2026-05-03.plan.md** | Demo Device automation/UI hardening + Playwright env; JDK 25 Windows canonical path rule + `build.sh`; ACME Business Approval challenge strip (`authAttemptChallenge`) for challenge-required enrollments; operational close-out | ✅ Completed |
 
 ---
 

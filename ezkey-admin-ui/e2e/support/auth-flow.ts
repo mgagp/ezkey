@@ -1,32 +1,38 @@
 import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { testEnv } from './test-env';
 
-const DEMO_DEVICE_PENDING_ATTEMPTS = 12;
-const DEMO_DEVICE_PENDING_DELAY_MS = 1_500;
+const DEMO_DEVICE_PENDING_TIMEOUT_MS = 55_000;
+const DEMO_DEVICE_PENDING_INTERVAL_MS = 1_500;
 
 async function openDemoDevicePendingRequest(demoPage: Page): Promise<void> {
   await demoPage.goto(`${testEnv.demoDeviceUrl}/phone/ezkey`);
 
-  const firstEnrollment = demoPage.getByTestId('demo-device-enrollment-link').first();
-  await expect(firstEnrollment).toBeVisible({ timeout: 30_000 });
+  const enrollmentLink = testEnv.demoDeviceTestEnrollmentId
+    ? demoPage.locator(
+        `[data-testid="demo-device-enrollment-link"][data-enrollment-id="${testEnv.demoDeviceTestEnrollmentId}"]`,
+      )
+    : demoPage.getByTestId('demo-device-enrollment-link').first();
 
-  const enrollmentHref = await firstEnrollment.getAttribute('href');
+  await expect(enrollmentLink).toBeVisible({ timeout: 30_000 });
+
+  const enrollmentHref = await enrollmentLink.getAttribute('href');
   if (enrollmentHref == null || enrollmentHref.trim() === '') {
     throw new Error('Demo Device enrollment link is missing its href attribute.');
   }
 
   const authUrl = new URL(enrollmentHref, testEnv.demoDeviceUrl).toString();
+  const deadline = Date.now() + DEMO_DEVICE_PENDING_TIMEOUT_MS;
 
-  for (let attempt = 0; attempt < DEMO_DEVICE_PENDING_ATTEMPTS; attempt += 1) {
+  while (Date.now() < deadline) {
     await demoPage.goto(authUrl);
     if (await demoPage.getByTestId('demo-device-auth-pending').isVisible().catch(() => false)) {
       return;
     }
-    await demoPage.waitForTimeout(DEMO_DEVICE_PENDING_DELAY_MS);
+    await demoPage.waitForTimeout(DEMO_DEVICE_PENDING_INTERVAL_MS);
   }
 
   throw new Error(
-    'The Demo Device never reached a pending authentication request. Confirm clean-start completed and the demo-device is pre-seeded.'
+    'The Demo Device never reached a pending authentication request. Confirm clean-start completed and the demo-device is pre-seeded.',
   );
 }
 

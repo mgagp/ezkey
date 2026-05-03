@@ -92,6 +92,10 @@ Default URLs:
 - Admin UI: `http://127.0.0.1:4173`
 - Demo Device: `http://127.0.0.1:8083`
 
+Optional Playwright env:
+
+- `EZKEY_DEMO_DEVICE_TEST_ENROLLMENT_ID` — select a specific Demo Device enrollment row (matches `data-enrollment-id` on the home list). Use when multiple enrollments exist and `.first()` would be non-deterministic.
+
 ### Docker-only QA path
 
 Use Docker as the only host dependency for the browser runner. This path builds the Admin UI container,

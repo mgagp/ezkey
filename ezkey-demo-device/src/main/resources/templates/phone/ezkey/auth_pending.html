@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title th:text="${pageTitle}">Authentication Request</title>
-  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
   <style>
     body { min-height: 100vh; display: grid; place-items: center; background:#f2f2f2; padding:1.5rem; }
     .app-shell { width: 380px; height: 780px; border-radius: 36px; background:#0a0a0a; color:#f5f5f7; position: relative; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,.35); }
@@ -115,20 +115,8 @@
       color: #fff; 
     }
     .btn-deny:hover { background: #c82333; }
-    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; }
+    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; display: block; text-decoration: none; color: inherit; }
   </style>
-  <script>
-    function goBack(){ window.location.href = '/phone/ezkey'; }
-    function submitResponse(approved) {
-      const challengeResponse = document.getElementById('challengeResponse')?.value;
-      const form = document.getElementById('authForm');
-      document.getElementById('approved').value = approved;
-      if (challengeResponse) {
-        document.getElementById('challengeResponseParam').value = challengeResponse;
-      }
-      form.submit();
-    }
-  </script>
 </head>
 <body>
   <div class="app-shell" data-testid="demo-device-auth-pending">
@@ -163,45 +151,49 @@
 
       <!-- Authentication Request -->
       <div class="auth-request" data-testid="demo-device-auth-request">
-        <div class="auth-title" th:text="${contextTitle != null ? 'Review &amp; Respond' : 'Authentication Request'}">Authentication Request</div>
-        <div class="auth-description">
-          <span th:if="${contextTitle == null}">An authentication request is pending for this enrollment.</span>
-          <span th:if="${contextTitle != null}">Read the request above carefully before approving.</span>
-          <span th:if="${challengeRequired}" style="color: #ffc107; font-weight: 600; display:block; margin-top:4px;">Challenge code required.</span>
-        </div>
-        
         <form
           id="authForm"
           data-testid="demo-device-auth-form"
           th:action="@{'/phone/ezkey/enrollments/' + ${enrollmentId} + '/auth/respond'}"
           method="post">
+          <div class="auth-title" th:text="${contextTitle != null ? 'Review &amp; Respond' : 'Authentication Request'}">Authentication Request</div>
+          <div class="auth-description">
+            <span th:if="${contextTitle == null}">An authentication request is pending for this enrollment.</span>
+            <span th:if="${contextTitle != null}">Read the request above carefully before approving.</span>
+            <span th:if="${challengeRequired}" style="color: #ffc107; font-weight: 600; display:block; margin-top:4px;">Challenge code required.</span>
+          </div>
+
           <input type="hidden" name="authAttemptId" th:value="${authAttemptId}">
           <input type="hidden" name="authAttemptProofToken" th:value="${authAttemptProofToken}">
-          <input type="hidden" id="approved" name="approved" value="">
-          <input type="hidden" id="challengeResponseParam" name="challengeResponse" value="">
-          
-          <!-- Challenge Input (if required) -->
+
           <div th:if="${challengeRequired}">
+            <label for="challengeResponse" class="visually-hidden">Challenge code</label>
             <input type="text"
                    id="challengeResponse"
+                   name="challengeResponse"
                    data-testid="demo-device-challenge-input"
                    class="challenge-input"
                    placeholder="Enter challenge code"
+                   autocomplete="one-time-code"
+                   inputmode="numeric"
                    required>
             <div style="font-size: 0.8rem; color: #888; margin-bottom: 16px;">
               Enter the challenge code shown in the demo console
             </div>
           </div>
+
+          <div class="btn-group" style="margin: 16px 0 0 0;">
+            <button type="submit" name="approved" value="true" class="btn btn-approve" data-testid="demo-device-approve-button">Approve</button>
+            <button type="submit" name="approved" value="false" class="btn btn-deny" data-testid="demo-device-deny-button">Deny</button>
+          </div>
         </form>
       </div>
-      
-      <!-- Action Buttons -->
-      <div class="btn-group">
-        <button class="btn btn-approve" data-testid="demo-device-approve-button" onclick="submitResponse(true)">Approve</button>
-        <button class="btn btn-deny" data-testid="demo-device-deny-button" onclick="submitResponse(false)">Deny</button>
-      </div>
     </div>
-    <div class="side-exit" onclick="goBack()" title="Back"></div>
+    <a href="/phone/ezkey"
+       class="side-exit"
+       title="Back to enrollments"
+       aria-label="Back to enrollments"
+       data-testid="demo-device-auth-back"></a>
   </div>
 </body>
 </html>

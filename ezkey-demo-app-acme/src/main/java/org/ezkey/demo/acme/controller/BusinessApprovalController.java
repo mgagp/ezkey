@@ -85,8 +85,9 @@ public class BusinessApprovalController {
    *
    * @param request the scenario and approver identifier from the browser
    * @param session the HTTP session (must contain an authenticated {@code user} attribute)
-   * @return JSON with {@code authAttemptId}, {@code expiresAt}, and {@code timeoutSeconds}, or an
-   *     error body with HTTP 401 / 400 / 503
+   * @return JSON with {@code authAttemptId}, {@code expiresAt}, {@code timeoutSeconds}, optional
+   *     {@code authAttemptChallenge} when the approver's enrollment (or request) requires a
+   *     numeric challenge, or an error body with HTTP 401 / 400 / 503
    */
   @PostMapping("/api/business-approval")
   public ResponseEntity<BusinessApprovalStartResponse> startBusinessApproval(
@@ -95,7 +96,7 @@ public class BusinessApprovalController {
     AuthenticatedUser user = (AuthenticatedUser) session.getAttribute("user");
     if (user == null) {
       return ResponseEntity.status(401)
-          .body(new BusinessApprovalStartResponse(null, null, null, "Not authenticated."));
+          .body(new BusinessApprovalStartResponse(null, null, null, null, "Not authenticated."));
     }
 
     EzkeyClient client = ezkeyClientProvider.getClient(session);
@@ -103,7 +104,7 @@ public class BusinessApprovalController {
       return ResponseEntity.status(503)
           .body(
               new BusinessApprovalStartResponse(
-                  null, null, null, "EZKey SDK not configured — set credentials first."));
+                  null, null, null, null, "EZKey SDK not configured — set credentials first."));
     }
 
     String scenario = request.scenario() != null ? request.scenario().trim().toUpperCase() : "";
@@ -114,7 +115,7 @@ public class BusinessApprovalController {
       return ResponseEntity.status(400)
           .body(
               new BusinessApprovalStartResponse(
-                  null, null, null, "Approver identifier must not be blank."));
+                  null, null, null, null, "Approver identifier must not be blank."));
     }
 
     AuthAttemptContext context = buildContextForScenario(scenario);
@@ -143,6 +144,7 @@ public class BusinessApprovalController {
               createResponse.authAttemptId(),
               createResponse.expiresAt(),
               createResponse.timeoutSeconds(),
+              createResponse.authAttemptChallenge(),
               null));
 
     } catch (EzkeyException e) {
@@ -157,7 +159,7 @@ public class BusinessApprovalController {
               ? e.getMessage()
               : "Failed to create approval request.";
       return ResponseEntity.status(400)
-          .body(new BusinessApprovalStartResponse(null, null, null, msg));
+          .body(new BusinessApprovalStartResponse(null, null, null, null, msg));
     }
   }
 
@@ -292,10 +294,16 @@ public class BusinessApprovalController {
    * @param authAttemptId the created auth attempt ID, or {@code null} on error
    * @param expiresAt ISO-8601 expiration timestamp, or {@code null} on error
    * @param timeoutSeconds server-side timeout in seconds, or {@code null} on error
+   * @param authAttemptChallenge numeric challenge to enter on the approver device, or {@code null}
+   *     when no challenge applies
    * @param error error message, or {@code null} on success
    */
   public record BusinessApprovalStartResponse(
-      Integer authAttemptId, String expiresAt, Integer timeoutSeconds, String error) {}
+      Integer authAttemptId,
+      String expiresAt,
+      Integer timeoutSeconds,
+      Integer authAttemptChallenge,
+      String error) {}
 
   /**
    * Response body for {@code GET /api/business-approval-status}.

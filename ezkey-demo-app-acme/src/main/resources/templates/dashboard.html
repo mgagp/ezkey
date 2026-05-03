@@ -196,6 +196,7 @@
                                             onclick="checkApprovalStatus('PAYMENT')" disabled>&#8635; CHECK STATUS</button>
                                 </div>
                             </div>
+                            <div id="biz-challenge-PAYMENT" class="biz-challenge-strip hidden" aria-live="polite"></div>
                             <div id="biz-status-PAYMENT" class="biz-row-status hidden"></div>
                         </div>
 
@@ -221,6 +222,7 @@
                                             onclick="checkApprovalStatus('BATCH_PAYMENT')" disabled>&#8635; CHECK STATUS</button>
                                 </div>
                             </div>
+                            <div id="biz-challenge-BATCH_PAYMENT" class="biz-challenge-strip hidden" aria-live="polite"></div>
                             <div id="biz-status-BATCH_PAYMENT" class="biz-row-status hidden"></div>
                         </div>
 
@@ -716,6 +718,27 @@
             box-shadow: 1px 1px 0 var(--acme-dark);
         }
 
+        /* ── Optional challenge hint (below actions, above status) ── */
+        .biz-challenge-strip {
+            margin-top: 0.5rem;
+            padding: 0.45rem 0.75rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.35;
+            color: var(--acme-dark);
+            background-color: var(--acme-gray);
+            border: 2px dashed var(--acme-primary);
+            border-left: 4px solid var(--acme-primary);
+        }
+
+        .biz-challenge-strip .biz-challenge-code {
+            font-family: 'Courier New', monospace;
+            font-weight: 900;
+            font-size: 0.95rem;
+            letter-spacing: 0.06em;
+            margin-left: 0.25rem;
+        }
+
         /* ── Inline row status ── */
         .biz-row-status {
             margin-top: 0.85rem;
@@ -779,6 +802,34 @@
         const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
         const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
 
+        function hideChallengeStrip(scenario) {
+            const el = document.getElementById('biz-challenge-' + scenario);
+            if (!el) return;
+            el.classList.add('hidden');
+            el.innerHTML = '';
+        }
+
+        /**
+         * Formats a server-provided challenge for display (minimum two digits, typical Ezkey demo).
+         */
+        function formatChallengeForDisplay(value) {
+            if (value === null || value === undefined) return '';
+            const n = Number(value);
+            if (!Number.isFinite(n) || n < 0) return String(value);
+            const s = String(Math.trunc(n));
+            return s.length < 2 ? s.padStart(2, '0') : s;
+        }
+
+        function showChallengeStrip(scenario, challengeValue) {
+            const el = document.getElementById('biz-challenge-' + scenario);
+            if (!el) return;
+            const code = formatChallengeForDisplay(challengeValue);
+            el.innerHTML =
+                'A numeric challenge is required on the approver&rsquo;s device. '
+                + 'Enter code <span class="biz-challenge-code">' + code + '</span>, then approve.';
+            el.classList.remove('hidden');
+        }
+
         /**
          * Sends a business-approval request for the given scenario to the specified approver.
          * The approver's EZKey-enrolled device will receive a contextual push prompt.
@@ -800,6 +851,7 @@
 
             // Reset any previous inline status for this row
             hideRowStatus(scenario);
+            hideChallengeStrip(scenario);
 
             try {
                 const resp = await fetch('/api/business-approval', {
@@ -823,6 +875,9 @@
                 showRowStatus(scenario, 'st-sent', '→',
                     'Request sent to "' + approverIdentifier + '" \u00b7 Attempt #' + data.authAttemptId
                     + ' \u00b7 Click CHECK STATUS once the approver has responded.');
+                if (data.authAttemptChallenge != null) {
+                    showChallengeStrip(scenario, data.authAttemptChallenge);
+                }
 
             } catch (err) {
                 showRowStatus(scenario, 'st-error', '!', 'Network error: ' + err.message);
@@ -854,14 +909,17 @@
 
                 switch (data.status) {
                     case 'accepted':
+                        hideChallengeStrip(scenario);
                         showRowStatus(scenario, 'st-accepted', '\u2713',
                             'APPROVED \u2014 "' + approver + '" authorized the request on their device.');
                         break;
                     case 'rejected':
+                        hideChallengeStrip(scenario);
                         showRowStatus(scenario, 'st-rejected', '\u2717',
                             'DENIED \u2014 "' + approver + '" rejected the request on their device.');
                         break;
                     case 'expired':
+                        hideChallengeStrip(scenario);
                         showRowStatus(scenario, 'st-expired', '\u23F1',
                             'EXPIRED \u2014 the request timed out before "' + approver + '" responded.');
                         break;

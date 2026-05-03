@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title th:text="${pageTitle}">Authentication</title>
-  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
   <style>
     body { min-height: 100vh; display: grid; place-items: center; background:#f2f2f2; padding:1.5rem; }
     .app-shell { width: 380px; height: 780px; border-radius: 36px; background:#0a0a0a; color:#f5f5f7; position: relative; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,.35); }
@@ -55,7 +55,7 @@
       color: #dc3545; 
     }
     .btn-primary { 
-      width: 100%; 
+      width: calc(100% - 32px); 
       padding: 12px 14px; 
       border-radius: 14px; 
       background: #0d6efd; 
@@ -64,20 +64,17 @@
       font-size: 1rem; 
       cursor: pointer; 
       margin: 8px 16px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
     }
-    .btn-primary:hover { background: #0b5ed7; }
-    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; }
+    .btn-primary:hover { background: #0b5ed7; color: #fff; }
+    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; display: block; text-decoration: none; color: inherit; }
   </style>
-  <script>
-    function goBack(){ window.location.href = '/phone/ezkey'; }
-    function checkPending(){ 
-      // Reload the page to check for pending auth attempts
-      window.location.reload(); 
-    }
-  </script>
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" data-testid="demo-device-auth-idle">
     <div class="status-bar">
       <div>Ezkey</div>
       <div>9:41</div>
@@ -102,16 +99,22 @@
       </div>
       
       <!-- Messages -->
-      <div th:if="${message}" class="message message-info" th:text="${message}">No pending authentication requests</div>
-      <div th:if="${error}" class="message message-error" th:text="${error}">Error message</div>
+      <div th:if="${message}" class="message message-info" data-testid="demo-device-auth-message" th:text="${message}">No pending authentication requests</div>
+      <div th:if="${error}" class="message message-error" data-testid="demo-device-auth-error" th:text="${error}">Error message</div>
       
       <!-- Action Buttons -->
       <div class="mt-auto">
-        <button class="btn-primary" onclick="checkPending()">Check for Authentication Requests</button>
-        <button class="btn-primary" onclick="goBack()" style="background: rgba(255,255,255,.1);">Back to Enrollments</button>
+        <a class="btn-primary"
+           th:href="@{'/phone/ezkey/enrollments/' + ${enrollmentId} + '/auth'}"
+           data-testid="demo-device-auth-recheck">Check for Authentication Requests</a>
+        <a class="btn-primary" th:href="@{/phone/ezkey}" style="background: rgba(255,255,255,.1);" data-testid="demo-device-back-to-enrollments">Back to Enrollments</a>
       </div>
     </div>
-    <div class="side-exit" onclick="goBack()" title="Back"></div>
+    <a href="/phone/ezkey"
+       class="side-exit"
+       title="Back to enrollments"
+       aria-label="Back to enrollments"
+       data-testid="demo-device-auth-back"></a>
   </div>
 </body>
 </html>

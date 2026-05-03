@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title th:text="${pageTitle}">Phone Simulator</title>
-  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
   <style>
     :root {
       --bezel:#111;
@@ -46,6 +46,7 @@
     @keyframes glow { 0%,100% { filter: drop-shadow(0 0 0 rgba(13,110,253,.0)); } 50% { filter: drop-shadow(0 0 10px rgba(13,110,253,.45)); } }
     .app-grid { margin-top:auto; margin-bottom:12px; display:grid; grid-template-columns: repeat(4, 1fr); gap: 18px 14px; }
     .app { text-decoration:none; color: var(--label-color); text-align:center; }
+    .app-demo { pointer-events: none; opacity: 0.85; }
     .icon { width:64px; height:64px; margin: 0 auto; border-radius: 18px; display:grid; place-items:center; color:#fff; font-weight:800; letter-spacing:.5px; box-shadow: 0 6px 12px rgba(0,0,0,.25); }
     .app:hover .icon { transform: translateY(-2px); transition: transform .15s ease; }
     .label { margin-top:6px; font-size:.8rem; text-shadow: 0 2px 4px rgba(0,0,0,.4); }
@@ -68,13 +69,7 @@
   </style>
 </head>
 <body>
-  <script>
-    function launchEzkey(){
-      // Launch the Ezkey app directly
-      window.location.href = '/phone/ezkey';
-    }
-  </script>
-  <div class="device">
+  <div class="device" data-testid="demo-device-phone-launcher">
     <div class="frame">
       <div class="screen">
         <div class="notch">
@@ -91,56 +86,59 @@
         </div>
         <div class="content">
           <div class="featured">
-            <a href="#" onclick="launchEzkey()" class="app featured-app" title="Ezkey">
+            <a href="/phone/ezkey"
+               class="app featured-app"
+               title="Open Ezkey (demo)"
+               data-testid="demo-device-launch-ezkey">
               <div class="icon ic-ezkey featured-icon">EZ</div>
               <div class="label">Ezkey</div>
               <div class="hint">Tap to open app</div>
             </a>
           </div>
-          <div class="app-grid">
-            <a class="app" href="#" title="Weather">
+          <div class="app-grid" aria-hidden="true">
+            <div class="app app-demo" title="Weather (decorative)">
               <div class="icon ic-weather">☀️</div>
               <div class="label">Weather</div>
-            </a>
-            <a class="app" href="#" title="Browser">
+            </div>
+            <div class="app app-demo" title="Browser (decorative)">
               <div class="icon ic-browser">🌐</div>
               <div class="label">Browser</div>
-            </a>
-            <a class="app" href="#" title="Mail">
+            </div>
+            <div class="app app-demo" title="Mail (decorative)">
               <div class="icon ic-mail">✉️</div>
               <div class="label">Mail</div>
-            </a>
-            <a class="app" href="#" title="Photos">
+            </div>
+            <div class="app app-demo" title="Photos (decorative)">
               <div class="icon ic-photos">🖼️</div>
               <div class="label">Photos</div>
-            </a>
-            <a class="app" href="#" title="Settings">
+            </div>
+            <div class="app app-demo" title="Settings (decorative)">
               <div class="icon ic-settings">⚙️</div>
               <div class="label">Settings</div>
-            </a>
-            <a class="app" href="#" title="Calendar">
+            </div>
+            <div class="app app-demo" title="Calendar (decorative)">
               <div class="icon ic-calendar">📅</div>
               <div class="label">Calendar</div>
-            </a>
-            <a class="app" href="#" title="Camera">
+            </div>
+            <div class="app app-demo" title="Camera (decorative)">
               <div class="icon ic-camera">📷</div>
               <div class="label">Camera</div>
-            </a>
-            <a class="app" href="#" title="Maps">
+            </div>
+            <div class="app app-demo" title="Maps (decorative)">
               <div class="icon ic-maps">🗺️</div>
               <div class="label">Maps</div>
-            </a>
-            <a class="app" href="#" title="Music">
+            </div>
+            <div class="app app-demo" title="Music (decorative)">
               <div class="icon ic-music">🎵</div>
               <div class="label">Music</div>
-            </a>
+            </div>
           </div>
         </div>
-        <div class="dock">
-          <a class="app" href="#" title="Phone"><div class="icon ic-settings">📞</div></a>
-          <a class="app" href="#" title="Messages"><div class="icon ic-mail">💬</div></a>
-          <a class="app" href="#" title="Browser"><div class="icon ic-browser">🌐</div></a>
-          <a class="app" href="#" title="Camera"><div class="icon ic-camera">📷</div></a>
+        <div class="dock" aria-hidden="true">
+          <div class="app app-demo" title="Phone (decorative)"><div class="icon ic-settings">📞</div></div>
+          <div class="app app-demo" title="Messages (decorative)"><div class="icon ic-mail">💬</div></div>
+          <div class="app app-demo" title="Browser (decorative)"><div class="icon ic-browser">🌐</div></div>
+          <div class="app app-demo" title="Camera (decorative)"><div class="icon ic-camera">📷</div></div>
         </div>
         <div class="home-indicator"></div>
       </div>

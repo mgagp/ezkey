@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title th:text="${pageTitle}">Enrollment - Bind</title>
-  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
   <style>
     body { min-height: 100vh; display: grid; place-items: center; background:#f2f2f2; padding:1.5rem; }
     .app-shell { width: 380px; height: 780px; border-radius: 36px; background:#0a0a0a; color:#f5f5f7; position: relative; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,.35); }
@@ -78,14 +78,26 @@
       font-size: 0.85rem; 
       color: #ccc; 
     }
-    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; }
+    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; display: block; text-decoration: none; color: inherit; }
+    .btn-secondary-link {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 12px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
+    }
+    .btn-secondary-link:hover { background: rgba(255,255,255,.15); color: #fff; }
   </style>
-  <script>
-    function exitToSetup(){ window.location.href = '/phone/ezkey'; }
-  </script>
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app-shell" data-testid="demo-device-bind-enrollment">
     <div class="status-bar">
       <div>Ezkey</div>
       <div>9:41</div>
@@ -97,8 +109,8 @@
       </div>
       <div class="form-container">
         <!-- Success/Error Messages -->
-        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
-        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+        <div th:if="${success}" class="alert alert-success" data-testid="demo-device-bind-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-danger" data-testid="demo-device-bind-error" th:text="${error}"></div>
         
         <!-- Integration Information -->
         <div th:if="${integrationName}" class="info-box">
@@ -122,23 +134,27 @@
         </div>
         
         <!-- Verify Form -->
-        <form th:if="${success}" action="/phone/ezkey/enrollment/verify" method="post">
+        <form th:if="${success}" action="/phone/ezkey/enrollment/verify" method="post" data-testid="demo-device-verify-enrollment-form">
           <input type="hidden" name="enrollmentId" th:value="${enrollmentId}">
           <input type="hidden" name="enrollmentProofToken" th:value="${enrollmentProofToken}">
           <div class="form-group">
             <label for="challengeResponse" class="form-label">Challenge Code</label>
-            <input type="text" id="challengeResponse" name="challengeResponse" class="form-input" placeholder="Enter challenge code" required>
+            <input type="text" id="challengeResponse" name="challengeResponse" class="form-input" placeholder="Enter challenge code" required data-testid="demo-device-enroll-challenge-input">
             <div style="font-size: 0.8rem; color: #888; margin-top: 4px;">
               Enter the challenge code shown in the demo console
             </div>
           </div>
-          <button type="submit" class="btn-primary">Verify Enrollment</button>
+          <button type="submit" class="btn-primary" data-testid="demo-device-verify-enrollment-submit">Verify Enrollment</button>
         </form>
         
-        <button class="btn-secondary" onclick="exitToSetup()">Back to Enrollments</button>
+        <a th:href="@{/phone/ezkey}" class="btn-secondary-link" data-testid="demo-device-bind-back">Back to Enrollments</a>
       </div>
     </div>
-    <div class="side-exit" onclick="exitToSetup()" title="Exit"></div>
+    <a th:href="@{/phone/ezkey}"
+       class="side-exit"
+       title="Back to enrollments"
+       aria-label="Back to enrollments"
+       data-testid="demo-device-exit-side"></a>
   </div>
 </body>
 </html>

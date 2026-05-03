@@ -1,10 +1,6 @@
 package org.ezkey.demo.device.controller;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.AuthAttemptPayloadUtil;
@@ -13,6 +9,7 @@ import org.ezkey.demo.device.service.DeviceCryptoService.ECP256DeviceKeyPair;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.ezkey.demo.device.service.EnrollmentVerifyPayloadUtil;
+import org.ezkey.demo.device.view.EnrollmentTenantGrouper;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptRespondRequestDto;
@@ -31,16 +28,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
-
-/**
- * Ezkey - Open Source Cryptographic MFA Platform
- *
- * <p>Copyright (c) 2025 Ezkey contributors Licensed under the MIT License. See LICENSE file in the
- * project root for full license information.
- *
- * <p>Controller: EzkeyAppController Description: Simulated Ezkey mobile app controller for
- * enrollment and authentication flows.
- */
 
 /**
  * Simulated Ezkey mobile app controller.
@@ -73,14 +60,6 @@ public class EzkeyAppController {
 
   private static final Logger logger = LoggerFactory.getLogger(EzkeyAppController.class);
 
-  /**
-   * Fallback label when the Auth API omits tenant display name for a global (platform-scoped)
-   * administrator enrollment — matches Admin UI {@code admins.tenantPlatform} (English locale).
-   */
-  private static final String PLATFORM_TENANT_DISPLAY_NAME = "Platform";
-
-  private static final String UNKNOWN_TENANT_NAME = "Unknown tenant";
-
   private final AuthApiService authApiService;
 
   private final DeviceCryptoService cryptoService;
@@ -106,7 +85,7 @@ public class EzkeyAppController {
     model.addAttribute("pageTitle", "Ezkey App");
     List<Record> enrollments = storeService.list();
     model.addAttribute("enrollments", enrollments);
-    model.addAttribute("tenantGroups", groupEnrollmentsByTenant(enrollments));
+    model.addAttribute("tenantGroups", EnrollmentTenantGrouper.group(enrollments));
     return "phone/ezkey/home";
   }
 
@@ -188,7 +167,8 @@ public class EzkeyAppController {
         model.addAttribute("integrationDescription", integrationDescription);
         model.addAttribute("integrationLogo", integrationLogo);
         model.addAttribute("tenantId", tenantId);
-        model.addAttribute("tenantName", normalizeTenantName(tenantName, tenantId));
+        model.addAttribute(
+            "tenantName", EnrollmentTenantGrouper.normalizeTenantName(tenantName, tenantId));
         model.addAttribute("tenantDescription", tenantDescription);
         model.addAttribute("success", "Bind successful! Enter the challenge code to verify.");
       } else {
@@ -437,7 +417,8 @@ public class EzkeyAppController {
       // Check if it's an expired authentication attempt
       if (e.getMessage() != null && e.getMessage().contains("No pending authentication request")) {
         model.addAttribute(
-            "message", "Demande d'authentification expirée. Veuillez en créer une nouvelle.");
+            "message",
+            "The authentication request has expired. Start a new login from the Admin UI.");
       } else {
         model.addAttribute("error", "Authentication check failed: " + e.getMessage());
       }
@@ -593,106 +574,4 @@ public class EzkeyAppController {
     }
     return "phone/ezkey/auth_result";
   }
-
-  private static List<TenantGroupViewModel> groupEnrollmentsByTenant(List<Record> enrollments) {
-    Map<TenantKey, List<Record>> grouped = new HashMap<>();
-
-    for (Record enrollment : enrollments) {
-      Integer tenantId = enrollment.tenantId();
-      String tenantName =
-          normalizeTenantName(enrollment.tenantName(), enrollment.tenantId());
-      String tenantDescription = normalizeTenantDescription(enrollment.tenantDescription());
-
-      TenantKey key = new TenantKey(tenantId, tenantName, tenantDescription);
-      grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(enrollment);
-    }
-
-    Comparator<Record> enrollmentComparator =
-        Comparator.comparing(
-                Record::integrationName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-            .thenComparing(
-                Record::enrollmentName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-            .thenComparing(Record::enrollmentId, Comparator.nullsLast(Integer::compareTo));
-
-    for (List<Record> groupItems : grouped.values()) {
-      groupItems.sort(enrollmentComparator);
-    }
-
-    Comparator<TenantKey> tenantComparator =
-        Comparator.comparing(
-                (TenantKey k) -> UNKNOWN_TENANT_NAME.equals(k.tenantName()) ? 1 : 0,
-                Integer::compareTo)
-            .thenComparing(
-                TenantKey::tenantName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-            .thenComparing(TenantKey::tenantId, Comparator.nullsLast(Integer::compareTo));
-
-    return grouped.entrySet().stream()
-        .sorted(Map.Entry.comparingByKey(tenantComparator))
-        .map(
-            e ->
-                new TenantGroupViewModel(
-                    e.getKey().tenantId(),
-                    e.getKey().tenantName(),
-                    e.getKey().tenantDescription(),
-                    e.getValue()))
-        .toList();
-  }
-
-  /**
-   * Resolves tenant list / bind UI display name.
-   *
-   * <p>Global administrator enrollments have no {@code tenantId} and often no tenant name in bind
-   * responses; those map to {@link #PLATFORM_TENANT_DISPLAY_NAME} instead of {@link
-   * #UNKNOWN_TENANT_NAME}, consistent with the Admin UI administrators list.
-   *
-   * @param tenantName raw name from API or stored record (may be null/blank)
-   * @param tenantId tenant id or null for platform scope
-   * @return trimmed name, {@link #PLATFORM_TENANT_DISPLAY_NAME}, or {@link #UNKNOWN_TENANT_NAME}
-   */
-  private static String normalizeTenantName(String tenantName, Integer tenantId) {
-    if (tenantName != null && !tenantName.isBlank()) {
-      return tenantName.trim();
-    }
-    if (tenantId == null) {
-      return PLATFORM_TENANT_DISPLAY_NAME;
-    }
-    return UNKNOWN_TENANT_NAME;
-  }
-
-  private static String normalizeTenantDescription(String tenantDescription) {
-    if (tenantDescription == null || tenantDescription.isBlank()) {
-      return null;
-    }
-    return tenantDescription.trim();
-  }
-
-  /**
-   * Internal record for grouping enrollments by tenant.
-   *
-   * <p>This record represents the key used to group enrollments by tenant information. It combines
-   * the tenant ID, name, and description to create a unique key for grouping operations.
-   *
-   * @param tenantId the unique identifier of the tenant, or null if unknown
-   * @param tenantName the display name of the tenant, {@link #PLATFORM_TENANT_DISPLAY_NAME}, or
-   *     {@link #UNKNOWN_TENANT_NAME} if not available
-   * @param tenantDescription optional description of the tenant
-   * @since 2025
-   */
-  private record TenantKey(Integer tenantId, String tenantName, String tenantDescription) {}
-
-  /**
-   * View model for tenant enrollment groups.
-   *
-   * <p>This record represents a group of enrollments associated with a specific tenant. It is used
-   * to structure the response for the home page, organizing enrollments hierarchically by tenant
-   * and providing tenant metadata for display purposes.
-   *
-   * @param tenantId the unique identifier of the tenant, or null if unknown
-   * @param tenantName the display name of the tenant for UI rendering
-   * @param tenantDescription optional description of the tenant for UI rendering
-   * @param enrollments the list of enrollment records belonging to this tenant group
-   * @since 2025
-   */
-  public record TenantGroupViewModel(
-      Integer tenantId, String tenantName, String tenantDescription, List<Record> enrollments) {}
 }

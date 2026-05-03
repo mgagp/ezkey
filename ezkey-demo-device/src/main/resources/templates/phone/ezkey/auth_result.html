@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title th:text="${pageTitle}">Authentication Result</title>
-  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.2/css/bootstrap.min.css}">
+  <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
   <style>
     body { min-height: 100vh; display: grid; place-items: center; background:#f2f2f2; padding:1.5rem; }
     .app-shell { width: 380px; height: 780px; border-radius: 36px; background:#0a0a0a; color:#f5f5f7; position: relative; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,.35); }
@@ -50,9 +50,9 @@
     }
     .result-success { color: #28a745; }
     .result-error { color: #dc3545; }
-    .result-denied { color: #dc3545; }  /* Rouge pour denied */
-    .result-failed { color: #fd7e14; }  /* Orange pour failed */
-    .result-expired { color: #6c757d; } /* Grey for expired */
+    .result-denied { color: #dc3545; }
+    .result-failed { color: #fd7e14; }
+    .result-expired { color: #6c757d; }
     .result-title { 
       font-size: 1.2rem; 
       font-weight: 600; 
@@ -64,7 +64,7 @@
       line-height: 1.4; 
     }
     .btn-primary { 
-      width: 100%; 
+      width: calc(100% - 32px); 
       padding: 12px 14px; 
       border-radius: 14px; 
       background: #0d6efd; 
@@ -73,13 +73,14 @@
       font-size: 1rem; 
       cursor: pointer; 
       margin: 8px 16px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      box-sizing: border-box;
     }
-    .btn-primary:hover { background: #0b5ed7; }
-    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; }
+    .btn-primary:hover { background: #0b5ed7; color: #fff; }
+    .side-exit { position: absolute; right: -14px; top: 40%; width: 8px; height: 120px; background:#333; border-radius: 4px; cursor: pointer; display: block; text-decoration: none; color: inherit; }
   </style>
-  <script>
-    function goBack(){ window.location.href = '/phone/ezkey'; }
-  </script>
 </head>
 <body>
   <div class="app-shell" data-testid="demo-device-auth-result">
@@ -143,10 +144,14 @@
       
       <!-- Action Button -->
       <div class="mt-auto">
-        <button class="btn-primary" data-testid="demo-device-back-to-enrollments" onclick="goBack()">Back to Enrollments</button>
+        <a class="btn-primary" th:href="@{/phone/ezkey}" data-testid="demo-device-back-to-enrollments">Back to Enrollments</a>
       </div>
     </div>
-    <div class="side-exit" onclick="goBack()" title="Back"></div>
+    <a href="/phone/ezkey"
+       class="side-exit"
+       title="Back to enrollments"
+       aria-label="Back to enrollments"
+       data-testid="demo-device-auth-back"></a>
   </div>
 </body>
 </html>

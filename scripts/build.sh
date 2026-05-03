@@ -10,7 +10,11 @@ cd "$REPO_ROOT"
 DIAGNOSE_ONLY="${1:-}"
 
 if [ -z "${JAVA_HOME:-}" ]; then
-  for candidate in "/c/Tools/jdk25" "/mnt/c/Tools/jdk25"; do
+  for candidate in \
+    "/c/Tools/jdk-25.0.3+9" \
+    "/mnt/c/Tools/jdk-25.0.3+9" \
+    "/c/Tools/jdk25" \
+    "/mnt/c/Tools/jdk25"; do
     if [ -x "$candidate/bin/java" ] || [ -x "$candidate/bin/java.exe" ]; then
       export JAVA_HOME="$candidate"
       break
