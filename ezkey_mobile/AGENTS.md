@@ -20,6 +20,7 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - Keep the pull model: no background polling for auth attempts.
 - Do not reintroduce integration logos or related fields.
 - When discussing stack modernization, treat React, React Native, `react-native-vision-camera`, and camera-adjacent dependencies as a coupled compatibility slice rather than as independent bumps.
+- Treat the current mobile product and security posture as **Android-first**. iOS is a later planned phase, not a short-term parity target, so do not report missing iOS parity as a current defect unless documentation overclaims it.
 
 ## Contract-First Rules
 

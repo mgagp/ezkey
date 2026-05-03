@@ -74,6 +74,7 @@ EC P-256 key pairs are generated and held on the native keystore (`Android Keyst
 
 - **Positive.** Strong isolation, aligned with platform best practices.
 - **Negative.** Signing has a slight IPC cost; negligible in practice.
+- **Clarification.** This decision covers the device private signing key. Smaller persisted application secrets such as `enrollmentProofToken` still use the app's secure-storage path and are not currently unsealed by the enrollment private key itself.
 
 ### Impact
 

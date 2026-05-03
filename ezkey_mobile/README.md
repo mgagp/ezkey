@@ -4,6 +4,7 @@
 
 ## Overview
 
+- **Current scope note**: The current mobile product and security posture are **Android-first**. iOS remains a later planned phase and is **not** a short-term parity or release target. Review Android as the current implementation of record; do not treat missing iOS parity as a present defect unless documentation overclaims it.
 - **Stack**: React Native 0.85.2, React 19.2.3, and TypeScript with dedicated Android (Kotlin) and iOS (Swift/Obj-C++) native modules
 - **Primary Flows**: Enrollment via QR, secure key generation, pending authentication approvals/denials, challenge handling
 - **APIs Consumed**: `auth-api` endpoints documented in [`docs/ENDPOINT.md`](../docs/ENDPOINT.md)
@@ -20,10 +21,12 @@
 
 ## Security Posture
 
-- Proof tokens and signatures are always handled in memory; sensitive values are stored via secure storage abstractions only
+- Current mobile-security conclusions in this repository are **Android-first**. iOS code in the workspace should be treated as future-phase groundwork unless and until the docs explicitly say parity has been achieved.
+- Enrollment proof tokens are stored via secure storage abstractions; signatures and one-time auth proof tokens remain in memory only
 - Enrollment and authentication requests follow the pull-based model that avoids background polling to prevent enumeration or replay
 - Device credentials use EC P-256 (ECDSA-SHA256) as specified in [`docs/CRYPTO.md`](../docs/CRYPTO.md): PKCS#8 private key, X.509 public key, and platform-keystore integration
 - In the current Android implementation, each enrollment gets an EC P-256 key pair generated through `Android Keystore`; `StrongBox` is requested when available, and private key material is not exposed to application code
+- The current Android implementation does **not** use the enrollment private key as a general-purpose wrapping key for all mobile secrets. Private keys remain in `Android Keystore`; smaller application secrets such as `enrollmentProofToken` use the secure-storage delegate and are rehydrated only when needed by the flow
 - Client-side documentation references the backend security analysis in [`docs/features/AUTH_SECURITY.md`](../docs/features/AUTH_SECURITY.md) to keep UI logic aligned with server-side guarantees
 
 ## Project Structure

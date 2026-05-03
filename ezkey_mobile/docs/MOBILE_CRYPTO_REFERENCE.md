@@ -59,6 +59,25 @@ The current Android implementation:
 
 This is a useful platform security benefit, but it should not be described as full attestation or FIDO2/WebAuthn equivalence.
 
+## Secure Storage vs `Android Keystore` / StrongBox
+
+This distinction is easy to blur, so document it explicitly:
+
+- `Android Keystore` / `StrongBox` primarily protect **cryptographic keys** and key operations
+- the app's secure-storage delegate protects **small persisted secret values**
+- these are complementary layers, not the same thing
+
+In the current Ezkey Android reference app:
+
+- each enrollment has its own EC P-256 private signing key in `Android Keystore`
+- `StrongBox` is requested when the device can satisfy it
+- `enrollmentProofToken` is stored through the secure-storage delegate and rehydrated when needed
+- the current implementation does **not** use the enrollment private key itself as a master unsealing key for all
+  other mobile secrets
+
+If a future version introduces a stronger "sealed secrets" model backed by a keystore-protected encryption key, that
+should be documented as a **new** property rather than implied retroactively today.
+
 ## Device private key storage tier (`verify`)
 
 The Auth API accepts optional `devicePrivateKeyStorageTier` on enrollment verify. **Semantics for operators and documentation:**

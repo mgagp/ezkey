@@ -22,11 +22,11 @@ import {
 } from '../utils/installationMetadata';
 
 /**
- * Fetches enrollments from secure storage.
+ * Fetches enrollments from local metadata storage plus secure proof-token rehydration.
  *
  * No seeding logic - enrollments must be created through the normal enrollment flow.
  *
- * @return List of persisted enrollments with locally cached proof tokens.
+ * @return List of persisted enrollments rehydrated with proof tokens from secure storage.
  * @since 2025
  */
 const fetchEnrollments = async (): Promise<StoredEnrollment[]> => {
@@ -128,7 +128,7 @@ export const useEnrollmentById = (id: string) =>
   });
 
 /**
- * Persists an enrollment using the secure storage abstraction.
+ * Persists an enrollment using the split metadata plus secure proof-token storage model.
  *
  * @return React Query mutation handler that invalidates enrollment caches on success.
  * @since 2025
@@ -142,7 +142,7 @@ export const useSaveEnrollment = () => {
 };
 
 /**
- * Removes an enrollment record from secure storage.
+ * Removes an enrollment record from local metadata storage and secure proof-token storage.
  *
  * @return React Query mutation handler that invalidates enrollment caches on success.
  * @since 2025

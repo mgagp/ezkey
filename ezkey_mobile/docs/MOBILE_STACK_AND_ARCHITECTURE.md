@@ -22,8 +22,8 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 | Remote data orchestration | React Query | Query/mutation lifecycle and cache invalidation | Used for enrollments hydration and local mutation coordination. |
 | Local UI state | Zustand | Lightweight cross-screen state for selected enrollment | Small surface, no large global state machine. |
 | HTTP contract client | Orval-generated Auth API client plus local facades | Keep contract aligned with OpenAPI while preserving mobile-friendly wrappers | `app/services/api/types.ts` stays intentionally thin. |
-| Durable metadata storage | AsyncStorage-backed enrollment collection and preferences | Persist local enrollment records, installation metadata, and language preference | Wrapped by `enrollmentStorage` and preference-specific storage facades. |
-| Secure item storage | `react-native-keychain` wrapper | Device-local secure storage for small secret values | Present as a secure delegate; private key path remains native. |
+| Durable metadata storage | AsyncStorage-backed enrollment metadata collection and preferences | Persist local enrollment metadata, installation metadata, and language preference | Wrapped by `enrollmentStorage` and preference-specific storage facades. |
+| Secure item storage | `react-native-keychain` wrapper | Device-local secure storage for small secret values such as enrollment proof tokens | Used by `enrollmentStorage` as the secure delegate; private key path remains native. |
 | Device crypto | Native bridge (`EzkeyCryptoModule`) | Key generation, signing, public key retrieval, proof token generation | Android path is the current reference-strength implementation. |
 | QR capture | Vision Camera plus native Android frame processor | QR-first enrollment entry point | iOS parity remains more conservative. |
 | Testing | Jest / RTL / optional Detox | Unit/component/e2e coverage path | Native test surface still evolves separately. |
@@ -48,6 +48,19 @@ The app is intentionally layered. Screens remain mostly declarative and route us
 facades. Contract-specific serialization stays in the API layer, durable record handling stays in the storage layer,
 and cryptographic operations stay behind the native crypto bridge. This separation is what makes the flow docs and
 API mapping docs practical: the screen does not reinvent protocol semantics.
+
+## Secure Storage vs Keystore
+
+The current Android reference app uses two distinct protection layers that should not be conflated:
+
+| Layer | Protects | Current Ezkey mobile usage | Important boundary |
+| --- | --- | --- | --- |
+| `Android Keystore` / `StrongBox when available` | Cryptographic keys and key operations | One EC P-256 private signing key per enrollment | Protects the private key; does **not** automatically make all application secrets "inside StrongBox" |
+| Secure-storage delegate (`react-native-keychain`) | Small application secret values | `enrollmentProofToken` and similar small secrets | Protects persisted secret values, but is conceptually separate from the enrollment private key |
+
+So the honest current model is: the app signs with a per-enrollment keystore key, and it reloads the enrollment proof
+token from secure storage when needed. It does **not** currently implement a "sealed secrets" architecture where the
+enrollment private key unwraps all other local secrets on demand.
 
 ## Repository and Module Structure
 
@@ -94,8 +107,8 @@ flowchart LR
 | --- | --- | --- | --- |
 | Screen layer | Collect user intent and display trusted state only | User-entered challenges, contextual request text | Misleading UI if trust checks are bypassed or presentation overstates certainty. |
 | API facades | Serialize mobile wrapper inputs into Auth API DTOs | Enrollment IDs, proof tokens, signed payloads | Contract drift or wrong field coercion can break protocol correctness. |
-| Storage layer | Persist local enrollment records and installation metadata | `enrollmentProofToken`, `integrationPublicKey`, local timestamps, routing URL | Data loss or stale local model can break later auth flows. |
-| Native crypto service | Generate key pairs, retrieve public keys, sign payloads, verify integration signatures | Device private key path, signatures, proof token generation | Trust chain breaks if signing or verification is incorrect. |
+| Storage layer | Persist local enrollment metadata and secure proof-token state | `enrollmentProofToken`, `integrationPublicKey`, local timestamps, routing URL | Data loss or stale local model can break later auth flows. |
+| Native crypto service | Generate key pairs, retrieve public keys, sign payloads, verify integration signatures | Device private key path, signatures, proof token generation | Trust chain breaks if signing or verification is incorrect; this layer does not currently wrap or unwrap all app secrets |
 | Generated OpenAPI client | Mirror backend contract | DTO structures, HTTP typing | Silent contract drift if spec refresh discipline is not maintained. |
 | Auth API | Backend verification and lifecycle authority | Proof-token semantics, integration-signed payloads, final state | The mobile app must not try to replace backend authority with UI assumptions. |
 
@@ -125,7 +138,7 @@ Key decisions:
 - Enrollment entry is QR-first and intentionally narrow.
 - Polling for pending auth remains user-initiated; there is no background polling loop.
 - Device signing stays in native modules rather than reimplementing cryptography in JavaScript.
-- The app stores enough local enrollment metadata to function across restarts and to verify later integration signatures.
+- The app stores enough local enrollment metadata and secure proof-token state to function across restarts and to verify later integration signatures.
 - Installation branding is attached to enrollments and refreshed opportunistically rather than modeled as a full remote domain.
 
 Non-goals:

@@ -269,8 +269,13 @@
                 your device; used only to sign authentication challenges.</li>
             <li><strong>Enrollment metadata</strong> &mdash; The name and URL of each organization
                 you have enrolled with, and the enrollment display name assigned by your
-                organization&rsquo;s administrator. This information is stored in the
-                device&rsquo;s secure credential storage.</li>
+                organization&rsquo;s administrator. This information is stored in the app&rsquo;s
+                on-device metadata storage and does not leave your device except when needed to
+                interact with your organization&rsquo;s backend.</li>
+            <li><strong>Enrollment proof token</strong> &mdash; A long-lived local secret used by
+                the app to identify the enrollment context during authenticated device polling.
+                This value is stored through the device&rsquo;s secure credential storage rather
+                than in the app&rsquo;s ordinary enrollment metadata store.</li>
             <li><strong>Pending authentication state</strong> &mdash; Temporary data held in memory
                 while you are responding to an authentication challenge. This may include
                 contextual information provided by your organization&rsquo;s backend about the
@@ -298,9 +303,9 @@
                 protection tier of the key storage (e.g. <code>STANDARD</code> or
                 <code>STRONG</code>), as reported by the device.</li>
             <li><strong>During each authentication poll:</strong> a stable enrollment
-                identifier and a freshly generated signed one-time device proof token &mdash;
-                together identifying the enrollment and proving device participation for that
-                specific request.</li>
+                identifier, the enrollment proof token associated with that enrollment, and a
+                freshly generated signed one-time device proof token &mdash; together identifying
+                the enrollment and proving device participation for that specific request.</li>
             <li><strong>When approving or denying:</strong> the decision (approved or denied)
                 and a cryptographic signature over it. No personal or contextual data originates
                 from the device.</li>
@@ -429,6 +434,12 @@
             provides hardware-backed protection on supported devices. Network communication with
             your organization&rsquo;s backend uses HTTPS. The Ezkey project recommends that
             organizations configure their backend with a valid TLS certificate.
+        </p>
+        <p>
+            Smaller persisted application secrets, such as the enrollment proof token, use the
+            platform secure credential storage. This is distinct from the Android Keystore path
+            used for the device&rsquo;s private signing key; the app does not currently rely on one
+            StrongBox-backed private key to decrypt every other local secret.
         </p>
 
         <h2>11. Changes to this policy</h2>

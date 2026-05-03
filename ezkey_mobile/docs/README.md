@@ -4,6 +4,13 @@ This directory contains the primary conceptual documentation for the React Nativ
 It is intended for human reviewers and coding agents who need to understand the mobile product, its flows,
 its internal data model, and its relationship to the Auth API without reopening the codebase for every question.
 
+## Current Scope Note
+
+The current mobile implementation and security posture should be read as **Android-first**.
+iOS remains a **later planned phase** and is **not** a short-term parity or release target.
+Reviewers should not treat missing iOS parity as a current defect unless a document explicitly claims
+that parity already exists.
+
 Root-level documents remain canonical for shared Ezkey product identity, protocol semantics, cryptographic wire
 formats, and signed payload definitions. The documents in this directory interpret those shared truths for the
 reference mobile app.
@@ -45,6 +52,7 @@ reference mobile app.
 | --- | --- | --- |
 | [NATIVE_MODULES.md](NATIVE_MODULES.md) | Supporting technical detail | When the primary architecture doc is not deep enough on Android/iOS bridges. |
 | [MOBILE_CRYPTO_REFERENCE.md](MOBILE_CRYPTO_REFERENCE.md) | Supporting security detail | When reviewing mobile-specific crypto wording and storage caveats. |
+| [MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md](MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md) | Supporting security practice | When validating local secret handling, sandbox artifacts, log hygiene, and debug-only instrumentation choices. |
 | [MOBILE_RELEASE_SIGNING.md](MOBILE_RELEASE_SIGNING.md) | Operational | When preparing signed Android release artifacts. |
 | [MOBILE_PLAY_PUBLISHING.md](MOBILE_PLAY_PUBLISHING.md) | Operational | When preparing Google Play submission. |
 | [MOBILE_PLAY_RELEASE_READINESS_AUDIT.md](MOBILE_PLAY_RELEASE_READINESS_AUDIT.md) | Operational decision support | When deciding whether the current workspace is close enough to a Play release candidate. |

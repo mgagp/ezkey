@@ -17,6 +17,7 @@ import {hydrateInstallationMetadata} from '../../utils/installationMetadata';
 import {secureStorage} from './secureStorage';
 
 const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
+const ENROLLMENT_PROOF_TOKEN_KEY_PREFIX = 'ezkey-mobile/enrollment-proof-token';
 
 /**
  * Local representation of enrollment records including proof tokens.
@@ -36,6 +37,10 @@ export type StoredEnrollment = EnrollmentSummary & {
   deviceLabel?: string;
 };
 
+type PersistedEnrollmentMetadata = Omit<StoredEnrollment, 'enrollmentProofToken'> & {
+  enrollmentProofToken?: string;
+};
+
 type StorageDelegate = {
   setItem(key: string, value: string): Promise<void>;
   getItem(key: string): Promise<string | undefined>;
@@ -48,9 +53,9 @@ type EnrollmentStorageOptions = {
 };
 
 /**
- * Secure storage gateway in charge of persisting enrollment information on device.
+ * Storage gateway in charge of persisting enrollment information on device.
  *
- * Uses platform Keychain (iOS Keychain / Android Keystore) for secure storage.
+ * Persists enrollment metadata in AsyncStorage and proof tokens through the platform secure-storage delegate.
  *
  * @since 2025
  */
@@ -66,11 +71,48 @@ class EnrollmentStorage {
   /**
    * Factory used to instantiate the storage module with platform secure storage.
    *
-   * @return Enrollment storage instance using platform Keychain.
+   * @return Enrollment storage instance using AsyncStorage plus the platform secure-storage delegate.
    * @since 2025
    */
   static create() {
     return new EnrollmentStorage({secure: secureStorage, metadata: AsyncStorage});
+  }
+
+  private proofTokenStorageKey(id: string) {
+    return `${ENROLLMENT_PROOF_TOKEN_KEY_PREFIX}.${id}`;
+  }
+
+  private stripSensitiveFields(record: StoredEnrollment): PersistedEnrollmentMetadata {
+    const {enrollmentProofToken: _enrollmentProofToken, ...metadata} = record;
+    return metadata;
+  }
+
+  private async attachProofToken(
+    record: PersistedEnrollmentMetadata,
+  ): Promise<StoredEnrollment | undefined> {
+    const secureKey = this.proofTokenStorageKey(record.id);
+    const secureProofToken = await this.secure.getItem(secureKey);
+    const legacyProofToken = record.enrollmentProofToken;
+    const enrollmentProofToken = secureProofToken ?? legacyProofToken;
+
+    if (!enrollmentProofToken) {
+      console.warn('[enrollmentStorage] Missing secure enrollment proof token:', record.id);
+      return undefined;
+    }
+
+    if (!secureProofToken && legacyProofToken) {
+      await this.secure.setItem(secureKey, legacyProofToken);
+    }
+
+    return {
+      ...record,
+      enrollmentProofToken,
+    };
+  }
+
+  private async persistMetadataRecords(records: StoredEnrollment[]) {
+    const nextItems = records.map(item => this.stripSensitiveFields(hydrateInstallationMetadata(item)));
+    await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
   }
 
   /**
@@ -88,8 +130,15 @@ class EnrollmentStorage {
       return [];
     }
     try {
-      const parsed = JSON.parse(payload) as StoredEnrollment[];
-      return parsed.map(item => hydrateInstallationMetadata(item));
+      const parsed = JSON.parse(payload) as PersistedEnrollmentMetadata[];
+      const hydratedItems = parsed.map(item => hydrateInstallationMetadata(item));
+      const attachedItems = await Promise.all(hydratedItems.map(item => this.attachProofToken(item)));
+      const nextItems = attachedItems.filter((item): item is StoredEnrollment => item != null);
+      const requiresMetadataRewrite = hydratedItems.some(item => Object.hasOwn(item, 'enrollmentProofToken'));
+      if (requiresMetadataRewrite) {
+        await this.persistMetadataRecords(nextItems);
+      }
+      return nextItems;
     } catch (error) {
       console.warn('[enrollmentStorage] Failed to parse enrollment cache:', error);
       return [];
@@ -106,9 +155,10 @@ class EnrollmentStorage {
    * @since 2025
    */
   async saveEnrollment(record: StoredEnrollment) {
+    await this.secure.setItem(this.proofTokenStorageKey(record.id), record.enrollmentProofToken);
     const items = await this.listEnrollments();
     const nextItems = items.filter(item => item.id !== record.id).concat(hydrateInstallationMetadata(record));
-    await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
+    await this.persistMetadataRecords(nextItems);
   }
 
   /**
@@ -119,7 +169,21 @@ class EnrollmentStorage {
    */
   async replaceAll(records: StoredEnrollment[]) {
     const nextItems = records.map(item => hydrateInstallationMetadata(item));
-    await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
+    const currentItems = await this.listEnrollments();
+    const nextIds = new Set(nextItems.map(item => item.id));
+
+    await Promise.all(
+      nextItems.map(item =>
+        this.secure.setItem(this.proofTokenStorageKey(item.id), item.enrollmentProofToken),
+      ),
+    );
+    await Promise.all(
+      currentItems
+        .filter(item => !nextIds.has(item.id))
+        .map(item => this.secure.removeItem(this.proofTokenStorageKey(item.id))),
+    );
+
+    await this.persistMetadataRecords(nextItems);
   }
 
   /**
@@ -143,7 +207,8 @@ class EnrollmentStorage {
   async deleteEnrollment(id: string) {
     const items = await this.listEnrollments();
     const nextItems = items.filter(item => item.id !== id);
-    await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
+    await this.secure.removeItem(this.proofTokenStorageKey(id));
+    await this.persistMetadataRecords(nextItems);
   }
 
   /**
@@ -173,7 +238,7 @@ class EnrollmentStorage {
       return undefined;
     }
 
-    await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
+    await this.persistMetadataRecords(nextItems);
     return updatedRecord;
   }
 
@@ -185,6 +250,10 @@ class EnrollmentStorage {
    * @since 2025
    */
   async clearAll() {
+    const items = await this.listEnrollments();
+    await Promise.all(
+      items.map(item => this.secure.removeItem(this.proofTokenStorageKey(item.id))),
+    );
     await this.metadata.removeItem(ENROLLMENT_COLLECTION_KEY);
   }
 }

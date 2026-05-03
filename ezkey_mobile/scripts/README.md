@@ -1,5 +1,34 @@
 # Ezkey mobile — utility scripts
 
+## `verify-android-sensitive-storage.sh`
+
+Runs a repeatable Android debug-build verification for local secret handling:
+
+- confirms the app sandbox is accessible through `adb run-as`
+- inspects `RKStorage` (AsyncStorage) and verifies `enrollmentProofToken` is absent from the persisted enrollment JSON
+- inspects the secure-storage datastore used by `react-native-keychain`
+- scans the current `logcat` buffer for obvious proof-token leaks
+
+### Run (from `ezkey_mobile`)
+
+```bash
+./scripts/verify-android-sensitive-storage.sh
+```
+
+Optional package override:
+
+```bash
+./scripts/verify-android-sensitive-storage.sh org.ezkey.mobile
+```
+
+Requirements:
+
+- connected Android device visible to `adb`
+- a debuggable installed app build
+- Python (`python3`, `python`, or `py -3`) on the host
+
+This script is intended as a practical investigation aid, not as a formal cryptographic proof.
+
 ## `generate_android_launcher_icons.py`
 
 Rasters the repository root **`logo.svg`** into Android **`mipmap-*`** assets:

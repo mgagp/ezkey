@@ -6,7 +6,7 @@ This document describes the mobile app's technical structure at a level sufficie
 
 ## Stack
 
-- **React Native 0.76.0**, **React 18.3.1**, **TypeScript**.
+- **React Native 0.85.2**, **React 19.2.3**, **TypeScript**.
 - **Yarn 4 (Berry)** — package manager.
 - **Axios** — HTTP client wrapped by a shared service.
 - **Zustand** — lightweight state stores.
@@ -68,6 +68,14 @@ Proof tokens produced by the app are scoped to the current flow step. They are g
 ### Secure key handling
 
 Device private keys are EC P-256 and live on the native keystore. In the current Android implementation the app uses `Android Keystore` and requests `StrongBox` when available. Application code never sees private key bytes; signing operations happen on the native side through `EzkeyCryptoModule`.
+
+The current app uses a second protection layer for small application secrets:
+
+- the per-enrollment private signing key stays on the keystore path
+- the long-lived `enrollmentProofToken` uses the platform secure-storage abstraction
+
+This is intentionally documented as a split model. The current implementation does **not** use the enrollment private
+key itself as a master wrapping key that decrypts all other mobile secrets on demand.
 
 ### QR-first enrollment
 

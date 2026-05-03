@@ -19,6 +19,7 @@ Rules:
 - [../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) and [../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md](../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md) remain canonical for exact signed payload definitions.
 - `app/services/api/types.ts` is the thin mobile contract layer; generated models remain the DTO source of truth.
 - Screen ownership matters: the mobile app does not expose `pending` directly from Home. The user navigates into Enrollment Detail first, then to Pending Authentication.
+- Storage wording must stay explicit: the current app keeps per-enrollment private keys on the native keystore path, but `enrollmentProofToken` is rehydrated from the secure-storage delegate rather than being unsealed by the enrollment private key itself.
 
 | Canonical document | Scope | How this document depends on it |
 | --- | --- | --- |
@@ -58,7 +59,7 @@ Rules:
 | Response field | Meaning | Consumed by | Persisted? | Displayed? | Security note |
 | --- | --- | --- | --- | --- | --- |
 | `enrollmentId` | Server-confirmed enrollment identifier | Enrollment Wizard | No | Not shown directly | Used to normalize the draft ID. |
-| `enrollmentProofToken` | Proof token echoed by server | Enrollment Wizard | Later, after verify | No | Compared/retained for the follow-up verify flow and stored only after successful enrollment. |
+| `enrollmentProofToken` | Proof token echoed by server | Enrollment Wizard | Later, after verify in secure storage | No | Compared/retained for the follow-up verify flow and stored securely only after successful enrollment. |
 | `integrationPublicKey` | Integration verification key | Enrollment Wizard, Pending Authentication | Yes, after verify | No | Used to verify integration Ed25519 signatures later in bind, verify result, pending, and respond result flows. |
 | `integrationKeyAlgorithm` | Algorithm tag for `integrationPublicKey` | Enrollment Wizard | No | No | Must be exactly `ed25519`; the app fails closed otherwise. |
 | `integrationName` | Integration display name | Enrollment Wizard | Yes, after verify | Yes | Shown in the info card before enrollment is completed. |
@@ -135,11 +136,15 @@ public key, signs the canonical verify payload, submits the request, and then ve
 Only after the verify-result signature passes does the wizard persist a `StoredEnrollment` record. Persistence also
 hydrates local installation metadata when an Auth API base URL is known.
 
+That persistence boundary is intentionally split: the private signing key remains in `Android Keystore`, the
+`enrollmentProofToken` goes through secure storage, and the rest of the local metadata continues through the
+AsyncStorage-backed enrollment collection.
+
 | Local concept | Mapped from | Used by | Notes |
 | --- | --- | --- | --- |
 | `StoredEnrollment.id` | Draft ID | Home, Detail, Pending | Primary local identifier. |
 | `StoredEnrollment.integrationPublicKey` | Bind response | Pending and respond verification | Stored for future integration-signature checks. |
-| `StoredEnrollment.enrollmentProofToken` | Draft proof token | Pending flow | Sensitive enrollment token stored in the local record. |
+| `StoredEnrollment.enrollmentProofToken` | Draft proof token | Pending flow | Sensitive enrollment token rehydrated from secure storage into the runtime local record. |
 | `StoredEnrollment.installation.authUrl` | QR or resolved installation URL | All subsequent API calls | Allows per-installation server targeting. |
 | `StoredEnrollment.installation` | `instanceInfoApi.get(...)` plus URL derivation | Home and Detail | Supports installation grouping and display as a first-class object. |
 
@@ -199,7 +204,7 @@ Association pipeline:
 | Request field | Meaning | Required? | Source in app | Security note |
 | --- | --- | --- | --- | --- |
 | `enrollmentId` | Enrollment identifier | Yes | Persisted enrollment record | Serialized to JSON number before sending. |
-| `enrollmentProofToken` | Enrollment proof token | Yes | Persisted enrollment record | Stable enrollment-side proof material. |
+| `enrollmentProofToken` | Enrollment proof token | Yes | Securely rehydrated enrollment record | Stable enrollment-side proof material. |
 | `deviceProofToken` | Fresh client-generated proof token | Yes | `generateProofToken()` | Intended to prove fresh device participation on each poll cycle. |
 | `deviceProofTokenSigned` | Device signature on the proof token | Yes | `cryptoService.sign(...)` | Prevents unauthenticated enumeration of pending attempts. |
 
@@ -220,6 +225,9 @@ The Pending Authentication screen owns the `pending` call. It first ensures the 
 generates a fresh `deviceProofToken`, signs it, then calls the Auth API. On a successful pending response, it
 rebuilds the canonical pending payload and verifies the integration Ed25519 signature with the stored
 `integrationPublicKey`. Only then does it create an in-memory `PendingAttempt` object and render the request.
+
+The important security nuance is that the screen receives `enrollmentProofToken` from the already rehydrated runtime
+record. The current app does not ask the enrollment private key to decrypt or unwrap that token on demand.
 
 | Local concept | Mapped from | Used by | Notes |
 | --- | --- | --- | --- |
@@ -349,5 +357,5 @@ response updates a volatile latest-response summary for the enrollment and retur
 
 - The app intentionally validates `integrationKeyAlgorithm` during bind before trusting `integrationPublicKey`.
 - Home does not trigger `pending`; the explicit user path is Home -> Enrollment Detail -> Pending Authentication.
-- The current implementation persists the enrollment proof token and integration public key in the local record so later pending/respond trust checks can run without refetching bind state.
+- The current implementation persists the enrollment proof token via secure storage and keeps `integrationPublicKey` in the enrollment metadata record so later pending/respond trust checks can run without refetching bind state.
 - The current mobile documentation should explicitly note that some PRD expectations remain ahead of the implementation, especially around activity history and certain placeholder states.

@@ -135,8 +135,8 @@ sequenceDiagram
 - After submission, returns to enrollment detail with toast summarizing action.
 
 ### 5.5 Local Storage & State Sync
-- Persisted attributes per enrollment: `enrollmentId`, `integrationId`, `integrationName`, `tenantName`, `publicKey`, `privateKeyRef`, `createdAt`, `lastSyncedAt`.
-- Uses device-secure storage for private key reference (`react-native-keychain` or custom native module) and AsyncStorage/SQLite for metadata.
+- Persisted attributes per enrollment: `enrollmentId`, `integrationId`, `integrationName`, `tenantName`, `integrationPublicKey`, installation metadata, and local timestamps.
+- Uses the native keystore path for the per-enrollment private signing key, secure storage for long-lived local secrets such as `enrollmentProofToken`, and AsyncStorage for enrollment metadata.
 - Background sync relies solely on user-triggered refreshes; no automated polling or admin metadata fetch occurs.
 - Enrollment activity snapshots (challenge outcomes, timestamps) are cached locally for convenience and automatically purged after 30 days; this does not affect server-side audit logs or compliance records.
 
@@ -155,7 +155,7 @@ sequenceDiagram
 ### 6.2 Permissions & Native Integrations
 - Camera permission request with rationale, fallbacks for denial (manual code entry placeholder).
 - Use `react-native-vision-camera` or nearest maintained library for QR scanning.
-- For secure storage, prefer native modules to expose Keychain/Keystore.
+- For secure storage, prefer platform-backed secure storage abstractions. Do not describe the current app as if one StrongBox-backed private key decrypts every other local secret; the private signing key and small persisted application secrets follow separate protection paths today.
 
 ### 6.3 State Management & Architecture
 - React Query for server data fetching and caching.
@@ -169,7 +169,7 @@ sequenceDiagram
 
 ## 7. Non-Functional Requirements
 - **Performance**: Enrollment list renders < 100ms with up to 50 enrollments. API calls time out after 10s with user feedback.
-- **Security**: No sensitive tokens stored in plain AsyncStorage; clear data on sign-out (future feature) and provide “reset app” debug action.
+- **Security**: No sensitive proof tokens stored in plain AsyncStorage; enrollment proof tokens must remain in secure storage, clear data on sign-out (future feature), and provide “reset app” debug action.
 - **Reliability**: Retry policies for network operations (3 attempts with exponential backoff). App gracefully handles offline state with banners and cached data.
 - **Accessibility**: WCAG AA color contrast, VoiceOver/TalkBack labels, dynamic font size support.
 - **Localization**: English and French copy, centralized in a message catalog. English is the default; the user can switch language manually in Settings, and the change is applied after the next app restart.

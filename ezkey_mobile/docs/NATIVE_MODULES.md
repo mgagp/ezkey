@@ -38,6 +38,10 @@ sequenceDiagram
 - iOS native secure-hardware-backed EC P-256 support is not yet at parity with the Android path and should be described as planned / in progress rather than assumed.
 - QR scanning is Android-only today; iOS uses JS-based fallbacks until a Swift counterpart is implemented.
 
+Important boundary: `EzkeyCryptoModule` is a **signing and verification** bridge. It does not currently expose a
+general encrypt/decrypt or wrap/unwrap API for all local mobile secrets. In the present app, `enrollmentProofToken`
+uses the secure-storage delegate, while the per-enrollment private signing key remains in the keystore path.
+
 ## Security Alignment
 
 - EC P-256 key format matches [`docs/CRYPTO.md`](../../docs/CRYPTO.md): PKCS#8 private key, X.509 public key, ECDSA-SHA256 signatures in ASN.1 DER format, Base64 transport.

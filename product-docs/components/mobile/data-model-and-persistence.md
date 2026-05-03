@@ -8,6 +8,7 @@ This document describes the mobile app's local data model and persistence rules.
 
 - **Owned locally.** Enrollment summaries, app preferences, session context (non-secret).
 - **Owned by the native keystore.** Device EC P-256 private keys. Application code has no access.
+- **Protected through secure storage.** Long-lived local application secrets such as `enrollmentProofToken`.
 - **Owned by the backend.** Enrollment lifecycle state, authentication attempts, integration metadata. The app reads these through the Auth API and stores minimum copies only for UX purposes.
 
 ## Conceptual View
@@ -42,8 +43,9 @@ classDiagram
 
 ## Types That Matter
 
-- **`EnrollmentSummary`** — local metadata describing a bound enrollment. Never stores the private key or long-lived secrets.
+- **`EnrollmentSummary`** — local metadata describing a bound enrollment. Never stores the private key.
 - **`DeviceKeyPair` (logical)** — a reference to the keystore alias; actual key material stays native.
+- **`StoredEnrollment` (runtime)** — local metadata rehydrated with `enrollmentProofToken` from secure storage and `integrationPublicKey` from metadata storage when the app needs to execute authenticated flows.
 - **Generated Auth API DTOs** — live under `app/services/api/generated/auth-api/model/`; never hand-edited.
 - **`AuthAttemptCache`** — optional short-lived in-memory cache for the currently displayed attempt.
 
@@ -52,16 +54,21 @@ classDiagram
 | Concern | Storage | Scope | Notes |
 |---------|---------|-------|-------|
 | Device EC P-256 private key | Android Keystore / iOS Keychain | Device | Non-extractable; `StrongBox` requested when available. |
-| Enrollment summaries | Secure storage abstraction | App | No tokens stored; fingerprint only. |
+| Enrollment metadata | AsyncStorage-backed local metadata storage | App | Installation metadata, labels, timestamps, and `integrationPublicKey`. |
+| Enrollment proof token | Secure storage abstraction | App | Persisted outside the AsyncStorage enrollment collection and rehydrated when needed. |
 | App preferences | App storage | App | Base URL, locale, minor toggles. |
 | Current auth attempt cache | In-memory only | Screen session | Cleared when the screen unmounts or a final result is received. |
-| Proof tokens | In-memory only | Flow step | Never persisted. |
+| One-time proof tokens (`deviceProofToken`, `authAttemptProofToken`) | In-memory only | Flow step | Never persisted as durable local state. |
 
 ### Rules
 
-- **Never persist proof tokens, signatures used as proof material, or recovery-like artifacts.**
+- **Never persist one-time proof material or raw signatures in ordinary app storage.** The current mobile app does persist the long-lived `enrollmentProofToken`, but it does so via the secure-storage delegate rather than in the AsyncStorage enrollment collection.
 - **Never log private keys or signatures.** Identifiers (for example `enrollmentId`) are acceptable.
 - **Do not maintain a second hand-edited copy of Auth API contracts** in `app/services/api/types.ts`; that file keeps local mobile domain types and UI-friendly wrapper shapes only.
+
+Important clarification: the current app does **not** use the per-enrollment private key as a universal decryption key
+for every other local secret. `Android Keystore` / `StrongBox when available` protect the signing key. Secure storage
+protects small persisted application secrets such as `enrollmentProofToken`.
 
 ## Lifecycle (Local Perspective)
 

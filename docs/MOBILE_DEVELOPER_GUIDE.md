@@ -239,6 +239,22 @@ Important properties:
 - The mobile app signs UTF-8 payload bytes.
 - The public key exported during enrollment verify is the Base64-encoded SPKI representation.
 
+#### Local secret persistence boundary — current reference app
+
+For third-party mobile clients, this guide does **not** mandate a specific local-secret storage backend beyond the
+security properties required by the protocol. However, the current Ezkey React Native reference app is explicit about
+its present model:
+
+- the **per-enrollment EC P-256 private key** lives in `Android Keystore`, with `StrongBox` requested when available
+- the **`enrollmentProofToken`** is persisted through the platform secure-storage abstraction used by the app
+- the current implementation does **not** use the enrollment private key itself as a wrapping or unsealing key for
+  all other application secrets
+
+This distinction matters. `Android Keystore` / `StrongBox` primarily protect **keys** and key operations. Secure
+storage protects **application secret values** such as proof tokens. A future client may choose to build a stronger
+"sealed secrets" model on top of a keystore-protected encryption key, but that is a design choice beyond the current
+reference app and beyond what the Ezkey protocol requires today.
+
 #### Device private key storage tier — trust model and proof boundary
 
 The optional `devicePrivateKeyStorageTier` field on `POST /api/v1/enrollments/verify` exists so operators can see a **coarse, client-reported** label (`NONE`, `STANDARD`, `STRONG`) in Admin tooling. **The current protocol does not give the backend any independent way to prove that label.**

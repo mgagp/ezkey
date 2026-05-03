@@ -274,8 +274,14 @@
             <li><strong>Métadonnées d&rsquo;inscription</strong> &mdash; Le nom et l&rsquo;URL
                 de chaque organisation auprès de laquelle vous vous êtes inscrit, ainsi que
                 le nom d&rsquo;inscription assigné par l&rsquo;administrateur de votre organisation.
-                Ces informations sont stockées dans le stockage sécurisé des identifiants
-                de l&rsquo;appareil.</li>
+                Ces informations sont stockées dans le magasin local de métadonnées de
+                l&rsquo;application et ne quittent pas votre appareil, sauf lorsque cela est
+                nécessaire pour interagir avec le serveur de votre organisation.</li>
+            <li><strong>Jeton de preuve d&rsquo;inscription</strong> &mdash; Secret local de longue
+                durée utilisé par l&rsquo;application pour identifier le contexte d&rsquo;enrollment
+                lors des sondages authentifiés de l&rsquo;appareil. Cette valeur est stockée via le
+                stockage sécurisé des identifiants de l&rsquo;appareil plutôt que dans le magasin
+                ordinaire de métadonnées d&rsquo;inscription de l&rsquo;application.</li>
             <li><strong>État d&rsquo;authentification en attente</strong> &mdash; Données
                 temporaires conservées en mémoire pendant que vous répondez à un défi
                 d&rsquo;authentification. Cela peut inclure des informations contextuelles
@@ -307,9 +313,10 @@
                 (p.&nbsp;ex. <code>STANDARD</code> ou <code>STRONG</code>), telle que rapportée
                 par l&rsquo;appareil.</li>
             <li><strong>Lors de chaque sondage d&rsquo;authentification&nbsp;:</strong> un
-                identifiant d&rsquo;inscription stable et un jeton de preuve signé unique généré
-                à la volée &mdash; identifiant conjointement l&rsquo;inscription et attestant la
-                participation de l&rsquo;appareil pour cette requête spécifique.</li>
+                identifiant d&rsquo;inscription stable, le jeton de preuve d&rsquo;inscription
+                associé à cette inscription, et un jeton de preuve d&rsquo;appareil signé unique
+                généré à la volée &mdash; identifiant conjointement l&rsquo;inscription et
+                attestant la participation de l&rsquo;appareil pour cette requête spécifique.</li>
             <li><strong>Lors de l&rsquo;approbation ou du refus&nbsp;:</strong> la décision
                 (approuvé ou refusé) et une signature cryptographique sur celle-ci. Aucune donnée
                 personnelle ni contextuelle ne provient de l&rsquo;appareil.</li>
@@ -450,6 +457,13 @@
             La communication réseau avec le serveur de votre organisation utilise HTTPS. Le projet
             Ezkey recommande aux organisations de configurer leur serveur avec un certificat TLS
             valide.
+        </p>
+        <p>
+            Les petits secrets applicatifs persistés, comme le jeton de preuve d&rsquo;inscription,
+            utilisent le stockage sécurisé des identifiants de la plateforme. Cette protection est
+            distincte du chemin Android Keystore utilisé pour la clé privée de signature de
+            l&rsquo;appareil&nbsp;; l&rsquo;application ne repose pas actuellement sur une clé
+            privée StrongBox unique pour déchiffrer tous les autres secrets locaux.
         </p>
 
         <h2>11. Modifications de la présente politique</h2>
