@@ -43,12 +43,12 @@ flowchart TD
 - API services wrap Axios with consistent headers, timeouts, and error handling.
 - Crypto services require native modules; there is no production mock fallback.
 - In the current Android implementation, EC P-256 enrollment keys are generated through `Android Keystore`, with `StrongBox` requested when available.
-- Enrollment metadata is stored separately from sensitive proof-token material; `enrollmentProofToken` is persisted through secure storage rather than in the AsyncStorage enrollment collection.
+- Enrollment metadata is stored separately from sensitive proof-token material; on Android, `enrollmentProofToken` and `integrationPublicKey` are persisted as sealed-secret envelopes rather than in the AsyncStorage enrollment collection.
 
 Security boundary note:
 
 - The current Android app uses `Android Keystore` / `StrongBox when available` for the **per-enrollment private signing key**.
-- The app uses the secure-storage delegate for **small application secrets** such as `enrollmentProofToken`.
+- The app uses a platform secure secret delegate for **small application secrets** such as `enrollmentProofToken` and `integrationPublicKey`; on Android this delegate seals AsyncStorage envelopes with an app-level Keystore AES key.
 - The current model does **not** treat the enrollment private key as a universal wrapping key that decrypts every other mobile secret on demand.
 
 ## Feature Breakdown
@@ -108,7 +108,7 @@ When describing the mobile security model, prefer:
 - `Android Keystore`
 - `StrongBox when available`
 - `private key material is not exposed to application code`
-- `enrollment proof tokens use the secure-storage delegate, distinct from the keystore signing key`
+- `enrollment proof tokens and integration verification keys use the secure secret delegate, distinct from the keystore signing key`
 
 Avoid unqualified claims such as:
 

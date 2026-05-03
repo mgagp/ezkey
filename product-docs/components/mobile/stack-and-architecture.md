@@ -51,8 +51,8 @@ flowchart LR
     generatedClient --> authApi[Auth API]
     hooks --> cryptoService[Native Crypto Module]
     cryptoService --> keystore[Android Keystore or iOS Keychain]
-    hooks --> secureStorage[Secure Storage]
-    secureStorage --> deviceStorage[Platform Secure Storage]
+    hooks --> secureStorage[Secure Secret Delegate]
+    secureStorage --> deviceStorage[Android Sealed Secrets or Platform Secure Storage]
 ```
 
 ## Cross-Cutting Patterns
@@ -72,7 +72,7 @@ Device private keys are EC P-256 and live on the native keystore. In the current
 The current app uses a second protection layer for small application secrets:
 
 - the per-enrollment private signing key stays on the keystore path
-- the long-lived `enrollmentProofToken` uses the platform secure-storage abstraction
+- the long-lived `enrollmentProofToken` and `integrationPublicKey` use the secure secret abstraction
 
 This is intentionally documented as a split model. The current implementation does **not** use the enrollment private
 key itself as a master wrapping key that decrypts all other mobile secrets on demand.

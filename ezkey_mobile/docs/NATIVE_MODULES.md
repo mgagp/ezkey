@@ -39,8 +39,9 @@ sequenceDiagram
 - QR scanning is Android-only today; iOS uses JS-based fallbacks until a Swift counterpart is implemented.
 
 Important boundary: `EzkeyCryptoModule` is a **signing and verification** bridge. It does not currently expose a
-general encrypt/decrypt or wrap/unwrap API for all local mobile secrets. In the present app, `enrollmentProofToken`
-uses the secure-storage delegate, while the per-enrollment private signing key remains in the keystore path.
+general encrypt/decrypt or wrap/unwrap API for all local mobile secrets. In the present Android app,
+`enrollmentProofToken` and `integrationPublicKey` are sealed through a dedicated app-level Keystore AES key, while the
+per-enrollment private signing key remains on the keystore signing path.
 
 ## Security Alignment
 

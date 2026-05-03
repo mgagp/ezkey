@@ -30,7 +30,7 @@ Ezkey is built around cryptographic continuity across the full flow, not around 
 - During authentication, `pending` and `respond` are cryptographically linked.
 - One-time proof tokens and signature validation protect the flow against replay and tampering.
 - When secure private-key storage is available on the device, Ezkey uses it as an implementation building block, not as the foundation of its identity.
-- In the current Android reference app, per-enrollment private keys live in `Android Keystore` with `StrongBox` requested when available, while smaller application secrets such as the enrollment proof token use the platform secure-storage abstraction. These are related hardening layers, not a single "StrongBox unlocks all app secrets" model.
+- In the current Android reference app, per-enrollment private keys live in `Android Keystore` with `StrongBox` requested when available, while long-lived application secrets such as `enrollmentProofToken` and `integrationPublicKey` are sealed separately at rest through an app-level `Android Keystore` AES key. These are related hardening layers, not a single "StrongBox unlocks all app secrets" model.
 
 This is what makes Ezkey a distinct backend-to-mobile security model rather than a passkey-derived approach.
 

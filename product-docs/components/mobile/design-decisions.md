@@ -11,6 +11,7 @@ This document records architecture and design decisions **scoped to the mobile a
 | [ADR-MOB-0001](#adr-mob-0001-no-background-polling) | No background polling for authentication attempts | accepted | 2025-06-15 |
 | [ADR-MOB-0002](#adr-mob-0002-ec-p256-keys-on-native-keystore) | EC P-256 keys generated and stored on the native keystore | accepted | 2025-07-20 |
 | [ADR-MOB-0003](#adr-mob-0003-fail-closed-on-signature-checks) | Fail-closed on signature and algorithm checks | accepted | 2025-08-05 |
+| [ADR-MOB-0004](#adr-mob-0004-android-app-level-sealed-secrets) | Android app-level sealed secrets for long-lived enrollment values | accepted | 2026-05-03 |
 
 ## ADR-MOB-0001 — No background polling for authentication attempts
 
@@ -119,3 +120,43 @@ Failure surfaces as a fail-closed UI state that does not claim success, and logs
 
 - Enrollment wizard, Pending Auth screen, Respond Result screen.
 - Reference: [`../../../ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md`](../../../ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md).
+
+## ADR-MOB-0004 — Android app-level sealed secrets for long-lived enrollment values
+
+### Metadata
+
+- **ID:** ADR-MOB-0004.
+- **Date:** 2026-05-03.
+- **Status:** accepted.
+- **Scope:** component:mobile.
+
+### Context
+
+The mobile app already keeps the per-enrollment EC P-256 signing key in `Android Keystore`, but long-lived values such
+as `enrollmentProofToken` and `integrationPublicKey` still need their own at-rest protection and should not remain in
+cleartext in the AsyncStorage enrollment collection. Using one additional app-level Keystore-backed encryption key is a
+better fit than generating a second keystore encryption key per enrollment.
+
+### Decision
+
+On Android, the app provisions a dedicated app-level AES key in `Android Keystore`, requesting `StrongBox` when
+available, and uses that key to seal long-lived enrollment values into JSON ciphertext envelopes stored in AsyncStorage.
+The per-enrollment EC P-256 signing keys remain dedicated to signatures only. Other platforms continue to use their
+existing secure-storage fallback until parity is implemented.
+
+### Alternatives Considered
+
+- **Keep using only Keychain-style secure-storage wrappers everywhere.** Rejected — weaker alignment with the Android-first target architecture and less explicit control over at-rest ciphertext storage.
+- **Use one extra encryption key per enrollment.** Rejected — higher complexity and more key-slot pressure without enough practical value for the current app.
+- **Use the per-enrollment signing key itself to wrap all other secrets.** Rejected — conflates signing and encryption roles and complicates multi-enrollment storage unnecessarily.
+
+### Consequences
+
+- **Positive.** Better Android at-rest hardening, explicit separation of signing and encryption roles, simpler multi-enrollment model.
+- **Negative.** Android-specific native crypto surface grows and needs targeted validation.
+- **Boundary.** This is local storage hardening only. It does not add backend attestation or server-side proof of StrongBox usage.
+
+### Impact
+
+- Enrollment persistence, Pending Auth rehydration, Android verification scripts, and mobile documentation.
+- Reference: [`../../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md`](../../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md).

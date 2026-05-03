@@ -68,12 +68,25 @@ try:
             print("  contains_enrollmentProofToken={}".format("enrollmentProofToken" in value))
             print("  contains_integrationPublicKey={}".format("integrationPublicKey" in value))
             print("  contains_secure_storage_key_name={}".format("ezkey-mobile/enrollment-proof-token" in value))
+          print("  contains_integration_storage_key_name={}".format("ezkey-mobile/integration-public-key" in value))
             parsed = json.loads(value)
             print("  enrollment_count={}".format(len(parsed)))
             for idx, item in enumerate(parsed):
                 print("  enrollment[{}].id={}".format(idx, item.get("id")))
                 print("  enrollment[{}].has_enrollmentProofToken={}".format(idx, "enrollmentProofToken" in item))
                 print("  enrollment[{}].has_integrationPublicKey={}".format(idx, "integrationPublicKey" in item))
+        elif key.startswith("ezkey-mobile/sealed-secret."):
+          print("  sealed_secret_key={}".format(key))
+          try:
+            parsed = json.loads(value)
+            print("  envelope_version={}".format(parsed.get("version")))
+            print("  envelope_algorithm={}".format(parsed.get("algorithm")))
+            print("  has_iv={}".format("iv" in parsed))
+            print("  has_ciphertext={}".format("ciphertext" in parsed))
+            print("  contains_plaintext_token={}".format("enrollmentProofToken" in value))
+            print("  contains_plaintext_integration_key={}".format("integrationPublicKey" in value))
+          except Exception as exc:
+            print("  envelope_parse_error={}".format(exc))
         else:
             print("  value={}".format(value))
 finally:
@@ -85,8 +98,9 @@ finally:
 '
 echo
 
-echo "-- Secure-storage datastore checks --"
-"${ADB_CMD[@]}" exec-out run-as "$PACKAGE_NAME" cat "/data/user/0/$PACKAGE_NAME/files/datastore/RN_KEYCHAIN.preferences_pb" | "${PYTHON_CMD[@]}" -c '
+echo "-- Legacy Keychain datastore check (best effort migration residue) --"
+if "${ADB_CMD[@]}" shell run-as "$PACKAGE_NAME" test -f "/data/user/0/$PACKAGE_NAME/files/datastore/RN_KEYCHAIN.preferences_pb" >/dev/null 2>&1; then
+  "${ADB_CMD[@]}" exec-out run-as "$PACKAGE_NAME" cat "/data/user/0/$PACKAGE_NAME/files/datastore/RN_KEYCHAIN.preferences_pb" | "${PYTHON_CMD[@]}" -c '
 import sys
 import re
 
@@ -95,8 +109,7 @@ patterns = [
     b"enrollmentProofToken",
     b"ezkey-mobile/enrollment-proof-token",
     b"integrationPublicKey",
-    b"proof",
-    b"token",
+    b"ezkey-mobile/integration-public-key",
 ]
 for pattern in patterns:
     print("contains_{}={}".format(pattern.decode("utf-8", "ignore"), pattern in blob))
@@ -105,15 +118,18 @@ print("ascii_snippets_with_security_keywords:")
 for match in re.finditer(rb"[ -~]{6,}", blob):
     snippet = match.group().decode("utf-8", "ignore")
     lowered = snippet.lower()
-    if any(keyword in lowered for keyword in ("ezkey", "keychain", "token", "proof", "enrollment", "secure")):
+    if any(keyword in lowered for keyword in ("ezkey", "keychain", "token", "proof", "enrollment", "secure", "integration")):
         print("  {}".format(snippet))
 '
+else
+  echo "No Keychain datastore file found in app sandbox."
+fi
 echo
 
 echo "-- Logcat leak check (best effort, current buffer) --"
-if "${ADB_CMD[@]}" logcat -d | grep -Ei 'enrollmentProofToken|ezkey-mobile/enrollment-proof-token|authAttemptProofToken|deviceProofToken' >/dev/null 2>&1; then
+if "${ADB_CMD[@]}" logcat -d | grep -Ei 'enrollmentProofToken|ezkey-mobile/enrollment-proof-token|integrationPublicKey|ezkey-mobile/integration-public-key|authAttemptProofToken|deviceProofToken' >/dev/null 2>&1; then
   echo "Potential sensitive-token log entries detected in current logcat buffer."
-  "${ADB_CMD[@]}" logcat -d | grep -Ei 'enrollmentProofToken|ezkey-mobile/enrollment-proof-token|authAttemptProofToken|deviceProofToken'
+  "${ADB_CMD[@]}" logcat -d | grep -Ei 'enrollmentProofToken|ezkey-mobile/enrollment-proof-token|integrationPublicKey|ezkey-mobile/integration-public-key|authAttemptProofToken|deviceProofToken'
 else
   echo "No obvious sensitive-token strings found in current logcat buffer."
 fi
@@ -122,7 +138,9 @@ echo
 cat <<EOF
 Interpretation:
 - AsyncStorage should report contains_enrollmentProofToken=False for ezkey-mobile/enrollments.
-- The secure datastore may contain the logical secure-storage key name.
-- The secure datastore should not reveal the plaintext enrollment proof token.
-- Logcat should not contain raw sensitive proof-token strings.
+- AsyncStorage should report contains_integrationPublicKey=False for ezkey-mobile/enrollments.
+- Rows whose key starts with ezkey-mobile/sealed-secret. should look like JSON envelopes with version, algorithm, iv, and ciphertext.
+- Those sealed-secret rows should not contain plaintext enrollment proof tokens or plaintext integration public keys.
+- The legacy Keychain datastore should ideally be empty of migrated enrollment proof token or integration key material on Android.
+- Logcat should not contain raw sensitive proof-token or integration-key strings.
 EOF

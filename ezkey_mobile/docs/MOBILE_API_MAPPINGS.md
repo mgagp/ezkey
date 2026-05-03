@@ -19,7 +19,7 @@ Rules:
 - [../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) and [../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md](../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md) remain canonical for exact signed payload definitions.
 - `app/services/api/types.ts` is the thin mobile contract layer; generated models remain the DTO source of truth.
 - Screen ownership matters: the mobile app does not expose `pending` directly from Home. The user navigates into Enrollment Detail first, then to Pending Authentication.
-- Storage wording must stay explicit: the current app keeps per-enrollment private keys on the native keystore path, but `enrollmentProofToken` is rehydrated from the secure-storage delegate rather than being unsealed by the enrollment private key itself.
+- Storage wording must stay explicit: the current app keeps per-enrollment private keys on the native keystore path, while `enrollmentProofToken` and `integrationPublicKey` are rehydrated from the secure secret delegate rather than being unsealed by the enrollment private key itself.
 
 | Canonical document | Scope | How this document depends on it |
 | --- | --- | --- |
@@ -136,14 +136,15 @@ public key, signs the canonical verify payload, submits the request, and then ve
 Only after the verify-result signature passes does the wizard persist a `StoredEnrollment` record. Persistence also
 hydrates local installation metadata when an Auth API base URL is known.
 
-That persistence boundary is intentionally split: the private signing key remains in `Android Keystore`, the
-`enrollmentProofToken` goes through secure storage, and the rest of the local metadata continues through the
-AsyncStorage-backed enrollment collection.
+That persistence boundary is intentionally split: the private signing key remains in `Android Keystore`, while
+`enrollmentProofToken` and `integrationPublicKey` go through the platform secure secret delegate. On Android that
+delegate now writes sealed-secret envelopes to AsyncStorage using an app-level Keystore AES key; the rest of the local
+metadata continues through the AsyncStorage-backed enrollment collection.
 
 | Local concept | Mapped from | Used by | Notes |
 | --- | --- | --- | --- |
 | `StoredEnrollment.id` | Draft ID | Home, Detail, Pending | Primary local identifier. |
-| `StoredEnrollment.integrationPublicKey` | Bind response | Pending and respond verification | Stored for future integration-signature checks. |
+| `StoredEnrollment.integrationPublicKey` | Bind response | Pending and respond verification | Securely rehydrated for future integration-signature checks. |
 | `StoredEnrollment.enrollmentProofToken` | Draft proof token | Pending flow | Sensitive enrollment token rehydrated from secure storage into the runtime local record. |
 | `StoredEnrollment.installation.authUrl` | QR or resolved installation URL | All subsequent API calls | Allows per-installation server targeting. |
 | `StoredEnrollment.installation` | `instanceInfoApi.get(...)` plus URL derivation | Home and Detail | Supports installation grouping and display as a first-class object. |
@@ -357,5 +358,5 @@ response updates a volatile latest-response summary for the enrollment and retur
 
 - The app intentionally validates `integrationKeyAlgorithm` during bind before trusting `integrationPublicKey`.
 - Home does not trigger `pending`; the explicit user path is Home -> Enrollment Detail -> Pending Authentication.
-- The current implementation persists the enrollment proof token via secure storage and keeps `integrationPublicKey` in the enrollment metadata record so later pending/respond trust checks can run without refetching bind state.
+- The current implementation persists `enrollmentProofToken` and `integrationPublicKey` through the secure secret delegate so later pending/respond trust checks can run without refetching bind state or leaving those values in AsyncStorage cleartext.
 - The current mobile documentation should explicitly note that some PRD expectations remain ahead of the implementation, especially around activity history and certain placeholder states.

@@ -8,7 +8,7 @@ This document describes the mobile app's local data model and persistence rules.
 
 - **Owned locally.** Enrollment summaries, app preferences, session context (non-secret).
 - **Owned by the native keystore.** Device EC P-256 private keys. Application code has no access.
-- **Protected through secure storage.** Long-lived local application secrets such as `enrollmentProofToken`.
+- **Protected through secure storage.** Long-lived local application secrets such as `enrollmentProofToken` and `integrationPublicKey`, using Android Keystore-backed sealed-secret envelopes on Android and secure-storage fallback elsewhere.
 - **Owned by the backend.** Enrollment lifecycle state, authentication attempts, integration metadata. The app reads these through the Auth API and stores minimum copies only for UX purposes.
 
 ## Conceptual View
@@ -45,7 +45,7 @@ classDiagram
 
 - **`EnrollmentSummary`** — local metadata describing a bound enrollment. Never stores the private key.
 - **`DeviceKeyPair` (logical)** — a reference to the keystore alias; actual key material stays native.
-- **`StoredEnrollment` (runtime)** — local metadata rehydrated with `enrollmentProofToken` from secure storage and `integrationPublicKey` from metadata storage when the app needs to execute authenticated flows.
+- **`StoredEnrollment` (runtime)** — local metadata rehydrated with `enrollmentProofToken` and `integrationPublicKey` from the secure secret delegate when the app needs to execute authenticated flows.
 - **Generated Auth API DTOs** — live under `app/services/api/generated/auth-api/model/`; never hand-edited.
 - **`AuthAttemptCache`** — optional short-lived in-memory cache for the currently displayed attempt.
 
@@ -54,21 +54,22 @@ classDiagram
 | Concern | Storage | Scope | Notes |
 |---------|---------|-------|-------|
 | Device EC P-256 private key | Android Keystore / iOS Keychain | Device | Non-extractable; `StrongBox` requested when available. |
-| Enrollment metadata | AsyncStorage-backed local metadata storage | App | Installation metadata, labels, timestamps, and `integrationPublicKey`. |
-| Enrollment proof token | Secure storage abstraction | App | Persisted outside the AsyncStorage enrollment collection and rehydrated when needed. |
+| Enrollment metadata | AsyncStorage-backed local metadata storage | App | Installation metadata, labels, timestamps, and non-secret routing/display fields. |
+| Enrollment proof token and integration verification key | Android: sealed-secret envelopes in AsyncStorage protected by an app-level Keystore AES key. Other platforms: secure storage abstraction | App | Persisted outside the AsyncStorage enrollment collection and rehydrated when needed. |
 | App preferences | App storage | App | Base URL, locale, minor toggles. |
 | Current auth attempt cache | In-memory only | Screen session | Cleared when the screen unmounts or a final result is received. |
 | One-time proof tokens (`deviceProofToken`, `authAttemptProofToken`) | In-memory only | Flow step | Never persisted as durable local state. |
 
 ### Rules
 
-- **Never persist one-time proof material or raw signatures in ordinary app storage.** The current mobile app does persist the long-lived `enrollmentProofToken`, but it does so via the secure-storage delegate rather than in the AsyncStorage enrollment collection.
+- **Never persist one-time proof material or long-lived verification material in ordinary app storage.** The current mobile app persists `enrollmentProofToken` and `integrationPublicKey` via the secure-storage delegate rather than in the AsyncStorage enrollment collection.
 - **Never log private keys or signatures.** Identifiers (for example `enrollmentId`) are acceptable.
 - **Do not maintain a second hand-edited copy of Auth API contracts** in `app/services/api/types.ts`; that file keeps local mobile domain types and UI-friendly wrapper shapes only.
 
 Important clarification: the current app does **not** use the per-enrollment private key as a universal decryption key
-for every other local secret. `Android Keystore` / `StrongBox when available` protect the signing key. Secure storage
-protects small persisted application secrets such as `enrollmentProofToken`.
+for every other local secret. `Android Keystore` / `StrongBox when available` protect the signing key. On Android, a
+separate app-level Keystore AES key protects sealed-secret envelopes for `enrollmentProofToken` and
+`integrationPublicKey`; other platforms continue to use their secure-storage abstraction.
 
 ## Lifecycle (Local Perspective)
 

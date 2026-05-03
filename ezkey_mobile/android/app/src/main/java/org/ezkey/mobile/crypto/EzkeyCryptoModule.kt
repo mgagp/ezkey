@@ -31,6 +31,9 @@ import java.security.KeyStore
 import java.security.SecureRandom
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
 
 /** API 31+ {@link KeyInfo#getSecurityLevel()} (reflective). */
 private fun keyInfoSecurityLevel(keyInfo: KeyInfo): Int? {
@@ -331,6 +334,33 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
+   * Seals plaintext with the app-level AES/GCM key stored in Android Keystore. The logical key is
+   * bound as AAD to prevent ciphertext replay under another storage identifier.
+   */
+  @ReactMethod
+  fun sealSecret(logicalKey: String, plaintext: String, promise: Promise) {
+    try {
+      val envelope = SealedSecretEnvelope.seal(getOrCreateAppSealKey(), logicalKey, plaintext)
+      promise.resolve(envelope.toJson())
+    } catch (error: Exception) {
+      promise.reject(ERROR_CODE_SEAL_SECRET, error)
+    }
+  }
+
+  /**
+   * Unseals a JSON envelope previously produced by {@link #sealSecret(String, String, Promise)}.
+   */
+  @ReactMethod
+  fun unsealSecret(logicalKey: String, sealedPayload: String, promise: Promise) {
+    try {
+      val envelope = SealedSecretEnvelope.fromJson(sealedPayload)
+      promise.resolve(SealedSecretEnvelope.unseal(getOrCreateAppSealKey(), logicalKey, envelope))
+    } catch (error: Exception) {
+      promise.reject(ERROR_CODE_UNSEAL_SECRET, error)
+    }
+  }
+
+  /**
    * Deletes the EC P-256 key pair for a given enrollment.
    *
    * @param enrollmentId The enrollment ID to delete the key pair for.
@@ -364,6 +394,41 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     return "ezkey_enrollment_$enrollmentId"
   }
 
+  private fun getOrCreateAppSealKey(): SecretKey {
+    val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+    if (keyStore.containsAlias(APP_SEAL_KEY_ALIAS)) {
+      val entry = keyStore.getEntry(APP_SEAL_KEY_ALIAS, null) as? KeyStore.SecretKeyEntry
+      return entry?.secretKey
+          ?: throw IllegalStateException("App seal key entry missing for alias $APP_SEAL_KEY_ALIAS")
+    }
+
+    val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEY_STORE)
+    val builder =
+        KeyGenParameterSpec.Builder(
+                APP_SEAL_KEY_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+            )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .setUserAuthenticationRequired(false)
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      builder.setUnlockedDeviceRequired(true)
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      try {
+        builder.setIsStrongBoxBacked(true)
+      } catch (error: StrongBoxUnavailableException) {
+        Log.w(TAG, "StrongBox unavailable for app seal key; falling back to regular Keystore")
+      }
+    }
+
+    keyGenerator.init(builder.build())
+    return keyGenerator.generateKey()
+  }
+
   /** Base64 URL-safe encoding without padding (parity with JDK {@code Base64.getUrlEncoder().withoutPadding()}). */
   private fun base64UrlEncodeNoPadding(bytes: ByteArray): String {
     var flags = Base64.URL_SAFE or Base64.NO_WRAP
@@ -392,5 +457,8 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     private const val ERROR_CODE_BUILD_TIMESTAMP = "EZK_BUILD_TIMESTAMP_ERROR"
     private const val ERROR_CODE_PROOF_TOKEN = "EZK_PROOF_TOKEN_ERROR"
     private const val ERROR_CODE_STORAGE_TIER = "EZK_STORAGE_TIER_ERROR"
+    private const val ERROR_CODE_SEAL_SECRET = "EZK_SEAL_SECRET_ERROR"
+    private const val ERROR_CODE_UNSEAL_SECRET = "EZK_UNSEAL_SECRET_ERROR"
+    private const val APP_SEAL_KEY_ALIAS = "ezkey_app_seal_v1"
   }
 }

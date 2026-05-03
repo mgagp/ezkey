@@ -459,11 +459,14 @@
             valide.
         </p>
         <p>
-            Les petits secrets applicatifs persistés, comme le jeton de preuve d&rsquo;inscription,
-            utilisent le stockage sécurisé des identifiants de la plateforme. Cette protection est
-            distincte du chemin Android Keystore utilisé pour la clé privée de signature de
-            l&rsquo;appareil&nbsp;; l&rsquo;application ne repose pas actuellement sur une clé
-            privée StrongBox unique pour déchiffrer tous les autres secrets locaux.
+            Les secrets applicatifs persistés de longue durée, comme le jeton de preuve
+            d&rsquo;inscription et la clé de vérification d&rsquo;intégration conservée localement,
+            sont protégés séparément au repos. Sur Android, l&rsquo;application de référence actuelle
+            utilise une clé AES dédiée au niveau application dans Android Keystore pour sceller ces
+            valeurs avant leur écriture dans le stockage applicatif. Cette protection est distincte
+            du chemin Android Keystore utilisé pour la clé privée de signature de l&rsquo;appareil&nbsp;;
+            l&rsquo;application ne repose pas actuellement sur une clé privée StrongBox unique pour
+            déchiffrer tous les autres secrets locaux.
         </p>
 
         <h2>11. Modifications de la présente politique</h2>

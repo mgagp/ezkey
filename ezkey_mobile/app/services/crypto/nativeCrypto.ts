@@ -24,6 +24,8 @@ type NativeModuleShape = {
   getBuildTimestamp(): Promise<string>;
   /** Same wire format as `SignatureService.generateProofToken()`; uses platform CSPRNG (no `RNGetRandomValues`). */
   generateProofToken(): Promise<string>;
+  sealSecret(logicalKey: string, plaintext: string): Promise<string>;
+  unsealSecret(logicalKey: string, sealedPayload: string): Promise<string>;
 };
 
 const {EzkeyCryptoModule} = NativeModules;
@@ -61,6 +63,12 @@ const fallback = {
       'EzkeyCryptoModule is not linked. Unable to read enrollment key storage tier.',
     );
   },
+  async sealSecret(): Promise<string> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to seal secret.');
+  },
+  async unsealSecret(): Promise<string> {
+    throw new Error('EzkeyCryptoModule is not linked. Unable to unseal secret.');
+  },
 } satisfies NativeModuleShape;
 
 const cryptoModule =
@@ -90,6 +98,10 @@ export const nativeCrypto = {
   generateProofToken: () => cryptoModule.generateProofToken(),
   getEnrollmentPrivateKeyStorageTier: (enrollmentId: string) =>
     cryptoModule.getEnrollmentPrivateKeyStorageTier(enrollmentId),
+  sealSecret: (logicalKey: string, plaintext: string) =>
+    cryptoModule.sealSecret(logicalKey, plaintext),
+  unsealSecret: (logicalKey: string, sealedPayload: string) =>
+    cryptoModule.unsealSecret(logicalKey, sealedPayload),
 };
 
 export type NativeCrypto = typeof nativeCrypto;

@@ -18,6 +18,7 @@ import {secureStorage} from './secureStorage';
 
 const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
 const ENROLLMENT_PROOF_TOKEN_KEY_PREFIX = 'ezkey-mobile/enrollment-proof-token';
+const INTEGRATION_PUBLIC_KEY_KEY_PREFIX = 'ezkey-mobile/integration-public-key';
 
 /**
  * Local representation of enrollment records including proof tokens.
@@ -39,6 +40,7 @@ export type StoredEnrollment = EnrollmentSummary & {
 
 type PersistedEnrollmentMetadata = Omit<StoredEnrollment, 'enrollmentProofToken'> & {
   enrollmentProofToken?: string;
+  integrationPublicKey?: string;
 };
 
 type StorageDelegate = {
@@ -82,8 +84,16 @@ class EnrollmentStorage {
     return `${ENROLLMENT_PROOF_TOKEN_KEY_PREFIX}.${id}`;
   }
 
+  private integrationPublicKeyStorageKey(id: string) {
+    return `${INTEGRATION_PUBLIC_KEY_KEY_PREFIX}.${id}`;
+  }
+
   private stripSensitiveFields(record: StoredEnrollment): PersistedEnrollmentMetadata {
-    const {enrollmentProofToken: _enrollmentProofToken, ...metadata} = record;
+    const {
+      enrollmentProofToken: _enrollmentProofToken,
+      integrationPublicKey: _integrationPublicKey,
+      ...metadata
+    } = record;
     return metadata;
   }
 
@@ -110,6 +120,29 @@ class EnrollmentStorage {
     };
   }
 
+  private async attachIntegrationPublicKey(
+    record: StoredEnrollment,
+  ): Promise<StoredEnrollment | undefined> {
+    const secureKey = this.integrationPublicKeyStorageKey(record.id);
+    const secureIntegrationPublicKey = await this.secure.getItem(secureKey);
+    const legacyIntegrationPublicKey = record.integrationPublicKey;
+    const integrationPublicKey = secureIntegrationPublicKey ?? legacyIntegrationPublicKey;
+
+    if (!integrationPublicKey) {
+      console.warn('[enrollmentStorage] Missing secure integration public key:', record.id);
+      return undefined;
+    }
+
+    if (!secureIntegrationPublicKey && legacyIntegrationPublicKey) {
+      await this.secure.setItem(secureKey, legacyIntegrationPublicKey);
+    }
+
+    return {
+      ...record,
+      integrationPublicKey,
+    };
+  }
+
   private async persistMetadataRecords(records: StoredEnrollment[]) {
     const nextItems = records.map(item => this.stripSensitiveFields(hydrateInstallationMetadata(item)));
     await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(nextItems));
@@ -132,9 +165,20 @@ class EnrollmentStorage {
     try {
       const parsed = JSON.parse(payload) as PersistedEnrollmentMetadata[];
       const hydratedItems = parsed.map(item => hydrateInstallationMetadata(item));
-      const attachedItems = await Promise.all(hydratedItems.map(item => this.attachProofToken(item)));
-      const nextItems = attachedItems.filter((item): item is StoredEnrollment => item != null);
-      const requiresMetadataRewrite = hydratedItems.some(item => Object.hasOwn(item, 'enrollmentProofToken'));
+      const withProofTokens = await Promise.all(
+        hydratedItems.map(item => this.attachProofToken(item)),
+      );
+      const withIntegrationKeys = await Promise.all(
+        withProofTokens
+          .filter((item): item is StoredEnrollment => item != null)
+          .map(item => this.attachIntegrationPublicKey(item)),
+      );
+      const nextItems = withIntegrationKeys.filter((item): item is StoredEnrollment => item != null);
+      const requiresMetadataRewrite = hydratedItems.some(
+        item =>
+          Object.hasOwn(item, 'enrollmentProofToken') ||
+          Object.hasOwn(item, 'integrationPublicKey'),
+      );
       if (requiresMetadataRewrite) {
         await this.persistMetadataRecords(nextItems);
       }
@@ -156,6 +200,10 @@ class EnrollmentStorage {
    */
   async saveEnrollment(record: StoredEnrollment) {
     await this.secure.setItem(this.proofTokenStorageKey(record.id), record.enrollmentProofToken);
+    await this.secure.setItem(
+      this.integrationPublicKeyStorageKey(record.id),
+      record.integrationPublicKey ?? '',
+    );
     const items = await this.listEnrollments();
     const nextItems = items.filter(item => item.id !== record.id).concat(hydrateInstallationMetadata(record));
     await this.persistMetadataRecords(nextItems);
@@ -178,9 +226,22 @@ class EnrollmentStorage {
       ),
     );
     await Promise.all(
+      nextItems.map(item =>
+        this.secure.setItem(
+          this.integrationPublicKeyStorageKey(item.id),
+          item.integrationPublicKey ?? '',
+        ),
+      ),
+    );
+    await Promise.all(
       currentItems
         .filter(item => !nextIds.has(item.id))
         .map(item => this.secure.removeItem(this.proofTokenStorageKey(item.id))),
+    );
+    await Promise.all(
+      currentItems
+        .filter(item => !nextIds.has(item.id))
+        .map(item => this.secure.removeItem(this.integrationPublicKeyStorageKey(item.id))),
     );
 
     await this.persistMetadataRecords(nextItems);
@@ -208,6 +269,7 @@ class EnrollmentStorage {
     const items = await this.listEnrollments();
     const nextItems = items.filter(item => item.id !== id);
     await this.secure.removeItem(this.proofTokenStorageKey(id));
+    await this.secure.removeItem(this.integrationPublicKeyStorageKey(id));
     await this.persistMetadataRecords(nextItems);
   }
 
@@ -252,7 +314,10 @@ class EnrollmentStorage {
   async clearAll() {
     const items = await this.listEnrollments();
     await Promise.all(
-      items.map(item => this.secure.removeItem(this.proofTokenStorageKey(item.id))),
+      items.flatMap(item => [
+        this.secure.removeItem(this.proofTokenStorageKey(item.id)),
+        this.secure.removeItem(this.integrationPublicKeyStorageKey(item.id)),
+      ]),
     );
     await this.metadata.removeItem(ENROLLMENT_COLLECTION_KEY);
   }

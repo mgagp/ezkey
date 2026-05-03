@@ -42,7 +42,7 @@ Translate the Auth API bind/verify DTOs into the mobile enrollment state and UI,
 | UI input | Request field | Transformation | Notes |
 |----------|---------------|----------------|-------|
 | QR payload `enrollmentId` | `enrollmentId` | parse as long | — |
-| QR payload `enrollmentProofToken` | `enrollmentProofToken` | identity | Held in memory during bind, then persisted through secure storage after verify. |
+| QR payload `enrollmentProofToken` | `enrollmentProofToken` | identity | Held in memory during bind, then persisted through the secure secret delegate after verify. |
 
 | Response field | Local model | Transformation | Notes |
 |----------------|-------------|----------------|-------|
@@ -73,7 +73,7 @@ Translate the Auth API bind/verify DTOs into the mobile enrollment state and UI,
 
 - Private key material never leaves the native side.
 - One-time flow proof tokens are held in memory only.
-- The long-lived `enrollmentProofToken` is persisted through secure storage, distinct from the keystore-backed private signing key.
+- The long-lived `enrollmentProofToken` and `integrationPublicKey` are persisted through the secure secret delegate, distinct from the keystore-backed private signing key.
 - Signatures are produced via the native module; the JS side holds only the resulting Base64 string.
 
 ### Error Mapping
@@ -113,7 +113,7 @@ Translate pending and respond DTOs between the Auth API and the mobile UI, produ
 
 | Source | Request field | Notes |
 |--------|---------------|-------|
-| Local enrollment | `enrollmentId`, `enrollmentProofToken` | `enrollmentProofToken` is rehydrated from secure storage into the runtime record before the call. |
+| Local enrollment | `enrollmentId`, `enrollmentProofToken` | `enrollmentProofToken` is rehydrated from the secure secret delegate into the runtime record before the call. |
 | Generated via `generateProofToken` | `deviceProofToken` | One-time material. |
 | Signed by device (native module) | `deviceProofTokenSigned` | ECDSA-SHA256 over canonical payload. |
 

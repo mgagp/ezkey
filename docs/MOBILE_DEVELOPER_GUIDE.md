@@ -246,14 +246,14 @@ security properties required by the protocol. However, the current Ezkey React N
 its present model:
 
 - the **per-enrollment EC P-256 private key** lives in `Android Keystore`, with `StrongBox` requested when available
-- the **`enrollmentProofToken`** is persisted through the platform secure-storage abstraction used by the app
+- the **`enrollmentProofToken`** and **`integrationPublicKey`** are persisted through the app's secure secret path
 - the current implementation does **not** use the enrollment private key itself as a wrapping or unsealing key for
   all other application secrets
 
-This distinction matters. `Android Keystore` / `StrongBox` primarily protect **keys** and key operations. Secure
-storage protects **application secret values** such as proof tokens. A future client may choose to build a stronger
-"sealed secrets" model on top of a keystore-protected encryption key, but that is a design choice beyond the current
-reference app and beyond what the Ezkey protocol requires today.
+This distinction matters. `Android Keystore` / `StrongBox` primarily protect **keys** and key operations. In the
+current Android reference app, a separate app-level AES key from `Android Keystore` seals long-lived application
+secrets into versioned ciphertext envelopes at rest. That is still a local storage hardening layer, not a claim that
+the per-enrollment signing key unwraps all other app secrets or that the backend can attest this protection today.
 
 #### Device private key storage tier — trust model and proof boundary
 

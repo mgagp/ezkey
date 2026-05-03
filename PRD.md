@@ -129,7 +129,7 @@ Key properties:
 - One-time proof tokens limit replay.
 - Signatures bind requests and responses to the correct flow.
 - Enrollment and authentication are both modeled as cryptographic processes, not just API calls with business flags.
-- Mobile secure storage can strengthen device key handling and local secret persistence when available, but the product must describe those layers honestly. In the current Android reference app, per-enrollment private keys live in `Android Keystore` with `StrongBox` requested when available, while secrets such as the enrollment proof token use a separate secure-storage path rather than being unsealed by the device signing key.
+- Mobile secure storage can strengthen device key handling and local secret persistence when available, but the product must describe those layers honestly. In the current Android reference app, per-enrollment private keys live in `Android Keystore` with `StrongBox` requested when available, while long-lived local secrets such as `enrollmentProofToken` and `integrationPublicKey` are sealed at rest through a separate app-level `Android Keystore` AES path rather than being unsealed by the device signing key.
 - The backend remains the authoritative source of state and verification.
 
 ## Product Principles

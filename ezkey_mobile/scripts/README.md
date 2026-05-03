@@ -5,9 +5,10 @@
 Runs a repeatable Android debug-build verification for local secret handling:
 
 - confirms the app sandbox is accessible through `adb run-as`
-- inspects `RKStorage` (AsyncStorage) and verifies `enrollmentProofToken` is absent from the persisted enrollment JSON
-- inspects the secure-storage datastore used by `react-native-keychain`
-- scans the current `logcat` buffer for obvious proof-token leaks
+- inspects `RKStorage` (AsyncStorage) and verifies `enrollmentProofToken` and `integrationPublicKey` are absent from the persisted enrollment JSON
+- inspects Android sealed-secret envelope rows stored alongside metadata in AsyncStorage
+- checks the legacy `react-native-keychain` datastore only as a migration residue signal on Android
+- scans the current `logcat` buffer for obvious proof-token or integration-key leaks
 
 ### Run (from `ezkey_mobile`)
 

@@ -64,19 +64,21 @@ This is a useful platform security benefit, but it should not be described as fu
 This distinction is easy to blur, so document it explicitly:
 
 - `Android Keystore` / `StrongBox` primarily protect **cryptographic keys** and key operations
-- the app's secure-storage delegate protects **small persisted secret values**
+- on Android, the app now uses a dedicated app-level AES key from `Android Keystore` to seal small persisted secret values before storing ciphertext envelopes in AsyncStorage
+- on other platforms, the secure-storage delegate still protects those small persisted secret values directly
 - these are complementary layers, not the same thing
 
 In the current Ezkey Android reference app:
 
 - each enrollment has its own EC P-256 private signing key in `Android Keystore`
 - `StrongBox` is requested when the device can satisfy it
-- `enrollmentProofToken` is stored through the secure-storage delegate and rehydrated when needed
+- the app also provisions one app-level AES seal key in `Android Keystore` for long-lived local secrets such as `enrollmentProofToken` and `integrationPublicKey`
+- AsyncStorage stores only sealed envelopes for those Android secrets; plaintext is rehydrated on demand
 - the current implementation does **not** use the enrollment private key itself as a master unsealing key for all
   other mobile secrets
 
-If a future version introduces a stronger "sealed secrets" model backed by a keystore-protected encryption key, that
-should be documented as a **new** property rather than implied retroactively today.
+This sealed-secrets model is scoped to the Android reference path. It should still be described conservatively: it is a
+local at-rest hardening layer, not server-side attestation or FIDO2/WebAuthn equivalence.
 
 ## Device private key storage tier (`verify`)
 

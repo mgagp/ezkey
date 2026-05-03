@@ -436,10 +436,12 @@
             organizations configure their backend with a valid TLS certificate.
         </p>
         <p>
-            Smaller persisted application secrets, such as the enrollment proof token, use the
-            platform secure credential storage. This is distinct from the Android Keystore path
-            used for the device&rsquo;s private signing key; the app does not currently rely on one
-            StrongBox-backed private key to decrypt every other local secret.
+            Long-lived persisted application secrets, such as the enrollment proof token and the
+            stored integration verification key, are protected separately at rest. On Android, the
+            current reference app uses a dedicated app-level AES key in the Android Keystore to
+            seal those values before they are written to app storage. This is distinct from the
+            Android Keystore path used for the device&rsquo;s private signing key; the app does not
+            currently rely on one StrongBox-backed private key to decrypt every other local secret.
         </p>
 
         <h2>11. Changes to this policy</h2>

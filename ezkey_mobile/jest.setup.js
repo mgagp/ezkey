@@ -79,6 +79,13 @@ NativeModules.EzkeyCryptoModule = {
       'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8.ICEiIyQlJicoKSorLC0uLw',
     ),
   getEnrollmentPrivateKeyStorageTier: jest.fn().mockResolvedValue('STANDARD'),
+  sealSecret: jest.fn().mockImplementation(async (logicalKey, plaintext) =>
+    JSON.stringify({version: 1, algorithm: 'AES/GCM/NoPadding', key: logicalKey, plaintext}),
+  ),
+  unsealSecret: jest.fn().mockImplementation(async (_logicalKey, sealedPayload) => {
+    const parsed = JSON.parse(sealedPayload);
+    return parsed.plaintext;
+  }),
 };
 
 jest.mock('react-native-vision-camera', () => ({

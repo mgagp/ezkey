@@ -55,12 +55,12 @@ The current Android reference app uses two distinct protection layers that shoul
 
 | Layer | Protects | Current Ezkey mobile usage | Important boundary |
 | --- | --- | --- | --- |
-| `Android Keystore` / `StrongBox when available` | Cryptographic keys and key operations | One EC P-256 private signing key per enrollment | Protects the private key; does **not** automatically make all application secrets "inside StrongBox" |
-| Secure-storage delegate (`react-native-keychain`) | Small application secret values | `enrollmentProofToken` and similar small secrets | Protects persisted secret values, but is conceptually separate from the enrollment private key |
+| `Android Keystore` / `StrongBox when available` | Cryptographic keys and key operations | One EC P-256 private signing key per enrollment plus one app-level AES seal key | Protects keys and cryptographic operations; the signing key and seal key remain distinct roles |
+| Android sealed-secret envelopes in AsyncStorage | Small application secret values at rest | `enrollmentProofToken`, `integrationPublicKey`, and similar small secrets | Stores only ciphertext + metadata in app storage; plaintext is rehydrated on demand through the native crypto module |
 
-So the honest current model is: the app signs with a per-enrollment keystore key, and it reloads the enrollment proof
-token from secure storage when needed. It does **not** currently implement a "sealed secrets" architecture where the
-enrollment private key unwraps all other local secrets on demand.
+So the honest current model is: the app signs with a per-enrollment keystore key, and on Android it seals small
+persisted secrets with a separate app-level Keystore AES key before writing ciphertext envelopes into AsyncStorage. It
+does **not** use the enrollment private key itself to unwrap all other local secrets on demand.
 
 ## Repository and Module Structure
 
@@ -107,8 +107,8 @@ flowchart LR
 | --- | --- | --- | --- |
 | Screen layer | Collect user intent and display trusted state only | User-entered challenges, contextual request text | Misleading UI if trust checks are bypassed or presentation overstates certainty. |
 | API facades | Serialize mobile wrapper inputs into Auth API DTOs | Enrollment IDs, proof tokens, signed payloads | Contract drift or wrong field coercion can break protocol correctness. |
-| Storage layer | Persist local enrollment metadata and secure proof-token state | `enrollmentProofToken`, `integrationPublicKey`, local timestamps, routing URL | Data loss or stale local model can break later auth flows. |
-| Native crypto service | Generate key pairs, retrieve public keys, sign payloads, verify integration signatures | Device private key path, signatures, proof token generation | Trust chain breaks if signing or verification is incorrect; this layer does not currently wrap or unwrap all app secrets |
+| Storage layer | Persist local enrollment metadata and sealed-secret state | `enrollmentProofToken`, `integrationPublicKey`, local timestamps, routing URL | Data loss or stale local model can break later auth flows. |
+| Native crypto service | Generate key pairs, retrieve public keys, sign payloads, verify integration signatures, seal and unseal Android secrets | Device private key path, app-level seal key, signatures, proof token generation | Trust chain breaks if signing, verification, or sealed-secret rehydration is incorrect |
 | Generated OpenAPI client | Mirror backend contract | DTO structures, HTTP typing | Silent contract drift if spec refresh discipline is not maintained. |
 | Auth API | Backend verification and lifecycle authority | Proof-token semantics, integration-signed payloads, final state | The mobile app must not try to replace backend authority with UI assumptions. |
 
