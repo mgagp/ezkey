@@ -44,6 +44,7 @@ describe('enrollmentStorage', () => {
           lastActivityAt: '2026-05-01T12:00:00.000Z',
           enrollmentProofToken: 'token-1',
           integrationPublicKey: 'integration-public-key-1',
+          securityLevel: 'confirm-before-approvals',
           authUrl: 'https://EZKEY.Example.com:443/',
           installationName: 'Acme EU',
           installationDescription: 'Primary European Ezkey installation',
@@ -56,6 +57,7 @@ describe('enrollmentStorage', () => {
     expect(items).toHaveLength(1);
     expect(items[0].enrollmentProofToken).toBe('token-1');
     expect(items[0].integrationPublicKey).toBe('integration-public-key-1');
+    expect(items[0].approvalPolicy).toBe('not-required');
     expect(items[0].installation).toEqual({
       id: 'https://ezkey.example.com',
       authUrl: 'https://ezkey.example.com',
@@ -79,8 +81,12 @@ describe('enrollmentStorage', () => {
       expect.not.objectContaining({
         enrollmentProofToken: expect.anything(),
         integrationPublicKey: expect.anything(),
+        securityLevel: expect.anything(),
       }),
     ]);
+    expect(JSON.parse(rewrittenPayload as string)[0]).toEqual(
+      expect.objectContaining({approvalPolicy: 'not-required'}),
+    );
   });
 
   it('persists enrollments with the nested installation object and stores proof tokens securely', async () => {
@@ -154,9 +160,17 @@ describe('enrollmentStorage', () => {
         id: 'enrollment-1',
         enrollmentProofToken: 'secure-token-1',
         integrationPublicKey: 'secure-integration-public-key-1',
+        approvalPolicy: 'not-required',
       }),
     ]);
-    expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
+    expect(mockAsyncStorage.setItem).toHaveBeenCalledTimes(1);
+    const [, rewrittenPayload] = mockAsyncStorage.setItem.mock.calls[0];
+    expect(JSON.parse(rewrittenPayload as string)).toEqual([
+      expect.objectContaining({
+        id: 'enrollment-1',
+        approvalPolicy: 'not-required',
+      }),
+    ]);
   });
 
   it('removes the secure proof token when deleting an enrollment', async () => {
@@ -243,7 +257,7 @@ describe('enrollmentStorage', () => {
     expect(mockSecureStorage.removeItem).toHaveBeenCalledWith(
       'ezkey-mobile/integration-public-key.enrollment-legacy',
     );
-    const [, payload] = mockAsyncStorage.setItem.mock.calls[0];
+    const [, payload] = mockAsyncStorage.setItem.mock.calls.at(-1) ?? [];
     expect(JSON.parse(payload as string)).toEqual([
       expect.objectContaining({
         id: 'enrollment-next',
@@ -251,6 +265,7 @@ describe('enrollmentStorage', () => {
         integrationName: 'Next Console',
         createdAt: '2026-05-02T12:00:00.000Z',
         lastActivityAt: '2026-05-02T12:00:00.000Z',
+        approvalPolicy: 'not-required',
       }),
     ]);
     expect(JSON.parse(payload as string)[0]).not.toHaveProperty('enrollmentProofToken');

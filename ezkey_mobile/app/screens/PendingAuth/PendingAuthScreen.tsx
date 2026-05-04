@@ -39,7 +39,9 @@ import {
   buildRespondResultPayload,
 } from '../../services/crypto/authAttemptPayload';
 import {cryptoService} from '../../services/crypto';
+import {requiresProtectedApproval} from '../../services/security/approvalRequirement';
 import {PendingAttempt} from '../../services/pendingAuth/types';
+import {securityPreferenceStorage} from '../../services/storage/securityPreferenceStorage';
 import {generateProofToken} from '../../utils/generateProofToken';
 import {sha256HexUtf8} from '../../utils/sha256HexUtf8';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
@@ -162,6 +164,19 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
   } | undefined>(undefined);
 
   const extractErrorMessage = useCallback((error: unknown) => {
+    const nativeCode =
+      typeof error === 'object' && error != null && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : undefined;
+    if (nativeCode === 'EZK_AUTH_CANCELLED') {
+      return t('pendingAuth.localAuthCancelled');
+    }
+    if (nativeCode === 'EZK_AUTH_UNAVAILABLE') {
+      return t('pendingAuth.localAuthUnavailable');
+    }
+    if (nativeCode === 'EZK_KEY_INVALIDATED') {
+      return t('pendingAuth.localAuthReenroll');
+    }
     if (axios.isAxiosError(error)) {
       const message =
         error.response?.data?.message ??
@@ -383,8 +398,17 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
         // Ensure root key exists
         const enrollmentKeyId = enrollment.id.toString();
         await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
+        const securityPreference = await securityPreferenceStorage.getSecurityLevel();
+        const shouldProtectRespond = requiresProtectedApproval({
+          enrollmentApprovalPolicy: enrollment.approvalPolicy,
+          securityPreference,
+        });
         const respondPayload = buildRespondPayload(attempt.authAttemptProofToken, accepted);
-        const proofTokenSigned = await cryptoService.sign(enrollmentKeyId, respondPayload);
+        const proofTokenSigned = await cryptoService.signForRespond(
+          enrollmentKeyId,
+          respondPayload,
+          shouldProtectRespond,
+        );
         const response = await authAttemptsApi.respond({
           authAttemptId: attempt.authAttemptId,
           authAttemptAccepted: accepted,

@@ -35,7 +35,8 @@ server context, and Pending Authentication owns polling plus approve/deny. The a
 | Enrollment Wizard | Bind and verify a new enrollment from QR payload | Scan QR, bind, enter challenge, complete enrollment | `enrollmentsApi`, `instanceInfoApi`, `cryptoService`, save mutation | Yes |
 | Enrollment Detail | Show selected enrollment identity, own auth polling entry, and surface the latest local response summary | Check pending | `useEnrollments`, navigation store, volatile recent-auth summary state | Yes |
 | Pending Authentication | Poll for pending auth, verify context, approve or deny | Check again, approve, deny | `authAttemptsApi`, `cryptoService`, payload builders | Yes |
-| Settings | Secondary navigation hub | Open About, Language, Danger Zone, or Licenses | Navigation only | No |
+| Settings | Secondary navigation hub | Open About, Language, Security, Danger Zone, or Licenses | Navigation only | No |
+| Security | Manage the local approval-confirmation preference | Switch between Standard and Confirm before approvals | `securityPreferenceStorage`, native device confirmation for downgrade protection | No |
 | About | Show app metadata and project link | Open `ezkey.org` | Native build timestamp, app info constants | No |
 | Danger Zone | Perform destructive local actions | Delete one enrollment, clear all local data | `useEnrollments`, delete mutation, storage clear-all | No |
 | Licenses | Show generated third-party dependency list | Scroll/read only | `thirdPartyLicenses.json` snapshot | No |
@@ -170,7 +171,8 @@ for request context and respond submission, then returns control to Enrollment D
 
 | Screen | Purpose | Why secondary | Notes |
 | --- | --- | --- | --- |
-| Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow | Routes to About, Language, Danger Zone, and Licenses. |
+| Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow directly | Routes to About, Language, Security, Danger Zone, and Licenses. |
+| Security | Local security preference for this phone | Secondary preference surface, but security-sensitive when lowering protection | Downgrading from protected mode to standard now requires device confirmation before the new value is saved. |
 | Language | Manual language selection | Secondary preference only | Persists English/French selection and asks for app restart to apply the change everywhere. |
 | About | App metadata and project context | Informational only | Shows version, native build timestamp, MIT/open-source note, and link to `ezkey.org`. |
 | Danger Zone | Destructive local maintenance | Explicitly separated to avoid accidental deletion in the main flow | Supports deleting one enrollment or clearing all local enrollment data. |

@@ -197,6 +197,7 @@ dependencies {
     implementation "com.google.mlkit:barcode-scanning:17.2.0"
     // Backports the Android 12+ splash screen API to older devices for a consistent first launch.
     implementation "androidx.core:core-splashscreen:1.2.0"
+    implementation "androidx.biometric:biometric:1.1.0"
 
     // Ed25519 integration signing verification on older API levels (JCA parity with Auth API JDK path).
     implementation 'org.conscrypt:conscrypt-android:2.5.3'

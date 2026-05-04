@@ -13,10 +13,22 @@ import {useTranslation} from 'react-i18next';
 import {RootStackParamList} from '../../navigation/types';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 import {APP_DISPLAY_NAME, APP_VERSION} from '../../config/appInfo';
+import {
+  DEFAULT_SECURITY_LEVEL,
+  normalizeSecurityLevel,
+  securityPreferenceStorage,
+  SecurityLevel,
+} from '../../services/storage/securityPreferenceStorage';
 
 type Props = StackScreenProps<RootStackParamList, 'Settings'>;
 
-type SettingsScreenName = 'About' | 'ReleaseNotes' | 'DangerZone' | 'Licenses' | 'Language';
+type SettingsScreenName =
+  | 'About'
+  | 'ReleaseNotes'
+  | 'DangerZone'
+  | 'Licenses'
+  | 'Language'
+  | 'Security';
 
 type SettingsItem = {
   key: SettingsScreenName;
@@ -32,6 +44,24 @@ type SettingsItem = {
 export const SettingsScreen: React.FC<Props> = ({navigation}) => {
   const insets = useSafeAreaInsets();
   const {t} = useTranslation();
+  const [securityLevel, setSecurityLevel] = React.useState<SecurityLevel>(
+    DEFAULT_SECURITY_LEVEL,
+  );
+
+  React.useEffect(() => {
+    let active = true;
+
+    securityPreferenceStorage.getSecurityLevel().then(value => {
+      if (active) {
+        setSecurityLevel(normalizeSecurityLevel(value));
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const settingsItems: SettingsItem[] = [
     {
       key: 'About',
@@ -47,6 +77,14 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
       key: 'Language',
       label: t('settings.languageLabel'),
       subtitle: t('settings.languageSubtitle'),
+    },
+    {
+      key: 'Security',
+      label: t('settings.securityLabel'),
+      subtitle:
+        securityLevel === 'confirm-before-approvals'
+          ? t('settings.securitySubtitleProtected')
+          : t('settings.securitySubtitleStandard'),
     },
     {
       key: 'DangerZone',

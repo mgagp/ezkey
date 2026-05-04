@@ -14,7 +14,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {EnrollmentSummary} from '../api/types';
 import {hydrateInstallationMetadata} from '../../utils/installationMetadata';
+import {
+  DEFAULT_ENROLLMENT_APPROVAL_POLICY,
+  EnrollmentApprovalPolicy,
+  normalizeEnrollmentApprovalPolicy,
+} from '../security/approvalRequirement';
 import {secureStorage} from './secureStorage';
+import type {SecurityLevel} from './securityPreferenceStorage';
 
 const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
 const ENROLLMENT_PROOF_TOKEN_KEY_PREFIX = 'ezkey-mobile/enrollment-proof-token';
@@ -36,6 +42,8 @@ export type StoredEnrollment = EnrollmentSummary & {
   integrationDescription?: string;
   enrollmentName?: string;
   deviceLabel?: string;
+  approvalPolicy?: EnrollmentApprovalPolicy;
+  securityLevel?: SecurityLevel;
 };
 
 type PersistedEnrollmentMetadata = Omit<StoredEnrollment, 'enrollmentProofToken'> & {
@@ -92,6 +100,7 @@ class EnrollmentStorage {
     const {
       enrollmentProofToken: _enrollmentProofToken,
       integrationPublicKey: _integrationPublicKey,
+      securityLevel: _legacySecurityLevel,
       ...metadata
     } = record;
     return metadata;
@@ -117,6 +126,7 @@ class EnrollmentStorage {
     return {
       ...record,
       enrollmentProofToken,
+      approvalPolicy: normalizeEnrollmentApprovalPolicy(record.approvalPolicy),
     };
   }
 
@@ -140,6 +150,7 @@ class EnrollmentStorage {
     return {
       ...record,
       integrationPublicKey,
+      approvalPolicy: normalizeEnrollmentApprovalPolicy(record.approvalPolicy),
     };
   }
 
@@ -177,7 +188,9 @@ class EnrollmentStorage {
       const requiresMetadataRewrite = hydratedItems.some(
         item =>
           Object.hasOwn(item, 'enrollmentProofToken') ||
-          Object.hasOwn(item, 'integrationPublicKey'),
+          Object.hasOwn(item, 'integrationPublicKey') ||
+          Object.hasOwn(item, 'securityLevel') ||
+          !Object.hasOwn(item, 'approvalPolicy'),
       );
       if (requiresMetadataRewrite) {
         await this.persistMetadataRecords(nextItems);
@@ -205,7 +218,16 @@ class EnrollmentStorage {
       record.integrationPublicKey ?? '',
     );
     const items = await this.listEnrollments();
-    const nextItems = items.filter(item => item.id !== record.id).concat(hydrateInstallationMetadata(record));
+    const nextItems = items
+      .filter(item => item.id !== record.id)
+      .concat(
+        hydrateInstallationMetadata({
+          ...record,
+          approvalPolicy: normalizeEnrollmentApprovalPolicy(
+            record.approvalPolicy ?? DEFAULT_ENROLLMENT_APPROVAL_POLICY,
+          ),
+        }),
+      );
     await this.persistMetadataRecords(nextItems);
   }
 
@@ -216,7 +238,14 @@ class EnrollmentStorage {
    * @since 2025
    */
   async replaceAll(records: StoredEnrollment[]) {
-    const nextItems = records.map(item => hydrateInstallationMetadata(item));
+    const nextItems = records.map(item =>
+      hydrateInstallationMetadata({
+        ...item,
+        approvalPolicy: normalizeEnrollmentApprovalPolicy(
+          item.approvalPolicy ?? DEFAULT_ENROLLMENT_APPROVAL_POLICY,
+        ),
+      }),
+    );
     const currentItems = await this.listEnrollments();
     const nextIds = new Set(nextItems.map(item => item.id));
 

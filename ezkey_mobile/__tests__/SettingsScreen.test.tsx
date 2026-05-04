@@ -67,4 +67,36 @@ describe('SettingsScreen', () => {
 
     expect(navigate).toHaveBeenCalledWith('Language');
   });
+
+  it('renders the security entry and routes to the security screen', async () => {
+    const navigate = jest.fn();
+    let tree: renderer.ReactTestRenderer;
+
+    await renderer.act(async () => {
+      tree = renderer.create(
+        <SettingsScreen
+          navigation={{navigate} as never}
+          route={{key: 'Settings-key', name: 'Settings'} as never}
+        />,
+      );
+    });
+
+    const textContent = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
+    expect(textContent).toContain('Security');
+    expect(textContent).toContain('No extra confirmation before responding');
+
+    const securityItem = tree!.root.findAll(
+      node =>
+        typeof node.props.onPress === 'function' &&
+        node.findAllByType(Text).some(textNode => textNode.props.children === 'Security'),
+    )[0];
+
+    expect(securityItem).toBeDefined();
+
+    await renderer.act(async () => {
+      securityItem!.props.onPress();
+    });
+
+    expect(navigate).toHaveBeenCalledWith('Security');
+  });
 });

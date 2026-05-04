@@ -6,6 +6,7 @@ export type RootStackParamList = {
   PendingAuth: {enrollmentId: string; initialAttempt?: PendingAttempt};
   EnrollmentWizard: undefined;
   Settings: undefined;
+  Security: undefined;
   About: undefined;
   ReleaseNotes: undefined;
   Licenses: undefined;

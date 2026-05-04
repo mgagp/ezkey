@@ -19,6 +19,10 @@ import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
 import android.util.Log
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -89,6 +93,39 @@ private fun keyInfoIsStrongBoxBacked(keyInfo: KeyInfo): Boolean {
 class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
+  private fun protectedAuthenticators(): Int {
+    return BiometricManager.Authenticators.BIOMETRIC_STRONG or
+        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+  }
+
+  private fun canUseProtectedSigningNow(): Boolean {
+    return BiometricManager.from(reactApplicationContext).canAuthenticate(
+        protectedAuthenticators()
+    ) == BiometricManager.BIOMETRIC_SUCCESS
+  }
+
+  private fun buildProtectedPromptInfo(title: String, subtitle: String): BiometricPrompt.PromptInfo {
+    val builder =
+        BiometricPrompt.PromptInfo.Builder().setTitle(title).setSubtitle(subtitle)
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      builder.setAllowedAuthenticators(protectedAuthenticators())
+    } else {
+      builder.setDeviceCredentialAllowed(true)
+    }
+
+    return builder.build()
+  }
+
+  private fun getFragmentActivityOrReject(promise: Promise): FragmentActivity? {
+    val activity = reactApplicationContext.currentActivity
+    if (activity !is FragmentActivity) {
+      promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, "No compatible foreground activity for biometric prompt")
+      return null
+    }
+    return activity
+  }
+
   /**
    * Returns the module name exposed to React Native.
    *
@@ -103,11 +140,13 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
    * Each enrollment gets its own key pair through the platform keystore.
    *
    * @param enrollmentId The enrollment ID to generate the key pair for.
+  * @param securityLevel Optional app-selected protection level. Unknown or null values fall back
+  *     to the current behavior.
    * @param promise Promise resolved with true when the key pair already exists or after generation.
    * @since 2025
    */
   @ReactMethod
-  fun generateEnrollmentKeyPair(enrollmentId: String, promise: Promise) {
+  fun generateEnrollmentKeyPair(enrollmentId: String, securityLevel: String?, promise: Promise) {
     try {
       val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
       val alias = getEnrollmentAlias(enrollmentId)
@@ -123,7 +162,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
           ANDROID_KEY_STORE
       )
 
-      val builder = KeyGenParameterSpec.Builder(
+        val builder = KeyGenParameterSpec.Builder(
           alias,
           KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
       )
@@ -259,6 +298,131 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       promise.resolve(encodedBase64)
     } catch (error: Exception) {
       promise.reject(ERROR_CODE_SIGN, error)
+    }
+  }
+
+  @ReactMethod
+  fun canUseProtectedSigning(promise: Promise) {
+    try {
+      promise.resolve(canUseProtectedSigningNow())
+    } catch (error: Exception) {
+      promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
+    }
+  }
+
+  @ReactMethod
+  fun signWithAuthentication(enrollmentId: String, data: String, promise: Promise) {
+    try {
+      if (!canUseProtectedSigningNow()) {
+        promise.reject(
+            ERROR_CODE_AUTH_UNAVAILABLE,
+            "Biometric confirmation is not available on this device",
+        )
+        return
+      }
+
+      val activity = getFragmentActivityOrReject(promise) ?: return
+      val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+      val alias = getEnrollmentAlias(enrollmentId)
+
+      if (!keyStore.containsAlias(alias)) {
+        promise.reject(ERROR_CODE_NOT_FOUND, "Key pair not found for enrollment $enrollmentId")
+        return
+      }
+
+      activity.runOnUiThread {
+        val prompt =
+            BiometricPrompt(
+                activity,
+                ContextCompat.getMainExecutor(activity),
+                object : BiometricPrompt.AuthenticationCallback() {
+                  override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    try {
+                      val entry = keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
+                      val privateKey =
+                          entry?.privateKey
+                              ?: throw IllegalStateException("Private key not found for enrollment $enrollmentId")
+                      val signature = Signature.getInstance("SHA256withECDSA")
+                      signature.initSign(privateKey)
+                      signature.update(data.toByteArray(StandardCharsets.UTF_8))
+                      val signatureBytes = signature.sign()
+                      promise.resolve(Base64.encodeToString(signatureBytes, Base64.NO_WRAP))
+                    } catch (error: Exception) {
+                      promise.reject(ERROR_CODE_SIGN, error)
+                    }
+                  }
+
+                  override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    if (
+                        errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON ||
+                            errorCode == BiometricPrompt.ERROR_USER_CANCELED ||
+                            errorCode == BiometricPrompt.ERROR_CANCELED
+                    ) {
+                      promise.reject(ERROR_CODE_AUTH_CANCELLED, errString.toString())
+                      return
+                    }
+
+                    promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, errString.toString())
+                  }
+                },
+            )
+
+        val promptInfo = buildProtectedPromptInfo(BIOMETRIC_PROMPT_TITLE, BIOMETRIC_PROMPT_SUBTITLE)
+
+        prompt.authenticate(promptInfo)
+      }
+    } catch (error: Exception) {
+      promise.reject(ERROR_CODE_SIGN, error)
+    }
+  }
+
+  @ReactMethod
+  fun authenticateSecurityPreferenceDowngrade(promise: Promise) {
+    try {
+      if (!canUseProtectedSigningNow()) {
+        promise.reject(
+            ERROR_CODE_AUTH_UNAVAILABLE,
+            "Device confirmation is not available on this phone",
+        )
+        return
+      }
+
+      val activity = getFragmentActivityOrReject(promise) ?: return
+      activity.runOnUiThread {
+        val prompt =
+            BiometricPrompt(
+                activity,
+                ContextCompat.getMainExecutor(activity),
+                object : BiometricPrompt.AuthenticationCallback() {
+                  override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    promise.resolve(true)
+                  }
+
+                  override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    if (
+                        errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON ||
+                            errorCode == BiometricPrompt.ERROR_USER_CANCELED ||
+                            errorCode == BiometricPrompt.ERROR_CANCELED
+                    ) {
+                      promise.reject(ERROR_CODE_AUTH_CANCELLED, errString.toString())
+                      return
+                    }
+
+                    promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, errString.toString())
+                  }
+                },
+            )
+
+        val promptInfo =
+            buildProtectedPromptInfo(
+                SECURITY_DOWNGRADE_PROMPT_TITLE,
+                SECURITY_DOWNGRADE_PROMPT_SUBTITLE,
+            )
+
+        prompt.authenticate(promptInfo)
+      }
+    } catch (error: Exception) {
+      promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
     }
   }
 
@@ -459,6 +623,14 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     private const val ERROR_CODE_STORAGE_TIER = "EZK_STORAGE_TIER_ERROR"
     private const val ERROR_CODE_SEAL_SECRET = "EZK_SEAL_SECRET_ERROR"
     private const val ERROR_CODE_UNSEAL_SECRET = "EZK_UNSEAL_SECRET_ERROR"
+    private const val ERROR_CODE_AUTH_CANCELLED = "EZK_AUTH_CANCELLED"
+    private const val ERROR_CODE_AUTH_UNAVAILABLE = "EZK_AUTH_UNAVAILABLE"
     private const val APP_SEAL_KEY_ALIAS = "ezkey_app_seal_v1"
+    private const val SECURITY_LEVEL_CONFIRM_BEFORE_APPROVALS = "confirm-before-approvals"
+    private const val BIOMETRIC_PROMPT_TITLE = "Confirm request"
+    private const val BIOMETRIC_PROMPT_SUBTITLE = "Use biometrics to approve or deny this request"
+    private const val SECURITY_DOWNGRADE_PROMPT_TITLE = "Confirm security change"
+    private const val SECURITY_DOWNGRADE_PROMPT_SUBTITLE =
+        "Use your device to turn off approval confirmation"
   }
 }

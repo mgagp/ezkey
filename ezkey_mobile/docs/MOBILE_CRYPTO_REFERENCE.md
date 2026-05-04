@@ -59,6 +59,26 @@ The current Android implementation:
 
 This is a useful platform security benefit, but it should not be described as full attestation or FIDO2/WebAuthn equivalence.
 
+## Local device confirmation posture
+
+The current Android reference app uses Android local-auth prompts for two distinct cases:
+
+- approving or denying an authentication request when local protected confirmation is active
+- downgrading the local security preference from protected mode back to standard mode
+
+For both cases, the current posture is:
+
+- `BIOMETRIC_STRONG | DEVICE_CREDENTIAL`
+- meaning Android may accept either a strong biometric or the device credential (PIN, pattern, or password)
+
+Why this posture is used now:
+
+- it is stronger and more realistic than relying on weak biometrics
+- it avoids making the feature unavailable on phones where strong biometric is not configured but a device credential is present
+- it keeps the UX practical for EXP1 while still treating both approval confirmation and security-setting downgrade as security-sensitive actions
+
+Documentation must therefore avoid claiming `biometric-only` behavior unless a future implementation explicitly removes the device-credential fallback.
+
 ## Secure Storage vs `Android Keystore` / StrongBox
 
 This distinction is easy to blur, so document it explicitly:

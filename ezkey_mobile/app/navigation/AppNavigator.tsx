@@ -11,6 +11,7 @@ import {AboutScreen} from '../screens/About';
 import {ReleaseNotesScreen} from '../screens/ReleaseNotes';
 import {LicensesScreen} from '../screens/Licenses';
 import {LanguageScreen} from '../screens/Language';
+import {SecurityScreen} from '../screens/Security';
 import {colors} from '../config/theme';
 import {HeaderSettingsButton} from '../components/HeaderSettingsButton';
 import {useTranslation} from 'react-i18next';
@@ -82,6 +83,11 @@ export const AppNavigator: React.FC = () => {
         name="Language"
         component={LanguageScreen}
         options={{title: t('navigation.language')}}
+      />
+      <Stack.Screen
+        name="Security"
+        component={SecurityScreen}
+        options={{title: t('navigation.security')}}
       />
     </Stack.Navigator>
   );

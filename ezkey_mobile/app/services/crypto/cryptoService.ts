@@ -64,8 +64,18 @@ class CryptoService {
    * @return Whether the key pair exists after the call.
    * @since 2025
    */
-  async ensureEnrollmentKeyPair(enrollmentId: string): Promise<boolean> {
+  async ensureEnrollmentKeyPair(
+    enrollmentId: string,
+  ): Promise<boolean> {
     return nativeCrypto.generateEnrollmentKeyPair(enrollmentId);
+  }
+
+  canUseProtectedSigning(): Promise<boolean> {
+    return nativeCrypto.canUseProtectedSigning();
+  }
+
+  authenticateSecurityPreferenceDowngrade(): Promise<boolean> {
+    return nativeCrypto.authenticateSecurityPreferenceDowngrade();
   }
 
   /**
@@ -106,6 +116,18 @@ class CryptoService {
    * @since 2025
    */
   sign(enrollmentId: string, data: string): Promise<string> {
+    return nativeCrypto.sign(enrollmentId, data);
+  }
+
+  signForRespond(
+    enrollmentId: string,
+    data: string,
+    requireAuthentication: boolean,
+  ): Promise<string> {
+    if (requireAuthentication) {
+      return nativeCrypto.signWithAuthentication(enrollmentId, data);
+    }
+
     return nativeCrypto.sign(enrollmentId, data);
   }
 

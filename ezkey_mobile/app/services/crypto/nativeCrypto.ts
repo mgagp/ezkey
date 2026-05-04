@@ -11,13 +11,17 @@
  */
 
 import {NativeModules} from 'react-native';
+import type {SecurityLevel} from '../storage/securityPreferenceStorage';
 
 type NativeModuleShape = {
-  generateEnrollmentKeyPair(enrollmentId: string): Promise<boolean>;
+  generateEnrollmentKeyPair(enrollmentId: string, securityLevel?: SecurityLevel): Promise<boolean>;
+  canUseProtectedSigning(): Promise<boolean>;
+  authenticateSecurityPreferenceDowngrade(): Promise<boolean>;
   getPublicKey(enrollmentId: string): Promise<string>;
   /** NONE | STANDARD | STRONG — matches Auth API DevicePrivateKeyStorageTier */
   getEnrollmentPrivateKeyStorageTier(enrollmentId: string): Promise<string>;
   sign(enrollmentId: string, data: string): Promise<string>;
+  signWithAuthentication(enrollmentId: string, data: string): Promise<string>;
   verify(data: string, signatureBase64: string, publicKeyBase64: string): Promise<boolean>;
   deleteKeyPair(enrollmentId: string): Promise<boolean>;
   /** UTC ISO-8601 string set at native build time (Android `BuildConfig`); iOS uses bundle mtime proxy. */
@@ -30,10 +34,18 @@ type NativeModuleShape = {
 
 const {EzkeyCryptoModule} = NativeModules;
 
-const fallback = {
+const fallback: NativeModuleShape = {
   async generateEnrollmentKeyPair(): Promise<boolean> {
     throw new Error(
       'EzkeyCryptoModule is not linked. Unable to generate enrollment key pair.',
+    );
+  },
+  async canUseProtectedSigning(): Promise<boolean> {
+    return false;
+  },
+  async authenticateSecurityPreferenceDowngrade(): Promise<boolean> {
+    throw new Error(
+      'EzkeyCryptoModule does not support confirmation for security setting changes on this platform.',
     );
   },
   async getPublicKey(): Promise<string> {
@@ -43,6 +55,11 @@ const fallback = {
   },
   async sign(): Promise<string> {
     throw new Error('EzkeyCryptoModule is not linked. Unable to sign payload.');
+  },
+  async signWithAuthentication(): Promise<string> {
+    throw new Error(
+      'EzkeyCryptoModule does not support authenticated signing on this platform.',
+    );
   },
   async verify(): Promise<boolean> {
     throw new Error('EzkeyCryptoModule is not linked. Unable to verify signature.');
@@ -71,8 +88,7 @@ const fallback = {
   },
 } satisfies NativeModuleShape;
 
-const cryptoModule =
-  (EzkeyCryptoModule as NativeModuleShape | undefined) ?? fallback;
+const cryptoModule = EzkeyCryptoModule as Partial<NativeModuleShape> | undefined;
 
 export const isNativeCryptoLinked = Boolean(EzkeyCryptoModule);
 
@@ -84,24 +100,39 @@ export const isNativeCryptoLinked = Boolean(EzkeyCryptoModule);
  * @since 2025
  */
 export const nativeCrypto = {
-  generateEnrollmentKeyPair: (enrollmentId: string) =>
-    cryptoModule.generateEnrollmentKeyPair(enrollmentId),
+  generateEnrollmentKeyPair: (enrollmentId: string, securityLevel?: SecurityLevel) =>
+    cryptoModule?.generateEnrollmentKeyPair?.(enrollmentId, securityLevel) ??
+    fallback.generateEnrollmentKeyPair(enrollmentId, securityLevel),
+  canUseProtectedSigning: () =>
+    cryptoModule?.canUseProtectedSigning?.() ?? fallback.canUseProtectedSigning(),
+  authenticateSecurityPreferenceDowngrade: () =>
+    cryptoModule?.authenticateSecurityPreferenceDowngrade?.() ??
+    fallback.authenticateSecurityPreferenceDowngrade(),
   getPublicKey: (enrollmentId: string) =>
-    cryptoModule.getPublicKey(enrollmentId),
+    cryptoModule?.getPublicKey?.(enrollmentId) ?? fallback.getPublicKey(enrollmentId),
   sign: (enrollmentId: string, data: string) =>
-    cryptoModule.sign(enrollmentId, data),
+    cryptoModule?.sign?.(enrollmentId, data) ?? fallback.sign(enrollmentId, data),
+  signWithAuthentication: (enrollmentId: string, data: string) =>
+    cryptoModule?.signWithAuthentication?.(enrollmentId, data) ??
+    fallback.signWithAuthentication(enrollmentId, data),
   verify: (data: string, signatureBase64: string, publicKeyBase64: string) =>
-    cryptoModule.verify(data, signatureBase64, publicKeyBase64),
+    cryptoModule?.verify?.(data, signatureBase64, publicKeyBase64) ??
+    fallback.verify(data, signatureBase64, publicKeyBase64),
   deleteKeyPair: (enrollmentId: string) =>
-    cryptoModule.deleteKeyPair(enrollmentId),
-  getBuildTimestamp: () => cryptoModule.getBuildTimestamp(),
-  generateProofToken: () => cryptoModule.generateProofToken(),
+    cryptoModule?.deleteKeyPair?.(enrollmentId) ?? fallback.deleteKeyPair(enrollmentId),
+  getBuildTimestamp: () =>
+    cryptoModule?.getBuildTimestamp?.() ?? fallback.getBuildTimestamp(),
+  generateProofToken: () =>
+    cryptoModule?.generateProofToken?.() ?? fallback.generateProofToken(),
   getEnrollmentPrivateKeyStorageTier: (enrollmentId: string) =>
-    cryptoModule.getEnrollmentPrivateKeyStorageTier(enrollmentId),
+    cryptoModule?.getEnrollmentPrivateKeyStorageTier?.(enrollmentId) ??
+    fallback.getEnrollmentPrivateKeyStorageTier(enrollmentId),
   sealSecret: (logicalKey: string, plaintext: string) =>
-    cryptoModule.sealSecret(logicalKey, plaintext),
+    cryptoModule?.sealSecret?.(logicalKey, plaintext) ??
+    fallback.sealSecret(logicalKey, plaintext),
   unsealSecret: (logicalKey: string, sealedPayload: string) =>
-    cryptoModule.unsealSecret(logicalKey, sealedPayload),
+    cryptoModule?.unsealSecret?.(logicalKey, sealedPayload) ??
+    fallback.unsealSecret(logicalKey, sealedPayload),
 };
 
 export type NativeCrypto = typeof nativeCrypto;

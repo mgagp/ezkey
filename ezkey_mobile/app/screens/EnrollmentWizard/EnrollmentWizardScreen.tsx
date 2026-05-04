@@ -33,7 +33,11 @@ import {enrollmentsApi} from '../../services/api/enrollments';
 import {instanceInfoApi} from '../../services/api/instanceInfo';
 import {BindEnrollmentResponse} from '../../services/api/types';
 import {cryptoService} from '../../services/crypto';
+import {DEFAULT_ENROLLMENT_APPROVAL_POLICY} from '../../services/security/approvalRequirement';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
+import {
+  securityPreferenceStorage,
+} from '../../services/storage/securityPreferenceStorage';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import {env} from '../../config/env';
 import {integrationKeyAlgorithmBindError} from '../../utils/integrationKeyAlgorithm';
@@ -413,6 +417,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         integrationPublicKey: draft.integrationPublicKey,
         enrollmentName: draft.enrollmentName,
         deviceLabel: draft.deviceLabel,
+        approvalPolicy: DEFAULT_ENROLLMENT_APPROVAL_POLICY,
         installation,
       };
       await saveEnrollment.mutateAsync(record);

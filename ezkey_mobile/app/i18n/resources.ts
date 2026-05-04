@@ -11,6 +11,7 @@ export const resources = {
         pendingAuth: 'Pending Authentication',
         enrollmentWizard: 'Add Enrollment',
         settings: 'Settings',
+        security: 'Security',
         about: 'About',
         releaseNotes: "What's new",
         licenses: 'Open Source Licenses',
@@ -25,10 +26,37 @@ export const resources = {
         releaseNotesSubtitle: 'Current release and experimental information',
         languageLabel: 'Language',
         languageSubtitle: 'English by default; French available',
+        securityLabel: 'Security',
+        securitySubtitleStandard: 'No extra confirmation before responding',
+        securitySubtitleProtected: 'Ask for device confirmation before approving or denying',
         dangerZoneLabel: 'Danger Zone',
         dangerZoneSubtitle: 'Delete enrollments or clear all data',
         licensesLabel: 'Open Source Licenses',
         licensesSubtitle: 'Third-party license listing',
+      },
+      security: {
+        title: 'Security',
+        intro: 'Choose how this device confirms authentication requests.',
+        standardTitle: 'Standard',
+        standardBody:
+          'Use the current behavior. Requests can be approved or denied without an extra confirmation on this device.',
+        confirmationTitle: 'Confirm before approvals',
+        confirmationBody:
+          'Ask for device confirmation before approving or denying a request.',
+        current: 'Current setting',
+        unavailableTitle: 'Biometric confirmation unavailable',
+        unavailableBody:
+          'This device does not currently support the stronger device confirmation mode required for protected approvals.',
+        preferenceNoteEyebrow: 'This phone',
+        preferenceNoteTitle: 'This setting is your device preference',
+        preferenceNoteBody:
+          'When enabled, this phone asks for device confirmation before it approves or denies requests. Android may use strong biometrics or the device credential, depending on what is available.',
+        settingChangeCancelled:
+          'The change was canceled. Protected confirmation remains enabled.',
+        settingChangeUnavailable:
+          'This phone cannot confirm the downgrade right now.',
+        settingChangeFailed:
+          'The security setting could not be changed right now.',
       },
       releaseNotes: {
         accessibilityLabel: 'What is new in Ezkey Mobile',
@@ -189,6 +217,11 @@ export const resources = {
           'Enrollment missing integration public key; cannot verify respond response.',
         missingRespondSignature: 'Missing integration signature on respond response.',
         invalidRespondSignature: 'Invalid integration signature on respond response.',
+        localAuthCancelled: 'Confirmation was canceled. The request was not sent.',
+        localAuthUnavailable:
+          'Protected approval is not available on this device right now.',
+        localAuthReenroll:
+          'This enrollment is no longer usable after device security changes. Remove it and enroll again.',
         challengeDidNotMatch: 'Challenge code did not match. This attempt is final.',
         heading: 'Pending authentication',
         loading: 'Contacting Ezkey Auth API...',
@@ -278,6 +311,7 @@ export const resources = {
         pendingAuth: 'Authentification en attente',
         enrollmentWizard: 'Ajouter un enrôlement',
         settings: 'Paramètres',
+        security: 'Sécurité',
         about: 'À propos',
         releaseNotes: 'Nouveautés',
         licenses: 'Licences open source',
@@ -292,10 +326,37 @@ export const resources = {
         releaseNotesSubtitle: 'Version en cours et informations expérimentales',
         languageLabel: 'Langue',
         languageSubtitle: 'Anglais par défaut; français disponible',
+        securityLabel: 'Sécurité',
+        securitySubtitleStandard: 'Aucune confirmation supplémentaire avant de répondre',
+        securitySubtitleProtected: 'Demander une confirmation de l’appareil avant d’approuver ou de refuser',
         dangerZoneLabel: 'Zone dangereuse',
         dangerZoneSubtitle: 'Supprimer des enrôlements ou effacer toutes les données',
         licensesLabel: 'Licences open source',
         licensesSubtitle: 'Liste des licences tierces',
+      },
+      security: {
+        title: 'Sécurité',
+        intro: 'Choisissez comment cet appareil confirme les demandes d’authentification.',
+        standardTitle: 'Standard',
+        standardBody:
+          'Utilise le comportement actuel. Les demandes peuvent être approuvées ou refusées sans confirmation supplémentaire sur cet appareil.',
+        confirmationTitle: 'Confirmer avant de répondre',
+        confirmationBody:
+          'Demande une confirmation de l’appareil avant d’approuver ou de refuser une demande.',
+        current: 'Réglage actuel',
+        unavailableTitle: 'Confirmation biométrique indisponible',
+        unavailableBody:
+          'Cet appareil ne prend pas actuellement en charge le mode de confirmation renforcée requis pour les approbations protégées.',
+        preferenceNoteEyebrow: 'Ce téléphone',
+        preferenceNoteTitle: 'Ce réglage correspond à votre préférence locale',
+        preferenceNoteBody:
+          'Lorsque ce mode est activé, ce téléphone demande une confirmation de l’appareil avant d’approuver ou de refuser une demande. Android peut utiliser une biométrie forte ou le code de l’appareil selon ce qui est disponible.',
+        settingChangeCancelled:
+          'Le changement a été annulé. La confirmation renforcée reste activée.',
+        settingChangeUnavailable:
+          'Ce téléphone ne peut pas confirmer cette désactivation pour le moment.',
+        settingChangeFailed:
+          'Le réglage de sécurité ne peut pas être modifié pour le moment.',
       },
       releaseNotes: {
         accessibilityLabel: 'Nouveautés de Ezkey Mobile',
@@ -458,6 +519,12 @@ export const resources = {
           'L’enrôlement ne contient pas de clé publique d’intégration; impossible de vérifier la réponse respond.',
         missingRespondSignature: 'Signature d’intégration manquante sur la réponse respond.',
         invalidRespondSignature: 'Signature d’intégration invalide sur la réponse respond.',
+        localAuthCancelled:
+          'La confirmation a été annulée. La demande n’a pas été envoyée.',
+        localAuthUnavailable:
+          'L’approbation protégée n’est pas disponible sur cet appareil pour le moment.',
+        localAuthReenroll:
+          'Cet enrôlement n’est plus utilisable après un changement de sécurité de l’appareil. Supprimez-le puis recréez-le.',
         challengeDidNotMatch: 'Le code de challenge ne correspond pas. Cette tentative est définitive.',
         heading: 'Authentification en attente',
         loading: 'Contact du Ezkey Auth API...',
