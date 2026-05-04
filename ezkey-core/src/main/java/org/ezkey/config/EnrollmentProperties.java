@@ -33,7 +33,8 @@ public class EnrollmentProperties {
 
   /**
    * Days after creation before a pending enrollment expires when the create request does not
-   * specify {@code expiresAt}. New enrollments get {@code expires_at = created_at + this many days}.
+   * specify {@code expiresAt}. New enrollments get {@code expires_at = created_at + this many
+   * days}.
    *
    * <p>Use {@code 0} to disable default expiration for new enrollments (operators may still pass an
    * explicit {@code expiresAt} on create). The Java field defaults to {@code 7} when no property is

@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -21,6 +22,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 import org.ezkey.admin.config.AdminSecurityProperties;
+import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.domain.AdminOnboardingMode;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
@@ -41,6 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 @ExtendWith(MockitoExtension.class)
 class AdminProvisioningActivationCodeTest {
@@ -143,5 +146,124 @@ class AdminProvisioningActivationCodeTest {
         "Cannot manage recovery codes before administrator activation is complete",
         exception.getMessage());
     verify(recoveryService, never()).rotateRecoveryCodes(any());
+  }
+
+  @Test
+  @DisplayName(
+      "reissueActivationCode deactivates prior issuance tokens and returns a fresh activation code")
+  void reissueActivationCodeRevokesPriorTokensAndReturnsNewCode() {
+    Tenant tenant = new Tenant("Acme", "acme");
+    tenant.setTenantId(3);
+    tenant.setActive(true);
+
+    EzkeyAdmin target = new EzkeyAdmin("pending.admin", AdminType.TENANT_ADMIN);
+    target.setAdminId(7);
+    target.setActive(true);
+    target.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
+    target.setEnrollment(null);
+    target.setTenant(tenant);
+
+    when(adminRepository.findById(7)).thenReturn(Optional.of(target));
+    when(tokenRepository.deactivateAllTokensForAdmin(7)).thenReturn(2);
+    when(tokenRepository.save(any(AdminToken.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AdminProvisioningService.ActivationCodeReissueResult result =
+        service.reissueActivationCode(7, new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
+
+    assertEquals(7, result.admin().getAdminId());
+    assertTrue(result.activationCode().startsWith(AdminAuditConstants.ACTIVATION_TOKEN_PREFIX));
+    assertNotNull(result.activationCodeExpiresAt());
+    assertTrue(result.invalidatedPreviousTokens());
+    assertEquals(2, result.deactivatedActiveTokenCount());
+    verify(tokenRepository).deactivateAllTokensForAdmin(7);
+    verify(tokenRepository).save(any(AdminToken.class));
+  }
+
+  @Test
+  @DisplayName("reissueActivationCode rejects non-global administrators")
+  void reissueActivationCodeRejectsNonGlobalAdministrator() {
+    assertThrows(
+        AccessDeniedException.class,
+        () ->
+            service.reissueActivationCode(
+                7, new AdminPrincipal(99, AdminType.TENANT_ADMIN, 5, null)));
+    verify(adminRepository, never()).findById(7);
+  }
+
+  @Test
+  @DisplayName("reissueActivationCode rejects administrators not pending activation")
+  void reissueActivationCodeRejectsNonPendingAdministrators() {
+    EzkeyAdmin target = new EzkeyAdmin("active.admin", AdminType.TENANT_ADMIN);
+    target.setAdminId(7);
+    target.setActive(true);
+    target.setLifecycleStatus(AdminLifecycleStatus.ACTIVE);
+    target.setTenant(new Tenant());
+
+    when(adminRepository.findById(7)).thenReturn(Optional.of(target));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                service.reissueActivationCode(
+                    7, new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null)));
+
+    assertEquals(
+        "Activation codes can only be re-issued while the administrator is pending activation",
+        exception.getMessage());
+    verify(tokenRepository, never()).deactivateAllTokensForAdmin(7);
+  }
+
+  @Test
+  @DisplayName("reissueActivationCode rejects when first enrollment already exists")
+  void reissueActivationCodeRejectsWhenEnrollmentAlreadyExists() {
+    EzkeyAdmin target = new EzkeyAdmin("pending.with.enrollment", AdminType.TENANT_ADMIN);
+    target.setAdminId(7);
+    target.setActive(true);
+    target.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
+    target.setEnrollment(new org.ezkey.enrollment.domain.entity.Enrollment());
+
+    when(adminRepository.findById(7)).thenReturn(Optional.of(target));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                service.reissueActivationCode(
+                    7, new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null)));
+
+    assertEquals(
+        "Cannot re-issue activation codes after the first enrollment already exists",
+        exception.getMessage());
+    verify(tokenRepository, never()).deactivateAllTokensForAdmin(7);
+  }
+
+  @Test
+  @DisplayName("reissueActivationCode rejects inactive tenant-backed administrators")
+  void reissueActivationCodeRejectsInactiveTenantScope() {
+    Tenant tenant = new Tenant("Suspended", "suspended");
+    tenant.setTenantId(3);
+    tenant.setActive(false);
+
+    EzkeyAdmin target = new EzkeyAdmin("tenant.pending", AdminType.TENANT_ADMIN);
+    target.setAdminId(7);
+    target.setActive(true);
+    target.setLifecycleStatus(AdminLifecycleStatus.PENDING_ACTIVATION);
+    target.setTenant(tenant);
+
+    when(adminRepository.findById(7)).thenReturn(Optional.of(target));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                service.reissueActivationCode(
+                    7, new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null)));
+
+    assertEquals(
+        "Cannot re-issue activation codes while the administrator's tenant is inactive",
+        exception.getMessage());
+    verify(tokenRepository, never()).deactivateAllTokensForAdmin(7);
   }
 }

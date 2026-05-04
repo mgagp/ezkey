@@ -86,8 +86,8 @@ public class BusinessApprovalController {
    * @param request the scenario and approver identifier from the browser
    * @param session the HTTP session (must contain an authenticated {@code user} attribute)
    * @return JSON with {@code authAttemptId}, {@code expiresAt}, {@code timeoutSeconds}, optional
-   *     {@code authAttemptChallenge} when the approver's enrollment (or request) requires a
-   *     numeric challenge, or an error body with HTTP 401 / 400 / 503
+   *     {@code authAttemptChallenge} when the approver's enrollment (or request) requires a numeric
+   *     challenge, or an error body with HTTP 401 / 400 / 503
    */
   @PostMapping("/api/business-approval")
   public ResponseEntity<BusinessApprovalStartResponse> startBusinessApproval(

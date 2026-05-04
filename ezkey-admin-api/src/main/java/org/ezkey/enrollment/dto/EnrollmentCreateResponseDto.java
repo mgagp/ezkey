@@ -39,8 +39,8 @@ import java.time.OffsetDateTime;
  *     in subsequent operations
  * @param enrollmentChallenge Challenge number generated for enrollment verification used during the
  *     enrollment binding and verification process
- * @param expiresAt Invitation expiry for the pending bind/verify window, if configured or explicitly
- *     set
+ * @param expiresAt Invitation expiry for the pending bind/verify window, if configured or
+ *     explicitly set
  * @author Ezkey contributors
  * @since 2025
  * @see org.ezkey.enrollment.domain.EnrollmentCreateResponse

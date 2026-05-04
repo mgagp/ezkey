@@ -34,6 +34,7 @@ import { fetchApi, fetchBlobUrl } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { adminDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
+import { canReissuePendingAdministratorActivationCode } from '@/lib/admin-pending-activation-eligibility';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import {
   getGetAdminByIdQueryKey,
@@ -78,6 +79,17 @@ interface AdminRecoveryCodesRegenerationShape {
   recoveryCodes?: string[];
   codesCount?: number;
   invalidatedPreviousCodes?: boolean;
+  message?: string;
+}
+
+/** UI-facing shape for activation-code re-issue (Global Admin recovery for pending admins). */
+interface AdminActivationCodeReissueShape {
+  adminId?: number;
+  username?: string;
+  activationCode?: string;
+  activationCodeExpiresAt?: string;
+  invalidatedPreviousTokens?: boolean;
+  deactivatedActiveTokenCount?: number;
   message?: string;
 }
 
@@ -421,6 +433,10 @@ function AdminDetailDialog({
   const [regeneratedCodesCopied, setRegeneratedCodesCopied] = useState(false);
   const [regeneratedCodesSavedConfirmed, setRegeneratedCodesSavedConfirmed] = useState(false);
   const [recoveryCodesDialogMode, setRecoveryCodesDialogMode] = useState<'issue-initial' | 'regenerate'>('regenerate');
+  const [reissueActivationOpen, setReissueActivationOpen] = useState(false);
+  const [reissuedActivation, setReissuedActivation] = useState<AdminActivationCodeReissueShape | null>(null);
+  const [activationReissueCopied, setActivationReissueCopied] = useState(false);
+  const [activationReissueSavedConfirmed, setActivationReissueSavedConfirmed] = useState(false);
 
   // Fetch live detail from API to ensure fresh data
   const { data: detail } = useGetAdminById<RecoveryAwareAdmin>(
@@ -500,6 +516,23 @@ function AdminDetailDialog({
       toast(getTranslatedApiError(e, t, t('detail.errorRecoveryCodesIssue')), 'error'),
   });
 
+  const reissueActivationCodeMutation = useMutation({
+    mutationFn: async (id: number) =>
+      fetchApi<AdminActivationCodeReissueShape>(`/api/v1/admins/${id}/activation-code/regenerate`, {
+        method: 'POST',
+      }),
+    onSuccess: async (data) => {
+      setReissuedActivation(data);
+      setActivationReissueCopied(false);
+      setActivationReissueSavedConfirmed(false);
+      toast(t('detail.toastActivationCodeReissued', { username: adm!.username }), 'success');
+      await queryClient.invalidateQueries({ queryKey: ['admins'] });
+      await queryClient.invalidateQueries({ queryKey: getGetAdminByIdQueryKey(adm!.adminId!) });
+    },
+    onError: (e: unknown) =>
+      toast(getTranslatedApiError(e, t, t('detail.errorActivationCodeReissue')), 'error'),
+  });
+
   if (!adm) return null;
 
   const activateReasonTooShort = activateReason.trim().length > 0 && activateReason.trim().length < 10;
@@ -530,6 +563,13 @@ function AdminDetailDialog({
     setRegenerateOpen(true);
   };
 
+  const openReissueActivationDialog = () => {
+    setReissuedActivation(null);
+    setActivationReissueCopied(false);
+    setActivationReissueSavedConfirmed(false);
+    setReissueActivationOpen(true);
+  };
+
   const handleCloseRegenerateDialog = () => {
     if (regeneratedCodes && !regeneratedCodesSavedConfirmed) {
       return;
@@ -545,6 +585,20 @@ function AdminDetailDialog({
     issueInitialRecoveryCodesMutation.reset();
   };
 
+  const handleCloseReissueActivationDialog = () => {
+    if (reissuedActivation != null && !activationReissueSavedConfirmed) {
+      return;
+    }
+    if (reissueActivationCodeMutation.isPending) {
+      return;
+    }
+    setReissueActivationOpen(false);
+    setReissuedActivation(null);
+    setActivationReissueCopied(false);
+    setActivationReissueSavedConfirmed(false);
+    reissueActivationCodeMutation.reset();
+  };
+
   const handleCopyRegeneratedCodes = async () => {
     const codes = regeneratedCodes?.recoveryCodes;
     if (codes == null || codes.length === 0) return;
@@ -552,6 +606,18 @@ function AdminDetailDialog({
       await navigator.clipboard.writeText(codes.join('\n'));
       setRegeneratedCodesCopied(true);
       setTimeout(() => setRegeneratedCodesCopied(false), 2000);
+    } catch {
+      /* ignore clipboard API errors */
+    }
+  };
+
+  const handleCopyReissuedActivationCode = async () => {
+    const code = reissuedActivation?.activationCode;
+    if (code == null || code === '') return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setActivationReissueCopied(true);
+      setTimeout(() => setActivationReissueCopied(false), 2000);
     } catch {
       /* ignore clipboard API errors */
     }
@@ -701,6 +767,17 @@ function AdminDetailDialog({
               >
                 <RefreshCw className="size-3.5" />
                 {t('detail.regenerateRecoveryCodes')}
+              </Button>
+            )}
+            {isGlobalAdmin && canReissuePendingAdministratorActivationCode(adm) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-1.5"
+                onClick={openReissueActivationDialog}
+              >
+                <KeyRound className="size-3.5" />
+                {t('detail.reissueActivationCode')}
               </Button>
             )}
 
@@ -898,6 +975,114 @@ function AdminDetailDialog({
                 {recoveryCodesDialogMode === 'issue-initial'
                   ? t('detail.issueInitialRecoveryCodesConfirm')
                   : t('detail.regenerateRecoveryCodesConfirm')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+      <Dialog
+        open={reissueActivationOpen}
+        onClose={handleCloseReissueActivationDialog}
+        title={t('detail.reissueActivationCodeDialogTitle', { username: adm.username })}
+        size="md"
+        dismissible={false}
+      >
+        {reissuedActivation ? (
+          <div className="space-y-4">
+            <Alert variant="success">
+              {reissuedActivation.message ?? t('detail.reissueActivationCodeSuccess')}
+            </Alert>
+            <div className="space-y-2 border-2 border-warning/40 bg-bg p-3">
+              <div className="border-2 border-warning bg-warning/10 p-3 flex gap-2">
+                <AlertTriangle className="size-4 text-warning shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-black text-warning">{t('create.activationCodeWarningTitle')}</p>
+                  <p className="text-xs text-warning/80 mt-0.5">{t('create.activationCodeWarningBody')}</p>
+                </div>
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-muted">{t('create.activationCodeTitle')}</p>
+              <p className="text-xs text-fg-muted">{t('create.activationCodeHint')}</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void handleCopyReissuedActivationCode()}
+                className="gap-1.5"
+              >
+                {activationReissueCopied
+                  ? <Check className="size-3.5 text-success" />
+                  : <Copy className="size-3.5" />}
+                {activationReissueCopied ? t('onboarding.copied') : t('create.copyActivationCode')}
+              </Button>
+              <div className="font-mono text-xs break-all border-2 border-fg/20 p-3 bg-surface">
+                {reissuedActivation.activationCode}
+              </div>
+              {reissuedActivation.activationCodeExpiresAt && (
+                <p className="text-xs text-fg-muted">
+                  {t('create.activationCodeExpiresAt', {
+                    expiresAt: formatDate(reissuedActivation.activationCodeExpiresAt),
+                  })}
+                </p>
+              )}
+              <div className="flex items-center gap-2.5 p-3 border-2 border-fg/20 bg-bg">
+                <input
+                  id="reissued-activation-code-saved"
+                  type="checkbox"
+                  className="size-4 border-2 border-fg accent-accent"
+                  checked={activationReissueSavedConfirmed}
+                  onChange={(e) => setActivationReissueSavedConfirmed(e.target.checked)}
+                />
+                <label htmlFor="reissued-activation-code-saved" className="text-sm font-bold cursor-pointer select-none">
+                  {t('create.activationCodeSavedConfirmLabel')}
+                </label>
+              </div>
+            </div>
+            <p className="text-sm text-fg-muted">{t('create.activationCodeSuccessHint')}</p>
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleCloseReissueActivationDialog} disabled={!activationReissueSavedConfirmed}>
+                {t('detail.close')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Alert variant="warning">{t('detail.reissueActivationCodeIntro')}</Alert>
+            <div className="border-2 border-error bg-error/5 p-3 flex gap-2">
+              <AlertTriangle className="size-4 text-error shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-black text-error">{t('detail.reissueActivationCodeWarningTitle')}</p>
+                <p className="text-xs text-error/80 mt-0.5">{t('detail.reissueActivationCodeWarningBody')}</p>
+              </div>
+            </div>
+            {reissueActivationCodeMutation.isError && (
+              <Alert variant="error">
+                {getTranslatedApiError(
+                  reissueActivationCodeMutation.error,
+                  t,
+                  t('detail.errorActivationCodeReissue'),
+                )}
+              </Alert>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={handleCloseReissueActivationDialog}
+                disabled={reissueActivationCodeMutation.isPending}
+              >
+                {t('detail.editCancel')}
+              </Button>
+              <Button
+                type="button"
+                isLoading={reissueActivationCodeMutation.isPending}
+                onClick={() => {
+                  const id = adm.adminId;
+                  if (id != null) {
+                    reissueActivationCodeMutation.mutate(id);
+                  }
+                }}
+              >
+                {t('detail.reissueActivationCodeConfirm')}
               </Button>
             </div>
           </div>

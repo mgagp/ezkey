@@ -4,6 +4,21 @@ For agents working anywhere in the repo. For module-specific conventions and pat
 
 For full product and technical context, read **PRD.md**, **README.md**, **docs/PROJECT_POSITIONING.md**, and **docs/ENDPOINT.md** at the start of a new session.
 
+When a task involves **entity relationships, lifecycle semantics, operational eligibility, parent-child propagation, reversible vs irreversible actions, or operator analysis across multiple entity types**, it is also mandatory to read **`docs/LIFECYCLE_GOVERNANCE.md`** before proposing a design, plan, or implementation direction. Treat that document as the source of truth for how Ezkey models:
+
+- entity hierarchy and cross-entity relationships,
+- local lifecycle state versus effective operational status,
+- parent-chain eligibility blocking,
+- admin identity lifecycle versus admin MFA enrollment lifecycle,
+- operator guardrails and action semantics.
+
+Do not rely only on endpoint shape or isolated module behavior for this class of analysis; check `docs/LIFECYCLE_GOVERNANCE.md` first and align the recommendation with it.
+
+When the change modifies **administrator lifecycle transitions** or **activation / onboarding**
+operator paths, reconcile the implementation explicitly with `docs/LIFECYCLE_GOVERNANCE.md` and
+extend Postman (and the Admin UI workflow, when applicable) in the same change set when the
+recovery surface changes.
+
 When the task is primarily about the React Native mobile app, also start with `ezkey_mobile/AGENTS.md` and `ezkey_mobile/docs/README.md`. For Play release or publishing work, prefer the current mobile release docs (`MOBILE_RELEASE_SIGNING.md`, `MOBILE_PLAY_PUBLISHING.md`, `MOBILE_PLAY_RELEASE_READINESS_AUDIT.md`, and `MOBILE_RELEASE_DECISION_MEMO.md`) over any deleted or historical upgrade-analysis notes.
 
 For configuration properties, each backend module has a colocated **`CONFIGURATION.md`** (property tables, obligation levels, profile matrix, Docker env var mapping). The central index is **`docs/configuration/README.md`**. When adding or changing a `@ConfigurationProperties` class, update the relevant `CONFIGURATION.md` and, if a new prefix is introduced, the index.
@@ -63,14 +78,37 @@ The symptom is a clean compile but a startup failure — not caught by unit test
 copies such as the Admin UI and SDK specs. It does **not** update Postman collections under
 `postman/collections/`.
 
+### Controller changes imply contract review
+
+When you change a **controller**, assume you are changing an API contract unless you have verified
+otherwise. This must become a default analysis and design reflex, not an afterthought.
+
+Before finalizing a plan or implementation that touches controller code:
+
+- review whether the request shape, response shape, status codes, validation behavior, error
+  semantics, examples, or operator workflow changed;
+- identify the impacted Postman collection(s) up front as part of the design, not only at the end;
+- treat Postman updates as part of the same change set whenever the controller change affects how
+  an endpoint is called, understood, tested, or demonstrated.
+
 **Rule:** whenever an endpoint, DTO, validation contract, example payload, or operator workflow
 changes and you run `update-specs`, review and update every impacted Postman collection in the
 same change set. A backend contract refresh is not considered complete until both the generated
 OpenAPI files and the affected Postman collections describe the same behavior.
 
+**Stronger practical rule:** if you modify controller behavior in a way that affects the API
+surface, you should assume the Postman collection must also be updated. Do not wait for a later
+"docs pass" to decide. The default should be:
+
+1. controller change,
+2. contract review,
+3. Postman collection update,
+4. generated spec refresh when authorized and applicable.
+
 Agents must never hand-edit generated OpenAPI artifacts under `specs/**`. When the user explicitly
 authorizes autonomous contract refresh and a clean-start stack is freshly running, agents may run
-`./scripts/update-specs.sh` and then regenerate dependent clients such as the Admin UI Orval client.
+`./scripts/update-specs.sh` and then regenerate dependent clients such as the Admin UI Orval client
+(`npm run generate:api` in `ezkey-admin-ui` when provisioning or shared DTO clients must align).
 Generated output should be reviewed for obvious scope drift and reported in the close-out.
 
 ---

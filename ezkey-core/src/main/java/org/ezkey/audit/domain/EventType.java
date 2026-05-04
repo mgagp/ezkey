@@ -33,6 +33,11 @@ public enum EventType {
   ADMIN_RECOVERY_CODES_REGENERATED,
   ADMIN_ACTIVATION,
   /**
+   * Operator-initiated replacement of a deferred onboarding activation token for an administrator
+   * who is still in pending activation and has no first enrollment.
+   */
+  ADMIN_ACTIVATION_CODE_REISSUED,
+  /**
    * MFA enrollment reset completed using a recovery token (device unbound, new bind credentials
    * issued). Distinct from {@link #ADMIN_RECOVERY_USE} (recovery code / recovery token issuance).
    */

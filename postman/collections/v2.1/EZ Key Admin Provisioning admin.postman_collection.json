@@ -880,6 +880,84 @@
       "response": []
     },
     {
+      "name": "reissue activation code (pending admin)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200, 400, 403, or 404\", function () {",
+              "    pm.expect([200, 400, 403, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.test(\"Response contains activation reissue fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('adminId');",
+              "        pm.expect(jsonData).to.have.property('username');",
+              "        pm.expect(jsonData).to.have.property('activationCode');",
+              "        pm.expect(jsonData).to.have.property('activationCodeExpiresAt');",
+              "        pm.expect(jsonData).to.have.property('invalidatedPreviousTokens');",
+              "        pm.expect(jsonData).to.have.property('deactivatedActiveTokenCount');",
+              "        pm.expect(jsonData).to.have.property('message');",
+              "    });",
+              "    pm.test(\"Activation code is non-empty string\", function () {",
+              "        pm.expect(jsonData.activationCode).to.be.a('string');",
+              "        pm.expect(jsonData.activationCode.length).to.be.greaterThan(0);",
+              "    });",
+              "} else if (pm.response.code === 400) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.test(\"400 response is RFC 9457 Problem Detail\", function () {",
+              "        pm.expect(jsonData).to.have.property('type');",
+              "        pm.expect(jsonData).to.have.property('title');",
+              "        pm.expect(jsonData).to.have.property('status');",
+              "        pm.expect(jsonData).to.have.property('detail');",
+              "        pm.expect(jsonData.status).to.equal(400);",
+              "    });",
+              "} else if (pm.response.code === 403) {",
+              "    pm.test(\"Forbidden - GlobalAdmin only\", function () {",
+              "        pm.expect(pm.response.code).to.equal(403);",
+              "    });",
+              "} else if (pm.response.code === 404) {",
+              "    pm.test(\"Administrator not found\", function () {",
+              "        pm.expect(pm.response.code).to.equal(404);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/admins/:id/activation-code/regenerate",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "admins",
+            ":id",
+            "activation-code",
+            "regenerate"
+          ],
+          "variable": [
+            {
+              "key": "id",
+              "value": "{{adminId}}",
+              "description": "Administrator ID (must be pending activation with no enrollment)"
+            }
+          ]
+        },
+        "description": "Re-issues a new one-time activation code for a pending administrator (`PENDING_ACTIVATION`) who has no first enrollment yet. Deactivates unused activation issuance rows for that administrator first.\n\n**Permissions:** GlobalAdmin only.\n\n**Response (200 OK):** `AdminActivationCodeReissueResponseDto` — plaintext `activationCode` is shown only in this response.\n\n**Status Codes:** 200 / 400 (ineligibility) / 403 / 404."
+      },
+      "response": []
+    },
+    {
       "name": "deactivate admin",
       "event": [
         {

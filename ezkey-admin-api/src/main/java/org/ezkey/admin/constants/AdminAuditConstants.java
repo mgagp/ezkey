@@ -116,6 +116,12 @@ public final class AdminAuditConstants {
   /** Audit action for unexpected activation errors. */
   public static final String ACTIVATION_ERROR = "activation_error";
 
+  /** Audit action when a Global Admin successfully re-issues a deferred activation code. */
+  public static final String ACTIVATION_CODE_REISSUED = "activation_code_reissued";
+
+  /** Audit action when activation-code re-issue is rejected. */
+  public static final String ACTIVATION_CODE_REISSUE_FAILED = "activation_code_reissue_failed";
+
   /** Audit action when enrollment reset via recovery token completed successfully. */
   public static final String ENROLLMENT_RESET_VIA_RECOVERY = "enrollment_reset_via_recovery";
 

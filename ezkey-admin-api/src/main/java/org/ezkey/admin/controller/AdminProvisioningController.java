@@ -26,6 +26,7 @@ import org.ezkey.admin.audit.RecoveryAuditDetails;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.AdminCreateRequestDto;
 import org.ezkey.admin.dto.request.AdminUpdateRequestDto;
+import org.ezkey.admin.dto.response.AdminActivationCodeReissueResponseDto;
 import org.ezkey.admin.dto.response.AdminOnboardingResponseDto;
 import org.ezkey.admin.dto.response.AdminProvisioningResponseDto;
 import org.ezkey.admin.dto.response.AdminRecoveryCodesRegenerationResponseDto;
@@ -35,6 +36,7 @@ import org.ezkey.admin.exception.AdminNotAllowedException;
 import org.ezkey.admin.exception.GlobalAdminLimitException;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.admin.service.AdminProvisioningService;
+import org.ezkey.admin.service.AdminProvisioningService.ActivationCodeReissueResult;
 import org.ezkey.admin.service.AdminProvisioningService.OnboardingCredentialsResult;
 import org.ezkey.admin.service.AdminProvisioningService.ProvisioningResult;
 import org.ezkey.admin.service.AdminProvisioningService.RecoveryCodesRegenerationResult;
@@ -886,6 +888,143 @@ public class AdminProvisioningController {
           httpRequest,
           e.getMessage() != null ? e.getMessage() : "Invalid request.",
           "admin-inactive",
+          "Invalid Request");
+    }
+  }
+
+  /**
+   * Re-issues the deferred onboarding activation code for a pending administrator.
+   *
+   * <p>GlobalAdmin only. The operation deactivates any previously issued unused activation issuance
+   * rows for this administrator before minting a fresh code shown once to the caller.
+   *
+   * @param id the administrator ID
+   * @param auth the authentication context
+   * @param httpRequest the HTTP request for audit context
+   * @return ResponseEntity with the new activation code (200 OK)
+   */
+  @PostMapping("/{id}/activation-code/regenerate")
+  @PreAuthorize("hasRole('ROLE_GLOBAL_ADMIN')")
+  @Operation(
+      summary = "Re-issue deferred onboarding activation code",
+      description =
+          "Generates a new one-time activation code for an administrator still in pending"
+              + " activation who has no first enrollment yet. Any previously unused activation"
+              + " issuance rows for this administrator are deactivated immediately. GlobalAdmin"
+              + " only.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Activation code re-issued successfully"),
+    @ApiResponse(
+        responseCode = "400",
+        description =
+            "Administrator inactive, tenant inactive, lifecycle not pending, or enrollment already"
+                + " exists"),
+    @ApiResponse(responseCode = "403", description = "Forbidden - not authorized"),
+    @ApiResponse(responseCode = "404", description = "Administrator not found")
+  })
+  public ResponseEntity<?> regenerateActivationCode(
+      @Parameter(description = "Administrator ID", example = "1") @PathVariable("id") Integer id,
+      Authentication auth,
+      HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    if (principal == null || !principal.isGlobalAdmin()) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    try {
+      ActivationCodeReissueResult result = provisioningService.reissueActivationCode(id, principal);
+
+      AdminActivationCodeReissueResponseDto response =
+          new AdminActivationCodeReissueResponseDto(
+              result.admin().getAdminId(),
+              result.admin().getUsername(),
+              result.activationCode(),
+              result.activationCodeExpiresAt(),
+              result.invalidatedPreviousTokens(),
+              result.deactivatedActiveTokenCount(),
+              "New activation code generated. Previous unused activation codes no longer work.");
+
+      Integer tenantId =
+          result.admin().getTenant() != null ? result.admin().getTenant().getTenantId() : null;
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION_CODE_REISSUED,
+                  AdminAuditConstants.ACTIVATION_CODE_REISSUED,
+                  tenantId)
+              .eventStatus(EventStatus.SUCCESS)
+              .adminId(principal.adminId())
+              .targetAdminId(result.admin().getAdminId())
+              .eventDetails(
+                  "activationCodeReissued: principalAdminId="
+                      + principal.adminId()
+                      + ", targetAdminId="
+                      + result.admin().getAdminId()
+                      + ", deactivatedIssuanceTokens="
+                      + result.deactivatedActiveTokenCount())
+              .build());
+
+      return ResponseEntity.ok(response);
+    } catch (ResourceNotFoundException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION_CODE_REISSUED,
+                  AdminAuditConstants.ACTIVATION_CODE_REISSUE_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  "activationCodeReissueRejected: reason=admin_not_found, principalAdminId="
+                      + principal.adminId()
+                      + ", targetAdminId="
+                      + id)
+              .build());
+      throw e;
+    } catch (AccessDeniedException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION_CODE_REISSUED,
+                  AdminAuditConstants.ACTIVATION_CODE_REISSUE_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  "activationCodeReissueRejected: reason=access_denied, principalAdminId="
+                      + principal.adminId()
+                      + ", targetAdminId="
+                      + id)
+              .build());
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    } catch (IllegalStateException e) {
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.ADMIN_ACTIVATION_CODE_REISSUED,
+                  AdminAuditConstants.ACTIVATION_CODE_REISSUE_FAILED,
+                  principal.tenantId())
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(principal.adminId())
+              .targetAdminId(id)
+              .errorMessage(e.getMessage())
+              .eventDetails(
+                  "activationCodeReissueRejected: reason=ineligible_admin_state, principalAdminId="
+                      + principal.adminId()
+                      + ", targetAdminId="
+                      + id
+                      + ", detail="
+                      + Objects.toString(e.getMessage(), ""))
+              .build());
+      return badRequest(
+          httpRequest,
+          e.getMessage() != null ? e.getMessage() : "Invalid request.",
+          "activation-reissue-not-eligible",
           "Invalid Request");
     }
   }

@@ -1165,6 +1165,60 @@ Authorization: Bearer ezkey_admin_token...
 
 ---
 
+### e1) Re-issue activation code (pending administrators)
+
+**POST /api/v1/admins/{id}/activation-code/regenerate**
+
+Re-issues a **new** one-time deferred onboarding activation code for an administrator who is still
+in `PENDING_ACTIVATION` and has **no** first enrollment yet. Any previously issued **unused**
+activation issuance rows for that administrator are **deactivated** first, so only the latest
+code remains valid until it is consumed or expires.
+
+**Permissions:**
+- **GlobalAdmin** only (TenantAdmin receives 403).
+
+**Eligibility (400 when not met):**
+- Target administrator must be `active = true`
+- `lifecycleStatus` must be `PENDING_ACTIVATION`
+- `enrollment` must not exist yet (no first enrollment)
+- When the admin is tenant-scoped, the tenant must be active
+
+**Request:**
+```http
+POST /api/v1/admins/42/activation-code/regenerate
+Authorization: Bearer ezkey_admin_token...
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "adminId": 42,
+  "username": "tenant.admin",
+  "activationCode": "ezkey-activation-…",
+  "activationCodeExpiresAt": "2026-05-10T15:00:00Z",
+  "invalidatedPreviousTokens": true,
+  "deactivatedActiveTokenCount": 1,
+  "message": "New activation code generated. Previous unused activation codes no longer work."
+}
+```
+
+**Notes:**
+- `activationCode` is plain text and is shown **only in this response**.
+- The administrator remains **pending** until the new code is consumed through the normal
+  activation flow.
+- This is a **recovery** operation for operators who lost the original code; it does not reset
+  broader onboarding state beyond invalidating prior unused activation issuances.
+
+**Status Codes:**
+- 200: Activation code re-issued successfully
+- 400: Administrator inactive, tenant inactive, not pending activation, or enrollment already exists
+- 401: Unauthorized - admin token required
+- 403: Forbidden - not a Global Admin
+- 404: Administrator not found
+- 500: Internal server error
+
+---
+
 ### e2) List Administrators
 
 **GET /api/v1/admins**

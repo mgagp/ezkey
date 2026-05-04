@@ -699,6 +699,84 @@ public class AdminProvisioningService {
   }
 
   /**
+   * Result of re-issuing a deferred onboarding activation code for a pending administrator.
+   *
+   * @param admin persisted administrator row the code is bound to
+   * @param activationCode plaintext one-time activation code shown once to the operator
+   * @param activationCodeExpiresAt expiry instant for {@code activationCode}
+   * @param invalidatedPreviousTokens true when at least one issuance row was deactivated first
+   * @param deactivatedActiveTokenCount number of issuance rows deactivated before minting the new
+   *     code
+   */
+  public record ActivationCodeReissueResult(
+      EzkeyAdmin admin,
+      String activationCode,
+      OffsetDateTime activationCodeExpiresAt,
+      boolean invalidatedPreviousTokens,
+      int deactivatedActiveTokenCount) {}
+
+  /**
+   * Re-issues a one-time activation code for a pending administrator whose first enrollment does
+   * not exist yet. Used when the operator lost the previously issued activation code before the
+   * invitee consumed it.
+   *
+   * @param adminId target administrator identifier
+   * @param requesterPrincipal principal of the invoking Global Administrator
+   * @return new activation code payload and revocation summary
+   * @throws ResourceNotFoundException when the administrator does not exist
+   * @throws AccessDeniedException when the caller is not a global administrator
+   * @throws IllegalStateException when the administrator is not eligible for re-issue
+   */
+  @Transactional
+  public ActivationCodeReissueResult reissueActivationCode(
+      Integer adminId, AdminPrincipal requesterPrincipal) {
+    if (requesterPrincipal == null || !requesterPrincipal.isGlobalAdmin()) {
+      throw new AccessDeniedException(
+          "Only global administrators may re-issue activation codes for pending administrators.");
+    }
+
+    EzkeyAdmin admin =
+        adminRepository
+            .findById(adminId)
+            .orElseThrow(() -> new ResourceNotFoundException("Administrator", adminId));
+
+    validateActivationCodeReissueEligibility(admin);
+
+    int deactivated = tokenRepository.deactivateAllTokensForAdmin(adminId);
+
+    ActivationCodeResult newCode = issueActivationCode(admin);
+
+    logger.info(
+        "✅ Activation code re-issued for pending admin {} (adminId={},"
+            + " deactivatedIssuanceTokens={})",
+        admin.getUsername(),
+        admin.getAdminId(),
+        deactivated);
+
+    return new ActivationCodeReissueResult(
+        admin, newCode.activationCode(), newCode.expiresAt(), deactivated > 0, deactivated);
+  }
+
+  private void validateActivationCodeReissueEligibility(EzkeyAdmin admin) {
+    if (!Boolean.TRUE.equals(admin.getActive())) {
+      throw new IllegalStateException(
+          "Cannot re-issue activation codes for an inactive administrator");
+    }
+    if (admin.getLifecycleStatus() != AdminLifecycleStatus.PENDING_ACTIVATION) {
+      throw new IllegalStateException(
+          "Activation codes can only be re-issued while the administrator is pending activation");
+    }
+    if (admin.getEnrollment() != null) {
+      throw new IllegalStateException(
+          "Cannot re-issue activation codes after the first enrollment already exists");
+    }
+    if (admin.getTenant() != null && !Boolean.TRUE.equals(admin.getTenant().getActive())) {
+      throw new IllegalStateException(
+          "Cannot re-issue activation codes while the administrator's tenant is inactive");
+    }
+  }
+
+  /**
    * Partially updates an administrator profile.
    *
    * <p>Only non-null fields are applied. GlobalAdmin can update any admin. TenantAdmin can update

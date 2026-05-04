@@ -2473,6 +2473,71 @@
         }
       }
     },
+    "/api/v1/admins/{id}/activation-code/regenerate": {
+      "post": {
+        "tags": [
+          "Administrator Provisioning"
+        ],
+        "summary": "Re-issue deferred onboarding activation code",
+        "description": "Generates a new one-time activation code for an administrator still in pending activation who has no first enrollment yet. Any previously unused activation issuance rows for this administrator are deactivated immediately. GlobalAdmin only.",
+        "operationId": "regenerateActivationCode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Administrator ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activation code re-issued successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Administrator inactive, tenant inactive, lifecycle not pending, or enrollment already exists",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - not authorized",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Administrator not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admins/{id}/activate": {
       "post": {
         "tags": [
@@ -4284,6 +4349,7 @@
                 "ADMIN_RECOVERY_CODES_ISSUED",
                 "ADMIN_RECOVERY_CODES_REGENERATED",
                 "ADMIN_ACTIVATION",
+                "ADMIN_ACTIVATION_CODE_REISSUED",
                 "ADMIN_RECOVERY_ENROLLMENT_RESET",
                 "ADMIN_CREATED",
                 "ADMIN_PROFILE_UPDATED",
@@ -8146,6 +8212,7 @@
               "ADMIN_RECOVERY_CODES_ISSUED",
               "ADMIN_RECOVERY_CODES_REGENERATED",
               "ADMIN_ACTIVATION",
+              "ADMIN_ACTIVATION_CODE_REISSUED",
               "ADMIN_RECOVERY_ENROLLMENT_RESET",
               "ADMIN_CREATED",
               "ADMIN_PROFILE_UPDATED",

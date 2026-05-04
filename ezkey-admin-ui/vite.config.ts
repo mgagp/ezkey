@@ -16,6 +16,17 @@ export default defineConfig(({ mode }) => {
     // Avoid two React copies (breaks context) when dependencies resolve differently per chunk.
     dedupe: ['react', 'react-dom'],
   },
+  // Dev: bind these to one pre-bundled graph so lazy routes + codegen refreshes rarely split React.
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react/jsx-runtime',
+      'react-router',
+      'react-router-dom',
+      '@tanstack/react-query',
+    ],
+  },
   define: productionLike
       ? { 'import.meta.env.VITE_DEMO_MODE': '"false"' }
       : undefined,
