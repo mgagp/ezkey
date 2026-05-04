@@ -12,6 +12,7 @@ import {ReleaseNotesScreen} from '../screens/ReleaseNotes';
 import {LicensesScreen} from '../screens/Licenses';
 import {LanguageScreen} from '../screens/Language';
 import {SecurityScreen} from '../screens/Security';
+import {ComingSoonScreen} from '../screens/ComingSoon';
 import {colors} from '../config/theme';
 import {HeaderSettingsButton} from '../components/HeaderSettingsButton';
 import {useTranslation} from 'react-i18next';
@@ -68,6 +69,11 @@ export const AppNavigator: React.FC = () => {
         name="ReleaseNotes"
         component={ReleaseNotesScreen}
         options={{title: t('navigation.releaseNotes')}}
+      />
+      <Stack.Screen
+        name="ComingSoon"
+        component={ComingSoonScreen}
+        options={{title: t('navigation.comingSoon')}}
       />
       <Stack.Screen
         name="Licenses"

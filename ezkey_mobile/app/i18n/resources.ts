@@ -12,6 +12,7 @@ export const resources = {
         enrollmentWizard: 'Add Enrollment',
         settings: 'Settings',
         security: 'Security',
+        comingSoon: 'Coming soon',
         about: 'About',
         releaseNotes: "What's new",
         licenses: 'Open Source Licenses',
@@ -24,6 +25,8 @@ export const resources = {
         aboutSubtitle: 'App version and project info',
         releaseNotesLabel: "What's new",
         releaseNotesSubtitle: 'Current release and experimental information',
+        comingSoonLabel: 'Coming soon',
+        comingSoonSubtitle: 'Near-term roadmap and expectation-setting notes',
         languageLabel: 'Language',
         languageSubtitle: 'English by default; French available',
         securityLabel: 'Security',
@@ -51,6 +54,10 @@ export const resources = {
         preferenceNoteTitle: 'This setting is your device preference',
         preferenceNoteBody:
           'When enabled, this phone asks for device confirmation before it approves or denies requests. Android may use strong biometrics or the device credential, depending on what is available.',
+        declarativeNoteEyebrow: 'Current version',
+        declarativeNoteTitle: 'This protection is currently declarative',
+        declarativeNoteBody:
+          'In the current version, the app requests local device confirmation before responding, but the backend does not yet receive a cryptographic proof that this local authentication was inseparably bound to the signature itself.',
         settingChangeCancelled:
           'The change was canceled. Protected confirmation remains enabled.',
         settingChangeUnavailable:
@@ -73,8 +80,39 @@ export const resources = {
         accessTitle: 'Experimental access',
         accessBody:
           'If you want to participate in the experiment, start with the article on ezkey.org, then email info@ezkey.org to request an activation code.',
+        comingNextTitle: 'Coming next',
+        comingNextItem1:
+          'Further work is planned on authentication policy, local-auth rules, and stronger cryptographic validation boundaries.',
+        comingNextItem2:
+          'Certificate pinning is planned in a lightweight Ezkey form, starting with trust on first use during enrollment and a controlled refresh path later if the pin changes.',
+        comingNextItem3:
+          'The language experience should also improve over time so changing language does not keep feeling tied to an app restart.',
         notesTitle: 'Important notes',
         note1: 'This publication is intended for a limited experimental audience.',
+      },
+      comingSoon: {
+        accessibilityLabel: 'Coming soon in Ezkey Mobile',
+        eyebrow: 'Near-term roadmap',
+        title: 'Coming soon',
+        intro:
+          'These are the next mobile improvements that matter most for expectation-setting and practical security. This is a focused roadmap, not an exhaustive feature list.',
+        auth: {
+          title: 'Authentication policy and stronger validation',
+          body:
+            'Future work will continue on authentication policy, local-auth enforcement, and stronger cryptographic validation. The goal is to keep the current protection honest while preparing a clearer policy model and stronger proof boundaries over time.',
+        },
+        pinning: {
+          title: 'Certificate pinning, Ezkey-style',
+          body:
+            'Certificate pinning is planned in a pragmatic lightweight form. The initial direction is trust on first use during enrollment, followed by a controlled refresh path if the pin no longer matches, so later authentication cycles get meaningful network trust hardening without pretending to reach the most extreme pinning model.',
+        },
+        language: {
+          title: 'Language switching without restart',
+          body:
+            'The current language flow still asks for an app restart. A future UX improvement should make language changes feel smoother and more immediate while keeping the app stable and predictable.',
+        },
+        footer:
+          'Ezkey Mobile is intentionally aiming for practical, explicit security improvements rather than over-claiming perfection. Future work will continue in that same spirit.',
       },
       locale: {
         title: 'Language',
@@ -312,6 +350,7 @@ export const resources = {
         enrollmentWizard: 'Ajouter un enrôlement',
         settings: 'Paramètres',
         security: 'Sécurité',
+        comingSoon: 'À venir',
         about: 'À propos',
         releaseNotes: 'Nouveautés',
         licenses: 'Licences open source',
@@ -324,6 +363,8 @@ export const resources = {
         aboutSubtitle: 'Version de l’application et informations du projet',
         releaseNotesLabel: 'Nouveautés',
         releaseNotesSubtitle: 'Version en cours et informations expérimentales',
+        comingSoonLabel: 'À venir',
+        comingSoonSubtitle: 'Feuille de route rapprochée et notes de cadrage',
         languageLabel: 'Langue',
         languageSubtitle: 'Anglais par défaut; français disponible',
         securityLabel: 'Sécurité',
@@ -351,6 +392,10 @@ export const resources = {
         preferenceNoteTitle: 'Ce réglage correspond à votre préférence locale',
         preferenceNoteBody:
           'Lorsque ce mode est activé, ce téléphone demande une confirmation de l’appareil avant d’approuver ou de refuser une demande. Android peut utiliser une biométrie forte ou le code de l’appareil selon ce qui est disponible.',
+        declarativeNoteEyebrow: 'Version actuelle',
+        declarativeNoteTitle: 'Cette protection reste actuellement déclarative',
+        declarativeNoteBody:
+          'Dans la version actuelle, l’application demande une confirmation locale de l’appareil avant de répondre, mais le backend ne reçoit pas encore de preuve cryptographique que cette authentification locale était inséparable de la signature elle-même.',
         settingChangeCancelled:
           'Le changement a été annulé. La confirmation renforcée reste activée.',
         settingChangeUnavailable:
@@ -374,8 +419,39 @@ export const resources = {
         accessTitle: 'Accès expérimental',
         accessBody:
           'Si vous souhaitez participer à l’expérimentation, commencez par l’article sur ezkey.org, puis écrivez à info@ezkey.org pour demander un code d’activation.',
+        comingNextTitle: 'À venir',
+        comingNextItem1:
+          'Du travail supplémentaire est prévu sur la policy d’authentification, les règles de réauthentification locale et des frontières de validation cryptographique plus fortes.',
+        comingNextItem2:
+          'Le certificate pinning est prévu sous une forme légère à la manière Ezkey, en commençant par un trust on first use pendant l’enrôlement et un parcours contrôlé de rafraîchissement si le pin change par la suite.',
+        comingNextItem3:
+          'L’expérience de changement de langue devrait aussi s’améliorer avec le temps pour ne plus dépendre autant d’un redémarrage de l’application.',
         notesTitle: 'Notes importantes',
         note1: 'Cette publication s’adresse à un auditoire expérimental limité.',
+      },
+      comingSoon: {
+        accessibilityLabel: 'À venir dans Ezkey Mobile',
+        eyebrow: 'Feuille de route rapprochée',
+        title: 'À venir',
+        intro:
+          'Voici les prochains chantiers mobiles les plus utiles pour cadrer les attentes et faire progresser la sécurité de façon pragmatique. Il s’agit d’une feuille de route ciblée, pas d’une liste exhaustive.',
+        auth: {
+          title: 'Policy d’authentification et validation plus forte',
+          body:
+            'Le travail futur va continuer sur la policy d’authentification, l’application locale des exigences et une validation cryptographique plus forte. L’objectif est de garder la protection actuelle honnête tout en préparant avec le temps un modèle de policy plus clair et de meilleures frontières de preuve.',
+        },
+        pinning: {
+          title: 'Certificate pinning, à la manière Ezkey',
+          body:
+            'Le certificate pinning est prévu sous une forme légère et assumée. La direction initiale est un trust on first use pendant l’enrôlement, suivi d’un petit cycle de rafraîchissement contrôlé si le pin ne correspond plus, afin de renforcer utilement la confiance réseau des cycles d’authentification suivants sans prétendre atteindre le modèle de pinning le plus extrême.',
+        },
+        language: {
+          title: 'Changement de langue sans redémarrage',
+          body:
+            'Le parcours actuel de changement de langue demande encore un redémarrage de l’application. Une amélioration UX future devrait rendre ce changement plus fluide et plus immédiat, tout en gardant l’application stable et prévisible.',
+        },
+        footer:
+          'Ezkey Mobile vise volontairement des améliorations de sécurité pratiques et explicites plutôt que des promesses excessives. La suite du travail restera dans ce même esprit.',
       },
       locale: {
         title: 'Langue',

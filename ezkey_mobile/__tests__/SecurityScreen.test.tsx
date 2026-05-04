@@ -84,4 +84,23 @@ describe('SecurityScreen', () => {
       'confirm-before-approvals',
     );
   });
+
+  it('renders the declarative security notice', async () => {
+    mockedSecurityPreferenceStorage.getSecurityLevel.mockResolvedValue('standard' as never);
+
+    let tree: renderer.ReactTestRenderer;
+    await renderer.act(async () => {
+      tree = renderer.create(<SecurityScreen />);
+    });
+
+    expect(() =>
+      tree!.root.findByProps({children: 'This protection is currently declarative'}),
+    ).not.toThrow();
+    expect(() =>
+      tree!.root.findByProps({
+        children:
+          'In the current version, the app requests local device confirmation before responding, but the backend does not yet receive a cryptographic proof that this local authentication was inseparably bound to the signature itself.',
+      }),
+    ).not.toThrow();
+  });
 });

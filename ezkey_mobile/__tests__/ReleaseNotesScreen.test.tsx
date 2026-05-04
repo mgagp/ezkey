@@ -16,6 +16,8 @@ describe('ReleaseNotesScreen', () => {
     expect(textContent).toContain('First experimental release');
     expect(textContent).toContain('ezkey.org');
     expect(textContent).toContain('Experimental access');
+    expect(textContent).toContain('Coming next');
+    expect(textContent).toContain('Certificate pinning');
     expect(textContent).toContain('info@ezkey.org');
     expect(textContent).toContain('limited experimental audience');
   });

@@ -79,6 +79,35 @@ Why this posture is used now:
 
 Documentation must therefore avoid claiming `biometric-only` behavior unless a future implementation explicitly removes the device-credential fallback.
 
+## Declarative guarantee boundary
+
+The current local confirmation posture must be described honestly as declarative at the protocol boundary.
+
+What is true today:
+
+- the Android app can require local device confirmation before `respond`
+- the app then signs with the enrollment key from `Android Keystore`
+- this improves real local UX security on an honest client
+
+What is not yet true today:
+
+- the backend does not receive a cryptographic proof that the local authentication step was inseparably bound to the signature operation itself
+- the current `respond` contract does not provide server-verified attestation of that local-auth condition
+
+That means the current feature should be described as:
+
+- meaningful local protection
+- honest client-enforced behavior
+- useful future audit context candidate
+
+and not as:
+
+- a server-verified local-auth proof
+- an attested assurance level for the response signature
+- an end-to-end cryptographic guarantee equivalent to FIDO2/WebAuthn ceremony semantics
+
+This wording boundary is intentional and should remain explicit in both product copy and technical documentation until a future protocol and attestation design changes that fact.
+
 ## Secure Storage vs `Android Keystore` / StrongBox
 
 This distinction is easy to blur, so document it explicitly:

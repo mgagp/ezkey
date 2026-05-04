@@ -164,6 +164,12 @@ export const SecurityScreen: React.FC = () => {
         <Text style={styles.futureOnlyTitle}>{t('security.preferenceNoteTitle')}</Text>
         <Text style={styles.futureOnlyBody}>{t('security.preferenceNoteBody')}</Text>
       </View>
+
+      <View style={styles.futureOnlyCallout}>
+        <Text style={styles.futureOnlyEyebrow}>{t('security.declarativeNoteEyebrow')}</Text>
+        <Text style={styles.futureOnlyTitle}>{t('security.declarativeNoteTitle')}</Text>
+        <Text style={styles.futureOnlyBody}>{t('security.declarativeNoteBody')}</Text>
+      </View>
     </ScrollView>
   );
 };

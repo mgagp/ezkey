@@ -25,6 +25,7 @@ type Props = StackScreenProps<RootStackParamList, 'Settings'>;
 type SettingsScreenName =
   | 'About'
   | 'ReleaseNotes'
+  | 'ComingSoon'
   | 'DangerZone'
   | 'Licenses'
   | 'Language'
@@ -72,6 +73,11 @@ export const SettingsScreen: React.FC<Props> = ({navigation}) => {
       key: 'ReleaseNotes',
       label: t('settings.releaseNotesLabel'),
       subtitle: t('settings.releaseNotesSubtitle'),
+    },
+    {
+      key: 'ComingSoon',
+      label: t('settings.comingSoonLabel'),
+      subtitle: t('settings.comingSoonSubtitle'),
     },
     {
       key: 'Language',

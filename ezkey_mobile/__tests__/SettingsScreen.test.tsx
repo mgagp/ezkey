@@ -68,6 +68,38 @@ describe('SettingsScreen', () => {
     expect(navigate).toHaveBeenCalledWith('Language');
   });
 
+  it('renders the coming soon entry and routes to the coming soon screen', async () => {
+    const navigate = jest.fn();
+    let tree: renderer.ReactTestRenderer;
+
+    await renderer.act(async () => {
+      tree = renderer.create(
+        <SettingsScreen
+          navigation={{navigate} as never}
+          route={{key: 'Settings-key', name: 'Settings'} as never}
+        />,
+      );
+    });
+
+    const textContent = tree!.root.findAllByType(Text).map(node => node.props.children).flat().join(' ');
+    expect(textContent).toContain('Coming soon');
+    expect(textContent).toContain('Near-term roadmap and expectation-setting notes');
+
+    const comingSoonItem = tree!.root.findAll(
+      node =>
+        typeof node.props.onPress === 'function' &&
+        node.findAllByType(Text).some(textNode => textNode.props.children === 'Coming soon'),
+    )[0];
+
+    expect(comingSoonItem).toBeDefined();
+
+    await renderer.act(async () => {
+      comingSoonItem!.props.onPress();
+    });
+
+    expect(navigate).toHaveBeenCalledWith('ComingSoon');
+  });
+
   it('renders the security entry and routes to the security screen', async () => {
     const navigate = jest.fn();
     let tree: renderer.ReactTestRenderer;

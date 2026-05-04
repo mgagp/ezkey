@@ -7,6 +7,7 @@ export type RootStackParamList = {
   EnrollmentWizard: undefined;
   Settings: undefined;
   Security: undefined;
+  ComingSoon: undefined;
   About: undefined;
   ReleaseNotes: undefined;
   Licenses: undefined;

@@ -12,6 +12,7 @@ import {useTranslation} from 'react-i18next';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 
 const releaseNoteKeyOrder = ['includedItem1', 'includedItem2', 'includedItem3'] as const;
+const comingNextKeyOrder = ['comingNextItem1', 'comingNextItem2', 'comingNextItem3'] as const;
 const noteKeyOrder = ['note1'] as const;
 
 /**
@@ -58,6 +59,16 @@ export const ReleaseNotesScreen: React.FC = () => {
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>{t('releaseNotes.accessTitle')}</Text>
         <Text style={styles.sectionBody}>{t('releaseNotes.accessBody')}</Text>
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>{t('releaseNotes.comingNextTitle')}</Text>
+        {comingNextKeyOrder.map(key => (
+          <View key={key} style={styles.bulletRow}>
+            <Text style={styles.bulletMarker}>•</Text>
+            <Text style={styles.bulletText}>{t(`releaseNotes.${key}`)}</Text>
+          </View>
+        ))}
       </View>
 
       <View style={styles.sectionCard}>
