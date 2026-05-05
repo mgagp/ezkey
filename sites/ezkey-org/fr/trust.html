@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Ezkey — Confiance et sécurité">
+    <meta property="og:description" content="Modèle de confiance Ezkey, transparence open source et signalement de problèmes de sécurité.">
+    <meta property="og:url" content="https://ezkey.org/fr/trust.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Ezkey — Confiance et sécurité">
+    <meta name="twitter:description" content="Modèle de confiance Ezkey, transparence open source et signalement de problèmes de sécurité.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/trust.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/trust.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/trust.html">
+    <title>Ezkey — Confiance et sécurité</title>
+    <meta name="description" content="Modèle de confiance Ezkey, transparence open source et signalement de problèmes de sécurité.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow-x: hidden;
+            padding: 36px 0 56px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo-container { margin-bottom: 24px; position: relative; }
+        .logo {
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 20px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: float 6s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        .logo::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 3s infinite;
+        }
+        .logo img { width: 150px !important; height: 150px !important; position: relative; z-index: 2; display: block !important; }
+
+        .site-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 16px;
+            font-size: 0.92rem;
+        }
+        .site-nav a {
+            color: rgba(255, 255, 255, 0.92);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+        .site-nav a:hover { color: white; border-bottom-color: white; }
+        .site-nav a[aria-current="page"] { color: white; border-bottom-color: white; }
+
+        .lang-switch { font-size: 0.95rem; margin-bottom: 16px; color: rgba(255, 255, 255, 0.9); }
+        .lang-switch a { color: rgba(255, 255, 255, 0.9); text-decoration: underline; }
+
+        .page-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            padding: 36px 40px 40px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 28px;
+            text-align: left;
+        }
+
+        .section-eyebrow {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .page-panel h1 {
+            color: white;
+            font-size: 1.75rem;
+            margin-bottom: 18px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.25;
+        }
+
+        .page-intro {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 22px;
+            text-align: center;
+        }
+
+        .page-panel h2 {
+            color: white;
+            font-size: 1.12rem;
+            font-weight: 600;
+            margin: 1.35em 0 0.55em;
+        }
+
+        .page-panel h2:first-of-type { margin-top: 0.35em; }
+
+        .page-panel p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.02rem;
+            line-height: 1.65;
+            margin-bottom: 12px;
+        }
+
+        .page-panel ul {
+            margin: 8px 0 12px 1.25em;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.02rem;
+            line-height: 1.55;
+        }
+
+        .page-panel li { margin-bottom: 6px; }
+
+        .page-panel a {
+            color: white;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+
+        .page-panel a:hover { text-decoration-thickness: 2px; }
+
+        .footer {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+        .footer a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .footer a:hover { color: white; border-bottom-color: white; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .particle {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: floatParticle 15s infinite linear;
+        }
+        @keyframes floatParticle {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .page-panel { padding: 28px 22px 32px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="particle" style="left: 15%; animation-delay: 1s;"></div>
+    <div class="particle" style="left: 45%; animation-delay: 3s;"></div>
+    <div class="particle" style="left: 75%; animation-delay: 5s;"></div>
+
+    <div class="container">
+        <p class="lang-switch">
+            <a href="/trust.html">English</a>
+            · <span style="color:white;font-weight:600;">Français</span>
+        </p>
+        <nav class="site-nav" aria-label="Navigation principale">
+            <a href="/fr/">Accueil</a>
+            <a href="/fr/source-and-evaluation.html#documentation">Documentation</a>
+            <a href="/fr/source-and-evaluation.html#run-locally">Exécuter en local</a>
+            <a href="/fr/trust.html" aria-current="page">Confiance</a>
+            <a href="/fr/updates.html">Mises à jour</a>
+            <a href="/fr/articles.html">Articles</a>
+        </nav>
+        <div class="logo-container">
+            <a href="/fr/" aria-label="Accueil Ezkey">
+                <div class="logo">
+                    <img src="/logo.svg" alt="">
+                </div>
+            </a>
+        </div>
+
+        <div class="page-panel">
+            <span class="section-eyebrow">Due diligence</span>
+            <h1>Confiance et s&eacute;curit&eacute;</h1>
+            <p class="page-intro">
+                Page courte pour les &eacute;valuateurs. La documentation technique canonique accompagnera le d&eacute;p&ocirc;t <strong>public</strong> ; en attendant, voir <a href="/fr/source-and-evaluation.html">Code source et &eacute;valuation</a> pour le d&eacute;p&ocirc;t priv&eacute; et ce qui est disponible sur ce site.
+            </p>
+
+            <h2>Mod&egrave;le de confiance (langage simple)</h2>
+            <p>Ezkey est une MFA cryptographique backend-first : le backend d&rsquo;int&eacute;gration et l&rsquo;application mobile participent &agrave; une cha&icirc;ne explicite d&rsquo;inscription et d&rsquo;authentification. Le navigateur n&rsquo;est pas au centre de la c&eacute;r&eacute;monie.</p>
+
+            <h2>Ce qu&rsquo;Ezkey revendique — et ce qu&rsquo;il ne revendique pas</h2>
+            <p>Le projet vise &agrave; &ecirc;tre nettement plus solide que les mots de passe et les flux de type TOTP classiques pour certains contextes auto-h&eacute;berg&eacute;s, orient&eacute;s backend. Ce n&rsquo;est pas une impl&eacute;mentation WebAuthn / FIDO2 et le projet ne revendique pas l&rsquo;&eacute;quivalence formelle avec ces &eacute;cosyst&egrave;mes.</p>
+            <p>La posture de s&eacute;curit&eacute; refl&egrave;te des compromis d&rsquo;opinion assum&eacute;s. Pour le cadrage des limites et de l&rsquo;ambition par le mainteneur, voir <a href="/fr/why-ezkey-exists.html">Pourquoi Ezkey existe</a>.</p>
+
+            <h2>Open source et visibilit&eacute;</h2>
+            <p>Licence : <strong>MIT</strong> (pr&eacute;vue pour l&rsquo;arborescence publique). Le <strong>d&eacute;p&ocirc;t principal est priv&eacute;</strong> jusqu&rsquo;&agrave; l&rsquo;ouverture publique pr&eacute;vue vers <strong>septembre&nbsp;2026</strong> ; les &eacute;ch&eacute;ances et la visibilit&eacute; sont r&eacute;sum&eacute;es dans les <a href="/fr/updates.html">Mises &agrave; jour</a>. Il n&rsquo;y a <strong>pas d&rsquo;URL GitHub publiques</strong> pour Ezkey d&rsquo;ici l&agrave;.</p>
+
+            <h2>Signaler un probl&egrave;me de s&eacute;curit&eacute;</h2>
+            <p>Utiliser <a href="mailto:security@ezkey.org">security@ezkey.org</a>. N&rsquo;utilisez pas de tickets publics fournisseurs pour des vuln&eacute;rabilit&eacute;s pr&eacute;sum&eacute;es. Une politique de s&eacute;curit&eacute; publi&eacute;e accompagnera le d&eacute;p&ocirc;t public.</p>
+
+            <h2>Documentation technique</h2>
+            <p>Jusqu&rsquo;&agrave; l&rsquo;ouverture du d&eacute;p&ocirc;t, utilisez ce site pour le niveau &laquo; grand public technique &raquo; :</p>
+            <ul>
+                <li><a href="/fr/source-and-evaluation.html">Code source et &eacute;valuation</a> (d&eacute;p&ocirc;t priv&eacute;, parcours d&rsquo;&eacute;valuation)</li>
+                <li><a href="/fr/updates.html">Mises &agrave; jour</a> et <a href="/fr/articles.html">Articles et notes</a> (avancement et contexte technique s&eacute;lectif)</li>
+                <li><a href="/fr/experimental-preview-exp1.html">Pr&eacute;version exp1</a> (cadre du programme de pr&eacute;version technologique, le cas &eacute;ch&eacute;ant)</li>
+            </ul>
+        </div>
+
+        <p style="text-align:center;margin-bottom:20px;"><a href="/fr/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">&larr; Retour &agrave; l&rsquo;accueil</a></p>
+
+        <div class="footer">
+            <p><a href="/fr/confidentialite.html">Politique de confidentialit&eacute;</a></p>
+        </div>
+    </div>
+</body>
+</html>

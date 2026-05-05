@@ -2,6 +2,19 @@
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Open-source MFA for developers — self-hosted, pragmatic, in active development.">
+    <meta property="og:title" content="Ezkey — Open-source MFA for developers">
+    <meta property="og:description" content="Open-source MFA for developers — self-hosted, pragmatic, in active development.">
+    <meta property="og:url" content="https://ezkey.org/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Ezkey — Open-source MFA for developers">
+    <meta name="twitter:description" content="Open-source MFA for developers — self-hosted, pragmatic, in active development.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+
     <link rel="alternate" hreflang="en" href="https://ezkey.org/">
     <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/">
     <link rel="alternate" hreflang="x-default" href="https://ezkey.org/">
@@ -144,6 +157,16 @@ div.logo-container div.logo img {
             font-size: 16px;
         }
 
+        .title-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2em 0.45em;
+            margin-bottom: 16px;
+            animation: slideInUp 1s ease-out;
+        }
+
         .title {
             font-size: 3.5rem;
             font-weight: 700;
@@ -151,6 +174,100 @@ div.logo-container div.logo img {
             margin-bottom: 16px;
             text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             animation: slideInUp 1s ease-out;
+        }
+
+        .title-row .title {
+            margin-bottom: 0;
+            animation: none;
+        }
+
+        .exp-preview-badge {
+            display: inline-flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.32rem 0.6rem 0.32rem 0.42rem;
+            min-height: 2.75rem;
+            border-radius: 14px;
+            background: linear-gradient(155deg, #fde68a 0%, #f59e0b 28%, #ea580c 62%, #7c2d12 100%);
+            color: #fffbeb;
+            box-shadow:
+                0 0 0 2px rgba(67, 20, 7, 0.45),
+                0 6px 18px rgba(234, 88, 12, 0.5),
+                0 0 32px rgba(251, 191, 36, 0.4);
+            text-decoration: none;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+            animation: expPreviewGlow 2.4s ease-in-out infinite;
+        }
+
+        .exp-preview-badge:hover {
+            transform: scale(1.09) rotate(-4deg);
+            filter: brightness(1.07);
+            box-shadow:
+                0 0 0 2px rgba(67, 20, 7, 0.55),
+                0 8px 22px rgba(234, 88, 12, 0.6),
+                0 0 40px rgba(253, 224, 71, 0.55);
+        }
+
+        .exp-preview-badge:focus-visible {
+            outline: 3px solid #fef3c7;
+            outline-offset: 3px;
+        }
+
+        .exp-preview-badge svg {
+            width: 1.35rem;
+            height: 1.35rem;
+            flex-shrink: 0;
+            filter: drop-shadow(0 1px 2px rgba(67, 20, 7, 0.45));
+        }
+
+        .exp-preview-badge-label--stack {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.06rem;
+            line-height: 1.08;
+        }
+
+        .exp-preview-badge-main {
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            text-shadow: 0 1px 2px rgba(67, 20, 7, 0.35);
+        }
+
+        .exp-preview-badge-sub {
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            opacity: 0.93;
+            text-shadow: 0 1px 2px rgba(67, 20, 7, 0.3);
+        }
+
+        @keyframes expPreviewGlow {
+            0%, 100% {
+                box-shadow:
+                    0 0 0 2px rgba(67, 20, 7, 0.45),
+                    0 6px 18px rgba(234, 88, 12, 0.5),
+                    0 0 28px rgba(251, 191, 36, 0.35);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 2px rgba(67, 20, 7, 0.5),
+                    0 6px 22px rgba(234, 88, 12, 0.65),
+                    0 0 44px rgba(253, 224, 71, 0.5);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .exp-preview-badge {
+                animation: none;
+            }
+            .exp-preview-badge:hover {
+                transform: none;
+            }
         }
 
         .subtitle {
@@ -257,9 +374,30 @@ div.logo-container div.logo img {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 18px;
-            margin-bottom: 28px;
+            margin-bottom: 14px;
             text-align: left;
             animation: slideInUp 1s ease-out 0.75s both;
+        }
+
+        .home-secondary-ctas {
+            text-align: center;
+            margin-bottom: 28px;
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.88);
+            line-height: 1.6;
+            animation: slideInUp 1s ease-out 0.82s both;
+        }
+
+        .home-secondary-ctas a {
+            color: white;
+            font-weight: 600;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+
+        .home-secondary-ctas a:hover {
+            border-bottom-color: white;
         }
 
         .cta-card {
@@ -411,6 +549,25 @@ div.logo-container div.logo img {
                 font-size: 2.5rem;
             }
 
+            .exp-preview-badge {
+                padding: 0.28rem 0.5rem 0.28rem 0.38rem;
+                gap: 0.35rem;
+                min-height: 2.45rem;
+            }
+
+            .exp-preview-badge svg {
+                width: 1.15rem;
+                height: 1.15rem;
+            }
+
+            .exp-preview-badge-main {
+                font-size: 0.65rem;
+            }
+
+            .exp-preview-badge-sub {
+                font-size: 0.52rem;
+            }
+
             .subtitle {
                 font-size: 1.2rem;
             }
@@ -475,9 +632,11 @@ div.logo-container div.logo img {
         </p>
         <nav class="site-nav" aria-label="Primary">
             <a href="/" aria-current="page">Home</a>
+            <a href="/source-and-evaluation.html#documentation">Docs</a>
+            <a href="/source-and-evaluation.html#run-locally">Run locally</a>
+            <a href="/trust.html">Trust</a>
             <a href="/updates.html">Updates</a>
             <a href="/articles.html">Articles</a>
-            <a href="/changelog.html">Changelog</a>
         </nav>
         <div class="logo-container">
             <div class="logo">
@@ -485,7 +644,18 @@ div.logo-container div.logo img {
             </div>
         </div>
 
-        <h1 class="title">Ezkey</h1>
+        <div class="title-row">
+            <h1 class="title">Ezkey</h1>
+            <a class="exp-preview-badge" href="/articles.html#exp1-guides" aria-label="Try Exp1 — open guest guides and walkthroughs on Articles" title="Try Exp1 — opens step-by-step guides on Articles">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path fill="currentColor" fill-rule="evenodd" d="M15.75 1.5a6.75 6.75 0 0 0-6.651 7.906c.067.39-.032.717-.221.906l-6.5 6.499a3 3 0 0 0-.878 2.121v2.818c0 .414.336.75.75.75H6a.75.75 0 0 0 .75-.75v-1.5h1.5A.75.75 0 0 0 9 19.5V18h1.5a.75.75 0 0 0 .53-.22l2.658-2.658c.19-.189.517-.288.906-.22A6.75 6.75 0 1 0 15.75 1.5Zm0 3a.75.75 0 0 0 0 1.5A2.25 2.25 0 0 1 18 8.25a.75.75 0 0 0 1.5 0 3.75 3.75 0 0 0-3.75-3.75Z" clip-rule="evenodd"/>
+                </svg>
+                <span class="exp-preview-badge-label--stack">
+                    <span class="exp-preview-badge-main">Try Exp1</span>
+                    <span class="exp-preview-badge-sub">Guest guide</span>
+                </span>
+            </a>
+        </div>
         <p class="subtitle">Open-source MFA for developers — self-hosted, pragmatic, in active development</p>
         <p class="description">
             Cryptographic MFA with a clear chain: your backend, your devices.
@@ -520,19 +690,30 @@ div.logo-container div.logo img {
         </div>
 
         <div class="home-cta-grid">
-            <a class="cta-card" href="/updates.html">
-                <span class="cta-eyebrow">Build status</span>
-                <span class="cta-title"><span class="pulse" aria-hidden="true"></span>Product updates</span>
-                <p class="cta-desc">Reverse-chronological notes on what is shipping and what is next — kept separate from longer articles.</p>
-                <span class="cta-link">View all updates</span>
+            <a class="cta-card" href="/source-and-evaluation.html#run-locally">
+                <span class="cta-eyebrow">Evaluate</span>
+                <span class="cta-title">Run locally</span>
+                <p class="cta-desc">Clone-and-run instructions ship with the public repository (planned). Until then, read how evaluation works today — including the technology preview path.</p>
+                <span class="cta-link">Source code &amp; evaluation</span>
             </a>
-            <a class="cta-card" href="/articles.html">
-                <span class="cta-eyebrow">Writing</span>
-                <span class="cta-title">Articles &amp; notes</span>
-                <p class="cta-desc">Longer pieces on engineering practice and AI-assisted development — independent of the product roadmap.</p>
-                <span class="cta-link">Browse articles</span>
+            <a class="cta-card" href="/source-and-evaluation.html#documentation">
+                <span class="cta-eyebrow">Proof</span>
+                <span class="cta-title">Documentation</span>
+                <p class="cta-desc">Canonical technical docs live in the repository. The repo is private for now; this page explains what is available on ezkey.org in the meantime.</p>
+                <span class="cta-link">Source code &amp; evaluation</span>
+            </a>
+            <a class="cta-card" href="/trust.html">
+                <span class="cta-eyebrow">Diligence</span>
+                <span class="cta-title">Trust &amp; security</span>
+                <p class="cta-desc">What Ezkey claims, what it does not claim, how to report issues, and links to deeper technical material.</p>
+                <span class="cta-link">Read the trust page</span>
             </a>
         </div>
+        <p class="home-secondary-ctas" role="navigation" aria-label="Product writing">
+            <a href="/updates.html"><span class="pulse" aria-hidden="true"></span> Product updates</a>
+            <span aria-hidden="true"> · </span>
+            <a href="/articles.html">Articles &amp; notes</a>
+        </p>
 
         <div class="footer">
             <p>

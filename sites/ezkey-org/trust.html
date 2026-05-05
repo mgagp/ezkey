@@ -2,23 +2,23 @@
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Technical changelog placeholder for Ezkey versioned release notes.">
-    <meta property="og:title" content="Ezkey — Changelog">
-    <meta property="og:description" content="Technical changelog placeholder for Ezkey versioned release notes.">
-    <meta property="og:url" content="https://ezkey.org/changelog.html">
+    <meta property="og:title" content="Ezkey — Trust &amp; security">
+    <meta property="og:description" content="Ezkey trust model, disclosure posture, open-source visibility, and how to report security issues.">
+    <meta property="og:url" content="https://ezkey.org/trust.html">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Ezkey">
     <meta property="og:image" content="https://ezkey.org/logo.svg">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Ezkey — Changelog">
-    <meta name="twitter:description" content="Technical changelog placeholder for Ezkey versioned release notes.">
+    <meta name="twitter:title" content="Ezkey — Trust &amp; security">
+    <meta name="twitter:description" content="Ezkey trust model, disclosure posture, open-source visibility, and how to report security issues.">
     <meta name="twitter:image" content="https://ezkey.org/logo.svg">
 
-    <link rel="alternate" hreflang="en" href="https://ezkey.org/changelog.html">
-    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/changelog.html">
-    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/changelog.html">
-    <title>Ezkey — Changelog</title>
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/trust.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/trust.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/trust.html">
+    <title>Ezkey — Trust &amp; security</title>
+    <meta name="description" content="Ezkey trust model, disclosure posture, open-source visibility, and how to report security issues.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -34,14 +34,14 @@
         }
 
         .container {
-            max-width: 720px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 40px 20px;
             text-align: center;
             position: relative;
         }
 
-        .logo-container { margin-bottom: 24px; }
+        .logo-container { margin-bottom: 24px; position: relative; }
         .logo {
             width: 160px;
             height: 160px;
@@ -90,20 +90,49 @@
         .page-panel {
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(15px);
-            padding: 36px 32px;
+            padding: 36px 40px 40px;
             border-radius: 25px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             margin-bottom: 28px;
             text-align: left;
         }
 
-        .page-panel h1 {
-            color: white;
-            font-size: 1.65rem;
-            margin-bottom: 14px;
-            font-weight: 600;
+        .section-eyebrow {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 700;
+            margin-bottom: 10px;
             text-align: center;
         }
+
+        .page-panel h1 {
+            color: white;
+            font-size: 1.75rem;
+            margin-bottom: 18px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.25;
+        }
+
+        .page-intro {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 22px;
+            text-align: center;
+        }
+
+        .page-panel h2 {
+            color: white;
+            font-size: 1.12rem;
+            font-weight: 600;
+            margin: 1.35em 0 0.55em;
+        }
+
+        .page-panel h2:first-of-type { margin-top: 0.35em; }
 
         .page-panel p {
             color: rgba(255, 255, 255, 0.9);
@@ -112,7 +141,22 @@
             margin-bottom: 12px;
         }
 
-        .page-panel p:last-child { margin-bottom: 0; }
+        .page-panel ul {
+            margin: 8px 0 12px 1.25em;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.02rem;
+            line-height: 1.55;
+        }
+
+        .page-panel li { margin-bottom: 6px; }
+
+        .page-panel a {
+            color: white;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+
+        .page-panel a:hover { text-decoration-thickness: 2px; }
 
         .footer {
             color: rgba(255, 255, 255, 0.6);
@@ -152,26 +196,27 @@
 
         @media (max-width: 768px) {
             .container { padding: 20px; }
+            .page-panel { padding: 28px 22px 32px; }
         }
     </style>
 </head>
 <body>
-    <div class="particle" style="left: 25%; animation-delay: 2s;"></div>
-    <div class="particle" style="left: 65%; animation-delay: 4s;"></div>
+    <div class="particle" style="left: 15%; animation-delay: 1s;"></div>
+    <div class="particle" style="left: 45%; animation-delay: 3s;"></div>
+    <div class="particle" style="left: 75%; animation-delay: 5s;"></div>
 
     <div class="container">
         <p class="lang-switch">
             <span style="color:white;font-weight:600;">English</span>
-            · <a href="/fr/changelog.html">Français</a>
+            · <a href="/fr/trust.html">Français</a>
         </p>
         <nav class="site-nav" aria-label="Primary">
             <a href="/">Home</a>
             <a href="/source-and-evaluation.html#documentation">Docs</a>
             <a href="/source-and-evaluation.html#run-locally">Run locally</a>
-            <a href="/trust.html">Trust</a>
+            <a href="/trust.html" aria-current="page">Trust</a>
             <a href="/updates.html">Updates</a>
             <a href="/articles.html">Articles</a>
-            <a href="/changelog.html" aria-current="page">Changelog</a>
         </nav>
         <div class="logo-container">
             <a href="/" aria-label="Ezkey home">
@@ -182,10 +227,32 @@
         </div>
 
         <div class="page-panel">
-            <h1>Changelog</h1>
-            <p>This page is reserved for technical release notes — versioned changes, migration notes, and breaking changes once public releases begin.</p>
-            <p>That role is deliberately different from <a href="/updates.html" style="color:white;font-weight:600;text-decoration:underline;">Product updates</a>, which carry narrative build status between releases (and offer an <a href="/updates.rss" style="color:white;font-weight:600;text-decoration:underline;">RSS feed</a>).</p>
-            <p>Until then, this page stays discoverable by URL and from <a href="/updates.html" style="color:white;font-weight:600;text-decoration:underline;">Product updates</a>; it is omitted from the primary site navigation so empty labels do not sit next to live sections.</p>
+            <span class="section-eyebrow">Diligence</span>
+            <h1>Trust &amp; security</h1>
+            <p class="page-intro">
+                A compact page for evaluators. Canonical technical documentation will ship with the <strong>public</strong> repository; until then, see <a href="/source-and-evaluation.html">Source code &amp; evaluation</a> for the private-repo posture and what is available on this site.
+            </p>
+
+            <h2>Trust model (plain language)</h2>
+            <p>Ezkey is backend-first cryptographic MFA: your integration backend and the mobile app participate in an explicit chain of enrollment and authentication. The browser is not the center of the ceremony.</p>
+
+            <h2>What Ezkey claims — and what it does not</h2>
+            <p>The project aims to be materially stronger than passwords and classic TOTP-style flows for some self-hosted, backend-oriented contexts. It is not a WebAuthn / FIDO2 implementation and does not claim formal equivalence to those ecosystems.</p>
+            <p>Security posture reflects deliberate, opinionated trade-offs. For the maintainer&rsquo;s framing of limits and ambition, see <a href="/why-ezkey-exists.html">Why Ezkey exists</a>.</p>
+
+            <h2>Open source &amp; visibility</h2>
+            <p>License: <strong>MIT</strong> (planned for the public tree). The <strong>main repository is private</strong> until the planned public opening around <strong>September&nbsp;2026</strong>; timelines and visibility notes are on <a href="/updates.html">Product updates</a>. There are <strong>no public GitHub URLs</strong> for Ezkey until that opening.</p>
+
+            <h2>Report a security issue</h2>
+            <p>Use <a href="mailto:security@ezkey.org">security@ezkey.org</a>. Do not use public vendor issue trackers for suspected vulnerabilities. A published security policy will accompany the public repository.</p>
+
+            <h2>Technical documentation</h2>
+            <p>Until the repository is public, use this site for high-level material:</p>
+            <ul>
+                <li><a href="/source-and-evaluation.html">Source code &amp; evaluation</a> (private repo posture, evaluation paths)</li>
+                <li><a href="/updates.html">Product updates</a> and <a href="/articles.html">Articles &amp; notes</a> (progress and selected technical context)</li>
+                <li><a href="/experimental-preview-exp1.html">Exp1 preview</a> (technology-preview program framing, where applicable)</li>
+            </ul>
         </div>
 
         <p style="text-align:center;margin-bottom:20px;"><a href="/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">← Back to home</a></p>

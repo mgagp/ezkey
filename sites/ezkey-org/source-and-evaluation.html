@@ -2,23 +2,23 @@
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Technical changelog placeholder for Ezkey versioned release notes.">
-    <meta property="og:title" content="Ezkey — Changelog">
-    <meta property="og:description" content="Technical changelog placeholder for Ezkey versioned release notes.">
-    <meta property="og:url" content="https://ezkey.org/changelog.html">
+    <meta property="og:title" content="Ezkey — Source code &amp; evaluation">
+    <meta property="og:description" content="Ezkey is planned as MIT open source; the repository is private until public opening. How to evaluate the project in the meantime.">
+    <meta property="og:url" content="https://ezkey.org/source-and-evaluation.html">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Ezkey">
     <meta property="og:image" content="https://ezkey.org/logo.svg">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Ezkey — Changelog">
-    <meta name="twitter:description" content="Technical changelog placeholder for Ezkey versioned release notes.">
+    <meta name="twitter:title" content="Ezkey — Source code &amp; evaluation">
+    <meta name="twitter:description" content="Ezkey is planned as MIT open source; the repository is private until public opening. How to evaluate the project in the meantime.">
     <meta name="twitter:image" content="https://ezkey.org/logo.svg">
 
-    <link rel="alternate" hreflang="en" href="https://ezkey.org/changelog.html">
-    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/changelog.html">
-    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/changelog.html">
-    <title>Ezkey — Changelog</title>
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/source-and-evaluation.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/source-and-evaluation.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/source-and-evaluation.html">
+    <title>Ezkey — Source code &amp; evaluation</title>
+    <meta name="description" content="Ezkey is planned as MIT open source; the repository is private until public opening. How to evaluate the project in the meantime.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -34,14 +34,14 @@
         }
 
         .container {
-            max-width: 720px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 40px 20px;
             text-align: center;
             position: relative;
         }
 
-        .logo-container { margin-bottom: 24px; }
+        .logo-container { margin-bottom: 24px; position: relative; }
         .logo {
             width: 160px;
             height: 160px;
@@ -90,20 +90,50 @@
         .page-panel {
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(15px);
-            padding: 36px 32px;
+            padding: 36px 40px 40px;
             border-radius: 25px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             margin-bottom: 28px;
             text-align: left;
         }
 
-        .page-panel h1 {
-            color: white;
-            font-size: 1.65rem;
-            margin-bottom: 14px;
-            font-weight: 600;
+        .section-eyebrow {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 700;
+            margin-bottom: 10px;
             text-align: center;
         }
+
+        .page-panel h1 {
+            color: white;
+            font-size: 1.75rem;
+            margin-bottom: 18px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.25;
+        }
+
+        .page-intro {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 22px;
+            text-align: center;
+        }
+
+        .page-panel h2 {
+            color: white;
+            font-size: 1.12rem;
+            font-weight: 600;
+            margin: 1.35em 0 0.55em;
+            scroll-margin-top: 1rem;
+        }
+
+        .page-panel h2:first-of-type { margin-top: 0.35em; }
 
         .page-panel p {
             color: rgba(255, 255, 255, 0.9);
@@ -112,7 +142,22 @@
             margin-bottom: 12px;
         }
 
-        .page-panel p:last-child { margin-bottom: 0; }
+        .page-panel ul {
+            margin: 8px 0 12px 1.25em;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.02rem;
+            line-height: 1.55;
+        }
+
+        .page-panel li { margin-bottom: 6px; }
+
+        .page-panel a {
+            color: white;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+
+        .page-panel a:hover { text-decoration-thickness: 2px; }
 
         .footer {
             color: rgba(255, 255, 255, 0.6);
@@ -152,17 +197,19 @@
 
         @media (max-width: 768px) {
             .container { padding: 20px; }
+            .page-panel { padding: 28px 22px 32px; }
         }
     </style>
 </head>
 <body>
-    <div class="particle" style="left: 25%; animation-delay: 2s;"></div>
-    <div class="particle" style="left: 65%; animation-delay: 4s;"></div>
+    <div class="particle" style="left: 15%; animation-delay: 1s;"></div>
+    <div class="particle" style="left: 45%; animation-delay: 3s;"></div>
+    <div class="particle" style="left: 75%; animation-delay: 5s;"></div>
 
     <div class="container">
         <p class="lang-switch">
             <span style="color:white;font-weight:600;">English</span>
-            · <a href="/fr/changelog.html">Français</a>
+            · <a href="/fr/source-and-evaluation.html">Français</a>
         </p>
         <nav class="site-nav" aria-label="Primary">
             <a href="/">Home</a>
@@ -171,7 +218,6 @@
             <a href="/trust.html">Trust</a>
             <a href="/updates.html">Updates</a>
             <a href="/articles.html">Articles</a>
-            <a href="/changelog.html" aria-current="page">Changelog</a>
         </nav>
         <div class="logo-container">
             <a href="/" aria-label="Ezkey home">
@@ -182,10 +228,24 @@
         </div>
 
         <div class="page-panel">
-            <h1>Changelog</h1>
-            <p>This page is reserved for technical release notes — versioned changes, migration notes, and breaking changes once public releases begin.</p>
-            <p>That role is deliberately different from <a href="/updates.html" style="color:white;font-weight:600;text-decoration:underline;">Product updates</a>, which carry narrative build status between releases (and offer an <a href="/updates.rss" style="color:white;font-weight:600;text-decoration:underline;">RSS feed</a>).</p>
-            <p>Until then, this page stays discoverable by URL and from <a href="/updates.html" style="color:white;font-weight:600;text-decoration:underline;">Product updates</a>; it is omitted from the primary site navigation so empty labels do not sit next to live sections.</p>
+            <span class="section-eyebrow">Evaluation</span>
+            <h1>Source code &amp; evaluation</h1>
+            <p class="page-intro">
+                Ezkey is intended to ship as <strong>open source</strong> under the MIT License. The <strong>main repository is private</strong> for now and is planned to open publicly around <strong>September&nbsp;2026</strong> with the first official release, alongside in-repo documentation and supported local setup (see <a href="/updates.html">Product updates</a> for the current timeline).
+            </p>
+            <p class="page-intro" style="margin-bottom:0;">
+                This page replaces public GitHub links until the repository is readable without authentication.
+            </p>
+
+            <h2 id="documentation">Documentation</h2>
+            <p>Canonical technical documentation (architecture, APIs, configuration, operations) lives in the repository. While the repository stays private, this site publishes <a href="/updates.html">Product updates</a> and <a href="/articles.html">Articles &amp; notes</a> for progress and selected technical context — not a full substitute for the in-repo docs.</p>
+
+            <h2 id="run-locally">Run locally</h2>
+            <p>The supported developer workflow (including clean start) is maintained inside the private repository. Those instructions will be linked from ezkey.org once the repository is public.</p>
+            <p>If you are evaluating the <strong>technology preview</strong>, program context and constraints are described in <a href="/experimental-preview-exp1.html">Exp1 preview — limited access</a>.</p>
+
+            <h2>Security contact</h2>
+            <p>For suspected vulnerabilities, use <a href="mailto:security@ezkey.org">security@ezkey.org</a>. Do not rely on public issue trackers until a published security policy ships with the public repository.</p>
         </div>
 
         <p style="text-align:center;margin-bottom:20px;"><a href="/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">← Back to home</a></p>

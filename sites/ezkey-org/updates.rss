@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Ezkey — Product updates</title>
+    <link>https://ezkey.org/updates.html</link>
+    <description>Short, dated product and build notes for Ezkey — newest first. For versioned technical release notes after public releases, see the changelog.</description>
+    <language>en</language>
+    <atom:link href="https://ezkey.org/updates.rss" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>April 2026 — Milestone</title>
+      <link>https://ezkey.org/updates.html#update-2026-04</link>
+      <guid isPermaLink="true">https://ezkey.org/updates.html#update-2026-04</guid>
+      <pubDate>Wed, 01 Apr 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[The Ezkey Android app is being submitted to Google Play as a technology preview for early adopters. The source code is currently kept private while we finalize hardening and documentation. The current plan is to open the repository publicly in September 2026, with the first official release, subject to the usual pre-release work.]]></description>
+    </item>
+    <item>
+      <title>March 2026 — Status</title>
+      <link>https://ezkey.org/updates.html#update-2026-03</link>
+      <guid isPermaLink="true">https://ezkey.org/updates.html#update-2026-03</guid>
+      <pubDate>Sun, 01 Mar 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[The admin UI is about 90% complete. The mobile app is being rewritten, and the crypto APIs are under review. QA is getting more thorough and surfacing many issues to fix before a release. Progress is steady, and the product is starting to take shape.]]></description>
+    </item>
+    <item>
+      <title>February 2026 — Milestone</title>
+      <link>https://ezkey.org/updates.html#update-2026-02</link>
+      <guid isPermaLink="true">https://ezkey.org/updates.html#update-2026-02</guid>
+      <pubDate>Sun, 01 Feb 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[Building an authentication system is challenging. Making it safe and reliable is harder. Ezkey will ship in phases; the first is due in the coming months. It will be a technology preview: it will show what the system can do, but it will not be production-ready.]]></description>
+    </item>
+  </channel>
+</rss>

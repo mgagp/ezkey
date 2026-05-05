@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Ezkey — Mises à jour</title>
+    <link>https://ezkey.org/fr/updates.html</link>
+    <description>Notes produit et build courtes et datées — des plus récentes aux plus anciennes. Pour les notes techniques versionnées après les sorties publiques, voir le changelog.</description>
+    <language>fr</language>
+    <atom:link href="https://ezkey.org/fr/updates.rss" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>Avril 2026 — Jalon</title>
+      <link>https://ezkey.org/fr/updates.html#update-2026-04</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/updates.html#update-2026-04</guid>
+      <pubDate>Wed, 01 Apr 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[L’application Android Ezkey est soumise à Google Play comme préversion technologique destinée aux premiers adoptants. Le code source est pour l’instant privé, le temps de finaliser le durcissement et la documentation. L’objectif actuel est d’ouvrir le dépôt publiquement en septembre 2026, avec la première version officielle, sous réserve du travail de préversion habituel.]]></description>
+    </item>
+    <item>
+      <title>Mars 2026 — État</title>
+      <link>https://ezkey.org/fr/updates.html#update-2026-03</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/updates.html#update-2026-03</guid>
+      <pubDate>Sun, 01 Mar 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[L’interface d’administration est complète à environ 90 %. L’application mobile est en cours de réécriture, et les API cryptographiques sont revues. L’assurance qualité se renforce et met au jour de nombreux points à traiter avant d’envisager une sortie. Les progrès sont réguliers et le produit prend vraiment forme.]]></description>
+    </item>
+    <item>
+      <title>Février 2026 — Jalon</title>
+      <link>https://ezkey.org/fr/updates.html#update-2026-02</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/updates.html#update-2026-02</guid>
+      <pubDate>Sun, 01 Feb 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[Construire un système d’authentification est exigeant. Le rendre sûr et fiable l’est encore plus. Ezkey sera livré par phases ; la première est due dans les prochains mois. Ce sera une préversion technologique : elle montrera ce que le système peut faire, mais elle ne sera pas prête pour la production.]]></description>
+    </item>
+  </channel>
+</rss>
