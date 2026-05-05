@@ -44,7 +44,6 @@
     display: block !important;
 }
 
-/* Sélecteur encore plus spécifique si nécessaire */
 div.logo-container div.logo svg {
     width: 150px !important;
     height: 150px !important;
@@ -56,14 +55,14 @@ div.logo-container div.logo img {
 }
 
 .logo-container {
-    margin-bottom: 40px;
+    margin-bottom: 28px;
     position: relative;
 }
 
 .logo {
     width: 160px;
     height: 160px;
-    margin: 0 auto 30px;
+    margin: 0 auto 24px;
     background: white;
     border-radius: 50%;
     display: flex;
@@ -93,35 +92,32 @@ div.logo-container div.logo img {
     position: relative;
 }
 
-/* Rendre le fond noir transparent */
 .logo svg path[style*="fill:#000000"] {
     fill: transparent !important;
 }
 
-/* Convertir les couleurs vers votre palette */
 .logo svg path[style*="fill:#0000ff"] {
-    fill: #667eea !important; /* Bleu -> votre bleu */
+    fill: #667eea !important;
 }
 
 .logo svg path[style*="fill:#008080"] {
-    fill: #764ba2 !important; /* Teal -> votre violet */
+    fill: #764ba2 !important;
 }
 
 .logo svg path[style*="fill:#3177df"] {
-    fill: #667eea !important; /* Bleu clair -> votre bleu */
+    fill: #667eea !important;
 }
 
 .logo svg path[style*="fill:#00ffff"] {
-    fill: #764ba2 !important; /* Cyan -> votre violet */
+    fill: #764ba2 !important;
 }
 
-/* Alternative globale si les sélecteurs ci-dessus ne marchent pas */
 .logo svg path {
     fill: #667eea !important;
 }
 
 .logo svg path:first-child {
-    fill: transparent !important; /* Premier path = fond noir */
+    fill: transparent !important;
 }
 
 .logo svg path[fill="#000000"],
@@ -152,7 +148,7 @@ div.logo-container div.logo img {
             font-size: 3.5rem;
             font-weight: 700;
             color: white;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             animation: slideInUp 1s ease-out;
         }
@@ -160,7 +156,7 @@ div.logo-container div.logo img {
         .subtitle {
             font-size: 1.4rem;
             color: rgba(255, 255, 255, 0.9);
-            margin-bottom: 40px;
+            margin-bottom: 28px;
             line-height: 1.6;
             animation: slideInUp 1s ease-out 0.2s both;
         }
@@ -168,7 +164,7 @@ div.logo-container div.logo img {
         .description {
             font-size: 1.1rem;
             color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 50px;
+            margin-bottom: 32px;
             max-width: 600px;
             margin-left: auto;
             margin-right: auto;
@@ -178,16 +174,28 @@ div.logo-container div.logo img {
 
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            margin-bottom: 60px;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 36px;
             animation: slideInUp 1s ease-out 0.6s both;
+        }
+
+        @media (min-width: 640px) {
+            .features {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1000px) {
+            .features {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
         }
 
         .feature {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            padding: 30px;
+            padding: 24px;
             border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -217,18 +225,64 @@ div.logo-container div.logo img {
             line-height: 1.5;
         }
 
-        .home-panel {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(15px);
-            padding: 36px 40px 40px;
-            border-radius: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            margin-bottom: 32px;
-            text-align: left;
-            animation: slideInUp 1s ease-out 0.8s both;
+        .site-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 20px;
+            font-size: 0.92rem;
+            animation: slideInUp 1s ease-out 0.05s both;
         }
 
-        .section-eyebrow {
+        .site-nav a {
+            color: rgba(255, 255, 255, 0.92);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+
+        .site-nav a:hover {
+            color: white;
+            border-bottom-color: white;
+        }
+
+        .site-nav a[aria-current="page"] {
+            color: white;
+            border-bottom-color: white;
+        }
+
+        .home-cta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+            margin-bottom: 28px;
+            text-align: left;
+            animation: slideInUp 1s ease-out 0.75s both;
+        }
+
+        .cta-card {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 24px 22px 22px;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+        }
+
+        .cta-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .cta-eyebrow {
             display: block;
             font-size: 0.72rem;
             letter-spacing: 0.14em;
@@ -236,109 +290,24 @@ div.logo-container div.logo img {
             color: rgba(255, 255, 255, 0.65);
             font-weight: 700;
             margin-bottom: 10px;
-            text-align: center;
         }
 
-        .home-panel h2 {
-            color: white;
-            font-size: 1.75rem;
-            margin-bottom: 18px;
-            font-weight: 600;
-            text-align: center;
-            line-height: 1.25;
-        }
-
-        .home-panel .updates-intro {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.05rem;
-            line-height: 1.6;
-            margin-bottom: 24px;
-            text-align: center;
-        }
-
-        .home-panel .pub-intro {
-            margin-bottom: 20px;
-        }
-
-        .update-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        .update-entry {
-            padding: 16px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.18);
-        }
-
-        .update-entry:first-of-type {
-            border-top: none;
-            padding-top: 0;
-        }
-
-        .update-entry:last-child {
-            padding-bottom: 0;
-        }
-
-        .update-date {
-            display: block;
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.65);
-            margin-bottom: 8px;
-            letter-spacing: 0.02em;
-        }
-
-        .update-text {
-            color: rgba(255, 255, 255, 0.92);
-            font-size: 1rem;
-            line-height: 1.6;
-        }
-
-        .publication-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 18px;
-            margin-top: 8px;
-        }
-
-        .pub-card {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            text-align: left;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 16px;
-            padding: 22px 22px 20px;
-            text-decoration: none;
-            color: inherit;
-            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
-        }
-
-        .pub-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .pub-card-title {
-            font-size: 1.08rem;
+        .cta-title {
+            font-size: 1.25rem;
             font-weight: 600;
             color: white;
-            margin-bottom: 8px;
-            line-height: 1.35;
+            margin-bottom: 10px;
+            line-height: 1.3;
         }
 
-        .pub-card-desc {
-            font-size: 0.92rem;
-            color: rgba(255, 255, 255, 0.78);
-            line-height: 1.5;
+        .cta-desc {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.55;
             margin-bottom: 14px;
-            flex: 1;
         }
 
-        .pub-card-cta {
+        .cta-link {
             font-size: 0.88rem;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.95);
@@ -346,14 +315,33 @@ div.logo-container div.logo img {
             padding-bottom: 2px;
         }
 
-        .pulse {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            background: #4ade80;
-            border-radius: 50%;
-            margin-right: 10px;
-            animation: pulse 2s infinite;
+        .positioning-card {
+            margin-bottom: 28px;
+            padding: 22px 24px;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            animation: slideInUp 1s ease-out 0.68s both;
+        }
+
+        .positioning-card p {
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 0.96rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .positioning-card a {
+            color: white;
+            font-weight: 600;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+        }
+
+        .positioning-card a:hover {
+            border-bottom-color: white;
         }
 
         .footer {
@@ -375,7 +363,6 @@ div.logo-container div.logo img {
             border-bottom-color: white;
         }
 
-        /* Animations */
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-20px); }
@@ -408,7 +395,17 @@ div.logo-container div.logo img {
             }
         }
 
-        /* Responsive */
+        .pulse {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #4ade80;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+            animation: pulse 2s infinite;
+        }
+
         @media (max-width: 768px) {
             .title {
                 font-size: 2.5rem;
@@ -424,23 +421,14 @@ div.logo-container div.logo img {
 
             .features {
                 grid-template-columns: 1fr;
-                gap: 20px;
+                gap: 16px;
             }
 
             .container {
                 padding: 20px;
             }
-
-            .home-panel {
-                padding: 28px 20px 32px;
-            }
-
-            .home-panel h2 {
-                font-size: 1.45rem;
-            }
         }
 
-        /* Floating particles background */
         .particle {
             position: fixed;
             width: 6px;
@@ -470,7 +458,6 @@ div.logo-container div.logo img {
     </style>
 </head>
 <body>
-    <!-- Floating particles -->
     <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
     <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
     <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
@@ -482,10 +469,16 @@ div.logo-container div.logo img {
     <div class="particle" style="left: 90%; animation-delay: 7s;"></div>
 
     <div class="container">
-        <p class="lang-switch" style="font-size:0.95rem;margin-bottom:24px;color:rgba(255,255,255,0.9);">
+        <p class="lang-switch" style="font-size:0.95rem;margin-bottom:16px;color:rgba(255,255,255,0.9);">
             <span style="color:white;font-weight:600;">English</span>
             · <a href="/fr/" style="color:rgba(255,255,255,0.9);text-decoration:underline;">Français</a>
         </p>
+        <nav class="site-nav" aria-label="Primary">
+            <a href="/" aria-current="page">Home</a>
+            <a href="/updates.html">Updates</a>
+            <a href="/articles.html">Articles</a>
+            <a href="/changelog.html">Changelog</a>
+        </nav>
         <div class="logo-container">
             <div class="logo">
                 <img src="/logo.svg" alt="Ezkey logo">
@@ -507,8 +500,13 @@ div.logo-container div.logo img {
             </div>
             <div class="feature">
                 <span class="feature-icon">🔒</span>
-                <h3 class="feature-title">Sovereign security</h3>
+                <h3 class="feature-title">Sovereign</h3>
                 <p class="feature-desc">Cryptographic MFA on your infrastructure — your backend stays the source of truth; the app completes the chain</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🛡️</span>
+                <h3 class="feature-title">Security</h3>
+                <p class="feature-desc">Cryptographic continuity from enrollment through authentication — explicit trust boundaries, not browser mediation</p>
             </div>
             <div class="feature">
                 <span class="feature-icon">📱</span>
@@ -517,81 +515,23 @@ div.logo-container div.logo img {
             </div>
         </div>
 
-        <div class="home-panel">
-            <span class="section-eyebrow">Build status</span>
-            <h2><span class="pulse"></span>Product updates</h2>
-            <p class="updates-intro">
-                We’re still building. The goal is simple: make secure authentication easier for backend teams to adopt and operate — closer to integrating a well-documented API than to fighting your stack.
-            </p>
-            <ul class="update-list">
-                <li class="update-entry">
-                    <span class="update-date">February 2026</span>
-                    <div class="update-text">
-                        Building an authentication system is challenging. Making it safe and reliable is harder. Ezkey will ship in phases; the first is due in the coming months. It will be a technology preview: it will show what the system can do, but it will <strong>not</strong> be production-ready.
-                    </div>
-                </li>
-                <li class="update-entry">
-                    <span class="update-date">March 2026</span>
-                    <div class="update-text">
-                        The admin UI is about 90% complete. The mobile app is being rewritten, and the crypto APIs are under review. QA is getting more thorough and surfacing many issues to fix before a release. Progress is steady, and the product is starting to take shape.
-                    </div>
-                </li>
-                <li class="update-entry">
-                    <span class="update-date">April 2026</span>
-                    <div class="update-text">
-                        The Ezkey Android app is being submitted to Google Play as a technology preview for early adopters. The source code is currently kept private while we finalize hardening and documentation. The current plan is to open the repository publicly in September 2026, with the first official release, subject to the usual pre-release work.
-                    </div>
-                </li>
-            </ul>
+        <div class="positioning-card">
+            <p>Ezkey started as a backend-first answer to a real frustration with browser-centric strong authentication. It is an opinionated, AI-first project exploring a pragmatic middle ground: stronger than passwords and classic TOTP, hopefully simpler to operate from this project's point of view than the full WebAuthn ceremony, and explicit about its trade-offs. <a href="/why-ezkey-exists.html">Read why Ezkey exists</a>.</p>
         </div>
 
-        <div class="home-panel">
-            <span class="section-eyebrow">Writing</span>
-            <h2>Articles &amp; notes</h2>
-            <p class="updates-intro pub-intro">
-                Longer pieces on engineering practice and AI-assisted development — independent of the product roadmap above.
-            </p>
-            <div class="publication-grid">
-                <a class="pub-card" href="/experimental-preview-exp1.html">
-                    <span class="pub-card-title">Exp1 preview — limited access</span>
-                    <span class="pub-card-desc">Experimental all-in-one instance: Android app, tenant admin, Acme demo; invitations first or email request — not a production offering.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/ezkey-at-a-glance-trust-zone-mobile.html">
-                    <span class="pub-card-title">Ezkey at a glance</span>
-                    <span class="pub-card-desc">Trust zone and mobile app: backend-first MFA, bind/verify and pending/respond, and why it is not “just another code app.”</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/testing-strategy.html">
-                    <span class="pub-card-title">Testing strategy</span>
-                    <span class="pub-card-desc">From unit tests to operational stress: tag segmentation, Docker clean room, sequential functional tests, elective spot checks, and time-compressed operational churn.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/ai-coding-manifesto.html">
-                    <span class="pub-card-title">AI coding manifesto</span>
-                    <span class="pub-card-desc">The future of coding is already here: boundaries, Docker, tests, and how the developer role shifts.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/generative-ai-nocode-lowcode-parallel.html">
-                    <span class="pub-card-title">Generative AI and No-Code / Low-Code</span>
-                    <span class="pub-card-desc">A parallel between the No-Code era and today’s AI coding tools — specs, lock-in, and hybrid documentation.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/from-code-to-intent-ai-workflow.html">
-                    <span class="pub-card-title">From code to intent</span>
-                    <span class="pub-card-desc">One year of AI-assisted workflow on an open source project — from raw velocity to elevating the developer role toward architect, analyst and product owner.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/how-the-mobile-app-signs-every-step.html">
-                    <span class="pub-card-title">How the mobile app signs every step</span>
-                    <span class="pub-card-desc">A plain-language walk through the Ezkey mobile protocol: enrollment, proof tokens, and end-to-end cryptographic chaining — no implicit trust at any stage.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/from-monolith-to-contract.html">
-                    <span class="pub-card-title">From monolith to contract</span>
-                    <span class="pub-card-desc">How a single Spring Boot app became four specialized backends &mdash; and how versioned, dispatched OpenAPI specs turned backend-first into a disciplined AI workflow.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>            </div>
+        <div class="home-cta-grid">
+            <a class="cta-card" href="/updates.html">
+                <span class="cta-eyebrow">Build status</span>
+                <span class="cta-title"><span class="pulse" aria-hidden="true"></span>Product updates</span>
+                <p class="cta-desc">Reverse-chronological notes on what is shipping and what is next — kept separate from longer articles.</p>
+                <span class="cta-link">View all updates</span>
+            </a>
+            <a class="cta-card" href="/articles.html">
+                <span class="cta-eyebrow">Writing</span>
+                <span class="cta-title">Articles &amp; notes</span>
+                <p class="cta-desc">Longer pieces on engineering practice and AI-assisted development — independent of the product roadmap.</p>
+                <span class="cta-link">Browse articles</span>
+            </a>
         </div>
 
         <div class="footer">

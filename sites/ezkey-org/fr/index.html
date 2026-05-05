@@ -32,22 +32,10 @@
             position: relative;
         }
 
-.logo-container .logo svg {
-    width: 150px !important;
-    height: 150px !important;
-    display: block !important;
-}
-
 .logo-container .logo img {
     width: 150px !important;
     height: 150px !important;
     display: block !important;
-}
-
-/* Sélecteur encore plus spécifique si nécessaire */
-div.logo-container div.logo svg {
-    width: 150px !important;
-    height: 150px !important;
 }
 
 div.logo-container div.logo img {
@@ -56,14 +44,14 @@ div.logo-container div.logo img {
 }
 
 .logo-container {
-    margin-bottom: 40px;
+    margin-bottom: 28px;
     position: relative;
 }
 
 .logo {
     width: 160px;
     height: 160px;
-    margin: 0 auto 30px;
+    margin: 0 auto 24px;
     background: white;
     border-radius: 50%;
     display: flex;
@@ -86,73 +74,13 @@ div.logo-container div.logo img {
     animation: shimmer 3s infinite;
 }
 
-.logo svg {
-    width: 150px !important;
-    height: 150px !important;
-    z-index: 2;
-    position: relative;
-}
-
-/* Rendre le fond noir transparent */
-.logo svg path[style*="fill:#000000"] {
-    fill: transparent !important;
-}
-
-/* Convertir les couleurs vers votre palette */
-.logo svg path[style*="fill:#0000ff"] {
-    fill: #667eea !important; /* Bleu -> votre bleu */
-}
-
-.logo svg path[style*="fill:#008080"] {
-    fill: #764ba2 !important; /* Teal -> votre violet */
-}
-
-.logo svg path[style*="fill:#3177df"] {
-    fill: #667eea !important; /* Bleu clair -> votre bleu */
-}
-
-.logo svg path[style*="fill:#00ffff"] {
-    fill: #764ba2 !important; /* Cyan -> votre violet */
-}
-
-/* Alternative globale si les sélecteurs ci-dessus ne marchent pas */
-.logo svg path {
-    fill: #667eea !important;
-}
-
-.logo svg path:first-child {
-    fill: transparent !important; /* Premier path = fond noir */
-}
-
-.logo svg path[fill="#000000"],
-.logo svg path[fill="black"] {
-    fill: transparent !important;
-}
-
-        .key-icon {
-            position: absolute;
-            top: -5px;
-            right: 10px;
-            width: 24px;
-            height: 24px;
-            background: #667eea;
-            border-radius: 50%;
-            z-index: 2;
-        }
-
-        .key-icon::after {
-            content: '🔑';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            font-size: 16px;
-        }
+.logo img { position: relative; z-index: 2; }
 
         .title {
             font-size: 3.5rem;
             font-weight: 700;
             color: white;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             animation: slideInUp 1s ease-out;
         }
@@ -160,7 +88,7 @@ div.logo-container div.logo img {
         .subtitle {
             font-size: 1.4rem;
             color: rgba(255, 255, 255, 0.9);
-            margin-bottom: 40px;
+            margin-bottom: 28px;
             line-height: 1.6;
             animation: slideInUp 1s ease-out 0.2s both;
         }
@@ -168,7 +96,7 @@ div.logo-container div.logo img {
         .description {
             font-size: 1.1rem;
             color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 50px;
+            margin-bottom: 32px;
             max-width: 600px;
             margin-left: auto;
             margin-right: auto;
@@ -178,16 +106,28 @@ div.logo-container div.logo img {
 
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            margin-bottom: 60px;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 36px;
             animation: slideInUp 1s ease-out 0.6s both;
+        }
+
+        @media (min-width: 640px) {
+            .features {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1000px) {
+            .features {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
         }
 
         .feature {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            padding: 30px;
+            padding: 24px;
             border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -217,18 +157,64 @@ div.logo-container div.logo img {
             line-height: 1.5;
         }
 
-        .home-panel {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(15px);
-            padding: 36px 40px 40px;
-            border-radius: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            margin-bottom: 32px;
-            text-align: left;
-            animation: slideInUp 1s ease-out 0.8s both;
+        .site-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 20px;
+            font-size: 0.92rem;
+            animation: slideInUp 1s ease-out 0.05s both;
         }
 
-        .section-eyebrow {
+        .site-nav a {
+            color: rgba(255, 255, 255, 0.92);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+
+        .site-nav a:hover {
+            color: white;
+            border-bottom-color: white;
+        }
+
+        .site-nav a[aria-current="page"] {
+            color: white;
+            border-bottom-color: white;
+        }
+
+        .home-cta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+            margin-bottom: 28px;
+            text-align: left;
+            animation: slideInUp 1s ease-out 0.75s both;
+        }
+
+        .cta-card {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 24px 22px 22px;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+        }
+
+        .cta-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .cta-eyebrow {
             display: block;
             font-size: 0.72rem;
             letter-spacing: 0.14em;
@@ -236,109 +222,24 @@ div.logo-container div.logo img {
             color: rgba(255, 255, 255, 0.65);
             font-weight: 700;
             margin-bottom: 10px;
-            text-align: center;
         }
 
-        .home-panel h2 {
-            color: white;
-            font-size: 1.75rem;
-            margin-bottom: 18px;
-            font-weight: 600;
-            text-align: center;
-            line-height: 1.25;
-        }
-
-        .home-panel .updates-intro {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.05rem;
-            line-height: 1.6;
-            margin-bottom: 24px;
-            text-align: center;
-        }
-
-        .home-panel .pub-intro {
-            margin-bottom: 20px;
-        }
-
-        .update-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        .update-entry {
-            padding: 16px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.18);
-        }
-
-        .update-entry:first-of-type {
-            border-top: none;
-            padding-top: 0;
-        }
-
-        .update-entry:last-child {
-            padding-bottom: 0;
-        }
-
-        .update-date {
-            display: block;
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.65);
-            margin-bottom: 8px;
-            letter-spacing: 0.02em;
-        }
-
-        .update-text {
-            color: rgba(255, 255, 255, 0.92);
-            font-size: 1rem;
-            line-height: 1.6;
-        }
-
-        .publication-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 18px;
-            margin-top: 8px;
-        }
-
-        .pub-card {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            text-align: left;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 16px;
-            padding: 22px 22px 20px;
-            text-decoration: none;
-            color: inherit;
-            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
-        }
-
-        .pub-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .pub-card-title {
-            font-size: 1.08rem;
+        .cta-title {
+            font-size: 1.25rem;
             font-weight: 600;
             color: white;
-            margin-bottom: 8px;
-            line-height: 1.35;
+            margin-bottom: 10px;
+            line-height: 1.3;
         }
 
-        .pub-card-desc {
-            font-size: 0.92rem;
-            color: rgba(255, 255, 255, 0.78);
-            line-height: 1.5;
+        .cta-desc {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.55;
             margin-bottom: 14px;
-            flex: 1;
         }
 
-        .pub-card-cta {
+        .cta-link {
             font-size: 0.88rem;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.95);
@@ -348,12 +249,42 @@ div.logo-container div.logo img {
 
         .pulse {
             display: inline-block;
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             background: #4ade80;
             border-radius: 50%;
-            margin-right: 10px;
+            margin-right: 8px;
+            vertical-align: middle;
             animation: pulse 2s infinite;
+        }
+
+        .positioning-card {
+            margin-bottom: 28px;
+            padding: 22px 24px;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            animation: slideInUp 1s ease-out 0.68s both;
+        }
+
+        .positioning-card p {
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 0.96rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .positioning-card a {
+            color: white;
+            font-weight: 600;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+        }
+
+        .positioning-card a:hover {
+            border-bottom-color: white;
         }
 
         .footer {
@@ -375,7 +306,6 @@ div.logo-container div.logo img {
             border-bottom-color: white;
         }
 
-        /* Animations */
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-20px); }
@@ -408,7 +338,6 @@ div.logo-container div.logo img {
             }
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .title {
                 font-size: 2.5rem;
@@ -418,29 +347,16 @@ div.logo-container div.logo img {
                 font-size: 1.2rem;
             }
 
-            .logo-text {
-                font-size: 56px;
-            }
-
             .features {
                 grid-template-columns: 1fr;
-                gap: 20px;
+                gap: 16px;
             }
 
             .container {
                 padding: 20px;
             }
-
-            .home-panel {
-                padding: 28px 20px 32px;
-            }
-
-            .home-panel h2 {
-                font-size: 1.45rem;
-            }
         }
 
-        /* Floating particles background */
         .particle {
             position: fixed;
             width: 6px;
@@ -470,7 +386,6 @@ div.logo-container div.logo img {
     </style>
 </head>
 <body>
-    <!-- Floating particles -->
     <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
     <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
     <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
@@ -482,13 +397,19 @@ div.logo-container div.logo img {
     <div class="particle" style="left: 90%; animation-delay: 7s;"></div>
 
     <div class="container">
-        <p class="lang-switch" style="font-size:0.95rem;margin-bottom:24px;color:rgba(255,255,255,0.9);">
+        <p class="lang-switch" style="font-size:0.95rem;margin-bottom:16px;color:rgba(255,255,255,0.9);">
             <a href="/" style="color:rgba(255,255,255,0.9);text-decoration:underline;">English</a>
             · <span style="color:white;font-weight:600;">Français</span>
         </p>
+        <nav class="site-nav" aria-label="Navigation principale">
+            <a href="/fr/" aria-current="page">Accueil</a>
+            <a href="/fr/updates.html">Mises à jour</a>
+            <a href="/fr/articles.html">Articles</a>
+            <a href="/fr/changelog.html">Notes de version</a>
+        </nav>
         <div class="logo-container">
             <div class="logo">
-                <img src="/logo.svg" alt="Ezkey logo">
+                <img src="/logo.svg" alt="Logo Ezkey">
             </div>
         </div>
 
@@ -507,8 +428,13 @@ div.logo-container div.logo img {
             </div>
             <div class="feature">
                 <span class="feature-icon">🔒</span>
-                <h3 class="feature-title">Sécurité souveraine</h3>
+                <h3 class="feature-title">Souverain</h3>
                 <p class="feature-desc">MFA cryptographique sur votre infrastructure : le backend reste la source de vérité ; l’app mobile complète la chaîne de confiance</p>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🛡️</span>
+                <h3 class="feature-title">Sécurité</h3>
+                <p class="feature-desc">Continuité cryptographique de l’inscription à l’authentification — limites de confiance explicites, pas de médiation navigateur</p>
             </div>
             <div class="feature">
                 <span class="feature-icon">📱</span>
@@ -517,81 +443,23 @@ div.logo-container div.logo img {
             </div>
         </div>
 
-        <div class="home-panel">
-            <span class="section-eyebrow">Avancement</span>
-            <h2><span class="pulse"></span>Mises à jour</h2>
-            <p class="updates-intro">
-                Le produit est encore en construction. L’objectif est modeste : rendre l’authentification forte plus simple à adopter et à exploiter pour les équipes backend — plutôt sur le modèle d’une API documentée que d’un chantier interminable.
-            </p>
-            <ul class="update-list">
-                <li class="update-entry">
-                    <span class="update-date">Février 2026</span>
-                    <div class="update-text">
-                        Construire un système d’authentification, c’est exigeant. Le rendre sûr et fiable, c’est encore plus dur. Ezkey sera publié par phases ; la première est prévue dans les prochains mois. Ce sera une préversion technologique : elle montrera le potentiel du système mais ne sera <strong>pas</strong> prête pour la production.
-                    </div>
-                </li>
-                <li class="update-entry">
-                    <span class="update-date">Mars 2026</span>
-                    <div class="update-text">
-                        L’interface d’administration est complète à environ 90&nbsp;%. L’application mobile est en cours de réécriture, et les API cryptographiques sont revues. L’assurance qualité se renforce et met au jour de nombreux points à traiter avant d’envisager une sortie. Les progrès sont réguliers et le produit prend vraiment forme.
-                    </div>
-                </li>
-                <li class="update-entry">
-                    <span class="update-date">Avril 2026</span>
-                    <div class="update-text">
-                        L’application Android Ezkey est soumise à Google Play comme préversion technologique destinée aux premiers adoptants. Le code source est pour l’instant privé, le temps de finaliser le durcissement et la documentation. L’objectif actuel est d’ouvrir le dépôt publiquement en septembre 2026, avec la première version officielle, sous réserve du travail de préversion habituel.
-                    </div>
-                </li>
-            </ul>
+        <div class="positioning-card">
+            <p>Ezkey est né comme une réponse backend-first à une vraie frustration face à l’authentification forte browser-centric. C’est un projet opinionated et AI-first qui explore une voie médiane pragmatique : plus forte que les mots de passe et le TOTP classique, possiblement plus simple à opérer du point de vue du projet que toute la cérémonie WebAuthn, et explicite sur ses compromis. <a href="/fr/why-ezkey-exists.html">Lire pourquoi Ezkey existe</a>.</p>
         </div>
 
-        <div class="home-panel">
-            <span class="section-eyebrow">Publications</span>
-            <h2>Articles et notes</h2>
-            <p class="updates-intro pub-intro">
-                Textes plus longs sur la pratique de l’ingénierie et le développement assisté par IA — indépendamment de la feuille de route produit ci-dessus.
-            </p>
-            <div class="publication-grid">
-                <a class="pub-card" href="/fr/experimental-preview-exp1.html">
-                    <span class="pub-card-title">Préversion exp1 — accès limité</span>
-                    <span class="pub-card-desc">Instance expérimentale tout-en-un : Android, admin locataire, démo Acme ; invitations prioritaires ou demande par courriel ; ce n’est pas une offre de production.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/ezkey-at-a-glance-trust-zone-mobile.html">
-                    <span class="pub-card-title">Ezkey en un coup d’œil</span>
-                    <span class="pub-card-desc">Zone de confiance et application mobile : MFA backend-first, bind/verify et pending/respond, et pourquoi ce n’est pas « un autre générateur de codes ».</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/strategie-de-test.html">
-                    <span class="pub-card-title">Stratégie de test</span>
-                    <span class="pub-card-desc">Du test unitaire au stress opérationnel : segmentation par tags, clean room Docker, tests fonctionnels séquentiels, tests électifs et churn opérationnel avec compression de temps.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/ai-coding-manifesto.html">
-                    <span class="pub-card-title">Manifeste sur le codage assisté par IA</span>
-                    <span class="pub-card-desc">Le futur du codage est déjà là : frontières, Docker, tests et évolution du rôle du développeur.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/generative-ai-nocode-lowcode-parallel.html">
-                    <span class="pub-card-title">IA générative et No-Code / Low-Code</span>
-                    <span class="pub-card-desc">Un parallèle entre l’ère No-Code et les outils de codage IA — spécifications, verrouillage et documentation hybride.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/from-code-to-intent-ai-workflow.html">
-                    <span class="pub-card-title">Du code à l'intention</span>
-                    <span class="pub-card-desc">Un an de workflow avec l'IA sur un projet open source — de la vélocité brute à l'élévation du rôle de développeur vers architecte, analyste et product owner.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/guide-developpeur-mobile-ezkey.html">
-                    <span class="pub-card-title">Comment l'app mobile signe chaque étape</span>
-                    <span class="pub-card-desc">Un parcours détechnilisé dans le protocole Ezkey : enrollment, proof tokens et chaînage cryptographique de bout en bout — sans confiance implicite.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/du-monolithe-au-contrat.html">
-                    <span class="pub-card-title">Du monolithe au contrat</span>
-                    <span class="pub-card-desc">Comment une application Spring Boot unique est devenue quatre backends autonomes &mdash; et comment les spécifications OpenAPI versionnées et dispatchées ont fait du backend-first un workflow IA discipliné.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>            </div>
+        <div class="home-cta-grid">
+            <a class="cta-card" href="/fr/updates.html">
+                <span class="cta-eyebrow">Avancement</span>
+                <span class="cta-title"><span class="pulse" aria-hidden="true"></span>Mises à jour</span>
+                <p class="cta-desc">Notes datées, des plus récentes aux plus anciennes — séparées des articles longs.</p>
+                <span class="cta-link">Voir toutes les mises à jour</span>
+            </a>
+            <a class="cta-card" href="/fr/articles.html">
+                <span class="cta-eyebrow">Publications</span>
+                <span class="cta-title">Articles et notes</span>
+                <p class="cta-desc">Textes plus longs sur la pratique de l’ingénierie et le développement assisté par IA — indépendamment de la feuille de route produit.</p>
+                <span class="cta-link">Parcourir les articles</span>
+            </a>
         </div>
 
         <div class="footer">
@@ -599,7 +467,6 @@ div.logo-container div.logo img {
                 Conçu avec ❤️ dans un projet open source — le dépôt s’ouvre avec la v1.0 •
                 Logo conçu par une jeune artiste talentueuse •
                 <a href="/fr/confidentialite.html" style="color:rgba(255,255,255,0.8);text-decoration:underline;">Politique de confidentialité</a>
-                Logo créé par une jeune artiste talentueuse
             </p>
         </div>
     </div>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/updates.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/updates.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/updates.html">
+    <title>Ezkey — Product updates</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow-x: hidden;
+            padding: 36px 0 56px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo-container .logo img { width: 150px !important; height: 150px !important; display: block !important; }
+        div.logo-container div.logo img { width: 150px !important; height: 150px !important; }
+
+        .logo-container { margin-bottom: 24px; position: relative; }
+        .logo {
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 20px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: float 6s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        .logo::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 3s infinite;
+        }
+        .logo img { position: relative; z-index: 2; }
+
+        .site-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 16px;
+            font-size: 0.92rem;
+        }
+        .site-nav a {
+            color: rgba(255, 255, 255, 0.92);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+        .site-nav a:hover { color: white; border-bottom-color: white; }
+        .site-nav a[aria-current="page"] { color: white; border-bottom-color: white; }
+
+        .lang-switch { font-size: 0.95rem; margin-bottom: 16px; color: rgba(255, 255, 255, 0.9); }
+        .lang-switch a { color: rgba(255, 255, 255, 0.9); text-decoration: underline; }
+
+        .page-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            padding: 36px 40px 40px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 28px;
+            text-align: left;
+        }
+
+        .section-eyebrow {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .page-panel h1 {
+            color: white;
+            font-size: 1.75rem;
+            margin-bottom: 18px;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.25;
+        }
+
+        .page-intro {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .update-list { list-style: none; margin: 0; padding: 0; }
+
+        .update-entry {
+            padding: 16px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .update-entry:first-of-type { border-top: none; padding-top: 0; }
+        .update-entry:last-child { padding-bottom: 0; }
+
+        .update-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 8px 14px;
+            margin-bottom: 8px;
+        }
+
+        .update-date {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.65);
+            letter-spacing: 0.02em;
+        }
+
+        .update-type {
+            font-size: 0.68rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 999px;
+            padding: 4px 10px;
+        }
+
+        .update-text {
+            color: rgba(255, 255, 255, 0.92);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #4ade80;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+            vertical-align: middle;
+        }
+
+        .footer {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+        .footer a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .footer a:hover { color: white; border-bottom-color: white; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        .particle {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: floatParticle 15s infinite linear;
+        }
+        @keyframes floatParticle {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            .page-panel { padding: 28px 20px 32px; }
+            .page-panel h1 { font-size: 1.45rem; }
+            .container { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+    <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
+    <div class="particle" style="left: 50%; animation-delay: 6s;"></div>
+    <div class="particle" style="left: 70%; animation-delay: 8s;"></div>
+    <div class="particle" style="left: 90%; animation-delay: 7s;"></div>
+
+    <div class="container">
+        <p class="lang-switch">
+            <span style="color:white;font-weight:600;">English</span>
+            · <a href="/fr/updates.html">Français</a>
+        </p>
+        <nav class="site-nav" aria-label="Primary">
+            <a href="/">Home</a>
+            <a href="/updates.html" aria-current="page">Updates</a>
+            <a href="/articles.html">Articles</a>
+            <a href="/changelog.html">Changelog</a>
+        </nav>
+        <div class="logo-container">
+            <a href="/" aria-label="Ezkey home">
+                <div class="logo">
+                    <img src="/logo.svg" alt="">
+                </div>
+            </a>
+        </div>
+
+        <div class="page-panel">
+            <span class="section-eyebrow">Build status</span>
+            <h1><span class="pulse" aria-hidden="true"></span>Product updates</h1>
+            <p class="page-intro">
+                Newest first. Short, dated notes on shipping and risk — separate from long-form articles.
+            </p>
+            <ul class="update-list">
+                <li class="update-entry" data-update-type="milestone">
+                    <div class="update-meta">
+                        <span class="update-date">April 2026</span>
+                        <span class="update-type">Milestone</span>
+                    </div>
+                    <div class="update-text">
+                        The Ezkey Android app is being submitted to Google Play as a technology preview for early adopters. The source code is currently kept private while we finalize hardening and documentation. The current plan is to open the repository publicly in September 2026, with the first official release, subject to the usual pre-release work.
+                    </div>
+                </li>
+                <li class="update-entry" data-update-type="status">
+                    <div class="update-meta">
+                        <span class="update-date">March 2026</span>
+                        <span class="update-type">Status</span>
+                    </div>
+                    <div class="update-text">
+                        The admin UI is about 90% complete. The mobile app is being rewritten, and the crypto APIs are under review. QA is getting more thorough and surfacing many issues to fix before a release. Progress is steady, and the product is starting to take shape.
+                    </div>
+                </li>
+                <li class="update-entry" data-update-type="milestone">
+                    <div class="update-meta">
+                        <span class="update-date">February 2026</span>
+                        <span class="update-type">Milestone</span>
+                    </div>
+                    <div class="update-text">
+                        Building an authentication system is challenging. Making it safe and reliable is harder. Ezkey will ship in phases; the first is due in the coming months. It will be a technology preview: it will show what the system can do, but it will <strong>not</strong> be production-ready.
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <p style="text-align:center;margin-bottom:20px;"><a href="/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">← Back to home</a></p>
+
+        <div class="footer">
+            <p>
+                <a href="/privacy.html">Privacy Policy</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

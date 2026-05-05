@@ -8,7 +8,12 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 
 ## What this folder is
 
-- **Source of truth in git:** `index.html` (English), `fr/index.html` (French); inline SVG logo in each file — static HTML/CSS, no bundler.
+- **Source of truth in git:** static HTML/CSS under this directory — no bundler. **English** default locale; **French** under `fr/`.
+- **Landing pages (compact):** [`index.html`](index.html) (en), [`fr/index.html`](fr/index.html) (fr) — hero, pillars, primary navigation, and short CTAs into content areas. They are **not** the archive for updates or articles.
+- **Product updates (reverse chronological, dated):** [`updates.html`](updates.html) / [`fr/updates.html`](fr/updates.html) — short build-status notes; optional `data-update-type` on each `<li class="update-entry">` for future filtering.
+- **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — cards linking to long-form HTML; article bodies remain standalone pages at the site root or under `fr/`.
+- **Changelog placeholder (technical release notes later):** [`changelog.html`](changelog.html) / [`fr/changelog.html`](fr/changelog.html) — reserved for versioned technical notes; product-facing chronology stays on **Updates** until releases are public.
+- **Logo / hero signature:** landing and inner hub pages reuse the same gradient, floating logo treatment, and particle background as before (`<img src="/logo.svg">` on published pages).
 - **Public hostname:** **`ezkey.org`** (canonical production URL for this site).
 - **Cloudflare:** The live site is deployed via **Cloudflare Pages**. The **only** project name to use in docs and scripts is **`ezkey-org`**; production traffic uses **`ezkey.org`**. Preview URLs from Wrangler may still show a **`*.pages.dev`** subdomain created under an early project name (e.g. `ezkey-teaser`) — that is a **legacy hostname** for the **same** project, not a second app. Details: **[docs/cloudflare/ezkey-org-site.md](../../docs/cloudflare/ezkey-org-site.md)** (section *Why you may still see `ezkey-teaser` in preview URLs*). When an agent reads or updates Cloudflare state, treat **what is configured in Cloudflare** as the operational source of truth for hosting; treat **this folder** as the source of truth for **content and markup** to deploy.
 
@@ -46,11 +51,11 @@ For long-form editorial work on ezkey.org, the default execution order is:
 
 1. **Start with a French draft only** under **`sites/ezkey-org/fr/draft-<english-filename>.md`**.
 2. **Do not** create or update the published HTML yet.
-3. **Do not** attach the article to **`fr/index.html`** at draft stage.
+3. **Do not** attach the article to **[`fr/articles.html`](fr/articles.html)** (or the English [`articles.html`](articles.html)) at draft stage.
 4. Refine the French draft until the narrative, angle, and exclusions are stable.
-5. Only then, if explicitly requested or clearly part of the next approved step, generate the published French HTML and update the French index.
+5. Only then, if explicitly requested or clearly part of the next approved step, generate the published French HTML, add it to **[`fr/articles.html`](fr/articles.html)**, and add the English counterpart to [`articles.html`](articles.html) when publishing both locales.
 
-This means the expected first deliverable for an article plan is a **French draft markdown file not linked from the index**.
+This means the expected first deliverable for an article plan is a **French draft markdown file not linked from the article index**.
 
 **Convention (single file, two layers):**
 
@@ -71,10 +76,48 @@ When **regenerating** HTML from Markdown, **omit** YAML front matter and **omit*
 
 ---
 
+## Information architecture and bilingual mirroring
+
+| English path | French path | Purpose |
+| ------------ | ----------- | ------- |
+| `/` → `index.html` | `/fr/` → `fr/index.html` | Compact landing |
+| `/updates.html` | `/fr/updates.html` | Product updates (newest first) |
+| `/articles.html` | `/fr/articles.html` | Article index |
+| `/changelog.html` | `/fr/changelog.html` | Technical changelog (placeholder) |
+
+**Rules:**
+
+1. **Parallel URLs:** use the **same filename** under `fr/` as under the site root for hub pages (`updates.html`, `articles.html`, `changelog.html`).
+2. **Pair every hub page with `hreflang`:** each of these files includes `link rel="alternate" hreflang="en"`, `hreflang="fr"`, and `hreflang="x-default"` (x-default follows the English canonical for the site).
+3. **Pair article slugs:** English articles live at `/some-slug.html`; French translations at `/fr/some-slug.html` when both exist (same slug, `fr/` prefix).
+4. **Navigation labels:** English nav uses *Home / Updates / Articles / Changelog*; French nav uses *Accueil / Mises à jour / Articles / Notes de version* (same destinations as the table above).
+5. **New product updates:** add a dated entry at the **top** of the list on **both** `updates.html` and `fr/updates.html`; keep wording aligned across locales.
+
+---
+
+## Positioning and editorial principles
+
+- **Lead with the problem shape, not founder mythology:** explain the backend-first gap Ezkey addresses before talking about the builder or the workflow.
+- **Experimental does not mean casual:** when copy mentions that the project is opinionated, AI-first, or exploratory, pair that with signals of discipline, seriousness, and care.
+- **Keep the homepage short:** the landing page may contain a compact positioning block, but longer arguments belong in standalone article pages linked from the home or `articles.html`.
+- **Use the founder article as the canonical long explanation:** the current anchor text is [`why-ezkey-exists.html`](why-ezkey-exists.html) / [`fr/why-ezkey-exists.html`](fr/why-ezkey-exists.html); reuse and refine that narrative instead of re-explaining it differently on every page.
+- **Distinguish content lanes clearly:** product momentum belongs on `updates.html`; long-form reasoning, positioning, and engineering reflections belong on `articles.html`.
+- **Write for a serious technical audience:** sober tone, concrete claims, explicit constraints, and no inflated startup-style language.
+- **Avoid defensive wording:** do not over-explain that the project is solo, AI-assisted, or unconventional; present those facts plainly and move quickly to architecture, trust boundaries, APIs, and operator value.
+- **Do not overstate security assurance:** describe Ezkey as a pragmatic, opinionated middle ground that aims to be stronger than passwords and classic TOTP for some backend-oriented contexts; do not imply formal attestation chains, standards equivalence, complete certificate validation, or full-strength certificate pinning unless those capabilities truly exist.
+- **Treat complexity judgments as subjective:** when copy says Ezkey is simpler, lower-ceremony, or easier to operate, frame that as the project's perception or hope, not as an objective claim about WebAuthn, FIDO2, or what every team experiences.
+- **When publishing new flagship articles, add visible date metadata:** long-form essays should read like dated notes in the open, not anonymous evergreen marketing copy.
+
+---
+
 ## Related paths
 
 | Path | Role |
 | ---- | ---- |
 | [README.md](README.md) | Short description of folder contents |
-| [index.html](index.html) | Live page source |
+| [index.html](index.html) | English landing page |
+| [fr/index.html](fr/index.html) | French landing page |
+| [updates.html](updates.html) / [fr/updates.html](fr/updates.html) | Product updates archive |
+| [articles.html](articles.html) / [fr/articles.html](fr/articles.html) | Articles index |
+| [changelog.html](changelog.html) / [fr/changelog.html](fr/changelog.html) | Changelog placeholder |
 | [../../docs/cloudflare/README.md](../../docs/cloudflare/README.md) | Cloudflare docs index |

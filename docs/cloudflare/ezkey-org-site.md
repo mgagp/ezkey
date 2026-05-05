@@ -14,7 +14,7 @@ What can linger is only the **default `*.pages.dev` subdomain** Cloudflare attac
 
 **How to think about it in this repo:** treat **`ezkey-org`** as the only project name; treat **`ezkey-teaser` in a `*.pages.dev` URL** as a **legacy hostname label** if it still appears. For humans, **`https://ezkey.org`** is the canonical public URL. To see or adjust default Pages hostnames, use the Cloudflare dashboard (**Workers & Pages → ezkey-org → Custom domains** and related settings).
 
-- **Source:** [sites/ezkey-org/](../../sites/ezkey-org/) — `index.html` (EN, `/`), `fr/index.html` (FR, `/fr/`). Logo is inline SVG only.
+- **Source:** [sites/ezkey-org/](../../sites/ezkey-org/) — compact landings: `index.html` (EN, `/`), `fr/index.html` (FR, `/fr/`); content hubs: `updates.html` / `fr/updates.html`, `articles.html` / `fr/articles.html`, `changelog.html` / `fr/changelog.html`; logo asset `logo.svg` referenced from pages.
 - **Nature:** Fully static HTML/CSS; no bundler or Maven module. Suitable for **Cloudflare Pages** (or equivalent) with **no build command** and publish directory = `sites/ezkey-org` (or the project root if the Pages project points at that folder only).
 - **Deployment today:** Manual or ad hoc Cloudflare deployment is acceptable; the important part is that **git** holds the canonical content.
 - **Cross-cutting product docs:** Edge IP and rate-limiting context remain in [OPERATIONAL.md](../OPERATIONAL.md). Admin UI split deployment and CSP at the edge are covered in [admin-ui-security.md](../admin-ui-security.md).
@@ -23,7 +23,7 @@ What can linger is only the **default `*.pages.dev` subdomain** Cloudflare attac
 
 Goal: support a repeatable dialogue between operator and assistant:
 
-1. **Edit content** — Update the mini blog / landing copy in [sites/ezkey-org/index.html](../../sites/ezkey-org/index.html) (and commit).
+1. **Edit content** — Update the relevant static HTML under [sites/ezkey-org/](../../sites/ezkey-org/) (landing, [`updates.html`](../../sites/ezkey-org/updates.html) / [`fr/updates.html`](../../sites/ezkey-org/fr/updates.html), [`articles.html`](../../sites/ezkey-org/articles.html) index, article pages, etc.) and commit. See [sites/ezkey-org/AGENTS.md](../../sites/ezkey-org/AGENTS.md) for IA and bilingual rules.
 2. **Deploy to a test/preview URL** — Publish the same static output to a **non-production** URL (e.g. Cloudflare Pages preview deployment or a dedicated preview hostname).
 3. **Human validation** — Operator opens the preview URL, checks layout and copy.
 4. **Promote to production** — After approval, deploy the same artifact to the **production** hostname (ezkey.org).
