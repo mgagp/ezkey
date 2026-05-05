@@ -44,6 +44,7 @@ If you are new to the repository, read these first:
 - [security/SQL_INJECTION_POSTURE_AUDIT.md](security/SQL_INJECTION_POSTURE_AUDIT.md): SQL injection posture and repository inventory.
 - [SOC2_PREPARATION.md](SOC2_PREPARATION.md): broader SOC 2 preparation roadmap.
 - [SOC2_QUICK_START.md](SOC2_QUICK_START.md): shorter first-step compliance guide.
+- [dependency-posture-admin-and-ui.md](dependency-posture-admin-and-ui.md): Admin API / Admin UI dependency anchors, audits, and backlog.
 - [../SECURITY.md](../SECURITY.md): security policy and disclosure process.
 
 ## Operations And Tooling
