@@ -102,6 +102,13 @@ flowchart LR
 
 ## Typical Change Workflows
 
+### Capturing product direction and ideation
+
+1. Record directional notes in `global/vision/` using the vision-note template.
+2. Promote actionable candidates to `global/backlog/ideas/` using stable `I-*` identifiers.
+3. Maintain status, priority, and review dates according to `global/backlog/statuses-and-lifecycle.md`.
+4. Promote `ready` ideas into tracer bullets (`TB-*`) before implementation planning.
+
 ### Adding a new feature
 
 1. Pick the right phase in [`global/roadmap.md`](global/roadmap.md) (or add one through an ADR).

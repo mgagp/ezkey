@@ -11,6 +11,13 @@ Templates are **opinionated and minimal**. Every section must earn its place. Wh
 | [product-intent.template.md](product-intent.template.md) | Express product purpose, positioning, audience, and success criteria. | Global product intent. |
 | [roadmap.template.md](roadmap.template.md) | Sequenced phases and major product steps. | Global roadmap. |
 | [feature-brief.template.md](feature-brief.template.md) | Describe a feature: intent, scope, acceptance, dependencies. | Global feature catalog or component-local features. |
+| [vision-note.template.md](vision-note.template.md) | Capture directional product orientation notes. | Global vision notes. |
+| [backlog-idea.template.md](backlog-idea.template.md) | Capture one backlog idea with temporal metadata. | Global backlog ideas. |
+| [tracer-bullet-brief.template.md](tracer-bullet-brief.template.md) | Define a vertical slice from ideation to validation. | Tracer bullet planning. |
+| [component-design-brief.template.md](component-design-brief.template.md) | Summarize component-focused design for a bounded slice. | Component-focused analysis and design work. |
+| [decision-table.template.md](decision-table.template.md) | Capture branching rules in a verifiable table. | Workflows, services, and contract decisions. |
+| [test-plan-slice.template.md](test-plan-slice.template.md) | Define the minimum and optional test layers for a bounded slice. | Test planning in ideation-to-delivery flow. |
+| [legacy-plan-retrofit.template.md](legacy-plan-retrofit.template.md) | Extract and map legacy knowledge signal (plans, verbal, ad hoc) into canonical docs. | Weekly or opportunistic legacy retrofit sessions. |
 | [architecture-decision.template.md](architecture-decision.template.md) | Record an architecture or design decision. | Global and component decision logs. |
 | [functional-workflow.template.md](functional-workflow.template.md) | Describe a nominal workflow with exception paths. | Component functional flows. |
 | [mapping-matrix.template.md](mapping-matrix.template.md) | Describe mappings across a boundary. | Component API and boundary mappings. |

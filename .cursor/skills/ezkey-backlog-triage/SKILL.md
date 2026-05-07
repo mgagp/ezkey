@@ -1,0 +1,36 @@
+---
+name: ezkey-backlog-triage
+description: Triages Ezkey backlog ideas into clear scope, value, risk, and status with standardized metadata. Use when refining I-* entries before promotion to tracer bullet planning.
+disable-model-invocation: true
+---
+# Ezkey Backlog Triage
+
+## Purpose
+
+Normalize backlog ideas so they are comparable, filterable, and promotion-ready.
+
+## Inputs
+
+- `I-*` idea entry
+- Optional linked vision notes or roadmap context
+
+## Required outputs
+
+- Updated status and priority
+- Scope and non-scope
+- Main risks and assumptions
+- Phase tags and component tags
+- Promotion notes
+
+## Steps
+
+1. Clarify problem and expected value.
+2. Bound scope (`in` vs `out`).
+3. Assign status (`captured` to `ready`) and priority (`P0` to `P3`).
+4. Tag impacted phases and components.
+5. Record top risks and unresolved questions.
+6. Decide promotion posture (`incubating`, `ready`, or `parked`).
+
+## Rule
+
+Prefer small, explicit increments. Avoid large speculative scope during triage.

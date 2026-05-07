@@ -1,0 +1,44 @@
+---
+description: Bootstrap the product-docs ideation-to-delivery workflow in fresh sessions
+alwaysApply: true
+---
+
+# Product-Docs Workflow Bootstrap
+
+When a user introduces a new idea, start with the product-docs method:
+
+1. Read:
+   - `product-docs/methodology/README.md`
+   - `product-docs/methodology/workflow-overview.md`
+   - `product-docs/methodology/testing-strategy-in-workflow.md`
+2. Position the idea as:
+   - vision note (`V-*`) in `product-docs/global/vision/`,
+   - backlog idea (`I-*`) in `product-docs/global/backlog/ideas/`,
+   - tracer bullet (`TB-*`) when ready.
+3. Keep status and traceability explicit in the same slice of work.
+
+For historical plans, verbal rationale, and ad hoc implementation history, use the retrofit lane:
+
+1. Read `product-docs/methodology/legacy-retrofit-workflow.md`.
+2. Create/update `R-*` slices in `product-docs/global/legacy-retrofit/`.
+3. Extract legacy knowledge signal, then map it into canonical docs.
+4. When durable values emerge, promote principle candidates to canonical principle locations.
+
+Use this skill sequence by default unless the user asks otherwise:
+
+- `ezkey-vision-intake`
+- `ezkey-backlog-triage`
+- `ezkey-grill-me`
+- `ezkey-tracer-bullet-promote`
+- `ezkey-component-design-pack`
+- `ezkey-test-strategy-planner`
+- `ezkey-quality-gatekeeper`
+- `ezkey-traceability-sync`
+- `ezkey-closeout`
+- `ezkey-legacy-plan-miner`
+- `ezkey-retrofit-curator`
+
+Mode guidance:
+
+- Prefer **Plan mode** for ideation, discovery, and trade-off analysis.
+- Prefer **Agent mode** for writing artifacts, implementing changes, and executing validation.

@@ -14,6 +14,9 @@ This folder holds the product-wide living truth for Ezkey. It is the canonical e
 | [`design-principles.md`](design-principles.md) | Cross-product design principles. |
 | [`lifecycle-model.md`](lifecycle-model.md) | Entity relationships and global lifecycle rules. |
 | [`spec-test-traceability.md`](spec-test-traceability.md) | Global spec-test traceability matrix. |
+| [`vision/`](vision/README.md) | Product orientation notes and evolving direction. |
+| [`backlog/`](backlog/README.md) | Markdown-native backlog with temporal status lifecycle. |
+| [`legacy-retrofit/`](legacy-retrofit/README.md) | Structured retrofit bridge from historical plans to canonical docs. |
 
 ## Reading Order
 
@@ -25,6 +28,7 @@ This folder holds the product-wide living truth for Ezkey. It is the canonical e
 6. `lifecycle-model.md`
 7. `spec-test-traceability.md`
 8. Relevant [component pack](../components/README.md).
+9. `vision/README.md` and `backlog/README.md` when planning future work.
 
 ## Boundary With Component Packs
 

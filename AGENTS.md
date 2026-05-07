@@ -4,6 +4,44 @@ For agents working anywhere in the repo. For module-specific conventions and pat
 
 For full product and technical context, read **PRD.md**, **README.md**, **docs/PROJECT_POSITIONING.md**, and **docs/ENDPOINT.md** at the start of a new session.
 
+## Fresh-session workflow bootstrap (product-docs method)
+
+When a new session starts and the user is bringing a new idea, use this lightweight bootstrap before deep analysis:
+
+1. Read:
+   - `product-docs/methodology/README.md`
+   - `product-docs/methodology/workflow-overview.md`
+   - `product-docs/methodology/testing-strategy-in-workflow.md`
+2. Position the idea through:
+   - vision note (`V-*`) in `product-docs/global/vision/`,
+   - backlog idea (`I-*`) in `product-docs/global/backlog/ideas/`,
+   - tracer bullet (`TB-*`) when the idea is ready for bounded discovery/execution.
+3. Keep the lifecycle explicit with status transitions and traceability updates.
+
+Parallel lane for historical plan retrofit:
+
+1. Read `product-docs/methodology/legacy-retrofit-workflow.md`.
+2. Use `R-*` retrofit slices in `product-docs/global/legacy-retrofit/`.
+3. Mine legacy knowledge (historical plans and/or verbal briefings), then map high-signal content into canonical docs.
+4. Keep source-to-canonical links explicit and record residual gaps.
+5. Promote durable principle candidates to `product-docs/global/design-principles.md` or to `AGENTS.md` / `.cursor/rules` as appropriate.
+
+Recommended skill sequence for this method:
+
+- `ezkey-vision-intake`
+- `ezkey-backlog-triage`
+- `ezkey-grill-me`
+- `ezkey-tracer-bullet-promote`
+- `ezkey-component-design-pack`
+- `ezkey-test-strategy-planner`
+- `ezkey-quality-gatekeeper`
+- `ezkey-traceability-sync`
+- `ezkey-closeout`
+- `ezkey-legacy-plan-miner`
+- `ezkey-retrofit-curator`
+
+This bootstrap does not replace existing module-specific rules; it defines the default ideation-to-delivery path.
+
 When a task involves **entity relationships, lifecycle semantics, operational eligibility, parent-child propagation, reversible vs irreversible actions, or operator analysis across multiple entity types**, it is also mandatory to read **`docs/LIFECYCLE_GOVERNANCE.md`** before proposing a design, plan, or implementation direction. Treat that document as the source of truth for how Ezkey models:
 
 - entity hierarchy and cross-entity relationships,

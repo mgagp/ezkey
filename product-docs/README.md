@@ -46,6 +46,17 @@ product-docs/
   README.md                     Entry point (this file).
   GOVERNANCE.md                 Governance rules and change workflows.
   glossary.md                   Canonical vocabulary and naming conventions.
+  methodology/                  Workflow method for human + AI collaboration.
+    README.md                   Method entry point and reading order.
+    workflow-overview.md        End-to-end flow from idea to delivery.
+    tracer-bullet-method.md     Vertical-slice method.
+    ai-collaboration-model.md   Human/AI collaboration model.
+    analysis-and-design-canon.md Classic analysis and design artifact canon.
+    testing-strategy-in-workflow.md Test-layer strategy embedded in workflow.
+    legacy-retrofit-workflow.md Progressive retrofit lane for historical plans.
+    session-start-guide.md      Practical lane selection, prompts, and lexicon.
+    quality-gates.md            Lightweight quality gate model.
+    nomenclature.md             IDs and status vocabulary.
   global/                       Product-wide living truth.
     README.md                   Global reading order and document map.
     product-intent.md           Product intent, positioning, success criteria.
@@ -56,6 +67,19 @@ product-docs/
     design-principles.md        Cross-product design principles.
     lifecycle-model.md          Entity relationships and lifecycle rules.
     spec-test-traceability.md   Global traceability matrix.
+    vision/                     Product orientation notes.
+      README.md                 Vision scope and usage.
+      product-vision.md         Evolving product orientation.
+      product-orientation-notes.md Directional notes log.
+    legacy-retrofit/            Retrofit register for historical plans.
+      README.md                 Legacy retrofit purpose and workflow.
+      index.md                  Retrofit slice index.
+    backlog/                    Markdown-native backlog.
+      README.md                 Backlog operating model.
+      index.md                  Backlog index.
+      statuses-and-lifecycle.md Status lifecycle model.
+      ideas/                    Active idea files (`I-*`).
+      archived/                 Archived ideas by year.
   components/                   Per-entrypoint documentation packs.
     README.md                   Component pack index.
     admin-ui/                   Admin UI pack.
@@ -66,6 +90,13 @@ product-docs/
     product-intent.template.md
     roadmap.template.md
     feature-brief.template.md
+    vision-note.template.md
+    backlog-idea.template.md
+    tracer-bullet-brief.template.md
+    component-design-brief.template.md
+    decision-table.template.md
+    test-plan-slice.template.md
+    legacy-plan-retrofit.template.md
     architecture-decision.template.md
     functional-workflow.template.md
     mapping-matrix.template.md
