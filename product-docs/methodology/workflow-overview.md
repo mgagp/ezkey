@@ -68,3 +68,7 @@ See `legacy-retrofit-workflow.md`.
 - **Test planning done** when minimum test layers are explicitly selected.
 - **Gate done** when mandatory quality checks pass.
 - **Close out done** when status and traceability are updated.
+
+## Capture variants
+
+The standard Capture step (one idea per session) suffices for most cases. When the operator wants to capture multiple items in one session — typical when ideas accumulate, or when voice dictation is used — apply the [blitz intake pattern](blitz-intake-pattern.md). It preserves the verbatim source through an explicit archival step under `product-docs/global/backlog/blitz-archive/`, so the original wording is never lost when materialization happens.

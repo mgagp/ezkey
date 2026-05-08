@@ -14,6 +14,8 @@ Use when the goal is orientation, options, or product direction.
 - Typical mode: **Plan**
 - Typical skills: `ezkey-vision-intake`, `ezkey-backlog-triage`, `ezkey-grill-me`
 
+For **multi-item capture sessions** (typical when several ideas accumulate or voice dictation is used), apply the [blitz intake pattern](blitz-intake-pattern.md) as a Lane A variant. It preserves the verbatim source through an explicit archival step.
+
 ### Lane B — Delivery execution
 
 Use when the goal is scoped implementation.

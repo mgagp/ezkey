@@ -24,10 +24,11 @@ Ezkey already has strong global and component documentation. This pack adds the 
 3. `tracer-bullet-method.md`
 4. `testing-strategy-in-workflow.md`
 5. `legacy-retrofit-workflow.md`
-6. `session-start-guide.md`
-7. `quality-gates.md`
-8. `ai-collaboration-model.md`
-9. `nomenclature.md`
+6. `blitz-intake-pattern.md`
+7. `session-start-guide.md`
+8. `quality-gates.md`
+9. `ai-collaboration-model.md`
+10. `nomenclature.md`
 
 ## Scope boundaries
 
@@ -75,3 +76,7 @@ Use these prompts in a fresh session to trigger the method quickly.
 ### 7) Retrofit from verbal history
 
 `Start legacy knowledge retrofit from verbal briefing. Use source type verbal, create R-*, then map signal into canonical docs.`
+
+### 8) Run a blitz intake (multi-item capture session)
+
+`Run a blitz intake. I will dictate several items; capture verbatim, classify by batch, materialize V-*/I-*/R-* in English, and archive the scratch board to blitz-archive (do not delete).`
