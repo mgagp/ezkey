@@ -17,11 +17,9 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -45,75 +43,11 @@ import {securityPreferenceStorage} from '../../services/storage/securityPreferen
 import {generateProofToken} from '../../utils/generateProofToken';
 import {sha256HexUtf8} from '../../utils/sha256HexUtf8';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
+import PinCodeInput from '../../components/PinCodeInput';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
 const AUTH_CHALLENGE_LENGTH = 2;
-
-type AuthChallengeCodeInputProps = {
-  value: string;
-  onChangeText: (text: string) => void;
-  onClearError?: () => void;
-  editable?: boolean;
-};
-
-/**
- * Two-box challenge code input with paste support.
- * Same pattern as enrollment 6-digit input for consistency.
- *
- * @since 2025
- */
-const AuthChallengeCodeInput: React.FC<AuthChallengeCodeInputProps> = ({
-  value,
-  onChangeText,
-  onClearError,
-  editable = true,
-}) => {
-  const {t} = useTranslation();
-  const inputRef = useRef<TextInput>(null);
-  const digits = value.split('').concat(Array(AUTH_CHALLENGE_LENGTH).fill('')).slice(0, AUTH_CHALLENGE_LENGTH);
-
-  const handleChange = useCallback(
-    (text: string) => {
-      onClearError?.();
-      const digitsOnly = text.replace(/[^0-9]/g, '');
-      const next = digitsOnly.length > 1 ? digitsOnly.slice(0, AUTH_CHALLENGE_LENGTH) : digitsOnly;
-      onChangeText(next);
-    },
-    [onChangeText, onClearError],
-  );
-
-  return (
-    <Pressable
-      onPress={() => editable && inputRef.current?.focus()}
-      style={styles.challengeContainer}
-      accessibilityLabel={t('pendingAuth.challengeInput')}
-      accessibilityHint={t('pendingAuth.challengeInputHint')}>
-      <View style={styles.challengeBoxes}>
-        {digits.map((digit, i) => (
-          <View
-            key={i}
-            style={[
-              styles.challengeBox,
-              digit ? styles.challengeBoxFilled : undefined,
-            ]}>
-            <Text style={styles.challengeDigit}>{digit || ''}</Text>
-          </View>
-        ))}
-      </View>
-      <TextInput
-        ref={inputRef}
-        value={value}
-        onChangeText={handleChange}
-        keyboardType="number-pad"
-        maxLength={AUTH_CHALLENGE_LENGTH}
-        editable={editable}
-        caretHidden
-        style={styles.challengeInputHidden}
-      />
-    </Pressable>
-  );
-};
 
 /**
  * Presents the current pending authentication attempt for a selected enrollment and enables the user to accept or deny it.
@@ -600,11 +534,14 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
               {attempt.challengeRequired ? (
                 <View style={styles.challengeSection}>
                   <Text style={styles.challengeHeading}>{t('pendingAuth.challengeHeading')}</Text>
-                  <AuthChallengeCodeInput
+                  <PinCodeInput
+                    length={AUTH_CHALLENGE_LENGTH}
                     value={challengeInput}
                     onChangeText={setChallengeInput}
                     onClearError={() => setFormError(undefined)}
                     editable={!isProcessing}
+                    accessibilityLabel={t('pendingAuth.challengeInput')}
+                    accessibilityHint={t('pendingAuth.challengeInputHint')}
                   />
                   {formError ? (
                     <View style={styles.errorBanner}>

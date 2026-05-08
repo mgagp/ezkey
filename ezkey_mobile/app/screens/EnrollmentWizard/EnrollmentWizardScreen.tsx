@@ -10,16 +10,14 @@
  * @since 2025
  */
 
-import React, {useCallback, useRef, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -36,6 +34,7 @@ import {cryptoService} from '../../services/crypto';
 import {DEFAULT_ENROLLMENT_APPROVAL_POLICY} from '../../services/security/approvalRequirement';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
+import PinCodeInput from '../../components/PinCodeInput';
 import {env} from '../../config/env';
 import {integrationKeyAlgorithmBindError} from '../../utils/integrationKeyAlgorithm';
 import {
@@ -131,73 +130,6 @@ const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
         ) : null}
       </View>
     </View>
-  );
-};
-
-type ChallengeCodeInputProps = {
-  value: string;
-  onChangeText: (text: string) => void;
-  onClearError?: () => void;
-  editable?: boolean;
-};
-
-const CHALLENGE_LENGTH = 6;
-
-/**
- * Six-box challenge code input with paste support.
- * Hidden TextInput overlaid for keyboard; digits displayed in boxes.
- *
- * @since 2025
- */
-const ChallengeCodeInput: React.FC<ChallengeCodeInputProps> = ({
-  value,
-  onChangeText,
-  onClearError,
-  editable = true,
-}) => {
-  const {t} = useTranslation();
-  const inputRef = useRef<TextInput>(null);
-  const digits = value.split('').concat(Array(CHALLENGE_LENGTH).fill('')).slice(0, CHALLENGE_LENGTH);
-
-  const handleChange = useCallback(
-    (text: string) => {
-      onClearError?.();
-      const digitsOnly = text.replace(/[^0-9]/g, '');
-      const next = digitsOnly.length > 1 ? digitsOnly.slice(0, CHALLENGE_LENGTH) : digitsOnly;
-      onChangeText(next);
-    },
-    [onChangeText, onClearError],
-  );
-
-  return (
-    <Pressable
-      onPress={() => editable && inputRef.current?.focus()}
-      style={styles.challengeContainer}
-      accessibilityLabel={t('enrollmentWizard.challengeInput')}
-      accessibilityHint={t('enrollmentWizard.challengeInputHint')}>
-      <View style={styles.challengeBoxes}>
-        {digits.map((digit, i) => (
-          <View
-            key={i}
-            style={[
-              styles.challengeBox,
-              digit ? styles.challengeBoxFilled : undefined,
-            ]}>
-            <Text style={styles.challengeDigit}>{digit || ''}</Text>
-          </View>
-        ))}
-      </View>
-      <TextInput
-        ref={inputRef}
-        value={value}
-        onChangeText={handleChange}
-        keyboardType="number-pad"
-        maxLength={CHALLENGE_LENGTH}
-        editable={editable}
-        caretHidden
-        style={styles.challengeInputHidden}
-      />
-    </Pressable>
   );
 };
 
@@ -562,11 +494,16 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                 <Text style={styles.challengeHint}>
                   {t('enrollmentWizard.verifyHint', {name: draft.integrationName})}
                 </Text>
-                <ChallengeCodeInput
+                <PinCodeInput
+                  length={6}
+                  centered
+                  gap={8}
                   value={enrollmentChallenge}
                   onChangeText={value => setEnrollmentChallenge(value)}
                   onClearError={() => setChallengeError(undefined)}
                   editable={!isSubmitting}
+                  accessibilityLabel={t('enrollmentWizard.challengeInput')}
+                  accessibilityHint={t('enrollmentWizard.challengeInputHint')}
                 />
                 {challengeError ? (
                   <View style={styles.errorBanner}>
