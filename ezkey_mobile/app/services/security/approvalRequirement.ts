@@ -1,3 +1,17 @@
+/*
+ * Ezkey - Open Source Cryptographic MFA Platform
+ *
+ * Copyright (c) 2025 Ezkey contributors
+ * Licensed under the MIT License. See LICENSE file in the project root for full license information.
+ *
+ * Module: approvalRequirement
+ * Description: Enrollment-level and device-level approval policy evaluation for authentication requests.
+ * Security Context: Determines whether a protected confirmation (biometric or device credential) is required
+ *                   before approving or denying a pending auth attempt, based on per-enrollment policy and
+ *                   the device-wide security preference.
+ * @since 2025
+ */
+
 import {
   DEFAULT_SECURITY_LEVEL,
   normalizeSecurityLevel,

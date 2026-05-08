@@ -30,13 +30,3 @@ export const httpClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
-httpClient.interceptors.response.use(
-  response => response,
-  error => {
-    if (error.response) {
-      return Promise.reject(error);
-    }
-    return Promise.reject(error);
-  },
-);

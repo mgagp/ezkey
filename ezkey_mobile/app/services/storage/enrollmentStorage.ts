@@ -115,7 +115,9 @@ class EnrollmentStorage {
     const enrollmentProofToken = secureProofToken ?? legacyProofToken;
 
     if (!enrollmentProofToken) {
-      console.warn('[enrollmentStorage] Missing secure enrollment proof token:', record.id);
+      if (__DEV__) {
+        console.warn('[enrollmentStorage] Missing secure enrollment proof token:', record.id);
+      }
       return undefined;
     }
 
@@ -139,7 +141,9 @@ class EnrollmentStorage {
     const integrationPublicKey = secureIntegrationPublicKey ?? legacyIntegrationPublicKey;
 
     if (!integrationPublicKey) {
-      console.warn('[enrollmentStorage] Missing secure integration public key:', record.id);
+      if (__DEV__) {
+        console.warn('[enrollmentStorage] Missing secure integration public key:', record.id);
+      }
       return undefined;
     }
 

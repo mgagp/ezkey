@@ -35,9 +35,6 @@ import {BindEnrollmentResponse} from '../../services/api/types';
 import {cryptoService} from '../../services/crypto';
 import {DEFAULT_ENROLLMENT_APPROVAL_POLICY} from '../../services/security/approvalRequirement';
 import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
-import {
-  securityPreferenceStorage,
-} from '../../services/storage/securityPreferenceStorage';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import {env} from '../../config/env';
 import {integrationKeyAlgorithmBindError} from '../../utils/integrationKeyAlgorithm';

@@ -349,6 +349,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: individual fields used to avoid full object re-comparison; will be refactored in P1-B (usePendingAuth hook extraction)
   }, [
     enrollment?.enrollmentProofToken,
     enrollment?.id,
@@ -375,6 +376,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
     }
     autoLoadEnrollmentRef.current = enrollment.id;
     loadPendingAttempt();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: individual fields used to avoid full object re-comparison; will be refactored in P1-B (usePendingAuth hook extraction)
   }, [enrollment?.id, initialAttempt, isEnrollmentLoading, loadPendingAttempt]);
 
   const handleRespond = useCallback(
