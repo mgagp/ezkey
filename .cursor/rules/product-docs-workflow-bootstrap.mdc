@@ -17,6 +17,13 @@ When a user introduces a new idea, start with the product-docs method:
    - tracer bullet (`TB-*`) when ready.
 3. Keep status and traceability explicit in the same slice of work.
 
+For current-session Plan-mode incubation, use the plan-incubation lane instead of the retrofit lane:
+
+1. Read `product-docs/methodology/plan-incubation-workflow.md`.
+2. Allow a live working plan under `.cursor/plans/` or `plans/` when that is the deliberate brainstorming entrypoint.
+3. Materialize the durable output into `V-*`, `I-*`, `TB-*`, and related canonical docs.
+4. Do not describe this as retrofit unless the source is historical or mixed with historical evidence.
+
 For historical plans, verbal rationale, and ad hoc implementation history, use the retrofit lane:
 
 1. Read `product-docs/methodology/legacy-retrofit-workflow.md`.
@@ -29,6 +36,7 @@ Use this skill sequence by default unless the user asks otherwise:
 - `ezkey-vision-intake`
 - `ezkey-backlog-triage`
 - `ezkey-grill-me`
+- `ezkey-plan-incubation` when a live working plan is preferred first
 - `ezkey-tracer-bullet-promote`
 - `ezkey-component-design-pack`
 - `ezkey-test-strategy-planner`

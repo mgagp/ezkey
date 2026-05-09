@@ -5,6 +5,31 @@ This is a multi-module Spring Boot project providing an open-source cryptographi
 For overall product requirements and functional constraints, always refer to the top-level file `PRD.md`.
 For build, setup, and project organization, refer to `README.md`.
 
+## Product-Docs Workflow
+
+When the task starts from a new product or design idea, align with the `product-docs` methodology:
+
+1. Read:
+   - `product-docs/methodology/README.md`
+   - `product-docs/methodology/workflow-overview.md`
+   - `product-docs/methodology/testing-strategy-in-workflow.md`
+2. Materialize durable direction into:
+   - vision notes (`V-*`) under `product-docs/global/vision/`
+   - backlog ideas (`I-*`) under `product-docs/global/backlog/ideas/`
+   - tracer bullets (`TB-*`) when a bounded execution slice is ready
+3. Keep lifecycle and traceability explicit.
+
+### Plan incubation vs retrofit
+
+Treat a **current-session working plan** under `.cursor/plans/` or `plans/` as a legitimate incubation artifact, not as legacy retrofit by default.
+
+- Use working plans for freeform brainstorming, tool comparison, and early convergence.
+- When the workflow uses explicit project skills, use `ezkey-plan-incubation` for this lane.
+- Materialize the durable output into `V-*`, `I-*`, `TB-*`, and related canonical docs.
+- Do not describe this as retrofit unless the source is genuinely historical or mixed with historical evidence.
+
+Use the **retrofit lane** only for historical plans, verbal history, or ad hoc implementation history that must be mined and reintegrated into canonical docs via `R-*` artifacts.
+
 ## Code Style
 
 ### Java Standards

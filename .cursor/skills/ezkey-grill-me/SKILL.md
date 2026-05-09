@@ -12,6 +12,7 @@ Stress-test an idea or plan through focused questions before design lock-in.
 ## Input
 
 - `I-*`, `TB-*`, or draft plan
+- current-session working plan during plan incubation
 
 ## Output
 
@@ -33,3 +34,4 @@ Stress-test an idea or plan through focused questions before design lock-in.
 ## Rule
 
 Keep questioning concrete and decision-oriented. Avoid abstract critique without action value.
+When the input is a live working plan, use questioning to help convergence toward canonical materialization, not to force premature execution detail.

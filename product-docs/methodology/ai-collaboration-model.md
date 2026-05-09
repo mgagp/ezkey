@@ -15,6 +15,7 @@ This document defines how humans and AI agents collaborate using the product-doc
 
 - **Human owner**: decides priorities, validates trade-offs, approves direction.
 - **AI analyst**: expands assumptions, alternatives, and exception paths.
+- **AI planner**: helps incubate a live working plan, compare options, and converge before canonical materialization.
 - **AI implementer**: executes bounded plan slices and updates artifacts.
 - **AI reviewer**: checks quality gates, risks, and traceability integrity.
 
@@ -44,3 +45,4 @@ Every major handoff should include:
 - Use narrow bounded contexts for deep reasoning.
 - Use cross-linked complementary artifacts for global coherence.
 - Prefer incremental convergence over one-shot large plans.
+- When a live working plan is the chosen entrypoint, treat it as a legitimate incubation artifact rather than accidental pre-methodology residue.

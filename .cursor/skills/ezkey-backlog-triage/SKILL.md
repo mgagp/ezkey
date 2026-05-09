@@ -12,6 +12,7 @@ Normalize backlog ideas so they are comparable, filterable, and promotion-ready.
 ## Inputs
 
 - `I-*` idea entry
+- Optional current-session working plan as incubation source
 - Optional linked vision notes or roadmap context
 
 ## Required outputs
@@ -34,3 +35,4 @@ Normalize backlog ideas so they are comparable, filterable, and promotion-ready.
 ## Rule
 
 Prefer small, explicit increments. Avoid large speculative scope during triage.
+When a working plan is present, materialize only the durable actionable scope into the `I-*`; do not treat the plan itself as the canonical backlog artifact.

@@ -16,6 +16,10 @@ Use when the goal is orientation, options, or product direction.
 
 For **multi-item capture sessions** (typical when several ideas accumulate or voice dictation is used), apply the [blitz intake pattern](blitz-intake-pattern.md) as a Lane A variant. It preserves the verbatim source through an explicit archival step.
 
+For a **single substantial topic** where the operator prefers freeform planning first, use the [plan incubation workflow](plan-incubation-workflow.md) as another Lane A variant. This explicitly supports starting in agent Plan mode with a live working plan, then materializing the durable value into canonical docs without framing the session as retrofit.
+
+- Typical skills for this variant: `ezkey-plan-incubation`, then `ezkey-vision-intake` and/or `ezkey-backlog-triage`
+
 ### Lane B — Delivery execution
 
 Use when the goal is scoped implementation.
@@ -38,6 +42,7 @@ Use when the goal is extracting value from historical plans, verbal rationale, o
 - `I-*`: backlog idea
 - `TB-*`: tracer bullet execution slice
 - `R-*`: legacy knowledge retrofit slice
+- `working plan`: live non-canonical planning artifact used before canonical materialization
 - `captured/triaged/incubating/ready/active/done/parked/archived/dropped`: backlog lifecycle
 - `captured/mapped/integrated/archived`: retrofit lifecycle
 
@@ -46,6 +51,10 @@ Use when the goal is extracting value from historical plans, verbal rationale, o
 ### Start a vision brainstorm
 
 `Use ezkey-vision-intake and ezkey-grill-me for this product direction. I do not want implementation now.`
+
+### Start with a live working plan first
+
+`Use ezkey-plan-incubation. Start in Plan mode with a live working plan for this topic, then materialize the result into V-* and/or I-* once the direction is coherent.`
 
 ### Start a delivery slice
 

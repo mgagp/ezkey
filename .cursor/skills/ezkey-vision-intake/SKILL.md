@@ -12,6 +12,7 @@ Convert free-form ideation into concise, structured artifacts without over-const
 ## Inputs
 
 - Raw idea or direction statement
+- Optional live working plan from the current session
 - Optional context (phase, components, constraints)
 
 ## Output target
@@ -30,3 +31,4 @@ Convert free-form ideation into concise, structured artifacts without over-const
 ## Rule
 
 Keep intake lightweight and expressive. Do not force implementation-level detail at this stage.
+If the source is a current-session working plan, extract and condense the durable direction rather than copying the planning artifact verbatim.

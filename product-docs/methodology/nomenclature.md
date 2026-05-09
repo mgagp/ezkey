@@ -13,6 +13,12 @@ This document defines stable IDs and status vocabulary for vision, backlog, and 
 - `F-<short-kebab-name>` — feature catalog entries
 - `ADR-XXXX` / scoped ADR IDs — architecture or design decisions
 
+## Working artifact terminology
+
+- `working plan` — a live, non-canonical planning artifact used for current-session incubation, often under `.cursor/plans/` or `plans/`
+
+A working plan is **not** a canonical destination by itself and is **not** a retrofit slice by default. Its normal role is to support brainstorming and convergence before materialization into `V-*`, `I-*`, `TB-*`, and related canonical artifacts.
+
 ## Filename conventions
 
 - `V-YYYY-NNNN-<slug>.md`

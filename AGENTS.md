@@ -18,6 +18,13 @@ When a new session starts and the user is bringing a new idea, use this lightwei
    - tracer bullet (`TB-*`) when the idea is ready for bounded discovery/execution.
 3. Keep the lifecycle explicit with status transitions and traceability updates.
 
+Parallel lane for current-session plan incubation:
+
+1. Read `product-docs/methodology/plan-incubation-workflow.md`.
+2. If the operator prefers to start in agent Plan mode, allow a live working plan under `.cursor/plans/` or `plans/` as the incubation artifact.
+3. Materialize the durable result into `V-*`, `I-*`, `TB-*`, and related canonical docs once the direction is coherent.
+4. Do not frame this as retrofit unless the source is genuinely historical or mixed with historical evidence.
+
 Parallel lane for historical plan retrofit:
 
 1. Read `product-docs/methodology/legacy-retrofit-workflow.md`.
@@ -31,6 +38,7 @@ Recommended skill sequence for this method:
 - `ezkey-vision-intake`
 - `ezkey-backlog-triage`
 - `ezkey-grill-me`
+- `ezkey-plan-incubation` when the operator wants a live working plan first
 - `ezkey-tracer-bullet-promote`
 - `ezkey-component-design-pack`
 - `ezkey-test-strategy-planner`

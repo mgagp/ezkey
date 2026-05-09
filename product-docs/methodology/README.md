@@ -23,12 +23,13 @@ Ezkey already has strong global and component documentation. This pack adds the 
 2. `analysis-and-design-canon.md`
 3. `tracer-bullet-method.md`
 4. `testing-strategy-in-workflow.md`
-5. `legacy-retrofit-workflow.md`
-6. `blitz-intake-pattern.md`
-7. `session-start-guide.md`
-8. `quality-gates.md`
-9. `ai-collaboration-model.md`
-10. `nomenclature.md`
+5. `plan-incubation-workflow.md`
+6. `legacy-retrofit-workflow.md`
+7. `blitz-intake-pattern.md`
+8. `session-start-guide.md`
+9. `quality-gates.md`
+10. `ai-collaboration-model.md`
+11. `nomenclature.md`
 
 ## Scope boundaries
 
@@ -57,26 +58,30 @@ Use these prompts in a fresh session to trigger the method quickly.
 
 `Run ezkey-grill-me on I-* or TB-* and produce critical questions, top risks, and 2-3 design options with recommendation.`
 
-### 3) Promote to bounded execution
+### 3) Start with a live working plan first
+
+`Use ezkey-plan-incubation. Start in Plan mode for freeform option exploration, create a working plan, then materialize the durable output into V-* and/or I-* without treating it as retrofit.`
+
+### 4) Promote to bounded execution
 
 `If ready, use ezkey-tracer-bullet-promote and ezkey-test-strategy-planner to create TB-* and a test-plan slice.`
 
-### 4) Prepare component-level design
+### 5) Prepare component-level design
 
 `Use ezkey-component-design-pack for impacted components and link boundaries, mappings, validation, and error paths.`
 
-### 5) Gate and close
+### 6) Gate and close
 
 `Run ezkey-quality-gatekeeper, then ezkey-traceability-sync and ezkey-closeout for explicit status transitions and residual risks.`
 
-### 6) Retrofit historical plans
+### 7) Retrofit historical plans
 
 `Run ezkey-legacy-plan-miner on selected historical plans, then ezkey-retrofit-curator to map signal into canonical product-docs targets.`
 
-### 7) Retrofit from verbal history
+### 8) Retrofit from verbal history
 
 `Start legacy knowledge retrofit from verbal briefing. Use source type verbal, create R-*, then map signal into canonical docs.`
 
-### 8) Run a blitz intake (multi-item capture session)
+### 9) Run a blitz intake (multi-item capture session)
 
 `Run a blitz intake. I will dictate several items; capture verbatim, classify by batch, materialize V-*/I-*/R-* in English, and archive the scratch board to blitz-archive (do not delete).`
