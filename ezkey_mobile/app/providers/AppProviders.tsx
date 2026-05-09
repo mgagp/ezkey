@@ -3,6 +3,7 @@ import {ActivityIndicator, StyleSheet, View} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {AppNavigator} from '../navigation';
+import {AppErrorBoundary} from '../components/AppErrorBoundary';
 import {colors} from '../config/theme';
 import {initializeI18n} from '../i18n';
 
@@ -39,19 +40,21 @@ export const AppProviders: React.FC = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {ready ? (
-        <NavigationContainer>
-          <AppNavigator />
-        </NavigationContainer>
-      ) : (
-        <View
-          style={styles.loadingContainer}
-          accessibilityLabel="Loading application shell">
-          <ActivityIndicator color={colors.primaryLight} accessibilityLabel="Loading" />
-        </View>
-      )}
-    </QueryClientProvider>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        {ready ? (
+          <NavigationContainer>
+            <AppNavigator />
+          </NavigationContainer>
+        ) : (
+          <View
+            style={styles.loadingContainer}
+            accessibilityLabel="Loading application shell">
+            <ActivityIndicator color={colors.primaryLight} accessibilityLabel="Loading" />
+          </View>
+        )}
+      </QueryClientProvider>
+    </AppErrorBoundary>
   );
 };
 

@@ -46,6 +46,12 @@ reference mobile app.
 | [../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md](../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md) | Canonical bind/verify signed payload formats | Exact signature rules are shared protocol truth. |
 | [../../docs/MOBILE_DEVELOPER_GUIDE.md](../../docs/MOBILE_DEVELOPER_GUIDE.md) | Third-party mobile protocol implementation guidance | Broader than the reference app and intentionally rooted at the repository level. |
 
+## Quality and Continuous Improvement
+
+| Document | Category | When to read it |
+| --- | --- | --- |
+| [MOBILE_CODE_QUALITY_REVIEW.md](MOBILE_CODE_QUALITY_REVIEW.md) | Quality review — multi-session backlog | Starting point for any code quality improvement session. Contains initial observations (2026-05-08), prioritized actions (P1–P3), and a running status table to resume work across sessions. |
+
 ## Supporting and Operational Docs
 
 | Document | Category | When to read it |
