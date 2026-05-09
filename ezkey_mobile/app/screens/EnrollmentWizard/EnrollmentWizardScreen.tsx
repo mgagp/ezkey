@@ -10,9 +10,8 @@
  * @since 2025
  */
 
-import React, {useCallback, useState} from 'react';
+import React from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -22,31 +21,12 @@ import {
   View,
 } from 'react-native';
 import {StackScreenProps} from '@react-navigation/stack';
-import axios from 'axios';
 import {useTranslation} from 'react-i18next';
 import {useCameraPermission} from 'react-native-vision-camera';
-import {useSaveEnrollment} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
-import {enrollmentsApi} from '../../services/api/enrollments';
-import {instanceInfoApi} from '../../services/api/instanceInfo';
-import {BindEnrollmentResponse} from '../../services/api/types';
-import {cryptoService} from '../../services/crypto';
-import {DEFAULT_ENROLLMENT_APPROVAL_POLICY} from '../../services/security/approvalRequirement';
-import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
 import {EnrollmentScannerModal} from '../../components/EnrollmentScannerModal';
 import PinCodeInput from '../../components/PinCodeInput';
-import {env} from '../../config/env';
-import {integrationKeyAlgorithmBindError} from '../../utils/integrationKeyAlgorithm';
-import {
-  buildInstallation,
-  resolveEnrollmentAuthUrl,
-} from '../../utils/installationMetadata';
-import {parseQrPayload} from '../../utils/qrPayload';
-import {
-  buildBindPayload,
-  buildVerifyDevicePayload,
-  buildVerifyResultPayload,
-} from '../../services/crypto/enrollmentPayload';
+import {useEnrollmentWizard} from '../../hooks/useEnrollmentWizard';
 
 type Props = StackScreenProps<RootStackParamList, 'EnrollmentWizard'>;
 
@@ -135,6 +115,7 @@ const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
 
 /**
  * Walks the user through the Ezkey device enrollment workflow.
+ * All business logic is delegated to {@link useEnrollmentWizard}.
  *
  * @param navigation Stack navigation helper.
  * @since 2025
@@ -142,317 +123,28 @@ const EnrollmentInfoCard: React.FC<EnrollmentInfoCardProps> = ({
 export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
   const {t} = useTranslation();
   const {hasPermission: hasCameraPermission, requestPermission} = useCameraPermission();
-  const [draft, setDraft] = useState<EnrollmentDraft | undefined>();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isBinding, setIsBinding] = useState(false);
-  const [bindError, setBindError] = useState<string | undefined>();
-  const [cameraError, setCameraError] = useState<string | undefined>();
-  const [bindForm, setBindForm] = useState({
-    enrollmentId: '',
-    enrollmentProofToken: '',
-  });
-  const [enrollmentChallenge, setEnrollmentChallenge] = useState('');
-  const [challengeError, setChallengeError] = useState<string | undefined>();
-  const [scannerVisible, setScannerVisible] = useState(false);
-  const [authUrl, setAuthUrl] = useState<string | undefined>();
-  const saveEnrollment = useSaveEnrollment();
 
-  const extractErrorMessage = useCallback((error: unknown) => {
-    if (axios.isAxiosError(error)) {
-      const data = error.response?.data as Record<string, unknown> | undefined;
-      const message =
-        (typeof data?.message === 'string' ? data.message : null) ??
-        (typeof data?.detail === 'string' ? data.detail : null) ??
-        (typeof data?.error === 'string' ? data.error : null) ??
-        (typeof data?.code === 'string' ? data.code : null) ??
-        error.message ??
-        t('enrollmentWizard.requestFailed');
-      return message;
-    }
-    if (error instanceof Error) {
-      return error.message;
-    }
-    return t('enrollmentWizard.unexpectedError');
-  }, [t]);
-
-  const buildDraft = useCallback(
-    (
-      response: BindEnrollmentResponse,
-      request: {enrollmentId: string; enrollmentProofToken: string},
-    ): EnrollmentDraft => {
-      const rawId = response.enrollmentId ?? request.enrollmentId;
-      const enrollmentId = String(rawId);
-      return {
-        id: enrollmentId,
-        integrationId: enrollmentId,
-        integrationName: response.integrationName ?? t('enrollmentWizard.integrationFallback'),
-        tenantName: response.tenantName ?? undefined,
-        tenantId: response.tenantId,
-        tenantDescription: response.tenantDescription,
-        enrollmentProofToken: response.enrollmentProofToken ?? request.enrollmentProofToken,
-        integrationPublicKey: response.integrationPublicKey,
-        integrationDescription: response.integrationDescription,
-        enrollmentName: response.enrollmentName,
-        deviceLabel: response.enrollmentName,
-      };
-    },
-    [t],
-  );
-
-  const performBinding = useCallback(
-    async (override?: {enrollmentId: string; enrollmentProofToken: string; authUrl?: string}) => {
-      if (isBinding) {
-        return;
-      }
-      const enrollmentId = (override?.enrollmentId ?? bindForm.enrollmentId).trim();
-      const enrollmentProofToken = (override?.enrollmentProofToken ?? bindForm.enrollmentProofToken).trim();
-      if (!enrollmentId || !enrollmentProofToken) {
-        setScannerVisible(false);
-        setBindError(t('enrollmentWizard.missingIdOrToken'));
-        return;
-      }
-      const urlForBind =
-        (override?.authUrl !== undefined ? override.authUrl : authUrl)?.trim() || undefined;
-      const hasGlobalBase = Boolean(env.configuredApiBaseUrl?.trim());
-      if (!urlForBind && !hasGlobalBase) {
-        setScannerVisible(false);
-        setBindError(t('enrollmentWizard.missingAuthUrl'));
-        return;
-      }
-      setBindError(undefined);
-      setIsBinding(true);
-      setDraft(undefined);
-      setEnrollmentChallenge('');
-      setChallengeError(undefined);
-      try {
-        setBindForm(previous => ({
-          ...previous,
-          enrollmentId,
-          enrollmentProofToken,
-        }));
-        const response = await enrollmentsApi.bind(
-          {
-            enrollmentId,
-            enrollmentProofToken,
-          },
-          urlForBind,
-        );
-        const algoErr = integrationKeyAlgorithmBindError(response.integrationKeyAlgorithm);
-        if (algoErr) {
-          setBindError(algoErr);
-          setScannerVisible(false);
-          return;
-        }
-        const bindPayload = buildBindPayload(response);
-        const bindSigOk = await cryptoService.verify(
-          bindPayload,
-          response.enrollmentBindPayloadSignedByIntegration,
-          response.integrationPublicKey,
-        );
-        if (!bindSigOk) {
-          setBindError(t('enrollmentWizard.invalidServerIdentity'));
-          setScannerVisible(false);
-          return;
-        }
-        const nextDraft = buildDraft(response, {enrollmentId, enrollmentProofToken});
-        setDraft(nextDraft);
-        setScannerVisible(false);
-      } catch (error) {
-        setBindError(extractErrorMessage(error));
-        setScannerVisible(false);
-      } finally {
-        setIsBinding(false);
-      }
-    },
-    [authUrl, bindForm, buildDraft, extractErrorMessage, isBinding, t],
-  );
-
-  const finalizeEnrollment = useCallback(async () => {
-    if (!draft) {
-      Alert.alert(t('enrollmentWizard.missingScanTitle'), t('enrollmentWizard.missingScanBody'));
-      return;
-    }
-    const challengeResponse = enrollmentChallenge.trim();
-    if (challengeResponse.length !== 6) {
-      setChallengeError(t('enrollmentWizard.challengeLength'));
-      return;
-    }
-    const enrollmentId = draft.id.toString();
-    const now = new Date().toISOString();
-    const effectiveAuthUrl = resolveEnrollmentAuthUrl(authUrl);
-    setIsSubmitting(true);
-    try {
-      // Ensure EC P-256 key pair exists for this enrollment (generates if needed)
-      await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
-      // Get EC P-256 public key for this enrollment
-      const publicKey = await cryptoService.getPublicKey(enrollmentId);
-      const devicePrivateKeyStorageTier =
-        await cryptoService.getEnrollmentPrivateKeyStorageTier(enrollmentId);
-      const challengeNum = Number(challengeResponse);
-      const verifyDevicePayload = buildVerifyDevicePayload(
-        draft.enrollmentProofToken,
-        Number(draft.id),
-        challengeNum,
-        publicKey,
-      );
-      const proofTokenSigned = await cryptoService.sign(enrollmentId, verifyDevicePayload);
-      const verifyResponse = await enrollmentsApi.verify({
-        enrollmentId: draft.id,
-        devicePublicKey: publicKey,
-        enrollmentProofTokenSigned: proofTokenSigned,
-        challengeResponse,
-        devicePrivateKeyStorageTier,
-      }, effectiveAuthUrl);
-      const verifyResultPayload = buildVerifyResultPayload(
-        draft.enrollmentProofToken,
-        Number(draft.id),
-        'VERIFIED',
-        verifyResponse.enrollmentVerifyMessage,
-      );
-      const verifyResultOk = await cryptoService.verify(
-        verifyResultPayload,
-        verifyResponse.enrollmentVerifyPayloadSignedByIntegration,
-        draft.integrationPublicKey,
-      );
-      if (!verifyResultOk) {
-        setChallengeError(t('enrollmentWizard.invalidEnrollmentResult'));
-        setEnrollmentChallenge('');
-        return;
-      }
-      let installation =
-        effectiveAuthUrl != null ? buildInstallation(effectiveAuthUrl, undefined, now) : undefined;
-
-      if (effectiveAuthUrl) {
-        try {
-          const instanceInfo = await instanceInfoApi.get(effectiveAuthUrl);
-          installation = buildInstallation(effectiveAuthUrl, instanceInfo, now);
-        } catch (error) {
-          console.warn('[EnrollmentWizard] Failed to fetch installation metadata:', error);
-        }
-      }
-
-      const record: StoredEnrollment = {
-        id: draft.id,
-        integrationId: draft.integrationId,
-        integrationName: draft.integrationName,
-        tenantName: draft.tenantName,
-        tenantId: draft.tenantId,
-        tenantDescription: draft.tenantDescription,
-        createdAt: now,
-        lastActivityAt: now,
-        favorited: false,
-        enrollmentProofToken: draft.enrollmentProofToken,
-        enrollmentId: enrollmentId,
-        integrationPublicKey: draft.integrationPublicKey,
-        enrollmentName: draft.enrollmentName,
-        deviceLabel: draft.deviceLabel,
-        approvalPolicy: DEFAULT_ENROLLMENT_APPROVAL_POLICY,
-        installation,
-      };
-      await saveEnrollment.mutateAsync(record);
-      setDraft(undefined);
-      setEnrollmentChallenge('');
-      navigation.popToTop();
-    } catch (error) {
-      const message = extractErrorMessage(error);
-      setChallengeError(message);
-      setEnrollmentChallenge('');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [
-    authUrl,
+  const {
     draft,
+    isSubmitting,
+    bindError,
+    cameraError,
     enrollmentChallenge,
-    extractErrorMessage,
-    navigation,
-    saveEnrollment,
-    t,
-  ]);
-
-  const handlePrimary = useCallback(() => {
-    if (!draft) {
-      setBindError(undefined);
-      setCameraError(undefined);
-      if (hasCameraPermission) {
-        setScannerVisible(true);
-      } else {
-        requestPermission().then(granted => {
-          if (granted) {
-            setScannerVisible(true);
-          } else {
-            setCameraError(t('enrollmentWizard.cameraRequired'));
-          }
-        });
-      }
-      return;
-    }
-    if (enrollmentChallenge.trim().length !== 6) {
-      setChallengeError(t('enrollmentWizard.challengeLength'));
-      return;
-    }
-    setChallengeError(undefined);
-    finalizeEnrollment().catch(() => {});
-  }, [draft, enrollmentChallenge, finalizeEnrollment, hasCameraPermission, requestPermission, t]);
-
-  const handleSecondary = useCallback(() => {
-    if (draft) {
-      if (!isBinding && !isSubmitting) {
-        setDraft(undefined);
-        setEnrollmentChallenge('');
-        setChallengeError(undefined);
-        navigation.popToTop();
-      }
-      return;
-    }
-    Alert.alert(
-      t('enrollmentWizard.cameraWhyTitle'),
-      t('enrollmentWizard.cameraWhyBody'),
-    );
-  }, [draft, isBinding, isSubmitting, navigation, t]);
-
-  const handleBack = useCallback(() => {
-    if (isSubmitting || isBinding) {
-      return;
-    }
-    if (draft) {
-      setChallengeError(undefined);
-      setEnrollmentChallenge('');
-      setDraft(undefined);
-      return;
-    }
-    navigation.goBack();
-  }, [draft, isBinding, isSubmitting, navigation]);
-
-  const hasDraft = Boolean(draft);
-  const challengeMissing = hasDraft && enrollmentChallenge.trim().length !== 6;
-  const primaryDisabled =
-    (hasDraft && isSubmitting) || (!hasDraft && isBinding) || challengeMissing;
-  const secondaryDisabled = (hasDraft && isSubmitting) || (!hasDraft && isBinding);
-  const primaryLabel = hasDraft
-    ? isSubmitting
-      ? t('enrollmentWizard.finishing')
-      : t('enrollmentWizard.complete')
-    : isBinding
-      ? t('enrollmentWizard.binding')
-      : t('enrollmentWizard.openScanner');
-  const secondaryLabel = hasDraft ? t('enrollmentWizard.cancel') : t('enrollmentWizard.learnMore');
-
-  const localizeQrError = useCallback(
-    (message: string) => {
-      switch (message) {
-        case 'Empty payload':
-          return t('enrollmentWizard.qrEmptyPayload');
-        case 'Invalid Auth API URL in QR payload.':
-          return t('enrollmentWizard.qrInvalidAuthUrl');
-        case 'Unsupported QR format':
-          return t('enrollmentWizard.qrUnsupportedFormat');
-        default:
-          return message;
-      }
-    },
-    [t],
-  );
+    challengeError,
+    scannerVisible,
+    primaryLabel,
+    secondaryLabel,
+    primaryDisabled,
+    secondaryDisabled,
+    hasDraft,
+    setEnrollmentChallenge,
+    setChallengeError,
+    handlePrimary,
+    handleSecondary,
+    handleBack,
+    handleQrScanned,
+    handleScannerDismiss,
+  } = useEnrollmentWizard(navigation.popToTop);
 
   return (
     <>
@@ -466,7 +158,9 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => handleBack(navigation.goBack)}
+            style={styles.backButton}>
             <Text style={styles.backLabel}>{t('enrollmentWizard.back')}</Text>
           </TouchableOpacity>
           <View style={styles.backButton} />
@@ -526,7 +220,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
-          onPress={handlePrimary}
+          onPress={() => handlePrimary(hasCameraPermission, requestPermission)}
           disabled={primaryDisabled}>
           <Text style={styles.primaryLabel}>{primaryLabel}</Text>
         </TouchableOpacity>
@@ -534,34 +228,8 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     </KeyboardAvoidingView>
       <EnrollmentScannerModal
         visible={scannerVisible}
-        onDismiss={() => setScannerVisible(false)}
-        onScanned={value => {
-          if (__DEV__) {
-            console.log('[EnrollmentWizard] Raw QR value:', JSON.stringify(value));
-          }
-          try {
-            const parsed = parseQrPayload(value);
-            if (__DEV__) {
-              console.log('[EnrollmentWizard] Parsed QR payload:', JSON.stringify(parsed));
-            }
-            setAuthUrl(parsed.authUrl);
-            setBindForm(() => ({
-              enrollmentId: parsed.enrollmentId,
-              enrollmentProofToken: parsed.enrollmentProofToken,
-            }));
-            setBindError(undefined);
-            performBinding(parsed);
-          } catch (error) {
-            const rawMessage = error instanceof Error ? error.message : String(error);
-            const message = localizeQrError(rawMessage);
-            setScannerVisible(false);
-            console.warn('[EnrollmentWizard] Invalid QR payload:', rawMessage, '| raw:', JSON.stringify(value));
-            Alert.alert(
-              t('enrollmentWizard.invalidQrTitle'),
-              t('enrollmentWizard.invalidQrBody', {details: message}),
-            );
-          }
-        }}
+        onDismiss={handleScannerDismiss}
+        onScanned={handleQrScanned}
       />
     </>
   );
@@ -714,115 +382,115 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   errorBannerText: {
-    fontSize: 15,
-    fontWeight: '500',
     color: '#ff7878',
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 18,
   },
   scanInstructions: {
-    gap: 12,
+    marginTop: 16,
   },
   infoCard: {
-    marginTop: 24,
     borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#0f1628',
+    backgroundColor: '#111620',
     borderWidth: 1,
-    borderColor: 'rgba(54, 115, 223, 0.2)',
+    borderColor: 'rgba(54, 115, 223, 0.18)',
+    overflow: 'hidden',
+    marginTop: 8,
   },
   infoCardCompact: {
     marginTop: 0,
   },
   infoCardHeader: {
-    backgroundColor: 'rgba(18, 39, 92, 0.6)',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(54, 115, 223, 0.15)',
+    backgroundColor: 'rgba(54, 115, 223, 0.12)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   infoCardHeaderCompact: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   infoCardTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#d6e6ff',
+    color: '#cdd9f7',
   },
   infoCardBody: {
-    padding: 18,
-    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 6,
   },
   infoCardBodyCompact: {
-    padding: 14,
-    gap: 8,
-  },
-  infoRow: {
+    paddingVertical: 8,
     gap: 4,
   },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   infoLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
     color: '#5a7aa8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontWeight: '500',
+    flexShrink: 0,
   },
   infoValue: {
-    fontSize: 15,
-    color: '#f4f7ff',
-    lineHeight: 22,
+    fontSize: 12,
+    color: '#c2c8d5',
+    textAlign: 'right',
+    flexShrink: 1,
   },
   infoValueMuted: {
-    fontSize: 13,
-    color: '#9aa3b6',
-    lineHeight: 20,
-    marginTop: -4,
+    fontSize: 11,
+    color: '#6b7a96',
+    marginTop: 2,
+    textAlign: 'right',
   },
   infoValueSmall: {
-    fontSize: 12,
-    color: '#5a9cf7',
+    fontSize: 11,
+    color: '#c2c8d5',
+    textAlign: 'right',
     flexShrink: 1,
   },
   infoDivider: {
     height: 1,
-    backgroundColor: 'rgba(54, 115, 223, 0.12)',
-    marginVertical: 8,
+    backgroundColor: 'rgba(54, 115, 223, 0.1)',
+    marginVertical: 2,
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     gap: 12,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    paddingTop: 12,
   },
   primaryButton: {
     flex: 1,
-    backgroundColor: '#3076df',
+    backgroundColor: '#3673df',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   secondaryButton: {
     flex: 1,
+    backgroundColor: '#151923',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#5f6780',
     paddingVertical: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(54, 115, 223, 0.3)',
   },
   disabledButton: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   secondaryLabel: {
-    fontSize: 16,
+    color: '#9aa3b6',
+    fontSize: 15,
     fontWeight: '600',
-    color: '#f4f7ff',
   },
   primaryLabel: {
-    fontSize: 16,
-    fontWeight: '600',
     color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
-
-
