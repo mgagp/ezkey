@@ -1,0 +1,28 @@
+---
+# Copy to run.yaml (gitignored convention: keep secrets out of git).
+# Bearer token via: export EZKEY_ADMIN_TOKEN='...'
+scenario_label: protocol-lab-cleanstart-accept
+
+base_urls:
+  admin: "http://localhost:9080"
+  auth: "http://localhost:8080"
+  crypto: "http://localhost:9090"
+
+integration_id: 1
+
+admin_bearer_token: ""
+
+enrollment:
+  # Person-like didactic name (see didactic/AGENTS.md — Alice/Bob roster)
+  name: "Alice Chen"
+  auth_attempt_challenge_required: false
+
+scenario:
+  auth_challenge_requested: false
+  respond_accepted: true
+
+wait:
+  timeout_seconds: 120
+  poll_seconds: 2
+
+device_private_key_storage_tier: "STANDARD"

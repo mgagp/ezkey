@@ -1,0 +1,9 @@
+# Generated protocol run artifacts (tokens, keys, transcripts)
+**/artifacts/
+**/artifacts_validate/
+
+# Local scenario secrets (copy from run.example*.yaml)
+scenarios/**/run.yaml
+
+# Ephemeral bearer from one-shot bootstrap scripts (do not commit)
+.scratch/
