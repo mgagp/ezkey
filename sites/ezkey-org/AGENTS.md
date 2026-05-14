@@ -150,6 +150,58 @@ When **regenerating** HTML from Markdown, **omit** YAML front matter and **omit*
 
 ---
 
+## Visual design identity and patterns
+
+This section records the design decisions made during active development, in reverse chronological order. Use it as a reference when evolving the site to ensure new work stays coherent with established patterns.
+
+### May 2026 — Amber pill section dividers on `articles.html`
+
+**Decision:** Section headings on `articles.html` / `fr/articles.html` use an **amber pill divider** style (Direction B, chosen over a plain rule and an architectural band after A/B/C preview comparison).
+
+**Implementation (`.page-subheading` CSS + `<span>` wrapper in HTML):**
+- Container: `display: flex; align-items: center; gap: 16px;` — traits grow from each side of the pill via `::before` / `::after` pseudo-elements.
+- Left trait: `linear-gradient(90deg, transparent → rgba(251,191,36,0.62))`, right trait: inverse direction.
+- Pill (`span`): `font-size: 0.78rem`, `font-weight: 700`, `letter-spacing: 0.14em`, `text-transform: uppercase`, `color: #fef3c7` (warm cream), `padding: 5px 15px`, `border-radius: 20px`, `background: rgba(251,191,36,0.13)`, `border: 1px solid rgba(251,191,36,0.48)`, `box-shadow: 0 0 14px rgba(251,191,36,0.2)`.
+- HTML pattern: `<p class="page-subheading"><span>Section title</span></p>`.
+
+**Rationale:** The pill is immediately recognisable during fast scroll; it creates a visual pause without being aggressive. It borrows directly from the EXP1 badge color vocabulary on the homepage, creating site-wide coherence without introducing a new palette.
+
+**Sections using this pattern:** "About Ezkey" / "À propos d'Ezkey" and "Craft & engineering" / "Craft & ingénierie" on `articles.html` / `fr/articles.html`.
+
+---
+
+### April–May 2026 — Article card pattern (`pub-card`)
+
+**Decision:** Long-form article cards on `articles.html` / `fr/articles.html` always include a **dated meta line** above the title (e.g. `Essay · May 13, 2026`). Cards are sorted **newest first** within each section.
+
+**Implementation (`.pub-card`):**
+- `background: rgba(255,255,255,0.08)`, `border: 1px solid rgba(255,255,255,0.2)`, `border-radius: 16px`, `padding: 22px 22px 20px`.
+- Hover: `translateY(-4px)` lift + `box-shadow`.
+- Elements in order: `.pub-card-meta` (date + type, uppercase, 0.76rem, muted), `.pub-card-title` (1.08rem, white, 600), `.pub-card-desc` (0.92rem, white 78%, flex:1), `.pub-card-cta` (underline bottom border, 0.88rem).
+- Grid: `repeat(auto-fit, minmax(260px, 1fr))`, gap 18px.
+
+**Rationale:** Dates visible on cards reinforce the "dated notes in the open" editorial principle. Two sections ("About Ezkey" product content vs. "Craft & engineering" independent essays) separate product-explaining articles from methodology writing.
+
+---
+
+### Design palette summary
+
+The site uses a **single coherent palette** derived from the background gradient:
+
+| Role | Color / value | Usage |
+| ---- | ------------- | ----- |
+| Background gradient | `#667eea → #764ba2` (135°) | `body` on all pages |
+| Brand amber (primary accent) | `#f59e0b` / `#ea580c` / `#fde68a` gradient | EXP1 badge, pill dividers, amber glow effects |
+| Pill accent | `rgba(251, 191, 36, …)` at various opacities | Section divider pills, divider lines |
+| Warm cream text | `#fef3c7` | Pill label text, accent headings |
+| White primary | `#ffffff` | Card titles, nav links |
+| White muted | `rgba(255,255,255, 0.62–0.82)` | Meta, descriptions, secondary text |
+| Panel background | `rgba(255,255,255, 0.08–0.15)` | Cards, page-panel |
+
+**Rule for new visual elements:** before introducing a new color, check whether the amber family or the existing white-on-gradient treatments already cover the need. Prefer extending the amber vocabulary over introducing new hues.
+
+---
+
 ## Related paths
 
 | Path | Role |
