@@ -1,6 +1,11 @@
 ---
-status: draft
 audience: "Lecteur avec notions informatiques générales ; pas de détails d’implémentation dans le corps publié."
+status: published
+published_html_en: /ezkey-at-a-glance-trust-zone-mobile.html
+published_html_fr: /fr/ezkey-at-a-glance-trust-zone-mobile.html
+published_date: 2026-04-11
+html_amended_post_publish: true
+source_of_truth: html
 ---
 
 # Ezkey en un coup d’œil — zone de confiance, mobile et flux essentiels

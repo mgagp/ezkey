@@ -1,8 +1,13 @@
 ---
-status: draft
 audience: "Invité·e·s et lecteurs du site ; pas de tutoriel ici."
 planned_slug_fr: "experimental-preview-exp1.html"
 planned_canonical: "https://ezkey.org/fr/experimental-preview-exp1.html"
+status: published
+published_html_en: /experimental-preview-exp1.html
+published_html_fr: /fr/experimental-preview-exp1.html
+published_date: 2026-05
+html_amended_post_publish: true
+source_of_truth: html
 ---
 
 # Préversion technologique exp1 — instance expérimentale et invitations

@@ -1,8 +1,9 @@
 ---
-status: draft
 audience: "Développeurs expérimentés, leads techniques, architectes et décideurs proches du delivery ; analyse de marché en voix personnelle, avec prudence sur les projections."
 planned_slug_fr: "velocite-logicielle-budgets-ia-et-segmentation-du-marche.html"
 planned_canonical: "https://ezkey.org/fr/velocite-logicielle-budgets-ia-et-segmentation-du-marche.html"
+status: draft
+source_of_truth: draft
 ---
 
 # Vélocité logicielle, budgets IA et nouvelle segmentation du marché

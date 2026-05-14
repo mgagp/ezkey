@@ -1,8 +1,9 @@
 ---
-status: draft
 audience: "Développeurs expérimentés, architectes pragmatiques, leads techniques ; retour d'expérience personnel sur la découvrabilité documentaire et la collaboration avec l'IA."
 planned_slug_fr: "de-greenfield-a-brownfield-puis-retour-au-vert.html"
 planned_canonical: "https://ezkey.org/fr/de-greenfield-a-brownfield-puis-retour-au-vert.html"
+status: draft
+source_of_truth: draft
 ---
 
 # De greenfield à brownfield, puis retour au vert

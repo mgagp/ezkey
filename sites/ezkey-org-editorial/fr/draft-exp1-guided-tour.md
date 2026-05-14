@@ -1,11 +1,16 @@
 ---
-status: draft
 audience: "Invited EXP1 explorers (technically fluent: engineers, analysts, tech press). They receive a deferred activation code from operators; hands-on scripted tour through Admin UI, mobile enrollment, and Demo Acme App to experience a complete Ezkey scenario."
 planned_slug_fr: "exp1-guided-tour.html"
 planned_canonical_fr: "https://ezkey.org/fr/exp1-guided-tour.html"
 planned_slug_en: "exp1-guided-tour.html"
 planned_canonical_en: "https://ezkey.org/exp1-guided-tour.html"
 screenshot_assets_dir: "/exp1-guided-tour/"
+status: published
+published_html_en: /exp1-guided-tour.html
+published_html_fr: /fr/exp1-guided-tour.html
+published_date: 2026-04
+html_amended_post_publish: true
+source_of_truth: html
 ---
 
 # EXP1 — parcours guidé : cycle complet jusqu’à la connexion avec l’app démo Acme

@@ -1,8 +1,9 @@
 ---
-status: draft
 audience: "Invited EXP1 users acting as Tenant Admins; conceptual overview of the Admin UI (mental map), not a hands-on tutorial or guided walkthrough."
 planned_slug_fr: "exp1-admin-ui-overview.html"
 planned_canonical: "https://ezkey.org/fr/exp1-admin-ui-overview.html"
+status: draft
+source_of_truth: draft
 ---
 
 # EXP1 — survol conceptuel de l’Admin UI Ezkey (administrateur de locataire)

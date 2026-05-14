@@ -72,26 +72,71 @@ Operators may use **Wispr Flow** or other dictation tools. Speech recognition of
 
 ---
 
-## Draft Markdown (`draft-*.md`) vs published HTML
+## Draft Markdown (`draft-*.md`) — location and lifecycle
 
-Some French drafts under **`fr/`** (e.g. `draft-ezkey-*.md`) are the **working source** for articles. They may contain **editorial positioning** that must **not** appear in the public HTML.
+### Physical location — critical rule
 
-## Default article workflow
+**Draft files MUST live in `sites/ezkey-org-editorial/fr/`, never in `sites/ezkey-org/`.** Wrangler deploys everything under `sites/ezkey-org/` to ezkey.org with no filtering. Any `draft-*.md` left inside the deploy folder is publicly accessible in plain text.
 
-For long-form editorial work on ezkey.org, the default execution order is:
+```
+sites/
+  ezkey-org/            ← Wrangler deploys all of this — NO drafts here
+  ezkey-org-editorial/  ← never touched by Wrangler
+    fr/
+      draft-*.md        ← all drafts live here
+```
 
-1. **Start with a French draft only** under **`sites/ezkey-org/fr/draft-<english-filename>.md`**.
-2. **Do not** create or update the published HTML yet.
-3. **Do not** attach the article to **[`fr/articles.html`](fr/articles.html)** (or the English [`articles.html`](articles.html)) at draft stage.
-4. Refine the French draft until the narrative, angle, and exclusions are stable.
-5. Only then, if explicitly requested or clearly part of the next approved step, generate the published French HTML, add it to **[`fr/articles.html`](fr/articles.html)**, and add the English counterpart to [`articles.html`](articles.html) when publishing both locales.
+### YAML front matter — lifecycle metadata
 
-This means the expected first deliverable for an article plan is a **French draft markdown file not linked from the article index**.
+Every draft carries a YAML front matter block. Standard fields:
 
-**Convention (single file, two layers):**
+```yaml
+---
+status: draft              # draft | published | archived
+audience: "..."            # target reader, tone guidance — NOT published in HTML
+# --- Fields added at publication time ---
+published_html_en: /some-slug.html
+published_html_fr: /fr/some-slug.html
+published_date: 2026-05-13
+html_amended_post_publish: false   # true if HTML was edited directly after publication
+source_of_truth: html              # draft | html — which file is authoritative if they diverge
+# --- Optional planning fields (pre-publication) ---
+planned_slug_fr: "some-slug.html"
+planned_canonical: "https://ezkey.org/fr/some-slug.html"
+---
+```
 
-1. **YAML front matter** (optional, at the very top) — **not** copied into article body HTML: `status`, `audience`, or other short metadata for authors and tooling.
-2. **HTML comment blocks** — **not** published when generating or hand-syncing HTML. Use **one** multiline HTML comment (everything from `<!-- ezkey-org:exclude-start` through `ezkey-org:exclude-end -->`):
+**`source_of_truth` semantics:**
+- `draft` — the markdown is the master; HTML was generated from it and not since amended.
+- `html` — the published HTML has been edited directly after generation; the markdown may be outdated. Treat the HTML as authoritative. The draft is an archived working document only.
+
+### Article lifecycle states
+
+| State | `status` value | `source_of_truth` | Location |
+|-------|---------------|-------------------|----------|
+| Work in progress | `draft` | `draft` | `ezkey-org-editorial/fr/` |
+| Just published, HTML not yet amended | `published` | `html` | `ezkey-org-editorial/fr/` |
+| Published, HTML amended post-publish | `published` | `html` | `ezkey-org-editorial/fr/` |
+| No longer relevant | `archived` | — | `ezkey-org-editorial/fr/` |
+
+### Publication checklist (when a draft is ready)
+
+1. Generate the French HTML under `sites/ezkey-org/fr/<slug>.html`.
+2. Generate or translate the English HTML under `sites/ezkey-org/<slug>.html`.
+3. Add article cards to both `articles.html` and `fr/articles.html` (newest first within the correct section).
+4. Add both URLs to `sitemap.xml`.
+5. Update the draft front matter: set `status: published`, add `published_html_en`, `published_html_fr`, `published_date`, `html_amended_post_publish: false`, `source_of_truth: html`.
+6. The draft stays in `ezkey-org-editorial/fr/` — do **not** move it to the deploy folder.
+7. Deploy to production.
+
+### Workflow flexibility
+
+There is no requirement to route every HTML amendment through the draft. Editing the HTML directly is often the most efficient path. When that happens, set `html_amended_post_publish: true` and `source_of_truth: html` in the draft front matter. The draft then serves as an archived working document; it may eventually be deleted if it no longer adds value.
+
+### Draft file conventions (two-layer structure)
+
+1. **YAML front matter** at the very top — lifecycle metadata and editorial context; never copied into published HTML.
+2. **HTML comment exclude blocks** for internal notes that must not publish:
 
    ```text
    <!-- ezkey-org:exclude-start
@@ -99,11 +144,11 @@ This means the expected first deliverable for an article plan is a **French draf
    ezkey-org:exclude-end -->
    ```
 
-   Do **not** use an empty `<!-- ezkey-org:exclude-start -->` immediately closed with `-->` and then put body text after it — that text would **not** be inside the comment and would still publish.
+   Do **not** use an empty `<!-- ezkey-org:exclude-start -->` immediately closed with `-->` — text after it would not be inside the comment and would still be treated as publishable.
 
-Use these blocks for: internal objectives (« schéma mental », niveau de lecteur), working titles (« sans sur-détailler »), captions (« à transposer en illustration »), scratch notes, and duplicate wording kept for context. **Headings and paragraphs outside these blocks** are the **publishable article** (subject to normal editing).
+   Use exclude blocks for: editorial objectives, internal working titles, scratch notes, illustration captions, duplicate context kept for drafting. **Headings and paragraphs outside these blocks** are the publishable article body.
 
-When **regenerating** HTML from Markdown, **omit** YAML front matter and **omit** every multiline comment that starts with `<!-- ezkey-org:exclude-start`. Mermaid or other diagram source in drafts may stay inside an exclude block if the site uses a static SVG/HTML diagram in the `.html` instead.
+When generating HTML from a draft, **omit** the YAML front matter and **omit** every `<!-- ezkey-org:exclude-start … ezkey-org:exclude-end -->` block entirely.
 
 ---
 
@@ -216,6 +261,7 @@ The site uses a **single coherent palette** derived from the background gradient
 | Path | Role |
 | ---- | ---- |
 | [README.md](README.md) | Short description of folder contents |
+| [../../sites/ezkey-org-editorial/fr/](../../sites/ezkey-org-editorial/fr/) | Editorial drafts — NOT deployed by Wrangler |
 | [index.html](index.html) | English landing page |
 | [fr/index.html](fr/index.html) | French landing page |
 | [source-and-evaluation.html](source-and-evaluation.html) / [fr/source-and-evaluation.html](fr/source-and-evaluation.html) | Private repo; docs/run-local framing |

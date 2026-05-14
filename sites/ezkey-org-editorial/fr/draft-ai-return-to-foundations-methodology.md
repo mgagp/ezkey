@@ -1,8 +1,13 @@
 ---
-status: draft
 audience: "Développeurs expérimentés, architectes techniques, leads pragmatiques ; ton de retour d'expérience, sans détailler d'implémentation produit dans le corps principal."
 planned_slug_fr: "retour-aux-sources-developpeur-ere-ia.html"
 planned_canonical: "https://ezkey.org/fr/retour-aux-sources-developpeur-ere-ia.html"
+status: published
+published_html_en: /ai-return-to-foundations-methodology.html
+published_html_fr: /fr/retour-aux-sources-developpeur-ere-ia.html
+published_date: 2026-05-13
+html_amended_post_publish: false
+source_of_truth: html
 ---
 
 # Le retour aux sources du développeur à l'ère de l'IA
