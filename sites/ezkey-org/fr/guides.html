@@ -1,24 +1,24 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta property="og:title" content="Ezkey — Source code &amp; evaluation">
-    <meta property="og:description" content="Ezkey is planned as MIT open source; the repository is private until public opening. How to evaluate the project in the meantime.">
-    <meta property="og:url" content="https://ezkey.org/source-and-evaluation.html">
+    <meta name="description" content="Guides pas à pas et parcours pour évaluer et faire tourner Ezkey — de la préversion expérimentale aux flux opérateurs.">
+    <meta property="og:title" content="Ezkey — Guides et parcours">
+    <meta property="og:description" content="Guides pas à pas et parcours pour évaluer et faire tourner Ezkey — de la préversion expérimentale aux flux opérateurs.">
+    <meta property="og:url" content="https://ezkey.org/fr/guides.html">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Ezkey">
     <meta property="og:image" content="https://ezkey.org/logo.svg">
-    <meta property="og:locale" content="en_US">
+    <meta property="og:locale" content="fr_FR">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Ezkey — Source code &amp; evaluation">
-    <meta name="twitter:description" content="Ezkey is planned as MIT open source; the repository is private until public opening. How to evaluate the project in the meantime.">
+    <meta name="twitter:title" content="Ezkey — Guides et parcours">
+    <meta name="twitter:description" content="Guides pas à pas et parcours pour évaluer et faire tourner Ezkey — de la préversion expérimentale aux flux opérateurs.">
     <meta name="twitter:image" content="https://ezkey.org/logo.svg">
 
-    <link rel="alternate" hreflang="en" href="https://ezkey.org/source-and-evaluation.html">
-    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/source-and-evaluation.html">
-    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/source-and-evaluation.html">
-    <title>Ezkey — Source code &amp; evaluation</title>
-    <meta name="description" content="Ezkey is planned as MIT open source; the repository is private until public opening. How to evaluate the project in the meantime.">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/guides.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/guides.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/guides.html">
+    <title>Ezkey — Guides et parcours</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -121,43 +121,103 @@
             color: rgba(255, 255, 255, 0.9);
             font-size: 1.05rem;
             line-height: 1.6;
-            margin-bottom: 22px;
+            margin-bottom: 28px;
             text-align: center;
         }
 
-        .page-panel h2 {
-            color: white;
+        .page-intro a { color: white; }
+
+        .guide-block {
+            background:
+                linear-gradient(165deg, rgba(255, 237, 213, 0.09) 0%, transparent 42%),
+                rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 16px;
+            padding: 22px 24px 24px;
+            margin-bottom: 20px;
+            box-shadow:
+                0 0 0 1px rgba(234, 88, 12, 0.32),
+                0 5px 22px rgba(234, 88, 12, 0.12),
+                0 0 40px rgba(251, 191, 36, 0.08);
+        }
+
+        .guide-block-label {
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 700;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .guide-block-title {
             font-size: 1.12rem;
-            font-weight: 600;
-            margin: 1.35em 0 0.55em;
-            scroll-margin-top: 1rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0 0 8px;
+            line-height: 1.3;
         }
 
-        .page-panel h2:first-of-type { margin-top: 0.35em; }
-
-        .page-panel p {
+        .guide-block-desc {
             color: rgba(255, 255, 255, 0.9);
-            font-size: 1.02rem;
-            line-height: 1.65;
-            margin-bottom: 12px;
-        }
-
-        .page-panel ul {
-            margin: 8px 0 12px 1.25em;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.02rem;
+            font-size: 0.98rem;
             line-height: 1.55;
+            margin: 0 0 16px;
         }
 
-        .page-panel li { margin-bottom: 6px; }
+        .guide-block-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 12px;
+        }
 
-        .page-panel a {
-            color: white;
+        .guide-block-ctas {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .guide-block-cta {
+            display: inline-block;
+            font-weight: 700;
+            color: #fff !important;
+            text-decoration: none !important;
+            padding: 8px 16px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.38);
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .guide-block-cta:hover {
+            background: rgba(255, 255, 255, 0.28);
+            border-color: rgba(255, 255, 255, 0.55);
+        }
+
+        .guide-block-lang {
+            margin-left: auto;
+            font-size: 0.9rem;
             font-weight: 600;
+            color: #fff;
+            text-underline-offset: 2px;
+            white-space: nowrap;
+            align-self: center;
             text-decoration: underline;
         }
 
-        .page-panel a:hover { text-decoration-thickness: 2px; }
+        .guide-block-lang:hover { color: #fff; }
+
+        @media (max-width: 520px) {
+            .guide-block-lang {
+                margin-left: 0;
+                align-self: flex-end;
+            }
+        }
 
         .footer {
             color: rgba(255, 255, 255, 0.6);
@@ -196,8 +256,9 @@
         }
 
         @media (max-width: 768px) {
+            .page-panel { padding: 28px 20px 32px; }
+            .page-panel h1 { font-size: 1.45rem; }
             .container { padding: 20px; }
-            .page-panel { padding: 28px 22px 32px; }
         }
     </style>
 </head>
@@ -208,20 +269,20 @@
 
     <div class="container">
         <p class="lang-switch">
-            <span style="color:white;font-weight:600;">English</span>
-            · <a href="/fr/source-and-evaluation.html">Français</a>
+            <a href="/guides.html">English</a>
+            · <span style="color:white;font-weight:600;">Français</span>
         </p>
-        <nav class="site-nav" aria-label="Primary">
-            <a href="/">Home</a>
-            <a href="/source-and-evaluation.html#documentation">Docs</a>
-            <a href="/source-and-evaluation.html#run-locally">Run locally</a>
-            <a href="/trust.html">Trust</a>
-            <a href="/updates.html">Updates</a>
-            <a href="/guides.html">Guides</a>
-            <a href="/articles.html">Articles</a>
+        <nav class="site-nav" aria-label="Navigation principale">
+            <a href="/fr/">Accueil</a>
+            <a href="/fr/source-and-evaluation.html#documentation">Documentation</a>
+            <a href="/fr/source-and-evaluation.html#run-locally">Exécuter en local</a>
+            <a href="/fr/trust.html">Confiance</a>
+            <a href="/fr/updates.html">Mises à jour</a>
+            <a href="/fr/guides.html" aria-current="page">Guides</a>
+            <a href="/fr/articles.html">Articles</a>
         </nav>
         <div class="logo-container">
-            <a href="/" aria-label="Ezkey home">
+            <a href="/fr/" aria-label="Accueil Ezkey">
                 <div class="logo">
                     <img src="/logo.svg" alt="">
                 </div>
@@ -229,30 +290,30 @@
         </div>
 
         <div class="page-panel">
-            <span class="section-eyebrow">Evaluation</span>
-            <h1>Source code &amp; evaluation</h1>
+            <span class="section-eyebrow">Ressources pour évaluateurs</span>
+            <h1>Guides et parcours</h1>
             <p class="page-intro">
-                Ezkey is intended to ship as <strong>open source</strong> under the MIT License. The <strong>main repository is private</strong> for now and is planned to open publicly around <strong>September&nbsp;2026</strong> with the first official release, alongside in-repo documentation and supported local setup (see <a href="/updates.html">Product updates</a> for the current timeline).
-            </p>
-            <p class="page-intro" style="margin-bottom:0;">
-                This page replaces public GitHub links until the repository is readable without authentication.
+                Étapes concrètes pour celles et ceux qui évaluent ou font tourner Ezkey — de la préversion expérimentale aux flux opérateurs pas à pas. Distinct des <a href="/fr/articles.html">essais longs et notes d'ingénierie</a>.
             </p>
 
-            <h2 id="documentation">Documentation</h2>
-            <p>Canonical technical documentation (architecture, APIs, configuration, operations) lives in the repository. While the repository stays private, this site publishes <a href="/updates.html">Product updates</a> and <a href="/articles.html">Articles &amp; notes</a> for progress and selected technical context — not a full substitute for the in-repo docs.</p>
-
-            <h2 id="run-locally">Run locally</h2>
-            <p>The supported developer workflow (including clean start) is maintained inside the private repository. Those instructions will be linked from ezkey.org once the repository is public.</p>
-            <p>If you are evaluating the <strong>technology preview</strong>, program context and constraints are described in <a href="/experimental-preview-exp1.html">Exp1 preview — limited access</a>.</p>
-
-            <h2>Security contact</h2>
-            <p>For suspected vulnerabilities, use <a href="mailto:security@ezkey.org">security@ezkey.org</a>. Do not rely on public issue trackers until a published security policy ships with the public repository.</p>
+            <div class="guide-block">
+                <span class="guide-block-label">Préversion expérimentale · Exp1</span>
+                <p class="guide-block-title">Parcours guidé Exp1</p>
+                <p class="guide-block-desc">Étapes numérotées de l'Admin UI à la démo Acme jusqu'à une session réussie. À lire en premier si vous avez accès à la préversion Exp1.</p>
+                <div class="guide-block-actions">
+                    <span class="guide-block-ctas">
+                        <a class="guide-block-cta" href="/fr/exp1-guided-tour.html">Ouvrir le parcours</a>
+                        <a class="guide-block-cta" href="/fr/experimental-preview-exp1.html">Présentation de la préversion exp1</a>
+                    </span>
+                    <a class="guide-block-lang" href="/guides.html">English</a>
+                </div>
+            </div>
         </div>
 
-        <p style="text-align:center;margin-bottom:20px;"><a href="/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">← Back to home</a></p>
+        <p style="text-align:center;margin-bottom:20px;"><a href="/fr/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">← Retour à l'accueil</a></p>
 
         <div class="footer">
-            <p><a href="/privacy.html">Privacy Policy</a></p>
+            <p><a href="/fr/confidentialite.html">Politique de confidentialité</a></p>
         </div>
     </div>
 </body>

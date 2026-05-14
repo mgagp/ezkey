@@ -13,7 +13,8 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 - **Trust / diligence (short):** [`trust.html`](trust.html) / [`fr/trust.html`](fr/trust.html) — plain-language trust model, disclosure posture, security reporting (`security@ezkey.org`), and **on-site** pointers (no public GitHub URLs while the repository stays private).
 - **Source & evaluation hub:** [`source-and-evaluation.html`](source-and-evaluation.html) / [`fr/source-and-evaluation.html`](fr/source-and-evaluation.html) — explains that Ezkey is **planned** as MIT open source but the **main repository is private** until the scheduled public opening; anchors `#documentation` and `#run-locally` are the nav targets for **Docs** / **Run locally**.
 - **Product updates (reverse chronological, dated):** [`updates.html`](updates.html) / [`fr/updates.html`](fr/updates.html) — short build-status notes; optional `data-update-type` on each `<li class="update-entry">` for future filtering. This is the **product-facing timeline**. It cross-links to the changelog for future versioned notes.
-- **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — includes a **Guides & walkthroughs** lane (evaluator-oriented steps) above the **Essays & deep dives** catalog; article bodies remain standalone pages at the site root or under `fr/`.
+- **Guides & walkthroughs hub:** [`guides.html`](guides.html) / [`fr/guides.html`](fr/guides.html) — dedicated hub for evaluator-oriented step-by-step content (exp1 guided tour, upcoming guides). Linked from the primary nav as **Guides**.
+- **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — two labeled sections: **About Ezkey** (product-explaining content, newest first) and **Craft & engineering** (independent essays, newest first). No longer contains a guides lane.
 - **Changelog placeholder (technical release notes later):** [`changelog.html`](changelog.html) / [`fr/changelog.html`](fr/changelog.html) — reserved for versioned technical notes. **Not** listed on the primary navigation of the landing page or content hubs so an empty section does not dilute IA integrity; the changelog page itself repeats full nav **plus** a contextual “Changelog” / “Notes de version” item with `aria-current="page"`. Discoverable by URL and from copy on **Updates**.
 - **Discovery & sharing (static):** [`sitemap.xml`](sitemap.xml) and [`robots.txt`](robots.txt) at the site root; [`updates.rss`](updates.rss) / [`fr/updates.rss`](fr/updates.rss) mirror the dated entries on **Updates** (newest items first in the feed). All published `*.html` pages include **Open Graph** and **Twitter Card** meta tags (`og:*`, `twitter:*`), using `https://ezkey.org/logo.svg` as the share image unless you introduce a dedicated social image later.
 - **Logo / hero signature:** landing and inner hub pages reuse the same gradient, floating logo treatment, and particle background as before (`<img src="/logo.svg">` on published pages).
@@ -33,6 +34,7 @@ Hub pages (`index`, `updates`, `articles`, `trust`) share a consistent **primary
 | Run locally | Exécuter en local | `/source-and-evaluation.html#run-locally` / `/fr/source-and-evaluation.html#run-locally` |
 | Trust | Confiance | `/trust.html` / `/fr/trust.html` |
 | Updates | Mises à jour | `/updates.html` / `/fr/updates.html` |
+| Guides | Guides | `/guides.html` / `/fr/guides.html` |
 | Articles | Articles | `/articles.html` / `/fr/articles.html` |
 
 **Changelog** is intentionally **omitted** from that primary strip until the page carries real versioned notes. On **changelog** pages only, append the changelog item with `aria-current="page"`.
@@ -105,7 +107,7 @@ When **regenerating** HTML from Markdown, **omit** YAML front matter and **omit*
 - **Purpose:** Step-by-step evaluator flows (e.g. mobile preview) live in the **Guides & walkthroughs** lane on [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html), not mixed with generic essay cards without labeling.
 - **Published (bilingual):** [`exp1-guided-tour.html`](exp1-guided-tour.html) and [`fr/exp1-guided-tour.html`](fr/exp1-guided-tour.html) — canonical `hreflang` pair with `x-default` on the English URL. Screenshots and other assets: **ASCII kebab-case** filenames under [`exp1-guided-tour/`](exp1-guided-tour/) (e.g. `exp1-tour-04-enrollment-qr-challenge.webp`); both locale pages reference the same paths.
 - **Working drafts (French, not linked from indexes):** e.g. [`fr/draft-exp1-guided-tour.md`](fr/draft-exp1-guided-tour.md) (source notes), [`fr/draft-exp1-admin-ui-overview.md`](fr/draft-exp1-admin-ui-overview.md) (not yet a published page). Do **not** link `draft-*.md` from live navigation or the article index.
-- **Checklist when adding or changing a guide page:** update both `articles.html` guides lane if needed, add or bump URLs in [`sitemap.xml`](sitemap.xml), and mirror Open Graph / Twitter / `hreflang` like other standalone articles.
+- **Checklist when adding or changing a guide page:** update the `guides.html` / `fr/guides.html` hub, add or bump URLs in [`sitemap.xml`](sitemap.xml), and mirror Open Graph / Twitter / `hreflang` like other standalone articles.
 
 ---
 
@@ -117,6 +119,7 @@ When **regenerating** HTML from Markdown, **omit** YAML front matter and **omit*
 | `/source-and-evaluation.html` | `/fr/source-and-evaluation.html` | Private-repo posture; docs/run-local explanation |
 | `/trust.html` | `/fr/trust.html` | Trust, reporting, on-site pointers |
 | `/updates.html` | `/fr/updates.html` | Product updates (newest first) |
+| `/guides.html` | `/fr/guides.html` | Evaluator guides & walkthroughs hub |
 | `/articles.html` | `/fr/articles.html` | Guides lane + article index |
 | `/exp1-guided-tour.html` | `/fr/exp1-guided-tour.html` | Exp1 evaluator walkthrough (bilingual) |
 | `/changelog.html` | `/fr/changelog.html` | Technical changelog (placeholder) |
@@ -138,7 +141,7 @@ When **regenerating** HTML from Markdown, **omit** YAML front matter and **omit*
 - **Experimental does not mean casual:** when copy mentions that the project is opinionated, AI-first, or exploratory, pair that with signals of discipline, seriousness, and care.
 - **Keep the homepage short:** the landing page may contain a compact positioning block, but longer arguments belong in standalone article pages linked from the home or `articles.html`.
 - **Use the founder article as the canonical long explanation:** the current anchor text is [`why-ezkey-exists.html`](why-ezkey-exists.html) / [`fr/why-ezkey-exists.html`](fr/why-ezkey-exists.html); reuse and refine that narrative instead of re-explaining it differently on every page.
-- **Distinguish content lanes clearly:** product momentum belongs on `updates.html`; long-form reasoning, positioning, and engineering reflections belong in the **Essays** catalog on `articles.html`; evaluator walkthroughs belong in the **Guides** lane.
+- **Distinguish content lanes clearly:** product momentum belongs on `updates.html`; evaluator walkthroughs belong on `guides.html`; product-explaining writing belongs in the **About Ezkey** section on `articles.html`; engineering craft essays belong in the **Craft & engineering** section on `articles.html`.
 - **Write for a serious technical audience:** sober tone, concrete claims, explicit constraints, and no inflated startup-style language.
 - **Avoid defensive wording:** do not over-explain that the project is solo, AI-assisted, or unconventional; present those facts plainly and move quickly to architecture, trust boundaries, APIs, and operator value.
 - **Do not overstate security assurance:** describe Ezkey as a pragmatic, opinionated middle ground that aims to be stronger than passwords and classic TOTP for some backend-oriented contexts; do not imply formal attestation chains, standards equivalence, complete certificate validation, or full-strength certificate pinning unless those capabilities truly exist.
@@ -157,7 +160,8 @@ When **regenerating** HTML from Markdown, **omit** YAML front matter and **omit*
 | [source-and-evaluation.html](source-and-evaluation.html) / [fr/source-and-evaluation.html](fr/source-and-evaluation.html) | Private repo; docs/run-local framing |
 | [trust.html](trust.html) / [fr/trust.html](fr/trust.html) | Trust & security diligence |
 | [updates.html](updates.html) / [fr/updates.html](fr/updates.html) | Product updates archive |
-| [articles.html](articles.html) / [fr/articles.html](fr/articles.html) | Guides lane + articles index |
+| [guides.html](guides.html) / [fr/guides.html](fr/guides.html) | Evaluator guides & walkthroughs hub |
+| [articles.html](articles.html) / [fr/articles.html](fr/articles.html) | About Ezkey + Craft & engineering sections |
 | [exp1-guided-tour.html](exp1-guided-tour.html) / [fr/exp1-guided-tour.html](fr/exp1-guided-tour.html) | Exp1 guided tour (EN/FR) |
 | [changelog.html](changelog.html) / [fr/changelog.html](fr/changelog.html) | Changelog placeholder |
 | [sitemap.xml](sitemap.xml) | Sitemap for crawlers |

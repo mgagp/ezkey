@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Back to Foundations &mdash; The Developer in the AI Era &mdash; Ezkey">
+    <meta property="og:description" content="AI isn&rsquo;t freeing us from analysis and design. It penalizes us when we keep them implicit &mdash; and rewards us when we make them explicit.">
+    <meta property="og:url" content="https://ezkey.org/ai-return-to-foundations-methodology.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Back to Foundations &mdash; The Developer in the AI Era &mdash; Ezkey">
+    <meta name="twitter:description" content="AI isn&rsquo;t freeing us from analysis and design. It penalizes us when we keep them implicit &mdash; and rewards us when we make them explicit.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/ai-return-to-foundations-methodology.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/retour-aux-sources-developpeur-ere-ia.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/ai-return-to-foundations-methodology.html">
+    <title>Back to Foundations &mdash; The Developer in the AI Era &mdash; Ezkey</title>
+    <meta name="description" content="AI isn&rsquo;t freeing us from analysis and design. It penalizes us when we keep them implicit and rewards us when we make them explicit. A structured experience report on a methodological turning point.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1a1a2e;
+            line-height: 1.65;
+        }
+
+        .shell {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        .nav-top {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .nav-top a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: underline;
+        }
+
+        .nav-top a:hover {
+            color: #fff;
+        }
+
+        article {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+            padding: 40px 36px 48px;
+            text-align: left;
+        }
+
+        @media (max-width: 600px) {
+            article { padding: 28px 20px 36px; }
+        }
+
+        .doc-meta {
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 16px;
+        }
+
+        .hero-title {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .hero-title .label {
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .hero-title h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #111;
+            line-height: 1.25;
+            margin: 0 0 12px;
+            border: none;
+            padding: 0;
+        }
+
+        .hero-title .tagline {
+            font-size: 1.05rem;
+            color: #444;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .hero-title .kicker {
+            font-size: 0.98rem;
+            color: #555;
+            font-style: italic;
+        }
+
+        h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #222;
+            margin: 28px 0 12px;
+        }
+
+        h2:first-of-type {
+            margin-top: 12px;
+        }
+
+        h3 {
+            font-size: 1.02rem;
+            font-weight: 600;
+            color: #333;
+            margin: 18px 0 10px;
+        }
+
+        p {
+            margin-bottom: 12px;
+            font-size: 0.98rem;
+        }
+
+        ul, ol {
+            margin: 10px 0 14px 1.25rem;
+        }
+
+        li {
+            margin-bottom: 8px;
+            font-size: 0.98rem;
+        }
+
+        code {
+            font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', 'Roboto Mono', monospace;
+            background: #f0f2ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .pull-quote {
+            margin: 16px 0;
+            padding: 14px 18px;
+            background: #f8f9ff;
+            border-left: 4px solid #764ba2;
+            font-size: 0.98rem;
+        }
+
+        .elevation-stack {
+            margin: 18px 0 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .elevation-stack .level {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #c8cfe8;
+            background: #fafbff;
+            text-align: center;
+            font-size: 0.92rem;
+        }
+
+        .elevation-stack .level strong {
+            display: block;
+            color: #2d2d44;
+            margin-bottom: 2px;
+        }
+
+        .elevation-stack .level span.hint {
+            font-size: 0.82rem;
+            color: #555;
+        }
+
+        .elevation-stack .level.e1 { border-radius: 8px 8px 0 0; max-width: 38%; min-width: 200px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.10) 0%, rgba(118, 75, 162, 0.10) 100%); }
+        .elevation-stack .level.e2 { max-width: 66%; min-width: 260px; }
+        .elevation-stack .level.e3 { border-radius: 0 0 8px 8px; max-width: 100%; }
+
+        .closing {
+            margin-top: 24px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .closing p {
+            margin-bottom: 10px;
+        }
+
+        .closing p:last-child {
+            margin-bottom: 0;
+            font-weight: 600;
+            color: #2d2d44;
+        }
+
+        .doc-link-sibling {
+            margin-top: 14px;
+            font-size: 0.92rem;
+        }
+
+        .doc-link-sibling:first-of-type {
+            margin-top: 18px;
+        }
+
+        .doc-link-sibling a {
+            color: #4a56c4;
+        }
+
+        footer.doc-footer {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.75);
+            text-align: center;
+        }
+
+        footer.doc-footer a {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        @media print {
+            body { background: #fff; }
+            .shell { max-width: none; padding: 0; }
+            .nav-top, footer.doc-footer, .doc-link-sibling { display: none; }
+            article { box-shadow: none; border-radius: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top">
+            <a href="/">Home (English)</a>
+            &middot; <a href="/fr/">Accueil fran&ccedil;ais</a>
+        </p>
+
+        <article>
+            <p class="doc-meta">Essay &middot; May 13, 2026</p>
+
+            <header class="hero-title">
+                <p class="label">Experience report</p>
+                <h1>Back to Foundations</h1>
+                <p class="tagline">The Developer in the AI Era</p>
+                <p class="kicker">AI isn&rsquo;t freeing us from analysis and design. It penalizes us when we keep them implicit &mdash; and rewards us when we make them explicit.</p>
+            </header>
+
+            <!-- ========================================================= -->
+
+            <h2>We learned the right methods. Then we learned to bypass them.</h2>
+
+            <p>When you train as a developer, you learn very healthy things. User needs, domain expert interviews, specifications, functional analysis, data flows, data models, architecture, diagrams, state machines, use cases, test strategies. All of this training rests on a simple idea: a good software system shouldn&rsquo;t come out of nowhere. It should be born from a clear understanding of reality.</p>
+
+            <p>Intellectually, all of this is correct. And yet, in real life, things don&rsquo;t always work that way.</p>
+
+            <p>In many teams, you start with a few exchanges with the client, a few concrete examples, a list of needs. Specifications sometimes become a simple grocery list. Diagrams exist, but rarely exhaustively. Architecture decisions are made, but not always formalized. This isn&rsquo;t necessarily negligence. It&rsquo;s often a trade-off between time, pressure, velocity, and the trust placed in the experience of the developers on the team.</p>
+
+            <p>Over the years, you get very good at this implicit economy. You merge roles. You become a programmer-analyst, or an analyst-programmer, depending on which word you prefer. You develop instincts. You know where to draw a boundary. You know when to tighten an API. A huge portion of this skill stops being visible because it lives in your head. This invisibility was long compatible with excellent productivity.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>The illusion of the sufficient prompt &mdash; then the glass ceiling</h2>
+
+            <p>Then AI coding arrived in our IDEs, and a very exciting first phase began.</p>
+
+            <p>At first, the illusion was almost perfect. You asked for a method, a service, an endpoint, a component. The tool completed code, proposed tests, suggested refactorings. And it really worked. What was working at that moment wasn&rsquo;t just the AI. It was mostly the fact that context stayed in the developer&rsquo;s head. The architecture, the product history, the business constraints, the decisions made with a client six months earlier &mdash; none of that was in the prompt. It all lived in my head, and the AI operated within the space I was bounding myself at every moment.</p>
+
+            <p>A few months later, I started wanting to delegate more. Not just fragments of code, but larger, more consistent chunks. And that&rsquo;s when the glass ceiling appeared. The AI quickly ran into what was nowhere: the reasons behind decisions, the implicit constraints, the architecture choices, the history of trade-offs. I had to reframe it, remind it of rules, correct assumptions. Worse, all of this was scrolling through chats. One conversation buries another. An important decision was made, but it dissolved into the stream of interactions.</p>
+
+            <div class="pull-quote">
+                If I wanted the AI to get better, I had to stop asking it to read my mind.
+            </div>
+
+            <!-- ========================================================= -->
+
+            <h2>From notes to plans: the beginning of context engineering</h2>
+
+            <p>My first reaction was trivial but structural: I started having it take notes. Not for appearances. Not to satisfy some abstract documentation principle. Just to not lose the clarifications, the reasoning, and the decisions made along the way.</p>
+
+            <p>After a few months, this evolved toward more explicit plans. People started talking about <em>context engineering</em>. I preferred to stay light: make plans, keep them in the repository, close them properly, archive them. This lightweight approach worked well. But it also revealed a new requirement: making plans isn&rsquo;t enough if those plans reinvent each time an analysis that should have existed in a more stable form.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>2026: better models demand better specifications</h2>
+
+            <p>The real turning point came at the beginning of 2026.</p>
+
+            <p>Models became more autonomous, more proactive, more capable of chaining work steps on their own. And a paradox emerged: the more powerful they became, the more they demanded better context. To get better code, it was no longer enough to prompt better. You had to analyze better, slice better, design better, document better.</p>
+
+            <p>I noticed something striking: recent models were themselves proposing to add specification steps. They were asking for more precision, more constraints, more structure. The AI industry itself seemed to be rediscovering what software development has known for decades: the quality of a system also depends on the quality of the artifacts that precede the code.</p>
+
+            <p>This forced me to look at a very personal bias. Like many experienced developers, I had gotten into the habit of leveraging my experience to compress analysis into my head. I could go directly from a need to a reasonable implementation because user stories, decision tables, functional flows, states, entity relationships, architecture &mdash; all of it already lived mentally in me. AI put this shortcut in crisis. Not because it&rsquo;s incapable, but because it doesn&rsquo;t benefit from that implicit memory as long as you don&rsquo;t externalize it.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>The real return to foundations</h2>
+
+            <p>From that point, the conclusion became inescapable: spec-first isn&rsquo;t a trend. It&rsquo;s a return to foundations.</p>
+
+            <p>If I truly want to collaborate with AI, I have to start doing explicitly what I had ended up doing mentally. Define the product intention. Clarify the operational reality. Establish objectives. Set constraints. Choose the stack knowingly. Describe the architecture. Name the boundaries. Document functional flows. Explain design decisions. Plan the test strategy. None of this is new. What&rsquo;s new is the incentive.</p>
+
+            <p>For decades, much documentation ended up being seen as wishful thinking. Something you should maintain, but that costs a lot, degrades quickly, and slows delivery if it becomes too heavy. With AI, this dynamic changes profoundly. Good documentation stops being just the team&rsquo;s moral debt. It becomes a velocity multiplier. It becomes alive because it directly feeds a working partner that can read, compare, propose, challenge, write, test, and navigate between multiple layers of the system.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>The AI journey evolved too: the birth of intellectual segregation</h2>
+
+            <p>There&rsquo;s something important that isn&rsquo;t stated clearly enough: the AI journey itself has evolved. And this evolution is generating strong intellectual segregation within the profession.</p>
+
+            <p>On one side, there are those who have embraced the discipline of analysis. Sequence diagrams, finite state machines, decision tables, functional flows. These people have become analysts in the strong sense of the term, and AI has become their programmer. They deliver precise, structured, actionable specifications &mdash; and it produces coherent, tested, vision-aligned code. On the other side, there are those who continued in prompt-and-code mode, more or less sophisticated, but without raising their analysis discipline. The gap between the two groups is widening rapidly.</p>
+
+            <p>A software engineer, at bottom, does something simple: discovers a world, gets interested in it, defines a product, then mobilizes analysis, design, and architecture tools to give it form. What AI has changed is that the &ldquo;giving form&rdquo; part can now be largely delegated. What remains irreplaceably human is the &ldquo;understand, define, structure, decide&rdquo; part.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>Shared discomfort: unease, humility, and false hopes</h2>
+
+            <p>Many teams intuitively sense that a return to foundations is needed. They understand that analysis, design, and architecture must come back to the foreground. But this intuition is often accompanied by unease. People know something is missing, without knowing exactly how to put it back in place.</p>
+
+            <p>I&rsquo;ve seen teams wondering what documentary form to adopt, what level of detail to target, how to avoid producing useless documents, and above all how not to make a methodological mistake. This fear of doing it wrong produces a paradoxical effect: instead of getting things moving again, it encourages standstill. You wait for a strong signal from peers, from major vendors, from consulting firms. That signal never arrives clearly. Meanwhile, teams spin in place thinking they&rsquo;re being careful.</p>
+
+            <p>There&rsquo;s also a more uncomfortable but essential dimension. For developers with ten, fifteen, or twenty years of experience, it&rsquo;s hard to accept that they may not be as solid as they thought on certain fundamentals. I say this against myself too. In my own project, I created technical debt very quickly. The first draft was produced in a phase of pure vibe coding: mixed levels, services and DAO access in controllers, blurry separations. It was objectively ugly. That moment forced me to an unpleasant realization: I wasn&rsquo;t properly applying the analysis and design that I thought I had mastered.</p>
+
+            <p>In this state of hesitation, another reflex often appears: the hope that a framework, a tool, or a trending mode will solve the problem for you. Yesterday it was Copilot mode. Today everyone talks about Claude Code. Tomorrow it will be something else. I don&rsquo;t believe in that magic. Changing tools can improve some things, but none of it fixes the fundamental problem if the team hasn&rsquo;t reconnected with its core role: analyst, designer, architect, tester, domain expert &mdash; not just code producer.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>Not choosing a lightweight method means choosing standstill</h2>
+
+            <p>The good news is that it&rsquo;s not necessary to return to the methodological weight of the past.</p>
+
+            <p>The parallel with software architecture seems illuminating. For a few years, microservices were sold as a panacea. We saw the result: explosion of operational complexity, maintenance burden, and fragile interfaces. The market didn&rsquo;t return to the monolith out of nostalgia. It returned to the modular monolith because it was looking for a better equilibrium point. We need to do exactly the same thing with AI methodology.</p>
+
+            <p>We also need to avoid the RUP reflex. Large methodologies that claim to cover everything &mdash; Rational Unified Process with its monster templates &mdash; collapsed under their own weight: too heavy, too rigid, too removed from project reality. What should exist instead is a project-specific methodology: lightweight, pragmatic, deliberately chosen. The most structuring choice is simple: decide that part of the method should live in the codebase itself, in simple, versioned, human-readable and AI-readable formats.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>From the analyst who uses a method to the methodologist who designs it</h2>
+
+            <p>This is where something fundamental was revealed to me.</p>
+
+            <p>I had an analyst-programmer approach. I cared about system architecture, I had good experience, I used AI in plan mode. I interacted with it to create analyses, concepts, decision tables. But I was missing a real methodology. What I was doing was good, but it was artisanal. Each plan, each artifact, each documentary form was reinvented along the way.</p>
+
+            <p>A friend showed me his way of working, which had consisted very early in his project of writing templates, a methodology for using them, and skills &mdash; in the modern AI sense: specialized instructions, defined-role agents, formalized analysis sequences. These templates, this methodological guide, and these skills form a system. The result: once this methodology was refined, everything became uniform, systematic, repeatable. The work accelerated. It became rigorous and reliable.</p>
+
+            <p>What struck me was the difference in level. There&rsquo;s the analyst who USES a method. And there&rsquo;s the methodologist who DESIGNS the method suited to the project. The methodologist takes as their primary object not the product, not an architecture or a concept, but the guides that orient those activities themselves. These meta-decisions form the framework within which the analyst, designer, and AI subsequently work.</p>
+
+            <p>This discovery launched me into a major retrofitting project: taking the material produced so far &mdash; at variable format, variable depth &mdash; and re-injecting it into a methodologized, uniform format. Templates, patterns, naming conventions, cycles, phases. There&rsquo;s work to do, but it&rsquo;s the right direction.</p>
+
+            <p>The major lesson I drew from all this, I visualized as three levels:</p>
+
+            <div class="elevation-stack">
+                <div class="level e1">
+                    <strong>Vision &amp; methodology</strong>
+                    <span class="hint">irreplaceably human</span>
+                </div>
+                <div class="level e2">
+                    <strong>Analysis, design, architecture</strong>
+                    <span class="hint">irreplaceably human</span>
+                </div>
+                <div class="level e3">
+                    <strong>Programming, testing, debugging</strong>
+                    <span class="hint">AI &mdash; growing capability</span>
+                </div>
+            </div>
+
+            <p>Before AI, the analyst-programmer operated at the bottom two levels. Now, AI occupies the bottom level with growing competence. What remains irreplaceably human is what happens at the upper two levels. The human must now be a visionary-methodologist capable of defining visions, designing appropriate methodologies, orchestrating analyses, laying out architectures &mdash; and AI produces the code. This isn&rsquo;t a weakening of the developer role. It&rsquo;s an elevation.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>The tools that embody this approach: examples, not endpoints</h2>
+
+            <p>The ecosystem hasn&rsquo;t stopped at theory. Tools have started to materialize this methodological elevation concretely. Claude Code, which has established itself as one of the most popular environments of the moment, is a striking example. With extensions like Super Powers, it goes well beyond ordinary plan mode to offer a methodological structure directly integrated into the work experience: interactive workflows, standardized artifact organization, a way of guiding the agent that recalls interaction with an analysis partner more than a simple code generator.</p>
+
+            <p>But this is where you need to resist a familiar reflex: seeing in a popular solution the definitive solution. Claude Code and Super Powers are examples to study, starting points to adapt &mdash; not a norm to copy as-is. What makes this approach powerful isn&rsquo;t tied to a particular tool. It rests on a principle: an AI agent is capable of interacting at a methodological level with anyone who is willing to organize their work at that level.</p>
+
+            <p>Methodological customization must be prudent. You don&rsquo;t restructure your workflow with every new trend. But it delivers real benefits when done with discernment. A team developing a security platform doesn&rsquo;t have the same analysis toolset as a team building a content management SaaS product. The methodology must reflect that reality.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>The debt we refuse to face</h2>
+
+            <p>In many organizations, what&rsquo;s valued is moving the business forward. That&rsquo;s normal up to a point. But this logic has a blind spot: reverse engineering, documentary reconstruction, and code hygiene almost never look good in a status report. When you&rsquo;re catching up on months of technical negligence, you don&rsquo;t give the impression of inventing a spectacular new feature. And yet, without this step, the benefits of AI don&rsquo;t multiply properly.</p>
+
+            <p>In my case, I ended up doing a several-week moratorium to put the code back in order. Adding Javadoc. Cleaning up warnings. Introducing quality guardrails. Hardening conventions. It was after this restoration that the multiplicative benefits of AI started compounding more effectively.</p>
+
+            <p>In a brownfield, this catch-up may require significantly slowing new feature delivery in order to reconstitute the conditions that will make velocity sustainable. You have to accept that this work sometimes resembles a strategic retreat: stop, look at yourself honestly, name the debt, re-establish healthier foundations, then restart with different momentum.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>Documents, templates, skills: a structure that lives in the repository</h2>
+
+            <p>To get moving again, you have to commit to three families of artifacts directly in the repository.</p>
+
+            <p>The first family: <strong>work plans</strong>. Plans with a minimal structure, guardrails, a status, a history, and the ability to be reviewed, challenged, amended, then archived. These plans become an interaction space between analysts, designers, developers, and AI. If you want real collective velocity, you need to start versioning work plans instead of letting them dissolve in chats or meetings.</p>
+
+            <p>The second family: <strong>documents that describe the current truth of the system</strong>. Not in abstract prose. A structure parallel to the code, reflecting its organization and main boundaries. Architecture documents, feature docs, boundary and mapping documents. Functional flows, design decisions, interface contracts. When this structure exists, it becomes readable by a human without immediately diving back into the code, and exploitable by AI as generation and verification context.</p>
+
+            <p>The third family: <strong>templates and skills</strong>. Templates that give an expected form to analysis and decision-making artifacts. AI skills that implement specific patterns: a skill to produce a feature analysis, a skill to model a state machine, a skill to conduct an architecture review. These templates and skills form the living core of the methodology. They make work systematic and repeatable, not just documented.</p>
+
+            <p>There&rsquo;s also an underrated accelerator in this setup: dictation. To produce quality context, you need to be able to communicate massively &mdash; verbalize nuances, reasons, constraints, trade-offs. In 2026, I no longer believe you can sustain that volume of elaboration at the keyboard alone. Fluid speech frees richer, less self-censored thinking that&rsquo;s faster to deposit. You stop economizing on words. Then AI helps sort, condense, reformulate.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>Greenfield or brownfield, the logic is the same</h2>
+
+            <p>In a greenfield project, all of this is relatively simple. You can put the documentary structure, templates, and skills in place from the start and grow them in parallel with the code.</p>
+
+            <p>In a brownfield, it&rsquo;s harder. You need a reverse-engineering phase. You need to choose the most critical modules, bring into the documents the essential boundaries, mappings, interactions, and implicit decisions. It&rsquo;s a progressive transfer of information that still lives in developers&rsquo; heads toward a more stable documentary structure. But this transfer doesn&rsquo;t work well if the team refuses to face its debt. Getting back in motion starts precisely with choosing a structure simple enough to be adopted and useful enough to become alive.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>AI at every level &mdash; down to engineering behavior</h2>
+
+            <p>AI isn&rsquo;t just a code generation tool. It becomes useful at every floor. It can participate in product brainstorming. It can challenge a positioning. It can help refine an architecture. It can reformulate requirements. It can point out fuzzy areas in a workflow. It can propose a reasonable test strategy. It can then do very concrete pair programming on the code itself.</p>
+
+            <p>What struck me most recently was a subtle but decisive shift. With the same scripts, the same documents, the same conventions, a more recent model started taking initiatives I hadn&rsquo;t explicitly requested. To validate an evolution touching both the interface and the database, the agent noted that it had scripts, test landmarks, Admin UI access, and a demo environment already documented in the repository. It understood it had to open a browser, log in, use the Demo Device provided by the bootstrap, generate the right data, and verify the end-to-end scenario.</p>
+
+            <div class="pull-quote">
+                I hadn&rsquo;t taught it this sequence imperatively. This behavior emerged because the context had become good enough, coherent enough, exploitable enough.
+            </div>
+
+            <p>AI autonomy doesn&rsquo;t come only from its internal advances. It also comes from the quality of the documentary and operational world you insert it into.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>The developer is no longer the keeper of everything</h2>
+
+            <p>For a long time, the implicit figure of the heroic developer dominated: the one who understands everything, remembers everything, carries the architecture, business logic, historical debt, exceptions, and unwritten rules in their own head. This figure hasn&rsquo;t disappeared, but it&rsquo;s losing its central advantage. What becomes strategic is no longer holding information in yourself. It&rsquo;s knowing how to structure it, write it, articulate it, make it exploitable by other humans and by AI.</p>
+
+            <p>The developer this period favors is the one who knows how to understand the product, understand the client, understand the constraints, understand the architecture, make design choices, document those choices, and then put AI to work within that framework. Not just to code faster. To design more accurately, test more intelligently, and maintain a more explicable system.</p>
+
+            <p>And that often requires a more demanding gesture than we readily admit: accepting to move toward more abstract levels of thinking, acknowledging that we&rsquo;ve let certain parts of our craft rust, and deliberately restoring rigor where habit and speed had ended up compressing everything into our heads.</p>
+
+            <!-- ========================================================= -->
+
+            <h2>Conclusion</h2>
+
+            <div class="closing">
+                <p>AI isn&rsquo;t freeing us from analysis and design. It&rsquo;s penalizing us when we keep them implicit, and rewarding us when we make them explicit.</p>
+
+                <p>In that sense, it forces a return to foundations. Not a return to the documentary weight of the grand methodologies of the past, but a return to the logic that justified them: understand before you build, structure before you delegate, document to accelerate &mdash; not to reassure yourself.</p>
+
+                <p>The software engineering field is in profound metamorphosis. What has emerged is a rearrangement of levels: vision and methodology at the top, analysis and design in the middle, programming and testing at the bottom. For a long time, the analyst-programmer operated at the bottom two levels. Today, AI occupies the bottom level with growing competence. What remains irreplaceably human is what happens above: understand, choose, architect, decide &mdash; and for those who go further &mdash; define the methodological framework within which all of this unfolds.</p>
+
+                <p>The teams that will truly benefit from this period won&rsquo;t necessarily be those who think they&rsquo;re already ready. They&rsquo;ll often be the ones who had the humility to acknowledge their debt, the courage to make hard choices, and the discipline to gradually rebuild cleaner, more explicit, and more alive foundations.</p>
+
+                <p>The paradox of this era may be this: the more machines write code, the more humans must become analysts, designers, architects &mdash; and sometimes methodologists.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>French:</strong> <a href="/fr/retour-aux-sources-developpeur-ere-ia.html">Version fran&ccedil;aise de cet article</a></p>
+            <p class="doc-link-sibling"><strong>See also:</strong> <a href="/from-code-to-intent-ai-workflow.html">From code to intent</a></p>
+            <p class="doc-link-sibling"><strong>See also:</strong> <a href="/ai-coding-manifesto.html">AI coding manifesto</a></p>
+        </article>
+
+        <footer class="doc-footer">
+            <p>Ezkey &middot; <a href="/">ezkey.org</a></p>
+        </footer>
+    </div>
+</body>
+</html>

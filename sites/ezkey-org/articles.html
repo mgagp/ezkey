@@ -245,13 +245,23 @@
         }
 
         .page-subheading {
-            color: rgba(255, 255, 255, 0.82);
-            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 36px 0 20px;
+            font-size: 0.82rem;
             font-weight: 700;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
-            text-align: center;
-            margin: 4px 0 18px;
+            color: #fef3c7;
+            white-space: nowrap;
+        }
+        .page-subheading::before,
+        .page-subheading::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.52), transparent);
         }
 
         .publication-grid {
@@ -373,6 +383,7 @@
             <a href="/source-and-evaluation.html#run-locally">Run locally</a>
             <a href="/trust.html">Trust</a>
             <a href="/updates.html">Updates</a>
+            <a href="/guides.html">Guides</a>
             <a href="/articles.html" aria-current="page">Articles</a>
         </nav>
         <div class="logo-container">
@@ -387,69 +398,71 @@
             <span class="section-eyebrow">Writing</span>
             <h1>Articles &amp; notes</h1>
             <p class="page-intro">
-                Longer essays and engineering notes — independent of the product roadmap. This lane is separate from <a href="/updates.html">product updates</a> and from step-by-step evaluator guides.
+                Long-form essays and engineering notes — independent of the product roadmap. Separate from <a href="/updates.html">product updates</a> and from <a href="/guides.html">step-by-step evaluator guides</a>.
             </p>
-            <div class="guides-lane" id="exp1-guides">
-                <span class="guides-lane-label">Guides &amp; walkthroughs</span>
-                <p class="guides-lane-intro">Hands-on steps for people exercising the preview — distinct from the long-form writing in the catalog below.</p>
-                <div class="guides-lane-slot">
-                    <p class="guides-item-title">Exp1 guided tour</p>
-                    <p class="guides-item-desc">Numbered steps from Tenant Admin through the Acme demo to a successful sign-in.</p>
-                    <p class="guides-item-actions">
-                        <span class="guides-item-ctas">
-                            <a class="guides-item-cta" href="/exp1-guided-tour.html">Open the walkthrough</a>
-                            <a class="guides-item-cta" href="/experimental-preview-exp1.html">About the Exp1 preview</a>
-                        </span>
-                        <a class="guides-item-lang" href="/fr/exp1-guided-tour.html">Français</a>
-                    </p>
-                </div>
-            </div>
-            <p class="page-subheading">Essays &amp; deep dives</p>
+            <p class="page-subheading">About Ezkey</p>
             <div class="publication-grid">
-                <a class="pub-card" href="/why-ezkey-exists.html">
-                    <span class="pub-card-meta">Founder article · May 2026</span>
-                    <span class="pub-card-title">Why Ezkey exists</span>
-                    <span class="pub-card-desc">Why this project exists at all: backend-first conviction, explicit trust boundaries, AI-first execution, and why the work is experimental but serious.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
                 <a class="pub-card" href="/experimental-preview-exp1.html">
+                    <span class="pub-card-meta">Preview · May 2026</span>
                     <span class="pub-card-title">Exp1 preview — limited access</span>
                     <span class="pub-card-desc">Experimental all-in-one instance: Android app, tenant admin, Acme demo; invitations first or email request — not a production offering.</span>
                     <span class="pub-card-cta">Read</span>
                 </a>
-                <a class="pub-card" href="/ezkey-at-a-glance-trust-zone-mobile.html">
-                    <span class="pub-card-title">Ezkey at a glance</span>
-                    <span class="pub-card-desc">Trust zone and mobile app: backend-first MFA, bind/verify and pending/respond, and why it is not “just another code app.”</span>
+                <a class="pub-card" href="/from-monolith-to-contract.html">
+                    <span class="pub-card-meta">Technical · April 15, 2026</span>
+                    <span class="pub-card-title">From monolith to contract</span>
+                    <span class="pub-card-desc">How a single Spring Boot app became four specialized backends &mdash; and how versioned, dispatched OpenAPI specs turned backend-first into a disciplined AI workflow.</span>
+                    <span class="pub-card-cta">Read</span>
+                </a>
+                <a class="pub-card" href="/how-the-mobile-app-signs-every-step.html">
+                    <span class="pub-card-meta">Technical · April 14, 2026</span>
+                    <span class="pub-card-title">How the mobile app signs every step</span>
+                    <span class="pub-card-desc">A plain-language walk through the Ezkey mobile protocol: enrollment, proof tokens, and end-to-end cryptographic chaining — no implicit trust at any stage.</span>
                     <span class="pub-card-cta">Read</span>
                 </a>
                 <a class="pub-card" href="/testing-strategy.html">
+                    <span class="pub-card-meta">Technical · April 12, 2026</span>
                     <span class="pub-card-title">Testing strategy</span>
                     <span class="pub-card-desc">From unit tests to operational stress: tag segmentation, Docker clean room, sequential functional tests, elective spot checks, and time-compressed operational churn.</span>
                     <span class="pub-card-cta">Read</span>
                 </a>
+                <a class="pub-card" href="/ezkey-at-a-glance-trust-zone-mobile.html">
+                    <span class="pub-card-meta">Technical · April 11, 2026</span>
+                    <span class="pub-card-title">Ezkey at a glance</span>
+                    <span class="pub-card-desc">Trust zone and mobile app: backend-first MFA, bind/verify and pending/respond, and why it is not “just another code app.”</span>
+                    <span class="pub-card-cta">Read</span>
+                </a>
+                <a class="pub-card" href="/why-ezkey-exists.html">
+                    <span class="pub-card-meta">Founder article · April 5, 2026</span>
+                    <span class="pub-card-title">Why Ezkey exists</span>
+                    <span class="pub-card-desc">Why this project exists at all: backend-first conviction, explicit trust boundaries, AI-first execution, and why the work is experimental but serious.</span>
+                    <span class="pub-card-cta">Read</span>
+                </a>
+            </div>
+            <p class="page-subheading">Craft &amp; engineering</p>
+            <div class="publication-grid">
+                <a class="pub-card" href="/ai-return-to-foundations-methodology.html">
+                    <span class="pub-card-meta">Essay &middot; May 13, 2026</span>
+                    <span class="pub-card-title">Back to foundations</span>
+                    <span class="pub-card-desc">AI penalizes implicit analysis and rewards explicit design. A structured experience report on methodology, context engineering, and the developer&rsquo;s evolving role in the AI era.</span>
+                    <span class="pub-card-cta">Read</span>
+                </a>
+                <a class="pub-card" href="/from-code-to-intent-ai-workflow.html">
+                    <span class="pub-card-meta">Essay · April 13, 2026</span>
+                    <span class="pub-card-title">From code to intent</span>
+                    <span class="pub-card-desc">One year of AI-assisted workflow on an open source project — from raw velocity to elevating the developer role toward architect, analyst and product owner.</span>
+                    <span class="pub-card-cta">Read</span>
+                </a>
                 <a class="pub-card" href="/ai-coding-manifesto.html">
+                    <span class="pub-card-meta">Essay · March 2026</span>
                     <span class="pub-card-title">AI coding manifesto</span>
                     <span class="pub-card-desc">The future of coding is already here: boundaries, Docker, tests, and how the developer role shifts.</span>
                     <span class="pub-card-cta">Read</span>
                 </a>
                 <a class="pub-card" href="/generative-ai-nocode-lowcode-parallel.html">
+                    <span class="pub-card-meta">Essay · March 2026</span>
                     <span class="pub-card-title">Generative AI and No-Code / Low-Code</span>
                     <span class="pub-card-desc">A parallel between the No-Code era and today’s AI coding tools — specs, lock-in, and hybrid documentation.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/from-code-to-intent-ai-workflow.html">
-                    <span class="pub-card-title">From code to intent</span>
-                    <span class="pub-card-desc">One year of AI-assisted workflow on an open source project — from raw velocity to elevating the developer role toward architect, analyst and product owner.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/how-the-mobile-app-signs-every-step.html">
-                    <span class="pub-card-title">How the mobile app signs every step</span>
-                    <span class="pub-card-desc">A plain-language walk through the Ezkey mobile protocol: enrollment, proof tokens, and end-to-end cryptographic chaining — no implicit trust at any stage.</span>
-                    <span class="pub-card-cta">Read</span>
-                </a>
-                <a class="pub-card" href="/from-monolith-to-contract.html">
-                    <span class="pub-card-title">From monolith to contract</span>
-                    <span class="pub-card-desc">How a single Spring Boot app became four specialized backends &mdash; and how versioned, dispatched OpenAPI specs turned backend-first into a disciplined AI workflow.</span>
                     <span class="pub-card-cta">Read</span>
                 </a>
             </div>

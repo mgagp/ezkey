@@ -245,13 +245,23 @@
         }
 
         .page-subheading {
-            color: rgba(255, 255, 255, 0.82);
-            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 36px 0 20px;
+            font-size: 0.82rem;
             font-weight: 700;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
-            text-align: center;
-            margin: 4px 0 18px;
+            color: #fef3c7;
+            white-space: nowrap;
+        }
+        .page-subheading::before,
+        .page-subheading::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.52), transparent);
         }
 
         .publication-grid {
@@ -373,6 +383,7 @@
             <a href="/fr/source-and-evaluation.html#run-locally">Exécuter en local</a>
             <a href="/fr/trust.html">Confiance</a>
             <a href="/fr/updates.html">Mises à jour</a>
+            <a href="/fr/guides.html">Guides</a>
             <a href="/fr/articles.html" aria-current="page">Articles</a>
         </nav>
         <div class="logo-container">
@@ -387,69 +398,71 @@
             <span class="section-eyebrow">Publications</span>
             <h1>Articles et notes</h1>
             <p class="page-intro">
-                Essais longs et notes d’ingénierie — indépendamment de la feuille de route produit. Cette voie est distincte des <a href="/fr/updates.html">mises à jour produit</a> et des guides pas à pas pour évaluateurs.
+                Essais longs et notes d’ingénierie — indépendamment de la feuille de route produit. Distinct des <a href="/fr/updates.html">mises à jour produit</a> et des <a href="/fr/guides.html">guides pas à pas pour évaluateurs</a>.
             </p>
-            <div class="guides-lane" id="exp1-guides">
-                <span class="guides-lane-label">Guides et parcours</span>
-                <p class="guides-lane-intro">Étapes concrètes pour celles et ceux qui font tourner la préversion — à part des textes longs du catalogue ci-dessous.</p>
-                <div class="guides-lane-slot">
-                    <p class="guides-item-title">Parcours guidé Exp1</p>
-                    <p class="guides-item-desc">Étapes numérotées de l’Admin UI à la démo Acme jusqu’à une session réussie.</p>
-                    <p class="guides-item-actions">
-                        <span class="guides-item-ctas">
-                            <a class="guides-item-cta" href="/fr/exp1-guided-tour.html">Ouvrir le parcours</a>
-                            <a class="guides-item-cta" href="/fr/experimental-preview-exp1.html">Présentation de la préversion exp1</a>
-                        </span>
-                        <a class="guides-item-lang" href="/exp1-guided-tour.html">English</a>
-                    </p>
-                </div>
-            </div>
-            <p class="page-subheading">Essais &amp; approfondissements</p>
+            <p class="page-subheading">À propos d’Ezkey</p>
             <div class="publication-grid">
-                <a class="pub-card" href="/fr/why-ezkey-exists.html">
-                    <span class="pub-card-meta">Article fondateur · mai 2026</span>
-                    <span class="pub-card-title">Pourquoi Ezkey existe</span>
-                    <span class="pub-card-desc">Pourquoi ce projet existe : conviction backend-first, limites de confiance explicites, exécution AI-first et pourquoi le travail est expérimental mais sérieux.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
                 <a class="pub-card" href="/fr/experimental-preview-exp1.html">
+                    <span class="pub-card-meta">Aperçu · mai 2026</span>
                     <span class="pub-card-title">Préversion exp1 — accès limité</span>
-                    <span class="pub-card-desc">Instance expérimentale tout-en-un : Android, admin locataire, démo Acme ; invitations prioritaires ou demande par courriel ; ce n’est pas une offre de production.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/ezkey-at-a-glance-trust-zone-mobile.html">
-                    <span class="pub-card-title">Ezkey en un coup d’œil</span>
-                    <span class="pub-card-desc">Zone de confiance et application mobile : MFA backend-first, bind/verify et pending/respond, et pourquoi ce n’est pas « un autre générateur de codes ».</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/strategie-de-test.html">
-                    <span class="pub-card-title">Stratégie de test</span>
-                    <span class="pub-card-desc">Du test unitaire au stress opérationnel : segmentation par tags, clean room Docker, tests fonctionnels séquentiels, tests électifs et churn opérationnel avec compression de temps.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/ai-coding-manifesto.html">
-                    <span class="pub-card-title">Manifeste sur le codage assisté par IA</span>
-                    <span class="pub-card-desc">Le futur du codage est déjà là : frontières, Docker, tests et évolution du rôle du développeur.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/generative-ai-nocode-lowcode-parallel.html">
-                    <span class="pub-card-title">IA générative et No-Code / Low-Code</span>
-                    <span class="pub-card-desc">Un parallèle entre l’ère No-Code et les outils de codage IA — spécifications, verrouillage et documentation hybride.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/from-code-to-intent-ai-workflow.html">
-                    <span class="pub-card-title">Du code à l'intention</span>
-                    <span class="pub-card-desc">Un an de workflow avec l'IA sur un projet open source — de la vélocité brute à l'élévation du rôle de développeur vers architecte, analyste et product owner.</span>
-                    <span class="pub-card-cta">Lire</span>
-                </a>
-                <a class="pub-card" href="/fr/guide-developpeur-mobile-ezkey.html">
-                    <span class="pub-card-title">Comment l'app mobile signe chaque étape</span>
-                    <span class="pub-card-desc">Un parcours détechnilisé dans le protocole Ezkey : enrollment, proof tokens et chaînage cryptographique de bout en bout — sans confiance implicite.</span>
+                    <span class="pub-card-desc">Instance expérimentale tout-en-un : Android, admin locataire, démo Acme ; invitations prioritaires ou demande par courriel ; ce n’est pas une offre de production.</span>
                     <span class="pub-card-cta">Lire</span>
                 </a>
                 <a class="pub-card" href="/fr/du-monolithe-au-contrat.html">
+                    <span class="pub-card-meta">Technique · 15 avril 2026</span>
                     <span class="pub-card-title">Du monolithe au contrat</span>
-                    <span class="pub-card-desc">Comment une application Spring Boot unique est devenue quatre backends autonomes &mdash; et comment les spécifications OpenAPI versionnées et dispatchées ont fait du backend-first un workflow IA discipliné.</span>
+                    <span class="pub-card-desc">Comment une application Spring Boot unique est devenue quatre backends autonomes &mdash; et comment les spécifications OpenAPI versées et dispatchies ont fait du backend-first un workflow IA discipliné.</span>
+                    <span class="pub-card-cta">Lire</span>
+                </a>
+                <a class="pub-card" href="/fr/guide-developpeur-mobile-ezkey.html">
+                    <span class="pub-card-meta">Technique · 14 avril 2026</span>
+                    <span class="pub-card-title">Comment l’app mobile signe chaque étape</span>
+                    <span class="pub-card-desc">Un parcours détechnisé dans le protocole Ezkey : enrollment, proof tokens et chaînage cryptographique de bout en bout — sans confiance implicite.</span>
+                    <span class="pub-card-cta">Lire</span>
+                </a>
+                <a class="pub-card" href="/fr/strategie-de-test.html">
+                    <span class="pub-card-meta">Technique · 12 avril 2026</span>
+                    <span class="pub-card-title">Stratégie de test</span>
+                    <span class="pub-card-desc">Du test unitaire au stress opérationnel : segmentation par tags, clean room Docker, tests fonctionnels séquentiels, tests électifs et churn opérationnel avec compression de temps.</span>
+                    <span class="pub-card-cta">Lire</span>
+                </a>
+                <a class="pub-card" href="/fr/ezkey-at-a-glance-trust-zone-mobile.html">
+                    <span class="pub-card-meta">Technique · 11 avril 2026</span>
+                    <span class="pub-card-title">Ezkey en un coup d’œil</span>
+                    <span class="pub-card-desc">Zone de confiance et application mobile : MFA backend-first, bind/verify et pending/respond, et pourquoi ce n’est pas « un autre générateur de codes ».</span>
+                    <span class="pub-card-cta">Lire</span>
+                </a>
+                <a class="pub-card" href="/fr/why-ezkey-exists.html">
+                    <span class="pub-card-meta">Article fondateur · 5 avril 2026</span>
+                    <span class="pub-card-title">Pourquoi Ezkey existe</span>
+                    <span class="pub-card-desc">Pourquoi ce projet existe : conviction backend-first, limites de confiance explicites, exécution AI-first et pourquoi le travail est expérimental mais sérieux.</span>
+                    <span class="pub-card-cta">Lire</span>
+                </a>
+            </div>
+            <p class="page-subheading">Craft &amp; ingénierie</p>
+            <div class="publication-grid">
+                <a class="pub-card" href="/fr/retour-aux-sources-developpeur-ere-ia.html">
+                    <span class="pub-card-meta">Essai &middot; 13 mai 2026</span>
+                    <span class="pub-card-title">Le retour aux sources du d&eacute;veloppeur</span>
+                    <span class="pub-card-desc">L&rsquo;IA penalise l&rsquo;analyse implicite et r&eacute;compense la conception explicite. Retour d&rsquo;exp&eacute;rience structur&eacute; sur la m&eacute;thodologie, le context engineering et l&rsquo;&eacute;volution du r&ocirc;le du d&eacute;veloppeur &agrave; l&rsquo;&egrave;re de l&rsquo;IA.</span>
+                    <span class="pub-card-cta">Lire</span>
+                </a>
+                <a class="pub-card" href="/fr/from-code-to-intent-ai-workflow.html">
+                    <span class="pub-card-meta">Essai · 13 avril 2026</span>
+                    <span class="pub-card-title">Du code à l’intention</span>
+                    <span class="pub-card-desc">Un an de workflow avec l’IA sur un projet open source — de la vélocité brute à l’élévation du rôle de développeur vers architecte, analyste et product owner.</span>
+                    <span class="pub-card-cta">Lire</span>
+                </a>
+                <a class="pub-card" href="/fr/ai-coding-manifesto.html">
+                    <span class="pub-card-meta">Essai · mars 2026</span>
+                    <span class="pub-card-title">Manifeste sur le codage assisté par IA</span>
+                    <span class="pub-card-desc">Le futur du codage est déjà là : frontières, Docker, tests et évolution du rôle du développeur.</span>
+                    <span class="pub-card-cta">Lire</span>
+                </a>
+                <a class="pub-card" href="/fr/generative-ai-nocode-lowcode-parallel.html">
+                    <span class="pub-card-meta">Essai · mars 2026</span>
+                    <span class="pub-card-title">IA générative et No-Code / Low-Code</span>
+                    <span class="pub-card-desc">Un parallèle entre l’ère No-Code et les outils de codage IA — spécifications, verrouillage et documentation hybride.</span>
                     <span class="pub-card-cta">Lire</span>
                 </a>
             </div>
