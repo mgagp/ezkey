@@ -247,21 +247,33 @@
         .page-subheading {
             display: flex;
             align-items: center;
-            gap: 14px;
-            margin: 36px 0 20px;
-            font-size: 0.82rem;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: #fef3c7;
-            white-space: nowrap;
+            gap: 16px;
+            margin: 40px 0 22px;
         }
         .page-subheading::before,
         .page-subheading::after {
             content: '';
             flex: 1;
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.52), transparent);
+        }
+        .page-subheading::before {
+            background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.62));
+        }
+        .page-subheading::after {
+            background: linear-gradient(90deg, rgba(251, 191, 36, 0.62), transparent);
+        }
+        .page-subheading span {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #fef3c7;
+            white-space: nowrap;
+            padding: 5px 15px;
+            border-radius: 20px;
+            background: rgba(251, 191, 36, 0.13);
+            border: 1px solid rgba(251, 191, 36, 0.48);
+            box-shadow: 0 0 14px rgba(251, 191, 36, 0.2);
         }
 
         .publication-grid {
@@ -400,7 +412,7 @@
             <p class="page-intro">
                 Essais longs et notes d’ingénierie — indépendamment de la feuille de route produit. Distinct des <a href="/fr/updates.html">mises à jour produit</a> et des <a href="/fr/guides.html">guides pas à pas pour évaluateurs</a>.
             </p>
-            <p class="page-subheading">À propos d’Ezkey</p>
+            <p class="page-subheading"><span>À propos d’Ezkey</span></p>
             <div class="publication-grid">
                 <a class="pub-card" href="/fr/experimental-preview-exp1.html">
                     <span class="pub-card-meta">Aperçu · mai 2026</span>
@@ -439,7 +451,7 @@
                     <span class="pub-card-cta">Lire</span>
                 </a>
             </div>
-            <p class="page-subheading">Craft &amp; ingénierie</p>
+            <p class="page-subheading"><span>Craft &amp; ingénierie</span></p>
             <div class="publication-grid">
                 <a class="pub-card" href="/fr/retour-aux-sources-developpeur-ere-ia.html">
                     <span class="pub-card-meta">Essai &middot; 13 mai 2026</span>

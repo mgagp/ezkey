@@ -247,21 +247,33 @@
         .page-subheading {
             display: flex;
             align-items: center;
-            gap: 14px;
-            margin: 36px 0 20px;
-            font-size: 0.82rem;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: #fef3c7;
-            white-space: nowrap;
+            gap: 16px;
+            margin: 40px 0 22px;
         }
         .page-subheading::before,
         .page-subheading::after {
             content: '';
             flex: 1;
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.52), transparent);
+        }
+        .page-subheading::before {
+            background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.62));
+        }
+        .page-subheading::after {
+            background: linear-gradient(90deg, rgba(251, 191, 36, 0.62), transparent);
+        }
+        .page-subheading span {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #fef3c7;
+            white-space: nowrap;
+            padding: 5px 15px;
+            border-radius: 20px;
+            background: rgba(251, 191, 36, 0.13);
+            border: 1px solid rgba(251, 191, 36, 0.48);
+            box-shadow: 0 0 14px rgba(251, 191, 36, 0.2);
         }
 
         .publication-grid {
@@ -400,7 +412,7 @@
             <p class="page-intro">
                 Long-form essays and engineering notes — independent of the product roadmap. Separate from <a href="/updates.html">product updates</a> and from <a href="/guides.html">step-by-step evaluator guides</a>.
             </p>
-            <p class="page-subheading">About Ezkey</p>
+            <p class="page-subheading"><span>About Ezkey</span></p>
             <div class="publication-grid">
                 <a class="pub-card" href="/experimental-preview-exp1.html">
                     <span class="pub-card-meta">Preview · May 2026</span>
@@ -439,7 +451,7 @@
                     <span class="pub-card-cta">Read</span>
                 </a>
             </div>
-            <p class="page-subheading">Craft &amp; engineering</p>
+            <p class="page-subheading"><span>Craft &amp; engineering</span></p>
             <div class="publication-grid">
                 <a class="pub-card" href="/ai-return-to-foundations-methodology.html">
                     <span class="pub-card-meta">Essay &middot; May 13, 2026</span>
