@@ -165,7 +165,11 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer} accessibilityLabel={t('enrollmentDetail.loading')}>
+      <View
+        style={styles.loadingContainer}
+        testID="ezkey.e2e.enrollmentDetail.loading"
+        collapsable={false}
+        accessibilityLabel={t('enrollmentDetail.loading')}>
         <ActivityIndicator accessibilityLabel={t('common.loading')} />
       </View>
     );
@@ -212,7 +216,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     : undefined;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="ezkey.e2e.enrollmentDetail.screen">
       <View style={styles.identityZone}>
         <Text style={styles.installationLine}>
           {installation?.name ?? t('enrollmentDetail.installationFallback')}
@@ -250,6 +254,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
       ) : null}
 
       <TouchableOpacity
+        testID="ezkey.e2e.enrollmentDetail.checkPending"
         style={[styles.primaryButton, isCheckingPending ? styles.disabledButton : undefined]}
         onPress={handleCheckPending}
         disabled={isCheckingPending}>

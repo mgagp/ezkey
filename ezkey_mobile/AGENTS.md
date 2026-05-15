@@ -56,3 +56,5 @@ yarn typecheck
 yarn test
 yarn android:install:debug
 ```
+
+Real-device Maestro pilot (`TB-2026-0002`): see [`maestro/README.md`](maestro/README.md) and `scripts/run-real-device-pilot-maestro.sh`.

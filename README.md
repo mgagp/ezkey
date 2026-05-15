@@ -55,6 +55,7 @@ For stack details, modes, and test-oriented workflow:
 - [`PRD.md`](PRD.md) - Product requirements and product framing.
 - [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) - Strategic positioning and project philosophy.
 - [`docs/README.md`](docs/README.md) - Documentation index.
+- [`docs/ECOSYSTEM_REPOSITORIES.md`](docs/ECOSYSTEM_REPOSITORIES.md) - Planned integration repos (SMS, directory sync shells) beside the core monorepo.
 - [`docs/ADMIN_UI.md`](docs/ADMIN_UI.md) - Admin UI purpose, operator roles, capabilities, and documentation boundaries.
 - [`docs/ENDPOINT.md`](docs/ENDPOINT.md) - API reference.
 - [`docs/RECOVERY_CODES_LIFECYCLE_ANALYSIS.md`](docs/RECOVERY_CODES_LIFECYCLE_ANALYSIS.md) - Recovery-code lifecycle analysis and recommended regeneration model.

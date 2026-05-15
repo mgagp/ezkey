@@ -91,7 +91,18 @@ export const HomeScreen: React.FC = () => {
         installationGroups.some(group => group.installation.id === id),
       );
 
-      return kept.length > 0 ? kept : [installationGroups[0].installation.id];
+      if (kept.length > 0) {
+        return kept;
+      }
+      /*
+       * Default: expand every installation section when the list is modest so Home rows (and Maestro
+       * testIDs on enrollments) exist in the accessibility tree. If only the first section were open,
+       * enrollments under other installations would be absent from the hierarchy until the user taps
+       * "+", which breaks unattended flows and confuses automation.
+       */
+      return installationGroups.length <= 6
+        ? installationGroups.map(group => group.installation.id)
+        : [installationGroups[0].installation.id];
     });
   }, [installationGroups]);
 
@@ -125,7 +136,7 @@ export const HomeScreen: React.FC = () => {
   const fabBottom = insets.bottom + spacing.lg;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="ezkey.e2e.home.root" collapsable={false}>
       {isLoading ? (
         <View style={styles.loadingContainer} accessibilityLabel={t('home.loadingEnrollments')}>
           <ActivityIndicator color={colors.primaryLight} accessibilityLabel={t('home.loading')} />
@@ -162,6 +173,7 @@ export const HomeScreen: React.FC = () => {
         </ScrollView>
       )}
       <TouchableOpacity
+        testID="ezkey.e2e.home.fabAddEnrollment"
         style={[styles.fab, {bottom: fabBottom}]}
         onPress={navigateToWizard}
         activeOpacity={0.85}
@@ -247,6 +259,7 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
   return (
     <View style={styles.installationShell}>
       <TouchableOpacity
+        testID={`ezkey.e2e.home.installation.${group.installation.id}`}
         style={styles.installationHeader}
         onPress={() => onToggle(group.installation.id)}
         accessibilityRole="button"
@@ -312,6 +325,7 @@ const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPr
 
   return (
     <TouchableOpacity
+      testID={`ezkey.e2e.home.enrollment.${enrollment.id}`}
       style={styles.card}
       onPress={() => onPress(enrollment)}
       accessibilityRole="button"

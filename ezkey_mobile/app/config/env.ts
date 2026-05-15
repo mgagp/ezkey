@@ -47,4 +47,16 @@ export const env = {
    * .env and rebuild native app to enable (react-native-config).
    */
   pendingAuthDebugPanel: parseBool(Config.EZKEY_PENDING_AUTH_DEBUG_PANEL, false),
+  /**
+   * When true, logs ISO-timestamped steps for the pending-auth **respond** path (Maestro / device
+   * diagnosis). Prefix {@code [PendingAuthRespond]}. Default false — set EZKEY_PENDING_AUTH_FLOW_TRACE
+   * in .env and rebuild the native app (react-native-config). Does not log challenge digits or tokens.
+   *
+   * <p><b>Hypothesis-validation strip (removable):</b> remove this flag together with
+   * {@code tracePendingAuthRespond} and all its call sites in {@code usePendingAuth.ts} and
+   * {@code PendingAuthScreen.tsx}, the {@code EZKEY_PENDING_AUTH_FLOW_TRACE} line in {@code .env.example}, the
+   * "Respond-path logging" section in {@code maestro/README.md}, and optional {@code MAESTRO_LOGCAT} handling in
+   * {@code scripts/run-real-device-pilot-maestro.sh} when Maestro pilot diagnosis is done.
+   */
+  pendingAuthFlowTrace: parseBool(Config.EZKEY_PENDING_AUTH_FLOW_TRACE, false),
 };

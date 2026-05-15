@@ -1,0 +1,46 @@
+appId: org.ezkey.mobile
+---
+## Pilot: Home → Enrollment detail → Check pending → Approve (no 2-digit challenge).
+## Prerequisites: device enrolled; a pending auth attempt queued with challengeRequested=false.
+## Run: scripts/run-real-device-pilot-maestro.sh (sets ENROLLMENT_ID).
+## launchApp uses stopApp: true so each run cold-starts on Home (not whatever screen was left open).
+- launchApp:
+    clearState: false
+    stopApp: true
+## Wait for Home shell (full-area container). The FAB alone can fail Maestro "visible" heuristics (small absolute target near safe-area / gesture bar).
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.home.root"
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: "ezkey.e2e.home.enrollment.${ENROLLMENT_ID}"
+    direction: DOWN
+    timeout: 20000
+    speed: 60
+    visibilityPercentage: 50
+- tapOn:
+    id: "ezkey.e2e.home.enrollment.${ENROLLMENT_ID}"
+- waitForAnimationToEnd:
+    timeout: 5000
+## Detail screen can show a loading branch first (no checkPending in hierarchy until enrollments resolve).
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentDetail.checkPending"
+    timeout: 45000
+- tapOn:
+    id: "ezkey.e2e.enrollmentDetail.checkPending"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.pendingAuth.approve"
+    timeout: 90000
+- tapOn:
+    id: "ezkey.e2e.pendingAuth.approve"
+    point: "50%,50%"
+    retryTapIfNoChange: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentDetail.checkPending"
+    timeout: 90000

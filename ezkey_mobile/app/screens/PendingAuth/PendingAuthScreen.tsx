@@ -29,7 +29,7 @@ import {useTranslation} from 'react-i18next';
 import {env} from '../../config/env';
 import {RootStackParamList} from '../../navigation/types';
 import PinCodeInput from '../../components/PinCodeInput';
-import {usePendingAuth, AUTH_CHALLENGE_LENGTH} from '../../hooks/usePendingAuth';
+import {usePendingAuth, AUTH_CHALLENGE_LENGTH, tracePendingAuthRespond} from '../../hooks/usePendingAuth';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PendingAuth'>;
 
@@ -88,7 +88,7 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
           <Text style={styles.loadingText}>{t('pendingAuth.loading')}</Text>
         </View>
       ) : globalError ? (
-        <View style={styles.errorState}>
+        <View style={styles.errorState} testID="ezkey.e2e.pendingAuth.globalErrorState">
           <Text style={styles.errorTitle}>{t('pendingAuth.errorTitle')}</Text>
           <Text style={styles.errorBody}>{globalError}</Text>
           {env.pendingAuthDebugPanel && debugInfo ? (
@@ -145,20 +145,27 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
               )}
             </View>
           ) : null}
-          <TouchableOpacity onPress={loadPendingAttempt} style={styles.secondaryButton}>
+          <TouchableOpacity
+            testID="ezkey.e2e.pendingAuth.tryAgain"
+            onPress={loadPendingAttempt}
+            style={styles.secondaryButton}>
             <Text style={styles.secondaryLabel}>{t('pendingAuth.tryAgain')}</Text>
           </TouchableOpacity>
         </View>
       ) : showEmptyState ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>{t('pendingAuth.noPending')}</Text>
-          <TouchableOpacity onPress={loadPendingAttempt} style={styles.checkAgainButton}>
+          <TouchableOpacity
+            testID="ezkey.e2e.pendingAuth.checkAgain"
+            onPress={loadPendingAttempt}
+            style={styles.checkAgainButton}>
             <Text style={styles.checkAgainLabel}>{t('pendingAuth.checkAgain')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
         attempt && (
           <ScrollView
+            testID="ezkey.e2e.pendingAuth.attemptScroll"
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.pendingScrollContent}>
             <View style={styles.card}>
@@ -186,6 +193,8 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                     onChangeText={setChallengeInput}
                     onClearError={() => setFormError(undefined)}
                     editable={!isProcessing}
+                    autoFocus
+                    testID="ezkey.e2e.pendingAuth.challengeDigits"
                     accessibilityLabel={t('pendingAuth.challengeInput')}
                     accessibilityHint={t('pendingAuth.challengeInputHint')}
                   />
@@ -199,13 +208,21 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
 
               <View style={styles.actions}>
                 <TouchableOpacity
-                  onPress={() => handleRespond(false)}
+                  testID="ezkey.e2e.pendingAuth.deny"
+                  onPress={() => {
+                    tracePendingAuthRespond('pendingAuth_ui_deny_press', {});
+                    void handleRespond(false);
+                  }}
                   style={[styles.actionButton, styles.rejectButton]}
                   disabled={isProcessing}>
                   <Text style={styles.rejectLabel}>{t('pendingAuth.deny')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => handleRespond(true)}
+                  testID="ezkey.e2e.pendingAuth.approve"
+                  onPress={() => {
+                    tracePendingAuthRespond('pendingAuth_ui_approve_press', {});
+                    void handleRespond(true);
+                  }}
                   style={[styles.actionButton, styles.approveButton]}
                   disabled={isProcessing}>
                   <Text style={styles.approveLabel}>
@@ -213,6 +230,14 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                   </Text>
                 </TouchableOpacity>
               </View>
+              {isProcessing ? (
+                <View
+                  testID="ezkey.e2e.pendingAuth.respondInFlight"
+                  collapsable={false}
+                  style={styles.respondInFlightMarker}
+                  importantForAccessibility="no"
+                />
+              ) : null}
             </View>
           </ScrollView>
         )
@@ -376,6 +401,13 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  respondInFlightMarker: {
+    alignSelf: 'stretch',
+    height: 2,
+    marginTop: 6,
+    opacity: 0.06,
+    backgroundColor: '#ffffff',
   },
   actionButton: {
     flex: 1,

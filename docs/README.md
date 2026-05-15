@@ -18,6 +18,7 @@ If you are new to the repository, read these first:
 ## Core References
 
 - [PROJECT_POSITIONING.md](PROJECT_POSITIONING.md): what Ezkey is, what it is not, and why it exists.
+- [ECOSYSTEM_REPOSITORIES.md](ECOSYSTEM_REPOSITORIES.md): planned integration-repository shells (`ezkey-*` satellites such as SMS and directory adapters) and naming rules.
 - [ARCHITECTURE.md](ARCHITECTURE.md): system architecture, module relationships, and trust boundaries.
 - [ENDPOINT.md](ENDPOINT.md): canonical Admin API and Auth API endpoint behavior.
 - [CRYPTO.md](CRYPTO.md): shared cryptographic model, payload rules, and wording guardrails.

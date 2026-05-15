@@ -26,7 +26,7 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0016` | Methodology hygiene follow-ups (Tier 2 from 2026-05-08 nomenclature pass) | `captured` | `P3` | `docs (product-docs)`, `methodology` | `2026-05-08` |
 | `I-2026-0017` | Profile elaboration template, skill, and per-client document workflow | `captured` | `P1` | `docs (product-docs)`, `methodology`, `skills` | `2026-05-08` |
 | `I-2026-0018` | Profile generator skill: elaboration document to runtime configs | `captured` | `P2` | `docs (product-docs)`, `methodology`, `skills`, `infra` | `2026-05-08` |
-| `I-2026-0019` | Android real-device mobile functional tests | `ready` | `P1` | `ezkey-mobile`, `ezkey-tests`, `auth-api`, `admin-api`, `docker` | `2026-05-08` |
+| `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
 
 ## Recently completed
 

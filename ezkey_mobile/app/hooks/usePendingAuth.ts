@@ -16,6 +16,7 @@
  */
 
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {Keyboard} from 'react-native';
 import axios from 'axios';
 import {Buffer} from 'buffer';
 import {useTranslation} from 'react-i18next';
@@ -34,6 +35,7 @@ import {StoredEnrollment} from '../services/storage/enrollmentStorage';
 import {generateProofToken} from '../utils/generateProofToken';
 import {sha256HexUtf8} from '../utils/sha256HexUtf8';
 import {useEnrollmentStore} from '../state/enrollmentStore';
+import {env} from '../config/env';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -41,6 +43,27 @@ import {useEnrollmentStore} from '../state/enrollmentStore';
 
 /** Number of digits in the auth challenge PIN. Exported so the screen can pass it to PinCodeInput. */
 export const AUTH_CHALLENGE_LENGTH = 2;
+
+/**
+ * Optional respond-path tracing for device / Maestro timing (guarded by {@link env.pendingAuthFlowTrace}).
+ * Never logs challenge digits, proof tokens, or signatures — only step names, ids, lengths, and outcomes.
+ * <p><b>Hypothesis-validation strip:</b> delete this function and every {@code tracePendingAuthRespond} call
+ * in {@code handleRespond} and {@code PendingAuthScreen} respond buttons when pilot logging is no longer needed
+ * (also remove {@code env.pendingAuthFlowTrace}).
+ *
+ * @param step stable machine-readable step id
+ * @param detail optional small JSON-serializable fields
+ */
+export function tracePendingAuthRespond(
+  step: string,
+  detail?: Readonly<Record<string, string | number | boolean | undefined>>,
+): void {
+  if (!env.pendingAuthFlowTrace) {
+    return;
+  }
+  const suffix = detail && Object.keys(detail).length > 0 ? ` ${JSON.stringify(detail)}` : '';
+  console.log(`[PendingAuthRespond] ${new Date().toISOString()} ${step}${suffix}`);
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -400,6 +423,12 @@ export function usePendingAuth(
   const handleRespond = useCallback(
     async (accepted: boolean) => {
       if (!enrollment || !attempt || isProcessing) {
+        tracePendingAuthRespond('handleRespond_skipped_preconditions', {
+          accepted,
+          hasEnrollment: Boolean(enrollment),
+          hasAttempt: Boolean(attempt),
+          isProcessing,
+        });
         return;
       }
       if (
@@ -407,12 +436,24 @@ export function usePendingAuth(
         attempt.challengeRequired &&
         challengeInput.trim().length !== AUTH_CHALLENGE_LENGTH
       ) {
+        tracePendingAuthRespond('handleRespond_skipped_challenge_incomplete', {
+          challengeRequired: true,
+          challengeLen: challengeInput.trim().length,
+          requiredLen: AUTH_CHALLENGE_LENGTH,
+        });
         setFormError(t('pendingAuth.enterChallenge'));
         return;
       }
       setIsProcessing(true);
       setGlobalError(undefined);
       setFormError(undefined);
+      Keyboard.dismiss();
+      tracePendingAuthRespond('handleRespond_try_begin', {
+        accepted,
+        authAttemptId: attempt.authAttemptId,
+        challengeRequired: attempt.challengeRequired,
+        challengeLen: challengeInput.trim().length,
+      });
       try {
         const enrollmentKeyId = enrollment.id.toString();
         await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
@@ -421,12 +462,18 @@ export function usePendingAuth(
           enrollmentApprovalPolicy: enrollment.approvalPolicy,
           securityPreference,
         });
+        tracePendingAuthRespond('handleRespond_after_prefs', {
+          protectedSigning: shouldProtectRespond,
+        });
         const respondPayload = buildRespondPayload(attempt.authAttemptProofToken, accepted);
         const proofTokenSigned = await cryptoService.signForRespond(
           enrollmentKeyId,
           respondPayload,
           shouldProtectRespond,
         );
+        tracePendingAuthRespond('handleRespond_after_device_sign', {
+          signedPayloadChars: proofTokenSigned.length,
+        });
         const response = await authAttemptsApi.respond(
           {
             authAttemptId: attempt.authAttemptId,
@@ -439,12 +486,16 @@ export function usePendingAuth(
 
         const integrationPublicKey = enrollment.integrationPublicKey;
         if (!integrationPublicKey) {
+          tracePendingAuthRespond('handleRespond_abort_missing_integration_public_key', {});
           setGlobalError(t('pendingAuth.missingRespondPublicKey'));
           return;
         }
         const respondSig =
           response.authAttemptProofTokenResultSignedByIntegration?.trim() ?? '';
         if (!respondSig) {
+          tracePendingAuthRespond('handleRespond_abort_missing_respond_signature', {
+            authAttemptId: response.authAttemptId,
+          });
           setGlobalError(t('pendingAuth.missingRespondSignature'));
           return;
         }
@@ -460,6 +511,9 @@ export function usePendingAuth(
           integrationPublicKey,
         );
         if (!respondSignatureValid) {
+          tracePendingAuthRespond('handleRespond_abort_invalid_respond_signature', {
+            authAttemptId: response.authAttemptId,
+          });
           setGlobalError(t('pendingAuth.invalidRespondSignature'));
           return;
         }
@@ -470,6 +524,10 @@ export function usePendingAuth(
         const status =
           outcome === 'APPROVED' ? 'approved' : outcome === 'DENIED' ? 'rejected' : 'failed';
 
+        tracePendingAuthRespond('handleRespond_http_verified', {
+          authAttemptId: response.authAttemptId,
+          outcome,
+        });
         setRecentAuthResult(enrollment.id, {
           status,
           title,
@@ -477,11 +535,17 @@ export function usePendingAuth(
             status === 'failed' ? message ?? t('pendingAuth.challengeDidNotMatch') : message,
           completedAt: new Date().toISOString(),
         });
+        tracePendingAuthRespond('handleRespond_navigate_back', {recentAuthStatus: status});
         handleReturnToEnrollmentDetail();
       } catch (error) {
-        setGlobalError(extractErrorMessage(error));
+        const msg = extractErrorMessage(error);
+        tracePendingAuthRespond('handleRespond_catch', {
+          message: msg.length > 240 ? `${msg.slice(0, 240)}...` : msg,
+        });
+        setGlobalError(msg);
       } finally {
         setIsProcessing(false);
+        tracePendingAuthRespond('handleRespond_finally');
       }
     },
     [

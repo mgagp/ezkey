@@ -10,7 +10,7 @@
  * @since 2025
  */
 
-import React, {useCallback, useMemo, useRef} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 
 export type PinCodeInputProps = {
@@ -28,6 +28,18 @@ export type PinCodeInputProps = {
   centered?: boolean;
   /** Gap between digit boxes in pixels. Default: 12. */
   gap?: number;
+  /**
+   * Optional Android resource id for automation (Maestro). Applied to the visible {@link Pressable}
+   * wrapper. The hidden {@link TextInput} is often merged into that node in the UiAutomator hierarchy
+   * (no separate {@code resource-id}); use Maestro {@code tapOn} this id with {@code point} over the
+   * overlay (see {@code maestro/README.md}).
+   */
+  testID?: string;
+  /**
+   * When true, focuses the hidden {@link TextInput} after mount using a double {@code requestAnimationFrame}
+   * so layout has settled (avoids deprecated {@code InteractionManager} for this use case).
+   */
+  autoFocus?: boolean;
 };
 
 /**
@@ -49,6 +61,8 @@ const PinCodeInput: React.FC<PinCodeInputProps> = ({
   accessibilityHint,
   centered = false,
   gap = 12,
+  testID,
+  autoFocus = false,
 }) => {
   const inputRef = useRef<TextInput>(null);
   const digits = value
@@ -74,8 +88,27 @@ const PinCodeInput: React.FC<PinCodeInputProps> = ({
     [length, onChangeText, onClearError],
   );
 
+  useEffect(() => {
+    if (!autoFocus || !editable) {
+      return;
+    }
+    let innerFrame: number | undefined;
+    const outerFrame = requestAnimationFrame(() => {
+      innerFrame = requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outerFrame);
+      if (innerFrame != null) {
+        cancelAnimationFrame(innerFrame);
+      }
+    };
+  }, [autoFocus, editable]);
+
   return (
     <Pressable
+      testID={testID}
       onPress={() => editable && inputRef.current?.focus()}
       style={styles.container}
       accessibilityLabel={accessibilityLabel}
@@ -89,16 +122,19 @@ const PinCodeInput: React.FC<PinCodeInputProps> = ({
           </View>
         ))}
       </View>
-      <TextInput
-        ref={inputRef}
-        value={value}
-        onChangeText={handleChange}
-        keyboardType="number-pad"
-        maxLength={length}
-        editable={editable}
-        caretHidden
-        style={styles.hiddenInput}
-      />
+      <View style={styles.hiddenInputHost} collapsable={false}>
+        <TextInput
+          ref={inputRef}
+          value={value}
+          onChangeText={handleChange}
+          keyboardType="number-pad"
+          maxLength={length}
+          editable={editable}
+          autoFocus={autoFocus}
+          caretHidden
+          style={styles.hiddenInput}
+        />
+      </View>
     </Pressable>
   );
 };
@@ -128,12 +164,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#f4f7ff',
   },
+  hiddenInputHost: {
+    ...StyleSheet.absoluteFill,
+  },
   hiddenInput: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     opacity: 0,
     fontSize: 1,
   },

@@ -1,0 +1,67 @@
+appId: org.ezkey.mobile
+---
+## Same as pilot_pending_respond.yaml but enters the 2-digit challenge before Approve.
+## Pass CHALLENGE_CODE via -e (e.g. -e CHALLENGE_CODE=42).
+## launchApp uses stopApp: true so each run cold-starts on Home.
+- launchApp:
+    clearState: false
+    stopApp: true
+## Wait for Home shell (full-area container). The FAB alone can fail Maestro "visible" heuristics (small absolute target near safe-area / gesture bar).
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.home.root"
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: "ezkey.e2e.home.enrollment.${ENROLLMENT_ID}"
+    direction: DOWN
+    timeout: 20000
+    speed: 60
+    visibilityPercentage: 50
+- tapOn:
+    id: "ezkey.e2e.home.enrollment.${ENROLLMENT_ID}"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentDetail.checkPending"
+    timeout: 45000
+- tapOn:
+    id: "ezkey.e2e.enrollmentDetail.checkPending"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.pendingAuth.challengeDigits"
+    timeout: 90000
+## Tap center of the challenge control so the hit targets the full-area hidden TextInput overlay (RN often omits a separate EditText resource-id in the hierarchy).
+- tapOn:
+    id: "ezkey.e2e.pendingAuth.challengeDigits"
+    point: "50%,50%"
+    retryTapIfNoChange: true
+- waitForAnimationToEnd:
+    timeout: 1500
+- inputText: "${CHALLENGE_CODE}"
+- waitForAnimationToEnd:
+    timeout: 3000
+## Let the soft keyboard settle before Approve (avoids taps that do not reach the TouchableOpacity handler).
+- waitForAnimationToEnd:
+    timeout: 2500
+## Blur the challenge field: logcat often shows the EditText as visible:false while Maestro polls; tapping the scroll area moves focus before Approve.
+- tapOn:
+    id: "ezkey.e2e.pendingAuth.attemptScroll"
+    point: "50%,15%"
+- waitForAnimationToEnd:
+    timeout: 800
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.pendingAuth.approve"
+    timeout: 10000
+- tapOn:
+    id: "ezkey.e2e.pendingAuth.approve"
+    point: "50%,50%"
+    retryTapIfNoChange: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentDetail.checkPending"
+    timeout: 90000
