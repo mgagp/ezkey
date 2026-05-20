@@ -3,17 +3,17 @@
 ## Metadata
 
 - **ID:** `I-2026-0005`
-- **Status:** `captured`
+- **Status:** `incubating`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-08`
-- **Last reviewed at:** `2026-05-08`
+- **Updated at:** `2026-05-19`
+- **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `audit`
 
 ## Intent
 
-Extend the existing checkpoint and heartbeat operational mechanism so that **detected** audit-sequence integrity breaks (for example, a deleted audit row that breaks cryptographic chaining) trigger a structured operator-facing remediation flow comparable to the existing gap-declaration flow used for full outages. Detection itself already works; what is missing is the alerting, declaration, rectification, and reattachment workflow.
+Generalize integrity **rupture handling** for period-based validation: any irregularity in the examined window (gap, heartbeat/partial failure, or data manipulation) is surfaced as an **actionable alert** for the Global Admin, prioritized and resolved **in sequence**. This item owns the **manipulation** family end-to-end (alert with fail/resume boundaries, investigation, justification, reintegration, crypto bridge). **Gap** and **heartbeat** families reuse existing flows (revise heartbeat path only if gaps found). R1 is self-contained and bounded — no external ITSM, no archive/sealed export workflows.
 
 ## Problem and value
 
@@ -23,33 +23,68 @@ Extend the existing checkpoint and heartbeat operational mechanism so that **det
 ## Scope
 
 - **In scope:**
-  - Define the conceptual model for a "detected integrity break" incident (lifecycle, fields, persistence).
-  - Extend the existing checkpoints and incidents table (or introduce a sibling) to record the break, the declaration, the reattachment, and the resulting cryptographic continuation.
-  - Trigger an alert (consistent with the existing degradation-alert table) on detection.
-  - Provide the operator path to declare, rectify, and reattach.
-  - Ensure the dashboard reflects the resolved state once reattachment is recorded.
+  - **Rupture taxonomy** for period validation: (1) gap / generalized downtime, (2) heartbeat / partial failure, (3) manipulation (add/delete/modify).
+  - **One actionable alert per distinct irregularity** in the validation window; priority ordering for Global Admin (manipulation highest, gap lowest by default).
+  - **Manipulation path:** alert payload includes where cryptographic continuity **fails** and where it **resumes**; operator justification; period reintegration; crypto bridge; validator reports healthy after resolution.
+  - Reuse **existing alert table** as operator queue; extend types/payload — no new parallel incident universe for R1.
+  - Align gap and heartbeat alerts with existing gap-declaration and partial-failure reconciliation (audit/revise heartbeat completeness only).
+  - Conciliation persistence on existing incident/checkpoint bridge (see INC-1 in grill session).
 - **Out of scope:**
-  - Proactive deeper retroactive integrity checks beyond the current rolling window — covered by `V-2026-0004` and `I-2026-0006`.
-  - Dashboard widget design for the resolved state — covered by `I-2026-0007`.
-  - Backfill of historical undetected breaks (separate evaluation).
+  - Proactive retroactive validation schedule/window — `I-2026-0006`.
+  - Dashboard widgets — `I-2026-0007`.
+  - Audit archival export and sealed-audit archive workflows (FSM exists; archive is future).
+  - Backfill of historical undetected breaks.
+  - External ticketing systems (optional reference in justification text only).
+
+## Grilling decisions (2026-05-17, in progress)
+
+Full session log: [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/integrity-cluster-D4-D6-grill-me.md) — **resume at C8**. **Design pack:** sufficient for D4 after C7 (see grill session).
+
+| Topic | Decision |
+|-------|----------|
+| **Roles** | Global Admin only for investigation and reattachment; Tenant Admin keeps audit read access only (no crypto-ops surface). |
+| **R1 reattachment** | Mandatory explicit cryptographic bridge; acceptance = existing integrity validator reports continuity OK for reconciled period. |
+| **Detection (R1)** | Period validation (batch + ad hoc) surfaces **all** irregularities; each enters resolution. |
+| **C7 — Multiple ruptures** | Three families (gap / heartbeat / manipulation); **one alert per distinct finding**; priority-ordered queue; operator resolves **in sequence**; human-only root-cause explanation. |
+| **C7 — Manipulation alert** | Must include fail boundary + resume boundary (if any) within validation context. |
+| **C7 — Reuse** | Gap → existing gap declaration; heartbeat → existing partial-failure path (revise if incomplete). |
+| **Operator UX** | Actionable alert queue → per-type resolution flow; external ticket id optional in justification. |
+| **Persistence (R1)** | **Alerts-first** queue; conciliation on existing incident/checkpoint bridge. |
+| **Benign / false positive** | Same technical path; differentiate via justification text (+ optional external ticket id). |
+| **C8 — Degraded mode** | Admin API down ⇒ no validation batches. Heartbeat alerts from Integration/Auth only. **Priority 0:** restore Admin + heartbeat before manipulation work. Degraded blocks auth ops until heartbeat cleared. |
+| **C8 — Re-alert** | Closed manipulation alert never reopened; repeat failure ⇒ new alert. |
+| **C9 — Stale / ignored** | No escalation; alerts visible until closed; degraded persists; no auto-close. |
+| **C9 — Snooze (R1)** | Global Admin: justification + audit; default 24 h, duration via externalized property; renewable; **preferred** over property-only master override. |
+| **C9 — Batch staleness** | No alert-on-alert; use `I-2026-0007` batch last-run widgets. |
+| **C9 — Widget honesty** | Open alerts ⇒ dashboard caveat on batch/integrity widgets (`I-2026-0007`). |
+| **Future** | `V-2026-0013` meta-resolution (GOD_RESOLUTION) — not R1. |
+| **Open — C8-6** | Classify outage gap vs manipulation before alert — suspend; design pack. |
+| **Open — INC-1** | Justification integrity vs primary audit chain — close in design pack (recommend conciliation **audit event** + operational alert index). |
+| **Related** | `I-2026-0021` (Postgres role matrix), `V-2026-0012` (future batch-api split) |
 
 ## Key assumptions
 
 - The current detection logic for sequence breaks is correct and reusable as the trigger.
-- Symmetry with the gap-declaration flow keeps the operator mental model coherent.
-- Reattachment does not weaken cryptographic guarantees; it documents and bridges, it does not silence.
+- Symmetry with gap-declaration and partial-failure conciliation keeps the operator mental model coherent.
+- Reattachment restores validator-visible continuity; it must not be narrative-only in R1.
+- External ITSM (Jira, etc.) is out of scope; optional ticket reference in justification only.
 
 ## Risks and exceptions
 
-- Reattachment semantics must be conservative: the declared explanation is part of the audit story, not a way to rewrite history. Strong guards required.
-- Alert noise: integrity-break detection should be rare; tuning must avoid floods if a misconfiguration triggers many false positives.
+- Reattachment semantics must be conservative: justification explains, bridge restores continuity — not a way to rewrite history undetected. Strong guards required.
+- **Parallel audit chain risk:** if incidents/checkpoints hold authoritative justification without integrity guarantees, assurance may shift to a weaker store — resolve in grill session INC-1 without infinite “validator of validator” recursion.
+- Alert noise: integrity-break detection should be rare; tuning must avoid floods if misconfiguration triggers false positives.
+- Benign causes (filesystem, DB corruption, accidental DBA edit, partial restore, replication lag) use the same remediation path with explicit justification category.
 
 ## Promotion notes
 
-Move to `incubating` once the conceptual model (incident lifecycle, schema impact, declaration UX) is sketched. Promote to `TB-*` once the design is consistent with `V-2026-0004` and the dashboard story (`I-2026-0007`).
+Grilling: C7 settled 2026-05-19 — **ready for component design pack** on manipulation path + alert queue model. Close C8–C9 and INC-1 in grill session or design pack. Align with `I-2026-0006` / `I-2026-0007` before `TB-*`.
 
 ## Links
 
+- Grill session (D4 blocks complete; resume **D5**): [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/integrity-cluster-D4-D6-grill-me.md)
+- Related vision: `V-2026-0013` (future meta-resolution, not R1)
 - Related vision: `V-2026-0004` (integrity validation strategy)
+- Related backlog: `I-2026-0006` (automatic detection batch), `I-2026-0007` (dashboard visibility)
 - Related feature: `F-audit-chain`
-- Related principles: `#11` (lifecycle without surprise), `#12` (security as posture)
+- Related principles: `#1` (simplicity), `#11` (lifecycle without surprise), `#12` (security as posture)

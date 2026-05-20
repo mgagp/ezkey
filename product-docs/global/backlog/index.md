@@ -12,9 +12,9 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0002` | Re-encryption batch UI: async button behavior | `triaged` | `P2` | `admin-ui`, `admin-api` | `2026-05-08` |
 | `I-2026-0003` | High-availability Docker stack: parity review with `cleanstart.sh` | `triaged` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api` | `2026-05-08` |
 | `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `triaged` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-05-08` |
-| `I-2026-0005` | Checkpoint integrity breaks: declared remediation and reattachment | `captured` | `P1` | `admin-api`, `audit` | `2026-05-08` |
+| `I-2026-0005` | Checkpoint integrity breaks: declared remediation and reattachment | `incubating` | `P1` | `admin-api`, `audit` | `2026-05-17` |
 | `I-2026-0006` | Nightly retroactive integrity validation batch | `captured` | `P2` | `admin-api`, `audit`, `infra` | `2026-05-08` |
-| `I-2026-0007` | Admin Dashboard: security and integrity health widgets | `captured` | `P2` | `admin-ui`, `admin-api` | `2026-05-08` |
+| `I-2026-0007` | Admin Dashboard: batch health and integrity widgets | `incubating` | `P1` | `admin-ui`, `admin-api` | `2026-05-19` |
 | `I-2026-0008` | Rate-limit baseline analysis and generalization | `triaged` | `P2` | `admin-api`, `auth-api`, `integration-api` | `2026-05-08` |
 | `I-2026-0009` | Global controllers registry as documentation artifact | `captured` | `P2` | `docs (product-docs)`, `admin-api`, `auth-api`, `integration-api`, `crypto-api` | `2026-05-08` |
 | `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `captured` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-08` |
@@ -27,6 +27,7 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0017` | Profile elaboration template, skill, and per-client document workflow | `captured` | `P1` | `docs (product-docs)`, `methodology`, `skills` | `2026-05-08` |
 | `I-2026-0018` | Profile generator skill: elaboration document to runtime configs | `captured` | `P2` | `docs (product-docs)`, `methodology`, `skills`, `infra` | `2026-05-08` |
 | `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
+| `I-2026-0021` | PostgreSQL application role and table permissions matrix | `captured` | `P1` | `infra`, `core`, `admin-api`, `auth-api`, `integration-api`, `audit` | `2026-05-19` |
 
 ## Recently completed
 

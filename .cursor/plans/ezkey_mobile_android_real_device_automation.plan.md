@@ -41,6 +41,7 @@ This working plan has been materialized into:
 - `V-2026-0011` in `product-docs/global/vision/product-orientation-notes.md`
 - `I-2026-0019` in `product-docs/global/backlog/ideas/I-2026-0019-android-real-device-mobile-functional-tests.md`
 - `TB-2026-0002` in `product-docs/global/backlog/ideas/TB-2026-0002-android-real-device-functional-pilot.md`
+- Next-phase churn + evidence contract: `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`
 
 ## Context and design goal
 

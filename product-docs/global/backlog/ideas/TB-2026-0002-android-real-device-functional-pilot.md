@@ -8,6 +8,28 @@
 - **Created at:** `2026-05-08`
 - **Updated at:** `2026-05-08`
 
+## Pilot status (Maestro slice)
+
+The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 2-digit challenge) are **validated on hardware** after clean-start + new enrollment (hybrid init). That satisfies the **“one full pending/respond slice”** intent for the UI layer.
+
+## Next phase — churn harness (JUnit + Maestro + evidence)
+
+**Goal:** approximate the operator-reported “first check pending sometimes fails until a new attempt” class of issues by running **many** short phone-backed iterations with **varied** scenario parameters (challenge on/off, approve/deny, timeout paths when deterministically available), without assuming a single magic temporal sequence.
+
+**Stack split (unchanged from TB objective):**
+
+- **`ezkey-tests` / JUnit:** create and characterize each auth attempt; optional post-phone API assertions; emit **correlation metadata** (e.g. `auth_attempt_id`) into per-iteration artifact folders.
+- **Maestro:** consume the attempt on device using existing or extended flows.
+- **Bash:** session-scoped working directory, per-iteration subfolders, Maestro JUnit/XML + transcript + logcat slice; optional later **post-pass** summarizer (`summary.jsonl` → compact table).
+
+**Artifact contract** (dated session root, `iterations/<nnnnn>/` with `meta.md`, `maestro.xml`, `maestro.log`, `logcat.txt`) is specified in:
+
+- `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`
+
+**Delivery order:** Phase A = skeleton + one iteration end-to-end; Phase B = deterministic multi-iteration happy path; Phase C = seeded randomization / long runs; Phase D = optional lightweight post-processing—avoid log “AI” or heavy parsers in v1.
+
+**Exit criteria (TB) reminder:** item **3** (“short loop”) moves from backlog follow-up to **met** once Phase B runs unattended after hybrid enrollment handoff; item **1** is partially met today (hybrid documented); operability gate remains for a second developer.
+
 ## Objective
 
 Deliver a repeatable **Android-first pilot** that proves the real backend-to-phone trust path on a physical device against the **local clean-start Docker stack**, using **Maestro** as the primary UI driver, **Bash** for orchestration and artifact capture, **`ezkey-tests` / JUnit** where backend setup and steady-state verification already exist, and **`scrcpy`** only as an optional mirroring companion.

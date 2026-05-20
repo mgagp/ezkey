@@ -27,7 +27,7 @@ Introduce a periodic (typically nightly) retroactive integrity validation batch 
   - Configurable fixed time window (default to be picked, for example seven days).
   - Validation of audit HMAC integrity and checkpoint chain continuity within the window.
   - On detected break, trigger the incident model from `I-2026-0005`.
-  - Persist a single most-recent-status row consumable by the dashboard widget (`I-2026-0007`); single-purpose table, not a generic background-process status framework.
+  - Register in the **generalized batch last-run table** (see `I-2026-0007`): `last_execution_at`, `last_status` per batch job — integrity batch is one row among Admin API jobs.
   - Documentation update describing default schedule, default window, and configuration knobs.
 - **Out of scope:**
   - Volume-based effort modulation (explicitly **not retained for V1** — fixed configurable window is sufficient given stable real-world traffic profiles).

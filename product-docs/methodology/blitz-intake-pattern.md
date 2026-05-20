@@ -95,10 +95,10 @@ The agent accepts French or English forms. The agent does not auto-detect end-of
 | State | Location | Prefix | Example |
 |-------|----------|--------|---------|
 | **Active** (during the blitz) | `product-docs/global/backlog/_blitz-YYYY-MM-DD[-N].md` | `_` (signals staging) | `_blitz-2026-05-08-2.md` |
-| **Archived** (post-materialization) | `product-docs/global/backlog/blitz-archive/blitz-YYYY-MM-DD[-N].md` | none | `blitz-2026-05-08.md` |
+| **Archived** (post-materialization) | `product-docs/global/backlog/blitz-archive/blitz-YYYY-MM-DD[-N].md` | none | `blitz-2026-05-08-1.md` |
 | **Deleted** | n/a | n/a | Operator-initiated only; never automatic |
 
-`[-N]` is an optional ordinal: omitted for the first blitz of the day, `-2` for the second, `-3` for the third, etc.
+`[-N]` is the ordinal for multiple blitzes on the same day: `-1` for the first, `-2` for the second, `-3` for the third, etc. Use the suffix consistently even for the first blitz when a second blitz on the same date exists or is anticipated.
 
 ## Materialization completion criteria
 

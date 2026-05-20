@@ -1,56 +1,70 @@
-# Backlog Idea — `I-2026-0007` Admin Dashboard: security and integrity health widgets
+# Backlog Idea — `I-2026-0007` Admin Dashboard: batch health and integrity widgets
 
 ## Metadata
 
 - **ID:** `I-2026-0007`
-- **Status:** `captured`
-- **Priority:** `P2`
+- **Status:** `incubating`
+- **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-08`
-- **Last reviewed at:** `2026-05-08`
+- **Updated at:** `2026-05-19`
+- **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`
 
 ## Intent
 
-Add one or two Dashboard widgets that summarize the most recent integrity validation outcomes (rolling window plus retroactive batch), with badges consistent with the existing health-status widget pattern, and a brief explanation of the validation scope so the operator understands "what is OK" and "for which window".
+Add Dashboard widgets that give the Global Admin an honest, self-contained operational picture of **background batch health** and **integrity validation**, without building Grafana/PRTG inside Ezkey. Generalized model: each registered batch reports **last execution time** and **last status** (success / failed) into a simple persistence row; the Dashboard API exposes a section consumed by one or two widgets. The **integrity validation batch** may be visually emphasized (STANDOUT) relative to other batches (checkpoints, re-encryption, etc.).
+
+When **open resolution alerts** exist, widgets must **not** imply global “all green” — show a proximate caveat (e.g. resolution actions pending) even if the latest batch run succeeded.
 
 ## Problem and value
 
-- **Problem:** Integrity validation is foundational to the security posture (`Design Principle #12`) but is currently invisible on the operator's primary surface. Existing widgets cover entities (integrations, enrolments, authentications) but not the integrity health of the system itself. Without surfacing, the operator cannot tell whether nightly validation ran successfully, what window it covered, or whether a break is currently outstanding.
-- **Expected value:** Operator confidence; explicit, glance-able security-posture indicator; alignment with `Design Principle #5` (operator-first) and `#13` (open-source transparency); makes the work in `I-2026-0005` and `I-2026-0006` visible and actionable.
+- **Problem:** Integrity work is invisible on the primary operator surface. Stale or failed batches must not require “alerts on alerts” (rejected in C9 grilling). Operators also need to know that recent batch success does not mean all integrity ruptures are resolved.
+- **Expected value:** Daily spot-check confidence; clear last-run truth; supports `I-2026-0005` / `I-2026-0006` without external observability stack; aligns with `#1` simplicity, `#5` operator-first, `#12` security posture.
 
 ## Scope
 
 - **In scope:**
-  - One or two widgets on the existing Admin Dashboard, using the existing health-badge pattern.
-  - Display the most recent integrity validation status (from the single-purpose status row introduced in `I-2026-0006`).
-  - Display the validation scope summary (window covered, last run timestamp, last result).
-  - Honest copy: this is operational reporting, not an integrity proof in itself; if the operator suspects tampering of the report itself, they can re-run the on-demand integrity check.
-  - Admin API endpoint(s) feeding the widget data.
+  - **Batch last-run table** (single-purpose, generalized): per batch job identifier — `last_execution_at`, `last_status` (at minimum `SUCCESS` / `FAILED`; design may distinguish “never run”).
+  - Each batch updates its row at end of run (try/catch around job → FAILED on exception).
+  - **Dashboard API** section listing all registered batches with last run + status.
+  - **One or two widgets** using existing health-badge pattern; integrity batch widget may be STANDOUT.
+  - **Open-alert caveat** on widget(s) when actionable integrity/heartbeat/manipulation alerts are open (C9-10).
+  - Honest copy: operational reporting, not cryptographic proof; on-demand integrity check remains available if operator suspects tampering of report rows.
 - **Out of scope:**
-  - Generic background-process dashboard framework (single-purpose first, per `Design Principle #2`).
-  - Strong integrity guarantees on the report row itself — it is a derived convenience, not a primary record. The cost of over-engineering here would not pay back.
-  - Historical timeline view of past validation runs (V1 shows the most recent run only).
+  - Alerts when a batch has not run recently (explicitly rejected — C9).
+  - Escalation ladders, snooze UI (snooze is Global Admin action elsewhere — `I-2026-0005` cluster).
+  - Full history timeline (R1 = last run per batch only).
+  - Generic multi-tenant observability platform.
+
+## Grilling decisions (2026-05-19)
+
+| Topic | Decision |
+|-------|----------|
+| **C9 stale batches** | Widget last-run replaces alert-on-missing-batch |
+| **Failed vs absent** | Include in design pack when feasible |
+| **Open alerts** | Widget caveat when resolutions pending |
+| **Priority** | Raised to **P1** — high leverage for integrity cluster |
 
 ## Key assumptions
 
-- Operators need a glance-level signal more than a deep history. A single most-recent-status row is sufficient for V1.
-- The existing widget and badge pattern is reusable without redesign.
-- The status row from `I-2026-0006` is sufficient as the data source; no parallel pipeline needed.
+- Batch jobs are a bounded, enumerable set in Admin API for R1.
+- Derived status rows are convenience data (light integrity acceptable per D6 blitz); primary trust remains audit chain + validator.
+- `I-2026-0006` integrity batch registers in the same table as checkpoint and other jobs.
 
 ## Risks and exceptions
 
-- Copy must avoid overstating assurance. The widget reports what was run and what it found, not "the system is provably secure".
-- A long-running break or persistent missing status (for example, the nightly batch has not run for several days) must be visually distinct from "all green".
+- Tampering with last-run rows is possible but low impact if copy is honest; validator re-run disproves false comfort.
+- Widget must not contradict open alert queue state.
 
 ## Promotion notes
 
-Move to `incubating` once `I-2026-0005` and `I-2026-0006` have stable schemas. Promote to `TB-*` together with `I-2026-0006` once the data contract is firm.
+Moved to `incubating` after C9 grilling. Promote to `TB-*` with `I-2026-0006` once batch registry list and table schema are fixed. Design pack should define batch job registry and Dashboard contract together.
 
 ## Links
 
-- Related vision: `V-2026-0004` (integrity validation strategy)
+- Grill session: [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/integrity-cluster-D4-D6-grill-me.md) (C9)
+- Related vision: `V-2026-0004`
 - Related backlog: `I-2026-0005`, `I-2026-0006`
 - Related features: `F-admin-ui-workflows`, `F-audit-chain`
-- Related principles: `#5` (operator-first), `#10` (admin UI sobriety), `#13` (transparency)
+- Related principles: `#1`, `#2`, `#5`, `#10`, `#12`, `#13`

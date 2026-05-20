@@ -54,11 +54,11 @@ Use short entries. Promote mature entries to:
 ### `V-2026-0004` Integrity validation strategy: rolling windows, retroactive batches, dashboard transparency
 
 - **Date:** `2026-05-08`
-- **Status:** `draft`
-- **Intent:** Define a coherent strategy for verifying audit-chain and checkpoint integrity over time, balancing security posture (`Design Principle #12`) with simplicity (`#1`) and performance cost. The current rolling 1-hour window covers transient outages well but leaves a blind spot for tampering that becomes visible only after the rolling window has passed. Introduce a complementary periodic retroactive validation (typically nightly) over a configurable fixed time window. Make all validation outcomes visible to the operator on the Admin Dashboard.
-- **Signals:** Today, deletion of an audit row three days ago is detected only by an explicit on-demand integrity check; there is no proactive surfacing. The 1-hour rolling window may be too short as a grace period for some operator postures, and a configurable window plus periodic retroactive checks fills that gap. Volume-based effort modulation was considered but explicitly **not retained for V1**: real installations have stable traffic profiles, and operators can tune a fixed window directly without an adaptive scheduler.
+- **Status:** `under-review`
+- **Intent:** Define a coherent strategy for verifying audit-chain and checkpoint integrity over time, balancing security posture (`Design Principle #12`) with simplicity (`#1`) and performance cost. The current rolling 1-hour window covers transient outages well but leaves a blind spot for tampering that becomes visible only after the rolling window has passed. Introduce a complementary periodic retroactive validation (typically nightly) over a configurable fixed time window. Make outcomes visible on the Admin Dashboard via **batch last-run widgets** (not alert-on-alert escalation). Operator mantra: detect → represent → accompany until resolution; optional **snooze** with audit for conscious risk acceptance.
+- **Signals:** Today, deletion of an audit row three days ago is detected only by an explicit on-demand integrity check; there is no proactive surfacing. The 1-hour rolling window may be too short as a grace period for some operator postures, and a configurable window plus periodic retroactive checks fills that gap. Volume-based effort modulation was considered but explicitly **not retained for V1**: real installations have stable traffic profiles, and operators can tune a fixed window directly without an adaptive scheduler. Grilling cluster D4–D6 (C7–C9) settled rupture taxonomy, degraded-mode rules, and stale-state cut line.
 - **Potential impact:** `admin-api` (background batch and persistence), `audit` (validation logic), `infra` (scheduler), `admin-ui` (dashboard widgets), operator documentation, security posture defaults.
-- **Next step:** companion items: `I-2026-0005` (declared remediation when an integrity break is detected, with gap declaration and reattachment), `I-2026-0006` (nightly retroactive batch with fixed configurable window), `I-2026-0007` (Admin Dashboard integrity widgets). Promote to design pack and grilling pass once the three are mutually consistent.
+- **Next step:** cluster grilling continues on D5/D6 blocks — see `product-docs/global/backlog/grill-sessions/integrity-cluster-D4-D6-grill-me.md`. Design pack for `I-2026-0005`, `I-2026-0006`, `I-2026-0007` once D5–D6 grilling aligns.
 
 ### `V-2026-0005` Email integration strategy and deployment-profile cohabitation
 
@@ -132,6 +132,23 @@ Use short entries. Promote mature entries to:
 - **Signals:** Reformulation born from the 2026-05-08 grilling of `V-2026-0002`. The original framing risked profile-aware platform code (accidental complexity per `Design Principle #2`). The 3-phase reframing keeps profile knowledge external to the platform, aligning with `#1` simplicity, `#2` essential vs accidental, and `#5` operator-first. The existing `clean-start.sh` mechanism and the colocated `CONFIGURATION.md` corpus are durable foundations that this approach builds on rather than replaces.
 - **Potential impact:** **Phase 1:** documentation clarification only. **Phase 2:** new template, new skill, per-client elaboration document workflow, cross-cutting traversal of `docs/configuration/README.md` and module-level `CONFIGURATION.md` corpus. **Phase 3:** new generator skill with a stable input contract from Phase 2; produces config artefacts that operators run with Docker Compose. **Cross-impact:** items that previously cited `V-2026-0002` (`V-2026-0003`, `V-2026-0005`, `V-2026-0007`, `I-2026-0011`) keep their references valid because the archived note remains findable; their links may be redirected to `V-2026-0010` opportunistically when those items are next worked.
 - **Next step:** Phase 2 actionable promoted into `I-2026-0017` (template + skill design), Phase 3 actionable promoted into `I-2026-0018` (generator). Phase 1 needs only a small documentation clarification, no dedicated `I-*`. After `I-2026-0017` produces a stable elaboration format, `I-2026-0018` becomes ready for execution.
+
+### `V-2026-0012` Dedicated batch backend (future): optional split from Admin API
+
+- **Date:** `2026-05-19`
+- **Status:** `draft`
+- **Intent:** Record a **future** architectural option: extract scheduled/batch work from `admin-api` into a dedicated backend (e.g. `ezkey-batch-api`), with `admin-api` closer to an Admin UI BFF. R1 keeps all batches in Admin API as atomic all-or-nothing.
+- **Signals:** Grilling C8 noted theoretical value (heap isolation, partial failure) but prior review: extra deployment complexity not justified for an unproven product.
+- **Next step:** none for R1. Revisit on production evidence. See grill session `integrity-cluster-D4-D6-grill-me.md`.
+
+### `V-2026-0013` Meta-resolution over long windows (future, exceptional)
+
+- **Date:** `2026-05-19`
+- **Status:** `draft`
+- **Intent:** Record a **future-only**, heavily caveated concept raised during C9 grilling: a single operator action (“meta-resolution” / `GOD_RESOLUTION`) that reconciles many integrity ruptures across a long period (e.g. 30 days) with one justification and cryptographic patching — for catastrophe recovery when dozens of alerts accumulated from mixed false positives, downtime, and bugs.
+- **Signals:** Operator explicitly rejected this for R1 as over-engineering and potentially dangerous; R1 keeps one alert, one resolution, no cap. Documented so the idea is not lost if a real customer ever needs it.
+- **Potential impact:** `admin-api`, audit chain, alert model — high risk to trust model if implemented carelessly.
+- **Next step:** **Do not implement** unless a concrete production need appears. Prefer normal per-alert resolution and snooze (`C9`).
 
 ### `V-2026-0011` Android-first real-device mobile validation as a first-class confidence layer
 

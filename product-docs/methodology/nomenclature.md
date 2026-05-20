@@ -35,7 +35,15 @@ Blitz intake scratch boards (see [`blitz-intake-pattern.md`](blitz-intake-patter
 - **Active** (during the session): `product-docs/global/backlog/_blitz-YYYY-MM-DD[-N].md` (with `_` prefix as a staging signal).
 - **Archived** (post-materialization): `product-docs/global/backlog/blitz-archive/blitz-YYYY-MM-DD[-N].md` (no `_` prefix).
 
-`[-N]` is an optional ordinal for multiple blitz sessions on the same day (omitted for the first, `-2` for the second, etc.). Archived scratches are never deleted automatically; deletion is operator-initiated.
+`[-N]` is the ordinal for multiple blitz sessions on the same day (`-1`, `-2`, …). Use the suffix consistently when more than one blitz exists on the same date. Archived scratches are never deleted automatically; deletion is operator-initiated.
+
+## Grill session filename conventions
+
+Structured grilling output for one idea or a related cluster lives under:
+
+- `product-docs/global/backlog/grill-sessions/<topic>-grill-me.md`
+
+Each file must include a **Session control** section with `Resume at` (question id or section) so a later session can continue without re-deriving settled decisions. Link the grill session from the related `I-*`, `V-*`, or `TB-*` artifacts; update backlog index status when grilling moves an item to `incubating` or records new decisions.
 
 ## Backlog status vocabulary
 

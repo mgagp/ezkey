@@ -18,6 +18,7 @@ Introduce a pragmatic, repeatable Android real-device functional test capability
 ## Problem and value
 
 - **Problem:** The mobile app is part of Ezkey's cryptographic trust chain, yet the current automated coverage is concentrated in unit tests and API functional tests. That leaves a confidence gap around real Android key storage, real UI flows, real device signing, and intermittent issues that only show up on phone hardware during `pending` / `respond`.
+- **Operator-observed intermittent (motivation for churn):** In some sessions, the **first** check-pending from the phone fails after an auth attempt is started from Admin UI; creating a **new** attempt (after cancelling the stuck one) sometimes succeeds. Automation priority is to build a **shortest pragmatic path** (hybrid enrollment + JUnit-driven attempt creation + Maestro consumption) and then **volume/variance** (seeded randomization over bounded dimensions) so rare failures land with **correlated artifacts** (`auth_attempt_id`, Maestro XML, logcat), not to encode one brittle “repro script” as truth.
 - **Expected value:** Faster detection of mobile-to-backend regressions, stronger confidence in release candidates, a reusable repro path for intermittent pending-signature or timeout issues, and a healthier long-term habit similar to Ezkey's existing operational and functional testing posture.
 
 ## Current direction
@@ -65,6 +66,8 @@ Promoted to tracer bullet pilot on `2026-05-08`: **`TB-2026-0002`** (`product-do
 
 **Execution (`2026-05-08`):** Maestro flows, Bash runner, and `ezkey.e2e.*` testIDs landed under `ezkey_mobile/maestro/` and `ezkey_mobile/scripts/run-real-device-pilot-maestro.sh`. Exit criteria in the TB still apply until validated on hardware.
 
+**Next execution slice:** JUnit support test(s) + Bash session orchestration + per-iteration evidence layout for **repeat loops** (see `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md` and `TB-2026-0002` “Next phase”).
+
 ## Links
 
 - Tracer bullet pilot: `TB-2026-0002`
@@ -72,4 +75,5 @@ Promoted to tracer bullet pilot on `2026-05-08`: **`TB-2026-0002`** (`product-do
 - Source incubation plan: `.cursor/plans/ezkey_mobile_android_real_device_automation.plan.md`
 - Related documentation: `ezkey_mobile/docs/MOBILE_FUNCTIONAL_FLOWS.md`, `ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md`, `ezkey-tests/README.md`, `docker/README.md`, `docs/ENDPOINT.md`
 - Related diagnostic context: `ezkey_mobile/MOBILE_PENDING_DEBUG_PLAN.md`
+- Churn + evidence design (next phase): `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`
 - Related operational pattern: `ezkey-tests/scripts/run-operational-churn.sh`

@@ -134,7 +134,7 @@ Each run writes a **full console transcript** to `maestro/reports/maestro-pilot-
 
 ## Short repeat loop
 
-Maestro does not create auth attempts. To exercise a **short loop**: queue a new attempt on the backend between runs (Admin UI, Postman, or a future thin script), then re-run the same Maestro flow. Example:
+Maestro does not create auth attempts. To exercise a **short loop** today: queue a new attempt on the backend between runs (Admin UI, Postman, or a future thin script), then re-run the same Maestro flow. Example:
 
 ```bash
 for i in 1 2 3; do
@@ -142,6 +142,8 @@ for i in 1 2 3; do
   ENROLLMENT_ID=123 ./scripts/run-real-device-pilot-maestro.sh || break
 done
 ```
+
+**Planned:** JUnit-driven loops, per-iteration artifact folders, and seeded scenario variance are specified in `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md` (`TB-2026-0002` next phase).
 
 ## `ezkey-tests` touchpoints
 
