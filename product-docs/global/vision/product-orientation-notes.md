@@ -46,10 +46,10 @@ Use short entries. Promote mature entries to:
 
 - **Date:** `2026-05-08`
 - **Status:** `under-review`
-- **Intent:** Clarify the product positioning for accepting API-key authentication on Admin API endpoints versus Integration API. Default to security-by-default (deny on Admin API), expose a deliberate opt-in for the simplified deployment profile (`V-2026-0002`), and decide whether long-term policy should remove API-key acceptance from Admin API entirely. Integration API is positioned as the high-throughput, virtual-thread-based, reduced-attack-surface entry point for machine-to-machine flows; Admin API is positioned as the operator interface.
-- **Signals:** Misconfiguration risk is real. The Java SDK was observed pointing at Admin API while the operator believed Integration API was in use; everything worked, masking the misalignment. Current implicit acceptance creates ambiguity for operators and SDK consumers. The positioning parallels the global-admin / tenant-admin split: the platform supports a simplified mode for SMEs without forcing full ceremony, but the default posture should be the safer one.
-- **Potential impact:** `admin-api`, `integration-api`, `sdk-java`, deployment defaults, operator documentation, security posture per profile.
-- **Next step:** complete the deployment-profiles canon (`V-2026-0002`), then deliver the configuration flag (`I-2026-0004`) with deny-by-default. A follow-up decision on full removal of API-key acceptance from Admin API requires a separate review once the profile catalog is stable.
+- **Intent:** **R1:** one Admin API property, default **`false`**, gates API-key **auth-attempt M2M** only (`ROLE_API_KEY` scope). Integration API = canonical M2M surface. **`true` opt-in** for documented minimal installs (Admin + Auth only, no Integration binary). No platform profile code (`V-2026-0010`). Full removal from Admin API deferred.
+- **Signals:** Grilling D3 (2026-05-19) — Demo ACME + Java SDK mis-targeted Admin API; uniform `false` default including clean-start; RFC 9457 on reject; brief docs note (no production fleet). Analogue Global Admin simplified mode for minimal binary count.
+- **Potential impact:** `admin-api`, `sdk-java`, `docs`, `ezkey-demo-app-acme`, functional tests; `I-2026-0004`.
+- **Next step:** implement `I-2026-0004`; align SDK/examples and Demo ACME to Integration API base URL for API-key flows.
 
 ### `V-2026-0004` Integrity validation strategy: rolling windows, retroactive batches, dashboard transparency
 
@@ -63,11 +63,11 @@ Use short entries. Promote mature entries to:
 ### `V-2026-0005` Email integration strategy and deployment-profile cohabitation
 
 - **Date:** `2026-05-08`
-- **Status:** `draft`
-- **Intent:** Introduce email as a first-class delivery channel for selected workflows (enrolment QR-code delivery, admin activation code delivery, possibly more) using the standard Java mail APIs, keeping the platform self-contained. Position the introduction as a deployment-profile question (`V-2026-0002`): the all-in-one mode without email is pragmatically defensible for very small installations and remains supported as a documented profile, while the standard profile shifts sensitive material out of the all-on-screen presentation toward separated channels.
-- **Signals:** Today, screens carry placeholders with disclaimers indicating that material such as QR codes would normally be delivered through a separate channel. The Java mail API removes the need for an external integration project (unlike SMS, which lives in peripheral projects such as `ezkey-sms-twilio`), so this concern stays inside the core platform as configuration. Profile-aware UI cues (which buttons exist, which workflows offer email) need to be designed alongside the channel itself.
-- **Potential impact:** `admin-api`, `admin-ui`, `mobile`, `infra` (SMTP configuration), `docs`, deployment-profile catalog (`V-2026-0002`), security posture defaults, operator UX for enrolment and admin activation.
-- **Next step:** brainstorming and grilling pass on (a) the inventory of workflows that should use email, (b) per-workflow defaults per deployment profile, (c) cohabitation with the current "all on screen" mode, including disclaimers and migration path. Promote to backlog ideas after the catalog stabilizes.
+- **Status:** `under-review`
+- **Intent:** Introduce **optional**, **operator-triggered** email (Java Mail + SMTP config) for enrolment and admin-activation workflows while keeping Ezkey **fully operational** without SMTP or after send failure. R1 normalizes operational choice — it does not mandate email. Two **documentation postures** (per `V-2026-0010`): **integrated delivery** (on-screen + manual external channels OK; educational disclaimer) and **SMTP-assisted delivery** (email-first UI action; minimized on-screen QR fallback). Unlike SMS (`V-2026-0007`), email stays in-core as configuration only.
+- **Signals:** Grilling D7 (2026-05-19) — disclaimers become product positioning, not “coming soon” warnings; PME may drag-drop QR or paste codes outside Ezkey; automation deferred. Global Admin configures SMTP (TI posture — `operator-alignment-guide.md`).
+- **Potential impact:** `admin-api`, `admin-ui`, `infra` (SMTP), `docs`, contextual help, `I-2026-0023` (R1 slice).
+- **Next step:** design pack + `I-2026-0023`; update `CONFIGURATION.md` for mail properties when implementing.
 
 ### `V-2026-0006` Mobile certificate pinning posture: SPKI pinning, TOFU at enrollment, Ezkey-authenticated recovery
 

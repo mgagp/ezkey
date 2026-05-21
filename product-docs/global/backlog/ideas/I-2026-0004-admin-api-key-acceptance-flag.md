@@ -3,52 +3,69 @@
 ## Metadata
 
 - **ID:** `I-2026-0004`
-- **Status:** `triaged`
+- **Status:** `incubating`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-08`
-- **Last reviewed at:** `2026-05-08`
+- **Updated at:** `2026-05-19`
+- **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `sdk-java`, `docs`
 
 ## Intent
 
-Introduce a configuration flag in `admin-api` that controls whether API-key authentication is accepted on Admin API endpoints. Default to **deny** (security-by-default), with an explicit opt-in for the simplified deployment profile (`V-2026-0002`). This enforces a deliberate posture and prevents accidental misconfigurations where SDK clients silently target Admin API instead of Integration API.
+Introduce a configuration flag on `admin-api` that controls whether **API-key M2M auth-attempt** traffic is accepted on Admin API. Default **`false`** (deny) in all environments; explicit **`true`** only for documented minimal deployments (Admin + Auth binaries, no Integration API). Integration API remains the canonical M2M surface. No profile-aware platform code (`V-2026-0010`).
 
 ## Problem and value
 
-- **Problem:** Today, API-key authentication is implicitly accepted on both Admin API and Integration API. A real misconfiguration was observed where the Java SDK pointed at Admin API while the operator believed Integration API was in use; everything worked, masking the misalignment. The current behavior also weakens the trust-boundary intent (`Design Principle #4`): Admin API is the operator interface; Integration API is the high-throughput machine-to-machine surface.
-- **Expected value:** Predictable, deliberate posture; reduced attack surface on Admin API; clarity for operators about which binary handles M2M traffic; alignment with deployment-profile positioning (`V-2026-0003`).
+- **Problem:** API-key auth is implicitly accepted on Admin API for auth attempts today. Demo ACME + Java SDK were observed targeting Admin API while operators assumed Integration API — it worked, masking misalignment. Weakens trust boundary (`Design Principle #4`).
+- **Expected value:** Deliberate posture; smaller Admin attack surface; clear operator/SDK guidance; PME minimal-install escape hatch without forcing a third binary.
+
+## Grilling decisions (2026-05-19)
+
+See [`../grill-sessions/blitz-2026-05-08-1-D3-api-key-grill-me.md`](../grill-sessions/blitz-2026-05-08-1-D3-api-key-grill-me.md).
+
+| Topic | R1 decision |
+|-------|-------------|
+| Mechanism | Single boolean property |
+| Default | **`false`** everywhere (clean-start, dev, HA, new installs) |
+| Opt-in `true` | Minimal Admin+Auth deployment only (documented) |
+| Scope | `ROLE_API_KEY` auth-attempt M2M only; no per-endpoint flag |
+| Removal | Deferred — flag sufficient for R1 |
+| Errors | RFC 9457; point to Integration API + property |
+| Migration | Brief docs/release note; no production fleet today |
+| Profiles | Phase 2 elaboration refines; not blocked on catalog |
 
 ## Scope
 
 - **In scope:**
-  - Add a configuration property on `admin-api` to enable or disable API-key acceptance on endpoints that today accept both API key and admin session.
-  - Default value: **deny** (security-by-default).
-  - Honest, structured error response (RFC 9457) when API-key auth is rejected because of profile policy.
-  - Documentation update: explain the flag, the default, the deployment-profile rationale, and the simplified all-in-one opt-in.
-  - SDK and operator guidance: clarify Integration API as the canonical M2M surface.
+  - Property + filter/guard on Admin API for API-key auth-attempt acceptance.
+  - Default `false`; document minimal-install opt-in.
+  - RFC 9457 rejection response.
+  - `CONFIGURATION.md`, API keys guide, SDK README/examples → Integration API for M2M.
+  - Review Demo ACME + functional tests for Integration API base URL where API keys are used.
 - **Out of scope:**
-  - Full removal of API-key acceptance from Admin API (separate decision tied to `V-2026-0003`).
-  - Changes to Integration API authentication behavior.
-  - Changes to admin session authentication on Admin API.
+  - Removing API-key code from Admin API.
+  - Integration API behavior changes.
+  - Per-endpoint policy matrix.
+  - Profile-aware code or UI toggles.
 
 ## Key assumptions
 
-- The flag is binary (allow or deny). Per-endpoint granularity is not required for V1.
-- Integration API remains the canonical M2M surface and continues to accept API-key authentication unconditionally.
+- Existing `ROLE_API_KEY` restriction (auth attempts only) remains; the flag is an install-level gate on top.
+- HA and standard stacks keep `false`; operators use Integration API behind HAProxy.
 
 ## Risks and exceptions
 
-- Existing operators relying on API-key authentication against Admin API must be notified before the default flips on upgrade. The migration path must be explicit (release notes plus a clear error message pointing at the flag and at Integration API).
-- Authentication test suites and SDK example configurations must be reviewed to ensure they target Integration API where appropriate.
+- Local/dev setups that still point SDK at Admin API for API-key flows will fail until retargeted to Integration API or minimal-install opt-in is set — acceptable given uniform `false` default (grill D3-A).
+- Functional tests using API keys against Admin API for auth attempts must be updated in the same change set.
 
 ## Promotion notes
 
-Move to `ready` after `V-2026-0002` deployment-profile catalog is stable enough to confirm which profiles flip the flag to allow by default. Until then, ship with global deny-by-default and explicit opt-in.
+Ready for **design pack** / implementation: property name, filter ordering, problem `type` URI, compose env for minimal profile example.
 
 ## Links
 
-- Related vision: `V-2026-0002` (deployment profiles), `V-2026-0003` (API-key acceptance posture)
-- Related features: `F-integration-api-maturity`, `F-api-key-lifecycle`
-- Related principles: `#4` (trust boundaries), `#12` (security as posture)
+- Vision: `V-2026-0003`, `V-2026-0010`
+- Grill: `../grill-sessions/blitz-2026-05-08-1-D3-api-key-grill-me.md`
+- Features: `F-integration-api-maturity`, `F-api-key-lifecycle`
+- Principles: `#1`, `#4`, `#5`, `#12`

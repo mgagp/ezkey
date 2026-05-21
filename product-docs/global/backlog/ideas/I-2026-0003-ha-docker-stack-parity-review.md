@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0003`
-- **Status:** `triaged`
+- **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-08`
-- **Last reviewed at:** `2026-05-08`
+- **Updated at:** `2026-05-19`
+- **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P1-operability`, `P3-distribution`
 - **Component tags:** `infra`, `admin-api`, `auth-api`, `integration-api`
 
@@ -20,32 +20,45 @@ Review and refresh the high-availability Docker stack (one or two `admin-api`, t
 - **Problem:** The HA mode has not been exercised for a while. There is a real risk of drift relative to the `cleanstart.sh` baseline (functional behavior, configuration defaults, observable status). Without periodic exercise it becomes silent infrastructure debt that erodes the credibility of the HA story.
 - **Expected value:** Restore HA mode as a trustworthy reference deployment for scaling discussions and the hardening narrative; keep it close enough to `cleanstart.sh` that operators can expect equivalent functional behavior with multi-instance characteristics layered on top.
 
+## Grilling decisions (2026-05-19)
+
+See [`../grill-sessions/blitz-2026-05-08-1-D1-D2-grill-me.md`](../grill-sessions/blitz-2026-05-08-1-D1-D2-grill-me.md).
+
+- **Goal:** fix blockers until HA matches baseline behavior (not inventory-only).
+- **Topology:** **2×** Admin API, **2×** Integration API, **2×** Auth API (ShedLock + parallelism validation).
+- **Tests:** functional suite stays sequential; no HA-specific test harness — validate via `clean-start.sh --ha` + same functional expectations.
+- **Narrative:** short deployment-profile doc for local HA demos (`V-2026-0010`); QA + internal scalability story.
+- **Alignment:** full parity with baseline; only modest Caddy/proxy glue expected.
+
 ## Scope
 
 - **In scope:**
-  - Run the HA stack from a clean checkout, identify breakage or drift.
-  - Compare functional behavior against the `cleanstart.sh` baseline (auth, enrolment, admin workflows, audit, checkpoints, rate limiting).
-  - Fix or document drift; favor simplicity and minimum extra surface relative to the baseline.
-  - Confirm reliability across a few representative scenarios (instance restart, loss of one replica).
+  - Run HA from clean checkout (`clean-start.sh --ha`, `docker/start-ha.sh`); fix blockers until parity with default `clean-start.sh`.
+  - Mandatory **2+2+2** API topology behind HAProxy.
+  - Validate ShedLock, heartbeat/checkpoints, schedulers under multi-instance load.
+  - Brief deployment profile note (HA local demo / QE) linked from `V-2026-0010`.
+  - Representative resilience checks (restart one replica, etc.) as needed to close blockers.
 - **Out of scope:**
-  - New HA features (for example, cross-region replication or automatic failover beyond Docker compose level).
-  - Production-grade deployment guidance (separate work, future profile-based docs).
+  - New HA product features (cross-region, cloud failover).
+  - Parallel or HA-flavored functional test suite options.
+  - Full production HA runbook (later profile work).
 
 ## Key assumptions
 
-- `cleanstart.sh` remains the canonical local baseline; HA stack behavior should be a strict superset, not a fork.
-- HA characteristics in scope are limited to local Docker multi-instance posture, not full cloud HA topology.
+- `ezkey-tests/clean-start.sh` (no flags) remains the daily baseline; HA is a strict superset for local Docker.
+- Prior HA work means drift should be small; prefer **fix and align** over documenting accepted gaps.
 
 ## Risks and exceptions
 
-- Drift may be larger than expected. If so, scope the fix to functional parity and defer non-essential cleanups.
-- Multi-instance interactions (heartbeat and checkpoint behavior with two `admin-api` candidates) may surface design questions worth raising as separate items.
+- If a gap is architectural (not glue), spin a separate idea rather than widening this slice.
+- Dual Admin API + checkpoint heartbeat may surface edge cases already covered by integrity cluster docs — cross-link, do not re-grill.
 
 ## Promotion notes
 
-Move to `triaged` after the first parity gap inventory is captured. Promote pieces requiring design decisions into separate ideas if they emerge.
+Ready for **execution pass**: run `--ha`, fix compose/Caddy/keys, smoke critical paths, add profile doc stub.
 
 ## Links
 
-- Future link: deployment-profile catalog `V-2026-0002`
+- Deployment profiles: `V-2026-0010`
+- Grill: `../grill-sessions/blitz-2026-05-08-1-D1-D2-grill-me.md`
 - Related principles: `#1` (simplicity), `#5` (operator-first)
