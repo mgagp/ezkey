@@ -7,6 +7,13 @@
     <language>en</language>
     <atom:link href="https://ezkey.org/updates.rss" rel="self" type="application/rss+xml"/>
     <item>
+      <title>May 2026 — Milestone</title>
+      <link>https://ezkey.org/updates.html#update-2026-05</link>
+      <guid isPermaLink="true">https://ezkey.org/updates.html#update-2026-05</guid>
+      <pubDate>Fri, 01 May 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[May was a consolidation month, deliberately. The Android app reached internal test — the first time real testers outside the project encountered a complete Ezkey flow: enrollment, pending authentication, and end-to-end cryptographic chain. The app is now available in French and English. A conversation this month clarified something that had been building for a while: the right move now is to invest in explicit design, specification, and methodology rather than sustaining a high feature pace. The Back to foundations essay (https://ezkey.org/ai-return-to-foundations-methodology.html), published mid-month, is the written-out version of that shift. It is not a detour — it is how the project matures responsibly before a public release.]]></description>
+    </item>
+    <item>
       <title>April 2026 — Milestone</title>
       <link>https://ezkey.org/updates.html#update-2026-04</link>
       <guid isPermaLink="true">https://ezkey.org/updates.html#update-2026-04</guid>
@@ -25,7 +32,7 @@
       <link>https://ezkey.org/updates.html#update-2026-02</link>
       <guid isPermaLink="true">https://ezkey.org/updates.html#update-2026-02</guid>
       <pubDate>Sun, 01 Feb 2026 12:00:00 GMT</pubDate>
-      <description><![CDATA[Building an authentication system is challenging. Making it safe and reliable is harder. Ezkey will ship in phases; the first is due in the coming months. It will be a technology preview: it will show what the system can do, but it will not be production-ready.]]></description>
+      <description><![CDATA[Building an authentication system is challenging. Making it safe and reliable is harder. Ezkey will ship in phases; the first is due in the coming months. It will be a technology preview: it will show what the system can do, but it will not be production-ready. On the activity side: a web Admin UI began taking shape this month — initially scoped to tenant administration — alongside audit log integrity through HMAC-signed chains, admin deactivation, and a non-blocking authentication option. The construction had begun in earnest.]]></description>
     </item>
   </channel>
 </rss>

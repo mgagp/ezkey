@@ -7,6 +7,13 @@
     <language>fr</language>
     <atom:link href="https://ezkey.org/fr/updates.rss" rel="self" type="application/rss+xml"/>
     <item>
+      <title>Mai 2026 — Jalon</title>
+      <link>https://ezkey.org/fr/updates.html#update-2026-05</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/updates.html#update-2026-05</guid>
+      <pubDate>Fri, 01 May 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[Mai a ete un mois de consolidation, deliberement. L'application Android a atteint le stade du test interne — premiere fois que de vrais testeurs exterieurs au projet vivent un flux Ezkey complet : enrollment, authentification en attente et chaine cryptographique de bout en bout. L'application est maintenant disponible en francais et en anglais. Une discussion ce mois-ci a rendu explicite quelque chose qui se construisait progressivement : le bon mouvement est maintenant d'investir dans la conception explicite, la specification et la methodologie plutot que de maintenir un rythme de fonctionnalites soutenu. L'essai Le retour aux sources du developpeur (https://ezkey.org/fr/retour-aux-sources-developpeur-ere-ia.html), publie mi-mai, est la version ecrite de ce virage. Ce n'est pas un detour — c'est la facon dont le projet murit de facon responsable avant une publication publique.]]></description>
+    </item>
+    <item>
       <title>Avril 2026 — Jalon</title>
       <link>https://ezkey.org/fr/updates.html#update-2026-04</link>
       <guid isPermaLink="true">https://ezkey.org/fr/updates.html#update-2026-04</guid>
@@ -25,7 +32,7 @@
       <link>https://ezkey.org/fr/updates.html#update-2026-02</link>
       <guid isPermaLink="true">https://ezkey.org/fr/updates.html#update-2026-02</guid>
       <pubDate>Sun, 01 Feb 2026 12:00:00 GMT</pubDate>
-      <description><![CDATA[Construire un système d’authentification est exigeant. Le rendre sûr et fiable l’est encore plus. Ezkey sera livré par phases ; la première est due dans les prochains mois. Ce sera une préversion technologique : elle montrera ce que le système peut faire, mais elle ne sera pas prête pour la production.]]></description>
+      <description><![CDATA[Construire un systeme d'authentification est exigeant. Le rendre sur et fiable l'est encore plus. Ezkey sera livre par phases ; la premiere est due dans les prochains mois. Ce sera une preversion technologique : elle montrera ce que le systeme peut faire, mais elle ne sera pas prete pour la production. Cote activites : une interface d'administration web a commence a prendre forme ce mois-ci — d'abord centree sur l'administration de locataires — accompagnee d'une integrite des logs d'audit par chaine HMAC signee, de la desactivation d'administrateurs et d'une option d'authentification non bloquante. La construction avait vraiment commence.]]></description>
     </item>
   </channel>
 </rss>
