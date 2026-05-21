@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0014`
-- **Status:** `captured`
+- **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-08`
-- **Last reviewed at:** `2026-05-08`
+- **Updated at:** `2026-05-19`
+- **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`, `audit`
 
@@ -19,6 +19,14 @@ Adopt a deliberate, screen-by-screen display strategy for paginated views, balan
 
 - **Problem:** Paginated screens were initially designed for maximum performance (DAO output mapped directly to the UI), exposing foreign-key IDs. The current "More information" button per row works but is awkward for operators consulting screens daily. The administrators screen was refactored with intelligent joins because the row count is bounded, and the result is a clearly better operator surface. Other screens deserve the same treatment when their volume profile allows it.
 - **Expected value:** Operator readability prioritized where volume permits (`Design Principle #5` operator-first, `#1` simplicity); honest performance choices on high-volume tables; an explicit, documented per-screen decision rather than a single global heuristic.
+
+## Grilling decisions (2026-05-19)
+
+See [`../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`](../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md).
+
+- **Tier A:** joins in list API, labels not FK IDs; demote « More information » as daily path.
+- **Tier B:** auth attempts — integration (+ tenant for Global Admin) names; audit logs — selective indexed joins.
+- Indexes when joins ship; readability wins on Tier A (#14).
 
 ## Scope
 
@@ -45,10 +53,12 @@ Adopt a deliberate, screen-by-screen display strategy for paginated views, balan
 
 ## Promotion notes
 
-Move to `triaged` once the per-screen volume profile inventory is captured. Promote pieces to `TB-*` per group, in coordination with `I-2026-0013`.
+Implement per matrix row after `I-2026-0013` marks row `reviewed`; **`TB-*` by screen group**.
 
 ## Links
 
+- Canonical matrix: [`../../admin-ui-paginated-screens-matrix.md`](../../admin-ui-paginated-screens-matrix.md)
+- Grill: `../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`
 - Companion: `I-2026-0013` (functional review), `I-2026-0015` (volume limits).
 - Related reading: `docs/PAGINATION_GUIDELINES.md`, `docs/PAGINATION_AUDIT_REPORT.md` (mechanics).
 - Related principles: `#1` (simplicity), `#2` (essential vs accidental), `#5` (operator-first), `#10` (Admin UI sobriety).

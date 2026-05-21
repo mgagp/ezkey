@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0013`
-- **Status:** `triaged`
+- **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-08`
-- **Last reviewed at:** `2026-05-08`
+- **Updated at:** `2026-05-19`
+- **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-ui`, `admin-api`
 
@@ -19,6 +19,14 @@ Run a screen-by-screen review of every paginated search screen in the Admin UI, 
 
 - **Problem:** Most paginated screens were initially built to map directly from the API output to the UI, optimized for performance. That choice is fine technically, but it short-circuits the operator-first design step (`Design Principle #5`). Without a deliberate functional review, the screens may show columns that are technically present but operationally weak.
 - **Expected value:** Each screen earns its place in the Admin UI by passing an explicit operator-first test; columns are picked because they serve operational decisions, not because they happened to be in the API payload. This aligns with `Design Principle #10` (Admin UI sobriety) and elevates daily operator UX.
+
+## Grilling decisions (2026-05-19)
+
+See [`../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`](../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md).
+
+- Combined pass with `I-2026-0014`; canonical output [`../../admin-ui-paginated-screens-matrix.md`](../../admin-ui-paginated-screens-matrix.md).
+- Per-screen operator question + columns; Global vs Tenant Admin notes.
+- Admins screen = reference; fill matrix rows then promote `TB-*` by group.
 
 ## Scope
 
@@ -44,10 +52,12 @@ Run a screen-by-screen review of every paginated search screen in the Admin UI, 
 
 ## Promotion notes
 
-Move to `triaged` after the screen inventory is captured. Promote pieces to `TB-*` per group of screens (for example, all integration-related screens, all enrollment-related screens) rather than as a single monolithic delivery.
+Complete matrix analysis rows (`draft` → `reviewed`), then **`TB-*` per screen group** with `I-2026-0014`.
 
 ## Links
 
+- Canonical matrix: [`../../admin-ui-paginated-screens-matrix.md`](../../admin-ui-paginated-screens-matrix.md)
+- Grill: `../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`
 - Companion: `I-2026-0014` (display strategy), `I-2026-0015` (volume limits).
 - Related reading: `docs/PAGINATION_GUIDELINES.md`, `docs/PAGINATION_AUDIT_REPORT.md` (mechanics, complementary to this functional review).
 - Related principles: `#5` (operator-first), `#10` (Admin UI sobriety), `#1` (simplicity).

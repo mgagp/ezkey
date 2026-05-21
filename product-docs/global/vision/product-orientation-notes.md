@@ -72,53 +72,38 @@ Use short entries. Promote mature entries to:
 ### `V-2026-0006` Mobile certificate pinning posture: SPKI pinning, TOFU at enrollment, Ezkey-authenticated recovery
 
 - **Date:** `2026-05-08`
-- **Status:** `draft`
-- **Intent:** Define an Ezkey-pragmatic mobile certificate-pinning posture that pins the SHA-256 hash of the server `SubjectPublicKeyInfo` rather than the full leaf certificate, bootstraps trust on first use at enrollment, enforces pinning natively during normal operation, and uses an Ezkey-cryptographically-authenticated Auth API recovery endpoint to handle Cloudflare-managed certificate rotation. The posture is explicit about residual risk concentrated in trust-refresh moments, and aims for a middle path: materially stronger than vanilla mobile TLS, materially simpler than a full PKI ceremony.
-- **Signals:** Cloudflare free-plan edge certificates rotate without a reliable pre-announcement path; full PKI ceremonies are too heavy for Ezkey product values (`#1` simplicity, `#2` essential vs accidental complexity). An existing detailed plan `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md` already captures the design and is being canonized via `R-2026-0001` (legacy retrofit).
-- **Potential impact:** mobile (`ezkey_mobile`), `auth-api` (recovery endpoint), `admin-api` (audit chain extension and a nightly compliance batch correlating rotation events with the deployed certificate), security posture documentation, operator UX during recovery. Adjacency to `V-2026-0008` (API versioning) since recovery flows may evolve.
-- **Next step:** complete retrofit `R-2026-0001` to canonize the existing plan into product-docs (component design briefs, error model, audit chain extension); then propose an `I-*` for implementation aligned with the canonical plan, Android-first.
+- **Status:** `under-review`
+- **Intent:** **SPKI pin** + **TOFU at enrollment**; native pinning in normal ops; **Auth API recovery** (narrow unpinned path) after Cloudflare-style rotation; device proof + backend-signed refresh; user confirm before pin replace; **Android-first**. Audit pin transitions; compliance batch later. Canon via **`R-2026-0001`** before `I-*`.
+- **Signals:** Grilling D2 Blitz 2 (2026-05-19); existing plan `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md`.
+- **Potential impact:** `mobile`, `auth-api`, `admin-api` (audit/compliance batch later), docs.
+- **Next step:** finish `R-2026-0001` retrofit mapping; then implementation backlog slice.
 
 ### `V-2026-0007` SMS integration strategy and SPI protocol for peripheral integrations
 
 - **Date:** `2026-05-08`
-- **Status:** `draft`
-- **Intent:** Establish the strategy for adding SMS as a delivery channel for selected workflows (notably enrolment material delivery), as a parallel and complementary stream to the email channel (`V-2026-0005`). Unlike email — which lives in-core via the Java Mail API — SMS lives in a peripheral repository (e.g. `ezkey-sms-twilio`) integrating through a clearly-defined SPI protocol. The strategy must define the SPI shape, per-step usage rules, deployment-profile cohabitation with the current "all on screen" mode (`V-2026-0002`), and the policy surface in the Admin UI.
-- **Signals:** Email is solvable in-core; SMS introduces an external dependency that should not pollute the core platform. The SPI mechanism (in-process plug-in vs message bus vs DB polling vs webhook vs websocket) is currently undecided. The minimalist all-on-screen mode retains pragmatic value for SME profiles and should not disappear when SMS is introduced. Streaming via `ezkey-cli` was considered but feels too heavyweight; a real SPI is preferred.
-- **Potential impact:** peripheral repos (e.g. `ezkey-sms-twilio`), optional parallel shells for other carriers (e.g. `ezkey-sms-aws-sns`), and **directory-family** ecosystem repos (`ezkey-directory-*`) once identity sync is modeled—each as a thin adapter documented and published separately from core (see **`docs/ECOSYSTEM_REPOSITORIES.md`**, backlog **`I-2026-0020`**); `admin-api` (SPI surface); `admin-ui` (policy controls and per-step configuration); `mobile` (delivery awareness); deployment-profile catalog (`V-2026-0002`); operator documentation.
-- **Open questions to grill:**
-  - SPI protocol shape (in-process plug-in, message bus, DB polling, webhook, websocket)?
-  - Per-step toggle vs global toggle vs deployment-profile default?
-  - Multiple peripheral integrations interacting concurrently (Twilio plus alternative plus ...)?
-  - Failure mode when the SPI peer is unreachable: degrade to all-on-screen, or hard-fail?
-  - Audit and idempotency expectations for SPI calls?
-- **Next step:** grilling pass (`ezkey-grill-me`) to converge on SPI protocol shape and policy model. Then derive `I-*`s for the SPI specification, the first peripheral repo (`ezkey-sms-twilio`), and the Admin UI policy controls.
+- **Status:** `under-review`
+- **Intent:** **Optional**, **operator-triggered** SMS for enrolment and admin-activation via **peripheral HTTP adapter** (e.g. `ezkey-sms-twilio`) — not in-core (contrast `V-2026-0005` email). R1 SPI: Admin API POSTs delivery job to one configured adapter URL. Postures **`integrated-delivery`** / **`sms-assisted-delivery`** (mirror email). Body R1: **challenge codes only** (short templates). Global Admin configures adapter; **Global Admin or Tenant Admin** sends per workflow RBAC and deployment geometry (`operator-alignment-guide.md`).
+- **Signals:** Grilling D5 Blitz 2 (2026-05-19). No auto-send, no bus/websocket/CLI streaming R1. Fully operational without SMS.
+- **Potential impact:** `admin-api` (outbound job + config), `admin-ui`, peripheral repos (`I-2026-0020`, `I-2026-0024`), `docs`, `V-2026-0010` elaboration.
+- **Next step:** SPI contract sketch + `I-2026-0024`; reference adapter repo.
 
 ### `V-2026-0008` Auth API versioning for mobile protocol evolution
 
 - **Date:** `2026-05-08`
-- **Status:** `draft`
-- **Intent:** Establish the product position on Auth API versioning relative to mobile-app release cadence, given there is no API version concept on the protocol today. As mobile features evolve (notably the per-enrollment local-auth posture in `V-2026-0001` / `I-2026-0001`), backend protocol evolution is foreseeable. The strategy must determine whether the platform supports parallel rolling versions, mobile-first or backend-first compatibility windows, and how operators with delayed backend updates avoid breaking already-deployed mobile clients distributed via Play Store / App Store.
-- **Signals:** No API versioning exists today on Auth API. A protocol-level breaking change (for example, adding a strong-cryptography proof requirement driven by `V-2026-0001`) would silently break mobile clients targeting the new format if their backend is not yet upgraded. App-store distribution lag means mobile and backend versions cannot be assumed simultaneous.
-- **Potential impact:** `auth-api` (versioning surface), `mobile` (capability negotiation), `admin-api` (operator visibility into protocol versions in use), Play Store / App Store release cadence, operator documentation, security posture (since parallel rolling versions can have different guarantees).
-- **Open questions to grill:**
-  - URL path versioning vs header negotiation vs capability-bit handshake?
-  - Number of rolling versions supported (one current, one previous, ...)?
-  - Equivalence of security level across rolling versions, or accept reduced level on legacy with explicit operator visibility?
-  - Operator-facing visibility: which mobile versions are in use right now?
-  - Sunset policy: how does an old protocol version get retired safely?
-- **Next step:** grilling pass to converge on the versioning shape and rollback semantics, then `I-*`s for the versioning surface and the operator visibility tooling.
+- **Status:** `under-review`
+- **Intent:** **Capability negotiation** on existing Auth API endpoints (not full `/v1`/`/v2` URL trees). Rolling window: **current + one previous** generation. Mobile sends protocol/capability version; RFC 9457 on mismatch. Backend upgraded before mandating new capabilities. Legacy generation may offer reduced guarantees with **operator visibility**. Single store app line; documented sunset when earned (#14). R1: vision + contract sketch (`I-2026-0025`); implement when local-auth (`V-2026-0001`) forces a break.
+- **Signals:** Grilling D7 Blitz 2 (2026-05-19). App-store lag vs self-hosted backend upgrade pace.
+- **Potential impact:** `auth-api`, `mobile`, `admin-api` (read-only generation info), docs.
+- **Next step:** contract sketch in product-docs when `I-2026-0001` / local-auth direction stabilizes.
 
 ### `V-2026-0009` Lightweight observability posture: Java Melody first, no full APM stack initially
 
 - **Date:** `2026-05-08`
-- **Status:** `draft`
-- **Intent:** Adopt a lightweight, low-friction observability posture for Ezkey backends in development and small-installation contexts, using Java Melody and its standalone collector. Instrument `admin-api`, `auth-api`, and `integration-api` for HTTP, SQL, JVM memory, and threads metrics; expose monitoring through management ports rather than business ports; run a dedicated collector container with persistent volume; explicitly exclude `crypto-api`. This is the observability counterpart of `Design Principle #1` (simplicity): get high signal-to-effort ratio without introducing a Prometheus / Grafana stack at this stage.
-- **Signals:** Existing detailed plan-prompt `.github/prompts/plan-javaMelodyCollectorForEzkey.prompt.md` already maps the integration end to end (Spring Boot 4 starter, dedicated standalone collector, exclusion of `crypto-api`, no Caddy proxy at this stage). Retrofit underway via `R-2026-0002`.
-- **Potential impact:** `infra` (Docker stack, clean-start), `admin-api` / `auth-api` / `integration-api` (Java Melody starter dependency, management endpoint exposure), operator documentation (DX, limits, security posture for the local environment).
-- **Open question to resolve during retrofit:** the existing plan defaults to **enabled by default** in clean start, while the user's verbatim suggested **opt-in** (`--with-java-melody` style). The retrofit must settle this divergence before implementation. Trade-offs:
-  - **Enabled by default:** zero-config DX for developers, immediate visibility, consistent with `Design Principle #13` (transparency).
-  - **Opt-in:** lighter clean start, observability as a deliberate decision, better fit for very small production-leaning installations.
-- **Next step:** complete retrofit `R-2026-0002`, settle the default-vs-opt-in question, then `I-*` for the implementation aligned with the canonical plan.
+- **Status:** `under-review`
+- **Intent:** **Java Melody** + standalone collector for **admin/auth/integration API** only; **exclude crypto-api**. Management port registration; collector persistent volume; **no Caddy** R1. **Opt-in** via clean-start / compose flag (`--with-java-melody` style) — not enabled by default (grill D11). DX/troubleshooting, not prod APM. Canon via **`R-2026-0002`** before `I-*`.
+- **Signals:** Grilling D11 Blitz 2 (2026-05-19); plan-prompt `.github/prompts/plan-javaMelodyCollectorForEzkey.prompt.md`.
+- **Potential impact:** `infra`, boot modules, docs.
+- **Next step:** finish `R-2026-0002` retrofit; update plan-prompt default to opt-in; then `I-*` implementation.
 
 ### `V-2026-0010` Per-installation profile elaboration via AI-assisted methodology and generation
 

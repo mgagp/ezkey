@@ -48,7 +48,7 @@ Use the lightest process that still preserves:
 
 Apply [`../global/design-principles.md`](../global/design-principles.md) when judging scope — especially **#1**, **#2**, and **#14 (beautiful problems)**: defer scale/performance sophistication until evidence shows the problem is real and earned by adoption, not hypothetical.
 
-For Admin UI and role visibility decisions, read [`../global/operator-alignment-guide.md`](../global/operator-alignment-guide.md) (Global Admin vs Tenant Admin analogies; Ezkey is not the adopter's core business).
+For Admin UI, role visibility, and **deployment operator geometries**, read [`../global/operator-alignment-guide.md`](../global/operator-alignment-guide.md). Canonical cross-cutting artifacts: [`../global/admin-ui-paginated-screens-matrix.md`](../global/admin-ui-paginated-screens-matrix.md), [`../global/api-controllers-registry.md`](../global/api-controllers-registry.md), [`../global/ezkey-system-identity-sensitivity-report.md`](../global/ezkey-system-identity-sensitivity-report.md), [`../global/sql-business-limits-policy.md`](../global/sql-business-limits-policy.md).
 
 ## Quick start prompts
 

@@ -59,14 +59,18 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D2) re-articulated the desi
   - Audit event type catalog has not been extended to cover pin transitions.
   - iOS-side phasing decision is deferred to implementation time.
 
-## Principle candidates
+## Grill outcome (2026-05-19)
 
-None new. The retrofit reinforces existing principles `#3` (backend-first integrity), `#4` (explicit trust boundaries), `#12` (security posture, not module).
+- **`V-2026-0006` grilled** — posture confirmed; session `blitz-2026-05-08-2-D2-D11-retrofit-grill-me.md`.
+- Recovery challenge **optional** when device proof + backend signature suffice.
+- Compliance batch **later** — not R1 blocker.
+- **Android-first** confirmed.
 
 ## Next action
 
-- Run a grilling pass on `V-2026-0006` to converge on whether implementation should start now or wait for `V-2026-0008` (API versioning) to settle, since both touch Auth API surface.
-- Once `V-2026-0006` is `under-review` or `promoted`, propose an `I-*` for the canonical Auth API recovery contract and the mobile state schema.
+- Complete component-doc mapping gaps (mobile crypto reference, recovery contract sketch).
+- Propose an `I-*` for Auth API recovery contract + mobile state schema when retrofit mapping is done.
+- Coordinate with `V-2026-0008` (Auth API versioning) at design-pack time, not as a grill blocker.
 
 ## Links
 

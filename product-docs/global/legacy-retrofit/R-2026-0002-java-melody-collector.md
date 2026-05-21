@@ -32,13 +32,11 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D11) requested observabilit
 
 - **Simplicity (`Design Principle #1`):** a lightweight off-the-shelf tool with low integration cost.
 - **Stay within the chosen stack (`#7`):** Java Melody is well established in the Spring Boot ecosystem; no exotic dependency.
-- **Operator-first (`#5`):** zero-config DX in default clean start (per the plan), so the operator sees something useful immediately.
+- **Operator-first (`#5`):** deliberate opt-in keeps clean-start light; document how to enable for local troubleshooting.
 
 ## Open question to settle (divergence between plan and user verbatim)
 
-- **Plan position:** **enabled by default** in clean start (zero-config DX).
-- **User verbatim:** **opt-in** (`--with-java-melody` style) to keep clean start light.
-- **Recommendation for grilling:** keep the plan's "enabled by default in `clean-start`" posture for developer environments, but add a documented Docker compose override so production-leaning installations can disable it cleanly. This balances DX and right-sizing.
+- **Settled (grill D11, 2026-05-19):** **Opt-in** via clean-start / compose (`--with-java-melody` style). Not enabled by default. Update plan-prompt and retrofit mapping accordingly.
 
 ## Mapping to canonical destinations
 
@@ -47,25 +45,25 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D11) requested observabilit
 | `product-docs/global/vision/product-orientation-notes.md` (`V-2026-0009`) | Captures the lightweight observability posture | **integrated** in this slice |
 | `docs/DEVELOPMENT.md` (or operator-facing observability doc) | Document the collector URL, auto-registration, and `crypto-api` exclusion | gap (pending follow-up at implementation time) |
 | Per-module component docs (`admin-api`, `auth-api`, `integration-api`) | Note the management endpoint extension and the Java Melody dependency | gap (pending follow-up at implementation time) |
-| `product-docs/global/architecture-decisions.md` | Optional ADR if the default-vs-opt-in question proves controversial | gap (pending decision) |
+| `product-docs/global/architecture-decisions.md` | Optional ADR if opt-in vs management-port exposure needs formal record | gap (low priority) |
 
 ## Confidence and residual gaps
 
 - **Confidence high** on the technical decisions in the plan.
 - **Residual gaps:**
-  - Default-vs-opt-in for clean start (see above).
+  - ~~Default-vs-opt-in for clean start~~ **settled:** opt-in (`--with-java-melody` style); update plan-prompt.
   - Exact Java Melody collector WAR version compatibility (the plan flags this as a Phase 1 spike).
   - Long-term observability strategy beyond Java Melody (Prometheus / Grafana / OpenTelemetry) is intentionally out of scope here; should be revisited if installation profiles diverge significantly.
 
-## Principle candidates
+## Grill outcome (2026-05-19)
 
-None new. The retrofit reinforces `#1` (simplicity), `#7` (stay within the stack), `#5` (operator-first).
+- **`V-2026-0009` grilled** — opt-in default; DX/troubleshooting scope; no Caddy R1; exclude crypto-api. Session `blitz-2026-05-08-2-D2-D11-retrofit-grill-me.md`.
 
 ## Next action
 
-- Settle the default-vs-opt-in question via grilling on `V-2026-0009`.
-- Run the Phase 1 compatibility spike from the plan (Java Melody artifact versions) before any code change.
-- Once settled, propose an `I-*` for the implementation following the plan's phases.
+- Update `.github/prompts/plan-javaMelodyCollectorForEzkey.prompt.md` to reflect opt-in default.
+- Run Phase 1 compatibility spike (Java Melody artifact versions) before code change.
+- Propose an `I-*` for implementation following the plan phases once retrofit mapping is complete.
 
 ## Links
 

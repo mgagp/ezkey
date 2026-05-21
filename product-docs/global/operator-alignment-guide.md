@@ -17,7 +17,39 @@ These analogies are **orientation tools**, not permission matrices. Authoritativ
 
 **Decision reflex:** when a feature touches heartbeat, integrity validation, manipulation remediation, encryption keys, or platform-wide alerts → default **Global Admin only**. When it touches integration/enrollment/API-key workflows → Tenant Admin is in scope; confirm whether Global Admin also needs visibility.
 
-## Adopter posture: Ezkey is not core business
+**Channel send actions (email, SMS):** adapter/SMTP **configuration** = Global Admin (TI). **Send** in enrolment/activation workflows = **Global Admin or Tenant Admin** — whichever role operates that workflow in the deployment geometry below.
+
+## Deployment operator geometries
+
+Ezkey supports **two common adopter shapes**. Both are valid product postures; neither requires platform “profile code” (`V-2026-0010`). Phase 2 profile elaboration documents which geometry applies to a given installation.
+
+### All-in-one (simplified PME)
+
+| Aspect | Typical pattern |
+|--------|-----------------|
+| **Operators** | One or more **Global Admins** only (e.g. primary + backup when primary is away) |
+| **Tenants** | Optional; operator may use **System Tenant** and skip tenant-admin ceremony |
+| **Day-to-day** | Global Admin creates integrations, API keys, enrollments, and may trigger channel sends (email/SMS) directly |
+| **Analogue** | Single IT/generalist runs the whole Ezkey instance on-prem |
+| **When it fits** | Small team, one integration, pragmatism over role separation |
+
+### Segmented (role-separated)
+
+| Aspect | Typical pattern |
+|--------|-----------------|
+| **Operators** | Multiple **Global Admins** (platform/IT) + one or more **Tenant Admins** per business unit |
+| **Tenants** | Explicit tenant boundaries mirroring org structure |
+| **Day-to-day** | Tenant Admin owns integrations, enrollments, API keys for their tenant; Global Admin owns platform health, crypto, integrity, channel **configuration** |
+| **Analogue** | IT runs the platform; DevOps/business admins run integrations per unit |
+| **When it fits** | Richer org chart, separation of duties, multi-tenant production |
+
+### Design consequences (shared)
+
+- **Do not force** tenant-admin creation or a third API binary when the adopter chose all-in-one — same principle as minimal Admin+Auth install and API-key opt-in (`I-2026-0004`).
+- **Do not hide** Global Admin from domain workflows when they legitimately operate all-in-one (integrations, enrollments, send-by-channel).
+- **Marketing / presales:** these geometries are the human-facing story behind deployment profiles; Phase 2 elaboration (`I-2026-0017`) captures client-specific choices; Phase 3 (`I-2026-0018`) generates config artefacts.
+
+See also: [`product-intent.md`](product-intent.md) (audiences), [`vision/product-orientation-notes.md`](vision/product-orientation-notes.md) (`V-2026-0010`).
 
 For an adopting SME or team, **Ezkey is never the core business**. It is the pragmatic way to run strong authentication — a necessary capability, not the product they sell or operate daily.
 
