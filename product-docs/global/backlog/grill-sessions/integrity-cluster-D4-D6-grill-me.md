@@ -7,13 +7,13 @@
 | **Blitz source** | `product-docs/global/backlog/blitz-archive/blitz-2026-05-08-1.md` (D4, D5, D6) |
 | **Cluster scope** | `I-2026-0005`, `I-2026-0006`, `I-2026-0007`, parent `V-2026-0004` |
 | **Started** | `2026-05-17` |
-| **Status** | `in-progress` |
-| **Resume at** | **D5 block** — integrity validation strategy (`I-2026-0006`, `V-2026-0004`) |
-| **Completed sections** | D4 grill blocks A–C (C9 settled); C8-6 suspended; D10–D18 skipped (optional) |
-| **Pending sections** | C8-6; D5 block; D6 block |
+| **Status** | `complete` (grilling); design pack / TB next |
+| **Resume at** | — (cluster D4–D6 grilling closed 2026-05-19) |
+| **Completed sections** | D4 A–C9; D5; D6 express |
+| **Pending (design pack, not grilling)** | C8-6; D5-13/14/15; INC-1 |
 | **Design readiness (D4)** | **Sufficient for component design pack** — see [C7 — Multiple ruptures](#c7--multiple-ruptures-unified-model-settled-2026-05-17) and [Design pack handoff](#design-pack-handoff-d4) |
 
-When resuming this session, run `ezkey-grill-me` from the **D5 block** unless the operator requests a recap of settled decisions below.
+Grilling for blitz **2026-05-08-1** items D4–D6 is **complete**. Use this file as the design-pack input; open items are implementation design, not grilling gaps.
 
 ## Settled decisions (D4 — `I-2026-0005`)
 
@@ -241,6 +241,68 @@ Integration/Auth remain in **degraded mode** (no new auth operations) until hear
 - `I-2026-0007` — expanded to batch last-run widget(s) + open-alert caveat (priority raised).
 - `V-2026-0013` — future GOD_RESOLUTION meta-resolution (draft, heavy caveats).
 
+### D5 — Validation strategy: rolling attach vs nightly detect (settled 2026-05-19)
+
+**Two layers (normative contract):**
+
+| Layer | Role | Detection posture |
+|-------|------|-------------------|
+| **Rolling (configurable lookback)** | Attach/sign checkpoint windows for recent activity; absorb normal stop/start mini-outages | **Does not** promise detection of manipulation during the lookback window — attaches **what is present**. Normative clarity: short-window tampering may be undetectable until nightly pass. |
+| **Nightly retroactive** | Examine completed period (default **last 24 h**); full integrity pass | **Detects** anomalies → standard alert flow (`I-2026-0005` / C7). Both **per-audit HMAC** and **checkpoint chain continuity** must pass; otherwise alert. |
+
+**Rolling window configuration (R1):**
+
+- Default lookback **60 minutes** (aligns with current `ezkey.audit.chain` `lookbackMinutes`).
+- Operator-configurable (e.g. 1 h, 3 h); **no judgment** on operator choice within bounds.
+- **Bounds (opinionated):** minimum **15 minutes** (≥ 3× 5 min checkpoint window, aligned with heartbeat grace thinking); maximum **8 hours** — validate/enforce in config.
+- Resolved gap/heartbeat periods: rolling validation **skips** already-resolved explained periods (no re-litigation).
+
+**Nightly batch (R1):**
+
+- Default retroactive window **24 hours**; configurable.
+- Schedule: **once per 24 h** (daily operator spot-check assumption); exact cron configurable.
+- On batch **failure**: **no** rupture alert — `FAILED` in batch last-run table + widget (`I-2026-0007`) only.
+- Tampering outside 24 h window: **invisible** until operator ad hoc check — accepted for R1. No weekly/monthly batch (infinite window creep rejected).
+- **No** per-run audit record cap — verify all audits in window; if too slow at scale → **beautiful problem** (`Design Principle #14`).
+
+**Volume modulation:** **Not R1** (unchanged).
+
+**D5-5 — Code alignment (2026-05-19 review):**
+
+Current `AuditChainScheduler` (Admin API) in lookback period:
+
+- **Creates** missing 5-minute checkpoints (computes `entries_digest`, chains `chain_hmac`) — matches “attach what is observed”.
+- Raises **`AUDIT_CHAIN_GAP_PENDING`** alert when undeclared gap exists **before** lookback start.
+- Does **not** run full `AuditChainVerificationService` pass on each tick — deep verification is separate (on-demand API + planned nightly batch).
+
+Operator mental model for rolling layer is **aligned**; nightly batch adds the **detect anomalies** responsibility.
+
+**D5 principle (operator, C9-14 analog):** Ezkey documents the cut line honestly: rolling = operational chaining with accepted blind spot; nightly + ad hoc = detection. No Grafana; no record-cap pre-optimization.
+
+**Beautiful problems:** Added as **`Design Principle #14`** in `product-docs/global/design-principles.md`; referenced in `methodology/README.md`.
+
+**Open (design pack):** D5-13 duplicate ad hoc + nightly same day; D5-14 nightly batch disable for dev?; D5-15 sealed audits in retroactive window.
+
+### D6 — Dashboard widgets (express, settled 2026-05-19)
+
+**Layout:** **Two widgets (B)** — (1) **System / integrity** (checkpoint + nightly validation; normative center), (2) **Other jobs** (re-encryption, etc.).
+
+**Payload (R1):** `last_execution_at`, `last_status`, **`last_run_scope`** (e.g. « Validated 24 h ending 02:14 »); **active config** line (lookback, retroactive window from properties).
+
+**R1 jobs in widgets:** checkpoint scheduler, nightly integrity validation, re-encryption — full inventory deferred to **`I-2026-0022`** (`docs/ADMIN_API_SCHEDULED_JOBS.md`).
+
+**Never run:** visible row, grey **Never run** badge.
+
+**Open alerts:** **Dashboard banner** with **count** (e.g. « 3 resolutions pending ») → existing **alerts screen** (no per-widget duplication).
+
+**Roles:** **Global Admin only** (Tenant Admin out of scope for integrity/alert ops widgets). Role analogies canonized in [`../../operator-alignment-guide.md`](../../operator-alignment-guide.md).
+
+**Interaction:** widget/badge click → deep-link to alerts or integrity/checkpoint context when intuitive (same pattern as entity widgets → filtered views).
+
+**3-second operator test:** ok or not ok; if not ok, obvious click path to understand and resolve. Pairs with **Ezkey is not core business** posture in operator-alignment-guide.
+
+**Spawned:** `I-2026-0022` (scheduled jobs living catalog).
+
 ## Open decisions
 
 | ID | Topic | State | Notes |
@@ -249,6 +311,11 @@ Integration/Auth remain in **degraded mode** (no new auth operations) until hear
 | **C8** | Degraded mode overlap | **Settled** | Atomic Admin API; distinct alert emitters; heartbeat priority 0; no alert reopen; master override candidate. |
 | **C8-6** | False manipulation vs heartbeat gap | **Suspended** | See recap above |
 | **C9** | Stale / ignored alerts | **Settled** | No escalation; batch last-run widgets; snooze R1; honest widget caveat; GOD_RESOLUTION future only |
+| **D5** | Rolling vs nightly strategy | **Settled** | Attach vs detect; 15m–8h bounds; 24h default retroactive |
+| **D5-13** | Ad hoc + nightly same period | **Open** | Design pack |
+| **D5-14** | Nightly batch dev-disable | **Open** | Design pack |
+| **D5-15** | Sealed audits in retroactive window | **Open** | Design pack |
+| **D6** | Dashboard widgets | **Settled** | Two widgets; scope R1; banner+count; I-2026-0022 catalog |
 | D10–D18 | Optional D4 depth | **Skipped** | Covered sufficiently by A–C9 for design pack |
 | **INC-1** | Parallel audit chain for incidents vs audits | **Open** | See A1 open design pressure |
 | **INC-2** | Alerts-only vs incident table as system of record | **Settled (R1)** | **Alerts-first** — actionable queue; conciliation persistence on existing incident/checkpoint bridge; no new parallel table set for R1. |
@@ -268,9 +335,13 @@ Captured from voice dictation, 2026-05-17 — preserved for retrofit fidelity:
 - C7 (2026-05-17): three rupture types; one alert per irregularity; priority queue; human-only explanation; manipulation needs fail/resume boundaries; gap/heartbeat reuse existing paths; sealed/archive future.
 - C8 (2026-05-19): Admin API atomic; heartbeat from I/A only; priority 0 restore Admin+heartbeat; no reopen alerts; snooze preferred over override; I-2026-0021 DB roles; V-2026-0012 batch-api future.
 - C9 (2026-05-19): no escalation/alert-on-alert; batch last-run table+widgets; snooze with audit; widget caveat when alerts open; V-2026-0013 GOD_RESOLUTION future.
+- D5 (2026-05-19): rolling attach vs nightly detect; 15m–8h bounds; 24h default; skip resolved gaps; no record cap; beautiful problems #14; scheduler code aligned.
+- D6 (2026-05-19): two widgets; scope+config R1; banner count; Global Admin only; I-2026-0022; operator-alignment-guide.
 
 ## Links
 
+- [`../../operator-alignment-guide.md`](../../operator-alignment-guide.md)
+- `../ideas/I-2026-0022-admin-api-scheduled-jobs-catalog.md`
 - `../ideas/I-2026-0021-postgresql-application-role-permissions-matrix.md`
 
 - Blitz archive: `../blitz-archive/blitz-2026-05-08-1.md`

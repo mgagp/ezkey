@@ -43,6 +43,8 @@ Ezkey is built on four core beliefs:
 - **Global Admin** operators responsible for tenant management, platform operations, and sensitive platform actions such as cryptographic key operations.
 - **Tenant Admin** operators responsible for integrations, enrollments, API keys, and day-to-day tenant administration.
 
+For structural analogies (Global Admin ≈ IT/platform ops; Tenant Admin ≈ DevOps bridge) and the **adopter posture** (Ezkey is not the adopting organization's core business), see [`operator-alignment-guide.md`](operator-alignment-guide.md).
+
 ### Secondary audience
 
 - Organizations that want a developer-friendly MFA option without depending on a closed vendor model.

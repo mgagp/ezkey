@@ -60,6 +60,15 @@ Security posture is continuous: signed payloads, one-time proof tokens, encrypti
 
 Trust is strengthened by inspectable code and documentation. The documentation system exists so every meaningful decision, mapping, and flow is discoverable without re-reading the code.
 
+### 14. Beautiful problems (defer sophistication until earned)
+
+When judging pragmatism and complexity for a feature, ask whether a future problem appears **for the right reasons** — for example, integrity validation becoming slow because the platform handles very high audit volume after real adoption.
+
+- If yes: treat it as a **beautiful problem**. Let it manifest in production evidence before adding sophistication (adaptive windows, record caps, sharded validators, and similar). Document the cut line explicitly.
+- If no: limit accidental complexity now. Accept a simpler cut line even if a hypothetical edge case remains unoptimized.
+
+This principle pairs with **#1** (simplicity) and **#2** (essential vs accidental complexity). It does not justify deferring security holes or undefined behavior; it governs **performance and scale refinements** that would otherwise be speculative.
+
 ## How Principles Apply
 
 When designing or reviewing a change:

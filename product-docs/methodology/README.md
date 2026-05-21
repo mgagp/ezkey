@@ -46,6 +46,10 @@ Use the lightest process that still preserves:
 - end-to-end traceability,
 - clear handoff quality between humans and AI agents.
 
+Apply [`../global/design-principles.md`](../global/design-principles.md) when judging scope — especially **#1**, **#2**, and **#14 (beautiful problems)**: defer scale/performance sophistication until evidence shows the problem is real and earned by adoption, not hypothetical.
+
+For Admin UI and role visibility decisions, read [`../global/operator-alignment-guide.md`](../global/operator-alignment-guide.md) (Global Admin vs Tenant Admin analogies; Ezkey is not the adopter's core business).
+
 ## Quick start prompts
 
 Use these prompts in a fresh session to trigger the method quickly.

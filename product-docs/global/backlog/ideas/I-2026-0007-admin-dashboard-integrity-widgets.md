@@ -13,58 +13,63 @@
 
 ## Intent
 
-Add Dashboard widgets that give the Global Admin an honest, self-contained operational picture of **background batch health** and **integrity validation**, without building Grafana/PRTG inside Ezkey. Generalized model: each registered batch reports **last execution time** and **last status** (success / failed) into a simple persistence row; the Dashboard API exposes a section consumed by one or two widgets. The **integrity validation batch** may be visually emphasized (STANDOUT) relative to other batches (checkpoints, re-encryption, etc.).
+Add **two** Dashboard widget groups for **Global Admin only**:
 
-When **open resolution alerts** exist, widgets must **not** imply global “all green” — show a proximate caveat (e.g. resolution actions pending) even if the latest batch run succeeded.
+1. **System / integrity** — checkpoint scheduler, nightly integrity validation (`I-2026-0006`); normative center of historical trust.
+2. **Other operational jobs** — e.g. re-encryption (initial R1 set per [`I-2026-0022`](I-2026-0022-admin-api-scheduled-jobs-catalog.md) catalog).
+
+Generalized **batch last-run** model: table row per job (`last_execution_at`, `last_status`, **`last_run_scope`** e.g. validated window). Dashboard API section feeds widgets. Integrity jobs may use STANDOUT styling within the system/integrity widget.
+
+**Dashboard-level banner** when open actionable alerts exist: shows **count** (e.g. « 3 resolutions pending ») and links to the **existing alerts screen** — no duplicate alert UI on widgets.
 
 ## Problem and value
 
-- **Problem:** Integrity work is invisible on the primary operator surface. Stale or failed batches must not require “alerts on alerts” (rejected in C9 grilling). Operators also need to know that recent batch success does not mean all integrity ruptures are resolved.
-- **Expected value:** Daily spot-check confidence; clear last-run truth; supports `I-2026-0005` / `I-2026-0006` without external observability stack; aligns with `#1` simplicity, `#5` operator-first, `#12` security posture.
+- **Problem:** Integrity and batch health invisible; operators need 3-second « ok or not ok » with honest scope (C9/D5/D6 grilling). See [`operator-alignment-guide.md`](../../operator-alignment-guide.md).
+- **Expected value:** Self-contained operational picture without Grafana; supports `I-2026-0005` / `I-2026-0006`.
 
 ## Scope
 
-- **In scope:**
-  - **Batch last-run table** (single-purpose, generalized): per batch job identifier — `last_execution_at`, `last_status` (at minimum `SUCCESS` / `FAILED`; design may distinguish “never run”).
-  - Each batch updates its row at end of run (try/catch around job → FAILED on exception).
-  - **Dashboard API** section listing all registered batches with last run + status.
-  - **One or two widgets** using existing health-badge pattern; integrity batch widget may be STANDOUT.
-  - **Open-alert caveat** on widget(s) when actionable integrity/heartbeat/manipulation alerts are open (C9-10).
-  - Honest copy: operational reporting, not cryptographic proof; on-demand integrity check remains available if operator suspects tampering of report rows.
+- **In scope (R1):**
+  - Batch last-run persistence: `last_execution_at`, `last_status` (`SUCCESS` / `FAILED` / `NEVER_RUN`), **`last_run_scope`** (human-readable window validated).
+  - Active **config summary** on widget (e.g. lookback 60 min, retroactive 24 h) from known properties.
+  - **NEVER_RUN** — grey badge; row visible once job is registered.
+  - Two widgets (layout B); badges pattern consistent with existing dashboard.
+  - **Global Admin only** — Tenant Admin does not see integrity/alert ops widgets.
+  - Banner: open alert **count** → navigate to alerts list / resolution flow.
+  - Widget click: deep-link to **appropriate resolution context** (alerts or integrity/checkpoints) when intuitive — same pattern as entity widgets → filtered views.
+  - Honest copy: derived convenience data; ad hoc integrity check if tampering suspected.
+- **R1 batch rows (minimum):** checkpoint scheduler, nightly integrity validation, re-encryption — expand via `I-2026-0022` catalog.
 - **Out of scope:**
-  - Alerts when a batch has not run recently (explicitly rejected — C9).
-  - Escalation ladders, snooze UI (snooze is Global Admin action elsewhere — `I-2026-0005` cluster).
-  - Full history timeline (R1 = last run per batch only).
-  - Generic multi-tenant observability platform.
+  - Alert when batch stale (C9 — widget only).
+  - Snooze UI (Global Admin action elsewhere).
+  - Run history timeline.
+  - Tenant Admin visibility.
 
 ## Grilling decisions (2026-05-19)
 
 | Topic | Decision |
 |-------|----------|
-| **C9 stale batches** | Widget last-run replaces alert-on-missing-batch |
-| **Failed vs absent** | Include in design pack when feasible |
-| **Open alerts** | Widget caveat when resolutions pending |
-| **Priority** | Raised to **P1** — high leverage for integrity cluster |
+| **Layout** | **B** — two widgets: system/integrity + other jobs |
+| **Scope on widget** | **R1 mandatory** — last run + status + scope |
+| **Never run** | Grey **Never run** badge, row visible |
+| **Open alerts** | **Dashboard banner** with **count**, link to alerts screen |
+| **Roles** | **Global Admin only** |
+| **Config line** | **R1 yes** — active parameters on widget |
+| **Click** | Deep-link to alerts / integrity when intuitive |
+| **3-second test** | Ok or not ok; if not, obvious path to act |
 
 ## Key assumptions
 
-- Batch jobs are a bounded, enumerable set in Admin API for R1.
-- Derived status rows are convenience data (light integrity acceptable per D6 blitz); primary trust remains audit chain + validator.
-- `I-2026-0006` integrity batch registers in the same table as checkpoint and other jobs.
-
-## Risks and exceptions
-
-- Tampering with last-run rows is possible but low impact if copy is honest; validator re-run disproves false comfort.
-- Widget must not contradict open alert queue state.
+- [`I-2026-0022`](I-2026-0022-admin-api-scheduled-jobs-catalog.md) will provide authoritative job list for registry and copy.
+- Alert screen already exists; banner is routing only.
 
 ## Promotion notes
 
-Moved to `incubating` after C9 grilling. Promote to `TB-*` with `I-2026-0006` once batch registry list and table schema are fixed. Design pack should define batch job registry and Dashboard contract together.
+D6 express grilling complete. Promote to `TB-*` with `I-2026-0006` + batch table schema. Design pack: wire banner to alert count API.
 
 ## Links
 
-- Grill session: [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/integrity-cluster-D4-D6-grill-me.md) (C9)
-- Related vision: `V-2026-0004`
-- Related backlog: `I-2026-0005`, `I-2026-0006`
-- Related features: `F-admin-ui-workflows`, `F-audit-chain`
-- Related principles: `#1`, `#2`, `#5`, `#10`, `#12`, `#13`
+- Grill session: [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/integrity-cluster-D4-D6-grill-me.md) (D6, cluster closed)
+- [`../../operator-alignment-guide.md`](../../operator-alignment-guide.md)
+- Related: `I-2026-0005`, `I-2026-0006`, `I-2026-0022`
+- Vision: `V-2026-0004`
