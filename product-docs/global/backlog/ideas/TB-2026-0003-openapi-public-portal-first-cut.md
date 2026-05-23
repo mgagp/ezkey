@@ -3,10 +3,10 @@
 ## Metadata
 
 - **ID:** `TB-2026-0003`
-- **Status:** `draft`
+- **Status:** `closed`
 - **Related idea:** `I-2026-0026`
 - **Created at:** `2026-05-21`
-- **Updated at:** `2026-05-21`
+- **Updated at:** `2026-05-22`
 
 ## Objective
 
@@ -45,6 +45,14 @@ Deliver the first validated public portal slice for Ezkey API documentation: an 
 - Updated `I-2026-0026` traceability and linked supporting docs (`openapi-exposure-matrix.md`, `openapi-portal-candidate-review.md`).
 - Global first-cut design brief: [`../../openapi-public-portal-first-cut-design.md`](../../openapi-public-portal-first-cut-design.md)
 
+## Implementation outcome
+
+- `ezkey.org` public API portal implemented with one landing page plus one page per API.
+- `ReDoc CE` integrated as a static renderer and pinned to `v2.5.2`.
+- `Integration API` added to the centralized generated-spec workflow and to the portal-published static spec set.
+- English-first preview delivered, visually validated, then expanded to French portal-shell parity in the same dossier.
+- `EXP1` raw Springdoc exposure hardened on public API hostnames through explicit `Caddy` route blocking.
+
 ## Quality gates
 
 - **Portal gate:** the first portal cut stays within the existing static-site model and does not introduce an unnecessary new app stack.
@@ -60,3 +68,7 @@ Deliver the first validated public portal slice for Ezkey API documentation: an 
 3. `ReDoc CE` is proven as a workable static renderer in Ezkey's hosting model.
 4. The public documentation set covers `Admin API` and `Auth API`, and has an explicit rule for optional `Integration API`.
 5. One concrete prod-like hardening slice for raw public Springdoc exposure is defined tightly enough for implementation without reopening portal-level strategy.
+
+All five criteria were satisfied in implementation. The slice was then extended with French portal-shell parity after the initial English-first visual validation.
+
+`TB-2026-0003` is now intentionally **closed**. No unresolved blocker remains inside the defined slice.

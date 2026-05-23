@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0026`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P1`
 - **Created at:** `2026-05-21`
-- **Updated at:** `2026-05-21`
-- **Last reviewed at:** `2026-05-21`
+- **Updated at:** `2026-05-22`
+- **Last reviewed at:** `2026-05-22`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `docs`, `sites/ezkey-org`, `admin-api`, `auth-api`, `integration-api`, `crypto-api`, `infra`
 
@@ -71,9 +71,16 @@ See [`../grill-sessions/2026-05-21-openapi-exposure-api-portal-grill-me.md`](../
 
 ## Promotion notes
 
-This idea is now `ready` for tracer-bullet promotion. The posture decisions, exposure matrix, candidate comparison, and preferred placement model are explicit enough to define a bounded execution slice for the first public portal cut and the associated raw-doc exposure hardening work.
+This idea was promoted into [`TB-2026-0003-openapi-public-portal-first-cut.md`](TB-2026-0003-openapi-public-portal-first-cut.md) and is now materially delivered at the first-cut level.
 
-Promoted tracer bullet: [`TB-2026-0003-openapi-public-portal-first-cut.md`](TB-2026-0003-openapi-public-portal-first-cut.md)
+## Close-out notes (2026-05-22)
+
+- Public API portal implemented on `ezkey.org` with one landing page plus one page per public/prod-capable API.
+- `ReDoc CE` selected, validated visually, and pinned to `v2.5.2` for the deployed portal pages.
+- Centralized spec workflow extended so `Integration API` joins both the canonical `specs/` set and the portal-published static assets.
+- `EXP1` now has a concrete prod-like hardening pattern: public raw `/api-docs` and Swagger routes are blocked at the Lightsail `Caddy` edge on the public API hostnames.
+- French portal parity is sufficient at the **portal shell** level. The generated OpenAPI description text remains in the source-language contract artifacts and is intentionally **not** translated annotation by annotation in this dossier.
+- `ReDoc CE` version governance for this dossier is intentionally simple and closed: stay pinned on `v2.5.2` unless a security/availability issue, a rendering/compatibility issue, or an explicit renderer-posture review creates a real trigger for re-evaluation.
 
 ## Links
 

@@ -64,6 +64,8 @@ Recommended primary-nav order after this addition:
 - Launch the first portal cut in **English first**.
 - Keep the route structure bilingual-ready from day one so French parity can be added without reshaping the IA later.
 - French parity is a planned follow-up, not a blocker for the first preview deployment.
+- Implementation close-out: the first preview was validated in English, then French portal-shell parity was added in the same dossier before close-out.
+- The accepted French level for this dossier is the **portal shell and navigation**. Generated OpenAPI description text remains in the source-language contract artifacts; no annotation-by-annotation translation is required for this slice.
 
 ### Recommended routes and filenames
 
@@ -121,6 +123,13 @@ Why these route shapes:
   - each page loads `ReDoc CE`;
   - each page points to a local static spec asset published with the site.
 - Keep the landing page editorial and navigational rather than trying to make ReDoc solve portal-wide information architecture by itself.
+
+### Version pinning posture
+
+- Use the official Redocly CDN for the first cut, but pin it to an explicit version.
+- Do **not** use the floating `latest` alias for the deployed public portal.
+- Current pinned version for the delivered slice: `ReDoc CE v2.5.2`.
+- Self-hosting the bundle may be revisited later, but is not required for this first validated cut.
 
 ### Why this is the right first cut
 
@@ -185,9 +194,33 @@ The slice does **not** need to settle the final universal mechanism for every fu
 - `I-2026-0026`, `TB-2026-0003`, `openapi-exposure-matrix.md`, and `openapi-portal-candidate-review.md` remain the canonical reasoning chain for this direction.
 - `sites/ezkey-org/AGENTS.md` should be updated when implementation starts so the primary-nav table and mirrored-URL rules explicitly include the new API portal pages.
 
-## Open questions
+## Resolved in this slice
 
-- Which hardening mechanism is the best first implementation cut on `EXP1`: application-level disable, edge/proxy block, or a combined posture?
+- `EXP1` hardening mechanism selected for the first implementation cut: **edge/proxy block** on the public API hostnames via the Lightsail `Caddyfile`.
+- `ReDoc CE` deployment posture selected for the first implementation cut: **official CDN with explicit version pin** (`v2.5.2`).
+- French parity decision for the first implementation cut: **portal-shell parity is sufficient**; OpenAPI annotation text remains in the source-language generated specs.
+
+## Version re-evaluation rule
+
+The pinned `ReDoc CE` version is **not** reviewed on a calendar cadence for this dossier. Re-evaluate it only when one of these triggers appears:
+
+1. a security, availability, or CDN-trust problem affects the current deployment posture;
+2. a rendering bug, compatibility issue, or missing capability is blocking the Ezkey portal with the current pinned version;
+3. Ezkey deliberately chooses to revisit the renderer posture itself (for example, deeper customization, self-hosting, or a renderer replacement discussion).
+
+When one of those triggers applies, the update path is fixed:
+
+1. choose an explicit target version;
+2. pin it;
+3. deploy a preview;
+4. run human visual validation;
+5. then promote to production.
+
+Without one of those triggers, **stay on `v2.5.2`** and treat the dependency posture as closed for this slice.
+
+## Close-out state
+
+No open question remains that blocks closing this dossier at the first-cut level.
 
 ## Links
 
