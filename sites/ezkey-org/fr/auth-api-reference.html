@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Référence OpenAPI publique en lecture seule pour l’Auth API Ezkey.">
+    <meta property="og:title" content="Référence Auth API Ezkey">
+    <meta property="og:description" content="Référence OpenAPI publique en lecture seule pour l’Auth API Ezkey.">
+    <meta property="og:url" content="https://ezkey.org/fr/auth-api-reference.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Référence Auth API Ezkey">
+    <meta name="twitter:description" content="Référence OpenAPI publique en lecture seule pour l’Auth API Ezkey.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/auth-api-reference.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/auth-api-reference.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/auth-api-reference.html">
+    <title>Référence Auth API Ezkey</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow-x: hidden;
+            padding: 36px 0 56px;
+        }
+        .container { width: min(1320px, calc(100% - 24px)); margin: 0 auto; position: relative; }
+        .top-shell { padding: 32px 12px 20px; text-align: center; }
+        .logo-wrap {
+            width: 88px;
+            height: 88px;
+            margin: 0 auto 16px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
+        }
+        .logo-wrap img { width: 76px; height: 76px; display: block; }
+        .site-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 16px;
+            font-size: 0.92rem;
+        }
+        .site-nav a {
+            color: rgba(255, 255, 255, 0.92);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+        .site-nav a:hover { color: white; border-bottom-color: white; }
+        .site-nav a[aria-current="page"] { color: white; border-bottom-color: white; }
+        .lang-switch { font-size: 0.95rem; margin-bottom: 16px; color: rgba(255, 255, 255, 0.9); }
+        .summary-panel {
+            max-width: 1120px;
+            margin: 0 auto 20px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            padding: 28px 32px 30px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: left;
+        }
+        .summary-panel h1 { color: white; font-size: 1.85rem; margin-bottom: 12px; text-align: center; }
+        .summary-panel p,
+        .summary-panel li { color: rgba(255, 255, 255, 0.9); line-height: 1.65; font-size: 1rem; }
+        .summary-panel ul { margin: 10px 0 12px 1.25em; }
+        .summary-panel a { color: white; font-weight: 600; text-decoration: underline; }
+        .status-line {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: rgba(255, 255, 255, 0.92);
+            font-size: 0.95rem;
+        }
+        .status-line.error { background: rgba(239, 68, 68, 0.16); border-color: rgba(248, 113, 113, 0.45); }
+        .redoc-shell {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 70px rgba(0, 0, 0, 0.28);
+            min-height: 480px;
+        }
+        #redoc-container { min-height: 480px; }
+        .redoc-fallback { padding: 28px; color: #1f2937; font-size: 1rem; line-height: 1.6; }
+        .redoc-fallback h2 { font-size: 1.2rem; margin-bottom: 10px; }
+        .footer { margin-top: 18px; text-align: center; color: rgba(255, 255, 255, 0.62); font-size: 0.9rem; }
+        .footer a { color: rgba(255, 255, 255, 0.86); text-decoration: none; border-bottom: 1px solid rgba(255, 255, 255, 0.3); }
+        .particle {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: floatParticle 15s infinite linear;
+        }
+        @keyframes floatParticle {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        @media (max-width: 900px) {
+            .summary-panel { padding: 24px 20px 24px; }
+            .top-shell { padding-top: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="particle" style="left: 12%; animation-delay: 0s;"></div>
+    <div class="particle" style="left: 28%; animation-delay: 3s;"></div>
+    <div class="particle" style="left: 70%; animation-delay: 6s;"></div>
+    <div class="particle" style="left: 90%; animation-delay: 2s;"></div>
+
+    <div class="container">
+        <div class="top-shell">
+            <p class="lang-switch">
+                <a href="/auth-api-reference.html" style="color:rgba(255,255,255,0.9);text-decoration:underline;">English</a>
+                · <span style="color:white;font-weight:600;">Français</span>
+            </p>
+            <nav class="site-nav" aria-label="Navigation principale">
+                <a href="/fr/">Accueil</a>
+                <a href="/fr/source-and-evaluation.html#documentation">Documentation</a>
+                <a href="/fr/api-docs.html" aria-current="page">Documentation API</a>
+                <a href="/fr/source-and-evaluation.html#run-locally">Exécuter en local</a>
+                <a href="/fr/trust.html">Confiance</a>
+                <a href="/fr/updates.html">Mises à jour</a>
+                <a href="/fr/guides.html">Guides</a>
+                <a href="/fr/articles.html">Articles</a>
+            </nav>
+
+            <div class="logo-wrap">
+                <a href="/fr/" aria-label="Accueil Ezkey">
+                    <img src="/logo.svg" alt="Logo Ezkey">
+                </a>
+            </div>
+
+            <section class="summary-panel">
+                <h1>Référence Auth API</h1>
+                <p>
+                    L’Auth API porte les flux backend-vers-mobile pour l’inscription et l’authentification. C’est la surface de contrat côté terminal mobile pour la récupération des requêtes en attente, la soumission des réponses et les opérations de cycle de vie du terminal.
+                </p>
+                <ul>
+                    <li>Posture publique : référence documentaire en lecture seule.</li>
+                    <li>Actif OpenAPI statique : <a href="/api-specs/auth-api-openapi.json">auth-api-openapi.json</a>.</li>
+                    <li>Le portail public est le point d’entrée documentaire voulu pour une exposition de type production, pas les outils Swagger runtime publics.</li>
+                </ul>
+                <div class="status-line" id="spec-status">En attente de l’actif OpenAPI...</div>
+            </section>
+        </div>
+
+        <div class="redoc-shell">
+            <div id="redoc-container"></div>
+        </div>
+
+        <div class="footer">
+            <p><a href="/fr/api-docs.html">Retour à la documentation API</a></p>
+        </div>
+    </div>
+
+    <script src="https://cdn.redoc.ly/redoc/v2.5.2/bundles/redoc.standalone.js"></script>
+    <script>
+        (function () {
+            const specUrl = "/api-specs/auth-api-openapi.json";
+            const statusEl = document.getElementById("spec-status");
+            const redocEl = document.getElementById("redoc-container");
+
+            function showFailure(message) {
+                statusEl.textContent = message;
+                statusEl.classList.add("error");
+                redocEl.innerHTML =
+                    '<div class="redoc-fallback">' +
+                    "<h2>Référence indisponible</h2>" +
+                    "<p>" + message + "</p>" +
+                    '<p>Actif attendu : <code>' + specUrl + "</code></p>" +
+                    "</div>";
+            }
+
+            async function loadReference() {
+                statusEl.textContent = "Chargement de l’actif OpenAPI depuis " + specUrl + "...";
+                try {
+                    const response = await fetch(specUrl, { cache: "no-store" });
+                    if (!response.ok) {
+                        throw new Error("HTTP " + response.status + " lors du chargement de " + specUrl);
+                    }
+
+                    const spec = await response.json();
+                    statusEl.textContent = "Actif OpenAPI chargé depuis " + specUrl;
+
+                    Redoc.init(spec, {
+                        scrollYOffset: 12,
+                        hideDownloadButton: false,
+                        nativeScrollbars: true,
+                        theme: {
+                            colors: {
+                                primary: {
+                                    main: "#ea580c"
+                                }
+                            },
+                            typography: {
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif',
+                                headings: {
+                                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif'
+                                }
+                            }
+                        }
+                    }, redocEl);
+                } catch (error) {
+                    showFailure("Impossible de charger la référence Auth API. " + error.message);
+                }
+            }
+
+            if (window.Redoc && window.Redoc.init) {
+                loadReference();
+            } else {
+                showFailure("ReDoc CE n’a pas pu être chargé.");
+            }
+        })();
+    </script>
+</body>
+</html>

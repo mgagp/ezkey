@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Public read-only API reference for Ezkey. Browse the Admin API, Auth API, and Integration API documentation.">
+    <meta property="og:title" content="Ezkey API Docs">
+    <meta property="og:description" content="Public read-only API reference for Ezkey. Browse the Admin API, Auth API, and Integration API documentation.">
+    <meta property="og:url" content="https://ezkey.org/api-docs.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Ezkey API Docs">
+    <meta name="twitter:description" content="Public read-only API reference for Ezkey. Browse the Admin API, Auth API, and Integration API documentation.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/api-docs.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/api-docs.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/api-docs.html">
+    <title>Ezkey API Docs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow-x: hidden;
+            padding: 36px 0 56px;
+        }
+
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        .logo-container { margin-bottom: 24px; position: relative; text-align: center; }
+        .logo {
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 20px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: float 6s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        .logo::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 3s infinite;
+        }
+        .logo img {
+            width: 150px !important;
+            height: 150px !important;
+            position: relative;
+            z-index: 2;
+            display: block !important;
+        }
+
+        .site-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 18px;
+            margin-bottom: 16px;
+            font-size: 0.92rem;
+        }
+        .site-nav a {
+            color: rgba(255, 255, 255, 0.92);
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
+        }
+        .site-nav a:hover { color: white; border-bottom-color: white; }
+        .site-nav a[aria-current="page"] { color: white; border-bottom-color: white; }
+
+        .lang-switch {
+            font-size: 0.95rem;
+            margin-bottom: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+        }
+
+        .page-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            padding: 36px 40px 40px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 28px;
+            text-align: left;
+        }
+
+        .section-eyebrow {
+            display: block;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.65);
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .page-panel h1 {
+            color: white;
+            font-size: 1.95rem;
+            margin-bottom: 18px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .page-intro {
+            color: rgba(255, 255, 255, 0.92);
+            font-size: 1.05rem;
+            line-height: 1.65;
+            margin-bottom: 18px;
+            text-align: center;
+            max-width: 840px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .page-panel p,
+        .page-panel li {
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.65;
+            font-size: 1rem;
+        }
+
+        .page-panel ul {
+            margin: 10px 0 20px 1.25em;
+        }
+
+        .page-panel a {
+            color: white;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 18px;
+            margin-top: 24px;
+        }
+
+        .api-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 18px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .api-card h2 {
+            color: white;
+            font-size: 1.15rem;
+            line-height: 1.3;
+        }
+
+        .api-card p {
+            margin: 0;
+            font-size: 0.96rem;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .api-card .meta {
+            font-size: 0.78rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.64);
+            font-weight: 700;
+        }
+
+        .api-card .cta {
+            margin-top: auto;
+            display: inline-block;
+            width: fit-content;
+            padding: 9px 14px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.32);
+            text-decoration: none;
+        }
+
+        .api-card .cta:hover {
+            background: rgba(255, 255, 255, 0.24);
+            border-color: rgba(255, 255, 255, 0.52);
+        }
+
+        .note-panel {
+            margin-top: 22px;
+            padding: 18px 20px;
+            border-radius: 18px;
+            background: rgba(251, 191, 36, 0.14);
+            border: 1px solid rgba(251, 191, 36, 0.34);
+        }
+
+        .note-panel strong {
+            color: #fef3c7;
+        }
+
+        .footer {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .footer a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .footer a:hover { color: white; border-bottom-color: white; }
+
+        .particle {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: floatParticle 15s infinite linear;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        @keyframes floatParticle {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .page-panel { padding: 28px 22px 32px; }
+            .page-panel h1 { font-size: 1.65rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="particle" style="left: 15%; animation-delay: 1s;"></div>
+    <div class="particle" style="left: 45%; animation-delay: 3s;"></div>
+    <div class="particle" style="left: 75%; animation-delay: 5s;"></div>
+
+    <div class="container">
+        <p class="lang-switch">
+            <span style="color:white;font-weight:600;">English</span>
+            · <a href="/fr/api-docs.html" style="color:rgba(255,255,255,0.9);text-decoration:underline;">Français</a>
+        </p>
+        <nav class="site-nav" aria-label="Primary">
+            <a href="/">Home</a>
+            <a href="/source-and-evaluation.html#documentation">Docs</a>
+            <a href="/api-docs.html" aria-current="page">API Docs</a>
+            <a href="/source-and-evaluation.html#run-locally">Run locally</a>
+            <a href="/trust.html">Trust</a>
+            <a href="/updates.html">Updates</a>
+            <a href="/guides.html">Guides</a>
+            <a href="/articles.html">Articles</a>
+        </nav>
+        <div class="logo-container">
+            <a href="/" aria-label="Ezkey home">
+                <div class="logo">
+                    <img src="/logo.svg" alt="">
+                </div>
+            </a>
+        </div>
+
+        <div class="page-panel">
+            <span class="section-eyebrow">Public reference</span>
+            <h1>Ezkey API Docs</h1>
+            <p class="page-intro">
+                This portal is the public read-only reference for the Ezkey API group. It is meant for evaluators, integrators, and technical readers who want the contract surface without exposing live runtime Swagger tooling on production-like hosts.
+            </p>
+            <p class="page-intro">
+                The public group includes the <strong>Admin API</strong>, <strong>Auth API</strong>, and the optional <strong>Integration API</strong>. The <strong>Crypto API</strong> remains outside the public documentation posture.
+            </p>
+
+            <div class="api-grid">
+                <section class="api-card">
+                    <div class="meta">Operator-facing</div>
+                    <h2>Admin API</h2>
+                    <p>Administrative and operator workflows for tenants, enrollments, API keys, system posture, and day-to-day administration.</p>
+                    <a class="cta" href="/admin-api-reference.html">Open Admin API reference</a>
+                </section>
+
+                <section class="api-card">
+                    <div class="meta">Mobile-facing</div>
+                    <h2>Auth API</h2>
+                    <p>Enrollment and authentication flows used by the mobile device and the backend-to-mobile trust chain.</p>
+                    <a class="cta" href="/auth-api-reference.html">Open Auth API reference</a>
+                </section>
+
+                <section class="api-card">
+                    <div class="meta">Machine-to-machine</div>
+                    <h2>Integration API</h2>
+                    <p>Machine-to-machine endpoints for auth attempt lifecycle operations. This surface is optional by deployment and may be absent from some Ezkey setups.</p>
+                    <a class="cta" href="/integration-api-reference.html">Open Integration API reference</a>
+                </section>
+            </div>
+
+            <div class="note-panel">
+                <p><strong>Portal posture:</strong> public reference only. This first cut intentionally excludes public "try it out" execution and keeps the documentation surface static and reviewable.</p>
+            </div>
+        </div>
+
+        <p style="text-align:center;margin-bottom:20px;">
+            <a href="/source-and-evaluation.html" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">Source code &amp; evaluation</a>
+        </p>
+
+        <div class="footer">
+            <p><a href="/privacy.html">Privacy Policy</a></p>
+        </div>
+    </div>
+</body>
+</html>

@@ -15,6 +15,30 @@ Use a tracer bullet when:
 - workflow risk is significant,
 - lifecycle and validation rules are non-trivial.
 
+Use the **smallest meaningful end-to-end slice**, not the smallest imaginable task.
+
+- If the whole bounded job is already small, coherent, and low-risk enough to validate in one pass, the tracer bullet may cover the **entire first implementation cut**.
+- Do **not** force artificial micro-slices just to “be iterative” when that adds ceremony without improving confidence.
+- Split into multiple tracer bullets only when the separation creates real value: lower risk, clearer evidence, cleaner rollback, or simpler cross-boundary reasoning.
+
+## Action threshold
+
+Once a topic has reached all four conditions below, the default next step is **implementation**, not more preparatory artifacts:
+
+1. the **direction** is decided;
+2. the **first cut** is bounded;
+3. the **validation criteria** are known;
+4. the **remaining open questions** do not block the first cut.
+
+At that point:
+
+- move from preparation to action;
+- implement the smallest useful change;
+- validate it;
+- then adjust the documentation and follow-up scope from evidence.
+
+Do **not** create another preparation layer unless it removes a concrete blocker or materially reduces cross-boundary risk.
+
 ## Tracer bullet structure
 
 Each tracer bullet should define:
@@ -46,6 +70,8 @@ This enables parallel component analysis while preserving global coherence.
 5. Implement with targeted tests.
 6. Update traceability.
 7. Expand slice iteratively.
+
+Iteration is optional, not mandatory. If step 2 yields a bounded one-shot first cut with acceptable risk and evidence cost, execute that cut directly and validate it as the tracer bullet.
 
 ## Completion criteria
 

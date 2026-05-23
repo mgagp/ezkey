@@ -9,6 +9,7 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 ## What this folder is
 
 - **Source of truth in git:** static HTML/CSS under this directory — no bundler. **English** default locale; **French** under `fr/`.
+- **API portal (first cut):** public API portal under [`api-docs.html`](api-docs.html) / [`fr/api-docs.html`](fr/api-docs.html) with per-API pages [`admin-api-reference.html`](admin-api-reference.html), [`auth-api-reference.html`](auth-api-reference.html), [`integration-api-reference.html`](integration-api-reference.html) and their French mirrors under `fr/`. Static OpenAPI JSON assets live under [`api-specs/`](api-specs/).
 - **Landing pages (compact):** [`index.html`](index.html) (en), [`fr/index.html`](fr/index.html) (fr) — hero, pillars, primary navigation, evaluation CTAs (run locally, docs, trust), and secondary links into product writing. They are **not** the archive for updates or articles.
 - **Trust / diligence (short):** [`trust.html`](trust.html) / [`fr/trust.html`](fr/trust.html) — plain-language trust model, disclosure posture, security reporting (`security@ezkey.org`), and **on-site** pointers (no public GitHub URLs while the repository stays private).
 - **Source & evaluation hub:** [`source-and-evaluation.html`](source-and-evaluation.html) / [`fr/source-and-evaluation.html`](fr/source-and-evaluation.html) — explains that Ezkey is **planned** as MIT open source but the **main repository is private** until the scheduled public opening; anchors `#documentation` and `#run-locally` are the nav targets for **Docs** / **Run locally**.
@@ -31,6 +32,7 @@ Hub pages (`index`, `updates`, `articles`, `trust`) share a consistent **primary
 | ------ | ------ | ------ |
 | Home | Accueil | `/` / `/fr/` |
 | Docs | Documentation | `/source-and-evaluation.html#documentation` / `/fr/source-and-evaluation.html#documentation` |
+| API Docs | Documentation API | `/api-docs.html` / `/fr/api-docs.html` |
 | Run locally | Exécuter en local | `/source-and-evaluation.html#run-locally` / `/fr/source-and-evaluation.html#run-locally` |
 | Trust | Confiance | `/trust.html` / `/fr/trust.html` |
 | Updates | Mises à jour | `/updates.html` / `/fr/updates.html` |
@@ -117,10 +119,14 @@ When **regenerating** HTML from Markdown, **omit** YAML front matter and **omit*
 | ------------ | ----------- | ------- |
 | `/` → `index.html` | `/fr/` → `fr/index.html` | Compact landing; evaluation CTAs |
 | `/source-and-evaluation.html` | `/fr/source-and-evaluation.html` | Private-repo posture; docs/run-local explanation |
+| `/api-docs.html` | `/fr/api-docs.html` | API portal landing page |
 | `/trust.html` | `/fr/trust.html` | Trust, reporting, on-site pointers |
 | `/updates.html` | `/fr/updates.html` | Product updates (newest first) |
 | `/guides.html` | `/fr/guides.html` | Evaluator guides & walkthroughs hub |
 | `/articles.html` | `/fr/articles.html` | Guides lane + article index |
+| `/admin-api-reference.html` | `/fr/admin-api-reference.html` | Admin API public reference |
+| `/auth-api-reference.html` | `/fr/auth-api-reference.html` | Auth API public reference |
+| `/integration-api-reference.html` | `/fr/integration-api-reference.html` | Integration API public reference |
 | `/exp1-guided-tour.html` | `/fr/exp1-guided-tour.html` | Exp1 evaluator walkthrough (bilingual) |
 | `/changelog.html` | `/fr/changelog.html` | Technical changelog (placeholder) |
 

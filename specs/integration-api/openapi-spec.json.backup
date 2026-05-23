@@ -1,0 +1,454 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Ezkey Integration API",
+    "description": "Integration API for auth attempt lifecycle operations (create / wait / cancel) authenticated via API key (machine-to-machine). Ezkey is intentionally distinct from FIDO2/WebAuthn and uses its own cryptographic MFA model.",
+    "contact": {
+      "name": "Ezkey Team",
+      "url": "https://ezkey.org",
+      "email": "info@ezkey.org"
+    },
+    "license": {
+      "name": "MIT License",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:7080",
+      "description": "Generated server url"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth Attempts",
+      "description": "Integration API — authentication attempt operations"
+    }
+  ],
+  "paths": {
+    "/api/v1/auth-attempts": {
+      "post": {
+        "tags": [
+          "Auth Attempts"
+        ],
+        "summary": "Create authentication attempt",
+        "description": "Creates a new MFA authentication attempt. The integration is derived from the API key.",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthAttemptCreateRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Auth attempt created successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Enrollment does not belong to this integration",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth-attempts/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Auth Attempts"
+        ],
+        "summary": "Cancel authentication attempt",
+        "description": "Marks a pending or read authentication attempt as expired (cancelled).",
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth attempt ID to cancel",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 42
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auth attempt cancelled successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Auth attempt already in final state (cannot be cancelled)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Auth attempt not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth-attempts/{id}/wait": {
+      "get": {
+        "tags": [
+          "Auth Attempts"
+        ],
+        "summary": "Wait for device response",
+        "description": "Blocks until device responds or timeout elapses. Uses virtual threads for high concurrency.",
+        "operationId": "waitForResponse",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth attempt ID to wait for",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 42
+          },
+          {
+            "name": "timeout",
+            "in": "query",
+            "description": "Maximum wait duration in seconds",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "30",
+              "maximum": 300,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "polling",
+            "in": "query",
+            "description": "Polling interval in seconds",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "2",
+              "maximum": 60,
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response received (or timeout reached with status still pending)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Auth attempt not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthAttemptCreateRequestDto": {
+        "type": "object",
+        "description": "Auth attempt creation parameters",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID (optional if userIdentifier is provided)",
+            "example": 7
+          },
+          "userIdentifier": {
+            "type": "string",
+            "description": "User identifier for enrollment lookup (optional if enrollmentId is provided)",
+            "example": "john.doe@example.com"
+          },
+          "challengeRequested": {
+            "type": "boolean",
+            "description": "Whether to generate a numeric challenge for additional verification",
+            "example": true
+          },
+          "contextTitle": {
+            "type": "string",
+            "description": "Optional short title for the approval request, displayed as the mobile card header. Max 200 characters.",
+            "example": "Payment Approval",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "contextMessage": {
+            "type": "string",
+            "description": "Optional descriptive message explaining what the approver is authorizing. Max 2000 characters.",
+            "example": "Authorize payment batch #1497 to Acme Corp for $1,400",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "demoMitmSignatureRequested": {
+            "type": "boolean",
+            "description": "Demo only: when true, flags the attempt for simulated MITM on Pending if Auth API ezkey.demo.mitm-signature-enabled is true.",
+            "example": false
+          }
+        },
+        "required": [
+          "challengeRequested"
+        ]
+      },
+      "AuthAttemptDto": {
+        "type": "object",
+        "description": "Authentication attempt details",
+        "properties": {
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique auth attempt ID",
+            "example": 42
+          },
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Associated enrollment ID",
+            "example": 7
+          },
+          "authAttemptStatus": {
+            "type": "string",
+            "description": "Current status of the authentication attempt",
+            "enum": [
+              "PENDING",
+              "READ",
+              "INVALID",
+              "REJECTED",
+              "ACCEPTED",
+              "EXPIRED"
+            ],
+            "example": "PENDING"
+          },
+          "authAttemptChallenge": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Numeric challenge displayed to user for verification (null if not requested)",
+            "example": 123456
+          },
+          "authAttemptProofToken": {
+            "type": "string",
+            "description": "Signed JWT proof token (present only when status is ACCEPTED)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp with timezone",
+            "example": "2025-01-27T10:00:00+01:00"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Expiration timestamp with timezone",
+            "example": "2025-01-27T10:05:00+01:00"
+          },
+          "contextTitle": {
+            "type": "string",
+            "description": "Short title for the approval request (null if no context provided)",
+            "example": "Payment Approval"
+          },
+          "contextMessage": {
+            "type": "string",
+            "description": "Descriptive approval message (null if no context provided)",
+            "example": "Authorize payment batch #1497 to Acme Corp for $1,400"
+          },
+          "demoMitmSignatureEnabled": {
+            "type": "boolean",
+            "description": "Demo MITM opt-in at creation time (Pending tampering only when Auth API demo flag is on)",
+            "example": false
+          }
+        },
+        "required": [
+          "authAttemptId",
+          "authAttemptStatus",
+          "createdAt",
+          "enrollmentId",
+          "expiresAt"
+        ]
+      },
+      "AuthAttemptWaitResponseDto": {
+        "type": "object",
+        "description": "Response from the wait endpoint after waiting for device authentication",
+        "properties": {
+          "authAttempt": {
+            "$ref": "#/components/schemas/AuthAttemptDto",
+            "description": "Current authentication attempt state"
+          },
+          "status": {
+            "type": "string",
+            "description": "Calculated authentication status",
+            "enum": [
+              "PENDING",
+              "READ",
+              "INVALID",
+              "REJECTED",
+              "ACCEPTED"
+            ],
+            "example": "ACCEPTED"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Whether authentication process is complete",
+            "example": true
+          },
+          "timeoutReached": {
+            "type": "boolean",
+            "description": "Whether wait ended due to timeout",
+            "example": false
+          },
+          "waitDuration": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Actual duration waited in seconds",
+            "example": 15
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when wait operation completed (with timezone)",
+            "example": "2025-01-27T10:30:15+01:00"
+          }
+        },
+        "required": [
+          "authAttempt",
+          "completed",
+          "completedAt",
+          "status",
+          "timeoutReached",
+          "waitDuration"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "http",
+        "description": "HTTP Basic Auth — username: ezkey_ikey_xxx, password: ezkey_skey_xxx",
+        "scheme": "basic"
+      }
+    }
+  }
+}

@@ -32,6 +32,7 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `captured` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-19` |
 | `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `captured` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-19` |
 | `I-2026-0025` | Auth API protocol capability versioning | `captured` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-19` |
+| `I-2026-0026` | OpenAPI exposure and API portal posture | `ready` | `P1` | `docs`, `sites/ezkey-org`, `admin-api`, `auth-api`, `integration-api`, `crypto-api`, `infra` | `2026-05-21` |
 
 ## Recently completed
 

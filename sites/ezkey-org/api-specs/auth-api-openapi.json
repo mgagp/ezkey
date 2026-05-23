@@ -1,0 +1,689 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Ezkey Auth API",
+    "description": "Authentication API for Ezkey - Open Source Cryptographic MFA Platform\n\nThis API enables mobile device authentication operations:\n- **Enrollments**: Device binding and verification for user accounts\n- **Auth Attempts**: Mobile authentication request handling and responses\n\nThe API follows a pull-based model where mobile devices poll for pending\nauthentication requests and submit cryptographic signatures for validation.\nEzkey is intentionally distinct from FIDO2/WebAuthn and uses its own\ncryptographic MFA model. All operations use DTOs for requests and responses\nwith comprehensive validation.\n",
+    "contact": {
+      "name": "Ezkey Team",
+      "url": "https://ezkey.org",
+      "email": "info@ezkey.org"
+    },
+    "license": {
+      "name": "MIT License",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Development server Auth API"
+    },
+    {
+      "url": "https://auth-api.ezkey.org",
+      "description": "Production server Auth API"
+    }
+  ],
+  "security": [
+    {
+      "signatureAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Enrollments",
+      "description": "Mobile device enrollment operations for binding devices to user accounts and completing verification"
+    },
+    {
+      "name": "Authentication Attempts",
+      "description": "Mobile authentication attempt operations for checking pending requests and submitting responses"
+    },
+    {
+      "name": "Public",
+      "description": "Unauthenticated instance metadata"
+    }
+  ],
+  "paths": {
+    "/api/v1/enrollments/verify": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Complete enrollment verification",
+        "description": "Submits device cryptographic keys and signatures to finalize enrollment",
+        "operationId": "verify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentVerifyRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Enrollment verification completed successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid verification data or cryptographic validation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Enrollment state conflict or already verified",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/enrollments/bind": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Initiate device binding with proof token",
+        "description": "Retrieves enrollment binding information using secure enrollment proof token",
+        "operationId": "bind",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentBindRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Enrollment binding information retrieved successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentBindResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid enrollment ID, proof token, or enrollment expired",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Enrollment already bound or proof token already used",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth-attempts/respond": {
+      "post": {
+        "tags": [
+          "Authentication Attempts"
+        ],
+        "summary": "Submit authentication response",
+        "description": "Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 may include a business-level FAILED result in the JSON body (integration-signed) when validation fails in the respond service; uncaught IllegalArgumentException uses 400.",
+        "operationId": "respond",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthAttemptRespondRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Respond processed; body may be APPROVED, DENIED, or FAILED (signed FAILED when validation/crypto checks fail in the respond service)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid response data or validation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authentication attempt state conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth-attempts/pending": {
+      "post": {
+        "tags": [
+          "Authentication Attempts"
+        ],
+        "summary": "Get pending authentication attempt",
+        "description": "Retrieve pending authentication attempts using secure enrollment proof token. This endpoint prevents enumeration attacks by requiring cryptographic proof of enrollment ownership.",
+        "operationId": "pending",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthAttemptPendingRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Pending authentication attempt found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptPendingResponseDto"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No pending authentication attempts"
+          },
+          "400": {
+            "description": "Invalid request or enrollment proof token",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/v1/public/instance-info": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Get public instance info",
+        "description": "Returns read-only instance metadata for mobile clients and operators. Same payload as the Admin API public instance-info. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.",
+        "operationId": "getInstanceInfo",
+        "responses": {
+          "200": {
+            "description": "Instance metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicInstanceInfoResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EnrollmentVerifyRequestDto": {
+        "type": "object",
+        "description": "Request DTO for enrollment verification completion",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID being verified",
+            "example": 123
+          },
+          "challengeResponse": {
+            "type": "integer",
+            "format": "int32",
+            "description": "User's response to the enrollment challenge",
+            "example": 123456
+          },
+          "devicePublicKey": {
+            "type": "string",
+            "description": "Mobile device's generated public key",
+            "example": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+          },
+          "enrollmentProofTokenSigned": {
+            "type": "string",
+            "description": "Device-signed enrollment proof token",
+            "example": "eyJhbGciOiJSUzI1NiJ9..."
+          },
+          "devicePrivateKeyStorageTier": {
+            "type": "string",
+            "description": "Client-reported tier for device private key protection: NONE (e.g. demo), STANDARD (hardware keystore), STRONG (StrongBox or equivalent)",
+            "enum": [
+              "NONE",
+              "STANDARD",
+              "STRONG"
+            ],
+            "example": "STANDARD"
+          }
+        },
+        "required": [
+          "challengeResponse",
+          "devicePublicKey",
+          "enrollmentId",
+          "enrollmentProofTokenSigned"
+        ]
+      },
+      "EnrollmentVerifyResponseDto": {
+        "type": "object",
+        "description": "Response DTO for enrollment verification completion",
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "description": "Whether the enrollment is now active and ready for authentication",
+            "example": true
+          },
+          "enrollmentVerifyMessage": {
+            "type": "string",
+            "description": "Human-readable verify completion message (included in the integration signature)",
+            "example": "Enrollment verified successfully"
+          },
+          "enrollmentVerifyPayloadSignedByIntegration": {
+            "type": "string",
+            "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over proofToken|enrollmentId|VERIFIED|message (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)",
+            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        },
+        "required": [
+          "active",
+          "enrollmentVerifyMessage",
+          "enrollmentVerifyPayloadSignedByIntegration"
+        ]
+      },
+      "ProblemDetail": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri"
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        }
+      },
+      "EnrollmentBindRequestDto": {
+        "type": "object",
+        "description": "Request DTO for enrollment binding initiation with proof token",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID to bind to the mobile device",
+            "example": 123
+          },
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Enrollment proof token for authentication",
+            "example": "abc123-def456-ghi789"
+          }
+        },
+        "required": [
+          "enrollmentId",
+          "enrollmentProofToken"
+        ]
+      },
+      "EnrollmentBindResponseDto": {
+        "type": "object",
+        "description": "Response DTO containing enrollment binding information",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID that was bound to the mobile device",
+            "example": 123
+          },
+          "integrationPublicKey": {
+            "type": "string",
+            "description": "Integration's public key for cryptographic verification",
+            "example": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+          },
+          "integrationKeyAlgorithm": {
+            "type": "string",
+            "description": "Algorithm for integrationPublicKey (ed25519: raw 32-byte key, Base64URL no padding)",
+            "example": "ed25519"
+          },
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Enrollment proof token to be signed by the device",
+            "example": "eyJhbGciOiJSUzI1NiJ9..."
+          },
+          "integrationName": {
+            "type": "string",
+            "description": "Display name of the integration",
+            "example": "Acme Bank"
+          },
+          "integrationDescription": {
+            "type": "string",
+            "description": "Description of the integration",
+            "example": "Acme Bank provides secure online banking services."
+          },
+          "enrollmentName": {
+            "type": "string",
+            "description": "Human-readable name for the enrollment",
+            "example": "John's iPhone"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID of the integration associated with this enrollment",
+            "example": 2
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "Tenant display name of the integration associated with this enrollment",
+            "example": "Acme Corp"
+          },
+          "tenantDescription": {
+            "type": "string",
+            "description": "Tenant description of the integration associated with this enrollment",
+            "example": "Acme Corp tenant workspace"
+          },
+          "enrollmentBindPayloadSignedByIntegration": {
+            "type": "string",
+            "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over the canonical bind payload (see docs/ENROLLMENT_SIGNATURE_PAYLOAD.md)",
+            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        },
+        "required": [
+          "enrollmentBindPayloadSignedByIntegration",
+          "enrollmentId",
+          "enrollmentProofToken",
+          "integrationKeyAlgorithm",
+          "integrationPublicKey"
+        ]
+      },
+      "AuthAttemptRespondRequestDto": {
+        "type": "object",
+        "description": "Request DTO for submitting authentication attempt responses",
+        "properties": {
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Authentication attempt ID being responded to",
+            "example": 123
+          },
+          "authAttemptProofTokenSignedByDevice": {
+            "type": "string",
+            "description": "Device-signed proof token for authentication validation",
+            "example": "eyJhbGciOiJSUzI1NiJ9..."
+          },
+          "authAttemptChallengeResponse": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "User's response to authentication challenge (if required)",
+            "example": 123456
+          },
+          "authAttemptAccepted": {
+            "type": "boolean",
+            "description": "User's decision: true to approve, false to deny",
+            "example": true
+          }
+        },
+        "required": [
+          "authAttemptAccepted",
+          "authAttemptId",
+          "authAttemptProofTokenSignedByDevice"
+        ]
+      },
+      "AuthAttemptRespondResponseDto": {
+        "type": "object",
+        "description": "Response DTO for authentication attempt submissions",
+        "properties": {
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Authentication attempt identifier",
+            "example": 123
+          },
+          "authAttemptResult": {
+            "type": "string",
+            "description": "Authentication result",
+            "enum": [
+              "APPROVED",
+              "DENIED",
+              "FAILED",
+              "EXPIRED"
+            ],
+            "example": "APPROVED"
+          },
+          "authAttemptMessage": {
+            "type": "string",
+            "description": "Success confirmation or error details for user feedback",
+            "example": "Auth attempt completed"
+          },
+          "authAttemptProofTokenResultSignedByIntegration": {
+            "type": "string",
+            "description": "Ed25519 signature (Base64URL, no padding, raw 64 bytes) over proofToken|authAttemptId|result|message (see AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)",
+            "example": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        },
+        "required": [
+          "authAttemptId",
+          "authAttemptMessage",
+          "authAttemptResult"
+        ]
+      },
+      "AuthAttemptPendingRequestDto": {
+        "type": "object",
+        "description": "Request DTO for checking pending authentication attempts",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID to check for pending authentication attempts",
+            "example": 123
+          },
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Cryptographic proof token that authenticates the enrollment",
+            "example": "EZK-ABC123-DEF456"
+          },
+          "deviceProofToken": {
+            "type": "string",
+            "description": "Device proof token for authentication",
+            "example": "eyJhbGciOiJSUzI1NiJ9..."
+          },
+          "deviceProofTokenSigned": {
+            "type": "string",
+            "description": "Cryptographically signed device proof token",
+            "example": "eyJhbGciOiJSUzI1NiJ9..."
+          }
+        },
+        "required": [
+          "deviceProofToken",
+          "deviceProofTokenSigned",
+          "enrollmentId",
+          "enrollmentProofToken"
+        ]
+      },
+      "AuthAttemptPendingResponseDto": {
+        "type": "object",
+        "description": "Response DTO containing pending authentication attempt details",
+        "properties": {
+          "authAttemptId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Unique identifier of the authentication attempt",
+            "example": 123
+          },
+          "authAttemptProofToken": {
+            "type": "string",
+            "description": "Authentication proof token containing challenge data",
+            "example": "eyJhbGciOiJSUzI1NiJ9..."
+          },
+          "authAttemptProofTokenSignedByIntegration": {
+            "type": "string",
+            "description": "Integration-signed authentication proof token for integrity",
+            "example": "eyJhbGciOiJSUzI1NiJ9..."
+          },
+          "authAttemptChallengeRequired": {
+            "type": "boolean",
+            "description": "Whether additional challenge validation is required",
+            "example": true
+          },
+          "contextTitle": {
+            "type": "string",
+            "description": "Optional short title for the approval request (null if no context provided). Example: \"Payment Approval\"",
+            "example": "Payment Approval"
+          },
+          "contextMessage": {
+            "type": "string",
+            "description": "Optional descriptive message for the approver (null if no context provided). Example: \"Authorize payment batch #1497 to Acme Corp for $1,400\"",
+            "example": "Authorize payment batch #1497 to Acme Corp for $1,400"
+          }
+        },
+        "required": [
+          "authAttemptChallengeRequired",
+          "authAttemptId",
+          "authAttemptProofToken",
+          "authAttemptProofTokenSignedByIntegration"
+        ]
+      },
+      "PublicInstanceInfoResponseDto": {
+        "type": "object",
+        "description": "Public instance metadata (branding, optional public Auth API URL for QR alignment)",
+        "properties": {
+          "authApiPublicBaseUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Public base URL of the Auth API (same as authUrl in enrollment QR JSON when configured)",
+            "example": "https://auth.example.com:8080"
+          },
+          "instanceName": {
+            "type": "string",
+            "description": "Instance / organization display name",
+            "example": "Acme Corporation"
+          },
+          "instanceDescription": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional instance or organization description",
+            "example": "Acme Corp Ezkey MFA"
+          },
+          "aboutUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional URL for About / learn more (e.g. company instance page)",
+            "example": "https://www.example.com/about-ezkey"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "signatureAuth": {
+        "type": "http",
+        "description": "Cryptographic signature authentication for mobile devices",
+        "scheme": "bearer",
+        "bearerFormat": "Signature"
+      }
+    }
+  }
+}

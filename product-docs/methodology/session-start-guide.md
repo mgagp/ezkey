@@ -28,6 +28,10 @@ Use when the goal is scoped implementation.
 - Typical mode: **Plan -> Agent**
 - Typical skills: `ezkey-tracer-bullet-promote`, `ezkey-component-design-pack`, `ezkey-test-strategy-planner`, `ezkey-quality-gatekeeper`, `ezkey-traceability-sync`, `ezkey-closeout`
 
+`TB-*` does **not** imply that delivery must be decomposed into many tiny iterative slices. The tracer bullet should be the **smallest meaningful end-to-end implementation cut**. Sometimes that is a narrow pilot; sometimes it is the whole first cut if the work is already bounded and coherent enough.
+
+Action rule: when direction is decided, the first cut is bounded, validation criteria are known, and remaining open questions do not block the cut, switch from preparation to implementation by default.
+
 ### Lane C — Legacy knowledge retrofit
 
 Use when the goal is extracting value from historical plans, verbal rationale, or ad hoc history.

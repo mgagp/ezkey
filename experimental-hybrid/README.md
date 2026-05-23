@@ -150,3 +150,11 @@ When **all** APIs run on the same VM, they share the **`encryption-secrets`** Do
 ## OpenAPI
 
 Do not edit generated specs under `specs/` by hand. Regenerate from running services per project workflow after API changes.
+
+For the public `EXP1` hostnames, raw Springdoc routes are intentionally not the public documentation surface:
+
+- `/api-docs`
+- `/swagger-ui`
+- `/swagger-ui.html`
+
+The Lightsail `Caddyfile` blocks those routes on the public API hostnames so the intended public reference posture stays on `ezkey.org/api-docs.html` and the per-API portal pages.

@@ -14,6 +14,10 @@ specs/
 │   ├── openapi-spec.json        # Current specification
 │   ├── openapi-spec.json.backup # Automatic backup
 │   └── README.md               # API-specific documentation
+├── integration-api/             # Integration API specifications
+│   ├── openapi-spec.json        # Current specification
+│   ├── openapi-spec.json.backup # Automatic backup
+│   └── README.md               # API-specific documentation
 └── README.md                   # This file
 ```
 
@@ -23,7 +27,8 @@ specs/
 
 - **ezkey-demo-app-acme** → `specs/admin-api/openapi-spec.json`
 - **ezkey-demo-device** → `specs/auth-api/openapi-spec.json`
-- **ezkey-sdk** → Both specifications for SDK generation
+- **Public API portal** → generated from these canonical specs and published as static copies under `sites/ezkey-org/api-specs/`
+- **ezkey-sdk** → Relevant specifications for SDK generation
 
 ### Update Process
 
@@ -40,6 +45,9 @@ Use the centralized update script:
 
 # Update only auth-api
 ./scripts/update-specs.sh --auth-only
+
+# Update only integration-api
+./scripts/update-specs.sh --integration-only
 ```
 
 **Note**: The update script automatically formats JSON with proper indentation for better readability and AI analysis.
@@ -54,13 +62,16 @@ curl http://localhost:9080/api-docs -o specs/admin-api/openapi-spec.json
 
 # Auth API
 curl http://localhost:8080/api-docs -o specs/auth-api/openapi-spec.json
+
+# Integration API
+curl http://localhost:7080/api-docs -o specs/integration-api/openapi-spec.json
 ```
 
 ## Prerequisites
 
 ### For Automatic Updates
 
-- **APIs Running**: Both admin-api (port 9080) and auth-api (port 8080) must be running
+- **APIs Running**: The APIs you want to refresh must be running: admin-api (port 9080), auth-api (port 8080), integration-api (port 7080)
 - **curl**: Required for downloading specifications
 - **jq**: Optional but recommended for JSON validation and formatting
 
@@ -78,6 +89,7 @@ curl http://localhost:8080/api-docs -o specs/auth-api/openapi-spec.json
    ```bash
    mvn spring-boot:run -pl ezkey-admin-api &
    mvn spring-boot:run -pl ezkey-auth-api &
+   mvn spring-boot:run -pl ezkey-integration-api &
    ```
 
 2. **Update Specifications** (when APIs change):
@@ -187,12 +199,14 @@ If the update script fails with "API not accessible":
    ```bash
    curl http://localhost:9080/actuator/health  # Admin API
    curl http://localhost:8080/actuator/health  # Auth API
+   curl http://localhost:7081/actuator/health  # Integration API actuator
    ```
 
 2. **Start APIs**:
    ```bash
    mvn spring-boot:run -pl ezkey-admin-api
    mvn spring-boot:run -pl ezkey-auth-api
+   mvn spring-boot:run -pl ezkey-integration-api
    ```
 
 ### Invalid JSON Downloaded
@@ -217,6 +231,7 @@ If projects fail to build after specification update:
    ```bash
    jq . specs/admin-api/openapi-spec.json
    jq . specs/auth-api/openapi-spec.json
+   jq . specs/integration-api/openapi-spec.json
    ```
 
 2. **Check Project Links**:

@@ -9,6 +9,14 @@ This folder is the **source of truth** for the static public site served at **ez
 | `index.html` | English (`lang="en"`): compact landing — hero, pillars, evaluation CTAs (run locally, docs, trust), secondary links to updates/articles. Inline CSS. |
 | `fr/index.html` | French (`lang="fr"`): same structure, translated copy. Served at **`/fr/`** when deployed. |
 | `source-and-evaluation.html` / `fr/source-and-evaluation.html` | Explains private repository until public opening; targets for **Docs** / **Run locally** in nav (anchors `#documentation`, `#run-locally`). |
+| `api-docs.html` | English-first public API portal landing page. |
+| `admin-api-reference.html` | English-first Admin API public reference page powered by ReDoc CE. |
+| `auth-api-reference.html` | English-first Auth API public reference page powered by ReDoc CE. |
+| `integration-api-reference.html` | English-first Integration API public reference page powered by ReDoc CE. |
+| `fr/api-docs.html` | French API portal landing page. |
+| `fr/admin-api-reference.html` | French Admin API public reference page powered by ReDoc CE. |
+| `fr/auth-api-reference.html` | French Auth API public reference page powered by ReDoc CE. |
+| `fr/integration-api-reference.html` | French Integration API public reference page powered by ReDoc CE. |
 | `trust.html` / `fr/trust.html` | Short trust / security diligence (no off-site repo links while private). |
 | `updates.html` / `fr/updates.html` | Product updates: reverse-chronological, dated entries (optional type pill per entry). |
 | `articles.html` / `fr/articles.html` | Guides & walkthroughs lane + index of essays (cards link to standalone HTML pages). |
@@ -20,6 +28,7 @@ This folder is the **source of truth** for the static public site served at **ez
 | `sitemap.xml` | Sitemap; URL listed in `robots.txt`. |
 | `robots.txt` | `Allow: /` and `Sitemap:` pointer. |
 | `updates.rss` / `fr/updates.rss` | RSS feeds for **Updates**; keep in sync when adding entries (see **AGENTS.md**). |
+| `api-specs/` | Static OpenAPI JSON assets consumed by the public API portal pages. |
 
 **Locales:** Default URL `/` is English; `/fr/` is French. Hub pages expose `hreflang` alternates; in-page language switches link between paired locales.
 

@@ -43,6 +43,7 @@ See `plan-incubation-workflow.md`.
 4. **Promote**
    - If ready, promote the idea into a tracer bullet (`TB-*`) brief.
    - Define the first vertical slice and expected evidence.
+   - If direction, first cut, validation criteria, and non-blocking open questions are already explicit, do **not** add another preparation layer by default; move toward implementation.
 5. **Analyze and design**
    - Perform global analysis.
    - Perform component-specific analysis for each impacted boundary.
@@ -79,6 +80,20 @@ See `plan-incubation-workflow.md`.
 - **Test planning done** when minimum test layers are explicitly selected.
 - **Gate done** when mandatory quality checks pass.
 - **Close out done** when status and traceability are updated.
+
+## Preparation-to-action threshold
+
+Default to **implementation** once all of the following are true:
+
+1. the direction is decided;
+2. the first cut is bounded;
+3. validation criteria are known;
+4. remaining open questions do not block that first cut.
+
+This avoids two opposite failure modes:
+
+- coding too early with unresolved boundary confusion;
+- staying in perpetual preparation after the slice is already implementable.
 
 ## Capture variants
 

@@ -6,10 +6,18 @@
 #
 # TLS: Ezkey is opinionated — only TLS 1.3 is offered here (no TLS 1.2). Older clients cannot connect.
 
+(exp1_public_docs_block) {
+	@blockedDocs {
+		path /api-docs /api-docs/* /swagger-ui /swagger-ui/* /swagger-ui.html /swagger-ui.html*
+	}
+	respond @blockedDocs 404
+}
+
 exp1-auth-api.ezkey.org {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
 		protocols tls1.3 tls1.3
 	}
+	import exp1_public_docs_block
 	reverse_proxy auth-api:8080
 	header {
 		X-Content-Type-Options "nosniff"
@@ -22,6 +30,7 @@ exp1-admin-api.ezkey.org {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
 		protocols tls1.3 tls1.3
 	}
+	import exp1_public_docs_block
 	reverse_proxy admin-api:9080
 	header {
 		X-Content-Type-Options "nosniff"
@@ -34,6 +43,7 @@ exp1-integration-api.ezkey.org {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem {
 		protocols tls1.3 tls1.3
 	}
+	import exp1_public_docs_block
 	reverse_proxy integration-api:7080
 	header {
 		X-Content-Type-Options "nosniff"

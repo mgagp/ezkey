@@ -17,6 +17,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SPECS_DIR="$PROJECT_ROOT/specs"
 ADMIN_API_URL="http://localhost:9080/api-docs"
 AUTH_API_URL="http://localhost:8080/api-docs"
+INTEGRATION_API_URL="http://localhost:7080/api-docs"
 
 # Function to print colored output
 print_status() {
@@ -116,12 +117,18 @@ update_project_links() {
             update_link "$spec_file" "ezkey-demo-app-acme/openapi-spec.json"
             update_link "$spec_file" "ezkey-sdk/admin-api-spec.json"
             update_link "$spec_file" "ezkey-admin-ui/openapi-spec.json"
+            update_link "$spec_file" "sites/ezkey-org/api-specs/admin-api-openapi.json"
             ;;
         "auth-api")
             print_status "Updating auth-api links..."
             update_link "$spec_file" "ezkey-demo-device/openapi-spec.json"
             update_link "$spec_file" "ezkey-sdk/auth-api-spec.json"
             update_link "$spec_file" "ezkey_mobile/openapi-spec.json"
+            update_link "$spec_file" "sites/ezkey-org/api-specs/auth-api-openapi.json"
+            ;;
+        "integration-api")
+            print_status "Updating integration-api links..."
+            update_link "$spec_file" "sites/ezkey-org/api-specs/integration-api-openapi.json"
             ;;
     esac
 }
@@ -169,6 +176,7 @@ show_help() {
     echo "Options:"
     echo "  --admin-only    Update only admin-api specification"
     echo "  --auth-only     Update only auth-api specification"
+    echo "  --integration-only Update only integration-api specification"
     echo "  --all           Update all specifications (default)"
     echo "  --help          Show this help message"
     echo ""
@@ -176,17 +184,19 @@ show_help() {
     echo "  $0                    # Update all specifications"
     echo "  $0 --admin-only       # Update only admin-api"
     echo "  $0 --auth-only        # Update only auth-api"
+    echo "  $0 --integration-only # Update only integration-api"
     echo ""
-echo "Prerequisites:"
-echo "  - APIs must be running on localhost:9080 (admin) and localhost:8080 (auth)"
-echo "  - curl must be available for downloading specifications"
-echo "  - jq is optional but recommended for JSON validation and formatting"
+    echo "Prerequisites:"
+    echo "  - APIs must be running on localhost:9080 (admin), localhost:8080 (auth), and localhost:7080 (integration) as needed"
+    echo "  - curl must be available for downloading specifications"
+    echo "  - jq is optional but recommended for JSON validation and formatting"
 }
 
 # Main function
 main() {
     local update_admin=true
     local update_auth=true
+    local update_integration=true
     
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
@@ -194,16 +204,25 @@ main() {
             --admin-only)
                 update_admin=true
                 update_auth=false
+                update_integration=false
                 shift
                 ;;
             --auth-only)
                 update_admin=false
                 update_auth=true
+                update_integration=false
+                shift
+                ;;
+            --integration-only)
+                update_admin=false
+                update_auth=false
+                update_integration=true
                 shift
                 ;;
             --all)
                 update_admin=true
                 update_auth=true
+                update_integration=true
                 shift
                 ;;
             --help)
@@ -223,7 +242,7 @@ main() {
     print_status "Specs directory: $SPECS_DIR"
     
     # Ensure specs directory exists
-    mkdir -p "$SPECS_DIR/admin-api" "$SPECS_DIR/auth-api"
+    mkdir -p "$SPECS_DIR/admin-api" "$SPECS_DIR/auth-api" "$SPECS_DIR/integration-api"
     
     local success_count=0
     local total_count=0
@@ -240,6 +259,14 @@ main() {
     if [ "$update_auth" = true ]; then
         total_count=$((total_count + 1))
         if update_spec "auth-api" "$AUTH_API_URL"; then
+            success_count=$((success_count + 1))
+        fi
+    fi
+
+    # Update integration-api specification
+    if [ "$update_integration" = true ]; then
+        total_count=$((total_count + 1))
+        if update_spec "integration-api" "$INTEGRATION_API_URL"; then
             success_count=$((success_count + 1))
         fi
     fi

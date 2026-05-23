@@ -9,6 +9,7 @@ for %%I in ("%~dp0..") do set "PROJECT_ROOT=%%~fI"
 set "SPECS_DIR=%PROJECT_ROOT%\specs"
 set "ADMIN_API_URL=http://localhost:9080/api-docs"
 set "AUTH_API_URL=http://localhost:8080/api-docs"
+set "INTEGRATION_API_URL=http://localhost:7080/api-docs"
 
 echo === Ezkey OpenAPI Specifications Update Script ===
 echo.
@@ -25,28 +26,40 @@ REM Ensure specs directory exists
 if not exist "%SPECS_DIR%" mkdir "%SPECS_DIR%"
 if not exist "%SPECS_DIR%\admin-api" mkdir "%SPECS_DIR%\admin-api"
 if not exist "%SPECS_DIR%\auth-api" mkdir "%SPECS_DIR%\auth-api"
+if not exist "%SPECS_DIR%\integration-api" mkdir "%SPECS_DIR%\integration-api"
 
 REM Parse command line arguments
 set "UPDATE_ADMIN=true"
 set "UPDATE_AUTH=true"
+set "UPDATE_INTEGRATION=true"
 
 :parse_args
 if "%~1"=="" goto :start_update
 if "%~1"=="--admin-only" (
     set "UPDATE_ADMIN=true"
     set "UPDATE_AUTH=false"
+    set "UPDATE_INTEGRATION=false"
     shift
     goto :parse_args
 )
 if "%~1"=="--auth-only" (
     set "UPDATE_ADMIN=false"
     set "UPDATE_AUTH=true"
+    set "UPDATE_INTEGRATION=false"
+    shift
+    goto :parse_args
+)
+if "%~1"=="--integration-only" (
+    set "UPDATE_ADMIN=false"
+    set "UPDATE_AUTH=false"
+    set "UPDATE_INTEGRATION=true"
     shift
     goto :parse_args
 )
 if "%~1"=="--all" (
     set "UPDATE_ADMIN=true"
     set "UPDATE_AUTH=true"
+    set "UPDATE_INTEGRATION=true"
     shift
     goto :parse_args
 )
@@ -78,6 +91,13 @@ REM Update auth-api specification
 if "%UPDATE_AUTH%"=="true" (
     set /a TOTAL_COUNT+=1
     call :update_spec "auth-api" "%AUTH_API_URL%"
+    if !errorlevel! equ 0 set /a SUCCESS_COUNT+=1
+)
+
+REM Update integration-api specification
+if "%UPDATE_INTEGRATION%"=="true" (
+    set /a TOTAL_COUNT+=1
+    call :update_spec "integration-api" "%INTEGRATION_API_URL%"
     if !errorlevel! equ 0 set /a SUCCESS_COUNT+=1
 )
 
@@ -157,11 +177,16 @@ if "%API_NAME%"=="admin-api" (
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-demo-app-acme\openapi-spec.json"
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-sdk\admin-api-spec.json"
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-admin-ui\openapi-spec.json"
+    call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\sites\ezkey-org\api-specs\admin-api-openapi.json"
 ) else if "%API_NAME%"=="auth-api" (
     echo [INFO] Updating auth-api links...
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-demo-device\openapi-spec.json"
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey-sdk\auth-api-spec.json"
     call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\ezkey_mobile\openapi-spec.json"
+    call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\sites\ezkey-org\api-specs\auth-api-openapi.json"
+) else if "%API_NAME%"=="integration-api" (
+    echo [INFO] Updating integration-api links...
+    call :update_link "%SPEC_FILE%" "%PROJECT_ROOT%\sites\ezkey-org\api-specs\integration-api-openapi.json"
 )
 
 exit /b 0
@@ -190,6 +215,7 @@ echo.
 echo Options:
 echo   --admin-only    Update only admin-api specification
 echo   --auth-only     Update only auth-api specification
+echo   --integration-only Update only integration-api specification
 echo   --all           Update all specifications (default)
 echo   --help          Show this help message
 echo.
@@ -197,9 +223,10 @@ echo Examples:
 echo   %~nx0                    # Update all specifications
 echo   %~nx0 --admin-only       # Update only admin-api
 echo   %~nx0 --auth-only        # Update only auth-api
+echo   %~nx0 --integration-only # Update only integration-api
 echo.
 echo Prerequisites:
-echo   - APIs must be running on localhost:9080 (admin) and localhost:8080 (auth)
+echo   - APIs must be running on localhost:9080 (admin), localhost:8080 (auth), and localhost:7080 (integration) as needed
 echo   - curl must be available for downloading specifications
 echo   - jq is optional but recommended for JSON validation and formatting
 echo.
