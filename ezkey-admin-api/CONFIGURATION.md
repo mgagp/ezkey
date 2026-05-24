@@ -30,6 +30,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.admin.bootstrap.export.enabled` | — | `false` | optionnel |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(empty list)* | optionnel |
+| `ezkey.evaluator.self-registration.enabled` | `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-enabled` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_ENABLED` | `false` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_NAME` | `EZKEY_ADMIN_SESSION` | optionnel |
 | `ezkey.admin.auth.browser-session-cookie-secure` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SECURE` | `true` | optionnel |
@@ -349,6 +350,30 @@ The following ezkey-core prefixes are also active in Admin API. See
 | `ezkey.admin.auth.browser-session-cookie-same-site` | `EZKEY_ADMIN_AUTH_BROWSER_SESSION_COOKIE_SAME_SITE` | *(unset)* |
 | `ezkey.admin.auth.browser-csrf-cookie-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_COOKIE_NAME` | *(unset)* |
 | `ezkey.admin.auth.browser-csrf-header-name` | `EZKEY_ADMIN_AUTH_BROWSER_CSRF_HEADER_NAME` | *(unset)* |
+
+---
+
+### 12. Evaluator self-registration (`ezkey.evaluator.self-registration.*`)
+
+**Description:** anonymous EXP1 preview signup — empty tenant + pending Tenant Admin + activation
+code. Disabled by default; enable only on experimental preview installations.
+
+**Defined in:** `EvaluatorSelfRegistrationProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.evaluator.self-registration.enabled` | `boolean` | `false` | optionnel | When `false`, `POST /api/v1/public/evaluator-signup` returns HTTP 404. |
+| `ezkey.evaluator.self-registration.daily-cap` | `int` | `5` | optionnel | Max successful signups per UTC day (global). |
+| `ezkey.evaluator.self-registration.per-ip-window-hours` | `int` | `24` | optionnel | Per-IP success window. |
+| `ezkey.evaluator.self-registration.per-ip-max-success` | `int` | `1` | optionnel | Max successful signups per IP within the window. |
+| `ezkey.evaluator.self-registration.admin-ui-url` | `String` | `https://exp1-admin-ui.ezkey.org` | optionnel | Returned to clients after signup. |
+| `ezkey.evaluator.self-registration.guided-tour-url` | `String` | `https://ezkey.org/exp1-guided-tour.html` | optionnel | Returned to clients after signup. |
+
+**EXP1 operator notes:**
+
+- Set `ezkey.evaluator.self-registration.enabled=true` on the preview Admin API only.
+- Add `https://ezkey.org` (and Cloudflare Pages preview origins if needed) to `ezkey.admin.cors.allowed-origins`.
+- Signup page: `https://ezkey.org/exp1-signup.html` (calls the Admin API cross-origin).
 
 ---
 

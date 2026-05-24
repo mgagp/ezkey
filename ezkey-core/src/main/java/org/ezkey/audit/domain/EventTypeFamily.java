@@ -82,7 +82,8 @@ public enum EventTypeFamily {
       EventType.TENANT_CREATED,
       EventType.TENANT_UPDATED,
       EventType.TENANT_DEACTIVATED,
-      EventType.TENANT_ACTIVATED),
+      EventType.TENANT_ACTIVATED,
+      EventType.EVALUATOR_SELF_REGISTRATION),
   AUDIT_CHAIN(
       EventType.AUDIT_CHAIN_ARCHIVE_SEALED,
       EventType.AUDIT_CHAIN_ARCHIVE_EXPORTED,

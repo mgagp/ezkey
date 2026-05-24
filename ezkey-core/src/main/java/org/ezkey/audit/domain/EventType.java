@@ -107,6 +107,11 @@ public enum EventType {
   TENANT_UPDATED, // Tenant metadata updated
   TENANT_DEACTIVATED, // Tenant deactivated (+ reason when provided)
   TENANT_ACTIVATED, // Tenant reactivated (+ reason when provided)
+  /**
+   * Anonymous evaluator self-registration completed (EXP1 preview signup; empty tenant + activation
+   * code).
+   */
+  EVALUATOR_SELF_REGISTRATION,
 
   // Audit chain lifecycle events
   AUDIT_CHAIN_ARCHIVE_SEALED, // Audit partition sealed prior to archival and partition drop

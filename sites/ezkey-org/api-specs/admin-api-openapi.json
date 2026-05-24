@@ -59,6 +59,10 @@
       "description": "Audit log query and reporting API for security monitoring and compliance"
     },
     {
+      "name": "Public",
+      "description": "Unauthenticated instance metadata and preview signup"
+    },
+    {
       "name": "Tenants",
       "description": "Tenant management API"
     },
@@ -438,6 +442,57 @@
           },
           "403": {
             "description": "Forbidden - not a global administrator"
+          }
+        }
+      }
+    },
+    "/api/v1/public/evaluator-signup": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Anonymous evaluator self-registration",
+        "description": "Creates an empty preview tenant and a pending Tenant Admin with a one-time activation code. Available only on installations with evaluator self-registration enabled.",
+        "operationId": "evaluatorSignup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluatorSelfRegistrationRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Preview tenant and activation code created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluatorSelfRegistrationResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Feature disabled on this installation",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluatorSelfRegistrationResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Preview capacity or client limit reached",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluatorSelfRegistrationResponseDto"
+                }
+              }
+            }
           }
         }
       }
@@ -4397,6 +4452,7 @@
                 "TENANT_UPDATED",
                 "TENANT_DEACTIVATED",
                 "TENANT_ACTIVATED",
+                "EVALUATOR_SELF_REGISTRATION",
                 "AUDIT_CHAIN_ARCHIVE_SEALED",
                 "AUDIT_CHAIN_ARCHIVE_EXPORTED",
                 "AUDIT_CHAIN_GAP_DECLARED",
@@ -6028,6 +6084,48 @@
             "type": "string",
             "maxLength": 500,
             "minLength": 10
+          }
+        }
+      },
+      "EvaluatorSelfRegistrationRequestDto": {
+        "type": "object",
+        "description": "Anonymous evaluator self-registration request",
+        "properties": {
+          "tenantLabel": {
+            "type": "string",
+            "description": "Optional short label for the preview tenant (max 40 characters; no email or URL)",
+            "example": "My preview workspace",
+            "maxLength": 40,
+            "minLength": 0
+          }
+        }
+      },
+      "EvaluatorSelfRegistrationResponseDto": {
+        "type": "object",
+        "description": "Anonymous evaluator self-registration response",
+        "properties": {
+          "activationCode": {
+            "type": "string",
+            "description": "One-time activation code (save immediately)",
+            "example": "ABCD-1234"
+          },
+          "activationCodeExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Activation code expiration instant (UTC)"
+          },
+          "adminUiUrl": {
+            "type": "string",
+            "description": "Admin UI URL for this preview instance"
+          },
+          "guidedTourUrl": {
+            "type": "string",
+            "description": "Guided tour URL on ezkey.org"
+          },
+          "tenantLabel": {
+            "type": "string",
+            "description": "Server-generated tenant slug",
+            "example": "eval-a1b2c3d4"
           }
         }
       },
@@ -8260,6 +8358,7 @@
               "TENANT_UPDATED",
               "TENANT_DEACTIVATED",
               "TENANT_ACTIVATED",
+              "EVALUATOR_SELF_REGISTRATION",
               "AUDIT_CHAIN_ARCHIVE_SEALED",
               "AUDIT_CHAIN_ARCHIVE_EXPORTED",
               "AUDIT_CHAIN_GAP_DECLARED",

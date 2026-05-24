@@ -312,6 +312,44 @@ See also: enrollment QR JSON and `authUrl` (same property as `ezkey.qr.auth-base
 
 **Postman:** `postman/collections/v2.1/EZ Key Public admin.postman_collection.json` (no Bearer token; uses `{{base_url_admin_api}}`).
 
+### Anonymous evaluator self-registration (unauthenticated, installation-scoped)
+
+**Base path:** `POST http://localhost:9080/api/v1/public/evaluator-signup` (no `Authorization` header).
+
+Available only when `ezkey.evaluator.self-registration.enabled=true` (intended for EXP1 preview). When disabled, returns **404 Not Found** (no response body enumeration).
+
+Creates an **empty tenant** and a **pending Tenant Admin** with **`ACTIVATION_CODE`** onboarding. Does **not** create integrations, API keys, or enrollments — evaluators follow the [Exp1 guided tour](https://ezkey.org/exp1-guided-tour.html) from step 1.
+
+**Rate limits (defaults):** global **5 successful signups per UTC day**; **1 successful signup per client IP per 24h**. Failures return **429** with a generic capacity message.
+
+**Request body (optional JSON):**
+
+```json
+{
+  "tenantLabel": "My preview workspace"
+}
+```
+
+| Field | Required | Notes |
+| ----- | -------- | ----- |
+| `tenantLabel` | No | Max 40 chars; must not contain email or URL patterns |
+
+**Response (201 Created):**
+
+```json
+{
+  "activationCode": "ABCD-1234",
+  "activationCodeExpiresAt": "2026-05-30T12:00:00Z",
+  "adminUiUrl": "https://exp1-admin-ui.ezkey.org",
+  "guidedTourUrl": "https://ezkey.org/exp1-guided-tour.html",
+  "tenantLabel": "eval-a1b2c3d4"
+}
+```
+
+**CORS:** cross-origin signup from `ezkey.org` requires `ezkey.admin.cors.allowed-origins` to include the static site origin(s).
+
+See `ezkey-admin-api/CONFIGURATION.md` (evaluator self-registration group).
+
 ### Admin Authentication (Passwordless-Only)
 
 Base URL: `http://localhost:9080/api/v1/admin/auth`

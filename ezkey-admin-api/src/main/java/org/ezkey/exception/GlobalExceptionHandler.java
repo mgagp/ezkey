@@ -115,6 +115,17 @@ public class GlobalExceptionHandler {
         request);
   }
 
+  @ExceptionHandler(org.ezkey.admin.exception.EvaluatorSelfRegistrationCapacityException.class)
+  public ResponseEntity<ProblemDetail> handleEvaluatorSelfRegistrationCapacityException(
+      org.ezkey.admin.exception.EvaluatorSelfRegistrationCapacityException ex, WebRequest request) {
+    return problemResponse(
+        HttpStatus.TOO_MANY_REQUESTS,
+        AdminApiProblemCatalog.TYPE_RATE_LIMIT_EXCEEDED,
+        AdminApiProblemCatalog.TITLE_TOO_MANY_REQUESTS,
+        ex.getMessage(),
+        request);
+  }
+
   /**
    * Handles ResourceNotFoundException and returns HTTP 404.
    *

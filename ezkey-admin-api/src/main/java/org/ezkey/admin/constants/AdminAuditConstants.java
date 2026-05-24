@@ -311,6 +311,14 @@ public final class AdminAuditConstants {
   /** Audit action for successful tenant activation (reactivation). */
   public static final String TENANT_ACTIVATED = "tenant_activated";
 
+  /** Audit action for successful anonymous evaluator self-registration. */
+  public static final String EVALUATOR_SELF_REGISTRATION_COMPLETED =
+      "evaluator_self_registration_completed";
+
+  /** Audit action for failed anonymous evaluator self-registration. */
+  public static final String EVALUATOR_SELF_REGISTRATION_FAILED =
+      "evaluator_self_registration_failed";
+
   // ═══════════════════════════════════════════════════════════════════════════════════════════════
   // Admin Provisioning Actions
   // ═══════════════════════════════════════════════════════════════════════════════════════════════
