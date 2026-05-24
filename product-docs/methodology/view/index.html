@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ezkey Methodology — Rich View</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --blue: #2563eb;
+      --cyan: #0891b2;
+      --amber: #d97706;
+      --violet: #7c3aed;
+      --indigo: #4f46e5;
+      --teal: #0d9488;
+      --red: #dc2626;
+      --green: #16a34a;
+      --slate: #475569;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    /* ── Navigation ─────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      height: 50px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .nav-brand {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .nav-brand span { color: var(--blue); }
+
+    .nav-sep {
+      width: 1px;
+      height: 18px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    nav a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.82rem;
+      flex-shrink: 0;
+    }
+
+    nav a:hover { color: var(--blue); }
+
+    /* ── Page header ────────────────────────────────────────────── */
+    .page-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 36px 48px 32px;
+    }
+
+    .page-header h1 {
+      font-size: 1.9rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+
+    .page-header .subtitle {
+      color: var(--text-secondary);
+      margin-top: 6px;
+      font-size: 0.98rem;
+      max-width: 700px;
+    }
+
+    .page-header .meta {
+      margin-top: 14px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .page-header .meta a { color: var(--blue); text-decoration: none; }
+
+    /* ── Main layout ────────────────────────────────────────────── */
+    main {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0 48px 80px;
+    }
+
+    section {
+      margin-top: 56px;
+    }
+
+    section > h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.015em;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 6px;
+    }
+
+    .section-intro {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 22px;
+      margin-top: 6px;
+    }
+
+    h3.sub {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 24px 0 10px;
+    }
+
+    /* ── SECTION 1 — Workflow flow ──────────────────────────────── */
+    .flow-scroll {
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-top: 4px;
+    }
+
+    .flow-inner {
+      display: flex;
+      align-items: stretch;
+      min-width: min-content;
+    }
+
+    .phase-card {
+      width: 162px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-top: 3px solid currentColor;
+      padding: 13px 13px 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .phase-num {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .phase-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .phase-action {
+      font-size: 0.76rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      flex-grow: 1;
+    }
+
+    .phase-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid;
+      width: fit-content;
+    }
+
+    .phase-exit {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-style: italic;
+      line-height: 1.35;
+      border-top: 1px solid var(--border);
+      padding-top: 7px;
+      margin-top: 2px;
+    }
+
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 7px;
+      color: var(--text-muted);
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    /* phase border/color tokens */
+    .ph1 { color: #2563eb; }
+    .ph2 { color: #0891b2; }
+    .ph3 { color: #d97706; }
+    .ph4 { color: #7c3aed; }
+    .ph5 { color: #4f46e5; }
+    .ph6 { color: #0d9488; }
+    .ph7 { color: #dc2626; }
+    .ph8 { color: #16a34a; }
+    .ph9 { color: #475569; }
+
+    /* badge variants */
+    .bg-i   { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .bg-tb  { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+    .bg-br  { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
+    .bg-ts  { background: #f0fdfa; border-color: #99f6e4; color: #0d9488; }
+    .bg-st  { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
+    .bg-cd  { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+
+    /* ── SECTION 2 — Artifacts table ────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+    }
+
+    thead tr {
+      background: #f1f5f9;
+    }
+
+    th {
+      text-align: left;
+      padding: 9px 14px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.4;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #fafbfc; }
+
+    .ab {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .ab-v  { background: #f5f3ff; color: #6d28d9; }
+    .ab-i  { background: #eff6ff; color: #1d4ed8; }
+    .ab-tb { background: #f0fdf4; color: #15803d; }
+    .ab-r  { background: #fffbeb; color: #b45309; }
+    .ab-rv { background: #fff1f2; color: #be123c; }
+    .ab-md { background: #f8fafc; color: #475569; }
+
+    code {
+      font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.8em;
+      background: #f1f5f9;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: var(--indigo);
+    }
+
+    /* ── SECTION 3 — Parallel lanes ─────────────────────────────── */
+    .lanes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 14px;
+    }
+
+    .lane-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-left: 4px solid;
+      padding: 18px 18px 20px;
+    }
+
+    .lane-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .lane-name {
+      font-size: 0.98rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .lane-steps {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .lane-steps li {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      padding-left: 14px;
+      position: relative;
+      line-height: 1.4;
+    }
+
+    .lane-steps li::before {
+      content: "›";
+      position: absolute;
+      left: 0;
+      color: var(--text-muted);
+    }
+
+    .lane-ref {
+      margin-top: 12px;
+      font-size: 0.77rem;
+    }
+
+    .lane-ref a { color: var(--blue); text-decoration: none; }
+
+    /* ── Collaboration context ───────────────────────────────── */
+    .collab-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-left: 4px solid #475569;
+      padding: 20px 24px;
+    }
+
+    .collab-modifier-tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #475569;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin-bottom: 12px;
+    }
+
+    .collab-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .collab-rules {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .collab-rule {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      padding: 8px 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      line-height: 1.4;
+    }
+
+    .collab-rule strong { color: var(--text); display: block; margin-bottom: 2px; font-size: 0.78rem; }
+
+    /* ── SECTION 5 — Rich views ──────────────────────────────────── */
+    .criteria-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-bottom: 24px;
+    }
+
+    .criteria-list li {
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+      padding: 9px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      border-left: 3px solid var(--red);
+      line-height: 1.45;
+    }
+
+    .criteria-list.teal li { border-left-color: var(--teal); }
+
+    .lane-a-tag {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #1d4ed8;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin-left: 10px;
+      vertical-align: middle;
+      position: relative;
+      top: -2px;
+    }
+
+    .criteria-list li strong { color: var(--text); }
+
+    .existing-view {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 10px;
+    }
+
+    .existing-view-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+
+    .existing-view-dot.teal { background: var(--teal); }
+    .existing-view-dot.amber { background: var(--amber); }
+
+    .existing-view-title {
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+
+    .existing-view-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .existing-view-path {
+      margin-top: 6px;
+      font-size: 0.77rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 28px 24px;
+      font-size: 0.77rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      margin-top: 64px;
+    }
+
+    footer a { color: var(--blue); text-decoration: none; }
+
+    @media (max-width: 700px) {
+      .page-header { padding: 24px; }
+      main { padding: 0 20px 56px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Ezkey <span>Methodology</span></div>
+  <div class="nav-sep"></div>
+  <a href="#workflow">Workflow</a>
+  <a href="#artifacts">Artifacts</a>
+  <a href="#lanes">Lanes</a>
+  <a href="#collab">Collab</a>
+  <a href="#naming">Naming</a>
+  <a href="#skills">Skills</a>
+  <a href="#rich-views">Rich Views</a>
+</nav>
+
+<header class="page-header">
+  <h1>Ezkey Methodology</h1>
+  <p class="subtitle">
+    Visual reference for the ideation-to-delivery workflow — from raw idea to closed feature,
+    with artifact types, parallel lanes, naming conventions, and skills.
+  </p>
+  <div class="meta">
+    <span>Source: <a href="../README.md">product-docs/methodology/README.md</a></span>
+    <span>Decision: <a href="../decisions/2026-05-24-rich-views.md">2026-05-24-rich-views</a></span>
+    <span>Updated 2026-05-24</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 1 — END-TO-END WORKFLOW
+       ════════════════════════════════════════════════════════════ -->
+  <section id="workflow">
+    <h2>End-to-End Workflow <span class="lane-a-tag">Lane A</span></h2>
+    <p class="section-intro">
+      Nine explicit phases with artifact outputs and exit criteria. Move to implementation as
+      soon as direction, first cut, validation criteria, and non-blocking open questions are
+      all settled — avoiding both premature coding and perpetual preparation.
+    </p>
+
+    <div class="flow-scroll">
+      <div class="flow-inner">
+
+        <div class="phase-card ph1">
+          <div class="phase-num">Phase 1</div>
+          <div class="phase-name">Capture</div>
+          <div class="phase-action">Record the raw idea with clear intent and initial tags. Keep the first version short and expressive.</div>
+          <span class="phase-badge bg-i">I-*</span>
+          <div class="phase-exit">Done when: clear intent and tags assigned.</div>
+        </div>
+        <div class="flow-arrow">→</div>
+
+        <div class="phase-card ph2">
+          <div class="phase-num">Phase 2</div>
+          <div class="phase-name">Triage</div>
+          <div class="phase-action">Clarify intent, user value, risk, and rough scope. Assign status, priority, phase tags, component tags.</div>
+          <span class="phase-badge bg-i">I-* updated</span>
+          <div class="phase-exit">Done when: scope and value understandable.</div>
+        </div>
+        <div class="flow-arrow">→</div>
+
+        <div class="phase-card ph3">
+          <div class="phase-num">Phase 3</div>
+          <div class="phase-name">Challenge</div>
+          <div class="phase-action">Structured questioning pass ("Grill Me"). Surface assumptions, exceptions, error paths, non-goals.</div>
+          <span class="phase-badge bg-i">I-* + open Qs</span>
+          <div class="phase-exit">Done when: key risks and exceptions explicit.</div>
+        </div>
+        <div class="flow-arrow">→</div>
+
+        <div class="phase-card ph4">
+          <div class="phase-num">Phase 4</div>
+          <div class="phase-name">Promote</div>
+          <div class="phase-action">Define the first vertical slice and expected evidence. Avoid adding preparation if direction is already clear.</div>
+          <span class="phase-badge bg-tb">TB-*</span>
+          <div class="phase-exit">Done when: one vertical slice is testable.</div>
+        </div>
+        <div class="flow-arrow">→</div>
+
+        <div class="phase-card ph5">
+          <div class="phase-num">Phase 5</div>
+          <div class="phase-name">Analyze &amp; Design</div>
+          <div class="phase-action">Global analysis + component-specific analysis for each impacted boundary. Define responsibilities, contracts, validation, error behavior.</div>
+          <span class="phase-badge bg-br">briefs + mappings</span>
+          <div class="phase-exit">Done when: boundaries and decision points explicit.</div>
+        </div>
+        <div class="flow-arrow">→</div>
+
+        <div class="phase-card ph6">
+          <div class="phase-num">Phase 6</div>
+          <div class="phase-name">Plan Tests</div>
+          <div class="phase-action">Select minimum and optional test layers: unit, functional, elective, operational, UI. Keep selection risk-based and cost-aware.</div>
+          <span class="phase-badge bg-ts">test plan slice</span>
+          <div class="phase-exit">Done when: min test layers explicitly selected.</div>
+        </div>
+        <div class="flow-arrow">→</div>
+
+        <div class="phase-card ph7">
+          <div class="phase-num">Phase 7</div>
+          <div class="phase-name">Gate</div>
+          <div class="phase-action">Apply quality gates: contracts, tests, docs, traceability. Verify mandatory checks before implementation.</div>
+          <span class="phase-badge bg-st">gate report</span>
+          <div class="phase-exit">Done when: mandatory quality checks pass.</div>
+        </div>
+        <div class="flow-arrow">→</div>
+
+        <div class="phase-card ph8">
+          <div class="phase-num">Phase 8</div>
+          <div class="phase-name">Implement</div>
+          <div class="phase-action">Execute the plan in code and tests. Update docs and contracts in the same changeset. Controller changes imply contract review.</div>
+          <span class="phase-badge bg-cd">code + tests</span>
+          <div class="phase-exit">Done when: evidence complete and gates green.</div>
+        </div>
+        <div class="flow-arrow">→</div>
+
+        <div class="phase-card ph9">
+          <div class="phase-num">Phase 9</div>
+          <div class="phase-name">Close Out</div>
+          <div class="phase-action">Update feature and traceability docs. Transition backlog and tracer-bullet status. Record session summary.</div>
+          <span class="phase-badge bg-st">status + traceability</span>
+          <div class="phase-exit">Done when: status and traceability updated.</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 2 — ARTIFACT TYPES
+       ════════════════════════════════════════════════════════════ -->
+  <section id="artifacts">
+    <h2>Artifact Types</h2>
+    <p class="section-intro">
+      All canonical artifacts use date+slug identifiers. No global counter lookup required.
+      Identifiers are stable — never renamed after creation, never reused.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Identifier format</th>
+            <th>Location</th>
+            <th>Created at</th>
+            <th>Status lifecycle</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="ab ab-v">V-*</span>&nbsp; Vision note</td>
+            <td><code>V-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td><code>global/vision/</code></td>
+            <td>Capture / Triage</td>
+            <td>draft → active → superseded</td>
+          </tr>
+          <tr>
+            <td><span class="ab ab-i">I-*</span>&nbsp; Backlog idea</td>
+            <td><code>I-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td><code>global/backlog/ideas/</code></td>
+            <td>Capture</td>
+            <td>captured → triaged → incubating → promoted → implemented / deferred / dropped</td>
+          </tr>
+          <tr>
+            <td><span class="ab ab-tb">TB-*</span>&nbsp; Tracer bullet</td>
+            <td><code>TB-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td><code>global/backlog/</code></td>
+            <td>Promote</td>
+            <td>scoped → in-flight → validating → closed</td>
+          </tr>
+          <tr>
+            <td><span class="ab ab-r">R-*</span>&nbsp; Retrofit slice</td>
+            <td><code>R-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td><code>global/legacy-retrofit/</code></td>
+            <td>Retrofit lane</td>
+            <td>pending → mined → mapped → closed</td>
+          </tr>
+          <tr>
+            <td><span class="ab ab-md">plan</span>&nbsp; Working plan</td>
+            <td>free name</td>
+            <td><code>plans/</code> or <code>.cursor/plans/</code></td>
+            <td>Plan incubation lane</td>
+            <td>Non-canonical — materialized into V-*/I-*/TB-*</td>
+          </tr>
+          <tr>
+            <td><span class="ab ab-md">blitz</span>&nbsp; Blitz scratch</td>
+            <td><code>_blitz-YYYY-MM-DD[-slug].md</code></td>
+            <td><code>global/backlog/</code></td>
+            <td>Blitz intake</td>
+            <td>Active (<code>_</code> prefix) → archived (no prefix, in <code>blitz-archive/</code>)</td>
+          </tr>
+          <tr>
+            <td><span class="ab ab-md">grill</span>&nbsp; Grill session</td>
+            <td><code>&lt;topic&gt;-grill-me.md</code></td>
+            <td><code>global/backlog/grill-sessions/</code></td>
+            <td>Challenge</td>
+            <td>open → resumed → settled</td>
+          </tr>
+          <tr>
+            <td><span class="ab ab-md">dec</span>&nbsp; Methodology decision</td>
+            <td><code>YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td><code>methodology/decisions/</code></td>
+            <td>Any — when a non-obvious methodology rule is adopted</td>
+            <td>Stable — never revised in place (supersede with new file)</td>
+          </tr>
+          <tr>
+            <td><span class="ab ab-rv">RV</span>&nbsp; Rich view</td>
+            <td>folder slug</td>
+            <td><code>&lt;parent&gt;/view/&lt;slug&gt;/index.html</code></td>
+            <td>Any — when visual richness materially adds clarity</td>
+            <td>Companion to its Markdown parent — updated with it</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 3 — PARALLEL LANES
+       ════════════════════════════════════════════════════════════ -->
+  <section id="lanes">
+    <h2>Parallel Lanes</h2>
+    <p class="section-intro">
+      Two lanes run alongside the main ideation-to-delivery flow. Any session may combine
+      Lane A with one or both parallel lanes.
+    </p>
+    <div class="lanes-grid">
+
+      <div class="lane-card" style="border-left-color: #7c3aed;">
+        <div class="lane-label">Lane B</div>
+        <div class="lane-name" style="color: #7c3aed;">Plan Incubation</div>
+        <ul class="lane-steps">
+          <li>Create or evolve a working plan in <code>plans/</code></li>
+          <li>Explore options and converge on direction (freeform)</li>
+          <li>Materialize durable signal into V-*/I-*/TB-*</li>
+          <li>Cross-link plan and canonical artifacts when useful</li>
+          <li>Do not treat as retrofit unless genuinely historical</li>
+        </ul>
+        <p class="lane-ref">→ <a href="../plan-incubation-workflow.md">plan-incubation-workflow.md</a></p>
+      </div>
+
+      <div class="lane-card" style="border-left-color: #d97706;">
+        <div class="lane-label">Lane C</div>
+        <div class="lane-name" style="color: #d97706;">Legacy Retrofit</div>
+        <ul class="lane-steps">
+          <li>Select a small source batch (historical plans, verbal history)</li>
+          <li>Extract decisions, invariants, patterns, test signal</li>
+          <li>Map into canonical docs</li>
+          <li>Record a retrofit slice (R-*)</li>
+          <li>Close with residual gaps and next action</li>
+        </ul>
+        <p class="lane-ref">→ <a href="../legacy-retrofit-workflow.md">legacy-retrofit-workflow.md</a></p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       COLLABORATION CONTEXT
+       ════════════════════════════════════════════════════════════ -->
+  <section id="collab">
+    <h2>Collaboration Context</h2>
+    <p class="section-intro">
+      Not a lane — a cross-cutting modifier. These rules apply on top of Lanes A, B, and C
+      whenever collaboration happens across parallel Git branches or worktrees.
+      Sessions that are single-branch do not need to apply them.
+    </p>
+    <div class="collab-card">
+      <div class="collab-modifier-tag">Cross-cutting · applies to Lanes A, B, C</div>
+      <p class="collab-desc">
+        When two developers (or one developer across two worktrees) work simultaneously,
+        classic ordinal naming creates merge-time collisions. The collaboration context
+        resolves this without coordination overhead, by making artifact names self-sufficient
+        through date+slug identifiers and deferring shared indexes to post-merge.
+      </p>
+      <div class="collab-rules">
+        <div class="collab-rule">
+          <strong>Date+slug IDs mandatory</strong>
+          No counter lookup, no contention across branches.
+        </div>
+        <div class="collab-rule">
+          <strong>Create artifacts freely on branch</strong>
+          V-*, I-*, TB-*, R-* — no cross-branch coordination needed.
+        </div>
+        <div class="collab-rule">
+          <strong>Blitz slug required</strong>
+          On a feature branch, topic slug is chosen at session start — not the ordinal fallback.
+        </div>
+        <div class="collab-rule">
+          <strong>Defer index updates</strong>
+          <code>backlog/index.md</code>, <code>vision/product-orientation-notes.md</code> — update post-merge on <code>main</code>.
+        </div>
+        <div class="collab-rule">
+          <strong>Index reconciliation at merge</strong>
+          Run a reconciliation pass when the branch lands on <code>main</code>.
+        </div>
+      </div>
+      <p class="lane-ref">→ <a href="../multi-branch-workflow.md">multi-branch-workflow.md</a></p>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 4 — NAMING CONVENTIONS
+       ════════════════════════════════════════════════════════════ -->
+  <section id="naming">
+    <h2>Naming Conventions</h2>
+    <p class="section-intro">
+      Stable, collision-resistant identifiers across all branches and worktrees.
+      Legacy <code>NNNN</code> artifacts are never renamed.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Artifact</th>
+            <th>Active filename</th>
+            <th>Archived / final</th>
+            <th>Key rule</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Vision note</td>
+            <td><code>V-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td>Same (stable)</td>
+            <td>Never renamed after creation</td>
+          </tr>
+          <tr>
+            <td>Backlog idea</td>
+            <td><code>I-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td>Same (stable)</td>
+            <td>Never renamed after creation</td>
+          </tr>
+          <tr>
+            <td>Tracer bullet</td>
+            <td><code>TB-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td>Same (stable)</td>
+            <td>Never renamed after creation</td>
+          </tr>
+          <tr>
+            <td>Retrofit slice</td>
+            <td><code>R-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td>Same (stable)</td>
+            <td>Never renamed after creation</td>
+          </tr>
+          <tr>
+            <td>Blitz — feature branch</td>
+            <td><code>_blitz-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td><code>blitz-archive/blitz-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td>Slug required; chosen at session start</td>
+          </tr>
+          <tr>
+            <td>Blitz — main / single-branch</td>
+            <td><code>_blitz-YYYY-MM-DD[-N].md</code></td>
+            <td><code>blitz-archive/blitz-YYYY-MM-DD[-N].md</code></td>
+            <td>Ordinal accepted if theme unclear at start</td>
+          </tr>
+          <tr>
+            <td>Grill session</td>
+            <td><code>&lt;topic&gt;-grill-me.md</code></td>
+            <td>Same</td>
+            <td>Must include "Resume at" control block</td>
+          </tr>
+          <tr>
+            <td>Methodology decision</td>
+            <td><code>YYYY-MM-DD-&lt;slug&gt;.md</code></td>
+            <td>Same</td>
+            <td>Under <code>methodology/decisions/</code></td>
+          </tr>
+          <tr>
+            <td>Rich view</td>
+            <td><code>&lt;parent&gt;/view/index.html</code> <em>or</em> <code>&lt;parent&gt;/view/&lt;slug&gt;/index.html</code></td>
+            <td>Same</td>
+            <td>Self-contained HTML; linked from parent Markdown</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 5 — SKILLS REFERENCE
+       ════════════════════════════════════════════════════════════ -->
+  <section id="skills">
+    <h2>Skills Reference</h2>
+    <p class="section-intro">
+      Invoke skills by name at the start of a session. See quick-start prompts in
+      <a href="../README.md" style="color: var(--blue); text-decoration: none;">methodology/README.md</a>.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Skill</th>
+            <th>When to invoke</th>
+            <th>Primary output</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ezkey-vision-intake</code></td>
+            <td>New raw idea entering the system</td>
+            <td>V-* vision note</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-backlog-triage</code></td>
+            <td>After vision-intake; classify and prioritize</td>
+            <td>Classified I-* backlog idea</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-grill-me</code></td>
+            <td>Before design lock-in; stress-test assumptions</td>
+            <td>Risks, options, critical questions</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-plan-incubation</code></td>
+            <td>Freeform exploration before canonical capture</td>
+            <td>Working plan → V-*/I-*/TB-*</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-tracer-bullet-promote</code></td>
+            <td>Direction decided; ready for bounded execution</td>
+            <td>TB-* tracer bullet brief</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-component-design-pack</code></td>
+            <td>Preparing component-level design for impacted boundaries</td>
+            <td>Design briefs, boundary maps, decision tables</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-test-strategy-planner</code></td>
+            <td>Before implementation; select test layers</td>
+            <td>Test plan slice</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-quality-gatekeeper</code></td>
+            <td>Before close-out; verify quality gates</td>
+            <td>Gate report</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-traceability-sync</code></td>
+            <td>Close-out; update cross-references and status</td>
+            <td>Updated artifact references</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-closeout</code></td>
+            <td>End of session or feature completion</td>
+            <td>Status transitions, session summary</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-legacy-plan-miner</code></td>
+            <td>Retrofit lane: mining historical plans and verbal briefings</td>
+            <td>R-* input materials</td>
+          </tr>
+          <tr>
+            <td><code>ezkey-retrofit-curator</code></td>
+            <td>After mining; produce canonical retrofit slices</td>
+            <td>R-* retrofit slices</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 6 — RICH VIEWS
+       ════════════════════════════════════════════════════════════ -->
+  <section id="rich-views">
+    <h2>Rich Views</h2>
+    <p class="section-intro">
+      HTML companions to Markdown source documents, created when visual richness materially
+      improves clarity and conceptual alignment between human and AI collaborators. The base
+      methodology remains Markdown-first — rich views are deliberate supplements, not
+      replacements.
+    </p>
+
+    <h3 class="sub">When to create a rich view</h3>
+    <ul class="criteria-list">
+      <li><strong>Complex entity relationships</strong> — multiple interdependent entity types with lifecycle interactions that are hard to follow in prose or tables alone.</li>
+      <li><strong>State machines &amp; lifecycle governance</strong> — state transitions, activation/deactivation rules, parent-chain propagation across entity types.</li>
+      <li><strong>Cryptographic or protocol flows</strong> — multi-actor flows with key material transit, synchronization windows, and sequencing constraints where a diagram anchors understanding.</li>
+      <li><strong>High-impact architectural decisions</strong> — cross-cutting decisions with visual complexity that benefits from a durable graphical anchor.</li>
+      <li><strong>The methodology itself</strong> — the process and artifact system benefits from a visual reference accessible to both humans and AI agents at session start.</li>
+    </ul>
+
+    <h3 class="sub">Folder and linking convention</h3>
+    <div class="table-wrap" style="margin-bottom: 24px;">
+      <table>
+        <thead>
+          <tr><th>Context</th><th>Path pattern</th><th>Link from Markdown parent</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Methodology (this file)</td>
+            <td><code>product-docs/methodology/view/index.html</code></td>
+            <td><code>[Rich view](view/index.html)</code></td>
+          </tr>
+          <tr>
+            <td>Global docs (e.g. Lifecycle Governance)</td>
+            <td><code>docs/view/&lt;slug&gt;/index.html</code></td>
+            <td><code>[Rich view](view/&lt;slug&gt;/index.html)</code></td>
+          </tr>
+          <tr>
+            <td>Component-level</td>
+            <td><code>product-docs/components/&lt;comp&gt;/view/index.html</code></td>
+            <td><code>[Rich view](view/index.html)</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">Design principles</h3>
+    <ul class="criteria-list teal">
+      <li><strong>Self-contained</strong> — no external CDN dependencies. Embed all styles and SVG inline.</li>
+      <li><strong>Sober palette</strong> — information first. Color is used for distinction, not decoration.</li>
+      <li><strong>Linked from the parent Markdown</strong> — the source document carries a clear reference to the rich view.</li>
+      <li><strong>Updated in the same changeset</strong> — when the parent document changes, the rich view is updated alongside it.</li>
+      <li><strong>Single <code>index.html</code></strong> per view folder; additional files only when navigation genuinely adds value for the specific topic.</li>
+    </ul>
+
+    <h3 class="sub">Existing rich views</h3>
+
+    <div class="existing-view">
+      <div class="existing-view-dot" style="background: #2563eb;"></div>
+      <div>
+        <div class="existing-view-title">Methodology — this document</div>
+        <div class="existing-view-desc">Visual reference for the end-to-end workflow, artifact types, parallel lanes, naming conventions, and skills.</div>
+        <div class="existing-view-path"><code>product-docs/methodology/view/index.html</code></div>
+      </div>
+    </div>
+
+    <h3 class="sub" style="margin-top: 20px;">Candidate rich views (identified, not yet created)</h3>
+
+    <div class="existing-view">
+      <div class="existing-view-dot" style="background: var(--text-muted);"></div>
+      <div>
+        <div class="existing-view-title">Lifecycle Governance</div>
+        <div class="existing-view-desc">Cross-entity lifecycle model: activation, deactivation, revocation rules, parent-chain propagation, and operator guardrails across all Ezkey entity types.</div>
+        <div class="existing-view-path"><code>docs/view/lifecycle-governance/index.html</code> — source: <code>docs/LIFECYCLE_GOVERNANCE.md</code></div>
+      </div>
+    </div>
+
+    <div class="existing-view">
+      <div class="existing-view-dot" style="background: var(--text-muted);"></div>
+      <div>
+        <div class="existing-view-title">Tink Key Rotation Protocol</div>
+        <div class="existing-view-desc">Google Tink cryptographic key lifecycle: MasterKey location, key blob transit (database active + drained keys), multi-instance synchronization window, and the manual coordination protocol that Tink does not handle natively.</div>
+        <div class="existing-view-path"><code>docs/view/tink-key-rotation/index.html</code> — source: Tink-related docs (pending retrofit)</div>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<footer>
+  Ezkey Methodology Rich View &nbsp;·&nbsp; Last updated 2026-05-24 &nbsp;·&nbsp;
+  Source: <a href="../README.md">product-docs/methodology/README.md</a>
+  &nbsp;·&nbsp;
+  Decision: <a href="../decisions/2026-05-24-rich-views.md">2026-05-24-rich-views</a>
+</footer>
+
+</body>
+</html>

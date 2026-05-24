@@ -52,6 +52,14 @@ Apply [`../global/design-principles.md`](../global/design-principles.md) when ju
 
 For Admin UI, role visibility, and **deployment operator geometries**, read [`../global/operator-alignment-guide.md`](../global/operator-alignment-guide.md). Canonical cross-cutting artifacts: [`../global/admin-ui-paginated-screens-matrix.md`](../global/admin-ui-paginated-screens-matrix.md), [`../global/api-controllers-registry.md`](../global/api-controllers-registry.md), [`../global/ezkey-system-identity-sensitivity-report.md`](../global/ezkey-system-identity-sensitivity-report.md), [`../global/sql-business-limits-policy.md`](../global/sql-business-limits-policy.md).
 
+## Rich view
+
+For a visual companion to this methodology pack — workflow diagram, artifact types, parallel lanes,
+naming conventions, and skills reference — open [`view/index.html`](view/index.html).
+
+See [`decisions/2026-05-24-rich-views.md`](decisions/2026-05-24-rich-views.md) for the rationale
+and convention governing rich views across the whole documentation corpus.
+
 ## Quick start prompts
 
 Use these prompts in a fresh session to trigger the method quickly.
