@@ -12,7 +12,7 @@ Calls the **Admin API** on port 9080. All tenant scoping is automatic via the be
 
 ## Stack
 
-- Vite 7 + React 19 + TypeScript (strict, `verbatimModuleSyntax`)
+- Vite 8 + React 19 + TypeScript (strict, `verbatimModuleSyntax`)
 - React Router v7 — `createBrowserRouter`, lazy-loaded pages, `ProtectedRoute` guard
 - Tailwind CSS v4 — no `tailwind.config.ts`; all theme tokens in `src/index.css` under `@theme {}`
 - TanStack Query v5 — data fetching, caching, pagination

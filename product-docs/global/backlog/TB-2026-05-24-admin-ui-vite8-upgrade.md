@@ -3,11 +3,12 @@
 ## Metadata
 
 - **ID:** `TB-2026-05-24-admin-ui-vite8-upgrade`
-- **Status:** `draft`
+- **Status:** `under-review`
 - **Posture:** `single-pass`
 - **Related idea:** `I-2026-05-24-admin-ui-vite8-upgrade`
 - **Lane:** `A`
 - **GitHub issue:** `#153`
+- **GitHub branch:** `feature/153-i-2026-05-24-admin-ui-vite8-upgrade`
 - **Created at:** `2026-05-24`
 - **Updated at:** `2026-05-24`
 
@@ -60,6 +61,17 @@ Cloudflare build paths still work, and confirm demo-mode stripping remains intac
 - **Analysis gate:** I-* Grill Me complete; upgrade path and out-of-scope explicit.
 - **Design gate:** dependency matrix decided (Vite 8 + Tailwind 4.2.2+ + Vitest alignment).
 - **Implementation gate:** all required tests in TSP pass; docs updated.
+
+## Implementation outcome (2026-05-24)
+
+- **Deps:** `vite@^8.0.14`, `vitest@^4.1.7`, `tailwindcss` / `@tailwindcss/vite@^4.2.2`,
+  `@vitejs/plugin-react@^6.0.2` (v6 required — v5 peer excludes Vite 8).
+- **Fix:** demo preset arrays guarded with `isDemoMode ? [...] : []` for Rolldown DCE
+  (`demo-mode.ts`).
+- **Docs:** `AGENTS.md`, `README.md` → Vite 8.
+- **Validation:** TSP gates passed (see test plan slice).
+
+Pending: PR merge and issue #153 closure.
 
 ## Exit criteria
 

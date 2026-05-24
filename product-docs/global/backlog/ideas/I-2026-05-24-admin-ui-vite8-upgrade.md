@@ -95,6 +95,7 @@ Ready for tracer bullet `TB-2026-05-24-admin-ui-vite8-upgrade` with **single-pas
 ## Links
 
 - GitHub issue: `#153`
+- GitHub branch: `feature/153-i-2026-05-24-admin-ui-vite8-upgrade`
 - Tracer bullet: `product-docs/global/backlog/TB-2026-05-24-admin-ui-vite8-upgrade.md`
 - Test plan slice: `product-docs/global/backlog/test-plans/TSP-2026-05-24-admin-ui-vite8-upgrade.md`
 - Admin UI config: `ezkey-admin-ui/vite.config.ts`

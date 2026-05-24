@@ -61,7 +61,17 @@ Run from `ezkey-admin-ui/` after dependency update:
 
 ## Execution evidence
 
-- **Commands run:** _(fill at implementation)_
-- **Result summary:** _(fill at implementation)_
-- **Build time (informational):** Vite 7 baseline ___ s → Vite 8 ___ s
-- **Follow-up test debt (if any):** _(none expected)_
+- **Commands run:**
+  - `npm install` in `ezkey-admin-ui`
+  - `npm test` — 8 files, 54 tests passed (Vitest 4.1.7)
+  - `npm run build` — Vite 8.0.14, built in ~354ms
+  - `npm run build:cloudflare:verify` — OK, demo stripping assertion passed
+- **Result summary:** All required TSP gates passed on branch `feature/153-i-2026-05-24-admin-ui-vite8-upgrade`.
+- **Build time (informational):** Vite 8 production build ~354–600ms (no Vite 7 baseline captured in-session).
+- **Follow-up test debt (if any):** Playwright smoke deferred (no UI behaviour change).
+
+## Implementation notes (2026-05-24)
+
+- Bumped `@vitejs/plugin-react` to v6 (v5 peer range excluded Vite 8).
+- Rolldown did not DCE static demo preset arrays; wrapped exports in `isDemoMode ? [...] : []`
+  in `demo-mode.ts` so production builds pass `assert-no-demo-in-build.sh`.

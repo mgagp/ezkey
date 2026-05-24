@@ -14,7 +14,7 @@ Use this module README for frontend setup, local development, and UI-specific im
 
 ## Stack
 
-- Vite 7 + React 19 + TypeScript (strict)
+- Vite 8 + React 19 + TypeScript (strict)
 - React Router v7 — SPA routing
 - Tailwind CSS v4 — utility-first styling
 - TanStack Query v5 — data fetching and caching
