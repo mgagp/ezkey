@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta property="og:title" content="Exp1 — instant preview access (Ezkey)">
-    <meta property="og:description" content="Request instant limited preview access to the Exp1 experimental Ezkey instance. Save your activation code and continue with the guided tour.">
-    <meta property="og:url" content="https://ezkey.org/exp1-signup.html">
+    <meta property="og:title" content="EXP1 — accès instantané à la préversion (Ezkey)">
+    <meta property="og:description" content="Demandez un accès limité et instantané à l’instance expérimentale EXP1. Conservez votre code d’activation et poursuivez avec le parcours guidé.">
+    <meta property="og:url" content="https://ezkey.org/fr/exp1-signup.html">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Ezkey">
     <meta property="og:image" content="https://ezkey.org/logo.svg">
-    <meta property="og:locale" content="en_US">
+    <meta property="og:locale" content="fr_FR">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Exp1 — instant preview access (Ezkey)">
-    <meta name="twitter:description" content="Request instant limited preview access to the Exp1 experimental Ezkey instance.">
+    <meta name="twitter:title" content="EXP1 — accès instantané à la préversion (Ezkey)">
+    <meta name="twitter:description" content="Accès limité et instantané à l’instance expérimentale EXP1 Ezkey.">
     <meta name="twitter:image" content="https://ezkey.org/logo.svg">
 
-    <link rel="canonical" href="https://ezkey.org/exp1-signup.html">
+    <link rel="canonical" href="https://ezkey.org/fr/exp1-signup.html">
     <link rel="alternate" hreflang="en" href="https://ezkey.org/exp1-signup.html">
     <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/exp1-signup.html">
     <link rel="alternate" hreflang="x-default" href="https://ezkey.org/exp1-signup.html">
-    <title>Exp1 — instant preview access — Ezkey</title>
-    <meta name="description" content="Instant limited preview access to the Exp1 experimental Ezkey instance. Self-service activation code when daily slots are available.">
+    <title>EXP1 — accès instantané à la préversion — Ezkey</title>
+    <meta name="description" content="Accès limité et instantané à l’instance expérimentale EXP1. Code d’activation en libre-service lorsque des places quotidiennes sont disponibles.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -157,50 +157,50 @@
 <body>
     <div class="shell">
         <p class="nav-top">
-            <a href="/">Home</a>
-            · <a href="/experimental-preview-exp1.html">Exp1 preview</a>
-            · <a href="/exp1-guided-tour.html">Guided tour</a>
-            · <a href="/fr/exp1-signup.html">Français</a>
+            <a href="/fr/">Accueil</a>
+            · <a href="/fr/experimental-preview-exp1.html">Préversion EXP1</a>
+            · <a href="/fr/exp1-guided-tour.html">Parcours guidé</a>
+            · <a href="/exp1-signup.html">English</a>
         </p>
 
         <article>
             <header class="hero-title">
-                <p class="label">Exp1 preview</p>
-                <h1>Instant preview access (limited daily slots)</h1>
+                <p class="label">Préversion EXP1</p>
+                <h1>Accès instantané à la préversion (places limitées par jour)</h1>
             </header>
 
-            <p>When slots are available, you can create a <strong>private preview workspace</strong> on the experimental <strong>exp1</strong> instance and receive a <strong>one-time activation code</strong> immediately — no email required for this path.</p>
+            <p>Lorsque des places sont disponibles, vous pouvez créer un <strong>espace d’évaluation privé</strong> sur l’instance expérimentale <strong>exp1</strong> et recevoir immédiatement un <strong>code d’activation à usage unique</strong> — sans courriel pour ce chemin.</p>
 
             <div class="callout">
-                <strong>Save your activation code.</strong> It is shown once on this page. Copy it somewhere safe before you leave. You will use it on the Admin UI sign-in screen, then follow the <a href="/exp1-guided-tour.html">guided tour</a>.
+                <strong>Conservez votre code d’activation.</strong> Il n’est affiché qu’une fois sur cette page. Copiez-le avant de quitter. Vous l’utiliserez sur l’écran de connexion de l’Admin UI, puis suivrez le <a href="/fr/exp1-guided-tour.html">parcours guidé</a>.
             </div>
 
-            <p>Prefer a reviewed invitation or have questions? Email <a href="mailto:info@ezkey.org">info@ezkey.org</a> instead — see the <a href="/experimental-preview-exp1.html">Exp1 preview overview</a>.</p>
+            <p>Vous préférez une invitation examinée ou avez des questions ? Écrivez à <a href="mailto:info@ezkey.org">info@ezkey.org</a> — voir la <a href="/fr/experimental-preview-exp1.html">vue d’ensemble EXP1</a>.</p>
 
             <form id="signup-form">
-                <label for="tenant-label">Optional workspace label (max 40 characters)</label>
-                <input id="tenant-label" type="text" maxlength="40" placeholder="e.g. My MFA evaluation" autocomplete="off">
-                <button type="submit" id="submit-btn">Request preview access</button>
+                <label for="tenant-label">Libellé d’espace optionnel (40 caractères max.)</label>
+                <input id="tenant-label" type="text" maxlength="40" placeholder="p. ex. Mon évaluation MFA" autocomplete="off">
+                <button type="submit" id="submit-btn">Demander l’accès à la préversion</button>
             </form>
 
             <div id="error-box" class="error" role="alert"></div>
 
             <div id="success-box" class="success" aria-live="polite">
-                <p><strong>Preview workspace ready.</strong> Tenant: <span id="tenant-slug"></span></p>
-                <p>Your activation code:</p>
+                <p><strong>Espace de préversion prêt.</strong> Locataire : <span id="tenant-slug"></span></p>
+                <p>Votre code d’activation :</p>
                 <div class="code-box" id="activation-code"></div>
-                <p>Expires (UTC): <span id="activation-expires"></span></p>
+                <p>Expire (UTC) : <span id="activation-expires"></span></p>
                 <p class="links">
-                    <a id="admin-ui-link" href="https://exp1-admin-ui.ezkey.org" rel="noopener noreferrer">Open Admin UI</a>
-                    · <a id="tour-link" href="/exp1-guided-tour.html">Open guided tour</a>
+                    <a id="admin-ui-link" href="https://exp1-admin-ui.ezkey.org" rel="noopener noreferrer">Ouvrir l’Admin UI</a>
+                    · <a id="tour-link" href="/fr/exp1-guided-tour.html">Ouvrir le parcours guidé</a>
                 </p>
             </div>
 
-            <p style="margin-top: 24px; font-size: 0.95rem;"><a href="/experimental-preview-exp1.html">← Back to Exp1 preview overview</a></p>
+            <p style="margin-top: 24px; font-size: 0.95rem;"><a href="/fr/experimental-preview-exp1.html">← Retour à la préversion EXP1</a></p>
         </article>
 
         <footer class="doc-footer">
-            <p>Ezkey · <a href="/">ezkey.org</a></p>
+            <p>Ezkey · <a href="/fr/">ezkey.org/fr/</a></p>
         </footer>
     </div>
 
@@ -244,22 +244,22 @@
                                 document.getElementById('admin-ui-link').href = data.adminUiUrl;
                             }
                             if (data.guidedTourUrl) {
-                                document.getElementById('tour-link').href = data.guidedTourUrl;
+                                document.getElementById('tour-link').href = '/fr/exp1-guided-tour.html';
                             }
                             successBox.style.display = 'block';
                             form.style.display = 'none';
                         });
                     }
                     return response.json().catch(function () { return {}; }).then(function (problem) {
-                        var detail = problem.detail || problem.title || 'Preview access is unavailable right now.';
+                        var detail = problem.detail || problem.title || 'L’accès instantané à la préversion n’est pas disponible pour le moment.';
                         if (response.status === 404) {
-                            detail = 'Instant preview signup is not enabled on this instance.';
+                            detail = 'L’inscription instantanée n’est pas activée sur cette instance.';
                         }
                         errorBox.textContent = detail;
                         errorBox.style.display = 'block';
                     });
                 }).catch(function () {
-                    errorBox.textContent = 'Network error. Try again later or email info@ezkey.org.';
+                    errorBox.textContent = 'Erreur réseau. Réessayez plus tard ou écrivez à info@ezkey.org.';
                     errorBox.style.display = 'block';
                 }).finally(function () {
                     submitBtn.disabled = false;

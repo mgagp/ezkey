@@ -182,21 +182,31 @@
             <h2>Objectif de ce guide</h2>
             <p>Ce parcours s’adresse à une <strong>personne invitée sur exp1</strong> qui a manifesté son intérêt pour explorer Ezkey : profil technique (collègue informaticien, équipe produit ou sécurité, journaliste spécialisé, etc.).</p>
             <p><strong>But :</strong> faire vivre une <strong>expérience Ezkey bout en bout</strong>, du premier contact avec la console jusqu’à une authentification réussie via l’application mobile, en s’appuyant sur une <strong>application de démonstration</strong> intégrée au dispositif exp1.</p>
-            <p>À l’arrivée, un opérateur aura préparé le terrain : <strong>tenant</strong>, <strong>mode d’activation différé</strong>, communication du <strong>code d’activation</strong>. Ce guide décrit ensuite une <strong>séquence scriptée</strong>.</p>
+            <p>À l’arrivée, un opérateur aura préparé le terrain : <strong>tenant</strong>, <strong>mode d’activation différé</strong>, communication du <strong>code d’activation</strong>. Si vous avez utilisé l’<a href="/fr/exp1-signup.html">inscription instantanée</a>, le code ne s’est affiché qu’une fois sur cette page ; ouvrez l’Admin UI sur <a href="https://exp1-admin-ui.ezkey.org" rel="noopener noreferrer">exp1-admin-ui.ezkey.org</a>. Ce guide décrit ensuite une <strong>séquence scriptée</strong>.</p>
             <p><strong>Où ouvrir dans le navigateur :</strong> l’URL de l’<strong>Admin UI</strong> de votre tenant vous est envoyée <strong>avec le code d’activation</strong> lors de l’accueil sur exp1 — ce n’est pas un signet public sur ezkey.org. L’<strong>application démo Acme</strong> de ce parcours est publique : <a href="https://exp1-demo-acme.ezkey.org/login">https://exp1-demo-acme.ezkey.org/login</a> (écran de connexion <em>ACME Inc</em> propulsé par Ezkey ; utilisez d’abord <strong>Configure API Key</strong> / configuration de la clé, puis <strong>Login with EZKey</strong>).</p>
             <div class="callout">
                 <strong>À garder à l’esprit :</strong> Ezkey reste une plateforme expérimentale ; exp1 tourne à petit volume et sur demande. Ce n’est pas une configuration représentative d’une production mature — délais, canaux et gestion des secrets peuvent différer d’un déploiement sérieux.
             </div>
             <p>Une fois les étapes assimilées, le participant peut consacrer quelques minutes au <strong>dashboard</strong> du tenant dans l’Admin UI — nous y revenons en fin de parcours.</p>
 
+            <h2>Pas d’app mobile Ezkey ? Utilisez le Demo Device</h2>
+            <p>L’<strong>application mobile</strong> Ezkey est encore en <strong>test interne limité</strong> et n’est en général pas accessible aux évaluateurs anonymes. En attendant une publication mobile publique, vous pouvez suivre ce parcours avec l’<strong>Ezkey Demo Device</strong> — un téléphone simulé autonome, publié sur GitHub et exécutable en local :</p>
+            <p><a href="https://github.com/mgagp/ezkey-demo-device" rel="noopener noreferrer">github.com/mgagp/ezkey-demo-device</a></p>
+            <ul>
+                <li>Lancez-le avec <strong>Docker</strong> (voir le README du dépôt) ; par défaut il cible l’<strong>Auth API exp1</strong> et s’ouvre sur <strong>localhost:3080</strong>.</li>
+                <li>Il reprend la même <strong>cryptographie d’enrôlement et d’approbation</strong> que le client mobile, à des fins de démonstration.</li>
+                <li>Ce n’est <strong>pas un logiciel de production</strong> — uniquement un <strong>outil d’assistance à la démo</strong>. Il n’offre pas les protections matérielles d’un vrai téléphone, en particulier le <strong>Secure Storage</strong> et le <strong>StrongBox</strong> (stockage de clés soutenu par le matériel Android) que l’app mobile est conçue pour utiliser.</li>
+            </ul>
+            <p>Dans la suite de ce guide, chaque mention de « app mobile » vise aussi le Demo Device comme substitut pratique sur exp1 pour les évaluateurs en libre-service.</p>
+
             <h2>Flux principal du scénario (vue d’ensemble)</h2>
             <ol>
-                <li>Activer son accès Tenant Admin (<strong>code d’activation</strong> puis <strong>association du mobile</strong> depuis l’écran de connexion).</li>
+                <li>Activer son accès Tenant Admin (<strong>code d’activation</strong> puis <strong>association du mobile</strong> depuis l’écran de connexion — app mobile Ezkey ou <strong>Demo Device</strong>).</li>
                 <li>Créer une <strong>intégration</strong> (première action métier dans l’Admin UI).</li>
                 <li>Créer une <strong>clé d’API</strong> pour cette intégration ; conserver précieusement <strong>identifiant + secret</strong> tels qu’affichés à la création (hors navigateur, selon OS de l’équipe).</li>
-                <li>Créer un <strong>enrôlement</strong> et le rattacher au <strong>mobile</strong> (scan QR + validation du défi à six chiffres).</li>
+                <li>Créer un <strong>enrôlement</strong> et le rattacher au <strong>mobile</strong> ou au <strong>Demo Device</strong> (scan QR + validation du défi à six chiffres).</li>
                 <li>Dans un <strong>autre navigateur</strong> (fenêtre privée ou profil distinct), ouvrir <a href="https://exp1-demo-acme.ezkey.org/login">la démo Acme</a> sur <strong>exp1-demo-acme.ezkey.org/login</strong>, renseigner la <strong>clé d’API</strong> via <strong>Configure API Key</strong>, puis lancer une <strong>connexion</strong> avec l’identifiant utilisateur associé à l’enrôlement.</li>
-                <li>Sur le téléphone : <strong>examiner puis approuver</strong> la demande pendant la fenêtre (compte à rebours côté démo).</li>
+                <li>Sur le téléphone ou le Demo Device : <strong>examiner puis approuver</strong> la demande pendant la fenêtre (compte à rebours côté démo).</li>
             </ol>
             <p>Si tout se déroule correctement, l’app démo affiche un <strong>écran de session</strong> pseudo-application, avec possibilité de <strong>déconnexion</strong> — signal que le flux complet a réussi.</p>
 
@@ -212,7 +222,7 @@
             <p>Ouvrir l’<strong>Admin UI</strong> avec l’URL qui vous a été communiquée avec le code d’activation, et atteindre l’écran de <strong>connexion</strong>.</p>
             <ol>
                 <li>Saisir le <strong>code d’activation</strong> communiqué par l’opérateur (activation différée côté Global Admin).</li>
-                <li>Suivre le flux pour <strong>associer le téléphone</strong> : en pratique, <strong>scanner le QR</strong> avec l’app mobile Ezkey et compléter les étapes à l’écran.</li>
+                <li>Suivre le flux pour <strong>associer le téléphone</strong> : <strong>scanner le QR</strong> avec l’app mobile Ezkey ou le <strong>Demo Device</strong> (localhost:3080) et compléter les étapes à l’écran.</li>
             </ol>
             <figure class="guide-figure">
                 <img src="/exp1-guided-tour/exp1-tour-01-admin-login-activation.webp" alt="Admin UI : écran de connexion avec code d’activation et zone QR pour l’app mobile" width="960" height="540" loading="lazy" decoding="async">
@@ -238,7 +248,7 @@
             </figure>
 
             <h2>Étape 4 — Enrôlement : QR + défi à six chiffres</h2>
-            <p>Créer un <strong>nouvel enrôlement</strong> rattaché à l’intégration. Lorsque le produit affiche <strong>QR + défi numérique</strong> (par ex. six chiffres), sur le téléphone : <strong>scanner puis saisir</strong>.</p>
+            <p>Créer un <strong>nouvel enrôlement</strong> rattaché à l’intégration. Lorsque le produit affiche <strong>QR + défi numérique</strong> (par ex. six chiffres), sur l’app mobile ou le Demo Device : <strong>scanner puis saisir</strong>.</p>
             <div class="callout">
                 <strong>Préversion et déploiement durci.</strong> Sur exp1, le QR et le défi numérique apparaissent souvent <strong>sur un même écran</strong> de l’Admin UI. Dans des environnements plus stricts, on <strong>répartit plutôt les canaux</strong> (par ex. QR par courriel, défi par SMS). La préversion n’intègre pas tous les connecteurs de messagerie ou d’opérateurs qu’on attendrait d’un produit mature.
             </div>
@@ -262,7 +272,7 @@
 
             <h2>Étape 6 — Login avec l’utilisateur d’enrôlement, approbation mobile</h2>
             <p>Sur la démo : lancer une demande de <strong>login</strong> avec l’identifiant utilisateur associé à l’enrôlement (tel qu’affiché dans le détail enrollment côté Admin UI).</p>
-            <p>Sur le téléphone : ouvrir l’app Ezkey, trouver la <strong>demande entrante</strong>, puis <strong>approuver</strong> dans la fenêtre affichée par la démo.</p>
+            <p>Sur l’app mobile ou le Demo Device : ouvrir la demande en attente, puis <strong>approuver</strong> dans la fenêtre affichée par la démo.</p>
             <figure class="guide-figure">
                 <img src="/exp1-guided-tour/exp1-tour-06-demo-acme-login-pending.webp" alt="Demo Acme : écran d’attente pendant la validation mobile" width="960" height="540" loading="lazy" decoding="async">
                 <figcaption>La démo attend l’approbation dans l’app mobile Ezkey.</figcaption>
@@ -286,10 +296,10 @@
             <table class="summary">
                 <thead><tr><th>Étape</th><th>Rôle narratif principal</th></tr></thead>
                 <tbody>
-                    <tr><td>1</td><td>Déverrouiller Tenant Admin ; lier le mobile.</td></tr>
+                    <tr><td>1</td><td>Déverrouiller Tenant Admin ; lier l’appareil (mobile ou Demo Device).</td></tr>
                     <tr><td>2</td><td>Ancrer Ezkey dans un périmètre applicatif.</td></tr>
                     <tr><td>3</td><td>Identifiants machine-à-machine (clé Integration API).</td></tr>
-                    <tr><td>4</td><td>Enrôler le mobile (QR + défi sur exp1).</td></tr>
+                    <tr><td>4</td><td>Enrôler l’appareil (QR + défi sur exp1).</td></tr>
                     <tr><td>5–7</td><td>Pousser jusqu’à la demande MFA puis le succès côté démo.</td></tr>
                 </tbody>
             </table>
@@ -297,6 +307,7 @@
 
             <p class="doc-link-sibling"><a href="/fr/articles.html">Retour aux articles</a></p>
             <p class="doc-link-sibling"><a href="/fr/experimental-preview-exp1.html">Préversion EXP1 — accès limité</a></p>
+            <p class="doc-link-sibling"><a href="/fr/exp1-signup.html">Inscription instantanée</a></p>
             <p class="doc-link-sibling"><a href="/exp1-guided-tour.html">Read in English</a></p>
         </article>
 
