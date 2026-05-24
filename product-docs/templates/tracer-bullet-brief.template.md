@@ -7,7 +7,7 @@
 - **Related idea:** `I-YYYY-NNNN`
 - **Lane:** `A` / `B` / `C`
 - **GitHub issue:** `#NNN` _(optional)_
-- **GitHub branch:** `feature/NNN-<slug>` _(optional)_
+- **GitHub branch:** `feature/<NNN>-<i-artifact-id-lowercase>` _(optional; set when implementation starts — see `github-issues-workflow.md`)_
 - **GitHub PR:** `#NNN` _(optional)_
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`

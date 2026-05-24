@@ -127,6 +127,15 @@ Retrofit slices (`R-*`) follow a 4-state lifecycle with explicit transition trig
 - `P2` — **standard.** Functional-mode work — targeted improvements across the platform. Default tier for most backlog items in routine evolution.
 - `P3` — **comfort.** Polish, optional improvements, non-essential. Acceptable to defer indefinitely; review periodically to confirm continued relevance.
 
+## Git branch names (issue-backed work)
+
+When an `I-*` idea has a GitHub issue, the implementation branch follows:
+
+`feature/<issue-number>-<i-artifact-id-lowercase>[-<optional-topic>]`
+
+where `<i-artifact-id-lowercase>` is the full `I-*` identifier with `I` → `i`. Full rules,
+examples, and issue↔branch linking steps: [`github-issues-workflow.md`](github-issues-workflow.md#branch-naming-and-issue-linking).
+
 ## Identifier hygiene (avoid silent duplicates)
 
 For **slug-based identifiers** (`F-*` feature catalog entries, and the slug portion of any artifact filename), check for similar keywords before creating a new entry:

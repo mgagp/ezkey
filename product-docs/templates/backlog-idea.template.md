@@ -45,3 +45,4 @@ Conditions to move this idea to `ready` and create a tracer bullet.
 - Related vision notes
 - Related features and phases
 - Related component docs
+- GitHub branch: `feature/<NNN>-<i-artifact-id-lowercase>` _(optional; set when implementation starts)_

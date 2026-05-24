@@ -20,7 +20,8 @@ Labels are applied to issues and PRs. The taxonomy uses five groups:
 | Cross-cutting | _(none)_ | `breaking-change`, `good-first-issue`, `needs-discussion` |
 
 **Lane labels**
-- `lane:a` — structured product work backed by V-*/I-*/TB-* artifacts
+- `lane:a` — structured work backed by V-*/I-*/TB-* artifacts (product features **and**
+  bounded toolchain or maintenance slices that use the same traceability model)
 - `lane:b` — engineering initiative backed by a tech note
 - `lane:c` — fast fix or chore, no artifact required
 
@@ -110,20 +111,53 @@ After creating the issue, add to the I-* `## Metadata`:
 - **GitHub issue:** `#NNN`
 ```
 
-And add to `## Links` if a branch or PR exists:
+And add to `## Links` when an implementation branch or PR exists (see
+[Branch naming and issue linking](#branch-naming-and-issue-linking) below):
 ```
-- GitHub branch: `feature/NNN-i-yyyy-mm-dd-<slug>`
+- GitHub branch: `feature/153-i-2026-05-24-admin-ui-vite8-upgrade`
 - GitHub PR: `#NNN`
 ```
 
-## Branch naming convention
+## Branch naming and issue linking
+
+Create the implementation branch **when work on code begins**, not when the issue is opened.
+Methodology artifacts (`I-*`, `TB-*`, test plans) may land on `main` first (Option A); the branch
+carries the implementation diff only.
+
+### Canonical branch name
 
 ```
-feature/<issue-number>-<artifact-slug>
+feature/<issue-number>-<i-artifact-id-lowercase>[-<optional-topic>]
 ```
 
-Example: for issue `#42` and idea `I-2026-05-24-admin-audit-log`,
-the branch is `feature/42-i-2026-05-24-admin-audit-log`.
+| Segment | Rule |
+|---------|------|
+| `<issue-number>` | GitHub issue number, no `#` (e.g. `153`) |
+| `<i-artifact-id-lowercase>` | Full backlog idea ID with `I` → `i` (e.g. `I-2026-05-24-admin-ui-vite8-upgrade` → `i-2026-05-24-admin-ui-vite8-upgrade`) |
+| `[-<optional-topic>]` | Short disambiguator when the legacy I-* id is opaque or multiple branches could share one I-* (rare) |
+
+**Examples**
+
+| Issue | Backlog idea | Branch |
+|-------|--------------|--------|
+| `#153` | `I-2026-05-24-admin-ui-vite8-upgrade` | `feature/153-i-2026-05-24-admin-ui-vite8-upgrade` |
+| `#42` | `I-2026-05-24-admin-audit-log` | `feature/42-i-2026-05-24-admin-audit-log` |
+| `#152` | `I-2026-0027` (legacy id) | `feature/152-i-2026-0027-mobile-ios` |
+
+Shorthand `feature/NNN-<slug>` used in templates and diagrams means the same pattern; `<slug>`
+is always `<i-artifact-id-lowercase>` with an optional topic suffix.
+
+### Linking issue and branch (no ambiguity)
+
+GitHub does not auto-link a branch to an issue until a PR exists. When the branch is created,
+record it in **four places**:
+
+1. **Branch name** — issue number is the first path segment after `feature/`.
+2. **TB-* metadata** — `GitHub branch: `feature/…``.
+3. **I-* `## Links`** — same branch name.
+4. **Issue comment** — one line: `Implementation branch: \`feature/…\``.
+
+Opening a PR from that branch with `Closes #NNN` in the body completes the native GitHub link.
 
 ## PR convention
 
@@ -158,7 +192,7 @@ When a Grill Me challenge is completed on an issue-backed idea:
 V-* vision note
   └── I-* backlog idea  ←→  GitHub issue #NNN
         └── TB-* tracer bullet  ←→  GitHub PR #NNN
-              └── Branch feature/NNN-<slug>
+              └── Branch feature/<NNN>-<i-artifact-id-lowercase>[-topic]
 ```
 
 Each artifact references the next level via its `## Metadata` and `## Links` sections.
