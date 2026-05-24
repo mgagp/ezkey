@@ -47,7 +47,8 @@ export interface TenantDemoPreset {
   };
 }
 
-export const tenantDemoPresets: TenantDemoPreset[] = [
+export const tenantDemoPresets: TenantDemoPreset[] = isDemoMode
+  ? [
   {
     id: 'garage',
     label: 'Garage du coin',
@@ -94,7 +95,8 @@ export const tenantDemoPresets: TenantDemoPreset[] = [
       primaryContactPhoneNumber: '+15145551003',
     },
   },
-];
+]
+  : [];
 
 // ── Integration create form (CreateFormValues in integrations.tsx) ───────────────
 
@@ -108,7 +110,8 @@ export interface IntegrationDemoPreset {
   };
 }
 
-export const integrationDemoPresets: IntegrationDemoPreset[] = [
+export const integrationDemoPresets: IntegrationDemoPreset[] = isDemoMode
+  ? [
   {
     id: 'admin-console',
     label: 'Admin Console',
@@ -145,7 +148,8 @@ export const integrationDemoPresets: IntegrationDemoPreset[] = [
       description: 'Internal system for caretakers — health, training, and availability',
     },
   },
-];
+]
+  : [];
 
 /**
  * Applies locale-specific strings for Unicorn Farm integration presets; other presets unchanged.
@@ -193,7 +197,8 @@ export interface EnrollmentDemoPreset {
   };
 }
 
-export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
+export const enrollmentDemoPresets: EnrollmentDemoPreset[] = isDemoMode
+  ? [
   {
     id: 'marie',
     label: 'Marie Dupont — iPhone',
@@ -260,7 +265,8 @@ export const enrollmentDemoPresets: EnrollmentDemoPreset[] = [
       authAttemptChallengeRequired: true,
     },
   },
-];
+]
+  : [];
 
 // ── Admin create form: user fields only (tenantId chosen by user for tenant admin) ─
 
@@ -277,7 +283,8 @@ export interface AdminDemoPreset {
   };
 }
 
-export const adminDemoPresets: AdminDemoPreset[] = [
+export const adminDemoPresets: AdminDemoPreset[] = isDemoMode
+  ? [
   {
     id: 'global',
     label: 'Global Admin (Marie Dupont)',
@@ -314,7 +321,8 @@ export const adminDemoPresets: AdminDemoPreset[] = [
       lastName: 'Tremblay',
     },
   },
-];
+]
+  : [];
 
 // ── Reason field (min 10 chars): quick-select presets for demo ─────────────────
 // Used in key rotation, revoke, deactivate, toggle tenant, etc.
@@ -327,14 +335,16 @@ export interface ReasonDemoPreset {
   fr: string;
 }
 
-export const reasonDemoPresets: ReasonDemoPreset[] = [
+export const reasonDemoPresets: ReasonDemoPreset[] = isDemoMode
+  ? [
   { id: 'routine-rotation', en: 'Routine key rotation', fr: 'Rotation de clé de routine' },
   { id: 'scheduled-rotation', en: 'Scheduled key rotation', fr: 'Rotation planifiée des clés' },
   { id: 'compliance', en: 'Compliance and audit', fr: 'Conformité et audit' },
   { id: 'security-policy', en: 'Security policy update', fr: 'Mise à jour politique de sécurité' },
   { id: 'end-of-access', en: 'End of access / offboarding', fr: 'Fin d\'accès / départ' },
   { id: 'revoked-security', en: 'Revoked for security reasons', fr: 'Révoqué pour raison de sécurité' },
-];
+]
+  : [];
 
 // ── Test Auth dialog: optional context (title + message) for demo ─────────────
 // Used when testing authentication with contextual approval (Garage + Unicorn Farm presets).
@@ -349,7 +359,8 @@ export interface AuthContextDemoPreset {
   contextMessage: string;
 }
 
-export const authContextDemoPresets: AuthContextDemoPreset[] = [
+export const authContextDemoPresets: AuthContextDemoPreset[] = isDemoMode
+  ? [
   {
     id: 'garage-service',
     label: 'Garage — Ordre de réparation',
@@ -371,4 +382,5 @@ export const authContextDemoPresets: AuthContextDemoPreset[] = [
     contextMessage:
       'Autoriser la réservation VISIT-2026-042 — balade à dos de licorne, créneau 14h30, 2 visiteurs (La Ferme des Licornes).',
   },
-];
+]
+  : [];
