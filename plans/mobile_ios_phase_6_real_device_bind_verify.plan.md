@@ -15,6 +15,8 @@ todos:
     content: Document any hardware-only gaps, failures, or trust-boundary clarifications discovered during real-device execution.
     status: pending
 isProject: false
+retrofitted_by: R-2026-0003
+retrofitted_at: 2026-05-24
 ---
 
 # Mobile iOS Phase 6 - Real Device Bind and Verify

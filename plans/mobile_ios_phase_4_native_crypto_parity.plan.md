@@ -15,6 +15,8 @@ todos:
     content: Add focused native tests that prove the iOS crypto path matches Ezkey payload and key-format expectations.
     status: pending
 isProject: false
+retrofitted_by: R-2026-0003
+retrofitted_at: 2026-05-24
 ---
 
 # Mobile iOS Phase 4 - Native Crypto Parity

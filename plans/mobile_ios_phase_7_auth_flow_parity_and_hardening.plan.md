@@ -15,6 +15,8 @@ todos:
     content: Separate true completion items from later enhancements, polish, or release-focused work.
     status: pending
 isProject: false
+retrofitted_by: R-2026-0003
+retrofitted_at: 2026-05-24
 ---
 
 # Mobile iOS Phase 7 - Auth Flow Parity and Hardening

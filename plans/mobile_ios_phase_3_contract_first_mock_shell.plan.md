@@ -15,6 +15,8 @@ todos:
     content: Provide mocked bind, verify, pending, and respond flows that exercise the real screen sequence and data shapes.
     status: pending
 isProject: false
+retrofitted_by: R-2026-0003
+retrofitted_at: 2026-05-24
 ---
 
 # Mobile iOS Phase 3 - Contract-First Mock Shell

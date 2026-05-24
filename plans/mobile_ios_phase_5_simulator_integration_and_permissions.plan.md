@@ -15,6 +15,8 @@ todos:
     content: Produce a stable simulator workflow for repeated development and regression checks.
     status: pending
 isProject: false
+retrofitted_by: R-2026-0003
+retrofitted_at: 2026-05-24
 ---
 
 # Mobile iOS Phase 5 - Simulator Integration and Permissions

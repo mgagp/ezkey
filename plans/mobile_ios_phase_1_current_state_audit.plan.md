@@ -15,6 +15,8 @@ todos:
     content: Confirm the target strategy as fresh iOS native rebuild with reuse of shared React Native code and contract-first assets.
     status: pending
 isProject: false
+retrofitted_by: R-2026-0003
+retrofitted_at: 2026-05-24
 ---
 
 # Mobile iOS Phase 1 - Current State Audit

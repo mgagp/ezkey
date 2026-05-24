@@ -15,7 +15,14 @@
   - `plans/mobile_ios_phase_7_auth_flow_parity_and_hardening.plan.md`
 - **Created at:** 2026-05-24
 - **Updated at:** 2026-05-24
+- **Sources annotated:** yes
 - **Capture context:** All 7 plans were authored before the formal methodology was established. All todos are in `pending` status — no execution has been recorded. The operator confirmed (2026-05-24) that the existing iOS-specific code in `ezkey_mobile/ios/` is embryonic, predates all major Android refactoring, and should be treated as deleted for the purpose of the iOS rebuild.
+
+## Search scope
+
+- Searched: `plans/`, `.cursor/plans/`, `ezkey_mobile/docs/`, `product-docs/components/mobile/`, `product-docs/global/`, GitHub issues
+- Found relevant: 7 `mobile_ios_phase_*.plan.md` files under `plans/`; supporting context in `ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md`, `NATIVE_MODULES.md`, `MOBILE_STACK_AND_ARCHITECTURE.md`
+- Excluded: `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md` (iOS mentioned for Phase 5 of pinning, already covered by R-2026-0001); no GitHub issues found on the iOS topic
 
 ## Extracted decisions and invariants
 
@@ -60,11 +67,13 @@ Already recorded in `R-2026-0001`. Android pinning is validated first; iOS mirro
 
 Note: Phase 1 is effectively resolved by D3. The first execution slice (TB-*) starts at Phase 2.
 
-## Canonical destinations updated
+## Changes applied
 
-- `product-docs/components/mobile/design-decisions.md` — added ADR-MOB-0005 (start fresh on iOS native)
-- `product-docs/global/backlog/ideas/I-2026-0027-mobile-ios-implementation.md` — created
-- `product-docs/global/backlog/TB-2026-0004-mobile-ios-phase2-apple-stack-baseline.md` — created
+- [x] `product-docs/components/mobile/design-decisions.md` — added ADR-MOB-0005 (start fresh on iOS native)
+- [x] `product-docs/global/backlog/ideas/I-2026-0027-mobile-ios-implementation.md` — created, status `ready`
+- [x] `product-docs/global/backlog/TB-2026-0004-mobile-ios-phase2-apple-stack-baseline.md` — created
+- [x] `plans/mobile_ios_phase_*.plan.md` (7 files) — annotated with `retrofitted_by: R-2026-0003`
+- [ ] `product-docs/components/mobile/stack-and-architecture.md` — deferred; iOS baseline section update belongs in Phase 2 execution, not retrofit
 
 ## Gaps and residual uncertainty
 

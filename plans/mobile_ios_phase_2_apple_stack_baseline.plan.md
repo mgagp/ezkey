@@ -15,6 +15,8 @@ todos:
     content: Record the baseline decisions and rationale for future phases.
     status: pending
 isProject: false
+retrofitted_by: R-2026-0003
+retrofitted_at: 2026-05-24
 ---
 
 # Mobile iOS Phase 2 - Apple Stack Baseline

@@ -10,12 +10,21 @@
 - **Source type:** `plan` / `verbal` / `ad-hoc-code-history` / `mixed`
 - **Source period:** `<YYYY-MM>` or range
 - **Source references:** list of plan paths and/or verbal capture references
+- **Sources annotated:** `yes` / `no` _(mark yes only after retrofitted_by is added to each source file)_
 - **Confidence:** `high` / `medium` / `low`
 - **Validation needed:** `yes` / `no` (if `yes`, list unknowns below)
 
 ## Intent
 
 Describe what this retrofit slice aims to preserve and make discoverable.
+
+## Search scope
+
+_(Optional for plan-type slices with bounded sources. Mandatory for verbal or mixed slices.)_
+
+- Searched: `plans/`, `.cursor/plans/`, etc.
+- Found relevant: [selected sources]
+- Excluded: [found but out of scope, with reason]
 
 ## Extracted signal
 
@@ -53,8 +62,10 @@ List where each extracted signal is mapped:
 
 ## Changes applied
 
-- updated files
-- summary of integrated content
+Explicit checklist — one entry per planned canonical destination. Unchecked items carry forward as gaps.
+
+- [ ] `<destination doc>` — `<summary of change>`
+- [ ] `<destination doc>` — deferred, reason: `<reason>`
 
 ## Residual gaps
 
