@@ -4,6 +4,7 @@
 
 - **ID:** `V-YYYY-NNNN`
 - **Status:** `draft` / `under-review` / `promoted` / `archived`
+- **Lane:** `A` / `B` / `C`
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`
 - **Author:** `<name>`

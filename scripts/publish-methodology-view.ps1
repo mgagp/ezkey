@@ -666,6 +666,11 @@ $frMainBlock = @'
             <td>Apr&egrave;s extraction&nbsp;; produire des tranches de retrofit canoniques</td>
             <td>Tranches de retrofit R-*</td>
           </tr>
+          <tr>
+            <td><code>ezkey-github-issue-promote</code></td>
+            <td>Quand une id&eacute;e I-* passe le test &laquo;&nbsp;titre autonome&nbsp;&raquo;&nbsp;; pr&ecirc;te pour un billet GitHub</td>
+            <td>Titre, corps et labels propos&eacute;s + r&eacute;f&eacute;rence de tra&ccedil;abilit&eacute;</td>
+          </tr>
         </tbody>
       </table>
     </div>

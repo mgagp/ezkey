@@ -10,6 +10,8 @@
 - **Last reviewed at:** `YYYY-MM-DD`
 - **Phase tags:** `<phase-id>, ...`
 - **Component tags:** `<component>, ...`
+- **Lane:** `A` / `B` / `C`
+- **GitHub issue:** `#NNN` _(optional)_
 
 ## Intent
 

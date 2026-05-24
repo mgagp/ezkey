@@ -5,6 +5,10 @@
 - **ID:** `TB-YYYY-NNNN`
 - **Status:** `draft` / `active` / `validated` / `expanded` / `closed`
 - **Related idea:** `I-YYYY-NNNN`
+- **Lane:** `A` / `B` / `C`
+- **GitHub issue:** `#NNN` _(optional)_
+- **GitHub branch:** `feature/NNN-<slug>` _(optional)_
+- **GitHub PR:** `#NNN` _(optional)_
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`
 
