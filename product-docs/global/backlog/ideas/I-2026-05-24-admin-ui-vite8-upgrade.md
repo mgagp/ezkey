@@ -3,11 +3,12 @@
 ## Metadata
 
 - **ID:** `I-2026-05-24-admin-ui-vite8-upgrade`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P3`
 - **Created at:** `2026-05-24`
 - **Updated at:** `2026-05-24`
 - **Last reviewed at:** `2026-05-24`
+- **Closed at:** `2026-05-24`
 - **Phase tags:** `P3-comfort`, `toolchain`
 - **Component tags:** `admin-ui`
 - **Lane:** `A`
@@ -36,8 +37,8 @@ build behaviour.
 - **In scope:**
   - Bump `vite` to `^8.0.x`.
   - Bump `tailwindcss` and `@tailwindcss/vite` to `^4.2.2+` (official Vite 8 peer support).
-  - Evaluate and align `vitest` (likely `^4.x`) and `@vitejs/plugin-react` (v5 retained unless v6
-    is low-friction).
+  - Evaluate and align `vitest` (likely `^4.x`) and `@vitejs/plugin-react` (v6 required for Vite 8
+    peer compatibility).
   - Update `AGENTS.md` and `README.md` stack references.
   - Run validation: unit tests, production build, `build:cloudflare:verify` (demo stripping).
   - Document execution evidence in the tracer bullet.
@@ -92,10 +93,19 @@ Ready for tracer bullet `TB-2026-05-24-admin-ui-vite8-upgrade` with **single-pas
   **Done (2026-05-24):** branch naming harmonized in `github-issues-workflow.md`; Lane A clarified
   for bounded toolchain upgrades.
 
+  - Intermediate `rolldown-vite` on Vite 7 (not warranted — config is minimal; see Grill Me).
+
+## Close-out (2026-05-24)
+
+- Delivered via PR [#154](https://github.com/mgagp/ezkey/pull/154); closes issue [#153](https://github.com/mgagp/ezkey/issues/153).
+- Tracer bullet `TB-2026-05-24-admin-ui-vite8-upgrade` promoted.
+- Residual: Playwright smoke optional before next Admin UI feature work; no open test debt on required gates.
+
 ## Links
 
-- GitHub issue: `#153`
-- GitHub branch: `feature/153-i-2026-05-24-admin-ui-vite8-upgrade`
+- GitHub issue: `#153` (closed)
+- GitHub PR: `#154`
+- GitHub branch: `feature/153-i-2026-05-24-admin-ui-vite8-upgrade` (merged and deleted)
 - Tracer bullet: `product-docs/global/backlog/TB-2026-05-24-admin-ui-vite8-upgrade.md`
 - Test plan slice: `product-docs/global/backlog/test-plans/TSP-2026-05-24-admin-ui-vite8-upgrade.md`
 - Admin UI config: `ezkey-admin-ui/vite.config.ts`

@@ -3,14 +3,16 @@
 ## Metadata
 
 - **ID:** `TB-2026-05-24-admin-ui-vite8-upgrade`
-- **Status:** `under-review`
+- **Status:** `promoted`
 - **Posture:** `single-pass`
 - **Related idea:** `I-2026-05-24-admin-ui-vite8-upgrade`
 - **Lane:** `A`
-- **GitHub issue:** `#153`
-- **GitHub branch:** `feature/153-i-2026-05-24-admin-ui-vite8-upgrade`
+- **GitHub issue:** `#153` (closed)
+- **GitHub branch:** `feature/153-i-2026-05-24-admin-ui-vite8-upgrade` (merged and deleted)
+- **GitHub PR:** `#154`
 - **Created at:** `2026-05-24`
 - **Updated at:** `2026-05-24`
+- **Promoted at:** `2026-05-24`
 
 ## Objective
 
@@ -71,20 +73,31 @@ Cloudflare build paths still work, and confirm demo-mode stripping remains intac
 - **Docs:** `AGENTS.md`, `README.md` → Vite 8.
 - **Validation:** TSP gates passed (see test plan slice).
 
-Pending: PR merge and issue #153 closure.
+- **Validation:** TSP gates passed (see test plan slice).
+- **Merge:** PR [#154](https://github.com/mgagp/ezkey/pull/154) merged 2026-05-24; issue [#153](https://github.com/mgagp/ezkey/issues/153) closed.
 
 ## Exit criteria
 
-`TB-2026-05-24` is validated when:
+All exit criteria met (2026-05-24):
 
-1. `vite` is on `^8.0.x` and `npm run build` succeeds.
-2. `npm run build:cloudflare:verify` passes (demo stripping intact).
-3. `npm test` passes.
-4. `AGENTS.md` / `README.md` reference Vite 8.
-5. GitHub issue closed via PR with traceability block.
+1. ✅ `vite` on `^8.0.x`; `npm run build` succeeds.
+2. ✅ `npm run build:cloudflare:verify` passes (demo stripping intact).
+3. ✅ `npm test` passes.
+4. ✅ `AGENTS.md` / `README.md` reference Vite 8.
+5. ✅ GitHub issue closed via PR with traceability block.
+
+## Promotion notes
+
+Learnings retained in canonical locations:
+
+- Admin UI stack version: `ezkey-admin-ui/AGENTS.md`, `ezkey-admin-ui/README.md`
+- Rolldown demo DCE pattern: `isDemoMode ? [...] : []` in `ezkey-admin-ui/src/lib/demo-mode.ts`
+- Lane A + GitHub issue workflow for toolchain chores: validated; branch naming in
+  `product-docs/methodology/github-issues-workflow.md`
 
 ## Links
 
 - [`I-2026-05-24-admin-ui-vite8-upgrade.md`](ideas/I-2026-05-24-admin-ui-vite8-upgrade.md)
 - [`test-plans/TSP-2026-05-24-admin-ui-vite8-upgrade.md`](test-plans/TSP-2026-05-24-admin-ui-vite8-upgrade.md)
+- [GitHub PR #154](https://github.com/mgagp/ezkey/pull/154)
 - [`../../methodology/github-issues-workflow.md`](../../methodology/github-issues-workflow.md)

@@ -8,7 +8,8 @@ Define the minimum test set for the Vite 7 → 8 Admin UI toolchain upgrade.
 
 - **Target:** `TB-2026-05-24-admin-ui-vite8-upgrade`
 - **Date:** `2026-05-24`
-- **Owner:** _(operator / agent executing the slice)_
+- **Closed at:** `2026-05-24`
+- **Owner:** operator / agent (slice executed on feature branch; merged via PR #154)
 
 ## Change risk summary
 
@@ -68,7 +69,11 @@ Run from `ezkey-admin-ui/` after dependency update:
   - `npm run build:cloudflare:verify` — OK, demo stripping assertion passed
 - **Result summary:** All required TSP gates passed on branch `feature/153-i-2026-05-24-admin-ui-vite8-upgrade`.
 - **Build time (informational):** Vite 8 production build ~354–600ms (no Vite 7 baseline captured in-session).
-- **Follow-up test debt (if any):** Playwright smoke deferred (no UI behaviour change).
+- **Follow-up test debt (if any):** Playwright smoke deferred (no UI behaviour change). Re-run before next Admin UI feature PR if desired.
+
+## Close-out
+
+Slice closed with PR [#154](https://github.com/mgagp/ezkey/pull/154) merge on 2026-05-24. All required gates passed.
 
 ## Implementation notes (2026-05-24)
 
