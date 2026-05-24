@@ -6,12 +6,35 @@ This document defines stable IDs and status vocabulary for vision, backlog, and 
 
 ## Identifier conventions
 
-- `V-YYYY-NNNN` — vision notes
-- `I-YYYY-NNNN` — backlog ideas
-- `TB-YYYY-NNNN` — tracer bullets
-- `R-YYYY-NNNN` — legacy retrofit slices
-- `F-<short-kebab-name>` — feature catalog entries
-- `ADR-XXXX` / scoped ADR IDs — architecture or design decisions
+### Current format (all new artifacts)
+
+All artifacts created after the 2026-05-22 migration use a **date + slug** identifier. No
+counter lookup is needed; no index file must be read before creating a file.
+
+- `V-YYYY-MM-DD-<slug>` — vision notes
+- `I-YYYY-MM-DD-<slug>` — backlog ideas
+- `TB-YYYY-MM-DD-<slug>` — tracer bullets
+- `R-YYYY-MM-DD-<slug>` — legacy retrofit slices
+- `F-<short-kebab-name>` — feature catalog entries (unchanged)
+- `ADR-XXXX` / scoped ADR IDs — architecture or design decisions (unchanged)
+
+Examples: `I-2026-05-22-rate-limit-analysis`, `V-2026-05-22-api-portal-posture`,
+`TB-2026-05-22-mobile-enrollment-slice`.
+
+If two artifacts are created on the same day about the same topic, differentiate the slug
+(e.g., add a qualifier). No ordinal suffix is needed as a rule — the slug carries the distinction.
+
+### Legacy format (pre-2026-05-22 artifacts — do not rename)
+
+Existing artifacts use the sequential `NNNN` format. These identifiers are **stable** — never
+renamed, never reused.
+
+- `V-2026-NNNN` — vision notes
+- `I-2026-NNNN` — backlog ideas
+- `TB-2026-NNNN` — tracer bullets
+- `R-2026-NNNN` — legacy retrofit slices
+
+For multi-branch and multi-worktree work, see [`multi-branch-workflow.md`](multi-branch-workflow.md).
 
 ## Working artifact terminology
 
@@ -20,6 +43,15 @@ This document defines stable IDs and status vocabulary for vision, backlog, and 
 A working plan is **not** a canonical destination by itself and is **not** a retrofit slice by default. Its normal role is to support brainstorming and convergence before materialization into `V-*`, `I-*`, `TB-*`, and related canonical artifacts.
 
 ## Filename conventions
+
+### New artifacts (date+slug)
+
+- `V-YYYY-MM-DD-<slug>.md`
+- `I-YYYY-MM-DD-<slug>.md`
+- `TB-YYYY-MM-DD-<slug>.md`
+- `R-YYYY-MM-DD-<slug>.md`
+
+### Legacy artifacts (NNNN, do not rename)
 
 - `V-YYYY-NNNN-<slug>.md`
 - `I-YYYY-NNNN-<slug>.md`
@@ -102,4 +134,7 @@ For **slug-based identifiers** (`F-*` feature catalog entries, and the slug port
 - For `F-*`: scan `product-docs/global/features-and-phases.md` for adjacent topics or near-synonyms. Prefer extending an existing entry over creating a duplicate.
 - For artifact slugs: a quick `rg` on the topic keywords in `product-docs/global/backlog/ideas/`, `product-docs/global/vision/`, and `product-docs/global/legacy-retrofit/` is usually enough to detect overlap.
 
-Numeric IDs (`V-YYYY-NNNN`, `I-YYYY-NNNN`, `TB-YYYY-NNNN`, `R-YYYY-NNNN`) cannot collide by construction; this hygiene check applies only to the human-readable parts.
+For **date+slug identifiers** (current format), the date component reduces collision risk
+significantly; the slug hygiene check is still valuable to avoid semantic duplicates across
+different dates. For **legacy NNNN identifiers**, two parallel branches could assign the same
+number — see [`multi-branch-workflow.md`](multi-branch-workflow.md) for the resolution protocol.

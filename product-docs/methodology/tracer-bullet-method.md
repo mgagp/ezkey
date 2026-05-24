@@ -44,11 +44,19 @@ Do **not** create another preparation layer unless it removes a concrete blocker
 Each tracer bullet should define:
 
 - target outcome,
+- **posture**: `single-pass` or `iterative` (decided explicitly before scoping begins),
 - in-scope boundaries,
 - out-of-scope boundaries,
 - first executable slice,
 - acceptance evidence,
 - rollback or fallback posture.
+
+**`posture: single-pass`** — the bounded job is coherent and low-risk enough to implement in one
+cut. The TB brief is also the complete implementation plan. The "expand slice iteratively" step
+does not apply; close the TB once the implementation is validated.
+
+**`posture: iterative`** — scope, risk, or cross-boundary complexity warrants separate slices.
+Subsequent TBs are expected and the "expand slice iteratively" step applies.
 
 ## Boundary-first planning
 
@@ -63,15 +71,18 @@ This enables parallel component analysis while preserving global coherence.
 
 ## Recommended sequence
 
-1. Define global flow intent.
-2. Select smallest meaningful end-to-end slice.
-3. Confirm boundary contracts and mapping assumptions.
-4. Confirm exception behavior and validation rules.
-5. Implement with targeted tests.
-6. Update traceability.
-7. Expand slice iteratively.
+1. **Decide iteration posture** (`single-pass` or `iterative`) — before scoping begins.
+2. Define global flow intent.
+3. Select smallest meaningful end-to-end slice.
+4. Confirm boundary contracts and mapping assumptions.
+5. Confirm exception behavior and validation rules.
+6. Implement with targeted tests.
+7. Update traceability.
+8. *(iterative posture only)* Expand scope and open the next TB.
 
-Iteration is optional, not mandatory. If step 2 yields a bounded one-shot first cut with acceptable risk and evidence cost, execute that cut directly and validate it as the tracer bullet.
+Step 8 applies only when `posture: iterative`. When `posture: single-pass`, step 7 closes the TB.
+Iteration is a tool for managing uncertainty — when uncertainty is low and scope is bounded,
+`single-pass` is the right posture.
 
 ## Completion criteria
 

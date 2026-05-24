@@ -69,6 +69,17 @@ When judging pragmatism and complexity for a feature, ask whether a future probl
 
 This principle pairs with **#1** (simplicity) and **#2** (essential vs accidental complexity). It does not justify deferring security holes or undefined behavior; it governs **performance and scale refinements** that would otherwise be speculative.
 
+### 15. Simple cases stay simple
+
+Methodology adds traceability and quality — it must not add ceremony for its own sake. When a
+topic is well-understood, bounded, and low-risk, the path from ideation to implementation must be
+short. Iteration is a tool for managing uncertainty, not a mandatory workflow stage. When
+uncertainty is low, move to action.
+
+This applies to the methodology process itself: a simple idea should pass through ideation, scoping,
+and a single implementation pass without forced intermediary artifacts or staged planning loops.
+The fast path must remain genuinely fast.
+
 ## How Principles Apply
 
 When designing or reviewing a change:

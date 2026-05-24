@@ -26,16 +26,18 @@ Ezkey already has strong global and component documentation. This pack adds the 
 5. `plan-incubation-workflow.md`
 6. `legacy-retrofit-workflow.md`
 7. `blitz-intake-pattern.md`
-8. `session-start-guide.md`
-9. `quality-gates.md`
-10. `ai-collaboration-model.md`
-11. `nomenclature.md`
+8. `multi-branch-workflow.md`
+9. `session-start-guide.md`
+10. `quality-gates.md`
+11. `ai-collaboration-model.md`
+12. `nomenclature.md`
 
 ## Scope boundaries
 
 - Product direction and intent remain in `../global/`.
 - Component implementation details remain in `../components/`.
 - This pack defines process and collaboration mechanics.
+- Rationale for non-obvious methodology choices lives in `decisions/`.
 
 ## Core principle
 

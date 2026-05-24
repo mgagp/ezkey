@@ -29,6 +29,19 @@ In addition to direct ideation capture, use a plan-incubation lane when the oper
 
 See `plan-incubation-workflow.md`.
 
+## Parallel lane: multi-branch and multi-worktree
+
+When working across parallel Git branches or Git worktrees (solo or with a team):
+
+1. Create artifact files (`I-*`, `V-*`, `TB-*`, `R-*`) freely on the branch — no coordination
+   needed with other branches.
+2. Use **date+slug identifiers** for all new artifacts — no counter lookup, no contention.
+3. Defer index updates (`backlog/index.md`, `vision/product-orientation-notes.md`) to
+   post-merge on `main`.
+4. At merge: run an index reconciliation pass.
+
+See `multi-branch-workflow.md`.
+
 ## End-to-end flow
 
 1. **Capture**

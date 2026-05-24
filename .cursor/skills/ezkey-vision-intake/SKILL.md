@@ -32,3 +32,12 @@ Convert free-form ideation into concise, structured artifacts without over-const
 
 Keep intake lightweight and expressive. Do not force implementation-level detail at this stage.
 If the source is a current-session working plan, extract and condense the durable direction rather than copying the planning artifact verbatim.
+
+## Multi-branch note
+
+When working on a feature branch or in a Git worktree:
+- Use date+slug IDs: `V-YYYY-MM-DD-<slug>.md` (e.g. `V-2026-05-22-my-topic.md`).
+- Create the file directly in `product-docs/global/vision/` — do not update `product-orientation-notes.md` on the branch.
+- Defer the index update to post-merge on `main`.
+
+See `product-docs/methodology/multi-branch-workflow.md` and `product-docs/methodology/nomenclature.md`.

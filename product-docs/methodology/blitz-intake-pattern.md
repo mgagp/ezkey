@@ -22,10 +22,15 @@ For a single, focused idea, the standard Lane A flow (`ezkey-vision-intake`, the
 ### Phase 0 — Setup
 
 - Confirm signaling conventions (see below).
-- Identify the next available IDs by reading existing indexes:
+- **Choose a topic slug** for the scratch board file (e.g. `mobile-auth`, `api-keys-redesign`).
+  On a feature branch or worktree the slug is **required** — it prevents filename collisions at
+  merge time. On `main` / single-branch, an ordinal suffix is acceptable if the theme is not
+  yet clear. See File naming below and `multi-branch-workflow.md`.
+- On a single-branch session: identify the next available IDs by reading existing indexes:
   - `product-docs/global/backlog/index.md` for `I-*`,
   - `product-docs/global/vision/product-orientation-notes.md` for `V-*`,
   - `product-docs/global/legacy-retrofit/index.md` for `R-*`.
+  On a feature branch: defer index lookups — use date+slug IDs directly (no counter needed).
 - Create the scratch board file at the active location (see file naming below).
 
 ### Phase 1 — Capture
@@ -59,10 +64,15 @@ Validate per item, per batch of 5–10, or all at once depending on operator pre
 
 ### Phase 3 — Materialization
 
-- Write canonical artifacts (`V-*` entries, `I-*` files, `R-*` files) in **English**.
-- Update the relevant indexes (`product-docs/global/backlog/index.md`, `product-docs/global/legacy-retrofit/index.md`).
+- Write canonical artifacts (`V-*` files, `I-*` files, `R-*` files) in **English**.
+- Use **date+slug identifiers** for all new artifacts (e.g. `I-2026-05-22-rate-limit-analysis`);
+  see [`nomenclature.md`](nomenclature.md) for the full convention.
 - Add cross-links between artifacts and to existing related artifacts.
-- Use the next stable IDs; never reuse retired identifiers.
+- **On a feature branch or worktree:** do **not** update index files (`backlog/index.md`,
+  `vision/product-orientation-notes.md`, `legacy-retrofit/index.md`). Index updates happen
+  post-merge on `main`. See [`multi-branch-workflow.md`](multi-branch-workflow.md).
+- **On `main` or in a single-branch session:** update the relevant indexes after writing the
+  artifact files.
 
 ### Phase 4 — Archival (mandatory; **never deletion**)
 
@@ -92,13 +102,23 @@ The agent accepts French or English forms. The agent does not auto-detect end-of
 
 ## File naming and locations
 
-| State | Location | Prefix | Example |
-|-------|----------|--------|---------|
-| **Active** (during the blitz) | `product-docs/global/backlog/_blitz-YYYY-MM-DD[-N].md` | `_` (signals staging) | `_blitz-2026-05-08-2.md` |
-| **Archived** (post-materialization) | `product-docs/global/backlog/blitz-archive/blitz-YYYY-MM-DD[-N].md` | none | `blitz-2026-05-08-1.md` |
-| **Deleted** | n/a | n/a | Operator-initiated only; never automatic |
+| Context | State | Location | Example |
+|---------|-------|----------|---------|
+| Feature branch / worktree | **Active** | `product-docs/global/backlog/_blitz-YYYY-MM-DD-<slug>.md` | `_blitz-2026-05-22-mobile-auth.md` |
+| Feature branch / worktree | **Archived** | `product-docs/global/backlog/blitz-archive/blitz-YYYY-MM-DD-<slug>.md` | `blitz-2026-05-22-mobile-auth.md` |
+| `main` / single-branch | **Active** | `product-docs/global/backlog/_blitz-YYYY-MM-DD[-N].md` | `_blitz-2026-05-08-2.md` |
+| `main` / single-branch | **Archived** | `product-docs/global/backlog/blitz-archive/blitz-YYYY-MM-DD[-N].md` | `blitz-2026-05-08-1.md` |
+| Any | **Deleted** | n/a | Operator-initiated only; never automatic |
 
-`[-N]` is the ordinal for multiple blitzes on the same day: `-1` for the first, `-2` for the second, `-3` for the third, etc. Use the suffix consistently even for the first blitz when a second blitz on the same date exists or is anticipated.
+**On a feature branch or worktree**: the slug is **required**, not optional. Choose it at session
+start — it answers "what is this blitz about?" before capture begins. This prevents filename
+collisions at merge time and relies on the orthogonality assumption: when topics are distinct by
+design and coordination, their slugs will be distinct too. See
+`methodology/decisions/2026-05-22-blitz-naming-multi-branch.md` for the full rationale.
+
+**On `main` / single-branch**: the `[-N]` ordinal is acceptable as a fallback when the theme is
+not yet clear at session start. Use the suffix consistently even for the first blitz when a second
+blitz on the same date exists or is anticipated.
 
 ## Materialization completion criteria
 

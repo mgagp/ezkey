@@ -36,3 +36,12 @@ Normalize backlog ideas so they are comparable, filterable, and promotion-ready.
 
 Prefer small, explicit increments. Avoid large speculative scope during triage.
 When a working plan is present, materialize only the durable actionable scope into the `I-*`; do not treat the plan itself as the canonical backlog artifact.
+
+## Multi-branch note
+
+When working on a feature branch or in a Git worktree:
+- Use date+slug IDs: `I-YYYY-MM-DD-<slug>.md` (e.g. `I-2026-05-22-my-topic.md`).
+- Create the file directly in `product-docs/global/backlog/ideas/` — do not update `backlog/index.md` on the branch.
+- Defer the index update to post-merge on `main`.
+
+See `product-docs/methodology/multi-branch-workflow.md` and `product-docs/methodology/nomenclature.md`.
