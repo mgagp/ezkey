@@ -1,10 +1,54 @@
 <!DOCTYPE html>
+<!-- Source: product-docs/methodology/view/index.html @ 2026-05-24 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ezkey Methodology — Rich View</title>
+  <meta name="description" content="Visual reference for the ideation-to-delivery workflow &mdash; from raw idea to closed feature, with artifact types, parallel lanes, naming conventions, and skills.">
+  <meta property="og:title" content="Ezkey Methodology &mdash; Rich View">
+  <meta property="og:description" content="Visual reference for the ideation-to-delivery workflow &mdash; from raw idea to closed feature.">
+  <meta property="og:url" content="https://ezkey.org/methodology.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Ezkey">
+  <meta property="og:locale" content="en_US">
+  <link rel="alternate" hreflang="en" href="https://ezkey.org/methodology.html">
+  <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/methodologie.html">
+  <link rel="alternate" hreflang="x-default" href="https://ezkey.org/methodology.html">
+  <title>Ezkey Methodology &mdash; Rich View</title>
   <style>
+    /* â”€â”€ Site shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #0f172a;
+    }
+    .shell {
+      max-width: 1460px;
+      margin: 0 auto;
+      padding: 0 20px 56px;
+    }
+    .nav-top {
+      padding: 14px 0 8px;
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.9);
+    }
+    .nav-top a { color: rgba(255,255,255,0.9); text-decoration: underline; }
+    .nav-top a:hover { color: #fff; }
+    .site-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    @media (max-width: 640px) {
+      .shell { padding: 0 12px 48px; }
+      .site-card { border-radius: 12px; }
+    }
+    /* â”€â”€ Canonical styles (from product-docs/methodology/view/index.html) â”€â”€ */
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -503,9 +547,41 @@
       .page-header { padding: 24px; }
       main { padding: 0 20px 56px; }
     }
+  
+    /* â”€â”€ Site palette overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    :root {
+      --blue: #667eea;
+      --indigo: #764ba2;
+    }
+    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    nav {
+      background: rgba(255,255,255,0.97);
+      border-bottom-color: rgba(102,126,234,0.25);
+    }
+    nav a:hover { color: #667eea; }
+    .nav-brand span { color: #667eea; }
+    .page-header { background: transparent; }
+    .section-intro a { color: #667eea; }
+    .lane-a-tag { background: #f0f0ff; border-color: #c4c8f0; color: #5561d4; }
+    section > h2 { border-bottom-color: rgba(102,126,234,0.3); }
+    /* Site attribution footer (outside white card â€” on gradient background) */
+    footer.site-footer {
+      color: rgba(255,255,255,0.75);
+      border-top: none;
+      background: transparent;
+      padding: 16px 0;
+      margin-top: 24px;
+      font-size: 0.82rem;
+    }
+    footer.site-footer a { color: rgba(255,255,255,0.9); text-decoration: none; }
   </style>
 </head>
 <body>
+  <div class="shell">
+    <p class="nav-top">
+      <a href="/">Home (English)</a>
+      &middot; <a href="/fr/methodologie.html">Version fran&ccedil;aise</a>
+    </p>
 
 <nav>
   <div class="nav-brand">Ezkey <span>Methodology</span></div>
@@ -519,6 +595,7 @@
   <a href="#rich-views">Rich Views</a>
 </nav>
 
+    <div class="site-card">
 <header class="page-header">
   <h1>Ezkey Methodology</h1>
   <p class="subtitle">
@@ -526,12 +603,11 @@
     with artifact types, parallel lanes, naming conventions, and skills.
   </p>
   <div class="meta">
-    <span>Source: <a href="../README.md">product-docs/methodology/README.md</a></span>
-    <span>Decision: <a href="../decisions/2026-05-24-rich-views.md">2026-05-24-rich-views</a></span>
+    <span>Source: product-docs/methodology/README.md</span>
+    <span>Decision: 2026-05-24-rich-views</span>
     <span>Updated 2026-05-24</span>
   </div>
 </header>
-
 <main>
 
   <!-- ════════════════════════════════════════════════════════════
@@ -742,7 +818,7 @@
           <li>Cross-link plan and canonical artifacts when useful</li>
           <li>Do not treat as retrofit unless genuinely historical</li>
         </ul>
-        <p class="lane-ref">→ <a href="../plan-incubation-workflow.md">plan-incubation-workflow.md</a></p>
+        <p class="lane-ref">→ plan-incubation-workflow.md</p>
       </div>
 
       <div class="lane-card" style="border-left-color: #d97706;">
@@ -755,7 +831,7 @@
           <li>Record a retrofit slice (R-*)</li>
           <li>Close with residual gaps and next action</li>
         </ul>
-        <p class="lane-ref">→ <a href="../legacy-retrofit-workflow.md">legacy-retrofit-workflow.md</a></p>
+        <p class="lane-ref">→ legacy-retrofit-workflow.md</p>
       </div>
 
     </div>
@@ -801,7 +877,7 @@
           Run a reconciliation pass when the branch lands on <code>main</code>.
         </div>
       </div>
-      <p class="lane-ref">→ <a href="../multi-branch-workflow.md">multi-branch-workflow.md</a></p>
+      <p class="lane-ref">→ multi-branch-workflow.md</p>
     </div>
   </section>
 
@@ -1024,49 +1100,21 @@
       <li><strong>Single <code>index.html</code></strong> per view folder; additional files only when navigation genuinely adds value for the specific topic.</li>
     </ul>
 
-    <!-- pub-exclude-start -->
-    <h3 class="sub">Existing rich views</h3>
-
-    <div class="existing-view">
-      <div class="existing-view-dot" style="background: #2563eb;"></div>
-      <div>
-        <div class="existing-view-title">Methodology — this document</div>
-        <div class="existing-view-desc">Visual reference for the end-to-end workflow, artifact types, parallel lanes, naming conventions, and skills.</div>
-        <div class="existing-view-path"><code>product-docs/methodology/view/index.html</code></div>
-      </div>
-    </div>
-
-    <h3 class="sub" style="margin-top: 20px;">Candidate rich views (identified, not yet created)</h3>
-
-    <div class="existing-view">
-      <div class="existing-view-dot" style="background: var(--text-muted);"></div>
-      <div>
-        <div class="existing-view-title">Lifecycle Governance</div>
-        <div class="existing-view-desc">Cross-entity lifecycle model: activation, deactivation, revocation rules, parent-chain propagation, and operator guardrails across all Ezkey entity types.</div>
-        <div class="existing-view-path"><code>docs/view/lifecycle-governance/index.html</code> — source: <code>docs/LIFECYCLE_GOVERNANCE.md</code></div>
-      </div>
-    </div>
-
-    <div class="existing-view">
-      <div class="existing-view-dot" style="background: var(--text-muted);"></div>
-      <div>
-        <div class="existing-view-title">Tink Key Rotation Protocol</div>
-        <div class="existing-view-desc">Google Tink cryptographic key lifecycle: MasterKey location, key blob transit (database active + drained keys), multi-instance synchronization window, and the manual coordination protocol that Tink does not handle natively.</div>
-        <div class="existing-view-path"><code>docs/view/tink-key-rotation/index.html</code> — source: Tink-related docs (pending retrofit)</div>
-      </div>
-    </div>
-    <!-- pub-exclude-end -->
-
   </section>
 
 </main>
-
 <footer>
   Ezkey Methodology Rich View &nbsp;·&nbsp; Last updated 2026-05-24 &nbsp;·&nbsp;
-  Source: <a href="../README.md">product-docs/methodology/README.md</a>
+  Source: product-docs/methodology/README.md
   &nbsp;·&nbsp;
-  Decision: <a href="../decisions/2026-05-24-rich-views.md">2026-05-24-rich-views</a>
+  Decision: 2026-05-24-rich-views
 </footer>
+    </div>
 
+    <footer class="site-footer" style="text-align:center;">
+      Ezkey &nbsp;&middot;&nbsp; <a href="/">ezkey.org</a>
+    </footer>
+
+  </div>
 </body>
 </html>
