@@ -20,3 +20,55 @@ These values guide feature analysis, design, and implementation across the proje
 - **docs/ENDPOINT.md** — API endpoints and behaviour
 - **.github/copilot-instructions.md** — Code style and conventions for AI-assisted development
 - **AGENTS.md** (root and per-module) — Agent notes and patterns
+
+## Contribution workflow
+
+Ezkey uses a methodology-first approach. Before writing code, position the work in the product corpus.
+
+**1 — Capture and triage**  
+New ideas or improvements start as a backlog idea (`I-*`) under `product-docs/global/backlog/ideas/`. The methodology provides lane and skill guidance:
+- `product-docs/methodology/session-start-guide.md` — choose your lane and skill sequence
+- `product-docs/methodology/README.md` — full methodology overview
+
+**2 — Open a GitHub issue**  
+Once the idea passes the "title that stands alone" test, open an issue on `mgagp/ezkey`. Apply the appropriate labels (`lane:*`, `type:*`, `component:*`, `priority:*`). See `product-docs/methodology/github-issues-workflow.md` for the skill and label taxonomy.
+
+**3 — Branch from the issue**  
+Create a branch using the convention:
+```
+feature/<issue-number>-<artifact-slug>
+```
+Example: `feature/152-i-2026-0027-mobile-ios`
+
+**4 — Implement and validate**  
+Follow the tracer bullet (`TB-*`) scope. Use the methodology skills (`ezkey-component-design-pack`, `ezkey-test-strategy-planner`, `ezkey-quality-gatekeeper`) as checkpoints before opening a PR.
+
+**5 — Open a pull request**  
+PR title follows conventional commit format: `feat(component): short description (#NNN)`.  
+PR body must include `Closes #NNN` and a traceability block linking to the I-* and TB-* artifacts.
+
+## Build and verification
+
+Run the standard build from the repository root:
+
+```bash
+scripts/build.sh
+```
+
+This runs Spotless apply, Checkstyle, and `mvn clean install`. See **README.md** for prerequisites and module layout.
+
+## Functional validation
+
+Before opening a PR for backend or API changes, start a clean stack and run the functional test suite:
+
+```bash
+# Start a clean stack (empty database, default config)
+ezkey-tests/clean-start.sh
+
+# Run the full functional test suite
+mvn test -pl ezkey-tests -P all-tests
+```
+
+Postman collections are available under `postman/collections/` for exploratory or manual validation.
+
+For the testing strategy and what layer covers what, read `product-docs/methodology/testing-strategy-in-workflow.md`.
