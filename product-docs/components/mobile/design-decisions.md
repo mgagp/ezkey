@@ -12,6 +12,7 @@ This document records architecture and design decisions **scoped to the mobile a
 | [ADR-MOB-0002](#adr-mob-0002-ec-p256-keys-on-native-keystore) | EC P-256 keys generated and stored on the native keystore | accepted | 2025-07-20 |
 | [ADR-MOB-0003](#adr-mob-0003-fail-closed-on-signature-checks) | Fail-closed on signature and algorithm checks | accepted | 2025-08-05 |
 | [ADR-MOB-0004](#adr-mob-0004-android-app-level-sealed-secrets) | Android app-level sealed secrets for long-lived enrollment values | accepted | 2026-05-03 |
+| [ADR-MOB-0005](#adr-mob-0005-ios-native-layer-rebuilt-from-clean-scaffold) | iOS native layer rebuilt from clean scaffold, existing code discarded | accepted | 2026-05-24 |
 
 ## ADR-MOB-0001 — No background polling for authentication attempts
 
@@ -160,3 +161,36 @@ existing secure-storage fallback until parity is implemented.
 
 - Enrollment persistence, Pending Auth rehydration, Android verification scripts, and mobile documentation.
 - Reference: [`../../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md`](../../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md).
+
+## ADR-MOB-0005 — iOS native layer rebuilt from clean scaffold, existing code discarded
+
+### Metadata
+
+- **ID:** ADR-MOB-0005.
+- **Date:** 2026-05-24.
+- **Status:** accepted.
+- **Scope:** component:mobile, platform:iOS.
+
+### Context
+
+The `ezkey_mobile/ios/` directory contains an embryonic iOS native project created before all major Android refactoring cycles. It has received no meaningful attention, is not verified to build, and does not reflect the current crypto contract, enrollment model, or module structure of the Android reference implementation.
+
+### Decision
+
+The existing iOS-specific native code in `ezkey_mobile/ios/` is treated as discarded. The iOS rebuild starts from a clean React Native iOS scaffold. The shared React Native surface (TypeScript, navigation, screens, generated DTOs, flow code) is reused as-is. Only the iOS native layer (crypto bridge, Keychain integration, QR native module) is rebuilt from scratch.
+
+### Alternatives Considered
+
+- **Audit and incrementally fix the existing iOS code.** Rejected — the code predates too many refactoring cycles and the audit cost exceeds the value of any reusable component.
+- **Full app rewrite including the shared RN surface.** Rejected — the shared TypeScript and screen layer is platform-agnostic and already tested on Android.
+
+### Consequences
+
+- **Positive.** Clean starting point aligned with the current contract; no hidden coupling to stale iOS patterns.
+- **Negative.** Any non-trivial iOS-specific bridge code must be reimplemented; acceptable given the embryonic state of the existing code.
+
+### Impact
+
+- `ezkey_mobile/ios/` — existing native-specific content deleted before Phase 2 begins.
+- Phases 2–7 of the iOS rebuild plan proceed from clean scaffold.
+- Reference: [`../../../product-docs/global/legacy-retrofit/R-2026-0003-mobile-ios-implementation-plans.md`](../../../product-docs/global/legacy-retrofit/R-2026-0003-mobile-ios-implementation-plans.md).
