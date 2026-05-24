@@ -23,7 +23,11 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 - **Discovery & sharing (static):** [`sitemap.xml`](sitemap.xml) and [`robots.txt`](robots.txt) at the site root; [`updates.rss`](updates.rss) / [`fr/updates.rss`](fr/updates.rss) mirror the dated entries on **Updates** (newest items first in the feed). All published `*.html` pages include **Open Graph** and **Twitter Card** meta tags (`og:*`, `twitter:*`), using `https://ezkey.org/logo.svg` as the share image unless you introduce a dedicated social image later.
 - **Logo / hero signature:** landing and inner hub pages reuse the same gradient, floating logo treatment, and particle background as before (`<img src="/logo.svg">` on published pages).
 - **Public hostname:** **`ezkey.org`** (canonical production URL for this site).
-- **Cloudflare:** The live site is deployed via **Cloudflare Pages**. The **only** project name to use in docs and scripts is **`ezkey-org`**; production traffic uses **`ezkey.org`**. Preview URLs from Wrangler may still show a **`*.pages.dev`** subdomain created under an early project name (e.g. `ezkey-teaser`) — that is a **legacy hostname** for the **same** project, not a second app. Details: **[docs/cloudflare/ezkey-org-site.md](../../docs/cloudflare/ezkey-org-site.md)** (section *Why you may still see `ezkey-teaser` in preview URLs*). When an agent reads or updates Cloudflare state, treat **what is configured in Cloudflare** as the operational source of truth for hosting; treat **this folder** as the source of truth for **content and markup** to deploy.
+- **Cloudflare:** The live site is deployed via **Cloudflare Pages** (project `ezkey-org`, domain `ezkey.org`). **Always use the dedicated scripts** — never invoke Wrangler ad hoc:
+  - Preview: `scripts/cloudflare/deploy-ezkey-org-preview.sh` (sources `.env`, no git push required)
+  - Production: `scripts/cloudflare/deploy-ezkey-org-production.sh` (same credentials, `--branch=main`)
+  - Cleanup: `scripts/cloudflare/cleanup-ezkey-org-previews.sh`
+  - On Windows without Git Bash, run the equivalent `npx wrangler pages deploy sites/ezkey-org --project-name=ezkey-org` with env vars loaded from `.env`. Preview URLs from Wrangler may show a `*.ezkey-teaser.pages.dev` subdomain — that is a **legacy hostname** for the same project, not a second app. Details: **[docs/cloudflare/ezkey-org-site.md](../../docs/cloudflare/ezkey-org-site.md)**. When an agent reads or updates Cloudflare state, treat **what is configured in Cloudflare** as the operational source of truth for hosting; treat **this folder** as the source of truth for **content and markup** to deploy.
 
 ---
 
@@ -41,8 +45,9 @@ Hub pages (`index`, `updates`, `articles`, `trust`) share a consistent **primary
 | Updates | Mises à jour | `/updates.html` / `/fr/updates.html` |
 | Guides | Guides | `/guides.html` / `/fr/guides.html` |
 | Articles | Articles | `/articles.html` / `/fr/articles.html` |
+| Methodology | Méthodologie | `/methodology.html` / `/fr/methodologie.html` |
 
-**Changelog** is intentionally **omitted** from that primary strip until the page carries real versioned notes. On **changelog** pages only, append the changelog item with `aria-current="page"`.
+**Changelog** is intentionally **omitted** from that primary strip until the page carries real versioned notes. **Methodology** (`/methodology.html` / `/fr/methodologie.html`) is the published rich view generated from `product-docs/methodology/view/index.html` via `scripts/publish-methodology-view.ps1`; update by re-running that script whenever the canonical changes. On **changelog** pages only, append the changelog item with `aria-current="page"`.
 
 **Public site and private repository:** Do **not** link from **ezkey.org** to GitHub (or any authenticated-only host) for Ezkey source, docs, or `SECURITY.md` while the repository remains **private**. The intended public URL and onboarding copy will be wired when the repository opens (planned alongside the first public release — see **Updates**). Internal package metadata or future **`SECURITY.md`** in git may still name a future canonical repo URL for maintainers; that does not override this public-site rule.
 
@@ -64,9 +69,11 @@ Operators may use **Wispr Flow** or other dictation tools. Speech recognition of
 
 ## Deployment and agent behaviour (high level)
 
-- Prefer the workflow in [ezkey-org-site.md](../../docs/cloudflare/ezkey-org-site.md): edit content → preview deploy → human validation → production.
-- **Preview deploy** from a developer machine: [../../scripts/cloudflare/deploy-ezkey-org-preview.sh](../../scripts/cloudflare/deploy-ezkey-org-preview.sh) (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). The agent cannot run this without your token.
-- **Production deploy** (after content approval): [../../scripts/cloudflare/deploy-ezkey-org-production.sh](../../scripts/cloudflare/deploy-ezkey-org-production.sh) — same credentials; uses the Cloudflare **production** branch (default `main`). Same token constraint for agents.
+**Deploy reflex: always reach for the scripts in `scripts/cloudflare/` first — never invoke Wrangler ad hoc.**
+
+- Preferred workflow: edit content → `deploy-ezkey-org-preview.sh` → human visual validation → `deploy-ezkey-org-production.sh`. See [ezkey-org-site.md](../../docs/cloudflare/ezkey-org-site.md) for the full flow.
+- **Preview deploy:** `scripts/cloudflare/deploy-ezkey-org-preview.sh` — sources `.env` from the repo root for `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`. On Windows without Git Bash, run the equivalent `npx wrangler pages deploy sites/ezkey-org --project-name=ezkey-org --branch=<preview-branch>` after loading the env vars from `.env`.
+- **Production deploy** (after preview approval): `scripts/cloudflare/deploy-ezkey-org-production.sh` — same credentials; deploys to the Cloudflare production branch (`main` by default).
 - Do **not** assume DNS or edge rules are writable via every API token; some operations require specific Cloudflare permissions or dashboard steps.
 - See [docs/cloudflare/README.md](../../docs/cloudflare/README.md) for the `scripts/cloudflare/` index.
 
