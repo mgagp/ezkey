@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0023`
-- **Status:** `captured`
+- **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-19`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-05-24`
+- **Last reviewed at:** `2026-05-24`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-api`, `admin-ui`, `infra`, `docs`
 
@@ -42,7 +42,7 @@ See [`../grill-sessions/blitz-2026-05-08-1-D7-email-grill-me.md`](../grill-sessi
 
 ## Promotion notes
 
-Move to `triaged` when design pack outlines Admin API mail service + UI wireframes. Depends on SMTP property design in `CONFIGURATION.md`.
+Move to `ready` when design pack outlines Admin API mail service + UI wireframes. Depends on SMTP property design in `CONFIGURATION.md`.
 
 ## Links
 

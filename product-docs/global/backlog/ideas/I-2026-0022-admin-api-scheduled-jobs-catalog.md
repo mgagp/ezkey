@@ -3,13 +3,13 @@
 ## Metadata
 
 - **ID:** `I-2026-0022`
-- **Status:** `captured`
+- **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-19`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-05-24`
+- **Last reviewed at:** `2026-05-24`
 - **Phase tags:** `P1-operability`
-- **Component tags:** `admin-api`, `docs (product-docs)`, `docs`
+- **Component tags:** `admin-api`, `docs`
 
 ## Intent
 
@@ -53,9 +53,13 @@ Create and maintain a **canonical catalog** of all scheduled / background jobs c
 - Jobs remain primarily in Admin API + `ezkey-core` beans invoked from Admin for R1.
 - Document is **English**; updated when jobs are added/removed (same discipline as `CONFIGURATION.md`).
 
+## Grilling decisions (2026-05-19)
+
+See [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/integrity-cluster-D4-D6-grill-me.md) (D6-3).
+
 ## Promotion notes
 
-Move to `triaged` when template is approved. Move to `incubating` when `docs/ADMIN_API_SCHEDULED_JOBS.md` exists with at least all integrity-related jobs fully filled. Link from `I-2026-0007` design pack.
+Move to `ready` when `docs/ADMIN_API_SCHEDULED_JOBS.md` exists with at least all integrity-related jobs fully filled. Link from `I-2026-0007` design pack.
 
 ## Links
 

@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0024`
-- **Status:** `captured`
+- **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-19`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-05-24`
+- **Last reviewed at:** `2026-05-24`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-api`, `admin-ui`, `infra`, `docs`, peripheral (`ezkey-sms-twilio`)
 
@@ -41,7 +41,7 @@ See [`../grill-sessions/blitz-2026-05-08-2-D5-sms-grill-me.md`](../grill-session
 
 ## Promotion notes
 
-Move to `triaged` when SPI contract sketch + adapter OpenAPI/minimal doc exists. Depends on `CONFIGURATION.md` entries for adapter URL.
+Move to `ready` when SPI contract sketch + adapter OpenAPI/minimal doc exists. Depends on `CONFIGURATION.md` entries for adapter URL.
 
 ## Links
 

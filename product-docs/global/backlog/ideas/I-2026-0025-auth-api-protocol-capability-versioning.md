@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0025`
-- **Status:** `captured`
+- **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-19`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-05-24`
+- **Last reviewed at:** `2026-05-24`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `auth-api`, `mobile`, `admin-api`, `docs`
 
@@ -26,7 +26,7 @@ See [`../grill-sessions/blitz-2026-05-08-2-D7-auth-api-versioning-grill-me.md`](
 
 ## Promotion notes
 
-**Captured** until local-auth or other breaking mobile protocol is ready for design pack.
+**Incubating** until local-auth or other breaking mobile protocol is ready for design pack.
 
 ## Links
 

@@ -136,6 +136,107 @@ When an `I-*` idea has a GitHub issue, the implementation branch follows:
 where `<i-artifact-id-lowercase>` is the full `I-*` identifier with `I` → `i`. Full rules,
 examples, and issue↔branch linking steps: [`github-issues-workflow.md`](github-issues-workflow.md#branch-naming-and-issue-linking).
 
+## Canonical decision recording (three scopes)
+
+Do not mix these destinations. Each scope has one canonical home:
+
+| Scope | Canonical location | Use for |
+|-------|-------------------|---------|
+| **Global product / architecture** | [`../global/architecture-decisions.md`](../global/architecture-decisions.md) | ADRs that apply across modules (protocol, lifecycle, error model, roadmap phase changes). |
+| **Component pack** | `product-docs/components/<pack>/design-decisions.md` | ADRs scoped to one module (Admin API, mobile, Admin UI, …). |
+| **Methodology / process** | [`decisions/YYYY-MM-DD-<slug>.md`](decisions/) | Workflow conventions, artifact formats, collaboration rules — not product behavior. |
+
+There is **no** global `design-decisions.md`. That filename is **component-scoped only**.
+
+When a vision note (`V-*`) or tracer bullet (`TB-*`) reaches `promoted`, its durable substance must live in one or more of the destinations above (or in other global canon such as [`../global/design-principles.md`](../global/design-principles.md), [`../global/features-and-phases.md`](../global/features-and-phases.md), operator guides, or component design notes) — not only inside the orientation artifact.
+
+## Phase tags (backlog and vision metadata)
+
+Phase tags classify **which roadmap phase** an idea primarily serves. They are **not** priority labels (`P0`–`P3` in the backlog) and not informal profile names.
+
+**Closed enumeration** — use only identifiers defined in [`../global/roadmap.md`](../global/roadmap.md):
+
+- `P0-foundations`
+- `P1-operability`
+- `P2-hardening`
+- `P3-distribution`
+- `P4-compliance-readiness`
+
+Rules:
+
+- An artifact may carry **one or more** phase tags when it spans phases.
+- Adding a **new** phase requires updating `roadmap.md`, `features-and-phases.md`, and an ADR entry in `architecture-decisions.md` — not inventing a tag in isolation.
+- Invalid examples (do not use as phase tags): `P3-comfort`, `P2-functional-mode`, `toolchain`, `mobile`.
+
+Authoritative phase definitions: [`../global/roadmap.md`](../global/roadmap.md) and [`../global/features-and-phases.md`](../global/features-and-phases.md).
+
+## Component tags (backlog and vision metadata)
+
+Component tags name **which Ezkey modules or doc surfaces** an idea touches. Prefer the **closed vocabulary** below; align GitHub `component:*` labels with the same tokens (see [`github-issues-workflow.md`](github-issues-workflow.md)).
+
+| Tag | Typical scope |
+|-----|----------------|
+| `core` | Shared domain, persistence, cross-cutting Java modules |
+| `admin-api` | Admin API boot module and controllers |
+| `auth-api` | Auth API boot module |
+| `integration-api` | Integration API boot module |
+| `crypto-api` | Crypto API module |
+| `admin-ui` | Admin UI frontend |
+| `mobile` | Mobile apps (Android / iOS) |
+| `sdk` | Client SDKs (language-agnostic; use `sdk-java` only when Java SDK alone) |
+| `sdk-java` | Java SDK specifically |
+| `infra` | Docker, compose, deployment, HA, observability stack |
+| `bootstrap` | First-run / clean-start bootstrap flows |
+| `audit` | Audit chain, checkpoints, integrity |
+| `repositories` | Data-access / SQL layer concerns |
+| `migration` | Flyway / schema migrations |
+| `docs` | `docs/` hub, operator docs, generated specs workflow |
+| `methodology` | `product-docs/methodology/`, templates, skills mechanics |
+| `skills` | `.cursor/skills/` or equivalent agent skills |
+| `site` | Public static site (`sites/`) |
+
+Rules:
+
+- Use **`docs`**, not `docs (product-docs)` — the parent folder is implied.
+- Adding a **new** tag requires a one-line entry in this table **and** a matching `component:*` label in `github-issues-workflow.md` when GitHub Issues are in use.
+- Prefer the **smallest accurate set** (typically one to four tags).
+
+## Superseded / Supersedes (reformulation, not abandonment)
+
+When an artifact is **`archived`** because its substance was **reformulated** into successor artifact(s) — not because the idea was dropped — record explicit lineage:
+
+- On the **old** artifact: `**Superseded by:**` or `**Superseded:**` with successor ID(s) and one-line reason.
+- On the **successor**: `**Supersedes:**` with predecessor ID(s).
+
+Apply to `V-*`, `I-*`, and `TB-*` when reformulation occurs. Precedent: `V-2026-0002` → `V-2026-0010`.
+
+When an artifact is archived because the idea was **abandoned** or **merged without a named successor**, use `archived` without a supersession line and record rationale in the artifact body.
+
+## Optional automation follow-up (soft convention)
+
+Some backlog ideas note a **future** lightweight skill, check, or registry sync (for example after a manual doc artifact exists). This is optional metadata — not a lifecycle status.
+
+When used, add a short optional section **`## Automation follow-up (optional)`** in the `I-*` file:
+
+- one bullet for the candidate automation (skill name or check type),
+- one bullet for the **trigger** (for example "after registry manually covers all Admin API controllers").
+
+Do not block promotion to `ready` on automation existing. Implement skills separately via normal backlog promotion.
+
+## Corpus completeness audit (blitz and backlog batches)
+
+When verifying that a blitz intake or backlog batch is **fully integrated** (same check repeatable across sessions), confirm:
+
+1. **Archive** — scratch board moved to `blitz-archive/` with materialized ID list in the header (blitz only).
+2. **Materialization** — every captured item has a stable `V-*` / `I-*` / `R-*` or an explicit drop note.
+3. **Grill** — each item has a `grill-sessions/*` file marked `complete`, or a documented deferral in the `I-*` / `V-*`.
+4. **Status alignment** — backlog index and artifact metadata reflect post-grill status (`incubating` / `ready`, not stale `captured`).
+5. **Retrofit slices** — `R-*` status at least `mapped` once the mapping table is filled; `integrated` when all mapped destinations are updated.
+6. **Cross-links** — grill sessions, archives, and canonical spin-offs (matrices, policies, registries) reference each other.
+7. **Supersession** — reformulated visions/items carry `Superseded` / `Supersedes` per convention above.
+
+Gaps found during audit become normal backlog or methodology work — not silent drift.
+
 ## Identifier hygiene (avoid silent duplicates)
 
 For **slug-based identifiers** (`F-*` feature catalog entries, and the slug portion of any artifact filename), check for similar keywords before creating a new entry:

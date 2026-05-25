@@ -18,6 +18,9 @@ Status values follow the [glossary](../glossary.md):
 - `deprecated`
 - `removed`
 
+Backlog **phase tags** on `I-*` / `V-*` metadata use the same phase identifiers (`P0-foundations` …
+`P4-compliance-readiness`) — see [`../methodology/nomenclature.md`](../methodology/nomenclature.md).
+
 ## Catalog
 
 ### Phase `P0-foundations` — Core Protocol

@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0021`
-- **Status:** `captured`
+- **Status:** `incubating`
 - **Priority:** `P1`
 - **Created at:** `2026-05-19`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-05-24`
+- **Last reviewed at:** `2026-05-24`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `infra`, `core`, `admin-api`, `auth-api`, `integration-api`, `audit`
 
@@ -52,9 +52,13 @@ Produce a global analysis (decision tables + recommendations) of PostgreSQL role
 - Conciliation/remediation flows may require controlled UPDATE on specific non-audit tables; matrix must document exceptions explicitly.
 - Local dev and clean-start must remain frictionless after role split.
 
+## Grilling decisions (2026-05-19)
+
+See [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/integrity-cluster-D4-D6-grill-me.md) (C8).
+
 ## Promotion notes
 
-Move to `triaged` after analysis charter is accepted. Move to `incubating` when the matrix document exists under `docs/` or `product-docs/components/`. Promote to `TB-*` for first implementation slice (audit_log immutability grants + migration role split).
+Move to `ready` when the matrix document exists under `docs/` or `product-docs/components/` and analysis charter is accepted. Promote to `TB-*` for first implementation slice (audit_log immutability grants + migration role split).
 
 ## Links
 

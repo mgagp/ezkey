@@ -130,6 +130,8 @@ A blitz materialization is complete when **all** of the following are true:
 - cross-links between artifacts are in place,
 - the scratch board has been **moved** (not deleted) to `blitz-archive/`,
 - the archived file's header records the list of materialized artifact IDs.
+- after grill sessions are **complete**, backlog and retrofit statuses are aligned: grilled `I-*` at least `incubating` (not stale `captured`); `R-*` at least `mapped` once the mapping table is filled (see checklist point 4–5 in [`nomenclature.md`](nomenclature.md)).
+use the **Corpus completeness audit** checklist in [`nomenclature.md`](nomenclature.md).
 
 ## AI agent rule
 

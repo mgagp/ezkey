@@ -8,8 +8,8 @@
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`
 - **Last reviewed at:** `YYYY-MM-DD`
-- **Phase tags:** `<phase-id>, ...`
-- **Component tags:** `<component>, ...`
+- **Phase tags:** `<phase-id>, ...` — closed list: `P0-foundations` … `P4-compliance-readiness` (see [`../methodology/nomenclature.md`](../methodology/nomenclature.md))
+- **Component tags:** `<component>, ...` — prefer closed vocabulary (`admin-api`, `docs`, …); see nomenclature
 - **Lane:** `A` / `B` / `C`
 - **GitHub issue:** `#NNN` _(optional)_
 
@@ -39,6 +39,13 @@ One short paragraph describing the expected product outcome.
 ## Promotion notes
 
 Conditions to move this idea to `ready` and create a tracer bullet.
+
+## Automation follow-up (optional)
+
+_Omit this section unless a future skill or lightweight check is worth recording._
+
+- **Candidate:** _(skill or check name)_
+- **Trigger:** _(when it becomes worth building — e.g. after manual artifact covers full scope)_
 
 ## Links
 

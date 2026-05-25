@@ -5,9 +5,11 @@ workflow conventions, naming schemes, artifact formats, and collaboration patter
 
 ## Purpose
 
-These are not product architecture decisions (those live as ADRs in `docs/`) and not product vision
-notes (those live in `product-docs/global/vision/`). They are decisions about the **process and
-tooling** that govern how the team and AI agents work together.
+These are not product architecture decisions (those live in
+[`../../global/architecture-decisions.md`](../../global/architecture-decisions.md) and component
+`design-decisions.md` files) and not product vision notes (those live in
+`product-docs/global/vision/`). They are decisions about the **process and tooling** that govern
+how the team and AI agents work together.
 
 Methodology decisions serve as institutional memory for the practice itself. Without them, the
 rationale for non-obvious rules gets lost between sessions and the same questions get re-debated
@@ -31,7 +33,9 @@ No counter, no global index needed. One file per decision.
 - A task or backlog item (use `I-*`).
 - A product vision note (use `V-*`).
 - A session summary or plan incubation artifact (use blitz archive or `plans/`).
-- An architecture or product design decision (use ADRs in `docs/`).
+- An architecture or product design decision (use
+  [`../../global/architecture-decisions.md`](../../global/architecture-decisions.md) or a
+  component `design-decisions.md`).
 
 ## Structure of a decision file
 

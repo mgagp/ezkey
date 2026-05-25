@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `R-2026-0002`
-- **Status:** `captured`
+- **Status:** `mapped`
 - **Source type:** `plan`
 - **Capture date:** `2026-05-08`
 - **Owner:** product + AI collaboration

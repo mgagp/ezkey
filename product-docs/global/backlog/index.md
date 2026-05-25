@@ -23,20 +23,20 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0013` | Paginated admin screens: functional and operational pertinence review | `incubating` | `P2` | `admin-ui`, `admin-api` | `2026-05-19` |
 | `I-2026-0014` | Paginated screens display strategy: foreign keys vs intelligent joins | `incubating` | `P2` | `admin-ui`, `admin-api`, `audit` | `2026-05-19` |
 | `I-2026-0015` | Business limits on potentially large-volume SQL queries | `incubating` | `P2` | `admin-api`, `auth-api`, `integration-api`, `repositories` | `2026-05-19` |
-| `I-2026-0016` | Methodology hygiene follow-ups (Tier 2 from 2026-05-08 nomenclature pass) | `captured` | `P3` | `docs (product-docs)`, `methodology` | `2026-05-08` |
 | `I-2026-0017` | Profile elaboration template, skill, and per-client document workflow | `captured` | `P1` | `docs (product-docs)`, `methodology`, `skills` | `2026-05-08` |
 | `I-2026-0018` | Profile generator skill: elaboration document to runtime configs | `captured` | `P2` | `docs (product-docs)`, `methodology`, `skills`, `infra` | `2026-05-08` |
 | `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
-| `I-2026-0021` | PostgreSQL application role and table permissions matrix | `captured` | `P1` | `infra`, `core`, `admin-api`, `auth-api`, `integration-api`, `audit` | `2026-05-19` |
-| `I-2026-0022` | Admin API scheduled jobs catalog (living document) | `captured` | `P2` | `admin-api`, `docs` | `2026-05-19` |
-| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `captured` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-19` |
-| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `captured` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-19` |
-| `I-2026-0025` | Auth API protocol capability versioning | `captured` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-19` |
+| `I-2026-0021` | PostgreSQL application role and table permissions matrix | `incubating` | `P1` | `infra`, `core`, `admin-api`, `auth-api`, `integration-api`, `audit` | `2026-05-24` |
+| `I-2026-0022` | Admin API scheduled jobs catalog (living document) | `incubating` | `P2` | `admin-api`, `docs` | `2026-05-24` |
+| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
+| `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
+| `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
 
 ## Recently completed
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-0016` | Methodology hygiene follow-ups (Tier 2 from 2026-05-08 nomenclature pass) | `2026-05-24` | Closed Tier 2 items E–K: decision recording scopes, phase/component tags, superseded links, optional automation follow-up, corpus completeness audit checklist. Decision record `2026-05-24-artifact-tagging-canonization-conventions.md`. |
 | `I-2026-05-24-admin-ui-vite8-upgrade` | Admin UI Vite 8 upgrade | `2026-05-24` | Delivered via PR #154 / TB-2026-05-24: Vite 8, Vitest 4, Tailwind 4.2.2+, plugin-react v6; Rolldown demo DCE fix in `demo-mode.ts`. First Lane A toolchain chore with GitHub issue workflow. |
 | `I-2026-0026` | OpenAPI exposure and API portal posture | `2026-05-22` | Delivered through `TB-2026-0003`: public API portal on `ezkey.org`, `ReDoc CE` pinning, `Integration API` spec publication path, and first prod-like raw-doc hardening on `EXP1`. |
 
