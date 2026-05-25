@@ -42,7 +42,7 @@ flowchart LR
 ### 2. Global ↔ component linking is mandatory
 
 - Every **component feature entry** references its global counterpart in [`global/features-and-phases.md`](global/features-and-phases.md).
-- Every **global feature entry** lists the component pack(s) that implement it.
+- Every **global feature entry** lists the component pack(s) that implement it when a pack exists.
 - Every **architecture decision** lists the affected components (by pack link) and the features it touches.
 
 ### 3. Spec-test traceability is not optional
@@ -83,7 +83,7 @@ flowchart LR
 ## Content Ownership Map
 
 | Concept | Canonical location |
-|---------|--------------------|
+| ------- | ------------------ |
 | Product intent, thesis, audience | [`global/product-intent.md`](global/product-intent.md) |
 | Roadmap and phases | [`global/roadmap.md`](global/roadmap.md) |
 | Feature catalog | [`global/features-and-phases.md`](global/features-and-phases.md) |
@@ -113,11 +113,11 @@ flowchart LR
 
 1. Pick the right phase in [`global/roadmap.md`](global/roadmap.md) (or add one through an ADR).
 2. Add an entry in [`global/features-and-phases.md`](global/features-and-phases.md) using the short format and link to the affected component pack(s).
-3. In the component pack, add:
-   - A workflow entry in `functional-flows.md` via the [functional workflow template](templates/functional-workflow.template.md).
-   - A mapping entry in `api-and-boundary-mappings.md` when a boundary is crossed.
-   - An error entry in `exception-and-error-model.md` when new failure modes appear.
-   - An entry in the component `spec-test-traceability.md`.
+3. If the feature creates or changes durable component-local truth, update the relevant component pack in the same change set:
+    - Add a workflow entry in `functional-flows.md` via the [functional workflow template](templates/functional-workflow.template.md) when a workflow changes.
+    - Add a mapping entry in `api-and-boundary-mappings.md` when a boundary is crossed.
+    - Add an error entry in `exception-and-error-model.md` when new failure modes appear.
+    - Add an entry in the component `spec-test-traceability.md` when feature evidence changes.
 4. Add or update the corresponding row in [`global/spec-test-traceability.md`](global/spec-test-traceability.md) if the feature affects product-level coverage.
 
 ### Recording a new decision
@@ -159,7 +159,7 @@ Phase 1 established the corpus skeleton and seeded it with minimal concrete cont
 - **Codebase re-discovery** to uncover undocumented decisions, mappings, and workflows.
 - **Validation** of reconstructed material with the product owner before marking it as current truth.
 - **Expanded traceability** so that every active feature has explicit acceptance criteria and verifying tests.
-- **Additional component packs** for Auth API, Integration API, Core, Core Security, SDK, CLI, Docker stack, and the public site.
+- **Additional component packs** for Auth API, Integration API, Core, Core Security, SDK, CLI, Docker stack, and the public site when they meet the instantiation threshold in [`components/README.md`](components/README.md).
 
 Phase 2 keeps the same rules as Phase 1 — the change is in coverage, not in governance.
 

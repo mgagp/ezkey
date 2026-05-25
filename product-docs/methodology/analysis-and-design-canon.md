@@ -16,6 +16,7 @@ Use only what adds signal for the change:
 - functional workflows (nominal and exception paths),
 - sequence diagrams,
 - decision tables,
+- finite-state models,
 - mapping matrices,
 - lifecycle and persistence notes,
 - component-level design decisions.
@@ -34,9 +35,26 @@ For each affected component:
 - define local responsibilities,
 - define inbound/outbound boundaries,
 - define validation and error behavior,
+- decide whether a decision table, finite-state model, mapping matrix, or lifecycle note is the
+  clearest representation of the component-local behavior,
 - define test evidence.
 
 Then link these component views into a global feature view.
+
+## Component projection checkpoint
+
+During Analyze and Design, component artifacts are created only when they put the right value in
+the right format and location. Ask:
+
+- Does the component behavior branch enough to need a decision table?
+- Does the component carry lifecycle or eligibility states that need a finite-state model?
+- Does the change cross API, DTO, domain, storage, or UI state boundaries that need a mapping
+  matrix?
+- Does the resulting artifact describe durable component-local truth that should be integrated
+  into `product-docs/components/<pack>/`?
+
+If yes, create the artifact close to the impacted component pack and link it back to the global
+feature or tracer bullet. If no, keep the analysis in the feature or tracer-bullet context.
 
 ## Practical rigor rule
 

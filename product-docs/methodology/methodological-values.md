@@ -11,6 +11,10 @@ adding ceremony for its own sake.
 Use these values when a process choice is ambiguous: whether to create a living document, close a
 blitz, promote an idea, add a skill, run another gate, or stop and pivot.
 
+They also apply inside ordinary feature work. When analysis reveals a possible artifact, skill, or
+component-pack update, use the values to decide whether it adds clarity and integrity or merely
+adds ceremony.
+
 ## Core Values
 
 ### 1. Proportional rigor
