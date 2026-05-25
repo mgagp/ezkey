@@ -18,6 +18,21 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    groups:
+      admin-ui-eslint:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "eslint-plugin-*"
+      admin-ui-typescript:
+        patterns:
+          - "typescript"
+          - "typescript-eslint"
+      admin-ui-vite:
+        patterns:
+          - "vite"
+          - "vitest"
+          - "@vitejs/*"
 
   - package-ecosystem: "npm"
     directory: "/ezkey-sdk/javascript"
