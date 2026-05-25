@@ -67,9 +67,30 @@ function Apply-Replacements {
     )
 
     $result = $Text
-    foreach ($pair in $Pairs) {
-        $result = $result.Replace([string]$pair[0], [string]$pair[1])
+  if ($Pairs.Count -eq 0) {
+    return $result
+  }
+
+  $pendingOld = $null
+  foreach ($entry in $Pairs) {
+    $isNestedPair = (
+      (($entry -is [array]) -or ($entry -is [System.Collections.IList])) -and
+      -not ($entry -is [string]) -and
+      $entry.Count -ge 2)
+
+    if ($isNestedPair) {
+      $result = $result.Replace([string]$entry[0], [string]$entry[1])
+      continue
     }
+
+    if ($null -eq $pendingOld) {
+      $pendingOld = [string]$entry
+    } else {
+      $result = $result.Replace($pendingOld, [string]$entry)
+      $pendingOld = $null
+    }
+  }
+
     return $result
 }
 
@@ -612,6 +633,109 @@ $frMainBlock = $rx::Replace(
   '    </p>',
   $rxOpts)
 
+$frCopyPairs = @(
+  @(('draft ' + $arrow + ' under-review ' + $arrow + ' promoted / archived'), ('brouillon ' + $arrow + ' en revue ' + $arrow + ' promu / archiv&eacute;')),
+  @(('captured ' + $arrow + ' triaged ' + $arrow + ' incubating ' + $arrow + ' ready ' + $arrow + ' active ' + $arrow + ' done / parked / archived / dropped'), ('captur&eacute;e ' + $arrow + ' tri&eacute;e ' + $arrow + ' en incubation ' + $arrow + ' pr&ecirc;te ' + $arrow + ' active ' + $arrow + ' termin&eacute;e / mise en attente / archiv&eacute;e / abandonn&eacute;e')),
+  @(('captured ' + $arrow + ' mapped ' + $arrow + ' integrated ' + $arrow + ' archived'), ('captur&eacute;e ' + $arrow + ' cartographi&eacute;e ' + $arrow + ' int&eacute;gr&eacute;e ' + $arrow + ' archiv&eacute;e')),
+  @('Non-canonical ' + $emDash + ' materialized into V-*/I-*/TB-*', 'Non canonique ' + $emDash + ' mat&eacute;rialis&eacute; en V-*/I-*/TB-*'),
+  @('Active (<code>_</code> prefix) ' + $arrow + ' archived (no prefix, in <code>blitz-archive/</code>)', 'Actif (pr&eacute;fixe <code>_</code>) ' + $arrow + ' archiv&eacute; (sans pr&eacute;fixe, dans <code>blitz-archive/</code>)'),
+  @('Companion to its Markdown parent ' + $emDash + ' updated with it', 'Compagnon du document Markdown parent ' + $emDash + ' mis &agrave; jour avec lui'),
+  @('free name', 'nom libre'),
+  @('<code>plans/</code> or <code>.cursor/plans/</code>', '<code>plans/</code> ou <code>.cursor/plans/</code>'),
+  @('Blitz intake', 'Capture blitz'),
+  @('V-*, I-*, TB-*, R-* ' + $emDash + ' no cross-branch coordination needed.', 'V-*, I-*, TB-*, R-* ' + $emDash + ' aucune coordination entre branches n&rsquo;est n&eacute;cessaire.'),
+  @('On a feature branch, topic slug is chosen at session start ' + $emDash + ' not the ordinal fallback.', 'Sur une branche de fonctionnalit&eacute;, le slug de sujet est choisi au d&eacute;but de la session ' + $emDash + ' pas par le repli ordinal.'),
+  @('Blitz ' + $emDash + ' feature branch', 'Blitz ' + $emDash + ' branche de fonctionnalit&eacute;'),
+  @('Blitz ' + $emDash + ' main / single-branch', 'Blitz ' + $emDash + ' main / branche unique'),
+  @('<td>Same</td>', '<td>Identique</td>'),
+  @('<em>or</em>', '<em>ou</em>'),
+  @('Must include "Resume at" control block', 'Doit inclure un bloc de reprise &laquo;&nbsp;Resume at&nbsp;&raquo;'),
+  @('The workflow is not only a forward pipeline. Cl&ocirc;ture and audit must also prove where an artifact came from, what canon absorbed it, and whether later decisions changed its meaning.', 'Le flux n&rsquo;est pas seulement un pipeline vers l&rsquo;avant. La cl&ocirc;ture et l&rsquo;audit doivent aussi prouver d&rsquo;o&ugrave; vient un artefact, quel canon l&rsquo;a absorb&eacute; et si des d&eacute;cisions ult&eacute;rieures ont chang&eacute; son sens.'),
+  @('Session grill, open questions, decision pressure points, status alignment.', 'Session grill, questions ouvertes, points de pression d&eacute;cisionnels, alignement des statuts.'),
+  @('<code>ezkey-backlog-triage</code> or <code>ezkey-grill-me</code>', '<code>ezkey-backlog-triage</code> ou <code>ezkey-grill-me</code>'),
+  @('<code>ezkey-grill-me</code> or <code>ezkey-tracer-bullet-promote</code>', '<code>ezkey-grill-me</code> ou <code>ezkey-tracer-bullet-promote</code>'),
+  @('<code>ezkey-component-design-pack</code> and <code>ezkey-test-strategy-planner</code>', '<code>ezkey-component-design-pack</code> et <code>ezkey-test-strategy-planner</code>'),
+  @('<code>ezkey-test-strategy-planner</code>, then <code>ezkey-quality-gatekeeper</code>', '<code>ezkey-test-strategy-planner</code>, puis <code>ezkey-quality-gatekeeper</code>'),
+  @('<code>ezkey-quality-gatekeeper</code>, then traceability after evidence changes.', '<code>ezkey-quality-gatekeeper</code>, puis synchronisation de la tra&ccedil;abilit&eacute; si les preuves changent.'),
+  @('Impl&eacute;menteration after <code>go</code>, or targeted repair after <code>no-go</code>.', 'Impl&eacute;mentation apr&egrave;s <code>go</code>, ou correction cibl&eacute;e apr&egrave;s <code>no-go</code>.'),
+  @('Implementation after <code>go</code>, or targeted repair after <code>no-go</code>.', 'Impl&eacute;mentation apr&egrave;s <code>go</code>, ou correction cibl&eacute;e apr&egrave;s <code>no-go</code>.'),
+  @('<code>ezkey-traceability-sync</code> or <code>ezkey-closeout</code>', '<code>ezkey-traceability-sync</code> ou <code>ezkey-closeout</code>'),
+  @('briefs + mappings', 'notes + cartographies'),
+  @('Mapper dans les docs canoniques', 'Cartographier dans les docs canoniques'),
+  @('patterns et signaux de test', 'sch&eacute;mas r&eacute;currents et signaux de test'),
+  @('Triage, promotion tracer bullet ou design composant.', 'Triage, promotion de tranche t&eacute;moin ou conception de composant.'),
+  @('Intake de vision, triage backlog ou promotion tracer bullet.', 'Prise de vision, triage du backlog ou promotion de tranche t&eacute;moin.'),
+  @('Un tracer bullet, une tranche de fonctionnalit&eacute;, une int&eacute;gration blitz, une tranche retrofit ou un cycle se termine.', 'Une tranche t&eacute;moin, une tranche de fonctionnalit&eacute;, une int&eacute;gration blitz, une tranche de r&eacute;int&eacute;gration ou un cycle se termine.'),
+  @('Le <code>R-*</code> consigne mappings, mises &agrave; jour canoniques, lacunes r&eacute;siduelles et statut d&rsquo;index.', 'Le <code>R-*</code> consigne les cartographies, les mises &agrave; jour canoniques, les lacunes r&eacute;siduelles et le statut d&rsquo;index.'),
+  @('Retrofit historique', 'R&eacute;int&eacute;gration historique'),
+  @('Tranche de retrofit', 'Tranche de r&eacute;int&eacute;gration'),
+  @('Couloir retrofit', 'Couloir de r&eacute;int&eacute;gration'),
+  @('entr&eacute;e de retrofit historique', 'entr&eacute;e de r&eacute;int&eacute;gration historique'),
+  @('Vue riche</h2>', 'Vue enrichie</h2>'),
+  @('Vues riches</h2>', 'Vues enrichies</h2>'),
+  @('M&eacute;thodologie Ezkey Vue riche', 'Vue enrichie de la m&eacute;thodologie Ezkey')
+)
+
+$frMainBlock = Apply-Replacements $frMainBlock $frCopyPairs
+$frFooterBlock = Apply-Replacements $frFooterBlock $frCopyPairs
+
+$frMainBlock = $frMainBlock.Replace('Tracer bullet', 'Tranche t&eacute;moin')
+$frMainBlock = $frMainBlock.Replace('tracer bullet', 'tranche t&eacute;moin')
+$frMainBlock = $frMainBlock.Replace(
+  ('Companion to its Markdown parent ' + $emDash + ' updated with it'),
+  ('Compagnon du document Markdown parent ' + $emDash + ' mis &agrave; jour avec lui'))
+$frMainBlock = $frMainBlock.Replace('Ne pas traiter comme du retrofit sauf si la source est vraiment historique', 'Ne pas traiter comme une r&eacute;int&eacute;gration historique sauf si la source est vraiment historique')
+$frMainBlock = $frMainBlock.Replace('Enregistrer une tranche de retrofit (R-*)', 'Enregistrer une tranche de r&eacute;int&eacute;gration (R-*)')
+$frMainBlock = $frMainBlock.Replace(
+  ('V-*, I-*, TB-*, R-* ' + $emDash + ' no cross-branch coordination needed.'),
+  ('V-*, I-*, TB-*, R-* ' + $emDash + ' aucune coordination entre branches n&rsquo;est n&eacute;cessaire.'))
+$frMainBlock = $frMainBlock.Replace(
+  ('On a feature branch, topic slug is chosen at session start ' + $emDash + ' not the ordinal fallback.'),
+  ('Sur une branche de fonctionnalit&eacute;, le slug de sujet est choisi au d&eacute;but de la session ' + $emDash + ' pas par le repli ordinal.'))
+$frMainBlock = $frMainBlock.Replace(('Blitz ' + $emDash + ' feature branch'), ('Blitz ' + $emDash + ' branche de fonctionnalit&eacute;'))
+$frMainBlock = $frMainBlock.Replace(('Blitz ' + $emDash + ' main / single-branch'), ('Blitz ' + $emDash + ' main / branche unique'))
+$frMainBlock = $frMainBlock.Replace('grill, retrofit ou impl&eacute;mentation', 'grill, r&eacute;int&eacute;gration ou impl&eacute;mentation')
+$frMainBlock = $frMainBlock.Replace('fronti&egrave;res composant, mappings, validations', 'fronti&egrave;res composant, cartographies, validations')
+$frMainBlock = $frMainBlock.Replace('Markdown-first', 'Markdown d&rsquo;abord')
+$frMainBlock = $frMainBlock.Replace('Vue riche</h2>', 'Vue enrichie</h2>')
+$frMainBlock = $frMainBlock.Replace('Vues riches</h2>', 'Vues enrichies</h2>')
+$frNavBlock = $frNavBlock.Replace('Vues riches', 'Vues enrichies')
+$frFooterBlock = $frFooterBlock.Replace('M&eacute;thodologie Ezkey Vue riche', 'Vue enrichie de la m&eacute;thodologie Ezkey')
+
+$frMainBlock = $frMainBlock.Replace(('Non-canonical ' + $emDash + ' materialized into V-*/I-*/TB-*'), ('Non canonique ' + $emDash + ' mat&eacute;rialis&eacute; en V-*/I-*/TB-*'))
+$frMainBlock = $frMainBlock.Replace(('Active (<code>_</code> prefix) ' + $arrow + ' archived (no prefix, in <code>blitz-archive/</code>)'), ('Actif (pr&eacute;fixe <code>_</code>) ' + $arrow + ' archiv&eacute; (sans pr&eacute;fixe, dans <code>blitz-archive/</code>)'))
+$frMainBlock = $frMainBlock.Replace('premi&egrave;re coupe', 'premier d&eacute;coupage')
+$frMainBlock = $frMainBlock.Replace('IDs date+slug obligatoires', 'Identifiants date+slug obligatoires')
+$frMainBlock = $frMainBlock.Replace('pas par le repli ordinal', 'pas par la num&eacute;rotation ordinale de secours')
+$frMainBlock = $frMainBlock.Replace('Le signal historique extrait doit &ecirc;tre mapp&eacute; vers les destinations canoniques.', 'Le signal historique extrait doit &ecirc;tre cartographi&eacute; vers les destinations canoniques.')
+$frMainBlock = $frMainBlock.Replace('impacts docs nomm&eacute;s.', 'impacts documentaires nomm&eacute;s.')
+$frMainBlock = $frMainBlock.Replace('les specs,', 'les sp&eacute;cifications,')
+$frMainBlock = $frMainBlock.Replace('action suivante ou supersession.', 'action suivante ou remplacement.')
+$frMainBlock = $frMainBlock.Replace('la source vit d&eacute;j&agrave; dans le canon courant.', 'la source fait d&eacute;j&agrave; partie du canon courant.')
+$frMainBlock = $frMainBlock.Replace('Pattern de chemin', 'Mod&egrave;le de chemin')
+$frMainBlock = $frMainBlock.Replace('Docs globaux', 'Documents globaux')
+$frMainBlock = $frMainBlock.Replace('SVG inline', 'SVG int&eacute;gr&eacute;s')
+$frMainBlock = $frMainBlock.Replace('Int&eacute;grer tous les styles et SVG int&eacute;gr&eacute;s.', 'Int&eacute;grer tous les styles et tous les SVG.')
+$frMainBlock = $frMainBlock.Replace('m&ecirc;me changeset', 'm&ecirc;me ensemble de changements')
+$frMainBlock = $frMainBlock.Replace('Vue riche](view/', 'Vue enrichie](view/')
+$frMainBlock = $frMainBlock.Replace('Vue riche](view', 'Vue enrichie](view')
+$frMainBlock = $frMainBlock.Replace('Vue riche', 'Vue enrichie')
+$frMainBlock = $frMainBlock.Replace('vue riche', 'vue enrichie')
+$frMainBlock = $frMainBlock.Replace('vues riches', 'vues enrichies')
+$frFooterBlock = $frFooterBlock.Replace('Vue riche', 'Vue enrichie')
+$frFooterBlock = $frFooterBlock.Replace('vue riche', 'vue enrichie')
+
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="traceability">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="traceability">' + "`n" +
+  '    <h2>Tra&ccedil;abilit&eacute; bidirectionnelle</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Le flux n&rsquo;est pas seulement un pipeline vers l&rsquo;avant. La cl&ocirc;ture et l&rsquo;audit doivent aussi prouver' + "`n" +
+  '      d&rsquo;o&ugrave; vient un artefact, quel canon l&rsquo;a absorb&eacute; et si des d&eacute;cisions ult&eacute;rieures ont chang&eacute; son sens.' + "`n" +
+  '    </p>',
+  $rxOpts)
+
 $outputFr = @"
 <!DOCTYPE html>
 <!-- Source: product-docs/methodology/view/index.html @ $syncDate -->
@@ -620,20 +744,20 @@ $outputFr = @"
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="$descriptionFr">
-  <meta property="og:title" content="M&eacute;thodologie Ezkey &mdash; Vue riche">
+  <meta property="og:title" content="M&eacute;thodologie Ezkey &mdash; Vue enrichie">
   <meta property="og:description" content="$descriptionFr">
   <meta property="og:url" content="https://ezkey.org/fr/methodologie.html">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Ezkey">
   <meta property="og:locale" content="fr_FR">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="M&eacute;thodologie Ezkey &mdash; Vue riche">
+  <meta name="twitter:title" content="M&eacute;thodologie Ezkey &mdash; Vue enrichie">
   <meta name="twitter:description" content="$descriptionFr">
   <meta name="twitter:image" content="https://ezkey.org/logo.svg">
   <link rel="alternate" hreflang="en" href="https://ezkey.org/methodology.html">
   <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/methodologie.html">
   <link rel="alternate" hreflang="x-default" href="https://ezkey.org/methodology.html">
-  <title>M&eacute;thodologie Ezkey &mdash; Vue riche</title>
+  <title>M&eacute;thodologie Ezkey &mdash; Vue enrichie</title>
   <style>
 $siteShellCss
     /* Canonical styles (from product-docs/methodology/view/index.html) */
