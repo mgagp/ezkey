@@ -120,6 +120,5 @@ class AuthManager:
       log.error("Wait for challenge failed: %s", e)
       return None
   def logout(self) -> None:
-    """Clear current session."""
-    self.session_manager.clear_session()
-    log.debug("User logged out")
+    """No-op: callers clear persisted tokens via ConfigManager."""
+    log.debug("AuthManager logout (token cleared by ConfigManager at call site)")

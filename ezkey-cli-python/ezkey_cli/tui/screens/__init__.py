@@ -8,7 +8,6 @@ TUI Module: Screens package
 Description: Textual screens for admin console
 """
 
-from .auth import AuthScreen
 from .home import HomeScreen
 from .integrations import IntegrationsScreen
 from .integration_detail import IntegrationDetailScreen
@@ -51,7 +50,6 @@ from .crypto_encrypt import CryptoEncryptScreen
 from .crypto_decrypt import CryptoDecryptScreen
 
 __all__ = [
-    "AuthScreen",
     "HomeScreen",
     "IntegrationsScreen",
     "IntegrationDetailScreen",

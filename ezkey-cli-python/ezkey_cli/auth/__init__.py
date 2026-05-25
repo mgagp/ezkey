@@ -9,6 +9,5 @@ Description: Shared authentication layer for CLI and TUI modes
 """
 
 from .auth_manager import AuthManager
-from .login_wizard import LoginWizard
 
-__all__ = ["AuthManager", "LoginWizard"]
+__all__ = ["AuthManager"]

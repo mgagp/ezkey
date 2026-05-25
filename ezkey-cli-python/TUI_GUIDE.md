@@ -743,39 +743,31 @@ The API client handles both automatically - no TUI code changes needed.
 
 ```bash
 cd ezkey-cli-python
-pytest tests/test_tui_foundation.py -v
+pip install -e .
+pip install -r requirements-test.txt
+pytest tests/unit/ -v
 ```
 
-### Integration Tests
+TUI smoke tests: `tests/unit/test_tui_smoke.py` (imports, `ConfigManager` bearer token, legacy migration, mocked `AuthManager`).
+
+### Integration Tests (CLI, not TUI UI)
 
 ```bash
-# Ensure Docker stack is running
-cd docker
-docker compose up -d
-
-# Run TUI integration tests
-cd ../ezkey-cli-python
-pytest tests/integration/test_tui_*.py -v
+# Ensure Docker stack is running (clean-start)
+cd ezkey-cli-python
+pytest tests/integration/ -v
 ```
 
-### Manual Testing Checklist
+There is no automated Textual/TUI integration suite yet; use the manual checklist below against a running stack.
 
-- [ ] Install and verify dependencies work
-- [ ] Run unit tests (all should pass)
-- [ ] Test `ezkey --help` shows --tui option
-- [ ] Test `ezkey --tui` runs without errors
-- [ ] Create integration (fill form, click Create)
-- [ ] Verify integration appears in list
-- [ ] Open detail screen (Enter on row)
-- [ ] Refresh details (press 'r')
-- [ ] Filter by name (press 'f', enter "ACME", click Apply)
-- [ ] Verify filtered results
-- [ ] Clear filter (press 'f', click Clear)
-- [ ] Delete integration (press 'd', confirm)
-- [ ] Verify integration removed from list
-- [ ] Navigate pages (press 'n' and 'p')
-- [ ] Return to home (press 'h')
-- [ ] Quit application (press 'q')
+### Manual TUI checklist (read-only — see TUI_SCOPE.md)
+
+- [ ] `ezkey --help` shows `--tui`
+- [ ] `ezkey --tui` starts; passwordless login succeeds
+- [ ] Dashboard loads (overview stats)
+- [ ] Each in-scope area: Audit logs, Auth attempts, Enrollments, Integrations, Tenants — list, filter, detail, refresh
+- [ ] Logout clears session and exits cleanly
+- [ ] Re-open TUI: quick re-auth when username is stored and token expired
 
 ---
 

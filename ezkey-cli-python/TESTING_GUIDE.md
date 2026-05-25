@@ -41,17 +41,15 @@ The project has **two distinct functional test suites**:
 ```
 ezkey-cli-python/
 ├── tests/
+│   ├── unit/
+│   │   ├── test_pagination_utils.py   # Pagination helpers (CLI + TUI lists)
+│   │   └── test_tui_smoke.py          # TUI imports, config token, AuthManager mocks
 │   ├── integration/
-│   │   ├── conftest.py           # Shared fixtures (Docker stack setup)
-│   │   ├── test_admin_api.py     # Admin API commands
-│   │   ├── test_auth_api.py      # Auth API commands  
-│   │   ├── test_crypto_api.py    # Crypto API commands
-│   │   └── test_workflows.py     # End-to-end workflows
-│   ├── fixtures/
-│   │   ├── test_data.json        # Test data templates
-│   │   └── cleanup.sh            # Cleanup script (idempotent)
-│   └── test_tui_foundation.py    # TUI foundation tests
-└── pytest.ini                    # pytest configuration
+│   │   ├── conftest.py                # Shared fixtures (Docker stack setup)
+│   │   ├── test_admin_api_basic.py    # Admin API CLI smoke
+│   │   └── test_bootstrap_extraction.py
+│   └── util/                          # Test helpers (docker, database, bootstrap)
+└── pytest.ini                         # Default discovery: tests/integration
 ```
 
 ---
@@ -401,7 +399,18 @@ def test_list_integrations():
 
 ## Running Tests
 
-### Manual Execution (After Upgrade)
+### Unit tests (no Docker)
+
+```bash
+cd ezkey-cli-python
+pip install -e .
+pip install -r requirements-test.txt
+pytest tests/unit/ -v
+```
+
+TUI-related unit coverage lives in `tests/unit/test_tui_smoke.py` (imports, bearer token config, legacy migration, mocked `AuthManager`).
+
+### Manual Execution — integration (after upgrade)
 
 ```bash
 # Ensure Docker stack is running

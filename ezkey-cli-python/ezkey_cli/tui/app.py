@@ -20,7 +20,6 @@ from typing import Optional
 
 from ..config import ConfigManager
 from .screens import (
-  AuthScreen,
   HomeScreen,
   IntegrationsScreen,
   EnrollmentsScreen,
