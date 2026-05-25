@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Create complementary component-level design slices that align to one global feature or tracer bullet.
 
+## Boundary contract
+
+- **Enter when:** a `TB-*` or feature scope touches component boundaries, mappings, validations, or error behavior.
+- **Exit when:** each impacted component has local responsibilities, boundaries, contracts, tests, and doc impact named.
+- **Call next:** `ezkey-test-strategy-planner`, then `ezkey-quality-gatekeeper` before implementation.
+- **Not needed when:** the change is local, internal, and does not alter component responsibilities or observable behavior.
+
 ## Inputs
 
 - `TB-*` or feature scope

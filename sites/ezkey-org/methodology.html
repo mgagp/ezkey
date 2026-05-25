@@ -1,22 +1,26 @@
 <!DOCTYPE html>
-<!-- Source: product-docs/methodology/view/index.html @ 2026-05-24 -->
+<!-- Source: product-docs/methodology/view/index.html @ 2026-05-25 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Visual reference for the ideation-to-delivery workflow &mdash; from raw idea to closed feature, with artifact types, parallel lanes, naming conventions, and skills.">
+  <meta name="description" content="Visual reference for the ideation-to-delivery workflow, methodological values, artifact types, state boundaries, traceability, and skills.">
   <meta property="og:title" content="Ezkey Methodology &mdash; Rich View">
-  <meta property="og:description" content="Visual reference for the ideation-to-delivery workflow &mdash; from raw idea to closed feature.">
+  <meta property="og:description" content="Visual reference for the ideation-to-delivery workflow, methodological values, artifact types, state boundaries, traceability, and skills.">
   <meta property="og:url" content="https://ezkey.org/methodology.html">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Ezkey">
   <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Ezkey Methodology &mdash; Rich View">
+  <meta name="twitter:description" content="Visual reference for the ideation-to-delivery workflow, methodological values, artifact types, state boundaries, traceability, and skills.">
+  <meta name="twitter:image" content="https://ezkey.org/logo.svg">
   <link rel="alternate" hreflang="en" href="https://ezkey.org/methodology.html">
   <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/methodologie.html">
   <link rel="alternate" hreflang="x-default" href="https://ezkey.org/methodology.html">
   <title>Ezkey Methodology &mdash; Rich View</title>
   <style>
-    /* â”€â”€ Site shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* Site shell */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -47,7 +51,7 @@
       .shell { padding: 0 12px 48px; }
       .site-card { border-radius: 12px; }
     }
-    /* â”€â”€ Canonical styles (from product-docs/methodology/view/index.html) â”€â”€ */
+    /* Canonical styles (from product-docs/methodology/view/index.html) */
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -450,6 +454,120 @@
 
     .collab-rule strong { color: var(--text); display: block; margin-bottom: 2px; font-size: 0.78rem; }
 
+    /* ── Methodological values ───────────────────────────────── */
+    .values-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 12px;
+    }
+
+    .value-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-top: 3px solid var(--blue);
+      padding: 15px 16px 16px;
+    }
+
+    .value-card:nth-child(2) { border-top-color: var(--teal); }
+    .value-card:nth-child(3) { border-top-color: var(--amber); }
+    .value-card:nth-child(4) { border-top-color: var(--violet); }
+    .value-card:nth-child(5) { border-top-color: var(--indigo); }
+    .value-card:nth-child(6) { border-top-color: var(--green); }
+
+    .value-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+
+    .value-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+      margin-bottom: 10px;
+    }
+
+    .decision-test {
+      font-size: 0.75rem;
+      color: var(--slate);
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 7px 8px;
+      line-height: 1.35;
+    }
+
+    .decision-test strong { color: var(--text); }
+
+    /* ── Bidirectional traceability ───────────────────────────── */
+    .trace-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px 20px;
+    }
+
+    .trace-flow {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 18px;
+    }
+
+    .trace-step {
+      min-width: 150px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 11px;
+    }
+
+    .trace-step-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .trace-step-desc {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      line-height: 1.35;
+    }
+
+    .trace-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .trace-checks {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    .trace-check {
+      font-size: 0.79rem;
+      color: var(--text-secondary);
+      border-left: 3px solid var(--teal);
+      background: #f8fafc;
+      border-radius: 5px;
+      padding: 8px 10px;
+      line-height: 1.4;
+    }
+
+    .trace-check strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+    .boundary-table td { min-width: 150px; }
+    .boundary-table td:first-child { min-width: 190px; }
+
     /* ── SECTION 5 — Rich views ──────────────────────────────────── */
     .criteria-list {
       list-style: none;
@@ -548,7 +666,7 @@
       main { padding: 0 20px 56px; }
     }
   
-    /* â”€â”€ Site palette overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* Site palette overrides */
     :root {
       --blue: #667eea;
       --indigo: #764ba2;
@@ -564,7 +682,6 @@
     .section-intro a { color: #667eea; }
     .lane-a-tag { background: #f0f0ff; border-color: #c4c8f0; color: #5561d4; }
     section > h2 { border-bottom-color: rgba(102,126,234,0.3); }
-    /* Site attribution footer (outside white card â€” on gradient background) */
     footer.site-footer {
       color: rgba(255,255,255,0.75);
       border-top: none;
@@ -587,10 +704,12 @@
   <div class="nav-brand">Ezkey <span>Methodology</span></div>
   <div class="nav-sep"></div>
   <a href="#workflow">Workflow</a>
+  <a href="#values">Values</a>
   <a href="#artifacts">Artifacts</a>
   <a href="#lanes">Lanes</a>
   <a href="#collab">Collab</a>
   <a href="#naming">Naming</a>
+  <a href="#traceability">Traceability</a>
   <a href="#skills">Skills</a>
   <a href="#rich-views">Rich Views</a>
 </nav>
@@ -600,15 +719,59 @@
   <h1>Ezkey Methodology</h1>
   <p class="subtitle">
     Visual reference for the ideation-to-delivery workflow — from raw idea to closed feature,
-    with artifact types, parallel lanes, naming conventions, and skills.
+    with methodological values, artifact types, state boundaries, traceability, and skills.
   </p>
   <div class="meta">
-    <span>Source: product-docs/methodology/README.md</span>
+    <span>Source: Ezkey methodology corpus</span>
     <span>Decision: 2026-05-24-rich-views</span>
-    <span>Updated 2026-05-24</span>
+    <span>Updated 2026-05-25</span>
   </div>
 </header>
 <main>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 0 — METHODOLOGICAL VALUES
+       ════════════════════════════════════════════════════════════ -->
+  <section id="values">
+    <h2>Methodological Values</h2>
+    <p class="section-intro">
+      The canonical values live in the Ezkey methodology corpus.
+      This view keeps the operating tests visible: enough rigor to preserve judgment and traceability,
+      but not enough ceremony to slow simple work.
+    </p>
+    <div class="values-grid">
+      <div class="value-card">
+        <div class="value-title">Proportional rigor</div>
+        <p class="value-desc">Process weight follows uncertainty and risk, not habit or artifact size.</p>
+        <div class="decision-test"><strong>Test:</strong> what concrete risk does this extra step reduce?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Internal integrity</div>
+        <p class="value-desc">Lanes, skills, statuses, and artifacts connect without hidden session memory.</p>
+        <div class="decision-test"><strong>Test:</strong> can a later human or agent resume from here?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Explicit uncertainty</div>
+        <p class="value-desc">Statuses name what is known, what is open, and what confidence the artifact supports.</p>
+        <div class="decision-test"><strong>Test:</strong> does this output expose uncertainty instead of smoothing it over?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Readable state boundaries</div>
+        <p class="value-desc">Every skill has entry, exit, next-step, and fast-path boundaries.</p>
+        <div class="decision-test"><strong>Test:</strong> is the transition clear to a tired human and a cold agent?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Bidirectional traceability</div>
+        <p class="value-desc">Forward links show where work goes; backward links prove why it exists.</p>
+        <div class="decision-test"><strong>Test:</strong> can we navigate both to the source and to the durable outcome?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Earned permanence</div>
+        <p class="value-desc">Living documents, registries, checks, and skills must earn their maintenance cost.</p>
+        <div class="decision-test"><strong>Test:</strong> who updates this, when, and what if it stays stale?</div>
+      </div>
+    </div>
+  </section>
 
   <!-- ════════════════════════════════════════════════════════════
        SECTION 1 — END-TO-END WORKFLOW
@@ -681,7 +844,7 @@
         <div class="phase-card ph7">
           <div class="phase-num">Phase 7</div>
           <div class="phase-name">Gate</div>
-          <div class="phase-action">Apply quality gates: contracts, tests, docs, traceability. Verify mandatory checks before implementation.</div>
+          <div class="phase-action">Apply methodology fit, analysis, design, implementation, and closeout gates. Verify mandatory checks before implementation.</div>
           <span class="phase-badge bg-st">gate report</span>
           <div class="phase-exit">Done when: mandatory quality checks pass.</div>
         </div>
@@ -699,9 +862,9 @@
         <div class="phase-card ph9">
           <div class="phase-num">Phase 9</div>
           <div class="phase-name">Close Out</div>
-          <div class="phase-action">Update feature and traceability docs. Transition backlog and tracer-bullet status. Record session summary.</div>
+          <div class="phase-action">Transition status, record evidence, separate corpus closure from active product backlog, and name residual risk.</div>
           <span class="phase-badge bg-st">status + traceability</span>
-          <div class="phase-exit">Done when: status and traceability updated.</div>
+          <div class="phase-exit">Done when: closure is honest and resumable.</div>
         </div>
 
       </div>
@@ -734,28 +897,28 @@
             <td><code>V-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>global/vision/</code></td>
             <td>Capture / Triage</td>
-            <td>draft → active → superseded</td>
+            <td>draft → under-review → promoted / archived</td>
           </tr>
           <tr>
             <td><span class="ab ab-i">I-*</span>&nbsp; Backlog idea</td>
             <td><code>I-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>global/backlog/ideas/</code></td>
             <td>Capture</td>
-            <td>captured → triaged → incubating → promoted → implemented / deferred / dropped</td>
+            <td>captured → triaged → incubating → ready → active → done / parked / archived / dropped</td>
           </tr>
           <tr>
             <td><span class="ab ab-tb">TB-*</span>&nbsp; Tracer bullet</td>
             <td><code>TB-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>global/backlog/</code></td>
             <td>Promote</td>
-            <td>scoped → in-flight → validating → closed</td>
+            <td>draft → under-review → promoted / archived</td>
           </tr>
           <tr>
             <td><span class="ab ab-r">R-*</span>&nbsp; Retrofit slice</td>
             <td><code>R-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>global/legacy-retrofit/</code></td>
             <td>Retrofit lane</td>
-            <td>pending → mined → mapped → closed</td>
+            <td>captured → mapped → integrated → archived</td>
           </tr>
           <tr>
             <td><span class="ab ab-md">plan</span>&nbsp; Working plan</td>
@@ -776,7 +939,7 @@
             <td><code>&lt;topic&gt;-grill-me.md</code></td>
             <td><code>global/backlog/grill-sessions/</code></td>
             <td>Challenge</td>
-            <td>open → resumed → settled</td>
+            <td>open → resumed → complete, with post-decision notes when superseded</td>
           </tr>
           <tr>
             <td><span class="ab ab-md">dec</span>&nbsp; Methodology decision</td>
@@ -961,88 +1124,156 @@
   </section>
 
   <!-- ════════════════════════════════════════════════════════════
-       SECTION 5 — SKILLS REFERENCE
+       SECTION 5 — BIDIRECTIONAL TRACEABILITY
+       ════════════════════════════════════════════════════════════ -->
+  <section id="traceability">
+    <h2>Bidirectional Traceability</h2>
+    <p class="section-intro">
+      The workflow is not only a forward pipeline. Closeout and audit must also prove where an
+      artifact came from, what canon absorbed it, and whether later decisions changed its meaning.
+    </p>
+    <div class="trace-panel">
+      <div class="trace-flow" aria-label="Forward traceability path">
+        <div class="trace-step">
+          <div class="trace-step-title">Source</div>
+          <div class="trace-step-desc">Raw idea, blitz archive, working plan, historical plan, or verbal briefing.</div>
+        </div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-step">
+          <div class="trace-step-title">Materialization</div>
+          <div class="trace-step-desc"><code>V-*</code>, <code>I-*</code>, <code>R-*</code>, or documented drop with rationale.</div>
+        </div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-step">
+          <div class="trace-step-title">Challenge</div>
+          <div class="trace-step-desc">Grill session, open questions, decision pressure points, status alignment.</div>
+        </div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-step">
+          <div class="trace-step-title">Canon</div>
+          <div class="trace-step-desc">ADR, methodology decision, policy output, component pack, or traceability matrix.</div>
+        </div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-step">
+          <div class="trace-step-title">Closeout</div>
+          <div class="trace-step-desc">Status transition, evidence, residual risk, next action, or supersession.</div>
+        </div>
+      </div>
+
+      <div class="trace-checks">
+        <div class="trace-check"><strong>Backward audit</strong> Can this closeout navigate back to the source and materialized artifacts?</div>
+        <div class="trace-check"><strong>Status alignment</strong> Do indexes and artifact metadata agree after grill, retrofit, or implementation?</div>
+        <div class="trace-check"><strong>Current truth</strong> Are post-decision notes and supersession links present when history changed?</div>
+        <div class="trace-check"><strong>Honest closure</strong> Is corpus integration separated from still-active product backlog work?</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 6 — SKILLS REFERENCE
        ════════════════════════════════════════════════════════════ -->
   <section id="skills">
-    <h2>Skills Reference</h2>
+    <h2>Skill Boundary Contracts</h2>
     <p class="section-intro">
-      Invoke skills by name at the start of a session. See quick-start prompts in
-      <a href="../README.md" style="color: var(--blue); text-decoration: none;">methodology/README.md</a>.
+      Each skill answers the same four questions: enter when, exit when, call next, and not needed
+      when. The canonical skill text lives under <code>.cursor/skills/</code>; this table is the
+      fast navigation surface.
     </p>
     <div class="table-wrap">
-      <table>
+      <table class="boundary-table">
         <thead>
           <tr>
             <th>Skill</th>
-            <th>When to invoke</th>
-            <th>Primary output</th>
+            <th>Enter when</th>
+            <th>Exit when</th>
+            <th>Call next</th>
+            <th>Not needed when</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td><code>ezkey-vision-intake</code></td>
-            <td>New raw idea entering the system</td>
-            <td>V-* vision note</td>
+            <td>Strategic direction, product intent, or early feature ideas arrive.</td>
+            <td>Durable direction is captured as <code>V-*</code> or initial <code>I-*</code> with next step.</td>
+            <td><code>ezkey-backlog-triage</code> or <code>ezkey-grill-me</code></td>
+            <td>The idea is already a bounded implementation slice.</td>
           </tr>
           <tr>
             <td><code>ezkey-backlog-triage</code></td>
-            <td>After vision-intake; classify and prioritize</td>
-            <td>Classified I-* backlog idea</td>
+            <td>An <code>I-*</code> exists or a vision note has actionable scope.</td>
+            <td>Scope, non-scope, priority, status, tags, risks, and posture are explicit.</td>
+            <td><code>ezkey-grill-me</code> or <code>ezkey-tracer-bullet-promote</code></td>
+            <td>The item is still pure orientation or already fully scoped.</td>
           </tr>
           <tr>
             <td><code>ezkey-grill-me</code></td>
-            <td>Before design lock-in; stress-test assumptions</td>
-            <td>Risks, options, critical questions</td>
+            <td>Assumptions, exception paths, lifecycle effects, or boundary risks need pressure.</td>
+            <td>Risks, open questions, decision pressure points, and clarifications are explicit.</td>
+            <td>Triage, tracer-bullet promotion, or component design.</td>
+            <td>The change is low-risk, bounded, and has known validation criteria.</td>
           </tr>
           <tr>
             <td><code>ezkey-plan-incubation</code></td>
-            <td>Freeform exploration before canonical capture</td>
-            <td>Working plan → V-*/I-*/TB-*</td>
+            <td>The operator starts from a current-session working plan.</td>
+            <td>Durable signal is classified for <code>V-*</code>, <code>I-*</code>, <code>TB-*</code>, principle adoption, or mix.</td>
+            <td>Vision intake, backlog triage, or tracer-bullet promotion.</td>
+            <td>The source is historical retrofit input or a direct implementation task.</td>
           </tr>
           <tr>
             <td><code>ezkey-tracer-bullet-promote</code></td>
-            <td>Direction decided; ready for bounded execution</td>
-            <td>TB-* tracer bullet brief</td>
+            <td>An <code>I-*</code> is <code>ready</code> and needs a bounded vertical slice.</td>
+            <td>The <code>TB-*</code> has posture, scope, boundaries, exclusions, and evidence criteria.</td>
+            <td><code>ezkey-component-design-pack</code> and <code>ezkey-test-strategy-planner</code></td>
+            <td>The item lacks direction, or the change is a tiny code/doc fix.</td>
           </tr>
           <tr>
             <td><code>ezkey-component-design-pack</code></td>
-            <td>Preparing component-level design for impacted boundaries</td>
-            <td>Design briefs, boundary maps, decision tables</td>
+            <td>A scope touches component boundaries, mappings, validations, or error behavior.</td>
+            <td>Impacted components have responsibilities, contracts, tests, and doc impact named.</td>
+            <td><code>ezkey-test-strategy-planner</code>, then <code>ezkey-quality-gatekeeper</code></td>
+            <td>The change is local, internal, and not observable at a boundary.</td>
           </tr>
           <tr>
             <td><code>ezkey-test-strategy-planner</code></td>
-            <td>Before implementation; select test layers</td>
-            <td>Test plan slice</td>
+            <td>A change has known risks and needs explicit test-layer selection.</td>
+            <td>Minimum, optional, deferred, and rejected test layers are justified.</td>
+            <td><code>ezkey-quality-gatekeeper</code>, then traceability after evidence changes.</td>
+            <td>The change is purely editorial.</td>
           </tr>
           <tr>
             <td><code>ezkey-quality-gatekeeper</code></td>
-            <td>Before close-out; verify quality gates</td>
-            <td>Gate report</td>
+            <td>Work moves from analysis to execution, or execution to closeout.</td>
+            <td>The gate returns <code>go</code> or <code>no-go</code> with blockers and follow-up actions.</td>
+            <td>Implementation after <code>go</code>, or targeted repair after <code>no-go</code>.</td>
+            <td>The task is trivial and has no analysis, contract, test, or traceability impact.</td>
           </tr>
           <tr>
             <td><code>ezkey-traceability-sync</code></td>
-            <td>Close-out; update cross-references and status</td>
-            <td>Updated artifact references</td>
+            <td>Feature status, behavior, specs, tests, or validation evidence changed.</td>
+            <td>Global and component traceability documents reflect current evidence and gaps.</td>
+            <td><code>ezkey-closeout</code></td>
+            <td>No observable behavior, contract, status, or validation evidence changed.</td>
           </tr>
           <tr>
             <td><code>ezkey-closeout</code></td>
-            <td>End of session or feature completion</td>
-            <td>Status transitions, session summary</td>
+            <td>A tracer bullet, feature slice, blitz integration, retrofit slice, or cycle is ending.</td>
+            <td>Status transitions, evidence, deferred work, residual risks, and next actions are explicit.</td>
+            <td>No next skill by default; reopen named follow-up work only.</td>
+            <td>The work is still actively changing or required evidence is unavailable.</td>
           </tr>
           <tr>
             <td><code>ezkey-legacy-plan-miner</code></td>
-            <td>Retrofit lane: mining historical plans and verbal briefings</td>
-            <td>R-* input materials</td>
+            <td>Historical plans, verbal history, or ad hoc implementation history contain reusable signal.</td>
+            <td>Reusable signal is extracted with confidence and source type.</td>
+            <td><code>ezkey-retrofit-curator</code></td>
+            <td>The source is a current-session working plan.</td>
           </tr>
           <tr>
             <td><code>ezkey-retrofit-curator</code></td>
-            <td>After mining; produce canonical retrofit slices</td>
-            <td>R-* retrofit slices</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-github-issue-promote</code></td>
-            <td>I-* passes "title that stands alone" test; ready for GitHub issue</td>
-            <td>Proposed issue title, body, labels + traceability back-reference</td>
+            <td>Mined historical signal needs mapping into canonical destinations.</td>
+            <td>The <code>R-*</code> records mappings, canonical updates, residual gaps, and index status.</td>
+            <td><code>ezkey-traceability-sync</code> or <code>ezkey-closeout</code></td>
+            <td>No reusable signal exists, or the source already lives in current canon.</td>
           </tr>
         </tbody>
       </table>
@@ -1050,7 +1281,7 @@
   </section>
 
   <!-- ════════════════════════════════════════════════════════════
-       SECTION 6 — RICH VIEWS
+       SECTION 7 — RICH VIEWS
        ════════════════════════════════════════════════════════════ -->
   <section id="rich-views">
     <h2>Rich Views</h2>
@@ -1109,8 +1340,8 @@
 
 </main>
 <footer>
-  Ezkey Methodology Rich View &nbsp;·&nbsp; Last updated 2026-05-24 &nbsp;·&nbsp;
-  Source: product-docs/methodology/README.md
+  Ezkey Methodology Rich View &nbsp;·&nbsp; Last updated 2026-05-25 &nbsp;·&nbsp;
+  Source: Ezkey methodology corpus
   &nbsp;·&nbsp;
   Decision: 2026-05-24-rich-views
 </footer>
@@ -1119,7 +1350,6 @@
     <footer class="site-footer" style="text-align:center;">
       Ezkey &nbsp;&middot;&nbsp; <a href="/">ezkey.org</a>
     </footer>
-
   </div>
 </body>
 </html>

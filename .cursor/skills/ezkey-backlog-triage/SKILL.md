@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Normalize backlog ideas so they are comparable, filterable, and promotion-ready.
 
+## Boundary contract
+
+- **Enter when:** an `I-*` exists or a vision note has enough actionable scope to become one.
+- **Exit when:** scope, non-scope, priority, status, tags, risks, and promotion posture are explicit.
+- **Call next:** `ezkey-grill-me` when uncertainty remains, or `ezkey-tracer-bullet-promote` when `ready`.
+- **Not needed when:** the item is still pure orientation, or the slice is already fully scoped and validated.
+
 ## Inputs
 
 - `I-*` idea entry

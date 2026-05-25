@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Convert free-form ideation into concise, structured artifacts without over-constraining expression.
 
+## Boundary contract
+
+- **Enter when:** the user shares strategic direction, product intent, or early feature ideas.
+- **Exit when:** the durable direction is captured as `V-*` or an initial `I-*` seed with a next step.
+- **Call next:** `ezkey-backlog-triage` for actionable scope, or `ezkey-grill-me` for stress-testing.
+- **Not needed when:** the idea is already a bounded implementation slice ready for `TB-*` planning.
+
 ## Inputs
 
 - Raw idea or direction statement

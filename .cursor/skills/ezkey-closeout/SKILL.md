@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Finalize a work slice so progress remains auditable and easy to resume.
 
+## Boundary contract
+
+- **Enter when:** a `TB-*`, feature slice, blitz integration, retrofit slice, or implementation cycle is ending.
+- **Exit when:** status transitions, evidence, deferred items, residual risks, and next actions are explicit.
+- **Call next:** no next skill by default; reopen triage, traceability sync, or retrofit only for named follow-up work.
+- **Not needed when:** the work is still actively changing or required evidence is not yet available.
+
 ## Inputs
 
 - target (`I-*`, `TB-*`, or feature slice)

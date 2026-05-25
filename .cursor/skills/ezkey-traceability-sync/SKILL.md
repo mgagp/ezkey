@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Keep feature-to-spec-to-test linkage current after any meaningful change.
 
+## Boundary contract
+
+- **Enter when:** feature status, behavior, specs, tests, or validation evidence changed.
+- **Exit when:** global and component traceability documents reflect current evidence and open gaps.
+- **Call next:** `ezkey-closeout` once traceability is honest and complete for the slice.
+- **Not needed when:** no observable behavior, contract, feature status, or validation evidence changed.
+
 ## Inputs
 
 - Changed feature or tracer bullet

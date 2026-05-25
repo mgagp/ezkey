@@ -11,6 +11,13 @@ Create a concise test plan slice that balances confidence and execution cost.
 
 Use this skill for `I-*` ideas, `TB-*` tracer bullets, and implementation plans.
 
+## Boundary contract
+
+- **Enter when:** a change has known risks and needs explicit test-layer selection.
+- **Exit when:** minimum, optional, deferred, and rejected test layers are justified with evidence expectations.
+- **Call next:** `ezkey-quality-gatekeeper` before execution, and `ezkey-traceability-sync` after evidence changes.
+- **Not needed when:** the change is purely editorial and does not affect behavior, contracts, workflows, or validation.
+
 ## Inputs
 
 - Target ID (`I-*` or `TB-*`)

@@ -2,14 +2,17 @@
 .SYNOPSIS
     Publishes the Ezkey Methodology rich view to the ezkey-org static site.
 .DESCRIPTION
-    Reads product-docs/methodology/view/index.html (the canonical source), extracts
-    its <nav>, <header>, <main>, and <footer> blocks, injects them into a site shell,
-    applies the ezkey.org visual palette, strips internal .md links, and writes
-    sites/ezkey-org/methodology.html (UTF-8 without BOM).
+    Reads product-docs/methodology/view/index.html, extracts its visual blocks,
+    applies the ezkey.org shell and palette, strips private Markdown links, and
+    writes the public English and French pages:
 
-    Run again after updating the canonical to refresh the published page.
+      sites/ezkey-org/methodology.html
+      sites/ezkey-org/fr/methodologie.html
+
+    The French page is generated from the same canonical blocks through a
+    controlled replacement map so both locales stay structurally aligned.
 .PARAMETER DryRun
-    When specified, prints what would be written but does not touch the output file.
+    When specified, prints what would be written but does not touch output files.
 .EXAMPLE
     .\scripts\publish-methodology-view.ps1
 .EXAMPLE
@@ -25,61 +28,99 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot      = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $canonicalPath = Join-Path $repoRoot 'product-docs\methodology\view\index.html'
-$outputPath    = Join-Path $repoRoot 'sites\ezkey-org\methodology.html'
+$outputPathEn  = Join-Path $repoRoot 'sites\ezkey-org\methodology.html'
+$outputPathFr  = Join-Path $repoRoot 'sites\ezkey-org\fr\methodologie.html'
 $syncDate      = Get-Date -Format 'yyyy-MM-dd'
 $rx            = [System.Text.RegularExpressions.Regex]
 $rxOpts        = [System.Text.RegularExpressions.RegexOptions]::Singleline
+$utf8NoBom     = [System.Text.UTF8Encoding]::new($false)
+$arrow         = [string][char]0x2192
+$emDash        = [string][char]0x2014
 
-# ---------------------------------------------------------------------------
-# 1. Read canonical source
-# ---------------------------------------------------------------------------
-Write-Host "Reading canonical:  $canonicalPath"
-$src = [System.IO.File]::ReadAllText($canonicalPath, [System.Text.UTF8Encoding]::new($false))
+function Get-RequiredMatch {
+    param(
+        [string]$Text,
+        [string]$Pattern,
+        [string]$Description
+    )
 
-# ---------------------------------------------------------------------------
-# 2. Extract blocks
-# ---------------------------------------------------------------------------
-$styleInner  = $rx::Match($src, '(?s)<style>(.*?)</style>', $rxOpts).Groups[1].Value
-if (-not $styleInner)  { throw 'Could not extract <style> block from canonical.' }
-
-$navBlock    = $rx::Match($src, '(?s)<nav>.*?</nav>', $rxOpts).Value
-if (-not $navBlock)    { throw 'Could not extract <nav> block from canonical.' }
-
-$headerBlock = $rx::Match($src, '(?s)<header class="page-header">.*?</header>', $rxOpts).Value
-if (-not $headerBlock) { throw 'Could not extract <header class="page-header"> block.' }
-
-$mainBlock   = $rx::Match($src, '(?s)<main>.*?</main>', $rxOpts).Value
-if (-not $mainBlock)   { throw 'Could not extract <main> block from canonical.' }
-
-$footerBlock = $rx::Match($src, '(?s)<footer>.*?</footer>', $rxOpts).Value
-if (-not $footerBlock) { throw 'Could not extract <footer> block from canonical.' }
-
-# ---------------------------------------------------------------------------
-# 3. Clean internal .md links (strip href, keep visible text)
-#    These are private-repo links that must not appear on the public site.
-# ---------------------------------------------------------------------------
-$cleanMdLinks = { param([string]$s)
-    $s -replace '(?s)<a href="[^"]*\.md[^"]*">([^<]*)</a>', '$1'
+    $match = $rx::Match($Text, $Pattern, $rxOpts)
+    if (-not $match.Success) {
+        throw "Could not extract $Description from canonical source."
+    }
+    if ($match.Groups.Count -gt 1) {
+        return $match.Groups[1].Value
+    }
+    return $match.Value
 }
-$navBlock    = & $cleanMdLinks $navBlock
-$headerBlock = & $cleanMdLinks $headerBlock
-$mainBlock   = & $cleanMdLinks $mainBlock
-$footerBlock = & $cleanMdLinks $footerBlock
 
-# ---------------------------------------------------------------------------
-# 4. Strip content between pub-exclude markers (roadmap/self-referential items
-#    kept in the canonical but omitted from the public-facing published pages)
-# ---------------------------------------------------------------------------
-$mainBlock = $rx::Replace($mainBlock,
-    '(?s)\s*<!--\s*pub-exclude-start\s*-->.*?<!--\s*pub-exclude-end\s*-->', '', $rxOpts)
+function Remove-PrivateMarkdownLinks {
+    param([string]$Html)
 
-# ---------------------------------------------------------------------------
-# 5. Site palette override CSS
-#    Overrides canonical CSS variables and rules to match ezkey.org palette.
-#    --surface and phase card colors are intentionally kept as-is.
-# ---------------------------------------------------------------------------
+    return $Html -replace '(?s)<a href="[^"]*\.md[^"]*"[^>]*>(.*?)</a>', '$1'
+}
+
+function Apply-Replacements {
+    param(
+        [string]$Text,
+        [object[]]$Pairs
+    )
+
+    $result = $Text
+    foreach ($pair in $Pairs) {
+        $result = $result.Replace([string]$pair[0], [string]$pair[1])
+    }
+    return $result
+}
+
+function Write-Page {
+    param(
+        [string]$Path,
+        [string]$Content,
+        [string]$Label
+    )
+
+    $normalized = ($Content -replace "`r`n", "`n").TrimEnd("`r", "`n") + "`n"
+    if ($DryRun) {
+        Write-Host "[DryRun] Would write $($normalized.Length) chars to: $Path"
+    } else {
+        [System.IO.File]::WriteAllText($Path, $normalized, $utf8NoBom)
+        Write-Host "Published ${Label}: $Path"
+    }
+}
+
+Write-Host "Reading canonical:  $canonicalPath"
+$src = [System.IO.File]::ReadAllText($canonicalPath, $utf8NoBom)
+
+$styleInner  = Get-RequiredMatch $src '(?s)<style>(.*?)</style>' '<style> block'
+$navBlock    = Get-RequiredMatch $src '(?s)<nav>.*?</nav>' '<nav> block'
+$headerBlock = Get-RequiredMatch $src '(?s)<header class="page-header">.*?</header>' '<header class="page-header"> block'
+$mainBlock   = Get-RequiredMatch $src '(?s)<main>.*?</main>' '<main> block'
+$footerBlock = Get-RequiredMatch $src '(?s)<footer>.*?</footer>' '<footer> block'
+
+$navBlock    = Remove-PrivateMarkdownLinks $navBlock
+$headerBlock = Remove-PrivateMarkdownLinks $headerBlock
+$mainBlock   = Remove-PrivateMarkdownLinks $mainBlock
+$footerBlock = Remove-PrivateMarkdownLinks $footerBlock
+
+$mainBlock = $rx::Replace(
+    $mainBlock,
+    '(?s)\s*<!--\s*pub-exclude-start\s*-->.*?<!--\s*pub-exclude-end\s*-->',
+    '',
+    $rxOpts)
+
+$headerBlock = $headerBlock.Replace(
+  '<span>Source: product-docs/methodology/README.md</span>',
+  '<span>Source: Ezkey methodology corpus</span>')
+$footerBlock = $footerBlock.Replace(
+  'Source: product-docs/methodology/README.md',
+  'Source: Ezkey methodology corpus')
+$mainBlock = $mainBlock.Replace(
+  'The canonical values live in methodological-values.md.',
+  'The canonical values live in the Ezkey methodology corpus.')
+
 $paletteOverride = @'
-    /* ── Site palette overrides ──────────────────────────────────────────── */
+    /* Site palette overrides */
     :root {
       --blue: #667eea;
       --indigo: #764ba2;
@@ -95,7 +136,6 @@ $paletteOverride = @'
     .section-intro a { color: #667eea; }
     .lane-a-tag { background: #f0f0ff; border-color: #c4c8f0; color: #5561d4; }
     section > h2 { border-bottom-color: rgba(102,126,234,0.3); }
-    /* Site attribution footer (outside white card — on gradient background) */
     footer.site-footer {
       color: rgba(255,255,255,0.75);
       border-top: none;
@@ -107,29 +147,8 @@ $paletteOverride = @'
     footer.site-footer a { color: rgba(255,255,255,0.9); text-decoration: none; }
 '@
 
-# ---------------------------------------------------------------------------
-# 6. Assemble the output page
-# ---------------------------------------------------------------------------
-$output = @"
-<!DOCTYPE html>
-<!-- Source: product-docs/methodology/view/index.html @ $syncDate -->
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Visual reference for the ideation-to-delivery workflow &mdash; from raw idea to closed feature, with artifact types, parallel lanes, naming conventions, and skills.">
-  <meta property="og:title" content="Ezkey Methodology &mdash; Rich View">
-  <meta property="og:description" content="Visual reference for the ideation-to-delivery workflow &mdash; from raw idea to closed feature.">
-  <meta property="og:url" content="https://ezkey.org/methodology.html">
-  <meta property="og:type" content="article">
-  <meta property="og:site_name" content="Ezkey">
-  <meta property="og:locale" content="en_US">
-  <link rel="alternate" hreflang="en" href="https://ezkey.org/methodology.html">
-  <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/methodologie.html">
-  <link rel="alternate" hreflang="x-default" href="https://ezkey.org/methodology.html">
-  <title>Ezkey Methodology &mdash; Rich View</title>
-  <style>
-    /* ── Site shell ──────────────────────────────────────────────────────── */
+$siteShellCss = @'
+    /* Site shell */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -160,7 +179,36 @@ $output = @"
       .shell { padding: 0 12px 48px; }
       .site-card { border-radius: 12px; }
     }
-    /* ── Canonical styles (from product-docs/methodology/view/index.html) ── */
+'@
+
+$descriptionEn = 'Visual reference for the ideation-to-delivery workflow, methodological values, artifact types, state boundaries, traceability, and skills.'
+$descriptionFr = 'R&eacute;f&eacute;rence visuelle pour le flux de l''id&eacute;ation &agrave; la livraison, les valeurs m&eacute;thodologiques, les types d''artefacts, les fronti&egrave;res d''&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.'
+
+$outputEn = @"
+<!DOCTYPE html>
+<!-- Source: product-docs/methodology/view/index.html @ $syncDate -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="$descriptionEn">
+  <meta property="og:title" content="Ezkey Methodology &mdash; Rich View">
+  <meta property="og:description" content="$descriptionEn">
+  <meta property="og:url" content="https://ezkey.org/methodology.html">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Ezkey">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Ezkey Methodology &mdash; Rich View">
+  <meta name="twitter:description" content="$descriptionEn">
+  <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+  <link rel="alternate" hreflang="en" href="https://ezkey.org/methodology.html">
+  <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/methodologie.html">
+  <link rel="alternate" hreflang="x-default" href="https://ezkey.org/methodology.html">
+  <title>Ezkey Methodology &mdash; Rich View</title>
+  <style>
+$siteShellCss
+    /* Canonical styles (from product-docs/methodology/view/index.html) */
 $styleInner
 $paletteOverride
   </style>
@@ -183,615 +231,412 @@ $footerBlock
     <footer class="site-footer" style="text-align:center;">
       Ezkey &nbsp;&middot;&nbsp; <a href="/">ezkey.org</a>
     </footer>
-
   </div>
 </body>
 </html>
 "@
 
-# ---------------------------------------------------------------------------
-# 7. Write EN page
-# ---------------------------------------------------------------------------
-$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-if ($DryRun) {
-    Write-Host "[DryRun] Would write $($output.Length) chars to: $outputPath"
-} else {
-    [System.IO.File]::WriteAllText($outputPath, $output, $utf8NoBom)
-    Write-Host "Published EN: $outputPath"
-}
+$frPairs = @(
+    @('Ezkey <span>Methodology</span>', 'Ezkey <span>M&eacute;thodologie</span>'),
+  @('Methodological Values', 'Valeurs m&eacute;thodologiques'),
+  @('End-to-End Workflow', 'Flux de travail de bout en bout'),
+  @('Artifact Types', 'Types d&rsquo;artefacts'),
+  @('Parallel Lanes', 'Couloirs parall&egrave;les'),
+  @('Collaboration Context', 'Contexte de collaboration'),
+  @('Naming Conventions', 'Conventions de nommage'),
+  @('Bidirectional Traceability', 'Tra&ccedil;abilit&eacute; bidirectionnelle'),
+  @('Skill Boundary Contracts', 'Contrats de fronti&egrave;res des comp&eacute;tences'),
+    @('Workflow', 'Flux'),
+    @('Values', 'Valeurs'),
+    @('Artifacts', 'Artefacts'),
+    @('Lanes', 'Couloirs'),
+  @('Naming', 'Nommage'),
+    @('Traceability', 'Tra&ccedil;abilit&eacute;'),
+    @('Skills', 'Comp&eacute;tences'),
+    @('Rich Views', 'Vues riches'),
+    @('<h1>Ezkey Methodology</h1>', '<h1>M&eacute;thodologie Ezkey</h1>'),
+    @('Visual reference for the ideation-to-delivery workflow &mdash; from raw idea to closed feature, with methodological values, artifact types, state boundaries, traceability, and skills.', 'R&eacute;f&eacute;rence visuelle pour le flux de l&rsquo;id&eacute;ation &agrave; la livraison &mdash; de l&rsquo;id&eacute;e brute &agrave; la tranche cl&ocirc;tur&eacute;e, avec les valeurs m&eacute;thodologiques, les types d&rsquo;artefacts, les fronti&egrave;res d&rsquo;&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.'),
+    @('Source: Ezkey methodology corpus', 'Source&nbsp;: corpus m&eacute;thodologique Ezkey'),
+    @('Source:', 'Source&nbsp;:'),
+    @('Decision:', 'D&eacute;cision&nbsp;:'),
+    @('Updated 2026-05-25', 'Mis &agrave; jour le 2026-05-25'),
+    @('The canonical values live in the Ezkey methodology corpus. This view keeps the operating tests visible: enough rigor to preserve judgment and traceability, but not enough ceremony to slow simple work.', 'Les valeurs canoniques vivent dans le corpus m&eacute;thodologique Ezkey. Cette vue garde les tests op&eacute;ratoires visibles&nbsp;: assez de rigueur pour pr&eacute;server le jugement et la tra&ccedil;abilit&eacute;, sans assez de c&eacute;r&eacute;monie pour ralentir le travail simple.'),
+    @('Proportional rigor', 'Rigueur proportionnelle'),
+    @('Process weight follows uncertainty and risk, not habit or artifact size.', 'Le poids du processus suit l&rsquo;incertitude et le risque, pas l&rsquo;habitude ni la taille de l&rsquo;artefact.'),
+    @('Internal integrity', 'Int&eacute;grit&eacute; interne'),
+    @('Lanes, skills, statuses, and artifacts connect without hidden session memory.', 'Les couloirs, comp&eacute;tences, statuts et artefacts se relient sans m&eacute;moire cach&eacute;e de session.'),
+    @('Couloirs, skills, statuses, and artifacts connect without hidden session memory.', 'Les couloirs, comp&eacute;tences, statuts et artefacts se relient sans m&eacute;moire cach&eacute;e de session.'),
+    @('Explicit uncertainty', 'Incertitude explicite'),
+    @('Statuses name what is known, what is open, and what confidence the artifact supports.', 'Les statuts nomment ce qui est connu, ce qui reste ouvert et le niveau de confiance que l&rsquo;artefact supporte.'),
+    @('Readable state boundaries', 'Fronti&egrave;res d&rsquo;&eacute;tat lisibles'),
+    @('Every skill has entry, exit, next-step, and fast-path boundaries.', 'Chaque comp&eacute;tence a des fronti&egrave;res d&rsquo;entr&eacute;e, de sortie, d&rsquo;&eacute;tape suivante et de chemin rapide.'),
+    @('Bidirectional traceability', 'Tra&ccedil;abilit&eacute; bidirectionnelle'),
+    @('Forward links show where work goes; backward links prove why it exists.', 'Les liens vers l&rsquo;avant montrent o&ugrave; va le travail; les liens arri&egrave;re prouvent pourquoi il existe.'),
+    @('Earned permanence', 'Permanence m&eacute;rit&eacute;e'),
+    @('Living documents, registries, checks, and skills must earn their maintenance cost.', 'Les documents vivants, registres, contr&ocirc;les et comp&eacute;tences doivent m&eacute;riter leur co&ucirc;t de maintenance.'),
+    @('Test:', 'Test&nbsp;:'),
+    @('what concrete risk does this extra step reduce?', 'quel risque concret cette &eacute;tape suppl&eacute;mentaire r&eacute;duit-elle?'),
+    @('can a later human or agent resume from here?', 'un humain ou un agent ult&eacute;rieur peut-il reprendre d&rsquo;ici?'),
+    @('does this output expose uncertainty instead of smoothing it over?', 'cette sortie expose-t-elle l&rsquo;incertitude au lieu de la lisser?'),
+    @('is the transition clear to a tired human and a cold agent?', 'la transition est-elle claire pour un humain fatigu&eacute; et un agent froid?'),
+    @('can we navigate both to the source and to the durable outcome?', 'peut-on naviguer &agrave; la fois vers la source et vers le r&eacute;sultat durable?'),
+    @('who updates this, when, and what if it stays stale?', 'qui met cela &agrave; jour, quand, et que faire si cela reste p&eacute;rim&eacute;?'),
+    @('Lane A', 'Couloir A'),
+    @('Nine explicit phases with artifact outputs and exit criteria. Move to implementation as soon as direction, first cut, validation criteria, and non-blocking open questions are all settled &mdash; avoiding both premature coding and perpetual preparation.', 'Neuf phases explicites avec sorties d&rsquo;artefacts et crit&egrave;res de sortie. Passez &agrave; l&rsquo;impl&eacute;mentation d&egrave;s que la direction, la premi&egrave;re coupe, les crit&egrave;res de validation et les questions ouvertes non bloquantes sont &eacute;tablis &mdash; en &eacute;vitant autant le code pr&eacute;matur&eacute; que la pr&eacute;paration perp&eacute;tuelle.'),
+    @('Promote', 'Promouvoir'),
+    @('Analyze &amp; Design', 'Analyser &amp; concevoir'),
+    @('Plan Tests', 'Planifier les tests'),
+    @('Gate', 'Passerelle'),
+    @('Implement', 'Impl&eacute;menter'),
+    @('Close Out', 'Cl&ocirc;turer'),
+    @('Record the raw idea with clear intent and initial tags. Keep the first version short and expressive.', 'Enregistrez l&rsquo;id&eacute;e brute avec une intention claire et des tags initiaux. Gardez la premi&egrave;re version courte et expressive.'),
+    @('Clarify intent, user value, risk, and rough scope. Assign status, priority, phase tags, component tags.', 'Clarifiez l&rsquo;intention, la valeur utilisateur, le risque et la port&eacute;e approximative. Assignez le statut, la priorit&eacute;, les tags de phase et de composant.'),
+    @('Structured questioning pass (&quot;Grill Me&quot;). Surface assumptions, exceptions, error paths, non-goals.', 'Passe de questionnement structur&eacute; (&laquo;&nbsp;Grill Me&nbsp;&raquo;). Faites &eacute;merger les hypoth&egrave;ses, exceptions, chemins d&rsquo;erreur et non-objectifs.'),
+    @('Structured questioning pass ("Grill Me"). Surface assumptions, exceptions, error paths, non-goals.', 'Passe de questionnement structur&eacute; (&laquo;&nbsp;Grill Me&nbsp;&raquo;). Faites &eacute;merger les hypoth&egrave;ses, exceptions, chemins d&rsquo;erreur et non-objectifs.'),
+    @('Define the first vertical slice and expected evidence. Avoid adding preparation if direction is already clear.', 'D&eacute;finissez la premi&egrave;re tranche verticale et les preuves attendues. &Eacute;vitez d&rsquo;ajouter de la pr&eacute;paration si la direction est d&eacute;j&agrave; claire.'),
+    @('Global analysis + component-specific analysis for each impacted boundary. Define responsibilities, contracts, validation, error behavior.', 'Analyse globale et analyse par composant pour chaque fronti&egrave;re impact&eacute;e. D&eacute;finissez les responsabilit&eacute;s, contrats, validations et comportements d&rsquo;erreur.'),
+    @('Select minimum and optional test layers: unit, functional, elective, operational, UI. Keep selection risk-based and cost-aware.', 'S&eacute;lectionnez les couches de test minimales et optionnelles&nbsp;: unitaire, fonctionnel, &eacute;lectif, op&eacute;rationnel, UI. Gardez la s&eacute;lection bas&eacute;e sur les risques et les co&ucirc;ts.'),
+    @('Apply methodology fit, analysis, design, implementation, and closeout gates. Verify mandatory checks before implementation.', 'Appliquez les passerelles d&rsquo;ad&eacute;quation m&eacute;thodologique, d&rsquo;analyse, de conception, d&rsquo;impl&eacute;mentation et de cl&ocirc;ture. V&eacute;rifiez les contr&ocirc;les obligatoires avant l&rsquo;impl&eacute;mentation.'),
+    @('Execute the plan in code and tests. Update docs and contracts in the same changeset. Controller changes imply contract review.', 'Ex&eacute;cutez le plan en code et en tests. Mettez &agrave; jour les docs et contrats dans le m&ecirc;me changeset. Toute modification de contr&ocirc;leur implique une revue de contrat.'),
+    @('Transition status, record evidence, separate corpus closure from active product backlog, and name residual risk.', 'Faites transiter les statuts, consignez les preuves, s&eacute;parez la cl&ocirc;ture du corpus du backlog produit actif et nommez le risque r&eacute;siduel.'),
+    @('Done when:', 'Termin&eacute; quand&nbsp;:'),
+    @('clear intent and tags assigned.', 'intention claire et tags assign&eacute;s.'),
+    @('scope and value understandable.', 'port&eacute;e et valeur compr&eacute;hensibles.'),
+    @('key risks and exceptions explicit.', 'risques cl&eacute;s et exceptions explicites.'),
+    @('one vertical slice is testable.', 'une tranche verticale est testable.'),
+    @('boundaries and decision points explicit.', 'fronti&egrave;res et points de d&eacute;cision explicites.'),
+    @('min test layers explicitly selected.', 'couches de test minimales explicitement s&eacute;lectionn&eacute;es.'),
+    @('mandatory quality checks pass.', 'les contr&ocirc;les qualit&eacute; obligatoires passent.'),
+    @('evidence complete and gates green.', 'preuves compl&egrave;tes et passerelles vertes.'),
+    @('closure is honest and resumable.', 'cl&ocirc;ture honn&ecirc;te et reprenable.'),
+    @('I-* updated', 'I-* mis &agrave; jour'),
+    @('I-* + open Qs', 'I-* + questions ouvertes'),
+    @('test plan slice', 'tranche de plan de test'),
+    @('gate report', 'rapport de passerelle'),
+    @('status + traceability', 'statut + tra&ccedil;abilit&eacute;'),
+    @('All canonical artifacts use date+slug identifiers. No global counter lookup required. Identifiers are stable &mdash; never renamed after creation, never reused.', 'Tous les artefacts canoniques utilisent des identifiants date+slug. Aucun compteur global n&rsquo;est requis. Les identifiants sont stables &mdash; jamais renomm&eacute;s apr&egrave;s cr&eacute;ation, jamais r&eacute;utilis&eacute;s.'),
+    @('Identifier format', 'Format d&rsquo;identifiant'),
+    @('Location', 'Emplacement'),
+    @('Created at', 'Cr&eacute;&eacute; lors de'),
+    @('Status lifecycle', 'Cycle de vie du statut'),
+    @('Vision note', 'Note de vision'),
+    @('Backlog idea', 'Id&eacute;e de backlog'),
+    @('Retrofit slice', 'Tranche de retrofit'),
+    @('Working plan', 'Plan de travail'),
+    @('Blitz scratch', 'Brouillon blitz'),
+    @('Grill session', 'Session grill'),
+    @('Challenge', 'Questionnement'),
+    @('Methodology decision', 'D&eacute;cision de m&eacute;thodologie'),
+    @('Rich view', 'Vue riche'),
+    @('folder slug', 'slug de dossier'),
+    @('Retrofit lane', 'Couloir retrofit'),
+    @('Plan incubation lane', 'Couloir incubation de plan'),
+    @('Non-canonical &mdash; materialized into V-*/I-*/TB-*', 'Non canonique &mdash; mat&eacute;rialis&eacute; en V-*/I-*/TB-*'),
+    @('Active (<code>_</code> prefix) &rarr; archived (no prefix, in <code>blitz-archive/</code>)', 'Actif (pr&eacute;fixe <code>_</code>) &rarr; archiv&eacute; (sans pr&eacute;fixe, dans <code>blitz-archive/</code>)'),
+    @('open &rarr; resumed &rarr; complete, with post-decision notes when superseded', 'ouverte &rarr; reprise &rarr; compl&egrave;te, avec notes post-d&eacute;cision quand elle est remplac&eacute;e'),
+    @('Any &mdash; when a non-obvious methodology rule is adopted', 'N&rsquo;importe quand &mdash; quand une r&egrave;gle m&eacute;thodologique non &eacute;vidente est adopt&eacute;e'),
+    @('Stable &mdash; never revised in place (supersede with new file)', 'Stable &mdash; jamais r&eacute;vis&eacute;e en place (remplacer avec un nouveau fichier)'),
+    @('Any &mdash; when visual richness materially adds clarity', 'N&rsquo;importe quand &mdash; quand la richesse visuelle ajoute mat&eacute;riellement de la clart&eacute;'),
+    @('Companion to its Markdown parent &mdash; updated with it', 'Compagnon de son parent Markdown &mdash; mis &agrave; jour avec lui'),
+    @('Two lanes run alongside the main ideation-to-delivery flow. Any session may combine Lane A with one or both parallel lanes.', 'Deux couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison. Une session peut combiner le couloir A avec l&rsquo;un ou les deux couloirs parall&egrave;les.'),
+    @('Lane B', 'Couloir B'),
+    @('Lane C', 'Couloir C'),
+    @('Plan Incubation', 'Incubation de plan'),
+    @('Legacy Retrofit', 'Retrofit historique'),
+    @('Create or evolve a working plan in <code>plans/</code>', 'Cr&eacute;er ou faire &eacute;voluer un plan de travail dans <code>plans/</code>'),
+    @('Explore options and converge on direction (freeform)', 'Explorer les options et converger vers une direction (forme libre)'),
+    @('Materialize durable signal into V-*/I-*/TB-*', 'Mat&eacute;rialiser le signal durable en V-*/I-*/TB-*'),
+    @('Cross-link plan and canonical artifacts when useful', 'Relier le plan et les artefacts canoniques lorsque c&rsquo;est utile'),
+    @('Do not treat as retrofit unless genuinely historical', 'Ne pas traiter comme du retrofit sauf si la source est vraiment historique'),
+    @('Select a small source batch (historical plans, verbal history)', 'S&eacute;lectionner un petit lot source (plans historiques, historique verbal)'),
+    @('Extract decisions, invariants, patterns, test signal', 'Extraire les d&eacute;cisions, invariants, patterns et signaux de test'),
+    @('Map into canonical docs', 'Mapper dans les docs canoniques'),
+    @('Record a retrofit slice (R-*)', 'Enregistrer une tranche de retrofit (R-*)'),
+    @('Close with residual gaps and next action', 'Cl&ocirc;turer avec les lacunes r&eacute;siduelles et l&rsquo;action suivante'),
+    @('Not a lane &mdash; a cross-cutting modifier. These rules apply on top of Lanes A, B, and C whenever collaboration happens across parallel Git branches or worktrees. Sessions that are single-branch do not need to apply them.', 'Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B et C quand la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees. Les sessions &agrave; branche unique n&rsquo;ont pas besoin de les appliquer.'),
+    @('Cross-cutting &middot; applies to Lanes A, B, C', 'Transversal &middot; s&rsquo;applique aux couloirs A, B, C'),
+    @('When two developers (or one developer across two worktrees) work simultaneously, classic ordinal naming creates merge-time collisions. The collaboration context resolves this without coordination overhead, by making artifact names self-sufficient through date+slug identifiers and deferring shared indexes to post-merge.', 'Quand deux d&eacute;veloppeurs (ou un d&eacute;veloppeur sur deux worktrees) travaillent simultan&eacute;ment, le nommage ordinal classique cr&eacute;e des collisions &agrave; la fusion. Le contexte de collaboration r&eacute;sout cela sans surcharge de coordination, en rendant les noms d&rsquo;artefacts autosuffisants par les identifiants date+slug et en diff&eacute;rant les index partag&eacute;s apr&egrave;s la fusion.'),
+    @('Date+slug IDs mandatory', 'IDs date+slug obligatoires'),
+    @('No counter lookup, no contention across branches.', 'Aucune recherche de compteur, aucune contention entre branches.'),
+    @('Create artifacts freely on branch', 'Cr&eacute;er les artefacts librement sur la branche'),
+    @('V-*, I-*, TB-*, R-* &mdash; no cross-branch coordination needed.', 'V-*, I-*, TB-*, R-* &mdash; aucune coordination inter-branches n&eacute;cessaire.'),
+    @('Blitz slug required', 'Slug blitz obligatoire'),
+    @('On a feature branch, topic slug is chosen at session start &mdash; not the ordinal fallback.', 'Sur une branche de fonctionnalit&eacute;, le slug de sujet est choisi au d&eacute;but de la session &mdash; pas le repli ordinal.'),
+    @('Defer index updates', 'Diff&eacute;rer les mises &agrave; jour d&rsquo;index'),
+    @('update post-merge on <code>main</code>.', 'mettre &agrave; jour apr&egrave;s la fusion sur <code>main</code>.'),
+    @('Index reconciliation at merge', 'R&eacute;conciliation d&rsquo;index &agrave; la fusion'),
+    @('Run a reconciliation pass when the branch lands on <code>main</code>.', 'Ex&eacute;cuter une passe de r&eacute;conciliation quand la branche arrive sur <code>main</code>.'),
+    @('Stable, collision-resistant identifiers across all branches and worktrees. Legacy <code>NNNN</code> artifacts are never renamed.', 'Identifiants stables et r&eacute;sistants aux collisions sur toutes les branches et worktrees. Les artefacts h&eacute;rit&eacute;s <code>NNNN</code> ne sont jamais renomm&eacute;s.'),
+    @('Artifact', 'Artefact'),
+    @('Active filename', 'Nom de fichier actif'),
+    @('Archived / final', 'Archiv&eacute; / final'),
+    @('Key rule', 'R&egrave;gle cl&eacute;'),
+    @('Same (stable)', 'M&ecirc;me (stable)'),
+    @('Never renamed after creation', 'Jamais renomm&eacute; apr&egrave;s cr&eacute;ation'),
+    @('Blitz &mdash; feature branch', 'Blitz &mdash; branche de fonctionnalit&eacute;'),
+    @('Blitz &mdash; main / single-branch', 'Blitz &mdash; main / branche unique'),
+    @('Slug required; chosen at session start', 'Slug obligatoire; choisi au d&eacute;but de la session'),
+    @('Ordinal accepted if theme unclear at start', 'Ordinal accept&eacute; si le th&egrave;me est flou au d&eacute;part'),
+    @('Must include &quot;Resume at&quot; control block', 'Doit inclure le bloc de contr&ocirc;le &laquo;&nbsp;Resume at&nbsp;&raquo;'),
+    @('Under <code>methodology/decisions/</code>', 'Sous <code>methodology/decisions/</code>'),
+    @('Self-contained HTML; linked from parent Markdown', 'HTML autonome; li&eacute; depuis le parent Markdown'),
+    @('The workflow is not only a forward pipeline. Closeout and audit must also prove where an artifact came from, what canon absorbed it, and whether later decisions changed its meaning.', 'Le flux n&rsquo;est pas seulement un pipeline vers l&rsquo;avant. La cl&ocirc;ture et l&rsquo;audit doivent aussi prouver d&rsquo;o&ugrave; vient un artefact, quel canon l&rsquo;a absorb&eacute; et si des d&eacute;cisions ult&eacute;rieures ont chang&eacute; son sens.'),
+    @('Raw idea, blitz archive, working plan, historical plan, or verbal briefing.', 'Id&eacute;e brute, archive blitz, plan de travail, plan historique ou briefing verbal.'),
+    @('Materialization', 'Mat&eacute;rialisation'),
+    @('<code>V-*</code>, <code>I-*</code>, <code>R-*</code>, or documented drop with rationale.', '<code>V-*</code>, <code>I-*</code>, <code>R-*</code> ou abandon document&eacute; avec justification.'),
+    @('Grill session, open questions, decision pressure points, status alignment.', 'Session grill, questions ouvertes, points de pression d&eacute;cisionnels, alignement des statuts.'),
+    @('Canon', 'Canon'),
+    @('ADR, methodology decision, policy output, component pack, or traceability matrix.', 'ADR, d&eacute;cision m&eacute;thodologique, sortie de politique, pack composant ou matrice de tra&ccedil;abilit&eacute;.'),
+    @('Closeout', 'Cl&ocirc;ture'),
+    @('Status transition, evidence, residual risk, next action, or supersession.', 'Transition de statut, preuve, risque r&eacute;siduel, action suivante ou supersession.'),
+    @('Backward audit', 'Audit arri&egrave;re'),
+    @('Can this closeout navigate back to the source and materialized artifacts?', 'Cette cl&ocirc;ture permet-elle de revenir &agrave; la source et aux artefacts mat&eacute;rialis&eacute;s?'),
+    @('Status alignment', 'Alignement des statuts'),
+    @('Do indexes and artifact metadata agree after grill, retrofit, or implementation?', 'Les index et m&eacute;tadonn&eacute;es d&rsquo;artefacts concordent-ils apr&egrave;s grill, retrofit ou impl&eacute;mentation?'),
+    @('Current truth', 'V&eacute;rit&eacute; courante'),
+    @('Are post-decision notes and supersession links present when history changed?', 'Les notes post-d&eacute;cision et liens de supersession sont-ils pr&eacute;sents quand l&rsquo;historique a chang&eacute;?'),
+    @('Honest closure', 'Cl&ocirc;ture honn&ecirc;te'),
+    @('Is corpus integration separated from still-active product backlog work?', 'L&rsquo;int&eacute;gration corpus est-elle s&eacute;par&eacute;e du backlog produit encore actif?'),
+    @('Each skill answers the same four questions: enter when, exit when, call next, and not needed when. The canonical skill text lives under <code>.cursor/skills/</code>; this table is the fast navigation surface.', 'Chaque comp&eacute;tence r&eacute;pond aux quatre m&ecirc;mes questions&nbsp;: entrer quand, sortir quand, appeler ensuite et inutile quand. Le texte canonique vit sous <code>.cursor/skills/</code>; ce tableau est la surface de navigation rapide.'),
+    @('Skill', 'Comp&eacute;tence'),
+    @('Enter when', 'Entrer quand'),
+    @('Exit when', 'Sortir quand'),
+    @('Call next', 'Appeler ensuite'),
+    @('Not needed when', 'Inutile quand'),
+    @('Strategic direction, product intent, or early feature ideas arrive.', 'Une direction strat&eacute;gique, une intention produit ou des id&eacute;es de fonctionnalit&eacute; arrivent.'),
+    @('Durable direction is captured as <code>V-*</code> or initial <code>I-*</code> with next step.', 'La direction durable est captur&eacute;e en <code>V-*</code> ou <code>I-*</code> initial avec prochaine &eacute;tape.'),
+    @('The idea is already a bounded implementation slice.', 'L&rsquo;id&eacute;e est d&eacute;j&agrave; une tranche d&rsquo;impl&eacute;mentation born&eacute;e.'),
+    @('An <code>I-*</code> exists or a vision note has actionable scope.', 'Un <code>I-*</code> existe ou une note de vision a une port&eacute;e actionnable.'),
+    @('Scope, non-scope, priority, status, tags, risks, and posture are explicit.', 'Port&eacute;e, hors-port&eacute;e, priorit&eacute;, statut, tags, risques et posture sont explicites.'),
+    @('The item is still pure orientation or already fully scoped.', 'L&rsquo;item est encore une pure orientation ou d&eacute;j&agrave; enti&egrave;rement cadr&eacute;.'),
+    @('Assumptions, exception paths, lifecycle effects, or boundary risks need pressure.', 'Les hypoth&egrave;ses, chemins d&rsquo;exception, effets de cycle de vie ou risques de fronti&egrave;re doivent &ecirc;tre mis sous pression.'),
+    @('Risks, open questions, decision pressure points, and clarifications are explicit.', 'Risques, questions ouvertes, points de pression d&eacute;cisionnels et clarifications sont explicites.'),
+    @('Triage, tracer-bullet promotion, or component design.', 'Triage, promotion tracer bullet ou design composant.'),
+    @('The change is low-risk, bounded, and has known validation criteria.', 'Le changement est &agrave; faible risque, born&eacute; et a des crit&egrave;res de validation connus.'),
+    @('The operator starts from a current-session working plan.', 'L&rsquo;op&eacute;rateur part d&rsquo;un plan de travail de session courante.'),
+    @('Durable signal is classified for <code>V-*</code>, <code>I-*</code>, <code>TB-*</code>, principle adoption, or mix.', 'Le signal durable est class&eacute; pour <code>V-*</code>, <code>I-*</code>, <code>TB-*</code>, adoption de principe ou combinaison.'),
+    @('Vision intake, backlog triage, or tracer-bullet promotion.', 'Intake de vision, triage backlog ou promotion tracer bullet.'),
+    @('The source is historical retrofit input or a direct implementation task.', 'La source est une entr&eacute;e de retrofit historique ou une t&acirc;che directe d&rsquo;impl&eacute;mentation.'),
+    @('An <code>I-*</code> is <code>ready</code> and needs a bounded vertical slice.', 'Un <code>I-*</code> est <code>ready</code> et a besoin d&rsquo;une tranche verticale born&eacute;e.'),
+    @('The <code>TB-*</code> has posture, scope, boundaries, exclusions, and evidence criteria.', 'Le <code>TB-*</code> a une posture, une port&eacute;e, des fronti&egrave;res, des exclusions et des crit&egrave;res de preuve.'),
+    @('The item lacks direction, or the change is a tiny code/doc fix.', 'L&rsquo;item manque de direction, ou le changement est une petite correction code/doc.'),
+    @('A scope touches component boundaries, mappings, validations, or error behavior.', 'Une port&eacute;e touche les fronti&egrave;res composant, mappings, validations ou comportements d&rsquo;erreur.'),
+    @('Impacted components have responsibilities, contracts, tests, and doc impact named.', 'Les composants impact&eacute;s ont responsabilit&eacute;s, contrats, tests et impacts docs nomm&eacute;s.'),
+    @('The change is local, internal, and not observable at a boundary.', 'Le changement est local, interne et non observable &agrave; une fronti&egrave;re.'),
+    @('A change has known risks and needs explicit test-layer selection.', 'Un changement a des risques connus et requiert une s&eacute;lection explicite des couches de test.'),
+    @('Minimum, optional, deferred, and rejected test layers are justified.', 'Les couches minimales, optionnelles, diff&eacute;r&eacute;es et rejet&eacute;es sont justifi&eacute;es.'),
+    @('The change is purely editorial.', 'Le changement est purement &eacute;ditorial.'),
+    @('Work moves from analysis to execution, or execution to closeout.', 'Le travail passe de l&rsquo;analyse &agrave; l&rsquo;ex&eacute;cution, ou de l&rsquo;ex&eacute;cution &agrave; la cl&ocirc;ture.'),
+    @('The gate returns <code>go</code> or <code>no-go</code> with blockers and follow-up actions.', 'La passerelle retourne <code>go</code> ou <code>no-go</code> avec bloqueurs et actions de suivi.'),
+    @('Implementation after <code>go</code>, or targeted repair after <code>no-go</code>.', 'Impl&eacute;mentation apr&egrave;s <code>go</code>, ou correction cibl&eacute;e apr&egrave;s <code>no-go</code>.'),
+    @('The task is trivial and has no analysis, contract, test, or traceability impact.', 'La t&acirc;che est triviale et n&rsquo;a aucun impact d&rsquo;analyse, contrat, test ou tra&ccedil;abilit&eacute;.'),
+    @('Feature status, behavior, specs, tests, or validation evidence changed.', 'Le statut de fonctionnalit&eacute;, le comportement, les specs, les tests ou les preuves de validation ont chang&eacute;.'),
+    @('Global and component traceability documents reflect current evidence and gaps.', 'Les documents de tra&ccedil;abilit&eacute; globaux et composants refl&egrave;tent les preuves et lacunes courantes.'),
+    @('No observable behavior, contract, status, or validation evidence changed.', 'Aucun comportement observable, contrat, statut ou preuve de validation n&rsquo;a chang&eacute;.'),
+    @('A tracer bullet, feature slice, blitz integration, retrofit slice, or cycle is ending.', 'Un tracer bullet, une tranche de fonctionnalit&eacute;, une int&eacute;gration blitz, une tranche retrofit ou un cycle se termine.'),
+    @('Status transitions, evidence, deferred work, residual risks, and next actions are explicit.', 'Transitions de statut, preuves, travail diff&eacute;r&eacute;, risques r&eacute;siduels et prochaines actions sont explicites.'),
+    @('No next skill by default; reopen named follow-up work only.', 'Aucune comp&eacute;tence suivante par d&eacute;faut; rouvrir seulement le suivi nomm&eacute;.'),
+    @('The work is still actively changing or required evidence is unavailable.', 'Le travail change encore activement ou les preuves requises ne sont pas disponibles.'),
+    @('Historical plans, verbal history, or ad hoc implementation history contain reusable signal.', 'Des plans historiques, un historique verbal ou une histoire d&rsquo;impl&eacute;mentation ad hoc contiennent un signal r&eacute;utilisable.'),
+    @('Reusable signal is extracted with confidence and source type.', 'Le signal r&eacute;utilisable est extrait avec confiance et type de source.'),
+    @('The source is a current-session working plan.', 'La source est un plan de travail de session courante.'),
+    @('Mined historical signal needs mapping into canonical destinations.', 'Le signal historique extrait doit &ecirc;tre mapp&eacute; vers les destinations canoniques.'),
+    @('The <code>R-*</code> records mappings, canonical updates, residual gaps, and index status.', 'Le <code>R-*</code> consigne mappings, mises &agrave; jour canoniques, lacunes r&eacute;siduelles et statut d&rsquo;index.'),
+    @('No reusable signal exists, or the source already lives in current canon.', 'Aucun signal r&eacute;utilisable n&rsquo;existe, ou la source vit d&eacute;j&agrave; dans le canon courant.'),
+    @('HTML companions to Markdown source documents, created when visual richness materially improves clarity and conceptual alignment between human and AI collaborators. The base methodology remains Markdown-first &mdash; rich views are deliberate supplements, not replacements.', 'Compagnons HTML aux documents Markdown sources, cr&eacute;&eacute;s lorsque la richesse visuelle am&eacute;liore mat&eacute;riellement la clart&eacute; et l&rsquo;alignement conceptuel entre collaborateurs humains et IA. La base m&eacute;thodologique reste Markdown-first &mdash; les vues riches sont des suppl&eacute;ments d&eacute;lib&eacute;r&eacute;s, pas des remplacements.'),
+    @('When to create a rich view', 'Quand cr&eacute;er une vue riche'),
+    @('Complex entity relationships', 'Relations d&rsquo;entit&eacute;s complexes'),
+    @('multiple interdependent entity types with lifecycle interactions that are hard to follow in prose or tables alone.', 'plusieurs types d&rsquo;entit&eacute;s interd&eacute;pendants avec interactions de cycle de vie difficiles &agrave; suivre seulement en prose ou tableaux.'),
+    @('State machines &amp; lifecycle governance', 'Machines d&rsquo;&eacute;tat et gouvernance de cycle de vie'),
+    @('state transitions, activation/deactivation rules, parent-chain propagation across entity types.', 'transitions d&rsquo;&eacute;tat, r&egrave;gles d&rsquo;activation/d&eacute;sactivation, propagation en cha&icirc;ne parent entre types d&rsquo;entit&eacute;s.'),
+    @('Cryptographic or protocol flows', 'Flux cryptographiques ou protocolaires'),
+    @('multi-actor flows with key material transit, synchronization windows, and sequencing constraints where a diagram anchors understanding.', 'flux multi-acteurs avec transit de mat&eacute;riel de cl&eacute;, fen&ecirc;tres de synchronisation et contraintes de s&eacute;quen&ccedil;age o&ugrave; un diagramme ancre la compr&eacute;hension.'),
+    @('High-impact architectural decisions', 'D&eacute;cisions architecturales &agrave; fort impact'),
+    @('cross-cutting decisions with visual complexity that benefits from a durable graphical anchor.', 'd&eacute;cisions transversales avec complexit&eacute; visuelle qui b&eacute;n&eacute;ficient d&rsquo;un ancrage graphique durable.'),
+    @('The methodology itself', 'La m&eacute;thodologie elle-m&ecirc;me'),
+    @('the process and artifact system benefits from a visual reference accessible to both humans and AI agents at session start.', 'le processus et le syst&egrave;me d&rsquo;artefacts b&eacute;n&eacute;ficient d&rsquo;une r&eacute;f&eacute;rence visuelle accessible aux humains et aux agents IA au d&eacute;but d&rsquo;une session.'),
+    @('Folder and linking convention', 'Convention de dossier et de lien'),
+    @('Context', 'Contexte'),
+    @('Path pattern', 'Pattern de chemin'),
+    @('Link from Markdown parent', 'Lien depuis le parent Markdown'),
+    @('Methodology (this file)', 'M&eacute;thodologie (ce fichier)'),
+    @('Global docs (e.g. Lifecycle Governance)', 'Docs globaux (ex. Lifecycle Governance)'),
+    @('Component-level', 'Niveau composant'),
+    @('Design principles', 'Principes de conception'),
+    @('Self-contained', 'Autonome'),
+    @('no external CDN dependencies. Embed all styles and SVG inline.', 'aucune d&eacute;pendance CDN externe. Int&eacute;grer tous les styles et SVG inline.'),
+    @('Sober palette', 'Palette sobre'),
+    @('information first. Color is used for distinction, not decoration.', 'l&rsquo;information d&rsquo;abord. La couleur sert la distinction, pas la d&eacute;coration.'),
+    @('Linked from the parent Markdown', 'Li&eacute; depuis le parent Markdown'),
+    @('the source document carries a clear reference to the rich view.', 'le document source porte une r&eacute;f&eacute;rence claire vers la vue riche.'),
+    @('Updated in the same changeset', 'Mis &agrave; jour dans le m&ecirc;me changeset'),
+    @('when the parent document changes, the rich view is updated alongside it.', 'lorsque le document parent change, la vue riche est mise &agrave; jour avec lui.'),
+    @('Single <code>index.html</code>', 'Un seul <code>index.html</code>'),
+    @('per view folder; additional files only when navigation genuinely adds value for the specific topic.', 'par dossier de vue; fichiers additionnels seulement si la navigation ajoute vraiment de la valeur pour le sujet.'),
+    @('Ezkey Methodology Rich View', 'M&eacute;thodologie Ezkey Vue riche'),
+    @('Last updated 2026-05-25', 'Derni&egrave;re mise &agrave; jour le 2026-05-25')
+)
 
-# ---------------------------------------------------------------------------
-# 8. French translations
-#    All FR content is defined as single-quoted here-strings (no interpolation)
-#    so French characters are preserved as literal UTF-8.
-# ---------------------------------------------------------------------------
-$frNavBlock = @'
-<nav>
-  <div class="nav-brand">Ezkey <span>M&eacute;thodologie</span></div>
-  <div class="nav-sep"></div>
-  <a href="#workflow">Flux de travail</a>
-  <a href="#artifacts">Artefacts</a>
-  <a href="#lanes">Couloirs</a>
-  <a href="#collab">Collab</a>
-  <a href="#naming">Nommage</a>
-  <a href="#skills">Comp&eacute;tences</a>
-  <a href="#rich-views">Vues riches</a>
-</nav>
-'@
+$frNavBlock    = Apply-Replacements $navBlock $frPairs
+$frHeaderBlock = Apply-Replacements $headerBlock $frPairs
+$frMainBlock   = Apply-Replacements $mainBlock $frPairs
+$frFooterBlock = Apply-Replacements $footerBlock $frPairs
 
-$frHeaderBlock = @'
-<header class="page-header">
-  <h1>M&eacute;thodologie Ezkey</h1>
-  <p class="subtitle">
-    R&eacute;f&eacute;rence visuelle pour le flux de bout en bout &mdash; de l&rsquo;id&eacute;e brute &agrave; la fonctionnalit&eacute; livr&eacute;e,
-    avec les types d&rsquo;artefacts, les couloirs parall&egrave;les, les conventions de nommage et les comp&eacute;tences.
-  </p>
-  <div class="meta">
-    <span>Source&nbsp;: product-docs/methodology/README.md</span>
-    <span>D&eacute;cision&nbsp;: 2026-05-24-rich-views</span>
-    <span>Mis &agrave; jour le 2026-05-24</span>
-  </div>
-</header>
-'@
+$frMainBlock = $frMainBlock.Replace(
+  ('open ' + $arrow + ' resumed ' + $arrow + ' complete, with post-decision notes when superseded'),
+  ('ouverte ' + $arrow + ' reprise ' + $arrow + ' compl&egrave;te, avec notes post-d&eacute;cision quand elle est remplac&eacute;e'))
+$frMainBlock = $frMainBlock.Replace(
+  ('Any ' + $emDash + ' when a non-obvious methodology rule is adopted'),
+  ('N&rsquo;importe quand ' + $emDash + ' quand une r&egrave;gle m&eacute;thodologique non &eacute;vidente est adopt&eacute;e'))
+$frMainBlock = $frMainBlock.Replace(
+  ('Stable ' + $emDash + ' never revised in place (supersede with new file)'),
+  ('Stable ' + $emDash + ' jamais r&eacute;vis&eacute;e en place (remplacer avec un nouveau fichier)'))
+$frMainBlock = $frMainBlock.Replace(
+  ('Any ' + $emDash + ' when visual richness materially adds clarity'),
+  ('N&rsquo;importe quand ' + $emDash + ' quand la richesse visuelle ajoute mat&eacute;riellement de la clart&eacute;'))
 
-$frFooterBlock = @'
-<footer>
-  M&eacute;thodologie Ezkey Vue riche &nbsp;&middot;&nbsp; Derni&egrave;re mise &agrave; jour le 2026-05-24 &nbsp;&middot;&nbsp;
-  Source&nbsp;: product-docs/methodology/README.md
-  &nbsp;&middot;&nbsp;
-  D&eacute;cision&nbsp;: 2026-05-24-rich-views
-</footer>
-'@
+$frHeaderBlock = $rx::Replace(
+  $frHeaderBlock,
+  '(?s)<p class="subtitle">.*?</p>',
+  '  <p class="subtitle">' + "`n" +
+  '    R&eacute;f&eacute;rence visuelle pour le flux de l&rsquo;id&eacute;ation &agrave; la livraison &mdash; de l&rsquo;id&eacute;e brute &agrave; la tranche cl&ocirc;tur&eacute;e,' + "`n" +
+  '    avec les valeurs m&eacute;thodologiques, les types d&rsquo;artefacts, les fronti&egrave;res d&rsquo;&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.' + "`n" +
+  '  </p>',
+  $rxOpts)
 
-$frMainBlock = @'
-<main>
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="values">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="values">' + "`n" +
+  '    <h2>Valeurs m&eacute;thodologiques</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Les valeurs canoniques vivent dans le corpus m&eacute;thodologique Ezkey.' + "`n" +
+  '      Cette vue garde les tests op&eacute;ratoires visibles&nbsp;: assez de rigueur pour pr&eacute;server le jugement et la tra&ccedil;abilit&eacute;,' + "`n" +
+  '      sans assez de c&eacute;r&eacute;monie pour ralentir le travail simple.' + "`n" +
+  '    </p>',
+  $rxOpts)
 
-  <!-- SECTION 1 — FLUX DE TRAVAIL DE BOUT EN BOUT -->
-  <section id="workflow">
-    <h2>Flux de travail de bout en bout <span class="lane-a-tag">Couloir A</span></h2>
-    <p class="section-intro">
-      Neuf phases explicites avec sorties d&rsquo;artefacts et crit&egrave;res de sortie. Passez &agrave;
-      l&rsquo;impl&eacute;mentation d&egrave;s que la direction, la premi&egrave;re approche, les crit&egrave;res de validation
-      et les questions ouvertes non bloquantes sont &eacute;tablis &mdash; en &eacute;vitant autant le code
-      pr&eacute;matur&eacute; que la pr&eacute;paration perp&eacute;tuelle.
-    </p>
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="workflow">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="workflow">' + "`n" +
+  '    <h2>Flux de travail de bout en bout <span class="lane-a-tag">Couloir A</span></h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Neuf phases explicites avec sorties d&rsquo;artefacts et crit&egrave;res de sortie. Passez &agrave; l&rsquo;impl&eacute;mentation d&egrave;s que' + "`n" +
+  '      la direction, la premi&egrave;re coupe, les crit&egrave;res de validation et les questions ouvertes non bloquantes sont &eacute;tablis' + "`n" +
+  '      &mdash; en &eacute;vitant autant le code pr&eacute;matur&eacute; que la pr&eacute;paration perp&eacute;tuelle.' + "`n" +
+  '    </p>',
+  $rxOpts)
 
-    <div class="flow-scroll">
-      <div class="flow-inner">
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="artifacts">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="artifacts">' + "`n" +
+  '    <h2>Types d&rsquo;artefacts</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Tous les artefacts canoniques utilisent des identifiants date+slug. Aucun compteur global n&rsquo;est requis.' + "`n" +
+  '      Les identifiants sont stables ' + $emDash + ' jamais renomm&eacute;s apr&egrave;s cr&eacute;ation, jamais r&eacute;utilis&eacute;s.' + "`n" +
+  '    </p>',
+  $rxOpts)
 
-        <div class="phase-card ph1">
-          <div class="phase-num">Phase 1</div>
-          <div class="phase-name">Capture</div>
-          <div class="phase-action">Enregistrez l&rsquo;id&eacute;e brute avec une intention claire et des tags initiaux. Gardez la premi&egrave;re version courte et expressive.</div>
-          <span class="phase-badge bg-i">I-*</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: intention claire et tags assign&eacute;s.</div>
-        </div>
-        <div class="flow-arrow">&rarr;</div>
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="lanes">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="lanes">' + "`n" +
+  '    <h2>Couloirs parall&egrave;les</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Deux couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison.' + "`n" +
+  '      Une session peut combiner le couloir A avec l&rsquo;un ou les deux couloirs parall&egrave;les.' + "`n" +
+  '    </p>',
+  $rxOpts)
 
-        <div class="phase-card ph2">
-          <div class="phase-num">Phase 2</div>
-          <div class="phase-name">Triage</div>
-          <div class="phase-action">Clarifiez l&rsquo;intention, la valeur utilisateur, le risque et la port&eacute;e approximative. Assignez le statut, la priorit&eacute;, les tags de phase et de composant.</div>
-          <span class="phase-badge bg-i">I-* mis &agrave; jour</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: port&eacute;e et valeur compr&eacute;hensibles.</div>
-        </div>
-        <div class="flow-arrow">&rarr;</div>
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="collab">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="collab">' + "`n" +
+  '    <h2>Contexte de collaboration</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B et C' + "`n" +
+  '      quand la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees.' + "`n" +
+  '      Les sessions &agrave; branche unique n&rsquo;ont pas besoin de les appliquer.' + "`n" +
+  '    </p>',
+  $rxOpts)
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<div class="collab-modifier-tag">.*?</div>',
+  '<div class="collab-modifier-tag">Transversal &middot; s&rsquo;applique aux couloirs A, B, C</div>',
+  $rxOpts)
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<p class="collab-desc">.*?</p>',
+  '<p class="collab-desc">' + "`n" +
+  '        Quand deux d&eacute;veloppeurs (ou un d&eacute;veloppeur sur deux worktrees) travaillent simultan&eacute;ment,' + "`n" +
+  '        le nommage ordinal classique cr&eacute;e des collisions &agrave; la fusion. Le contexte de collaboration' + "`n" +
+  '        r&eacute;sout cela sans surcharge de coordination, en rendant les noms d&rsquo;artefacts autosuffisants' + "`n" +
+  '        par les identifiants date+slug et en diff&eacute;rant les index partag&eacute;s apr&egrave;s la fusion.' + "`n" +
+  '      </p>',
+  $rxOpts)
 
-        <div class="phase-card ph3">
-          <div class="phase-num">Phase 3</div>
-          <div class="phase-name">Challenge</div>
-          <div class="phase-action">Passe de questionnement structur&eacute; (&laquo;&nbsp;Grill Me&nbsp;&raquo;). Faites &eacute;merger les hypoth&egrave;ses, exceptions, chemins d&rsquo;erreur et non-objectifs.</div>
-          <span class="phase-badge bg-i">I-* + questions ouvertes</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: risques cl&eacute;s et exceptions explicites.</div>
-        </div>
-        <div class="flow-arrow">&rarr;</div>
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="naming">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="naming">' + "`n" +
+  '    <h2>Conventions de nommage</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Identifiants stables et r&eacute;sistants aux collisions sur toutes les branches et worktrees.' + "`n" +
+  '      Les artefacts h&eacute;rit&eacute;s <code>NNNN</code> ne sont jamais renomm&eacute;s.' + "`n" +
+  '    </p>',
+  $rxOpts)
 
-        <div class="phase-card ph4">
-          <div class="phase-num">Phase 4</div>
-          <div class="phase-name">Promouvoir</div>
-          <div class="phase-action">D&eacute;finissez la premi&egrave;re tranche verticale et les preuves attendues. &Eacute;vitez d&rsquo;ajouter de la pr&eacute;paration si la direction est d&eacute;j&agrave; claire.</div>
-          <span class="phase-badge bg-tb">TB-*</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: une tranche verticale est testable.</div>
-        </div>
-        <div class="flow-arrow">&rarr;</div>
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="skills">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="skills">' + "`n" +
+  '    <h2>Contrats de fronti&egrave;res des comp&eacute;tences</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Chaque comp&eacute;tence r&eacute;pond aux quatre m&ecirc;mes questions&nbsp;: entrer quand, sortir quand, appeler ensuite' + "`n" +
+  '      et inutile quand. Le texte canonique des comp&eacute;tences vit sous <code>.cursor/skills/</code>; ce tableau est' + "`n" +
+  '      la surface de navigation rapide.' + "`n" +
+  '    </p>',
+  $rxOpts)
 
-        <div class="phase-card ph5">
-          <div class="phase-num">Phase 5</div>
-          <div class="phase-name">Analyser &amp; Concevoir</div>
-          <div class="phase-action">Analyse globale + analyse par composant pour chaque fronti&egrave;re impact&eacute;e. D&eacute;finissez les responsabilit&eacute;s, contrats, validation, comportement d&rsquo;erreur.</div>
-          <span class="phase-badge bg-br">briefs + mappings</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: fronti&egrave;res et points de d&eacute;cision explicites.</div>
-        </div>
-        <div class="flow-arrow">&rarr;</div>
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="rich-views">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="rich-views">' + "`n" +
+  '    <h2>Vues riches</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Compagnons HTML aux documents Markdown sources, cr&eacute;&eacute;s lorsque la richesse visuelle am&eacute;liore mat&eacute;riellement' + "`n" +
+  '      la clart&eacute; et l&rsquo;alignement conceptuel entre collaborateurs humains et IA. La base m&eacute;thodologique reste' + "`n" +
+  '      Markdown-first &mdash; les vues riches sont des suppl&eacute;ments d&eacute;lib&eacute;r&eacute;s, pas des remplacements.' + "`n" +
+  '    </p>',
+  $rxOpts)
 
-        <div class="phase-card ph6">
-          <div class="phase-num">Phase 6</div>
-          <div class="phase-name">Planifier les tests</div>
-          <div class="phase-action">S&eacute;lectionnez les couches de test minimales et optionnelles&nbsp;: unitaire, fonctionnel, &eacute;lectif, op&eacute;rationnel, UI. Gardez la s&eacute;lection bas&eacute;e sur les risques et les co&ucirc;ts.</div>
-          <span class="phase-badge bg-ts">plan de test</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: couches de test minimales explicitement s&eacute;lectionn&eacute;es.</div>
-        </div>
-        <div class="flow-arrow">&rarr;</div>
-
-        <div class="phase-card ph7">
-          <div class="phase-num">Phase 7</div>
-          <div class="phase-name">Passerelle</div>
-          <div class="phase-action">Appliquez les passerelles qualit&eacute;&nbsp;: contrats, tests, docs, tra&ccedil;abilit&eacute;. V&eacute;rifiez les contr&ocirc;les obligatoires avant l&rsquo;impl&eacute;mentation.</div>
-          <span class="phase-badge bg-st">rapport de passerelle</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: les contr&ocirc;les qualit&eacute; obligatoires sont valid&eacute;s.</div>
-        </div>
-        <div class="flow-arrow">&rarr;</div>
-
-        <div class="phase-card ph8">
-          <div class="phase-num">Phase 8</div>
-          <div class="phase-name">Impl&eacute;menter</div>
-          <div class="phase-action">Ex&eacute;cutez le plan en code et tests. Mettez &agrave; jour les docs et contrats dans le m&ecirc;me changeset. Toute modification de contr&ocirc;leur implique une revue de contrat.</div>
-          <span class="phase-badge bg-cd">code + tests</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: preuves compl&egrave;tes et passerelles vertes.</div>
-        </div>
-        <div class="flow-arrow">&rarr;</div>
-
-        <div class="phase-card ph9">
-          <div class="phase-num">Phase 9</div>
-          <div class="phase-name">Cl&ocirc;turer</div>
-          <div class="phase-action">Mettez &agrave; jour les docs de fonctionnalit&eacute; et de tra&ccedil;abilit&eacute;. Faites la transition du statut du backlog et du tracer bullet. Enregistrez le r&eacute;sum&eacute; de session.</div>
-          <span class="phase-badge bg-st">statut + tra&ccedil;abilit&eacute;</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: statut et tra&ccedil;abilit&eacute; mis &agrave; jour.</div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 2 — TYPES D'ARTEFACTS -->
-  <section id="artifacts">
-    <h2>Types d&rsquo;artefacts</h2>
-    <p class="section-intro">
-      Tous les artefacts canoniques utilisent des identifiants date+slug. Aucune recherche de
-      compteur global n&rsquo;est requise. Les identifiants sont stables &mdash; jamais renomm&eacute;s apr&egrave;s
-      cr&eacute;ation, jamais r&eacute;utilis&eacute;s.
-    </p>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Format d&rsquo;identifiant</th>
-            <th>Emplacement</th>
-            <th>Cr&eacute;&eacute; lors de</th>
-            <th>Cycle de vie du statut</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><span class="ab ab-v">V-*</span>&nbsp; Note de vision</td>
-            <td><code>V-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td><code>global/vision/</code></td>
-            <td>Capture / Triage</td>
-            <td>brouillon &rarr; actif &rarr; remplac&eacute;</td>
-          </tr>
-          <tr>
-            <td><span class="ab ab-i">I-*</span>&nbsp; Id&eacute;e de backlog</td>
-            <td><code>I-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td><code>global/backlog/ideas/</code></td>
-            <td>Capture</td>
-            <td>capt&eacute;e &rarr; tri&eacute;e &rarr; en incubation &rarr; promue &rarr; impl&eacute;ment&eacute;e / diff&eacute;r&eacute;e / abandonn&eacute;e</td>
-          </tr>
-          <tr>
-            <td><span class="ab ab-tb">TB-*</span>&nbsp; Tracer bullet</td>
-            <td><code>TB-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td><code>global/backlog/</code></td>
-            <td>Promouvoir</td>
-            <td>d&eacute;limit&eacute;e &rarr; en cours &rarr; en validation &rarr; ferm&eacute;e</td>
-          </tr>
-          <tr>
-            <td><span class="ab ab-r">R-*</span>&nbsp; Tranche de retrofit</td>
-            <td><code>R-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td><code>global/legacy-retrofit/</code></td>
-            <td>Couloir retrofit</td>
-            <td>en attente &rarr; extraite &rarr; mapp&eacute;e &rarr; ferm&eacute;e</td>
-          </tr>
-          <tr>
-            <td><span class="ab ab-md">plan</span>&nbsp; Plan de travail</td>
-            <td>nom libre</td>
-            <td><code>plans/</code> ou <code>.cursor/plans/</code></td>
-            <td>Couloir incubation de plan</td>
-            <td>Non canonique &mdash; mat&eacute;rialis&eacute; en V-*/I-*/TB-*</td>
-          </tr>
-          <tr>
-            <td><span class="ab ab-md">blitz</span>&nbsp; Brouillon blitz</td>
-            <td><code>_blitz-YYYY-MM-DD[-slug].md</code></td>
-            <td><code>global/backlog/</code></td>
-            <td>Blitz intake</td>
-            <td>Actif (pr&eacute;fixe <code>_</code>) &rarr; archiv&eacute; (sans pr&eacute;fixe, dans <code>blitz-archive/</code>)</td>
-          </tr>
-          <tr>
-            <td><span class="ab ab-md">grill</span>&nbsp; Session grill</td>
-            <td><code>&lt;sujet&gt;-grill-me.md</code></td>
-            <td><code>global/backlog/grill-sessions/</code></td>
-            <td>Challenge</td>
-            <td>ouverte &rarr; reprise &rarr; r&eacute;solue</td>
-          </tr>
-          <tr>
-            <td><span class="ab ab-md">dec</span>&nbsp; D&eacute;cision de m&eacute;thodologie</td>
-            <td><code>YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td><code>methodology/decisions/</code></td>
-            <td>N&rsquo;importe quand &mdash; quand une r&egrave;gle de m&eacute;thodologie non &eacute;vidente est adopt&eacute;e</td>
-            <td>Stable &mdash; jamais r&eacute;vis&eacute;e en place (remplacer avec un nouveau fichier)</td>
-          </tr>
-          <tr>
-            <td><span class="ab ab-rv">RV</span>&nbsp; Vue riche</td>
-            <td>dossier slug</td>
-            <td><code>&lt;parent&gt;/view/&lt;slug&gt;/index.html</code></td>
-            <td>N&rsquo;importe quand &mdash; quand la richesse visuelle am&eacute;liore mat&eacute;riellement la clart&eacute;</td>
-            <td>Compagnon de son parent Markdown &mdash; mis &agrave; jour avec lui</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- SECTION 3 — COULOIRS PARALLÈLES -->
-  <section id="lanes">
-    <h2>Couloirs parall&egrave;les</h2>
-    <p class="section-intro">
-      Deux couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal id&eacute;ation-livraison. Une session
-      peut combiner le couloir A avec l&rsquo;un ou les deux couloirs parall&egrave;les.
-    </p>
-    <div class="lanes-grid">
-
-      <div class="lane-card" style="border-left-color: #7c3aed;">
-        <div class="lane-label">Couloir B</div>
-        <div class="lane-name" style="color: #7c3aed;">Incubation de plan</div>
-        <ul class="lane-steps">
-          <li>Cr&eacute;ez ou faites &eacute;voluer un plan de travail dans <code>plans/</code></li>
-          <li>Explorez les options et convergez vers une direction (forme libre)</li>
-          <li>Mat&eacute;rialisez le signal durable dans V-*/I-*/TB-*</li>
-          <li>Reliez le plan et les artefacts canoniques si utile</li>
-          <li>Ne traitez pas comme du retrofit sauf si genuinement historique</li>
-        </ul>
-        <p class="lane-ref">&rarr; plan-incubation-workflow.md</p>
-      </div>
-
-      <div class="lane-card" style="border-left-color: #d97706;">
-        <div class="lane-label">Couloir C</div>
-        <div class="lane-name" style="color: #d97706;">Retrofit historique</div>
-        <ul class="lane-steps">
-          <li>S&eacute;lectionnez un petit lot source (plans historiques, historique verbal)</li>
-          <li>Extrayez les d&eacute;cisions, invariants, patterns, signal de test</li>
-          <li>Mappez dans les docs canoniques</li>
-          <li>Enregistrez une tranche de retrofit (R-*)</li>
-          <li>Cl&ocirc;turez avec les lacunes r&eacute;siduelles et l&rsquo;action suivante</li>
-        </ul>
-        <p class="lane-ref">&rarr; legacy-retrofit-workflow.md</p>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- CONTEXTE DE COLLABORATION -->
-  <section id="collab">
-    <h2>Contexte de collaboration</h2>
-    <p class="section-intro">
-      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs
-      A, B et C lorsque la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees.
-      Les sessions sur une seule branche n&rsquo;ont pas besoin de les appliquer.
-    </p>
-    <div class="collab-card">
-      <div class="collab-modifier-tag">Transversal &middot; s&rsquo;applique aux couloirs A, B, C</div>
-      <p class="collab-desc">
-        Quand deux d&eacute;veloppeurs (ou un d&eacute;veloppeur sur deux worktrees) travaillent simultan&eacute;ment,
-        le nommage ordinal classique cr&eacute;e des collisions &agrave; la fusion. Le contexte de collaboration
-        r&eacute;sout ce probl&egrave;me sans surcharge de coordination, en rendant les noms d&rsquo;artefacts
-        auto-suffisants gr&acirc;ce aux identifiants date+slug et en diff&eacute;rant les index partag&eacute;s
-        apr&egrave;s la fusion.
-      </p>
-      <div class="collab-rules">
-        <div class="collab-rule">
-          <strong>IDs date+slug obligatoires</strong>
-          Aucune recherche de compteur, aucune contention entre branches.
-        </div>
-        <div class="collab-rule">
-          <strong>Cr&eacute;er des artefacts librement sur la branche</strong>
-          V-*, I-*, TB-*, R-* &mdash; aucune coordination inter-branches n&eacute;cessaire.
-        </div>
-        <div class="collab-rule">
-          <strong>Slug blitz obligatoire</strong>
-          Sur une branche de fonctionnalit&eacute;, le slug de th&egrave;me est choisi au d&eacute;but de la session &mdash; pas l&rsquo;identifiant ordinal.
-        </div>
-        <div class="collab-rule">
-          <strong>Diff&eacute;rer les mises &agrave; jour d&rsquo;index</strong>
-          <code>backlog/index.md</code>, <code>vision/product-orientation-notes.md</code> &mdash; mettez &agrave; jour apr&egrave;s la fusion sur <code>main</code>.
-        </div>
-        <div class="collab-rule">
-          <strong>R&eacute;conciliation de l&rsquo;index &agrave; la fusion</strong>
-          Ex&eacute;cutez une passe de r&eacute;conciliation quand la branche arrive sur <code>main</code>.
-        </div>
-      </div>
-      <p class="lane-ref">&rarr; multi-branch-workflow.md</p>
-    </div>
-  </section>
-
-  <!-- SECTION 4 — CONVENTIONS DE NOMMAGE -->
-  <section id="naming">
-    <h2>Conventions de nommage</h2>
-    <p class="section-intro">
-      Identifiants stables et r&eacute;sistants aux collisions sur toutes les branches et worktrees.
-      Les artefacts <code>NNNN</code> h&eacute;rit&eacute;s ne sont jamais renomm&eacute;s.
-    </p>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Artefact</th>
-            <th>Nom de fichier actif</th>
-            <th>Archiv&eacute; / final</th>
-            <th>R&egrave;gle cl&eacute;</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Note de vision</td>
-            <td><code>V-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td>M&ecirc;me (stable)</td>
-            <td>Jamais renomm&eacute; apr&egrave;s cr&eacute;ation</td>
-          </tr>
-          <tr>
-            <td>Id&eacute;e de backlog</td>
-            <td><code>I-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td>M&ecirc;me (stable)</td>
-            <td>Jamais renomm&eacute; apr&egrave;s cr&eacute;ation</td>
-          </tr>
-          <tr>
-            <td>Tracer bullet</td>
-            <td><code>TB-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td>M&ecirc;me (stable)</td>
-            <td>Jamais renomm&eacute; apr&egrave;s cr&eacute;ation</td>
-          </tr>
-          <tr>
-            <td>Tranche de retrofit</td>
-            <td><code>R-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td>M&ecirc;me (stable)</td>
-            <td>Jamais renomm&eacute; apr&egrave;s cr&eacute;ation</td>
-          </tr>
-          <tr>
-            <td>Blitz &mdash; branche de fonctionnalit&eacute;</td>
-            <td><code>_blitz-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td><code>blitz-archive/blitz-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td>Slug obligatoire&nbsp;; choisi au d&eacute;but de la session</td>
-          </tr>
-          <tr>
-            <td>Blitz &mdash; main / branche unique</td>
-            <td><code>_blitz-YYYY-MM-DD[-N].md</code></td>
-            <td><code>blitz-archive/blitz-YYYY-MM-DD[-N].md</code></td>
-            <td>Ordinal accept&eacute; si le th&egrave;me est flou au d&eacute;part</td>
-          </tr>
-          <tr>
-            <td>Session grill</td>
-            <td><code>&lt;sujet&gt;-grill-me.md</code></td>
-            <td>M&ecirc;me</td>
-            <td>Doit inclure un bloc de contr&ocirc;le &laquo;&nbsp;Resume at&nbsp;&raquo;</td>
-          </tr>
-          <tr>
-            <td>D&eacute;cision de m&eacute;thodologie</td>
-            <td><code>YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td>M&ecirc;me</td>
-            <td>Sous <code>methodology/decisions/</code></td>
-          </tr>
-          <tr>
-            <td>Vue riche</td>
-            <td><code>&lt;parent&gt;/view/index.html</code> <em>ou</em> <code>&lt;parent&gt;/view/&lt;slug&gt;/index.html</code></td>
-            <td>M&ecirc;me</td>
-            <td>HTML auto-contenu&nbsp;; li&eacute; depuis le parent Markdown</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- SECTION 5 — RÉFÉRENCE DES COMPÉTENCES -->
-  <section id="skills">
-    <h2>R&eacute;f&eacute;rence des comp&eacute;tences</h2>
-    <p class="section-intro">
-      Invoquez les comp&eacute;tences par nom au d&eacute;but d&rsquo;une session. Voir les prompts de d&eacute;marrage
-      rapide dans methodology/README.md.
-    </p>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Comp&eacute;tence</th>
-            <th>Quand l&rsquo;invoquer</th>
-            <th>Sortie principale</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>ezkey-vision-intake</code></td>
-            <td>Nouvelle id&eacute;e brute entrant dans le syst&egrave;me</td>
-            <td>Note de vision V-*</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-backlog-triage</code></td>
-            <td>Apr&egrave;s vision-intake&nbsp;; classifier et prioriser</td>
-            <td>Id&eacute;e de backlog I-* classifi&eacute;e</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-grill-me</code></td>
-            <td>Avant le verrouillage de conception&nbsp;; tester les hypoth&egrave;ses</td>
-            <td>Risques, options, questions critiques</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-plan-incubation</code></td>
-            <td>Exploration libre avant la capture canonique</td>
-            <td>Plan de travail &rarr; V-*/I-*/TB-*</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-tracer-bullet-promote</code></td>
-            <td>Direction d&eacute;cid&eacute;e&nbsp;; pr&ecirc;t pour l&rsquo;ex&eacute;cution d&eacute;limit&eacute;e</td>
-            <td>Brief de tracer bullet TB-*</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-component-design-pack</code></td>
-            <td>Pr&eacute;paration de la conception par composant pour les fronti&egrave;res impact&eacute;es</td>
-            <td>Briefs de conception, cartes de fronti&egrave;res, tables de d&eacute;cision</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-test-strategy-planner</code></td>
-            <td>Avant l&rsquo;impl&eacute;mentation&nbsp;; s&eacute;lectionner les couches de test</td>
-            <td>Tranche de plan de test</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-quality-gatekeeper</code></td>
-            <td>Avant la cl&ocirc;ture&nbsp;; v&eacute;rifier les passerelles qualit&eacute;</td>
-            <td>Rapport de passerelle</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-traceability-sync</code></td>
-            <td>Cl&ocirc;ture&nbsp;; mettre &agrave; jour les r&eacute;f&eacute;rences crois&eacute;es et le statut</td>
-            <td>R&eacute;f&eacute;rences d&rsquo;artefacts mises &agrave; jour</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-closeout</code></td>
-            <td>Fin de session ou compl&eacute;tion de fonctionnalit&eacute;</td>
-            <td>Transitions de statut, r&eacute;sum&eacute; de session</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-legacy-plan-miner</code></td>
-            <td>Couloir retrofit&nbsp;: extraction des plans historiques et briefings verbaux</td>
-            <td>Mat&eacute;riaux d&rsquo;entr&eacute;e R-*</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-retrofit-curator</code></td>
-            <td>Apr&egrave;s extraction&nbsp;; produire des tranches de retrofit canoniques</td>
-            <td>Tranches de retrofit R-*</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-github-issue-promote</code></td>
-            <td>Quand une id&eacute;e I-* passe le test &laquo;&nbsp;titre autonome&nbsp;&raquo;&nbsp;; pr&ecirc;te pour un billet GitHub</td>
-            <td>Titre, corps et labels propos&eacute;s + r&eacute;f&eacute;rence de tra&ccedil;abilit&eacute;</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- SECTION 6 — VUES RICHES -->
-  <section id="rich-views">
-    <h2>Vues riches</h2>
-    <p class="section-intro">
-      Compagnons HTML aux documents Markdown sources, cr&eacute;&eacute;s lorsque la richesse visuelle
-      am&eacute;liore mat&eacute;riellement la clart&eacute; et l&rsquo;alignement conceptuel entre collaborateurs humains
-      et agents IA. La base de la m&eacute;thodologie reste Markdown-first &mdash; les vues riches sont
-      des suppl&eacute;ments d&eacute;lib&eacute;r&eacute;s, pas des remplacements.
-    </p>
-
-    <h3 class="sub">Quand cr&eacute;er une vue riche</h3>
-    <ul class="criteria-list">
-      <li><strong>Relations d&rsquo;entit&eacute;s complexes</strong> &mdash; plusieurs types d&rsquo;entit&eacute;s interd&eacute;pendants avec des interactions de cycle de vie difficiles &agrave; suivre en prose ou tableaux seuls.</li>
-      <li><strong>Machines d&rsquo;&eacute;tat et gouvernance de cycle de vie</strong> &mdash; transitions d&rsquo;&eacute;tat, r&egrave;gles d&rsquo;activation/d&eacute;sactivation, propagation en cha&icirc;ne parent sur les types d&rsquo;entit&eacute;s.</li>
-      <li><strong>Flux cryptographiques ou de protocole</strong> &mdash; flux multi-acteurs avec transit de mat&eacute;riel de cl&eacute;, fen&ecirc;tres de synchronisation et contraintes de s&eacute;quen&ccedil;age o&ugrave; un diagramme ancre la compr&eacute;hension.</li>
-      <li><strong>D&eacute;cisions architecturales &agrave; fort impact</strong> &mdash; d&eacute;cisions transversales avec une complexit&eacute; visuelle qui b&eacute;n&eacute;ficie d&rsquo;un ancrage graphique durable.</li>
-      <li><strong>La m&eacute;thodologie elle-m&ecirc;me</strong> &mdash; le processus et le syst&egrave;me d&rsquo;artefacts b&eacute;n&eacute;ficient d&rsquo;une r&eacute;f&eacute;rence visuelle accessible &agrave; la fois aux humains et aux agents IA au d&eacute;but d&rsquo;une session.</li>
-    </ul>
-
-    <h3 class="sub">Convention de dossier et de lien</h3>
-    <div class="table-wrap" style="margin-bottom: 24px;">
-      <table>
-        <thead>
-          <tr><th>Contexte</th><th>Chemin</th><th>Lien depuis le parent Markdown</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>M&eacute;thodologie (ce document)</td>
-            <td><code>product-docs/methodology/view/index.html</code></td>
-            <td><code>[Vue riche](view/index.html)</code></td>
-          </tr>
-          <tr>
-            <td>Docs globaux (ex. Lifecycle Governance)</td>
-            <td><code>docs/view/&lt;slug&gt;/index.html</code></td>
-            <td><code>[Vue riche](view/&lt;slug&gt;/index.html)</code></td>
-          </tr>
-          <tr>
-            <td>Niveau composant</td>
-            <td><code>product-docs/components/&lt;comp&gt;/view/index.html</code></td>
-            <td><code>[Vue riche](view/index.html)</code></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3 class="sub">Principes de conception</h3>
-    <ul class="criteria-list teal">
-      <li><strong>Auto-contenu</strong> &mdash; aucune d&eacute;pendance CDN externe. Int&eacute;grez tous les styles et SVG en ligne.</li>
-      <li><strong>Palette sobre</strong> &mdash; l&rsquo;information d&rsquo;abord. La couleur est utilis&eacute;e pour la distinction, pas pour la d&eacute;coration.</li>
-      <li><strong>Li&eacute; depuis le parent Markdown</strong> &mdash; le document source porte une r&eacute;f&eacute;rence claire &agrave; la vue riche.</li>
-      <li><strong>Mis &agrave; jour dans le m&ecirc;me changeset</strong> &mdash; lorsque le document parent change, la vue riche est mise &agrave; jour avec lui.</li>
-      <li><strong>Un seul <code>index.html</code></strong> par dossier de vue&nbsp;; d&rsquo;autres fichiers uniquement si la navigation apporte une valeur r&eacute;elle pour le sujet sp&eacute;cifique.</li>
-    </ul>
-
-  </section>
-
-</main>
-'@
-
-# ---------------------------------------------------------------------------
-# 9. Assemble and write French page
-# ---------------------------------------------------------------------------
-$frOutputPath = Join-Path $repoRoot 'sites\ezkey-org\fr\methodologie.html'
-
-$frOutput = @"
+$outputFr = @"
 <!DOCTYPE html>
 <!-- Source: product-docs/methodology/view/index.html @ $syncDate -->
-<!-- Langue: fr -->
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="R&eacute;f&eacute;rence visuelle pour le flux de bout en bout &mdash; de l&rsquo;id&eacute;e brute &agrave; la fonctionnalit&eacute; livr&eacute;e, avec les types d&rsquo;artefacts, les couloirs parall&egrave;les, les conventions de nommage et les comp&eacute;tences.">
+  <meta name="description" content="$descriptionFr">
   <meta property="og:title" content="M&eacute;thodologie Ezkey &mdash; Vue riche">
-  <meta property="og:description" content="R&eacute;f&eacute;rence visuelle pour le flux de bout en bout &mdash; de l&rsquo;id&eacute;e brute &agrave; la fonctionnalit&eacute; livr&eacute;e.">
+  <meta property="og:description" content="$descriptionFr">
   <meta property="og:url" content="https://ezkey.org/fr/methodologie.html">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Ezkey">
   <meta property="og:locale" content="fr_FR">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="M&eacute;thodologie Ezkey &mdash; Vue riche">
+  <meta name="twitter:description" content="$descriptionFr">
+  <meta name="twitter:image" content="https://ezkey.org/logo.svg">
   <link rel="alternate" hreflang="en" href="https://ezkey.org/methodology.html">
   <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/methodologie.html">
   <link rel="alternate" hreflang="x-default" href="https://ezkey.org/methodology.html">
   <title>M&eacute;thodologie Ezkey &mdash; Vue riche</title>
   <style>
-    /* -- Site shell -------------------------------------------------------- */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      color: #0f172a;
-    }
-    .shell {
-      max-width: 1460px;
-      margin: 0 auto;
-      padding: 0 20px 56px;
-    }
-    .nav-top {
-      padding: 14px 0 8px;
-      font-size: 0.88rem;
-      color: rgba(255,255,255,0.9);
-    }
-    .nav-top a { color: rgba(255,255,255,0.9); text-decoration: underline; }
-    .nav-top a:hover { color: #fff; }
-    .site-card {
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.18);
-      overflow: hidden;
-      margin-top: 8px;
-    }
-    @media (max-width: 640px) {
-      .shell { padding: 0 12px 48px; }
-      .site-card { border-radius: 12px; }
-    }
-    /* -- Canonical styles -------------------------------------------------- */
+$siteShellCss
+    /* Canonical styles (from product-docs/methodology/view/index.html) */
 $styleInner
 $paletteOverride
   </style>
@@ -814,17 +659,12 @@ $frFooterBlock
     <footer class="site-footer" style="text-align:center;">
       Ezkey &nbsp;&middot;&nbsp; <a href="/fr/">ezkey.org</a>
     </footer>
-
   </div>
 </body>
 </html>
 "@
 
-if ($DryRun) {
-    Write-Host "[DryRun] Would write $($frOutput.Length) chars to: $frOutputPath"
-} else {
-    [System.IO.File]::WriteAllText($frOutputPath, $frOutput, $utf8NoBom)
-    Write-Host "Published FR: $frOutputPath"
-    Write-Host "Sync:         Source: product-docs/methodology/view/index.html @ $syncDate"
-    Write-Host "Next steps:   open sites/ezkey-org/fr/methodologie.html in a browser to validate."
-}
+Write-Page $outputPathEn $outputEn 'EN'
+Write-Page $outputPathFr $outputFr 'FR'
+Write-Host "Sync:         Source: product-docs/methodology/view/index.html @ $syncDate"
+Write-Host "Next steps:   open sites/ezkey-org/methodology.html and fr/methodologie.html, then deploy preview."

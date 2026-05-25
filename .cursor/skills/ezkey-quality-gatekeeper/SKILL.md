@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Run a concise go/no-go quality check at key workflow transitions.
 
+## Boundary contract
+
+- **Enter when:** work is about to move from analysis to execution, or from execution to closeout.
+- **Exit when:** the gate returns `go` or `no-go` with blockers, major issues, and follow-up actions.
+- **Call next:** implementation after `go`, or targeted design/test/traceability work after `no-go`.
+- **Not needed when:** the task is a trivial change with no analysis, contract, test, or traceability impact.
+
 ## Inputs
 
 - target (`I-*`, `TB-*`, or implementation slice)

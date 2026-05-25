@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Stress-test an idea or plan through focused questions before design lock-in.
 
+## Boundary contract
+
+- **Enter when:** assumptions, exception paths, lifecycle effects, or boundary risks need pressure-testing.
+- **Exit when:** risks, open questions, decision pressure points, and next clarifications are explicit.
+- **Call next:** `ezkey-backlog-triage` for status alignment, `ezkey-tracer-bullet-promote` for execution scope, or `ezkey-component-design-pack` for component detail.
+- **Not needed when:** the change is low-risk, already bounded, and has known validation criteria.
+
 ## Input
 
 - `I-*`, `TB-*`, or draft plan

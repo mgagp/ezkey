@@ -1,23 +1,26 @@
 <!DOCTYPE html>
-<!-- Source: product-docs/methodology/view/index.html @ 2026-05-24 -->
-<!-- Langue: fr -->
+<!-- Source: product-docs/methodology/view/index.html @ 2026-05-25 -->
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="R&eacute;f&eacute;rence visuelle pour le flux de bout en bout &mdash; de l&rsquo;id&eacute;e brute &agrave; la fonctionnalit&eacute; livr&eacute;e, avec les types d&rsquo;artefacts, les couloirs parall&egrave;les, les conventions de nommage et les comp&eacute;tences.">
+  <meta name="description" content="R&eacute;f&eacute;rence visuelle pour le flux de l'id&eacute;ation &agrave; la livraison, les valeurs m&eacute;thodologiques, les types d'artefacts, les fronti&egrave;res d'&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.">
   <meta property="og:title" content="M&eacute;thodologie Ezkey &mdash; Vue riche">
-  <meta property="og:description" content="R&eacute;f&eacute;rence visuelle pour le flux de bout en bout &mdash; de l&rsquo;id&eacute;e brute &agrave; la fonctionnalit&eacute; livr&eacute;e.">
+  <meta property="og:description" content="R&eacute;f&eacute;rence visuelle pour le flux de l'id&eacute;ation &agrave; la livraison, les valeurs m&eacute;thodologiques, les types d'artefacts, les fronti&egrave;res d'&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.">
   <meta property="og:url" content="https://ezkey.org/fr/methodologie.html">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Ezkey">
   <meta property="og:locale" content="fr_FR">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="M&eacute;thodologie Ezkey &mdash; Vue riche">
+  <meta name="twitter:description" content="R&eacute;f&eacute;rence visuelle pour le flux de l'id&eacute;ation &agrave; la livraison, les valeurs m&eacute;thodologiques, les types d'artefacts, les fronti&egrave;res d'&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.">
+  <meta name="twitter:image" content="https://ezkey.org/logo.svg">
   <link rel="alternate" hreflang="en" href="https://ezkey.org/methodology.html">
   <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/methodologie.html">
   <link rel="alternate" hreflang="x-default" href="https://ezkey.org/methodology.html">
   <title>M&eacute;thodologie Ezkey &mdash; Vue riche</title>
   <style>
-    /* -- Site shell -------------------------------------------------------- */
+    /* Site shell */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -48,7 +51,7 @@
       .shell { padding: 0 12px 48px; }
       .site-card { border-radius: 12px; }
     }
-    /* -- Canonical styles -------------------------------------------------- */
+    /* Canonical styles (from product-docs/methodology/view/index.html) */
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -451,6 +454,120 @@
 
     .collab-rule strong { color: var(--text); display: block; margin-bottom: 2px; font-size: 0.78rem; }
 
+    /* ── Methodological values ───────────────────────────────── */
+    .values-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 12px;
+    }
+
+    .value-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      border-top: 3px solid var(--blue);
+      padding: 15px 16px 16px;
+    }
+
+    .value-card:nth-child(2) { border-top-color: var(--teal); }
+    .value-card:nth-child(3) { border-top-color: var(--amber); }
+    .value-card:nth-child(4) { border-top-color: var(--violet); }
+    .value-card:nth-child(5) { border-top-color: var(--indigo); }
+    .value-card:nth-child(6) { border-top-color: var(--green); }
+
+    .value-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+
+    .value-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+      margin-bottom: 10px;
+    }
+
+    .decision-test {
+      font-size: 0.75rem;
+      color: var(--slate);
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 7px 8px;
+      line-height: 1.35;
+    }
+
+    .decision-test strong { color: var(--text); }
+
+    /* ── Bidirectional traceability ───────────────────────────── */
+    .trace-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px 20px;
+    }
+
+    .trace-flow {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 18px;
+    }
+
+    .trace-step {
+      min-width: 150px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 11px;
+    }
+
+    .trace-step-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .trace-step-desc {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      line-height: 1.35;
+    }
+
+    .trace-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .trace-checks {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    .trace-check {
+      font-size: 0.79rem;
+      color: var(--text-secondary);
+      border-left: 3px solid var(--teal);
+      background: #f8fafc;
+      border-radius: 5px;
+      padding: 8px 10px;
+      line-height: 1.4;
+    }
+
+    .trace-check strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+    .boundary-table td { min-width: 150px; }
+    .boundary-table td:first-child { min-width: 190px; }
+
     /* ── SECTION 5 — Rich views ──────────────────────────────────── */
     .criteria-list {
       list-style: none;
@@ -549,7 +666,7 @@
       main { padding: 0 20px 56px; }
     }
   
-    /* â”€â”€ Site palette overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    /* Site palette overrides */
     :root {
       --blue: #667eea;
       --indigo: #764ba2;
@@ -565,7 +682,6 @@
     .section-intro a { color: #667eea; }
     .lane-a-tag { background: #f0f0ff; border-color: #c4c8f0; color: #5561d4; }
     section > h2 { border-bottom-color: rgba(102,126,234,0.3); }
-    /* Site attribution footer (outside white card â€” on gradient background) */
     footer.site-footer {
       color: rgba(255,255,255,0.75);
       border-top: none;
@@ -587,11 +703,13 @@
 <nav>
   <div class="nav-brand">Ezkey <span>M&eacute;thodologie</span></div>
   <div class="nav-sep"></div>
-  <a href="#workflow">Flux de travail</a>
+  <a href="#workflow">Flux</a>
+  <a href="#values">Valeurs</a>
   <a href="#artifacts">Artefacts</a>
   <a href="#lanes">Couloirs</a>
   <a href="#collab">Collab</a>
   <a href="#naming">Nommage</a>
+  <a href="#traceability">Tra&ccedil;abilit&eacute;</a>
   <a href="#skills">Comp&eacute;tences</a>
   <a href="#rich-views">Vues riches</a>
 </nav>
@@ -599,26 +717,71 @@
     <div class="site-card">
 <header class="page-header">
   <h1>M&eacute;thodologie Ezkey</h1>
-  <p class="subtitle">
-    R&eacute;f&eacute;rence visuelle pour le flux de bout en bout &mdash; de l&rsquo;id&eacute;e brute &agrave; la fonctionnalit&eacute; livr&eacute;e,
-    avec les types d&rsquo;artefacts, les couloirs parall&egrave;les, les conventions de nommage et les comp&eacute;tences.
+    <p class="subtitle">
+    R&eacute;f&eacute;rence visuelle pour le flux de l&rsquo;id&eacute;ation &agrave; la livraison &mdash; de l&rsquo;id&eacute;e brute &agrave; la tranche cl&ocirc;tur&eacute;e,
+    avec les valeurs m&eacute;thodologiques, les types d&rsquo;artefacts, les fronti&egrave;res d&rsquo;&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.
   </p>
   <div class="meta">
-    <span>Source&nbsp;: product-docs/methodology/README.md</span>
+    <span>Source&nbsp;: corpus m&eacute;thodologique Ezkey</span>
     <span>D&eacute;cision&nbsp;: 2026-05-24-rich-views</span>
-    <span>Mis &agrave; jour le 2026-05-24</span>
+    <span>Mis &agrave; jour le 2026-05-25</span>
   </div>
 </header>
 <main>
 
-  <!-- SECTION 1 â€” FLUX DE TRAVAIL DE BOUT EN BOUT -->
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 0 — METHODOLOGICAL VALUES
+       ════════════════════════════════════════════════════════════ -->
+  <section id="values">
+    <h2>Valeurs m&eacute;thodologiques</h2>
+    <p class="section-intro">
+      Les valeurs canoniques vivent dans le corpus m&eacute;thodologique Ezkey.
+      Cette vue garde les tests op&eacute;ratoires visibles&nbsp;: assez de rigueur pour pr&eacute;server le jugement et la tra&ccedil;abilit&eacute;,
+      sans assez de c&eacute;r&eacute;monie pour ralentir le travail simple.
+    </p>
+    <div class="values-grid">
+      <div class="value-card">
+        <div class="value-title">Rigueur proportionnelle</div>
+        <p class="value-desc">Le poids du processus suit l&rsquo;incertitude et le risque, pas l&rsquo;habitude ni la taille de l&rsquo;artefact.</p>
+        <div class="decision-test"><strong>Test&nbsp;:</strong> quel risque concret cette &eacute;tape suppl&eacute;mentaire r&eacute;duit-elle?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Int&eacute;grit&eacute; interne</div>
+        <p class="value-desc">Les couloirs, comp&eacute;tences, statuts et artefacts se relient sans m&eacute;moire cach&eacute;e de session.</p>
+        <div class="decision-test"><strong>Test&nbsp;:</strong> un humain ou un agent ult&eacute;rieur peut-il reprendre d&rsquo;ici?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Incertitude explicite</div>
+        <p class="value-desc">Les statuts nomment ce qui est connu, ce qui reste ouvert et le niveau de confiance que l&rsquo;artefact supporte.</p>
+        <div class="decision-test"><strong>Test&nbsp;:</strong> cette sortie expose-t-elle l&rsquo;incertitude au lieu de la lisser?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Fronti&egrave;res d&rsquo;&eacute;tat lisibles</div>
+        <p class="value-desc">Chaque comp&eacute;tence a des fronti&egrave;res d&rsquo;entr&eacute;e, de sortie, d&rsquo;&eacute;tape suivante et de chemin rapide.</p>
+        <div class="decision-test"><strong>Test&nbsp;:</strong> la transition est-elle claire pour un humain fatigu&eacute; et un agent froid?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Tra&ccedil;abilit&eacute; bidirectionnelle</div>
+        <p class="value-desc">Les liens vers l&rsquo;avant montrent o&ugrave; va le travail; les liens arri&egrave;re prouvent pourquoi il existe.</p>
+        <div class="decision-test"><strong>Test&nbsp;:</strong> peut-on naviguer &agrave; la fois vers la source et vers le r&eacute;sultat durable?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Permanence m&eacute;rit&eacute;e</div>
+        <p class="value-desc">Les documents vivants, registres, contr&ocirc;les et comp&eacute;tences doivent m&eacute;riter leur co&ucirc;t de maintenance.</p>
+        <div class="decision-test"><strong>Test&nbsp;:</strong> qui met cela &agrave; jour, quand, et que faire si cela reste p&eacute;rim&eacute;?</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 1 — END-TO-END WORKFLOW
+       ════════════════════════════════════════════════════════════ -->
   <section id="workflow">
     <h2>Flux de travail de bout en bout <span class="lane-a-tag">Couloir A</span></h2>
     <p class="section-intro">
-      Neuf phases explicites avec sorties d&rsquo;artefacts et crit&egrave;res de sortie. Passez &agrave;
-      l&rsquo;impl&eacute;mentation d&egrave;s que la direction, la premi&egrave;re approche, les crit&egrave;res de validation
-      et les questions ouvertes non bloquantes sont &eacute;tablis &mdash; en &eacute;vitant autant le code
-      pr&eacute;matur&eacute; que la pr&eacute;paration perp&eacute;tuelle.
+      Neuf phases explicites avec sorties d&rsquo;artefacts et crit&egrave;res de sortie. Passez &agrave; l&rsquo;impl&eacute;mentation d&egrave;s que
+      la direction, la premi&egrave;re coupe, les crit&egrave;res de validation et les questions ouvertes non bloquantes sont &eacute;tablis
+      &mdash; en &eacute;vitant autant le code pr&eacute;matur&eacute; que la pr&eacute;paration perp&eacute;tuelle.
     </p>
 
     <div class="flow-scroll">
@@ -631,7 +794,7 @@
           <span class="phase-badge bg-i">I-*</span>
           <div class="phase-exit">Termin&eacute; quand&nbsp;: intention claire et tags assign&eacute;s.</div>
         </div>
-        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-arrow">→</div>
 
         <div class="phase-card ph2">
           <div class="phase-num">Phase 2</div>
@@ -640,16 +803,16 @@
           <span class="phase-badge bg-i">I-* mis &agrave; jour</span>
           <div class="phase-exit">Termin&eacute; quand&nbsp;: port&eacute;e et valeur compr&eacute;hensibles.</div>
         </div>
-        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-arrow">→</div>
 
         <div class="phase-card ph3">
           <div class="phase-num">Phase 3</div>
-          <div class="phase-name">Challenge</div>
+          <div class="phase-name">Questionnement</div>
           <div class="phase-action">Passe de questionnement structur&eacute; (&laquo;&nbsp;Grill Me&nbsp;&raquo;). Faites &eacute;merger les hypoth&egrave;ses, exceptions, chemins d&rsquo;erreur et non-objectifs.</div>
           <span class="phase-badge bg-i">I-* + questions ouvertes</span>
           <div class="phase-exit">Termin&eacute; quand&nbsp;: risques cl&eacute;s et exceptions explicites.</div>
         </div>
-        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-arrow">→</div>
 
         <div class="phase-card ph4">
           <div class="phase-num">Phase 4</div>
@@ -658,63 +821,64 @@
           <span class="phase-badge bg-tb">TB-*</span>
           <div class="phase-exit">Termin&eacute; quand&nbsp;: une tranche verticale est testable.</div>
         </div>
-        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-arrow">→</div>
 
         <div class="phase-card ph5">
           <div class="phase-num">Phase 5</div>
-          <div class="phase-name">Analyser &amp; Concevoir</div>
-          <div class="phase-action">Analyse globale + analyse par composant pour chaque fronti&egrave;re impact&eacute;e. D&eacute;finissez les responsabilit&eacute;s, contrats, validation, comportement d&rsquo;erreur.</div>
+          <div class="phase-name">Analyser &amp; concevoir</div>
+          <div class="phase-action">Analyse globale et analyse par composant pour chaque fronti&egrave;re impact&eacute;e. D&eacute;finissez les responsabilit&eacute;s, contrats, validations et comportements d&rsquo;erreur.</div>
           <span class="phase-badge bg-br">briefs + mappings</span>
           <div class="phase-exit">Termin&eacute; quand&nbsp;: fronti&egrave;res et points de d&eacute;cision explicites.</div>
         </div>
-        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-arrow">→</div>
 
         <div class="phase-card ph6">
           <div class="phase-num">Phase 6</div>
           <div class="phase-name">Planifier les tests</div>
           <div class="phase-action">S&eacute;lectionnez les couches de test minimales et optionnelles&nbsp;: unitaire, fonctionnel, &eacute;lectif, op&eacute;rationnel, UI. Gardez la s&eacute;lection bas&eacute;e sur les risques et les co&ucirc;ts.</div>
-          <span class="phase-badge bg-ts">plan de test</span>
+          <span class="phase-badge bg-ts">tranche de plan de test</span>
           <div class="phase-exit">Termin&eacute; quand&nbsp;: couches de test minimales explicitement s&eacute;lectionn&eacute;es.</div>
         </div>
-        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-arrow">→</div>
 
         <div class="phase-card ph7">
           <div class="phase-num">Phase 7</div>
           <div class="phase-name">Passerelle</div>
-          <div class="phase-action">Appliquez les passerelles qualit&eacute;&nbsp;: contrats, tests, docs, tra&ccedil;abilit&eacute;. V&eacute;rifiez les contr&ocirc;les obligatoires avant l&rsquo;impl&eacute;mentation.</div>
+          <div class="phase-action">Appliquez les passerelles d&rsquo;ad&eacute;quation m&eacute;thodologique, d&rsquo;analyse, de conception, d&rsquo;impl&eacute;mentation et de cl&ocirc;ture. V&eacute;rifiez les contr&ocirc;les obligatoires avant l&rsquo;impl&eacute;mentation.</div>
           <span class="phase-badge bg-st">rapport de passerelle</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: les contr&ocirc;les qualit&eacute; obligatoires sont valid&eacute;s.</div>
+          <div class="phase-exit">Termin&eacute; quand&nbsp;: les contr&ocirc;les qualit&eacute; obligatoires passent.</div>
         </div>
-        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-arrow">→</div>
 
         <div class="phase-card ph8">
           <div class="phase-num">Phase 8</div>
           <div class="phase-name">Impl&eacute;menter</div>
-          <div class="phase-action">Ex&eacute;cutez le plan en code et tests. Mettez &agrave; jour les docs et contrats dans le m&ecirc;me changeset. Toute modification de contr&ocirc;leur implique une revue de contrat.</div>
+          <div class="phase-action">Ex&eacute;cutez le plan en code et en tests. Mettez &agrave; jour les docs et contrats dans le m&ecirc;me changeset. Toute modification de contr&ocirc;leur implique une revue de contrat.</div>
           <span class="phase-badge bg-cd">code + tests</span>
           <div class="phase-exit">Termin&eacute; quand&nbsp;: preuves compl&egrave;tes et passerelles vertes.</div>
         </div>
-        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-arrow">→</div>
 
         <div class="phase-card ph9">
           <div class="phase-num">Phase 9</div>
           <div class="phase-name">Cl&ocirc;turer</div>
-          <div class="phase-action">Mettez &agrave; jour les docs de fonctionnalit&eacute; et de tra&ccedil;abilit&eacute;. Faites la transition du statut du backlog et du tracer bullet. Enregistrez le r&eacute;sum&eacute; de session.</div>
+          <div class="phase-action">Faites transiter les statuts, consignez les preuves, s&eacute;parez la cl&ocirc;ture du corpus du backlog produit actif et nommez le risque r&eacute;siduel.</div>
           <span class="phase-badge bg-st">statut + tra&ccedil;abilit&eacute;</span>
-          <div class="phase-exit">Termin&eacute; quand&nbsp;: statut et tra&ccedil;abilit&eacute; mis &agrave; jour.</div>
+          <div class="phase-exit">Termin&eacute; quand&nbsp;: cl&ocirc;ture honn&ecirc;te et reprenable.</div>
         </div>
 
       </div>
     </div>
   </section>
 
-  <!-- SECTION 2 â€” TYPES D'ARTEFACTS -->
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 2 — ARTIFACT TYPES
+       ════════════════════════════════════════════════════════════ -->
   <section id="artifacts">
     <h2>Types d&rsquo;artefacts</h2>
     <p class="section-intro">
-      Tous les artefacts canoniques utilisent des identifiants date+slug. Aucune recherche de
-      compteur global n&rsquo;est requise. Les identifiants sont stables &mdash; jamais renomm&eacute;s apr&egrave;s
-      cr&eacute;ation, jamais r&eacute;utilis&eacute;s.
+      Tous les artefacts canoniques utilisent des identifiants date+slug. Aucun compteur global n&rsquo;est requis.
+      Les identifiants sont stables — jamais renomm&eacute;s apr&egrave;s cr&eacute;ation, jamais r&eacute;utilis&eacute;s.
     </p>
     <div class="table-wrap">
       <table>
@@ -733,75 +897,77 @@
             <td><code>V-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>global/vision/</code></td>
             <td>Capture / Triage</td>
-            <td>brouillon &rarr; actif &rarr; remplac&eacute;</td>
+            <td>draft → under-review → promoted / archived</td>
           </tr>
           <tr>
             <td><span class="ab ab-i">I-*</span>&nbsp; Id&eacute;e de backlog</td>
             <td><code>I-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>global/backlog/ideas/</code></td>
             <td>Capture</td>
-            <td>capt&eacute;e &rarr; tri&eacute;e &rarr; en incubation &rarr; promue &rarr; impl&eacute;ment&eacute;e / diff&eacute;r&eacute;e / abandonn&eacute;e</td>
+            <td>captured → triaged → incubating → ready → active → done / parked / archived / dropped</td>
           </tr>
           <tr>
             <td><span class="ab ab-tb">TB-*</span>&nbsp; Tracer bullet</td>
             <td><code>TB-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>global/backlog/</code></td>
             <td>Promouvoir</td>
-            <td>d&eacute;limit&eacute;e &rarr; en cours &rarr; en validation &rarr; ferm&eacute;e</td>
+            <td>draft → under-review → promoted / archived</td>
           </tr>
           <tr>
             <td><span class="ab ab-r">R-*</span>&nbsp; Tranche de retrofit</td>
             <td><code>R-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>global/legacy-retrofit/</code></td>
             <td>Couloir retrofit</td>
-            <td>en attente &rarr; extraite &rarr; mapp&eacute;e &rarr; ferm&eacute;e</td>
+            <td>captured → mapped → integrated → archived</td>
           </tr>
           <tr>
             <td><span class="ab ab-md">plan</span>&nbsp; Plan de travail</td>
-            <td>nom libre</td>
-            <td><code>plans/</code> ou <code>.cursor/plans/</code></td>
+            <td>free name</td>
+            <td><code>plans/</code> or <code>.cursor/plans/</code></td>
             <td>Couloir incubation de plan</td>
-            <td>Non canonique &mdash; mat&eacute;rialis&eacute; en V-*/I-*/TB-*</td>
+            <td>Non-canonical — materialized into V-*/I-*/TB-*</td>
           </tr>
           <tr>
             <td><span class="ab ab-md">blitz</span>&nbsp; Brouillon blitz</td>
             <td><code>_blitz-YYYY-MM-DD[-slug].md</code></td>
             <td><code>global/backlog/</code></td>
             <td>Blitz intake</td>
-            <td>Actif (pr&eacute;fixe <code>_</code>) &rarr; archiv&eacute; (sans pr&eacute;fixe, dans <code>blitz-archive/</code>)</td>
+            <td>Active (<code>_</code> prefix) → archived (no prefix, in <code>blitz-archive/</code>)</td>
           </tr>
           <tr>
             <td><span class="ab ab-md">grill</span>&nbsp; Session grill</td>
-            <td><code>&lt;sujet&gt;-grill-me.md</code></td>
+            <td><code>&lt;topic&gt;-grill-me.md</code></td>
             <td><code>global/backlog/grill-sessions/</code></td>
-            <td>Challenge</td>
-            <td>ouverte &rarr; reprise &rarr; r&eacute;solue</td>
+            <td>Questionnement</td>
+            <td>ouverte → reprise → compl&egrave;te, avec notes post-d&eacute;cision quand elle est remplac&eacute;e</td>
           </tr>
           <tr>
             <td><span class="ab ab-md">dec</span>&nbsp; D&eacute;cision de m&eacute;thodologie</td>
             <td><code>YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>methodology/decisions/</code></td>
-            <td>N&rsquo;importe quand &mdash; quand une r&egrave;gle de m&eacute;thodologie non &eacute;vidente est adopt&eacute;e</td>
-            <td>Stable &mdash; jamais r&eacute;vis&eacute;e en place (remplacer avec un nouveau fichier)</td>
+            <td>N&rsquo;importe quand — quand une r&egrave;gle m&eacute;thodologique non &eacute;vidente est adopt&eacute;e</td>
+            <td>Stable — jamais r&eacute;vis&eacute;e en place (remplacer avec un nouveau fichier)</td>
           </tr>
           <tr>
             <td><span class="ab ab-rv">RV</span>&nbsp; Vue riche</td>
-            <td>dossier slug</td>
+            <td>slug de dossier</td>
             <td><code>&lt;parent&gt;/view/&lt;slug&gt;/index.html</code></td>
-            <td>N&rsquo;importe quand &mdash; quand la richesse visuelle am&eacute;liore mat&eacute;riellement la clart&eacute;</td>
-            <td>Compagnon de son parent Markdown &mdash; mis &agrave; jour avec lui</td>
+            <td>N&rsquo;importe quand — quand la richesse visuelle ajoute mat&eacute;riellement de la clart&eacute;</td>
+            <td>Companion to its Markdown parent — updated with it</td>
           </tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- SECTION 3 â€” COULOIRS PARALLÃˆLES -->
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 3 — PARALLEL LANES
+       ════════════════════════════════════════════════════════════ -->
   <section id="lanes">
     <h2>Couloirs parall&egrave;les</h2>
     <p class="section-intro">
-      Deux couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal id&eacute;ation-livraison. Une session
-      peut combiner le couloir A avec l&rsquo;un ou les deux couloirs parall&egrave;les.
+      Deux couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison.
+      Une session peut combiner le couloir A avec l&rsquo;un ou les deux couloirs parall&egrave;les.
     </p>
     <div class="lanes-grid">
 
@@ -809,47 +975,48 @@
         <div class="lane-label">Couloir B</div>
         <div class="lane-name" style="color: #7c3aed;">Incubation de plan</div>
         <ul class="lane-steps">
-          <li>Cr&eacute;ez ou faites &eacute;voluer un plan de travail dans <code>plans/</code></li>
-          <li>Explorez les options et convergez vers une direction (forme libre)</li>
-          <li>Mat&eacute;rialisez le signal durable dans V-*/I-*/TB-*</li>
-          <li>Reliez le plan et les artefacts canoniques si utile</li>
-          <li>Ne traitez pas comme du retrofit sauf si genuinement historique</li>
+          <li>Cr&eacute;er ou faire &eacute;voluer un plan de travail dans <code>plans/</code></li>
+          <li>Explorer les options et converger vers une direction (forme libre)</li>
+          <li>Mat&eacute;rialiser le signal durable en V-*/I-*/TB-*</li>
+          <li>Relier le plan et les artefacts canoniques lorsque c&rsquo;est utile</li>
+          <li>Ne pas traiter comme du retrofit sauf si la source est vraiment historique</li>
         </ul>
-        <p class="lane-ref">&rarr; plan-incubation-workflow.md</p>
+        <p class="lane-ref">→ plan-incubation-workflow.md</p>
       </div>
 
       <div class="lane-card" style="border-left-color: #d97706;">
         <div class="lane-label">Couloir C</div>
         <div class="lane-name" style="color: #d97706;">Retrofit historique</div>
         <ul class="lane-steps">
-          <li>S&eacute;lectionnez un petit lot source (plans historiques, historique verbal)</li>
-          <li>Extrayez les d&eacute;cisions, invariants, patterns, signal de test</li>
-          <li>Mappez dans les docs canoniques</li>
-          <li>Enregistrez une tranche de retrofit (R-*)</li>
-          <li>Cl&ocirc;turez avec les lacunes r&eacute;siduelles et l&rsquo;action suivante</li>
+          <li>S&eacute;lectionner un petit lot source (plans historiques, historique verbal)</li>
+          <li>Extraire les d&eacute;cisions, invariants, patterns et signaux de test</li>
+          <li>Mapper dans les docs canoniques</li>
+          <li>Enregistrer une tranche de retrofit (R-*)</li>
+          <li>Cl&ocirc;turer avec les lacunes r&eacute;siduelles et l&rsquo;action suivante</li>
         </ul>
-        <p class="lane-ref">&rarr; legacy-retrofit-workflow.md</p>
+        <p class="lane-ref">→ legacy-retrofit-workflow.md</p>
       </div>
 
     </div>
   </section>
 
-  <!-- CONTEXTE DE COLLABORATION -->
+  <!-- ════════════════════════════════════════════════════════════
+       COLLABORATION CONTEXT
+       ════════════════════════════════════════════════════════════ -->
   <section id="collab">
     <h2>Contexte de collaboration</h2>
     <p class="section-intro">
-      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs
-      A, B et C lorsque la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees.
-      Les sessions sur une seule branche n&rsquo;ont pas besoin de les appliquer.
+      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B et C
+      quand la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees.
+      Les sessions &agrave; branche unique n&rsquo;ont pas besoin de les appliquer.
     </p>
     <div class="collab-card">
       <div class="collab-modifier-tag">Transversal &middot; s&rsquo;applique aux couloirs A, B, C</div>
       <p class="collab-desc">
         Quand deux d&eacute;veloppeurs (ou un d&eacute;veloppeur sur deux worktrees) travaillent simultan&eacute;ment,
         le nommage ordinal classique cr&eacute;e des collisions &agrave; la fusion. Le contexte de collaboration
-        r&eacute;sout ce probl&egrave;me sans surcharge de coordination, en rendant les noms d&rsquo;artefacts
-        auto-suffisants gr&acirc;ce aux identifiants date+slug et en diff&eacute;rant les index partag&eacute;s
-        apr&egrave;s la fusion.
+        r&eacute;sout cela sans surcharge de coordination, en rendant les noms d&rsquo;artefacts autosuffisants
+        par les identifiants date+slug et en diff&eacute;rant les index partag&eacute;s apr&egrave;s la fusion.
       </p>
       <div class="collab-rules">
         <div class="collab-rule">
@@ -857,32 +1024,34 @@
           Aucune recherche de compteur, aucune contention entre branches.
         </div>
         <div class="collab-rule">
-          <strong>Cr&eacute;er des artefacts librement sur la branche</strong>
-          V-*, I-*, TB-*, R-* &mdash; aucune coordination inter-branches n&eacute;cessaire.
+          <strong>Cr&eacute;er les artefacts librement sur la branche</strong>
+          V-*, I-*, TB-*, R-* — no cross-branch coordination needed.
         </div>
         <div class="collab-rule">
           <strong>Slug blitz obligatoire</strong>
-          Sur une branche de fonctionnalit&eacute;, le slug de th&egrave;me est choisi au d&eacute;but de la session &mdash; pas l&rsquo;identifiant ordinal.
+          On a feature branch, topic slug is chosen at session start — not the ordinal fallback.
         </div>
         <div class="collab-rule">
           <strong>Diff&eacute;rer les mises &agrave; jour d&rsquo;index</strong>
-          <code>backlog/index.md</code>, <code>vision/product-orientation-notes.md</code> &mdash; mettez &agrave; jour apr&egrave;s la fusion sur <code>main</code>.
+          <code>backlog/index.md</code>, <code>vision/product-orientation-notes.md</code> — mettre &agrave; jour apr&egrave;s la fusion sur <code>main</code>.
         </div>
         <div class="collab-rule">
-          <strong>R&eacute;conciliation de l&rsquo;index &agrave; la fusion</strong>
-          Ex&eacute;cutez une passe de r&eacute;conciliation quand la branche arrive sur <code>main</code>.
+          <strong>R&eacute;conciliation d&rsquo;index &agrave; la fusion</strong>
+          Ex&eacute;cuter une passe de r&eacute;conciliation quand la branche arrive sur <code>main</code>.
         </div>
       </div>
-      <p class="lane-ref">&rarr; multi-branch-workflow.md</p>
+      <p class="lane-ref">→ multi-branch-workflow.md</p>
     </div>
   </section>
 
-  <!-- SECTION 4 â€” CONVENTIONS DE NOMMAGE -->
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 4 — NAMING CONVENTIONS
+       ════════════════════════════════════════════════════════════ -->
   <section id="naming">
     <h2>Conventions de nommage</h2>
     <p class="section-intro">
       Identifiants stables et r&eacute;sistants aux collisions sur toutes les branches et worktrees.
-      Les artefacts <code>NNNN</code> h&eacute;rit&eacute;s ne sont jamais renomm&eacute;s.
+      Les artefacts h&eacute;rit&eacute;s <code>NNNN</code> ne sont jamais renomm&eacute;s.
     </p>
     <div class="table-wrap">
       <table>
@@ -920,155 +1089,226 @@
             <td>Jamais renomm&eacute; apr&egrave;s cr&eacute;ation</td>
           </tr>
           <tr>
-            <td>Blitz &mdash; branche de fonctionnalit&eacute;</td>
+            <td>Blitz — feature branch</td>
             <td><code>_blitz-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
             <td><code>blitz-archive/blitz-YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td>Slug obligatoire&nbsp;; choisi au d&eacute;but de la session</td>
+            <td>Slug obligatoire; choisi au d&eacute;but de la session</td>
           </tr>
           <tr>
-            <td>Blitz &mdash; main / branche unique</td>
+            <td>Blitz — main / single-branch</td>
             <td><code>_blitz-YYYY-MM-DD[-N].md</code></td>
             <td><code>blitz-archive/blitz-YYYY-MM-DD[-N].md</code></td>
             <td>Ordinal accept&eacute; si le th&egrave;me est flou au d&eacute;part</td>
           </tr>
           <tr>
             <td>Session grill</td>
-            <td><code>&lt;sujet&gt;-grill-me.md</code></td>
-            <td>M&ecirc;me</td>
-            <td>Doit inclure un bloc de contr&ocirc;le &laquo;&nbsp;Resume at&nbsp;&raquo;</td>
+            <td><code>&lt;topic&gt;-grill-me.md</code></td>
+            <td>Same</td>
+            <td>Must include "Resume at" control block</td>
           </tr>
           <tr>
             <td>D&eacute;cision de m&eacute;thodologie</td>
             <td><code>YYYY-MM-DD-&lt;slug&gt;.md</code></td>
-            <td>M&ecirc;me</td>
+            <td>Same</td>
             <td>Sous <code>methodology/decisions/</code></td>
           </tr>
           <tr>
             <td>Vue riche</td>
-            <td><code>&lt;parent&gt;/view/index.html</code> <em>ou</em> <code>&lt;parent&gt;/view/&lt;slug&gt;/index.html</code></td>
-            <td>M&ecirc;me</td>
-            <td>HTML auto-contenu&nbsp;; li&eacute; depuis le parent Markdown</td>
+            <td><code>&lt;parent&gt;/view/index.html</code> <em>or</em> <code>&lt;parent&gt;/view/&lt;slug&gt;/index.html</code></td>
+            <td>Same</td>
+            <td>HTML autonome; li&eacute; depuis le parent Markdown</td>
           </tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- SECTION 5 â€” RÃ‰FÃ‰RENCE DES COMPÃ‰TENCES -->
-  <section id="skills">
-    <h2>R&eacute;f&eacute;rence des comp&eacute;tences</h2>
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 5 — BIDIRECTIONAL TRACEABILITY
+       ════════════════════════════════════════════════════════════ -->
+  <section id="traceability">
+    <h2>Tra&ccedil;abilit&eacute; bidirectionnelle</h2>
     <p class="section-intro">
-      Invoquez les comp&eacute;tences par nom au d&eacute;but d&rsquo;une session. Voir les prompts de d&eacute;marrage
-      rapide dans methodology/README.md.
+      The workflow is not only a forward pipeline. Cl&ocirc;ture and audit must also prove where an
+      artifact came from, what canon absorbed it, and whether later decisions changed its meaning.
+    </p>
+    <div class="trace-panel">
+      <div class="trace-flow" aria-label="Forward traceability path">
+        <div class="trace-step">
+          <div class="trace-step-title">Source</div>
+          <div class="trace-step-desc">Id&eacute;e brute, archive blitz, plan de travail, plan historique ou briefing verbal.</div>
+        </div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-step">
+          <div class="trace-step-title">Mat&eacute;rialisation</div>
+          <div class="trace-step-desc"><code>V-*</code>, <code>I-*</code>, <code>R-*</code> ou abandon document&eacute; avec justification.</div>
+        </div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-step">
+          <div class="trace-step-title">Questionnement</div>
+          <div class="trace-step-desc">Session grill, open questions, decision pressure points, status alignment.</div>
+        </div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-step">
+          <div class="trace-step-title">Canon</div>
+          <div class="trace-step-desc">ADR, d&eacute;cision m&eacute;thodologique, sortie de politique, pack composant ou matrice de tra&ccedil;abilit&eacute;.</div>
+        </div>
+        <div class="trace-arrow">→</div>
+        <div class="trace-step">
+          <div class="trace-step-title">Cl&ocirc;ture</div>
+          <div class="trace-step-desc">Transition de statut, preuve, risque r&eacute;siduel, action suivante ou supersession.</div>
+        </div>
+      </div>
+
+      <div class="trace-checks">
+        <div class="trace-check"><strong>Audit arri&egrave;re</strong> Cette cl&ocirc;ture permet-elle de revenir &agrave; la source et aux artefacts mat&eacute;rialis&eacute;s?</div>
+        <div class="trace-check"><strong>Alignement des statuts</strong> Les index et m&eacute;tadonn&eacute;es d&rsquo;artefacts concordent-ils apr&egrave;s grill, retrofit ou impl&eacute;mentation?</div>
+        <div class="trace-check"><strong>V&eacute;rit&eacute; courante</strong> Les notes post-d&eacute;cision et liens de supersession sont-ils pr&eacute;sents quand l&rsquo;historique a chang&eacute;?</div>
+        <div class="trace-check"><strong>Cl&ocirc;ture honn&ecirc;te</strong> L&rsquo;int&eacute;gration corpus est-elle s&eacute;par&eacute;e du backlog produit encore actif?</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 6 — SKILLS REFERENCE
+       ════════════════════════════════════════════════════════════ -->
+  <section id="skills">
+    <h2>Contrats de fronti&egrave;res des comp&eacute;tences</h2>
+    <p class="section-intro">
+      Chaque comp&eacute;tence r&eacute;pond aux quatre m&ecirc;mes questions&nbsp;: entrer quand, sortir quand, appeler ensuite
+      et inutile quand. Le texte canonique des comp&eacute;tences vit sous <code>.cursor/skills/</code>; ce tableau est
+      la surface de navigation rapide.
     </p>
     <div class="table-wrap">
-      <table>
+      <table class="boundary-table">
         <thead>
           <tr>
             <th>Comp&eacute;tence</th>
-            <th>Quand l&rsquo;invoquer</th>
-            <th>Sortie principale</th>
+            <th>Entrer quand</th>
+            <th>Sortir quand</th>
+            <th>Appeler ensuite</th>
+            <th>Inutile quand</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td><code>ezkey-vision-intake</code></td>
-            <td>Nouvelle id&eacute;e brute entrant dans le syst&egrave;me</td>
-            <td>Note de vision V-*</td>
+            <td>Une direction strat&eacute;gique, une intention produit ou des id&eacute;es de fonctionnalit&eacute; arrivent.</td>
+            <td>La direction durable est captur&eacute;e en <code>V-*</code> ou <code>I-*</code> initial avec prochaine &eacute;tape.</td>
+            <td><code>ezkey-backlog-triage</code> or <code>ezkey-grill-me</code></td>
+            <td>L&rsquo;id&eacute;e est d&eacute;j&agrave; une tranche d&rsquo;impl&eacute;mentation born&eacute;e.</td>
           </tr>
           <tr>
             <td><code>ezkey-backlog-triage</code></td>
-            <td>Apr&egrave;s vision-intake&nbsp;; classifier et prioriser</td>
-            <td>Id&eacute;e de backlog I-* classifi&eacute;e</td>
+            <td>Un <code>I-*</code> existe ou une note de vision a une port&eacute;e actionnable.</td>
+            <td>Port&eacute;e, hors-port&eacute;e, priorit&eacute;, statut, tags, risques et posture sont explicites.</td>
+            <td><code>ezkey-grill-me</code> or <code>ezkey-tracer-bullet-promote</code></td>
+            <td>L&rsquo;item est encore une pure orientation ou d&eacute;j&agrave; enti&egrave;rement cadr&eacute;.</td>
           </tr>
           <tr>
             <td><code>ezkey-grill-me</code></td>
-            <td>Avant le verrouillage de conception&nbsp;; tester les hypoth&egrave;ses</td>
-            <td>Risques, options, questions critiques</td>
+            <td>Les hypoth&egrave;ses, chemins d&rsquo;exception, effets de cycle de vie ou risques de fronti&egrave;re doivent &ecirc;tre mis sous pression.</td>
+            <td>Risques, questions ouvertes, points de pression d&eacute;cisionnels et clarifications sont explicites.</td>
+            <td>Triage, promotion tracer bullet ou design composant.</td>
+            <td>Le changement est &agrave; faible risque, born&eacute; et a des crit&egrave;res de validation connus.</td>
           </tr>
           <tr>
             <td><code>ezkey-plan-incubation</code></td>
-            <td>Exploration libre avant la capture canonique</td>
-            <td>Plan de travail &rarr; V-*/I-*/TB-*</td>
+            <td>L&rsquo;op&eacute;rateur part d&rsquo;un plan de travail de session courante.</td>
+            <td>Le signal durable est class&eacute; pour <code>V-*</code>, <code>I-*</code>, <code>TB-*</code>, adoption de principe ou combinaison.</td>
+            <td>Intake de vision, triage backlog ou promotion tracer bullet.</td>
+            <td>La source est une entr&eacute;e de retrofit historique ou une t&acirc;che directe d&rsquo;impl&eacute;mentation.</td>
           </tr>
           <tr>
             <td><code>ezkey-tracer-bullet-promote</code></td>
-            <td>Direction d&eacute;cid&eacute;e&nbsp;; pr&ecirc;t pour l&rsquo;ex&eacute;cution d&eacute;limit&eacute;e</td>
-            <td>Brief de tracer bullet TB-*</td>
+            <td>Un <code>I-*</code> est <code>ready</code> et a besoin d&rsquo;une tranche verticale born&eacute;e.</td>
+            <td>Le <code>TB-*</code> a une posture, une port&eacute;e, des fronti&egrave;res, des exclusions et des crit&egrave;res de preuve.</td>
+            <td><code>ezkey-component-design-pack</code> and <code>ezkey-test-strategy-planner</code></td>
+            <td>L&rsquo;item manque de direction, ou le changement est une petite correction code/doc.</td>
           </tr>
           <tr>
             <td><code>ezkey-component-design-pack</code></td>
-            <td>Pr&eacute;paration de la conception par composant pour les fronti&egrave;res impact&eacute;es</td>
-            <td>Briefs de conception, cartes de fronti&egrave;res, tables de d&eacute;cision</td>
+            <td>Une port&eacute;e touche les fronti&egrave;res composant, mappings, validations ou comportements d&rsquo;erreur.</td>
+            <td>Les composants impact&eacute;s ont responsabilit&eacute;s, contrats, tests et impacts docs nomm&eacute;s.</td>
+            <td><code>ezkey-test-strategy-planner</code>, then <code>ezkey-quality-gatekeeper</code></td>
+            <td>Le changement est local, interne et non observable &agrave; une fronti&egrave;re.</td>
           </tr>
           <tr>
             <td><code>ezkey-test-strategy-planner</code></td>
-            <td>Avant l&rsquo;impl&eacute;mentation&nbsp;; s&eacute;lectionner les couches de test</td>
-            <td>Tranche de plan de test</td>
+            <td>Un changement a des risques connus et requiert une s&eacute;lection explicite des couches de test.</td>
+            <td>Les couches minimales, optionnelles, diff&eacute;r&eacute;es et rejet&eacute;es sont justifi&eacute;es.</td>
+            <td><code>ezkey-quality-gatekeeper</code>, then traceability after evidence changes.</td>
+            <td>Le changement est purement &eacute;ditorial.</td>
           </tr>
           <tr>
             <td><code>ezkey-quality-gatekeeper</code></td>
-            <td>Avant la cl&ocirc;ture&nbsp;; v&eacute;rifier les passerelles qualit&eacute;</td>
-            <td>Rapport de passerelle</td>
+            <td>Le travail passe de l&rsquo;analyse &agrave; l&rsquo;ex&eacute;cution, ou de l&rsquo;ex&eacute;cution &agrave; la cl&ocirc;ture.</td>
+            <td>La passerelle retourne <code>go</code> ou <code>no-go</code> avec bloqueurs et actions de suivi.</td>
+            <td>Impl&eacute;menteration after <code>go</code>, or targeted repair after <code>no-go</code>.</td>
+            <td>La t&acirc;che est triviale et n&rsquo;a aucun impact d&rsquo;analyse, contrat, test ou tra&ccedil;abilit&eacute;.</td>
           </tr>
           <tr>
             <td><code>ezkey-traceability-sync</code></td>
-            <td>Cl&ocirc;ture&nbsp;; mettre &agrave; jour les r&eacute;f&eacute;rences crois&eacute;es et le statut</td>
-            <td>R&eacute;f&eacute;rences d&rsquo;artefacts mises &agrave; jour</td>
+            <td>Le statut de fonctionnalit&eacute;, le comportement, les specs, les tests ou les preuves de validation ont chang&eacute;.</td>
+            <td>Les documents de tra&ccedil;abilit&eacute; globaux et composants refl&egrave;tent les preuves et lacunes courantes.</td>
+            <td><code>ezkey-closeout</code></td>
+            <td>Aucun comportement observable, contrat, statut ou preuve de validation n&rsquo;a chang&eacute;.</td>
           </tr>
           <tr>
             <td><code>ezkey-closeout</code></td>
-            <td>Fin de session ou compl&eacute;tion de fonctionnalit&eacute;</td>
-            <td>Transitions de statut, r&eacute;sum&eacute; de session</td>
+            <td>Un tracer bullet, une tranche de fonctionnalit&eacute;, une int&eacute;gration blitz, une tranche retrofit ou un cycle se termine.</td>
+            <td>Transitions de statut, preuves, travail diff&eacute;r&eacute;, risques r&eacute;siduels et prochaines actions sont explicites.</td>
+            <td>Aucune comp&eacute;tence suivante par d&eacute;faut; rouvrir seulement le suivi nomm&eacute;.</td>
+            <td>Le travail change encore activement ou les preuves requises ne sont pas disponibles.</td>
           </tr>
           <tr>
             <td><code>ezkey-legacy-plan-miner</code></td>
-            <td>Couloir retrofit&nbsp;: extraction des plans historiques et briefings verbaux</td>
-            <td>Mat&eacute;riaux d&rsquo;entr&eacute;e R-*</td>
+            <td>Des plans historiques, un historique verbal ou une histoire d&rsquo;impl&eacute;mentation ad hoc contiennent un signal r&eacute;utilisable.</td>
+            <td>Le signal r&eacute;utilisable est extrait avec confiance et type de source.</td>
+            <td><code>ezkey-retrofit-curator</code></td>
+            <td>La source est un plan de travail de session courante.</td>
           </tr>
           <tr>
             <td><code>ezkey-retrofit-curator</code></td>
-            <td>Apr&egrave;s extraction&nbsp;; produire des tranches de retrofit canoniques</td>
-            <td>Tranches de retrofit R-*</td>
-          </tr>
-          <tr>
-            <td><code>ezkey-github-issue-promote</code></td>
-            <td>Quand une id&eacute;e I-* passe le test &laquo;&nbsp;titre autonome&nbsp;&raquo;&nbsp;; pr&ecirc;te pour un billet GitHub</td>
-            <td>Titre, corps et labels propos&eacute;s + r&eacute;f&eacute;rence de tra&ccedil;abilit&eacute;</td>
+            <td>Le signal historique extrait doit &ecirc;tre mapp&eacute; vers les destinations canoniques.</td>
+            <td>Le <code>R-*</code> consigne mappings, mises &agrave; jour canoniques, lacunes r&eacute;siduelles et statut d&rsquo;index.</td>
+            <td><code>ezkey-traceability-sync</code> or <code>ezkey-closeout</code></td>
+            <td>Aucun signal r&eacute;utilisable n&rsquo;existe, ou la source vit d&eacute;j&agrave; dans le canon courant.</td>
           </tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- SECTION 6 â€” VUES RICHES -->
+  <!-- ════════════════════════════════════════════════════════════
+       SECTION 7 — RICH VIEWS
+       ════════════════════════════════════════════════════════════ -->
   <section id="rich-views">
     <h2>Vues riches</h2>
     <p class="section-intro">
-      Compagnons HTML aux documents Markdown sources, cr&eacute;&eacute;s lorsque la richesse visuelle
-      am&eacute;liore mat&eacute;riellement la clart&eacute; et l&rsquo;alignement conceptuel entre collaborateurs humains
-      et agents IA. La base de la m&eacute;thodologie reste Markdown-first &mdash; les vues riches sont
-      des suppl&eacute;ments d&eacute;lib&eacute;r&eacute;s, pas des remplacements.
+      Compagnons HTML aux documents Markdown sources, cr&eacute;&eacute;s lorsque la richesse visuelle am&eacute;liore mat&eacute;riellement
+      la clart&eacute; et l&rsquo;alignement conceptuel entre collaborateurs humains et IA. La base m&eacute;thodologique reste
+      Markdown-first &mdash; les vues riches sont des suppl&eacute;ments d&eacute;lib&eacute;r&eacute;s, pas des remplacements.
     </p>
 
     <h3 class="sub">Quand cr&eacute;er une vue riche</h3>
     <ul class="criteria-list">
-      <li><strong>Relations d&rsquo;entit&eacute;s complexes</strong> &mdash; plusieurs types d&rsquo;entit&eacute;s interd&eacute;pendants avec des interactions de cycle de vie difficiles &agrave; suivre en prose ou tableaux seuls.</li>
-      <li><strong>Machines d&rsquo;&eacute;tat et gouvernance de cycle de vie</strong> &mdash; transitions d&rsquo;&eacute;tat, r&egrave;gles d&rsquo;activation/d&eacute;sactivation, propagation en cha&icirc;ne parent sur les types d&rsquo;entit&eacute;s.</li>
-      <li><strong>Flux cryptographiques ou de protocole</strong> &mdash; flux multi-acteurs avec transit de mat&eacute;riel de cl&eacute;, fen&ecirc;tres de synchronisation et contraintes de s&eacute;quen&ccedil;age o&ugrave; un diagramme ancre la compr&eacute;hension.</li>
-      <li><strong>D&eacute;cisions architecturales &agrave; fort impact</strong> &mdash; d&eacute;cisions transversales avec une complexit&eacute; visuelle qui b&eacute;n&eacute;ficie d&rsquo;un ancrage graphique durable.</li>
-      <li><strong>La m&eacute;thodologie elle-m&ecirc;me</strong> &mdash; le processus et le syst&egrave;me d&rsquo;artefacts b&eacute;n&eacute;ficient d&rsquo;une r&eacute;f&eacute;rence visuelle accessible &agrave; la fois aux humains et aux agents IA au d&eacute;but d&rsquo;une session.</li>
+      <li><strong>Relations d&rsquo;entit&eacute;s complexes</strong> — plusieurs types d&rsquo;entit&eacute;s interd&eacute;pendants avec interactions de cycle de vie difficiles &agrave; suivre seulement en prose ou tableaux.</li>
+      <li><strong>Machines d&rsquo;&eacute;tat et gouvernance de cycle de vie</strong> — transitions d&rsquo;&eacute;tat, r&egrave;gles d&rsquo;activation/d&eacute;sactivation, propagation en cha&icirc;ne parent entre types d&rsquo;entit&eacute;s.</li>
+      <li><strong>Flux cryptographiques ou protocolaires</strong> — flux multi-acteurs avec transit de mat&eacute;riel de cl&eacute;, fen&ecirc;tres de synchronisation et contraintes de s&eacute;quen&ccedil;age o&ugrave; un diagramme ancre la compr&eacute;hension.</li>
+      <li><strong>D&eacute;cisions architecturales &agrave; fort impact</strong> — d&eacute;cisions transversales avec complexit&eacute; visuelle qui b&eacute;n&eacute;ficient d&rsquo;un ancrage graphique durable.</li>
+      <li><strong>La m&eacute;thodologie elle-m&ecirc;me</strong> — le processus et le syst&egrave;me d&rsquo;artefacts b&eacute;n&eacute;ficient d&rsquo;une r&eacute;f&eacute;rence visuelle accessible aux humains et aux agents IA au d&eacute;but d&rsquo;une session.</li>
     </ul>
 
     <h3 class="sub">Convention de dossier et de lien</h3>
     <div class="table-wrap" style="margin-bottom: 24px;">
       <table>
         <thead>
-          <tr><th>Contexte</th><th>Chemin</th><th>Lien depuis le parent Markdown</th></tr>
+          <tr><th>Contexte</th><th>Pattern de chemin</th><th>Lien depuis le parent Markdown</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td>M&eacute;thodologie (ce document)</td>
+            <td>M&eacute;thodologie (ce fichier)</td>
             <td><code>product-docs/methodology/view/index.html</code></td>
             <td><code>[Vue riche](view/index.html)</code></td>
           </tr>
@@ -1088,20 +1328,20 @@
 
     <h3 class="sub">Principes de conception</h3>
     <ul class="criteria-list teal">
-      <li><strong>Auto-contenu</strong> &mdash; aucune d&eacute;pendance CDN externe. Int&eacute;grez tous les styles et SVG en ligne.</li>
-      <li><strong>Palette sobre</strong> &mdash; l&rsquo;information d&rsquo;abord. La couleur est utilis&eacute;e pour la distinction, pas pour la d&eacute;coration.</li>
-      <li><strong>Li&eacute; depuis le parent Markdown</strong> &mdash; le document source porte une r&eacute;f&eacute;rence claire &agrave; la vue riche.</li>
-      <li><strong>Mis &agrave; jour dans le m&ecirc;me changeset</strong> &mdash; lorsque le document parent change, la vue riche est mise &agrave; jour avec lui.</li>
-      <li><strong>Un seul <code>index.html</code></strong> par dossier de vue&nbsp;; d&rsquo;autres fichiers uniquement si la navigation apporte une valeur r&eacute;elle pour le sujet sp&eacute;cifique.</li>
+      <li><strong>Autonome</strong> — aucune d&eacute;pendance CDN externe. Int&eacute;grer tous les styles et SVG inline.</li>
+      <li><strong>Palette sobre</strong> — l&rsquo;information d&rsquo;abord. La couleur sert la distinction, pas la d&eacute;coration.</li>
+      <li><strong>Li&eacute; depuis le parent Markdown</strong> — le document source porte une r&eacute;f&eacute;rence claire vers la vue riche.</li>
+      <li><strong>Mis &agrave; jour dans le m&ecirc;me changeset</strong> — lorsque le document parent change, la vue riche est mise &agrave; jour avec lui.</li>
+      <li><strong>Un seul <code>index.html</code></strong> par dossier de vue; fichiers additionnels seulement si la navigation ajoute vraiment de la valeur pour le sujet.</li>
     </ul>
 
   </section>
 
 </main>
 <footer>
-  M&eacute;thodologie Ezkey Vue riche &nbsp;&middot;&nbsp; Derni&egrave;re mise &agrave; jour le 2026-05-24 &nbsp;&middot;&nbsp;
-  Source&nbsp;: product-docs/methodology/README.md
-  &nbsp;&middot;&nbsp;
+  M&eacute;thodologie Ezkey Vue riche &nbsp;·&nbsp; Derni&egrave;re mise &agrave; jour le 2026-05-25 &nbsp;·&nbsp;
+  Source&nbsp;: corpus m&eacute;thodologique Ezkey
+  &nbsp;·&nbsp;
   D&eacute;cision&nbsp;: 2026-05-24-rich-views
 </footer>
     </div>
@@ -1109,7 +1349,6 @@
     <footer class="site-footer" style="text-align:center;">
       Ezkey &nbsp;&middot;&nbsp; <a href="/fr/">ezkey.org</a>
     </footer>
-
   </div>
 </body>
 </html>

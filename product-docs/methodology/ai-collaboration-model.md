@@ -10,6 +10,8 @@ This document defines how humans and AI agents collaborate using the product-doc
 - Prefer linked artifacts over duplicated explanations.
 - Separate global intent from component execution detail.
 - Preserve an auditable chain of decisions and status changes.
+- Preserve internal methodological integrity: each lane and skill should make its state boundaries
+  clear enough for a later human or agent to resume without hidden memory.
 
 ## Roles in collaboration
 
@@ -29,6 +31,17 @@ Before analysis or implementation, establish:
 2. affected components,
 3. relevant global and component documents,
 4. quality gates that must pass.
+
+## Skill boundary protocol
+
+Each project skill should define a small boundary contract:
+
+- **Enter when** the condition that makes the skill useful is true.
+- **Exit when** the skill has produced the evidence or state transition it owns.
+- **Call next** names the usual follow-up skill or workflow step.
+- **Not needed when** preserves the fast path for simple or already-settled work.
+
+These contracts keep the methodology navigable without turning it into a heavy process engine.
 
 ## Handoff format
 

@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Turn a `ready` idea into a validated first vertical slice (`TB-*`).
 
+## Boundary contract
+
+- **Enter when:** an `I-*` is `ready` and execution needs a bounded vertical slice.
+- **Exit when:** the `TB-*` has posture, scope, boundaries, exclusions, and evidence criteria.
+- **Call next:** `ezkey-component-design-pack` and `ezkey-test-strategy-planner` before implementation.
+- **Not needed when:** the item still lacks direction, or the change is a tiny code/doc fix with no workflow slice.
+
 ## Inputs
 
 - `I-*` idea

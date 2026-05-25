@@ -19,18 +19,19 @@ Ezkey already has strong global and component documentation. This pack adds the 
 
 ## Reading order
 
-1. `workflow-overview.md`
-2. `analysis-and-design-canon.md`
-3. `tracer-bullet-method.md`
-4. `testing-strategy-in-workflow.md`
-5. `plan-incubation-workflow.md`
-6. `legacy-retrofit-workflow.md`
-7. `blitz-intake-pattern.md`
-8. `multi-branch-workflow.md`
-9. `session-start-guide.md`
-10. `quality-gates.md`
-11. `ai-collaboration-model.md`
-12. `nomenclature.md`
+1. `methodological-values.md`
+2. `workflow-overview.md`
+3. `analysis-and-design-canon.md`
+4. `tracer-bullet-method.md`
+5. `testing-strategy-in-workflow.md`
+6. `plan-incubation-workflow.md`
+7. `legacy-retrofit-workflow.md`
+8. `blitz-intake-pattern.md`
+9. `multi-branch-workflow.md`
+10. `session-start-guide.md`
+11. `quality-gates.md`
+12. `ai-collaboration-model.md`
+13. `nomenclature.md`
 
 ## Scope boundaries
 
@@ -49,6 +50,10 @@ Use the lightest process that still preserves:
 - clear handoff quality between humans and AI agents.
 
 Apply [`../global/design-principles.md`](../global/design-principles.md) when judging scope — especially **#1**, **#2**, and **#14 (beautiful problems)**: defer scale/performance sophistication until evidence shows the problem is real and earned by adoption, not hypothetical.
+
+Apply [`methodological-values.md`](methodological-values.md) when judging the workflow itself:
+whether a gate is proportional, whether an artifact deserves to be living, whether a skill should
+exist, and whether a closeout is honest enough to resume later.
 
 For Admin UI, role visibility, and **deployment operator geometries**, read [`../global/operator-alignment-guide.md`](../global/operator-alignment-guide.md). Canonical cross-cutting artifacts: [`../global/admin-ui-paginated-screens-matrix.md`](../global/admin-ui-paginated-screens-matrix.md), [`../global/rate-limit-baseline-policy.md`](../global/rate-limit-baseline-policy.md), [`../global/ezkey-system-identity-sensitivity-report.md`](../global/ezkey-system-identity-sensitivity-report.md), [`../global/sql-business-limits-policy.md`](../global/sql-business-limits-policy.md). (Former [`api-controllers-registry.md`](../global/api-controllers-registry.md) downscoped — see [`decisions/2026-05-24-controllers-registry-downscope.md`](decisions/2026-05-24-controllers-registry-downscope.md).)
 

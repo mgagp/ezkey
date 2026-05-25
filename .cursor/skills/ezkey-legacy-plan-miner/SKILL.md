@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Extract high-signal knowledge from legacy sources without migrating historical narrative wholesale.
 
+## Boundary contract
+
+- **Enter when:** historical plans, verbal history, or ad hoc implementation history contain reusable signal.
+- **Exit when:** decisions, invariants, patterns, risks, and test signals are extracted with confidence and source type.
+- **Call next:** `ezkey-retrofit-curator` to map extracted signal into canonical destinations.
+- **Not needed when:** the source is a current-session working plan, which belongs to `ezkey-plan-incubation`.
+
 ## Inputs
 
 - Source batch of 1 to 3 sources (plans and/or verbal capture)

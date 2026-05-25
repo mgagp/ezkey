@@ -9,6 +9,13 @@ disable-model-invocation: true
 
 Convert mined historical signal into canonical updates with explicit traceability.
 
+## Boundary contract
+
+- **Enter when:** mined historical signal needs mapping into canonical product-docs destinations.
+- **Exit when:** the `R-*` slice records mappings, canonical updates, residual gaps, and index status.
+- **Call next:** `ezkey-traceability-sync` when specs/tests/features changed, or `ezkey-closeout` when the slice is integrated or parked.
+- **Not needed when:** there is no reusable signal, or the source already lives in current canonical docs.
+
 ## Inputs
 
 - Extracted signal from legacy plans
