@@ -119,6 +119,12 @@ token for enrollment re-binding only.
 
 ---
 
+### Admin / Integration rate-limit policy map
+
+Cross-cutting families (device vs integration throughput vs admin sensitive ops vs login):
+[rate-limit-baseline-policy.md](../product-docs/global/rate-limit-baseline-policy.md). Sections 5–7 below
+are the Admin API property detail.
+
 ### 5. Admin Login Rate Limiting (`ezkey.admin.rate-limit.*`)
 
 **Description:** protects the admin login endpoint against brute-force. Applied by IP. Includes

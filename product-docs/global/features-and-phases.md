@@ -103,7 +103,8 @@ Backlog **phase tags** on `I-*` / `V-*` metadata use the same phase identifiers 
 
 - **Intent.** Protect login, pending, and respond endpoints against abuse with predictable behavior.
 - **Status.** `implemented`.
-- **Primary components.** [admin-api](../components/admin-api/README.md).
+- **Primary components.** [admin-api](../components/admin-api/README.md), [auth-api](../components/auth-api/README.md), [integration-api](../components/integration-api/README.md).
+- **Policy reference.** [rate-limit-baseline-policy.md](rate-limit-baseline-policy.md) (cross-cutting families and inventory; `I-2026-0008`).
 
 ### Phase `P3-distribution` — Integration and Distribution
 

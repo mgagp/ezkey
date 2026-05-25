@@ -35,10 +35,13 @@
 
 Living controllers registry **downscoped** — [`../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md). `I-2026-0009` dropped; semantic inventory absorbed into `I-2026-0008` policy output. Grill decisions above remain historical context.
 
+**Rate-limit analysis closed:** [`../../rate-limit-baseline-policy.md`](../../rate-limit-baseline-policy.md) — `I-2026-0008` **done**; no single numeric baseline; four policy families documented; no code unification R1.
+
 ## Links
 
 - [`../blitz-archive/blitz-2026-05-08-2.md`](../blitz-archive/blitz-2026-05-08-2.md)
-- [`../ideas/I-2026-0008-rate-limit-baseline-analysis.md`](../ideas/I-2026-0008-rate-limit-baseline-analysis.md)
+- [`../../rate-limit-baseline-policy.md`](../../rate-limit-baseline-policy.md)
+- [`../ideas/I-2026-0008-rate-limit-baseline-analysis.md`](../ideas/I-2026-0008-rate-limit-baseline-analysis.md) (`done`)
 - [`../ideas/I-2026-0009-global-controllers-registry.md`](../ideas/I-2026-0009-global-controllers-registry.md) (`dropped`)
 - [`../../api-controllers-registry.md`](../../api-controllers-registry.md) (archived stub)
 - [`../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../../../methodology/decisions/2026-05-24-controllers-registry-downscope.md)

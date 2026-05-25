@@ -14,7 +14,7 @@
 | Need | Canonical home |
 |------|----------------|
 | Endpoint / controller structure | OpenAPI under `specs/`, [`docs/ENDPOINT.md`](../../docs/ENDPOINT.md), component `functional-flows.md` |
-| Rate-limit baseline analysis | [`backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md`](backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md) → future policy + `CONFIGURATION.md` |
+| Rate-limit baseline analysis | [`rate-limit-baseline-policy.md`](rate-limit-baseline-policy.md) (`I-2026-0008` done) |
 | SQL volume / repository limits | [`sql-business-limits-policy.md`](sql-business-limits-policy.md) |
 | Admin list volume / joins | [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md) |
 | Targeted structural discovery | `@RestController` in `ezkey-*-api` modules (targeted `rg`; no whole-repo scan) |

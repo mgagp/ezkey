@@ -15,7 +15,7 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0005` | Checkpoint integrity breaks: declared remediation and reattachment | `incubating` | `P1` | `admin-api`, `audit` | `2026-05-17` |
 | `I-2026-0006` | Nightly retroactive integrity validation batch | `incubating` | `P1` | `admin-api`, `audit`, `infra` | `2026-05-19` |
 | `I-2026-0007` | Admin Dashboard: batch health and integrity widgets | `incubating` | `P1` | `admin-ui`, `admin-api` | `2026-05-19` |
-| `I-2026-0008` | Rate-limit baseline analysis and generalization | `incubating` | `P2` | `admin-api`, `auth-api`, `integration-api` | `2026-05-24` |
+| `I-2026-0008` | Rate-limit baseline analysis and generalization | `done` | `P2` | `admin-api`, `auth-api`, `integration-api` | `2026-05-24` |
 | `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `ready` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-24` |
 | `I-2026-0011` | Bootstrap clean-start: activation-code mode as default | `incubating` | `P1` | `admin-api`, `infra`, `bootstrap`, `docs` | `2026-05-19` |
 | `I-2026-0012` | Hard-coded Ezkey System user sensitivity audit | `incubating` | `P2` | `admin-api`, `core`, `infra` | `2026-05-19` |
@@ -36,6 +36,7 @@ This index provides a lightweight list of active ideas and their current state.
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
 | `I-2026-0016` | Methodology hygiene follow-ups (Tier 2 from 2026-05-08 nomenclature pass) | `2026-05-24` | Closed Tier 2 items E–K: decision recording scopes, phase/component tags, superseded links, optional automation follow-up, corpus completeness audit checklist. Decision record `2026-05-24-artifact-tagging-canonization-conventions.md`. |
+| `I-2026-0008` | Rate-limit baseline analysis and generalization | `2026-05-24` | Policy deliverable [`rate-limit-baseline-policy.md`](../rate-limit-baseline-policy.md): four families (device / integration / admin ops / login); honest no-single-baseline outcome; CONFIGURATION cross-links; no code unification R1. Closes Blitz D1 with registry downscope. |
 | `I-2026-05-24-admin-ui-vite8-upgrade` | Admin UI Vite 8 upgrade | `2026-05-24` | Delivered via PR #154 / TB-2026-05-24: Vite 8, Vitest 4, Tailwind 4.2.2+, plugin-react v6; Rolldown demo DCE fix in `demo-mode.ts`. First Lane A toolchain chore with GitHub issue workflow. |
 | `I-2026-0026` | OpenAPI exposure and API portal posture | `2026-05-22` | Delivered through `TB-2026-0003`: public API portal on `ezkey.org`, `ReDoc CE` pinning, `Integration API` spec publication path, and first prod-like raw-doc hardening on `EXP1`. |
 

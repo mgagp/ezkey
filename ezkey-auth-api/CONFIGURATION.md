@@ -33,7 +33,8 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 
 **Description:** protects the four mobile-device endpoints: `pending` (polling), `respond`
 (approve/deny), `verify` (enrollment), and `bind` (enrollment completion). Default `enabled`
-is `false` in the Java class; the Docker profile enables it.
+is `false` in the Java class; the Docker profile enables it. Cross-cutting policy families and
+inventory: [rate-limit-baseline-policy.md](../product-docs/global/rate-limit-baseline-policy.md).
 
 **Defined in:** `RateLimitProperties`
 

@@ -28,7 +28,8 @@ jobs** and has **no database of its own** — it reads from the shared schema ma
 
 **Description:** protects the two API-key-authenticated endpoints — create auth attempt and
 wait/long-poll auth attempt — keyed by integration ID (API key bearer). High default limits
-suit integration server use cases.
+suit integration server use cases. Policy map:
+[rate-limit-baseline-policy.md](../product-docs/global/rate-limit-baseline-policy.md).
 
 **Defined in:** `ApiKeyRateLimitProperties` (in `org.ezkey.integration.api.config`)
 
