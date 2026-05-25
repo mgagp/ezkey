@@ -72,7 +72,7 @@
 		<jacoco.version>0.8.14</jacoco.version>
 		<zxing.version>3.5.4</zxing.version>
 		<spotless.version>3.5.1</spotless.version>
-		<bucket4j.version>8.18.0</bucket4j.version>
+		<bucket4j.version>8.19.0</bucket4j.version>
 		<caffeine.version>3.2.4</caffeine.version>
 		<license-maven-plugin.version>2.7.1</license-maven-plugin.version>
 	</properties>
