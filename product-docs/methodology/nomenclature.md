@@ -219,7 +219,7 @@ Some backlog ideas note a **future** lightweight skill, check, or registry sync 
 When used, add a short optional section **`## Automation follow-up (optional)`** in the `I-*` file:
 
 - one bullet for the candidate automation (skill name or check type),
-- one bullet for the **trigger** (for example "after registry manually covers all Admin API controllers").
+- one bullet for the **trigger** (for example "after paginated matrix covers all Tier B admin screens").
 
 Do not block promotion to `ready` on automation existing. Implement skills separately via normal backlog promotion.
 
@@ -228,7 +228,7 @@ Do not block promotion to `ready` on automation existing. Implement skills separ
 When verifying that a blitz intake or backlog batch is **fully integrated** (same check repeatable across sessions), confirm:
 
 1. **Archive** — scratch board moved to `blitz-archive/` with materialized ID list in the header (blitz only).
-2. **Materialization** — every captured item has a stable `V-*` / `I-*` / `R-*` or an explicit drop note.
+2. **Materialization** — every captured item has a stable `V-*` / `I-*` / `R-*`, an explicit **`dropped`** note with rationale, or an intentional drop recorded in a methodology decision.
 3. **Grill** — each item has a `grill-sessions/*` file marked `complete`, or a documented deferral in the `I-*` / `V-*`.
 4. **Status alignment** — backlog index and artifact metadata reflect post-grill status (`incubating` / `ready`, not stale `captured`).
 5. **Retrofit slices** — `R-*` status at least `mapped` once the mapping table is filled; `integrated` when all mapped destinations are updated.

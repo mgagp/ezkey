@@ -30,7 +30,7 @@
 | D6D10-6 | Enforce at **repository** layer; externalized config; CONFIGURATION.md |
 | D6D10-7 | Priority: **audit logs**, **auth attempts** (Tier B tables) |
 | D6D10-8 | Limits **high enough** for legitimate ops; bound abuse (#14) |
-| D6D10-9 | Inventory via controllers registry + targeted grep; lightweight skill later |
+| D6D10-9 | Inventory via targeted repository grep + paginated matrix Tier B; policy table in `sql-business-limits-policy.md` |
 | D6D10-11 | Deliverable: [`sql-business-limits-policy.md`](../../sql-business-limits-policy.md) + registry notes |
 
 ## Links

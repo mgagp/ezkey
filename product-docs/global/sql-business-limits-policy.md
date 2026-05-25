@@ -13,7 +13,7 @@ Canonical policy for **repository-layer business limits** on high-volume queries
 - **Not a substitute for pagination** on list endpoints (`docs/PAGINATION_GUIDELINES.md`).
 - Limits set **high enough** for legitimate operator workflows (#14 beautiful problems).
 - Enforce at **repository** layer; prefer **externalized** properties in CONFIGURATION.md.
-- Inventory aided by [`api-controllers-registry.md`](api-controllers-registry.md) and paginated matrix Tier B.
+- Inventory via [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md) Tier B domains and targeted repository grep — not a living controllers registry (see [`../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../methodology/decisions/2026-05-24-controllers-registry-downscope.md)).
 
 ## Priority tables (Tier B)
 
@@ -30,5 +30,6 @@ Canonical policy for **repository-layer business limits** on high-volume queries
 
 ## Related
 
-- [`I-2026-0009`](backlog/ideas/I-2026-0009-global-controllers-registry.md)
+- [`I-2026-0015`](backlog/ideas/I-2026-0015-business-limits-large-volume-sql.md)
+- [`I-2026-0008`](backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md)
 - [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md)

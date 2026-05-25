@@ -1,51 +1,25 @@
-# API Controllers Registry
+# API Controllers Registry — Archived (Downscoped)
 
-## Purpose
+> **Status:** archived — not a living document.
+>
+> **Superseded by:** [`../methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../methodology/decisions/2026-05-24-controllers-registry-downscope.md)
+>
+> **Reason:** At current Ezkey scale (~17 API controllers), a permanently synchronized registry
+> duplicated OpenAPI and targeted code discovery without enough payoff. Cross-cutting **semantic**
+> attributes (audience, tier, sensitivity, rate-limit posture) are captured in **policy outputs**
+> when analyses run — not in a standing parallel index.
 
-Canonical **high-level index** of every REST controller across Ezkey APIs — purpose, audience, volume tier, sensitivity, and rate-limit posture. Supports cross-cutting decisions (rate-limit baseline, pagination matrix, versioning, DoS limits) without re-discovering the surface from code each time.
+## Where to look instead
 
-**Grilled:** Blitz 2026-05-08-2 D1 ([`backlog/grill-sessions/blitz-2026-05-08-2-D1-rate-limit-registry-grill-me.md`](backlog/grill-sessions/blitz-2026-05-08-2-D1-rate-limit-registry-grill-me.md)).
+| Need | Canonical home |
+|------|----------------|
+| Endpoint / controller structure | OpenAPI under `specs/`, [`docs/ENDPOINT.md`](../../docs/ENDPOINT.md), component `functional-flows.md` |
+| Rate-limit baseline analysis | [`backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md`](backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md) → future policy + `CONFIGURATION.md` |
+| SQL volume / repository limits | [`sql-business-limits-policy.md`](sql-business-limits-policy.md) |
+| Admin list volume / joins | [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md) |
+| Targeted structural discovery | `@RestController` in `ezkey-*-api` modules (targeted `rg`; no whole-repo scan) |
 
-**Backlog:** [`I-2026-0009`](backlog/ideas/I-2026-0009-global-controllers-registry.md) (authoring), [`I-2026-0008`](backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md) (baseline policy — consumes this registry).
+## Historical context
 
-**Not a substitute for:** OpenAPI specs, generated clients, or component functional-flow deep dives.
-
-## Maintenance
-
-- **Manual curation** for initial fill and ongoing updates.
-- Future optional skill: **stub diff** against known controller class list — targeted reads only; no whole-repo scan.
-- When a controller ships or changes materially, update the row in the same change set (or linked follow-up).
-
-## Row schema
-
-| Column | Meaning |
-|--------|---------|
-| **Module** | Boot API module (`admin-api`, `auth-api`, …) |
-| **Controller** | Java class or logical name |
-| **Base path** | REST prefix |
-| **Purpose** | One-line operator/dev description |
-| **Audience** | `admin-session` / `api-key` / `device` / `public` / mixed |
-| **Volume tier** | `A` bounded / `B` high (align with paginated matrix) |
-| **Sensitivity** | `low` / `medium` / `high` (security/audit impact) |
-| **Rate-limit note** | Current posture or `baseline` / `specialized` / `none` |
-| **Reference** | Link to component flow, CONFIGURATION.md, or OpenAPI tag |
-
-## Registry
-
-| Module | Controller | Base path | Purpose | Audience | Tier | Sensitivity | Rate-limit | Reference | Status |
-|--------|------------|-----------|---------|----------|------|-------------|------------|-----------|--------|
-| *TBD* | | | | | | | | | `draft` |
-
-*Populate per `I-2026-0009` — start with admin-api, then auth, integration, crypto-api.*
-
-## Related documents
-
-| Document | Role |
-|----------|------|
-| [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md) | Admin UI list ↔ API mapping |
-| [`docs/ENDPOINT.md`](../../docs/ENDPOINT.md) | Legacy endpoint hub (retrofit pointer) |
-| Component `functional-flows.md` | Per-controller detail |
-
-## Retrofit pointer
-
-Gradual consolidation under product-docs/global; legacy scattered docs remain linked until migrated.
+- Blitz 2026-05-08-2 D1 grill: [`backlog/grill-sessions/blitz-2026-05-08-2-D1-rate-limit-registry-grill-me.md`](backlog/grill-sessions/blitz-2026-05-08-2-D1-rate-limit-registry-grill-me.md)
+- Backlog item dropped: [`I-2026-0009`](backlog/ideas/I-2026-0009-global-controllers-registry.md)

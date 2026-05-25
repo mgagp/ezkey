@@ -10,6 +10,7 @@ Phase 1 seeds three representative flows. Additional flows can be added using th
 
 | ID | Workflow | Status | Related feature |
 |----|----------|--------|-----------------|
+| `W-mob-device-transfer` | Transfer all enrollments to a new phone (QR + 6-digit challenge) | `planned` | [`I-2026-0010`](../../global/backlog/ideas/I-2026-0010-phone-to-phone-enrollment-transfer.md) |
 | `W-mob-enrollment-wizard` | Bind and verify an enrollment via QR-first wizard | `implemented` | [`F-enrollment-bind-verify`](../../global/features-and-phases.md#f-enrollment-bind-verify) |
 | `W-mob-pending-check` | User-initiated pending authentication check | `implemented` | [`F-auth-pending-respond`](../../global/features-and-phases.md#f-auth-pending-respond) |
 | `W-mob-respond` | Approve or deny a pending authentication attempt | `implemented` | [`F-auth-pending-respond`](../../global/features-and-phases.md#f-auth-pending-respond) |

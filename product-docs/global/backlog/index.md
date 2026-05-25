@@ -15,14 +15,13 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0005` | Checkpoint integrity breaks: declared remediation and reattachment | `incubating` | `P1` | `admin-api`, `audit` | `2026-05-17` |
 | `I-2026-0006` | Nightly retroactive integrity validation batch | `incubating` | `P1` | `admin-api`, `audit`, `infra` | `2026-05-19` |
 | `I-2026-0007` | Admin Dashboard: batch health and integrity widgets | `incubating` | `P1` | `admin-ui`, `admin-api` | `2026-05-19` |
-| `I-2026-0008` | Rate-limit baseline analysis and generalization | `incubating` | `P2` | `admin-api`, `auth-api`, `integration-api` | `2026-05-19` |
-| `I-2026-0009` | Global controllers registry as documentation artifact | `incubating` | `P2` | `docs`, `admin-api`, `auth-api`, `integration-api`, `crypto-api` | `2026-05-19` |
-| `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `incubating` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-19` |
+| `I-2026-0008` | Rate-limit baseline analysis and generalization | `incubating` | `P2` | `admin-api`, `auth-api`, `integration-api` | `2026-05-24` |
+| `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `ready` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-24` |
 | `I-2026-0011` | Bootstrap clean-start: activation-code mode as default | `incubating` | `P1` | `admin-api`, `infra`, `bootstrap`, `docs` | `2026-05-19` |
 | `I-2026-0012` | Hard-coded Ezkey System user sensitivity audit | `incubating` | `P2` | `admin-api`, `core`, `infra` | `2026-05-19` |
 | `I-2026-0013` | Paginated admin screens: functional and operational pertinence review | `incubating` | `P2` | `admin-ui`, `admin-api` | `2026-05-19` |
 | `I-2026-0014` | Paginated screens display strategy: foreign keys vs intelligent joins | `incubating` | `P2` | `admin-ui`, `admin-api`, `audit` | `2026-05-19` |
-| `I-2026-0015` | Business limits on potentially large-volume SQL queries | `incubating` | `P2` | `admin-api`, `auth-api`, `integration-api`, `repositories` | `2026-05-19` |
+| `I-2026-0015` | Business limits on potentially large-volume SQL queries | `incubating` | `P2` | `admin-api`, `auth-api`, `integration-api`, `repositories` | `2026-05-24` |
 | `I-2026-0017` | Profile elaboration template, skill, and per-client document workflow | `captured` | `P1` | `docs (product-docs)`, `methodology`, `skills` | `2026-05-08` |
 | `I-2026-0018` | Profile generator skill: elaboration document to runtime configs | `captured` | `P2` | `docs (product-docs)`, `methodology`, `skills`, `infra` | `2026-05-08` |
 | `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
@@ -44,4 +43,4 @@ This index provides a lightweight list of active ideas and their current state.
 
 | ID | Title | Reason | Next review |
 |----|-------|--------|-------------|
-| _Optional_ | | | |
+| `I-2026-0009` | Global controllers registry | **Dropped** 2026-05-24 — living registry downscoped; see [`methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../methodology/decisions/2026-05-24-controllers-registry-downscope.md) | n/a |
