@@ -7,7 +7,7 @@ its internal data model, and its relationship to the Auth API without reopening 
 ## Current Scope Note
 
 The current mobile implementation and security posture should be read as **Android-first**.
-iOS remains a **later planned phase** and is **not** a short-term parity or release target.
+iOS remains a **later planned milestone** and is **not** a short-term parity or release target.
 Reviewers should not treat missing iOS parity as a current defect unless a document explicitly claims
 that parity already exists.
 

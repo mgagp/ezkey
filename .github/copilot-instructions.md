@@ -268,11 +268,15 @@ mvn clean verify
 
 ## Additional Context
 
-### Project Phases
-- **Phase 1**: MVP with core entities and REST APIs ✅
-- **Phase 2**: Quality & best practices (current focus)
-- **Phase 3**: Demo applications
-- **Phase 4**: Mobile app and Maven Central publication
+### Product Milestones
+- **Milestone 1**: MVP with core entities and REST APIs ✅
+- **Milestone 2**: Quality and best practices (current focus)
+- **Milestone 3**: Demo applications
+- **Milestone 4**: Mobile app and Maven Central publication
+
+### Terminology guardrail
+- Use **phase** only for the methodology workflow phases.
+- Use **milestone** for product-level progression and roadmap context.
 
 ### Technology Constraints
 - Backend: Java 25, Spring Boot 3.5.3, Spring Data JPA

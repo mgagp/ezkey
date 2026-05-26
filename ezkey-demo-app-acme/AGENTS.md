@@ -100,7 +100,7 @@ File: `data/acme-users.json`
 ```
 
 - Hot-reloadable via timestamp check
-- Populated by bootstrap-init or external test tooling (future phase)
+- Populated by bootstrap-init or external test tooling (future milestone)
 - Simple flat structure for demo purposes
 
 ## Watchouts
