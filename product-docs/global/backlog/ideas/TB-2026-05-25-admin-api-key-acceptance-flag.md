@@ -5,6 +5,7 @@
 - **ID:** `TB-2026-05-25-admin-api-key-acceptance-flag`
 - **Status:** `ready-for-implementation`
 - **Related idea:** `I-2026-0004`
+- **GitHub issue:** [#169](https://github.com/mgagp/ezkey/issues/169)
 - **Created at:** `2026-05-25`
 - **Posture:** `single-pass`
 
@@ -237,6 +238,8 @@ Once validated:
 
 ## Links
 
+- **Tracer bullet:** `TB-2026-05-25-admin-api-key-acceptance-flag`
+- **GitHub issue:** [#169](https://github.com/mgagp/ezkey/issues/169) (lane:a, type:feat, component:admin-api, component:sdk, priority:p1, status:ready)
 - **Vision:** `V-2026-0003`, `V-2026-0010`
 - **Grill session:** `../grill-sessions/blitz-2026-05-08-1-D3-api-key-grill-me.md`
 - **Features:** `F-integration-api-maturity`, `F-api-key-lifecycle`
