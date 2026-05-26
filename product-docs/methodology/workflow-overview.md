@@ -6,6 +6,11 @@ This document defines the default end-to-end workflow from idea capture to imple
 
 It complements, but does not replace, the engineering and governance rules in the repository.
 
+## Terminology note
+
+- In this methodology, **phase** refers to workflow stages only.
+- For product-level progression, use **milestone** wording.
+
 ## Parallel lane: legacy retrofit
 
 In addition to ideation-to-delivery, use a retrofit lane for historical plans and ad hoc implementation history:

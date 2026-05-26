@@ -2,7 +2,7 @@
 
 This folder holds the per-entrypoint documentation packs for Ezkey. Each pack answers **how** a specific component implements the product intent defined in [`../global/product-intent.md`](../global/product-intent.md) and the architecture described in [`../global/architecture-overview.md`](../global/architecture-overview.md).
 
-## Phase 1 Instantiated Packs
+## Milestone 1 Instantiated Packs
 
 | Component | Pack | Upstream module |
 | --------- | ---- | --------------- |
@@ -10,7 +10,7 @@ This folder holds the per-entrypoint documentation packs for Ezkey. Each pack an
 | Admin API | [`admin-api/`](admin-api/README.md) | [`../../ezkey-admin-api/`](../../ezkey-admin-api/) |
 | Mobile | [`mobile/`](mobile/README.md) | [`../../ezkey_mobile/`](../../ezkey_mobile/) |
 
-Other components (Auth API, Integration API, Core, Core Security, SDK, CLI, Docker stack) will be instantiated in phase 2 using the same skeleton.
+Other components (Auth API, Integration API, Core, Core Security, SDK, CLI, Docker stack) will be instantiated in milestone 2 using the same skeleton.
 
 ## Pack Skeleton
 

@@ -4,6 +4,12 @@ For agents working anywhere in the repo. For module-specific conventions and pat
 
 For full product and technical context, read **PRD.md**, **README.md**, **docs/PROJECT_POSITIONING.md**, and **docs/ENDPOINT.md** at the start of a new session.
 
+## Terminology guardrail (phase vs milestone)
+
+- Use **phase** only for the product-docs methodology workflow phases.
+- Use **milestone** for product-level progression, roadmap, and release-orientation statements.
+- When reporting current product progress, answer with milestone language, not phase language.
+
 ## Fresh-session workflow bootstrap (product-docs method)
 
 When a new session starts and the user is bringing a new idea, use this lightweight bootstrap before deep analysis:
