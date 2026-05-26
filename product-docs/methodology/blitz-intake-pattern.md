@@ -22,6 +22,7 @@ For a single, focused idea, the standard Lane A flow (`ezkey-vision-intake`, the
 ### Phase 0 — Setup
 
 - Confirm signaling conventions (see below).
+- **Identify and record the person conducting the session** — the `Captured by` field in the scratch board header. This is the human operator who dictated or provided the input, not the AI agent. When multiple people contribute in the same session, list them. This field is mandatory and must be set before capture begins.
 - **Choose a topic slug** for the scratch board file (e.g. `mobile-auth`, `api-keys-redesign`).
   On a feature branch or worktree the slug is **required** — it prevents filename collisions at
   merge time. On `main` / single-branch, an ordinal suffix is acceptable if the theme is not
@@ -79,6 +80,21 @@ Validate per item, per batch of 5–10, or all at once depending on operator pre
 - Move the scratch board from its active location (`_blitz-...md`) to the archive subfolder (`blitz-archive/blitz-...md`), dropping the `_` prefix.
 - Add a header line in the archived file indicating the canonical artifacts the items were materialized into.
 - The operator decides when (or if) to delete the archived scratch.
+
+### Archived scratch board header fields
+
+The header of an archived scratch board must include the following fields:
+
+```
+> **Status:** archived after materialization. …
+> **Materialized into:** …
+> **Captured by:** [name or initials of the human operator]
+> **Source language:** …
+> **Date captured:** YYYY-MM-DD.
+> **Items:** Dn → Dm.
+```
+
+The `Captured by` field identifies the human operator(s) who provided the input. It must be preserved verbatim from the active scratch board into the archive.
 
 ## Why preserve the verbatim post-materialization
 
@@ -140,7 +156,10 @@ When an AI agent drives a blitz materialization, it MUST:
 - move the scratch board to `blitz-archive/` rather than deleting it,
 - preserve the original verbatim content; the only edits allowed are agreed normalizations (such as phonetic variants of the project name),
 - record the list of materialized artifact IDs at the top of the archived file,
+- **preserve the `Captured by` field exactly as recorded in the active scratch board** — never replace it with "the user", "the operator", or the AI agent's own identity,
 - never delete an archived scratch board autonomously — only the operator may delete archived scratches.
+
+When propagating blitz authorship to canonical artifacts (`I-*`, `V-*`, `TB-*`), carry the `Captured by` value forward into the `Captured by` metadata field of each materialized artifact.
 
 ## Archive cleanup
 

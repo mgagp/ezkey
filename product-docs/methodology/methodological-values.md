@@ -69,7 +69,15 @@ Forward traceability answers where an idea goes next. Backward traceability answ
 exists, which source produced it, what superseded it, and whether the original source was fully
 integrated.
 
-Decision test: **from this document, can we navigate both to the source and to the durable outcome?**
+"Which source" includes both the document origin (blitz scratch board, plan, verbal briefing) and
+the **human contributor** who provided the input. Artifacts must carry a `Captured by` field that
+names the person(s) who originated the idea, not the AI agent that materialized it. This field is
+mandatory in blitz scratch boards and propagates to all canonical artifacts (`I-*`, `V-*`, `TB-*`)
+derived from that source. Without it, backward traceability breaks the moment two contributors work
+in the same corpus.
+
+Decision test: **from this document, can we navigate both to the source and to the durable outcome?
+And can we identify who originated the idea, distinct from who materialized it?**
 
 ### 6. Earned permanence
 

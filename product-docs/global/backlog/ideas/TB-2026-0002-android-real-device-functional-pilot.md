@@ -7,6 +7,7 @@
 - **Related idea:** `I-2026-0019`
 - **Created at:** `2026-05-08`
 - **Updated at:** `2026-05-08`
+- **Captured by:** Marc
 
 ## Pilot status (Maestro slice)
 

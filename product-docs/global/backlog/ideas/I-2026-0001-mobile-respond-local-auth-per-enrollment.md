@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-07`
 - **Phase tags:** `P2-hardening`, `P1-operability`
 - **Component tags:** `mobile`, `auth-api`, `admin-api`, `admin-ui`
+- **Captured by:** Marc
 
 ## Intent
 

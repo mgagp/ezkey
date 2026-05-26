@@ -12,6 +12,7 @@
   hooks, Auth API and Admin API operator expectations, and test strategy updates.
 - **Next step:** promote as backlog discovery item `I-2026-0001` and run a bounded
   capability/design analysis before implementation commitment.
+- **Captured by:** Marc
 
 ## Related artifacts
 

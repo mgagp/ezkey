@@ -21,6 +21,7 @@
   compose presets, documentation structure, security posture defaults, Admin UI copy, deployment
   guides, future SDK and CLI behavior.
 - **Next step:** archived; direction superseded by `V-2026-0010`.
+- **Captured by:** Marc
 
 ## Related artifacts
 

@@ -11,6 +11,7 @@
 - **Last reviewed at:** `2026-05-25`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `sdk-java`, `docs`
+- **Captured by:** Marc
 
 ## Intent
 

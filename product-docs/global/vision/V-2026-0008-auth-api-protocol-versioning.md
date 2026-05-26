@@ -13,6 +13,7 @@
 - **Potential impact:** `auth-api`, `mobile`, `admin-api` (read-only generation info), docs.
 - **Next step:** contract sketch in product-docs when `I-2026-0001` / local-auth direction
   stabilizes.
+- **Captured by:** Marc
 
 ## Related artifacts
 

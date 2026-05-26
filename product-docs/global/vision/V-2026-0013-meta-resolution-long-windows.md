@@ -14,6 +14,7 @@
   implemented carelessly.
 - **Next step:** **Do not implement** unless a concrete production need appears. Prefer normal
   per-alert resolution and snooze (`C9`).
+- **Captured by:** Marc
 
 ## Related artifacts
 

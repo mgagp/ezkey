@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-24`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `auth-api`, `mobile`, `admin-api`, `docs`
+- **Captured by:** Marc
 
 ## Intent
 

@@ -13,6 +13,7 @@
 - **Potential impact:** `admin-api` (outbound job + config), `admin-ui`, peripheral repos
   (`I-2026-0020`, `I-2026-0024`), `docs`, `V-2026-0010` elaboration.
 - **Next step:** SPI contract sketch + `I-2026-0024`; reference adapter repo.
+- **Captured by:** Marc
 
 ## Related artifacts
 

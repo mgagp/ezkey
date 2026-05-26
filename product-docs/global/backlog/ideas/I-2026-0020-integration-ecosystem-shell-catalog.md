@@ -4,6 +4,7 @@
 - **Status:** `captured`
 - **Priority:** `P2`
 - **Components:** `docs`, GitHub ecosystem (outside monorepo), optional future `product-docs`
+- **Captured by:** Marc
 
 ## Problem
 
