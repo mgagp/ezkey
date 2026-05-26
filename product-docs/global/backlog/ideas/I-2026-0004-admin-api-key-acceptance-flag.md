@@ -3,11 +3,12 @@
 ## Metadata
 
 - **ID:** `I-2026-0004`
-- **Status:** `incubating`
+- **Status:** `promoted`
+- **Tracer bullet:** `TB-2026-05-25-admin-api-key-acceptance-flag`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-05-25`
+- **Last reviewed at:** `2026-05-25`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `sdk-java`, `docs`
 - **Captured by:** Marc
@@ -62,11 +63,21 @@ See [`../grill-sessions/blitz-2026-05-08-1-D3-api-key-grill-me.md`](../grill-ses
 
 ## Promotion notes
 
-Ready for **design pack** / implementation: property name, filter ordering, problem `type` URI, compose env for minimal profile example.
+✅ Promoted to tracer bullet `TB-2026-05-25-admin-api-key-acceptance-flag` on 2026-05-25.
+
+Tracer bullet includes:
+- Full technical design (property name, filter ordering, RFC 9457 response shape).
+- Component-level boundary analysis.
+- Test strategy by layer (unit, functional, integration).
+- Implementation plan with execution order.
+- Exit criteria for vertical slice validation.
+
+Ready for implementation.
 
 ## Links
 
-- Vision: `V-2026-0003`, `V-2026-0010`
-- Grill: `../grill-sessions/blitz-2026-05-08-1-D3-api-key-grill-me.md`
-- Features: `F-integration-api-maturity`, `F-api-key-lifecycle`
-- Principles: `#1`, `#4`, `#5`, `#12`
+- **Tracer bullet:** `TB-2026-05-25-admin-api-key-acceptance-flag`
+- **Vision:** `V-2026-0003`, `V-2026-0010`
+- **Grill session:** `../grill-sessions/blitz-2026-05-08-1-D3-api-key-grill-me.md`
+- **Features:** `F-integration-api-maturity`, `F-api-key-lifecycle`
+- **Principles:** `#1`, `#4`, `#5`, `#12`

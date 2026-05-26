@@ -11,7 +11,7 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0001` | Per-enrollment local authentication policy for mobile respond | `incubating` | `P1` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-07` |
 | `I-2026-0002` | Re-encryption batch UI: async button behavior | `incubating` | `P2` | `admin-ui`, `admin-api` | `2026-05-19` |
 | `I-2026-0003` | High-availability Docker stack: parity review with `cleanstart.sh` | `incubating` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api` | `2026-05-19` |
-| `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `incubating` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-05-19` |
+| `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `promoted` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-05-25` |
 | `I-2026-0005` | Checkpoint integrity breaks: declared remediation and reattachment | `incubating` | `P1` | `admin-api`, `audit` | `2026-05-17` |
 | `I-2026-0006` | Nightly retroactive integrity validation batch | `incubating` | `P1` | `admin-api`, `audit`, `infra` | `2026-05-19` |
 | `I-2026-0007` | Admin Dashboard: batch health and integrity widgets | `incubating` | `P1` | `admin-ui`, `admin-api` | `2026-05-19` |
