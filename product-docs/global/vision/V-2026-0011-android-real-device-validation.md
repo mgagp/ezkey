@@ -22,6 +22,7 @@
 - **Next step:** execute **`TB-2026-0002`** (linked from `I-2026-0019`): one enrollment path
   (hybrid init allowed), one approved pending/respond slice, and one short steady-state auth loop
   on a real Android device against the clean-start stack.
+- **Captured by:** Marc
 
 ## Related artifacts
 

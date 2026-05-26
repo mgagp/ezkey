@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-08`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `ezkey-mobile`, `ezkey-tests`, `auth-api`, `admin-api`, `docker`
+- **Captured by:** Marc
 
 ## Intent
 

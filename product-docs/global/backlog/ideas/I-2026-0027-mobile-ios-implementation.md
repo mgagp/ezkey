@@ -12,6 +12,7 @@
 - **Component tags:** `mobile`
 - **Lane:** `A`
 - **GitHub issue:** `#152`
+- **Captured by:** Marc
 
 ## Intent
 

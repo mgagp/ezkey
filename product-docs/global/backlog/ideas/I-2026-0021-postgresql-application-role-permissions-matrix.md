@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-24`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `infra`, `core`, `admin-api`, `auth-api`, `integration-api`, `audit`
+- **Captured by:** Marc
 
 ## Intent
 

@@ -9,6 +9,7 @@ Define the minimum test strategy for the discovery and design slice of `I-2026-0
 - **Target:** `I-2026-0001`
 - **Date:** `2026-05-07`
 - **Owner:** `product + ai collaboration`
+- **Captured by:** Marc
 
 ## Change risk summary
 

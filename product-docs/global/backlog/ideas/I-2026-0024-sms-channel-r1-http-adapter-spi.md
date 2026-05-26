@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-24`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-api`, `admin-ui`, `infra`, `docs`, peripheral (`ezkey-sms-twilio`)
+- **Captured by:** Marc
 
 ## Intent
 

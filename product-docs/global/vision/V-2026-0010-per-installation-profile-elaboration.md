@@ -41,6 +41,7 @@
   3 actionable promoted into `I-2026-0018` (generator). Phase 1 needs only a small documentation
   clarification, no dedicated `I-*`. After `I-2026-0017` produces a stable elaboration format,
   `I-2026-0018` becomes ready for execution.
+- **Captured by:** Marc
 
 ## Related artifacts
 

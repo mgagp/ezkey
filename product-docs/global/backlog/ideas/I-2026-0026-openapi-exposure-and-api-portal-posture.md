@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-22`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `docs`, `sites/ezkey-org`, `admin-api`, `auth-api`, `integration-api`, `crypto-api`, `infra`
+- **Captured by:** Marc
 
 ## Intent
 

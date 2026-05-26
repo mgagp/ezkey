@@ -7,6 +7,7 @@
 - **Related idea:** `I-2026-0026`
 - **Created at:** `2026-05-21`
 - **Updated at:** `2026-05-22`
+- **Captured by:** Marc
 
 ## Objective
 

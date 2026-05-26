@@ -10,6 +10,7 @@
   `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md`.
 - **Potential impact:** `mobile`, `auth-api`, `admin-api` (audit/compliance batch later), docs.
 - **Next step:** finish `R-2026-0001` retrofit mapping; then implementation backlog slice.
+- **Captured by:** Marc
 
 ## Related artifacts
 
