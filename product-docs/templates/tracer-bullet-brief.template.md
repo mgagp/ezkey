@@ -11,6 +11,7 @@
 - **GitHub PR:** `#NNN` _(optional)_
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`
+- **Captured by:** `<name or initials of the human contributor>`
 
 ## Objective
 

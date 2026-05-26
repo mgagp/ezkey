@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P0-foundations`, `P2-hardening`
 - **Component tags:** `admin-api`, `core`, `infra`
+- **Captured by:** Marc
 
 ## Intent
 

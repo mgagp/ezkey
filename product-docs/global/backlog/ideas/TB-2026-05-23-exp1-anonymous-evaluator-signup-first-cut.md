@@ -8,6 +8,7 @@
 - **Grill session:** [`../grill-sessions/2026-05-23-exp1-anonymous-evaluator-onboarding-grill-me.md`](../grill-sessions/2026-05-23-exp1-anonymous-evaluator-onboarding-grill-me.md)
 - **Created at:** `2026-05-23`
 - **Updated at:** `2026-05-23`
+- **Captured by:** Marc
 
 ## Objective
 

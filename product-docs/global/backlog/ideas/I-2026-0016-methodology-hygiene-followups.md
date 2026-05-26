@@ -11,6 +11,7 @@
 - **Closed at:** `2026-05-24`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `docs`, `methodology`
+- **Captured by:** Marc
 
 ## Intent
 

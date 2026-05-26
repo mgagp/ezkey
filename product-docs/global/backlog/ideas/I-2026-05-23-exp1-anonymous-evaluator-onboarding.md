@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-23`
 - **Phase tags:** `P2-functional-mode`
 - **Component tags:** `admin-api`, `admin-ui`, `ezkey-org`, `infra (EXP1)`, `docs`
+- **Captured by:** Marc
 
 ## Intent
 

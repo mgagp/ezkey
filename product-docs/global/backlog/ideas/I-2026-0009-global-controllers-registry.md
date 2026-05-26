@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-24`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `docs`, `admin-api`, `auth-api`, `integration-api`, `crypto-api`
+- **Captured by:** Marc
 
 ## Drop rationale (2026-05-24)
 

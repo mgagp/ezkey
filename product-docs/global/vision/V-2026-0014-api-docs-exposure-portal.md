@@ -19,6 +19,7 @@
 - **Next step:** promoted into `I-2026-0026`, then materially realized through `TB-2026-0003`.
   Retain this note as the directional record behind the public API portal and raw-doc exposure
   posture.
+- **Captured by:** Marc
 
 ## Related artifacts
 

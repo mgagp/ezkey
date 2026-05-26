@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-api`, `infra (clean-start)`, `bootstrap`, `docs`
+- **Captured by:** Marc
 
 ## Intent
 

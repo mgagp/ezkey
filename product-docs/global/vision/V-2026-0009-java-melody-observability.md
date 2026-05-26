@@ -12,6 +12,7 @@
 - **Potential impact:** `infra`, boot modules, docs.
 - **Next step:** finish `R-2026-0002` retrofit; update plan-prompt default to opt-in; then
   `I-*` implementation.
+- **Captured by:** Marc
 
 ## Related artifacts
 

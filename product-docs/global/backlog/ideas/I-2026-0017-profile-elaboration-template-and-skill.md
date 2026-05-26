@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-08`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `docs (product-docs)`, `methodology`, `skills`
+- **Captured by:** Marc
 
 ## Intent
 

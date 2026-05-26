@@ -10,6 +10,7 @@
 - **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P1-operability`, `P3-distribution`
 - **Component tags:** `infra`, `admin-api`, `auth-api`, `integration-api`
+- **Captured by:** Marc
 
 ## Intent
 

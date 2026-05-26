@@ -13,6 +13,7 @@
   tests; `I-2026-0004`.
 - **Next step:** implement `I-2026-0004`; align SDK/examples and Demo ACME to Integration API
   base URL for API-key flows.
+- **Captured by:** Marc
 
 ## Related artifacts
 

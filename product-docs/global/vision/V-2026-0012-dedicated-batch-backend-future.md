@@ -9,6 +9,7 @@
   review: extra deployment complexity not justified for an unproven product.
 - **Next step:** none for R1. Revisit on production evidence. See grill session
   `integrity-cluster-D4-D6-grill-me.md`.
+- **Captured by:** Marc
 
 ## Related artifacts
 

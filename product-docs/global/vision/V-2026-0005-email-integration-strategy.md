@@ -16,6 +16,7 @@
   `I-2026-0023` (R1 slice).
 - **Next step:** design pack + `I-2026-0023`; update `CONFIGURATION.md` for mail properties
   when implementing.
+- **Captured by:** Marc
 
 ## Related artifacts
 

@@ -7,7 +7,7 @@
 - **Lane:** `A` / `B` / `C`
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`
-- **Author:** `<name>`
+- **Captured by:** `<name or initials of the human contributor>`
 
 ## Intent
 

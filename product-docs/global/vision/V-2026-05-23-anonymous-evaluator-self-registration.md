@@ -6,7 +6,7 @@
 - **Status:** `under-review`
 - **Created at:** `2026-05-23`
 - **Updated at:** `2026-05-23`
-- **Author:** operator session (voice dictation intake)
+- **Captured by:** Marc
 
 ## Intent
 

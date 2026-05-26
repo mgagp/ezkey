@@ -11,6 +11,7 @@
 - **Phase tags:** `<phase-id>, ...` — closed list: `P0-foundations` … `P4-compliance-readiness` (see [`../methodology/nomenclature.md`](../methodology/nomenclature.md))
 - **Component tags:** `<component>, ...` — prefer closed vocabulary (`admin-api`, `docs`, …); see nomenclature
 - **Lane:** `A` / `B` / `C`
+- **Captured by:** `<name or initials of the human contributor>`
 - **GitHub issue:** `#NNN` _(optional)_
 
 ## Intent
