@@ -1,0 +1,121 @@
+{
+  "phases": [
+    {
+      "id": "vision",
+      "label": "Vision",
+      "color": "#7c3aed",
+      "description": "Capturing intent and direction (V-*)."
+    },
+    {
+      "id": "capture",
+      "label": "Capture & Triage",
+      "color": "#0891b2",
+      "description": "Recording, classifying, and prioritizing ideas (I-*)."
+    },
+    {
+      "id": "challenge",
+      "label": "Challenge",
+      "color": "#d97706",
+      "description": "Structured grilling to surface risks and assumptions."
+    },
+    {
+      "id": "promote",
+      "label": "Tracer Bullet",
+      "color": "#2563eb",
+      "description": "Promoting an idea to a bounded, testable execution slice (TB-*)."
+    },
+    {
+      "id": "design",
+      "label": "Analysis & Design",
+      "color": "#4f46e5",
+      "description": "Global and component design with explicit boundaries."
+    },
+    {
+      "id": "test",
+      "label": "Test Strategy",
+      "color": "#0d9488",
+      "description": "Risk-based, cost-aware test layer selection."
+    },
+    {
+      "id": "gate",
+      "label": "Quality Gates & Close-out",
+      "color": "#16a34a",
+      "description": "Quality enforcement, status transitions, traceability."
+    },
+    {
+      "id": "retrofit",
+      "label": "Legacy Retrofit",
+      "color": "#64748b",
+      "description": "Parallel lane: integrate historical knowledge via R-* slices."
+    },
+    {
+      "id": "incubation",
+      "label": "Plan Incubation",
+      "color": "#0284c7",
+      "description": "Parallel lane: live working-plan exploration before materialization."
+    },
+    {
+      "id": "collaboration",
+      "label": "AI Collaboration",
+      "color": "#e11d48",
+      "description": "Mechanics for human-AI and AI-AI workflows and skills."
+    },
+    {
+      "id": "workflow",
+      "label": "Workflow Mechanics",
+      "color": "#1d4ed8",
+      "description": "Overall workflow, multi-branch, GitHub issues integration."
+    },
+    {
+      "id": "meta",
+      "label": "Reference",
+      "color": "#94a3b8",
+      "description": "Indexes, nomenclature, glossary, methodology decisions."
+    }
+  ],
+  "files": {
+    "methodology/methodological-values.md": "vision",
+    "methodology/workflow-overview.md": "workflow",
+    "methodology/analysis-and-design-canon.md": "design",
+    "methodology/tracer-bullet-method.md": "promote",
+    "methodology/testing-strategy-in-workflow.md": "test",
+    "methodology/plan-incubation-workflow.md": "incubation",
+    "methodology/legacy-retrofit-workflow.md": "retrofit",
+    "methodology/blitz-intake-pattern.md": "capture",
+    "methodology/multi-branch-workflow.md": "workflow",
+    "methodology/session-start-guide.md": "collaboration",
+    "methodology/quality-gates.md": "gate",
+    "methodology/ai-collaboration-model.md": "collaboration",
+    "methodology/nomenclature.md": "meta",
+    "methodology/github-issues-workflow.md": "workflow",
+    "methodology/README.md": "meta",
+    "methodology/decisions/README.md": "meta",
+    "methodology/decisions/2026-05-22-blitz-naming-multi-branch.md": "capture",
+    "methodology/decisions/2026-05-23-tracer-bullet-iteration-posture.md": "promote",
+    "methodology/decisions/2026-05-24-artifact-tagging-canonization-conventions.md": "meta",
+    "methodology/decisions/2026-05-24-controllers-registry-downscope.md": "design",
+    "methodology/decisions/2026-05-24-rich-views.md": "meta",
+    "methodology/decisions/2026-05-25-component-packs-methodological-status.md": "design",
+
+    "templates/README.md": "meta",
+    "templates/vision-note.template.md": "vision",
+    "templates/backlog-idea.template.md": "capture",
+    "templates/tracer-bullet-brief.template.md": "promote",
+    "templates/component-design-brief.template.md": "design",
+    "templates/architecture-decision.template.md": "design",
+    "templates/decision-table.template.md": "design",
+    "templates/mapping-matrix.template.md": "design",
+    "templates/screens-and-wireflow.template.md": "design",
+    "templates/feature-brief.template.md": "design",
+    "templates/functional-workflow.template.md": "design",
+    "templates/persistence-and-lifecycle.template.md": "design",
+    "templates/error-and-exception.template.md": "design",
+    "templates/product-intent.template.md": "vision",
+    "templates/test-plan-slice.template.md": "test",
+    "templates/spec-test-traceability.template.md": "test",
+    "templates/legacy-plan-retrofit.template.md": "retrofit",
+    "templates/roadmap.template.md": "meta",
+
+    "glossary": "meta"
+  }
+}

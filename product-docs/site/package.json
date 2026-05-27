@@ -1,0 +1,22 @@
+{
+  "name": "ezkey-method-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local micro-site for browsing the Ezkey methodology corpus.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "gray-matter": "^4.0.3",
+    "highlight.js": "^11.10.0",
+    "marked": "^14.1.4",
+    "marked-gfm-heading-id": "^4.1.1",
+    "marked-highlight": "^2.2.1"
+  }
+}

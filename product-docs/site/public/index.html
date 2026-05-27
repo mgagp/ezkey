@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ezkey Method · Local Explorer</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css"
+  />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">Ezkey</span>
+      <span class="brand-sub">Method · Local Explorer</span>
+    </div>
+    <nav class="personae" aria-label="Persona tracks">
+      <button class="persona-btn" data-track="discover">Discover</button>
+      <button class="persona-btn" data-track="apply">Apply</button>
+      <button class="persona-btn" data-track="present">Present</button>
+    </nav>
+    <div class="topbar-tools">
+      <button id="search-btn" class="icon-btn" title="Search (Ctrl+K)" aria-label="Open search">
+        <span class="icon-glyph">⚲</span>
+        <span class="icon-kbd">Ctrl+K</span>
+      </button>
+      <a id="map-btn" class="icon-btn" href="#/map" title="Workflow map" aria-label="Open workflow map">
+        <span class="icon-glyph">◈</span>
+        <span class="icon-kbd">Map</span>
+      </a>
+      <button id="theme-btn" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
+        <span class="icon-glyph">☾</span>
+      </button>
+    </div>
+    <div class="topbar-meta">Phase 3 · Polish</div>
+  </header>
+
+  <main class="layout">
+    <aside class="rail rail-left" aria-label="Corpus navigation">
+      <div class="rail-header">Corpus</div>
+      <div id="tree" class="tree" aria-busy="true">Loading…</div>
+    </aside>
+
+    <section class="content" aria-live="polite">
+      <div id="breadcrumb" class="breadcrumb"></div>
+      <div id="phase-ribbon" class="phase-ribbon" hidden></div>
+      <article id="doc" class="doc">
+        <div id="home" class="home">
+          <h1>Ezkey Method · Local Explorer</h1>
+          <p class="lede">
+            A local navigator for the Ezkey methodology corpus: methodology pack, templates,
+            and glossary. Pick a document on the left, or start with the reading order.
+          </p>
+
+          <section class="persona-cards">
+            <article class="persona-card" data-track="discover" tabindex="0" role="button" aria-label="Start the Discover track">
+              <h3>Discover</h3>
+              <p>High-level entry: values, workflow, design canon, quality gates.</p>
+              <p class="card-status">Click to start the track →</p>
+            </article>
+            <article class="persona-card" data-track="apply" tabindex="0" role="button" aria-label="Start the Apply track">
+              <h3>Apply</h3>
+              <p>Task-oriented path: session start → tracer bullet → design → tests → close out.</p>
+              <p class="card-status">Click to start the track →</p>
+            </article>
+            <article class="persona-card" data-track="present" tabindex="0" role="button" aria-label="Start the Present track">
+              <h3>Present</h3>
+              <p>Narrative sequence with talking points to support a live presentation.</p>
+              <p class="card-status">Click to start the track →</p>
+            </article>
+          </section>
+
+          <p class="home-shortcut">
+            Or jump straight to
+            <a href="#/methodology/README.md">methodology/README.md</a>
+            · open the <a href="#/map">workflow map</a>
+            · press <kbd>Ctrl</kbd>+<kbd>K</kbd> to search
+            · press <kbd>F</kbd> for presentation mode.
+          </p>
+        </div>
+      </article>
+    </section>
+
+    <aside class="rail rail-right" aria-label="On this page">
+      <div class="rail-header">On this page</div>
+      <nav id="toc" class="toc"><p class="toc-empty">Select a document to see its outline.</p></nav>
+    </aside>
+  </main>
+
+  <footer id="wizard-footer" class="wizard-footer" hidden></footer>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

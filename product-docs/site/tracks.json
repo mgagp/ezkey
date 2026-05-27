@@ -1,0 +1,124 @@
+{
+  "tracks": [
+    {
+      "id": "discover",
+      "label": "Discover",
+      "tagline": "Read the methodology end-to-end.",
+      "color": "#0891b2",
+      "intro": "A guided reading order across the core methodology pack. ~30 min for a first pass.",
+      "steps": [
+        {
+          "file": "methodology/methodological-values.md",
+          "narration": "Start with the values: small, living, honest, proportional. They explain every choice that follows."
+        },
+        {
+          "file": "methodology/workflow-overview.md",
+          "narration": "The end-to-end shape: Capture → Triage → Challenge → Promote → Design → Test → Gate → Implement → Close-out, plus three parallel lanes."
+        },
+        {
+          "file": "methodology/analysis-and-design-canon.md",
+          "narration": "What 'design rigor without ceremony' looks like in practice: boundaries, mappings, decisions in the right scope."
+        },
+        {
+          "file": "methodology/tracer-bullet-method.md",
+          "narration": "How a vertical slice becomes a bounded execution unit (TB-*) with explicit exit criteria."
+        },
+        {
+          "file": "methodology/testing-strategy-in-workflow.md",
+          "narration": "Risk-based test selection — minimum layers, optional layers, explicit non-coverage."
+        },
+        {
+          "file": "methodology/quality-gates.md",
+          "narration": "Mandatory checks at the gate: contracts, tests, docs, traceability."
+        },
+        {
+          "file": "methodology/ai-collaboration-model.md",
+          "narration": "How humans and AI work as peers in this method: bounded context, named skills, explicit handoffs."
+        }
+      ]
+    },
+    {
+      "id": "apply",
+      "label": "Apply",
+      "tagline": "Run a real slice from intake to close-out.",
+      "color": "#2563eb",
+      "intro": "A hands-on path: bootstrap a session, capture an idea, promote to a slice, design, test, gate, close out.",
+      "steps": [
+        {
+          "file": "methodology/session-start-guide.md",
+          "narration": "Bootstrap a session: read this, point the agent at the methodology pack, pick the starting skill."
+        },
+        {
+          "file": "methodology/README.md",
+          "anchor": "quick-start-prompts",
+          "narration": "Quick-start prompts: each one triggers a methodology skill (vision-intake, grill-me, tracer-bullet-promote, …)."
+        },
+        {
+          "file": "templates/backlog-idea.template.md",
+          "narration": "Capture the idea as I-YYYY-MM-DD-<slug>. Keep the first version short and expressive."
+        },
+        {
+          "file": "methodology/tracer-bullet-method.md",
+          "narration": "If the idea is execution-ready, promote it to a TB-* with one vertical slice and an explicit first cut."
+        },
+        {
+          "file": "templates/tracer-bullet-brief.template.md",
+          "narration": "Use this template to bound the slice: scope, evidence, exit criteria, open questions that do not block."
+        },
+        {
+          "file": "methodology/analysis-and-design-canon.md",
+          "narration": "Run global analysis, then component analysis for each impacted boundary."
+        },
+        {
+          "file": "templates/component-design-brief.template.md",
+          "narration": "One design brief per impacted component — boundaries, mappings, validation, error paths."
+        },
+        {
+          "file": "methodology/testing-strategy-in-workflow.md",
+          "narration": "Select minimum and optional test layers explicitly. Risk-based, cost-aware."
+        },
+        {
+          "file": "methodology/quality-gates.md",
+          "narration": "Apply the gate, then close out: status transitions + traceability updates."
+        }
+      ]
+    },
+    {
+      "id": "present",
+      "label": "Present",
+      "tagline": "A 7-beat narrative for a live methodology talk.",
+      "color": "#7c3aed",
+      "intro": "Scenarized sequence with short talking points to support a live presentation of the method.",
+      "steps": [
+        {
+          "file": "methodology/methodological-values.md",
+          "narration": "Beat 1 — Why this method exists. The lightest process that still preserves rigor, design consistency, and traceability."
+        },
+        {
+          "file": "methodology/workflow-overview.md",
+          "narration": "Beat 2 — The end-to-end shape: one visible spine plus three parallel lanes (retrofit, plan incubation, multi-branch)."
+        },
+        {
+          "file": "methodology/tracer-bullet-method.md",
+          "narration": "Beat 3 — The unit of execution: a tracer bullet — vertical, bounded, testable, promotable."
+        },
+        {
+          "file": "methodology/analysis-and-design-canon.md",
+          "narration": "Beat 4 — Design discipline without ceremony: boundaries, mappings, decisions in the right scope."
+        },
+        {
+          "file": "methodology/quality-gates.md",
+          "narration": "Beat 5 — Quality is gated, not aspirational. Contracts, tests, docs, traceability."
+        },
+        {
+          "file": "methodology/ai-collaboration-model.md",
+          "narration": "Beat 6 — Humans and AI as peers: bounded context, named skills, explicit handoffs."
+        },
+        {
+          "file": "methodology/legacy-retrofit-workflow.md",
+          "narration": "Beat 7 — Even legacy knowledge gets dignified treatment via R-* slices."
+        }
+      ]
+    }
+  ]
+}
