@@ -1,9 +1,9 @@
 ---
-name: ezkey-retrofit-curator
+name: retrofit-curator
 description: Curates legacy retrofit slices by mapping extracted signal (plans, verbal, ad hoc) into canonical product-docs destinations, recording residual gaps, and promoting principle candidates when relevant.
 disable-model-invocation: true
 ---
-# Ezkey Retrofit Curator
+# Retrofit Curator
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Convert mined historical signal into canonical updates with explicit traceabilit
 
 - **Enter when:** mined historical signal needs mapping into canonical product-docs destinations.
 - **Exit when:** the `R-*` slice records mappings, canonical updates, residual gaps, and index status.
-- **Call next:** `ezkey-traceability-sync` when specs/tests/features changed, or `ezkey-closeout` when the slice is integrated or parked.
+- **Call next:** `traceability-sync` when specs/tests/features changed, or `closeout` when the slice is integrated or parked.
 - **Not needed when:** there is no reusable signal, or the source already lives in current canonical docs.
 
 ## Inputs

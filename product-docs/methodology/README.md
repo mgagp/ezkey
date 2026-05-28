@@ -71,31 +71,31 @@ Use these prompts in a fresh session to trigger the method quickly.
 
 ### 1) Start from a raw idea
 
-`Use ezkey-vision-intake, then ezkey-backlog-triage for this new idea. Create V-* and I-* entries in product-docs.`
+`Use vision-intake, then backlog-triage for this new idea. Create V-* and I-* entries in product-docs.`
 
 ### 2) Stress-test before design lock-in
 
-`Run ezkey-grill-me on I-* or TB-* and produce critical questions, top risks, and 2-3 design options with recommendation.`
+`Run grill-me on I-* or TB-* and produce critical questions, top risks, and 2-3 design options with recommendation.`
 
 ### 3) Start with a live working plan first
 
-`Use ezkey-plan-incubation. Start in Plan mode for freeform option exploration, create a working plan, then materialize the durable output into V-* and/or I-* without treating it as retrofit.`
+`Use plan-incubation. Start in Plan mode for freeform option exploration, create a working plan, then materialize the durable output into V-* and/or I-* without treating it as retrofit.`
 
 ### 4) Promote to bounded execution
 
-`If ready, use ezkey-tracer-bullet-promote and ezkey-test-strategy-planner to create TB-* and a test-plan slice.`
+`If ready, use tracer-bullet-promote and test-strategy-planner to create TB-* and a test-plan slice.`
 
 ### 5) Prepare component-level design
 
-`Use ezkey-component-design-pack for impacted components and link boundaries, mappings, validation, and error paths.`
+`Use component-design-pack for impacted components and link boundaries, mappings, validation, and error paths.`
 
 ### 6) Gate and close
 
-`Run ezkey-quality-gatekeeper, then ezkey-traceability-sync and ezkey-closeout for explicit status transitions and residual risks.`
+`Run quality-gatekeeper, then traceability-sync and closeout for explicit status transitions and residual risks.`
 
 ### 7) Retrofit historical plans
 
-`Run ezkey-legacy-plan-miner on selected historical plans, then ezkey-retrofit-curator to map signal into canonical product-docs targets.`
+`Run legacy-plan-miner on selected historical plans, then retrofit-curator to map signal into canonical product-docs targets.`
 
 ### 8) Retrofit from verbal history
 

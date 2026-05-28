@@ -115,7 +115,7 @@ Until that threshold is met, reference the module README, existing docs, and glo
 - The current component packs remain valid and useful.
 - The methodology rich view should not add a new "component lane". Component work remains part of
   Lane A Analyze and Design.
-- `ezkey-component-design-pack` remains a conditional skill, not a mandatory phase for every
+- `component-design-pack` remains a conditional skill, not a mandatory phase for every
   feature.
 - `product-docs/components/README.md` should explicitly state this status and the update triggers.
 - Future component packs should be created by evidence, not by inventory completion pressure.
@@ -150,4 +150,4 @@ component truth, but retract the idea that they are an independent parallel work
 - [`../workflow-overview.md`](../workflow-overview.md)
 - [`../analysis-and-design-canon.md`](../analysis-and-design-canon.md)
 - [`../../components/README.md`](../../components/README.md)
-- [`../../../.cursor/skills/ezkey-component-design-pack/SKILL.md`](../../../.cursor/skills/ezkey-component-design-pack/SKILL.md)
+- [`../../../.cursor/skills/component-design-pack/SKILL.md`](../../../.cursor/skills/component-design-pack/SKILL.md)

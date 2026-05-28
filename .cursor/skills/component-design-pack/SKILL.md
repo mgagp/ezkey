@@ -1,9 +1,9 @@
 ---
-name: ezkey-component-design-pack
+name: component-design-pack
 description: Builds component-focused Ezkey design briefs for impacted boundaries, mappings, validation rules, and error handling. Use after tracer bullet definition and before implementation.
 disable-model-invocation: true
 ---
-# Ezkey Component Design Pack
+# Component Design Pack
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Create complementary component-level design slices that align to one global feat
 
 - **Enter when:** a `TB-*` or feature scope touches component boundaries, mappings, validations, lifecycle/state behavior, or error behavior.
 - **Exit when:** each impacted component has local responsibilities, boundaries, contracts, tests, and doc impact named; any durable component-local truth has a target component-pack location.
-- **Call next:** `ezkey-test-strategy-planner`, then `ezkey-quality-gatekeeper` before implementation.
+- **Call next:** `test-strategy-planner`, then `quality-gatekeeper` before implementation.
 - **Not needed when:** the change is local, internal, and does not alter component responsibilities or observable behavior.
 
 ## Inputs

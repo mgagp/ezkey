@@ -1,9 +1,9 @@
 ---
-name: ezkey-test-strategy-planner
+name: test-strategy-planner
 description: Plans a risk-based Ezkey test strategy for a bounded change slice across unit, functional, elective, operational, and UI layers. Use when preparing analysis/design, tracer bullets, or implementation plans and when deciding which tests are necessary, relevant, cheap, and high-confidence.
 disable-model-invocation: true
 ---
-# Ezkey Test Strategy Planner
+# Test Strategy Planner
 
 ## Purpose
 
@@ -15,7 +15,7 @@ Use this skill for `I-*` ideas, `TB-*` tracer bullets, and implementation plans.
 
 - **Enter when:** a change has known risks and needs explicit test-layer selection.
 - **Exit when:** minimum, optional, deferred, and rejected test layers are justified with evidence expectations.
-- **Call next:** `ezkey-quality-gatekeeper` before execution, and `ezkey-traceability-sync` after evidence changes.
+- **Call next:** `quality-gatekeeper` before execution, and `traceability-sync` after evidence changes.
 - **Not needed when:** the change is purely editorial and does not affect behavior, contracts, workflows, or validation.
 
 ## Inputs

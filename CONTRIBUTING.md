@@ -41,7 +41,7 @@ feature/<issue-number>-<artifact-slug>
 Example: `feature/152-i-2026-0027-mobile-ios`
 
 **4 — Implement and validate**  
-Follow the tracer bullet (`TB-*`) scope. Use the methodology skills (`ezkey-component-design-pack`, `ezkey-test-strategy-planner`, `ezkey-quality-gatekeeper`) as checkpoints before opening a PR.
+Follow the tracer bullet (`TB-*`) scope. Use the methodology skills (`component-design-pack`, `test-strategy-planner`, `quality-gatekeeper`) as checkpoints before opening a PR.
 
 **5 — Open a pull request**  
 PR title follows conventional commit format: `feat(component): short description (#NNN)`.  

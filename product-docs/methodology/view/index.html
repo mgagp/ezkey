@@ -1113,87 +1113,87 @@
         </thead>
         <tbody>
           <tr>
-            <td><code>ezkey-vision-intake</code></td>
+            <td><code>vision-intake</code></td>
             <td>Strategic direction, product intent, or early feature ideas arrive.</td>
             <td>Durable direction is captured as <code>V-*</code> or initial <code>I-*</code> with next step.</td>
-            <td><code>ezkey-backlog-triage</code> or <code>ezkey-grill-me</code></td>
+            <td><code>backlog-triage</code> or <code>grill-me</code></td>
             <td>The idea is already a bounded implementation slice.</td>
           </tr>
           <tr>
-            <td><code>ezkey-backlog-triage</code></td>
+            <td><code>backlog-triage</code></td>
             <td>An <code>I-*</code> exists or a vision note has actionable scope.</td>
             <td>Scope, non-scope, priority, status, tags, risks, and posture are explicit.</td>
-            <td><code>ezkey-grill-me</code> or <code>ezkey-tracer-bullet-promote</code></td>
+            <td><code>grill-me</code> or <code>tracer-bullet-promote</code></td>
             <td>The item is still pure orientation or already fully scoped.</td>
           </tr>
           <tr>
-            <td><code>ezkey-grill-me</code></td>
+            <td><code>grill-me</code></td>
             <td>Assumptions, exception paths, lifecycle effects, or boundary risks need pressure.</td>
             <td>Risks, open questions, decision pressure points, and clarifications are explicit.</td>
             <td>Triage, tracer-bullet promotion, or component design.</td>
             <td>The change is low-risk, bounded, and has known validation criteria.</td>
           </tr>
           <tr>
-            <td><code>ezkey-plan-incubation</code></td>
+            <td><code>plan-incubation</code></td>
             <td>The operator starts from a current-session working plan.</td>
             <td>Durable signal is classified for <code>V-*</code>, <code>I-*</code>, <code>TB-*</code>, principle adoption, or mix.</td>
             <td>Vision intake, backlog triage, or tracer-bullet promotion.</td>
             <td>The source is historical retrofit input or a direct implementation task.</td>
           </tr>
           <tr>
-            <td><code>ezkey-tracer-bullet-promote</code></td>
+            <td><code>tracer-bullet-promote</code></td>
             <td>An <code>I-*</code> is <code>ready</code> and needs a bounded vertical slice.</td>
             <td>The <code>TB-*</code> has posture, scope, boundaries, exclusions, and evidence criteria.</td>
-            <td><code>ezkey-component-design-pack</code> and <code>ezkey-test-strategy-planner</code></td>
+            <td><code>component-design-pack</code> and <code>test-strategy-planner</code></td>
             <td>The item lacks direction, or the change is a tiny code/doc fix.</td>
           </tr>
           <tr>
-            <td><code>ezkey-component-design-pack</code></td>
+            <td><code>component-design-pack</code></td>
             <td>A scope touches component boundaries, mappings, validations, or error behavior.</td>
             <td>Impacted components have responsibilities, contracts, tests, and doc impact named.</td>
-            <td><code>ezkey-test-strategy-planner</code>, then <code>ezkey-quality-gatekeeper</code></td>
+            <td><code>test-strategy-planner</code>, then <code>quality-gatekeeper</code></td>
             <td>The change is local, internal, and not observable at a boundary.</td>
           </tr>
           <tr>
-            <td><code>ezkey-test-strategy-planner</code></td>
+            <td><code>test-strategy-planner</code></td>
             <td>A change has known risks and needs explicit test-layer selection.</td>
             <td>Minimum, optional, deferred, and rejected test layers are justified.</td>
-            <td><code>ezkey-quality-gatekeeper</code>, then traceability after evidence changes.</td>
+            <td><code>quality-gatekeeper</code>, then traceability after evidence changes.</td>
             <td>The change is purely editorial.</td>
           </tr>
           <tr>
-            <td><code>ezkey-quality-gatekeeper</code></td>
+            <td><code>quality-gatekeeper</code></td>
             <td>Work moves from analysis to execution, or execution to closeout.</td>
             <td>The gate returns <code>go</code> or <code>no-go</code> with blockers and follow-up actions.</td>
             <td>Implementation after <code>go</code>, or targeted repair after <code>no-go</code>.</td>
             <td>The task is trivial and has no analysis, contract, test, or traceability impact.</td>
           </tr>
           <tr>
-            <td><code>ezkey-traceability-sync</code></td>
+            <td><code>traceability-sync</code></td>
             <td>Feature status, behavior, specs, tests, or validation evidence changed.</td>
             <td>Global and component traceability documents reflect current evidence and gaps.</td>
-            <td><code>ezkey-closeout</code></td>
+            <td><code>closeout</code></td>
             <td>No observable behavior, contract, status, or validation evidence changed.</td>
           </tr>
           <tr>
-            <td><code>ezkey-closeout</code></td>
+            <td><code>closeout</code></td>
             <td>A tracer bullet, feature slice, blitz integration, retrofit slice, or cycle is ending.</td>
             <td>Status transitions, evidence, deferred work, residual risks, and next actions are explicit.</td>
             <td>No next skill by default; reopen named follow-up work only.</td>
             <td>The work is still actively changing or required evidence is unavailable.</td>
           </tr>
           <tr>
-            <td><code>ezkey-legacy-plan-miner</code></td>
+            <td><code>legacy-plan-miner</code></td>
             <td>Historical plans, verbal history, or ad hoc implementation history contain reusable signal.</td>
             <td>Reusable signal is extracted with confidence and source type.</td>
-            <td><code>ezkey-retrofit-curator</code></td>
+            <td><code>retrofit-curator</code></td>
             <td>The source is a current-session working plan.</td>
           </tr>
           <tr>
-            <td><code>ezkey-retrofit-curator</code></td>
+            <td><code>retrofit-curator</code></td>
             <td>Mined historical signal needs mapping into canonical destinations.</td>
             <td>The <code>R-*</code> records mappings, canonical updates, residual gaps, and index status.</td>
-            <td><code>ezkey-traceability-sync</code> or <code>ezkey-closeout</code></td>
+            <td><code>traceability-sync</code> or <code>closeout</code></td>
             <td>No reusable signal exists, or the source already lives in current canon.</td>
           </tr>
         </tbody>

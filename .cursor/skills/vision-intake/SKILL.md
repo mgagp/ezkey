@@ -1,9 +1,9 @@
 ---
-name: ezkey-vision-intake
+name: vision-intake
 description: Captures raw product direction into structured Ezkey vision notes and backlog-ready seeds. Use when the user shares strategic ideas, product intent evolution, or early feature thoughts.
 disable-model-invocation: true
 ---
-# Ezkey Vision Intake
+# Vision Intake
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Convert free-form ideation into concise, structured artifacts without over-const
 
 - **Enter when:** the user shares strategic direction, product intent, or early feature ideas.
 - **Exit when:** the durable direction is captured as `V-*` or an initial `I-*` seed with a next step.
-- **Call next:** `ezkey-backlog-triage` for actionable scope, or `ezkey-grill-me` for stress-testing.
+- **Call next:** `backlog-triage` for actionable scope, or `grill-me` for stress-testing.
 - **Not needed when:** the idea is already a bounded implementation slice ready for `TB-*` planning.
 
 ## Inputs

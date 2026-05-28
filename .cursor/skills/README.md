@@ -11,18 +11,18 @@ This folder contains project skills that support the Ezkey documentation-first w
 
 ## Workflow skills
 
-- `ezkey-vision-intake`
-- `ezkey-backlog-triage`
-- `ezkey-grill-me`
-- `ezkey-plan-incubation`
-- `ezkey-tracer-bullet-promote`
-- `ezkey-component-design-pack`
-- `ezkey-test-strategy-planner`
-- `ezkey-quality-gatekeeper`
-- `ezkey-traceability-sync`
-- `ezkey-closeout`
-- `ezkey-legacy-plan-miner`
-- `ezkey-retrofit-curator`
+- `vision-intake`
+- `backlog-triage`
+- `grill-me`
+- `plan-incubation`
+- `tracer-bullet-promote`
+- `component-design-pack`
+- `test-strategy-planner`
+- `quality-gatekeeper`
+- `traceability-sync`
+- `closeout`
+- `legacy-plan-miner`
+- `retrofit-curator`
 
 ## Suggested sequence
 

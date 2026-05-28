@@ -15,7 +15,7 @@ Use the blitz intake pattern when:
 - classification and materialization should not interrupt capture flow,
 - voice dictation is plausible and verbatim preservation matters.
 
-For a single, focused idea, the standard Lane A flow (`ezkey-vision-intake`, then `ezkey-backlog-triage`) is faster and lighter.
+For a single, focused idea, the standard Lane A flow (`vision-intake`, then `backlog-triage`) is faster and lighter.
 
 ## Phases
 

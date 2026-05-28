@@ -41,18 +41,18 @@ Parallel lane for historical plan retrofit:
 
 Recommended skill sequence for this method:
 
-- `ezkey-vision-intake`
-- `ezkey-backlog-triage`
-- `ezkey-grill-me`
-- `ezkey-plan-incubation` when the operator wants a live working plan first
-- `ezkey-tracer-bullet-promote`
-- `ezkey-component-design-pack`
-- `ezkey-test-strategy-planner`
-- `ezkey-quality-gatekeeper`
-- `ezkey-traceability-sync`
-- `ezkey-closeout`
-- `ezkey-legacy-plan-miner`
-- `ezkey-retrofit-curator`
+- `vision-intake`
+- `backlog-triage`
+- `grill-me`
+- `plan-incubation` when the operator wants a live working plan first
+- `tracer-bullet-promote`
+- `component-design-pack`
+- `test-strategy-planner`
+- `quality-gatekeeper`
+- `traceability-sync`
+- `closeout`
+- `legacy-plan-miner`
+- `retrofit-curator`
 
 This bootstrap does not replace existing module-specific rules; it defines the default ideation-to-delivery path.
 

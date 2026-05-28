@@ -1,9 +1,9 @@
 ---
-name: ezkey-legacy-plan-miner
+name: legacy-plan-miner
 description: Mines legacy Ezkey knowledge (historical plans, verbal briefings, ad hoc implementation history) to extract decisions, invariants, patterns, risks, and test signal. Use for weekly or opportunistic retrofit sessions.
 disable-model-invocation: true
 ---
-# Ezkey Legacy Knowledge Miner
+# Legacy Knowledge Miner
 
 ## Purpose
 
@@ -13,8 +13,8 @@ Extract high-signal knowledge from legacy sources without migrating historical n
 
 - **Enter when:** historical plans, verbal history, or ad hoc implementation history contain reusable signal.
 - **Exit when:** decisions, invariants, patterns, risks, and test signals are extracted with confidence and source type.
-- **Call next:** `ezkey-retrofit-curator` to map extracted signal into canonical destinations.
-- **Not needed when:** the source is a current-session working plan, which belongs to `ezkey-plan-incubation`.
+- **Call next:** `retrofit-curator` to map extracted signal into canonical destinations.
+- **Not needed when:** the source is a current-session working plan, which belongs to `plan-incubation`.
 
 ## Inputs
 

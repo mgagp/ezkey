@@ -1,9 +1,9 @@
 ---
-name: ezkey-quality-gatekeeper
+name: quality-gatekeeper
 description: Applies Ezkey quality gates across analysis, design, implementation, tests, and documentation traceability. Use before execution and before closing work to prevent drift.
 disable-model-invocation: true
 ---
-# Ezkey Quality Gatekeeper
+# Quality Gatekeeper
 
 ## Purpose
 

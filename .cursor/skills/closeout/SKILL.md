@@ -1,9 +1,9 @@
 ---
-name: ezkey-closeout
+name: closeout
 description: Closes Ezkey workflow slices with explicit status transitions, residual risk notes, and next-step clarity. Use at the end of tracer bullets, feature slices, or implementation cycles.
 disable-model-invocation: true
 ---
-# Ezkey Closeout
+# Closeout
 
 ## Purpose
 

@@ -1,9 +1,9 @@
 ---
-name: ezkey-plan-incubation
+name: plan-incubation
 description: Incubates a live working plan in agent Plan mode, then converges it toward canonical Ezkey artifacts. Use when the operator wants to start with a current-session working plan under .cursor/plans/ or plans/ before materializing durable output into V-*, I-*, or TB-*.
 disable-model-invocation: true
 ---
-# Ezkey Plan Incubation
+# Plan Incubation
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Use a live working plan as a deliberate brainstorming and convergence artifact b
 
 - **Enter when:** the operator deliberately starts from a current-session working plan before canonical docs.
 - **Exit when:** durable signal is classified for `V-*`, `I-*`, `TB-*`, principle adoption, or a documented mix.
-- **Call next:** `ezkey-vision-intake`, `ezkey-backlog-triage`, or `ezkey-tracer-bullet-promote` depending on the destination.
+- **Call next:** `vision-intake`, `backlog-triage`, or `tracer-bullet-promote` depending on the destination.
 - **Not needed when:** the source is historical retrofit input or the request is already a direct implementation task.
 
 ## Inputs

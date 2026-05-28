@@ -1,9 +1,9 @@
 ---
-name: ezkey-grill-me
+name: grill-me
 description: Runs structured critical questioning on Ezkey ideas and plans to expose assumptions, exception paths, and hidden risks. Use during analysis before committing to design or execution.
 disable-model-invocation: true
 ---
-# Ezkey Grill Me
+# Grill Me
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Stress-test an idea or plan through focused questions before design lock-in.
 
 - **Enter when:** assumptions, exception paths, lifecycle effects, or boundary risks need pressure-testing.
 - **Exit when:** risks, open questions, decision pressure points, and next clarifications are explicit.
-- **Call next:** `ezkey-backlog-triage` for status alignment, `ezkey-tracer-bullet-promote` for execution scope, or `ezkey-component-design-pack` for component detail.
+- **Call next:** `backlog-triage` for status alignment, `tracer-bullet-promote` for execution scope, or `component-design-pack` for component detail.
 - **Not needed when:** the change is low-risk, already bounded, and has known validation criteria.
 
 ## Input

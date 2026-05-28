@@ -1,9 +1,9 @@
 ---
-name: ezkey-tracer-bullet-promote
+name: tracer-bullet-promote
 description: Promotes ready Ezkey ideas into bounded tracer bullets with vertical-slice scope, boundaries, and evidence criteria. Use when an I-* item is ready for execution planning.
 disable-model-invocation: true
 ---
-# Ezkey Tracer Bullet Promote
+# Tracer Bullet Promote
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Turn a `ready` idea into a validated first vertical slice (`TB-*`).
 
 - **Enter when:** an `I-*` is `ready` and execution needs a bounded vertical slice.
 - **Exit when:** the `TB-*` has posture, scope, boundaries, exclusions, and evidence criteria.
-- **Call next:** `ezkey-component-design-pack` and `ezkey-test-strategy-planner` before implementation.
+- **Call next:** `component-design-pack` and `test-strategy-planner` before implementation.
 - **Not needed when:** the item still lacks direction, or the change is a tiny code/doc fix with no workflow slice.
 
 ## Inputs
