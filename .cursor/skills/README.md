@@ -1,6 +1,6 @@
-# Ezkey Project Skills
+# Methodology Skills
 
-This folder contains project skills that support the Ezkey documentation-first workflow from ideation to closeout.
+This folder contains skills that support the documentation-first workflow from ideation to closeout.
 
 ## Lanes
 

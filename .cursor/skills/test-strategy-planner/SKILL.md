@@ -1,6 +1,6 @@
 ---
 name: test-strategy-planner
-description: Plans a risk-based Ezkey test strategy for a bounded change slice across unit, functional, elective, operational, and UI layers. Use when preparing analysis/design, tracer bullets, or implementation plans and when deciding which tests are necessary, relevant, cheap, and high-confidence.
+description: Plans a risk-based test strategy for a bounded change slice across unit, functional, elective, operational, and UI layers. Use when preparing analysis/design, tracer bullets, or implementation plans and when deciding which tests are necessary, relevant, cheap, and high-confidence.
 disable-model-invocation: true
 ---
 # Test Strategy Planner

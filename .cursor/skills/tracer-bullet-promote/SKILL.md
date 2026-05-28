@@ -1,6 +1,6 @@
 ---
 name: tracer-bullet-promote
-description: Promotes ready Ezkey ideas into bounded tracer bullets with vertical-slice scope, boundaries, and evidence criteria. Use when an I-* item is ready for execution planning.
+description: Promotes ready ideas into bounded tracer bullets with vertical-slice scope, boundaries, and evidence criteria. Use when an I-* item is ready for execution planning.
 disable-model-invocation: true
 ---
 # Tracer Bullet Promote

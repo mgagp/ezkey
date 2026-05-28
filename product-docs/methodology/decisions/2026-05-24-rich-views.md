@@ -1,3 +1,6 @@
+---
+public: true
+---
 # Rich Views — HTML Companions for Complex Documentation
 
 ## Date

@@ -1,3 +1,6 @@
+---
+public: false
+---
 # Artifact Tagging and Canonization Conventions (Tier 2 Hygiene)
 
 ## Date

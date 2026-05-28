@@ -114,5 +114,5 @@ with domain judgment.
 2. **Do not edit** `backlog/index.md`, `product-orientation-notes.md`, or
    `legacy-retrofit/index.md`.
 3. **Use date+slug IDs** for all new artifacts — no counter lookup, no contention.
-4. **At merge on `main`**: run an index update pass (manual or via the `ezkey-index-refresh` skill
+4. **At merge on `main`**: run an index update pass (manual or via the `index-refresh` skill
    when available) to register new artifacts.

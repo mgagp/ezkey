@@ -1,6 +1,6 @@
 ---
 name: vision-intake
-description: Captures raw product direction into structured Ezkey vision notes and backlog-ready seeds. Use when the user shares strategic ideas, product intent evolution, or early feature thoughts.
+description: Captures raw product direction into structured vision notes and backlog-ready seeds. Use when the user shares strategic ideas, product intent evolution, or early feature thoughts.
 disable-model-invocation: true
 ---
 # Vision Intake

@@ -1,6 +1,6 @@
 ---
 name: legacy-plan-miner
-description: Mines legacy Ezkey knowledge (historical plans, verbal briefings, ad hoc implementation history) to extract decisions, invariants, patterns, risks, and test signal. Use for weekly or opportunistic retrofit sessions.
+description: Mines legacy project knowledge (historical plans, verbal briefings, ad hoc implementation history) to extract decisions, invariants, patterns, risks, and test signal. Use for weekly or opportunistic retrofit sessions.
 disable-model-invocation: true
 ---
 # Legacy Knowledge Miner

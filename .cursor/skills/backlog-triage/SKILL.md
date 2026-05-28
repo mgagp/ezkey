@@ -1,6 +1,6 @@
 ---
 name: backlog-triage
-description: Triages Ezkey backlog ideas into clear scope, value, risk, and status with standardized metadata. Use when refining I-* entries before promotion to tracer bullet planning.
+description: Triages backlog ideas into clear scope, value, risk, and status with standardized metadata. Use when refining I-* entries before promotion to tracer bullet planning.
 disable-model-invocation: true
 ---
 # Backlog Triage

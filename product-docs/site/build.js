@@ -26,6 +26,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import matter from 'gray-matter';
 import {
   buildTree,
   renderDoc,
@@ -102,6 +103,38 @@ function allFiles(tree) {
   }
   for (const root of tree) walk(root);
   return out;
+}
+
+/**
+ * Visibility gate for the public site. Currently scoped to
+ * `methodology/decisions/*.md`: a record ships only when its frontmatter
+ * explicitly sets `public: true`. All other corpus files publish as before.
+ * See `methodology/decisions/README.md` for the convention rationale.
+ */
+function isPublic(urlPath) {
+  const isDecision = /(^|\/)methodology\/decisions\/[^/]+\.md$/i.test(urlPath);
+  if (!isDecision) return true;
+  if (/\/README\.md$/i.test(urlPath)) return true;
+  const abs = resolveCorpusPath(urlPath);
+  if (!abs) return false;
+  try {
+    const raw = fs.readFileSync(abs, 'utf8');
+    const fm = matter(raw).data || {};
+    return fm.public === true;
+  } catch {
+    return false;
+  }
+}
+
+function filterTree(nodes) {
+  return nodes
+    .map((n) => {
+      if (n.kind === 'file') return isPublic(n.path) ? n : null;
+      const children = n.children ? filterTree(n.children) : [];
+      if (children.length === 0) return null;
+      return { ...n, children };
+    })
+    .filter(Boolean);
 }
 
 /** Convert a corpus url path (e.g. `methodology/foo.md`) into a clean
@@ -221,7 +254,8 @@ function build() {
 
   // 2. Build indices and snapshot the dynamic JSON endpoints.
   rebuildCorpusIndices();
-  const tree = buildTree();
+  const rawTree = buildTree();
+  const tree = filterTree(rawTree);
   writeJson(path.join(DIST_DIR, 'api', 'tree.json'), { corpus: tree });
   writeJson(path.join(DIST_DIR, 'api', 'phases.json'), PHASES);
   writeJson(path.join(DIST_DIR, 'api', 'tracks.json'), TRACKS);

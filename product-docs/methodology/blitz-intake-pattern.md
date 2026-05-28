@@ -40,7 +40,7 @@ For a single, focused idea, the standard Lane A flow (`vision-intake`, then `bac
 - Do not interrupt unless a phrase is unintelligible (one short clarification at most; otherwise mark `[?]` and move on).
 - When the operator signals end-of-item, move to the next.
 - Capture verbatim in the original language (typically French in this project). Translation to English happens at materialization.
-- Apply only minimal normalization (for example, phonetic variants of the project name normalized to `Ezkey` per `voice-dictation.mdc`).
+- Apply only minimal normalization (for example, project-name variants normalized according to local dictation rules).
 
 ### Phase 2 — Classification
 

@@ -1,6 +1,6 @@
 ---
 name: traceability-sync
-description: Synchronizes Ezkey feature, specification, and test traceability across global and component documentation. Use when feature status, behavior, or validation evidence changes.
+description: Synchronizes feature, specification, and test traceability across global and component documentation. Use when feature status, behavior, or validation evidence changes.
 disable-model-invocation: true
 ---
 # Traceability Sync

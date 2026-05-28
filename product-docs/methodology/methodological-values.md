@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the values that guide Ezkey's product-docs methodology.
+This document defines the values that guide this product-docs methodology.
 
 The methodology is project-backed, but the values are intentionally broader: they describe how a
 human and AI collaboration workflow should preserve clarity, judgment, and traceability without
@@ -141,5 +141,5 @@ Use these values as a short preflight when modifying the methodology itself:
 4. Record the evidence that will show whether the change worked.
 
 These values complement the product-level [design principles](../global/design-principles.md). The
-product principles guide what Ezkey should become; these values guide how the human and AI workflow
+product principles guide what the product should become; these values guide how the human and AI workflow
 gets there while preserving integrity.

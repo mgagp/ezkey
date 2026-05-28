@@ -37,9 +37,39 @@ No counter, no global index needed. One file per decision.
   [`../../global/architecture-decisions.md`](../../global/architecture-decisions.md) or a
   component `design-decisions.md`).
 
+## Public visibility (`public:` frontmatter)
+
+Each decision file declares whether it is published on `methodology.ezkey.org` via a single
+YAML frontmatter field:
+
+```yaml
+---
+public: true   # publish on the methodology site
+---
+```
+
+or:
+
+```yaml
+---
+public: false  # repo-only; not copied into the published explorer
+---
+```
+
+**Default = `false`.** A record without the `public:` field is treated as repo-only. This is a
+safe default: a new internal decision never accidentally ships on the public site.
+
+**Criterion for `public: true`**: the record teaches the *method itself* and helps an external
+reader understand or apply it. Operational records (project-internal conventions, codebase-specific
+downscopes, self-referential meta discussions about the methodology's identity) stay repo-only.
+All records remain fully visible in the repository under `product-docs/methodology/decisions/`.
+
 ## Structure of a decision file
 
 ```markdown
+---
+public: true | false
+---
 # [Short decision title]
 
 ## Date

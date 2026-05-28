@@ -1,3 +1,6 @@
+---
+public: false
+---
 # Method portability — soft decoupling from the source project
 
 ## Date

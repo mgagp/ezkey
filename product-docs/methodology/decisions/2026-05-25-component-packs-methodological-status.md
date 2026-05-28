@@ -1,3 +1,6 @@
+---
+public: true
+---
 # Component Packs as Conditional Methodology Support
 
 ## Date

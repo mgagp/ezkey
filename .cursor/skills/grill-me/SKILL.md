@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: Runs structured critical questioning on Ezkey ideas and plans to expose assumptions, exception paths, and hidden risks. Use during analysis before committing to design or execution.
+description: Runs structured critical questioning on ideas and plans to expose assumptions, exception paths, and hidden risks. Use during analysis before committing to design or execution.
 disable-model-invocation: true
 ---
 # Grill Me

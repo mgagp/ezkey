@@ -1,6 +1,6 @@
 ---
 name: plan-incubation
-description: Incubates a live working plan in agent Plan mode, then converges it toward canonical Ezkey artifacts. Use when the operator wants to start with a current-session working plan under .cursor/plans/ or plans/ before materializing durable output into V-*, I-*, or TB-*.
+description: Incubates a live working plan in agent Plan mode, then converges it toward canonical method artifacts. Use when the operator wants to start with a current-session working plan under .cursor/plans/ or plans/ before materializing durable output into V-*, I-*, or TB-*.
 disable-model-invocation: true
 ---
 # Plan Incubation

@@ -1,3 +1,6 @@
+---
+public: true
+---
 # Tracer Bullet Iteration Posture: Explicit Gate Before Scoping
 
 ## Date

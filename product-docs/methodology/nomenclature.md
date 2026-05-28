@@ -172,7 +172,7 @@ Authoritative phase definitions: [`../global/roadmap.md`](../global/roadmap.md) 
 
 ## Component tags (backlog and vision metadata)
 
-Component tags name **which Ezkey modules or doc surfaces** an idea touches. Prefer the **closed vocabulary** below; align GitHub `component:*` labels with the same tokens (see [`github-issues-workflow.md`](github-issues-workflow.md)).
+Component tags name **which project modules or doc surfaces** an idea touches. Prefer the **closed vocabulary** below; align GitHub `component:*` labels with the same tokens (see [`github-issues-workflow.md`](github-issues-workflow.md)).
 
 | Tag | Typical scope |
 |-----|----------------|

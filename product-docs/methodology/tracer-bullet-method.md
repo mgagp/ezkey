@@ -4,7 +4,7 @@
 
 A tracer bullet is a deliberate, end-to-end vertical slice that validates a feature path across boundaries before full rollout.
 
-In Ezkey, tracer bullets are the default bridge from ideation to implementation confidence.
+In this methodology, tracer bullets are the default bridge from ideation to implementation confidence.
 
 ## When to use
 

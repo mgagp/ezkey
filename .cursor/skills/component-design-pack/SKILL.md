@@ -1,6 +1,6 @@
 ---
 name: component-design-pack
-description: Builds component-focused Ezkey design briefs for impacted boundaries, mappings, validation rules, and error handling. Use after tracer bullet definition and before implementation.
+description: Builds component-focused design briefs for impacted boundaries, mappings, validation rules, and error handling. Use after tracer bullet definition and before implementation.
 disable-model-invocation: true
 ---
 # Component Design Pack

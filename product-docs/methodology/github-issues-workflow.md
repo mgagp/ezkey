@@ -56,7 +56,7 @@ the idea is ready for an issue.
 
 Do not create issues for ideas still in `captured` state — they are too rough.
 
-## Skill: `ezkey-github-issue-promote`
+## Skill: `github-issue-promote`
 
 ### When to invoke
 
