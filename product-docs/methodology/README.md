@@ -32,6 +32,7 @@ Ezkey already has strong global and component documentation. This pack adds the 
 11. `quality-gates.md`
 12. `ai-collaboration-model.md`
 13. `nomenclature.md`
+14. `case-study-ezkey.md` — concrete instantiation in the source project.
 
 ## Scope boundaries
 
@@ -39,6 +40,8 @@ Ezkey already has strong global and component documentation. This pack adds the 
 - Component implementation details remain in `../components/`.
 - This pack defines process and collaboration mechanics.
 - Rationale for non-obvious methodology choices lives in `decisions/`.
+- Ezkey-specific taxonomies and examples live in `case-study-ezkey.md` when they clarify the
+	method without making the generic docs carry project-local coupling.
 
 ## Core principle
 

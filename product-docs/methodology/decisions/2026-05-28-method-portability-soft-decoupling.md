@@ -15,9 +15,9 @@ coupling visibly:
 1. **Skill names** — every methodology skill was prefixed `ezkey-` (e.g. `ezkey-vision-intake`,
    `ezkey-tracer-bullet-promote`). To an external reader, this signalled "internal ezkey
    tooling" rather than "general method action".
-2. **Taxonomies inside the corpus** — component tags (`admin-api`, `auth-api`, …) and
-   milestone tags (`P0-foundations`, `P1-operability`, …) were enumerated as closed lists,
-   conflating method primitives with ezkey-specific values.
+2. **Taxonomies inside the corpus** — component tags (`admin-api`, `auth-api`, …) were
+   enumerated as a closed Ezkey-specific list, while progression marker governance mixed the
+   reusable `P0`–`P4` method vocabulary with Ezkey roadmap synchronization rules.
 
 An audit of the corpus showed ~80–85% of the substance is generic, ~15–20% is incidental
 coupling. The substance is worth being reusable by other projects; the coupling actively
@@ -58,8 +58,8 @@ Concretely:
 2. **Component tags**: in `nomenclature.md` and the rich view, document the concept generically
    ("a component tag identifies which bounded context an artifact targets") and move the closed
    list of ezkey component names into the dedicated case-study page.
-3. **Milestone tags**: same treatment. The concept of a "milestone marker" stays in the method;
-   the `P0-P4` enumeration moves to the case study.
+3. **Progression markers**: keep the opinionated `P0-P4` vocabulary in the method, but move
+   Ezkey-specific roadmap synchronization rules and concrete project binding into the case study.
 4. **Case study**: a single new page documents ezkey as the source project — its components,
    milestones, corpus root, and which examples in the method are drawn from it. Methodology
    docs that lean on ezkey-specific examples link to this page rather than carrying the
@@ -82,7 +82,8 @@ Files updated (this work):
 
 Files updated (later phases — separate decisions or commits):
 
-- `nomenclature.md` — generalize component-tag and milestone-tag definitions.
+- `nomenclature.md` — generalize component-tag definitions and separate reusable progression
+   marker vocabulary from Ezkey-specific roadmap binding.
 - New file: a single ezkey case-study page inside the methodology corpus.
 - Editorial pass to neutralize incidental ezkey examples where they are not pedagogical.
 

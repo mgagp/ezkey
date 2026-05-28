@@ -54,7 +54,7 @@ See `multi-branch-workflow.md`.
    - Keep the first version short and expressive.
 2. **Triage**
    - Clarify intent, user value, risk, and rough scope.
-   - Assign status, priority, phase tags, and component tags.
+   - Assign status, priority, progression markers, and component tags.
 3. **Challenge**
    - Run a structured questioning pass ("Grill Me" style).
    - Surface assumptions, exceptions, error paths, and non-goals.

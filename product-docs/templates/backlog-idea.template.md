@@ -8,8 +8,8 @@
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`
 - **Last reviewed at:** `YYYY-MM-DD`
-- **Phase tags:** `<phase-id>, ...` — closed list: `P0-foundations` … `P4-compliance-readiness` (see [`../methodology/nomenclature.md`](../methodology/nomenclature.md))
-- **Component tags:** `<component>, ...` — prefer closed vocabulary (`admin-api`, `docs`, …); see nomenclature
+- **Progression markers:** `<marker-id>, ...` — default list: `P0-foundations` … `P4-compliance-readiness` (see [`../methodology/nomenclature.md`](../methodology/nomenclature.md))
+- **Component tags:** `<component>, ...` — prefer the project's documented component vocabulary; see nomenclature and any project case study
 - **Lane:** `A` / `B` / `C`
 - **Captured by:** `<name or initials of the human contributor>`
 - **GitHub issue:** `#NNN` _(optional)_
