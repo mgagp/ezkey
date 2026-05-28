@@ -28,11 +28,10 @@ async function loadMiniSearch() {
 async function loadIndex() {
   if (!indexPromise) {
     indexPromise = (async () => {
-      const [MiniSearch, res] = await Promise.all([
+      const [MiniSearch, data] = await Promise.all([
         loadMiniSearch(),
-        fetch('/api/search-index'),
+        import('./apiClient.js').then((m) => m.fetchSearchIndex()),
       ]);
-      const data = await res.json();
       // Flatten: one searchable entry per doc + one per heading.
       const docs = [];
       let id = 1;

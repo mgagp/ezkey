@@ -27,6 +27,14 @@ import { decorateGlossaryIn, setupGlossaryTooltips } from './glossary.js';
 import { setupSearchShortcut, openSearch } from './search.js';
 import { setupPresentationShortcuts } from './presentation.js';
 import { renderMap } from './map.js';
+import {
+  fetchTree,
+  fetchPhases,
+  fetchTracks,
+  fetchGlossary,
+  fetchDoc,
+  isStatic,
+} from './apiClient.js';
 
 const STORAGE_TREE_KEY = 'ezkey-method-explorer:tree:v1';
 const STORAGE_THEME_KEY = 'ezkey-method-explorer:theme:v1';
@@ -44,6 +52,7 @@ let treeData = null;
 let currentPath = null;
 let scrollSpyObserver = null;
 let pathToNodeIndex = new Map();
+let slugToCorpusPath = new Map(); // static-mode: '/methodology/foo/' -> 'methodology/foo.md'
 let phasesData = { phases: [], files: {} };
 let phasesById = new Map();
 let tracksData = { tracks: [] };
@@ -56,25 +65,26 @@ boot();
 
 async function boot() {
   try {
-    const [treeRes, phasesRes, tracksRes, glossaryRes] = await Promise.all([
-      fetch('/api/tree'),
-      fetch('/api/phases'),
-      fetch('/api/tracks'),
-      fetch('/api/glossary'),
+    const [treeJson, phasesJson, tracksJson, glossaryJson] = await Promise.allSettled([
+      fetchTree(),
+      fetchPhases(),
+      fetchTracks(),
+      fetchGlossary(),
     ]);
-    if (!treeRes.ok) throw new Error(`/api/tree HTTP ${treeRes.status}`);
-    const treeJson = await treeRes.json();
-    treeData = treeJson.corpus || [];
+    if (treeJson.status !== 'fulfilled') {
+      throw new Error(treeJson.reason?.message || 'tree fetch failed');
+    }
+    treeData = treeJson.value.corpus || [];
     indexTree(treeData);
-    if (phasesRes.ok) {
-      phasesData = await phasesRes.json();
+    if (phasesJson.status === 'fulfilled') {
+      phasesData = phasesJson.value;
       phasesById = new Map((phasesData.phases || []).map((p) => [p.id, p]));
     }
-    if (tracksRes.ok) {
-      tracksData = await tracksRes.json();
+    if (tracksJson.status === 'fulfilled') {
+      tracksData = tracksJson.value;
     }
-    if (glossaryRes.ok) {
-      glossaryData = await glossaryRes.json();
+    if (glossaryJson.status === 'fulfilled') {
+      glossaryData = glossaryJson.value;
     }
     setupHomePersonaCards();
     setupGlossaryTooltips();
@@ -158,9 +168,15 @@ function setupThemeToggle() {
 
 function indexTree(nodes) {
   pathToNodeIndex = new Map();
+  slugToCorpusPath = new Map();
   const walk = (list, parents) => {
     for (const n of list) {
       pathToNodeIndex.set(n.path, { node: n, parents: [...parents] });
+      if (n.kind === 'file') {
+        const slug = n.path.replace(/\.md$/i, '');
+        slugToCorpusPath.set(`/${slug}/`, n.path);
+        slugToCorpusPath.set(`/${slug}`, n.path);
+      }
       if (n.children) walk(n.children, [...parents, n]);
     }
   };
@@ -313,6 +329,16 @@ function setActiveTreeNode(path) {
 
 function handleRoute() {
   const hash = window.location.hash || '';
+  // Static build: when there is no hash, derive the route from the URL pathname
+  // so pre-rendered shells (/methodology/foo/) load the matching doc instead of
+  // flashing the home view.
+  if (!hash && isStatic) {
+    const pathname = window.location.pathname || '/';
+    if (pathname === '/map' || pathname === '/map/') { showMap(); return; }
+    if (pathname === '/' || pathname === '/index.html') { showHome(); return; }
+    const corpusPath = slugToCorpusPath.get(pathname);
+    if (corpusPath) { loadDoc(corpusPath, ''); return; }
+  }
   // Special route: cognitive map.
   if (hash === '#/map' || hash.startsWith('#/map?')) {
     showMap();
@@ -359,7 +385,7 @@ function showMap() {
     els.phaseRibbon.innerHTML = '';
   }
   renderMap(els.doc);
-  document.title = 'Workflow map · Ezkey Method';
+  document.title = 'Workflow map · ezkey methodology';
   teardownScrollSpy();
 }
 
@@ -377,13 +403,13 @@ function showHome() {
     els.doc.innerHTML = '';
     const tpl = `
       <div id="home" class="home">
-        <h1>Ezkey Method · Local Explorer</h1>
+        <h1>ezkey · methodology</h1>
         <p class="lede">Pick a document on the left to start exploring.</p>
         <p class="home-shortcut">Or jump straight to <a href="#/methodology/README.md">methodology/README.md</a>.</p>
       </div>`;
     els.doc.innerHTML = tpl;
   }
-  document.title = 'Ezkey Method · Local Explorer';
+  document.title = 'ezkey · methodology';
   teardownScrollSpy();
 }
 
@@ -395,12 +421,7 @@ async function loadDoc(path, headingId) {
   setActiveTreeNode(path);
 
   try {
-    const res = await fetch(`/api/doc?path=${encodeURIComponent(path)}`);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message || body.error || `HTTP ${res.status}`);
-    }
-    const data = await res.json();
+    const data = await fetchDoc(path);
     renderDoc(data);
     if (headingId) {
       // Defer to allow layout.
@@ -422,7 +443,7 @@ async function loadDoc(path, headingId) {
 
 function renderDoc(data) {
   els.doc.innerHTML = data.html;
-  document.title = `${data.title} · Ezkey Method`;
+  document.title = `${data.title} · ezkey methodology`;
   renderBreadcrumb(data.path, data.title, data.mtime);
   renderPhaseRibbon(data.phase);
   renderToc(data.toc);

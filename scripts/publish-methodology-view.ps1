@@ -205,6 +205,60 @@ $siteShellCss = @'
 $descriptionEn = 'Visual reference for the ideation-to-delivery workflow, methodological values, artifact types, state boundaries, traceability, and skills.'
 $descriptionFr = 'R&eacute;f&eacute;rence visuelle pour le flux de l''id&eacute;ation &agrave; la livraison, les valeurs m&eacute;thodologiques, les types d''artefacts, les fronti&egrave;res d''&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.'
 
+# Cross-surface bridge: bring the visitor of the rich view to the living explorer.
+# Top CTA appears between the page header and the main content; bottom reminder
+# appears between the main content and the rich-view footer. Both open in a new
+# tab to signal an origin switch (ezkey.org -> methodology.ezkey.org).
+$explorerCtaEn = @'
+
+<aside class="explorer-cta" style="margin:24px 32px;padding:20px 24px;border:1px solid #cbd5e1;border-radius:10px;background:linear-gradient(135deg,#f1f5f9 0%,#e0e7ff 100%);display:flex;flex-direction:column;gap:10px;">
+  <div style="font-size:1.05rem;font-weight:700;color:#0f172a;">Explore the living methodology</div>
+  <p style="margin:0;color:#334155;font-size:0.95rem;line-height:1.55;">
+    This page is the panorama. The living version is published as a separate site, updated continuously from the source repository as the methodology evolves.
+  </p>
+  <div>
+    <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:2px;padding:10px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.92rem;">
+      Open the methodology explorer
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+    </a>
+  </div>
+  <div style="font-size:0.82rem;color:#64748b;">methodology.ezkey.org &middot; every artifact, fully searchable &middot; updated continuously &middot; English</div>
+</aside>
+'@
+
+$explorerReminderEn = @'
+
+<p style="margin:8px 32px 24px;text-align:center;font-size:0.9rem;color:#475569;">
+  Looking for the searchable, always-current reference?
+  <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600;text-decoration:none;">Open the methodology explorer &#8599;</a>
+</p>
+'@
+
+$explorerCtaFr = @'
+
+<aside class="explorer-cta" style="margin:24px 32px;padding:20px 24px;border:1px solid #cbd5e1;border-radius:10px;background:linear-gradient(135deg,#f1f5f9 0%,#e0e7ff 100%);display:flex;flex-direction:column;gap:10px;">
+  <div style="font-size:1.05rem;font-weight:700;color:#0f172a;">Explorer la m&eacute;thodologie vivante</div>
+  <p style="margin:0;color:#334155;font-size:0.95rem;line-height:1.55;">
+    Cette page en est le panorama. La version vivante est publi&eacute;e comme un site distinct, mis &agrave; jour en continu depuis le d&eacute;p&ocirc;t source au fil de l&rsquo;&eacute;volution de la m&eacute;thodologie.
+  </p>
+  <div>
+    <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:2px;padding:10px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.92rem;">
+      Ouvrir l&rsquo;explorateur de la m&eacute;thodologie
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+    </a>
+  </div>
+  <div style="font-size:0.82rem;color:#64748b;">methodology.ezkey.org &middot; chaque artefact, enti&egrave;rement consultable &middot; mis &agrave; jour en continu &middot; en anglais</div>
+</aside>
+'@
+
+$explorerReminderFr = @'
+
+<p style="margin:8px 32px 24px;text-align:center;font-size:0.9rem;color:#475569;">
+  Vous cherchez la r&eacute;f&eacute;rence consultable et toujours &agrave; jour&nbsp;?
+  <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600;text-decoration:none;">Ouvrir l&rsquo;explorateur de la m&eacute;thodologie &#8599;</a>
+</p>
+'@
+
 $outputEn = @"
 <!DOCTYPE html>
 <!-- Source: product-docs/methodology/view/index.html @ $syncDate -->
@@ -245,7 +299,9 @@ $navBlock
 
     <div class="site-card">
 $headerBlock
+$explorerCtaEn
 $mainBlock
+$explorerReminderEn
 $footerBlock
     </div>
 
@@ -776,7 +832,9 @@ $frNavBlock
 
     <div class="site-card">
 $frHeaderBlock
+$explorerCtaFr
 $frMainBlock
+$explorerReminderFr
 $frFooterBlock
     </div>
 

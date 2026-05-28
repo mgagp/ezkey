@@ -62,16 +62,28 @@ product-docs/site/
 
 **Corpus indexé** : `product-docs/methodology/` (incl. `decisions/`) + `product-docs/templates/` + `product-docs/glossary.md`. ~41 documents, ~41 cibles de backlinks au moment du handoff.
 
-### 2. Intention de déploiement public
+### 2. Intention de déploiement public — positionnement verrouillé
 
-Publier le micro-site comme **vitrine méthodologique** sous le branding `ezkey.org`. Cible primaire : développeurs et opérateurs qui découvrent la méthodologie sans accès au repo. Objectif secondaire : alimenter un lien depuis le site marketing existant (`sites/ezkey-org/methodology.html`) vers la méthodologie navigable.
+Publier le micro-site comme **outil de référence méthodologique** sur un **sous-domaine séparé** : **`methodology.ezkey.org`**.
+
+**Raison du sous-domaine plutôt qu'un sous-chemin sur l'apex marketing** :
+
+- L'apex (`ezkey.org`) reste un site marketing/éditorial : témoignages, essais, et le **rich view méthodologique FR/EN** (slice narrative, déjà publié). Intent : convaincre, raconter.
+- Le **method explorer** (objet de cette Phase 4) est un **outil de travail** : navigation 3-volets, Ctrl+K, mode présentation, permaliens d'étape, carte cognitive, backlinks. Intent : référence consultable à répétition.
+- Forme suit fonction : l'UX outillée ne se mélange pas proprement avec l'UX narrative. Cadence aussi découplée (corpus méthodologique évolue plus souvent que le marketing).
+- Comparables : `docs.stripe.com`, `docs.github.com`, `handbook.gitlab.com` — pattern "navigation outillée = sous-domaine". À l'inverse, le rich view marketing joue le rôle du "livre Shape Up" sur `basecamp.com/shapeup/` (narration sur apex).
+
+**Pont éditorial** : le rich view marketing (sur apex, FR/EN) garde son rôle de vitrine et **renvoie vers `methodology.ezkey.org`** via un CTA sobre en fin de page ("Browse the full methodology explorer →"). L'explorateur renvoie vers l'apex via un wordmark discret "ezkey · methodology" en topbar + un lien footer minimal.
+
+**Cible primaire** : l'auteur, ses collaborateurs proches, et les pairs qui évaluent la méthode en profondeur. Cible secondaire : développeurs/opérateurs qui veulent appliquer la méthode à leurs propres projets.
 
 ### 3. Contraintes verrouillées
 
-- **Cible** : **Cloudflare Pages** (privilégié — preview branches, edge gratuit, intégration Wrangler propre).
+- **Cible plateforme** : **Cloudflare Pages**, projet dédié **`methodology-ezkey-org`** (parallèle au projet `ezkey-org` du marketing).
+- **Sous-domaine** : `methodology.ezkey.org`, attaché au projet Pages via un CNAME dans le DNS Cloudflare.
 - **Source-of-truth** : le corpus reste dans `product-docs/methodology/`, `product-docs/templates/`, `product-docs/glossary.md`. La Phase 4 ne déplace, ne renomme et ne réécrit **aucun** fichier du corpus.
-- **Cohérence visuelle** : palette/typographie reprises de `sites/ezkey-org/` et de `product-docs/methodology/view/index.html`. Réutiliser le header/footer de marque d'ezkey-org si pertinent (à décider).
-- **UI** : anglais uniquement (verrouillé en Phase 1).
+- **Cohérence visuelle** : palette/typographie reprises de `sites/ezkey-org/` et de `product-docs/methodology/view/index.html` ; **chrome distinct** (l'explorer garde son layout 3-volets et sa topbar à icônes ; ne pas importer le header marketing).
+- **UI** : anglais uniquement (verrouillé en Phase 1, confirmé pour P4). Si FR plus tard : `/en/` + `/fr/` sous le même sous-domaine, pas deux sous-domaines.
 - **Aucune dépendance Java/Maven n'est concernée**. Aucun changement aux artefacts backend.
 
 ### 4. Voie technique recommandée — pré-build statique
@@ -90,17 +102,48 @@ Créer `product-docs/site/build.js` qui :
 4. Réécrit les `fetch('/api/...')` du client en chemins statiques `*.json` (option A : un petit wrapper `apiClient.js` qui choisit entre `/api/...` en local et `/api/.../*.json` en build). Option B : laisser `fetch('/api/tree')` et configurer Cloudflare Pages pour servir `dist/api/tree.json` via une règle de redirection / `_headers`. **Option A est plus propre et 100% statique**.
 5. URLs propres : envisager `dist/methodology/workflow-overview/index.html` au lieu de `dist/methodology/workflow-overview.md/index.html`. Si tu rebases les URLs, **mets à jour le router client** pour accepter les deux formats (rétrocompat local) ou exposer un mode `BUILD=static`.
 
-### 5. Décisions à arbitrer (verrouille-les en ouverture de session)
+### 5. Setup Cloudflare — intervention manuelle one-off (préalable au premier deploy)
 
-- **URL publique** : sous-domaine (`methodology.ezkey.org`) vs sous-chemin (`ezkey.org/methodology/`) ? Recommandation par défaut : **sous-domaine**, plus simple côté Pages.
-- **Branding** : header/footer ezkey.org repris tel quel ou allégé ? Le rail-gauche+rail-droit doit-il rester ou être condensé en menu ?
+Avant que les scripts de déploiement fonctionnent, **une intervention manuelle one-off** est nécessaire côté Cloudflare et DNS. Le token API et l'account ID sont déjà configurés dans le `.env` racine du repo (mêmes variables que pour `deploy-ezkey-org-preview.sh` : `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). À faire :
+
+1. **Créer le projet Cloudflare Pages** `methodology-ezkey-org` (dashboard Cloudflare → Workers & Pages → Create application → Pages → Direct Upload, ou première invocation de `wrangler pages project create methodology-ezkey-org --production-branch=main`).
+2. **Créer le CNAME DNS** `methodology` dans la zone `ezkey.org` pointant vers le `*.pages.dev` du projet (instructions affichées par Cloudflare Pages après attachement du custom domain).
+3. **Attacher le custom domain** `methodology.ezkey.org` au projet dans l'UI Pages. Cloudflare gère le certificat automatiquement.
+4. Vérifier que `wrangler whoami` (avec le `.env` sourcé) reconnaît l'account ; tester un premier preview deploy (étape automatisée par le script ci-dessous).
+
+Le `.env` racine contient déjà les variables nécessaires ; il est gitignored. Ne pas le commiter, ne pas l'imprimer dans les logs.
+
+### 6. Scripts de déploiement — **dans le scope P4**
+
+Mirroir exact du pattern marketing apex (`scripts/cloudflare/deploy-ezkey-org-preview.sh` + `deploy-ezkey-org-production.sh`). Créer :
+
+- **`scripts/cloudflare/deploy-methodology-preview.sh`** — build le site (`node product-docs/site/build.js`) puis `wrangler pages deploy product-docs/site/dist --project-name=methodology-ezkey-org --branch=<preview-branch>`. Source le `.env` racine, valide la présence de `CLOUDFLARE_API_TOKEN` et `CLOUDFLARE_ACCOUNT_ID`, expose `PREVIEW_BRANCH` et `CLOUDFLARE_PAGES_PROJECT` comme overrides.
+- **`scripts/cloudflare/deploy-methodology-production.sh`** — même chose mais `--branch=main` (production branch du projet Pages).
+- Optionnel à inclure si simple : **`scripts/cloudflare/cleanup-methodology-previews.sh`** (équivalent du cleanup existant pour le marketing).
+
+Bash de préférence (cohérent avec l'existant), même style de header (usage en commentaire, `set -euo pipefail`, source du `.env` racine).
+
+### 7. Décisions à arbitrer (verrouille-les en ouverture de session)
+
+- **Branding** : wordmark sobre "ezkey · methodology" en topbar (lien vers apex) + lien footer "← ezkey.org". Confirmer avant d'implémenter.
 - **Mermaid** : rendu client actuel suffit-il, ou SSR via `@mermaid-js/mermaid-cli` (build plus lourd, mais SEO-friendly et JS-disabled-friendly) ? **Recommandation initiale : garder rendu client** (le site reste vivant et léger).
 - **Analytics** : opt-in Cloudflare Web Analytics ? Par défaut : oui, désactivable.
 - **Mode sombre** : conserver le toggle (déjà livré). À garder.
-- **i18n FR/EN** : hors scope sauf décision contraire. Tout reste EN.
-- **CI** : workflow GitHub Actions qui déclenche `wrangler pages deploy dist` sur push `main` modifiant `product-docs/methodology/**`, `product-docs/templates/**`, `product-docs/glossary.md`, ou `product-docs/site/**`.
+- **i18n FR/EN** : hors scope P4. Tout reste EN. Si FR ajouté plus tard : `/en/`+`/fr/` sous le même sous-domaine.
+- **Visibilité des décisions et retrofits** : `methodology/decisions/` et futurs `R-*` retrofits sont indexés et navigables. Assumer cette transparence publiquement (cohérent avec posture open d'ezkey) — à confirmer.
 
-### 6. Adaptations à prévoir (liste exhaustive)
+### 8. Auto-déploiement — **hors scope P4, à décider plus tard**
+
+Un workflow GitHub Actions qui déclenche `deploy-methodology-production.sh` sur push `main` modifiant `product-docs/methodology/**`, `product-docs/templates/**`, `product-docs/glossary.md`, ou `product-docs/site/**` est **techniquement trivial** une fois les scripts livrés. Mais ce n'est **pas l'objectif primaire de P4**.
+
+L'auteur préfère **ne pas se commettre trop vite** à une discipline de publication. Deux pistes restent ouvertes :
+
+1. Mise à jour ponctuelle, manuelle, à la demande (invocation directe du script de prod).
+2. Incorporation dans un skill de "processus de révision méthodologique" (publication = étape explicite d'une revue, pas un side-effect automatique d'un commit).
+
+P4 livre l'**outillage** (scripts + build idempotent) qui rend les deux options possibles. La décision sur le mécanisme se prend après P4.
+
+### 9. Adaptations à prévoir (liste exhaustive)
 
 - Extraire `BACKLINKS` / `SEARCH_INDEX` / `buildGlossary` de `server.js` dans `indices.js` partagé (refacto neutre côté local, prépare le build).
 - Wrapper client `apiClient.js` qui résout `/api/...` vers JSON statiques en mode build.
@@ -109,38 +152,44 @@ Créer `product-docs/site/build.js` qui :
 - Sitemap.xml + robots.txt + meta tags OpenGraph par doc (titre + extrait).
 - Gérer le fichier unique `glossary.md` mappé sur l'URL `/glossary` (cas spécial : `CORPUS` déclare `{ kind: 'file' }`, donc `toCorpusUrlPath` retourne juste `glossary` — la route statique doit être `dist/glossary/index.html`).
 
-### 7. Critères de succès
+### 10. Critères de succès
 
 - `node build.js` est **idempotent** et reproductible (output identique pour input identique).
 - Parité fonctionnelle navigateur : arbre, doc, TOC, scroll-spy, breadcrumb, ribbon de phase, wizard tracks, glossaire, Mermaid, recherche Ctrl+K, mode présentation F, carte `/map`, dark mode.
 - Permaliens d'étape `?track=&step=` restent fonctionnels.
 - Lighthouse ≥ 90 sur Performance/Accessibility/Best Practices/SEO (objectif souhaitable, non bloquant).
-- Déploiement Cloudflare Pages réussi sur preview branch puis sur production.
-- Lien depuis `sites/ezkey-org/methodology.html` (ou ajout d'une carte/section) vers la nouvelle URL publique.
+- Scripts `deploy-methodology-preview.sh` et `deploy-methodology-production.sh` livrés et exécutables, alignés sur le pattern marketing.
+- Preview deploy réussi sur `*.pages.dev`, puis production sur `methodology.ezkey.org`.
+- Pont éditorial : rich view sur apex pointe vers `methodology.ezkey.org` ; explorer pointe vers apex via wordmark + footer.
 - Le mode local (`npm start` dans `product-docs/site/`) continue à fonctionner sans régression.
 
-### 8. Alternatives écartées (à confirmer ou rouvrir)
+### 11. Alternatives écartées (à confirmer ou rouvrir)
 
 - **Cloudflare Pages + Functions (Hono port d'Express)** : écarté par défaut car aucun besoin de dynamique edge. À rouvrir uniquement si un cas (commentaires, sondages, télémétrie active) émerge.
 - **SSG mainstream (Next.js, Astro, VitePress)** : écarté parce que (a) on a déjà un rendu fonctionnel, (b) le couplage minimal au stack actuel évite une refonte coûteuse, (c) le `build.js` artisanal réutilise 100% du code existant. À rouvrir si la maintenance devient pénible.
 
-### 9. Pointeurs à lire **en ouverture de session**
+### 12. Pointeurs à lire **en ouverture de session**
 
 - `product-docs/site/server.js` — sections "Pure: …" et "Phase 3: backlinks + search index".
 - `product-docs/site/public/app.js` — router, `loadDoc`, `renderDoc`.
 - `product-docs/site/phases.json`, `product-docs/site/tracks.json`.
-- `product-docs/methodology/view/index.html` — palette de référence.
-- `sites/ezkey-org/index.html` et `sites/ezkey-org/AGENTS.md` — branding marketing + contraintes Cloudflare Pages du site marketing.
+- `product-docs/methodology/view/index.html` — palette de référence (rich view marketing actuel).
+- `sites/ezkey-org/index.html` et `sites/ezkey-org/AGENTS.md` — branding marketing + posture Cloudflare Pages du site marketing.
+- `scripts/cloudflare/deploy-ezkey-org-preview.sh` et `deploy-ezkey-org-production.sh` — **patron exact** à mirrorer pour les nouveaux scripts methodology.
+- `.env` racine (gitignored) — `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` déjà en place.
 - `AGENTS.md` racine — guardrails repo (terminologie phase vs milestone, etc.).
 
-### 10. Ordre d'exécution suggéré
+### 13. Ordre d'exécution suggéré
 
-1. Refactor neutre : extraire `BACKLINKS` / `SEARCH_INDEX` / `buildGlossary` dans `indices.js` ; tests : `npm start` doit fonctionner exactement comme avant.
-2. Introduire `apiClient.js` côté public ; convertir tous les `fetch('/api/...')` à l'utiliser ; local doit toujours fonctionner.
-3. Écrire `build.js` ; produire `dist/` ; valider visuellement avec `npx http-server dist`.
-4. Aligner le branding sur `sites/ezkey-org/`.
-5. Configurer Cloudflare Pages (Wrangler ou UI) ; déployer preview ; valider.
-6. Ajouter le workflow GitHub Actions ; déployer production.
-7. Lien depuis `sites/ezkey-org/`.
+1. **Refactor neutre** : extraire `BACKLINKS` / `SEARCH_INDEX` / `buildGlossary` de `server.js` dans `indices.js` ; tests : `npm start` doit fonctionner exactement comme avant.
+2. **Wrapper API client** : introduire `apiClient.js` côté public ; convertir tous les `fetch('/api/...')` à l'utiliser ; local doit toujours fonctionner.
+3. **Build statique** : écrire `build.js` ; produire `dist/` ; valider visuellement avec `npx http-server product-docs/site/dist`.
+4. **Branding minimal** : wordmark "ezkey · methodology" topbar + footer, aligné palette avec `sites/ezkey-org/`.
+5. **Intervention one-off Cloudflare** (l'auteur exécute) : créer projet `methodology-ezkey-org`, créer CNAME DNS, attacher custom domain.
+6. **Scripts de déploiement** : livrer `deploy-methodology-preview.sh` et `deploy-methodology-production.sh` sous `scripts/cloudflare/`.
+7. **Premier preview deploy** : exécuter le script preview, valider sur `*.pages.dev`.
+8. **Production deploy** : exécuter le script production, valider sur `methodology.ezkey.org`.
+9. **Pont éditorial** : CTA "Browse the full methodology explorer →" en fin du rich view marketing → `methodology.ezkey.org`.
+10. **Auto-deploy** : *non livré en P4*. Décision reportée (manuel à la demande vs intégration au skill de revue méthodologique).
 
 **Fin du prompt Phase 4. Bonne session.**
