@@ -27,7 +27,7 @@
   --radius-sm: 6px;
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
   --topbar-h: 52px;
-  --rail-w: 280px;
+  --rail-w: 320px;
   --rail-w-right: 240px;
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
@@ -170,7 +170,7 @@ body {
 
 .tree .node {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   padding: 4px 8px;
   border-radius: var(--radius-sm);
@@ -224,8 +224,12 @@ body {
 
 .tree .label {
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .tree ul ul {

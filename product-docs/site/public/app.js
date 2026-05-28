@@ -240,6 +240,7 @@ function renderNode(node, collapsed, isRoot) {
   const label = document.createElement('span');
   label.className = 'label';
   label.textContent = node.label;
+  row.title = node.label;
   row.appendChild(label);
 
   // Track pastille for files in the active wizard track.
