@@ -272,6 +272,14 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 - G0–G4 + G5 pass; Playwright **5/5**
 - Notes: next step **8.11.0** (verify GET/mutation override behaviour)
 
+### Step 10 — Orval 8.11.0 (2026-05-28)
+
+- Orval: `8.11.0` (T2 checkpoint)
+- **Config refinement:** removed global `useMutation: true` as well — 8.11 applies explicit global `useMutation` to GET ops (hook inversion + loss of `get*QueryKey` factories). Final Option B: `query: { version: 5 }` only (verb-aware defaults)
+- App files changed: `orval.config.ts` only
+- G0–G4 + G5 pass; Playwright **5/5**
+- Notes: next step **8.12.0** (8.12.x line)
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
@@ -286,7 +294,7 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 | 7 | 8.9.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
 | 8 | 8.9.1 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
 | 9 | 8.10.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** (T2) |
-| 10 | 8.11.0 | | | | | |
+| 10 | 8.11.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** (T2) |
 | 11 | 8.12.3 | | | | | |
 | 12 | 8.13.0 | | | | | |
 
