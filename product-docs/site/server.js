@@ -256,6 +256,27 @@ export function toCorpusUrlPath(absPath, corpus = CORPUS) {
   return null;
 }
 
+export function toCorpusAssetPath(absPath, corpus = CORPUS) {
+  for (const root of corpus) {
+    if (root.kind !== 'dir') continue;
+    if (absPath === root.abs || absPath.startsWith(root.abs + path.sep)) {
+      const rel = path.relative(root.abs, absPath).split(path.sep).join('/');
+      return rel ? `${root.key}/${rel}` : root.key;
+    }
+  }
+  return null;
+}
+
+export function publicSupplementDirs(corpus = CORPUS) {
+  return corpus
+    .filter((root) => root.kind === 'dir')
+    .map((root) => ({
+      mountPath: `/${root.key}/view`,
+      abs: path.join(root.abs, 'view'),
+    }))
+    .filter((entry) => fs.existsSync(entry.abs));
+}
+
 // ── Pure: markdown rendering ──────────────────────────────────────────────────
 
 function escapeHtml(s) {
@@ -345,10 +366,16 @@ function rewriteLink(token, docAbsDir) {
     return;
   }
   // Only rewrite if the target points to a corpus markdown file.
-  if (!target.toLowerCase().endsWith('.md')) return;
+  if (target.toLowerCase().endsWith('.md')) {
   const urlPath = toCorpusUrlPath(target);
   if (!urlPath) return;
   token.href = `#/${urlPath}${fragment ? `?h=${encodeURIComponent(fragment)}` : ''}`;
+    return;
+}
+  if (!target.toLowerCase().endsWith('.html')) return;
+  const assetPath = toCorpusAssetPath(target);
+  if (!assetPath) return;
+  token.href = `/${assetPath}${fragment ? `#${fragment}` : ''}`;
 }
 
 /**
@@ -405,6 +432,9 @@ const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4321;
 
 app.use(express.static(path.join(__dirname, 'public')));
+for (const supplement of publicSupplementDirs()) {
+  app.use(supplement.mountPath, express.static(supplement.abs));
+}
 
 app.get('/api/tree', (_req, res) => {
   try {

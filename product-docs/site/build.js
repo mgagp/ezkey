@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
 import {
   buildTree,
+  publicSupplementDirs,
   renderDoc,
   resolveCorpusPath,
   toCorpusUrlPath,
@@ -78,14 +79,15 @@ function writeText(absPath, value) {
   fs.writeFileSync(absPath, value, 'utf8');
 }
 
-function copyTree(src, dst) {
+function copyTree(src, dst, options = {}) {
+  const { skipIndexHtml = false } = options;
   if (!fs.existsSync(src)) return;
   mkdirp(dst);
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    if (entry.name === 'index.html') continue; // shell template only, generated per page
+    if (skipIndexHtml && entry.name === 'index.html') continue; // shell template only
     const s = path.join(src, entry.name);
     const d = path.join(dst, entry.name);
-    if (entry.isDirectory()) copyTree(s, d);
+    if (entry.isDirectory()) copyTree(s, d, options);
     else fs.copyFileSync(s, d);
   }
 }
@@ -256,7 +258,10 @@ function build() {
   mkdirp(DIST_DIR);
 
   // 1. Mirror public/ assets (everything except index.html).
-  copyTree(PUBLIC_DIR, DIST_DIR);
+  copyTree(PUBLIC_DIR, DIST_DIR, { skipIndexHtml: true });
+  for (const supplement of publicSupplementDirs()) {
+    copyTree(supplement.abs, path.join(DIST_DIR, supplement.mountPath.replace(/^\//, '')));
+  }
 
   // 2. Build indices and snapshot the dynamic JSON endpoints.
   rebuildCorpusIndices();
