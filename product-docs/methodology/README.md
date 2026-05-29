@@ -107,6 +107,10 @@ The public methodology explorer also packages a derived **Skills** section sourc
 `.cursor/skills/`, so the collaboration mechanics stay discoverable without making the editor-local
 skill files the public corpus of record.
 
+The next distribution direction is a generated **download pack** for local reuse, with an explicit
+preference for packaging before any installer-style automation. See
+[`decisions/2026-05-29-download-pack-first-for-methodology-distribution.md`](decisions/2026-05-29-download-pack-first-for-methodology-distribution.md).
+
 See [`decisions/2026-05-24-rich-views.md`](decisions/2026-05-24-rich-views.md) for the rationale
 and convention governing rich views across the whole documentation corpus.
 

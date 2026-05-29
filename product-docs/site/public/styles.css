@@ -1454,6 +1454,33 @@ body.is-dark .search-overlay {
   background: rgba(0, 0, 0, 0.6);
 }
 
+body.is-dark .skill-card-order,
+body.is-dark .skill-card-kind,
+body.is-dark .skill-chip {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #e2e8f0;
+}
+
+body.is-dark .skill-card-order {
+  border-color: rgba(96, 165, 250, 0.38);
+  color: #93c5fd;
+}
+
+body.is-dark .skill-card--workflow .skill-card-kind,
+body.is-dark .skill-detail-hero .skill-chip:first-child {
+  background: rgba(37, 99, 235, 0.22);
+  border-color: rgba(96, 165, 250, 0.4);
+  color: #bfdbfe;
+}
+
+body.is-dark .skill-card--retrofit .skill-card-kind,
+body.is-dark .skill-detail-hero--retrofit .skill-chip:first-child {
+  background: rgba(100, 116, 139, 0.28);
+  border-color: rgba(148, 163, 184, 0.34);
+  color: #e2e8f0;
+}
+
 body.is-dark .kind-doc { background: rgba(96, 165, 250, 0.15); color: #93c5fd; }
 body.is-dark .kind-heading { background: rgba(167, 139, 250, 0.18); color: #c4b5fd; }
 

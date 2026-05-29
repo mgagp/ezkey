@@ -2,7 +2,8 @@
 
 A small local micro-site that serves the Ezkey methodology corpus as a navigable web app: tree on the left, rendered Markdown in the center, in-document TOC on the right.
 
-This is a **local-only** developer tool. It is not deployed and not part of any product build.
+This started as a local developer tool and now also serves as the source for the published static
+methodology explorer.
 
 ## Scope (Phase 1)
 
@@ -12,6 +13,9 @@ Serves four public-facing sources:
 - `templates/` — artifact templates (vision notes, backlog ideas, tracer bullet briefs, …).
 - `skills/` — a derived public skills layer generated from `.cursor/skills/` during site preparation.
 - `glossary.md` — single-file glossary.
+
+The next intended public-distribution extension is a generated **download pack** so the same site
+pipeline can produce both the hosted explorer and a local adoption archive.
 
 ## Quick start
 
@@ -32,10 +36,15 @@ This is **Phase 1** (MVP visual foundation). See [.github/prompts/plan-methodolo
 - **Phase 1** — 3-pane layout, tree navigation, Markdown rendering, in-document TOC.
 - **Phase 2** — Pedagogical layer: workflow-phase ribbon, persona-driven wizard tracks (Discover / Apply / Present), Mermaid rendering, glossary tooltips.
 - **Phase 3** — Polish: `Ctrl+K` search, presentation mode, cognitive workflow map, step permalinks.
-- **Phase 4 (future)** — Static pre-build for Cloudflare Pages exposure.
+- **Phase 4** — Static pre-build for Cloudflare Pages exposure.
+- **Phase 5 (next likely extension)** — Generated download pack for local reuse, before any
+  installer-style automation.
 
 ## Architecture note
 
 `server.js` exposes pure functions (`buildTree`, `renderDoc`, `extractToc`) on top of which Express is a thin transport layer. This keeps the future static pre-build (Phase 4) trivial: a `build.js` script can reuse the same functions without Express.
 
 Before the site serves or builds the corpus, it also prepares a small derived public skills layer under `product-docs/site/.generated/skills/`. The source of truth remains `.cursor/skills/`; the generated layer exists only to improve site discoverability and public explanation.
+
+The same build pipeline is the preferred place to add a methodology download pack, because that
+keeps packaging explicit, small, and tied to already-curated public inputs.
