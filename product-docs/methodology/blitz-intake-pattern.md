@@ -46,7 +46,8 @@ For a single, focused idea, the standard Lane A flow (`vision-intake`, then `bac
 
 For each `Dn`, propose a compact classification record covering:
 
-- **Lane** — A-vision, A-backlog, B-delivery, C-retrofit, principle candidate, code-only, or vague-to-reformulate.
+- **Lane** — A-orientation/capture, A-ready-for-delivery, C-retrofit, D-post-delivery re-entry,
+  E-methodology feedback, principle candidate, code-only, or vague-to-reformulate.
 - **Type** — `V` / `I` / `TB` / `R` / `ADR` / `principle` / `code-only`.
 - **Status** — `captured` or `triaged` initially.
 - **Priority** — `P0` / `P1` / `P2` / `P3` with one-line rationale.
@@ -54,6 +55,9 @@ For each `Dn`, propose a compact classification record covering:
 - **Component tag(s)** — concrete component or module names.
 - **Profile** — security, performance, operability, UX, debt, feature, docs, etc.
 - **Confidence** — `high` / `medium` / `low`. Low confidence flags items that need explicit operator validation.
+
+Lane B is not an item classification in this pattern. It is a session-entry variant used when the
+operator intentionally starts from a live working plan instead of a blitz capture.
 
 Cross-check against existing artifacts to detect:
 

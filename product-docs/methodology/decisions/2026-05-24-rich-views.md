@@ -32,6 +32,13 @@ visual anchoring to be truly mastered.
 The operator also explicitly requested that methodology decisions preserve verbatim source
 statements for historical reference, in the style of blitz-archive entries.
 
+## Historical interpretation note (optional)
+
+This record preserves an earlier state of the methodology rich view discussion. References below to
+the number, lettering, or role of lanes reflect the workflow structure that existed on 2026-05-24.
+Current canonical lane semantics and lettering now live in the current methodology docs and later
+lane-ordering decisions.
+
 ## Decision
 
 ### Canonical term

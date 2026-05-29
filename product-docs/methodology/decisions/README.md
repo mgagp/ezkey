@@ -41,6 +41,11 @@ A methodology decision may still preserve **short verbatim source excerpts** whe
 methodology-feedback session produced the rule. The decision remains the canonical record; it is
 not meant to become a raw transcript dump.
 
+Historical decisions should preserve the state they recorded at the time. Do **not** silently
+rewrite an older decision just to match later terminology, lane lettering, or presentation
+harmonization. When an older record could mislead a current reader, add a short explicit note
+instead of rewriting the historical substance.
+
 ## Public visibility (`public:` frontmatter)
 
 Each decision file declares whether it is published on `methodology.ezkey.org` via a single
@@ -82,6 +87,12 @@ YYYY-MM-DD
 ## Context
 What situation prompted this decision. What problem was being solved.
 
+## Historical interpretation note (optional)
+Only when later methodology changes would otherwise make this record easy to misread.
+Use one short paragraph to distinguish:
+- what this record preserves as historical state at the time of the decision;
+- what later decision or canonical doc now defines the current rule.
+
 ## Working assumptions
 Explicit pragmatic assumptions adopted to avoid over-engineering.
 These are the load-bearing hypotheses — if they break, the decision should be revisited.
@@ -113,6 +124,20 @@ add an optional section after `## Context`:
 ```
 
 Use this to preserve the load-bearing phrasing that motivated the change. Keep it selective.
+
+### Optional historical-interpretation section
+
+When a decision captures a state that was later renamed, renumbered, or structurally reframed,
+add an optional section after `## Context`:
+
+```markdown
+## Historical interpretation note (optional)
+
+This record preserves the terminology and state that existed on the decision date.
+Current canonical wording or lettering now lives in [later decision or canonical doc].
+```
+
+Use this section sparingly. It is a reader-protection note, not a way to retrofit history.
 
 ## Multi-branch note
 

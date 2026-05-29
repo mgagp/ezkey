@@ -28,6 +28,13 @@ apparent bug. The method described ideation, delivery, and retrofit well, but it
 how later changes should re-enter the corpus without either over-escalating routine fixes or
 losing traceability when the real problem is missing intent.
 
+## Historical interpretation note (optional)
+
+This record preserves the lane taxonomy and wording that existed at the moment the two new lanes
+were first introduced. The current canonical lettering and lane presentation were adjusted later
+in [2026-05-28-lane-d-e-ordering.md](2026-05-28-lane-d-e-ordering.md) and in the current
+methodology overview documents.
+
 ## Source signal (optional)
 
 - "Il faut un couloir D pour définir la boucle de rétroaction."

@@ -4,33 +4,43 @@
 
 This is a practical cheat sheet for starting sessions with the right lane, vocabulary, and skill sequence.
 
+The canonical lane model is:
+
+- **Lane A**: the default end-to-end ideation-to-delivery workflow
+- **Lane B**: plan incubation
+- **Lane C**: legacy knowledge retrofit
+- **Lane D**: post-delivery evolution and corrective re-entry
+- **Lane E**: methodology feedback and evolution
+
 ## Choose the lane
 
-### Lane A — Vision brainstorming (no immediate execution)
+### Lane A — Default ideation-to-delivery workflow
 
-Use when the goal is orientation, options, or product direction.
+Use when the work belongs to the normal product flow: raw idea capture, backlog shaping,
+challenge, promotion to `TB-*`, design, test planning, implementation, and closeout.
 
-- Output target: `V-*`, optionally `I-*` in `captured` or `incubating`
-- Typical mode: **Plan**
-- Typical skills: `vision-intake`, `backlog-triage`, `grill-me`
+- Output target: `V-*`, `I-*`, `TB-*`, design/test artifacts, implementation evidence
+- Typical mode: **Plan**, then **Agent** when execution begins
+- Typical skills depend on the current entry point:
+  - early orientation: `vision-intake`, `backlog-triage`, `grill-me`
+  - ready-for-execution slice: `tracer-bullet-promote`, `component-design-pack`,
+    `test-strategy-planner`, `quality-gatekeeper`, `traceability-sync`, `closeout`
 
 For **multi-item capture sessions** (typical when several ideas accumulate or voice dictation is used), apply the [blitz intake pattern](blitz-intake-pattern.md) as a Lane A variant. It preserves the verbatim source through an explicit archival step.
 
 For a **single substantial topic** where the operator prefers freeform planning first, use the [plan incubation workflow](plan-incubation-workflow.md) as another Lane A variant. This explicitly supports starting in agent Plan mode with a live working plan, then materializing the durable value into canonical docs without framing the session as retrofit.
 
-- Typical skills for this variant: `plan-incubation`, then `vision-intake` and/or `backlog-triage`
+- Typical skills for this variant: `plan-incubation`, then the Lane A skills required by the
+  resulting entry point
 
-### Lane B — Delivery execution
+### Lane B — Plan incubation
 
-Use when the goal is scoped implementation.
+Use when the operator deliberately wants to start with a live working plan before materializing
+the durable result into canonical artifacts.
 
-- Output target: `TB-*` + component design + test plan + implementation
-- Typical mode: **Plan -> Agent**
-- Typical skills: `tracer-bullet-promote`, `component-design-pack`, `test-strategy-planner`, `quality-gatekeeper`, `traceability-sync`, `closeout`
-
-`TB-*` does **not** imply that delivery must be decomposed into many tiny iterative slices. The tracer bullet should be the **smallest meaningful end-to-end implementation cut**. Sometimes that is a narrow pilot; sometimes it is the whole first cut if the work is already bounded and coherent enough.
-
-Action rule: when direction is decided, the first cut is bounded, validation criteria are known, and remaining open questions do not block the cut, switch from preparation to implementation by default.
+- Output target: working plan plus later `V-*`, `I-*`, or `TB-*` materialization
+- Typical mode: **Plan**
+- Typical skills: `plan-incubation`, then the Lane A skills required by the resulting entry point
 
 ### Lane C — Legacy knowledge retrofit
 
@@ -39,6 +49,17 @@ Use when the goal is extracting value from historical plans, verbal rationale, o
 - Output target: `R-*` + canonical doc updates
 - Typical mode: **Plan -> Agent**
 - Typical skills: `legacy-plan-miner`, `retrofit-curator`, `traceability-sync`
+
+### Lane A delivery rule
+
+`TB-*` does **not** imply that delivery must be decomposed into many tiny iterative slices. The
+tracer bullet should be the **smallest meaningful end-to-end implementation cut**. Sometimes that
+is a narrow pilot; sometimes it is the whole first cut if the work is already bounded and coherent
+enough.
+
+Action rule: when direction is decided, the first cut is bounded, validation criteria are known,
+and remaining open questions do not block the cut, switch from preparation to implementation by
+default.
 
 ### Lane D — Post-delivery evolution and corrective re-entry
 
@@ -93,7 +114,7 @@ instead of creating a new artifact family.
 
 ### Start a delivery slice
 
-`Promote this ready idea to TB and prepare component design plus test plan.`
+`Use Lane A from a ready idea. Promote this to TB and prepare component design plus test plan.`
 
 ### Start a retrofit session
 
