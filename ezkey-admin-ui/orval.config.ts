@@ -27,7 +27,9 @@ export default defineConfig({
           name: 'customInstance',
         },
         query: {
-          useQuery: true,
+          // Orval 8.10+: explicit global `useQuery: true` routes POST/PUT/PATCH/DELETE to
+          // useQuery hooks (Query wins when both flags are set). Omit it so GET → query and
+          // mutations → useMutation — see TB-2026-05-28 checkpoint 8.10 (Option B).
           useMutation: true,
           version: 5,
         },

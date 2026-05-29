@@ -264,6 +264,14 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 - App files changed: none — lockfile only
 - Notes: 8.9.x line complete; next step **8.10.0** (T2 checkpoint — expect app changes)
 
+### Step 9 — Orval 8.10.0 (2026-05-28)
+
+- Orval: `8.10.0` (T2 checkpoint)
+- **Config strategy: Option B** — removed global `useQuery: true`; kept `useMutation: true` + `version: 5` so GET → query hooks and non-GET → mutation hooks (Orval 8.10+ semantics when both flags were explicit)
+- App files changed: `orval.config.ts` only (no page refactors; `getGet*QueryKey` factories unchanged)
+- G0–G4 + G5 pass; Playwright **5/5**
+- Notes: next step **8.11.0** (verify GET/mutation override behaviour)
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
@@ -277,7 +285,7 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 | 6 | 8.8.1 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
 | 7 | 8.9.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
 | 8 | 8.9.1 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
-| 9 | 8.10.0 | | | | | |
+| 9 | 8.10.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** (T2) |
 | 10 | 8.11.0 | | | | | |
 | 11 | 8.12.3 | | | | | |
 | 12 | 8.13.0 | | | | | |
