@@ -221,6 +221,11 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 - Do **not** treat browser tests as mandatory for every trivial UI tweak.
 - See `ezkey-admin-ui/AGENTS.md` for the concrete commands and execution modes.
 
+## Admin UI lint-polish keyword
+
+- For Admin UI React lint or polish passes, the shared keyword is **`doctor-curated`**.
+- Run the lightweight curated React Doctor workflow from `ezkey-admin-ui/` before broad analysis; details and output files live in `ezkey-admin-ui/AGENTS.md`.
+
 ## UI Test Autonomy
 
 - Treat browser UI tests as a **pragmatic judgment call**, not a mechanical checklist item.

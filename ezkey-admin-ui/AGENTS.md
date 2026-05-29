@@ -257,6 +257,25 @@ Use **start.sh** to build and run the Admin UI in Docker:
 - Do **not** default to running browser tests for every minor UI text or layout tweak.
 - Keep instrumentation **secondary**. The default path should continue to exercise the real Docker stack and real Demo Device behavior.
 
+## React Doctor curated pass
+
+- Keyword for humans and agents: **`doctor-curated`**.
+- Purpose: a **punctual lint/polish pass** for Admin UI React code. This is intentionally **not** a CI gate and **not** a zero-warning exercise.
+- Default commands from `ezkey-admin-ui/`:
+  - `npm run doctor:curated`
+  - `scripts\doctor-curated.cmd` on Windows
+- Output lives under `logs/react-doctor/`:
+  - `react-doctor.raw.json` — full raw tool output
+  - `react-doctor.curated.json` — filtered summary for follow-up analysis
+  - `react-doctor.curated.md` — human-readable shortlist
+  - `react-doctor.stderr.log` — CLI warnings / stderr
+- Current low-signal suppressions in the curated pass:
+  - `unused-file`
+  - `design-no-em-dash-in-jsx-text`
+  - `only-export-components`
+- Working rule for agents: when the user asks for a **`doctor-curated`** pass, run the script first, read the curated Markdown or JSON, then propose or implement a **small, prioritized** set of fixes. Prefer P1 first, then a narrow slice of P2. Do not turn the pass into a broad refactor campaign.
+- Working rule for humans: treat the curated report as a **triage aid**. The goal is to identify a few high-signal improvements with strong signal-to-effort ratio and stop before diminishing returns.
+
 ### Cursor IDE browser (MCP) spot checks
 
 Agents using the embedded browser tools should mirror the **same sequencing as Playwright**, not invent a parallel protocol:

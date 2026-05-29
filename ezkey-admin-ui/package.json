@@ -10,6 +10,7 @@
     "build:cloudflare": "npm run generate:api && tsc -b && vite build --mode cloudflare",
     "build:cloudflare:verify": "npm run build:cloudflare && bash scripts/assert-no-demo-in-build.sh dist",
     "build:test": "tsc -b && vite build --mode test",
+    "doctor:curated": "node scripts/doctor-curated.mjs",
     "lint": "eslint .",
     "lint:diagnostics": "eslint . --format stylish",
     "preview": "vite preview",
