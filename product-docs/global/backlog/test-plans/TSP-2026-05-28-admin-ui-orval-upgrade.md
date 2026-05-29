@@ -12,7 +12,7 @@ must satisfy the gates applicable to its tier before merge.
 - **Related idea:** `I-2026-05-28-admin-ui-orval-upgrade`
 - **Date:** `2026-05-28`
 - **Owner:** operator / agent (multi-PR program)
-- **Status:** `active`
+- **Status:** `complete`
 
 ## Change risk summary
 
@@ -297,6 +297,14 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 - Orval: `8.12.3` (latest 8.12.x); lockfile only; G0–G4 pass; Playwright **5/5**
 - Notes: 8.12.x line complete; next **8.13.0** (T3 final)
 
+### Step 14 — Orval 8.13.0 (2026-05-29) — program closeout
+
+- Orval: `^8.13.0` (resolved `8.13.0`; pin policy relaxed for patch updates within 8.13.x)
+- App files changed: `package.json`, `AGENTS.md`, product-docs closeout
+- G0–G4 + G5 + **G6 `build:cloudflare:verify`** pass; Playwright **5/5** (T3)
+- Config unchanged: `query: { version: 5 }` only (Option B)
+- I-* → `done`; TB → `promoted`
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
@@ -315,7 +323,7 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 | 11 | 8.12.1 | 2026-05-29 | pending | pass | deferred | **5/5 pass** |
 | 12 | 8.12.2 | 2026-05-29 | pending | pass | deferred | **5/5 pass** |
 | 13 | 8.12.3 | 2026-05-29 | pending | pass | deferred | **5/5 pass** |
-| 14 | 8.13.0 | | | | | |
+| 14 | 8.13.0 | 2026-05-29 | pending | pass | deferred | **5/5 pass** (T3) |
 
 ---
 
@@ -323,7 +331,7 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 
 Program complete when:
 
-- Step 10 row filled with all gates pass.
+- Step 14 row filled with all gates pass — **done** (2026-05-29).
 - [`../TB-2026-05-28-admin-ui-orval-upgrade.md`](../TB-2026-05-28-admin-ui-orval-upgrade.md) exit
   criteria met.
 - [`ideas/I-2026-05-28-admin-ui-orval-upgrade.md`](ideas/I-2026-05-28-admin-ui-orval-upgrade.md)

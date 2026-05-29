@@ -30,7 +30,7 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
 | `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
-| `I-2026-05-28-admin-ui-orval-upgrade` | Admin UI Orval upgrade (8.5 → 8.13 stepwise migration) | `ready` | `P2` | `admin-ui` | `2026-05-28` |
+| `I-2026-05-28-admin-ui-orval-upgrade` | Admin UI Orval upgrade (8.5 → 8.13 stepwise migration) | `done` | `P2` | `admin-ui` | `2026-05-29` |
 
 ## Recently completed
 

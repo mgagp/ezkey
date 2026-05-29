@@ -3,13 +3,13 @@
 ## Metadata
 
 - **ID:** `TB-2026-05-28-admin-ui-orval-upgrade`
-- **Status:** `draft`
+- **Status:** `promoted`
 - **Posture:** `multi-pass` (one PR per ladder step; this TB tracks the full program)
-- **Related idea:** `I-2026-05-28-admin-ui-orval-upgrade`
+- **Related idea:** `I-2026-05-28-admin-ui-orval-upgrade` (`done`)
 - **Lane:** `A`
 - **GitHub issue:** `#175`
 - **Created at:** `2026-05-28`
-- **Updated at:** `2026-05-28`
+- **Updated at:** `2026-05-29`
 
 ## Objective
 

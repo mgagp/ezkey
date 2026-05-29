@@ -3,16 +3,22 @@
 ## Metadata
 
 - **ID:** `I-2026-05-28-admin-ui-orval-upgrade`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-05-28`
-- **Updated at:** `2026-05-28`
+- **Updated at:** `2026-05-29`
 - **Last reviewed at:** `2026-05-28`
 - **Phase tags:** `P2-maintainability`, `toolchain`
 - **Component tags:** `admin-ui`
 - **Lane:** `A`
 - **GitHub issue:** `#175`
 - **Captured by:** Marc (dependency audit session, materialized 2026-05-28)
+
+## Outcome (2026-05-29)
+
+Migration completed on branch `feature/175-i-2026-05-28-admin-ui-orval-upgrade` (14 ladder commits,
+single PR closing `#175`). Orval **8.13.0** with `^8.13.0` pin; config fix at checkpoints 8.10/8.11
+(verb-aware defaults only). No application page refactors required.
 
 ## Intent
 

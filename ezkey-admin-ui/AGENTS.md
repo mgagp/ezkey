@@ -16,7 +16,7 @@ Calls the **Admin API** on port 9080. All tenant scoping is automatic via the be
 - React Router v7 — `createBrowserRouter`, lazy-loaded pages, `ProtectedRoute` guard
 - Tailwind CSS v4 — no `tailwind.config.ts`; all theme tokens in `src/index.css` under `@theme {}`
 - TanStack Query v5 — data fetching, caching, pagination
-- Orval ~8.5.x — OpenAPI → TanStack Query client (`npm run generate:api` → `src/generated/admin-api/`). **Do not bump Orval casually**; follow the stepwise migration program in [`product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md`](../product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md).
+- Orval **^8.13.0** — OpenAPI → TanStack Query client (`npm run generate:api` → `src/generated/admin-api/`). Pin allows patch updates within 8.13.x. **`orval.config.ts` must not set global `useQuery` or `useMutation`** — Orval 8.10+ applies explicit globals to all HTTP verbs and breaks hook shapes; keep `query: { version: 5 }` only (verb-aware defaults: GET → query, mutations → `useMutation`). Migration history: [`product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md`](../product-docs/global/backlog/TB-2026-05-28-admin-ui-orval-upgrade.md).
 - React Hook Form + Zod — forms and validation
 - Fetch API — no axios; always use `api.*` from `@/lib/api-client`
 
