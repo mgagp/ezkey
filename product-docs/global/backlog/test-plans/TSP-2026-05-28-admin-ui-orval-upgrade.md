@@ -258,6 +258,12 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 - App files changed: none — lockfile only
 - Notes: next step **8.9.1** (8.9.x patch stabilize)
 
+### Step 8 — Orval 8.9.1 (2026-05-28)
+
+- Orval: `8.9.1` (latest 8.9.x); G0–G4 pass; Playwright **5/5**
+- App files changed: none — lockfile only
+- Notes: 8.9.x line complete; next step **8.10.0** (T2 checkpoint — expect app changes)
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
@@ -270,7 +276,7 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 | 5 | 8.8.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
 | 6 | 8.8.1 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
 | 7 | 8.9.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
-| 8 | 8.9.1 | | | | | |
+| 8 | 8.9.1 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
 | 9 | 8.10.0 | | | | | |
 | 10 | 8.11.0 | | | | | |
 | 11 | 8.12.3 | | | | | |
