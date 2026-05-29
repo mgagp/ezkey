@@ -41,7 +41,7 @@ Ezkey already has strong global and component documentation. This pack adds the 
 - This pack defines process and collaboration mechanics.
 - Rationale for non-obvious methodology choices lives in `decisions/`.
 - Ezkey-specific taxonomies and examples live in `case-study-ezkey.md` when they clarify the
-	method without making the generic docs carry project-local coupling.
+  method without making the generic docs carry project-local coupling.
 
 ## Core principle
 
@@ -107,3 +107,11 @@ Use these prompts in a fresh session to trigger the method quickly.
 ### 9) Run a blitz intake (multi-item capture session)
 
 `Run a blitz intake. I will dictate several items; capture verbatim, classify by batch, materialize V-*/I-*/R-* in English, and archive the scratch board to blitz-archive (do not delete).`
+
+### 10) Start from a delivered feature that now needs change
+
+`Start a post-delivery change inception. Diagnose whether this is a direct technical fix or requires re-entry through TB, I, or V, then use only the necessary artifacts.`
+
+### 11) Improve the methodology itself
+
+`Start a methodology feedback lane from this session. Record the process decision under methodology/decisions, preserve the key verbatim signal, and update the smallest affected methodology files.`

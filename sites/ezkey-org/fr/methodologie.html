@@ -980,8 +980,8 @@
   <section id="lanes">
     <h2>Couloirs parall&egrave;les</h2>
     <p class="section-intro">
-      Deux couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison.
-      Une session peut combiner le couloir A avec l&rsquo;un ou les deux couloirs parall&egrave;les.
+      Quatre couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison.
+      Une session peut combiner le couloir A avec un ou plusieurs de ces couloirs selon le besoin.
     </p>
     <div class="lanes-grid">
 
@@ -1011,6 +1011,32 @@
         <p class="lane-ref">→ legacy-retrofit-workflow.md</p>
       </div>
 
+      <div class="lane-card" style="border-left-color: #0d9488;">
+        <div class="lane-label">Couloir D</div>
+        <div class="lane-name" style="color: #0d9488;">R&eacute;entr&eacute;e post-livraison</div>
+        <ul class="lane-steps">
+          <li>Partir d&rsquo;un comportement d&eacute;j&agrave; impl&eacute;ment&eacute; : am&eacute;lioration, retour op&eacute;rateur ou bug apparent</li>
+          <li>Classifier d&eacute;faut technique local pur vs changement d&rsquo;intention ou de port&eacute;e</li>
+          <li>Corriger directement les d&eacute;fauts locaux avec une validation born&eacute;e</li>
+          <li>R&eacute;entrer &agrave; <code>TB-*</code>, <code>I-*</code> ou <code>V-*</code> quand l&rsquo;intention a chang&eacute;</li>
+          <li>Poursuivre ensuite le workflow normal de livraison &agrave; partir de ce point de r&eacute;entr&eacute;e</li>
+        </ul>
+        <p class="lane-ref">→ workflow-overview.md</p>
+      </div>
+
+      <div class="lane-card" style="border-left-color: #16a34a;">
+        <div class="lane-label">Couloir E</div>
+        <div class="lane-name" style="color: #16a34a;">R&eacute;troaction m&eacute;thodologique</div>
+        <ul class="lane-steps">
+          <li>Capturer une friction, une ambigu&iuml;t&eacute; ou une proposition d&rsquo;am&eacute;lioration de la m&eacute;thode elle-m&ecirc;me</li>
+          <li>Consigner la d&eacute;cision dans <code>methodology/decisions/</code></li>
+          <li>Pr&eacute;server un court signal source verbatim quand la formulation exacte compte</li>
+          <li>Mettre &agrave; jour uniquement les plus petites surfaces m&eacute;thodologiques qui doivent changer</li>
+          <li>Cl&ocirc;turer avec l&rsquo;&eacute;l&eacute;ment de preuve qui montrera si le changement a aid&eacute;</li>
+        </ul>
+        <p class="lane-ref">→ decisions/README.md</p>
+      </div>
+
     </div>
   </section>
 
@@ -1020,12 +1046,12 @@
   <section id="collab">
     <h2>Contexte de collaboration</h2>
     <p class="section-intro">
-      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B et C
+      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B, C et D
       quand la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees.
-      Les sessions &agrave; branche unique n&rsquo;ont pas besoin de les appliquer.
+      Le couloir E reste g&eacute;n&eacute;ralement g&eacute;r&eacute; en branche unique puisqu&rsquo;il modifie la m&eacute;thodologie elle-m&ecirc;me.
     </p>
     <div class="collab-card">
-      <div class="collab-modifier-tag">Transversal &middot; s&rsquo;applique aux couloirs A, B, C</div>
+      <div class="collab-modifier-tag">Transversal &middot; s&rsquo;applique aux couloirs A, B, C, D</div>
       <p class="collab-desc">
         Quand deux d&eacute;veloppeurs (ou un d&eacute;veloppeur sur deux worktrees) travaillent simultan&eacute;ment,
         le nommage ordinal classique cr&eacute;e des collisions &agrave; la fusion. Le contexte de collaboration

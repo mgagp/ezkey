@@ -40,6 +40,34 @@ Use when the goal is extracting value from historical plans, verbal rationale, o
 - Typical mode: **Plan -> Agent**
 - Typical skills: `legacy-plan-miner`, `retrofit-curator`, `traceability-sync`
 
+### Lane D — Post-delivery evolution and corrective re-entry
+
+Use when the goal starts from existing implemented behavior: enhancement requests, changed rules,
+missing validation, apparent bugs, or operator feedback on something already built.
+
+- Output target: either a direct bounded fix, or re-entry into `TB-*`, `I-*`, or `V-*`
+- Typical mode: **Plan -> Agent**
+- Typical skills: start with root-cause classification, then reuse the normal delivery skills only
+  at the level that actually changed
+
+Fast-path rule:
+
+- If the problem is a pure local technical defect, fix it directly and validate it.
+- If the problem exposes missing or changed intent, re-enter at `TB-*`, `I-*`, or `V-*`.
+
+### Lane E — Methodology feedback and evolution
+
+Use when the goal is improving the methodology itself: lane definitions, artifact rules, naming,
+decision posture, handoff conventions, or other process mechanics.
+
+- Output target: methodology decision record + targeted methodology doc updates
+- Typical mode: **Plan**
+- Typical skills: no dedicated skill required by default; capture the decision, update the smallest
+  impacted methodology surfaces, then close with the expected validation signal
+
+This lane is the reflective feedback loop of the method. It reuses `product-docs/methodology/decisions/`
+instead of creating a new artifact family.
+
 ## Vocabulary quick reference
 
 - `V-*`: vision direction note
@@ -47,6 +75,9 @@ Use when the goal is extracting value from historical plans, verbal rationale, o
 - `TB-*`: tracer bullet execution slice
 - `R-*`: legacy knowledge retrofit slice
 - `working plan`: live non-canonical planning artifact used before canonical materialization
+- `methodology decision`: a decision about the workflow itself, recorded under `methodology/decisions/`
+- `post-delivery re-entry`: a new change initiated from existing implemented behavior and routed
+  back to `TB-*`, `I-*`, or `V-*` only when intent changed
 - `captured/triaged/incubating/ready/active/done/parked/archived/dropped`: backlog lifecycle
 - `captured/mapped/integrated/archived`: retrofit lifecycle
 
@@ -71,3 +102,11 @@ Use when the goal is extracting value from historical plans, verbal rationale, o
 ### Promote principle candidates
 
 `From this retrofit slice, extract principle candidates and propose where to adopt them (design principles vs AGENTS/rules).`
+
+### Start a methodology feedback session
+
+`Start a methodology feedback lane from this live discussion. Record the decision, preserve the key verbatim source signal, and update only the methodology files that must change.`
+
+### Start from an enhancement or apparent bug in existing code
+
+`Start a post-delivery change inception. First classify whether this is a local technical defect or a corpus-level intent gap. If intent changed, re-enter at TB, I, or V; otherwise fix directly.`

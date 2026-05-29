@@ -37,6 +37,10 @@ No counter, no global index needed. One file per decision.
   [`../../global/architecture-decisions.md`](../../global/architecture-decisions.md) or a
   component `design-decisions.md`).
 
+A methodology decision may still preserve **short verbatim source excerpts** when a live
+methodology-feedback session produced the rule. The decision remains the canonical record; it is
+not meant to become a raw transcript dump.
+
 ## Public visibility (`public:` frontmatter)
 
 Each decision file declares whether it is published on `methodology.ezkey.org` via a single
@@ -95,6 +99,20 @@ What changes in practice — files updated, rules modified, skills adjusted.
 ## Related documents
 Links to impacted methodology files, skills, or canonical docs.
 ```
+
+### Optional source-signal section
+
+When a decision comes from a live methodology-feedback session and the exact wording matters,
+add an optional section after `## Context`:
+
+```markdown
+## Source signal (optional)
+
+- Short verbatim excerpt 1
+- Short verbatim excerpt 2
+```
+
+Use this to preserve the load-bearing phrasing that motivated the change. Keep it selective.
 
 ## Multi-branch note
 

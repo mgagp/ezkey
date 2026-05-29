@@ -887,8 +887,8 @@
   <section id="lanes">
     <h2>Parallel Lanes</h2>
     <p class="section-intro">
-      Two lanes run alongside the main ideation-to-delivery flow. Any session may combine
-      Lane A with one or both parallel lanes.
+      Four lanes run alongside the main ideation-to-delivery flow. Any session may combine
+      Lane A with one or more of these lanes as needed.
     </p>
     <div class="lanes-grid">
 
@@ -918,6 +918,32 @@
         <p class="lane-ref">→ <a href="../legacy-retrofit-workflow.md">legacy-retrofit-workflow.md</a></p>
       </div>
 
+      <div class="lane-card" style="border-left-color: #0d9488;">
+        <div class="lane-label">Lane D</div>
+        <div class="lane-name" style="color: #0d9488;">Post-Delivery Re-entry</div>
+        <ul class="lane-steps">
+          <li>Start from existing implemented behavior: enhancement, operator feedback, or apparent bug</li>
+          <li>Classify pure local technical defect vs intent or scope change</li>
+          <li>Fix local defects directly with bounded validation</li>
+          <li>Re-enter at <code>TB-*</code>, <code>I-*</code>, or <code>V-*</code> when intent changed</li>
+          <li>Continue through the normal delivery workflow from that re-entry point</li>
+        </ul>
+        <p class="lane-ref">→ <a href="../workflow-overview.md">workflow-overview.md</a></p>
+      </div>
+
+      <div class="lane-card" style="border-left-color: #16a34a;">
+        <div class="lane-label">Lane E</div>
+        <div class="lane-name" style="color: #16a34a;">Methodology Feedback</div>
+        <ul class="lane-steps">
+          <li>Capture friction, ambiguity, or a proposed improvement in the method itself</li>
+          <li>Record the decision in <code>methodology/decisions/</code></li>
+          <li>Preserve short verbatim source signal when exact wording matters</li>
+          <li>Update only the smallest methodology surfaces that must change</li>
+          <li>Close with the evidence that will show whether the change helped</li>
+        </ul>
+        <p class="lane-ref">→ <a href="../decisions/README.md">decisions/README.md</a></p>
+      </div>
+
     </div>
   </section>
 
@@ -927,12 +953,12 @@
   <section id="collab">
     <h2>Collaboration Context</h2>
     <p class="section-intro">
-      Not a lane — a cross-cutting modifier. These rules apply on top of Lanes A, B, and C
+      Not a lane — a cross-cutting modifier. These rules apply on top of Lanes A, B, C, and D
       whenever collaboration happens across parallel Git branches or worktrees.
-      Sessions that are single-branch do not need to apply them.
+      Lane E is usually handled single-branch because it changes the methodology itself.
     </p>
     <div class="collab-card">
-      <div class="collab-modifier-tag">Cross-cutting · applies to Lanes A, B, C</div>
+      <div class="collab-modifier-tag">Cross-cutting · applies to Lanes A, B, C, D</div>
       <p class="collab-desc">
         When two developers (or one developer across two worktrees) work simultaneously,
         classic ordinal naming creates merge-time collisions. The collaboration context
