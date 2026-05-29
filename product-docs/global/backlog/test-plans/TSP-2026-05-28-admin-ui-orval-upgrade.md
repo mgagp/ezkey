@@ -204,6 +204,13 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 - Playwright: skipped (T1)
 - Notes: first installable 8.6.x line; 8.6.2 follows as step 3 (patch stabilize)
 
+### Step 3 — Orval 8.6.2 (2026-05-28)
+
+- Orval: `8.6.2` (latest 8.6.x patch)
+- App files changed: none — lockfile only
+- Commands: G1–G4 all pass (54 tests)
+- Notes: completes 8.6.x line; next step **8.7.0**
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
@@ -211,7 +218,7 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 | 0 | baseline | 2026-05-28 | — | audit recorded | — | — |
 | 1 | 8.5.3 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
 | 2 | 8.6.1 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
-| 3 | 8.6.2 | | | | | |
+| 3 | 8.6.2 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
 | 4 | 8.7.0 | | | | | |
 | 5 | 8.8.1 | | | | | |
 | 6 | 8.9.1 | | | | | |
