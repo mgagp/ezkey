@@ -280,6 +280,13 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 - G0–G4 + G5 pass; Playwright **5/5**
 - Notes: next step **8.12.0** (8.12.x line)
 
+### Step 11 — Orval 8.12.1 (2026-05-29)
+
+- Orval: `8.12.1` (**8.12.0 skipped** — not published on npm)
+- App files changed: none — lockfile only; config unchanged (`query: { version: 5 }`)
+- G0–G4 pass; Playwright **5/5**
+- Notes: next **8.12.2** → **8.12.3**, then **8.13.0** (final)
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
@@ -295,8 +302,9 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 | 8 | 8.9.1 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
 | 9 | 8.10.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** (T2) |
 | 10 | 8.11.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** (T2) |
-| 11 | 8.12.3 | | | | | |
-| 12 | 8.13.0 | | | | | |
+| 11 | 8.12.1 | 2026-05-29 | pending | pass | deferred | **5/5 pass** |
+| 12 | 8.12.3 | | | | | |
+| 13 | 8.13.0 | | | | | |
 
 ---
 
