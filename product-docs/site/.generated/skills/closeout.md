@@ -4,7 +4,7 @@
   <p class="skills-eyebrow">Workflow skill</p>
   <p class="skill-detail-summary">Closes workflow slices with explicit status transitions, residual risk notes, and next-step clarity. Use at the end of tracer bullets, feature slices, or implementation cycles.</p>
   <div class="skill-chip-row">
-    <span class="skill-chip">Order 10</span>
+    <span class="skill-chip">Order 09</span>
     <span class="skill-chip">Source of truth: <code>.cursor/skills/closeout/SKILL.md</code></span>
     
   </div>

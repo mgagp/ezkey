@@ -19,7 +19,11 @@ import { gfmHeadingId } from 'marked-gfm-heading-id';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
 import { buildCorpusIndices, buildGlossary, pickTitle } from './indices.js';
-import { GENERATED_SKILLS_DIR, prepareSkillsPublicCorpus } from './skillsPublic.js';
+import {
+  GENERATED_SKILLS_DIR,
+  prepareSkillsPublicCorpus,
+  publicSkillRank,
+} from './skillsPublic.js';
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -122,8 +126,18 @@ function walkDir(absDir, urlPrefix) {
     }
   }
   dirs.sort((a, b) => a.label.localeCompare(b.label));
-  files.sort((a, b) => a.label.localeCompare(b.label));
+  files.sort((a, b) => compareFilesForUiOrder(a, b, urlPrefix));
   return [...dirs, ...files];
+}
+
+function compareFilesForUiOrder(left, right, urlPrefix) {
+  if (urlPrefix === 'skills') {
+    const leftBase = left.key.replace(/\.md$/i, '');
+    const rightBase = right.key.replace(/\.md$/i, '');
+    const rankDiff = publicSkillRank(leftBase) - publicSkillRank(rightBase);
+    if (rankDiff !== 0) return rankDiff;
+  }
+  return left.label.localeCompare(right.label);
 }
 
 // ── Pure: path resolution ─────────────────────────────────────────────────────

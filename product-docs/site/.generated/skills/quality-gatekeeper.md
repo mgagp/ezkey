@@ -4,7 +4,7 @@
   <p class="skills-eyebrow">Workflow skill</p>
   <p class="skill-detail-summary">Applies quality gates across analysis, design, implementation, tests, and documentation traceability. Use before execution and before closing work to prevent drift.</p>
   <div class="skill-chip-row">
-    <span class="skill-chip">Order 08</span>
+    <span class="skill-chip">Order 07</span>
     <span class="skill-chip">Source of truth: <code>.cursor/skills/quality-gatekeeper/SKILL.md</code></span>
     
   </div>

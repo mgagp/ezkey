@@ -1,7 +1,7 @@
 # Skill: `legacy-plan-miner`
 
-<section class="skill-detail-hero skill-detail-hero--workflow">
-  <p class="skills-eyebrow">Workflow skill</p>
+<section class="skill-detail-hero skill-detail-hero--retrofit">
+  <p class="skills-eyebrow">Legacy retrofit skill</p>
   <p class="skill-detail-summary">Mines legacy project knowledge (historical plans, verbal briefings, ad hoc implementation history) to extract decisions, invariants, patterns, risks, and test signal. Use for weekly or opportunistic retrofit sessions.</p>
   <div class="skill-chip-row">
     <span class="skill-chip">Order 11</span>

@@ -4,7 +4,7 @@
   <p class="skills-eyebrow">Workflow skill</p>
   <p class="skill-detail-summary">Synchronizes feature, specification, and test traceability across global and component documentation. Use when feature status, behavior, or validation evidence changes.</p>
   <div class="skill-chip-row">
-    <span class="skill-chip">Order 09</span>
+    <span class="skill-chip">Order 08</span>
     <span class="skill-chip">Source of truth: <code>.cursor/skills/traceability-sync/SKILL.md</code></span>
     <span class="skill-chip">Call next: <a href="#/skills/closeout.md">closeout</a></span>
   </div>

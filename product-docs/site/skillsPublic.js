@@ -28,6 +28,24 @@ const FALLBACK_RETROFIT_ORDER = [
   'retrofit-curator',
 ];
 
+export const PUBLIC_SKILLS_SEQUENCE = [
+  'README',
+  'vision-intake',
+  'backlog-triage',
+  'grill-me',
+  'tracer-bullet-promote',
+  'component-design-pack',
+  'test-strategy-planner',
+  'quality-gatekeeper',
+  'traceability-sync',
+  'closeout',
+  'plan-incubation',
+  'legacy-plan-miner',
+  'retrofit-curator',
+];
+
+const PUBLIC_SKILLS_RANK = new Map(PUBLIC_SKILLS_SEQUENCE.map((name, index) => [name, index]));
+
 export function prepareSkillsPublicCorpus() {
   rmrf(GENERATED_SKILLS_DIR);
   mkdirp(GENERATED_SKILLS_DIR);
@@ -42,13 +60,18 @@ export function prepareSkillsPublicCorpus() {
   const skills = orderedNames
     .map((skillName, index) => parseSkill(skillName, index + 1))
     .filter(Boolean);
+
+  skills.sort(compareSkillsForPublicOrder);
+  skills.forEach((skill, index) => {
+    skill.order = index + 1;
+  });
   
   const knownSkillNames = new Set(skills.map((skill) => skill.name));
   for (const skill of skills) {
-    skill.category = orders.workflow.includes(skill.name)
-      ? 'workflow'
-      : orders.retrofit.includes(skill.name)
+    skill.category = orders.retrofit.includes(skill.name)
         ? 'retrofit'
+      : orders.workflow.includes(skill.name)
+        ? 'workflow'
         : 'additional';
     skill.callNextSkills = skill.callNextSkills.filter((name) => knownSkillNames.has(name));
   }
@@ -218,12 +241,9 @@ function extractSkillRefs(value) {
 }
 
 function buildOverviewDoc({ skills, workflowOrder, retrofitOrder }) {
-  const byName = new Map(skills.map((skill) => [skill.name, skill]));
-  const workflowSkills = workflowOrder.map((name) => byName.get(name)).filter(Boolean);
-  const retrofitSkills = retrofitOrder.map((name) => byName.get(name)).filter(Boolean);
-  const remainingSkills = skills.filter(
-    (skill) => !workflowOrder.includes(skill.name) && !retrofitOrder.includes(skill.name),
-  );
+  const workflowSkills = skills.filter((skill) => skill.category === 'workflow');
+  const retrofitSkills = skills.filter((skill) => skill.category === 'retrofit');
+  const remainingSkills = skills.filter((skill) => skill.category === 'additional');
 
   const cards = (list) => list.map((skill) => buildSkillCard(skill)).join('\n');
 
@@ -425,6 +445,16 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+export function publicSkillRank(name) {
+  return PUBLIC_SKILLS_RANK.has(name) ? PUBLIC_SKILLS_RANK.get(name) : Number.MAX_SAFE_INTEGER;
+}
+
+function compareSkillsForPublicOrder(left, right) {
+  const rankDiff = publicSkillRank(left.name) - publicSkillRank(right.name);
+  if (rankDiff !== 0) return rankDiff;
+  return left.name.localeCompare(right.name);
 }
 
 function dedupe(values) {

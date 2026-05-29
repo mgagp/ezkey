@@ -1,7 +1,7 @@
 # Skill: `retrofit-curator`
 
-<section class="skill-detail-hero skill-detail-hero--workflow">
-  <p class="skills-eyebrow">Workflow skill</p>
+<section class="skill-detail-hero skill-detail-hero--retrofit">
+  <p class="skills-eyebrow">Legacy retrofit skill</p>
   <p class="skill-detail-summary">Curates legacy retrofit slices by mapping extracted signal (plans, verbal, ad hoc) into canonical product-docs destinations, recording residual gaps, and promoting principle candidates when relevant.</p>
   <div class="skill-chip-row">
     <span class="skill-chip">Order 12</span>

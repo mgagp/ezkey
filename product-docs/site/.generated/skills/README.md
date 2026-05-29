@@ -102,20 +102,6 @@ flowchart LR
       <span class="skill-card-order">04</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
-    <h3><a href="#/skills/plan-incubation.md"><code>plan-incubation</code></a></h3>
-    <p class="skill-card-summary">Incubates a live working plan in agent Plan mode, then converges it toward canonical method artifacts. Use when the operator wants to start with a current-session working plan under .cursor/plans/ or plans/ before materializing durable output into V-*, I-*, or TB-*.</p>
-    <div class="skill-card-facts">
-      <p><strong>Enter when</strong><br />the operator deliberately starts from a current-session working plan before canonical docs.</p>
-      <p><strong>Call next</strong><br /><a href="#/skills/vision-intake.md">vision-intake</a>, <a href="#/skills/backlog-triage.md">backlog-triage</a>, <a href="#/skills/tracer-bullet-promote.md">tracer-bullet-promote</a></p>
-      <p><strong>Not needed when</strong><br />the source is historical retrofit input or the request is already a direct implementation task.</p>
-    </div>
-    <p class="skill-card-link"><a href="#/skills/plan-incubation.md">Open detail</a></p>
-  </article>
-  <article class="skill-card skill-card--workflow">
-    <div class="skill-card-meta">
-      <span class="skill-card-order">05</span>
-      <span class="skill-card-kind">Workflow skill</span>
-    </div>
     <h3><a href="#/skills/tracer-bullet-promote.md"><code>tracer-bullet-promote</code></a></h3>
     <p class="skill-card-summary">Promotes ready ideas into bounded tracer bullets with vertical-slice scope, boundaries, and evidence criteria. Use when an I-* item is ready for execution planning.</p>
     <div class="skill-card-facts">
@@ -127,7 +113,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">06</span>
+      <span class="skill-card-order">05</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/component-design-pack.md"><code>component-design-pack</code></a></h3>
@@ -141,7 +127,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">07</span>
+      <span class="skill-card-order">06</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/test-strategy-planner.md"><code>test-strategy-planner</code></a></h3>
@@ -155,7 +141,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">08</span>
+      <span class="skill-card-order">07</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/quality-gatekeeper.md"><code>quality-gatekeeper</code></a></h3>
@@ -169,7 +155,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">09</span>
+      <span class="skill-card-order">08</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/traceability-sync.md"><code>traceability-sync</code></a></h3>
@@ -183,7 +169,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">10</span>
+      <span class="skill-card-order">09</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/closeout.md"><code>closeout</code></a></h3>
@@ -197,41 +183,27 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">11</span>
+      <span class="skill-card-order">10</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
-    <h3><a href="#/skills/legacy-plan-miner.md"><code>legacy-plan-miner</code></a></h3>
-    <p class="skill-card-summary">Mines legacy project knowledge (historical plans, verbal briefings, ad hoc implementation history) to extract decisions, invariants, patterns, risks, and test signal. Use for weekly or opportunistic retrofit sessions.</p>
+    <h3><a href="#/skills/plan-incubation.md"><code>plan-incubation</code></a></h3>
+    <p class="skill-card-summary">Incubates a live working plan in agent Plan mode, then converges it toward canonical method artifacts. Use when the operator wants to start with a current-session working plan under .cursor/plans/ or plans/ before materializing durable output into V-*, I-*, or TB-*.</p>
     <div class="skill-card-facts">
-      <p><strong>Enter when</strong><br />historical plans, verbal history, or ad hoc implementation history contain reusable signal.</p>
-      <p><strong>Call next</strong><br /><a href="#/skills/retrofit-curator.md">retrofit-curator</a></p>
-      <p><strong>Not needed when</strong><br />the source is a current-session working plan, which belongs to plan-incubation.</p>
+      <p><strong>Enter when</strong><br />the operator deliberately starts from a current-session working plan before canonical docs.</p>
+      <p><strong>Call next</strong><br /><a href="#/skills/vision-intake.md">vision-intake</a>, <a href="#/skills/backlog-triage.md">backlog-triage</a>, <a href="#/skills/tracer-bullet-promote.md">tracer-bullet-promote</a></p>
+      <p><strong>Not needed when</strong><br />the source is historical retrofit input or the request is already a direct implementation task.</p>
     </div>
-    <p class="skill-card-link"><a href="#/skills/legacy-plan-miner.md">Open detail</a></p>
-  </article>
-  <article class="skill-card skill-card--workflow">
-    <div class="skill-card-meta">
-      <span class="skill-card-order">12</span>
-      <span class="skill-card-kind">Workflow skill</span>
-    </div>
-    <h3><a href="#/skills/retrofit-curator.md"><code>retrofit-curator</code></a></h3>
-    <p class="skill-card-summary">Curates legacy retrofit slices by mapping extracted signal (plans, verbal, ad hoc) into canonical product-docs destinations, recording residual gaps, and promoting principle candidates when relevant.</p>
-    <div class="skill-card-facts">
-      <p><strong>Enter when</strong><br />mined historical signal needs mapping into canonical product-docs destinations.</p>
-      <p><strong>Call next</strong><br /><a href="#/skills/traceability-sync.md">traceability-sync</a>, <a href="#/skills/closeout.md">closeout</a></p>
-      <p><strong>Not needed when</strong><br />there is no reusable signal, or the source already lives in current canonical docs.</p>
-    </div>
-    <p class="skill-card-link"><a href="#/skills/retrofit-curator.md">Open detail</a></p>
+    <p class="skill-card-link"><a href="#/skills/plan-incubation.md">Open detail</a></p>
   </article>
 </div>
 
 ## Legacy retrofit skills
 
 <div class="skill-card-grid">
-  <article class="skill-card skill-card--workflow">
+  <article class="skill-card skill-card--retrofit">
     <div class="skill-card-meta">
       <span class="skill-card-order">11</span>
-      <span class="skill-card-kind">Workflow skill</span>
+      <span class="skill-card-kind">Legacy retrofit skill</span>
     </div>
     <h3><a href="#/skills/legacy-plan-miner.md"><code>legacy-plan-miner</code></a></h3>
     <p class="skill-card-summary">Mines legacy project knowledge (historical plans, verbal briefings, ad hoc implementation history) to extract decisions, invariants, patterns, risks, and test signal. Use for weekly or opportunistic retrofit sessions.</p>
@@ -242,10 +214,10 @@ flowchart LR
     </div>
     <p class="skill-card-link"><a href="#/skills/legacy-plan-miner.md">Open detail</a></p>
   </article>
-  <article class="skill-card skill-card--workflow">
+  <article class="skill-card skill-card--retrofit">
     <div class="skill-card-meta">
       <span class="skill-card-order">12</span>
-      <span class="skill-card-kind">Workflow skill</span>
+      <span class="skill-card-kind">Legacy retrofit skill</span>
     </div>
     <h3><a href="#/skills/retrofit-curator.md"><code>retrofit-curator</code></a></h3>
     <p class="skill-card-summary">Curates legacy retrofit slices by mapping extracted signal (plans, verbal, ad hoc) into canonical product-docs destinations, recording residual gaps, and promoting principle candidates when relevant.</p>

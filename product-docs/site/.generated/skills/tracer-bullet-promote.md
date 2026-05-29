@@ -4,7 +4,7 @@
   <p class="skills-eyebrow">Workflow skill</p>
   <p class="skill-detail-summary">Promotes ready ideas into bounded tracer bullets with vertical-slice scope, boundaries, and evidence criteria. Use when an I-* item is ready for execution planning.</p>
   <div class="skill-chip-row">
-    <span class="skill-chip">Order 05</span>
+    <span class="skill-chip">Order 04</span>
     <span class="skill-chip">Source of truth: <code>.cursor/skills/tracer-bullet-promote/SKILL.md</code></span>
     <span class="skill-chip">Call next: <a href="#/skills/component-design-pack.md">component-design-pack</a>, <a href="#/skills/test-strategy-planner.md">test-strategy-planner</a></span>
   </div>

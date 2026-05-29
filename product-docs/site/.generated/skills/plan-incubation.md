@@ -4,7 +4,7 @@
   <p class="skills-eyebrow">Workflow skill</p>
   <p class="skill-detail-summary">Incubates a live working plan in agent Plan mode, then converges it toward canonical method artifacts. Use when the operator wants to start with a current-session working plan under .cursor/plans/ or plans/ before materializing durable output into V-*, I-*, or TB-*.</p>
   <div class="skill-chip-row">
-    <span class="skill-chip">Order 04</span>
+    <span class="skill-chip">Order 10</span>
     <span class="skill-chip">Source of truth: <code>.cursor/skills/plan-incubation/SKILL.md</code></span>
     <span class="skill-chip">Call next: <a href="#/skills/vision-intake.md">vision-intake</a>, <a href="#/skills/backlog-triage.md">backlog-triage</a>, <a href="#/skills/tracer-bullet-promote.md">tracer-bullet-promote</a></span>
   </div>
