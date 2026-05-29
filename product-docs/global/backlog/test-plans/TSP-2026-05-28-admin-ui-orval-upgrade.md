@@ -190,13 +190,27 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 - Playwright: skipped (T1)
 - Notes: patch-only bump from `~8.5.2`; validates migration playbook before 8.6.x
 
+### Step 2 — Orval 8.6.1 (2026-05-28)
+
+- Branch: `feature/175-i-2026-05-28-admin-ui-orval-upgrade`
+- Orval: `8.6.1` (exact pin; **8.6.0 skipped** — npm install fails with `Unsupported URL Type "workspace:"` on broken publish)
+- App files changed: none — lockfile only
+- Commands:
+  - [x] G1 `generate:api` — pass (orval v8.6.1)
+  - [x] G2 `lint` — pass
+  - [x] G3 `build` — pass
+  - [x] G4 `npm test` — 8 files, 54 tests pass
+- Manual smoke: deferred (T1)
+- Playwright: skipped (T1)
+- Notes: first installable 8.6.x line; 8.6.2 follows as step 3 (patch stabilize)
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
 |------|---------|------|-----|-------|--------|------------|
 | 0 | baseline | 2026-05-28 | — | audit recorded | — | — |
 | 1 | 8.5.3 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
-| 2 | 8.6.0 | | | | | |
+| 2 | 8.6.1 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
 | 3 | 8.6.2 | | | | | |
 | 4 | 8.7.0 | | | | | |
 | 5 | 8.8.1 | | | | | |
