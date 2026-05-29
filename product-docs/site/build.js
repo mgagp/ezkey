@@ -48,6 +48,12 @@ const TRACKS = JSON.parse(fs.readFileSync(path.join(SITE_DIR, 'tracks.json'), 'u
 const SITE_ORIGIN = process.env.SITE_ORIGIN || 'https://methodology.ezkey.org';
 const CF_ANALYTICS_TOKEN = process.env.CF_ANALYTICS_TOKEN || '';
 
+const SITE_TITLE = 'methodology explorer';
+const SITE_TITLE_SUFFIX = ' · methodology explorer';
+const SITE_DESCRIPTION =
+  'Public explorer for a documentation-first methodology: workflow, design canon, templates, skills, and glossary.';
+const SITE_NAME = 'methodology explorer';
+
 const ANALYTICS_SNIPPET = CF_ANALYTICS_TOKEN
   ? `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"${CF_ANALYTICS_TOKEN}"}'></script>`
   : '';
@@ -180,7 +186,7 @@ function renderShell({ title, description, canonical, contentHtml }) {
     `<meta property="og:title" content="${escapeHtml(title)}" />\n` +
     `<meta property="og:description" content="${escapeHtml(description)}" />\n` +
     `<meta property="og:url" content="${escapeHtml(canonical)}" />\n` +
-    `<meta property="og:site_name" content="ezkey methodology" />\n` +
+    `<meta property="og:site_name" content="${escapeHtml(SITE_NAME)}" />\n` +
     `<meta name="twitter:card" content="summary" />\n` +
     `<script>window.__EZKEY_STATIC__ = true;</script>\n` +
     (ANALYTICS_SNIPPET ? `${ANALYTICS_SNIPPET}\n` : '');
@@ -287,7 +293,7 @@ function build() {
     // Pre-rendered shell.
     const canonical = `${SITE_ORIGIN}/${slug}/`;
     const html = renderShell({
-      title: `${data.title} · ezkey methodology`,
+      title: `${data.title}${SITE_TITLE_SUFFIX}`,
       description: summarize(stripHtml(data.html), 200),
       canonical,
       contentHtml: data.html,
@@ -303,10 +309,8 @@ function build() {
   writeText(
     path.join(DIST_DIR, 'index.html'),
     renderShell({
-      title: 'ezkey · methodology',
-      description:
-        'Working explorer for the ezkey methodology corpus: workflow, design canon, ' +
-        'tracer-bullet method, templates, and glossary.',
+      title: SITE_TITLE,
+      description: SITE_DESCRIPTION,
       canonical: `${SITE_ORIGIN}/`,
       contentHtml: '', // keep the original home placeholder from the template
     }),
@@ -317,8 +321,8 @@ function build() {
   writeText(
     path.join(DIST_DIR, 'map', 'index.html'),
     renderShell({
-      title: 'Workflow map · ezkey methodology',
-      description: 'Cognitive map of the ezkey methodology workflow.',
+      title: `Workflow map${SITE_TITLE_SUFFIX}`,
+      description: 'Cognitive map of a documentation-first methodology workflow.',
       canonical: `${SITE_ORIGIN}/map/`,
       contentHtml: '<div id="home" class="home"><p class="loading">Loading map…</p></div>',
     }),

@@ -1,6 +1,6 @@
 # Methodology Pack
 
-This folder defines the lightweight operating method used to move from product ideation to implementation in Ezkey.
+This folder defines a lightweight operating method used to move from product ideation to implementation.
 
 It is designed for mixed collaboration:
 
@@ -10,7 +10,8 @@ It is designed for mixed collaboration:
 
 ## Why this exists
 
-Ezkey already has strong global and component documentation. This pack adds the missing connective tissue:
+When a documentation system already has strong product and component documentation, this pack adds
+the missing connective tissue:
 
 - how ideas are captured,
 - how they are challenged and refined,
@@ -53,7 +54,7 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 
 ### Example and institutional memory
 
-1. `case-study-ezkey.md` — concrete instantiation in the source project.
+1. `case-study-ezkey.md` — concrete instantiation inside this repository's source project.
 2. `decisions/` — rationale and historical record for non-obvious methodology choices.
 
 ## Scope boundaries
@@ -62,8 +63,8 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 - Component implementation details remain in `../components/`.
 - This pack defines process and collaboration mechanics.
 - Rationale for non-obvious methodology choices lives in `decisions/`.
-- Ezkey-specific taxonomies and examples live in `case-study-ezkey.md` when they clarify the
-  method without making the generic docs carry project-local coupling.
+- Project-specific taxonomies, examples, and terminology belong in `case-study-ezkey.md` when they
+  clarify the method without making the generic docs carry project-local coupling.
 
 ## Core principle
 
@@ -96,16 +97,24 @@ Apply [`methodological-values.md`](methodological-values.md) when judging the wo
 whether a gate is proportional, whether an artifact deserves to be living, whether a skill should
 exist, and whether a closeout is honest enough to resume later.
 
-For Admin UI, role visibility, and **deployment operator geometries**, read [`../global/operator-alignment-guide.md`](../global/operator-alignment-guide.md). Canonical cross-cutting artifacts: [`../global/admin-ui-paginated-screens-matrix.md`](../global/admin-ui-paginated-screens-matrix.md), [`../global/rate-limit-baseline-policy.md`](../global/rate-limit-baseline-policy.md), [`../global/ezkey-system-identity-sensitivity-report.md`](../global/ezkey-system-identity-sensitivity-report.md), [`../global/sql-business-limits-policy.md`](../global/sql-business-limits-policy.md). (Former [`api-controllers-registry.md`](../global/api-controllers-registry.md) downscoped — see [`decisions/2026-05-24-controllers-registry-downscope.md`](decisions/2026-05-24-controllers-registry-downscope.md).)
+## Source-project hooks
+
+This README stays method-first. When you are applying the methodology inside this repository's
+source project, the most relevant project-local companions live under `../global/` and
+`../components/`.
+
+For example, Admin UI role visibility and **deployment operator geometries** are documented in
+[`../global/operator-alignment-guide.md`](../global/operator-alignment-guide.md), with related
+cross-cutting artifacts in [`../global/admin-ui-paginated-screens-matrix.md`](../global/admin-ui-paginated-screens-matrix.md), [`../global/rate-limit-baseline-policy.md`](../global/rate-limit-baseline-policy.md), [`../global/ezkey-system-identity-sensitivity-report.md`](../global/ezkey-system-identity-sensitivity-report.md), and [`../global/sql-business-limits-policy.md`](../global/sql-business-limits-policy.md). (Former [`api-controllers-registry.md`](../global/api-controllers-registry.md) downscoped — see [`decisions/2026-05-24-controllers-registry-downscope.md`](decisions/2026-05-24-controllers-registry-downscope.md).)
 
 ## Rich view
 
 For a visual companion to this methodology pack — workflow diagram, artifact types, parallel lanes,
 naming conventions, and skills reference — open [`view/index.html`](view/index.html).
 
-The public methodology explorer also packages a derived **Skills** section sourced from
-`.cursor/skills/`, so the collaboration mechanics stay discoverable without making the editor-local
-skill files the public corpus of record.
+The public explorer also packages a derived **Skills** section sourced from `.cursor/skills/`, so
+the collaboration mechanics stay discoverable without making the editor-local skill files the
+public corpus of record.
 
 The next distribution direction is a generated **download pack** for local reuse, with an explicit
 preference for packaging before any installer-style automation. See

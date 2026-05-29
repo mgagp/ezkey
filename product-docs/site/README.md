@@ -1,9 +1,12 @@
-# Ezkey Method · Local Explorer
+# Methodology Explorer · Site Pipeline
 
-A small local micro-site that serves the Ezkey methodology corpus as a navigable web app: tree on the left, rendered Markdown in the center, in-document TOC on the right.
+A small site pipeline that serves a documentation-first methodology corpus as a navigable web app:
+tree on the left, rendered Markdown in the center, in-document TOC on the right.
 
 This started as a local developer tool and now also serves as the source for the published static
-methodology explorer.
+methodology explorer. In this repository, that explorer is published from the Ezkey source
+project, but the site is intended to present the methodology as a method-first surface rather than
+as project documentation wearing a site shell.
 
 ## Scope (Phase 1)
 
