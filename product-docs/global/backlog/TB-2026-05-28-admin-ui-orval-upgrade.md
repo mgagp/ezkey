@@ -233,6 +233,11 @@ stdout (e.g. `🍻 orval v8.7.0`).
 Agents executing a ladder step should run the **standard** sequence autonomously and record
 `npm ls orval` output plus gate results in the TSP evidence table.
 
+When the clean-start stack (Admin API + Demo Device) is reachable, also run
+`npm run test:browser` and record pass count (5 scenarios in `e2e/admin-ui-browser.spec.ts`).
+This is optional for T1 per gate tier but is the **agent default** on this branch unless the stack
+is down.
+
 ### E. Docker-equivalent validation (required at checkpoints + final)
 
 | # | Command | Pass criterion |

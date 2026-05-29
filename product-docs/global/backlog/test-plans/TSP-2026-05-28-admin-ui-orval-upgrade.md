@@ -30,7 +30,7 @@ must satisfy the gates applicable to its tier before merge.
 | Tier | Steps | Automated gates | Manual smoke | Playwright |
 |------|-------|-----------------|--------------|------------|
 | **T0 — Baseline** | Phase 0 | Full automated | Optional | No |
-| **T1 — Low risk** | 8.5.3, 8.6.x, 8.7.0, 8.8.x, 8.9.x | Full automated | Abbreviated | No |
+| **T1 — Low risk** | 8.5.3, 8.6.x, 8.7.0, 8.8.x, 8.9.x | Full automated | Abbreviated | Optional (run when stack up; agent default on branch) |
 | **T2 — Checkpoint** | 8.10.0, 8.11.0 | Full automated + Docker path | Full | **Required** |
 | **T3 — Final** | 8.12.x, 8.13.0 | Full automated + Cloudflare verify | Full | **Required** (8.13) |
 
@@ -65,6 +65,7 @@ count from Vitest.
 | G2 | `npm run lint` | Exit 0 |
 | G3 | `npm run build` | Exit 0; `tsc -b && vite build` |
 | G4 | `npm test` | All Vitest tests pass |
+| G4b | `npm run test:browser` | 5/5 Playwright scenarios pass (when stack up; agent default on branch) |
 
 **Docker-equivalent (required T2 + T3):**
 
@@ -237,6 +238,13 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 - `npm ls orval` → `orval@8.7.0`; generate banner `v8.7.0`; 54 tests pass
 - Notes: TB/TSP amended with reproducible validation sequence for agent autonomy
 
+### Step 5 — Orval 8.8.0 (2026-05-28)
+
+- Orval: `8.8.0`; canonical G0–G4 pass; 54 Vitest tests
+- Playwright: **5/5 passed** (~12.8s) — agent-autonomous run with stack up
+- App files changed: none — lockfile only
+- Notes: step 6 target **8.8.1** (8.8.x patch stabilize)
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
@@ -246,7 +254,7 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 | 2 | 8.6.1 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
 | 3 | 8.6.2 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
 | 4 | 8.7.0 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
-| 5 | 8.8.1 | | | | | |
+| 5 | 8.8.0 | 2026-05-28 | pending | pass | deferred | **5/5 pass** |
 | 6 | 8.9.1 | | | | | |
 | 7 | 8.10.0 | | | | | |
 | 8 | 8.11.0 | | | | | |
