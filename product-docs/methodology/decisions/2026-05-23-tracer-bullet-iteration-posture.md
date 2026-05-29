@@ -74,5 +74,5 @@ from drifting into an iterative framing by default.
 ## Related documents
 
 - [tracer-bullet-method.md](../tracer-bullet-method.md)
-- [tracer-bullet-promote skill](../../../.cursor/skills/tracer-bullet-promote/SKILL.md)
-- [design-principles.md](../../global/design-principles.md)
+- `tracer-bullet-promote` skill in the source project skill set
+- source-project `design-principles.md` companion canon

@@ -81,4 +81,4 @@ When persistence effects span components, describe how consistency is maintained
 - [Functional flows](functional-flows.md) that produce these persistence effects.
 - [Mapping matrices](api-and-boundary-mappings.md) that translate persisted state across boundaries.
 - [Exception and error model](exception-and-error-model.md) for state conflicts and persistence failures.
-- [Global lifecycle model](../../global/lifecycle-model.md) when the entity is part of the product-wide lifecycle.
+- the global lifecycle model when the entity is part of the product-wide lifecycle.

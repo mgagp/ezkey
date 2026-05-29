@@ -52,5 +52,5 @@ skill files.
 
 - [`../ai-collaboration-model.md`](../ai-collaboration-model.md)
 - [`../README.md`](../README.md)
-- [`../../site/README.md`](../../site/README.md)
-- [`../../../.cursor/skills/README.md`](../../../.cursor/skills/README.md)
+- methodology site pipeline README
+- source-repo `.cursor/skills/README.md`

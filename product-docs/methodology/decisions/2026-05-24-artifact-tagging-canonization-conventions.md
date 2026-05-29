@@ -83,7 +83,7 @@ verification.
 ## Consequences
 
 - Updated [`nomenclature.md`](../nomenclature.md) — sections for F, H, I, J, K, and audit checklist.
-- Updated [`../../global/vision/README.md`](../../global/vision/README.md) — section E.
+- Updated `product-docs/global/vision/README.md` — section E.
 - Updated [`../../templates/backlog-idea.template.md`](../../templates/backlog-idea.template.md) — tag hints + optional automation section.
 - `I-2026-0016` closed as `done`.
 - Legacy backlog entries with non-canonical phase/component tags remain valid history; normalize
@@ -92,6 +92,6 @@ verification.
 ## Related documents
 
 - [`../nomenclature.md`](../nomenclature.md)
-- [`../../global/backlog/ideas/I-2026-0016-methodology-hygiene-followups.md`](../../global/backlog/ideas/I-2026-0016-methodology-hygiene-followups.md)
+- `product-docs/global/backlog/ideas/I-2026-0016-methodology-hygiene-followups.md`
 - [`../blitz-intake-pattern.md`](../blitz-intake-pattern.md)
-- [`../../global/roadmap.md`](../../global/roadmap.md)
+- `product-docs/global/roadmap.md`

@@ -78,6 +78,6 @@ manual adoption shows repeated friction that justifies additional automation.
 
 - [../methodological-values.md](../methodological-values.md)
 - [../README.md](../README.md)
-- [../../site/README.md](../../site/README.md)
+- methodology site pipeline README
 - [../../site/build.js](../../site/build.js)
-- [../../../.cursor/skills/README.md](../../../.cursor/skills/README.md)
+- source-repo `.cursor/skills/README.md`

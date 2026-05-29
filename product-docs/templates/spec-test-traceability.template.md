@@ -1,6 +1,7 @@
 # Spec-Test Traceability — `<scope>`
 
-> Template for `global/spec-test-traceability.md` and component-level `spec-test-traceability.md`. Remove this blockquote on instantiation.
+> Template for a product-wide or component-level `spec-test-traceability.md`. Remove this
+> blockquote on instantiation.
 
 ## Intent
 
@@ -10,7 +11,8 @@ One short paragraph describing what this traceability covers and how it supports
 
 The traceability links four artifacts:
 
-1. **Feature** — an entry in [`../../global/features-and-phases.md`](../../global/features-and-phases.md) (or the global catalog for a global matrix).
+1. **Feature** — an entry in the product feature catalog (or the global catalog for a global
+    matrix).
 2. **Spec** — the artifact that defines expected behavior (OpenAPI operation, internal spec section, workflow document, mapping matrix).
 3. **Acceptance criteria** — observable criteria from the feature brief or workflow document.
 4. **Tests** — the suites that verify the acceptance criteria.
@@ -25,9 +27,9 @@ flowchart LR
 
 ## Traceability Matrix
 
-| Feature | Spec | Acceptance criterion | Test suite | Test identifier | Status |
-|---------|------|----------------------|------------|-----------------|--------|
-| [`<feature-id>`](../../global/features-and-phases.md#<feature-id>) | [`<spec link>`](#) | `<observable criterion>` | `<suite>` | `<test id>` | `planned` / `implemented` |
+| Feature        | Spec          | Acceptance criterion     | Test suite | Test identifier | Status                    |
+| -------------- | ------------- | ------------------------ | ---------- | --------------- | ------------------------- |
+| `<feature-id>` | `<spec link>` | `<observable criterion>` | `<suite>`  | `<test id>`     | `planned` / `implemented` |
 
 ## Coverage Summary
 
@@ -49,6 +51,6 @@ List unresolved gaps with an owner and a proposed next step. Remove entries when
 
 ## Related Documents
 
-- [Features and phases](../../global/features-and-phases.md).
-- [Roadmap](../../global/roadmap.md).
-- Component-level matrices linked from [components index](../../components/README.md).
+- product feature catalog
+- product roadmap
+- component-level matrices

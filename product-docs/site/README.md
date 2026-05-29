@@ -17,6 +17,15 @@ Serves four public-facing sources:
 - `skills/` — a derived public skills layer generated from `.cursor/skills/` during site preparation.
 - `glossary.md` — single-file glossary.
 
+Publication boundary:
+
+- Publish the method, not the source project's active delivery corpus.
+- Keep instantiated Ezkey delivery artifacts under `product-docs/global/`, `product-docs/components/`,
+  and editor-local `.cursor/` assets out of the public explorer.
+- Public docs may mention source-project hooks as context, but they must not depend on those
+  surfaces as live public links.
+- The build audits public Markdown links and fails if a published document escapes that boundary.
+
 The next intended public-distribution extension is a generated **download pack** so the same site
 pipeline can produce both the hosted explorer and a local adoption archive.
 

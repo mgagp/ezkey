@@ -141,14 +141,17 @@ examples, and issue↔branch linking steps: [`github-issues-workflow.md`](github
 Do not mix these destinations. Each scope has one canonical home:
 
 | Scope | Canonical location | Use for |
-|-------|-------------------|---------|
-| **Global product / architecture** | [`../global/architecture-decisions.md`](../global/architecture-decisions.md) | ADRs that apply across modules (protocol, lifecycle, error model, roadmap phase changes). |
+| ----- | ------------------ | ------- |
+| **Global product / architecture** | `product-docs/global/architecture-decisions.md` | ADRs that apply across modules (protocol, lifecycle, error model, roadmap phase changes). |
 | **Component pack** | `product-docs/components/<pack>/design-decisions.md` | ADRs scoped to one module (Admin API, mobile, Admin UI, …). |
 | **Methodology / process** | [`decisions/YYYY-MM-DD-<slug>.md`](decisions/) | Workflow conventions, artifact formats, collaboration rules — not product behavior. |
 
 There is **no** global `design-decisions.md`. That filename is **component-scoped only**.
 
-When a vision note (`V-*`) or tracer bullet (`TB-*`) reaches `promoted`, its durable substance must live in one or more of the destinations above (or in other global canon such as [`../global/design-principles.md`](../global/design-principles.md), [`../global/features-and-phases.md`](../global/features-and-phases.md), operator guides, or component design notes) — not only inside the orientation artifact.
+When a vision note (`V-*`) or tracer bullet (`TB-*`) reaches `promoted`, its durable substance
+must live in one or more of the destinations above (or in other global canon such as
+`product-docs/global/design-principles.md`, `product-docs/global/features-and-phases.md`,
+operator guides, or component design notes) — not only inside the orientation artifact.
 
 ## Progression markers (backlog and vision metadata)
 
@@ -184,7 +187,7 @@ Rules:
 - Use stable, short, lowercase tags.
 - Prefer tags that represent owned boundaries, not transient implementation details.
 - Adding a **new** tag requires updating the project's documented vocabulary **and** any matching
-	`component:*` labels when GitHub Issues are in use.
+  `component:*` labels when GitHub Issues are in use.
 - Prefer the **smallest accurate set** (typically one to four tags).
 
 Ezkey's concrete component tag vocabulary lives in

@@ -84,5 +84,5 @@ Short list of persistence effects. Link to [`data-model-and-persistence.md`](dat
 
 ## Related Documents
 
-- Feature entries in [`../../global/features-and-phases.md`](../../global/features-and-phases.md).
+- feature entries in the product feature catalog.
 - Spec and test entries in [`spec-test-traceability.md`](spec-test-traceability.md).

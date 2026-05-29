@@ -29,9 +29,9 @@ This document is the canonical source for the vocabulary used across the product
 ## Cross-Reference Conventions
 
 - Use **relative markdown links** for cross-references inside this corpus.
-- When linking to a module or a code file, use full workspace paths in markdown links: `[ezkey-admin-ui/README.md](../ezkey-admin-ui/README.md)`.
-- When referencing a feature or milestone, link to its entry in [`global/features-and-phases.md`](global/features-and-phases.md).
-- When referencing an architecture decision, link to the anchor in [`global/architecture-decisions.md`](global/architecture-decisions.md).
+- When linking to a module or a code file in a project-local corpus, use its workspace-relative path.
+- When referencing a feature or milestone, link to its entry in the project's feature catalog.
+- When referencing an architecture decision, link to the anchor in the project's architecture decision log.
 
 ## Mermaid Conventions
 

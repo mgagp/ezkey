@@ -69,5 +69,5 @@ alphabetical order.
 
 - [../README.md](../README.md)
 - [../../templates/README.md](../../templates/README.md)
-- [../../../AGENTS.md](../../../AGENTS.md)
+- repo-wide `AGENTS.md`
 - [../../site/server.js](../../site/server.js)

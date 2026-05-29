@@ -66,6 +66,21 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 - Project-specific taxonomies, examples, and terminology belong in `case-study-ezkey.md` when they
   clarify the method without making the generic docs carry project-local coupling.
 
+## Publication boundary
+
+When this methodology is published as a standalone product, publish the **method** and its
+teaching surfaces, not the source project's active delivery corpus.
+
+- Publishable by default: `methodology/`, `templates/`, derived public `skills/`, `glossary.md`,
+  rich views, and methodology decisions explicitly marked `public: true`.
+- Not publishable by default: instantiated Ezkey delivery artifacts under `product-docs/global/`,
+  component implementation packs under `product-docs/components/`, backlog / roadmap / vision
+  execution records, and editor-local `.cursor/` assets.
+- If a project artifact contains a reusable methodological lesson, promote or restate that lesson in
+  a method-level document or decision instead of publishing the project artifact itself.
+- Public methodology docs may reference the source project as a case study, but they must remain
+  navigable and understandable without access to Ezkey-only working documents.
+
 ## Core principle
 
 Use the lightest process that still preserves:
@@ -91,7 +106,10 @@ sequence.
 If the full method still feels too large for the current topic, use
 [`minimum-viable-method.md`](minimum-viable-method.md) as the lightweight front door.
 
-Apply [`../global/design-principles.md`](../global/design-principles.md) when judging scope — especially **#1**, **#2**, and **#14 (beautiful problems)**: defer scale/performance sophistication until evidence shows the problem is real and earned by adoption, not hypothetical.
+Apply the source project's product design principles when judging scope. In Ezkey, that companion
+canon lives in `product-docs/global/design-principles.md` — especially **#1**, **#2**, and **#14
+(beautiful problems)**: defer scale/performance sophistication until evidence shows the problem is
+real and earned by adoption, not hypothetical.
 
 Apply [`methodological-values.md`](methodological-values.md) when judging the workflow itself:
 whether a gate is proportional, whether an artifact deserves to be living, whether a skill should
@@ -104,8 +122,13 @@ source project, the most relevant project-local companions live under `../global
 `../components/`.
 
 For example, Admin UI role visibility and **deployment operator geometries** are documented in
-[`../global/operator-alignment-guide.md`](../global/operator-alignment-guide.md), with related
-cross-cutting artifacts in [`../global/admin-ui-paginated-screens-matrix.md`](../global/admin-ui-paginated-screens-matrix.md), [`../global/rate-limit-baseline-policy.md`](../global/rate-limit-baseline-policy.md), [`../global/ezkey-system-identity-sensitivity-report.md`](../global/ezkey-system-identity-sensitivity-report.md), and [`../global/sql-business-limits-policy.md`](../global/sql-business-limits-policy.md). (Former [`api-controllers-registry.md`](../global/api-controllers-registry.md) downscoped — see [`decisions/2026-05-24-controllers-registry-downscope.md`](decisions/2026-05-24-controllers-registry-downscope.md).)
+`product-docs/global/operator-alignment-guide.md`, with related cross-cutting artifacts in
+`product-docs/global/admin-ui-paginated-screens-matrix.md`,
+`product-docs/global/rate-limit-baseline-policy.md`,
+`product-docs/global/ezkey-system-identity-sensitivity-report.md`, and
+`product-docs/global/sql-business-limits-policy.md`. (Former
+`product-docs/global/api-controllers-registry.md` downscoped — see
+[`decisions/2026-05-24-controllers-registry-downscope.md`](decisions/2026-05-24-controllers-registry-downscope.md).)
 
 ## Rich view
 

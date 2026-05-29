@@ -70,6 +70,29 @@ alphabetical ordering when a stable conceptual order exists.
   bucket and preserve the established relative order unless a methodology decision explicitly
   changes the navigation model.
 
+## Methodology publication boundary
+
+`product-docs/` plays a dual role in this repository:
+
+- official Ezkey methodology and working documentation system,
+- publishable methodology product for the public explorer and download pack.
+
+When working on the public methodology surface, keep that boundary explicit:
+
+- Publish method-level canon only: `product-docs/methodology/`, `product-docs/templates/`,
+  derived public `skills/`, `glossary.md`, rich views, and methodology decisions explicitly marked
+  `public: true`.
+- Do **not** publish regular Ezkey delivery artifacts from `product-docs/global/`,
+  `product-docs/components/`, backlog / roadmap / vision execution records, or editor-local
+  `.cursor/` assets as part of the methodology product.
+- Public methodology docs may mention source-project hooks, but they must not depend on those
+  surfaces as live public links.
+- If a source-project artifact contains a reusable methodological lesson, restate or promote that
+  lesson into method-level canon instead of broadening the publication surface ad hoc.
+
+Treat linkability as part of this rule: a public document should not route readers into a
+non-published Ezkey working surface.
+
 When a task involves **entity relationships, lifecycle semantics, operational eligibility, parent-child propagation, reversible vs irreversible actions, or operator analysis across multiple entity types**, it is also mandatory to read **`docs/LIFECYCLE_GOVERNANCE.md`** before proposing a design, plan, or implementation direction. Treat that document as the source of truth for how Ezkey models:
 
 - entity hierarchy and cross-entity relationships,

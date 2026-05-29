@@ -176,4 +176,4 @@ When propagating blitz authorship to canonical artifacts (`I-*`, `V-*`, `TB-*`),
 - [`session-start-guide.md`](session-start-guide.md) — when to choose the blitz intake variant.
 - [`nomenclature.md`](nomenclature.md) — IDs and filename conventions.
 - [`legacy-retrofit-workflow.md`](legacy-retrofit-workflow.md) — when a captured item is a retrofit candidate.
-- [`../../.cursor/rules/voice-dictation.mdc`](../../.cursor/rules/voice-dictation.mdc) — voice-dictation phonetic normalization.
+- `../../.cursor/rules/voice-dictation.mdc` — voice-dictation phonetic normalization in the source project.

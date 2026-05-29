@@ -152,5 +152,5 @@ component truth, but retract the idea that they are an independent parallel work
 - [`../methodological-values.md`](../methodological-values.md)
 - [`../workflow-overview.md`](../workflow-overview.md)
 - [`../analysis-and-design-canon.md`](../analysis-and-design-canon.md)
-- [`../../components/README.md`](../../components/README.md)
-- [`../../../.cursor/skills/component-design-pack/SKILL.md`](../../../.cursor/skills/component-design-pack/SKILL.md)
+- `product-docs/components/README.md`
+- `component-design-pack` skill in the source project skill set

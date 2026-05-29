@@ -65,6 +65,12 @@ export const CORPUS = [
   { key: 'glossary',    label: 'Glossary',    kind: 'file', abs: path.join(DOCS_ROOT, 'glossary.md') },
 ];
 
+const EXCLUDED_PUBLIC_SOURCE_ROOTS = [
+  { label: 'source-project global canon', abs: path.join(DOCS_ROOT, 'global') },
+  { label: 'source-project component packs', abs: path.join(DOCS_ROOT, 'components') },
+  { label: 'editor-local assets', abs: path.join(PROJECT_ROOT, '.cursor') },
+];
+
 const PUBLIC_METHODOLOGY_SEQUENCE = [
   'README',
   'minimum-viable-method',
@@ -220,6 +226,108 @@ function publicUiRank(entry, urlPrefix) {
 function isReadmeEntry(entry) {
   return entry.key.toLowerCase() === 'readme.md' || entry.key.toLowerCase() === 'readme';
 }
+
+function collectFileNodes(nodes, acc = []) {
+  for (const node of nodes) {
+    if (node.kind === 'file') {
+      acc.push(node.path);
+      continue;
+    }
+    if (node.children) collectFileNodes(node.children, acc);
+  }
+  return acc;
+}
+
+function stripFencedCodeBlocks(markdown) {
+  return markdown.replace(/```[\s\S]*?```/g, '');
+}
+
+function extractInlineLinks(markdown) {
+  const links = [];
+  const re = /\[[^\]]+\]\(([^)]+)\)/g;
+  let match;
+  while ((match = re.exec(markdown)) !== null) {
+    const rawHref = match[1].trim();
+    const href = rawHref.replace(/^<|>$/g, '').split(/\s+"/)[0];
+    links.push(href);
+  }
+  return links;
+}
+
+function excludedPublicRootFor(absTarget) {
+  return EXCLUDED_PUBLIC_SOURCE_ROOTS.find(
+    (root) => absTarget === root.abs || absTarget.startsWith(root.abs + path.sep),
+  );
+}
+
+export function auditPublicPublicationBoundary(corpus = CORPUS) {
+  const publicTree = filterTree(buildTree(corpus));
+  const publicFiles = collectFileNodes(publicTree);
+  const issues = [];
+
+  for (const urlPath of publicFiles) {
+    const abs = resolveCorpusPath(urlPath, corpus);
+    if (!abs || !fs.existsSync(abs)) continue;
+
+    const parsed = matter(fs.readFileSync(abs, 'utf8'));
+    const markdown = stripFencedCodeBlocks(parsed.content || '');
+
+    for (const href of extractInlineLinks(markdown)) {
+      if (/^(https?:|mailto:|tel:|#|\/\/)/i.test(href)) continue;
+      if (href.startsWith('/')) continue;
+
+      const hashIndex = href.indexOf('#');
+      const pathPart = hashIndex >= 0 ? href.slice(0, hashIndex) : href;
+      if (!pathPart) continue;
+
+      const normalizedPath = pathPart.replace(/\\/g, '/');
+      if (/(^|\/)(global|components|\.cursor)\//.test(normalizedPath)) {
+        issues.push(`${urlPath} -> ${href} escapes the public publication boundary`);
+        continue;
+      }
+
+      let target;
+      try {
+        target = path.resolve(path.dirname(abs), pathPart);
+      } catch {
+        continue;
+      }
+
+      const excludedRoot = excludedPublicRootFor(target);
+      if (excludedRoot) {
+        issues.push(`${urlPath} -> ${href} points to ${excludedRoot.label}`);
+        continue;
+      }
+
+      const ext = path.extname(target).toLowerCase();
+      if (!fs.existsSync(target)) continue;
+      if (ext === '.md' && !toCorpusUrlPath(target, corpus)) {
+        issues.push(`${urlPath} -> ${href} is not published in the public corpus`);
+        continue;
+      }
+      if (ext === '.html' && !toCorpusAssetPath(target, corpus)) {
+        issues.push(`${urlPath} -> ${href} is not published as a public asset`);
+      }
+    }
+  }
+
+  if (issues.length > 0) {
+    throw new Error(
+      `Public methodology publication boundary audit failed:\n- ${issues.join('\n- ')}`,
+    );
+  }
+}
+
+export function rebuildGeneratedPublicArtifacts() {
+  prepareSkillsPublicCorpus();
+  auditPublicPublicationBoundary();
+  prepareDownloadPack({
+    tree: filterTree(buildTree()),
+    resolveCorpusPath,
+  });
+}
+
+rebuildGeneratedPublicArtifacts();
 
 // ── Pure: path resolution ─────────────────────────────────────────────────────
 
