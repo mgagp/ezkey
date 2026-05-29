@@ -6,10 +6,11 @@ This is a **local-only** developer tool. It is not deployed and not part of any 
 
 ## Scope (Phase 1)
 
-Serves three sources from `product-docs/`:
+Serves four public-facing sources:
 
 - `methodology/` — the full methodology pack (workflow, values, tracer bullets, quality gates, …).
 - `templates/` — artifact templates (vision notes, backlog ideas, tracer bullet briefs, …).
+- `skills/` — a derived public skills layer generated from `.cursor/skills/` during site preparation.
 - `glossary.md` — single-file glossary.
 
 ## Quick start
@@ -36,3 +37,5 @@ This is **Phase 1** (MVP visual foundation). See [.github/prompts/plan-methodolo
 ## Architecture note
 
 `server.js` exposes pure functions (`buildTree`, `renderDoc`, `extractToc`) on top of which Express is a thin transport layer. This keeps the future static pre-build (Phase 4) trivial: a `build.js` script can reuse the same functions without Express.
+
+Before the site serves or builds the corpus, it also prepares a small derived public skills layer under `product-docs/site/.generated/skills/`. The source of truth remains `.cursor/skills/`; the generated layer exists only to improve site discoverability and public explanation.

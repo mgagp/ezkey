@@ -84,6 +84,10 @@ For Admin UI, role visibility, and **deployment operator geometries**, read [`..
 For a visual companion to this methodology pack — workflow diagram, artifact types, parallel lanes,
 naming conventions, and skills reference — open [`view/index.html`](view/index.html).
 
+The public methodology explorer also packages a derived **Skills** section sourced from
+`.cursor/skills/`, so the collaboration mechanics stay discoverable without making the editor-local
+skill files the public corpus of record.
+
 See [`decisions/2026-05-24-rich-views.md`](decisions/2026-05-24-rich-views.md) for the rationale
 and convention governing rich views across the whole documentation corpus.
 

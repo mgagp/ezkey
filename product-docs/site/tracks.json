@@ -62,6 +62,10 @@
         {
           "file": "methodology/ai-collaboration-model.md",
           "narration": "How humans and AI work as peers in this method: bounded context, named skills, explicit handoffs."
+        },
+        {
+          "file": "skills/README.md",
+          "narration": "Browse the derived public skills layer: common contract, sequence map, and per-skill summary/detail pages generated from the canonical skill sources."
         }
       ]
     },

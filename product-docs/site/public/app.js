@@ -57,6 +57,7 @@ let phasesData = { phases: [], files: {} };
 let phasesById = new Map();
 let tracksData = { tracks: [] };
 let glossaryData = { entries: [] };
+let initialHomeHtml = '';
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
@@ -92,6 +93,7 @@ async function boot() {
     setupPresentationShortcuts();
     setupSearchButton();
     setupThemeToggle();
+    initialHomeHtml = els.doc.innerHTML;
     initWizard({
       tracks: tracksData.tracks || [],
       onTrackChange: (track) => {
@@ -401,14 +403,18 @@ function showHome() {
   }
   // Restore home content if missing
   if (!els.home()) {
-    els.doc.innerHTML = '';
-    const tpl = `
-      <div id="home" class="home">
-        <h1>ezkey · methodology</h1>
-        <p class="lede">Pick a document on the left to start exploring.</p>
-        <p class="home-shortcut">Or jump straight to <a href="#/methodology/README.md">methodology/README.md</a>.</p>
-      </div>`;
-    els.doc.innerHTML = tpl;
+    if (initialHomeHtml) {
+      els.doc.innerHTML = initialHomeHtml;
+    } else {
+      els.doc.innerHTML = '';
+      const tpl = `
+        <div id="home" class="home">
+          <h1>ezkey · methodology</h1>
+          <p class="lede">Pick a document on the left to start exploring.</p>
+          <p class="home-shortcut">Or jump straight to <a href="#/methodology/README.md">methodology/README.md</a> · <a href="#/skills/README.md">skills/README.md</a>.</p>
+        </div>`;
+      els.doc.innerHTML = tpl;
+    }
   }
   document.title = 'ezkey · methodology';
   teardownScrollSpy();

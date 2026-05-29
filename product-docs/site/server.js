@@ -19,12 +19,15 @@ import { gfmHeadingId } from 'marked-gfm-heading-id';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
 import { buildCorpusIndices, buildGlossary, pickTitle } from './indices.js';
+import { GENERATED_SKILLS_DIR, prepareSkillsPublicCorpus } from './skillsPublic.js';
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const DOCS_ROOT = path.join(PROJECT_ROOT, 'product-docs');
+
+prepareSkillsPublicCorpus();
 
 // ── Phase 2 corpus metadata (phases / tracks / glossary) ─────────────────────
 
@@ -54,6 +57,7 @@ export function phaseForPath(urlPath) {
 export const CORPUS = [
   { key: 'methodology', label: 'Methodology', kind: 'dir',  abs: path.join(DOCS_ROOT, 'methodology') },
   { key: 'templates',   label: 'Templates',   kind: 'dir',  abs: path.join(DOCS_ROOT, 'templates')   },
+  { key: 'skills',      label: 'Skills',      kind: 'dir',  abs: GENERATED_SKILLS_DIR },
   { key: 'glossary',    label: 'Glossary',    kind: 'file', abs: path.join(DOCS_ROOT, 'glossary.md') },
 ];
 
