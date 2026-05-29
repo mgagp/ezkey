@@ -13,6 +13,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "express": "^4.21.2",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.10.0",

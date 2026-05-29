@@ -16,6 +16,8 @@
  *   │   ├── glossary.json
  *   │   ├── search-index.json
  *   │   └── doc/<urlPath>.json
+ *   ├── downloads/
+ *   │   └── ezkey-methodology-pack.zip
  *   ├── styles.css + *.js (mirrored from public/)
  *   ├── sitemap.xml
  *   └── robots.txt
@@ -35,7 +37,9 @@ import {
   toCorpusUrlPath,
   CORPUS,
   rebuildCorpusIndices,
+  rebuildGeneratedPublicArtifacts,
 } from './server.js';
+import { GENERATED_DOWNLOADS_DIR } from './downloadsPack.js';
 import { buildGlossary } from './indices.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -256,9 +260,11 @@ function build() {
   console.log(`[build] output → ${DIST_DIR}`);
   rmrf(DIST_DIR);
   mkdirp(DIST_DIR);
+  rebuildGeneratedPublicArtifacts();
 
   // 1. Mirror public/ assets (everything except index.html).
   copyTree(PUBLIC_DIR, DIST_DIR, { skipIndexHtml: true });
+  copyTree(GENERATED_DOWNLOADS_DIR, path.join(DIST_DIR, 'downloads'));
   for (const supplement of publicSupplementDirs()) {
     copyTree(supplement.abs, path.join(DIST_DIR, supplement.mountPath.replace(/^\//, '')));
   }

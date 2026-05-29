@@ -19,6 +19,7 @@ import { gfmHeadingId } from 'marked-gfm-heading-id';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
 import { buildCorpusIndices, buildGlossary, pickTitle } from './indices.js';
+import { GENERATED_DOWNLOADS_DIR, prepareDownloadPack } from './downloadsPack.js';
 import {
   GENERATED_SKILLS_DIR,
   prepareSkillsPublicCorpus,
@@ -353,6 +354,10 @@ export function auditPublicPublicationBoundary(corpus = CORPUS) {
 export function rebuildGeneratedPublicArtifacts() {
   prepareSkillsPublicCorpus();
   auditPublicPublicationBoundary();
+  prepareDownloadPack({
+    tree: filterTree(buildTree()),
+    resolveCorpusPath,
+  });
 }
 
 rebuildGeneratedPublicArtifacts();
@@ -568,6 +573,7 @@ const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4321;
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/downloads', express.static(GENERATED_DOWNLOADS_DIR));
 for (const supplement of publicSupplementDirs()) {
   app.use(supplement.mountPath, express.static(supplement.abs));
 }

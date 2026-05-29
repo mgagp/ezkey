@@ -29,6 +29,9 @@ Publication boundary:
 The next intended public-distribution extension is a generated **download pack** so the same site
 pipeline can produce both the hosted explorer and a local adoption archive.
 
+The generated archive lives under `product-docs/site/.generated/downloads/` during local build
+preparation and under `product-docs/site/dist/downloads/` in the static output.
+
 ## Quick start
 
 ```bash
