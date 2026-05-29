@@ -176,12 +176,26 @@ Recorded during the Admin UI npm audit that led to Orval pin:
   that session.
 - **Decision:** defer Orval; create I-* / TB-* / TSP-* migration program.
 
+### Step 1 — Orval 8.5.3 (2026-05-28)
+
+- Branch: `feature/175-i-2026-05-28-admin-ui-orval-upgrade`
+- Orval: `8.5.3` (exact pin in `package.json`)
+- App files changed: none — lockfile only
+- Commands:
+  - [x] G1 `generate:api` — pass (orval v8.5.3)
+  - [x] G2 `lint` — pass
+  - [x] G3 `build` — pass
+  - [x] G4 `npm test` — 8 files, 54 tests pass
+- Manual smoke: deferred (T1 tier; optional abbreviated)
+- Playwright: skipped (T1)
+- Notes: patch-only bump from `~8.5.2`; validates migration playbook before 8.6.x
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
 |------|---------|------|-----|-------|--------|------------|
-| 0 | baseline | | | | | |
-| 1 | 8.5.3 | | | | | |
+| 0 | baseline | 2026-05-28 | — | audit recorded | — | — |
+| 1 | 8.5.3 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
 | 2 | 8.6.0 | | | | | |
 | 3 | 8.6.2 | | | | | |
 | 4 | 8.7.0 | | | | | |
