@@ -38,11 +38,30 @@ must satisfy the gates applicable to its tier before merge.
 
 ## Automated gates (required every step)
 
-Run from `ezkey-admin-ui/` **after** bumping Orval and running `npm install`:
+Run from `ezkey-admin-ui/` **after** bumping Orval and syncing dependencies.
+
+### Canonical sequence (agent-autonomous default)
+
+Execute in order; abort the step if any command fails:
+
+```bash
+cd ezkey-admin-ui
+npm install
+npm ls orval
+npm run generate:api
+npm run lint
+npm run build
+npm test
+```
+
+Record in evidence: Orval version from `npm ls orval`, Orval banner from `generate:api`, and test
+count from Vitest.
 
 | # | Command | Pass criterion |
 |---|---------|----------------|
-| G1 | `npm run generate:api` | Exit 0; no Orval errors |
+| G0 | `npm install` | Lock applied; no blocking errors |
+| G0b | `npm ls orval` | Version matches `package.json` pin |
+| G1 | `npm run generate:api` | Exit 0; banner shows target version |
 | G2 | `npm run lint` | Exit 0 |
 | G3 | `npm run build` | Exit 0; `tsc -b && vite build` |
 | G4 | `npm test` | All Vitest tests pass |
@@ -211,6 +230,13 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 - Commands: G1–G4 all pass (54 tests)
 - Notes: completes 8.6.x line; next step **8.7.0**
 
+### Step 4 — Orval 8.7.0 (2026-05-28)
+
+- Orval: `8.7.0` (canonical sequence G0–G4 executed by agent)
+- App files changed: none — lockfile only
+- `npm ls orval` → `orval@8.7.0`; generate banner `v8.7.0`; 54 tests pass
+- Notes: TB/TSP amended with reproducible validation sequence for agent autonomy
+
 ### Step evidence (fill as PRs merge)
 
 | Step | Version | Date | PR | G1–G4 | Manual | Playwright |
@@ -219,7 +245,7 @@ Recorded during the Admin UI npm audit that led to Orval pin:
 | 1 | 8.5.3 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
 | 2 | 8.6.1 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
 | 3 | 8.6.2 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
-| 4 | 8.7.0 | | | | | |
+| 4 | 8.7.0 | 2026-05-28 | pending | pass | deferred (T1) | skipped (T1) |
 | 5 | 8.8.1 | | | | | |
 | 6 | 8.9.1 | | | | | |
 | 7 | 8.10.0 | | | | | |

@@ -193,6 +193,46 @@ Run from `ezkey-admin-ui/`:
 | 3 | `npm run build` | Exit 0 (`tsc -b && vite build`) |
 | 4 | `npm test` | All Vitest tests pass |
 
+#### Reproducible validation sequence (operator and agent)
+
+Use this **ordered chain** after every Orval version bump so `node_modules`, the generator binary,
+and `src/generated/` stay aligned. Do **not** skip `npm install` or `generate:api` between steps.
+
+**Standard (local dev and agent default):**
+
+```bash
+cd ezkey-admin-ui
+npm install
+npm ls orval                    # must match package.json pin exactly
+npm run generate:api            # orval.config.ts has clean: true — no manual rm needed
+npm run lint
+npm run build
+npm test
+```
+
+**Strict reproducibility (Docker/CI parity before checkpoint or final merge):**
+
+```bash
+cd ezkey-admin-ui
+npm ci
+npm ls orval
+npm run generate:api && npm run build
+npm run lint
+npm test
+```
+
+**What to avoid**
+
+- Running `build` or `test` without a fresh `generate:api` after an Orval bump.
+- Trusting a passing build when `npm ls orval` shows a version mismatch with `package.json`.
+- Hand-deleting `src/generated/` unless debugging Orval itself (`clean: true` already wipes output).
+
+**Optional sanity check:** after `generate:api`, confirm Orval printed the expected version in
+stdout (e.g. `🍻 orval v8.7.0`).
+
+Agents executing a ladder step should run the **standard** sequence autonomously and record
+`npm ls orval` output plus gate results in the TSP evidence table.
+
 ### E. Docker-equivalent validation (required at checkpoints + final)
 
 | # | Command | Pass criterion |
