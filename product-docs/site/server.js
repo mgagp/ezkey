@@ -65,6 +65,56 @@ export const CORPUS = [
   { key: 'glossary',    label: 'Glossary',    kind: 'file', abs: path.join(DOCS_ROOT, 'glossary.md') },
 ];
 
+const PUBLIC_METHODOLOGY_SEQUENCE = [
+  'README',
+  'minimum-viable-method',
+  'workflow-overview',
+  'session-start-guide',
+  'analysis-and-design-canon',
+  'tracer-bullet-method',
+  'testing-strategy-in-workflow',
+  'quality-gates',
+  'plan-incubation-workflow',
+  'legacy-retrofit-workflow',
+  'blitz-intake-pattern',
+  'github-issues-workflow',
+  'multi-branch-workflow',
+  'methodological-values',
+  'ai-collaboration-model',
+  'nomenclature',
+  'case-study-ezkey',
+  'decisions',
+];
+
+const PUBLIC_TEMPLATE_SEQUENCE = [
+  'README',
+  'vision-note.template',
+  'backlog-idea.template',
+  'tracer-bullet-brief.template',
+  'test-plan-slice.template',
+  'legacy-plan-retrofit.template',
+  'feature-brief.template',
+  'component-design-brief.template',
+  'functional-workflow.template',
+  'decision-table.template',
+  'mapping-matrix.template',
+  'error-and-exception.template',
+  'persistence-and-lifecycle.template',
+  'screens-and-wireflow.template',
+  'spec-test-traceability.template',
+  'architecture-decision.template',
+  'product-intent.template',
+  'roadmap.template',
+];
+
+const PUBLIC_METHODOLOGY_RANK = new Map(
+  PUBLIC_METHODOLOGY_SEQUENCE.map((name, index) => [name, index]),
+);
+
+const PUBLIC_TEMPLATE_RANK = new Map(
+  PUBLIC_TEMPLATE_SEQUENCE.map((name, index) => [name, index]),
+);
+
 // ── Pure: tree ────────────────────────────────────────────────────────────────
 
 /**
@@ -102,8 +152,7 @@ export function buildTree(corpus = CORPUS) {
 
 function walkDir(absDir, urlPrefix) {
   const entries = fs.readdirSync(absDir, { withFileTypes: true });
-  const dirs = [];
-  const files = [];
+  const nodes = [];
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue;
     const abs = path.join(absDir, entry.name);
@@ -111,12 +160,12 @@ function walkDir(absDir, urlPrefix) {
     if (entry.isDirectory()) {
       const children = walkDir(abs, urlPath);
       if (children.length > 0) {
-        dirs.push({ key: entry.name, label: entry.name, kind: 'dir', path: urlPath, children });
+        nodes.push({ key: entry.name, label: entry.name, kind: 'dir', path: urlPath, children });
       }
     } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
       let mtime = null;
       try { mtime = fs.statSync(abs).mtime.toISOString(); } catch { /* ignore */ }
-      files.push({
+      nodes.push({
         key: entry.name,
         label: entry.name.replace(/\.md$/i, ''),
         kind: 'file',
@@ -125,19 +174,51 @@ function walkDir(absDir, urlPrefix) {
       });
     }
   }
-  dirs.sort((a, b) => a.label.localeCompare(b.label));
-  files.sort((a, b) => compareFilesForUiOrder(a, b, urlPrefix));
-  return [...dirs, ...files];
+  nodes.sort((a, b) => compareEntriesForUiOrder(a, b, urlPrefix));
+  return nodes;
 }
 
-function compareFilesForUiOrder(left, right, urlPrefix) {
-  if (urlPrefix === 'skills') {
-    const leftBase = left.key.replace(/\.md$/i, '');
-    const rightBase = right.key.replace(/\.md$/i, '');
-    const rankDiff = publicSkillRank(leftBase) - publicSkillRank(rightBase);
-    if (rankDiff !== 0) return rankDiff;
+function compareEntriesForUiOrder(left, right, urlPrefix) {
+  const leftRank = publicUiRank(left, urlPrefix);
+  const rightRank = publicUiRank(right, urlPrefix);
+  if (leftRank !== rightRank) return leftRank - rightRank;
+
+  if (left.kind !== right.kind) {
+    if (left.kind === 'file' && isReadmeEntry(left)) return -1;
+    if (right.kind === 'file' && isReadmeEntry(right)) return 1;
   }
+
+  if (left.kind !== right.kind) {
+    return left.kind === 'dir' ? -1 : 1;
+  }
+
   return left.label.localeCompare(right.label);
+}
+
+function publicUiRank(entry, urlPrefix) {
+  const entryName = entry.key.replace(/\.md$/i, '');
+
+  if (urlPrefix === 'skills') {
+    return publicSkillRank(entryName);
+  }
+
+  if (urlPrefix === 'methodology') {
+    return PUBLIC_METHODOLOGY_RANK.get(entryName) ?? Number.MAX_SAFE_INTEGER;
+  }
+
+  if (urlPrefix === 'templates') {
+    return PUBLIC_TEMPLATE_RANK.get(entryName) ?? Number.MAX_SAFE_INTEGER;
+  }
+
+  if (isReadmeEntry(entry)) {
+    return -1;
+  }
+
+  return Number.MAX_SAFE_INTEGER;
+}
+
+function isReadmeEntry(entry) {
+  return entry.key.toLowerCase() === 'readme.md' || entry.key.toLowerCase() === 'readme';
 }
 
 // ── Pure: path resolution ─────────────────────────────────────────────────────

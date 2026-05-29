@@ -19,23 +19,42 @@ Ezkey already has strong global and component documentation. This pack adds the 
 
 ## Reading order
 
+`README.md` stays first in the explorer navigation. After that, keep the pack ordered by the
+reader journey rather than alphabetically.
+
 If you only need the fastest reliable entry, start with [`minimum-viable-method.md`](minimum-viable-method.md).
 
+### Entry and orientation
+
+1. `minimum-viable-method.md`
+2. `workflow-overview.md`
+3. `session-start-guide.md`
+
+### Core working method
+
+1. `analysis-and-design-canon.md`
+2. `tracer-bullet-method.md`
+3. `testing-strategy-in-workflow.md`
+4. `quality-gates.md`
+
+### Specialized lanes and workflow variants
+
+1. `plan-incubation-workflow.md`
+2. `legacy-retrofit-workflow.md`
+3. `blitz-intake-pattern.md`
+4. `github-issues-workflow.md`
+5. `multi-branch-workflow.md`
+
+### Reference context
+
 1. `methodological-values.md`
-2. `minimum-viable-method.md`
-3. `workflow-overview.md`
-4. `analysis-and-design-canon.md`
-5. `tracer-bullet-method.md`
-6. `testing-strategy-in-workflow.md`
-7. `plan-incubation-workflow.md`
-8. `legacy-retrofit-workflow.md`
-9. `blitz-intake-pattern.md`
-10. `multi-branch-workflow.md`
-11. `session-start-guide.md`
-12. `quality-gates.md`
-13. `ai-collaboration-model.md`
-14. `nomenclature.md`
-15. `case-study-ezkey.md` — concrete instantiation in the source project.
+2. `ai-collaboration-model.md`
+3. `nomenclature.md`
+
+### Example and institutional memory
+
+1. `case-study-ezkey.md` — concrete instantiation in the source project.
+2. `decisions/` — rationale and historical record for non-obvious methodology choices.
 
 ## Scope boundaries
 

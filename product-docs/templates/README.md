@@ -6,25 +6,37 @@ Templates are **opinionated and minimal**. Every section must earn its place. Wh
 
 ## Template Index
 
-| Template | Used for | Where it is instantiated |
-|----------|----------|--------------------------|
-| [product-intent.template.md](product-intent.template.md) | Express product purpose, positioning, audience, and success criteria. | Global product intent. |
-| [roadmap.template.md](roadmap.template.md) | Sequenced phases and major product steps. | Global roadmap. |
-| [feature-brief.template.md](feature-brief.template.md) | Describe a feature: intent, scope, acceptance, dependencies. | Global feature catalog or component-local features. |
-| [vision-note.template.md](vision-note.template.md) | Capture directional product orientation notes. | Global vision notes. |
-| [backlog-idea.template.md](backlog-idea.template.md) | Capture one backlog idea with temporal metadata. | Global backlog ideas. |
-| [tracer-bullet-brief.template.md](tracer-bullet-brief.template.md) | Define a vertical slice from ideation to validation. | Tracer bullet planning. |
-| [component-design-brief.template.md](component-design-brief.template.md) | Summarize component-focused design for a bounded slice. | Component-focused analysis and design work. |
-| [decision-table.template.md](decision-table.template.md) | Capture branching rules in a verifiable table. | Workflows, services, and contract decisions. |
-| [test-plan-slice.template.md](test-plan-slice.template.md) | Define the minimum and optional test layers for a bounded slice. | Test planning in ideation-to-delivery flow. |
-| [legacy-plan-retrofit.template.md](legacy-plan-retrofit.template.md) | Extract and map legacy knowledge signal (plans, verbal, ad hoc) into canonical docs. | Weekly or opportunistic legacy retrofit sessions. |
-| [architecture-decision.template.md](architecture-decision.template.md) | Record an architecture or design decision. | Global and component decision logs. |
-| [functional-workflow.template.md](functional-workflow.template.md) | Describe a nominal workflow with exception paths. | Component functional flows. |
-| [mapping-matrix.template.md](mapping-matrix.template.md) | Describe mappings across a boundary. | Component API and boundary mappings. |
-| [error-and-exception.template.md](error-and-exception.template.md) | Define exception categories and error handling rules. | Component exception and error model. |
-| [persistence-and-lifecycle.template.md](persistence-and-lifecycle.template.md) | Describe persistence needs and entity lifecycles. | Component data model, global lifecycle. |
-| [screens-and-wireflow.template.md](screens-and-wireflow.template.md) | Describe screens and navigation for a UI-bearing component. | Admin UI, Mobile. |
-| [spec-test-traceability.template.md](spec-test-traceability.template.md) | Link features to specs and tests. | Global and component traceability matrices. |
+`README.md` stays first in the explorer navigation. After that, keep templates ordered by the most
+common documentation journey rather than alphabetically.
+
+### Ideation and delivery flow
+
+- [vision-note.template.md](vision-note.template.md) — Capture directional product orientation notes. Instantiated as global vision notes.
+- [backlog-idea.template.md](backlog-idea.template.md) — Capture one backlog idea with temporal metadata. Instantiated as global backlog ideas.
+- [tracer-bullet-brief.template.md](tracer-bullet-brief.template.md) — Define a vertical slice from ideation to validation. Instantiated for tracer bullet planning.
+- [test-plan-slice.template.md](test-plan-slice.template.md) — Define the minimum and optional test layers for a bounded slice. Instantiated for test planning in ideation-to-delivery flow.
+- [legacy-plan-retrofit.template.md](legacy-plan-retrofit.template.md) — Extract and map legacy knowledge signal (plans, verbal, ad hoc) into canonical docs. Instantiated for weekly or opportunistic legacy retrofit sessions.
+- [feature-brief.template.md](feature-brief.template.md) — Describe a feature: intent, scope, acceptance, dependencies. Instantiated in the global feature catalog or component-local features.
+
+### Component and boundary design
+
+- [component-design-brief.template.md](component-design-brief.template.md) — Summarize component-focused design for a bounded slice. Instantiated for component-focused analysis and design work.
+- [functional-workflow.template.md](functional-workflow.template.md) — Describe a nominal workflow with exception paths. Instantiated for component functional flows.
+- [decision-table.template.md](decision-table.template.md) — Capture branching rules in a verifiable table. Instantiated for workflows, services, and contract decisions.
+- [mapping-matrix.template.md](mapping-matrix.template.md) — Describe mappings across a boundary. Instantiated for component API and boundary mappings.
+- [error-and-exception.template.md](error-and-exception.template.md) — Define exception categories and error handling rules. Instantiated for component exception and error models.
+- [persistence-and-lifecycle.template.md](persistence-and-lifecycle.template.md) — Describe persistence needs and entity lifecycles. Instantiated for component data models and global lifecycle work.
+- [screens-and-wireflow.template.md](screens-and-wireflow.template.md) — Describe screens and navigation for a UI-bearing component. Instantiated for Admin UI and Mobile.
+
+### Governance and cross-cutting records
+
+- [spec-test-traceability.template.md](spec-test-traceability.template.md) — Link features to specs and tests. Instantiated in global and component traceability matrices.
+- [architecture-decision.template.md](architecture-decision.template.md) — Record an architecture or design decision. Instantiated in global and component decision logs.
+
+### Global product framing
+
+- [product-intent.template.md](product-intent.template.md) — Express product purpose, positioning, audience, and success criteria. Instantiated as global product intent.
+- [roadmap.template.md](roadmap.template.md) — Sequenced phases and major product steps. Instantiated as the global roadmap.
 
 ## Conventions for Template Use
 

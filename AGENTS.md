@@ -56,6 +56,20 @@ Recommended skill sequence for this method:
 
 This bootstrap does not replace existing module-specific rules; it defines the default ideation-to-delivery path.
 
+## Public methodology explorer ordering
+
+For curated documentation packs exposed in the methodology explorer (`product-docs/methodology/`,
+`product-docs/templates/`, and the derived public `skills/` corpus), do not default to
+alphabetical ordering when a stable conceptual order exists.
+
+- Keep `README.md` first so each pack opens with orientation.
+- Order the remaining items by reader journey: fastest entry, core flow, specialized variants,
+  reference material, then examples or decision logs.
+- Decision archives and historical records follow primary guidance; they do not precede it.
+- When adding a new methodology doc, template, or skill, place it in the existing conceptual
+  bucket and preserve the established relative order unless a methodology decision explicitly
+  changes the navigation model.
+
 When a task involves **entity relationships, lifecycle semantics, operational eligibility, parent-child propagation, reversible vs irreversible actions, or operator analysis across multiple entity types**, it is also mandatory to read **`docs/LIFECYCLE_GOVERNANCE.md`** before proposing a design, plan, or implementation direction. Treat that document as the source of truth for how Ezkey models:
 
 - entity hierarchy and cross-entity relationships,
