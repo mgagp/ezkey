@@ -28,4 +28,11 @@ export default defineConfig([
       'react-hooks/exhaustive-deps': 'warn',
     },
   },
+  {
+    files: ['src/routes.tsx'],
+    rules: {
+      // Route table exports `router` alongside lazy page components.
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

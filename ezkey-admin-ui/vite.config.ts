@@ -30,6 +30,44 @@ export default defineConfig(({ mode }) => {
   define: productionLike
       ? { 'import.meta.env.VITE_DEMO_MODE': '"false"' }
       : undefined,
+  build: {
+    // Lazy routes already split pages; vendor + locale chunks keep the entry graph under Vite's
+    // default 500 kB advisory (QA/Docker builds stay warning-free). Revisit if entry grows past limit.
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/src/locales/')) {
+            return 'locales';
+          }
+          if (!id.includes('node_modules')) {
+            return undefined;
+          }
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react-router') ||
+            id.includes('/scheduler/')
+          ) {
+            return 'vendor-react';
+          }
+          if (id.includes('@tanstack/react-query')) {
+            return 'vendor-query';
+          }
+          if (id.includes('i18next') || id.includes('react-i18next')) {
+            return 'vendor-i18n';
+          }
+          if (id.includes('lucide-react')) {
+            return 'vendor-icons';
+          }
+          if (id.includes('zod') || id.includes('react-hook-form') || id.includes('@hookform')) {
+            return 'vendor-forms';
+          }
+          return 'vendor-misc';
+        },
+      },
+    },
+  },
   server: {
     // Proxy only the Admin API base path so app routes like /api-keys/48 are not
     // forwarded to the backend. Without this, requests to /api-keys/:id would
