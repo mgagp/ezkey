@@ -1,10 +1,10 @@
-# Vision Note — `V-YYYY-NNNN` `<title>`
+# Vision Note — `V-YYYY-MM-DD-<slug>` `<title>`
 
 ## Metadata
 
-- **ID:** `V-YYYY-NNNN`
+- **ID:** `V-YYYY-MM-DD-<slug>`
 - **Status:** `draft` / `under-review` / `promoted` / `archived`
-- **Lane:** `A` / `B` / `C`
+- **Lane:** `A` / `B` / `D`
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`
 - **Captured by:** `<name or initials of the human contributor>`
@@ -19,7 +19,7 @@ Why this direction matters now.
 
 ## Potential impact
 
-- Product phases:
+- Product milestones:
 - Components:
 - User segments:
 

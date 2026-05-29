@@ -27,7 +27,7 @@ Without a retrofit lane:
 2. **Extract** decisions, invariants, patterns, risks, and test signal.
 3. **Annotate** each source file immediately after extraction (see [Source file annotation](#source-file-annotation)). Do not defer this step.
 4. **Map** extracted signal to canonical destinations.
-5. **Record** a retrofit artifact (`R-*`) with confidence, gaps, and a checklist of canonical destinations (see [R-* completeness checklist](#r-completeness-checklist)).
+5. **Record** a retrofit artifact (`R-*`) with confidence, gaps, and a checklist of canonical destinations (see [retrofit completeness checklist](#retrofit-completeness-checklist)).
 6. **Integrate** targeted updates into global/component docs. Each updated canonical section must back-reference the R-* (see [Canonical back-reference rule](#canonical-back-reference-rule)).
 7. **Close** with explicit remaining gaps and next action.
 
@@ -103,7 +103,7 @@ When retrofit work surfaces project principles or durable values:
 **Rule:** immediately after mining a source file, add the following fields to its YAML frontmatter (or, for files without frontmatter, add a visible header block):
 
 ```yaml
-retrofitted_by: R-YYYY-NNNN
+retrofitted_by: R-YYYY-MM-DD-<slug>
 retrofitted_at: YYYY-MM-DD
 ```
 
@@ -114,7 +114,7 @@ retrofitted_at: YYYY-MM-DD
 **For files without YAML frontmatter** (Markdown without front matter, legacy docs, etc.): add a visible annotation block at the top:
 
 ```markdown
-> **Retrofitted:** R-YYYY-NNNN — YYYY-MM-DD
+> **Retrofitted:** R-YYYY-MM-DD-<slug> — YYYY-MM-DD
 ```
 
 ---
@@ -124,20 +124,22 @@ retrofitted_at: YYYY-MM-DD
 **Rule:** whenever a retrofit slice adds or updates content in a canonical doc (design decision, functional flow, spec traceability, etc.), that content must include a reference back to the source R-* artifact.
 
 For design decision entries, this goes in the `### Impact` or a `### Reference` sub-section:
-```
-- Reference: `product-docs/global/legacy-retrofit/R-YYYY-NNNN-<topic>.md`
+
+```text
+- Reference: `product-docs/global/legacy-retrofit/R-YYYY-MM-DD-<slug>.md`
 ```
 
 For prose sections in component docs, a parenthetical is sufficient:
-```
-(Source: R-YYYY-NNNN)
+
+```text
+(Source: R-YYYY-MM-DD-<slug>)
 ```
 
 **Why this matters:** canonical docs must be self-explaining. A reader should be able to follow the chain from any canonical decision back to the historical evidence that produced it.
 
 ---
 
-## R-* completeness checklist
+## Retrofit completeness checklist
 
 The `## Changes applied` section of a retrofit artifact must be an explicit checklist, not narrative prose. For each canonical destination planned in the mapping:
 
@@ -145,7 +147,7 @@ The `## Changes applied` section of a retrofit artifact must be an explicit chec
 ## Changes applied
 
 - [x] `product-docs/components/mobile/design-decisions.md` — added ADR-MOB-0005
-- [x] `product-docs/global/backlog/ideas/I-YYYY-NNNN.md` — created
+- [x] `product-docs/global/backlog/ideas/I-YYYY-MM-DD-<slug>.md` — created
 - [ ] `product-docs/global/features-and-phases.md` — deferred, not updated this slice
 ```
 

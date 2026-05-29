@@ -17,6 +17,7 @@
       <span class="brand-sub">methodology</span>
     </a>
     <nav class="personae" aria-label="Persona tracks">
+      <button class="persona-btn" data-track="start">Start</button>
       <button class="persona-btn" data-track="discover">Discover</button>
       <button class="persona-btn" data-track="apply">Apply</button>
       <button class="persona-btn" data-track="present">Present</button>
@@ -51,10 +52,15 @@
           <h1>ezkey · methodology</h1>
           <p class="lede">
             A working explorer for the Ezkey methodology corpus: methodology pack, templates,
-            and glossary. Pick a document on the left, or start with one of the reading tracks below.
+            and glossary. Pick a document on the left, or start with one of the guided tracks below.
           </p>
 
           <section class="persona-cards">
+            <article class="persona-card" data-track="start" tabindex="0" role="button" aria-label="Start the Start track">
+              <h3>Start</h3>
+              <p>Minimum Viable Method: the smallest rigorous entry into the methodology.</p>
+              <p class="card-status">Click to start the track →</p>
+            </article>
             <article class="persona-card" data-track="discover" tabindex="0" role="button" aria-label="Start the Discover track">
               <h3>Discover</h3>
               <p>High-level entry: values, workflow, design canon, quality gates.</p>
@@ -74,6 +80,8 @@
 
           <p class="home-shortcut">
             Or jump straight to
+            <a href="#/methodology/minimum-viable-method.md">minimum-viable-method.md</a>
+            ·
             <a href="#/methodology/README.md">methodology/README.md</a>
             · open the <a href="#/map">workflow map</a>
             · press <kbd>Ctrl</kbd>+<kbd>K</kbd> to search

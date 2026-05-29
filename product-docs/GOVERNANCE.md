@@ -85,7 +85,7 @@ flowchart LR
 | Concept | Canonical location |
 | ------- | ------------------ |
 | Product intent, thesis, audience | [`global/product-intent.md`](global/product-intent.md) |
-| Roadmap and phases | [`global/roadmap.md`](global/roadmap.md) |
+| Roadmap and milestones | [`global/roadmap.md`](global/roadmap.md) |
 | Feature catalog | [`global/features-and-phases.md`](global/features-and-phases.md) |
 | Architectural view and patterns | [`global/architecture-overview.md`](global/architecture-overview.md) |
 | Global ADRs | [`global/architecture-decisions.md`](global/architecture-decisions.md) |
@@ -111,7 +111,7 @@ flowchart LR
 
 ### Adding a new feature
 
-1. Pick the right phase in [`global/roadmap.md`](global/roadmap.md) (or add one through an ADR).
+1. Pick the right milestone in [`global/roadmap.md`](global/roadmap.md) (or add one through an ADR).
 2. Add an entry in [`global/features-and-phases.md`](global/features-and-phases.md) using the short format and link to the affected component pack(s).
 3. If the feature creates or changes durable component-local truth, update the relevant component pack in the same change set:
     - Add a workflow entry in `functional-flows.md` via the [functional workflow template](templates/functional-workflow.template.md) when a workflow changes.
@@ -151,9 +151,10 @@ To keep the corpus discoverable and useful for automated agents:
 - When a link is ambiguous, prefer linking to the **component pack** and let the pack's `README.md` redirect.
 - When a question is not answered here, look up the canonical answer in the legacy [`../docs/`](../docs/) hub or a module-level README; if the answer becomes recurring, promote it into this corpus.
 
-## Phase 2 Scope (Enrichment)
+## Enrichment Scope
 
-Phase 1 established the corpus skeleton and seeded it with minimal concrete content. Phase 2 enriches the corpus through:
+The initial corpus pass established the skeleton and seeded it with minimal concrete content. The
+current enrichment pass extends the corpus through:
 
 - **Stakeholder interviews** that reconstruct missing intent around existing code.
 - **Codebase re-discovery** to uncover undocumented decisions, mappings, and workflows.
@@ -161,15 +162,16 @@ Phase 1 established the corpus skeleton and seeded it with minimal concrete cont
 - **Expanded traceability** so that every active feature has explicit acceptance criteria and verifying tests.
 - **Additional component packs** for Auth API, Integration API, Core, Core Security, SDK, CLI, Docker stack, and the public site when they meet the instantiation threshold in [`components/README.md`](components/README.md).
 
-Phase 2 keeps the same rules as Phase 1 — the change is in coverage, not in governance.
+The enrichment pass keeps the same rules as the initial skeleton pass — the change is in coverage,
+not in governance.
 
 ## Acceptance of This Governance
 
 This governance is adopted when:
 
 - The eight documents in the global pack exist and are linked from [`README.md`](README.md).
-- The three Phase 1 component packs (Admin UI, Admin API, Mobile) follow the common skeleton.
-- Every Phase 1 feature entry is cross-referenced between [`global/features-and-phases.md`](global/features-and-phases.md) and the component pack(s) that implement it.
+- The three initially seeded component packs (Admin UI, Admin API, Mobile) follow the common skeleton.
+- Every initially seeded feature entry is cross-referenced between [`global/features-and-phases.md`](global/features-and-phases.md) and the component pack(s) that implement it.
 - Global and component traceability matrices list the seeded features with an explicit status.
 - This document is referenced from [`README.md`](README.md).
 

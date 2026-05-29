@@ -9,7 +9,7 @@ Promote items to the global matrix when they materially affect product-level cov
 ## Traceability Matrix
 
 | Feature | Spec | Acceptance criterion | Test suite | Status |
-|---------|------|----------------------|------------|--------|
+| --- | --- | --- | --- | --- |
 | [`F-enrollment-bind-verify`](../../global/features-and-phases.md#f-enrollment-bind-verify) | [`functional-flows.md#w-mob-enrollment-wizard`](functional-flows.md#w-mob-enrollment-wizard), [`../../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](../../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md) | Bind payload signature verified; algorithm mismatch fails closed; EC P-256 key generated on keystore. | `yarn test`; integration tests against Auth API in a clean-start stack. | `implemented` |
 | [`F-auth-pending-respond`](../../global/features-and-phases.md#f-auth-pending-respond) | [`functional-flows.md#w-mob-pending-check`](functional-flows.md#w-mob-pending-check), [`functional-flows.md#w-mob-respond`](functional-flows.md#w-mob-respond), [`../../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) | User-initiated polling only; integration-signed outcome verified before success state; respond signs canonical payload. | `yarn test`; integration tests against Auth API. | `implemented` |
 | [`F-mobile-reference-app`](../../global/features-and-phases.md#f-mobile-reference-app) | [`stack-and-architecture.md`](stack-and-architecture.md), [`data-model-and-persistence.md`](data-model-and-persistence.md), [`design-decisions.md#adr-mob-0004--android-app-level-sealed-secrets-for-long-lived-enrollment-values`](design-decisions.md#adr-mob-0004--android-app-level-sealed-secrets-for-long-lived-enrollment-values), [`../../../ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md`](../../../ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md) | Contract-first client generation flow works; no hand-edited DTOs; Android debug APK installable without Metro; `enrollmentProofToken` and `integrationPublicKey` stay out of AsyncStorage cleartext and are rehydrated through the secure secret delegate. | `yarn generate:api`, `yarn typecheck`, `yarn android:install:debug`, targeted Jest storage tests. | `implemented` |
@@ -30,7 +30,7 @@ Promote items to the global matrix when they materially affect product-level cov
 ## Update Cadence
 
 - Update this matrix on any behavior, contract, or test change in the mobile app.
-- Review at phase boundaries.
+- Review at milestone boundaries or bounded delivery checkpoints.
 - Promote items to the global matrix when they impact product-level acceptance.
 
 ## Related Documents

@@ -19,20 +19,23 @@ Ezkey already has strong global and component documentation. This pack adds the 
 
 ## Reading order
 
+If you only need the fastest reliable entry, start with [`minimum-viable-method.md`](minimum-viable-method.md).
+
 1. `methodological-values.md`
-2. `workflow-overview.md`
-3. `analysis-and-design-canon.md`
-4. `tracer-bullet-method.md`
-5. `testing-strategy-in-workflow.md`
-6. `plan-incubation-workflow.md`
-7. `legacy-retrofit-workflow.md`
-8. `blitz-intake-pattern.md`
-9. `multi-branch-workflow.md`
-10. `session-start-guide.md`
-11. `quality-gates.md`
-12. `ai-collaboration-model.md`
-13. `nomenclature.md`
-14. `case-study-ezkey.md` — concrete instantiation in the source project.
+2. `minimum-viable-method.md`
+3. `workflow-overview.md`
+4. `analysis-and-design-canon.md`
+5. `tracer-bullet-method.md`
+6. `testing-strategy-in-workflow.md`
+7. `plan-incubation-workflow.md`
+8. `legacy-retrofit-workflow.md`
+9. `blitz-intake-pattern.md`
+10. `multi-branch-workflow.md`
+11. `session-start-guide.md`
+12. `quality-gates.md`
+13. `ai-collaboration-model.md`
+14. `nomenclature.md`
+15. `case-study-ezkey.md` — concrete instantiation in the source project.
 
 ## Scope boundaries
 
@@ -51,6 +54,22 @@ Use the lightest process that still preserves:
 - design consistency,
 - end-to-end traceability,
 - clear handoff quality between humans and AI agents.
+
+## Fast routing
+
+Use this quick routing before reading deeper:
+
+- New idea or normal product work: start with **Lane A**.
+- Freeform exploration first, canonical docs later: start with **Lane B**.
+- Historical plans or verbal history to mine: start with **Lane C**.
+- Existing implemented behavior that now needs change: start with **Lane D**.
+- Method improvement itself: start with **Lane E**.
+
+Then use [`session-start-guide.md`](session-start-guide.md) for the detailed prompts and skill
+sequence.
+
+If the full method still feels too large for the current topic, use
+[`minimum-viable-method.md`](minimum-viable-method.md) as the lightweight front door.
 
 Apply [`../global/design-principles.md`](../global/design-principles.md) when judging scope — especially **#1**, **#2**, and **#14 (beautiful problems)**: defer scale/performance sophistication until evidence shows the problem is real and earned by adoption, not hypothetical.
 
@@ -71,6 +90,10 @@ and convention governing rich views across the whole documentation corpus.
 ## Quick start prompts
 
 Use these prompts in a fresh session to trigger the method quickly.
+
+### 0) Start with the smallest rigorous path
+
+`Use the Minimum Viable Method for this topic. First classify the lane, then create only the next necessary artifact.`
 
 ### 1) Start from a raw idea
 

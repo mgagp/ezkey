@@ -15,6 +15,10 @@ Methodology decisions serve as institutional memory for the practice itself. Wit
 rationale for non-obvious rules gets lost between sessions and the same questions get re-debated
 from scratch.
 
+They are also the right place to record small methodology evaluation notes and ordered
+simplification passes when the subject is improving the method itself rather than changing product
+scope.
+
 ## File naming
 
 `YYYY-MM-DD-<slug>.md` — consistent with all other date+slug artifacts in this methodology.

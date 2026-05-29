@@ -11,6 +11,17 @@ It complements, but does not replace, the engineering and governance rules in th
 - In this methodology, **phase** refers to workflow stages only.
 - For product-level progression, use **milestone** wording.
 
+## Fast routing
+
+- Start in **Lane A** for ordinary ideation-to-delivery work.
+- Start in **Lane B** when freeform planning should precede canonicalization.
+- Start in **Lane C** when the source is historical and must be mined.
+- Start in **Lane D** when the trigger is existing implemented behavior.
+- Start in **Lane E** when the subject is the methodology itself.
+
+If you need the fastest reliable entry before reading this full overview, start with
+[`minimum-viable-method.md`](minimum-viable-method.md).
+
 ## Parallel lane: legacy retrofit
 
 In addition to ideation-to-delivery, use a retrofit lane for historical plans and ad hoc implementation history:

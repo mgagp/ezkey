@@ -1,6 +1,34 @@
 {
   "tracks": [
     {
+      "id": "start",
+      "label": "Start",
+      "tagline": "Minimum Viable Method in about 10 minutes.",
+      "color": "#16a34a",
+      "intro": "The fastest reliable entry: classify the lane, choose one anchor, create only the next necessary artifact, and validate cheaply.",
+      "steps": [
+        {
+          "file": "methodology/minimum-viable-method.md",
+          "narration": "Start here for the lightest rigorous entry into the method: lane, anchor, next artifact, minimal validation, honest close-out."
+        },
+        {
+          "file": "methodology/session-start-guide.md",
+          "anchor": "minimum-viable-start",
+          "narration": "Use the session guide only for the reduced start: classify the lane and avoid opening more process than the topic has earned."
+        },
+        {
+          "file": "methodology/README.md",
+          "anchor": "quick-start-prompts",
+          "narration": "Take one prompt and adapt it, but keep the Minimum Viable Method posture: smallest next artifact, no speculative ceremony."
+        },
+        {
+          "file": "methodology/analysis-and-design-canon.md",
+          "anchor": "representation-chooser",
+          "narration": "If the topic is non-trivial, choose exactly one representation that removes ambiguity, not a bundle of diagrams by habit."
+        }
+      ]
+    },
+    {
       "id": "discover",
       "label": "Discover",
       "tagline": "Read the methodology end-to-end.",

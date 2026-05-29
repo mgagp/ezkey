@@ -9,7 +9,7 @@ It is a **living document**. Update it in the same change set as any behavior, c
 ## Traceability Matrix
 
 | Feature | Spec | Acceptance criterion | Test suite | Status |
-|---------|------|----------------------|------------|--------|
+| --- | --- | --- | --- | --- |
 | [`F-admin-ui-shell`](../../global/features-and-phases.md#f-admin-ui-shell) | [`functional-flows.md#w-ui-login-passwordless`](functional-flows.md#w-ui-login-passwordless), [`api-and-boundary-mappings.md#m-admin-auth`](api-and-boundary-mappings.md#m-admin-auth) | Challenge code zero-padded; abort handling safe; session populated once. | Playwright `login.*` suite against Demo Device. | `implemented` |
 | [`F-admin-ui-shell`](../../global/features-and-phases.md#f-admin-ui-shell) | [`exception-and-error-model.md#auth-rejected`](exception-and-error-model.md#auth-rejected) | Rejected login shows translated `errors.authentication.auth-rejected`. | Playwright elective rejection scenario. | `implemented` |
 | [`F-admin-ui-workflows`](../../global/features-and-phases.md#f-admin-ui-workflows) | [`functional-flows.md#w-ui-integration-create`](functional-flows.md#w-ui-integration-create), [`api-and-boundary-mappings.md#m-integrations`](api-and-boundary-mappings.md#m-integrations) | Create dialog is non-dismissible; list refreshes after success; reason enforced on retire/delete. | Playwright post-login workflow scenario; Admin API integration tests. | `in-progress` |
@@ -36,7 +36,7 @@ It is a **living document**. Update it in the same change set as any behavior, c
   - a workflow, screen, mapping, or error rule changes in this component,
   - a test is added, removed, or restructured,
   - a feature's status changes in the global catalog.
-- Review the matrix at phase boundaries.
+- Review the matrix at milestone boundaries or bounded delivery checkpoints.
 
 ## Related Documents
 

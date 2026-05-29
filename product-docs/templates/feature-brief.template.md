@@ -6,9 +6,9 @@
 
 One short paragraph: what the feature enables and for whom.
 
-## Phase
+## Milestone
 
-- **Phase:** `<phase-id>` — [`../global/roadmap.md#phase-<phase-id>`](../global/roadmap.md#phase-<phase-id>).
+- **Milestone:** `<milestone-id>` — see [`../global/roadmap.md`](../global/roadmap.md).
 - **Status:** `planned` / `in-progress` / `implemented` / `deprecated` / `removed`.
 
 ## Scope
@@ -49,7 +49,7 @@ A short list of verifiable criteria. Each criterion is observable and mapped to 
 
 ## Dependencies
 
-- Other features, phases, or external systems this feature depends on.
+- Other features, milestones, or external systems this feature depends on.
 
 ## Open Questions
 

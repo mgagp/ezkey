@@ -4,13 +4,29 @@
 
 This is a practical cheat sheet for starting sessions with the right lane, vocabulary, and skill sequence.
 
-The canonical lane model is:
+If you need the shortest reliable entry before using this guide in full, start with
+[`minimum-viable-method.md`](minimum-viable-method.md).
+
+For day-to-day use, think in **one default delivery flow** plus a small set of explicit entry,
+re-entry, and feedback lanes:
 
 - **Lane A**: the default end-to-end ideation-to-delivery workflow
 - **Lane B**: plan incubation
 - **Lane C**: legacy knowledge retrofit
 - **Lane D**: post-delivery evolution and corrective re-entry
 - **Lane E**: methodology feedback and evolution
+
+## Minimum viable start
+
+When speed matters more than completeness, use this reduced entry:
+
+1. classify the lane;
+2. pick one anchor;
+3. create only the next necessary artifact;
+4. pick the cheapest meaningful validation;
+5. close honestly.
+
+See [`minimum-viable-method.md`](minimum-viable-method.md) for the compact version.
 
 ## Choose the lane
 
@@ -28,11 +44,6 @@ challenge, promotion to `TB-*`, design, test planning, implementation, and close
 
 For **multi-item capture sessions** (typical when several ideas accumulate or voice dictation is used), apply the [blitz intake pattern](blitz-intake-pattern.md) as a Lane A variant. It preserves the verbatim source through an explicit archival step.
 
-For a **single substantial topic** where the operator prefers freeform planning first, use the [plan incubation workflow](plan-incubation-workflow.md) as another Lane A variant. This explicitly supports starting in agent Plan mode with a live working plan, then materializing the durable value into canonical docs without framing the session as retrofit.
-
-- Typical skills for this variant: `plan-incubation`, then the Lane A skills required by the
-  resulting entry point
-
 ### Lane B — Plan incubation
 
 Use when the operator deliberately wants to start with a live working plan before materializing
@@ -41,6 +52,9 @@ the durable result into canonical artifacts.
 - Output target: working plan plus later `V-*`, `I-*`, or `TB-*` materialization
 - Typical mode: **Plan**
 - Typical skills: `plan-incubation`, then the Lane A skills required by the resulting entry point
+
+Lane B is the deliberate freeform entry path into normal delivery work. Once the direction is
+coherent, materialize into `V-*`, `I-*`, or `TB-*` and continue through Lane A.
 
 ### Lane C — Legacy knowledge retrofit
 

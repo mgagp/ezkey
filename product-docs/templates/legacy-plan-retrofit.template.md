@@ -1,8 +1,8 @@
-# Legacy Knowledge Retrofit — `R-YYYY-NNNN` `<topic>`
+# Legacy Knowledge Retrofit — `R-YYYY-MM-DD-<slug>` `<topic>`
 
 ## Metadata
 
-- **ID:** `R-YYYY-NNNN`
+- **ID:** `R-YYYY-MM-DD-<slug>`
 - **Topic:** `<short topic>`
 - **Status:** `captured` / `mapped` / `integrated` / `archived`
 - **Date:** `YYYY-MM-DD`

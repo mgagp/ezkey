@@ -45,7 +45,7 @@ List unresolved gaps with an owner and a proposed next step. Remove entries when
 
 - When a feature is added or modified, update this matrix in the same change set.
 - When a test is added or removed, update the matrix in the same change set.
-- Review the matrix at the start and end of each phase.
+- Review the matrix at the start and end of each milestone or bounded delivery cycle.
 
 ## Related Documents
 

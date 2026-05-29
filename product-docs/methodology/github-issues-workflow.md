@@ -110,8 +110,8 @@ must approve and run `gh issue create`.
 
 ## Traceability
 
-- **Backlog idea:** `I-YYYY-NNNN` in `product-docs/global/backlog/ideas/`
-- **Lane:** `A` / `B` / `C` / `D` / `E`
+- **Backlog idea:** `I-YYYY-MM-DD-<slug>` in `product-docs/global/backlog/ideas/`
+- **Lane:** `A` / `B` / `D`
 ```
 
 ### Traceability back-reference
@@ -190,8 +190,8 @@ And a traceability block:
 ```markdown
 ## Traceability
 - Closes: #NNN
-- Backlog idea: I-YYYY-NNNN
-- Tracer bullet: TB-YYYY-NNNN (if exists)
+- Backlog idea: `I-YYYY-MM-DD-<slug>`
+- Tracer bullet: `TB-YYYY-MM-DD-<slug>` (if exists)
 ```
 
 ## Grill Me output placement
