@@ -27,10 +27,14 @@ One person can play multiple roles, but role intent should remain explicit.
 
 Before analysis or implementation, establish:
 
-1. active idea or tracer bullet ID,
-2. affected components,
+1. active anchor: methodology decision topic, active idea, tracer bullet, working plan, or observed existing behavior,
+2. affected components or methodology surfaces,
 3. relevant global and component documents,
 4. quality gates that must pass.
+
+When the session starts from existing implemented behavior, classify early whether the work is a
+pure local technical defect or a corpus-level intent change that requires re-entry through `TB-*`,
+`I-*`, or `V-*`.
 
 ## Skill boundary protocol
 

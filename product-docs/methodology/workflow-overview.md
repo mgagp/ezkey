@@ -11,6 +11,17 @@ It complements, but does not replace, the engineering and governance rules in th
 - In this methodology, **phase** refers to workflow stages only.
 - For product-level progression, use **milestone** wording.
 
+## Fast routing
+
+- Start in **Lane A** for ordinary ideation-to-delivery work.
+- Start in **Lane B** when freeform planning should precede canonicalization.
+- Start in **Lane C** when the source is historical and must be mined.
+- Start in **Lane D** when the trigger is existing implemented behavior.
+- Start in **Lane E** when the subject is the methodology itself.
+
+If you need the fastest reliable entry before reading this full overview, start with
+[`minimum-viable-method.md`](minimum-viable-method.md).
+
 ## Parallel lane: legacy retrofit
 
 In addition to ideation-to-delivery, use a retrofit lane for historical plans and ad hoc implementation history:
@@ -34,6 +45,36 @@ In addition to direct ideation capture, use a plan-incubation lane when the oper
 
 See `plan-incubation-workflow.md`.
 
+## Parallel lane: post-delivery evolution and corrective re-entry
+
+After delivery, new work often starts from an observed limitation, requested improvement, or
+apparent bug in existing behavior. Use a lightweight change-inception lane:
+
+1. Classify the observation: pure local technical defect, execution-slice correction, backlog-scope
+   change, or vision-level correction.
+2. If it is a pure local technical defect, fix it directly with bounded validation.
+3. If the issue reflects missing or changed intent, re-enter the canonical flow at the highest
+   appropriate level (`TB-*`, `I-*`, or `V-*`).
+4. Continue through the normal delivery workflow from that re-entry point.
+
+This keeps routine debugging lightweight while giving requirement, rule, and direction changes a
+traceable way back into the corpus.
+
+## Parallel lane: methodology feedback and evolution
+
+In addition to product work, use a methodology-feedback lane when the subject is the method itself:
+
+1. Capture the observed friction, ambiguity, or proposed improvement from a live session.
+2. Record the methodological decision and preserve short verbatim source signal when the exact
+   phrasing matters.
+3. Update the smallest methodology surfaces needed to make the new rule resumable.
+4. Close with the evidence that will show whether the change helped in the next real use.
+
+This lane exists for reflective improvement of the workflow itself. It is not a product backlog
+lane and does not create `V-*`, `I-*`, `TB-*`, or `R-*` by default.
+
+See `decisions/README.md` and `methodological-values.md`.
+
 ## Parallel lane: multi-branch and multi-worktree
 
 When working across parallel Git branches or Git worktrees (solo or with a team):
@@ -54,7 +95,7 @@ See `multi-branch-workflow.md`.
    - Keep the first version short and expressive.
 2. **Triage**
    - Clarify intent, user value, risk, and rough scope.
-   - Assign status, priority, phase tags, and component tags.
+   - Assign status, priority, progression markers, and component tags.
 3. **Challenge**
    - Run a structured questioning pass ("Grill Me" style).
    - Surface assumptions, exceptions, error paths, and non-goals.
@@ -79,7 +120,7 @@ See `multi-branch-workflow.md`.
 ## Artifacts by stage
 
 | Stage | Primary artifact |
-|------|-------------------|
+| ----- | ---------------- |
 | Capture | `I-*` backlog file |
 | Triage / Challenge | Updated `I-*` + open questions |
 | Promote | `TB-*` tracer bullet brief |
@@ -112,6 +153,31 @@ This avoids two opposite failure modes:
 
 - coding too early with unresolved boundary confusion;
 - staying in perpetual preparation after the slice is already implementable.
+
+## Post-delivery re-entry rule
+
+Delivery is not a terminal state. Later observations can start new work in two different ways:
+
+- **Local technical defect**: the intent is still correct and the issue is bounded to the current
+  implementation. Fix it live, validate it, and close it without escalating to methodology unless
+  the defect exposes a missing design rule or documentation gap.
+- **Intent or scope change**: the observation reveals that the current product or implementation
+  intent is incomplete, ambiguous, or wrong. Re-enter the flow at the highest level whose truth is
+  changing:
+  - `TB-*` when the implementation slice changes but the backlog idea and vision remain valid;
+  - `I-*` when scope, validation rules, acceptance expectations, or operator-facing behavior change;
+  - `V-*` when the product direction, positioning, or governing principle changes.
+
+## Canonical update rule for post-delivery change
+
+When post-delivery change updates the corpus:
+
+- Prefer **amending the existing `V-*` or `I-*`** when the same artifact remains the right
+   canonical home and the goal is to keep current truth unified.
+- Use **`Superseded` / `Supersedes` lineage** when the change materially reframes the scope,
+   splits one concern into several, or replaces the original formulation.
+- Prefer a **new `TB-*`** for each new bounded implementation slice. Do not reopen a closed
+   tracer bullet once its original execution and canonization job is complete.
 
 ## Capture variants
 

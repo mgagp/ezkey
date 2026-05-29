@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Source: product-docs/methodology/view/index.html @ 2026-05-25 -->
+<!-- Source: product-docs/methodology/view/index.html @ 2026-05-28 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -727,6 +727,20 @@
     <span>Updated 2026-05-25</span>
   </div>
 </header>
+
+<aside class="explorer-cta" style="margin:24px 32px;padding:20px 24px;border:1px solid #cbd5e1;border-radius:10px;background:linear-gradient(135deg,#f1f5f9 0%,#e0e7ff 100%);display:flex;flex-direction:column;gap:10px;">
+  <div style="font-size:1.05rem;font-weight:700;color:#0f172a;">Explore the living methodology</div>
+  <p style="margin:0;color:#334155;font-size:0.95rem;line-height:1.55;">
+    This page is the panorama. The living version is published as a separate site, updated continuously from the source repository as the methodology evolves.
+  </p>
+  <div>
+    <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:2px;padding:10px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.92rem;">
+      Open the methodology explorer
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+    </a>
+  </div>
+  <div style="font-size:0.82rem;color:#64748b;">methodology.ezkey.org &middot; every artifact, fully searchable &middot; updated continuously &middot; English</div>
+</aside>
 <main>
 
   <!-- ════════════════════════════════════════════════════════════
@@ -799,7 +813,7 @@
         <div class="phase-card ph2">
           <div class="phase-num">Phase 2</div>
           <div class="phase-name">Triage</div>
-          <div class="phase-action">Clarify intent, user value, risk, and rough scope. Assign status, priority, phase tags, component tags.</div>
+          <div class="phase-action">Clarify intent, user value, risk, and rough scope. Assign status, priority, progression markers, component tags.</div>
           <span class="phase-badge bg-i">I-* updated</span>
           <div class="phase-exit">Done when: scope and value understandable.</div>
         </div>
@@ -966,8 +980,8 @@
   <section id="lanes">
     <h2>Parallel Lanes</h2>
     <p class="section-intro">
-      Two lanes run alongside the main ideation-to-delivery flow. Any session may combine
-      Lane A with one or both parallel lanes.
+      Four lanes run alongside the main ideation-to-delivery flow. Any session may combine
+      Lane A with one or more of these lanes as needed.
     </p>
     <div class="lanes-grid">
 
@@ -997,6 +1011,32 @@
         <p class="lane-ref">→ legacy-retrofit-workflow.md</p>
       </div>
 
+      <div class="lane-card" style="border-left-color: #0d9488;">
+        <div class="lane-label">Lane D</div>
+        <div class="lane-name" style="color: #0d9488;">Post-Delivery Re-entry</div>
+        <ul class="lane-steps">
+          <li>Start from existing implemented behavior: enhancement, operator feedback, or apparent bug</li>
+          <li>Classify pure local technical defect vs intent or scope change</li>
+          <li>Fix local defects directly with bounded validation</li>
+          <li>Re-enter at <code>TB-*</code>, <code>I-*</code>, or <code>V-*</code> when intent changed</li>
+          <li>Continue through the normal delivery workflow from that re-entry point</li>
+        </ul>
+        <p class="lane-ref">→ workflow-overview.md</p>
+      </div>
+
+      <div class="lane-card" style="border-left-color: #16a34a;">
+        <div class="lane-label">Lane E</div>
+        <div class="lane-name" style="color: #16a34a;">Methodology Feedback</div>
+        <ul class="lane-steps">
+          <li>Capture friction, ambiguity, or a proposed improvement in the method itself</li>
+          <li>Record the decision in <code>methodology/decisions/</code></li>
+          <li>Preserve short verbatim source signal when exact wording matters</li>
+          <li>Update only the smallest methodology surfaces that must change</li>
+          <li>Close with the evidence that will show whether the change helped</li>
+        </ul>
+        <p class="lane-ref">→ decisions/README.md</p>
+      </div>
+
     </div>
   </section>
 
@@ -1006,12 +1046,12 @@
   <section id="collab">
     <h2>Collaboration Context</h2>
     <p class="section-intro">
-      Not a lane — a cross-cutting modifier. These rules apply on top of Lanes A, B, and C
+      Not a lane — a cross-cutting modifier. These rules apply on top of Lanes A, B, C, and D
       whenever collaboration happens across parallel Git branches or worktrees.
-      Sessions that are single-branch do not need to apply them.
+      Lane E is usually handled single-branch because it changes the methodology itself.
     </p>
     <div class="collab-card">
-      <div class="collab-modifier-tag">Cross-cutting · applies to Lanes A, B, C</div>
+      <div class="collab-modifier-tag">Cross-cutting · applies to Lanes A, B, C, D</div>
       <p class="collab-desc">
         When two developers (or one developer across two worktrees) work simultaneously,
         classic ordinal naming creates merge-time collisions. The collaboration context
@@ -1192,87 +1232,87 @@
         </thead>
         <tbody>
           <tr>
-            <td><code>ezkey-vision-intake</code></td>
+            <td><code>vision-intake</code></td>
             <td>Strategic direction, product intent, or early feature ideas arrive.</td>
             <td>Durable direction is captured as <code>V-*</code> or initial <code>I-*</code> with next step.</td>
-            <td><code>ezkey-backlog-triage</code> or <code>ezkey-grill-me</code></td>
+            <td><code>backlog-triage</code> or <code>grill-me</code></td>
             <td>The idea is already a bounded implementation slice.</td>
           </tr>
           <tr>
-            <td><code>ezkey-backlog-triage</code></td>
+            <td><code>backlog-triage</code></td>
             <td>An <code>I-*</code> exists or a vision note has actionable scope.</td>
             <td>Scope, non-scope, priority, status, tags, risks, and posture are explicit.</td>
-            <td><code>ezkey-grill-me</code> or <code>ezkey-tracer-bullet-promote</code></td>
+            <td><code>grill-me</code> or <code>tracer-bullet-promote</code></td>
             <td>The item is still pure orientation or already fully scoped.</td>
           </tr>
           <tr>
-            <td><code>ezkey-grill-me</code></td>
+            <td><code>grill-me</code></td>
             <td>Assumptions, exception paths, lifecycle effects, or boundary risks need pressure.</td>
             <td>Risks, open questions, decision pressure points, and clarifications are explicit.</td>
             <td>Triage, tracer-bullet promotion, or component design.</td>
             <td>The change is low-risk, bounded, and has known validation criteria.</td>
           </tr>
           <tr>
-            <td><code>ezkey-plan-incubation</code></td>
+            <td><code>plan-incubation</code></td>
             <td>The operator starts from a current-session working plan.</td>
             <td>Durable signal is classified for <code>V-*</code>, <code>I-*</code>, <code>TB-*</code>, principle adoption, or mix.</td>
             <td>Vision intake, backlog triage, or tracer-bullet promotion.</td>
             <td>The source is historical retrofit input or a direct implementation task.</td>
           </tr>
           <tr>
-            <td><code>ezkey-tracer-bullet-promote</code></td>
+            <td><code>tracer-bullet-promote</code></td>
             <td>An <code>I-*</code> is <code>ready</code> and needs a bounded vertical slice.</td>
             <td>The <code>TB-*</code> has posture, scope, boundaries, exclusions, and evidence criteria.</td>
-            <td><code>ezkey-component-design-pack</code> and <code>ezkey-test-strategy-planner</code></td>
+            <td><code>component-design-pack</code> and <code>test-strategy-planner</code></td>
             <td>The item lacks direction, or the change is a tiny code/doc fix.</td>
           </tr>
           <tr>
-            <td><code>ezkey-component-design-pack</code></td>
+            <td><code>component-design-pack</code></td>
             <td>A scope touches component boundaries, mappings, validations, or error behavior.</td>
             <td>Impacted components have responsibilities, contracts, tests, and doc impact named.</td>
-            <td><code>ezkey-test-strategy-planner</code>, then <code>ezkey-quality-gatekeeper</code></td>
+            <td><code>test-strategy-planner</code>, then <code>quality-gatekeeper</code></td>
             <td>The change is local, internal, and not observable at a boundary.</td>
           </tr>
           <tr>
-            <td><code>ezkey-test-strategy-planner</code></td>
+            <td><code>test-strategy-planner</code></td>
             <td>A change has known risks and needs explicit test-layer selection.</td>
             <td>Minimum, optional, deferred, and rejected test layers are justified.</td>
-            <td><code>ezkey-quality-gatekeeper</code>, then traceability after evidence changes.</td>
+            <td><code>quality-gatekeeper</code>, then traceability after evidence changes.</td>
             <td>The change is purely editorial.</td>
           </tr>
           <tr>
-            <td><code>ezkey-quality-gatekeeper</code></td>
+            <td><code>quality-gatekeeper</code></td>
             <td>Work moves from analysis to execution, or execution to closeout.</td>
             <td>The gate returns <code>go</code> or <code>no-go</code> with blockers and follow-up actions.</td>
             <td>Implementation after <code>go</code>, or targeted repair after <code>no-go</code>.</td>
             <td>The task is trivial and has no analysis, contract, test, or traceability impact.</td>
           </tr>
           <tr>
-            <td><code>ezkey-traceability-sync</code></td>
+            <td><code>traceability-sync</code></td>
             <td>Feature status, behavior, specs, tests, or validation evidence changed.</td>
             <td>Global and component traceability documents reflect current evidence and gaps.</td>
-            <td><code>ezkey-closeout</code></td>
+            <td><code>closeout</code></td>
             <td>No observable behavior, contract, status, or validation evidence changed.</td>
           </tr>
           <tr>
-            <td><code>ezkey-closeout</code></td>
+            <td><code>closeout</code></td>
             <td>A tracer bullet, feature slice, blitz integration, retrofit slice, or cycle is ending.</td>
             <td>Status transitions, evidence, deferred work, residual risks, and next actions are explicit.</td>
             <td>No next skill by default; reopen named follow-up work only.</td>
             <td>The work is still actively changing or required evidence is unavailable.</td>
           </tr>
           <tr>
-            <td><code>ezkey-legacy-plan-miner</code></td>
+            <td><code>legacy-plan-miner</code></td>
             <td>Historical plans, verbal history, or ad hoc implementation history contain reusable signal.</td>
             <td>Reusable signal is extracted with confidence and source type.</td>
-            <td><code>ezkey-retrofit-curator</code></td>
+            <td><code>retrofit-curator</code></td>
             <td>The source is a current-session working plan.</td>
           </tr>
           <tr>
-            <td><code>ezkey-retrofit-curator</code></td>
+            <td><code>retrofit-curator</code></td>
             <td>Mined historical signal needs mapping into canonical destinations.</td>
             <td>The <code>R-*</code> records mappings, canonical updates, residual gaps, and index status.</td>
-            <td><code>ezkey-traceability-sync</code> or <code>ezkey-closeout</code></td>
+            <td><code>traceability-sync</code> or <code>closeout</code></td>
             <td>No reusable signal exists, or the source already lives in current canon.</td>
           </tr>
         </tbody>
@@ -1339,6 +1379,11 @@
   </section>
 
 </main>
+
+<p style="margin:8px 32px 24px;text-align:center;font-size:0.9rem;color:#475569;">
+  Looking for the searchable, always-current reference?
+  <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600;text-decoration:none;">Open the methodology explorer &#8599;</a>
+</p>
 <footer>
   Ezkey Methodology Rich View &nbsp;·&nbsp; Last updated 2026-05-25 &nbsp;·&nbsp;
   Source: Ezkey methodology corpus

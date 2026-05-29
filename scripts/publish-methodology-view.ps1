@@ -60,7 +60,7 @@ function Remove-PrivateMarkdownLinks {
     return $Html -replace '(?s)<a href="[^"]*\.md[^"]*"[^>]*>(.*?)</a>', '$1'
 }
 
-function Apply-Replacements {
+function Update-Replacements {
     param(
         [string]$Text,
         [object[]]$Pairs
@@ -205,6 +205,60 @@ $siteShellCss = @'
 $descriptionEn = 'Visual reference for the ideation-to-delivery workflow, methodological values, artifact types, state boundaries, traceability, and skills.'
 $descriptionFr = 'R&eacute;f&eacute;rence visuelle pour le flux de l''id&eacute;ation &agrave; la livraison, les valeurs m&eacute;thodologiques, les types d''artefacts, les fronti&egrave;res d''&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.'
 
+# Cross-surface bridge: bring the visitor of the rich view to the living explorer.
+# Top CTA appears between the page header and the main content; bottom reminder
+# appears between the main content and the rich-view footer. Both open in a new
+# tab to signal an origin switch (ezkey.org -> methodology.ezkey.org).
+$explorerCtaEn = @'
+
+<aside class="explorer-cta" style="margin:24px 32px;padding:20px 24px;border:1px solid #cbd5e1;border-radius:10px;background:linear-gradient(135deg,#f1f5f9 0%,#e0e7ff 100%);display:flex;flex-direction:column;gap:10px;">
+  <div style="font-size:1.05rem;font-weight:700;color:#0f172a;">Explore the living methodology</div>
+  <p style="margin:0;color:#334155;font-size:0.95rem;line-height:1.55;">
+    This page is the panorama. The living version is published as a separate site, updated continuously from the source repository as the methodology evolves.
+  </p>
+  <div>
+    <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:2px;padding:10px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.92rem;">
+      Open the methodology explorer
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+    </a>
+  </div>
+  <div style="font-size:0.82rem;color:#64748b;">methodology.ezkey.org &middot; every artifact, fully searchable &middot; updated continuously &middot; English</div>
+</aside>
+'@
+
+$explorerReminderEn = @'
+
+<p style="margin:8px 32px 24px;text-align:center;font-size:0.9rem;color:#475569;">
+  Looking for the searchable, always-current reference?
+  <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600;text-decoration:none;">Open the methodology explorer &#8599;</a>
+</p>
+'@
+
+$explorerCtaFr = @'
+
+<aside class="explorer-cta" style="margin:24px 32px;padding:20px 24px;border:1px solid #cbd5e1;border-radius:10px;background:linear-gradient(135deg,#f1f5f9 0%,#e0e7ff 100%);display:flex;flex-direction:column;gap:10px;">
+  <div style="font-size:1.05rem;font-weight:700;color:#0f172a;">Explorer la m&eacute;thodologie vivante</div>
+  <p style="margin:0;color:#334155;font-size:0.95rem;line-height:1.55;">
+    Cette page en est le panorama. La version vivante est publi&eacute;e comme un site distinct, mis &agrave; jour en continu depuis le d&eacute;p&ocirc;t source au fil de l&rsquo;&eacute;volution de la m&eacute;thodologie.
+  </p>
+  <div>
+    <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:2px;padding:10px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.92rem;">
+      Ouvrir l&rsquo;explorateur de la m&eacute;thodologie
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+    </a>
+  </div>
+  <div style="font-size:0.82rem;color:#64748b;">methodology.ezkey.org &middot; chaque artefact, enti&egrave;rement consultable &middot; mis &agrave; jour en continu &middot; en anglais</div>
+</aside>
+'@
+
+$explorerReminderFr = @'
+
+<p style="margin:8px 32px 24px;text-align:center;font-size:0.9rem;color:#475569;">
+  Vous cherchez la r&eacute;f&eacute;rence consultable et toujours &agrave; jour&nbsp;?
+  <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600;text-decoration:none;">Ouvrir l&rsquo;explorateur de la m&eacute;thodologie &#8599;</a>
+</p>
+'@
+
 $outputEn = @"
 <!DOCTYPE html>
 <!-- Source: product-docs/methodology/view/index.html @ $syncDate -->
@@ -245,7 +299,9 @@ $navBlock
 
     <div class="site-card">
 $headerBlock
+$explorerCtaEn
 $mainBlock
+$explorerReminderEn
 $footerBlock
     </div>
 
@@ -359,11 +415,13 @@ $frPairs = @(
     @('Stable &mdash; never revised in place (supersede with new file)', 'Stable &mdash; jamais r&eacute;vis&eacute;e en place (remplacer avec un nouveau fichier)'),
     @('Any &mdash; when visual richness materially adds clarity', 'N&rsquo;importe quand &mdash; quand la richesse visuelle ajoute mat&eacute;riellement de la clart&eacute;'),
     @('Companion to its Markdown parent &mdash; updated with it', 'Compagnon de son parent Markdown &mdash; mis &agrave; jour avec lui'),
-    @('Two lanes run alongside the main ideation-to-delivery flow. Any session may combine Lane A with one or both parallel lanes.', 'Deux couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison. Une session peut combiner le couloir A avec l&rsquo;un ou les deux couloirs parall&egrave;les.'),
+    @('Four lanes run alongside the main ideation-to-delivery flow. Any session may combine Lane A with one or more of these lanes as needed.', 'Quatre couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison. Une session peut combiner le couloir A avec un ou plusieurs de ces couloirs selon le besoin.'),
     @('Lane B', 'Couloir B'),
     @('Lane C', 'Couloir C'),
+    @('Lane D', 'Couloir D'),
+    @('Lane E', 'Couloir E'),
     @('Plan Incubation', 'Incubation de plan'),
-    @('Legacy Retrofit', 'Retrofit historique'),
+    @('Legacy Retrofit', 'R&eacute;int&eacute;gration historique'),
     @('Create or evolve a working plan in <code>plans/</code>', 'Cr&eacute;er ou faire &eacute;voluer un plan de travail dans <code>plans/</code>'),
     @('Explore options and converge on direction (freeform)', 'Explorer les options et converger vers une direction (forme libre)'),
     @('Materialize durable signal into V-*/I-*/TB-*', 'Mat&eacute;rialiser le signal durable en V-*/I-*/TB-*'),
@@ -374,8 +432,20 @@ $frPairs = @(
     @('Map into canonical docs', 'Mapper dans les docs canoniques'),
     @('Record a retrofit slice (R-*)', 'Enregistrer une tranche de retrofit (R-*)'),
     @('Close with residual gaps and next action', 'Cl&ocirc;turer avec les lacunes r&eacute;siduelles et l&rsquo;action suivante'),
-    @('Not a lane &mdash; a cross-cutting modifier. These rules apply on top of Lanes A, B, and C whenever collaboration happens across parallel Git branches or worktrees. Sessions that are single-branch do not need to apply them.', 'Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B et C quand la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees. Les sessions &agrave; branche unique n&rsquo;ont pas besoin de les appliquer.'),
-    @('Cross-cutting &middot; applies to Lanes A, B, C', 'Transversal &middot; s&rsquo;applique aux couloirs A, B, C'),
+    @('Methodology Feedback', 'R&eacute;troaction m&eacute;thodologique'),
+    @('Post-Delivery Re-entry', 'R&eacute;entr&eacute;e post-livraison'),
+    @('Capture friction, ambiguity, or a proposed improvement in the method itself', 'Capturer une friction, une ambigu&iuml;t&eacute; ou une proposition d&rsquo;am&eacute;lioration de la m&eacute;thode elle-m&ecirc;me'),
+    @('Record the decision in <code>methodology/decisions/</code>', 'Consigner la d&eacute;cision dans <code>methodology/decisions/</code>'),
+    @('Preserve short verbatim source signal when exact wording matters', 'Pr&eacute;server un court signal source verbatim quand la formulation exacte compte'),
+    @('Update only the smallest methodology surfaces that must change', 'Mettre &agrave; jour uniquement les plus petites surfaces m&eacute;thodologiques qui doivent changer'),
+    @('Close with the evidence that will show whether the change helped', 'Cl&ocirc;turer avec l&rsquo;&eacute;l&eacute;ment de preuve qui montrera si le changement a aid&eacute;'),
+    @('Start from existing implemented behavior: enhancement, operator feedback, or apparent bug', 'Partir d&rsquo;un comportement d&eacute;j&agrave; impl&eacute;ment&eacute; : am&eacute;lioration, retour op&eacute;rateur ou bug apparent'),
+    @('Classify pure local technical defect vs intent or scope change', 'Classifier d&eacute;faut technique local pur vs changement d&rsquo;intention ou de port&eacute;e'),
+    @('Fix local defects directly with bounded validation', 'Corriger directement les d&eacute;fauts locaux avec une validation born&eacute;e'),
+    @('Re-enter at <code>TB-*</code>, <code>I-*</code>, or <code>V-*</code> when intent changed', 'R&eacute;entrer &agrave; <code>TB-*</code>, <code>I-*</code> ou <code>V-*</code> quand l&rsquo;intention a chang&eacute;'),
+    @('Continue through the normal delivery workflow from that re-entry point', 'Poursuivre ensuite le workflow normal de livraison &agrave; partir de ce point de r&eacute;entr&eacute;e'),
+    @('Not a lane &mdash; a cross-cutting modifier. These rules apply on top of Lanes A, B, C, and D whenever collaboration happens across parallel Git branches or worktrees. Lane E is usually handled single-branch because it changes the methodology itself.', 'Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B, C et D quand la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees. Le couloir E reste g&eacute;n&eacute;ralement g&eacute;r&eacute; en branche unique puisqu&rsquo;il modifie la m&eacute;thodologie elle-m&ecirc;me.'),
+    @('Cross-cutting &middot; applies to Lanes A, B, C, D', 'Transversal &middot; s&rsquo;applique aux couloirs A, B, C, D'),
     @('When two developers (or one developer across two worktrees) work simultaneously, classic ordinal naming creates merge-time collisions. The collaboration context resolves this without coordination overhead, by making artifact names self-sufficient through date+slug identifiers and deferring shared indexes to post-merge.', 'Quand deux d&eacute;veloppeurs (ou un d&eacute;veloppeur sur deux worktrees) travaillent simultan&eacute;ment, le nommage ordinal classique cr&eacute;e des collisions &agrave; la fusion. Le contexte de collaboration r&eacute;sout cela sans surcharge de coordination, en rendant les noms d&rsquo;artefacts autosuffisants par les identifiants date+slug et en diff&eacute;rant les index partag&eacute;s apr&egrave;s la fusion.'),
     @('Date+slug IDs mandatory', 'IDs date+slug obligatoires'),
     @('No counter lookup, no contention across branches.', 'Aucune recherche de compteur, aucune contention entre branches.'),
@@ -498,10 +568,10 @@ $frPairs = @(
     @('Last updated 2026-05-25', 'Derni&egrave;re mise &agrave; jour le 2026-05-25')
 )
 
-$frNavBlock    = Apply-Replacements $navBlock $frPairs
-$frHeaderBlock = Apply-Replacements $headerBlock $frPairs
-$frMainBlock   = Apply-Replacements $mainBlock $frPairs
-$frFooterBlock = Apply-Replacements $footerBlock $frPairs
+$frNavBlock    = Update-Replacements $navBlock $frPairs
+$frHeaderBlock = Update-Replacements $headerBlock $frPairs
+$frMainBlock   = Update-Replacements $mainBlock $frPairs
+$frFooterBlock = Update-Replacements $footerBlock $frPairs
 
 $frMainBlock = $frMainBlock.Replace(
   ('open ' + $arrow + ' resumed ' + $arrow + ' complete, with post-decision notes when superseded'),
@@ -524,6 +594,33 @@ $frHeaderBlock = $rx::Replace(
   '    avec les valeurs m&eacute;thodologiques, les types d&rsquo;artefacts, les fronti&egrave;res d&rsquo;&eacute;tat, la tra&ccedil;abilit&eacute; et les comp&eacute;tences.' + "`n" +
   '  </p>',
   $rxOpts)
+
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="lanes">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="lanes">' + "`n" +
+  '    <h2>Couloirs parall&egrave;les</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Quatre couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison.' + "`n" +
+  '      Une session peut combiner le couloir A avec un ou plusieurs de ces couloirs selon le besoin.' + "`n" +
+  '    </p>',
+  $rxOpts)
+
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="collab">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="collab">' + "`n" +
+  '    <h2>Contexte de collaboration</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B, C et D' + "`n" +
+  '      quand la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees.' + "`n" +
+  '      Le couloir E reste g&eacute;n&eacute;ralement g&eacute;r&eacute; en branche unique puisqu&rsquo;il modifie la m&eacute;thodologie elle-m&ecirc;me.' + "`n" +
+  '    </p>',
+  $rxOpts)
+
+$frMainBlock = $frMainBlock.Replace(
+  'Cross-cutting · applies to Lanes A, B, C, D',
+  'Transversal &middot; s&rsquo;applique aux couloirs A, B, C, D')
 
 $frMainBlock = $rx::Replace(
   $frMainBlock,
@@ -566,8 +663,8 @@ $frMainBlock = $rx::Replace(
   '<section id="lanes">' + "`n" +
   '    <h2>Couloirs parall&egrave;les</h2>' + "`n" +
   '    <p class="section-intro">' + "`n" +
-  '      Deux couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison.' + "`n" +
-  '      Une session peut combiner le couloir A avec l&rsquo;un ou les deux couloirs parall&egrave;les.' + "`n" +
+  '      Quatre couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison.' + "`n" +
+  '      Une session peut combiner le couloir A avec un ou plusieurs de ces couloirs selon le besoin.' + "`n" +
   '    </p>',
   $rxOpts)
 
@@ -577,15 +674,15 @@ $frMainBlock = $rx::Replace(
   '<section id="collab">' + "`n" +
   '    <h2>Contexte de collaboration</h2>' + "`n" +
   '    <p class="section-intro">' + "`n" +
-  '      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B et C' + "`n" +
+  '      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B, C et D' + "`n" +
   '      quand la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees.' + "`n" +
-  '      Les sessions &agrave; branche unique n&rsquo;ont pas besoin de les appliquer.' + "`n" +
+  '      Le couloir E reste g&eacute;n&eacute;ralement g&eacute;r&eacute; en branche unique puisqu&rsquo;il modifie la m&eacute;thodologie elle-m&ecirc;me.' + "`n" +
   '    </p>',
   $rxOpts)
 $frMainBlock = $rx::Replace(
   $frMainBlock,
   '(?s)<div class="collab-modifier-tag">.*?</div>',
-  '<div class="collab-modifier-tag">Transversal &middot; s&rsquo;applique aux couloirs A, B, C</div>',
+  '<div class="collab-modifier-tag">Transversal &middot; s&rsquo;applique aux couloirs A, B, C, D</div>',
   $rxOpts)
 $frMainBlock = $rx::Replace(
   $frMainBlock,
@@ -652,14 +749,14 @@ $frCopyPairs = @(
   @('Must include "Resume at" control block', 'Doit inclure un bloc de reprise &laquo;&nbsp;Resume at&nbsp;&raquo;'),
   @('The workflow is not only a forward pipeline. Cl&ocirc;ture and audit must also prove where an artifact came from, what canon absorbed it, and whether later decisions changed its meaning.', 'Le flux n&rsquo;est pas seulement un pipeline vers l&rsquo;avant. La cl&ocirc;ture et l&rsquo;audit doivent aussi prouver d&rsquo;o&ugrave; vient un artefact, quel canon l&rsquo;a absorb&eacute; et si des d&eacute;cisions ult&eacute;rieures ont chang&eacute; son sens.'),
   @('Session grill, open questions, decision pressure points, status alignment.', 'Session grill, questions ouvertes, points de pression d&eacute;cisionnels, alignement des statuts.'),
-  @('<code>ezkey-backlog-triage</code> or <code>ezkey-grill-me</code>', '<code>ezkey-backlog-triage</code> ou <code>ezkey-grill-me</code>'),
-  @('<code>ezkey-grill-me</code> or <code>ezkey-tracer-bullet-promote</code>', '<code>ezkey-grill-me</code> ou <code>ezkey-tracer-bullet-promote</code>'),
-  @('<code>ezkey-component-design-pack</code> and <code>ezkey-test-strategy-planner</code>', '<code>ezkey-component-design-pack</code> et <code>ezkey-test-strategy-planner</code>'),
-  @('<code>ezkey-test-strategy-planner</code>, then <code>ezkey-quality-gatekeeper</code>', '<code>ezkey-test-strategy-planner</code>, puis <code>ezkey-quality-gatekeeper</code>'),
-  @('<code>ezkey-quality-gatekeeper</code>, then traceability after evidence changes.', '<code>ezkey-quality-gatekeeper</code>, puis synchronisation de la tra&ccedil;abilit&eacute; si les preuves changent.'),
+  @('<code>backlog-triage</code> or <code>grill-me</code>', '<code>backlog-triage</code> ou <code>grill-me</code>'),
+  @('<code>grill-me</code> or <code>tracer-bullet-promote</code>', '<code>grill-me</code> ou <code>tracer-bullet-promote</code>'),
+  @('<code>component-design-pack</code> and <code>test-strategy-planner</code>', '<code>component-design-pack</code> et <code>test-strategy-planner</code>'),
+  @('<code>test-strategy-planner</code>, then <code>quality-gatekeeper</code>', '<code>test-strategy-planner</code>, puis <code>quality-gatekeeper</code>'),
+  @('<code>quality-gatekeeper</code>, then traceability after evidence changes.', '<code>quality-gatekeeper</code>, puis synchronisation de la tra&ccedil;abilit&eacute; si les preuves changent.'),
   @('Impl&eacute;menteration after <code>go</code>, or targeted repair after <code>no-go</code>.', 'Impl&eacute;mentation apr&egrave;s <code>go</code>, ou correction cibl&eacute;e apr&egrave;s <code>no-go</code>.'),
   @('Implementation after <code>go</code>, or targeted repair after <code>no-go</code>.', 'Impl&eacute;mentation apr&egrave;s <code>go</code>, ou correction cibl&eacute;e apr&egrave;s <code>no-go</code>.'),
-  @('<code>ezkey-traceability-sync</code> or <code>ezkey-closeout</code>', '<code>ezkey-traceability-sync</code> ou <code>ezkey-closeout</code>'),
+  @('<code>traceability-sync</code> or <code>closeout</code>', '<code>traceability-sync</code> ou <code>closeout</code>'),
   @('briefs + mappings', 'notes + cartographies'),
   @('Mapper dans les docs canoniques', 'Cartographier dans les docs canoniques'),
   @('patterns et signaux de test', 'sch&eacute;mas r&eacute;currents et signaux de test'),
@@ -676,8 +773,8 @@ $frCopyPairs = @(
   @('M&eacute;thodologie Ezkey Vue riche', 'Vue enrichie de la m&eacute;thodologie Ezkey')
 )
 
-$frMainBlock = Apply-Replacements $frMainBlock $frCopyPairs
-$frFooterBlock = Apply-Replacements $frFooterBlock $frCopyPairs
+$frMainBlock = Update-Replacements $frMainBlock $frCopyPairs
+$frFooterBlock = Update-Replacements $frFooterBlock $frCopyPairs
 
 $frMainBlock = $frMainBlock.Replace('Tracer bullet', 'Tranche t&eacute;moin')
 $frMainBlock = $frMainBlock.Replace('tracer bullet', 'tranche t&eacute;moin')
@@ -776,7 +873,9 @@ $frNavBlock
 
     <div class="site-card">
 $frHeaderBlock
+$explorerCtaFr
 $frMainBlock
+$explorerReminderFr
 $frFooterBlock
     </div>
 

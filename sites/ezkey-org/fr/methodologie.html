@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Source: product-docs/methodology/view/index.html @ 2026-05-25 -->
+<!-- Source: product-docs/methodology/view/index.html @ 2026-05-28 -->
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -727,6 +727,20 @@
     <span>Mis &agrave; jour le 2026-05-25</span>
   </div>
 </header>
+
+<aside class="explorer-cta" style="margin:24px 32px;padding:20px 24px;border:1px solid #cbd5e1;border-radius:10px;background:linear-gradient(135deg,#f1f5f9 0%,#e0e7ff 100%);display:flex;flex-direction:column;gap:10px;">
+  <div style="font-size:1.05rem;font-weight:700;color:#0f172a;">Explorer la m&eacute;thodologie vivante</div>
+  <p style="margin:0;color:#334155;font-size:0.95rem;line-height:1.55;">
+    Cette page en est le panorama. La version vivante est publi&eacute;e comme un site distinct, mis &agrave; jour en continu depuis le d&eacute;p&ocirc;t source au fil de l&rsquo;&eacute;volution de la m&eacute;thodologie.
+  </p>
+  <div>
+    <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:2px;padding:10px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.92rem;">
+      Ouvrir l&rsquo;explorateur de la m&eacute;thodologie
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+    </a>
+  </div>
+  <div style="font-size:0.82rem;color:#64748b;">methodology.ezkey.org &middot; chaque artefact, enti&egrave;rement consultable &middot; mis &agrave; jour en continu &middot; en anglais</div>
+</aside>
 <main>
 
   <!-- ════════════════════════════════════════════════════════════
@@ -799,7 +813,7 @@
         <div class="phase-card ph2">
           <div class="phase-num">Phase 2</div>
           <div class="phase-name">Triage</div>
-          <div class="phase-action">Clarifiez l&rsquo;intention, la valeur utilisateur, le risque et la port&eacute;e approximative. Assignez le statut, la priorit&eacute;, les tags de phase et de composant.</div>
+          <div class="phase-action">Clarify intent, user value, risk, and rough scope. Assign status, priority, progression markers, component tags.</div>
           <span class="phase-badge bg-i">I-* mis &agrave; jour</span>
           <div class="phase-exit">Termin&eacute; quand&nbsp;: port&eacute;e et valeur compr&eacute;hensibles.</div>
         </div>
@@ -966,8 +980,8 @@
   <section id="lanes">
     <h2>Couloirs parall&egrave;les</h2>
     <p class="section-intro">
-      Deux couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison.
-      Une session peut combiner le couloir A avec l&rsquo;un ou les deux couloirs parall&egrave;les.
+      Quatre couloirs s&rsquo;ex&eacute;cutent en parall&egrave;le du flux principal d&rsquo;id&eacute;ation &agrave; livraison.
+      Une session peut combiner le couloir A avec un ou plusieurs de ces couloirs selon le besoin.
     </p>
     <div class="lanes-grid">
 
@@ -997,6 +1011,32 @@
         <p class="lane-ref">→ legacy-retrofit-workflow.md</p>
       </div>
 
+      <div class="lane-card" style="border-left-color: #0d9488;">
+        <div class="lane-label">Couloir D</div>
+        <div class="lane-name" style="color: #0d9488;">R&eacute;entr&eacute;e post-livraison</div>
+        <ul class="lane-steps">
+          <li>Partir d&rsquo;un comportement d&eacute;j&agrave; impl&eacute;ment&eacute; : am&eacute;lioration, retour op&eacute;rateur ou bug apparent</li>
+          <li>Classifier d&eacute;faut technique local pur vs changement d&rsquo;intention ou de port&eacute;e</li>
+          <li>Corriger directement les d&eacute;fauts locaux avec une validation born&eacute;e</li>
+          <li>R&eacute;entrer &agrave; <code>TB-*</code>, <code>I-*</code> ou <code>V-*</code> quand l&rsquo;intention a chang&eacute;</li>
+          <li>Poursuivre ensuite le workflow normal de livraison &agrave; partir de ce point de r&eacute;entr&eacute;e</li>
+        </ul>
+        <p class="lane-ref">→ workflow-overview.md</p>
+      </div>
+
+      <div class="lane-card" style="border-left-color: #16a34a;">
+        <div class="lane-label">Couloir E</div>
+        <div class="lane-name" style="color: #16a34a;">R&eacute;troaction m&eacute;thodologique</div>
+        <ul class="lane-steps">
+          <li>Capturer une friction, une ambigu&iuml;t&eacute; ou une proposition d&rsquo;am&eacute;lioration de la m&eacute;thode elle-m&ecirc;me</li>
+          <li>Consigner la d&eacute;cision dans <code>methodology/decisions/</code></li>
+          <li>Pr&eacute;server un court signal source verbatim quand la formulation exacte compte</li>
+          <li>Mettre &agrave; jour uniquement les plus petites surfaces m&eacute;thodologiques qui doivent changer</li>
+          <li>Cl&ocirc;turer avec l&rsquo;&eacute;l&eacute;ment de preuve qui montrera si le changement a aid&eacute;</li>
+        </ul>
+        <p class="lane-ref">→ decisions/README.md</p>
+      </div>
+
     </div>
   </section>
 
@@ -1006,12 +1046,12 @@
   <section id="collab">
     <h2>Contexte de collaboration</h2>
     <p class="section-intro">
-      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B et C
+      Pas un couloir &mdash; un modificateur transversal. Ces r&egrave;gles s&rsquo;appliquent en plus des couloirs A, B, C et D
       quand la collaboration se fait sur des branches Git parall&egrave;les ou des worktrees.
-      Les sessions &agrave; branche unique n&rsquo;ont pas besoin de les appliquer.
+      Le couloir E reste g&eacute;n&eacute;ralement g&eacute;r&eacute; en branche unique puisqu&rsquo;il modifie la m&eacute;thodologie elle-m&ecirc;me.
     </p>
     <div class="collab-card">
-      <div class="collab-modifier-tag">Transversal &middot; s&rsquo;applique aux couloirs A, B, C</div>
+      <div class="collab-modifier-tag">Transversal &middot; s&rsquo;applique aux couloirs A, B, C, D</div>
       <p class="collab-desc">
         Quand deux d&eacute;veloppeurs (ou un d&eacute;veloppeur sur deux worktrees) travaillent simultan&eacute;ment,
         le nommage ordinal classique cr&eacute;e des collisions &agrave; la fusion. Le contexte de collaboration
@@ -1192,87 +1232,87 @@
         </thead>
         <tbody>
           <tr>
-            <td><code>ezkey-vision-intake</code></td>
+            <td><code>vision-intake</code></td>
             <td>Une direction strat&eacute;gique, une intention produit ou des id&eacute;es de fonctionnalit&eacute; arrivent.</td>
             <td>La direction durable est captur&eacute;e en <code>V-*</code> ou <code>I-*</code> initial avec prochaine &eacute;tape.</td>
-            <td><code>ezkey-backlog-triage</code> ou <code>ezkey-grill-me</code></td>
+            <td><code>backlog-triage</code> ou <code>grill-me</code></td>
             <td>L&rsquo;id&eacute;e est d&eacute;j&agrave; une tranche d&rsquo;impl&eacute;mentation born&eacute;e.</td>
           </tr>
           <tr>
-            <td><code>ezkey-backlog-triage</code></td>
+            <td><code>backlog-triage</code></td>
             <td>Un <code>I-*</code> existe ou une note de vision a une port&eacute;e actionnable.</td>
             <td>Port&eacute;e, hors-port&eacute;e, priorit&eacute;, statut, tags, risques et posture sont explicites.</td>
-            <td><code>ezkey-grill-me</code> ou <code>ezkey-tracer-bullet-promote</code></td>
+            <td><code>grill-me</code> ou <code>tracer-bullet-promote</code></td>
             <td>L&rsquo;item est encore une pure orientation ou d&eacute;j&agrave; enti&egrave;rement cadr&eacute;.</td>
           </tr>
           <tr>
-            <td><code>ezkey-grill-me</code></td>
+            <td><code>grill-me</code></td>
             <td>Les hypoth&egrave;ses, chemins d&rsquo;exception, effets de cycle de vie ou risques de fronti&egrave;re doivent &ecirc;tre mis sous pression.</td>
             <td>Risques, questions ouvertes, points de pression d&eacute;cisionnels et clarifications sont explicites.</td>
             <td>Triage, promotion de tranche t&eacute;moin ou conception de composant.</td>
             <td>Le changement est &agrave; faible risque, born&eacute; et a des crit&egrave;res de validation connus.</td>
           </tr>
           <tr>
-            <td><code>ezkey-plan-incubation</code></td>
+            <td><code>plan-incubation</code></td>
             <td>L&rsquo;op&eacute;rateur part d&rsquo;un plan de travail de session courante.</td>
             <td>Le signal durable est class&eacute; pour <code>V-*</code>, <code>I-*</code>, <code>TB-*</code>, adoption de principe ou combinaison.</td>
             <td>Prise de vision, triage du backlog ou promotion de tranche t&eacute;moin.</td>
             <td>La source est une entr&eacute;e de r&eacute;int&eacute;gration historique ou une t&acirc;che directe d&rsquo;impl&eacute;mentation.</td>
           </tr>
           <tr>
-            <td><code>ezkey-tracer-bullet-promote</code></td>
+            <td><code>tracer-bullet-promote</code></td>
             <td>Un <code>I-*</code> est <code>ready</code> et a besoin d&rsquo;une tranche verticale born&eacute;e.</td>
             <td>Le <code>TB-*</code> a une posture, une port&eacute;e, des fronti&egrave;res, des exclusions et des crit&egrave;res de preuve.</td>
-            <td><code>ezkey-component-design-pack</code> et <code>ezkey-test-strategy-planner</code></td>
+            <td><code>component-design-pack</code> et <code>test-strategy-planner</code></td>
             <td>L&rsquo;item manque de direction, ou le changement est une petite correction code/doc.</td>
           </tr>
           <tr>
-            <td><code>ezkey-component-design-pack</code></td>
+            <td><code>component-design-pack</code></td>
             <td>Une port&eacute;e touche les fronti&egrave;res composant, cartographies, validations ou comportements d&rsquo;erreur.</td>
             <td>Les composants impact&eacute;s ont responsabilit&eacute;s, contrats, tests et impacts documentaires nomm&eacute;s.</td>
-            <td><code>ezkey-test-strategy-planner</code>, puis <code>ezkey-quality-gatekeeper</code></td>
+            <td><code>test-strategy-planner</code>, puis <code>quality-gatekeeper</code></td>
             <td>Le changement est local, interne et non observable &agrave; une fronti&egrave;re.</td>
           </tr>
           <tr>
-            <td><code>ezkey-test-strategy-planner</code></td>
+            <td><code>test-strategy-planner</code></td>
             <td>Un changement a des risques connus et requiert une s&eacute;lection explicite des couches de test.</td>
             <td>Les couches minimales, optionnelles, diff&eacute;r&eacute;es et rejet&eacute;es sont justifi&eacute;es.</td>
-            <td><code>ezkey-quality-gatekeeper</code>, puis synchronisation de la tra&ccedil;abilit&eacute; si les preuves changent.</td>
+            <td><code>quality-gatekeeper</code>, puis synchronisation de la tra&ccedil;abilit&eacute; si les preuves changent.</td>
             <td>Le changement est purement &eacute;ditorial.</td>
           </tr>
           <tr>
-            <td><code>ezkey-quality-gatekeeper</code></td>
+            <td><code>quality-gatekeeper</code></td>
             <td>Le travail passe de l&rsquo;analyse &agrave; l&rsquo;ex&eacute;cution, ou de l&rsquo;ex&eacute;cution &agrave; la cl&ocirc;ture.</td>
             <td>La passerelle retourne <code>go</code> ou <code>no-go</code> avec bloqueurs et actions de suivi.</td>
             <td>Impl&eacute;mentation apr&egrave;s <code>go</code>, ou correction cibl&eacute;e apr&egrave;s <code>no-go</code>.</td>
             <td>La t&acirc;che est triviale et n&rsquo;a aucun impact d&rsquo;analyse, contrat, test ou tra&ccedil;abilit&eacute;.</td>
           </tr>
           <tr>
-            <td><code>ezkey-traceability-sync</code></td>
+            <td><code>traceability-sync</code></td>
             <td>Le statut de fonctionnalit&eacute;, le comportement, les sp&eacute;cifications, les tests ou les preuves de validation ont chang&eacute;.</td>
             <td>Les documents de tra&ccedil;abilit&eacute; globaux et composants refl&egrave;tent les preuves et lacunes courantes.</td>
-            <td><code>ezkey-closeout</code></td>
+            <td><code>closeout</code></td>
             <td>Aucun comportement observable, contrat, statut ou preuve de validation n&rsquo;a chang&eacute;.</td>
           </tr>
           <tr>
-            <td><code>ezkey-closeout</code></td>
+            <td><code>closeout</code></td>
             <td>Une tranche t&eacute;moin, une tranche de fonctionnalit&eacute;, une int&eacute;gration blitz, une tranche de r&eacute;int&eacute;gration ou un cycle se termine.</td>
             <td>Transitions de statut, preuves, travail diff&eacute;r&eacute;, risques r&eacute;siduels et prochaines actions sont explicites.</td>
             <td>Aucune comp&eacute;tence suivante par d&eacute;faut; rouvrir seulement le suivi nomm&eacute;.</td>
             <td>Le travail change encore activement ou les preuves requises ne sont pas disponibles.</td>
           </tr>
           <tr>
-            <td><code>ezkey-legacy-plan-miner</code></td>
+            <td><code>legacy-plan-miner</code></td>
             <td>Des plans historiques, un historique verbal ou une histoire d&rsquo;impl&eacute;mentation ad hoc contiennent un signal r&eacute;utilisable.</td>
             <td>Le signal r&eacute;utilisable est extrait avec confiance et type de source.</td>
-            <td><code>ezkey-retrofit-curator</code></td>
+            <td><code>retrofit-curator</code></td>
             <td>La source est un plan de travail de session courante.</td>
           </tr>
           <tr>
-            <td><code>ezkey-retrofit-curator</code></td>
+            <td><code>retrofit-curator</code></td>
             <td>Le signal historique extrait doit &ecirc;tre cartographi&eacute; vers les destinations canoniques.</td>
             <td>Le <code>R-*</code> consigne les cartographies, les mises &agrave; jour canoniques, les lacunes r&eacute;siduelles et le statut d&rsquo;index.</td>
-            <td><code>ezkey-traceability-sync</code> ou <code>ezkey-closeout</code></td>
+            <td><code>traceability-sync</code> ou <code>closeout</code></td>
             <td>Aucun signal r&eacute;utilisable n&rsquo;existe, ou la source fait d&eacute;j&agrave; partie du canon courant.</td>
           </tr>
         </tbody>
@@ -1338,6 +1378,11 @@
   </section>
 
 </main>
+
+<p style="margin:8px 32px 24px;text-align:center;font-size:0.9rem;color:#475569;">
+  Vous cherchez la r&eacute;f&eacute;rence consultable et toujours &agrave; jour&nbsp;?
+  <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600;text-decoration:none;">Ouvrir l&rsquo;explorateur de la m&eacute;thodologie &#8599;</a>
+</p>
 <footer>
   Vue enrichie de la m&eacute;thodologie Ezkey &nbsp;·&nbsp; Derni&egrave;re mise &agrave; jour le 2026-05-25 &nbsp;·&nbsp;
   Source&nbsp;: corpus m&eacute;thodologique Ezkey

@@ -125,32 +125,32 @@ Advance **one or two harness phases at a time**. Update **canonical** docs only 
 
 | Gate | Skill | Outcome |
 | --- | --- | --- |
-| Before Phase A code | `ezkey-test-strategy-planner` | Test plan slice: unit / functional / operational / Maestro layers, deferrals |
-| Optional if harness touches new boundaries | `ezkey-component-design-pack` | Thin mobile + `ezkey-tests` boundary note (JUnit creates attempt, Maestro consumes) |
-| After Phase A or B passes on hardware | `ezkey-traceability-sync` | New row or gap in `components/mobile/spec-test-traceability.md`; link harness doc |
-| End of Phase A or B | `ezkey-closeout` | TB status note, residual risks, next phase id |
-| Mid-phase design doubt only | `ezkey-grill-me` | Short risk list; avoid re-writing V/I/TB |
-| Session started from `.cursor/plans/` only | `ezkey-plan-incubation` | Materialize deltas into TB/I; do not treat as retrofit |
+| Before Phase A code | `test-strategy-planner` | Test plan slice: unit / functional / operational / Maestro layers, deferrals |
+| Optional if harness touches new boundaries | `component-design-pack` | Thin mobile + `ezkey-tests` boundary note (JUnit creates attempt, Maestro consumes) |
+| After Phase A or B passes on hardware | `traceability-sync` | New row or gap in `components/mobile/spec-test-traceability.md`; link harness doc |
+| End of Phase A or B | `closeout` | TB status note, residual risks, next phase id |
+| Mid-phase design doubt only | `grill-me` | Short risk list; avoid re-writing V/I/TB |
+| Session started from `.cursor/plans/` only | `plan-incubation` | Materialize deltas into TB/I; do not treat as retrofit |
 
-**Not needed each phase:** `ezkey-vision-intake`, `ezkey-tracer-bullet-promote` (already promoted), `ezkey-legacy-plan-miner` / `ezkey-retrofit-curator` (historical lane only).
+**Not needed each phase:** `vision-intake`, `tracer-bullet-promote` (already promoted), `legacy-plan-miner` / `retrofit-curator` (historical lane only).
 
 ### Phase documentation checklist
 
 **Phase A — skeleton (one iteration end-to-end)**
 
-- [ ] Test plan slice created or updated (`ezkey-test-strategy-planner`).
+- [ ] Test plan slice created or updated (`test-strategy-planner`).
 - [ ] TB: mark Phase A **in progress**; link script/test class names once they exist.
 - [ ] This doc: confirm artifact paths match implementation.
 - [ ] `maestro/README.md`: link to session runner when added.
-- [ ] After green run: TB **Execution** line + `ezkey-traceability-sync` (gap: “real-device churn harness — Phase A” until matrix row is formal).
-- [ ] `ezkey-closeout` for Phase A only (TB stays `active`).
+- [ ] After green run: TB **Execution** line + `traceability-sync` (gap: “real-device churn harness — Phase A” until matrix row is formal).
+- [ ] `closeout` for Phase A only (TB stays `active`).
 
 **Phase B — deterministic multi-iteration happy path**
 
 - [ ] Test plan slice: operational layer marked **run now** for bounded N iterations.
 - [ ] `spec-test-traceability.md`: one matrix row or open-gap closure for `F-auth-pending-respond` + real-device loop.
 - [ ] TB exit criterion **3** (short loop): honest yes/partial with link to command.
-- [ ] `ezkey-closeout` + traceability sync.
+- [ ] `closeout` + traceability sync.
 
 **Phase C / D** — repeat checklist; add post-pass script to operator doc only when the script exists.
 
@@ -160,4 +160,4 @@ Advance **one or two harness phases at a time**. Update **canonical** docs only 
 2. **No orphan plans** — if `.cursor/plans/ezkey_mobile_android_real_device_automation.plan.md` changes, add one line under TB **Links** or **Pilot status**; do not fork a second design doc.
 3. **Evidence is files on disk** — session folders are the lab notebook; product-docs only point to the contract.
 4. **Update matrices when tests exist** — not when ideas are discussed.
-5. **Parked vs done** — use `ezkey-closeout` **parked** with a review date if Phase B slips; avoid leaving TB ambiguously “almost done”.
+5. **Parked vs done** — use `closeout` **parked** with a review date if Phase B slips; avoid leaving TB ambiguously “almost done”.

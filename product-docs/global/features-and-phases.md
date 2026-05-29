@@ -1,8 +1,11 @@
-# Features and Phases
+# Features and Milestones
 
 ## Purpose
 
-This document is the living catalog of Ezkey features. Every feature is tied to a phase from the [roadmap](roadmap.md) and carries enough context to reach the relevant component documentation, specs, and tests.
+This document is the living catalog of Ezkey features. Every feature is tied to a milestone from the [roadmap](roadmap.md) and carries enough context to reach the relevant component documentation, specs, and tests.
+
+The filename remains `features-and-phases.md` for link stability. Inside the corpus, use
+**milestone** wording for product progression.
 
 This is a **living document**: as features are added, re-scoped, or retired, the catalog is updated on the same branch as the behavior change. The [spec-test traceability matrix](spec-test-traceability.md) is updated in the same change set.
 
@@ -18,12 +21,13 @@ Status values follow the [glossary](../glossary.md):
 - `deprecated`
 - `removed`
 
-Backlog **phase tags** on `I-*` / `V-*` metadata use the same phase identifiers (`P0-foundations` …
-`P4-compliance-readiness`) — see [`../methodology/nomenclature.md`](../methodology/nomenclature.md).
+Backlog **progression markers** on `I-*` / `V-*` metadata use the same milestone identifiers
+(`P0-foundations` … `P4-compliance-readiness`) — see
+[`../methodology/nomenclature.md`](../methodology/nomenclature.md).
 
 ## Catalog
 
-### Phase `P0-foundations` — Core Protocol
+### Milestone `P0-foundations` — Core Protocol
 
 #### `F-enrollment-bind-verify`
 
@@ -53,7 +57,7 @@ Backlog **phase tags** on `I-*` / `V-*` metadata use the same phase identifiers 
 - **Status.** `implemented`.
 - **Primary components.** [admin-api](../components/admin-api/README.md).
 
-### Phase `P1-operability` — Day-To-Day Administration
+### Milestone `P1-operability` — Day-To-Day Administration
 
 #### `F-admin-ui-shell`
 
@@ -79,7 +83,7 @@ Backlog **phase tags** on `I-*` / `V-*` metadata use the same phase identifiers 
 - **Status.** `implemented`.
 - **Primary components.** [admin-api](../components/admin-api/README.md), [admin-ui](../components/admin-ui/README.md).
 
-### Phase `P2-hardening` — Security and Observability
+### Milestone `P2-hardening` — Security and Observability
 
 #### `F-encryption-key-rotation`
 
@@ -106,7 +110,7 @@ Backlog **phase tags** on `I-*` / `V-*` metadata use the same phase identifiers 
 - **Primary components.** [admin-api](../components/admin-api/README.md), [auth-api](../components/auth-api/README.md), [integration-api](../components/integration-api/README.md).
 - **Policy reference.** [rate-limit-baseline-policy.md](rate-limit-baseline-policy.md) (cross-cutting families and inventory; `I-2026-0008`).
 
-### Phase `P3-distribution` — Integration and Distribution
+### Milestone `P3-distribution` — Integration and Distribution
 
 #### `F-integration-api-maturity`
 
@@ -128,7 +132,7 @@ Backlog **phase tags** on `I-*` / `V-*` metadata use the same phase identifiers 
 - **Intent.** Grow the SDK and CLI surfaces with consistent contracts.
 - **Status.** `planned`.
 
-### Phase `P4-compliance-readiness` — Operational Discipline
+### Milestone `P4-compliance-readiness` — Operational Discipline
 
 #### `F-provisioning-procedures`
 
@@ -157,7 +161,7 @@ Component packs carry their own traceability matrices. The global matrix is a **
 
 See the authoritative workflow in [`../GOVERNANCE.md`](../GOVERNANCE.md). Summary:
 
-1. Pick the right phase in [`roadmap.md`](roadmap.md) (or propose a new phase through an ADR).
+1. Pick the right milestone in [`roadmap.md`](roadmap.md) (or propose a new milestone through an ADR).
 2. Add an entry to the catalog above using the short format.
 3. Create a feature brief using [`../templates/feature-brief.template.md`](../templates/feature-brief.template.md) inside the relevant component pack.
 4. Update the component and [global traceability matrix](spec-test-traceability.md) in the same change set.

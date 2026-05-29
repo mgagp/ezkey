@@ -1,16 +1,16 @@
-# Backlog Idea — `I-YYYY-NNNN` `<title>`
+# Backlog Idea — `I-YYYY-MM-DD-<slug>` `<title>`
 
 ## Metadata
 
-- **ID:** `I-YYYY-NNNN`
+- **ID:** `I-YYYY-MM-DD-<slug>`
 - **Status:** `captured` / `triaged` / `incubating` / `ready` / `active` / `done` / `parked` / `archived` / `dropped`
 - **Priority:** `P0` / `P1` / `P2` / `P3`
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`
 - **Last reviewed at:** `YYYY-MM-DD`
-- **Phase tags:** `<phase-id>, ...` — closed list: `P0-foundations` … `P4-compliance-readiness` (see [`../methodology/nomenclature.md`](../methodology/nomenclature.md))
-- **Component tags:** `<component>, ...` — prefer closed vocabulary (`admin-api`, `docs`, …); see nomenclature
-- **Lane:** `A` / `B` / `C`
+- **Progression markers:** `<marker-id>, ...` — default list: `P0-foundations` … `P4-compliance-readiness` (see [`../methodology/nomenclature.md`](../methodology/nomenclature.md))
+- **Component tags:** `<component>, ...` — prefer the project's documented component vocabulary; see nomenclature and any project case study
+- **Lane:** `A` / `B` / `D`
 - **Captured by:** `<name or initials of the human contributor>`
 - **GitHub issue:** `#NNN` _(optional)_
 
@@ -18,10 +18,20 @@
 
 One short paragraph describing the expected product outcome.
 
+> Example: Allow Tenant Admins to rotate an integration API key without leaving the Admin UI,
+> while preserving one-time secret display and audit visibility.
+
 ## Problem and value
 
 - **Problem:**
 - **Expected value:**
+
+> Example:
+>
+> **Problem:** API key lifecycle work is split between backend capability and incomplete operator
+> flow visibility.
+>
+> **Expected value:** reduce operator error and make key rotation operationally safe.
 
 ## Scope
 
@@ -41,6 +51,9 @@ One short paragraph describing the expected product outcome.
 
 Conditions to move this idea to `ready` and create a tracer bullet.
 
+> Example: Ready once actor scope, one-time secret display policy, and minimum validation slice are
+> explicit.
+
 ## Automation follow-up (optional)
 
 _Omit this section unless a future skill or lightweight check is worth recording._
@@ -51,6 +64,6 @@ _Omit this section unless a future skill or lightweight check is worth recording
 ## Links
 
 - Related vision notes
-- Related features and phases
+- Related features and milestones
 - Related component docs
 - GitHub branch: `feature/<NNN>-<i-artifact-id-lowercase>` _(optional; set when implementation starts)_

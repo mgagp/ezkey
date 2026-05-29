@@ -1,3 +1,6 @@
+---
+public: true
+---
 # Tracer Bullet Iteration Posture: Explicit Gate Before Scoping
 
 ## Date
@@ -43,7 +46,7 @@ replace the fast path with mandatory planning overhead.
 ## Decision
 
 Keep `TB-*` as the single artifact type for implementation planning. Add an explicit
-**iteration posture gate** as the first step of `ezkey-tracer-bullet-promote`:
+**iteration posture gate** as the first step of `tracer-bullet-promote`:
 
 > *"Single-pass or iterative?"*
 
@@ -61,7 +64,7 @@ from drifting into an iterative framing by default.
 - `tracer-bullet-method.md` updated: `posture` added to the TB structure definition; the
   recommended sequence now starts with the posture decision; step 8 ("expand slice iteratively")
   is gated on `posture: iterative`.
-- `ezkey-tracer-bullet-promote/SKILL.md` updated: Step 1 is now the posture gate question;
+- `tracer-bullet-promote/SKILL.md` updated: Step 1 is now the posture gate question;
   subsequent steps renumbered; Rule section extended with single-pass closure guidance.
 - `design-principles.md` updated: Principle 15 ("Simple cases stay simple") formalizes the
   fast-path requirement for the methodology process itself.
@@ -71,5 +74,5 @@ from drifting into an iterative framing by default.
 ## Related documents
 
 - [tracer-bullet-method.md](../tracer-bullet-method.md)
-- [ezkey-tracer-bullet-promote skill](../../../.cursor/skills/ezkey-tracer-bullet-promote/SKILL.md)
-- [design-principles.md](../../global/design-principles.md)
+- `tracer-bullet-promote` skill in the source project skill set
+- source-project `design-principles.md` companion canon

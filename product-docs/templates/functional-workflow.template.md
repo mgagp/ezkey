@@ -6,6 +6,9 @@
 
 One short paragraph describing what this workflow accomplishes and who triggers it.
 
+> Example: This workflow lets a Tenant Admin rotate an API key from the Admin UI and deliver the
+> new secret exactly once.
+
 ## Actors
 
 - **`<actor>`** — short description (user, operator role, component, external system).
@@ -37,13 +40,20 @@ sequenceDiagram
     ComponentB-->>ActorA: Outcome
 ```
 
+> Example nominal flow: Tenant Admin clicks `Rotate key` on the integration detail screen; Admin
+> UI calls the Admin API rotation endpoint; Admin API validates tenant scope, creates the
+> replacement key, stores only the hashed secret, and returns the plain secret once; Admin UI then
+> shows the secret with explicit copy-and-close guidance.
+
 ## Decision Points
 
 Where the flow branches based on state or input.
 
 | Decision | Condition | Branch |
-|----------|-----------|--------|
+| --- | --- | --- |
 | `<decision name>` | `<condition>` | Go to step `<n>` / sub-workflow `<id>`. |
+
+> Example: if the integration is inactive, reject the rotation path and branch to the error model.
 
 ## Exception Paths
 
@@ -74,5 +84,5 @@ Short list of persistence effects. Link to [`data-model-and-persistence.md`](dat
 
 ## Related Documents
 
-- Feature entries in [`../../global/features-and-phases.md`](../../global/features-and-phases.md).
+- feature entries in the product feature catalog.
 - Spec and test entries in [`spec-test-traceability.md`](spec-test-traceability.md).

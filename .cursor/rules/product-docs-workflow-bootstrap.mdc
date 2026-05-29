@@ -33,18 +33,18 @@ For historical plans, verbal rationale, and ad hoc implementation history, use t
 
 Use this skill sequence by default unless the user asks otherwise:
 
-- `ezkey-vision-intake`
-- `ezkey-backlog-triage`
-- `ezkey-grill-me`
-- `ezkey-plan-incubation` when a live working plan is preferred first
-- `ezkey-tracer-bullet-promote`
-- `ezkey-component-design-pack`
-- `ezkey-test-strategy-planner`
-- `ezkey-quality-gatekeeper`
-- `ezkey-traceability-sync`
-- `ezkey-closeout`
-- `ezkey-legacy-plan-miner`
-- `ezkey-retrofit-curator`
+- `vision-intake`
+- `backlog-triage`
+- `grill-me`
+- `plan-incubation` when a live working plan is preferred first
+- `tracer-bullet-promote`
+- `component-design-pack`
+- `test-strategy-planner`
+- `quality-gatekeeper`
+- `traceability-sync`
+- `closeout`
+- `legacy-plan-miner`
+- `retrofit-curator`
 
 Mode guidance:
 

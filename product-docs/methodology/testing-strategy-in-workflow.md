@@ -4,7 +4,7 @@
 
 This document makes test strategy an explicit part of the standard ideation-to-delivery workflow.
 
-It follows Ezkey's pragmatic test philosophy:
+It follows the methodology's pragmatic test philosophy:
 
 - choose the cheapest meaningful gate first,
 - escalate only when justified by risk,

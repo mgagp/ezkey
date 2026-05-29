@@ -24,7 +24,7 @@ When the task starts from a new product or design idea, align with the `product-
 Treat a **current-session working plan** under `.cursor/plans/` or `plans/` as a legitimate incubation artifact, not as legacy retrofit by default.
 
 - Use working plans for freeform brainstorming, tool comparison, and early convergence.
-- When the workflow uses explicit project skills, use `ezkey-plan-incubation` for this lane.
+- When the workflow uses explicit project skills, use `plan-incubation` for this lane.
 - Materialize the durable output into `V-*`, `I-*`, `TB-*`, and related canonical docs.
 - Do not describe this as retrofit unless the source is genuinely historical or mixed with historical evidence.
 

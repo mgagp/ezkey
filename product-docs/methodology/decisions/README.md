@@ -6,14 +6,17 @@ workflow conventions, naming schemes, artifact formats, and collaboration patter
 ## Purpose
 
 These are not product architecture decisions (those live in
-[`../../global/architecture-decisions.md`](../../global/architecture-decisions.md) and component
-`design-decisions.md` files) and not product vision notes (those live in
-`product-docs/global/vision/`). They are decisions about the **process and tooling** that govern
-how the team and AI agents work together.
+`product-docs/global/architecture-decisions.md` and component `design-decisions.md` files) and
+not product vision notes (those live in `product-docs/global/vision/`). They are decisions about
+the **process and tooling** that govern how the team and AI agents work together.
 
 Methodology decisions serve as institutional memory for the practice itself. Without them, the
 rationale for non-obvious rules gets lost between sessions and the same questions get re-debated
 from scratch.
+
+They are also the right place to record small methodology evaluation notes and ordered
+simplification passes when the subject is improving the method itself rather than changing product
+scope.
 
 ## File naming
 
@@ -34,12 +37,50 @@ No counter, no global index needed. One file per decision.
 - A product vision note (use `V-*`).
 - A session summary or plan incubation artifact (use blitz archive or `plans/`).
 - An architecture or product design decision (use
-  [`../../global/architecture-decisions.md`](../../global/architecture-decisions.md) or a
-  component `design-decisions.md`).
+  `product-docs/global/architecture-decisions.md` or a component `design-decisions.md`).
+
+A methodology decision may still preserve **short verbatim source excerpts** when a live
+methodology-feedback session produced the rule. The decision remains the canonical record; it is
+not meant to become a raw transcript dump.
+
+Historical decisions should preserve the state they recorded at the time. Do **not** silently
+rewrite an older decision just to match later terminology, lane lettering, or presentation
+harmonization. When an older record could mislead a current reader, add a short explicit note
+instead of rewriting the historical substance.
+
+## Public visibility (`public:` frontmatter)
+
+Each decision file declares whether it is published on `methodology.ezkey.org` via a single
+YAML frontmatter field:
+
+```yaml
+---
+public: true   # publish on the methodology site
+---
+```
+
+or:
+
+```yaml
+---
+public: false  # repo-only; not copied into the published explorer
+---
+```
+
+**Default = `false`.** A record without the `public:` field is treated as repo-only. This is a
+safe default: a new internal decision never accidentally ships on the public site.
+
+**Criterion for `public: true`**: the record teaches the *method itself* and helps an external
+reader understand or apply it. Operational records (project-internal conventions, codebase-specific
+downscopes, self-referential meta discussions about the methodology's identity) stay repo-only.
+All records remain fully visible in the repository under `product-docs/methodology/decisions/`.
 
 ## Structure of a decision file
 
 ```markdown
+---
+public: true | false
+---
 # [Short decision title]
 
 ## Date
@@ -47,6 +88,12 @@ YYYY-MM-DD
 
 ## Context
 What situation prompted this decision. What problem was being solved.
+
+## Historical interpretation note (optional)
+Only when later methodology changes would otherwise make this record easy to misread.
+Use one short paragraph to distinguish:
+- what this record preserves as historical state at the time of the decision;
+- what later decision or canonical doc now defines the current rule.
 
 ## Working assumptions
 Explicit pragmatic assumptions adopted to avoid over-engineering.
@@ -65,6 +112,34 @@ What changes in practice — files updated, rules modified, skills adjusted.
 ## Related documents
 Links to impacted methodology files, skills, or canonical docs.
 ```
+
+### Optional source-signal section
+
+When a decision comes from a live methodology-feedback session and the exact wording matters,
+add an optional section after `## Context`:
+
+```markdown
+## Source signal (optional)
+
+- Short verbatim excerpt 1
+- Short verbatim excerpt 2
+```
+
+Use this to preserve the load-bearing phrasing that motivated the change. Keep it selective.
+
+### Optional historical-interpretation section
+
+When a decision captures a state that was later renamed, renumbered, or structurally reframed,
+add an optional section after `## Context`:
+
+```markdown
+## Historical interpretation note (optional)
+
+This record preserves the terminology and state that existed on the decision date.
+Current canonical wording or lettering now lives in [later decision or canonical doc].
+```
+
+Use this section sparingly. It is a reader-protection note, not a way to retrofit history.
 
 ## Multi-branch note
 

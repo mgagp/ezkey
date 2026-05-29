@@ -15,7 +15,7 @@ Use the blitz intake pattern when:
 - classification and materialization should not interrupt capture flow,
 - voice dictation is plausible and verbatim preservation matters.
 
-For a single, focused idea, the standard Lane A flow (`ezkey-vision-intake`, then `ezkey-backlog-triage`) is faster and lighter.
+For a single, focused idea, the standard Lane A flow (`vision-intake`, then `backlog-triage`) is faster and lighter.
 
 ## Phases
 
@@ -40,13 +40,14 @@ For a single, focused idea, the standard Lane A flow (`ezkey-vision-intake`, the
 - Do not interrupt unless a phrase is unintelligible (one short clarification at most; otherwise mark `[?]` and move on).
 - When the operator signals end-of-item, move to the next.
 - Capture verbatim in the original language (typically French in this project). Translation to English happens at materialization.
-- Apply only minimal normalization (for example, phonetic variants of the project name normalized to `Ezkey` per `voice-dictation.mdc`).
+- Apply only minimal normalization (for example, project-name variants normalized according to local dictation rules).
 
 ### Phase 2 — Classification
 
 For each `Dn`, propose a compact classification record covering:
 
-- **Lane** — A-vision, A-backlog, B-delivery, C-retrofit, principle candidate, code-only, or vague-to-reformulate.
+- **Lane** — A-orientation/capture, A-ready-for-delivery, C-retrofit, D-post-delivery re-entry,
+  E-methodology feedback, principle candidate, code-only, or vague-to-reformulate.
 - **Type** — `V` / `I` / `TB` / `R` / `ADR` / `principle` / `code-only`.
 - **Status** — `captured` or `triaged` initially.
 - **Priority** — `P0` / `P1` / `P2` / `P3` with one-line rationale.
@@ -54,6 +55,9 @@ For each `Dn`, propose a compact classification record covering:
 - **Component tag(s)** — concrete component or module names.
 - **Profile** — security, performance, operability, UX, debt, feature, docs, etc.
 - **Confidence** — `high` / `medium` / `low`. Low confidence flags items that need explicit operator validation.
+
+Lane B is not an item classification in this pattern. It is a session-entry variant used when the
+operator intentionally starts from a live working plan instead of a blitz capture.
 
 Cross-check against existing artifacts to detect:
 
@@ -172,4 +176,4 @@ When propagating blitz authorship to canonical artifacts (`I-*`, `V-*`, `TB-*`),
 - [`session-start-guide.md`](session-start-guide.md) — when to choose the blitz intake variant.
 - [`nomenclature.md`](nomenclature.md) — IDs and filename conventions.
 - [`legacy-retrofit-workflow.md`](legacy-retrofit-workflow.md) — when a captured item is a retrofit candidate.
-- [`../../.cursor/rules/voice-dictation.mdc`](../../.cursor/rules/voice-dictation.mdc) — voice-dictation phonetic normalization.
+- `../../.cursor/rules/voice-dictation.mdc` — voice-dictation phonetic normalization in the source project.

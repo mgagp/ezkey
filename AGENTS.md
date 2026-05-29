@@ -41,20 +41,57 @@ Parallel lane for historical plan retrofit:
 
 Recommended skill sequence for this method:
 
-- `ezkey-vision-intake`
-- `ezkey-backlog-triage`
-- `ezkey-grill-me`
-- `ezkey-plan-incubation` when the operator wants a live working plan first
-- `ezkey-tracer-bullet-promote`
-- `ezkey-component-design-pack`
-- `ezkey-test-strategy-planner`
-- `ezkey-quality-gatekeeper`
-- `ezkey-traceability-sync`
-- `ezkey-closeout`
-- `ezkey-legacy-plan-miner`
-- `ezkey-retrofit-curator`
+- `vision-intake`
+- `backlog-triage`
+- `grill-me`
+- `plan-incubation` when the operator wants a live working plan first
+- `tracer-bullet-promote`
+- `component-design-pack`
+- `test-strategy-planner`
+- `quality-gatekeeper`
+- `traceability-sync`
+- `closeout`
+- `legacy-plan-miner`
+- `retrofit-curator`
 
 This bootstrap does not replace existing module-specific rules; it defines the default ideation-to-delivery path.
+
+## Public methodology explorer ordering
+
+For curated documentation packs exposed in the methodology explorer (`product-docs/methodology/`,
+`product-docs/templates/`, and the derived public `skills/` corpus), do not default to
+alphabetical ordering when a stable conceptual order exists.
+
+- Keep `README.md` first so each pack opens with orientation.
+- Order the remaining items by reader journey: fastest entry, core flow, specialized variants,
+  reference material, then examples or decision logs.
+- Decision archives and historical records follow primary guidance; they do not precede it.
+- When adding a new methodology doc, template, or skill, place it in the existing conceptual
+  bucket and preserve the established relative order unless a methodology decision explicitly
+  changes the navigation model.
+
+## Methodology publication boundary
+
+`product-docs/` plays a dual role in this repository:
+
+- official Ezkey methodology and working documentation system,
+- publishable methodology product for the public explorer and download pack.
+
+When working on the public methodology surface, keep that boundary explicit:
+
+- Publish method-level canon only: `product-docs/methodology/`, `product-docs/templates/`,
+  derived public `skills/`, `glossary.md`, rich views, and methodology decisions explicitly marked
+  `public: true`.
+- Do **not** publish regular Ezkey delivery artifacts from `product-docs/global/`,
+  `product-docs/components/`, backlog / roadmap / vision execution records, or editor-local
+  `.cursor/` assets as part of the methodology product.
+- Public methodology docs may mention source-project hooks, but they must not depend on those
+  surfaces as live public links.
+- If a source-project artifact contains a reusable methodological lesson, restate or promote that
+  lesson into method-level canon instead of broadening the publication surface ad hoc.
+
+Treat linkability as part of this rule: a public document should not route readers into a
+non-published Ezkey working surface.
 
 When a task involves **entity relationships, lifecycle semantics, operational eligibility, parent-child propagation, reversible vs irreversible actions, or operator analysis across multiple entity types**, it is also mandatory to read **`docs/LIFECYCLE_GOVERNANCE.md`** before proposing a design, plan, or implementation direction. Treat that document as the source of truth for how Ezkey models:
 

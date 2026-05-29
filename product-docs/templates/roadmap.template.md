@@ -8,21 +8,21 @@ State why this roadmap exists and how it should be read. One short paragraph.
 
 ## Reading Model
 
-- **Phases** group work under a single intent and timeframe.
-- **Features** inside a phase describe observable capabilities. Detailed descriptions belong in [`features-and-phases.md`](features-and-phases.md).
+- **Milestones** group work under a single intent and progression step.
+- **Features** inside a milestone describe observable capabilities. Detailed descriptions belong in [`features-and-phases.md`](features-and-phases.md).
 - This document is the current truth; it evolves but is never a detailed history.
 
-## Phases Overview
+## Milestones Overview
 
-| Phase | Intent | Status | Primary outcomes |
+| Milestone | Intent | Status | Primary outcomes |
 |-------|--------|--------|------------------|
-| `<phase-id>` | `<one-line intent>` | `planned` | `<outcomes>` |
+| `<milestone-id>` | `<one-line intent>` | `planned` | `<outcomes>` |
 
-## Phase Detail
+## Milestone Detail
 
-### Phase `<phase-id>` — `<phase name>`
+### Milestone `<milestone-id>` — `<milestone name>`
 
-**Intent.** One paragraph describing what this phase sets out to accomplish.
+**Intent.** One paragraph describing what this milestone sets out to accomplish.
 
 **Status.** `planned` / `in-progress` / `implemented`.
 
@@ -32,15 +32,15 @@ State why this roadmap exists and how it should be read. One short paragraph.
 
 **Dependencies.**
 
-- Describe dependencies on other phases, components, or external factors.
+- Describe dependencies on other milestones, components, or external factors.
 
 **Exit criteria.**
 
-- Observable conditions under which the phase is considered complete.
+- Observable conditions under which the milestone is considered complete.
 
 ## Long-Term Horizon
 
-Short section listing directional themes that are not yet planned phases but that shape decisions (for example: platform maturity, compliance targets, ecosystem expansion).
+Short section listing directional themes that are not yet planned milestones but that shape decisions (for example: platform maturity, compliance targets, ecosystem expansion).
 
 ## Related Documents
 

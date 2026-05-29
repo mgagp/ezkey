@@ -1,3 +1,6 @@
+---
+public: false
+---
 # Blitz File Naming in Multi-Branch and Multi-Worktree Contexts
 
 ## Date

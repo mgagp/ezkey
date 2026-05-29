@@ -1,3 +1,6 @@
+---
+public: false
+---
 # Controllers Registry Downscope
 
 ## Date

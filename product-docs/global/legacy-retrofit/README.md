@@ -16,7 +16,8 @@ Provide a discoverable bridge between:
 
 ## ID convention
 
-Use `R-YYYY-NNNN` for retrofit slices.
+Use `R-YYYY-MM-DD-<slug>` for new retrofit slices. Legacy `R-YYYY-NNNN` slices remain valid
+history and are not renamed.
 
 ## Workflow
 

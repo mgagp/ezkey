@@ -20,6 +20,7 @@ cd "$SCRIPT_DIR"
 # Defaults: compose file uses ${BUILD_MODE:-test} and ${ADMIN_UI_PORT:-3080}
 BUILD_MODE=
 ADMIN_UI_PORT=
+NO_CACHE=
 COMPOSE_ARGS=()
 
 while [ $# -gt 0 ]; do
@@ -37,6 +38,10 @@ while [ $# -gt 0 ]; do
         exit 1
       fi
       ;;
+    --no-cache)
+      NO_CACHE=1
+      shift
+      ;;
     *)
       COMPOSE_ARGS+=("$1")
       shift
@@ -47,4 +52,8 @@ done
 export BUILD_MODE
 export ADMIN_UI_PORT
 
-DOCKER_BUILDKIT=1 docker compose -f docker-compose.admin-ui.yml up --build "${COMPOSE_ARGS[@]}"
+COMPOSE_FILE="-f docker-compose.admin-ui.yml"
+if [ -n "$NO_CACHE" ]; then
+  DOCKER_BUILDKIT=1 docker compose $COMPOSE_FILE build --no-cache
+fi
+DOCKER_BUILDKIT=1 docker compose $COMPOSE_FILE up --build "${COMPOSE_ARGS[@]}"

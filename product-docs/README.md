@@ -10,7 +10,7 @@ The structure and templates defined here are designed to be **reusable in any mo
 
 The system exists to answer these questions consistently, at any scale of product:
 
-- What is the product? Why does it exist? What are its features and phases?
+- What is the product? Why does it exist? What are its features and milestones?
 - What is the architecture? What are the design decisions and their rationale?
 - How does each component work internally? Which flows does it support?
 - How is data shaped, persisted, and mapped between boundaries?
@@ -30,7 +30,7 @@ The system has three layers:
 ```mermaid
 flowchart TD
     globalIntent[Global Intent and Roadmap] --> globalArch[Global Architecture and Design]
-    globalArch --> featureRegistry[Features and Phases Registry]
+  globalArch --> featureRegistry[Features and Milestones Registry]
     featureRegistry --> componentPacks[Component Documentation Packs]
     componentPacks --> mappingSpecs[Mappings and Specifications]
     mappingSpecs --> traceability[Spec-Test Traceability]
@@ -61,7 +61,7 @@ product-docs/
     README.md                   Global reading order and document map.
     product-intent.md           Product intent, positioning, success criteria.
     roadmap.md                  Major product steps and sequencing.
-    features-and-phases.md      Feature catalog linked to phases.
+    features-and-phases.md      Historical filename for the feature catalog linked to milestones.
     architecture-overview.md    Patterns, principles, boundaries.
     architecture-decisions.md   Global architecture decision log.
     design-principles.md        Cross-product design principles.
@@ -139,7 +139,7 @@ A first-time reader should follow this path:
 The system distinguishes two kinds of documents:
 
 - **Finality documents** — express the **current truth and long-term direction** of the product. Examples: product intent, roadmap, architecture overview, design principles. They evolve, but they always represent the latest intended state.
-- **Living documents** — express the **current reality on a given branch**, especially phase, feature state, and traceability. Examples: features-and-phases, spec-test-traceability, component design decisions.
+- **Living documents** — express the **current reality on a given branch**, especially milestone placement, feature state, and traceability. Examples: features-and-phases, spec-test-traceability, component design decisions.
 
 Both kinds are markdown, versioned in git, and kept under the same folder structure. The distinction is editorial, not structural.
 
@@ -149,7 +149,7 @@ The authoritative governance rules live in [`GOVERNANCE.md`](GOVERNANCE.md). Sum
 
 - **One canonical place per concept.** If something lives here, it should not also live elsewhere. Cross-link instead of duplicating.
 - **Templates are minimal on purpose.** Every section must earn its place. Do not pad.
-- **Every feature entry links to:** intent, phase, mappings, exceptions, acceptance criteria, and tests.
+- **Every feature entry links to:** intent, milestone, mappings, exceptions, acceptance criteria, and tests.
 - **Every architecture or design decision has:** rationale, alternatives considered, and consequences.
 - **Documentation updates are required when behavior, contracts, or workflows change.** Specs, prose, and tests stay aligned.
 - **Keep language pragmatic.** Express intent and constraints clearly; avoid ceremony that does not change outcomes.

@@ -64,5 +64,5 @@ This posture pairs with **Design Principle #1** (simplicity), **#5** (operator-f
 
 ## Usage in workflow
 
-- Reference in `ezkey-grill-me` and component design packs when role visibility or dashboard copy is in question.
+- Reference in `grill-me` and component design packs when role visibility or dashboard copy is in question.
 - Promote concrete rules into RBAC docs or Admin UI specs when a feature ships; this guide stays stable orientation text.

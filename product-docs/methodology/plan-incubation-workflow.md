@@ -16,7 +16,7 @@ The key difference is intent:
 Modern coding agents are strong at freeform planning, option comparison, and early-stage brainstorming.
 That strength is valuable and should not be suppressed just because the repository also uses a structured documentation method.
 
-Ezkey's methodology therefore recognizes a hybrid posture:
+This methodology therefore recognizes a hybrid posture:
 
 1. start with a pragmatic working plan when that accelerates exploration;
 2. iterate until the direction is coherent enough;

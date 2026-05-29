@@ -4,6 +4,10 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Non-interactive Docker builds: skip npm self-update and funding notices (noise only).
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false \
+    NPM_CONFIG_FUND=false
+
 # Copy dependency manifests first to leverage layer cache
 COPY package*.json ./
 

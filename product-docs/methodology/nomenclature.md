@@ -141,20 +141,25 @@ examples, and issue↔branch linking steps: [`github-issues-workflow.md`](github
 Do not mix these destinations. Each scope has one canonical home:
 
 | Scope | Canonical location | Use for |
-|-------|-------------------|---------|
-| **Global product / architecture** | [`../global/architecture-decisions.md`](../global/architecture-decisions.md) | ADRs that apply across modules (protocol, lifecycle, error model, roadmap phase changes). |
+| ----- | ------------------ | ------- |
+| **Global product / architecture** | `product-docs/global/architecture-decisions.md` | ADRs that apply across modules (protocol, lifecycle, error model, roadmap phase changes). |
 | **Component pack** | `product-docs/components/<pack>/design-decisions.md` | ADRs scoped to one module (Admin API, mobile, Admin UI, …). |
 | **Methodology / process** | [`decisions/YYYY-MM-DD-<slug>.md`](decisions/) | Workflow conventions, artifact formats, collaboration rules — not product behavior. |
 
 There is **no** global `design-decisions.md`. That filename is **component-scoped only**.
 
-When a vision note (`V-*`) or tracer bullet (`TB-*`) reaches `promoted`, its durable substance must live in one or more of the destinations above (or in other global canon such as [`../global/design-principles.md`](../global/design-principles.md), [`../global/features-and-phases.md`](../global/features-and-phases.md), operator guides, or component design notes) — not only inside the orientation artifact.
+When a vision note (`V-*`) or tracer bullet (`TB-*`) reaches `promoted`, its durable substance
+must live in one or more of the destinations above (or in other global canon such as
+`product-docs/global/design-principles.md`, `product-docs/global/features-and-phases.md`,
+operator guides, or component design notes) — not only inside the orientation artifact.
 
-## Phase tags (backlog and vision metadata)
+## Progression markers (backlog and vision metadata)
 
-Phase tags classify **which roadmap phase** an idea primarily serves. They are **not** priority labels (`P0`–`P3` in the backlog) and not informal profile names.
+Progression markers classify **which product maturity milestone** an idea primarily serves. They
+are **not** backlog priority labels (`P0`–`P3`) and not workflow phases. They provide a compact,
+opinionated way to say where an idea belongs in the product's evolution.
 
-**Closed enumeration** — use only identifiers defined in [`../global/roadmap.md`](../global/roadmap.md):
+**Default vocabulary** — use these markers unless the project documents a deliberate local mapping:
 
 - `P0-foundations`
 - `P1-operability`
@@ -164,42 +169,29 @@ Phase tags classify **which roadmap phase** an idea primarily serves. They are *
 
 Rules:
 
-- An artifact may carry **one or more** phase tags when it spans phases.
-- Adding a **new** phase requires updating `roadmap.md`, `features-and-phases.md`, and an ADR entry in `architecture-decisions.md` — not inventing a tag in isolation.
-- Invalid examples (do not use as phase tags): `P3-comfort`, `P2-functional-mode`, `toolchain`, `mobile`.
+- An artifact may carry **one or more** progression markers when it spans milestones.
+- Adding or renaming markers requires a documented mapping, not an ad hoc tag invented in one artifact.
+- Invalid examples (do not use as progression markers): `P3-comfort`, `P2-functional-mode`, `toolchain`, `mobile`.
 
-Authoritative phase definitions: [`../global/roadmap.md`](../global/roadmap.md) and [`../global/features-and-phases.md`](../global/features-and-phases.md).
+Ezkey's concrete binding of these markers to its roadmap lives in
+[`case-study-ezkey.md`](case-study-ezkey.md#progression-markers).
 
 ## Component tags (backlog and vision metadata)
 
-Component tags name **which Ezkey modules or doc surfaces** an idea touches. Prefer the **closed vocabulary** below; align GitHub `component:*` labels with the same tokens (see [`github-issues-workflow.md`](github-issues-workflow.md)).
-
-| Tag | Typical scope |
-|-----|----------------|
-| `core` | Shared domain, persistence, cross-cutting Java modules |
-| `admin-api` | Admin API boot module and controllers |
-| `auth-api` | Auth API boot module |
-| `integration-api` | Integration API boot module |
-| `crypto-api` | Crypto API module |
-| `admin-ui` | Admin UI frontend |
-| `mobile` | Mobile apps (Android / iOS) |
-| `sdk` | Client SDKs (language-agnostic; use `sdk-java` only when Java SDK alone) |
-| `sdk-java` | Java SDK specifically |
-| `infra` | Docker, compose, deployment, HA, observability stack |
-| `bootstrap` | First-run / clean-start bootstrap flows |
-| `audit` | Audit chain, checkpoints, integrity |
-| `repositories` | Data-access / SQL layer concerns |
-| `migration` | Flyway / schema migrations |
-| `docs` | `docs/` hub, operator docs, generated specs workflow |
-| `methodology` | `product-docs/methodology/`, templates, skills mechanics |
-| `skills` | `.cursor/skills/` or equivalent agent skills |
-| `site` | Public static site (`sites/`) |
+Component tags name **which bounded contexts, delivery surfaces, or documentation surfaces** an
+idea touches. The method expects each project to maintain a small, closed vocabulary that matches
+its real ownership and delivery boundaries.
 
 Rules:
 
-- Use **`docs`**, not `docs (product-docs)` — the parent folder is implied.
-- Adding a **new** tag requires a one-line entry in this table **and** a matching `component:*` label in `github-issues-workflow.md` when GitHub Issues are in use.
+- Use stable, short, lowercase tags.
+- Prefer tags that represent owned boundaries, not transient implementation details.
+- Adding a **new** tag requires updating the project's documented vocabulary **and** any matching
+  `component:*` labels when GitHub Issues are in use.
 - Prefer the **smallest accurate set** (typically one to four tags).
+
+Ezkey's concrete component tag vocabulary lives in
+[`case-study-ezkey.md`](case-study-ezkey.md#component-tags).
 
 ## Superseded / Supersedes (reformulation, not abandonment)
 

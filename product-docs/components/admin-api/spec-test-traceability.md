@@ -9,7 +9,7 @@ Promote items to the global matrix when they materially affect product-level cov
 ## Traceability Matrix
 
 | Feature | Spec | Acceptance criterion | Test suite | Status |
-|---------|------|----------------------|------------|--------|
+| --- | --- | --- | --- | --- |
 | [`F-admin-api-core`](../../global/features-and-phases.md#f-admin-api-core) | [`../../../docs/ENDPOINT.md`](../../../docs/ENDPOINT.md), [`functional-flows.md#w-api-integration-create`](functional-flows.md#w-api-integration-create) | Integrations CRUD endpoints behave per contract; role scoping enforced. | `mvn test -pl 'ezkey-admin-api,!ezkey-tests'`, Postman collections under [`../../../postman/collections/`](../../../postman/collections/). | `implemented` |
 | [`F-admin-lifecycle`](../../global/features-and-phases.md#f-admin-lifecycle) | [`data-model-and-persistence.md#admin`](data-model-and-persistence.md#admin), [`../../../docs/LIFECYCLE_GOVERNANCE.md`](../../../docs/LIFECYCLE_GOVERNANCE.md) | Admin identity lifecycle independent from MFA; minimum-admin guard; self-deactivate blocked. | Admin API tests. | `implemented` |
 | [`F-tenant-lifecycle`](../../global/features-and-phases.md#f-tenant-lifecycle) | [`data-model-and-persistence.md#tenant`](data-model-and-persistence.md#tenant), [`../../global/lifecycle-model.md`](../../global/lifecycle-model.md) | Deactivation blocks downstream via eligibility chain; system tenant protected. | Admin API tests. | `implemented` |
@@ -34,7 +34,7 @@ Promote items to the global matrix when they materially affect product-level cov
 ## Update Cadence
 
 - Update when an endpoint is added, modified, or removed, and when its contract tests change.
-- Review at phase boundaries.
+- Review at milestone boundaries or bounded delivery checkpoints.
 - Promote items to the global matrix when they affect product-level acceptance.
 
 ## Related Documents

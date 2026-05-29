@@ -34,13 +34,13 @@ For each alternative, a short paragraph or a bullet with trade-offs.
 ## Impact
 
 - **Affected components.** Link to the relevant component packs.
-- **Affected features.** Link to entries in [`features-and-phases.md`](../global/features-and-phases.md).
+- **Affected features.** Link to entries in the product feature catalog.
 - **Affected boundaries.** Link to entries in the relevant mapping matrices.
 
 ## Validation
 
 - How the decision will be validated in practice (tests, metrics, exploratory review).
-- Link to the relevant traceability entries in [`spec-test-traceability.md`](../global/spec-test-traceability.md).
+- Link to the relevant traceability entries in the appropriate spec-test traceability matrix.
 
 ## Related Decisions
 

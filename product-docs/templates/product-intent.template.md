@@ -60,7 +60,8 @@ Principles that guide trade-offs. Each principle is one line with a short explan
 
 ## Current Product Surface
 
-Short inventory of components and surfaces that implement this intent. Link to the [component packs](../components/README.md) for details.
+Short inventory of components and surfaces that implement this intent. Link to the relevant
+component packs for details.
 
 ## Non-Goals and Boundaries
 
@@ -72,7 +73,7 @@ What "working" looks like. Each criterion should be observable.
 
 ## Related Documents
 
-- [`../global/roadmap.md`](../global/roadmap.md)
-- [`../global/features-and-phases.md`](../global/features-and-phases.md)
-- [`../global/architecture-overview.md`](../global/architecture-overview.md)
+- your product roadmap
+- your feature catalog
+- your architecture overview
 - [`../glossary.md`](../glossary.md)
