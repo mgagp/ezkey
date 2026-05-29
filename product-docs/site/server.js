@@ -223,6 +223,38 @@ function publicUiRank(entry, urlPrefix) {
   return Number.MAX_SAFE_INTEGER;
 }
 
+/**
+ * Public publication policy:
+ * `methodology/decisions/*.md`: a record ships only when its frontmatter
+ * explicitly sets `public: true`. All other corpus files publish as before.
+ * See `methodology/decisions/README.md` for the convention rationale.
+ */
+export function isPublic(urlPath) {
+  const isDecision = /(^|\/)methodology\/decisions\/[^/]+\.md$/i.test(urlPath);
+  if (!isDecision) return true;
+  if (/\/README\.md$/i.test(urlPath)) return true;
+  const abs = resolveCorpusPath(urlPath);
+  if (!abs) return false;
+  try {
+    const raw = fs.readFileSync(abs, 'utf8');
+    const fm = matter(raw).data || {};
+    return fm.public === true;
+  } catch {
+    return false;
+  }
+}
+
+export function filterTree(nodes) {
+  return nodes
+    .map((node) => {
+      if (node.kind === 'file') return isPublic(node.path) ? node : null;
+      const children = node.children ? filterTree(node.children) : [];
+      if (children.length === 0) return null;
+      return { ...node, children };
+    })
+    .filter(Boolean);
+}
+
 function isReadmeEntry(entry) {
   return entry.key.toLowerCase() === 'readme.md' || entry.key.toLowerCase() === 'readme';
 }
@@ -321,10 +353,6 @@ export function auditPublicPublicationBoundary(corpus = CORPUS) {
 export function rebuildGeneratedPublicArtifacts() {
   prepareSkillsPublicCorpus();
   auditPublicPublicationBoundary();
-  prepareDownloadPack({
-    tree: filterTree(buildTree()),
-    resolveCorpusPath,
-  });
 }
 
 rebuildGeneratedPublicArtifacts();
