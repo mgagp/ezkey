@@ -78,6 +78,7 @@ const PUBLIC_METHODOLOGY_SEQUENCE = [
   'workflow-overview',
   'session-start-guide',
   'analysis-and-design-canon',
+  'design-judgment-principles',
   'tracer-bullet-method',
   'testing-strategy-in-workflow',
   'quality-gates',

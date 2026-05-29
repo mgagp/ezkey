@@ -6,6 +6,9 @@ This canon defines the minimal analytical and design artifacts expected for non-
 
 It intentionally keeps classic software analysis methods while remaining lightweight.
 
+Use [`design-judgment-principles.md`](design-judgment-principles.md) alongside this canon when the
+question is not which artifact to produce, but which design option to choose.
+
 ## Canonical artifact set
 
 Use only what adds signal for the change:

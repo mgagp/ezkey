@@ -34,9 +34,10 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 ### Core working method
 
 1. `analysis-and-design-canon.md`
-2. `tracer-bullet-method.md`
-3. `testing-strategy-in-workflow.md`
-4. `quality-gates.md`
+2. `design-judgment-principles.md`
+3. `tracer-bullet-method.md`
+4. `testing-strategy-in-workflow.md`
+5. `quality-gates.md`
 
 ### Specialized lanes and workflow variants
 
@@ -106,10 +107,12 @@ sequence.
 If the full method still feels too large for the current topic, use
 [`minimum-viable-method.md`](minimum-viable-method.md) as the lightweight front door.
 
-Apply the source project's product design principles when judging scope. In Ezkey, that companion
-canon lives in `product-docs/global/design-principles.md` — especially **#1**, **#2**, and **#14
-(beautiful problems)**: defer scale/performance sophistication until evidence shows the problem is
-real and earned by adoption, not hypothetical.
+Apply [`design-judgment-principles.md`](design-judgment-principles.md) when the methodology needs a
+method-level tie-breaker for design trade-offs.
+
+In this repository's source project, the product-specific companion canon remains in
+`product-docs/global/design-principles.md` — especially for Ezkey-local principles that should not
+be promoted wholesale into the public methodology product.
 
 Apply [`methodological-values.md`](methodological-values.md) when judging the workflow itself:
 whether a gate is proportional, whether an artifact deserves to be living, whether a skill should

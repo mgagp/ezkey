@@ -140,7 +140,8 @@ Use these values as a short preflight when modifying the methodology itself:
 3. Choose the smallest rule, document change, skill boundary, or checklist that addresses it.
 4. Record the evidence that will show whether the change worked.
 
-These values complement the source project's product-level design principles. In Ezkey, that
-companion canon lives in `product-docs/global/design-principles.md`. The product principles guide
-what the product should become; these values guide how the human and AI workflow gets there while
-preserving integrity.
+These values complement the methodology's design-trade-off companion in
+[`design-judgment-principles.md`](design-judgment-principles.md). In Ezkey, the source-project's
+product-level companion canon still lives in `product-docs/global/design-principles.md`. The design
+principles guide what a solution should optimize for; these values guide how the human and AI
+workflow gets there while preserving integrity.

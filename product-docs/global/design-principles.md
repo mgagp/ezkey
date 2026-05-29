@@ -6,6 +6,10 @@ This document captures the principles that guide architectural and design trade-
 
 The principles are product-wide. Components may add their own local principles in `design-decisions.md`, but those must not contradict what is here.
 
+This file remains the Ezkey source-project canon. A promoted methodology-level companion now lives
+in `product-docs/methodology/design-judgment-principles.md` for the generic subset that should be
+visible in the published methodology product without relocating this source-project document.
+
 ## Core Principles
 
 ### 1. Simplicity and pragmatism
