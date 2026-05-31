@@ -45,6 +45,12 @@ At the end of each significant session or when merging a TB ladder PR, add a dat
 - **Functional:** Release build removed; debug **installed** on Pixel 7 Pro — manual smoke: app launch, optional enrollment QR to validate diag lines.
 - **Next:** Operator QR smoke; then step-5 Async Storage 3.x before Vision Camera 5 spike.
 
+### 2026-05-29 — Maestro deferred (operator guidance)
+
+- **Context:** Maestro pilot only automates pending/respond with a **pre-existing** enrollment id; enrollment/QR is not in the harness yet.
+- **Decision:** No Maestro effort on branch `#177` until a separate session extends automation. Functional validation = **manual** on Pixel (operator testing now).
+- **Push:** Operator handles `git push`; agents commit only.
+
 ---
 
 ## Retrospective synthesis (Step 8 — fill after execution)

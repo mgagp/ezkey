@@ -65,7 +65,7 @@ Each row = **one reviewable PR** unless noted.
 | **4** | `step-4-eslint-9` | B | ESLint 9 migration (if preset green) |
 | **5** | `step-5-async-storage-3` | A | Async Storage 3.x + storage tests + device smoke |
 | **6** | `step-6-vision-camera-spike` | A | VC 5 + Nitro POC; QR on device |
-| **7** | `step-7-vision-camera-complete` | A | Remove worklets stub if possible; docs; Maestro |
+| **7** | `step-7-vision-camera-complete` | A | Remove worklets stub if possible; docs; manual device smoke |
 | **8** | `step-8-methodology-retro` | E | ML synthesis; decisions; I/TB closeout |
 
 **Rule:** append **`ML-2026-05-29`** at end of each step (see method log template).
@@ -145,6 +145,14 @@ Capture during QR / enrollment tests:
 
 **Vision Camera 5.x:** prior one-shot migration failed; use **step-6 spike** only after B3 + storage steps green. Expect Nitro + frame processor rework — diagnostics mandatory.
 
+### Maestro (out of scope for this program phase)
+
+Do **not** invest in Maestro flows or pilot scripts during steps 1–7 on branch `#177`.
+
+- The only existing pilot (`TB-2026-0002`) assumes **pre-enrolled** `ENROLLMENT_ID` — it does not cover enrollment/QR.
+- That gap is intentional backlog for a **later session**; a failed or skipped Maestro run here is **not** a regression signal for stack upgrades.
+- Gates for this branch: **`yarn validate`**, JVM tests, **manual** functional smoke (launch, enroll via QR, pending/respond), and `EZKEY_DIAG_TEMP` logcat when diagnosing camera work.
+
 ---
 
 ## Validation gates (every Track A/B PR)
@@ -155,8 +163,8 @@ Capture during QR / enrollment tests:
 | `./gradlew :app:testDebugUnitTest` | Native or crypto touch |
 | `yarn android:bundle:release` (JDK 17) | Native dep bumps |
 | `yarn license:check` + `yarn license:app-data` | Runtime `dependencies` change |
-| Device smoke enroll + pending/respond | Track A |
-| Maestro `scripts/run-real-device-pilot-maestro.sh` | After Vision Camera step |
+| Device smoke enroll + pending/respond | Track A/B (manual; see below) |
+| Maestro `scripts/run-real-device-pilot-maestro.sh` | **Deferred** — see Maestro note |
 | `yarn generate:api` | Only if Auth OpenAPI contract changes |
 
 ---

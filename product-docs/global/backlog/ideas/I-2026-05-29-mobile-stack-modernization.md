@@ -59,7 +59,7 @@ real execution informs methodology tuning while it is still being refined.
 - Canonical artifacts `I-*`, `TB-*`, `ML-*` on feature branch `feature/177-i-2026-05-29-mobile-stack-modernization`
 - Track B: workflow CI, engines, RN 0.85.3 patch slice, ESLint 9 when preset-aligned
 - Track A: Async Storage 3.x; Vision Camera 5.x + Nitro; Android-native validation
-- Maestro pilot reuse after Track A (`TB-2026-0002`)
+- Manual functional smoke on Android (launch, QR enrollment, pending/respond) — **not** Maestro on this branch (pilot requires pre-enrolled id; separate session)
 - Stack status note in `ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md`
 - Lane E retrospective session and 0..n `methodology/decisions/` entries
 
