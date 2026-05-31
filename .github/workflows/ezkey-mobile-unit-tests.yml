@@ -1,19 +1,16 @@
-# Run ezkey_mobile Android unit tests (crypto: IntegrationKeyVerifier).
-# Runs testDebugUnitTest so that Kotlin crypto parsing and verification are validated on every change.
+# ezkey_mobile: JS quality (yarn validate) + Android JVM unit tests (crypto).
 name: ezkey_mobile unit tests
 
 on:
   push:
     branches: [main, master]
     paths:
-      - 'ezkey_mobile/android/**'
-      - 'ezkey_mobile/app/**'
+      - 'ezkey_mobile/**'
       - '.github/workflows/ezkey-mobile-unit-tests.yml'
   pull_request:
     branches: [main, master]
     paths:
-      - 'ezkey_mobile/android/**'
-      - 'ezkey_mobile/app/**'
+      - 'ezkey_mobile/**'
       - '.github/workflows/ezkey-mobile-unit-tests.yml'
 
 defaults:
@@ -21,7 +18,30 @@ defaults:
     shell: bash
 
 jobs:
-  unit-tests:
+  js-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20.19.4'
+          cache: 'yarn'
+          cache-dependency-path: ezkey_mobile/yarn.lock
+
+      - name: Install ezkey_mobile dependencies
+        run: |
+          cd ezkey_mobile
+          yarn install --immutable
+
+      - name: yarn validate
+        run: |
+          cd ezkey_mobile
+          yarn validate:ci
+
+  android-jvm-unit-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -37,7 +57,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '20.19.4'
           cache: 'yarn'
           cache-dependency-path: ezkey_mobile/yarn.lock
 

@@ -21,6 +21,7 @@ import {
 } from 'react-native-vision-camera';
 import type {FrameProcessorPlugin} from 'react-native-vision-camera';
 import {useRunOnJS, useSharedValue} from 'react-native-worklets-core';
+import {stackMigrationDiag} from '../utils/tempStackMigrationDiag';
 
 /**
  * Modal properties for the enrollment QR scanner.
@@ -70,8 +71,20 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
     if (!visible) {
       lastScannedRef.current = undefined;
       frameCounter.value = 0;
+      stackMigrationDiag('scanner.hidden');
+    } else {
+      stackMigrationDiag('scanner.visible', `plugin=${scanEzkeyPlugin == null ? 'missing' : 'ok'}`);
     }
   }, [frameCounter, visible]);
+
+  useEffect(() => {
+    if (visible && scanEzkeyPlugin == null) {
+      stackMigrationDiag('scanner.plugin_missing');
+    }
+    if (visible && device == null) {
+      stackMigrationDiag('scanner.no_camera_device');
+    }
+  }, [device, visible]);
 
   const handleScanned = useCallback(
     (value: string) => {
@@ -80,6 +93,7 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
       }
       lastScannedRef.current = value;
       setIsActive(false);
+      stackMigrationDiag('scanner.decode', `payloadLen=${value.length}`);
       onScanned(value);
     },
     [onScanned],

@@ -52,7 +52,7 @@ ezkey_mobile/
 
 ## Prerequisites
 
-- Node.js 18+ and Yarn 4 (Berry)
+- Node.js **20.19.4+** and Yarn 4 (Berry) — aligned with React Native 0.85 requirements
 - JDK 17 and Android Studio with Android SDK 36 / build-tools 36.0.0 available
 - Xcode 16.1+ with CocoaPods 1.16.x recommended (macOS)
 - Watchman (macOS), Git Bash or another POSIX shell on Windows

@@ -36,6 +36,15 @@ At the end of each significant session or when merging a TB ladder PR, add a dat
 - **Scope drift:** Initial expectation was routine bumps; evaluation showed S01–S23 already done — program reframed as **residual majors + CI**, not full dependency sweep.
 - **Methodology hint:** Consider documenting `gh` path / repo slug in operator notes or `AGENTS.md` for Windows agents.
 
+### 2026-05-29 — steps 1–3 + TEMP diag + first debug install (Pixel 7 Pro)
+
+- **Context:** Operator asked to stay on branch until full upgrade + tests; functional validation preferred; camera upgrade deferred step-by-step; Pixel on adb (wireless).
+- **Worked well:** `adb uninstall` then `gradlew installDebug` after clearing invalid shell `JAVA_HOME`; RN **0.85.3** + CI workflow + `validate:ci` green locally.
+- **Friction:** PowerShell had stale `JAVA_HOME` → Android Studio `jbr` without `bin/java.exe`; Gradle install failed until env cleared. `gh` not on PATH (use full path to GitHub CLI).
+- **TEMP strip:** `EZKEY_DIAG_TEMP` in Kotlin (`MainApplication`, `EzkeyQrFrameProcessorPlugin`) and JS (`tempStackMigrationDiag.ts`); `EZKEY_STACK_MIGRATION_DIAG=true` in local `.env` (not committed).
+- **Functional:** Release build removed; debug **installed** on Pixel 7 Pro — manual smoke: app launch, optional enrollment QR to validate diag lines.
+- **Next:** Operator QR smoke; then step-5 Async Storage 3.x before Vision Camera 5 spike.
+
 ---
 
 ## Retrospective synthesis (Step 8 — fill after execution)

@@ -61,7 +61,7 @@ Each row = **one reviewable PR** unless noted.
 | **0** | `step-0-methodology` | — | I/TB/ML + stack status doc + Phase 0 baseline (this PR) |
 | **1** | `step-1-ci-validate` | B | GitHub `yarn validate`; path filters; Node 20.19.4+ in CI |
 | **2** | `step-2-node-engines` | B | `package.json` engines; README prerequisites |
-| **3** | `step-3-rn-0853` | B | RN 0.85.3 + `@react-native/*` 0.85.3 slice |
+| **3** | `step-3-rn-0853` | B | RN 0.85.3 + `@react-native/*` 0.85.3 slice — **first functional gate** (Pixel) |
 | **4** | `step-4-eslint-9` | B | ESLint 9 migration (if preset green) |
 | **5** | `step-5-async-storage-3` | A | Async Storage 3.x + storage tests + device smoke |
 | **6** | `step-6-vision-camera-spike` | A | VC 5 + Nitro POC; QR on device |
@@ -117,6 +117,36 @@ Recorded on branch `feature/177-i-2026-05-29-mobile-stack-modernization` (Window
 
 ---
 
+## Functional validation (Android device — Pixel 7 Pro)
+
+**Policy:** stay on `feature/177-...` until unit + functional gates are complete. Prefer **functional smoke** after each step that touches runtime.
+
+**Before first debug install** (release/side-loaded build may block `INSTALL_FAILED_UPDATE_INCOMPATIBLE`):
+
+```bash
+adb uninstall org.ezkey.mobile   # ignore error if absent
+cd ezkey_mobile && ./scripts/install-debug-after-uninstall.sh
+```
+
+**TEMP diagnostics (#177)** — enable in `ezkey_mobile/.env` then rebuild native app:
+
+```dotenv
+EZKEY_STACK_MIGRATION_DIAG=true
+```
+
+Capture during QR / enrollment tests:
+
+```bash
+./scripts/capture-stack-migration-logcat.sh
+# filter: adb logcat -d | grep EZKEY_DIAG_TEMP
+```
+
+**Removal:** delete `tempStackMigrationDiag.ts`, `EZKEY_STACK_MIGRATION_DIAG`, Kotlin/JS `EZKEY_DIAG_TEMP` logs, and capture script when program closes.
+
+**Vision Camera 5.x:** prior one-shot migration failed; use **step-6 spike** only after B3 + storage steps green. Expect Nitro + frame processor rework — diagnostics mandatory.
+
+---
+
 ## Validation gates (every Track A/B PR)
 
 | Gate | When |
@@ -139,6 +169,12 @@ _(Append per PR — short bullets; full methodology narrative goes to ML log.)_
 
 - Opened GitHub **#177**, branch `feature/177-i-2026-05-29-mobile-stack-modernization`.
 - Materialized I/TB/ML from plan incubation (Lane B).
+
+### 2026-05-29 — steps 1–3 + TEMP diagnostics (in progress)
+
+- CI: `js-validate` job + `validate:ci`; Node **20.19.4** in workflow; `engines >=20.19.4`.
+- TEMP: `EZKEY_DIAG_TEMP` log strip (JS + Kotlin), `capture-stack-migration-logcat.sh`, `install-debug-after-uninstall.sh`.
+- RN **0.85.3** slice in `package.json` — functional validation on Pixel pending after `yarn validate` + rebuild.
 
 ---
 

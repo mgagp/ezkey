@@ -15,6 +15,7 @@
 package org.ezkey.mobile
 
 import android.app.Application
+import android.util.Log
 import org.ezkey.mobile.crypto.EzkeyCryptoPackage
 import org.ezkey.mobile.qr.EzkeyQrFrameProcessorPlugin
 import com.facebook.react.PackageList
@@ -73,6 +74,7 @@ class MainApplication : Application(), ReactApplication {
     super.onCreate()
     SoLoader.init(this, OpenSourceMergedSoMapping)
     FrameProcessorPluginRegistry.addFrameProcessorPlugin(EzkeyQrFrameProcessorPlugin.NAME) { _, _ ->
+      Log.i("EZKEY_DIAG_TEMP", "frame_processor.registered name=${EzkeyQrFrameProcessorPlugin.NAME}")
       EzkeyQrFrameProcessorPlugin()
     }
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {

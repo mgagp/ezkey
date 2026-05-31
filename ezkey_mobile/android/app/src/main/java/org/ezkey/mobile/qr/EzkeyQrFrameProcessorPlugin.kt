@@ -15,6 +15,7 @@
 package org.ezkey.mobile.qr
 
 import android.util.Log
+import java.util.concurrent.atomic.AtomicInteger
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -51,6 +52,12 @@ class EzkeyQrFrameProcessorPlugin : FrameProcessorPlugin() {
    */
   override fun callback(frame: Frame, params: Map<String, Any>?): Any? {
     return try {
+      val count = frameCounter.incrementAndGet()
+      if (count == 1) {
+        Log.i(DIAG_TAG, "frame_processor.first_frame")
+      } else if (count % FRAME_LOG_INTERVAL == 0) {
+        Log.i(DIAG_TAG, "frame_processor.tick frames=$count")
+      }
       val mediaImage = frame.image
       val rotationDegrees = frame.orientation.toRotationDegrees()
       val inputImage = InputImage.fromMediaImage(mediaImage, rotationDegrees)
@@ -60,16 +67,24 @@ class EzkeyQrFrameProcessorPlugin : FrameProcessorPlugin() {
       for (barcode in barcodes) {
         barcode.rawValue?.let { values.add(it) }
       }
-      if (values.isEmpty()) null else values
+      if (values.isEmpty()) {
+        null
+      } else {
+        Log.i(DIAG_TAG, "frame_processor.decode_ok count=${values.size}")
+        values
+      }
     } catch (error: Throwable) {
-      Log.e(TAG, "Failed to process frame", error)
+      Log.e(DIAG_TAG, "frame_processor.error ${error.javaClass.simpleName}: ${error.message}")
       null
     }
   }
 
   companion object {
     const val NAME = "scanEzkey"
-    private const val TAG = "EzkeyQrPlugin"
+    /** TEMP (#177): remove with stack modernization diagnostic strip. */
+    private const val DIAG_TAG = "EZKEY_DIAG_TEMP"
+    private const val FRAME_LOG_INTERVAL = 90
+    private val frameCounter = AtomicInteger(0)
   }
 }
 

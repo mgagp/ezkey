@@ -14,7 +14,7 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 
 | Concern | Technology | Why it is used | Notes |
 | --- | --- | --- | --- |
-| Runtime UI | React Native 0.85.2 | Shared iOS/Android UI codebase | Current workspace manifest uses React Native 0.85.2 for the reference app. |
+| Runtime UI | React Native 0.85.3 | Shared iOS/Android UI codebase | Bumped on branch `feature/177-...` (was 0.85.2 at program start). |
 | React runtime | React 19.2.3 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json` and the RN-renderer constraint. |
 | Language | TypeScript | Typed mobile domain and service layer | Thin wrapper types sit above generated DTOs. |
 | Navigation | React Navigation stack | Simple screen-to-screen mobile flow control | Current stack includes Home, Enrollment, Pending, and supporting screens. |
