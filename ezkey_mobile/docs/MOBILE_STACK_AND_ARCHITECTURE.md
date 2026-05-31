@@ -28,6 +28,22 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 | QR capture | Vision Camera plus native Android frame processor | QR-first enrollment entry point | iOS parity remains more conservative. |
 | Testing | Jest / RTL / optional Detox | Unit/component/e2e coverage path | Native test surface still evolves separately. |
 
+## Stack modernization program (2026-05-29)
+
+Active toolchain program tracked outside this doc:
+
+| Item | Value |
+| --- | --- |
+| GitHub issue | [#177](https://github.com/mgagp/ezkey/issues/177) |
+| Branch | `feature/177-i-2026-05-29-mobile-stack-modernization` |
+| Backlog idea | `I-2026-05-29-mobile-stack-modernization` |
+| Tracer bullet | `TB-2026-05-29-mobile-stack-modernization` |
+| Method log | `ML-2026-05-29-mobile-stack-modernization` |
+
+Prior exhaustive dependency review (RN 0.85.2 baseline, May 2026) is archived under
+`.github/prompts/archived/2026-05/plan-mobileDependencyReview.prompt.md` — do not repeat; this program
+covers residual majors (Vision Camera 5, Async Storage 3) and CI `yarn validate`.
+
 ## Runtime Architecture at a Glance
 
 ```mermaid
