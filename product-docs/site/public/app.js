@@ -142,12 +142,34 @@ function setupSearchButton() {
   if (btn) btn.addEventListener('click', () => openSearch());
 }
 
+function readStoredTheme() {
+  try {
+    return localStorage.getItem(STORAGE_THEME_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function prefersDarkScheme() {
+  return (
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+}
+
+function shouldUseDarkTheme(stored = readStoredTheme()) {
+  if (stored === 'dark') return true;
+  if (stored === 'light') return false;
+  return prefersDarkScheme();
+}
+
+function applyTheme(isDark) {
+  document.body.classList.toggle('is-dark', isDark);
+}
+
 function setupThemeToggle() {
   const btn = document.getElementById('theme-btn');
-  const saved = (() => {
-    try { return localStorage.getItem(STORAGE_THEME_KEY); } catch { return null; }
-  })();
-  if (saved === 'dark') document.body.classList.add('is-dark');
+  applyTheme(shouldUseDarkTheme());
   if (!btn) return;
   const sync = () => {
     btn.textContent = document.body.classList.contains('is-dark') ? '☼' : '☾';
@@ -155,7 +177,7 @@ function setupThemeToggle() {
   };
   sync();
   btn.addEventListener('click', () => {
-    document.body.classList.toggle('is-dark');
+    applyTheme(!document.body.classList.contains('is-dark'));
     try {
       localStorage.setItem(
         STORAGE_THEME_KEY,

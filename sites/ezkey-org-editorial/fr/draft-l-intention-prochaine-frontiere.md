@@ -2,8 +2,12 @@
 audience: "Développeurs expérimentés, leads techniques, architectes et praticiens de méthodologie IA ; récit de retour d'expérience en voix personnelle, à mi-chemin entre essai et témoignage, sans détailler d'implémentation produit dans le corps principal."
 planned_slug_fr: "l-intention-prochaine-frontiere-partenariat-humain-ia.html"
 planned_canonical: "https://ezkey.org/fr/l-intention-prochaine-frontiere-partenariat-humain-ia.html"
-status: draft
-source_of_truth: draft
+status: published
+published_html_en: /intention-the-next-frontier-human-ai-partnership.html
+published_html_fr: /fr/l-intention-prochaine-frontiere-partenariat-humain-ia.html
+published_date: 2026-05-31
+html_amended_post_publish: false
+source_of_truth: html
 ---
 
 # Rendre ses ailes à l'IA : pourquoi l'intention sera la prochaine frontière
@@ -38,6 +42,12 @@ NOTES ÉDITORIALES (dictées par l'auteur, à matérialiser comme liens à la pu
   clavier ») → renvoyer à from-code-to-intent-ai-workflow.html (§05 « Libérer la pensée : la
   diction vocale ») et, en appui, à retour-aux-sources-developpeur-ere-ia.html (la dictée comme
   accélérateur sous-évalué). Caméo volontairement court : le concept a déjà sa section ailleurs.
+- Réf. « entrevues en texte libre… versées presque mot pour mot dans le corpus documentaire »
+  (section « Deux intentions ») → notion interne du *blitz intake* (capture en format libre,
+  favorisant la dictée sans l'imposer, préservation du verbatim, intention historique versée au
+  corpus). Renvoyer à methodologie.html, et éventuellement au pattern méthodologique
+  (product-docs/methodology/blitz-intake-pattern.md). Terme interne volontairement non nommé dans
+  le corps pour rester dans le registre essai (cf. audience : pas d'implémentation produit).
 
 Vérifications à faire avant publication :
 - OpenAI / Symphony : volontairement présenté comme une IMPRESSION non vérifiée (auteur n'a pas
@@ -106,6 +116,8 @@ Et je dois ici un aveu. Véhiculer ces valeurs, ces principes, avec toutes leurs
 
 À côté des valeurs, il y a des principes de conception, qui sont aussi une forme de valeurs. Deux me sont particulièrement chers. Celui des **beaux problèmes** : à court terme on adopte des solutions pragmatiques, et entre deux options on choisit la plus pratique maintenant si elle nous positionne aussi favorablement plus tard. Si une alternative nous arrange à court terme mais nous peinture dans un coin à long terme, on l'évite. Et celui qui dit que **les choses simples doivent rester simples** : un sujet borné, à faible risque, mérite un chemin court de l'idée à l'action, pas une cérémonie.
 
+Reste une question concrète : comment capturer tout cela, y compris l'intention que je porte depuis longtemps sans l'avoir jamais couchée par écrit ? Je m'accorde pour cela des entrevues en texte libre, sans gabarit imposé, où je laisse remonter le pourquoi historique d'une décision autant que l'intention du moment. La dictée y est précieuse, sans jamais être obligatoire. Et surtout, ces sessions ne s'évaporent pas : je les verse, presque mot pour mot, dans le corpus documentaire du projet, là où l'IA peut les retrouver au même titre que le code. Une intuition d'hier cesse alors d'être un souvenir privé pour devenir une matière que le partenaire peut connaître et honorer.
+
 ## Ne coupez pas les ailes à votre moteur statistique
 
 Voici le cœur de ce que je veux faire passer.
@@ -136,7 +148,7 @@ Si tout cela paraît un peu métaphysique, c'est normal. Et c'est là, à mon av
 
 Passer de « je demande à l'IA d'écrire du code » à « je la considère comme un partenaire de conception, puis de brainstorming produit, puis comme quelqu'un avec qui je dois cadrer l'intention et partager mes valeurs » — cela suppose de reconsidérer la nature même de la relation. Et reconsidérer une relation, ça demande de l'introspection. Ce n'est pas donné à tout le monde, et ce n'est pas une question d'intelligence.
 
-La plupart d'entre nous apprenons des techniques, les appliquons sincèrement, et finissons par les maîtriser. C'est exactement ce qu'on attend de nous. Le problème, c'est qu'une fois ces acquis solidement établis — au prix d'années d'efforts —, prendre du recul revient à les fragiliser volontairement. Se remettre en question, c'est se recréer de l'incertitude là où l'on avait enfin de la confiance. C'est un inconfort réel, et tout le monde n'a pas la disponibilité mentale de l'accueillir après avoir tant investi dans une façon de penser qui a fait ses preuves. C'est encore plus difficile dans une organisation, où chacun guette ce que font les autres en quête de validation, où l'on confond parfois agitation et action, prudence et immobilisme, et où l'on enchaîne les réunions en croyant avancer.
+La plupart d'entre nous apprenons des techniques, les appliquons sincèrement, et finissons par les maîtriser. C'est exactement ce qu'on attend de nous. Le problème, c'est qu'une fois ces acquis solidement établis — au prix d'années d'efforts —, prendre du recul revient à les fragiliser volontairement. Se remettre en question, c'est se recréer de l'incertitude là où l'on avait enfin de la confiance. C'est un inconfort réel, et tout le monde n'a pas la disponibilité mentale de l'accueillir après avoir tant investi dans une façon de penser qui a fait ses preuves. C'est encore plus difficile dans une organisation, où chacun guette ce que font les autres en quête de validation, où l'on confond parfois prudence et immobilisme, et où l'on peut confondre l'activité avec le progrès.
 
 Et il faut être juste : ce réflexe n'a rien d'un défaut individuel. Dans toute organisation, des forces structurelles — la reddition de comptes, la pression des résultats, le besoin de s'appuyer sur des données probantes et sur les pratiques que le marché valide — orientent naturellement les décisions vers ce qui est déjà reconnu. On peut difficilement parier sur une intuition isolée quand on attend de soi d'être prévisible et imputable.
 
@@ -144,7 +156,7 @@ L'effet est discret mais puissant : il installe une autocensure. Pour rester per
 
 Je pense souvent à une analogie. Personne ne trouve agréable d'avoir besoin d'un soutien psychologique. C'est tabou, on s'imagine qu'on va bien, on a une fierté dont on n'a même pas conscience. J'ai connu une situation, dans une famille proche, où un thérapeute a expliqué que ce n'était pas seulement l'enfant qui devait évoluer, mais la cellule familiale entière, parce que c'est un tout. Certains parents se braquent : « moi, je n'ai pas de problème, je suis là pour mon enfant ». Ils s'excluent de la solution, et donc, sans le voir, ils restent une partie du problème.
 
-C'est exactement le même mécanisme. Accepter que la relation que l'on entretient avec l'IA doive changer de nature — ne plus être un patron des années cinquante qui dicte et exige l'obéissance —, c'est accepter un inconfort. Dans un comité d'évaluation, dire « il faut parler de nos intentions, de nos valeurs avec l'IA » ne fait pas sérieux. Qui veut entendre ça ? Personne n'ose sortir du lot, personne n'ose vraiment expérimenter. Et c'est là le drame, parce que c'est précisément cet inconfort qui ouvre la porte.
+C'est exactement le même mécanisme. Accepter que la relation que l'on entretient avec l'IA doive changer de nature — ne plus être un patron des années cinquante qui dicte et exige l'obéissance —, c'est accepter un inconfort. Dans un comité d'évaluation, dire « il faut parler de nos intentions, de nos valeurs avec l'IA » ne fait pas sérieux ; dans ce contexte, peu osent sortir du lot ou expérimenter vraiment. Et c'est là le drame, parce que c'est précisément cet inconfort qui ouvre la porte.
 
 ## Le décalage, et la fenêtre
 

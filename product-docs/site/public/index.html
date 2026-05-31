@@ -11,6 +11,23 @@
   />
 </head>
 <body>
+  <script>
+    (function () {
+      var storageKey = 'ezkey-method-explorer:theme:v1';
+      var storedTheme = null;
+      try {
+        storedTheme = localStorage.getItem(storageKey);
+      } catch (e) {
+        storedTheme = null;
+      }
+      var prefersDark =
+        window.matchMedia &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (storedTheme === 'dark' || (!storedTheme && prefersDark)) {
+        document.body.classList.add('is-dark');
+      }
+    })();
+  </script>
   <header class="topbar">
     <a class="brand" href="https://ezkey.org" title="ezkey.org">
       <span class="brand-mark">methodology</span>
