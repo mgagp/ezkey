@@ -156,8 +156,33 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 yarn lint                  # ESLint + TypeScript checks
 yarn typecheck             # tsc --noEmit
 yarn test                  # Jest unit/component tests
+yarn validate:ci           # lint + typecheck + test --runInBand (same as GitHub Actions)
 # yarn detox:test          # Optional end-to-end suite (requires Detox setup)
 ```
+
+On Windows, prefer **Corepack** so Yarn matches `package.json` (`yarn@4.10.3`):
+
+```bash
+corepack enable
+corepack yarn validate:ci
+```
+
+Android JVM unit tests (crypto helpers on the native side):
+
+```bash
+cd android && ./gradlew :app:testDebugUnitTest --no-daemon
+```
+
+### Continuous integration (GitHub)
+
+Pull requests that touch `ezkey_mobile/**` run the workflow [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml):
+
+| Job | What it runs |
+|-----|----------------|
+| **js-validate** | `yarn validate:ci` on Ubuntu (Node 20.19.4, Yarn 4 via Corepack) |
+| **android-jvm-unit-tests** | `./gradlew :app:testDebugUnitTest` (JDK 17, Android SDK) |
+
+Before opening or updating a mobile PR, run the same commands locally when possible. A green check on GitHub means the branch passes on a clean runner, not only on your workstation.
 
 ### Android build troubleshooting
 
