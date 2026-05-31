@@ -5,6 +5,7 @@
 - **ID:** `I-2026-0004`
 - **Status:** `promoted`
 - **Tracer bullet:** `TB-2026-05-25-admin-api-key-acceptance-flag`
+- **GitHub issue:** [#169](https://github.com/mgagp/ezkey/issues/169)
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
 - **Updated at:** `2026-05-25`
