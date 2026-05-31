@@ -6,6 +6,6 @@ module.exports = {
   },
   // Ship ESM from node_modules (e.g. @react-navigation/native); Jest must transform them.
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native-async-storage/async-storage|@react-navigation|@react-navigation/.*|react-native-screens|react-native-safe-area-context|react-native-gesture-handler|@tanstack/.*)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native-async-storage/async-storage|react-native-nitro-modules|react-native-nitro-image|react-native-vision-camera|react-native-vision-camera-barcode-scanner|react-native-vision-camera-worklets|react-native-worklets|@react-navigation|@react-navigation/.*|react-native-screens|react-native-safe-area-context|react-native-gesture-handler|@tanstack/.*)/)',
   ],
 };

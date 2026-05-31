@@ -59,9 +59,4 @@ export const env = {
    * {@code scripts/run-real-device-pilot-maestro.sh} when Maestro pilot diagnosis is done.
    */
   pendingAuthFlowTrace: parseBool(Config.EZKEY_PENDING_AUTH_FLOW_TRACE, false),
-  /**
-   * TEMP (#177): Vision Camera / QR enrollment migration diagnostics. Prefix {@code EZKEY_DIAG_TEMP}.
-   * Remove with {@code tempStackMigrationDiag.ts} when stack modernization completes.
-   */
-  stackMigrationDiag: parseBool(Config.EZKEY_STACK_MIGRATION_DIAG, false),
 };

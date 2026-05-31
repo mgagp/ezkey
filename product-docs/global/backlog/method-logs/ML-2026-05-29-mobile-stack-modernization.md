@@ -64,32 +64,57 @@ At the end of each significant session or when merging a TB ladder PR, add a dat
 - **Gates:** `yarn validate:ci` PASS; licenses regenerated for 3.0.2.
 - **Next:** Operator `installDebug` + storage-focused smoke; then Vision Camera 5 spike (step-6).
 
+### 2026-05-29 — step-5 functional PASS (operator)
+
+- **Worked well:** Storage smoke on Pixel after `installDebug` (langue, préférences, auth) — no regression vs step-3.
+- **Next:** step-6 Vision Camera 5.x spike (Nitro, frame processor, QR + `EZKEY_DIAG_TEMP`).
+
+### 2026-05-29 — step-6 Vision Camera 5 spike (agent)
+
+- **Approach:** Avoid custom Nitro ML Kit plugin for spike — use VC5 built-in `useObjectOutput` for QR; drops ~90 lines Kotlin + direct ML Kit app dependency.
+- **Friction:** `react-native-nitro-modules` codegen JNI missing until `newArchEnabled=true` re-added for third-party Gradle gates; cleared stale `app/.cxx`.
+- **Removed:** `EzkeyQrFrameProcessorPlugin`, worklets-core, babel worklets-core plugin, Android RNWorklets CMake stub.
+- **Gates:** `yarn validate:ci` PASS; `installDebug` Pixel — operator QR smoke pending.
+
+### 2026-05-29 — step-6 functional PASS (operator)
+
+- **Lesson:** `useObjectOutput` is iOS-only; Android-first apps need `react-native-vision-camera-barcode-scanner` (ML Kit) or a custom Nitro frame plugin.
+- **Worked well:** Official barcode output restored enrollment QR without reviving custom Kotlin plugin.
+- **Next:** step-4 ESLint 9 (optional parallel), strip `EZKEY_DIAG_TEMP`, step-8 Lane E retro.
+
+### 2026-05-31 — closeout (diag strip + ESLint 9 + Lane E)
+
+- Removed `EZKEY_DIAG_TEMP` strip, `capture-stack-migration-logcat.sh`, env flag.
+- ESLint 9 flat config; `PendingAuthScreen` `no-void` fix.
+- TB/I → `completed`; `MOBILE_STACK_AND_ARCHITECTURE.md` updated.
+
 ---
 
-## Retrospective synthesis (Step 8 — fill after execution)
-
-_To be completed in a dedicated Lane E session._
+## Retrospective synthesis (Step 8)
 
 ### Questions (R1–R7)
 
 | # | Question | Answer |
 |---|----------|--------|
-| R1 | Plan incubation → I/TB/branch — smooth? | |
-| R2 | Scope creep visible early? | |
-| R3 | Multi-pass PRs + deferred index — issues? | |
-| R4 | Which gates caught real regressions? | |
-| R5 | Missing agent/human instructions? | |
-| R6 | Reusable ML log template for toolchain TBs? | |
-| R7 | Feed `I-2026-0016` methodology hygiene? | |
+| R1 | Plan incubation → I/TB/branch — smooth? | **Yes.** Issue `#177`, branch naming, I/TB/ML materialization aligned with Admin UI Orval pattern. Archived May review prevented re-running S01–S23. |
+| R2 | Scope creep visible early? | **Yes, contained.** “Simple bumps” reframed to residual majors (VC5, AS3, CI). Maestro deferred explicitly when operator clarified pilot limits. |
+| R3 | Multi-pass PRs + deferred index — issues? | **Low friction.** Single branch with logical steps; operator-owned push. TB ladder still useful as merge narrative. |
+| R4 | Which gates caught real regressions? | **`yarn validate:ci`** (Jest ESM, ESLint). **`installDebug`/device** caught `useObjectOutput` Android crash (Error Boundary). Operator PASS gates essential for storage + final barcode path. |
+| R5 | Missing agent/human instructions? | **`newArchEnabled` for Nitro codegen** not obvious on RN 0.82+. VC5 platform tags (`@platform iOS`) should be checked before choosing QR API. Windows: Git Bash + `JAVA_HOME` + commit wrapper quirks. |
+| R6 | Reusable ML log template for toolchain TBs? | **Yes** — this ML format (context / worked / friction / gates / next) fits multi-step native upgrades. |
+| R7 | Feed `I-2026-0016` methodology hygiene? | **Partial** — defer Maestro until harness covers enrollment; toolchain TBs should list platform-specific API checks in TB functional section. |
 
 ### Decisions to promote (0..n)
 
 | Decision slug | Status |
 |---------------|--------|
-| _(none yet)_ | |
+| `mobile-vc5-qr-use-barcode-scanner-package` | Candidate — Android+iOS QR via `react-native-vision-camera-barcode-scanner`, not `useObjectOutput` |
+| `rn-nitro-codegen-newArchEnabled-flag` | Candidate — keep `newArchEnabled=true` in `gradle.properties` while Nitro libs gate codegen on it |
 
 ### Corpus updates (0..n)
 
 | File | Status |
 |------|--------|
-| _(none yet)_ | |
+| `ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md` | Updated stack + program status |
+| `ezkey_mobile/README.md` | QR path description |
+| `product-docs/.../TB-2026-05-29-...` | Completed |

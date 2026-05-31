@@ -221,7 +221,7 @@ This is the preferred first-line reset for mobile dependency/build drift. Do thi
 ## Native Modules Summary
 
 - `EzkeyCryptoModule` exposes EC P-256 key generation, retrieval, and signing; Android currently uses `Android Keystore`, while iOS native secure-hardware support is still being aligned
-- `EzkeyQrFrameProcessorPlugin` (Kotlin) feeds `react-native-vision-camera` with decoded QR payloads
+- Enrollment QR uses VisionCamera 5 + `react-native-vision-camera-barcode-scanner` (`useBarcodeScannerOutput`, ML Kit on Android and iOS)
 - iOS bridges live under `ios/EzkeyMobile/` and should adopt Xcode Quick Help (`///`) comments referencing the same security docs noted above
 - Detailed design notes live in [`docs/NATIVE_MODULES.md`](docs/NATIVE_MODULES.md) *(created in this revision)*
 

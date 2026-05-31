@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-05-29-mobile-stack-modernization`
-- **Status:** `active`
+- **Status:** `completed`
 - **Posture:** `multi-pass` (one PR per ladder step; this TB tracks the full program)
 - **Related idea:** `I-2026-05-29-mobile-stack-modernization` (`incubating`)
 - **Method log:** `ML-2026-05-29-mobile-stack-modernization.md` — append after each PR/session
@@ -97,7 +97,7 @@ cd android && ./gradlew :app:testDebugUnitTest --no-daemon
 | `react-native` | 0.85.2 |
 | `react` / `react-test-renderer` | 19.2.3 |
 | `@react-native-community/cli` | 20.1.3 |
-| `react-native-vision-camera` | 4.7.2 (freeze → 5.x program) |
+| `react-native-vision-camera` | 5.0.10 + `react-native-vision-camera-barcode-scanner` 5.0.11 |
 | `@react-native-async-storage/async-storage` | 3.0.2 (step-5; was 2.2.0) |
 | Node `engines` (manifest) | `>=18` (to raise → `>=20.19.4`) |
 | CI | `testDebugUnitTest` only — no `yarn validate` yet |
@@ -128,22 +128,7 @@ adb uninstall org.ezkey.mobile   # ignore error if absent
 cd ezkey_mobile && ./scripts/install-debug-after-uninstall.sh
 ```
 
-**TEMP diagnostics (#177)** — enable in `ezkey_mobile/.env` then rebuild native app:
-
-```dotenv
-EZKEY_STACK_MIGRATION_DIAG=true
-```
-
-Capture during QR / enrollment tests:
-
-```bash
-./scripts/capture-stack-migration-logcat.sh
-# filter: adb logcat -d | grep EZKEY_DIAG_TEMP
-```
-
-**Removal:** delete `tempStackMigrationDiag.ts`, `EZKEY_STACK_MIGRATION_DIAG`, Kotlin/JS `EZKEY_DIAG_TEMP` logs, and capture script when program closes.
-
-**Vision Camera 5.x:** prior one-shot migration failed; use **step-6 spike** only after B3 + storage steps green. Expect Nitro + frame processor rework — diagnostics mandatory.
+**Vision Camera 5.x:** use `react-native-vision-camera-barcode-scanner` (`useBarcodeScannerOutput`) on Android and iOS — not `useObjectOutput` (iOS-only). Temporary `EZKEY_DIAG_TEMP` strip removed at program close (2026-05-31).
 
 ### Maestro (out of scope for this program phase)
 
@@ -151,7 +136,7 @@ Do **not** invest in Maestro flows or pilot scripts during steps 1–7 on branch
 
 - The only existing pilot (`TB-2026-0002`) assumes **pre-enrolled** `ENROLLMENT_ID` — it does not cover enrollment/QR.
 - That gap is intentional backlog for a **later session**; a failed or skipped Maestro run here is **not** a regression signal for stack upgrades.
-- Gates for this branch: **`yarn validate`**, JVM tests, **manual** functional smoke (launch, enroll via QR, pending/respond), and `EZKEY_DIAG_TEMP` logcat when diagnosing camera work.
+- Gates for this branch: **`yarn validate`**, JVM tests, **manual** functional smoke (launch, enroll via QR, pending/respond).
 
 ---
 
@@ -187,18 +172,43 @@ _(Append per PR — short bullets; full methodology narrative goes to ML log.)_
 
 - **PASS** — manual enrollment (QR) + authentication on Pixel 7 Pro; `EZKEY_DIAG_TEMP` in logcat.
 
-### 2026-05-29 — step-5 Async Storage 3.x (JS/Gradle green; device smoke pending)
+### 2026-05-29 — step-5 Async Storage 3.x — **PASS**
 
 - Bump **2.2.0 → 3.0.2**; Gradle fix: `android/build.gradle` `local_repo` Maven for `storage-android:1.0.0` (S08 blocker was missing repo, not only Kotlin).
 - Jest: mock path `@react-native-async-storage/async-storage/jest`; `transformIgnorePatterns` includes package (v3 mock is ESM).
 - Gates: `yarn validate:ci` **PASS** (26 suites / 172 tests); `yarn license:check` + `license:app-data` updated.
-- **Operator next:** `gradlew installDebug` on Pixel — smoke enroll, language preference, security preference, pending auth (same signature debug; uninstall only if install fails).
+- Device: `installDebug` on Pixel 7 Pro; operator smoke **PASS** (langue, préférences, auth).
+
+### 2026-05-29 — step-6 Vision Camera 5.x — **PASS**
+
+- **5.0.10** + Nitro stack + `react-native-vision-camera-barcode-scanner@5.0.11`; removed `react-native-worklets-core` and custom `EzkeyQrFrameProcessorPlugin`.
+- Enrollment scanner: `useBarcodeScannerOutput` (ML Kit, Android + iOS). Spike `useObjectOutput` reverted — iOS-only, caused Android Error Boundary.
+- Android: `newArchEnabled=true` for Nitro codegen; RNWorklets CMake stub removed.
+- Gates: `yarn validate:ci` PASS; operator enrollment QR + auth **PASS** on Pixel 7 Pro.
+
+### 2026-05-29 — step-7 closeout
+
+- Worklets stub removed; barcode via official ML Kit package (no custom frame processor).
+- TEMP diag (`EZKEY_DIAG_TEMP`) removed 2026-05-31.
+
+### 2026-05-31 — step-4 ESLint 9
+
+- `eslint` 9.28.0; flat config via `@react-native/eslint-config/flat` (`eslint.config.js`); TS/TSX only (`.js` ignored — `eslint-plugin-ft-flow` incompatible with ESLint 9); `yarn validate:ci` PASS.
+
+### 2026-05-31 — step-8 methodology (Lane E)
+
+- ML retrospective R1–R7 filled; I/TB marked `completed`. Operator push when ready.
 
 ---
 
 ## Methodology outcomes (Step 8 — Lane E)
 
-_To be completed after Track A/B execution._
+See `ML-2026-05-29-mobile-stack-modernization.md` retrospective synthesis. Highlights:
+
+- Plan incubation + I/TB/ML + issue `#177` worked; archived S01–S23 review prevented duplicate work.
+- **`yarn validate:ci`** caught Jest/ESM issues; **device smoke** caught iOS-only `useObjectOutput` on Android.
+- Maestro intentionally deferred (enrollment/QR not in pilot harness).
+- Promote: document `newArchEnabled=true` for Nitro codegen on RN 0.82+ when third-party libs still gate on it.
 
 ---
 

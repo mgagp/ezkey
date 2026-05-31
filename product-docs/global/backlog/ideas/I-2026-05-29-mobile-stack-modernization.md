@@ -3,10 +3,10 @@
 ## Metadata
 
 - **ID:** `I-2026-05-29-mobile-stack-modernization`
-- **Status:** `active`
+- **Status:** `completed`
 - **Priority:** `P2`
 - **Created at:** `2026-05-29`
-- **Updated at:** `2026-05-29`
+- **Updated at:** `2026-05-31`
 - **Phase tags:** `P2-maintainability`, `toolchain`, `mobile-quality`
 - **Component tags:** `mobile`
 - **Lane:** `B` (plan incubation → canonical materialization)
