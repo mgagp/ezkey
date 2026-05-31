@@ -2,6 +2,9 @@
 # List or delete Cloudflare Pages PREVIEW deployments for the static ezkey.org project.
 # Complement to deploy-ezkey-org-preview.sh (same project, same credentials).
 #
+# Prefer cleanup-pages-deployments.sh for age-based cleanup (24h / 7d profiles).
+# This script deletes ALL listed previews when --apply is set (no age filter).
+#
 # By default this runs in dry-run mode: it only lists deployment IDs and does not call delete.
 # Set CLEANUP_APPLY=1 (or pass --apply) to actually remove previews.
 #
