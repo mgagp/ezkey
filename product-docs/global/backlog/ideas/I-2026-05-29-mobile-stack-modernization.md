@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `I-2026-05-29-mobile-stack-modernization`
-- **Status:** `ready`
+- **Status:** `active`
 - **Priority:** `P2`
 - **Created at:** `2026-05-29`
 - **Updated at:** `2026-05-29`
