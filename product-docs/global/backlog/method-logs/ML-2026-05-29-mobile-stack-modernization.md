@@ -51,6 +51,19 @@ At the end of each significant session or when merging a TB ladder PR, add a dat
 - **Decision:** No Maestro effort on branch `#177` until a separate session extends automation. Functional validation = **manual** on Pixel (operator testing now).
 - **Push:** Operator handles `git push`; agents commit only.
 
+### 2026-05-29 — step-3 functional PASS (operator)
+
+- **Worked well:** Manual enroll + auth on device after RN 0.85.3; `EZKEY_DIAG_TEMP` visible in logcat — diag strip validated before harder bumps.
+- **Next:** step-5 Async Storage 3.x (S08 retry with Kotlin 2.1.20).
+
+### 2026-05-29 — step-5 Async Storage 3.x (agent)
+
+- **Context:** Operator confirmed step-3 smoke + diag logcat; proceed with storage bump.
+- **Worked well:** S08 root cause = missing `local_repo` Maven in `android/build.gradle`, not Kotlin alone; official Jest mock at `./jest` export.
+- **Friction:** v3 Jest mock ships as ESM — required adding `@react-native-async-storage/async-storage` to `transformIgnorePatterns`.
+- **Gates:** `yarn validate:ci` PASS; licenses regenerated for 3.0.2.
+- **Next:** Operator `installDebug` + storage-focused smoke; then Vision Camera 5 spike (step-6).
+
 ---
 
 ## Retrospective synthesis (Step 8 — fill after execution)

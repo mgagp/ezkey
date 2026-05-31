@@ -98,7 +98,7 @@ cd android && ./gradlew :app:testDebugUnitTest --no-daemon
 | `react` / `react-test-renderer` | 19.2.3 |
 | `@react-native-community/cli` | 20.1.3 |
 | `react-native-vision-camera` | 4.7.2 (freeze → 5.x program) |
-| `@react-native-async-storage/async-storage` | 2.2.0 (freeze → 3.x program) |
+| `@react-native-async-storage/async-storage` | 3.0.2 (step-5; was 2.2.0) |
 | Node `engines` (manifest) | `>=18` (to raise → `>=20.19.4`) |
 | CI | `testDebugUnitTest` only — no `yarn validate` yet |
 | Jest suites | ~26 test files (`react-test-renderer`) |
@@ -178,11 +178,21 @@ _(Append per PR — short bullets; full methodology narrative goes to ML log.)_
 - Opened GitHub **#177**, branch `feature/177-i-2026-05-29-mobile-stack-modernization`.
 - Materialized I/TB/ML from plan incubation (Lane B).
 
-### 2026-05-29 — steps 1–3 + TEMP diagnostics (in progress)
+### 2026-05-29 — steps 1–3 + TEMP diagnostics
 
 - CI: `js-validate` job + `validate:ci`; Node **20.19.4** in workflow; `engines >=20.19.4`.
-- TEMP: `EZKEY_DIAG_TEMP` log strip (JS + Kotlin), `capture-stack-migration-logcat.sh`, `install-debug-after-uninstall.sh`.
-- RN **0.85.3** slice in `package.json` — functional validation on Pixel pending after `yarn validate` + rebuild.
+- TEMP: `EZKEY_DIAG_TEMP` log strip; RN **0.85.3** on Pixel.
+
+### 2026-05-29 — step-3 functional validation (operator)
+
+- **PASS** — manual enrollment (QR) + authentication on Pixel 7 Pro; `EZKEY_DIAG_TEMP` in logcat.
+
+### 2026-05-29 — step-5 Async Storage 3.x (JS/Gradle green; device smoke pending)
+
+- Bump **2.2.0 → 3.0.2**; Gradle fix: `android/build.gradle` `local_repo` Maven for `storage-android:1.0.0` (S08 blocker was missing repo, not only Kotlin).
+- Jest: mock path `@react-native-async-storage/async-storage/jest`; `transformIgnorePatterns` includes package (v3 mock is ESM).
+- Gates: `yarn validate:ci` **PASS** (26 suites / 172 tests); `yarn license:check` + `license:app-data` updated.
+- **Operator next:** `gradlew installDebug` on Pixel — smoke enroll, language preference, security preference, pending auth (same signature debug; uninstall only if install fails).
 
 ---
 
