@@ -188,13 +188,22 @@ Before opening or updating a mobile PR, run the same commands locally when possi
 
 If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. React Native 0.85.2 and the current Android toolchain require **JDK 17 or 21**; on this workstation, use **JDK 17**.
 
-**Option 1 – Use the helper script (Git Bash or terminal):**
+**Option 1 – Canonical clean install (Git Bash, from `ezkey_mobile/`):**
+
+```bash
+adb devices -l
+./scripts/build-install-debug-clean.sh
+```
+
+Same as `yarn android:install:debug:clean`. JDK 17/21 is resolved automatically (`scripts/resolve-android-jdk.sh`); do not point Gradle at JDK 25.
+
+**Option 2 – Run on device via Metro (helper):**
 
 ```bash
 yarn android:jdk17
 ```
 
-**Option 2 – Set JAVA_HOME manually:**
+**Option 3 – Set JAVA_HOME manually:**
 
 ```powershell
 # Windows (Android Studio bundled JBR)

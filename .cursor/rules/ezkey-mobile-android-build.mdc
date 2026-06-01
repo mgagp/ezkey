@@ -1,0 +1,38 @@
+---
+description: Ezkey mobile Android builds on Windows — JDK 17, Git Bash, canonical scripts
+globs:
+  - ezkey_mobile/**
+alwaysApply: false
+---
+
+# Ezkey mobile — Android build (agents)
+
+When building or installing the React Native Android app, **read `ezkey_mobile/AGENTS.md` § Android debug build** and follow it. Do not trial-and-error `JAVA_HOME`.
+
+## First-try command (Git Bash, from `ezkey_mobile/`)
+
+```bash
+adb devices -l   # must show a device; abort if empty
+corepack enable
+./scripts/build-install-debug-clean.sh
+```
+
+Equivalent: `yarn android:install:debug:clean`.
+
+## Why agents fail without this
+
+- Maintainer **PATH** often points at **JDK 25** — invalid for RN 0.85 Android Gradle.
+- **Android Studio JBR** path varies (`Android Studio` vs `Android Studio1`).
+- Long Gradle runs without a prior **`adb devices`** check waste time when wireless adb disconnects.
+
+## JDK rule
+
+Use `scripts/resolve-android-jdk.sh` (sources JDK 17/21). Never use repo `C:\Tools\jdk-25*` for mobile Android. Optional override: `EZKEY_ANDROID_JAVA_HOME`.
+
+## Shell rule
+
+Use **Git Bash** (`C:\Program Files\Git\bin\bash.exe -lc '…'`) for Gradle on Windows, not bare PowerShell `&&` chains for commits/builds.
+
+## Fast path
+
+If `android/app/build/outputs/apk/debug/app-debug.apk` exists and only adb dropped: reconnect device, then `./scripts/build-install-debug-clean.sh --skip-clean`.
