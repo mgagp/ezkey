@@ -1,27 +1,63 @@
-# Run ezkey_mobile Android unit tests (crypto: IntegrationKeyVerifier).
-# Runs testDebugUnitTest so that Kotlin crypto parsing and verification are validated on every change.
+# ezkey_mobile: JS quality (yarn validate) + Android JVM unit tests (crypto).
+#
+# Triggers on PR/push when ezkey_mobile/ or this workflow changes.
+# Uses Corepack so CI matches package.json "packageManager": "yarn@4.10.3"
+# (setup-node must not use cache: yarn before Corepack — that invokes Yarn 1).
 name: ezkey_mobile unit tests
 
 on:
   push:
     branches: [main, master]
     paths:
-      - 'ezkey_mobile/android/**'
-      - 'ezkey_mobile/app/**'
+      - 'ezkey_mobile/**'
       - '.github/workflows/ezkey-mobile-unit-tests.yml'
   pull_request:
     branches: [main, master]
     paths:
-      - 'ezkey_mobile/android/**'
-      - 'ezkey_mobile/app/**'
+      - 'ezkey_mobile/**'
       - '.github/workflows/ezkey-mobile-unit-tests.yml'
+
+concurrency:
+  group: ezkey-mobile-unit-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  unit-tests:
+  js-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20.19.4'
+
+      - name: Enable Corepack (Yarn 4)
+        run: corepack enable
+
+      - name: Cache Yarn (Berry)
+        uses: actions/cache@v5
+        with:
+          path: |
+            ezkey_mobile/.yarn/cache
+          key: ${{ runner.os }}-ezkey-mobile-yarn-${{ hashFiles('ezkey_mobile/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ezkey-mobile-yarn-
+
+      - name: Install ezkey_mobile dependencies
+        working-directory: ezkey_mobile
+        run: yarn install --immutable
+
+      - name: yarn validate
+        working-directory: ezkey_mobile
+        run: yarn validate:ci
+
+  android-jvm-unit-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -37,21 +73,30 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          cache: 'yarn'
-          cache-dependency-path: ezkey_mobile/yarn.lock
+          node-version: '20.19.4'
+
+      - name: Enable Corepack (Yarn 4)
+        run: corepack enable
+
+      - name: Cache Yarn (Berry)
+        uses: actions/cache@v5
+        with:
+          path: |
+            ezkey_mobile/.yarn/cache
+          key: ${{ runner.os }}-ezkey-mobile-yarn-${{ hashFiles('ezkey_mobile/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ezkey-mobile-yarn-
 
       - name: Install ezkey_mobile dependencies
-        run: |
-          cd ezkey_mobile
-          yarn install --immutable
+        working-directory: ezkey_mobile
+        run: yarn install --immutable
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
       - name: Run Android unit tests
+        working-directory: ezkey_mobile/android
         run: |
-          cd ezkey_mobile/android
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
 

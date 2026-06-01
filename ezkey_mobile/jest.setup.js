@@ -10,7 +10,7 @@ if (globalThis.crypto == null) {
 }
 
 jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+  require('@react-native-async-storage/async-storage/jest'),
 );
 
 jest.mock('react-i18next', () => {
@@ -90,19 +90,20 @@ NativeModules.EzkeyCryptoModule = {
 
 jest.mock('react-native-vision-camera', () => ({
   Camera: 'Camera',
-  VisionCameraProxy: {initFrameProcessorPlugin: jest.fn()},
   useCameraDevice: jest.fn(() => undefined),
-  useFrameProcessor: jest.fn(() => () => {}),
-  useCodeScanner: jest.fn(() => ({})),
   useCameraPermission: jest.fn(() => ({
     hasPermission: true,
     requestPermission: jest.fn().mockResolvedValue(true),
   })),
 }));
 
-jest.mock('react-native-worklets-core', () => ({
-  useRunOnJS: fn => fn,
-  useSharedValue: v => ({value: v}),
+jest.mock('react-native-vision-camera-barcode-scanner', () => ({
+  useBarcodeScannerOutput: jest.fn(() => ({})),
+}));
+
+jest.mock('react-native-nitro-modules', () => ({
+  NitroModules: {createHybridObject: jest.fn()},
+  callback: fn => fn,
 }));
 
 jest.mock('react-native-gesture-handler', () => {

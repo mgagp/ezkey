@@ -52,7 +52,7 @@ ezkey_mobile/
 
 ## Prerequisites
 
-- Node.js 18+ and Yarn 4 (Berry)
+- Node.js **20.19.4+** and Yarn 4 (Berry) — aligned with React Native 0.85 requirements
 - JDK 17 and Android Studio with Android SDK 36 / build-tools 36.0.0 available
 - Xcode 16.1+ with CocoaPods 1.16.x recommended (macOS)
 - Watchman (macOS), Git Bash or another POSIX shell on Windows
@@ -156,20 +156,54 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 yarn lint                  # ESLint + TypeScript checks
 yarn typecheck             # tsc --noEmit
 yarn test                  # Jest unit/component tests
+yarn validate:ci           # lint + typecheck + test --runInBand (same as GitHub Actions)
 # yarn detox:test          # Optional end-to-end suite (requires Detox setup)
 ```
+
+On Windows, prefer **Corepack** so Yarn matches `package.json` (`yarn@4.10.3`):
+
+```bash
+corepack enable
+corepack yarn validate:ci
+```
+
+Android JVM unit tests (crypto helpers on the native side):
+
+```bash
+cd android && ./gradlew :app:testDebugUnitTest --no-daemon
+```
+
+### Continuous integration (GitHub)
+
+Pull requests that touch `ezkey_mobile/**` run the workflow [`.github/workflows/ezkey-mobile-unit-tests.yml`](../.github/workflows/ezkey-mobile-unit-tests.yml):
+
+| Job | What it runs |
+|-----|----------------|
+| **js-validate** | `yarn validate:ci` on Ubuntu (Node 20.19.4, Yarn 4 via Corepack) |
+| **android-jvm-unit-tests** | `./gradlew :app:testDebugUnitTest` (JDK 17, Android SDK) |
+
+Before opening or updating a mobile PR, run the same commands locally when possible. A green check on GitHub means the branch passes on a clean runner, not only on your workstation.
 
 ### Android build troubleshooting
 
 If you see **"Error resolving plugin [id: 'com.facebook.react.settings']"** or **"Unsupported class file major version 69"**, the Android build is likely using JDK 25. React Native 0.85.2 and the current Android toolchain require **JDK 17 or 21**; on this workstation, use **JDK 17**.
 
-**Option 1 – Use the helper script (Git Bash or terminal):**
+**Option 1 – Canonical clean install (Git Bash, from `ezkey_mobile/`):**
+
+```bash
+adb devices -l
+./scripts/build-install-debug-clean.sh
+```
+
+Same as `yarn android:install:debug:clean`. JDK 17/21 is resolved automatically (`scripts/resolve-android-jdk.sh`); do not point Gradle at JDK 25.
+
+**Option 2 – Run on device via Metro (helper):**
 
 ```bash
 yarn android:jdk17
 ```
 
-**Option 2 – Set JAVA_HOME manually:**
+**Option 3 – Set JAVA_HOME manually:**
 
 ```powershell
 # Windows (Android Studio bundled JBR)
@@ -221,7 +255,7 @@ This is the preferred first-line reset for mobile dependency/build drift. Do thi
 ## Native Modules Summary
 
 - `EzkeyCryptoModule` exposes EC P-256 key generation, retrieval, and signing; Android currently uses `Android Keystore`, while iOS native secure-hardware support is still being aligned
-- `EzkeyQrFrameProcessorPlugin` (Kotlin) feeds `react-native-vision-camera` with decoded QR payloads
+- Enrollment QR uses VisionCamera 5 + `react-native-vision-camera-barcode-scanner` (`useBarcodeScannerOutput`, ML Kit on Android and iOS)
 - iOS bridges live under `ios/EzkeyMobile/` and should adopt Xcode Quick Help (`///`) comments referencing the same security docs noted above
 - Detailed design notes live in [`docs/NATIVE_MODULES.md`](docs/NATIVE_MODULES.md) *(created in this revision)*
 

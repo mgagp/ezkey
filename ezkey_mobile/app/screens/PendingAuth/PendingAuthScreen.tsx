@@ -209,9 +209,9 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
               <View style={styles.actions}>
                 <TouchableOpacity
                   testID="ezkey.e2e.pendingAuth.deny"
-                  onPress={() => {
+                  onPress={async () => {
                     tracePendingAuthRespond('pendingAuth_ui_deny_press', {});
-                    void handleRespond(false);
+                    await handleRespond(false);
                   }}
                   style={[styles.actionButton, styles.rejectButton]}
                   disabled={isProcessing}>
@@ -219,9 +219,9 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                 </TouchableOpacity>
                 <TouchableOpacity
                   testID="ezkey.e2e.pendingAuth.approve"
-                  onPress={() => {
+                  onPress={async () => {
                     tracePendingAuthRespond('pendingAuth_ui_approve_press', {});
-                    void handleRespond(true);
+                    await handleRespond(true);
                   }}
                   style={[styles.actionButton, styles.approveButton]}
                   disabled={isProcessing}>

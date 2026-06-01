@@ -6,7 +6,7 @@ status: published
 published_html_en: /intention-the-next-frontier-human-ai-partnership.html
 published_html_fr: /fr/l-intention-prochaine-frontiere-partenariat-humain-ia.html
 published_date: 2026-05-31
-html_amended_post_publish: false
+html_amended_post_publish: true
 source_of_truth: html
 ---
 
@@ -15,7 +15,7 @@ source_of_truth: html
 <!-- ezkey-org:exclude-start
 Titres de travail alternatifs :
 1. Au-delà des spécifications : l'intention comme prochaine frontière
-2. Ne coupez pas les ailes à votre moteur statistique
+2. Ne coupez pas les ailes à votre moteur probabiliste
 3. Spécifier ne suffit pas : l'alignement des valeurs avec l'IA
 4. L'introspection, nouvelle compétence du développeur augmenté
 
@@ -55,7 +55,7 @@ Vérifications à faire avant publication :
   confirme un jour le nom/positionnement exact, on pourra durcir l'affirmation.
 - Exemple de dérive : l'« langage exotique » dicté à l'oral a été remplacé par l'exemple
   « solution générique calibrée pour un million d'utilisateurs vs outil simple auto-hébergé » —
-  qui illustre mieux une voie statistiquement valable mais hors du chemin attendu. À valider.
+  qui illustre mieux une voie probabilistiquement plausible mais hors du chemin attendu. À valider.
 - Caler le contexte temporel (avril-mai-juin 2026) au moment réel de la publication.
 
 Sources de valeurs citées (méthodologie) :
@@ -118,19 +118,19 @@ Et je dois ici un aveu. Véhiculer ces valeurs, ces principes, avec toutes leurs
 
 Reste une question concrète : comment capturer tout cela, y compris l'intention que je porte depuis longtemps sans l'avoir jamais couchée par écrit ? Je m'accorde pour cela des entrevues en texte libre, sans gabarit imposé, où je laisse remonter le pourquoi historique d'une décision autant que l'intention du moment. La dictée y est précieuse, sans jamais être obligatoire. Et surtout, ces sessions ne s'évaporent pas : je les verse, presque mot pour mot, dans le corpus documentaire du projet, là où l'IA peut les retrouver au même titre que le code. Une intuition d'hier cesse alors d'être un souvenir privé pour devenir une matière que le partenaire peut connaître et honorer.
 
-## Ne coupez pas les ailes à votre moteur statistique
+## Ne coupez pas les ailes à votre moteur probabiliste
 
 Voici le cœur de ce que je veux faire passer.
 
-Quelqu'un a déjà dit que l'IA est un moteur statistique avancé. Entraînée sur des millions de paramètres, elle est experte d'une quantité de choses. Quand on la gave de règles, de spécifications par-dessus des contraintes, par-dessus d'autres contraintes, on la force dans un nombre étroit de chemins. On la rend, certes, plus déterministe et plus prévisible. Mais on se coupe aussi de branches statistiques parfaitement valables, qui auraient pu être bénéfiques au projet. On lui coupe les ailes.
+Quelqu'un a déjà dit que l'IA est un moteur probabiliste avancé. Entraînée sur des millions de paramètres et des patterns statistiques à très grande échelle, elle est experte d'une quantité de choses. Quand on la gave de règles, de spécifications par-dessus des contraintes, par-dessus d'autres contraintes, on la force dans un nombre étroit de chemins. On la rend, certes, plus déterministe et plus prévisible. Mais on se coupe aussi de branches probabilistes parfaitement valables, qui auraient pu être bénéfiques au projet. On lui coupe les ailes.
 
 Et le pire, c'est que cette stratégie s'auto-entretient. Dès qu'une dérive apparaît, on ajoute une règle. Puis une autre. C'est l'équivalent d'un micro-management : on ne fait pas confiance au code, on doute du résultat, alors on multiplie les revues et les contraintes. On se rassure, mais on s'appauvrit.
 
-Même bien spécifié, un système reste exposé. On peut mener une analyse et une conception sous pleine contrainte, et l'IA, comme moteur statistique, peut tout de même s'engager sur une voie parfaitement raisonnable — mais pas celle que l'on avait en tête. Elle ira par exemple vers une solution générique, calibrée pour un million d'utilisateurs et truffée de points de configuration, là où l'intention du projet était un outil simple, auto-hébergé, pour un seul cas d'usage. Cette dérive n'en est pas vraiment une : statistiquement, elle se défend, et on peut tout à fait l'expliquer après coup. Elle est seulement mal orientée. La contrainte décrit ce qu'il faut respecter ; elle ne dit jamais ce que l'on cherche vraiment. Seule l'intention le dit.
+Même bien spécifié, un système reste exposé. On peut mener une analyse et une conception sous pleine contrainte, et l'IA, comme moteur probabiliste, peut tout de même s'engager sur une voie parfaitement raisonnable — mais pas celle que l'on avait en tête. Elle ira par exemple vers une solution générique, calibrée pour un million d'utilisateurs et truffée de points de configuration, là où l'intention du projet était un outil simple, auto-hébergé, pour un seul cas d'usage. Cette dérive n'en est pas vraiment une : du point de vue probabiliste, elle se défend, et on peut tout à fait l'expliquer après coup. Elle est seulement mal orientée. La contrainte décrit ce qu'il faut respecter ; elle ne dit jamais ce que l'on cherche vraiment. Seule l'intention le dit.
 
 L'alternative n'est pas l'absence de cadre. C'est un autre type de cadre. Quand les étapes de la méthodologie sont bien balisées, quand les garde-fous existent et que le modèle est assez évolué pour s'y tenir proprement, il ne reste pas à empiler des règles : il reste à donner des balises, des valeurs de projet, des principes de conception. On ne contraint pas le moteur, on l'oriente. On l'invite à explorer l'immensité de ses entraînements, mais en se guidant lui-même sur des valeurs que l'on a rendues explicites.
 
-C'est aussi pourquoi j'ai adopté quelques stratégies très concrètes dans mon travail quotidien : demander systématiquement des alternatives, demander des comparatifs avec des projets similaires, et ajuster mon vocabulaire pour rester plus neutre — pour ne pas refermer prématurément les chemins statistiques qui mènent à des compétences que je n'avais pas anticipées.
+C'est aussi pourquoi j'ai adopté quelques stratégies très concrètes dans mon travail quotidien : demander systématiquement des alternatives, demander des comparatifs avec des projets similaires, et ajuster mon vocabulaire pour rester plus neutre — pour ne pas refermer prématurément les chemins probabilistes qui mènent à des compétences que je n'avais pas anticipées.
 
 ## L'alignement des idées, et un moment magique
 
@@ -172,6 +172,6 @@ Mon pronostic est simple. La majorité des équipes passeront probablement tout 
 
 La nouvelle compétence centrale de l'humain, ce n'est pas de cadrer toujours plus le code. C'est la pensée critique : cadrer l'intention, cesser de multiplier les contraintes, et rendre à l'IA ses ailes complètes pour profiter de l'immensité de ses entraînements.
 
-Je ne prétends pas l'avoir prouvé. Je pense, à l'instinct, que des solutions trop contraintes ferment des chemins statistiques précieux, tandis que les valeurs et l'intention gardent le moteur souple tout en l'orientant. Un jour, peut-être, des métriques le démontreront. Ce sera un beau jour — celui où l'on cessera d'en parler comme d'un tabou, comme on a longtemps refusé de voir qu'un soutien mental n'a rien de honteux. Ce jour-là, une multitude de nouveaux systèmes de méthodologie apparaîtront, et l'idée d'aligner valeurs et intention avec l'IA cessera d'avoir l'air ésotérique pour devenir un fait établi, enseigné.
+Je ne prétends pas l'avoir prouvé. Je pense, à l'instinct, que des solutions trop contraintes ferment des chemins probabilistes précieux, tandis que les valeurs et l'intention gardent le moteur souple tout en l'orientant. Un jour, peut-être, des métriques le démontreront. Ce sera un beau jour — celui où l'on cessera d'en parler comme d'un tabou, comme on a longtemps refusé de voir qu'un soutien mental n'a rien de honteux. Ce jour-là, une multitude de nouveaux systèmes de méthodologie apparaîtront, et l'idée d'aligner valeurs et intention avec l'IA cessera d'avoir l'air ésotérique pour devenir un fait établi, enseigné.
 
 En attendant, je continue d'expérimenter sur mon petit laboratoire sans échéance. Je fais des erreurs, je suis brouillon, je me trompe souvent. Mais j'ai cette conviction tranquille : ceux qui réussiront le mieux avec une méthodologie ne seront pas ceux qui auront le plus de spécifications. Ce seront ceux qui auront eu le courage d'élever le discours, de reconsidérer la relation, et de partager une intention.

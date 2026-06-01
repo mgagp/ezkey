@@ -5,10 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * File: MainApplication.kt
- * Description: React Native application class responsible for bootstrapping native modules and frame
- * processors.
- * Security Context: Registers the cryptographic bridge and QR frame processor defined in
- * docs/CRYPTO.md and docs/ENDPOINT.md.
+ * Description: React Native application class responsible for bootstrapping native modules.
+ * Security Context: Registers the cryptographic bridge defined in docs/CRYPTO.md and docs/ENDPOINT.md.
  * @since 2025
  */
 
@@ -16,7 +14,6 @@ package org.ezkey.mobile
 
 import android.app.Application
 import org.ezkey.mobile.crypto.EzkeyCryptoPackage
-import org.ezkey.mobile.qr.EzkeyQrFrameProcessorPlugin
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -27,8 +24,6 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
-import com.mrousavy.camera.frameprocessors.FrameProcessorPluginRegistry
-
 /**
  * Application entry point that registers Ezkey-specific native modules.
  *
@@ -65,16 +60,13 @@ class MainApplication : Application(), ReactApplication {
     get() = getDefaultReactHost(applicationContext, reactNativeHost)
 
   /**
-   * Initializes native modules, frame processors, and the SoLoader stack.
+   * Initializes native modules and the SoLoader stack.
    *
    * @since 2025
    */
   override fun onCreate() {
     super.onCreate()
     SoLoader.init(this, OpenSourceMergedSoMapping)
-    FrameProcessorPluginRegistry.addFrameProcessorPlugin(EzkeyQrFrameProcessorPlugin.NAME) { _, _ ->
-      EzkeyQrFrameProcessorPlugin()
-    }
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       load()
     }

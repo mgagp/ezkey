@@ -5,7 +5,7 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Module: EnrollmentScannerModal
- * Description: React Native modal that interfaces with the QR frame processor to bootstrap secure enrollment.
+ * Description: React Native modal that scans enrollment QR codes via VisionCamera 5 barcode output (ML Kit).
  * Security Context: Aligns with docs/CRYPTO.md and docs/features/AUTH_SECURITY.md to preserve anti-enumeration guarantees
  *                   by limiting QR payload reuse and adhering to read-once token semantics.
  * @since 2025
@@ -13,14 +13,20 @@
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Camera} from 'react-native-vision-camera';
 import {
-  Camera,
-  VisionCameraProxy,
-  useCameraDevice,
-  useFrameProcessor,
-} from 'react-native-vision-camera';
-import type {FrameProcessorPlugin} from 'react-native-vision-camera';
-import {useRunOnJS, useSharedValue} from 'react-native-worklets-core';
+  useBarcodeScannerOutput,
+  type Barcode,
+} from 'react-native-vision-camera-barcode-scanner';
+
+/** Formats aligned with legacy ML Kit enrollment scanner (QR-first). */
+const ENROLLMENT_BARCODE_FORMATS = [
+  'qr-code',
+  'aztec',
+  'data-matrix',
+  'pdf-417',
+  'code-128',
+] as const;
 
 /**
  * Modal properties for the enrollment QR scanner.
@@ -34,25 +40,9 @@ type Props = {
 };
 
 /**
- * Native Vision Camera plugin hook used to bridge the Kotlin frame processor (`EzkeyQrFrameProcessorPlugin`)
- * with the JavaScript runtime. The plugin decodes QR payloads that encode enrollment proof tokens and other
- * bootstrap material documented in `docs/ENDPOINT.md`.
- *
- * The plugin name mirrors the Android implementation to keep the bridge deterministic across platforms.
- *
- * @since 2025
- */
-const scanEzkeyPlugin: FrameProcessorPlugin | undefined =
-  VisionCameraProxy.initFrameProcessorPlugin('scanEzkey', {}) ?? undefined;
-
-/**
  * Displays the secure enrollment scanner overlay responsible for capturing QR codes emitted by the Admin API.
  *
- * The component throttles frame processing to minimize device workload while preserving the guarantees described in
- * `docs/features/AUTH_SECURITY.md`:
- * - Frames are sampled deterministically to avoid duplicate reads that could leak proof tokens.
- * - The last scanned payload is memoized to uphold the read-once semantics of `authAttemptProofToken`.
- * - The scan result is surfaced synchronously so the caller can persist the enrollment context before any reuse.
+ * Uses {@link useBarcodeScannerOutput} (ML Kit on iOS and Android).
  *
  * @param visible Whether the modal should be displayed.
  * @param onDismiss Callback invoked when the user cancels the modal.
@@ -60,18 +50,15 @@ const scanEzkeyPlugin: FrameProcessorPlugin | undefined =
  * @since 2025
  */
 export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onScanned}) => {
-  const device = useCameraDevice('back');
   const [isActive, setIsActive] = useState(false);
   const lastScannedRef = useRef<string | undefined>(undefined);
-  const frameCounter = useSharedValue(0);
 
   useEffect(() => {
     setIsActive(visible);
     if (!visible) {
       lastScannedRef.current = undefined;
-      frameCounter.value = 0;
     }
-  }, [frameCounter, visible]);
+  }, [visible]);
 
   const handleScanned = useCallback(
     (value: string) => {
@@ -85,44 +72,41 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
     [onScanned],
   );
 
-  const runOnJsDetection = useRunOnJS(handleScanned, [handleScanned]);
-
-  const frameProcessor = useFrameProcessor(
-    frame => {
-      'worklet';
-      frameCounter.value = frameCounter.value + 1;
-      if (frameCounter.value % 2 !== 0) {
+  const onBarcodeScanned = useCallback(
+    (barcodes: Barcode[]) => {
+      for (const barcode of barcodes) {
+        const value = barcode.rawValue;
+        if (value == null || value.length === 0) {
+          continue;
+        }
+        handleScanned(value);
         return;
       }
-      if (scanEzkeyPlugin == null) {
-        return;
-      }
-      const data = scanEzkeyPlugin.call(frame) as string[] | undefined;
-      if (!data || data.length === 0) {
-        return;
-      }
-      runOnJsDetection(data[0]);
     },
-    [frameCounter, runOnJsDetection],
+    [handleScanned],
   );
 
-  const content = useMemo(() => {
-    if (!device) {
-      return (
-        <View style={styles.centered}>
-          <Text style={styles.message}>No camera device found.</Text>
-        </View>
-      );
-    }
-    return (
+  const onScannerError = useCallback((_error: Error) => {
+    // Scanner errors are rare; enrollment wizard surfaces camera permission issues separately.
+  }, []);
+
+  const barcodeOutput = useBarcodeScannerOutput({
+    barcodeFormats: [...ENROLLMENT_BARCODE_FORMATS],
+    onBarcodeScanned,
+    onError: onScannerError,
+  });
+
+  const content = useMemo(
+    () => (
       <Camera
         style={StyleSheet.absoluteFill}
-        device={device}
+        device="back"
         isActive={isActive}
-        frameProcessor={frameProcessor}
+        outputs={[barcodeOutput]}
       />
-    );
-  }, [device, frameProcessor, isActive]);
+    ),
+    [barcodeOutput, isActive],
+  );
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onDismiss} transparent>
@@ -185,14 +169,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  message: {
-    color: '#f4f7ff',
-    fontSize: 14,
-  },
 });
-

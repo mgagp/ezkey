@@ -14,7 +14,7 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 
 | Concern | Technology | Why it is used | Notes |
 | --- | --- | --- | --- |
-| Runtime UI | React Native 0.85.2 | Shared iOS/Android UI codebase | Current workspace manifest uses React Native 0.85.2 for the reference app. |
+| Runtime UI | React Native 0.85.3 | Shared iOS/Android UI codebase | Bumped on branch `feature/177-...` (was 0.85.2 at program start). |
 | React runtime | React 19.2.3 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json` and the RN-renderer constraint. |
 | Language | TypeScript | Typed mobile domain and service layer | Thin wrapper types sit above generated DTOs. |
 | Navigation | React Navigation stack | Simple screen-to-screen mobile flow control | Current stack includes Home, Enrollment, Pending, and supporting screens. |
@@ -25,8 +25,27 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 | Durable metadata storage | AsyncStorage-backed enrollment metadata collection and preferences | Persist local enrollment metadata, installation metadata, and language preference | Wrapped by `enrollmentStorage` and preference-specific storage facades. |
 | Secure item storage | `react-native-keychain` wrapper | Device-local secure storage for small secret values such as enrollment proof tokens | Used by `enrollmentStorage` as the secure delegate; private key path remains native. |
 | Device crypto | Native bridge (`EzkeyCryptoModule`) | Key generation, signing, public key retrieval, proof token generation | Android path is the current reference-strength implementation. |
-| QR capture | Vision Camera plus native Android frame processor | QR-first enrollment entry point | iOS parity remains more conservative. |
+| QR capture | Vision Camera 5 + `react-native-vision-camera-barcode-scanner` (ML Kit) | QR-first enrollment via `useBarcodeScannerOutput` | Android-first reference; iOS uses same ML Kit path. |
 | Testing | Jest / RTL / optional Detox | Unit/component/e2e coverage path | Native test surface still evolves separately. |
+
+## Stack modernization program (2026-05-29)
+
+Active toolchain program tracked outside this doc:
+
+| Item | Value |
+| --- | --- |
+| GitHub issue | [#177](https://github.com/mgagp/ezkey/issues/177) |
+| Branch | `feature/177-i-2026-05-29-mobile-stack-modernization` |
+| Backlog idea | `I-2026-05-29-mobile-stack-modernization` |
+| Tracer bullet | `TB-2026-05-29-mobile-stack-modernization` |
+| Method log | `ML-2026-05-29-mobile-stack-modernization` |
+
+Prior exhaustive dependency review (RN 0.85.2 baseline, May 2026) is archived under
+`.github/prompts/archived/2026-05/plan-mobileDependencyReview.prompt.md` — do not repeat.
+
+**Program status (2026-05-31):** Steps 1–6 executed on branch `#177`: CI `yarn validate`, RN 0.85.3,
+Async Storage 3.x, Vision Camera 5 + `react-native-vision-camera-barcode-scanner`, ESLint 9 flat config.
+Device smoke PASS (Pixel 7 Pro). Maestro deferred on this branch.
 
 ## Runtime Architecture at a Glance
 

@@ -27,6 +27,9 @@ Wrangler deploy scripts source a gitignored **`.env`** at the **repository root*
 | [deploy-ezkey-org-production.sh](../../scripts/cloudflare/deploy-ezkey-org-production.sh) | Deploy `sites/ezkey-org/` to the Pages **production** branch (default `main` via `CLOUDFLARE_PAGES_PRODUCTION_BRANCH`); same credentials as preview. Serves the custom domain (e.g. `ezkey.org`) when the project is configured for it. |
 | [deploy-admin-ui-preview.sh](../../scripts/cloudflare/deploy-admin-ui-preview.sh) | Deploy `ezkey-admin-ui/dist` to Pages as a **preview** after `npm run build:cloudflare`. Optional `--build` runs the build first using `VITE_API_BASE_URL` from `.env` or the exp1 default. |
 | [deploy-admin-ui-production.sh](../../scripts/cloudflare/deploy-admin-ui-production.sh) | Deploy `ezkey-admin-ui/dist` to the Pages **production** branch (default `main`). Same `--build` and `.env` behavior. Use after custom domain (e.g. `exp1-admin-ui.ezkey.org`) is configured. |
+| [cleanup-pages-deployments.sh](../../scripts/cloudflare/cleanup-pages-deployments.sh) | **Age-aware** cleanup of Pages **preview** deployments (default dry-run, >24h, both `ezkey-org` and `methodology-ezkey-org`). Use `--profile prudent` for 7d, `--apply` to delete, `--env production` for production history (with safeguards). |
+| [cleanup-ezkey-org-previews.sh](../../scripts/cloudflare/cleanup-ezkey-org-previews.sh) | Legacy: list/delete **all** preview deployments for `ezkey-org` (no age filter). Prefer `cleanup-pages-deployments.sh`. |
+| [cleanup-methodology-previews.sh](../../scripts/cloudflare/cleanup-methodology-previews.sh) | Legacy: same as above for `methodology-ezkey-org`. Prefer `cleanup-pages-deployments.sh`. |
 
 Add more scripts here only when a **repeated** automation need appears (e.g. standardized production promotion, DNS verification).
 

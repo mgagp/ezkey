@@ -1,5 +1,27 @@
 # Ezkey mobile — utility scripts
 
+## `build-install-debug-clean.sh` (canonical Android debug install)
+
+**Agents and maintainers:** use this for a clean debug build on a connected device. It resolves JDK 17/21 (`resolve-android-jdk.sh`), checks `adb` first, uninstalls `org.ezkey.mobile`, runs `gradlew clean installDebug`, and launches the app.
+
+From `ezkey_mobile/`:
+
+```bash
+adb devices -l
+./scripts/build-install-debug-clean.sh
+```
+
+Options:
+
+- `--skip-clean` — install existing `app-debug.apk` only (device reconnected after a long build).
+- `--no-uninstall` — keep data; reinstall over same signature.
+
+Yarn alias: `yarn android:install:debug:clean`.
+
+## `resolve-android-jdk.sh`
+
+Sets `JAVA_HOME` to JDK 17/21 (never JDK 25 from PATH). Probes Android Studio JBR (including `Android Studio1`), `C:\Tools\jdk17`, Microsoft JDK 17, and macOS `java_home`. Override with `EZKEY_ANDROID_JAVA_HOME`.
+
 ## `verify-android-sensitive-storage.sh`
 
 Runs a repeatable Android debug-build verification for local secret handling:
