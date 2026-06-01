@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `I-2026-05-29-mobile-stack-modernization`
-- **Status:** `completed`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-05-29`
 - **Updated at:** `2026-05-31`
@@ -32,6 +32,27 @@ real execution informs methodology tuning while it is still being refined.
 - Tracer bullet: `TB-2026-05-29-mobile-stack-modernization.md`
 - Method log: `ML-2026-05-29-mobile-stack-modernization.md`
 - Historical evidence (do not redo): `.github/prompts/archived/2026-05/plan-mobileDependencyReview.prompt.md`
+
+## Outcome (2026-05-31)
+
+Delivered on GitHub **#177**, merged to **`main`**. Operator confirmed full functional smoke on
+Pixel 7 Pro after merge (all screens / flows revisited).
+
+**Delivered**
+
+- Track B: GitHub **`yarn validate:ci`**, Node **20.19.4**, RN **0.85.3**, ESLint **9** flat config.
+- Track A: Async Storage **3.x**, Vision Camera **5.x** + Nitro + official barcode scanner package.
+- Post-ladder: conservative patch bumps; prudent runtime line (axios, i18n, navigation, screens);
+  mobile Orval **8.14** + client regen; `actions/cache@v5` in CI.
+- Agent ergonomics: `scripts/resolve-android-jdk.sh`, `scripts/build-install-debug-clean.sh`,
+  `ezkey_mobile/AGENTS.md` § Android debug build, `.cursor/rules/ezkey-mobile-android-build.mdc`.
+- Lane E: `ML-2026-05-29` retrospective; methodology decision on Android JDK resolution for agents.
+
+**Deferred (explicit, non-blocking)**
+
+- Maestro enrollment/QR harness extension (`TB-2026-0002` follow-up).
+- iOS `Podfile.lock` reproducibility (macOS pass).
+- Majors: gesture-handler 3, ESLint 10, Jest 30, TypeScript 6, AGP 9.
 
 ## Problem and value
 
@@ -108,5 +129,21 @@ real execution informs methodology tuning while it is still being refined.
 ## Status transitions
 
 - `incubating` → `ready` when Phase 0 baseline is recorded in TB and first docs PR is merged to the feature branch. **Reached 2026-05-29** (Phase 0 green on branch).
-- `ready` → `active` when Track B PR 1 (CI validate) is in progress.
-- Close via `done` after Step 3 retrospective and product closeout on `main`.
+- `ready` → `active` when Track B PR 1 (CI validate) is in progress. **Reached 2026-05-29**.
+- `active` → `done` after merge to `main`, operator functional sign-off, backlog index update, and Lane E closeout. **Reached 2026-05-31**.
+
+## Closeout evidence
+
+| Gate | Result |
+|------|--------|
+| GitHub CI (`js-validate` + JVM crypto) | **PASS** on branch and after merge |
+| `yarn validate:ci` | **PASS** (172 tests; known non-blocking `act()` noise) |
+| Android debug install (Pixel 7 Pro) | **PASS** via `build-install-debug-clean.sh` |
+| Operator manual smoke (post-merge) | **PASS** — all app screens / flows |
+| Maestro pilot | **Deferred** — enrollment not in harness |
+
+## Residual risks
+
+- Wireless `adb` may drop during long Gradle builds — mitigated by `adb devices` pre-check in canonical script.
+- Jest `act()` warnings after React Query timers — monitor; not a release blocker.
+- iOS parity and Play release remain separate milestones (`MOBILE_RELEASE_DECISION_MEMO.md`).

@@ -3,16 +3,16 @@
 ## Metadata
 
 - **ID:** `TB-2026-05-29-mobile-stack-modernization`
-- **Status:** `completed`
+- **Status:** `done`
 - **Posture:** `multi-pass` (one PR per ladder step; this TB tracks the full program)
-- **Related idea:** `I-2026-05-29-mobile-stack-modernization` (`incubating`)
+- **Related idea:** `I-2026-05-29-mobile-stack-modernization` (`done`)
 - **Method log:** `ML-2026-05-29-mobile-stack-modernization.md` — append after each PR/session
 - **Lane:** `B` (materialized from plan incubation)
 - **GitHub issue:** `#177`
 - **Git branch:** `feature/177-i-2026-05-29-mobile-stack-modernization`
 - **Incubation source:** `.cursor/plans/mobile_stack_upgrade_a92a7f09.plan.md`
 - **Created at:** `2026-05-29`
-- **Updated at:** `2026-05-29`
+- **Updated at:** `2026-05-31`
 
 ## Objective
 
@@ -94,14 +94,14 @@ cd android && ./gradlew :app:testDebugUnitTest --no-daemon
 
 | Item | Version / note |
 |------|----------------|
-| `react-native` | 0.85.2 |
+| `react-native` | 0.85.3 |
 | `react` / `react-test-renderer` | 19.2.3 |
 | `@react-native-community/cli` | 20.1.3 |
-| `react-native-vision-camera` | 5.0.10 + `react-native-vision-camera-barcode-scanner` 5.0.11 |
-| `@react-native-async-storage/async-storage` | 3.0.2 (step-5; was 2.2.0) |
-| Node `engines` (manifest) | `>=18` (to raise → `>=20.19.4`) |
-| CI | `testDebugUnitTest` only — no `yarn validate` yet |
-| Jest suites | ~26 test files (`react-test-renderer`) |
+| `react-native-vision-camera` | 5.0.11 + `react-native-vision-camera-barcode-scanner` 5.0.11 |
+| `@react-native-async-storage/async-storage` | 3.1.1 |
+| Node `engines` (manifest) | `>=20.19.4` |
+| CI | `yarn validate:ci` + JVM crypto tests; `actions/cache@v5` |
+| Jest suites | 26 test files / 172 tests |
 | Gradle | 8.13 / AGP 8.12 / Kotlin 2.1.20 / SDK 36 |
 
 ### Phase 0 validation results
@@ -197,7 +197,15 @@ _(Append per PR — short bullets; full methodology narrative goes to ML log.)_
 
 ### 2026-05-31 — step-8 methodology (Lane E)
 
-- ML retrospective R1–R7 filled; I/TB marked `completed`. Operator push when ready.
+- ML retrospective R1–R7 filled; I/TB marked `done`. Operator push when ready.
+
+### 2026-05-31 — post-merge closeout (operator + agent)
+
+- **Merged to `main`**; operator post-merge manual smoke **PASS** (all screens / flows).
+- Conservative patch bumps (vision-camera, svg, zustand, react-query, nitro-modules, navigation native).
+- Prudent runtime commit: axios, i18n, navigation stacks, screens, async-storage; separate Orval **8.14** + client regen.
+- Canonical Android debug install: `resolve-android-jdk.sh`, `build-install-debug-clean.sh`, AGENTS + Cursor rule.
+- Backlog index updated on `main` (per I scope rule).
 
 ---
 

@@ -86,7 +86,15 @@ At the end of each significant session or when merging a TB ladder PR, add a dat
 
 - Removed `EZKEY_DIAG_TEMP` strip, `capture-stack-migration-logcat.sh`, env flag.
 - ESLint 9 flat config; `PendingAuthScreen` `no-void` fix.
-- TB/I → `completed`; `MOBILE_STACK_AND_ARCHITECTURE.md` updated.
+- TB/I → `done`; `MOBILE_STACK_AND_ARCHITECTURE.md` updated.
+
+### 2026-05-31 — post-merge closeout (operator + agent)
+
+- **Context:** PR **#177** merged to `main`; operator re-tested all app screens — functional **PASS**.
+- **Worked well:** Two-commit post-ladder (runtime prudent line, then Orval 8.14); canonical Android build script eliminated repeated JDK 25 / wrong JBR path failures on Windows agents.
+- **Friction:** Agents defaulted to repo JDK 25 and documented `Android Studio\jbr` path; actual workstation uses `Android Studio1\jbr`. Long Gradle without prior `adb devices` wasted install step when wireless adb dropped.
+- **Promoted:** `product-docs/methodology/decisions/2026-05-31-mobile-android-build-jdk-resolution.md`; `ezkey_mobile/scripts/build-install-debug-clean.sh`; `.cursor/rules/ezkey-mobile-android-build.mdc`.
+- **Deferred:** Maestro enrollment path; gesture-handler 3; iOS Podfile.lock.
 
 ---
 
@@ -108,13 +116,22 @@ At the end of each significant session or when merging a TB ladder PR, add a dat
 
 | Decision slug | Status |
 |---------------|--------|
-| `mobile-vc5-qr-use-barcode-scanner-package` | Candidate — Android+iOS QR via `react-native-vision-camera-barcode-scanner`, not `useObjectOutput` |
-| `rn-nitro-codegen-newArchEnabled-flag` | Candidate — keep `newArchEnabled=true` in `gradle.properties` while Nitro libs gate codegen on it |
+| `mobile-vc5-qr-use-barcode-scanner-package` | **Documented** — `ezkey_mobile/README.md`, TB step-6 notes |
+| `rn-nitro-codegen-newArchEnabled-flag` | **Documented** — `gradle.properties`, TB step-6 |
+| `mobile-android-build-jdk-resolution` | **Promoted** — methodology decision 2026-05-31; scripts + AGENTS + Cursor rule |
 
 ### Corpus updates (0..n)
 
 | File | Status |
 |------|--------|
 | `ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md` | Updated stack + program status |
-| `ezkey_mobile/README.md` | QR path description |
-| `product-docs/.../TB-2026-05-29-...` | Completed |
+| `ezkey_mobile/README.md` | QR path + canonical build script |
+| `ezkey_mobile/AGENTS.md` | Android debug build agent workflow |
+| `product-docs/.../TB-2026-05-29-...` | `done`; post-merge closeout |
+| `product-docs/global/backlog/index.md` | Recently completed entry on `main` |
+
+## Final closeout (2026-05-31)
+
+- **Status:** `I-*` / `TB-*` → `done`; issue **#177** merged.
+- **Evidence:** CI green; `validate:ci` 172/172; Pixel install + operator full-app smoke PASS.
+- **Next actions:** `TB-2026-0002` Maestro enrollment extension (optional); iOS lockfile pass; Play release track when ready.
