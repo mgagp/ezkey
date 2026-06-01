@@ -67,7 +67,7 @@ Promoted to tracer bullet pilot on `2026-05-08`: **`TB-2026-0002`** (`product-do
 
 **Execution (`2026-05-08`):** Maestro flows, Bash runner, and `ezkey.e2e.*` testIDs landed under `ezkey_mobile/maestro/` and `ezkey_mobile/scripts/run-real-device-pilot-maestro.sh`. Exit criteria in the TB still apply until validated on hardware.
 
-**Next execution slice:** JUnit support test(s) + Bash session orchestration + per-iteration evidence layout for **repeat loops** (see `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md` and `TB-2026-0002` “Next phase”).
+**Next execution slice:** enrollment + QR Maestro path (**F1** in [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md)); then JUnit churn harness (see `TB-2026-0002` “Next phase”).
 
 ## Links
 

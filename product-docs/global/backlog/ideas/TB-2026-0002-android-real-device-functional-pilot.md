@@ -6,12 +6,49 @@
 - **Status:** `active`
 - **Related idea:** `I-2026-0019`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-08`
+- **Updated at:** `2026-05-31`
 - **Captured by:** Marc
+- **Related follow-ups:** `I-2026-05-31-mobile-android-stack-followups` (slice **F1**)
 
 ## Pilot status (Maestro slice)
 
 The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 2-digit challenge) are **validated on hardware** after clean-start + new enrollment (hybrid init). That satisfies the **“one full pending/respond slice”** intent for the UI layer.
+
+**Gap (post-#177):** enrollment / QR is still **hybrid manual** — not covered by checked-in Maestro flows. Vision Camera 5 + `react-native-vision-camera-barcode-scanner` is validated on device; automation should reuse that path, not legacy frame-processor assumptions.
+
+## Next slice — Android enrollment + QR (F1)
+
+**Owner idea:** [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) (Tier 1, **F1**).
+
+**Goal:** Maestro drives **QR scan → enrollment steady state** on a real Android device against clean-start stack, then hands off to existing `pilot_pending_respond` flows (or documents explicit env handoff).
+
+**In scope**
+
+- One Maestro flow (or subflow) from app launch through enrollment wizard QR success.
+- Stable `testID` / selectors on enrollment screens already used in manual smoke; extend only as needed.
+- Bash runner preflight: `adb devices`, app installed via `./scripts/build-install-debug-clean.sh` or documented equivalent.
+- README update in `ezkey_mobile/maestro/README.md`.
+
+**Out of scope for F1**
+
+- Full unattended QR material generation (JUnit may seed backend; QR display may remain hybrid v1).
+- iOS enrollment automation.
+- Replacing manual operator smoke for VC5 native regressions.
+
+**Suggested delivery order**
+
+1. Document hybrid handoff points (what Maestro asserts vs what operator prepares).
+2. Minimal flow: launch → open enrollment → scanner visible → (mock or real QR path per harness limits).
+3. Chain: enrollment flow → existing pending/respond pilot in one session script.
+4. Exit: second developer can run F1 + pending/respond from README on Windows Git Bash + Pixel.
+
+**Quality gates**
+
+- `yarn validate:ci` unchanged green.
+- Debug install on device via canonical Android script.
+- Maestro flow passes twice on same device after documented hybrid setup.
+
+**Status:** `pending` (not started as of 2026-05-31).
 
 ## Next phase — churn harness (JUnit + Maestro + evidence)
 

@@ -30,6 +30,7 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
 | `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
+| `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `captured` | `P2` | `mobile`, `android` | `2026-05-31` |
 
 ## Recently completed
 

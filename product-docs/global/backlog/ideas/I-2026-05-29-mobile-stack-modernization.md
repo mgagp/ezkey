@@ -50,9 +50,9 @@ Pixel 7 Pro after merge (all screens / flows revisited).
 
 **Deferred (explicit, non-blocking)**
 
-- Maestro enrollment/QR harness extension (`TB-2026-0002` follow-up).
-- iOS `Podfile.lock` reproducibility (macOS pass).
-- Majors: gesture-handler 3, ESLint 10, Jest 30, TypeScript 6, AGP 9.
+- Maestro enrollment/QR harness extension (**F1** → [`TB-2026-0002`](TB-2026-0002-android-real-device-functional-pilot.md)).
+- Android stack follow-ups: [`I-2026-05-31-mobile-android-stack-followups.md`](I-2026-05-31-mobile-android-stack-followups.md).
+- Majors: gesture-handler 3, ESLint 10, Jest 30, TypeScript 6, AGP 9 (tracked in follow-ups idea, Android-only).
 
 ## Problem and value
 
@@ -113,7 +113,8 @@ Pixel 7 Pro after merge (all screens / flows revisited).
 
 - `TB-2026-05-29-mobile-stack-modernization.md` — execution ladder and gates
 - `ML-2026-05-29-mobile-stack-modernization.md` — running methodology notes (Lane E input)
-- `I-2026-0019` / `TB-2026-0002` — real-device functional pilot (post-upgrade validation)
+- `I-2026-0019` / `TB-2026-0002` — real-device functional pilot; enrollment F1 in TB
+- `I-2026-05-31-mobile-android-stack-followups` — post-#177 Android upgrade backlog
 - `ezkey_mobile/docs/MOBILE_RELEASE_DECISION_MEMO.md` — release vs upgrade framing
 
 ## Grill Me (inline — 2026-05-29)
