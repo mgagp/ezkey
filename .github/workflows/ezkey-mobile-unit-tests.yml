@@ -41,7 +41,7 @@ jobs:
         run: corepack enable
 
       - name: Cache Yarn (Berry)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ezkey_mobile/.yarn/cache
@@ -79,7 +79,7 @@ jobs:
         run: corepack enable
 
       - name: Cache Yarn (Berry)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ezkey_mobile/.yarn/cache
