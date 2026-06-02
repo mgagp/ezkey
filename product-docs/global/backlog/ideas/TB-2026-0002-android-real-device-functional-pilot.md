@@ -8,49 +8,64 @@
 - **Created at:** `2026-05-08`
 - **Updated at:** `2026-05-31`
 - **Captured by:** Marc
-- **Related follow-ups:** `I-2026-05-31-mobile-android-stack-followups` (slice **F1**)
+- **Related follow-ups:** `I-2026-05-31-mobile-android-stack-followups` — **F1** = churn harness (active priority); **F2** = enrollment automation (future)
 
-## Pilot status (Maestro slice)
+## Pilot status (Maestro slice — pending/respond)
 
-The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 2-digit challenge) are **validated on hardware** after clean-start + new enrollment (hybrid init). That satisfies the **“one full pending/respond slice”** intent for the UI layer.
+The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 2-digit challenge) are **validated on hardware** after clean-start + **manual** enrollment. That satisfies TB exit criterion **#2** (one full pending/respond slice).
 
-**Gap (post-#177):** enrollment / QR is still **hybrid manual** — not covered by checked-in Maestro flows. Vision Camera 5 + `react-native-vision-camera-barcode-scanner` is validated on device; automation should reuse that path, not legacy frame-processor assumptions.
+**Active work (F1):** extend this pilot into a **JUnit-coordinated churn loop** — not new enrollment flows. See **Next slice — auth churn harness** below.
 
-## Next slice — Android enrollment + QR (F1)
+## Next slice — auth churn harness (F1 — priority)
 
-**Owner idea:** [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) (Tier 1, **F1**).
+**Owner:** [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) (**F1**, `scheduled`).
 
-**Goal:** Maestro drives **QR scan → enrollment steady state** on a real Android device against clean-start stack, then hands off to existing `pilot_pending_respond` flows (or documents explicit env handoff).
+**Goal:** After **one manual enrollment per session**, run an **autonomous seeded loop** (target ~2 h or N iterations): **`ezkey-tests` / JUnit** creates auth attempts (challenge on/off, etc.) → **Maestro** consumes on device (approve, deny, challenge, timeout / not-consumed) → **correlated artifacts** per iteration to investigate intermittent **first check-pending / device-proof** failures.
+
+**Prerequisites (v1)**
+
+- Clean-start Docker stack; debug APK on device (`build-install-debug-clean.sh`).
+- **Manual enrollment once** per session; known `ENROLLMENT_ID`.
+- Existing Maestro flows + runner; design in `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`.
 
 **In scope**
 
-- One Maestro flow (or subflow) from app launch through enrollment wizard QR success.
-- Stable `testID` / selectors on enrollment screens already used in manual smoke; extend only as needed.
-- Bash runner preflight: `adb devices`, app installed via `./scripts/build-install-debug-clean.sh` or documented equivalent.
-- README update in `ezkey_mobile/maestro/README.md`.
+- Bash session orchestrator (iteration folders, `summary.jsonl` / TSV).
+- JUnit or thin wrapper using `TestDataFactory#createAuthAttempt` (and related API truth).
+- Maestro: existing flows + **deny** flow; parameterized env per iteration.
+- Seeded scenario picker (approve / deny / challenge / skip consume).
+- Documented operator path (Git Bash, Windows).
 
-**Out of scope for F1**
+**Out of scope v1**
 
-- Full unattended QR material generation (JUnit may seed backend; QR display may remain hybrid v1).
-- iOS enrollment automation.
-- Replacing manual operator smoke for VC5 native regressions.
+- Maestro enrollment / QR automation (**F2** — future generalization).
+- Full unattended cold device from install.
 
-**Suggested delivery order**
+**Delivery order**
 
-1. Document hybrid handoff points (what Maestro asserts vs what operator prepares).
-2. Minimal flow: launch → open enrollment → scanner visible → (mock or real QR path per harness limits).
-3. Chain: enrollment flow → existing pending/respond pilot in one session script.
-4. Exit: second developer can run F1 + pending/respond from README on Windows Git Bash + Pixel.
+1. Phase A: one iteration end-to-end (JUnit create → Maestro consume → artifacts).
+2. Phase B: deterministic multi-iteration loop.
+3. Phase C: seeded variance + long run (~2 h).
+4. Phase D (optional): lightweight post-pass summarizer.
 
 **Quality gates**
 
-- `yarn validate:ci` unchanged green.
-- Debug install on device via canonical Android script.
-- Maestro flow passes twice on same device after documented hybrid setup.
+- `yarn validate:ci` green if mobile/JS touched.
+- Churn session produces expected artifact layout; Maestro + attempt ids correlate in `meta.md`.
 
-**Status:** `pending` (not started as of 2026-05-31).
+**Status:** `scheduled` (scope confirmed 2026-05-31); execution not started.
 
-## Next phase — churn harness (JUnit + Maestro + evidence)
+## Future slice — Android enrollment + QR (F2 — deferred)
+
+**Owner:** same `I-2026-05-31` (**F2**, `pending`).
+
+**Goal:** After F1 proves orchestration value, automate **wizard → QR → steady state** (likely **hybrid v2** or debug deep-link — not required for churn v1).
+
+**Status:** `pending` — do not start before F1 Phase B at minimum.
+
+## Next phase — churn harness (design reference)
+
+**Canonical execution scope:** **F1** section above. Detail below matches `MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`.
 
 **Goal:** approximate the operator-reported “first check pending sometimes fails until a new attempt” class of issues by running **many** short phone-backed iterations with **varied** scenario parameters (challenge on/off, approve/deny, timeout paths when deterministically available), without assuming a single magic temporal sequence.
 
