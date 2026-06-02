@@ -30,7 +30,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/public")
-@Tag(name = "Public", description = "Unauthenticated instance metadata")
+@Tag(
+    name = "Public",
+    description =
+        "Unauthenticated instance metadata, evaluator preview signup, and related public endpoints")
 public class PublicInstanceInfoController {
 
   private final PublicInstanceInfoService publicInstanceInfoService;

@@ -17,6 +17,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -69,5 +70,15 @@ public class OpenApiConfig {
                         .description(
                             "HTTP Basic Auth — username: ezkey_ikey_xxx, "
                                 + "password: ezkey_skey_xxx")));
+  }
+
+  /**
+   * Curates path order in generated OpenAPI output for Swagger UI and ReDoc consumers.
+   *
+   * @return presentation-order customizer
+   */
+  @Bean
+  public OpenApiCustomizer openApiPresentationCustomizer() {
+    return new OpenApiPresentationCustomizer();
   }
 }

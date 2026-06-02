@@ -104,81 +104,6 @@
         }
       }
     },
-    "/api/v1/auth-attempts/{id}/cancel": {
-      "post": {
-        "tags": [
-          "Auth Attempts"
-        ],
-        "summary": "Cancel authentication attempt",
-        "description": "Marks a pending or read authentication attempt as expired (cancelled).",
-        "operationId": "cancel",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Auth attempt ID to cancel",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            },
-            "example": 42
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Auth attempt cancelled successfully",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptDto"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Auth attempt already in final state (cannot be cancelled)",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Auth attempt not found",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptDto"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Rate limit exceeded",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/auth-attempts/{id}/wait": {
       "get": {
         "tags": [
@@ -261,6 +186,81 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthAttemptWaitResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth-attempts/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Auth Attempts"
+        ],
+        "summary": "Cancel authentication attempt",
+        "description": "Marks a pending or read authentication attempt as expired (cancelled).",
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Auth attempt ID to cancel",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "example": 42
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auth attempt cancelled successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Auth attempt already in final state (cannot be cancelled)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Auth attempt not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAttemptDto"
                 }
               }
             }

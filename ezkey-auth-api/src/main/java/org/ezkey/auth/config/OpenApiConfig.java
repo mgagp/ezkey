@@ -21,6 +21,7 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -106,5 +107,15 @@ public class OpenApiConfig {
                         .bearerFormat("Signature")
                         .description("Cryptographic signature authentication for mobile devices")))
         .addSecurityItem(new SecurityRequirement().addList("signatureAuth"));
+  }
+
+  /**
+   * Curates tag and path order in generated OpenAPI output for Swagger UI and ReDoc consumers.
+   *
+   * @return presentation-order customizer
+   */
+  @Bean
+  public OpenApiCustomizer openApiPresentationCustomizer() {
+    return new OpenApiPresentationCustomizer();
   }
 }
