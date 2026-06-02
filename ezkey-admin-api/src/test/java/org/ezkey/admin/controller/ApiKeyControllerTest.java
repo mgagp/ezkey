@@ -52,6 +52,7 @@ import org.ezkey.integration.exception.ApiKeyCreateValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.service.ApiKeyService;
 import org.ezkey.service.EntityEligibilityService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -153,6 +154,11 @@ class ApiKeyControllerTest {
     // getCurrentAdmin() now uses AdminPrincipal.adminId() to load the admin
     EzkeyAdmin mockAdmin = createMockAdmin();
     lenient().when(adminRepository.findById(1)).thenReturn(Optional.of(mockAdmin));
+  }
+
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
   }
 
   @Nested

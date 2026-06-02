@@ -59,6 +59,7 @@ import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.ezkey.service.EntityEligibilityService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -136,6 +137,11 @@ class AuditReasonPropagationTest {
     when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
     when(httpRequest.getHeader("User-Agent")).thenReturn("test-agent");
   }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
   // -------------------------------------------------------------------------
   // ApiKeyController – revokeApiKey
