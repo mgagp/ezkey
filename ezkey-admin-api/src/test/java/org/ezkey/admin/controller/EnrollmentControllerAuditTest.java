@@ -154,10 +154,10 @@ class EnrollmentControllerAuditTest {
             auditEntityFkResolver);
   }
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
   @Test
   @DisplayName(

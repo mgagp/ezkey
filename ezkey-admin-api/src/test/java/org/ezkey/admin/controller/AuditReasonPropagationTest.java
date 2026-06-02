@@ -138,10 +138,10 @@ class AuditReasonPropagationTest {
     when(httpRequest.getHeader("User-Agent")).thenReturn("test-agent");
   }
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
   // -------------------------------------------------------------------------
   // ApiKeyController – revokeApiKey
