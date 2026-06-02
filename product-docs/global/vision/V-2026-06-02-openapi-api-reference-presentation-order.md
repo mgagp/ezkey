@@ -61,8 +61,14 @@ Promote to `accepted` when Phase 2 tracer bullet demonstrates:
 ## Related documents
 
 - Design: [`openapi-presentation-order-design.md`](../openapi-presentation-order-design.md)
-- Working plan: [`plan-openApiPresentationOrder.prompt.md`](../../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
 - Backlog: [`I-2026-06-02-openapi-api-reference-presentation-order`](../backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md)
 - Tracer bullet: [`TB-2026-06-02-openapi-presentation-order-phase2`](../backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md)
 - Spec lifecycle (orthogonal): [`V-2026-06-02-openapi-spec-lifecycle.md`](V-2026-06-02-openapi-spec-lifecycle.md)
 - Portal posture: [`V-2026-0014-api-docs-exposure-portal.md`](V-2026-0014-api-docs-exposure-portal.md)
+
+## Incubation sources
+
+- Working plan (GitHub): [`.github/prompts/plan-openApiPresentationOrder.prompt.md`](../../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
+- Working plan (Cursor): [`.cursor/plans/openapi_ordering_strategy_86087546.plan.md`](../../../.cursor/plans/openapi_ordering_strategy_86087546.plan.md)
+- Lane: `B` — plan incubation, materialized `2026-06-02`
+- Methodology gate: [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)

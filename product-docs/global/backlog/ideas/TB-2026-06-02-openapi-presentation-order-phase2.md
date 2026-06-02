@@ -85,12 +85,18 @@ public ReDoc show the same journey-oriented navigation defined in
 - [x] Task E (spec regen) complete via maintainer `update-specs`.
 - [ ] Optional Cloudflare preview before production portal promotion.
 - [ ] `I-2026-06-02` moved to `done` after preview or explicit accept-without-preview decision.
-- [ ] Optional: methodology decision record if promoted beyond this design doc.
+- [x] Bidirectional traceability gate (see [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../../../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)).
 
 **Canonical reader-journey text:** design doc
 [`§3.0`](../../openapi-presentation-order-design.md#30-admin-api--presentation-principles-reader-journey).
 
+## Incubation sources
+
+- Working plan (GitHub): [`.github/prompts/plan-openApiPresentationOrder.prompt.md`](../../../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
+- Working plan (Cursor): [`.cursor/plans/openapi_ordering_strategy_86087546.plan.md`](../../../../.cursor/plans/openapi_ordering_strategy_86087546.plan.md)
+- Lane: `B` — plan incubation, materialized `2026-06-02`
+
 ## Related
 
 - [`openapi-presentation-order-design.md`](../../openapi-presentation-order-design.md)
-- [`plan-openApiPresentationOrder.prompt.md`](../../../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
+- [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../../../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)

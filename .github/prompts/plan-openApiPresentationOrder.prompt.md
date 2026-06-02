@@ -49,7 +49,7 @@ implements `OpenApiCustomizer`, tag taxonomy fixes, Swagger UI alignment, and op
 3. Mechanism capability matrix and chosen approach.
 4. Phase 2 task list with file targets and verification checklist.
 
-**Phase 2 steps (implementation — not started)**
+**Phase 2 steps (implementation — done on branch `#180`)**
 
 See `TB-2026-06-02-openapi-presentation-order-phase2.md`.
 
@@ -60,3 +60,16 @@ See `TB-2026-06-02-openapi-presentation-order-phase2.md`.
 - [`product-docs/global/openapi-public-portal-first-cut-design.md`](../../product-docs/global/openapi-public-portal-first-cut-design.md)
 - Methodology decision precedent: curated conceptual ordering
   (`product-docs/methodology/decisions/2026-05-29-curated-public-pack-ordering.md`)
+
+**Canonical materialization**
+
+- Materialization lane: `Lane B` — plan incubation → canonical `product-docs`.
+- Status: materialized on `2026-06-02`; implementation validating on `#180` / `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`.
+- Vision: [`product-docs/global/vision/V-2026-06-02-openapi-api-reference-presentation-order.md`](../../product-docs/global/vision/V-2026-06-02-openapi-api-reference-presentation-order.md)
+- Backlog idea: [`product-docs/global/backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md`](../../product-docs/global/backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md)
+- Tracer bullet: [`product-docs/global/backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md`](../../product-docs/global/backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md)
+- Design: [`product-docs/global/openapi-presentation-order-design.md`](../../product-docs/global/openapi-presentation-order-design.md)
+- Working plan (Cursor): [`.cursor/plans/openapi_ordering_strategy_86087546.plan.md`](../../.cursor/plans/openapi_ordering_strategy_86087546.plan.md)
+- GitHub issue / branch: `#180`, `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`
+- Methodology gate: [`product-docs/methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md`](../../product-docs/methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
+- Plan role after materialization: retained source and option-space record; canonical direction and Admin reader-journey principles live in the linked artifacts above.

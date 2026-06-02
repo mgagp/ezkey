@@ -19,7 +19,7 @@ isProject: false
 
 # OpenAPI presentation order — workspace plan
 
-**Status:** Phase 1 materialized in repo. Phase 2 = `TB-2026-06-02-openapi-presentation-order-phase2`.
+**Status:** Materialized into `product-docs` (2026-06-02). Implementation on GitHub `#180`.
 
 ## Canonical artifacts
 
@@ -31,6 +31,15 @@ isProject: false
 | Tracer bullet (Phase 2) | [product-docs/global/backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md](../product-docs/global/backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md) |
 | Working plan prompt | [.github/prompts/plan-openApiPresentationOrder.prompt.md](../.github/prompts/plan-openApiPresentationOrder.prompt.md) |
 
-## Next action
+## Canonical materialization
 
-Execute `TB-2026-06-02` (implementation) when approved.
+- Materialization lane: `Lane B` — plan incubation → canonical `product-docs`.
+- Status: materialized on `2026-06-02`; implementation validating on `#180` / `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`.
+- Vision: `product-docs/global/vision/V-2026-06-02-openapi-api-reference-presentation-order.md`
+- Backlog idea: `product-docs/global/backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md`
+- Tracer bullet: `product-docs/global/backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md`
+- Design: `product-docs/global/openapi-presentation-order-design.md`
+- Working plan (GitHub): `.github/prompts/plan-openApiPresentationOrder.prompt.md`
+- GitHub issue / branch: `#180`, `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`
+- Methodology gate: `product-docs/methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md`
+- Plan role after materialization: retained Cursor Plan-mode scaffold; canonical direction and Admin reader-journey principles live in the linked artifacts above.

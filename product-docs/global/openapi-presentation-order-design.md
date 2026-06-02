@@ -16,6 +16,13 @@ presentation order. Phase 2 implements the chosen mechanisms in code.
 `I-2026-06-02-openapi-api-reference-presentation-order`,
 `TB-2026-06-02-openapi-presentation-order-phase2`.
 
+## Incubation sources
+
+- Working plan (GitHub): [`.github/prompts/plan-openApiPresentationOrder.prompt.md`](../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
+- Working plan (Cursor): [`.cursor/plans/openapi_ordering_strategy_86087546.plan.md`](../../.cursor/plans/openapi_ordering_strategy_86087546.plan.md)
+- Lane: `B` — plan incubation, materialized `2026-06-02`
+- Methodology gate: [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
+
 ---
 
 ## 1. Baseline audit (state before implementation)
@@ -335,5 +342,6 @@ Full task list: [`TB-2026-06-02-openapi-presentation-order-phase2.md`](backlog/i
 - [x] Mechanism matrix and recommendation (section 2)
 - [x] Ideal order per API (section 3)
 - [x] Admin reader-journey principles documented (section 3.0)
+- [x] Bidirectional traceability gate applied (Incubation sources + plan Canonical materialization)
 - [x] Mapping and Phase 2 backlog (sections 4–5)
 - [x] Canonical artifacts cross-linked (`V-*`, `I-*`, `TB-*`, working plan prompt)

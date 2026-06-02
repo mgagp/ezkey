@@ -63,9 +63,15 @@ Use that section when placing new endpoints or tags in the reference.
 - GitHub issue: `#180`
 - GitHub branch: `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`
 
+## Incubation sources
+
+- Working plan (GitHub): [`.github/prompts/plan-openApiPresentationOrder.prompt.md`](../../../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
+- Working plan (Cursor): [`.cursor/plans/openapi_ordering_strategy_86087546.plan.md`](../../../../.cursor/plans/openapi_ordering_strategy_86087546.plan.md)
+- Lane: `B` — plan incubation, materialized `2026-06-02`
+- Methodology gate: [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../../../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
+
 ## Related documents
 
 - Design: [`openapi-presentation-order-design.md`](../../openapi-presentation-order-design.md)
 - Vision: [`V-2026-06-02-openapi-api-reference-presentation-order.md`](../../vision/V-2026-06-02-openapi-api-reference-presentation-order.md)
 - Tracer bullet: [`TB-2026-06-02-openapi-presentation-order-phase2.md`](TB-2026-06-02-openapi-presentation-order-phase2.md)
-- Working plan: [`plan-openApiPresentationOrder.prompt.md`](../../../../.github/prompts/plan-openApiPresentationOrder.prompt.md)
