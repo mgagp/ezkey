@@ -3,10 +3,12 @@
 ## Metadata
 
 - **ID:** `I-2026-05-31-mobile-android-stack-followups`
-- **Status:** `incubating`
+- **Status:** `active`
 - **Priority:** `P2`
 - **Created at:** `2026-05-31`
 - **Updated at:** `2026-05-31`
+- **GitHub issue:** `#179` — [Mobile Android: real-device auth churn harness (JUnit + Maestro)](https://github.com/mgagp/ezkey/issues/179)
+- **Feature branch:** `feature/179-i-2026-05-31-mobile-android-auth-churn`
 - **Phase tags:** `P2-maintainability`, `toolchain`, `mobile-quality`, `android`, `P2-hardening`
 - **Component tags:** `mobile`, `android`, `ezkey-tests`
 - **Lane:** `A` (promote per-slice `TB-*` when execution starts)
@@ -81,7 +83,7 @@ Promote a row to **`TB-*`** execution when starting a branch. Runtime gates: `va
 
 | ID | Slice | Target / note | TB when started | Status |
 |----|-------|---------------|-----------------|--------|
-| **F1** | **Auth churn harness** (JUnit + Maestro) | Extend **`TB-2026-0002`**; manual enroll **once per session**; seeded loop; deny flow; artifacts | **`TB-2026-0002`** (next phase) | **`scheduled`** |
+| **F1** | **Auth churn harness** (JUnit + Maestro) | Extend **`TB-2026-0002`**; manual enroll **once per session**; seeded loop; deny flow; artifacts | **`TB-2026-0002`** — GitHub **#179** | **`active`** |
 | F2 | Maestro **enrollment + QR** (Android) | **Future generalization** after F1; hybrid or deep-link strategy TBD | `TB-2026-0002` or new TB | `pending` |
 | F3 | **react-native-gesture-handler** 3.x | Major; navigation / gestures | `TB-2026-…-gesture-handler-3` | `pending` |
 | F4 | **react-native-nitro-image** 0.15.x | Minor Nitro | Sub-step of F3 or own TB | `pending` |
@@ -119,7 +121,7 @@ Promote a row to **`TB-*`** execution when starting a branch. Runtime gates: `va
 ## Status transitions
 
 - `captured` → `incubating` when the first Tier-1 slice is scheduled. **Reached 2026-05-31** (F1 churn scope confirmed).
-- `incubating` → `active` when F1 TB execution starts (issue + branch).
+- `incubating` → `active` when F1 TB execution starts (issue + branch). **Reached 2026-05-31** (#179, `feature/179-i-2026-05-31-mobile-android-auth-churn`).
 - `active` → `done` when Tier 1 slices are closed or explicitly deferred; Tier 2/3 item-by-item.
 
 ## Grill Me (inline)

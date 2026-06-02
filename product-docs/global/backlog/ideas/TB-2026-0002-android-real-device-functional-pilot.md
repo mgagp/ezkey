@@ -9,6 +9,7 @@
 - **Updated at:** `2026-05-31`
 - **Captured by:** Marc
 - **Related follow-ups:** `I-2026-05-31-mobile-android-stack-followups` — **F1** = churn harness (active priority); **F2** = enrollment automation (future)
+- **F1 execution:** GitHub **#179** — branch `feature/179-i-2026-05-31-mobile-android-auth-churn`
 
 ## Pilot status (Maestro slice — pending/respond)
 
@@ -18,7 +19,7 @@ The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 
 
 ## Next slice — auth churn harness (F1 — priority)
 
-**Owner:** [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) (**F1**, `scheduled`).
+**Owner:** [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) (**F1**, `active` — GitHub **#179**).
 
 **Goal:** After **one manual enrollment per session**, run an **autonomous seeded loop** (target ~2 h or N iterations): **`ezkey-tests` / JUnit** creates auth attempts (challenge on/off, etc.) → **Maestro** consumes on device (approve, deny, challenge, timeout / not-consumed) → **correlated artifacts** per iteration to investigate intermittent **first check-pending / device-proof** failures.
 
