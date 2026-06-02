@@ -49,6 +49,7 @@ import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.exception.ActiveVerifiedEnrollmentExistsException;
 import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -152,6 +153,11 @@ class EnrollmentControllerAuditTest {
             enrollmentUpdateService,
             auditEntityFkResolver);
   }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
   @Test
   @DisplayName(
