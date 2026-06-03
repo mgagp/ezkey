@@ -39,6 +39,7 @@ Typical locations:
 
 - `.cursor/plans/`
 - `plans/`
+- `.github/prompts/plan-*.prompt.md` (repo-hosted working plans for GitHub Copilot or shared intake)
 
 Typical properties:
 
@@ -89,12 +90,64 @@ After convergence, materialize the signal into one or more of:
    - write the canonical artifacts in English;
    - keep them concise and method-aligned;
    - avoid copying the working plan verbatim.
-5. **Cross-link**
+5. **Bidirectional traceability gate** (mandatory — do not skip)
+   - complete the gate in [Bidirectional traceability gate](#bidirectional-traceability-gate-mandatory-at-materialization) before treating materialization as done.
+6. **Cross-link**
    - link the canonical artifacts back to the working plan when useful;
    - record related artifact IDs in the plan if the plan remains in active use.
-6. **Continue or close**
+7. **Continue or close**
    - continue using the plan if it still helps the next slice,
    - or leave it as a retained supporting artifact once the canonical docs are sufficient.
+
+## Bidirectional traceability gate (mandatory at materialization)
+
+When step 4 produces any artifact under `product-docs/` from a working plan, **the lane is not
+complete** until this gate passes. The goal is a **conductive thread** between original intent
+(plan) and canonical record (`product-docs`) so humans and agents can move in either direction
+when revisiting, adjusting, or extending the work.
+
+Invoke the `plan-incubation` skill at materialization time; its closeout step enforces this gate.
+
+### Gate checklist
+
+| # | Direction | Requirement |
+| --- | --- | --- |
+| 1 | **Corpus → plan** | Every materialized artifact (`V-*`, `I-*`, `TB-*`, design docs, etc.) lists **all retained** working plan paths under `## Related documents`, `## Links`, or an `## Incubation sources` section. |
+| 2 | **Plan → corpus** | Every retained working plan ends with a **`Canonical materialization`** section listing every generated artifact, materialization date, lane (`B`), and the plan's role after ingestion. |
+| 3 | **Cross-IDs** | Canonical artifact IDs (`V-*`, `I-*`, `TB-*`) appear in both directions where they exist. |
+| 4 | **Implementation** (when started) | GitHub issue and branch are recorded in `I-*` / `TB-*` and optionally echoed in plan closeout. |
+
+If multiple working plans exist for one incubation (e.g. `.cursor/plans/*.plan.md` **and**
+`.github/prompts/plan-*.prompt.md`), link **all** retained copies — not only one tool's path.
+
+### Canonical materialization section (template)
+
+Add this block at the end of each retained working plan after ingestion:
+
+```markdown
+**Canonical materialization**
+- Materialization lane: `Lane B` — plan incubation → canonical `product-docs`.
+- Status: materialized on `YYYY-MM-DD`.
+- Vision: `product-docs/global/vision/V-...`
+- Backlog idea: `product-docs/global/backlog/ideas/I-...`
+- Tracer bullet: `product-docs/global/backlog/ideas/TB-...` (if any)
+- Design / other canon: `product-docs/global/...` (if any)
+- GitHub issue / branch: `#NNN`, `feature/NNN-...` (if implementation started)
+- Methodology gate: `product-docs/methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md`
+- Plan role after materialization: retained source and option-space record; canonical direction lives in the linked artifacts above.
+```
+
+Adjust paths for plans under `.github/prompts/` (use relative links into `product-docs/`).
+
+### Incubation sources block (template for corpus artifacts)
+
+```markdown
+## Incubation sources
+
+- Working plan (GitHub): `.github/prompts/plan-<slug>.prompt.md`
+- Working plan (Cursor): `.cursor/plans/<slug>.plan.md` (if retained)
+- Lane: `B` — plan incubation, materialized `YYYY-MM-DD`
+```
 
 ## Framing rule
 
@@ -133,11 +186,13 @@ This lane is complete when:
 
 - the working plan has produced at least one canonical artifact,
 - the canonical artifacts clearly express the durable intent,
+- **the bidirectional traceability gate has passed** (see above),
 - the plan's role is explicit (still active support artifact, or retained source only),
 - and the language used is "materialization/canonicalization," not accidental "retrofit," unless the source truly warrants it.
 
 ## Related documents
 
+- [`decisions/2026-06-02-plan-incubation-bidirectional-traceability.md`](decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
 - [`workflow-overview.md`](workflow-overview.md)
 - [`session-start-guide.md`](session-start-guide.md)
 - [`legacy-retrofit-workflow.md`](legacy-retrofit-workflow.md)

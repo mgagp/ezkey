@@ -31,74 +31,34 @@
   ],
   "tags": [
     {
+      "name": "Public",
+      "description": "Unauthenticated instance metadata"
+    },
+    {
       "name": "Enrollments",
       "description": "Mobile device enrollment operations for binding devices to user accounts and completing verification"
     },
     {
       "name": "Authentication Attempts",
       "description": "Mobile authentication attempt operations for checking pending requests and submitting responses"
-    },
-    {
-      "name": "Public",
-      "description": "Unauthenticated instance metadata"
     }
   ],
   "paths": {
-    "/api/v1/enrollments/verify": {
-      "post": {
+    "/api/v1/public/instance-info": {
+      "get": {
         "tags": [
-          "Enrollments"
+          "Public"
         ],
-        "summary": "Complete enrollment verification",
-        "description": "Submits device cryptographic keys and signatures to finalize enrollment",
-        "operationId": "verify",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EnrollmentVerifyRequestDto"
-              }
-            }
-          },
-          "required": true
-        },
+        "summary": "Get public instance info",
+        "description": "Returns read-only instance metadata for mobile clients and operators. Same payload as the Admin API public instance-info. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.",
+        "operationId": "getInstanceInfo",
         "responses": {
           "200": {
-            "description": "Enrollment verification completed successfully",
+            "description": "Instance metadata",
             "content": {
-              "*/*": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid verification data or cryptographic validation failed",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Enrollment state conflict or already verified",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
+                  "$ref": "#/components/schemas/PublicInstanceInfoResponseDto"
                 }
               }
             }
@@ -168,19 +128,19 @@
         }
       }
     },
-    "/api/v1/auth-attempts/respond": {
+    "/api/v1/enrollments/verify": {
       "post": {
         "tags": [
-          "Authentication Attempts"
+          "Enrollments"
         ],
-        "summary": "Submit authentication response",
-        "description": "Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 may include a business-level FAILED result in the JSON body (integration-signed) when validation fails in the respond service; uncaught IllegalArgumentException uses 400.",
-        "operationId": "respond",
+        "summary": "Complete enrollment verification",
+        "description": "Submits device cryptographic keys and signatures to finalize enrollment",
+        "operationId": "verify",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AuthAttemptRespondRequestDto"
+                "$ref": "#/components/schemas/EnrollmentVerifyRequestDto"
               }
             }
           },
@@ -188,17 +148,17 @@
         },
         "responses": {
           "200": {
-            "description": "Respond processed; body may be APPROVED, DENIED, or FAILED (signed FAILED when validation/crypto checks fail in the respond service)",
+            "description": "Enrollment verification completed successfully",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                  "$ref": "#/components/schemas/EnrollmentVerifyResponseDto"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid response data or validation failed",
+            "description": "Invalid verification data or cryptographic validation failed",
             "content": {
               "*/*": {
                 "schema": {
@@ -208,7 +168,7 @@
             }
           },
           "409": {
-            "description": "Authentication attempt state conflict",
+            "description": "Enrollment state conflict or already verified",
             "content": {
               "*/*": {
                 "schema": {
@@ -278,21 +238,61 @@
         }
       }
     },
-    "/api/v1/public/instance-info": {
-      "get": {
+    "/api/v1/auth-attempts/respond": {
+      "post": {
         "tags": [
-          "Public"
+          "Authentication Attempts"
         ],
-        "summary": "Get public instance info",
-        "description": "Returns read-only instance metadata for mobile clients and operators. Same payload as the Admin API public instance-info. authApiPublicBaseUrl matches the authUrl embedded in enrollment QR codes when ezkey.qr.auth-base-url is set.",
-        "operationId": "getInstanceInfo",
+        "summary": "Submit authentication response",
+        "description": "Submits mobile device's response to an authentication request. The authAttemptId is provided in the request body for uniform API design. HTTP 200 may include a business-level FAILED result in the JSON body (integration-signed) when validation fails in the respond service; uncaught IllegalArgumentException uses 400.",
+        "operationId": "respond",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthAttemptRespondRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "Instance metadata",
+            "description": "Respond processed; body may be APPROVED, DENIED, or FAILED (signed FAILED when validation/crypto checks fail in the respond service)",
             "content": {
-              "application/json": {
+              "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicInstanceInfoResponseDto"
+                  "$ref": "#/components/schemas/AuthAttemptRespondResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid response data or validation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authentication attempt state conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
               }
             }
