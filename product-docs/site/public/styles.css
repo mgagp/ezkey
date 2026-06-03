@@ -73,6 +73,26 @@ body {
   text-decoration: underline;
 }
 
+.version-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.version-badge:hover {
+  color: var(--blue);
+  border-color: var(--border-strong);
+  text-decoration: none;
+}
+
 .topbar-link {
   font-size: 0.78rem;
   color: var(--text-secondary);

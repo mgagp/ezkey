@@ -26,6 +26,7 @@ Lanes D and E do not require dedicated skills by default. Reuse the existing wor
 - `closeout`
 - `legacy-plan-miner`
 - `retrofit-curator`
+- `methodology-release` — classify SemVer bump and draft release notes when publishing the public methodology product
 
 ## Suggested sequence
 

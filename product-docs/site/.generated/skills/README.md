@@ -187,7 +187,7 @@ flowchart LR
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/plan-incubation.md"><code>plan-incubation</code></a></h3>
-    <p class="skill-card-summary">Incubates a live working plan in agent Plan mode, then converges it toward canonical method artifacts. Use when the operator wants to start with a current-session working plan under .cursor/plans/ or plans/ before materializing durable output into V-*, I-*, or TB-*.</p>
+    <p class="skill-card-summary">Incubates a live working plan, then materializes durable output into product-docs with mandatory bidirectional traceability. Use when starting from a current-session plan under .cursor/plans/, plans/, or .github/prompts/plan-*.prompt.md before creating V-*, I-*, or TB-* artifacts.</p>
     <div class="skill-card-facts">
       <p><strong>Enter when</strong><br />the operator deliberately starts from a current-session working plan before canonical docs.</p>
       <p><strong>Call next</strong><br /><a href="#/skills/vision-intake.md">vision-intake</a>, <a href="#/skills/backlog-triage.md">backlog-triage</a>, <a href="#/skills/tracer-bullet-promote.md">tracer-bullet-promote</a></p>
@@ -230,7 +230,24 @@ flowchart LR
   </article>
 </div>
 
+## Additional skills
 
+<div class="skill-card-grid">
+  <article class="skill-card skill-card--additional">
+    <div class="skill-card-meta">
+      <span class="skill-card-order">13</span>
+      <span class="skill-card-kind">Method skill</span>
+    </div>
+    <h3><a href="#/skills/methodology-release.md"><code>methodology-release</code></a></h3>
+    <p class="skill-card-summary">Classifies a methodology SemVer bump, drafts a release note, and updates the canonical version file when publishing to methodology.ezkey.org. Use after a publication milestone following Lane E feedback cycles.</p>
+    <div class="skill-card-facts">
+      <p><strong>Enter when</strong><br />a publication milestone is declared — enough methodology improvements justify</p>
+      <p><strong>Call next</strong><br />site build/preview, then Cloudflare deploy per product-docs/site/HANDOFF-PHASE-4.md.</p>
+      <p><strong>Not needed when</strong><br />changes are repo-only Lane E decisions with no public site update planned,</p>
+    </div>
+    <p class="skill-card-link"><a href="#/skills/methodology-release.md">Open detail</a></p>
+  </article>
+</div>
 
 ## Method links
 

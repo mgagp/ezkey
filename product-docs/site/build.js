@@ -41,6 +41,7 @@ import {
 } from './server.js';
 import { GENERATED_DOWNLOADS_DIR } from './downloadsPack.js';
 import { buildGlossary } from './indices.js';
+import { readMethodologyVersion } from './methodologyVersion.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = __dirname;
@@ -277,6 +278,7 @@ function build() {
   writeJson(path.join(DIST_DIR, 'api', 'phases.json'), PHASES);
   writeJson(path.join(DIST_DIR, 'api', 'tracks.json'), TRACKS);
   writeJson(path.join(DIST_DIR, 'api', 'glossary.json'), buildGlossary());
+  writeJson(path.join(DIST_DIR, 'api', 'version.json'), readMethodologyVersion());
 
   // 3. Per-doc snapshots + pre-rendered shells.
   const files = allFiles(tree);

@@ -46,8 +46,11 @@ product-docs/
   README.md                     Entry point (this file).
   GOVERNANCE.md                 Governance rules and change workflows.
   glossary.md                   Canonical vocabulary and naming conventions.
+  methodology-version.properties  Canonical SemVer for the publishable methodology product.
   methodology/                  Workflow method for human + AI collaboration.
     README.md                   Method entry point and reading order.
+    methodology-publication-and-versioning.md  SemVer and site publication workflow.
+    release-notes/              Published methodology version history.
     workflow-overview.md        End-to-end flow from idea to delivery.
     tracer-bullet-method.md     Vertical-slice method.
     ai-collaboration-model.md   Human/AI collaboration model.

@@ -25,6 +25,7 @@ import {
   prepareSkillsPublicCorpus,
   publicSkillRank,
 } from './skillsPublic.js';
+import { readMethodologyVersion } from './methodologyVersion.js';
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,8 @@ const EXCLUDED_PUBLIC_SOURCE_ROOTS = [
 
 const PUBLIC_METHODOLOGY_SEQUENCE = [
   'README',
+  'release-notes',
+  'methodology-publication-and-versioning',
   'minimum-viable-method',
   'workflow-overview',
   'session-start-guide',
@@ -190,6 +193,14 @@ function compareEntriesForUiOrder(left, right, urlPrefix) {
   const leftRank = publicUiRank(left, urlPrefix);
   const rightRank = publicUiRank(right, urlPrefix);
   if (leftRank !== rightRank) return leftRank - rightRank;
+
+  if (urlPrefix === 'methodology/release-notes') {
+    if (left.kind === 'file' && right.kind === 'file') {
+      if (isReadmeEntry(left)) return -1;
+      if (isReadmeEntry(right)) return 1;
+      return right.label.localeCompare(left.label);
+    }
+  }
 
   if (left.kind !== right.kind) {
     if (left.kind === 'file' && isReadmeEntry(left)) return -1;
@@ -598,6 +609,10 @@ app.get('/api/tracks', (_req, res) => {
 
 app.get('/api/glossary', (_req, res) => {
   res.json(buildGlossary());
+});
+
+app.get('/api/version', (_req, res) => {
+  res.json(readMethodologyVersion());
 });
 
 app.get('/api/search-index', (_req, res) => {

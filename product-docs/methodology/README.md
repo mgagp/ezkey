@@ -46,6 +46,7 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 3. `blitz-intake-pattern.md`
 4. `github-issues-workflow.md`
 5. `multi-branch-workflow.md`
+6. `methodology-publication-and-versioning.md`
 
 ### Reference context
 
@@ -57,8 +58,14 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 
 1. `case-study-ezkey.md` — concrete instantiation inside this repository's source project.
 2. `decisions/` — rationale and historical record for non-obvious methodology choices.
+3. `release-notes/` — published SemVer snapshots for the public methodology product.
 
-## Scope boundaries
+## Versioning and publication
+
+The publishable methodology product uses **independent semantic versioning**, declared in
+[`../methodology-version.properties`](../methodology-version.properties). See
+[`methodology-publication-and-versioning.md`](methodology-publication-and-versioning.md) for the
+publication workflow and release-note conventions.
 
 - Product direction and intent remain in `../global/`.
 - Component implementation details remain in `../components/`.
@@ -67,7 +74,7 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 - Project-specific taxonomies, examples, and terminology belong in `case-study-ezkey.md` when they
   clarify the method without making the generic docs carry project-local coupling.
 
-## Publication boundary
+## Scope boundaries
 
 When this methodology is published as a standalone product, publish the **method** and its
 teaching surfaces, not the source project's active delivery corpus.
@@ -200,3 +207,7 @@ Use these prompts in a fresh session to trigger the method quickly.
 ### 11) Improve the methodology itself
 
 `Start a methodology feedback lane from this session. Record the process decision under methodology/decisions, preserve the key verbatim signal, and update the smallest affected methodology files.`
+
+### 12) Publish a methodology release
+
+`Run methodology-release. Review changes since the last methodology version, recommend the SemVer bump, draft the release note, and update methodology-version.properties.`

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import AdmZip from 'adm-zip';
+import { readMethodologyVersion } from './methodologyVersion.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = __dirname;
@@ -12,6 +13,8 @@ export const GENERATED_DOWNLOADS_DIR = path.join(SITE_DIR, '.generated', 'downlo
 export const DOWNLOAD_PACK_FILENAME = 'ezkey-methodology-pack.zip';
 
 const PACK_ROOT = 'ezkey-methodology-pack';
+const DOCS_ROOT = path.resolve(SITE_DIR, '..');
+const VERSION_FILE = path.join(DOCS_ROOT, 'methodology-version.properties');
 
 export function prepareDownloadPack({ tree, resolveCorpusPath }) {
   rmrf(GENERATED_DOWNLOADS_DIR);
@@ -35,6 +38,11 @@ export function prepareDownloadPack({ tree, resolveCorpusPath }) {
 
   if (fs.existsSync(SKILLS_SOURCE_DIR)) {
     zip.addLocalFolder(SKILLS_SOURCE_DIR, `${PACK_ROOT}/workspace-starter/.cursor/skills`);
+  }
+
+  if (fs.existsSync(VERSION_FILE)) {
+    addLocalFile(zip, VERSION_FILE, 'reference/methodology-version.properties');
+    addLocalFile(zip, VERSION_FILE, 'workspace-starter/product-docs/methodology-version.properties');
   }
 
   zip.addFile(
@@ -96,9 +104,12 @@ function allFiles(tree) {
 }
 
 function buildPackManifest(publicFiles) {
+  const version = readMethodologyVersion();
   return {
     id: 'ezkey-methodology-pack',
     generatedAt: new Date().toISOString(),
+    methodologyVersion: version.version,
+    methodologyReleased: version.released,
     archiveFile: DOWNLOAD_PACK_FILENAME,
     model: 'download-pack-first',
     usageModes: [

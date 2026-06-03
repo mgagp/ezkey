@@ -42,6 +42,7 @@ export const PUBLIC_SKILLS_SEQUENCE = [
   'plan-incubation',
   'legacy-plan-miner',
   'retrofit-curator',
+  'methodology-release',
 ];
 
 const PUBLIC_SKILLS_RANK = new Map(PUBLIC_SKILLS_SEQUENCE.map((name, index) => [name, index]));

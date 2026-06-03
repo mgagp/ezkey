@@ -33,6 +33,7 @@ import {
   fetchTracks,
   fetchGlossary,
   fetchDoc,
+  fetchVersion,
   isStatic,
 } from './apiClient.js';
 
@@ -66,11 +67,12 @@ boot();
 
 async function boot() {
   try {
-    const [treeJson, phasesJson, tracksJson, glossaryJson] = await Promise.allSettled([
+    const [treeJson, phasesJson, tracksJson, glossaryJson, versionJson] = await Promise.allSettled([
       fetchTree(),
       fetchPhases(),
       fetchTracks(),
       fetchGlossary(),
+      fetchVersion(),
     ]);
     if (treeJson.status !== 'fulfilled') {
       throw new Error(treeJson.reason?.message || 'tree fetch failed');
@@ -86,6 +88,9 @@ async function boot() {
     }
     if (glossaryJson.status === 'fulfilled') {
       glossaryData = glossaryJson.value;
+    }
+    if (versionJson.status === 'fulfilled') {
+      renderVersionBadge(versionJson.value);
     }
     setupHomePersonaCards();
     setupGlossaryTooltips();
@@ -125,6 +130,18 @@ function navigateToStep(step) {
   if (window.location.hash !== hash) {
     window.location.hash = hash;
   }
+}
+
+function renderVersionBadge(versionInfo) {
+  const el = document.getElementById('version-badge');
+  if (!el || !versionInfo || !versionInfo.version) return;
+  const label = `v${versionInfo.version}`;
+  el.textContent = label;
+  el.title = versionInfo.released
+    ? `Methodology ${label} · released ${versionInfo.released}`
+    : `Methodology ${label}`;
+  el.hidden = false;
+  el.href = '#/methodology/release-notes/README.md';
 }
 
 function setupHomePersonaCards() {

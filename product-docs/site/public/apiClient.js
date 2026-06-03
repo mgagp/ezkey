@@ -33,6 +33,10 @@ export function fetchGlossary() {
   return getJson(STATIC ? '/api/glossary.json' : '/api/glossary');
 }
 
+export function fetchVersion() {
+  return getJson(STATIC ? '/api/version.json' : '/api/version');
+}
+
 export function fetchSearchIndex() {
   return getJson(STATIC ? '/api/search-index.json' : '/api/search-index');
 }
