@@ -278,6 +278,106 @@ Single tag **Auth Attempts** (keep name aligned with product language).
 2. `waitForResponse` (wait)
 3. `cancel`
 
+### 3.5 Admin API — intra-tag operation order (Lane D follow-on)
+
+**Status:** Conceptual analysis only — not implemented. Tracks
+[`V-2026-06-03-admin-api-openapi-intra-tag-journey-order`](vision/V-2026-06-03-admin-api-openapi-intra-tag-journey-order.md)
+and [`I-2026-06-03-admin-api-openapi-intra-tag-journey-order`](backlog/ideas/I-2026-06-03-admin-api-openapi-intra-tag-journey-order.md).
+
+Section 3.0–3.2 define **where** the reader lands (tag and ReDoc group order). This section defines
+**how operations read inside** selected tags when lifecycle narrative beats HTTP verb or discovery
+order.
+
+#### Principles (intra-tag)
+
+1. **Narrative blocks** — group operations by operator story (bootstrap, daily session, emergency
+   recovery), not by HTTP method.
+2. **Companion steps stay adjacent** — e.g. `login` immediately before `passwordless-wait` (same
+   pattern as Auth `pending` → `respond` and Integration `create` → `wait` → `cancel`).
+3. **Cross-tag journeys are explicit** — when a flow spans tags, document the handoff (e.g.
+   `recover` → `reset`) even though OpenAPI lists operations per tag.
+4. **Curate selectively** — P1/P2 tags below; P3 CRUD tags keep list-first or method order unless
+   a future grill finds friction.
+5. **Swagger parity** — Admin still sets `operationsSorter=method` today; curated path order in the
+   spec is hidden in Swagger UI until that sorter is dropped or scoped per tag (see §8 deferred).
+
+#### Baseline snapshot (canonical spec path map, 2026-06-03)
+
+| Tag | Current spec path order (abbrev.) | Primary friction |
+| --- | --- | --- |
+| Public | `evaluator-signup` → `instance-info` | Discover-after-signup |
+| Admin Authentication | `recover` → `passwordless-wait` → `logout` → `login` → `activate` → `me` | Recovery and logout before login; activate after login |
+| Admin Enrollment Management | `reset` only | Single op — order N/A; cross-tag narrative matters |
+| Auth Attempts | `create`, `cancel`, `{id}`, `{id}/wait`, `pending-count`, list `GET` | Lifecycle ops scattered; cancel before wait |
+
+Swagger UI with `operationsSorter=method` can reorder further within each tag (GET before POST).
+
+#### P1 — Admin Authentication
+
+**Reader story:** first-time bootstrap → daily passwordless session → emergency recovery → end session.
+
+| # | Method | Path | Narrative block | Rationale |
+| --- | --- | --- | --- | --- |
+| 1 | POST | `/api/v1/admin/auth/activate` | Bootstrap | Consume deferred onboarding activation code before any session exists |
+| 2 | POST | `/api/v1/admin/auth/login` | Session | Start passwordless auth (single-call or two-call) |
+| 3 | POST | `/api/v1/admin/auth/passwordless-wait` | Session | Complete two-call login after pending `login` response |
+| 4 | GET | `/api/v1/admin/auth/me` | Session | Inspect active session (Admin UI refresh, token introspection) |
+| 5 | POST | `/api/v1/admin/auth/recover` | Emergency | Lost device — recovery code → limited recovery token |
+| 6 | POST | `/api/v1/admin/auth/logout` | Session end | Invalidate session after successful auth |
+
+**Cross-tag handoff (emergency):** after row 5, operator continues in **Admin Enrollment
+Management** (`POST /api/v1/admin/enrollments/reset`) with the recovery token—not a bearer token.
+
+Reference workflow: [`functional-flows.md`](../components/admin-api/functional-flows.md)
+(`W-api-admin-login-passwordless`).
+
+#### P1 — Admin Enrollment Management
+
+| # | Method | Path | Rationale |
+| --- | --- | --- | --- |
+| 1 | POST | `/api/v1/admin/enrollments/reset` | Only operation today; follows `recover` in Admin Authentication |
+
+No intra-tag reorder needed until additional operations are added; new ops should append after
+`reset` or extend this table via grill.
+
+#### P1 — Public (Getting started group)
+
+Two operations share the **discover → opt in** story with Admin Authentication in ReDoc group
+*Getting started*.
+
+| # | Method | Path | Rationale |
+| --- | --- | --- | --- |
+| 1 | GET | `/api/v1/public/instance-info` | Reachability and instance metadata before any write |
+| 2 | POST | `/api/v1/public/evaluator-signup` | Optional evaluator self-registration after discovery |
+
+#### P2 — Auth Attempts
+
+Align admin-side MFA attempt lifecycle with Integration API (§3.4): **initiate → wait → abort**,
+then observability.
+
+| # | Method | Path | Narrative block | Rationale |
+| --- | --- | --- | --- | --- |
+| 1 | POST | `/api/v1/auth-attempts` | Lifecycle | Create attempt (admin or API key) |
+| 2 | GET | `/api/v1/auth-attempts/{id}/wait` | Lifecycle | Block until device responds or timeout |
+| 3 | POST | `/api/v1/auth-attempts/{id}/cancel` | Lifecycle | Abort pending/read attempt |
+| 4 | GET | `/api/v1/auth-attempts/{id}` | Inspect | Single-attempt detail after or instead of wait |
+| 5 | GET | `/api/v1/auth-attempts` | Observe | Search/list for monitoring and forensics |
+| 6 | GET | `/api/v1/auth-attempts/pending-count` | Observe | Dashboard aggregate — auxiliary, last |
+
+#### P3 and deferred — default posture
+
+| Tags | Recommended order rule | Notes |
+| --- | --- | --- |
+| Tenants, Integrations, Enrollments, API Keys | Collection list → get by id → create → lifecycle mutations | CRUD-heavy; method or list-first acceptable |
+| Administrator Provisioning | Create (global/tenant) → list → get → onboarding helpers → lifecycle | Large surface; defer full curation until P1/P2 prove maintainable |
+| Audit Logs, Encryption Keys, Alerts, Dashboard | Query/read endpoints first, mutating ops after | Lower ROI on custom path order |
+
+#### Implementation note (when promoted)
+
+Extend Admin `OpenApiPresentationCustomizer` with partial `paths` reorder per table above (same
+mechanism as Auth API §3.3). Regenerate via `scripts/update-specs.sh`; review Admin
+`operationsSorter=method` so Swagger UI matches ReDoc.
+
 ---
 
 ## 4. Mapping — ideal vs mechanisms
@@ -340,6 +440,7 @@ Full task list: [`TB-2026-06-02-openapi-presentation-order-phase2.md`](backlog/i
 - [x] Baseline audit documented (section 1)
 - [x] Mechanism matrix and recommendation (section 2)
 - [x] Ideal order per API (section 3)
+- [x] Admin intra-tag ideal order — conceptual P1/P2 (section 3.5, Lane D follow-on)
 - [x] Admin reader-journey principles documented (section 3.0)
 - [x] Bidirectional traceability gate applied (Incubation sources + plan Canonical materialization)
 - [x] Mapping and Phase 2 backlog (sections 4–5)
@@ -351,5 +452,6 @@ Full task list: [`TB-2026-06-02-openapi-presentation-order-phase2.md`](backlog/i
 
 - **Delivery:** PR `#181` merged to `main`; closes `#180`.
 - **Artifacts:** `I-*` and `TB-*` → `done`; `V-*` → `accepted`.
-- **Deferred:** Cloudflare preview deploy; Admin intra-tag path reorder within large tags.
+- **Deferred:** Cloudflare preview deploy; Admin intra-tag path **implementation** — conceptual
+  ideal order in §3.5; vision [`V-2026-06-03-admin-api-openapi-intra-tag-journey-order`](../../vision/V-2026-06-03-admin-api-openapi-intra-tag-journey-order.md).
 - **Maintenance rule:** new Admin tags → update `OpenApiPresentationCustomizer` + `x-tagGroups` per §3.0.

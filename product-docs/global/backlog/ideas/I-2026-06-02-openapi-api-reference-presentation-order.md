@@ -66,13 +66,14 @@ model instead of alphabetical or discovery-order defaults.
 
 ## Residual risks and deferred work
 
-- **Admin intra-tag path reorder** — deferred; tag-level and `x-tagGroups` ordering delivered; path journey within large Admin tags remains optional follow-up.
+- **Admin intra-tag path reorder** — deferred; captured as Lane D follow-on [`V-2026-06-03-admin-api-openapi-intra-tag-journey-order`](../../vision/V-2026-06-03-admin-api-openapi-intra-tag-journey-order.md) / [`I-2026-06-03-admin-api-openapi-intra-tag-journey-order`](../backlog/ideas/I-2026-06-03-admin-api-openapi-intra-tag-journey-order.md).
 - **Cloudflare preview deploy** — deferred until next `ezkey.org` portal promotion; static specs on `main` are ready.
 - **New Admin API tags** — must update `OpenApiPresentationCustomizer` and `x-tagGroups` together (see design doc §3.0).
 
 ## Next actions
 
 - None required for this `I-*` slice. Reopen only if presentation order rules change or Cloudflare preview finds a ReDoc regression.
+- **Follow-on (Lane D):** intra-tag Admin path journey order — [`V-2026-06-03-admin-api-openapi-intra-tag-journey-order`](../../vision/V-2026-06-03-admin-api-openapi-intra-tag-journey-order.md), [`I-2026-06-03-admin-api-openapi-intra-tag-journey-order`](I-2026-06-03-admin-api-openapi-intra-tag-journey-order.md) (`captured`, P3).
 
 ## Reader-journey guide
 
