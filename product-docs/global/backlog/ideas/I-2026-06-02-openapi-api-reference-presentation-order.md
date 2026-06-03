@@ -3,10 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-06-02-openapi-api-reference-presentation-order`
-- **Status:** `incubating`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-06-02`
-- **Updated at:** `2026-06-02`
+- **Updated at:** `2026-06-03`
+- **Last reviewed at:** `2026-06-03`
 - **Phase tags:** `P1-operability`, `P2-maintainability`
 - **Component tags:** `admin-api`, `auth-api`, `integration-api`, `docs`, `sites/ezkey-org`, `specs`
 - **Captured by:** Marc
@@ -43,7 +44,35 @@ model instead of alphabetical or discovery-order defaults.
 | Phase | Goal | Status |
 | --- | --- | --- |
 | 1 | Research, baseline audit, ideal order, mechanism mapping (design doc) | Done (2026-06-02) |
-| 2 | Implement customizers, fix tag taxonomy, align Swagger UI, regen specs | Validating locally (`TB-2026-06-02`; ReDoc confirmed; Cloudflare preview optional) |
+| 2 | Implement customizers, fix tag taxonomy, align Swagger UI, regen specs | Done (2026-06-03, PR `#181`) |
+
+## Status transitions
+
+- `incubating` → `validating` when implementation landed on branch `feature/180-…` with local Swagger/ReDoc checks. **Reached 2026-06-02.**
+- `validating` → `done` after merge to `main`, issue `#180` closed, and closeout recorded. **Reached 2026-06-03** (PR `#181`).
+
+## Closeout evidence
+
+| Gate | Result |
+| --- | --- |
+| GitHub PR `#181` merged to `main` | **PASS** (`5ddb68a2`, 2026-06-03) |
+| GitHub issue `#180` | **CLOSED** (Closes via PR) |
+| Clean build (`scripts/build.sh`) | **PASS** (operator) |
+| Spec regen (`update-specs`) | **PASS** (maintainer) |
+| Swagger UI tag order (Admin/Auth/Integration) | **PASS** (operator) |
+| Local ReDoc portal (`npx serve sites/ezkey-org`) | **PASS** (operator) |
+| Bidirectional traceability gate | **PASS** (see methodology decision 2026-06-02) |
+| Cloudflare preview before prod portal | **Deferred** — optional; local ReDoc sufficient for this slice |
+
+## Residual risks and deferred work
+
+- **Admin intra-tag path reorder** — deferred; tag-level and `x-tagGroups` ordering delivered; path journey within large Admin tags remains optional follow-up.
+- **Cloudflare preview deploy** — deferred until next `ezkey.org` portal promotion; static specs on `main` are ready.
+- **New Admin API tags** — must update `OpenApiPresentationCustomizer` and `x-tagGroups` together (see design doc §3.0).
+
+## Next actions
+
+- None required for this `I-*` slice. Reopen only if presentation order rules change or Cloudflare preview finds a ReDoc regression.
 
 ## Reader-journey guide
 
@@ -60,8 +89,9 @@ Use that section when placing new endpoints or tags in the reference.
 
 ## Links
 
-- GitHub issue: `#180`
-- GitHub branch: `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`
+- GitHub issue: `#180` (closed)
+- GitHub PR: `#181` (merged 2026-06-03)
+- GitHub branch: `feature/180-i-2026-06-02-openapi-api-reference-presentation-order` (merged)
 
 ## Incubation sources
 

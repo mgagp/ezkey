@@ -3,11 +3,13 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-02-openapi-presentation-order-phase2`
-- **Status:** `validating`
+- **Status:** `done`
 - **Parent idea:** `I-2026-06-02-openapi-api-reference-presentation-order`
-- **GitHub issue:** `#180`
-- **GitHub branch:** `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`
+- **GitHub issue:** `#180` (closed)
+- **GitHub PR:** `#181` (merged 2026-06-03)
+- **GitHub branch:** `feature/180-i-2026-06-02-openapi-api-reference-presentation-order` (merged)
 - **Created at:** `2026-06-02`
+- **Closed at:** `2026-06-03`
 - **Component tags:** `admin-api`, `auth-api`, `integration-api`, `specs`, `sites/ezkey-org`
 
 ## Slice goal
@@ -83,12 +85,18 @@ public ReDoc show the same journey-oriented navigation defined in
 
 - [x] Tasks A–D, F (local ReDoc + Swagger) complete.
 - [x] Task E (spec regen) complete via maintainer `update-specs`.
-- [ ] Optional Cloudflare preview before production portal promotion.
-- [ ] `I-2026-06-02` moved to `done` after preview or explicit accept-without-preview decision.
 - [x] Bidirectional traceability gate (see [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../../../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)).
+- [x] PR `#181` merged to `main`; parent `I-*` moved to `done`.
+- [ ] Cloudflare preview before production portal promotion — **deferred** (optional follow-up).
 
 **Canonical reader-journey text:** design doc
 [`§3.0`](../../openapi-presentation-order-design.md#30-admin-api--presentation-principles-reader-journey).
+
+## Closeout
+
+- **Merge:** PR `#181` → `main` (`5ddb68a2`, 2026-06-03).
+- **Issue:** `#180` closed.
+- **Slice closed:** presentation order for Admin/Auth/Integration delivered; methodology gate applied on branch and merged.
 
 ## Incubation sources
 
@@ -99,4 +107,5 @@ public ReDoc show the same journey-oriented navigation defined in
 ## Related
 
 - [`openapi-presentation-order-design.md`](../../openapi-presentation-order-design.md)
+- [`I-2026-06-02-openapi-api-reference-presentation-order.md`](I-2026-06-02-openapi-api-reference-presentation-order.md)
 - [`2026-06-02-plan-incubation-bidirectional-traceability.md`](../../../methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)

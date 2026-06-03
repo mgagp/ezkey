@@ -9,8 +9,7 @@ documentation for Admin, Auth, and Integration APIs—across runtime Swagger UI 
 This document is the Phase 1 deliverable (research + decisions) and the **canonical guide** for
 presentation order. Phase 2 implements the chosen mechanisms in code.
 
-**Status:** Phase 1 complete. Phase 2 implemented and locally validated (Swagger UI + ReDoc via
-`npx serve sites/ezkey-org`); Cloudflare preview promotion optional before production deploy.
+**Status:** Complete — merged via PR `#181` (2026-06-03). Issue `#180` closed.
 
 **Related IDs:** `V-2026-06-02-openapi-api-reference-presentation-order`,
 `I-2026-06-02-openapi-api-reference-presentation-order`,
@@ -321,7 +320,7 @@ Full task list: [`TB-2026-06-02-openapi-presentation-order-phase2.md`](backlog/i
 - [x] Integration operations in create → wait → cancel order
 - [x] Swagger UI tag sidebar matches ReDoc tag order (no alpha override)
 - [x] No hand-edits under `specs/` except via regeneration
-- [ ] Cloudflare preview validation (optional before production promotion)
+- [ ] Cloudflare preview validation (optional before production promotion) — **deferred**
 
 ---
 
@@ -345,3 +344,12 @@ Full task list: [`TB-2026-06-02-openapi-presentation-order-phase2.md`](backlog/i
 - [x] Bidirectional traceability gate applied (Incubation sources + plan Canonical materialization)
 - [x] Mapping and Phase 2 backlog (sections 4–5)
 - [x] Canonical artifacts cross-linked (`V-*`, `I-*`, `TB-*`, working plan prompt)
+
+---
+
+## 8. Closeout (2026-06-03)
+
+- **Delivery:** PR `#181` merged to `main`; closes `#180`.
+- **Artifacts:** `I-*` and `TB-*` → `done`; `V-*` → `accepted`.
+- **Deferred:** Cloudflare preview deploy; Admin intra-tag path reorder within large tags.
+- **Maintenance rule:** new Admin tags → update `OpenApiPresentationCustomizer` + `x-tagGroups` per §3.0.

@@ -3,10 +3,10 @@
 ## Metadata
 
 - **ID:** `V-2026-06-02-openapi-api-reference-presentation-order`
-- **Status:** `draft`
+- **Status:** `accepted`
 - **Lane:** `B` — plan incubation materialized into canonical direction
 - **Created at:** `2026-06-02`
-- **Updated at:** `2026-06-02`
+- **Updated at:** `2026-06-03`
 - **Captured by:** Marc
 
 ## Intent
@@ -51,18 +51,19 @@ When adding or renaming Admin API tags, apply the **reader journey** in design d
 
 ## Promotion criteria
 
-Promote to `accepted` when Phase 2 tracer bullet demonstrates:
+Promoted to `accepted` on **2026-06-03** after PR `#181` demonstrated:
 
 - curated tag order in canonical specs for all three APIs;
 - no duplicate Admin `Public` tag entry;
-- Swagger UI and ReDoc portal show the same tag sequence;
+- Swagger UI and ReDoc portal show the same tag sequence (local validation);
 - documented ideal order guide remains accurate after `update-specs`.
 
 ## Related documents
 
 - Design: [`openapi-presentation-order-design.md`](../openapi-presentation-order-design.md)
-- Backlog: [`I-2026-06-02-openapi-api-reference-presentation-order`](../backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md)
-- Tracer bullet: [`TB-2026-06-02-openapi-presentation-order-phase2`](../backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md)
+- Backlog: [`I-2026-06-02-openapi-api-reference-presentation-order`](../backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md) (`done`)
+- Tracer bullet: [`TB-2026-06-02-openapi-presentation-order-phase2`](../backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md) (`done`)
+- Delivery: GitHub PR [`#181`](https://github.com/mgagp/ezkey/pull/181) (merged 2026-06-03)
 - Spec lifecycle (orthogonal): [`V-2026-06-02-openapi-spec-lifecycle.md`](V-2026-06-02-openapi-spec-lifecycle.md)
 - Portal posture: [`V-2026-0014-api-docs-exposure-portal.md`](V-2026-0014-api-docs-exposure-portal.md)
 

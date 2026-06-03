@@ -64,7 +64,7 @@ See `TB-2026-06-02-openapi-presentation-order-phase2.md`.
 **Canonical materialization**
 
 - Materialization lane: `Lane B` — plan incubation → canonical `product-docs`.
-- Status: materialized on `2026-06-02`; implementation validating on `#180` / `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`.
+- Status: materialized on `2026-06-02`; **delivered** via PR `#181` merged `2026-06-03` (closes `#180`).
 - Vision: [`product-docs/global/vision/V-2026-06-02-openapi-api-reference-presentation-order.md`](../../product-docs/global/vision/V-2026-06-02-openapi-api-reference-presentation-order.md)
 - Backlog idea: [`product-docs/global/backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md`](../../product-docs/global/backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md)
 - Tracer bullet: [`product-docs/global/backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md`](../../product-docs/global/backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md)
@@ -72,4 +72,4 @@ See `TB-2026-06-02-openapi-presentation-order-phase2.md`.
 - Working plan (Cursor): [`.cursor/plans/openapi_ordering_strategy_86087546.plan.md`](../../.cursor/plans/openapi_ordering_strategy_86087546.plan.md)
 - GitHub issue / branch: `#180`, `feature/180-i-2026-06-02-openapi-api-reference-presentation-order`
 - Methodology gate: [`product-docs/methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md`](../../product-docs/methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
-- Plan role after materialization: retained source and option-space record; canonical direction and Admin reader-journey principles live in the linked artifacts above.
+- Plan role after materialization: **retained source**; slice closed — canonical direction and Admin reader-journey principles live in linked artifacts; implementation on `main` since PR `#181`.
