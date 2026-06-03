@@ -252,3 +252,25 @@ Generated output should be reviewed for obvious scope drift and reported in the 
   - expected outcomes
   - no bloated checklist unless the user asks for one
 - Use this when it improves QA handoff, human review, or future historical traceability in plans and task summaries.
+
+## Lightweight Hygiene Workflow (GitHub visibility without full methodology)
+
+For local code-hygiene passes (for example Admin UI React Doctor triage), default to lightweight
+GitHub visibility instead of creating full methodology artifacts.
+
+- Keep scope small and local: high-signal fixes first, no broad refactor campaign.
+- Use issue + branch + iterative PR as the default visibility path.
+- Prefer these labels for this lane when applicable:
+  - lane:c
+  - type:refactor (or type:chore for tooling-only work)
+  - component:<target component>
+  - priority:p1/p2 according to triage
+  - status:ready once coding can start
+
+Windows shell note for GitHub CLI reliability:
+
+- In some PowerShell sessions, gh may not resolve from PATH.
+- If `gh` is not found, use the absolute executable path:
+  - C:\Program Files\GitHub CLI\gh.exe
+- Recommended pre-check before issue/PR automation:
+  - `gh auth status` (or equivalent call via the absolute path above)
