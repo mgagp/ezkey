@@ -28,6 +28,24 @@ released=2026-06-02
 
 Update this file only as part of a publication release.
 
+## Git release anchor
+
+Each published methodology version must also have an annotated Git tag:
+
+```text
+methodology/v<semver>
+```
+
+Example: `methodology/v1.0.0`.
+
+Use a tag, not a long-lived release branch. The methodology publication is a snapshot of the source
+repository at a release commit; a branch would imply an ongoing maintenance line that the methodology
+does not currently need.
+
+The tag must point to the commit that contains the matching `methodology-version.properties` value,
+release note, and any related publication documentation. For the next release, use the previous
+`methodology/v*` tag as the primary Git reference when reviewing changes and drafting release notes.
+
 ## Semantic versioning rules
 
 | Level | Meaning for adopters | Typical triggers |
@@ -48,7 +66,9 @@ flowchart LR
   milestone -->|yes| classify[Classify SemVer bump]
   classify --> draft[Draft release note]
   draft --> bump[Update methodology-version.properties]
-  bump --> publish[Build and deploy site]
+  bump --> build[Build and preview site]
+  build --> tag[Create annotated Git tag]
+  tag --> publish[Build and deploy site]
   publish --> verify[Verify version badge and release notes]
 ```
 
@@ -65,7 +85,10 @@ flowchart LR
    `methodology-version.properties`.
 5. **Build and preview** — From `product-docs/site`: `npm run build` (or `npm start` for local
    preview). Confirm the top-bar version badge and release-notes navigation.
-6. **Deploy** — Follow the Cloudflare Pages workflow in the repository's site handoff notes
+6. **Create the release tag** — After the release commit exists, create an annotated tag named
+   `methodology/v<semver>` on that commit, for example:
+   `git tag -a methodology/v1.0.0 -m "Methodology release 1.0.0"`.
+7. **Deploy** — Follow the Cloudflare Pages workflow in the repository's site handoff notes
    (`product-docs/site/HANDOFF-PHASE-4.md`, repo-only).
 
 ## Release notes conventions
@@ -83,6 +106,7 @@ flowchart LR
 - Not a substitute for Lane E methodology decisions.
 - Not tied to Ezkey software releases or Maven `${revision}`.
 - Not a per-file changelog. One release note per publication milestone is enough.
+- Not a release branch policy. A methodology release is anchored by an annotated tag.
 
 ## Skill entry point
 
@@ -96,6 +120,7 @@ public explorer exposes a derived copy under **Skills → methodology-release**.
 ## Related documents
 
 - [`decisions/2026-06-02-methodology-semantic-versioning-and-release-notes.md`](decisions/2026-06-02-methodology-semantic-versioning-and-release-notes.md)
+- [`decisions/2026-06-04-methodology-release-git-tags.md`](decisions/2026-06-04-methodology-release-git-tags.md)
 - [`release-notes/README.md`](release-notes/README.md)
 - [`README.md`](README.md) — methodology pack entry point
 - Site pipeline notes live under `product-docs/site/` in the source repository (repo-only).
