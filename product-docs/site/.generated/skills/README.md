@@ -242,7 +242,7 @@ flowchart LR
     <p class="skill-card-summary">Classifies a methodology SemVer bump, drafts a release note, and updates the canonical version file when publishing to methodology.ezkey.org. Use after a publication milestone following Lane E feedback cycles.</p>
     <div class="skill-card-facts">
       <p><strong>Enter when</strong><br />a publication milestone is declared — enough methodology improvements justify</p>
-      <p><strong>Call next</strong><br />site build/preview, then Cloudflare deploy per product-docs/site/HANDOFF-PHASE-4.md.</p>
+      <p><strong>Call next</strong><br />site build/preview, annotated Git tag creation, then Cloudflare deploy per</p>
       <p><strong>Not needed when</strong><br />changes are repo-only Lane E decisions with no public site update planned,</p>
     </div>
     <p class="skill-card-link"><a href="#/skills/methodology-release.md">Open detail</a></p>

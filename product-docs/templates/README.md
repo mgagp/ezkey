@@ -32,6 +32,7 @@ common documentation journey rather than alphabetically.
 
 - [spec-test-traceability.template.md](spec-test-traceability.template.md) — Link features to specs and tests. Instantiated in global and component traceability matrices.
 - [architecture-decision.template.md](architecture-decision.template.md) — Record an architecture or design decision. Instantiated in global and component decision logs.
+- [release-brief.template.md](release-brief.template.md) — Scope and track an Evergreen release from completed, traceable work.
 - [methodology-release-note.template.md](methodology-release-note.template.md) — Summarize a published methodology SemVer release. Instantiated in `methodology/release-notes/`.
 
 ### Global product framing

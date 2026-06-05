@@ -28,7 +28,7 @@ note, and update `product-docs/methodology-version.properties`.
   </article>
   <article class="skill-contract-card">
     <h3>Call next</h3>
-    <p>site build/preview, then Cloudflare deploy per product-docs/site/HANDOFF-PHASE-4.md.</p>
+    <p>site build/preview, annotated Git tag creation, then Cloudflare deploy per</p>
   </article>
   <article class="skill-contract-card">
     <h3>Not needed when</h3>

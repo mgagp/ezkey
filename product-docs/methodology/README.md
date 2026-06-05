@@ -51,7 +51,8 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 3. `blitz-intake-pattern.md`
 4. `github-issues-workflow.md`
 5. `multi-branch-workflow.md`
-6. `methodology-publication-and-versioning.md`
+6. `release-management-workflow.md`
+7. `methodology-publication-and-versioning.md`
 
 ### Reference context
 
@@ -80,6 +81,8 @@ publication workflow and release-note conventions.
   clarify the method without making the generic docs carry project-local coupling.
 - Artifact identity and review conventions live in
   [`artifact-identity-and-review.md`](artifact-identity-and-review.md).
+- Release readiness and Evergreen release-branch posture live in
+  [`release-management-workflow.md`](release-management-workflow.md).
 
 ## Scope boundaries
 
