@@ -8,6 +8,10 @@ It is designed for mixed collaboration:
 - human to AI,
 - AI to AI (through bounded context documents and specialized skills).
 
+The method is intentionally **repository-native**. External trackers, branches, pull requests, and
+release tools can be linked in when they add coordination value, but the durable product reasoning
+must remain understandable from the documentation corpus itself.
+
 ## Why this exists
 
 When a documentation system already has strong product and component documentation, this pack adds
@@ -30,6 +34,7 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 1. `minimum-viable-method.md`
 2. `workflow-overview.md`
 3. `session-start-guide.md`
+4. `artifact-identity-and-review.md`
 
 ### Core working method
 
@@ -73,6 +78,8 @@ publication workflow and release-note conventions.
 - Rationale for non-obvious methodology choices lives in `decisions/`.
 - Project-specific taxonomies, examples, and terminology belong in `case-study-ezkey.md` when they
   clarify the method without making the generic docs carry project-local coupling.
+- Artifact identity and review conventions live in
+  [`artifact-identity-and-review.md`](artifact-identity-and-review.md).
 
 ## Scope boundaries
 

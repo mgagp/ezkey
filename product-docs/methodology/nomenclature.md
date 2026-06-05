@@ -21,6 +21,11 @@ counter lookup is needed; no index file must be read before creating a file.
 Examples: `I-2026-05-22-rate-limit-analysis`, `V-2026-05-22-api-portal-posture`,
 `TB-2026-05-22-mobile-enrollment-slice`.
 
+This convention is a coordination mechanism, not only a filename style. It gives each artifact a
+stable repository-native identity before any issue, branch, or pull request exists. The date reduces
+collision risk across parallel work, while the slug keeps the subject discoverable for humans and AI
+agents scanning the corpus.
+
 If two artifacts are created on the same day about the same topic, differentiate the slug
 (e.g., add a qualifier). No ordinal suffix is needed as a rule — the slug carries the distinction.
 
