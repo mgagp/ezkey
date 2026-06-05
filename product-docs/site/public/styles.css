@@ -26,6 +26,11 @@
   --radius: 8px;
   --radius-sm: 6px;
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --popover-bg: #0f172a;
+  --popover-text: #f8fafc;
+  --popover-muted: #cbd5e1;
+  --popover-link: #93c5fd;
+  --popover-link-hover: #bfdbfe;
   --topbar-h: 52px;
   --rail-w: 320px;
   --rail-w-right: 240px;
@@ -1057,8 +1062,8 @@ body.has-wizard .content {
   position: fixed;
   z-index: 100;
   max-width: 360px;
-  background: var(--text);
-  color: #f8fafc;
+  background: var(--popover-bg);
+  color: var(--popover-text);
   border-radius: var(--radius);
   padding: 12px 14px;
   font-size: 0.8rem;
@@ -1071,23 +1076,23 @@ body.has-wizard .content {
   font-weight: 700;
   margin-bottom: 6px;
   font-size: 0.82rem;
-  color: #fff;
+  color: var(--popover-text);
 }
 
 .glossary-tooltip-body {
-  color: #cbd5e1;
+  color: var(--popover-muted);
   margin-bottom: 8px;
 }
 
 .glossary-tooltip-link {
-  color: #93c5fd;
+  color: var(--popover-link);
   text-decoration: none;
   font-size: 0.76rem;
-  border-bottom: 1px dotted #93c5fd;
+  border-bottom: 1px dotted var(--popover-link);
 }
 
 .glossary-tooltip-link:hover {
-  color: #bfdbfe;
+  color: var(--popover-link-hover);
 }
 
 /* ════════════════════════════════════════════════════════════════════════
