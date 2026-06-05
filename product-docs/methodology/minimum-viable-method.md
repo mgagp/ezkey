@@ -35,6 +35,24 @@ For the full system, continue with [`workflow-overview.md`](workflow-overview.md
 6. **Close honestly.**
    Update status, traceability, or the decision record only for what actually changed.
 
+## Calibrate the method weight
+
+Choose the smallest artifact set that protects the decision. Escalate only when uncertainty, risk,
+or coordination needs justify it.
+
+| Situation | Minimum method weight | Typical next artifact |
+| --- | --- | --- |
+| Small local change with clear intent | Fix and validate directly; update docs only if behavior or usage changed | None, or a targeted doc edit |
+| New idea with unclear value or scope | Capture the intent and stop before implementation pressure | `I-*` |
+| Directional product question | Record the orientation before splitting into backlog work | `V-*` |
+| Execution-ready but non-trivial slice | Define the smallest end-to-end proof and evidence | `TB-*` |
+| Boundary, mapping, validation, or error ambiguity | Add only the design representation that exposes the controlling rule | Component design, mapping, decision table, or error model |
+| Testing risk is not obvious | Select minimum and optional evidence explicitly | Test plan slice |
+| Methodology friction | Record the process decision and update the smallest affected surface | Methodology decision |
+
+If two rows seem applicable, start with the lighter one and escalate when a concrete ambiguity
+remains.
+
 ## Default minimal routes
 
 ### A) New idea, not yet execution-ready
@@ -92,6 +110,23 @@ Stop adding process when all of the following are already true:
 - the remaining questions do not block the first cut.
 
 At that point, the next step is implementation or validation, not more preparation.
+
+## Aging rule
+
+Old artifacts should not stay ambiguous by accident. When an artifact has not moved for a meaningful
+period in the project's working rhythm, re-read it and choose one explicit outcome:
+
+- keep it active and update `Updated at` or `Last reviewed at` where the template carries that
+  field;
+- move it to `parked` when it remains valid but is intentionally paused;
+- move it to `archived` when it is retained for history but no longer active;
+- move it to `dropped` when the idea or slice is explicitly rejected;
+- add `Superseded` / `Supersedes` lineage when the substance was reformulated into another
+  artifact.
+
+Use project judgment for the interval. For a small active project, monthly or release-boundary
+review is usually enough. Do not create a standing meeting or tracker ceremony unless repeated
+stale artifacts prove the need.
 
 ## Prompt starters
 
