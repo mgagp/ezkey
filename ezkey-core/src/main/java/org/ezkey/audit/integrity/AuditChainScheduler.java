@@ -117,7 +117,7 @@ public class AuditChainScheduler {
    * uncheckpointed windows within the lookback period. Idempotent — safe to run multiple times or
    * after missed executions.
    */
-  @Scheduled(cron = "${ezkey.audit.chain.cron:0 */5 * * * ?}")
+  @Scheduled(cron = "${ezkey.audit.chain.cron:1 */5 * * * ?}")
   @SchedulerLock(name = "AUDIT_CHAIN_CHECKPOINT", lockAtMostFor = "PT5M")
   @Transactional
   public void createCheckpoints() {

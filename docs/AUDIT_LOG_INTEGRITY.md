@@ -221,8 +221,8 @@ ezkey.audit.chain.window-minutes=5
 # Lookback for catch-up after restarts (minutes)
 ezkey.audit.chain.lookback-minutes=60
 
-# Cron schedule (every 5 minutes)
-ezkey.audit.chain.cron=0 */5 * * * ?
+# Cron schedule (every 5 minutes, one second after the window boundary)
+ezkey.audit.chain.cron=1 */5 * * * ?
 ```
 
 ### Peripheral heartbeat supervision (`ezkey.audit.chain.heartbeat.*`)
@@ -260,6 +260,11 @@ Relative to **`latest.window_end`** (exclusive end boundary of the most recent p
 - **Earliest peripheral fail-close instant:**  
   `fail_closed_not_before = latest.window_end + grace_windows × window_minutes − stop_before_next_window`  
   For the defaults above, that is **`latest.window_end + 9 minutes`**. Peripheral HTTP fail-closing is evaluated from that instant onward whenever `heartbeat.enabled=true` **and** `heartbeat.required=true`.
+- **Scheduler boundary rule:** the Admin API checkpoint cron should run just after the five-minute
+  boundary (`1 */5 * * * ?` by default), not exactly on second zero. Running exactly at the boundary
+  can fire a few milliseconds early, causing the scheduler to treat the just-ending window as still
+  open and defer its checkpoint to the next tick. That creates a false heartbeat loop where
+  `DEGRADED_SERVICE` starts shortly before the normal deferred checkpoint appears.
 - **Operational reminder:** peripherals look only at **`latest.checkpoint` timestamps** combined with **`ezkey.audit.chain.window-minutes`**. Misaligned `window-minutes` across Admin API vs Auth API / Integration API produces false-positive fail-closes; Docker profiles intentionally pin **`5`** on all three.
 
 **Verifying cryptographic continuity across the last rolling hour:**

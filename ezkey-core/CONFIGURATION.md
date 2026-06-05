@@ -174,7 +174,7 @@ Auth API and Integration API set `ezkey.audit.chain.enabled=false`.
 | `ezkey.audit.chain.enabled` | `boolean` | `true` | optionnel | Enable/disable chain checkpoint job. Set to `false` in Auth API and Integration API. |
 | `ezkey.audit.chain.window-minutes` | `int` | `5` | optionnel | Time window size in minutes for each checkpoint. |
 | `ezkey.audit.chain.lookback-minutes` | `int` | `60` | optionnel | Lookback window in minutes for catch-up after restarts. |
-| `ezkey.audit.chain.cron` | `String` | `0 */5 * * * ?` | optionnel | Quartz-style cron controlling how often **`AuditChainScheduler`** attempts catch-up checkpoints (runs **only when** `enabled=true`; Admin API Docker profile sets this explicitly — see [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md)). |
+| `ezkey.audit.chain.cron` | `String` | `1 */5 * * * ?` | optionnel | Quartz-style cron controlling how often **`AuditChainScheduler`** attempts catch-up checkpoints (runs **only when** `enabled=true`; run just after the window boundary so a second-zero tick cannot seal an incomplete window or defer it by a full cycle; Admin API Docker profile sets this explicitly — see [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md)). |
 
 **Derived peripheral timing reminder:** Auth API / Integration APIs compute earliest peripheral HTTP fail-close time as **`latest.window_end + grace_windows × window_minutes − stop_before_next_window`** (see **`ezkey.audit.chain.heartbeat.*`** plus [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md)). Keeping **`window-minutes`** identical everywhere guards against configuration-driven false positives.
 

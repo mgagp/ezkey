@@ -6,8 +6,8 @@
 - **Status:** `incubating`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-06-05`
+- **Last reviewed at:** `2026-06-05`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `audit`
 - **Captured by:** Marc
@@ -62,6 +62,32 @@ Full session log: [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../g
 | **Open — C8-6** | Classify outage gap vs manipulation before alert — suspend; design pack. |
 | **Open — INC-1** | Justification integrity vs primary audit chain — close in design pack (recommend conciliation **audit event** + operational alert index). |
 | **Related** | `I-2026-0021` (Postgres role matrix), `V-2026-0012` (future batch-api split) |
+
+## Observation note — heartbeat false-positive loop (2026-06-05)
+
+Docker stack log review found a repeatable heartbeat loop rather than a real checkpoint outage:
+
+- `AuditChainHeartbeatGuardService` transitioned `OK -> UNSUPERVISED_ACTIVITY -> DEGRADED_SERVICE`
+  every five-minute window, then resolved about one minute later.
+- Recent checkpoints were contiguous (`0` discontinuities across the regular checkpoint range
+  inspected) and chain verification reported `status=OK`, `gaps=0`, `undeclaredGaps=0`, and
+  `violations=0`.
+- The operational side effect was severe alert/incident noise: hundreds of
+  `RECOVERED_PENDING_DECLARATION` heartbeat incidents and repeated
+  `AUDIT_CHAIN_HEARTBEAT_STALE` alert raise/resolve audit rows.
+
+Root cause hypothesis: the checkpoint cron ran at exact second zero (`0 */5 * * * ?`). In Docker,
+the scheduled method often executed a few milliseconds before the five-minute wall-clock boundary.
+`AuditChainScheduler` correctly refused to seal a technically incomplete window, so the just-ending
+window was deferred to the next tick. Heartbeat supervision still evaluated
+`fail_closed_not_before = latest.window_end + 2 * window_minutes - stop_before_next_window`
+(`+9 minutes` with defaults), so it entered `DEGRADED_SERVICE` shortly before the deferred
+checkpoint appeared at `+10 minutes`.
+
+Corrective direction: keep the documented heartbeat thresholds, but run the Admin API checkpoint
+cron just after the boundary (`1 */5 * * * ?`). This preserves the intended "completed window first,
+then grace, then degraded" semantics without sealing a window early or creating a one-cycle false
+positive loop. `I-2026-0022` should capture this boundary rule in the scheduled jobs catalog.
 
 ## Key assumptions
 
