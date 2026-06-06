@@ -107,10 +107,11 @@ All exit criteria met (2026-06-06):
 - **Validation:** `npm run lint` green; operator manual checks on live stack.
 - **Merge:** PR [#192](https://github.com/mgagp/ezkey/pull/192) merged 2026-06-06; closes issue [#191](https://github.com/mgagp/ezkey/issues/191).
 
-**Branch note:** the same feature branch also carried a co-delivered Lane C hygiene slice
-(issue [#182](https://github.com/mgagp/ezkey/issues/182) — React Doctor P1 pass: `ReportBadge`
-extract, explicit `button type` on dialog/toast dismiss controls). That work is independent of
-this TB's scope but merged in the same PR for session continuity.
+**Branch note:** the same feature branch also carried a co-delivered Lane C hygiene **first slice**
+(issue [#182](https://github.com/mgagp/ezkey/issues/182) — `ReportBadge` extract, explicit
+`button type` on dialog/toast dismiss controls). That work is independent of this TB's scope but
+merged in the same PR for session continuity. Issue #182 remains **open** for remaining React
+Doctor P1 items.
 
 ## Links
 
