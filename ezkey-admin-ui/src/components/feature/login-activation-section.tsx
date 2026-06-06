@@ -27,6 +27,12 @@ interface LoginActivationSectionProps {
   authApiPublicBaseUrl?: string | null;
 }
 
+type QrRenderState = {
+  key: string | null;
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  dataUrl: string | null;
+};
+
 export function LoginActivationSection({
   onBackToPasswordless,
   authApiPublicBaseUrl,
@@ -63,47 +69,74 @@ export function LoginActivationSection({
   const [submitting, setSubmitting] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [enrollmentIdCopied, setEnrollmentIdCopied] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [qrLoading, setQrLoading] = useState(false);
-  const [qrError, setQrError] = useState(false);
+  const [qrState, setQrState] = useState<QrRenderState>({
+    key: null,
+    status: 'idle',
+    dataUrl: null,
+  });
+
+  const qrInput = useMemo(() => {
+    const proofToken = activationResult?.enrollmentProofToken;
+    if (proofToken == null) {
+      return null;
+    }
+
+    const enrollmentId = activationResult?.enrollmentId;
+    if (enrollmentId == null) {
+      return { invalid: true } as const;
+    }
+
+    const proof = String(proofToken);
+    const key = `${enrollmentId}:${proof}:${authApiPublicBaseUrl ?? ''}`;
+    return {
+      invalid: false,
+      key,
+      enrollmentId,
+      proof,
+    } as const;
+  }, [
+    activationResult?.enrollmentId,
+    activationResult?.enrollmentProofToken,
+    authApiPublicBaseUrl,
+  ]);
 
   useEffect(() => {
-    if (activationResult?.enrollmentProofToken == null) {
-      setQrDataUrl(null);
-      setQrLoading(false);
-      setQrError(false);
+    if (qrInput == null || qrInput.invalid) {
       return;
     }
 
-    const enrollmentId = activationResult.enrollmentId;
-    const proof = String(activationResult.enrollmentProofToken);
-    if (enrollmentId == null) {
-      setQrDataUrl(null);
-      setQrLoading(false);
-      setQrError(true);
+    if (qrState.key === qrInput.key) {
       return;
     }
 
     let cancelled = false;
-    setQrLoading(true);
-    setQrError(false);
+    setQrState({
+      key: qrInput.key,
+      status: 'loading',
+      dataUrl: null,
+    });
     void (async () => {
       try {
         const payload = buildEnrollmentQrPayloadJson(
-          enrollmentId,
-          proof,
+          qrInput.enrollmentId,
+          qrInput.proof,
           authApiPublicBaseUrl,
         );
         const url = await enrollmentPayloadToQrDataUrl(payload);
         if (!cancelled) {
-          setQrDataUrl(url);
-          setQrLoading(false);
+          setQrState({
+            key: qrInput.key,
+            status: 'ready',
+            dataUrl: url,
+          });
         }
       } catch {
         if (!cancelled) {
-          setQrDataUrl(null);
-          setQrError(true);
-          setQrLoading(false);
+          setQrState({
+            key: qrInput.key,
+            status: 'error',
+            dataUrl: null,
+          });
         }
       }
     })();
@@ -111,7 +144,13 @@ export function LoginActivationSection({
     return () => {
       cancelled = true;
     };
-  }, [activationResult, authApiPublicBaseUrl]);
+  }, [authApiPublicBaseUrl, qrInput, qrState.key]);
+
+  const hasValidQrInput = qrInput != null && !qrInput.invalid;
+  const isCurrentQrResult = hasValidQrInput && qrState.key === qrInput.key;
+  const qrLoading = isCurrentQrResult && qrState.status === 'loading';
+  const qrError = (qrInput != null && qrInput.invalid) || (isCurrentQrResult && qrState.status === 'error');
+  const qrDataUrl = isCurrentQrResult && qrState.status === 'ready' ? qrState.dataUrl : null;
 
   const onActivate = async (values: ActivationForm) => {
     setSubmitting(true);
@@ -309,6 +348,9 @@ export function LoginActivationSection({
       data-testid="login-activation-form"
     >
       <p className="text-sm text-fg-muted">{t('login:activation.intro')}</p>
+      <p className="text-xs text-fg-muted leading-snug border-l-2 border-fg/25 pl-3 py-0.5">
+        {t('login:activation.adminLoginDistinctionNote')}
+      </p>
       {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
       <div className="space-y-1">
         <Label htmlFor="activation-code">{t('login:activation.activationCodeLabel')}</Label>
