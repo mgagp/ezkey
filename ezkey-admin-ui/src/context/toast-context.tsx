@@ -54,6 +54,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
       <Icon className={cn('size-4 shrink-0 mt-0.5', iconStyles[toast.variant])} />
       <span className="text-sm flex-1 leading-snug">{toast.message}</span>
       <button
+        type="button"
         onClick={() => onRemove(toast.id)}
         className="shrink-0 text-fg/40 hover:text-fg transition-colors"
         aria-label="Dismiss"

@@ -135,6 +135,16 @@ function canIssueInitialAdminRecoveryCodes(
   );
 }
 
+function canShowIssueInitialAdminRecoveryCodesAction(
+  admin: Pick<RecoveryAwareAdmin, 'active' | 'lifecycleStatus' | 'hasRecoveryCodes'>,
+): boolean {
+  return (
+    admin.active === true
+    && admin.lifecycleStatus === 'ACTIVE'
+    && admin.hasRecoveryCodes !== true
+  );
+}
+
 function renderAdminStatusBadge(
   admin: Pick<AdminResponseDto, 'active' | 'lifecycleStatus'>,
   t: ReturnType<typeof useTranslation<'admins'>>['t'],
@@ -538,6 +548,11 @@ function AdminDetailDialog({
   const activateReasonTooShort = activateReason.trim().length > 0 && activateReason.trim().length < 10;
 
   const fullName = [adm.firstName, adm.lastName].filter(Boolean).join(' ');
+  const canShowIssueInitialAction = canShowIssueInitialAdminRecoveryCodesAction(adm);
+  const canIssueInitialCodesNow = canIssueInitialAdminRecoveryCodes(adm);
+  const issueInitialCodesDisabledReason = canShowIssueInitialAction && !canIssueInitialCodesNow
+    ? t('detail.issueInitialRecoveryCodesBlockedFirstLoginRequired')
+    : null;
 
   const openEditDialog = () => {
     setEditFirstName(adm.firstName ?? '');
@@ -713,6 +728,16 @@ function AdminDetailDialog({
               <span className="text-fg-muted italic">{t('detail.lastLoginNever')}</span>
             )}
           </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelEnrollmentCapability')} valueClassName="break-all">
+            {adm.enrollmentId != null
+              ? <Badge variant="success">{t('detail.enrollmentCapabilityLinked')}</Badge>
+              : <Badge variant="muted">{t('detail.enrollmentCapabilityMissing')}</Badge>}
+          </DetailInfoRow>
+          <DetailInfoRow label={t('detail.labelAdminLoginState')} valueClassName="break-all">
+            {adm.lastLoginAt != null
+              ? <Badge variant="success">{t('detail.adminLoginStateCompleted')}</Badge>
+              : <Badge variant="warning">{t('detail.adminLoginStatePendingFirstLogin')}</Badge>}
+          </DetailInfoRow>
         </dl>
 
         {isPendingActivationAdmin(adm) && (
@@ -747,16 +772,32 @@ function AdminDetailDialog({
               <Pencil className="size-3.5" />
               {t('detail.editProfile')}
             </Button>
-            {canIssueInitialAdminRecoveryCodes(adm) && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="gap-1.5"
-                onClick={openIssueInitialDialog}
-              >
-                <KeyRound className="size-3.5" />
-                {t('detail.issueInitialRecoveryCodes')}
-              </Button>
+            {canShowIssueInitialAction && (
+              issueInitialCodesDisabledReason ? (
+                <Tooltip content={issueInitialCodesDisabledReason}>
+                  <span className="inline-flex">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled
+                    >
+                      <KeyRound className="size-3.5" />
+                      {t('detail.issueInitialRecoveryCodes')}
+                    </Button>
+                  </span>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={openIssueInitialDialog}
+                >
+                  <KeyRound className="size-3.5" />
+                  {t('detail.issueInitialRecoveryCodes')}
+                </Button>
+              )
             )}
             {canRegenerateAdminRecoveryCodes(adm) && (
               <Button
