@@ -3,10 +3,10 @@
 ## Metadata
 
 - **ID:** `V-2026-06-05-admin-enrollment-vs-admin-login-state-model`
-- **Status:** `draft`
+- **Status:** `accepted`
 - **Lane:** `D` - post-delivery evolution from observed operator confusion in real stack usage
 - **Created at:** `2026-06-05`
-- **Updated at:** `2026-06-05`
+- **Updated at:** `2026-06-06`
 - **Captured by:** Marc + Copilot session synthesis
 
 ## Intent
@@ -64,6 +64,14 @@ Promote this vision note when all of the following are true:
 1. Backlog idea defines concrete UX copy, state indicators, and gating behavior.
 2. Test strategy captures at least one UI/user-flow validation proving confusion reduction.
 3. Canonical operator guidance is updated to explain the two-state model in practical terms.
+
+**Reached 2026-06-06** via PR `#192` / `I-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity` first cut.
+
+## Closeout
+
+First slice delivered in Admin UI (dual-state indicators, blocked-action rationale, cross-flow copy).
+Operator-facing lifecycle semantics remain aligned with `docs/LIFECYCLE_GOVERNANCE.md`. Further
+broad admin lifecycle redesign is not implied by this closeout.
 
 ## Related documents
 

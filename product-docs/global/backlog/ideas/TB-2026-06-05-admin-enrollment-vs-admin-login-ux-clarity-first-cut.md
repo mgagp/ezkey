@@ -3,15 +3,18 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity-first-cut`
-- **Status:** `under-review`
+- **Status:** `done`
 - **Related idea:** `I-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity`
 - **Related vision:** `V-2026-06-05-admin-enrollment-vs-admin-login-state-model`
 - **Grill session:** `product-docs/global/backlog/grill-sessions/2026-06-05-admin-enrollment-vs-login-state-clarification-grill-me.md`
-- **GitHub issue:** `#191`
+- **GitHub issue:** `#191` (closed)
+- **GitHub PR:** `#192` (merged 2026-06-06)
+- **GitHub branch:** `feature/191-i-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity` (merged)
 - **Lane:** `D`
 - **Posture:** `single-pass`
 - **Created at:** `2026-06-05`
-- **Updated at:** `2026-06-05`
+- **Updated at:** `2026-06-06`
+- **Closed at:** `2026-06-06`
 - **Captured by:** Marc + Copilot session synthesis
 
 ## Objective
@@ -89,10 +92,25 @@ The slice must improve operator comprehension without changing security semantic
 
 ## Exit criteria
 
-- [ ] Operators can distinguish enrollment validity from admin login completion in detail view.
-- [ ] Ineligible initial issuance is explicit and reasoned (not hidden).
-- [ ] One cross-surface explanatory statement is present and consistent.
-- [ ] Validation evidence confirms reduced ambiguity without contract changes.
+All exit criteria met (2026-06-06):
+
+- [x] Operators can distinguish enrollment validity from admin login completion in detail view.
+- [x] Ineligible initial issuance is explicit and reasoned (not hidden).
+- [x] One cross-surface explanatory statement is present and consistent.
+- [x] Validation evidence confirms reduced ambiguity without contract changes.
+
+## Implementation outcome (2026-06-06)
+
+- **Admin UI:** dual-state framing on admin detail; disabled recovery-code issuance with tooltip;
+  activation/recovery microcopy in EN/FR locales.
+- **Safety:** backend eligibility gates unchanged; no admin-api contract change.
+- **Validation:** `npm run lint` green; operator manual checks on live stack.
+- **Merge:** PR [#192](https://github.com/mgagp/ezkey/pull/192) merged 2026-06-06; closes issue [#191](https://github.com/mgagp/ezkey/issues/191).
+
+**Branch note:** the same feature branch also carried a co-delivered Lane C hygiene slice
+(issue [#182](https://github.com/mgagp/ezkey/issues/182) — React Doctor P1 pass: `ReportBadge`
+extract, explicit `button type` on dialog/toast dismiss controls). That work is independent of
+this TB's scope but merged in the same PR for session continuity.
 
 ## Links
 

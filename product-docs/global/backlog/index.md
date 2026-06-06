@@ -36,6 +36,7 @@ This index provides a lightweight list of active ideas and their current state.
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity` | Admin enrollment vs admin login UX clarity | `2026-06-06` | PR #192 / issue #191. Lane D first cut: dual-state admin detail, recovery-code gating tooltip, activation/recovery copy (EN/FR). Co-delivered Lane C hygiene (#182) on same branch. |
 | `I-2026-05-29-mobile-stack-modernization` | Mobile stack modernization (#177) | `2026-05-31` | RN 0.85.3, VC5+Nitro, AS3, CI `validate:ci`, ESLint 9, post-merge dep bumps, canonical Android build scripts. Maestro enrollment deferred to `TB-2026-0002`. |
 | `I-2026-05-28-admin-ui-orval-upgrade` | Admin UI Orval upgrade (8.5 → 8.13) | `2026-05-29` | PR #175; stepwise ladder; Orval 8.13 with verb-aware config fix at 8.10/8.11. |
 | `I-2026-0016` | Methodology hygiene follow-ups (Tier 2 from 2026-05-08 nomenclature pass) | `2026-05-24` | Closed Tier 2 items E–K: decision recording scopes, phase/component tags, superseded links, optional automation follow-up, corpus completeness audit checklist. Decision record `2026-05-24-artifact-tagging-canonization-conventions.md`. |

@@ -3,16 +3,16 @@
 ## Metadata
 
 - **ID:** `I-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P1`
 - **Created at:** `2026-06-05`
-- **Updated at:** `2026-06-05`
-- **Last reviewed at:** `2026-06-05`
+- **Updated at:** `2026-06-06`
+- **Last reviewed at:** `2026-06-06`
 - **Progression markers:** `P1-operability`, `P2-maintainability`
 - **Component tags:** `admin-ui`, `admin-api`, `docs`
 - **Lane:** `D`
 - **Captured by:** Marc + Copilot session synthesis
-- **GitHub issue:** `#191`
+- **GitHub issue:** `#191` (closed)
 
 ## Intent
 
@@ -70,8 +70,34 @@ Promotion gate reached on `2026-06-05` via:
 
 - `TB-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity-first-cut`
 
+## Status transitions
+
+- `ready` → `done` after merge to `main`, issue `#191` closed, and closeout recorded. **Reached 2026-06-06** (PR `#192`).
+
+## Closeout evidence
+
+| Gate | Result |
+| --- | --- |
+| GitHub PR `#192` merged to `main` | **PASS** (`eaf234df`, 2026-06-06) |
+| GitHub issue `#191` | **CLOSED** (closeout alignment; PR body updated post-merge) |
+| Admin UI dual-state indicators (`admins.tsx`) | **PASS** |
+| Recovery-code issuance disabled + tooltip when first login missing | **PASS** |
+| Activation/recovery copy (EN/FR) | **PASS** |
+| `npm run lint` (ezkey-admin-ui) | **PASS** |
+| Operator manual functional checks | **PASS** |
+| Backend eligibility semantics unchanged | **PASS** (no API contract change) |
+| Playwright UI automation for this slice | **Deferred** — manual validation sufficient for first cut |
+
+## Residual risks and deferred work
+
+- Optional Playwright path for enrollment-vs-login eligibility transition (not blocking closeout).
+- Broader admin lifecycle redesign remains out of scope (unchanged).
+
 ## Links
 
+- GitHub issue: `#191` (closed)
+- GitHub PR: `#192` (merged 2026-06-06)
+- GitHub branch: `feature/191-i-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity` (merged)
 - Vision: `product-docs/global/vision/V-2026-06-05-admin-enrollment-vs-admin-login-state-model.md`
 - Session synthesis: `product-docs/global/backlog/grill-sessions/2026-06-05-admin-enrollment-vs-login-state-clarification-grill-me.md`
 - Tracer bullet: `product-docs/global/backlog/ideas/TB-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity-first-cut.md`
