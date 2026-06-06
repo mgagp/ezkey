@@ -24,6 +24,8 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 ## Contract-First Rules
 
+- Orval is pinned at **8.15.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
+  no global `useQuery` / `useMutation`). Same Option B as Admin UI `TB-2026-05-28` checkpoints 8.10 / 8.11.
 - Never hand-edit `openapi-spec.json` in `ezkey_mobile/`.
 - Refresh specs only through the root scripts `scripts/update-specs.sh` or `scripts/update-specs.bat` after a human has started a clean Docker stack.
 - After refreshing the spec, run `yarn generate:api`.
@@ -71,6 +73,7 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 | Script | Use |
 |--------|-----|
 | `scripts/build-install-debug-clean.sh` | **Default** — clean debug build + install on device |
+| `scripts/build-install-release-clean.sh` | Clean **release** build + install (offline-capable; no Metro) |
 | `scripts/resolve-android-jdk.sh` | Source to export `JAVA_HOME` for any Gradle command |
 | `scripts/android-with-jdk17.sh` | `react-native run-android` with correct JDK |
 | `scripts/install-debug-after-uninstall.sh` | Uninstall + `installDebug` (signature mismatch) |
