@@ -1,152 +1,165 @@
 ---
-audience: "Développeurs expérimentés, leads techniques, architectes et décideurs proches du delivery ; analyse de marché en voix personnelle, avec prudence sur les projections."
-planned_slug_fr: "apres-adoption-facture-age-budgetaire-ia-logicielle.html"
-planned_canonical: "https://ezkey.org/fr/apres-adoption-facture-age-budgetaire-ia-logicielle.html"
-status: draft
-source_of_truth: draft
+audience: "Développeurs expérimentés, leads techniques, architectes et décideurs proches du delivery ; récit personnel sur l'IA, le travail, la retraite et le refus de la course à la performance."
+planned_slug_fr: "facture-ia-et-mon-pas-de-cote.html"
+planned_canonical: "https://ezkey.org/fr/facture-ia-et-mon-pas-de-cote.html"
+status: published
+published_html_en: /the-ai-bill-and-my-step-aside.html
+published_html_fr: /fr/facture-ia-et-mon-pas-de-cote.html
+published_date: 2026-06-06
+html_amended_post_publish: false
+source_of_truth: html
 ---
 
-# Après l'adoption, la facture : l'âge budgétaire de l'IA logicielle
+# La facture de l'IA, et mon pas de côté
 
-<!-- ezkey-org:exclude-start
-Titres de travail alternatifs :
-1. Le marché du logiciel entre dans son âge budgétaire IA
-2. Ce que l'IA change pour les entreprises, pas seulement pour les développeurs
-3. Les fournisseurs IA deviennent-ils les nouveaux goulots d'étranglement ?
-4. Après le copilote : la bataille des budgets, des modèles et des dépendances
-5. Vélocité logicielle, budgets IA et nouvelle segmentation du marché
+## Le détour qui s'est imposé
 
-Positionnement : prolongement naturel de l'article sur le retour aux fondamentaux. Celui-ci se concentre sur l'entreprise, le marché et les arbitrages de coût.
+J'ai commencé à rédiger cette réflexion le 14 mai 2026. Au départ, je voulais écrire un article assez classique sur la segmentation du marché, les budgets IA, les crédits, les modèles, les fournisseurs, les entreprises qui prendront de l'avance et celles qui devront rattraper.
 
-Note historique Git :
-- première version substantielle créée le 2026-05-14 à 07:18:06 -04:00 ;
-- commit 999b075f87b77c70085c795f638c75cf8ac9f43e ;
-- fichier créé initialement dans sites/ezkey-org/fr, puis déplacé le même jour vers sites/ezkey-org-editorial/fr à 09:51:31 -04:00.
+Puis j'ai relu le brouillon, et quelque chose m'a dérangé.
 
-Signal de marché à sourcer avant publication :
-- GitHub Copilot annonce le passage aux GitHub AI Credits / usage-based billing au 1er juin 2026 ;
-- les multiplicateurs cités concernent surtout les abonnés annuels restés sur l'ancien modèle de requêtes premium ;
-- exemples documentés à vérifier au moment de publier : GPT-5.4 à 6x, GPT-5.5 à 57x, Claude Sonnet 4.5 à 6x, Claude Opus 4.8 à 27x, Gemini 3.5 Flash à 14x.
+L'article était intéressant. Il disait des choses que je crois encore justes. Mais tout à coup, je ne m'y retrouvais plus complètement. Je me suis entendu parler comme quelqu'un qui explique aux autres ce qu'ils devraient comprendre, comment ils devraient se préparer, comment ils devraient organiser leurs équipes, leur documentation, leurs budgets, leurs pratiques.
 
-Passerelles internes à rappeler dans la version publiée :
-- lien vers le futur article 1 une fois publié ;
-- generative-ai-nocode-lowcode-parallel.html ;
-- from-code-to-intent-ai-workflow.html ;
-- ai-coding-manifesto.html.
+Et là, malaise. Je n'ai plus envie d'être cette personne-là.
 
-Consigne rédactionnelle : rester analytique et nuancé. Présenter les tendances comme observations et extrapolations raisonnables, pas comme prophéties certaines.
-ezkey-org:exclude-end -->
+Je ne veux pas continuer à être la belle-mère du monde corporatif. Dire « vous devriez faire ceci, vous auriez dû comprendre cela, vous allez frapper un mur ». Il y a peut-être du vrai dans certaines observations, mais ce n'est pas l'endroit où je veux me tenir.
 
-## Une intuition qui devient plus concrète
+Alors je vais prendre un détour. Peut-être même le vrai détour.
 
-J'ai commencé à rédiger cette réflexion le 14 mai 2026. À ce moment-là, l'idée était encore surtout intuitive : si l'IA change la méthode de développement, elle changera aussi l'économie du développement logiciel.
+J'ai 58 ans. Je prends ma retraite. Je quitte la course.
 
-Moins de trois semaines plus tard, début juin, le signal devenait beaucoup plus concret. GitHub Copilot basculait vers une logique de crédits IA et de facturation plus directement liée à l'usage. Dans certains cas précis, notamment pour des abonnés annuels restés sur l'ancien modèle de requêtes premium, les multiplicateurs associés aux modèles devenaient soudain très visibles : 6x, 9x, 27x, 57x selon les modèles et les conditions.
+Je ne quitte pas parce que l'IA ne m'intéresse plus. C'est presque l'inverse. Je quitte après avoir vécu, en fin de carrière, l'une des expériences intellectuelles les plus fascinantes de ma vie professionnelle. Mais je quitte aussi parce que cette expérience a rendu très visible quelque chose que je ne peux plus ignorer : je ne veux plus organiser ma vie autour de la performance, de la vélocité, de l'optimisation et de la production.
 
-Je ne veux pas faire de ce détail de tarification une prophétie à lui seul. Les offres changent, les périmètres aussi, et il faut toujours relire les petites lignes. Mais le signal de fond me paraît difficile à ignorer : nous sortons graduellement d'une phase où l'accès à l'IA semblait presque naturellement généreux, pour entrer dans une phase où la puissance des modèles devient un poste de coût explicite.
+## La phase d'abondance m'a transporté
 
-C'est là, je crois, que l'article doit se placer. Pas dans la fascination pour un prix du moment, mais dans la question plus durable : qu'arrive-t-il aux entreprises quand leur vélocité logicielle dépend de plus en plus d'une ressource externe, mesurable, facturable et optimisable ?
+Depuis 2025, les développeurs ont vécu une période assez particulière. Les modèles se sont succédé rapidement. Les IDE se sont remplis d'agents, de copilotes, de modes de composition, de chats contextuels et d'expérimentations parfois très généreuses. À plusieurs reprises, on a eu l'impression d'avoir accès, presque gratuitement ou presque sans limite, à des capacités qui auraient semblé impossibles peu de temps avant.
 
-## L'adoption a été nourrie par l'abondance
+Je ne veux pas réduire cette période à une simple stratégie commerciale. C'était une période de conquête, bien sûr. Les grands fournisseurs avaient intérêt à habituer les développeurs, à intégrer les outils dans les IDE, à créer les réflexes, à faire entrer l'IA dans le quotidien.
 
-Depuis 2025, les développeurs ont vécu une période assez particulière. Les modèles se sont succédé rapidement. Les IDE se sont remplis d'agents, de copilotes, de modes de composition, de chats contextuels et d'expérimentations plus ou moins gratuites. À plusieurs reprises, on a vu des accès généreux, des périodes presque illimitées, des promotions agressives, des modèles très puissants offerts temporairement à faible coût.
+Mais de mon côté, je l'ai vécu avec émerveillement.
 
-Je ne le dis pas sur un ton moral. C'est le fonctionnement normal d'un marché en phase de conquête. Il fallait habituer les développeurs, faire entrer les outils dans les réflexes quotidiens, créer les dépendances d'usage et démontrer la valeur assez vite pour que le retour en arrière devienne difficile.
+Quand j'ai adopté le mode agent en mai 2025 et que j'ai commencé Ezkey comme laboratoire personnel, j'ai eu l'impression de remettre toute ma pratique à plat. Ezkey est devenu mon clean room. Un projet synthèse. Un endroit où je pouvais reprendre les fondations, tester les bonnes pratiques, refaire les choses proprement, revenir à l'analyse, à la conception, à l'architecture, aux tests, à la documentation vivante.
 
-Il y a eu quelque chose d'excitant là-dedans. Nous avons eu entre les mains, presque en continu, des capacités nouvelles. Un modèle semblait devenir meilleur, puis un autre arrivait, puis un agent changeait la façon d'interagir avec la base de code, puis un nouvel outil rendait possible un workflow qui paraissait encore fragile quelques semaines plus tôt.
+Il y avait aussi quelque chose de plus intime dans ce projet. Je pouvais me l'approprier entièrement. Je pouvais expérimenter, me tromper, recommencer, corriger, simplifier, changer d'idée, revenir sur une décision, refaire une couche que j'avais mal comprise. Le projet n'était promis à personne. Il n'avait pas de client qui attendait une livraison, pas de comité à convaincre, pas de budget de temps à défendre. Il pouvait devenir exactement ce que je voulais qu'il devienne, au rythme où j'arrivais à le comprendre, incluant ne jamais vraiment devenir quelque chose aux yeux du marché.
 
-Mais cette phase ne pouvait probablement pas durer sous cette forme. Les investissements massifs en infrastructure, en entraînement, en inférence, en intégration produit et en distribution doivent finir par être récupérés quelque part. Le passage d'une logique d'abondance à une logique de budget n'est donc pas une anomalie. C'est peut-être simplement l'étape suivante.
+Je suis développeur back-end. Je fonctionne beaucoup à l'instinct. Je suis parfois brouillon. J'ai du mal à nommer les choses. J'ai du mal à garder le focus. Je fais des erreurs. Je crois avoir de bons réflexes et une certaine capacité d'introspection, mais la méthode ne m'est pas toujours venue naturellement.
 
-## Le rattrapage méthodologique occupe déjà tout l'espace
+L'IA a compensé exactement les lacunes qu'il fallait. Elle m'a aidé à structurer, à reformuler, à revoir, à documenter, à tester, à challenger mes décisions. Elle a rendu rentable un retour aux fondamentaux que j'avais longtemps gardé en partie dans ma tête. J'ai évolué en même temps qu'elle. Les modèles devenaient meilleurs, et moi aussi je devenais meilleur à collaborer avec eux.
 
-Pendant que ce déplacement économique se précise, beaucoup d'entreprises sont encore absorbées par un autre chantier : apprendre à rendre l'IA réellement productive.
+C'est cette période qui a nourri plusieurs des articles que j'ai écrits. Le retour aux sources. L'intention. Le contexte. Le spec-first. La documentation qui cesse d'être une dette morale pour devenir un outil vivant. Tout cela, je ne l'ai pas simplement observé. Je l'ai vécu dans un projet qui me donnait de l'énergie.
 
-Ce n'est pas une petite marche. Pour obtenir de bons résultats, il ne suffit pas d'acheter des licences et de dire aux équipes de coder plus vite. Il faut mieux formuler l'intention, mieux documenter les contraintes, mieux découper les responsabilités, mieux stabiliser les contrats, mieux préparer les environnements, mieux tester, mieux relire, mieux gouverner.
+## La malléabilité retrouvée du logiciel
 
-J'ai déjà abordé ailleurs ce retour aux fondamentaux. Je ne veux pas refaire ici tout l'argument. Mais il faut le rappeler brièvement, parce qu'il explique pourquoi la question budgétaire risque d'arriver au mauvais moment pour beaucoup d'organisations.
+Cette énergie ne venait pas seulement de la nouveauté des modèles. Elle venait aussi d'une liberté que j'avais presque oubliée.
 
-La documentation vivante, l'analyse, la conception et l'architecture ne sont plus seulement de bonnes pratiques qu'on aimerait avoir le temps de maintenir. Elles deviennent des intrants opérationnels. Elles nourrissent directement les agents. Elles leur donnent le contexte, les limites, les objectifs et les critères de validation dont ils ont besoin pour produire autre chose que du bruit rapide.
+Avec les années, j'avais fini par accepter une évidence du métier : on ne peut pas tout reprendre. Le temps est compté. Les idées doivent être priorisées. Les équipes doivent s'aligner. Les budgets existent. Les systèmes déjà testés, déjà en production, déjà dépendants d'autres systèmes, ne se déplacent pas comme des pièces sur une table.
 
-Or, beaucoup d'équipes ne partent pas de là. Pendant des années, une partie importante de l'analyse a vécu dans la tête des personnes expérimentées. Ce n'était pas forcément de la négligence. C'était souvent une optimisation humaine compréhensible : les seniors connaissaient le domaine, les contraintes, les pièges, les compromis. Ils pouvaient livrer avec peu d'artefacts explicites parce que beaucoup de choses étaient déjà compressées dans leur expérience.
+Un ancien directeur m'avait déjà dit, avec un humour très juste : « Marc, tu as plein de bonnes idées. Si tu veux travailler encore quarante heures pour les implémenter, tu peux le faire ! » Il avait raison. Derrière chaque bonne idée, il y a du risque, du temps, des tests, des régressions possibles, des arbitrages. Même quand l'idée est bonne, elle n'est pas automatiquement prioritaire.
 
-L'IA rend ce raccourci beaucoup moins confortable. Elle force à externaliser ce que l'équipe savait implicitement. Ce n'est pas un jugement sur les personnes. C'est un changement de condition de travail. Ce qui était suffisant pour coordonner des humains ne l'est pas toujours pour coordonner efficacement des agents.
+À force de vivre ainsi, on finit par incorporer la contrainte. On apprend à censurer des pistes avant même de les formuler. On porte une petite tension de fond, comme une douleur musculaire tellement ancienne qu'on ne la remarque presque plus. On sait qu'il faudrait parfois réaligner, refactorer, documenter, extraire, mieux tester, introduire une file de messages, renforcer une séparation entre composants, revoir une architecture. Mais on sait aussi que la business attend autre chose, que la branche risque de rester ouverte trop longtemps, que l'énergie n'est pas infinie.
 
-## Trois familles d'entreprises se dessinent
+L'IA a rendu cette tension visible. Dans un projet personnel comme Ezkey, avec un contexte bien tenu, des tests solides et une liberté totale, j'ai retrouvé quelque chose que j'avais presque oublié : le logiciel est malléable. Pas gratuitement. Pas magiquement. Construire la mauvaise chose coûte toujours cher. Un système peut devenir spaghetti, fragile, conceptuellement désaligné. Mais lorsque le contexte est explicite et que les validations existent, la possibilité de reprendre, réaligner, restructurer et améliorer redevient beaucoup plus concrète.
 
-Dans ce contexte, je vois se dessiner trois grandes familles d'adoption.
+Ce moment a été une grâce. Avant que la budgétisation ne vienne remettre des compteurs partout, j'ai eu accès à une fenêtre où l'immensité du possible apparaissait de nouveau. Non pas comme une promesse commerciale, mais comme une sensation de praticien : je pouvais enfin essayer de faire les choses comme je pensais qu'elles auraient souvent dû être faites.
 
-La première regroupe les organisations qui vont adopter l'IA de manière ambitieuse et méthodique. Elles ne se contenteront pas d'ajouter un assistant à la marge. Elles vont revoir leur manière de produire les spécifications, d'orchestrer les agents, de versionner les décisions, de valider les résultats et de faire circuler l'IA entre l'analyse, la conception, le test et l'implémentation. Dans ces environnements, il est plausible qu'une grande partie du code applicatif soit générée, revue, amendée et maintenue dans un partenariat serré entre humains et modèles.
+## Le retour de la réalité collective
 
-La deuxième famille, probablement très large, regroupe les entreprises qui veulent les gains de productivité, mais qui doivent d'abord rattraper leur retard méthodologique. Elles vont structurer un peu plus leur contexte, écrire davantage de documents d'analyse, formaliser certains workflows, former les développeurs, convaincre les équipes, ajuster leur gouvernance. Elles avanceront, mais avec l'inertie normale des organisations réelles.
+Cette fenêtre personnelle, j'ai voulu la transporter au travail.
 
-La troisième famille regroupe les organisations pour lesquelles l'intégration profonde de l'IA restera difficile plus longtemps. Parfois pour de bonnes raisons : sécurité, conformité, données sensibles, parc applicatif ancien, contraintes réglementaires, dépendances historiques. Parfois aussi parce que la culture, la structure ou les habitudes de travail ne se prêtent pas encore à ce changement.
+À l'automne, un projet greenfield s'est présenté. Il a été question d'un projet AI-first. J'étais prêt. Ou du moins, je croyais l'être.
 
-Le sujet principal de cet article, pour moi, se trouve surtout dans la deuxième famille. Pas chez les pionniers les plus avancés, ni chez ceux qui resteront volontairement à distance, mais dans cette grande masse d'entreprises qui essaient de faire le rattrapage méthodologique nécessaire pour que l'IA produise de la vraie valeur.
+J'avais une expérience récente, intense, concrète. J'avais vu ce qui se passait quand on plaçait les documents de vision, les PRD, les user stories, les analyses préliminaires et les décisions techniques au cœur du dépôt. J'avais vu comment un corpus documentaire vivant pouvait devenir un partenaire de travail pour l'IA.
 
-Ce sont elles qui risquent de découvrir assez vite qu'un deuxième chantier arrive déjà.
+J'ai donc essayé de faire la même chose. Extraire ce qui existait de Jira, Confluence et ailleurs. Transformer des fragments en vision produit, en documents structurés, en premières user stories, en analyse utilisable par une équipe et par des agents. Il ne s'agissait pas, dans mon esprit, de faire de la documentation pour la documentation. Il s'agissait de créer les conditions pour qu'un vrai travail AI-first puisse commencer.
 
-## Le prochain chantier sera budgétaire
+Et là, la réalité m'a frappé.
 
-Pour l'instant, beaucoup d'entreprises donnent encore accès aux outils IA avec une logique d'adoption. Elles veulent que les équipes apprennent, expérimentent, se forment, trouvent les bons usages. C'est raisonnable. Si l'objectif est de changer les pratiques, il faut d'abord donner de l'espace.
+Personne n'était vraiment au même endroit. Beaucoup de gens en étaient encore à l'usage ponctuel : un prompt ici, une aide là, un petit gain local. C'est déjà quelque chose, et je ne veux pas le mépriser. Mais ce n'était pas la même chose qu'une approche de projet pensée autour d'un corpus documentaire vivant, d'une méthode explicite et d'une collaboration structurée avec des agents.
 
-Mais cette période d'apprentissage ne restera pas éternellement sans questions économiques. À mesure que les usages se stabilisent, les dépenses deviendront plus visibles. Les directions demanderont quels outils sont nécessaires, quels modèles sont utilisés, pour quels types de tâches, avec quel résultat, avec quel taux de réussite, avec quel gaspillage.
+Le projet est rapidement revenu vers une dynamique plus classique. Des idées, des fragments, des listes d'épicerie, des envies de connecter des outils, des discussions sur les MCP, les intégrations, les raccourcis possibles. Mais peu de matière vraiment stabilisée. Peu d'analyse formalisée. Peu de conception soutenue. Peu de vision produit écrite de façon à pouvoir réellement guider le travail.
 
-À ce moment-là, la conversation changera. Il ne s'agira plus seulement de savoir si l'IA aide. Il faudra démontrer où elle aide vraiment, à quel coût, et avec quel rendement.
+Je raconte cela avec prudence, parce que je sais aussi que j'ai commis des erreurs. J'ai fait certains choix qui n'étaient pas bons. Par exemple, j'ai poussé une piste de stack front-end qui ne s'est pas révélée appropriée. J'ai perdu de la crédibilité là-dessus, et je dois l'assumer.
 
-Je crois que cela va faire naître une nouvelle discipline pratique dans les équipes logicielles : l'optimisation du budget IA. Pas seulement acheter moins cher. Plutôt apprendre à utiliser la bonne capacité au bon endroit.
+Mais sur le fond méthodologique, je savais que quelque chose d'important était en jeu. Je voyais la distance entre ce que j'avais vécu dans Ezkey et ce que j'arrivais à faire vivre dans un contexte d'équipe. Cette distance m'a profondément déstabilisé.
 
-Un modèle très fort pour clarifier une architecture ou résoudre une ambiguïté profonde. Un modèle plus économique pour des tâches bien spécifiées. Des agents spécialisés quand le workflow est répétable. Des validations automatisées pour éviter les boucles coûteuses. Des contextes mieux préparés pour réduire les allers-retours inutiles. Des évaluations régulières pour mesurer le rapport entre tokens consommés, taux de succès, qualité du résultat et temps humain économisé.
+## Le moment où je n'ai plus voulu recommencer
 
-On commence déjà à voir apparaître ce genre de raisonnement dans les pratiques avancées : des harness d'évaluation, des boucles de rétroaction, des comparaisons entre modèles, des stratégies de routage selon la difficulté de la tâche. Ce qui est aujourd'hui une pratique de chercheurs, de praticiens avancés ou de petites équipes très outillées deviendra probablement une préoccupation beaucoup plus ordinaire.
+Il y a une scène intérieure qui m'a marqué.
 
-## Le métier sera évalué autrement
+Dans Ezkey, je venais de terminer un dossier exigeant autour de la cryptographie, de la rotation des clés, des lots de réencryption, de la représentation visuelle, des tests, des choix de conception. C'était un chantier qui m'avait demandé beaucoup d'attention, mais qui m'avait aussi donné une grande satisfaction. J'avais le sentiment d'avoir fait quelque chose d'élégant, de cohérent, de propre.
 
-Ce déplacement aura aussi un effet sur le métier de développeur. Là encore, je veux le dire avec prudence, parce que le sujet peut vite devenir inutilement moralisateur.
+Puis, au travail, un chantier conceptuellement proche se présentait. Même famille de problèmes. Même besoin de rigueur. Même type de montagne à gravir.
 
-À mesure que l'IA générera davantage de code, on demandera moins souvent au développeur : « peux-tu écrire ceci rapidement ? » On lui demandera plus souvent : « peux-tu cadrer le travail, guider l'agent, vérifier le résultat, articuler les contraintes, éviter les détours coûteux et garantir la cohérence de l'ensemble ? »
+Et au lieu de sentir l'élan, j'ai senti le poids.
 
-Cela valorise des compétences anciennes, mais parfois négligées : comprendre le domaine, définir le problème, écrire clairement, concevoir des interfaces, anticiper les cas limites, tester sérieusement, relire avec rigueur. Ce n'est pas nouveau. Ce qui change, c'est que ces compétences deviennent plus directement liées à la performance économique du workflow IA.
+Je me suis surpris à penser : non. Je viens de faire ce chemin. Je viens de vivre cette intensité. Je ne veux pas recommencer immédiatement dans un contexte où je n'ai ni le même contrôle, ni le même engagement collectif, ni la même liberté, ni la même joie.
 
-Il y aura forcément de l'inconfort. Certains développeurs ont accumulé une vraie expérience, mais dans des environnements où une grande partie du savoir vivait dans l'implicite. D'autres ont répété longtemps les mêmes gestes, dans les mêmes cadres, avec peu d'exposition à l'analyse ou à la conception formalisée. Je ne dis pas cela pour distribuer les bons et les mauvais points. Je le dis aussi comme un rappel pour moi-même : l'IA révèle nos angles morts parce qu'elle dépend de ce que nous savons rendre explicite.
+Ce n'était pas de la paresse. Ce n'était pas seulement de la fatigue. C'était plutôt le sentiment très net d'avoir fait le tour du carré. J'avais vu le chemin. Je savais qu'il était intéressant. Je savais aussi qu'il serait long, exigeant, conflictuel, parfois ingrat. Et je ne voulais plus le refaire dans les conditions habituelles du monde corporatif.
 
-Dans une période où les coûts IA deviennent visibles, ces angles morts auront aussi un coût. Un agent mal cadré consomme. Une boucle floue consomme. Une spécification faible consomme. Une relecture superficielle consomme deux fois : d'abord en crédits, ensuite en dette.
+La frustration est devenue colère. Une vraie colère. Pas une colère productive. Une colère qui ronge, qui rend moins lucide, qui rend moins disponible. Elle m'a suivi longtemps. Elle m'a forcé à regarder quelque chose que j'aurais peut-être préféré éviter : ce n'était plus seulement un désaccord de méthode. C'était un décrochage.
 
-## Une dépendance nouvelle envers quelques fournisseurs
+J'avais annoncé ma retraite en avril. Je quitterai à la fin août 2026. Entre les deux, je vis une drôle de période de dualité. Je suis encore là, mais déjà ailleurs. Je comprends encore les enjeux, parfois même très bien. Mais il n'est plus question d'en faire le centre de ma vie.
 
-Il y a un autre aspect qu'il ne faut pas perdre de vue. Si la vélocité logicielle dépend de plus en plus d'un accès à des modèles puissants, à des IDE augmentés, à des plateformes capables d'orchestrer des agents et à des contextes longs, alors une partie du levier de productivité quitte l'entreprise.
+## Le décor de fond reste vrai
 
-Elle se déplace vers les grands fournisseurs de modèles, les plateformes d'outillage, les éditeurs d'IDE et les opérateurs d'infrastructure. Ce n'est pas automatiquement mauvais. Ces acteurs apportent une valeur réelle. Mais c'est une dépendance nouvelle, et elle mérite d'être pensée comme telle.
+C'est ici que je reviens au sujet initial de l'article.
 
-Si les modèles frontière deviennent les accélérateurs dominants de la production logicielle, les fournisseurs qui les contrôlent deviennent aussi, indirectement, des arbitres de la vitesse à laquelle une partie de l'industrie peut livrer. Les entreprises qui pourront payer plus, ou mieux intégrer ces capacités, prendront de l'avance. Les autres devront compenser par la méthode, par l'outillage, par l'open source, par le local, ou par des arbitrages plus stricts.
+Je crois encore que nous entrons dans une période où l'IA va segmenter fortement les entreprises. Certaines organisations sauront l'adopter de façon ambitieuse, méthodique et profonde. D'autres l'utiliseront avec prudence, dans un compromis entre gains réels et inertie organisationnelle. D'autres encore resteront limitées par leur parc, leur culture, leur sécurité, leur conformité ou leurs contraintes propres.
 
-Cette idée prolonge, à mon sens, ce que j'avais déjà observé en comparant l'IA à l'époque du no-code et du low-code. Le risque de dépendance existe toujours. Il change simplement de forme. Au lieu d'être enfermé dans une plateforme de génération d'applications, on peut devenir dépendant d'un assemblage formé par un modèle, un IDE, un fournisseur de contexte et un modèle économique.
+Je crois aussi que la question budgétaire arrive vite. Le passage de GitHub Copilot vers une logique de crédits IA et de facturation par usage au début juin 2026 n'est qu'un signal parmi d'autres, mais il montre quelque chose : la période où l'IA semblait être une abondance presque naturelle est en train de céder la place à une réalité plus comptable.
 
-## La contre-réaction viendra par l'optimisation
+Les entreprises devront probablement apprendre à mesurer, arbitrer, optimiser. Quel modèle pour quelle tâche ? Quel budget pour quel résultat ? Quelle part de la vélocité vient du talent interne, et quelle part vient d'une capacité facturée par quelques grands fournisseurs ? Combien coûte une boucle mal cadrée ? Combien vaut une bonne spécification ? Où faut-il payer pour un modèle plus fort, et où faut-il plutôt améliorer la méthode ?
 
-Lorsque les grands fournisseurs deviennent trop centraux, trop coûteux ou trop structurants, le marché cherche presque toujours des contrepoids. Dans le cas de l'IA logicielle, ces contrepoids prendront probablement plusieurs formes.
+Tout cela est réel. Tout cela est important. Tout cela va occuper beaucoup de monde.
 
-Il y aura du self-hosting pour certaines organisations capables d'en assumer la complexité. Il y aura des modèles ouverts ou spécialisés de plus en plus crédibles sur certains segments. Il y aura des architectures hybrides où l'on réservera les modèles les plus puissants aux étapes de raisonnement difficile, puis où l'on déléguera les tâches plus mécaniques à des modèles moins coûteux.
+Mais je ne peux plus écrire comme si j'étais encore au centre de cette bataille.
 
-Il y aura aussi, plus simplement, une meilleure hygiène de travail. Des spécifications plus claires. Des contextes mieux découpés. Des plans versionnés. Des contrats explicites. Des tests plus fiables. Des agents spécialisés au lieu de conversations interminables. Des critères de sortie plus nets. Tout cela peut sembler méthodologique, mais c'est aussi économique.
+## Le mirage du x10
 
-Plus une organisation sait formuler son intention, plus elle peut choisir le bon modèle au bon moment. Plus son contexte est portable, moins elle est prisonnière d'un fournisseur. Plus ses validations sont automatisées, moins elle paie pour des boucles d'essais et d'erreurs. Plus sa méthode est explicite, plus elle peut arbitrer entre qualité, coût, confidentialité et vitesse.
+Il y a une autre prudence que je veux garder. On entend souvent que l'IA permettra à un développeur de produire cinq fois, dix fois, vingt fois plus. Peut-être, dans certains contextes, sur certains types de tâches. Mais je ne crois pas que ce multiplicateur se traduira simplement par une profession devenue soudainement dix fois plus disponible pour la qualité, les outils internes, l'observabilité, la documentation et l'hygiène parfaite.
 
-## Ce que cela change pour les entreprises lucides
+Une partie de cette capacité excédentaire pourrait aller vers des choses longtemps repoussées : meilleurs outils internes, workflows plus propres, dette réduite, dépendances mieux suivies, code mort éliminé, tests renforcés. Ce serait souhaitable. Mais croire que toute l'industrie va durablement fonctionner en mode qualité maximale, esprit critique maximal, production maximale et rigueur maximale me semble aussi naïf que les anciennes promesses de société des loisirs.
 
-Les entreprises qui voudront rester lucides devront éviter deux naïvetés opposées.
+On nous a déjà annoncé que les gains de productivité libéreraient du temps pour la connaissance, la culture, la pensée, la vie plus riche. En pratique, l'humain et le marché s'adaptent. Les besoins montent. Les attentes montent. Ce qui était un luxe devient une commodité, puis une nécessité. On travaille autrement, mais on ne se sent pas nécessairement plus libre.
 
-La première serait de croire qu'il suffit d'acheter des licences IA pour devenir soudainement une organisation performante. Sans architecture claire, sans contrats propres, sans documentation vivante, sans stratégie de test et sans gouvernance raisonnable, on achète surtout du bruit plus rapide.
+Je soupçonne qu'il se passera quelque chose de semblable avec l'IA. Les équipes trouveront un nouveau point d'équilibre. Les développeurs apprendront à doser le formalisme, l'analyse, l'esprit critique, le nombre d'agents, le niveau de validation et le coût acceptable. Puis ils se sentiront à nouveau débordés, simplement à un autre niveau d'abstraction.
 
-La seconde serait de croire que l'on peut attendre que tout se stabilise avant de s'y mettre. Les modèles changent, les prix changent, les fournisseurs changent, mais la direction de fond est déjà assez visible : la capacité à structurer de l'intention exploitable par l'IA devient un avantage compétitif.
+Ce nouveau niveau est réel, et il est exigeant. Piloter des agents, maintenir l'intention, comparer des analyses, arbitrer entre plusieurs propositions, préserver l'intégrité conceptuelle d'un produit : ce n'est pas une activité légère. Ce n'est pas seulement écrire du code plus vite. C'est tenir dans sa tête un espace plus haut, plus abstrait, plus intentionnel. Pour moi, cet effort cognitif a été plus intense que je ne l'avais prévu.
 
-La prochaine maturité ne consistera donc pas seulement à utiliser l'IA. Elle consistera à savoir l'encadrer, la mesurer, l'optimiser et l'amortir.
+Il y aura bien sûr des tâches plus légères, comme il y en a toujours eu : hygiène de code, mises à jour, petites validations, nettoyage, revue de surface. Mais le cœur du travail IA-first demande une qualité d'attention qui ne sera pas donnée à tout le monde en tout temps. L'humain va s'adapter, oui. Il va aussi chercher à réduire l'effort, à automatiser, à déléguer, à retrouver des moments de respiration.
+
+Même la taille des équipes risque d'être touchée par cette dynamique. Plus le raisonnement est porté par un corpus documentaire vivant et par des agents capables de faire des recoupements, moins il est évident qu'un grand nombre de personnes désalignées produise un meilleur résultat. Certaines équipes deviendront sans doute plus petites, plus concentrées, plus alignées autour d'une vision partagée avec l'IA. Ce sera une force si l'alignement est réel. Ce sera un risque si l'IA ne fait qu'amplifier une chambre d'écho.
+
+Ce sont des enjeux passionnants. Je les vois. Je les trouve importants. Mais je n'ai plus envie de les vivre comme une obligation professionnelle quotidienne.
+
+## Je choisis le lent
+
+Je vais continuer à développer. Mais ce ne sera plus la même chose.
+
+Développer ne sera plus mon identité centrale, ni la mesure de ma valeur, ni le moteur principal de mes journées. Ce sera une aspiration parmi d'autres. Je vais jardiner. Faire du vélo. Marcher. Cuisiner. Voyager peut-être, parfois loin, peut-être surtout près. Profiter d'un bon repas, d'une microbrasserie, d'une journée lente, d'un projet qui avance parce qu'il me plaît et non parce qu'on doit le livrer.
+
+Je veux encore apprendre. Je veux encore comprendre ce qui arrive avec l'IA. Je veux encore explorer les modèles, les agents, les méthodes, les architectures, les outils. Mais à mon rythme, à mes conditions, dans un rapport qui ne sera plus gouverné par la performance ni par un cadre d'équipe à suivre.
+
+Il y a une formule qui me vient : slow AI. Lent, mais attentif. Moins courir, mais regarder mieux. Moins produire, mais comprendre plus profondément. Moins chercher à convaincre, mais laisser des traces honnêtes de ce que j'ai vu, de ce que j'ai essayé, de ce qui m'a émerveillé, de ce qui m'a usé.
+
+Peut-être que c'est cela, finalement, la tournure de cet article. Je vois venir l'âge budgétaire de l'IA logicielle. Je vois les entreprises entrer dans une période de rattrapage méthodologique, de dépendance fournisseur, d'optimisation des crédits, de métriques, de gouvernance et de choix difficiles.
+
+Et moi, au même moment, je sors de la course.
+
+Un peu par rejet. Un peu par amertume, même si on ne m'a pas forcé là. Plutôt parce que j'ai eu ma part. J'ai vécu, en fin de carrière, une accélération extraordinaire. J'ai vu ce que l'IA pouvait faire à un développeur qui accepte de se remettre en question. J'ai vu mes propres lacunes devenir moins lourdes grâce à un partenaire de travail qui m'aidait à les compenser. J'ai aussi vu les limites de cette énergie quand elle doit entrer dans une organisation qui n'est pas prête au même moment.
+
+Le simple fait d'écrire ces lignes transforme ce récit d'expérience en sermon mais c'est une thérapie très engageantes et libératrice !
+
+Toute cette aventure, cette valse avec l'IA, je veux plutôt la reconnaître pour ce qu'elle est : un passage. Un moment de bascule personnel au milieu d'un moment de bascule industriel.
 
 ## Conclusion
 
-Je crois que nous entrons dans une période où la vitesse de développement logiciel dépendra de plus en plus de deux choses à la fois : la qualité méthodologique des équipes et leur capacité à financer, orchestrer ou remplacer les bonnes capacités IA au bon moment.
+L'IA va continuer à transformer le développement logiciel. Elle va forcer des retours aux fondamentaux. Elle va révéler des angles morts. Elle va déplacer de la valeur vers les fournisseurs de modèles et d'outillage. Elle va créer des écarts entre les entreprises. Elle va rendre la documentation, la méthode et le budget beaucoup plus concrets qu'avant.
 
-Cela va créer des écarts. Cela va créer de la dépendance. Cela va aussi créer de nouvelles occasions de rééquilibrage, notamment par l'open source, le local, l'hybride, les modèles spécialisés et la portabilité du contexte.
+Je pourrais terminer en disant ce que les organisations devraient faire. Mais ce n'est plus exactement ma place.
 
-Dans ce paysage, les entreprises qui s'en sortiront le mieux ne seront pas forcément celles qui auront accès au modèle le plus spectaculaire du moment. Ce seront celles qui sauront transformer l'intention en analyse, l'analyse en architecture, l'architecture en contrats, et les contrats en travail déléguable, vérifiable et économiquement soutenable.
+Ma place, maintenant, est plus simple. Regarder. Apprendre. Construire encore, mais pour le plaisir. Laisser mûrir les choses. Accepter que d'autres portent la suite de cette course, avec ses contraintes, ses budgets, ses arbitrages, ses luttes et ses découvertes.
 
-Le reste suivra peut-être. Mais probablement pas au même prix pour tout le monde.
+Je ne pars pas fâché contre l'IA. Au contraire. Je pars reconnaissant d'avoir vu arriver quelque chose d'aussi puissant avant de fermer la porte du bureau.
+
+Mais je la ferme quand même.
