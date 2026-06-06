@@ -94,6 +94,46 @@ const AUDIT_CHAIN_INCIDENT_ROOT_CAUSES = [
   'UNKNOWN',
 ] as const;
 
+function ReportBadge({
+  intact,
+  status,
+  intactLabel,
+  undeclaredGapsLabel,
+  violationLabel,
+}: {
+  intact?: boolean;
+  status?: string;
+  intactLabel: string;
+  undeclaredGapsLabel: string;
+  violationLabel: string;
+}) {
+  if (intact === true) {
+    return (
+      <Badge variant="success">
+        <CheckCircle className="size-3 mr-1" />
+        {intactLabel}
+      </Badge>
+    );
+  }
+  if (status === 'UNDECLARED_GAP_DETECTED') {
+    return (
+      <Badge variant="warning">
+        <AlertTriangle className="size-3 mr-1" />
+        {undeclaredGapsLabel}
+      </Badge>
+    );
+  }
+  if (intact === false) {
+    return (
+      <Badge variant="error">
+        <XCircle className="size-3 mr-1" />
+        {violationLabel}
+      </Badge>
+    );
+  }
+  return null;
+}
+
 function parseEventStatusFilter(value: string | null | undefined): AuditEventStatusFilter {
   if (value === 'SUCCESS' || value === 'FAILURE' || value === 'ERROR') {
     return value;
@@ -908,13 +948,6 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
 
-  function ReportBadge({ intact, status }: { intact?: boolean; status?: string }) {
-    if (intact === true) return <Badge variant="success"><CheckCircle className="size-3 mr-1" />{t('integrity.reportIntact')}</Badge>;
-    if (status === 'UNDECLARED_GAP_DETECTED') return <Badge variant="warning"><AlertTriangle className="size-3 mr-1" />{t('integrity.reportUndeclaredGaps')}</Badge>;
-    if (intact === false) return <Badge variant="error"><XCircle className="size-3 mr-1" />{t('integrity.reportViolation')}</Badge>;
-    return null;
-  }
-
   return (
     <div id="integrity-lifecycle-panel" className="border-2 border-fg/20 bg-main shadow-brutal scroll-mt-4">
       {/* Header — always visible */}
@@ -977,7 +1010,13 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
               <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.chainVerification')}</span>
-                  <ReportBadge intact={chainReport.intact} status={(chainReport as { status?: string }).status} />
+                  <ReportBadge
+                    intact={chainReport.intact}
+                    status={(chainReport as { status?: string }).status}
+                    intactLabel={t('integrity.reportIntact')}
+                    undeclaredGapsLabel={t('integrity.reportUndeclaredGaps')}
+                    violationLabel={t('integrity.reportViolation')}
+                  />
                 </div>
                 {chainReportRange && (
                   <p className="text-xs text-fg-muted">
@@ -1013,7 +1052,12 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
               <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.entryIntegrityReport')}</span>
-                  <ReportBadge intact={integrityReport.intact} />
+                  <ReportBadge
+                    intact={integrityReport.intact}
+                    intactLabel={t('integrity.reportIntact')}
+                    undeclaredGapsLabel={t('integrity.reportUndeclaredGaps')}
+                    violationLabel={t('integrity.reportViolation')}
+                  />
                 </div>
                 {integrityReportRange && (
                   <p className="text-xs text-fg-muted">

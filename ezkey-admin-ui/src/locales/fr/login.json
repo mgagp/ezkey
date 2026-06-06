@@ -49,6 +49,7 @@
   "recovery": {
     "useRecoveryLink": "Appareil perdu ? Utiliser un code de récupération",
     "intro": "Accès d'urgence : saisissez votre nom d'utilisateur et un code de récupération à usage unique. Cela lance un flux limité (réinitialisation de l'inscription MFA), pas une session console complète.",
+    "adminLoginDistinctionNote": "La validation d'enrôlement sur téléphone n'est pas équivalente à une connexion admin complétée. Les actions de sécurité admin deviennent disponibles uniquement après l'enregistrement d'une connexion admin réussie.",
     "recoveryCodeLabel": "Code de récupération",
     "recoveryCodePlaceholder": "XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX",
     "recoveryCodeHint": "32 chiffres en huit groupes. Vous pouvez coller uniquement les chiffres ; les tirets sont ajoutés automatiquement.",
@@ -89,6 +90,7 @@
   "activation": {
     "useActivationLink": "Vous avez un code d'activation ? Activez votre compte",
     "intro": "Configuration initiale : saisissez le code d'activation à usage unique reçu d'un administrateur. EZKey créera votre premier enrôlement d'appareil et retournera les éléments nécessaires pour terminer la liaison.",
+    "adminLoginDistinctionNote": "La liaison d'appareil valide la capacité d'enrôlement, mais n'enregistre pas à elle seule une connexion admin complétée.",
     "activationCodeLabel": "Code d'activation",
     "activationCodePlaceholder": "ezkey_activation_...",
     "submitActivate": "Activer et lier le premier appareil",

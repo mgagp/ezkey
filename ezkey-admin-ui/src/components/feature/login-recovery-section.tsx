@@ -38,6 +38,12 @@ interface LoginRecoverySectionProps {
   authApiPublicBaseUrl?: string | null;
 }
 
+type QrRenderState = {
+  key: string | null;
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  dataUrl: string | null;
+};
+
 export function LoginRecoverySection({
   onBackToPasswordless,
   initialUsername,
@@ -56,9 +62,32 @@ export function LoginRecoverySection({
   const [tokenCopied, setTokenCopied] = useState(false);
   const [enrollmentIdCopied, setEnrollmentIdCopied] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [qrLoading, setQrLoading] = useState(false);
-  const [qrError, setQrError] = useState(false);
+  const [qrState, setQrState] = useState<QrRenderState>({
+    key: null,
+    status: 'idle',
+    dataUrl: null,
+  });
+
+  const qrInput = useMemo(() => {
+    const proofToken = resetResult?.enrollmentProofToken;
+    if (proofToken == null) {
+      return null;
+    }
+
+    const enrollmentId = resetResult?.enrollmentId;
+    if (enrollmentId == null) {
+      return { invalid: true } as const;
+    }
+
+    const proof = String(proofToken);
+    const key = `${enrollmentId}:${proof}:${authApiPublicBaseUrl ?? ''}`;
+    return {
+      invalid: false,
+      key,
+      enrollmentId,
+      proof,
+    } as const;
+  }, [resetResult?.enrollmentId, resetResult?.enrollmentProofToken, authApiPublicBaseUrl]);
 
   const recoverySchema = useMemo(
     () =>
@@ -109,47 +138,55 @@ export function LoginRecoverySection({
   }, [step, session?.expiresAt, t]);
 
   useEffect(() => {
-    if (resetResult?.enrollmentProofToken == null) {
-      setQrDataUrl(null);
-      setQrLoading(false);
-      setQrError(false);
+    if (qrInput == null || qrInput.invalid) {
       return;
     }
-    const enrollmentId = resetResult.enrollmentId;
-    const proof = String(resetResult.enrollmentProofToken);
-    if (enrollmentId == null) {
-      setQrDataUrl(null);
-      setQrLoading(false);
-      setQrError(true);
+
+    if (qrState.key === qrInput.key) {
       return;
     }
+
     let cancelled = false;
-    setQrLoading(true);
-    setQrError(false);
+    setQrState({
+      key: qrInput.key,
+      status: 'loading',
+      dataUrl: null,
+    });
     void (async () => {
       try {
         const json = buildEnrollmentQrPayloadJson(
-          enrollmentId,
-          proof,
+          qrInput.enrollmentId,
+          qrInput.proof,
           authApiPublicBaseUrl,
         );
         const url = await enrollmentPayloadToQrDataUrl(json);
         if (!cancelled) {
-          setQrDataUrl(url);
-          setQrLoading(false);
+          setQrState({
+            key: qrInput.key,
+            status: 'ready',
+            dataUrl: url,
+          });
         }
       } catch {
         if (!cancelled) {
-          setQrDataUrl(null);
-          setQrError(true);
-          setQrLoading(false);
+          setQrState({
+            key: qrInput.key,
+            status: 'error',
+            dataUrl: null,
+          });
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [resetResult, authApiPublicBaseUrl]);
+  }, [authApiPublicBaseUrl, qrInput, qrState.key]);
+
+  const hasValidQrInput = qrInput != null && !qrInput.invalid;
+  const isCurrentQrResult = hasValidQrInput && qrState.key === qrInput.key;
+  const qrLoading = isCurrentQrResult && qrState.status === 'loading';
+  const qrError = (qrInput != null && qrInput.invalid) || (isCurrentQrResult && qrState.status === 'error');
+  const qrDataUrl = isCurrentQrResult && qrState.status === 'ready' ? qrState.dataUrl : null;
 
   const onRecover = async (values: RecoveryForm) => {
     setSubmitting(true);
@@ -266,6 +303,9 @@ export function LoginRecoverySection({
         <section className="space-y-3">
           <Alert variant="success" title={t('login:recovery.resetSuccessTitle')}>
             {t('login:recovery.resetSuccessBody')}
+          </Alert>
+          <Alert variant="info">
+            {t('login:recovery.adminLoginDistinctionNote')}
           </Alert>
           <p className="text-xs text-fg-muted leading-snug border-l-2 border-fg/25 pl-3 py-0.5">
             {t('login:recovery.previewNotice')}
@@ -404,6 +444,9 @@ export function LoginRecoverySection({
   return (
     <form onSubmit={handleSubmit(onRecover)} className="space-y-4" noValidate>
       <p className="text-sm text-fg-muted">{t('login:recovery.intro')}</p>
+      <p className="text-xs text-fg-muted leading-snug border-l-2 border-fg/25 pl-3 py-0.5">
+        {t('login:recovery.adminLoginDistinctionNote')}
+      </p>
       {errorMessage && (
         <Alert variant="error">{errorMessage}</Alert>
       )}

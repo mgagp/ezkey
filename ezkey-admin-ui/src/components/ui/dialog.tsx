@@ -66,6 +66,7 @@ export function Dialog({
           <h2 className="text-xs font-black uppercase tracking-widest text-fg min-w-0 flex-1 truncate">{title}</h2>
           {headerActions != null ? <div className="flex items-center gap-1 shrink-0">{headerActions}</div> : null}
           <button
+            type="button"
             onClick={onClose}
             className="p-1 hover:bg-fg/10 transition-colors"
             aria-label="Close dialog"

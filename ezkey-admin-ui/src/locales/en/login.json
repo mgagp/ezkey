@@ -49,6 +49,7 @@
   "recovery": {
     "useRecoveryLink": "Lost your device? Use a recovery code",
     "intro": "Emergency access: enter your username and one single-use recovery code. This starts a limited recovery flow (reset MFA enrollment), not a full console session.",
+    "adminLoginDistinctionNote": "Phone-level enrollment validation is not the same as a completed admin login. Admin-security actions become available only after a successful admin sign-in is recorded.",
     "recoveryCodeLabel": "Recovery code",
     "recoveryCodePlaceholder": "XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX",
     "recoveryCodeHint": "32 digits in eight groups. You may paste digits only; dashes are added automatically.",
@@ -89,6 +90,7 @@
   "activation": {
     "useActivationLink": "Have an activation code? Activate your account",
     "intro": "First-time setup: enter the one-time activation code you received from an administrator. EZKey will create your first device enrollment and return the binding material needed to complete setup.",
+    "adminLoginDistinctionNote": "Completing device binding validates enrollment capability, but it does not by itself record a completed admin login.",
     "activationCodeLabel": "Activation code",
     "activationCodePlaceholder": "ezkey_activation_...",
     "submitActivate": "Activate and bind first device",
