@@ -255,8 +255,15 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 
 ## Lightweight Hygiene Workflow (GitHub visibility without full methodology)
 
-For local code-hygiene passes (for example Admin UI React Doctor triage), default to lightweight
-GitHub visibility instead of creating full methodology artifacts.
+For local **code-hygiene** passes (dependency bumps with a known recipe, config alignment after a
+completed program, React Doctor triage, lint-polish), default to lightweight GitHub visibility
+instead of creating full methodology artifacts (`I-*`, `TB-*`, `TSP-*`, `ML-*`).
+
+**Challenge rule:** when the operator invites a "methodological closeout" or full traceability,
+classify **hygiene vs program** before materializing backlog artifacts. If hygiene, propose
+commit/PR + targeted docs and explain what would justify `I-*` / `TB-*` / `TSP-*`. See
+`product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md` and
+`product-docs/methodology/minimum-viable-method.md` (section *Hygiene vs program closeout*).
 
 - Keep scope small and local: high-signal fixes first, no broad refactor campaign.
 - Use issue + branch + iterative PR as the default visibility path.

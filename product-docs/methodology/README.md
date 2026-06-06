@@ -135,6 +135,11 @@ Apply [`methodological-values.md`](methodological-values.md) when judging the wo
 whether a gate is proportional, whether an artifact deserves to be living, whether a skill should
 exist, and whether a closeout is honest enough to resume later.
 
+For **closeout invitations** (operator asks to "close methodologically"), classify hygiene vs program
+before creating new backlog artifacts — see
+[`decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`](decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md)
+and [`minimum-viable-method.md`](minimum-viable-method.md#hygiene-vs-program-closeout).
+
 ## Source-project hooks
 
 This README stays method-first. When you are applying the methodology inside this repository's

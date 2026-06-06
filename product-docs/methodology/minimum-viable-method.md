@@ -43,6 +43,7 @@ or coordination needs justify it.
 | Situation | Minimum method weight | Typical next artifact |
 | --- | --- | --- |
 | Small local change with clear intent | Fix and validate directly; update docs only if behavior or usage changed | None, or a targeted doc edit |
+| Toolchain / dependency hygiene with a known recipe (e.g. applying a prior program's config fix) | Commit or PR + targeted module docs; challenge full methodological closeout | None; optional PR/issue labels |
 | New idea with unclear value or scope | Capture the intent and stop before implementation pressure | `I-*` |
 | Directional product question | Record the orientation before splitting into backlog work | `V-*` |
 | Execution-ready but non-trivial slice | Define the smallest end-to-end proof and evidence | `TB-*` |
@@ -99,6 +100,42 @@ If the change is non-trivial, choose only the representation that exposes the co
 - error posture problem: error and exception model.
 
 See [`analysis-and-design-canon.md`](analysis-and-design-canon.md) for the fuller chooser.
+
+## Hygiene vs program closeout
+
+Operators may invite a **methodological closeout** after work is done. That invitation is not, by
+itself, a signal to create canonical backlog artifacts.
+
+**Classify first.** State whether the slice is **hygiene** or **program**, then choose the lightest
+honest closeout.
+
+### Hygiene signals (prefer commit/PR + targeted docs)
+
+- single bounded change set (often one PR or commit);
+- applies a **known recipe** from an earlier program or decision;
+- no new contract between generated output and application consumers;
+- standard validation gates only (lint, test, build, routine device smoke);
+- no new uncertainty that would block a cold agent from resuming.
+
+**Closeout:** clear commit message, optional GitHub issue/PR, update `AGENTS.md` or module docs when
+the pin/policy should outlive the PR. Do **not** add `I-*` / `TB-*` / `TSP-*` / `ML-*` unless the
+operator explicitly confirms after your challenge.
+
+### Program signals (canonical artifacts justified)
+
+- multi-step ladder, unknown breakpoints, or repeated validation gates across PRs;
+- codegen or API contract changes consumed by application code;
+- new failure modes or config strategies that future work must rediscover;
+- cross-module coordination or explicit Lane A / B / C / D / E program intent.
+
+**Closeout:** use the appropriate artifact set (`I-*`, `TB-*`, `TSP-*`, `ML-*`, methodology
+decision) proportional to the program — not reflexively all of them.
+
+### Agent challenge (required on mismatch)
+
+If the operator requests full methodology artifacts and you classify **hygiene**, say so explicitly,
+propose the lighter path, and list what would justify escalation. See
+[`decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`](decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md).
 
 ## Stop rules
 

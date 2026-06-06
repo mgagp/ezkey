@@ -142,6 +142,10 @@ instead of creating a new artifact family.
 
 `Start a methodology feedback lane from this live discussion. Record the decision, preserve the key verbatim source signal, and update only the methodology files that must change.`
 
+### Close out completed work (hygiene check first)
+
+`Classify this closeout as hygiene or program before creating I/TB/TSP artifacts. If hygiene, use commit/PR and targeted docs only unless I confirm escalation.`
+
 ### Start from an enhancement or apparent bug in existing code
 
 `Start a post-delivery change inception. First classify whether this is a local technical defect or a corpus-level intent gap. If intent changed, re-enter at TB, I, or V; otherwise fix directly.`
