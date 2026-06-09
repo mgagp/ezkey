@@ -69,7 +69,7 @@
 		<spotbugs.version>4.7.3</spotbugs.version>
 		<checkstyle.version>3.6.0</checkstyle.version>
 		<pmd.version>3.28.0</pmd.version>
-		<jacoco.version>0.8.14</jacoco.version>
+		<jacoco.version>0.8.15</jacoco.version>
 		<zxing.version>3.5.4</zxing.version>
 		<spotless.version>3.5.1</spotless.version>
 		<bucket4j.version>8.19.0</bucket4j.version>
