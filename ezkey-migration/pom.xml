@@ -39,11 +39,6 @@
 					<groupId>org.springframework.security</groupId>
 					<artifactId>spring-security-web</artifactId>
 				</exclusion>
-				<!-- Exclude Web dependencies (not needed for CLI migration app) -->
-				<exclusion>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-web</artifactId>
-				</exclusion>
 			</exclusions>
 		</dependency>
 
