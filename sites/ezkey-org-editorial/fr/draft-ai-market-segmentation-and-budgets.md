@@ -6,7 +6,7 @@ status: published
 published_html_en: /the-ai-bill-and-my-step-aside.html
 published_html_fr: /fr/facture-ia-et-mon-pas-de-cote.html
 published_date: 2026-06-06
-html_amended_post_publish: false
+html_amended_post_publish: true
 source_of_truth: html
 ---
 
@@ -26,9 +26,9 @@ Je ne veux pas continuer à être la belle-mère du monde corporatif. Dire « vo
 
 Alors je vais prendre un détour. Peut-être même le vrai détour.
 
-J'ai 58 ans. Je prends ma retraite. Je quitte la course.
+Je prends ma retraite. Je quitte la course.
 
-Je ne quitte pas parce que l'IA ne m'intéresse plus. C'est presque l'inverse. Je quitte après avoir vécu, en fin de carrière, l'une des expériences intellectuelles les plus fascinantes de ma vie professionnelle. Mais je quitte aussi parce que cette expérience a rendu très visible quelque chose que je ne peux plus ignorer : je ne veux plus organiser ma vie autour de la performance, de la vélocité, de l'optimisation et de la production.
+Je ne quitte pas parce que l'IA ne m'intéresse plus. C'est plutôt l'inverse. Je quitte après avoir vécu, en fin de carrière, l'une des expériences intellectuelles les plus fascinantes de ma vie professionnelle. Mais je quitte aussi parce que cette expérience a rendu très visible quelque chose que je ne peux plus ignorer : je ne veux plus organiser ma vie autour de la performance, de la vélocité, de l'optimisation et de la production.
 
 ## La phase d'abondance m'a transporté
 
@@ -56,9 +56,9 @@ Avec les années, j'avais fini par accepter une évidence du métier : on ne peu
 
 Un ancien directeur m'avait déjà dit, avec un humour très juste : « Marc, tu as plein de bonnes idées. Si tu veux travailler encore quarante heures pour les implémenter, tu peux le faire ! » Il avait raison. Derrière chaque bonne idée, il y a du risque, du temps, des tests, des régressions possibles, des arbitrages. Même quand l'idée est bonne, elle n'est pas automatiquement prioritaire.
 
-À force de vivre ainsi, on finit par incorporer la contrainte. On apprend à censurer des pistes avant même de les formuler. On porte une petite tension de fond, comme une douleur musculaire tellement ancienne qu'on ne la remarque presque plus. On sait qu'il faudrait parfois réaligner, refactorer, documenter, extraire, mieux tester, introduire une file de messages, renforcer une séparation entre composants, revoir une architecture. Mais on sait aussi que la business attend autre chose, que la branche risque de rester ouverte trop longtemps, que l'énergie n'est pas infinie.
+À force de vivre ainsi, on finit par incorporer la contrainte. On apprend à censurer des pistes avant même de les formuler. On porte une petite tension de fond, comme une douleur musculaire tellement ancienne qu'on ne la remarque presque plus. On sait qu'il faudrait parfois réaligner, refactorer, documenter, extraire, mieux tester, introduire une file de messages, renforcer une séparation entre composants, revoir une architecture. Mais on sait aussi que la business attend autre chose, que la branche risque de rester ouverte trop longtemps, que l'énergie n'est pas infinie. Alors fini pour moi les features qui moisissent sur des branches pendant des années.
 
-L'IA a rendu cette tension visible. Dans un projet personnel comme Ezkey, avec un contexte bien tenu, des tests solides et une liberté totale, j'ai retrouvé quelque chose que j'avais presque oublié : le logiciel est malléable. Pas gratuitement. Pas magiquement. Construire la mauvaise chose coûte toujours cher. Un système peut devenir spaghetti, fragile, conceptuellement désaligné. Mais lorsque le contexte est explicite et que les validations existent, la possibilité de reprendre, réaligner, restructurer et améliorer redevient beaucoup plus concrète.
+L'IA a rendu cette tension visible. Dans un projet personnel comme Ezkey, avec un contexte bien tenu, des tests solides et une liberté totale, j'ai retrouvé quelque chose que j'avais pratiquement oublié : le logiciel est malléable. Pas gratuitement. Pas magiquement. Construire la mauvaise chose coûte toujours cher. Un système peut devenir spaghetti, fragile, conceptuellement désaligné. Mais lorsque le contexte est explicite et que les validations existent, la possibilité de reprendre, réaligner, restructurer et améliorer redevient beaucoup plus concrète.
 
 Ce moment a été une grâce. Avant que la budgétisation ne vienne remettre des compteurs partout, j'ai eu accès à une fenêtre où l'immensité du possible apparaissait de nouveau. Non pas comme une promesse commerciale, mais comme une sensation de praticien : je pouvais enfin essayer de faire les choses comme je pensais qu'elles auraient souvent dû être faites.
 
@@ -80,7 +80,7 @@ Le projet est rapidement revenu vers une dynamique plus classique. Des idées, d
 
 Je raconte cela avec prudence, parce que je sais aussi que j'ai commis des erreurs. J'ai fait certains choix qui n'étaient pas bons. Par exemple, j'ai poussé une piste de stack front-end qui ne s'est pas révélée appropriée. J'ai perdu de la crédibilité là-dessus, et je dois l'assumer.
 
-Mais sur le fond méthodologique, je savais que quelque chose d'important était en jeu. Je voyais la distance entre ce que j'avais vécu dans Ezkey et ce que j'arrivais à faire vivre dans un contexte d'équipe. Cette distance m'a profondément déstabilisé.
+Mais sur le fond méthodologique, je savais que quelque chose d'important était en jeu. Je voyais la distance entre ce que j'avais vécu dans Ezkey et ce que j'arrivais à faire vivre dans un contexte d'équipe. Cette distance m'a profondément déstabilisé et provoqué une remise en question profonde.
 
 ## Le moment où je n'ai plus voulu recommencer
 
@@ -108,15 +108,51 @@ Je crois encore que nous entrons dans une période où l'IA va segmenter forteme
 
 Je crois aussi que la question budgétaire arrive vite. Le passage de GitHub Copilot vers une logique de crédits IA et de facturation par usage au début juin 2026 n'est qu'un signal parmi d'autres, mais il montre quelque chose : la période où l'IA semblait être une abondance presque naturelle est en train de céder la place à une réalité plus comptable.
 
+Quelques jours plus tard, un autre signal est venu s'ajouter : Fable 5 est apparu, puis l'accès au modèle a été suspendu presque aussitôt à la suite d'une directive gouvernementale américaine. Je ne veux pas construire toute une thèse sur un événement encore chaud, mais le symbole est fort. Une capacité peut disparaître non seulement pour des raisons de prix, de charge ou de stratégie commerciale, mais aussi pour des raisons réglementaires, politiques ou géostratégiques.
+
+Pour une entreprise qui commencerait à organiser sa vélocité autour d'un modèle frontière précis, c'est un rappel brutal : la dépendance n'est pas seulement économique. Elle est aussi institutionnelle. Cela renforcera probablement, à long terme, la pression en faveur de modèles ouverts, de modèles moins coûteux, de solutions mieux adaptées à du matériel plus modeste, et d'une diversité de fournisseurs capable d'équilibrer le marché.
+
 Les entreprises devront probablement apprendre à mesurer, arbitrer, optimiser. Quel modèle pour quelle tâche ? Quel budget pour quel résultat ? Quelle part de la vélocité vient du talent interne, et quelle part vient d'une capacité facturée par quelques grands fournisseurs ? Combien coûte une boucle mal cadrée ? Combien vaut une bonne spécification ? Où faut-il payer pour un modèle plus fort, et où faut-il plutôt améliorer la méthode ?
 
 Tout cela est réel. Tout cela est important. Tout cela va occuper beaucoup de monde.
 
 Mais je ne peux plus écrire comme si j'étais encore au centre de cette bataille.
 
+## Le contexte devient le produit
+
+Depuis mon camping, au fond du bois, je vois aussi un autre vocabulaire se préciser. On parle de moins en moins seulement de prompt, et de plus en plus de contexte, de harness, de contexte produit. Le modèle reste important, bien sûr. Mais l'amélioration ne viendra pas seulement du prochain modèle, comme si l'on ne faisait qu'augmenter la fréquence d'un CPU. Elle viendra aussi de tout ce qui entoure le modèle : la mémoire, les outils, les validations, les boucles de rétroaction, la sélection du bon contexte au bon moment.
+
+L'analogie matérielle me parle. Le modèle, c'est une forme de processeur. Le harness, c'est le reste de la machine : l'OS, la carte mère, les bus, les périphériques, les règles d'exécution, les mécanismes qui permettent au processeur de faire un travail fiable au lieu de tourner dans le vide. Le contexte engineering est alors une partie essentielle de cette architecture : décider ce que le modèle doit voir, ce qu'il doit oublier, ce qu'il doit retrouver, ce qui doit rester stable.
+
+Et là, un terme me semble particulièrement révélateur : product context engineering. En français, je dirais volontiers gestion du contexte produit. C'est proche de ce que j'appelais jusqu'ici l'intention. Pas exactement le même mot, pas nécessairement le même cadrage, mais la même direction : faire remonter le discours au-dessus de la tâche, au-dessus du prompt, au-dessus même de l'analyse ponctuelle, pour donner au modèle une vision produit, une boussole, des valeurs, des contraintes de marché, une compréhension de ce que l'on essaie vraiment de construire.
+
+C'est aussi pour cela que le vieux prompt de rôle me semble perdre de l'importance. Dire « tu es un expert React » a pu aider à une époque. Mais les modèles récents comprennent mieux les nuances du texte libre. Ils gagnent davantage quand on prend la peine d'expliquer en toutes lettres ce que l'on veut accomplir, pourquoi cela compte, quel genre de produit on cherche à faire vivre, quelles valeurs doivent guider les arbitrages. Encore une fois, tout pointe vers une élévation du discours.
+
+## Les blocs et les builders
+
+Cette élévation ne veut pas dire que l'ingénierie logicielle disparaît. Au contraire. Il y aura toujours des gens qui construisent les blocs de base. Comme des briques LEGO, ces blocs doivent avoir des caractéristiques précises : résistance, stabilité, performance, sécurité, compatibilité, comportement prévisible sous certaines contraintes. Les bibliothèques, les runtimes, les systèmes critiques, les couches d'infrastructure continueront d'exiger de l'ingénierie profonde, avec ou sans IA.
+
+Mais une grande partie du développement applicatif va probablement se déplacer vers un autre rôle : celui du builder. Le builder ne se contente pas d'empiler du code. Il choisit les bons blocs, comprend leurs propriétés, formule l'intention, construit le contexte produit, établit la vision, nomme les contraintes de marché, puis travaille avec l'IA pour assembler quelque chose qui répond à un problème réel.
+
+Cette distinction me semble importante parce qu'elle réduit un faux débat. On ne cesse pas d'être ingénieur logiciel. On ne devient pas simplement un rédacteur de prompts. On devient, selon les contextes, tantôt concepteur de blocs, tantôt constructeur d'applications, tantôt gardien de contexte produit. Et c'est probablement cette combinaison qui redéfinira une partie du métier.
+
+## Le code comme artefact intermédiaire
+
+Il y a un autre déplacement, plus discret, qui me semble tout aussi important : le rapport au code généré lui-même.
+
+Une analogie me revient souvent. Quand les compilateurs génèrent du code assembleur, il est toujours possible de regarder ce qui a été produit. Pendant un temps, certains l'ont fait. Puis, dans la majorité des cas, on a cessé de le faire systématiquement. Non pas parce que l'assembleur n'avait plus d'importance, mais parce que la confiance s'est déplacée. Ce qui compte, c'est que le programme manifeste le bon comportement, respecte les contraintes attendues, produise les résultats mesurables, et que le compilateur soit suffisamment fiable pour que l'on n'ait pas à inspecter chaque instruction.
+
+Je ne veux pas pousser l'analogie trop loin. Le code généré par l'IA reste du code source, donc un artefact humainement maintenable, révisable et responsable. Mais la cadence change le problème. Si du code est produit non plus en jours, mais en minutes ou en secondes, on ne peut pas raisonnablement imaginer que des humains liront systématiquement chaque ligne avec le même niveau d'attention qu'avant. La revue de code ne disparaît pas, mais elle doit changer de nature.
+
+Le jeu s'élève donc aux deux extrémités. En amont, il faut mieux formuler l'intention, le contexte produit, les contraintes, les valeurs, les invariants. En aval, il faut mieux valider les comportements. Les tests ne sont plus seulement une bonne pratique de qualité. Ils deviennent l'interface de confiance entre l'intention humaine et la production accélérée par l'IA.
+
+C'est là que le behavior-driven development, sous une forme ou une autre, reprend beaucoup de valeur. Décrire les comportements attendus, les scénarios, les limites, les contrats, les effets observables. Et autour de cela, conserver la discipline test-driven quand elle aide : tests unitaires, tests d'intégration, tests de non-régression, validations automatisées, garde-fous déterministes. On ne relira pas toujours tout le code comme on relirait chaque instruction assembleur. Il faudra plutôt prouver que le système fait ce qu'il doit faire, dans les conditions qui comptent.
+
+Le builder ne sera donc pas seulement celui qui exprime une vision produit. Il sera aussi celui qui sait transformer cette vision en critères de validation. C'est peut-être là que se fera une partie de la nouvelle maturité : moins regarder chaque ligne comme si elle était écrite à la main, et davantage construire les conditions qui rendent la production de code fiable, mesurable et corrigeable.
+
 ## Le mirage du x10
 
-Il y a une autre prudence que je veux garder. On entend souvent que l'IA permettra à un développeur de produire cinq fois, dix fois, vingt fois plus. Peut-être, dans certains contextes, sur certains types de tâches. Mais je ne crois pas que ce multiplicateur se traduira simplement par une profession devenue soudainement dix fois plus disponible pour la qualité, les outils internes, l'observabilité, la documentation et l'hygiène parfaite.
+Cette idée rejoint une autre prudence que je veux garder. On entend souvent que l'IA permettra à un développeur de produire cinq fois, dix fois, vingt fois plus. Peut-être, dans certains contextes, sur certains types de tâches. Mais je ne crois pas que ce multiplicateur se traduira simplement par une profession devenue soudainement dix fois plus disponible pour la qualité, les outils internes, l'observabilité, la documentation et l'hygiène parfaite.
 
 Une partie de cette capacité excédentaire pourrait aller vers des choses longtemps repoussées : meilleurs outils internes, workflows plus propres, dette réduite, dépendances mieux suivies, code mort éliminé, tests renforcés. Ce serait souhaitable. Mais croire que toute l'industrie va durablement fonctionner en mode qualité maximale, esprit critique maximal, production maximale et rigueur maximale me semble aussi naïf que les anciennes promesses de société des loisirs.
 
@@ -148,13 +184,17 @@ Et moi, au même moment, je sors de la course.
 
 Un peu par rejet. Un peu par amertume, même si on ne m'a pas forcé là. Plutôt parce que j'ai eu ma part. J'ai vécu, en fin de carrière, une accélération extraordinaire. J'ai vu ce que l'IA pouvait faire à un développeur qui accepte de se remettre en question. J'ai vu mes propres lacunes devenir moins lourdes grâce à un partenaire de travail qui m'aidait à les compenser. J'ai aussi vu les limites de cette énergie quand elle doit entrer dans une organisation qui n'est pas prête au même moment.
 
-Le simple fait d'écrire ces lignes transforme ce récit d'expérience en sermon mais c'est une thérapie très engageantes et libératrice !
+Le simple fait d'écrire ces lignes transforme ce récit d'expérience en sermon, mais c'est aussi une thérapie engageante et libératrice.
 
 Toute cette aventure, cette valse avec l'IA, je veux plutôt la reconnaître pour ce qu'elle est : un passage. Un moment de bascule personnel au milieu d'un moment de bascule industriel.
 
 ## Conclusion
 
-L'IA va continuer à transformer le développement logiciel. Elle va forcer des retours aux fondamentaux. Elle va révéler des angles morts. Elle va déplacer de la valeur vers les fournisseurs de modèles et d'outillage. Elle va créer des écarts entre les entreprises. Elle va rendre la documentation, la méthode et le budget beaucoup plus concrets qu'avant.
+L'IA va continuer à transformer le développement logiciel. Elle va forcer des retours aux fondamentaux. Elle va révéler des angles morts. Elle va déplacer de la valeur vers les fournisseurs de modèles et d'outillage. Elle va créer des écarts entre les entreprises.
+
+Mais le cœur de cette transformation me paraît maintenant plus clair. En amont, il faudra mieux formuler l'intention, le contexte produit, la boussole, les contraintes et les valeurs. En aval, il faudra mieux valider les comportements, les contrats, les invariants et les effets observables. Entre les deux, le code généré circulera à une vitesse que la revue humaine classique ne pourra pas toujours suivre ligne par ligne.
+
+La documentation, la méthode, les tests et le budget deviendront donc beaucoup plus concrets qu'avant. Pas comme une bureaucratie de plus, mais comme les points d'appui qui permettront à l'IA de produire quelque chose de fiable sans transformer chaque développeur en surveillant épuisé de chaque ligne générée.
 
 Je pourrais terminer en disant ce que les organisations devraient faire. Mais ce n'est plus exactement ma place.
 
