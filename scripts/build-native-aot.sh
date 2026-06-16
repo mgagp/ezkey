@@ -20,7 +20,7 @@
 #   ./scripts/build-native-aot.sh [options]
 #
 # Options:
-#   --skip-tests          Skip tests during build
+#   --skip-tests          Skip tests and AOT test processing (uses maven.test.skip)
 #   --skip-aot            Skip AOT processing (only compile)
 #   --verbose             Show detailed Maven output
 #   --help                Show this help message
@@ -40,7 +40,7 @@ DEBUG_CLASSPATH=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --skip-tests)
-            SKIP_TESTS="-DskipTests"
+            SKIP_TESTS="-Dmaven.test.skip=true"
             shift
             ;;
         --skip-aot)
@@ -213,6 +213,6 @@ echo ""
 echo "=== Build Complete ==="
 echo ""
 echo "Next steps:"
-echo "  - To build native image: mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false"
+echo "  - To build native image: mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true -Dspring-boot.build-image.skip=false"
 echo "  - To run tests: mvn -pl ezkey-auth-api test"
 echo ""

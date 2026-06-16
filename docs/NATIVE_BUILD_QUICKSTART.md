@@ -28,12 +28,12 @@ See `docs/NATIVE_COMPILATION_STRATEGY.md` for detailed strategy and rationale.
 ./scripts/build-native-aot.sh --skip-tests
 
 # Step 2: Native Image Compilation
-mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true -Dspring-boot.build-image.skip=false
 ```
 
 **Rebuild Native Image Only** (if AOT already exists):
 ```bash
-mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true -Dspring-boot.build-image.skip=false
 ```
 
 **Expected Results**:
@@ -46,7 +46,7 @@ mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boo
 ```bash
 mvn -pl ezkey-integration-api -Pnative spring-boot:build-image \
     -Dspring-boot.build-image.imageName=ezkey-integration-api-native \
-    -DskipTests
+    -Dmaven.test.skip=true
 ```
 
 Use this only as historical context for the April 2026 spike. The image build works, but the
@@ -142,7 +142,7 @@ docker run -p 7080:7080 \
 
 ### Integration API build command
 - **Purpose**: Build the experimental integration-api native image used during the April 2026 spike
-- **Usage**: `mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -DskipTests`
+- **Usage**: `mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -Dmaven.test.skip=true`
 - **Output**: Native image `ezkey-integration-api-native:latest`
 
 ### Debugging Scripts

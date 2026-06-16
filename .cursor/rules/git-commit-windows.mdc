@@ -1,0 +1,45 @@
+---
+description: Git commit from Cursor agents on Windows — avoid PowerShell + attribution trailer failures
+alwaysApply: true
+---
+
+# Git commit — Windows agent shell (this workstation)
+
+Cursor's agent **Shell** tool on Windows often runs **PowerShell**, not Git Bash. Two separate
+failure modes show up when agents run `git commit` directly.
+
+## Failure 1 — Cursor injects a commit trailer
+
+The harness may rewrite agent `git commit` invocations to append:
+
+`--trailer "Co-authored-by: Cursor <cursoragent@cursor.com>"`
+
+PowerShell treats `<` as redirection, so the command **fails before Git runs** (parser error).
+
+**Maintainer fix (recommended):** Cursor Settings → **Agents → Attribution** → turn **Commit
+Attribution** off. Restart Cursor. Optionally set in `%USERPROFILE%\.cursor\cli-config.json`:
+
+```json
+"attribution": {
+  "attributeCommitsToAgent": false,
+  "attributePRsToAgent": false
+}
+```
+
+## Failure 2 — Bash-only commit message syntax
+
+User/commit rules may prescribe HEREDOC (`git commit -m "$(cat <<'EOF' …)"`). That is **Git Bash
+only**; PowerShell cannot run it. Same for `&&` chains in some PowerShell versions.
+
+## Agent procedure when the user asks for a commit
+
+1. **Stage** with plain `git add` (works from PowerShell or Bash).
+2. **Commit** via **Git Bash**, not bare PowerShell `git commit`:
+   - Preferred: `"C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-commit.sh -m "subject line"'`
+   - Multi-line body: write message to a temp file, then
+     `./scripts/git-commit.sh -F path/to/msgfile`
+3. Do **not** retry the same failing PowerShell `git commit` more than once — switch to Bash or
+   `scripts/git-commit.sh` immediately.
+4. `git push` is usually fine from PowerShell; if a command fails on `<` in arguments, use Git Bash.
+
+See root `AGENTS.md` § *Git commit on Windows (agent shell)* for context and maintainer setup.

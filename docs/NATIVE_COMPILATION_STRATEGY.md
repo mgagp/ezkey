@@ -39,7 +39,7 @@ historical rationale, not as the current operational recommendation.
 ./scripts/build-native-aot.sh --skip-tests
 
 # Step 2: Native Image Compilation
-mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true -Dspring-boot.build-image.skip=false
 ```
 
 **Configuration**:
@@ -60,7 +60,7 @@ runtime Docker path remains blocked.
 **Build Process**:
 ```bash
 # Experimental integration-api native build
-mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -DskipTests
+mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -Dmaven.test.skip=true
 ```
 
 **Conclusion**: Integration was the last bounded candidate because its surface is conceptually
@@ -89,7 +89,7 @@ simpler, but the current stack still does not provide a viable native runtime pa
 ```bash
 # Complete build process (AOT + Native Image)
 ./scripts/build-native-aot.sh --skip-tests
-mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true -Dspring-boot.build-image.skip=false
 ```
 
 **When to use**:
@@ -102,7 +102,7 @@ mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boo
 
 ```bash
 # Experimental native build
-mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -DskipTests
+mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -Dmaven.test.skip=true
 ```
 
 **When to use**:

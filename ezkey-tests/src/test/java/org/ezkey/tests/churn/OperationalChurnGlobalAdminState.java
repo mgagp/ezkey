@@ -9,11 +9,11 @@
 
 package org.ezkey.tests.churn;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Persisted credentials for the operational-churn peer Global Admin (not the bootstrap admin).
@@ -47,7 +47,7 @@ public record OperationalChurnGlobalAdminState(String username, String bearerTok
         return null;
       }
       return new OperationalChurnGlobalAdminState(u, t);
-    } catch (IOException e) {
+    } catch (Exception e) {
       return null;
     }
   }

@@ -60,8 +60,8 @@ if [ -n "$NATIVE_MODE" ]; then
     echo "🔧 Native mode: Using docker-compose.native.yml"
     echo "   Note: Native images must be built separately before using this mode"
     echo "   Build commands:"
-    echo "     mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
-    echo "     mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests"
+    echo "     mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -Dmaven.test.skip=true"
+    echo "     mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -Dmaven.test.skip=true"
     echo ""
 else
     BASE_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"

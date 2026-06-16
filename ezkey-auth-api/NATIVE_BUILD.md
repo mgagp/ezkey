@@ -81,7 +81,7 @@ The JSON configuration files (`reflect-config.json`, `serialization-config.json`
 ./scripts/build-native-aot.sh --skip-tests
 
 # Step 2: Native Image Compilation (creates native binary)
-mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true -Dspring-boot.build-image.skip=false
 ```
 
 **Why Two Steps?**
@@ -93,7 +93,7 @@ mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boo
 If AOT is already generated and you only need to rebuild the native image:
 ```bash
 # Skip AOT, just rebuild native image
-mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true -Dspring-boot.build-image.skip=false
 ```
 
 ### Individual Commands (For Debugging)
@@ -105,7 +105,7 @@ mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boo
 
 **Native Image Only** (requires AOT to be already generated):
 ```bash
-mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true
 ```
 
 **Direct Native Compilation (Requires GraalVM)**:
@@ -152,7 +152,7 @@ The native image is optimized for AWS Lambda with:
 ./scripts/build-native-aot.sh --skip-tests
 mvn -pl ezkey-auth-api -Pnative spring-boot:build-image \
     -Dspring-boot.build-image.imageName=ezkey-auth-api-native \
-    -DskipTests \
+    -Dmaven.test.skip=true \
     -Dspring-boot.build-image.skip=false
 ```
 
@@ -294,7 +294,7 @@ The ezkey-auth-api native build implementation is **partially complete**. The co
 ./scripts/build-native-aot.sh --skip-tests
 
 # Native Image Build (currently blocked by SqlAstTreeLogger issue)
-mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true -Dspring-boot.build-image.skip=false
 
 # Run Native Container (when issue is resolved)
 docker run -p 8080:8080 -e SPRING_PROFILES_ACTIVE=native -d ezkey-auth-api-native

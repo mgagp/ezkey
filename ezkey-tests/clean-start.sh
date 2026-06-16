@@ -395,8 +395,8 @@ if [ -n "$NATIVE_MODE" ]; then
     echo "  - Faster startup time (~2-3 seconds vs ~15-20 seconds)"
     echo "  - Lower memory usage (~50-100MB vs ~200-300MB)"
     echo "  - To rebuild native images:"
-    echo "    mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
-    echo "    mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests"
+    echo "    mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -Dmaven.test.skip=true"
+    echo "    mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -Dmaven.test.skip=true"
     echo ""
 fi
 echo "💡 Useful Commands:"
