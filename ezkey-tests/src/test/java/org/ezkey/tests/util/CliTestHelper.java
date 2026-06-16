@@ -12,7 +12,6 @@
 
 package org.ezkey.tests.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -26,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import org.ezkey.tests.config.DockerStackConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Helper for executing Ezkey CLI commands inside the CLI Docker container.

@@ -11,6 +11,10 @@
 package org.ezkey.tests.util;
 
 import io.restassured.RestAssured;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.mapper.ObjectMapperType;
+import io.restassured.path.json.JsonPath;
 import org.ezkey.tests.config.DockerStackConfig;
 
 /**
@@ -19,6 +23,10 @@ import org.ezkey.tests.config.DockerStackConfig;
  * <p>Provides methods to configure RestAssured with appropriate timeouts, content types, and base
  * URLs for testing against the Docker stack.
  *
+ * <p>Jackson 3 is configured explicitly for REST Assured request/response mapping. JsonPath {@code
+ * getObject(..., Class)} still expects Jackson 2 in Rest Assured 6.0.0; use {@link
+ * #readNumber(JsonPath, String...)} or {@code jsonPath.get(path)} instead.
+ *
  * @since 2025
  */
 public class RestAssuredTestConfig {
@@ -26,13 +34,46 @@ public class RestAssuredTestConfig {
   /**
    * Configures RestAssured with default settings for API testing.
    *
-   * <p>Sets appropriate logging for REST API calls. RestAssured 6.0.0+ automatically detects and
-   * uses Jackson 3.x (tools.jackson) when available.
+   * <p>Sets appropriate logging for REST API calls and pins Jackson 3 as the object mapper for Rest
+   * Assured serialization.
    */
   public static void configureDefaults() {
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-    // RestAssured 6.0.0+ automatically detects Jackson 3.x (tools.jackson)
-    // No explicit configuration needed
+    RestAssured.config =
+        RestAssuredConfig.config()
+            .objectMapperConfig(
+                ObjectMapperConfig.objectMapperConfig()
+                    .defaultObjectMapperType(ObjectMapperType.JACKSON_3));
+  }
+
+  /**
+   * Reads the first non-null numeric value from JsonPath without {@code getObject}
+   * (Jackson-2-only).
+   *
+   * @param jsonPath response JsonPath
+   * @param paths candidate paths in priority order
+   * @return first numeric value found, or null
+   */
+  public static Number readNumber(JsonPath jsonPath, String... paths) {
+    for (String path : paths) {
+      Object value = jsonPath.get(path);
+      if (value instanceof Number number) {
+        return number;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Reads the first non-null integer value from JsonPath without {@code getObject}.
+   *
+   * @param jsonPath response JsonPath
+   * @param paths candidate paths in priority order
+   * @return first integer value found, or null
+   */
+  public static Integer readInteger(JsonPath jsonPath, String... paths) {
+    Number number = readNumber(jsonPath, paths);
+    return number == null ? null : number.intValue();
   }
 
   /**

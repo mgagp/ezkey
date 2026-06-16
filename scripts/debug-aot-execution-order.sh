@@ -165,7 +165,7 @@ echo "Step 9: Attempting AOT processing..."
 echo "  This will show the actual error if classes are missing..."
 echo ""
 
-if mvn -pl ezkey-auth-api -Pnative spring-boot:process-aot -DskipTests $MAVEN_QUIET 2>&1 | tee /tmp/aot-output.txt; then
+if mvn -pl ezkey-auth-api -Pnative spring-boot:process-aot -Dmaven.test.skip=true $MAVEN_QUIET 2>&1 | tee /tmp/aot-output.txt; then
     echo ""
     echo "✅ AOT processing succeeded!"
 else

@@ -1,5 +1,5 @@
 
-Lists of 229 third-party dependencies.
+Lists of 228 third-party dependencies.
      (EPL-2.0) (LGPL-2.1-only) Logback Classic Module (ch.qos.logback:logback-classic:1.5.34 - http://logback.qos.ch/logback-classic)
      (EPL-2.0) (LGPL-2.1-only) Logback Core Module (ch.qos.logback:logback-core:1.5.34 - http://logback.qos.ch/logback-core)
      (The Apache Software License, Version 2.0) bucket4j_jdk17-core (com.bucket4j:bucket4j_jdk17-core:8.19.0 - http://github.com/bucket4j/bucket4j/bucket4j_jdk17-core)
@@ -155,7 +155,6 @@ Lists of 229 third-party dependencies.
      (The Apache Software License, Version 2.0) spring-boot-data-commons (org.springframework.boot:spring-boot-data-commons:4.1.0 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-data-jpa (org.springframework.boot:spring-boot-data-jpa:4.1.0 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-data-jpa-test (org.springframework.boot:spring-boot-data-jpa-test:4.1.0 - https://spring.io/projects/spring-boot)
-     (The Apache Software License, Version 2.0) spring-boot-devtools (org.springframework.boot:spring-boot-devtools:4.1.0 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-flyway (org.springframework.boot:spring-boot-flyway:4.1.0 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-health (org.springframework.boot:spring-boot-health:4.1.0 - https://spring.io/projects/spring-boot)
      (The Apache Software License, Version 2.0) spring-boot-hibernate (org.springframework.boot:spring-boot-hibernate:4.1.0 - https://spring.io/projects/spring-boot)

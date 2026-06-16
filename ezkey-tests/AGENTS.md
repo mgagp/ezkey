@@ -2,6 +2,27 @@
 
 This file is UTF-8 without BOM.
 
+## Module dependencies (standalone HTTP client)
+
+`ezkey-tests` is **not** a Spring Boot application. Tests hit live APIs over HTTP (RestAssured)
+against the Docker stack; they do not load admin-api or auth-api Spring contexts.
+
+| Dependency | Role |
+|------------|------|
+| `junit-jupiter` | Test execution |
+| `rest-assured` (+ json-path, xml-path) | HTTP client and response assertions |
+| `assertj-core` | Fluent assertions |
+| `tools.jackson.core:jackson-databind` | Helper JSON I/O only (`.ezkey-test/` cache files, bootstrap) |
+| `logback-classic` | Test-scoped logging for helpers |
+
+Rest Assured 6 pins Jackson 3 for request/response mapping via {@code RestAssuredTestConfig}.
+Avoid {@code jsonPath().getObject(..., Class)} — that path still expects Jackson 2 in Rest Assured
+6.0.0; use {@code jsonPath().get(...)} or {@link org.ezkey.tests.util.RestAssuredTestConfig#readNumber}.
+
+Do **not** add `spring-boot-starter-test` or API module dependencies — that would pull Spring/Mockito
+and couple tests to internal DTOs. Most test classes use RestAssured `jsonPath()` / `Map` bodies and
+never touch `ObjectMapper` directly.
+
 ## 🎯 Multi-Tenant Critical Rules
 
 **⚠️ CRITICAL: Read [reference/MULTI_TENANT.md](reference/MULTI_TENANT.md) for complete context**

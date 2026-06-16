@@ -61,8 +61,8 @@ This file is now a historical status snapshot. The canonical reference is
 ./scripts/build-native-aot.sh --skip-tests
 
 # Native image builds (work, but runtime remains blocked)
-mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -DskipTests -Dspring-boot.build-image.skip=false
-mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -DskipTests
+mvn -pl ezkey-auth-api -Pnative spring-boot:build-image -Dmaven.test.skip=true -Dspring-boot.build-image.skip=false
+mvn -pl ezkey-integration-api -Pnative spring-boot:build-image -Dmaven.test.skip=true
 ```
 
 ## Related Documentation

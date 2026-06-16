@@ -51,7 +51,7 @@ test_aot_processing() {
     
     echo "Testing AOT processing..."
     cd ezkey-auth-api
-    mvn spring-boot:process-aot -Pnative -q
+    mvn spring-boot:process-aot -Pnative -Dmaven.test.skip=true -q
     
     if [ -f "target/spring-aot/main/sources/org/ezkey/auth/AuthApplication__ApplicationContextInitializer.java" ]; then
         echo "✅ AOT processing successful - ApplicationContextInitializer generated"
@@ -74,7 +74,7 @@ test_native_compilation() {
         echo "Attempting native compilation..."
         
         # Temporarily enable native compilation
-        mvn clean package -Pnative -DskipTests -Dnative.skip=false || {
+        mvn clean package -Pnative -Dmaven.test.skip=true -Dnative.skip=false || {
             echo "⚠️  Native compilation failed (expected if not using GraalVM JDK)"
             echo "   This is normal in environments without GraalVM"
             return 0
@@ -99,12 +99,12 @@ test_buildpack_build() {
     cd "$PROJECT_DIR/ezkey-auth-api"
     
     echo "Building application package..."
-    mvn clean package -Pnative -DskipTests -q
+    mvn clean package -Pnative -Dmaven.test.skip=true -q
     
     echo "Attempting buildpack native image build..."
     echo "Note: This may fail in environments with network restrictions"
     
-    if mvn spring-boot:build-image -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native-test -DskipTests; then
+    if mvn spring-boot:build-image -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native-test -Dmaven.test.skip=true; then
         echo "✅ Buildpack native image build successful"
         
         echo "Testing native image startup..."

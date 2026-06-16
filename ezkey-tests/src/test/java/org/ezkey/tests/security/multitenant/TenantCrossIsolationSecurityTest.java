@@ -22,6 +22,7 @@ import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
 import org.ezkey.tests.util.DatabaseHelper;
+import org.ezkey.tests.util.RestAssuredTestConfig;
 import org.ezkey.tests.util.TenantAdminTestHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -596,28 +597,17 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
     assertThat(integrations).isNotNull();
 
     // Validate Page<T> metadata (Spring Data pagination contract).
-    Integer pageNumber = response.jsonPath().getObject("number", Integer.class);
-    if (pageNumber == null) {
-      pageNumber = response.jsonPath().getObject("pageable.pageNumber", Integer.class);
-    }
-    if (pageNumber == null) {
-      pageNumber = response.jsonPath().getObject("page.number", Integer.class);
-    }
-    Integer pageSize = response.jsonPath().getObject("size", Integer.class);
-    if (pageSize == null) {
-      pageSize = response.jsonPath().getObject("pageable.pageSize", Integer.class);
-    }
-    if (pageSize == null) {
-      pageSize = response.jsonPath().getObject("page.size", Integer.class);
-    }
-    Number totalElements = response.jsonPath().getObject("totalElements", Number.class);
-    if (totalElements == null) {
-      totalElements = response.jsonPath().getObject("page.totalElements", Number.class);
-    }
-    Number totalPages = response.jsonPath().getObject("totalPages", Number.class);
-    if (totalPages == null) {
-      totalPages = response.jsonPath().getObject("page.totalPages", Number.class);
-    }
+    Integer pageNumber =
+        RestAssuredTestConfig.readInteger(
+            response.jsonPath(), "number", "pageable.pageNumber", "page.number");
+    Integer pageSize =
+        RestAssuredTestConfig.readInteger(
+            response.jsonPath(), "size", "pageable.pageSize", "page.size");
+    Number totalElements =
+        RestAssuredTestConfig.readNumber(
+            response.jsonPath(), "totalElements", "page.totalElements");
+    Number totalPages =
+        RestAssuredTestConfig.readNumber(response.jsonPath(), "totalPages", "page.totalPages");
 
     assertThat(pageNumber).as("Expected page number metadata").isEqualTo(0);
     assertThat(pageSize).as("Expected page size metadata").isEqualTo(100);
@@ -770,10 +760,9 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
     assertThat(dbCount).isGreaterThanOrEqualTo(2L);
 
     // Support multiple common Page<> JSON shapes (Spring may nest pagination differently).
-    Number totalElements = response.jsonPath().getObject("totalElements", Number.class);
-    if (totalElements == null) {
-      totalElements = response.jsonPath().getObject("page.totalElements", Number.class);
-    }
+    Number totalElements =
+        RestAssuredTestConfig.readNumber(
+            response.jsonPath(), "totalElements", "page.totalElements");
     assertThat(totalElements).as("Expected totalElements pagination metadata").isNotNull();
     assertThat(totalElements.longValue()).isEqualTo(dbCount);
 
