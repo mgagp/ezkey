@@ -229,11 +229,11 @@ The native-image workflow is scoped to the Auth API and Integration API. Admin A
 ```bash
 # Auth API
 mvn spring-boot:build-image -pl ezkey-auth-api -Pnative \
-	-Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests
+	-Dspring-boot.build-image.imageName=ezkey-auth-api-native -Dmaven.test.skip=true
 
 # Integration API
 mvn spring-boot:build-image -pl ezkey-integration-api -Pnative \
-	-Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests
+	-Dspring-boot.build-image.imageName=ezkey-integration-api-native -Dmaven.test.skip=true
 ```
 
 See `docs/NATIVE_COMPILATION_STRATEGY.md` for complete strategy details.

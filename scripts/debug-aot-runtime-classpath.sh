@@ -67,7 +67,7 @@ echo ""
 
 # Step 2: Package ezkey-auth-api
 echo "Step 2: Packaging ezkey-auth-api..."
-mvn -pl ezkey-auth-api -am -Pnative clean package -DskipTests $MAVEN_QUIET
+mvn -pl ezkey-auth-api -am -Pnative clean package -Dmaven.test.skip=true $MAVEN_QUIET
 echo "✅ ezkey-auth-api packaged"
 echo ""
 
@@ -158,11 +158,11 @@ cd "$PROJECT_DIR"
 
 # Run AOT with verbose class loading and classpath output
 if [ "$SAVE_OUTPUT" = true ]; then
-    mvn -pl ezkey-auth-api -Pnative spring-boot:process-aot -DskipTests \
+    mvn -pl ezkey-auth-api -Pnative spring-boot:process-aot -Dmaven.test.skip=true \
         -Dspring-boot.run.jvmArguments="-verbose:class -XshowSettings:properties -Djava.class.path.print=true" \
         $MAVEN_QUIET 2>&1 | tee "$OUTPUT_FILE"
 else
-    mvn -pl ezkey-auth-api -Pnative spring-boot:process-aot -DskipTests \
+    mvn -pl ezkey-auth-api -Pnative spring-boot:process-aot -Dmaven.test.skip=true \
         -Dspring-boot.run.jvmArguments="-verbose:class" \
         $MAVEN_QUIET 2>&1 | grep -E "(classpath|Classpath|Loading|AuthAttempt)" | head -n 50
 fi

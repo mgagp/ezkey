@@ -12,8 +12,6 @@
 
 package org.ezkey.auth.config;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
@@ -33,6 +31,8 @@ import org.ezkey.audit.util.ClientIpResolver;
 import org.ezkey.auth.controller.AuthAttemptController;
 import org.ezkey.auth.controller.EnrollmentController;
 import org.springframework.http.HttpStatus;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * HTTP filter for applying rate limiting to specific auth-api endpoints.

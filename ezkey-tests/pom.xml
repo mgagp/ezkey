@@ -60,7 +60,7 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Jackson for JSON processing -->
+    <!-- Jackson 2 databind for test helper JSON (standalone HTTP tests; not the Boot 4 Jackson 3 stack) -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
