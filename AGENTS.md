@@ -281,3 +281,27 @@ Windows shell note for GitHub CLI reliability:
   - C:\Program Files\GitHub CLI\gh.exe
 - Recommended pre-check before issue/PR automation:
   - `gh auth status` (or equivalent call via the absolute path above)
+
+## Git commit on Windows (agent shell)
+
+On this workstation, Cursor agents often execute shell commands in **PowerShell**, while Ezkey
+scripts and commit-message HEREDOCs expect **Git Bash** (see `.cursor/rules/shell-preferences.mdc`).
+
+**Typical failure:** the agent shell rewrites `git commit` to add
+`--trailer "Co-authored-by: Cursor <cursoragent@cursor.com>"`. PowerShell parses `<` as
+redirection → commit never runs. Retrying the same PowerShell command wastes turns.
+
+**Maintainer setup (fix at source):** Cursor Settings → **Agents → Attribution** → disable **Commit
+Attribution** (and PR attribution if undesired). Restart Cursor. For CLI/cloud agents, also set
+`attributeCommitsToAgent: false` in `%USERPROFILE%\.cursor\cli-config.json` if trailers persist.
+
+**Agent procedure when committing:**
+
+1. `git add` — either shell is fine.
+2. Commit via Git Bash, not PowerShell `git commit`:
+   - `"C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-commit.sh -m "conventional subject"'`
+   - Multi-line body: write a message file, then `./scripts/git-commit.sh -F path/to/msgfile`
+3. After one PowerShell commit failure, switch to Bash/`git-commit.sh`; do not loop on HEREDOC or
+   `&&` in PowerShell.
+
+Authoritative rule: `.cursor/rules/git-commit-windows.mdc`.
