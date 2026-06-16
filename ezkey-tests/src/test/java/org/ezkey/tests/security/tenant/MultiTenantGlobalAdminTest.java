@@ -250,10 +250,9 @@ public class MultiTenantGlobalAdminTest extends AbstractSecurityTest {
         .contains(integrationA1Id, integrationA2Id, integrationBId, integrationCId);
 
     // Pagination contract sanity (exact shape may vary by JSON serializer).
-    Number totalElements = response.jsonPath().getObject("totalElements", Number.class);
-    if (totalElements == null) {
-      totalElements = response.jsonPath().getObject("page.totalElements", Number.class);
-    }
+    Number totalElements =
+        RestAssuredTestConfig.readNumber(
+            response.jsonPath(), "totalElements", "page.totalElements");
     assertThat(totalElements).isNotNull();
     assertThat(totalElements.longValue()).isGreaterThanOrEqualTo(4L);
   }

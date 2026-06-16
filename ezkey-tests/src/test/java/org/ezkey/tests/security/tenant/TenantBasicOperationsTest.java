@@ -244,9 +244,8 @@ public class TenantBasicOperationsTest extends AbstractSecurityTest {
     List<?> content = response.jsonPath().getList("content");
     assertThat(content).as("Response should have content array").isNotNull().isNotEmpty();
 
-    assertThat(response.jsonPath().getObject("page", Object.class))
-        .as("Response should have page metadata")
-        .isNotNull();
+    Object pageMetadata = response.jsonPath().get("page");
+    assertThat(pageMetadata).as("Response should have page metadata").isNotNull();
 
     // Verify the created tenant is in the list
     if (createdTenantId != null) {

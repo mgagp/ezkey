@@ -25,10 +25,17 @@
     <!-- Functional tests are independent and test APIs via HTTP only -->
     <!-- No direct dependency on admin-api or auth-api implementations -->
 
-    <!-- Spring Boot Test -->
+    <!-- Standalone HTTP tests: JUnit only (no Spring context, Mockito, or Boot test stack) -->
     <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Test logging (replaces logback transitively from spring-boot-starter-test) -->
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -60,9 +67,9 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Jackson 2 databind for test helper JSON (standalone HTTP tests; not the Boot 4 Jackson 3 stack) -->
+    <!-- Jackson 3 for test helper JSON I/O (aligned with Boot 4 / RestAssured 6) -->
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
+      <groupId>tools.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <scope>test</scope>
     </dependency>
