@@ -272,6 +272,11 @@ over-materialization; this rule prevents under-closure. See
 `minimum-viable-method.md` § *Program slice exit sequence* and method log
 `ML-2026-06-18-closeout-skill-before-commit-gap.md`.
 
+**GitHub issue vs canon:** `product-docs` (`I-*` / `TB-*`) is the decision canon; GitHub issues are
+optional visibility (PR board, labels, `Closes #NNN`). Proactively state at start or closeout of a
+program slice whether an issue helps — retroactive issues are valid. See
+`minimum-viable-method.md` § *GitHub issue vs product-docs canon*.
+
 - Keep scope small and local: high-signal fixes first, no broad refactor campaign.
 - Use issue + branch + iterative PR as the default visibility path.
 - Prefer these labels for this lane when applicable:

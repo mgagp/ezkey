@@ -145,6 +145,22 @@ sequence prevents *under*-closure when program artifacts are already open.
 
 Retrospective: [`../global/backlog/method-logs/ML-2026-06-18-closeout-skill-before-commit-gap.md`](../global/backlog/method-logs/ML-2026-06-18-closeout-skill-before-commit-gap.md).
 
+### GitHub issue vs `product-docs` canon
+
+The methodology is **ticketing-agnostic**: `I-*` / `TB-*` remain the decision and evidence canon.
+GitHub issues are **optional project visibility** (board, labels, `Closes #NNN` on PR) — not a second
+source of truth.
+
+| Profile | GitHub issue |
+| --- | --- |
+| **Hygiene (Lane C)** — local fix, known recipe, no cross-repo sync | Optional; PR alone is often enough |
+| **Program (Lane A/D)** — monorepo PR, dual-repo sync, or scope that grew en route | **Proactive check:** state one line at implementation start or closeout whether an issue helps; open at start **or retroactively** before/with PR |
+| **Operator preference** | Follow operator; retroactive issue after canon closeout is **valid**, not a methodology fault |
+
+**Agent rule:** when opening an issue, link to `I-*` / `TB-*` paths in the body — do **not** duplicate
+the tracer bullet. Retroactive issues after canon closeout are normal when scope or visibility needs
+become clear en route (e.g. dual-repo sync).
+
 ### Agent challenge (required on mismatch)
 
 If the operator requests full methodology artifacts and you classify **hygiene**, say so explicitly,

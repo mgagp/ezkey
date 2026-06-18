@@ -64,6 +64,22 @@ A closeout invitation is **not** automatic permission to create `I-*`, `TB-*`, `
 - deferred items and rationale
 - residual risks
 - next review or next action date
+- **GitHub issue posture (one line):** canon sufficient alone, or issue recommended / opened /
+  deferred with reason (see § GitHub visibility below)
+
+## GitHub visibility (optional, not canon)
+
+`product-docs` artifacts are the source of truth. A GitHub issue is **optional** visibility for the
+host project — never a substitute for `I-*` / `TB-*` closeout.
+
+**Suggest or open an issue** when any of these apply: monorepo PR expected; dual-repo or public
+mirror sync; coordination across PRs; operator wants a GitHub anchor. **Skip by default** for Lane C
+hygiene with a single small PR.
+
+**Timing:** at implementation start (preferred) or **retroactively** at closeout/PR — both are valid.
+Issue body: link to canonical `I-*` / `TB-*` paths; do not copy the full TB.
+
+See `product-docs/methodology/minimum-viable-method.md` § *GitHub issue vs product-docs canon*.
 
 ## Status guidance
 

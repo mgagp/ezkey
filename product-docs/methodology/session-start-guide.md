@@ -154,6 +154,10 @@ instead of creating a new artifact family.
 
 `Open I-* or TB-* exists for this work and implementation is validated. Run traceability-sync then closeout on the canonical artifacts, then commit.`
 
+### Decide GitHub issue visibility (program slice)
+
+`Canon is in product-docs (I/TB). State whether a GitHub issue adds visibility for this slice; retroactive issue at closeout is valid when dual-repo sync or PR coordination warrants it.`
+
 ### Start from an enhancement or apparent bug in existing code
 
 `Start a post-delivery change inception. First classify whether this is a local technical defect or a corpus-level intent gap. If intent changed, re-enter at TB, I, or V; otherwise fix directly.`
