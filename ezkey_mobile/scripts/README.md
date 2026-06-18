@@ -18,6 +18,16 @@ Options:
 
 Yarn alias: `yarn android:install:debug:clean`.
 
+### Windows path-length caveat (native CMake)
+
+Some React Native native modules can exceed Windows object-path limits during
+`installDebug` (errors such as `Filename longer than 260 characters` or
+`CMAKE_OBJECT_PATH_MAX`).
+
+The script now detects this case and prints a targeted remediation message.
+Preferred fix: run from a shorter workspace root on the same drive (for example
+`C:\\w\\ezkey-worktree2`) and rerun the script.
+
 ## `resolve-android-jdk.sh`
 
 Sets `JAVA_HOME` to JDK 17/21 (never JDK 25 from PATH). Probes Android Studio JBR (including `Android Studio1`), `C:\Tools\jdk17`, Microsoft JDK 17, and macOS `java_home`. Override with `EZKEY_ANDROID_JAVA_HOME`.

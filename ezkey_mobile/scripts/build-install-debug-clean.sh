@@ -51,7 +51,26 @@ if [[ "$SKIP_CLEAN" == true && -f "$APK" ]]; then
 else
   echo "Clean Gradle build + installDebug..."
   rm -rf "${MOBILE_ROOT}/android/app/build" "${MOBILE_ROOT}/android/build"
-  (cd "${MOBILE_ROOT}/android" && ./gradlew clean installDebug --no-daemon)
+  GRADLE_LOG="$(mktemp)"
+  if ! (cd "${MOBILE_ROOT}/android" && ./gradlew clean installDebug --no-daemon 2>&1 | tee "$GRADLE_LOG"); then
+    if grep -qiE "Filename longer than 260 characters|CMAKE_OBJECT_PATH_MAX" "$GRADLE_LOG"; then
+      cat <<EOF
+
+Detected a Windows native path-length failure (MAX_PATH / CMake object path).
+
+Recommended remediation:
+  1. Use a shorter workspace root on the same drive, then run this script again.
+     Example target root: C:\\w\\ezkey-worktree2
+  2. Reinstall dependencies from that short-root workspace.
+  3. Re-run: ./scripts/build-install-debug-clean.sh
+
+This is an environment/path constraint, not an app logic regression.
+EOF
+    fi
+    rm -f "$GRADLE_LOG"
+    exit 1
+  fi
+  rm -f "$GRADLE_LOG"
 fi
 
 echo "Launching ${PKG}..."
