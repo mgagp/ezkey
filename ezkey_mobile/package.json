@@ -9,6 +9,7 @@
     "ios": "npx react-native run-ios",
     "start": "npx react-native start",
     "generate:api": "orval --config orval.config.ts",
+    "android:preflight:path": "bash scripts/preflight-android-path-length.sh",
     "android:clean": "cd android && ./gradlew clean",
     "android:assemble:debug": "cd android && ./gradlew assembleDebug",
     "android:install:debug": "cd android && ./gradlew installDebug",

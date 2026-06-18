@@ -18,6 +18,42 @@ Options:
 
 Yarn alias: `yarn android:install:debug:clean`.
 
+Before build/install, the script now runs a companion preflight:
+
+- `scripts/preflight-android-path-length.sh` - estimates Windows native object
+	path lengths for known React Native codegen offenders and warns early when
+	MAX_PATH risk is high.
+
+### Windows path-length caveat (native CMake)
+
+Some React Native native modules can exceed Windows object-path limits during
+`installDebug` (errors such as `Filename longer than 260 characters` or
+`CMAKE_OBJECT_PATH_MAX`).
+
+The script now detects this case and prints a targeted remediation message.
+Preferred fix: run from a shorter workspace root on the same drive (for example
+`C:\\w\\ezkey-worktree2`) and rerun the script.
+
+## `preflight-android-path-length.sh`
+
+Standalone path-risk probe for Windows native Android builds.
+
+From `ezkey_mobile/`:
+
+```bash
+./scripts/preflight-android-path-length.sh
+```
+
+Note: run from Git Bash on Windows for accurate drive-path detection.
+
+Strict mode (fails with exit code 1 when risk is detected):
+
+```bash
+./scripts/preflight-android-path-length.sh --strict
+```
+
+Yarn alias: `yarn android:preflight:path`.
+
 ## `resolve-android-jdk.sh`
 
 Sets `JAVA_HOME` to JDK 17/21 (never JDK 25 from PATH). Probes Android Studio JBR (including `Android Studio1`), `C:\Tools\jdk17`, Microsoft JDK 17, and macOS `java_home`. Override with `EZKEY_ANDROID_JAVA_HOME`.
