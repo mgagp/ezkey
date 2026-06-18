@@ -45,6 +45,7 @@ Hub pages (`index`, `updates`, `articles`, `trust`) share a consistent **primary
 | Updates | Mises à jour | `/updates.html` / `/fr/updates.html` |
 | Guides | Guides | `/guides.html` / `/fr/guides.html` |
 | Articles | Articles | `/articles.html` / `/fr/articles.html` |
+| Notes | Notes | `/notes.html` / `/fr/notes.html` |
 | Methodology | Méthodologie | `/methodology.html` / `/fr/methodologie.html` |
 
 **Changelog** is intentionally **omitted** from that primary strip until the page carries real versioned notes. **Methodology** (`/methodology.html` / `/fr/methodologie.html`) is the published rich view generated from `product-docs/methodology/view/index.html` via `scripts/publish-methodology-view.ps1`; update by re-running that script whenever the canonical changes. On **changelog** pages only, append the changelog item with `aria-current="page"`.
@@ -208,6 +209,32 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 - **Do not overstate security assurance:** describe Ezkey as a pragmatic, opinionated middle ground that aims to be stronger than passwords and classic TOTP for some backend-oriented contexts; do not imply formal attestation chains, standards equivalence, complete certificate validation, or full-strength certificate pinning unless those capabilities truly exist.
 - **Treat complexity judgments as subjective:** when copy says Ezkey is simpler, lower-ceremony, or easier to operate, frame that as the project's perception or hope, not as an objective claim about WebAuthn, FIDO2, or what every team experiences.
 - **When publishing new flagship articles, add visible date metadata:** long-form essays should read like dated notes in the open, not anonymous evergreen marketing copy.
+
+---
+
+## Informal field notes (brain dump lane)
+
+- Use this lane for short, day-level reflections that are neither monthly updates nor long-form essays.
+- Keep the author's voice intact; do not rewrite into corporate or academic prose.
+- Do not impose visible section headers such as Context, Blocker, Insight, or Next step.
+- The agent may apply an implicit structure behind the scenes to improve readability.
+- Start with a brief natural-language summary (2-4 lines) that captures the core signal.
+- Reorder lightly when needed, but preserve wording and intent as much as possible.
+- End with a natural opening: a next angle, a question, or a tentative direction.
+- Target concise readability (typically 3-7 short paragraphs, optional short list only if useful).
+- Avoid repetitive rigid patterns across entries; uniformity should stay subtle.
+- Final check before publish: still sounds like the author, and the key signal is clear fast.
+
+### Access model (monthly window)
+
+- Default landing: show the **current month** (newest first) on `/notes.html` and `/fr/notes.html`.
+- Monthly archives: one static page per month, e.g. `/notes/2026-06.html` and `/fr/notes/2026-06.html`.
+- Keep navigation lightweight: `Previous month` / `Next month` / `Current month` links.
+- Add a compact Year + Month selector (no advanced filtering UI).
+- Keep page length reasonable by month; if one month exceeds about 40-60 entries, split by week.
+- In list view, show only date + title + short excerpt; full text lives on each note page.
+- Canonical + `hreflang` pairing is required for every monthly index page.
+- Keep the editorial posture unchanged: informal tone, implicit structure, no visible rigid template.
 
 ---
 
