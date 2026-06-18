@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -79,8 +79,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => [...prev, { id, message, variant }]);
   }, []);
 
+  const value = useMemo(() => ({ toast }), [toast]);
+
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={value}>
       {children}
       {/* Toast container — bottom-right */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end pointer-events-none">
