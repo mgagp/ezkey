@@ -21,6 +21,10 @@ import reactor.core.publisher.Mono;
  * Service to call Ezkey Auth API endpoints needed by the demo device. Uses generated DTOs for type
  * safety and better maintainability.
  *
+ * <p>Each method accepts an optional {@code authApiBaseUrl} override for per-enrollment routing
+ * (QR {@code authUrl} parity with mobile). When null or blank, the configured default client is
+ * used.
+ *
  * @since 2025
  */
 @Service
@@ -28,10 +32,10 @@ public class AuthApiService {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthApiService.class);
 
-  private final WebClient authClient;
+  private final WebClient defaultClient;
 
-  public AuthApiService(@Qualifier("ezkeyAuthApiClient") WebClient authClient) {
-    this.authClient = authClient;
+  public AuthApiService(@Qualifier("ezkeyAuthApiClient") WebClient defaultClient) {
+    this.defaultClient = defaultClient;
   }
 
   /**
@@ -39,35 +43,33 @@ public class AuthApiService {
    *
    * @param enrollmentId id to bind
    * @param enrollmentProofToken proof token for authentication
+   * @param authApiBaseUrl optional per-enrollment Auth API base URL override
    * @return typed response DTO with integrationPublicKey, enrollmentProofToken, etc.
    */
-  public Mono<EnrollmentBindResponseDto> bind(Integer enrollmentId, String enrollmentProofToken) {
+  public Mono<EnrollmentBindResponseDto> bind(
+      Integer enrollmentId, String enrollmentProofToken, String authApiBaseUrl) {
     String uri = "/api/v1/enrollments/bind";
 
-    // Create request DTO
     EnrollmentBindRequestDto requestDto =
         new EnrollmentBindRequestDto()
             .enrollmentId(enrollmentId)
             .enrollmentProofToken(enrollmentProofToken);
 
-    WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
-    WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);
-
+    WebClient client = clientFor(authApiBaseUrl);
     Mono<EnrollmentBindResponseDto> responseMono =
-        headersSpec
+        client
+            .post()
+            .uri(uri)
+            .bodyValue(requestDto)
             .retrieve()
             .bodyToMono(EnrollmentBindResponseDto.class)
             .timeout(Duration.ofSeconds(15));
 
-    Mono<EnrollmentBindResponseDto> errorHandledMono =
-        responseMono
-            .doOnSuccess(
-                response -> logger.info("Bind API completed for enrollment {}", enrollmentId))
-            .doOnError(e -> logger.error("Bind failed for enrollment {}", enrollmentId, e))
-            .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
-            .onErrorResume(Exception.class, ex -> Mono.error(ex));
-
-    return errorHandledMono;
+    return responseMono
+        .doOnSuccess(response -> logger.info("Bind API completed for enrollment {}", enrollmentId))
+        .doOnError(e -> logger.error("Bind failed for enrollment {}", enrollmentId, e))
+        .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
+        .onErrorResume(Exception.class, ex -> Mono.error(ex));
   }
 
   /**
@@ -75,112 +77,110 @@ public class AuthApiService {
    *
    * @param requestDto typed request DTO with enrollmentId, challengeResponse, devicePublicKey,
    *     enrollmentProofTokenSigned
+   * @param authApiBaseUrl optional per-enrollment Auth API base URL override
    * @return typed response DTO
    */
-  public Mono<EnrollmentVerifyResponseDto> verify(EnrollmentVerifyRequestDto requestDto) {
+  public Mono<EnrollmentVerifyResponseDto> verify(
+      EnrollmentVerifyRequestDto requestDto, String authApiBaseUrl) {
     String uri = "/api/v1/enrollments/verify";
 
-    WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
-    WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);
-
+    WebClient client = clientFor(authApiBaseUrl);
     Mono<EnrollmentVerifyResponseDto> responseMono =
-        headersSpec
+        client
+            .post()
+            .uri(uri)
+            .bodyValue(requestDto)
             .retrieve()
             .bodyToMono(EnrollmentVerifyResponseDto.class)
             .timeout(Duration.ofSeconds(15));
 
-    Mono<EnrollmentVerifyResponseDto> errorHandledMono =
-        responseMono
-            .doOnSuccess(
-                response ->
-                    logger.info(
-                        "Verify API completed for enrollment {}", requestDto.getEnrollmentId()))
-            .doOnError(
-                e ->
-                    logger.error(
-                        "Verify failed for enrollment {}", requestDto.getEnrollmentId(), e))
-            .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
-            .onErrorResume(Exception.class, ex -> Mono.error(ex));
-
-    return errorHandledMono;
+    return responseMono
+        .doOnSuccess(
+            response ->
+                logger.info("Verify API completed for enrollment {}", requestDto.getEnrollmentId()))
+        .doOnError(
+            e -> logger.error("Verify failed for enrollment {}", requestDto.getEnrollmentId(), e))
+        .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
+        .onErrorResume(Exception.class, ex -> Mono.error(ex));
   }
 
   /**
-   * Calls POST /api/v1/auth-attempts/pending to check for pending authentication attempts. Updated
-   * to use enrollmentProofToken for secure enrollment identification.
+   * Calls POST /api/v1/auth-attempts/pending to check for pending authentication attempts.
    *
    * @param requestDto typed request DTO with enrollmentId, enrollmentProofToken, deviceProofToken,
    *     deviceProofTokenSigned
-   * @return typed response DTO with auth attempt details or null if no pending attempt
+   * @param authApiBaseUrl optional per-enrollment Auth API base URL override
+   * @return typed response DTO with auth attempt details or empty when no pending attempt
    */
-  public Mono<AuthAttemptPendingResponseDto> pending(AuthAttemptPendingRequestDto requestDto) {
+  public Mono<AuthAttemptPendingResponseDto> pending(
+      AuthAttemptPendingRequestDto requestDto, String authApiBaseUrl) {
     String uri = "/api/v1/auth-attempts/pending";
 
-    WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
-    WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);
-
+    WebClient client = clientFor(authApiBaseUrl);
     Mono<AuthAttemptPendingResponseDto> responseMono =
-        headersSpec
+        client
+            .post()
+            .uri(uri)
+            .bodyValue(requestDto)
             .retrieve()
             .bodyToMono(AuthAttemptPendingResponseDto.class)
             .timeout(Duration.ofSeconds(15));
 
-    Mono<AuthAttemptPendingResponseDto> errorHandledMono =
-        responseMono
-            .doOnSuccess(
-                response ->
-                    logger.info(
-                        "Pending API completed for enrollment {}", requestDto.getEnrollmentId()))
-            .doOnError(
-                e ->
-                    logger.error(
-                        "Pending failed for enrollment {}", requestDto.getEnrollmentId(), e))
-            .onErrorResume(
-                WebClientResponseException.class,
-                ex -> {
-                  if (ex.getStatusCode().value() == 204) {
-                    // No pending attempts
-                    return Mono.empty();
-                  }
-                  return Mono.error(ex);
-                })
-            .onErrorResume(Exception.class, ex -> Mono.error(ex));
-
-    return errorHandledMono;
+    return responseMono
+        .doOnSuccess(
+            response ->
+                logger.info("Pending API completed for enrollment {}", requestDto.getEnrollmentId()))
+        .doOnError(
+            e -> logger.error("Pending failed for enrollment {}", requestDto.getEnrollmentId(), e))
+        .onErrorResume(
+            WebClientResponseException.class,
+            ex -> {
+              if (ex.getStatusCode().value() == 204) {
+                return Mono.empty();
+              }
+              return Mono.error(ex);
+            })
+        .onErrorResume(Exception.class, ex -> Mono.error(ex));
   }
 
   /**
    * Calls POST /api/v1/auth-attempts/respond to submit authentication response.
    *
    * @param requestDto typed request DTO with authAttemptId, approved, responseSignature, etc.
+   * @param authApiBaseUrl optional per-enrollment Auth API base URL override
    * @return typed response DTO with result
    */
-  public Mono<AuthAttemptRespondResponseDto> respond(AuthAttemptRespondRequestDto requestDto) {
+  public Mono<AuthAttemptRespondResponseDto> respond(
+      AuthAttemptRespondRequestDto requestDto, String authApiBaseUrl) {
     String uri = "/api/v1/auth-attempts/respond";
 
-    WebClient.RequestBodySpec requestSpec = authClient.post().uri(uri);
-    WebClient.RequestHeadersSpec<?> headersSpec = requestSpec.bodyValue(requestDto);
-
+    WebClient client = clientFor(authApiBaseUrl);
     Mono<AuthAttemptRespondResponseDto> responseMono =
-        headersSpec
+        client
+            .post()
+            .uri(uri)
+            .bodyValue(requestDto)
             .retrieve()
             .bodyToMono(AuthAttemptRespondResponseDto.class)
             .timeout(Duration.ofSeconds(15));
 
-    Mono<AuthAttemptRespondResponseDto> errorHandledMono =
-        responseMono
-            .doOnSuccess(
-                response ->
-                    logger.info(
-                        "Respond API completed for authAttemptId {}",
-                        requestDto.getAuthAttemptId()))
-            .doOnError(
-                e ->
-                    logger.error(
-                        "Respond failed for authAttemptId {}", requestDto.getAuthAttemptId(), e))
-            .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
-            .onErrorResume(Exception.class, ex -> Mono.error(ex));
+    return responseMono
+        .doOnSuccess(
+            response ->
+                logger.info(
+                    "Respond API completed for authAttemptId {}", requestDto.getAuthAttemptId()))
+        .doOnError(
+            e ->
+                logger.error(
+                    "Respond failed for authAttemptId {}", requestDto.getAuthAttemptId(), e))
+        .onErrorResume(WebClientResponseException.class, ex -> Mono.error(ex))
+        .onErrorResume(Exception.class, ex -> Mono.error(ex));
+  }
 
-    return errorHandledMono;
+  private WebClient clientFor(String authApiBaseUrl) {
+    if (authApiBaseUrl == null || authApiBaseUrl.isBlank()) {
+      return defaultClient;
+    }
+    return WebClient.builder().baseUrl(authApiBaseUrl).build();
   }
 }

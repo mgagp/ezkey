@@ -68,9 +68,31 @@ Ezkey uses the following component tags in backlog, vision, and GitHub issue met
 | `methodology` | `product-docs/methodology/`, templates, and skills mechanics. |
 | `skills` | `.cursor/skills/` or equivalent agent skills. |
 | `site` | Public static site under `sites/`. |
+| `demo-device` | Demo Device simulator (`ezkey-demo-device/` in monorepo; see dual-repo delivery below). |
 
 When GitHub Issues are used, Ezkey aligns these tags with `component:*` labels as described in
 [`github-issues-workflow.md`](github-issues-workflow.md).
+
+## Dual-repo delivery: Demo Device (`ezkey-demo-device`)
+
+Ezkey maintains the Demo Device in **two places**:
+
+| Copy | Role |
+|------|------|
+| `ezkey-demo-device/` in the **private monorepo** | Source of truth for implementation, Maven tests, and clean-start Docker stack (`:8083`). |
+| **`mgagp/ezkey-demo-device`** (public GitHub) | EXP1 evaluator mirror; Docker default Exp1 Auth API (`:3080` on host). |
+
+For any Demo Device feature or fix that affects both copies, use this **delivery order** (record it
+in the tracer bullet and closeout — do not treat standalone sync as optional follow-up):
+
+1. **Implement and validate in the monorepo** — code under `ezkey-demo-device/`, `mvn test`, clean-start smoke as applicable; merge via the monorepo PR.
+2. **Sync to the public standalone repo** — copy aligned paths (`src/`, `pom.xml`, `openapi-spec.json`, `AGENTS.md`, Docker assets when touched); commit and push on `mgagp/ezkey-demo-device`.
+3. **Maintainer final validation on standalone** — operator runs the standalone Docker path (e.g. `./start.sh` on `:3080`) against the intended Auth API scenario; slice is not **done** until this step is explicitly recorded in the TB closeout or PR notes.
+
+Automated tests in the monorepo do not replace step 3: standalone Compose defaults, ports, and Auth
+API targets differ from clean-start.
+
+Reference slice: `TB-2026-06-18-demo-device-qr-auth-url-parity`.
 
 ## How examples should use Ezkey
 

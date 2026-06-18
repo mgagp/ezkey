@@ -6,9 +6,12 @@ import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.AuthAttemptPayloadUtil;
 import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.DeviceCryptoService.ECP256DeviceKeyPair;
+import org.ezkey.demo.device.service.EnrollmentAuthApiUrlResolver;
+import org.ezkey.demo.device.service.EnrollmentAuthApiUrlResolver.BindResolution;
 import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.ezkey.demo.device.service.EnrollmentVerifyPayloadUtil;
+import org.ezkey.demo.device.service.InvalidAuthApiUrlException;
 import org.ezkey.demo.device.view.EnrollmentTenantGrouper;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
@@ -100,13 +103,32 @@ public class EzkeyAppController {
   public String bindEnrollment(
       @RequestParam("enrollmentId") Integer enrollmentId,
       @RequestParam("enrollmentProofToken") String enrollmentProofToken,
+      @RequestParam(value = "authApiBaseUrl", required = false) String authApiBaseUrl,
       Model model) {
     model.addAttribute("pageTitle", "Enrollment - Bind");
     model.addAttribute("enrollmentId", enrollmentId);
+    BindResolution bindResolution;
     try {
-      // Call the bind API with proof token
+      bindResolution = EnrollmentAuthApiUrlResolver.resolveForBind(authApiBaseUrl, configuredAuthApiBase);
+    } catch (InvalidAuthApiUrlException e) {
+      model.addAttribute("pageTitle", "New Enrollment");
+      model.addAttribute("configuredAuthApiBase", configuredAuthApiBase);
+      model.addAttribute("enrollmentId", enrollmentId);
+      model.addAttribute("enrollmentProofToken", enrollmentProofToken);
+      model.addAttribute("authApiBaseUrl", authApiBaseUrl);
+      model.addAttribute("error", e.getMessage());
+      return "phone/ezkey/new_enrollment";
+    }
+    logger.info(
+        "Bind enrollment {} using Auth API {} (QR override submitted: {})",
+        enrollmentId,
+        bindResolution.apiBaseUrl(),
+        authApiBaseUrl != null && !authApiBaseUrl.isBlank());
+    try {
       EnrollmentBindResponseDto bindResponse =
-          authApiService.bind(enrollmentId, enrollmentProofToken).block();
+          authApiService
+              .bind(enrollmentId, enrollmentProofToken, bindResolution.apiBaseUrl())
+              .block();
       if (bindResponse != null) {
         // Generate device keys
         ECP256DeviceKeyPair keyPair = cryptoService.generateDeviceKeyPair();
@@ -142,7 +164,7 @@ public class EzkeyAppController {
                 enrollmentId,
                 null, // integrationId - would be set if available
                 enrollmentName,
-                null, // enrollmentUrl
+                bindResolution.enrollmentUrlToPersist(),
                 integrationPublicKey,
                 responseProofToken, // Store the proof token (not signed)
                 devicePublicKeyB64,
@@ -274,7 +296,10 @@ public class EzkeyAppController {
       // responses only.
       logger.info("Verify request submitted for enrollment {}", enrollmentId);
 
-      EnrollmentVerifyResponseDto verifyResponse = authApiService.verify(requestDto).block();
+      String authApiBase =
+          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
+      EnrollmentVerifyResponseDto verifyResponse =
+          authApiService.verify(requestDto, authApiBase).block();
       if (verifyResponse != null) {
         Boolean active = verifyResponse.getActive();
         if (Boolean.TRUE.equals(active)) {
@@ -372,9 +397,11 @@ public class EzkeyAppController {
       logger.info(
           "Checking for pending auth attempts for enrollment {}: {}", enrollmentId, pendingRequest);
 
-      // Check for pending authentication attempts
+      String authApiBase =
+          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
+
       AuthAttemptPendingResponseDto pendingResponse =
-          authApiService.pending(pendingRequest).block();
+          authApiService.pending(pendingRequest, authApiBase).block();
       if (pendingResponse != null) {
         // There's a pending authentication attempt
         logger.info("Found pending auth attempt: {}", pendingResponse);
@@ -488,9 +515,11 @@ public class EzkeyAppController {
           enrollmentId,
           respondRequest);
 
-      // Submit response
+      String authApiBase =
+          EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(rec, configuredAuthApiBase);
+
       AuthAttemptRespondResponseDto respondResponse =
-          authApiService.respond(respondRequest).block();
+          authApiService.respond(respondRequest, authApiBase).block();
       if (respondResponse != null) {
         logger.info("Auth response submitted successfully: {}", respondResponse);
 

@@ -11,6 +11,8 @@
   'use strict';
 
   var DEV_HTTP_HOSTS = ['localhost', '127.0.0.1', '10.0.2.2'];
+  var QR_AUTH_URL_STORAGE_KEY = 'ezkeyDemoDeviceQrAuthApiBaseUrl';
+  var pendingQrAuthApiBaseUrl = '';
 
   /**
    * Validates Auth API URL from QR (aligned with ezkey_mobile urlValidation rules).
@@ -52,6 +54,50 @@
   }
 
   /**
+   * Persists QR auth URL in memory and sessionStorage for reliable form submit.
+   *
+   * @param {string} url normalized auth URL or empty string
+   */
+  function rememberQrAuthApiBaseUrl(url) {
+    pendingQrAuthApiBaseUrl = url || '';
+    try {
+      if (pendingQrAuthApiBaseUrl) {
+        sessionStorage.setItem(QR_AUTH_URL_STORAGE_KEY, pendingQrAuthApiBaseUrl);
+      } else {
+        sessionStorage.removeItem(QR_AUTH_URL_STORAGE_KEY);
+      }
+    } catch {
+      // sessionStorage may be unavailable in private mode
+    }
+  }
+
+  /**
+   * Reads the best-known QR auth URL (memory, then sessionStorage).
+   *
+   * @returns {string}
+   */
+  function resolvedQrAuthApiBaseUrl() {
+    if (pendingQrAuthApiBaseUrl) {
+      return pendingQrAuthApiBaseUrl;
+    }
+    try {
+      return sessionStorage.getItem(QR_AUTH_URL_STORAGE_KEY) || '';
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Writes the hidden form field from persisted QR auth URL state.
+   */
+  function syncAuthApiBaseUrlField() {
+    var authUrlEl = document.getElementById('authApiBaseUrl');
+    if (authUrlEl) {
+      authUrlEl.value = resolvedQrAuthApiBaseUrl();
+    }
+  }
+
+  /**
    * Parses enrollment QR text (JSON or pipe-delimited).
    *
    * @param {string} raw decoded QR string
@@ -65,6 +111,9 @@
     try {
       var json = JSON.parse(trimmed);
       if (json.enrollmentId != null && json.enrollmentProofToken != null) {
+        if (json.authUrl !== undefined && validateAuthUrl(json.authUrl) == null) {
+          throw new Error('Invalid Auth API URL in QR payload.');
+        }
         return {
           enrollmentId: String(json.enrollmentId),
           enrollmentProofToken: String(json.enrollmentProofToken),
@@ -88,7 +137,7 @@
   /**
    * @param {string} configuredBase demo-device ezkey.auth.api.url
    * @param {string|undefined} qrAuthUrl from payload
-   * @returns {string|null} warning message or null
+   * @returns {string|null} informational message or null
    */
   function authUrlMismatchWarning(configuredBase, qrAuthUrl) {
     if (!qrAuthUrl || !configuredBase) {
@@ -99,11 +148,11 @@
       var b = new URL(qrAuthUrl);
       if (a.origin !== b.origin) {
         return (
-          'This QR targets a different Auth API host than this demo device (QR: '
-          + b.origin
-          + ', device: '
+          'This demo device default Auth API is '
           + a.origin
-          + '). Enrollment may fail unless both reach the same Auth API.'
+          + '. This enrollment will use the Auth API from the QR ('
+          + b.origin
+          + ').'
         );
       }
     } catch {
@@ -220,6 +269,8 @@
         if (tokenEl) {
           tokenEl.value = payload.enrollmentProofToken;
         }
+        rememberQrAuthApiBaseUrl(payload.authUrl || '');
+        syncAuthApiBaseUrlField();
         if (successEl) {
           successEl.textContent =
             'QR decoded. Review the fields below, then tap Start Enrollment.';
@@ -247,6 +298,16 @@
   function init() {
     var zone = document.getElementById('qrDropZone');
     var fileInput = document.getElementById('qrFileInput');
+    var form = document.querySelector('[data-testid="demo-device-new-enrollment-form"]');
+
+    syncAuthApiBaseUrlField();
+
+    if (form) {
+      form.addEventListener('submit', function () {
+        syncAuthApiBaseUrlField();
+      });
+    }
+
     if (!zone || !fileInput) {
       return;
     }

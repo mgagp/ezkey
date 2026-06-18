@@ -90,6 +90,10 @@ Fast-path rule:
 - If the problem is a pure local technical defect, fix it directly and validate it.
 - If the problem exposes missing or changed intent, re-enter at `TB-*`, `I-*`, or `V-*`.
 
+Exit rule (program slice): when implementation is validated and open `I-*`/`TB-*` cover the work,
+run **`traceability-sync` → `closeout`** before commit/PR. See
+[`minimum-viable-method.md`](minimum-viable-method.md) § *Program slice exit sequence*.
+
 ### Lane E — Methodology feedback and evolution
 
 Use when the goal is improving the methodology itself: lane definitions, artifact rules, naming,
@@ -145,6 +149,10 @@ instead of creating a new artifact family.
 ### Close out completed work (hygiene check first)
 
 `Classify this closeout as hygiene or program before creating I/TB/TSP artifacts. If hygiene, use commit/PR and targeted docs only unless I confirm escalation.`
+
+### Close out a program slice before commit
+
+`Open I-* or TB-* exists for this work and implementation is validated. Run traceability-sync then closeout on the canonical artifacts, then commit.`
 
 ### Start from an enhancement or apparent bug in existing code
 
