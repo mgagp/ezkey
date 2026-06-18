@@ -265,6 +265,13 @@ commit/PR + targeted docs and explain what would justify `I-*` / `TB-*` / `TSP-*
 `product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md` and
 `product-docs/methodology/minimum-viable-method.md` (section *Hygiene vs program closeout*).
 
+**Program slice exit (before commit):** when open `I-*` or `TB-*` in `product-docs/global/backlog/`
+covers the finished work, run skills **`traceability-sync` → `closeout`** on canonical artifacts
+**before** `git commit` or PR — even if the operator only said “commit.” Hygiene challenge reduces
+over-materialization; this rule prevents under-closure. See
+`minimum-viable-method.md` § *Program slice exit sequence* and method log
+`ML-2026-06-18-closeout-skill-before-commit-gap.md`.
+
 - Keep scope small and local: high-signal fixes first, no broad refactor campaign.
 - Use issue + branch + iterative PR as the default visibility path.
 - Prefer these labels for this lane when applicable:

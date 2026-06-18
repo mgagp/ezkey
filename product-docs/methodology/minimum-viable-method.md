@@ -131,6 +131,20 @@ operator explicitly confirms after your challenge.
 **Closeout:** use the appropriate artifact set (`I-*`, `TB-*`, `TSP-*`, `ML-*`, methodology
 decision) proportional to the program — not reflexively all of them.
 
+### Program slice exit sequence (before commit or PR)
+
+When **`I-*` or `TB-*` already exist** for the work just finished (Lane A or D program slice):
+
+1. Run **`traceability-sync`** — update global/component traceability or record an explicit skip reason.
+2. Run **`closeout`** — move artifact status to `done` (or `parked`/`archived` with reason); capture evidence, deferred items, residual risks.
+3. **Then** commit, push, and open PR.
+
+An operator saying **“commit”** or **“let's close this”** on such a slice is a trigger for steps 1–2,
+not permission to skip them. The hygiene challenge rule (above) reduces *over*-materialization; this
+sequence prevents *under*-closure when program artifacts are already open.
+
+Retrospective: [`../global/backlog/method-logs/ML-2026-06-18-closeout-skill-before-commit-gap.md`](../global/backlog/method-logs/ML-2026-06-18-closeout-skill-before-commit-gap.md).
+
 ### Agent challenge (required on mismatch)
 
 If the operator requests full methodology artifacts and you classify **hygiene**, say so explicitly,

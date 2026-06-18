@@ -87,6 +87,9 @@ This aligns with:
 - [ ] Consider `traceability-sync` check: if `I-*`+`TB-*` exist without Lane B, flag orphan `.cursor/plans/*`
 - [ ] Promote decision to `methodology/decisions/2026-06-18-*.md` when settled
 
+**Related (separate Lane E topic):** closeout skill before commit —
+[`ML-2026-06-18-closeout-skill-before-commit-gap.md`](ML-2026-06-18-closeout-skill-before-commit-gap.md).
+
 ### Plan file disposition
 
 `.cursor/plans/demo-device-qr-auth-url-parity.plan.md` was **deleted** at product closeout (2026-06-18).

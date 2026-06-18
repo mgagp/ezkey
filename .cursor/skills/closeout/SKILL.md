@@ -16,6 +16,26 @@ Finalize a work slice so progress remains auditable and easy to resume.
 - **Call next:** no next skill by default; reopen triage, traceability sync, or retrofit only for named follow-up work.
 - **Not needed when:** the work is still actively changing or required evidence is not yet available.
 
+## When the operator asks to commit (program slice gate)
+
+**Read this section before staging or `git commit`** when either is true:
+
+- an open `I-*` or `TB-*` in `product-docs/global/backlog/` covers the current work, or
+- the session already created or updated program artifacts (`I-*`, `TB-*`, grill, `TSP-*`) for this slice.
+
+**Sequence (mandatory for program slices):**
+
+1. **`traceability-sync`** — update or explicitly skip global/component traceability with a recorded reason.
+2. **`closeout`** (this skill) — status transitions, evidence summary, deferred items, residual risks on the canonical artifacts.
+3. **Then** git commit / PR — not before.
+
+**Do not substitute** a prose “pre-commit checklist” to the operator for steps 1–2 when program artifacts exist.
+
+If the slice is **hygiene-only** (no open `I-*`/`TB-*` for this work), classify per § Hygiene vs program below and commit with targeted docs only.
+
+See also `product-docs/methodology/minimum-viable-method.md` § *Program slice exit sequence* and
+`product-docs/global/backlog/method-logs/ML-2026-06-18-closeout-skill-before-commit-gap.md`.
+
 ## Hygiene vs program (classify before materializing)
 
 A closeout invitation is **not** automatic permission to create `I-*`, `TB-*`, `TSP-*`, or `ML-*`.
