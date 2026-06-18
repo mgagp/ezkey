@@ -79,7 +79,7 @@
     "eslint-config-prettier": "10.1.8",
     "husky": "9.1.7",
     "jest": "29.7.0",
-    "lint-staged": "16.4.0",
+    "lint-staged": "17.0.7",
     "orval": "8.17.0",
     "prettier": "3.8.4",
     "react-native-svg-transformer": "1.5.3",
