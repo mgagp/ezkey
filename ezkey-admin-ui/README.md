@@ -72,6 +72,16 @@ real EZKey stack.
   login flow through the Admin UI and approve or deny it on the Demo Device.
 - The Admin UI runtime is still started separately from clean-start.
 
+### Auth API profile (`docker-test`)
+
+Device-backed browser tests call the real Auth API through the Demo Device (`POST /api/v1/auth-attempts/pending` on each poll). That endpoint is rate-limited under the production-like `docker` profile only (~10 pending requests per minute per enrollment).
+
+- **Recommended:** start the stack with `./ezkey-tests/clean-start.sh` (or `SPRING_PROFILES_ACTIVE=docker,docker-test` via `./docker/start.sh`), which activates the `docker-test` profile and relaxes rate limits for local QA.
+- **Partial restart trap:** if you restart individual containers without `docker-test`, pending polls can return **429 Too Many Requests** and Playwright fails after ~55s waiting for the Demo Device pending shell.
+- **Symptoms:** login reaches the waiting state on Admin UI, but `openDemoDevicePendingRequest` times out; Auth API logs show rate-limit rejections on `auth-attempts/pending`.
+
+See [`../docker/TEST_MODES.md`](../docker/TEST_MODES.md) for profile details.
+
 ### Local developer path
 
 Use the Vite dev server and let Playwright start it automatically:

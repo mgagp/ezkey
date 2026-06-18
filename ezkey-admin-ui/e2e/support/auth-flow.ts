@@ -2,7 +2,8 @@ import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { testEnv } from './test-env';
 
 const DEMO_DEVICE_PENDING_TIMEOUT_MS = 55_000;
-const DEMO_DEVICE_PENDING_INTERVAL_MS = 1_500;
+/** Safety net when Auth API runs without `docker-test` (prod-like pending rate limit ~10/min). */
+const DEMO_DEVICE_PENDING_INTERVAL_MS = 6_000;
 
 async function openDemoDevicePendingRequest(demoPage: Page): Promise<void> {
   await demoPage.goto(`${testEnv.demoDeviceUrl}/phone/ezkey`);
