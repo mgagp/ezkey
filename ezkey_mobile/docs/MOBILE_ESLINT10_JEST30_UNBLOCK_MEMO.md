@@ -72,3 +72,11 @@ Keep dependency hygiene disciplined while avoiding premature major upgrades that
   - `node_modules/@react-native/eslint-config/package.json`
   - `node_modules/@react-native/jest-preset/package.json`
 - Retry majors only when gates above are satisfied.
+
+## Test command reliability note (PowerShell)
+
+- Prefer running `yarn test --runInBand` directly for pass/fail truth.
+- If a summarized view is needed, do not rely on a filtering pipeline for the final exit code.
+- Recommendation:
+   1. Run the raw command first and capture its exit code.
+   2. Then parse or filter logs as a second, non-blocking step.
