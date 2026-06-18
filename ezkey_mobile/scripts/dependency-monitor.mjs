@@ -8,13 +8,18 @@
  * - surface high-severity audit findings
  */
 
-import {existsSync, readFileSync} from 'node:fs';
+import {appendFileSync, existsSync, mkdirSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-const args = new Set(process.argv.slice(2));
+const rawArgs = process.argv.slice(2);
+const args = new Set(rawArgs);
 const strictMode = args.has('--strict');
 const jsonMode = args.has('--json');
+const historyMode = args.has('--history');
+
+const historyFileArg = rawArgs.find(arg => arg.startsWith('--history-file='));
+const historyFileRaw = historyFileArg ? historyFileArg.slice('--history-file='.length) : '.monitor/dependency-history.ndjson';
 
 const rootDir = path.resolve(process.cwd());
 const packageJsonPath = path.join(rootDir, 'package.json');
@@ -153,6 +158,7 @@ const actionable = rows.filter(r => r.status === 'actionable');
 const deferred = rows.filter(r => r.status === 'deferred');
 
 const summary = {
+  timestamp: new Date().toISOString(),
   rnVersion: currentVersions['react-native'] ?? 'unknown',
   eslint10GateOpen,
   jest30GateOpen,
@@ -163,6 +169,23 @@ const summary = {
   ncuError,
   auditNoSuggestions,
 };
+
+if (historyMode) {
+  const historyFilePath = path.isAbsolute(historyFileRaw)
+    ? historyFileRaw
+    : path.join(rootDir, historyFileRaw);
+  const historyDir = path.dirname(historyFilePath);
+  if (!existsSync(historyDir)) {
+    mkdirSync(historyDir, {recursive: true});
+  }
+
+  const snapshot = {
+    summary,
+    actionable,
+    deferred,
+  };
+  appendFileSync(historyFilePath, `${JSON.stringify(snapshot)}\n`, 'utf8');
+}
 
 if (jsonMode) {
   console.log(

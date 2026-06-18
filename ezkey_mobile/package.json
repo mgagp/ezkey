@@ -11,6 +11,8 @@
     "generate:api": "orval --config orval.config.ts",
     "deps:monitor": "node scripts/dependency-monitor.mjs",
     "deps:monitor:strict": "node scripts/dependency-monitor.mjs --strict",
+    "deps:monitor:history": "node scripts/dependency-monitor.mjs --history",
+    "deps:monitor:history:strict": "node scripts/dependency-monitor.mjs --history --strict",
     "android:preflight:path": "bash scripts/preflight-android-path-length.sh",
     "android:clean": "cd android && ./gradlew clean",
     "android:assemble:debug": "cd android && ./gradlew assembleDebug",

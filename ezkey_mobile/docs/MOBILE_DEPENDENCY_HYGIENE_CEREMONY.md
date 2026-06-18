@@ -18,6 +18,7 @@ Define a lightweight, repeatable dependency-update routine that keeps momentum w
 
 1. **Monitor**
    - Run `yarn deps:monitor`.
+   - Optionally archive run history with `yarn deps:monitor:history`.
    - Split result into:
      - actionable now
      - deferred by ecosystem gates
@@ -38,6 +39,7 @@ Define a lightweight, repeatable dependency-update routine that keeps momentum w
 
 5. **Update traceability**
    - Record the result in PR notes and relevant memo docs.
+   - Use `MOBILE_DEPENDENCY_PR_TEMPLATE.md` for consistent lot reporting.
    - Keep deferred majors documented with explicit unblock conditions.
 
 ## Cadence recommendation

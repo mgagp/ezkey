@@ -43,6 +43,9 @@ yarn-error.log
 .env.*
 !.env.example
 
+# Local dependency monitor history (generated on demand)
+.monitor/
+
 # fastlane
 #
 # It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the

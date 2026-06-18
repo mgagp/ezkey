@@ -80,6 +80,20 @@ Strict mode (non-zero when actionable upgrades or high-severity audit findings e
 yarn deps:monitor:strict
 ```
 
+History mode (append each run to local NDJSON history):
+
+```bash
+yarn deps:monitor:history
+```
+
+Default history location: `.monitor/dependency-history.ndjson` (local working tree).
+
+You can override it manually:
+
+```bash
+node scripts/dependency-monitor.mjs --history --history-file=.monitor/custom-history.ndjson
+```
+
 ## `verify-android-sensitive-storage.sh`
 
 Runs a repeatable Android debug-build verification for local secret handling:
