@@ -2970,26 +2970,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-navigation/elements@npm:^2.9.19":
-  version: 2.9.19
-  resolution: "@react-navigation/elements@npm:2.9.19"
-  dependencies:
-    color: "npm:^4.2.3"
-    use-latest-callback: "npm:^0.2.4"
-    use-sync-external-store: "npm:^1.5.0"
-  peerDependencies:
-    "@react-native-masked-view/masked-view": ">= 0.2.0"
-    "@react-navigation/native": ^7.2.5
-    react: ">= 18.2.0"
-    react-native: "*"
-    react-native-safe-area-context: ">= 4.0.0"
-  peerDependenciesMeta:
-    "@react-native-masked-view/masked-view":
-      optional: true
-  checksum: 10c0/8743a20a19de8538346f5376ab21f0fb58f843f39bee70c973c5bd5ee2d2f46ff5aa91284d287602de76c02e704fe6cf6c410aa8936121f8c8891bfe97dc35cb
-  languageName: node
-  linkType: hard
-
 "@react-navigation/elements@npm:^2.9.25":
   version: 2.9.25
   resolution: "@react-navigation/elements@npm:2.9.25"
@@ -3054,21 +3034,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-navigation/stack@npm:7.9.3":
-  version: 7.9.3
-  resolution: "@react-navigation/stack@npm:7.9.3"
+"@react-navigation/stack@npm:7.10.5":
+  version: 7.10.5
+  resolution: "@react-navigation/stack@npm:7.10.5"
   dependencies:
-    "@react-navigation/elements": "npm:^2.9.19"
+    "@react-navigation/elements": "npm:^2.9.25"
     color: "npm:^4.2.3"
     use-latest-callback: "npm:^0.2.4"
   peerDependencies:
-    "@react-navigation/native": ^7.2.5
+    "@react-navigation/native": ^7.3.3
     react: ">= 18.2.0"
     react-native: "*"
     react-native-gesture-handler: ">= 2.0.0"
     react-native-safe-area-context: ">= 4.0.0"
     react-native-screens: ">= 4.0.0"
-  checksum: 10c0/566ae69335af8aea363bcfe704d49fe7c6dfd3d01fd431b443a8bd53c53a8bcf9288fb8d7d4b1333db6e73f5c6be10aaf5e066f48642e7ff61b373df4907cb67
+  checksum: 10c0/dd1e3823f1058af505169086ae268d116e499af75e777b1b52bb63013d1fb47e3b8ffe93a8e0493b78f7655beee263557b0669d7883363069886906c9e8b7955
   languageName: node
   linkType: hard
 
@@ -6056,7 +6036,7 @@ __metadata:
     "@react-native/typescript-config": "npm:0.86.0"
     "@react-navigation/native": "npm:7.3.3"
     "@react-navigation/native-stack": "npm:7.17.5"
-    "@react-navigation/stack": "npm:7.9.3"
+    "@react-navigation/stack": "npm:7.10.5"
     "@rnx-kit/third-party-notices": "npm:2.0.3"
     "@tanstack/react-query": "npm:5.101.0"
     "@types/jest": "npm:29.5.14"
@@ -6078,7 +6058,7 @@ __metadata:
     react-native-config: "npm:1.6.1"
     react-native-gesture-handler: "npm:3.0.1"
     react-native-keychain: "npm:10.0.0"
-    react-native-nitro-image: "npm:0.14.0"
+    react-native-nitro-image: "npm:0.15.1"
     react-native-nitro-modules: "npm:0.35.9"
     react-native-safe-area-context: "npm:5.8.0"
     react-native-screens: "npm:4.25.2"
@@ -9739,14 +9719,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-nitro-image@npm:0.14.0":
-  version: 0.14.0
-  resolution: "react-native-nitro-image@npm:0.14.0"
+"react-native-nitro-image@npm:0.15.1":
+  version: 0.15.1
+  resolution: "react-native-nitro-image@npm:0.15.1"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-nitro-modules: "*"
-  checksum: 10c0/5bd4d553acb354cfdbaec2a40d34285cc96b67a3ad045e77f11f24762a0028b3259c8464d546d1aad7bd5fee418673f7e0bfcd1ec61484a9ed7fb524da8a08c5
+  checksum: 10c0/c8599543167ce1f53c838c2ec4a38923b617945d6dbea9717383a21688fa30d409f91a03a4d2645efa2fcd3523a4f06bdc97484507e99ebf10ac7236da55d735
   languageName: node
   linkType: hard
 
