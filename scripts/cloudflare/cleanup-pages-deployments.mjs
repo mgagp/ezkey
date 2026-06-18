@@ -103,8 +103,8 @@ function parseArgs(argv) {
       }
       case '--keep-latest': {
         const n = Number.parseInt(argv[++i], 10);
-        if (!Number.isFinite(n) || n < 1) {
-          throw new Error('--keep-latest must be a positive integer');
+        if (!Number.isFinite(n) || n < 0) {
+          throw new Error('--keep-latest must be a non-negative integer (0 = delete all older than threshold)');
         }
         opts.keepLatest = n;
         break;
@@ -135,7 +135,7 @@ Options:
                          aggressive = older than 24h (default)
                          prudent    = older than 7d
   --older-than DURATION  Override profile (e.g. 24h, 48h, 7d)
-  --keep-latest N        Keep N newest deployment(s) per branch (default: 1 preview, 3 production)
+  --keep-latest N        Keep N newest deployment(s) per branch (default: 1 preview, 3 production; 0 = age-only)
   --apply                Actually delete (default: list only)
   -h, --help             Show this help
 
@@ -213,9 +213,10 @@ async function listAllDeployments(projectName, environment) {
   return all;
 }
 
-async function deleteDeployment(projectName, deploymentId) {
+async function deleteDeployment(projectName, deploymentId, { force = false } = {}) {
+  const forceQuery = force ? '?force=true' : '';
   return cfFetch(
-    `/pages/projects/${encodeURIComponent(projectName)}/deployments/${deploymentId}`,
+    `/pages/projects/${encodeURIComponent(projectName)}/deployments/${deploymentId}${forceQuery}`,
     { method: 'DELETE' },
   );
 }
@@ -347,7 +348,9 @@ async function main() {
 
       if (opts.apply) {
         try {
-          await deleteDeployment(project, item.deployment.id);
+          await deleteDeployment(project, item.deployment.id, {
+            force: opts.env === 'preview',
+          });
           totalDeleted += 1;
         } catch (err) {
           totalFailed += 1;
