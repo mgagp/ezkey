@@ -1,5 +1,7 @@
 # Handoff — Admin UI hygiene follow-ups (post #225)
 
+**Status:** `done` (2026-06-18) — delivered via PR [#234](https://github.com/mgagp/ezkey/pull/234). Consolidation: [`ML-2026-06-18-session-hygiene-consolidation-closeout.md`](../method-logs/ML-2026-06-18-session-hygiene-consolidation-closeout.md).
+
 Use this prompt to start a **new Cursor session** on a **separate branch** after PR `hygiene/admin-ui-doctor-curated` is merged.
 
 ---
@@ -95,3 +97,16 @@ Start with Scope A (README docker-test + optional auth-flow poll interval), then
 
 Read ezkey-admin-ui/AGENTS.md and the handoff notes above. Do not expand into dialog migration or broad refactors.
 ```
+
+---
+
+## Closeout (2026-06-18)
+
+| Scope | PR | Evidence |
+|-------|-----|----------|
+| A — README `docker-test` + poll interval 6s | #234 | Playwright `@smoke` 4/4 |
+| B — Orval 8.18.0 | #234 | `build` + `lint` + `generate:api` |
+| C — doctor re-scan | session | `button-has-type`, constructed context, dashboard handlers cleared |
+
+Parent track #182 closed same day. See consolidation ML linked in header.
+

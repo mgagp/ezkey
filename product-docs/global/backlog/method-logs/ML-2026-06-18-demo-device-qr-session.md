@@ -108,6 +108,9 @@ slice; evidence in `TB-*` § Closeout and `ezkey-demo-device/AGENTS.md`).
 **closeout:** `I-*` and `TB-*` → `done`. Operator validated standalone `:3080` QR bind against local
 Auth API via ngrok. Client follow-up: `sessionStorage` + submit sync for hidden `authApiBaseUrl`.
 
+**Post-close hygiene (2026-06-18):** Jackson 3 pom (#209 / PR #233) + standalone `AGENTS.md` sync —
+consolidated in [`ML-2026-06-18-session-hygiene-consolidation-closeout.md`](ML-2026-06-18-session-hygiene-consolidation-closeout.md).
+
 **Residual:** GitHub issue optional; `:8083` smoke not re-run after client-only fix.
 
 ---

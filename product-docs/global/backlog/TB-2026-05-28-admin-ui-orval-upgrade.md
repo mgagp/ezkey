@@ -417,3 +417,20 @@ All must be true:
 - [`../../methodology/testing-strategy-in-workflow.md`](../../methodology/testing-strategy-in-workflow.md)
 - Orval releases: https://github.com/orval-labs/orval/releases
 - Prior Admin UI toolchain TB: [`TB-2026-05-24-admin-ui-vite8-upgrade.md`](TB-2026-05-24-admin-ui-vite8-upgrade.md)
+
+---
+
+## Post-program hygiene — Orval 8.18 (2026-06-18)
+
+Lane C follow-up after the 8.5 → 8.13 program closed. Not a new program slice.
+
+| Item | Detail |
+|------|--------|
+| PR | [#234](https://github.com/mgagp/ezkey/pull/234) |
+| Pin | `8.18.0` (exact; `AGENTS.md` updated) |
+| Config | unchanged — `query: { version: 5 }` only (Option B) |
+| Validation | `generate:api`, `build`, `lint`, Playwright `@smoke` |
+| Canon | [`ML-2026-06-18-session-hygiene-consolidation-closeout.md`](method-logs/ML-2026-06-18-session-hygiene-consolidation-closeout.md) |
+
+Treat **8.19+** as the next validation ladder per `ezkey-admin-ui/AGENTS.md`.
+
