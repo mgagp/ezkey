@@ -9,7 +9,7 @@ services:
         BUILD_MODE: ${BUILD_MODE:-test}
     container_name: ezkey-admin-ui
     ports:
-      - "${ADMIN_UI_PORT:-3080}:8080"
+      - "${ADMIN_UI_PORT:-3090}:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

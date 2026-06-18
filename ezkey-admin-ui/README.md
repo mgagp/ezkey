@@ -115,7 +115,7 @@ Useful variants:
 
 Default URLs for the Docker runner:
 
-- Admin UI: `http://host.docker.internal:3080`
+- Admin UI: `http://host.docker.internal:3090`
 - Demo Device: `http://host.docker.internal:8083`
 
 ### Artifacts

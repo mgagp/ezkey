@@ -21,7 +21,7 @@ This document describes the technical structure of the Admin UI, the libraries i
 The Admin UI is a single-page application served statically and proxied to the Admin API (`/api/*`). Deployment paths:
 
 - **Local dev** (`npm run dev`) — Vite HMR, API proxy configured in `vite.config.ts`.
-- **Docker / QA** (`./start.sh`) — Built assets served by Caddy on port 3080; Caddy enforces CSP and other headers; reverse-proxies `/api/*` to the Admin API.
+- **Docker / QA** (`./start.sh`) — Built assets served by Caddy on port 3090; Caddy enforces CSP and other headers; reverse-proxies `/api/*` to the Admin API.
 - **Cloudflare Pages** (`npm run build:cloudflare`) — Static build with an embedded API base URL for a split UI/API topology.
 
 Details on header surfaces and deployment variations live in [`../../../docs/admin-ui-security.md`](../../../docs/admin-ui-security.md) and [`../../../docs/cloudflare/admin-ui-pages.md`](../../../docs/cloudflare/admin-ui-pages.md).

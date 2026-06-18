@@ -216,15 +216,15 @@ The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (
 Use **start.sh** to build and run the Admin UI in Docker:
 
 ```bash
-./start.sh                    # Test/QA build (demo mode on), http://localhost:3080
+./start.sh                    # Test/QA build (demo mode on), http://localhost:3090
 ./start.sh -production        # Production build (no demo), same port
-./start.sh -p 3090            # Custom host port (e.g. avoid conflict with Grafana on 3000)
+./start.sh -p 3080            # Custom host port override
 ./start.sh -d                 # Detached
 ./start.sh --no-cache         # Force full rebuild
 ```
 
 - **Build modes:** Default is **Test/QA** (`BUILD_MODE=test`): demo mode enabled (Ctrl+click on sidebar, Fill demo in create forms). Use `-production` for a production build: optimized, no demo code (tree-shaken).
-- **Port:** Default host port is **3080** (avoids common conflicts: 3000 Grafana, 5173 Vite dev, 8080/9090/9100). Override with `-p PORT` or `--port PORT`.
+- **Port:** Default host port is **3090** (avoids 3000 Grafana, **3080** standalone Demo Device repo, 5173 Vite dev, 8080/9090/9100). Override with `-p PORT` or `--port PORT`.
 - Served by **Caddy** on port 8080 inside the container; host port is configurable.
 - `VITE_API_BASE_URL` is **empty** in production/test envs → all `/api/*` calls are relative.
 - Caddy reverse-proxies `/api/*` → `host.docker.internal:9080` (Admin API on the Docker host).
