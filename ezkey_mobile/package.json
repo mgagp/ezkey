@@ -71,7 +71,7 @@
     "@react-native/jest-preset": "0.86.0",
     "@react-native/metro-config": "0.86.0",
     "@react-native/typescript-config": "0.86.0",
-    "@rnx-kit/third-party-notices": "2.0.3",
+    "@rnx-kit/third-party-notices": "3.0.0",
     "@types/jest": "29.5.14",
     "@types/react": "19.2.17",
     "@types/react-test-renderer": "19.1.0",

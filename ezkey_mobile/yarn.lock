@@ -3052,24 +3052,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rnx-kit/console@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@rnx-kit/console@npm:2.0.0"
-  checksum: 10c0/325db427097afe731b55e5cb492ca7d6a03cb499e5d1c1fd6c16a2d992bcdf8a3d7a22eedb60a0555041a55e6a4dd2874648e9a231ea0e7dab509a32a1c5bdad
+"@rnx-kit/console@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@rnx-kit/console@npm:3.0.0"
+  checksum: 10c0/0849dcfe24d2e27e0cfeaef71ee66f14fff5408aacc508f15a5e59fd438912fb75e0d155ae45f1f408cee00ec834c840704edd8599fad9e056085fc0ec784f82
   languageName: node
   linkType: hard
 
-"@rnx-kit/third-party-notices@npm:2.0.3":
-  version: 2.0.3
-  resolution: "@rnx-kit/third-party-notices@npm:2.0.3"
+"@rnx-kit/third-party-notices@npm:3.0.0":
+  version: 3.0.0
+  resolution: "@rnx-kit/third-party-notices@npm:3.0.0"
   dependencies:
-    "@rnx-kit/console": "npm:^2.0.0"
+    "@rnx-kit/console": "npm:^3.0.0"
     "@rnx-kit/tools-node": "npm:^3.0.0"
     spdx-expression-parse: "npm:^4.0.0"
     yargs: "npm:^16.0.0"
   bin:
     build-tpn: lib/build-tpn.js
-  checksum: 10c0/6482974e65d660452bfd26cb984d3d55f18a7c0ab7608dd55f557922705e28780f6b2185a3db6b211ee7d18b52d736a898e19c2f11fa7406f8587e5f7b77fc97
+  checksum: 10c0/034e4650a3a543b75fcd26caf60fa38b66cfc6141f70ddad9d98e739544901ed284e7978146b14196c1cb11227145a722983c62d7baed4bced3b13ec949fa955
   languageName: node
   linkType: hard
 
@@ -6037,7 +6037,7 @@ __metadata:
     "@react-navigation/native": "npm:7.3.3"
     "@react-navigation/native-stack": "npm:7.17.5"
     "@react-navigation/stack": "npm:7.10.5"
-    "@rnx-kit/third-party-notices": "npm:2.0.3"
+    "@rnx-kit/third-party-notices": "npm:3.0.0"
     "@tanstack/react-query": "npm:5.101.0"
     "@types/jest": "npm:29.5.14"
     "@types/react": "npm:19.2.17"
