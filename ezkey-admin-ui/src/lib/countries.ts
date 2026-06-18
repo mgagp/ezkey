@@ -22,6 +22,8 @@ const ISO_3166_1_ALPHA2_CODES = [
   'VN', 'VU', 'WF', 'WS', 'YE', 'YT', 'ZA', 'ZM', 'ZW',
 ] as const;
 
+const EN_REGION_DISPLAY_NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
+
 let cachedOptions: { code: string; name: string }[] | null = null;
 
 /**
@@ -30,10 +32,9 @@ let cachedOptions: { code: string; name: string }[] | null = null;
  */
 export function getCountryOptions(): { code: string; name: string }[] {
   if (cachedOptions !== null) return cachedOptions;
-  const displayNames = new Intl.DisplayNames(['en'], { type: 'region' });
   cachedOptions = ISO_3166_1_ALPHA2_CODES.map((code) => ({
     code,
-    name: displayNames.of(code) ?? code,
+    name: EN_REGION_DISPLAY_NAMES.of(code) ?? code,
   }));
   return cachedOptions;
 }
