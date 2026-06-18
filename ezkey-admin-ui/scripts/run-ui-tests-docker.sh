@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-ADMIN_UI_URL="${EZKEY_ADMIN_UI_URL:-http://host.docker.internal:3080}"
+ADMIN_UI_URL="${EZKEY_ADMIN_UI_URL:-http://host.docker.internal:3090}"
 DEMO_DEVICE_URL="${EZKEY_DEMO_DEVICE_URL:-http://host.docker.internal:8083}"
 RESULTS_DIR="${EZKEY_BROWSER_TEST_RESULTS_DIR:-$ROOT_DIR/test-results/browser}"
 REPORT_DIR="${EZKEY_BROWSER_TEST_REPORT_DIR:-$ROOT_DIR/playwright-report}"

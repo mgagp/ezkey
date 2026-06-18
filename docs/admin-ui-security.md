@@ -100,7 +100,7 @@ The Admin UI is **not** intended to be embedded in iframes. Headers: **`frame-an
 
 ## HTTPS, HSTS, and mkcert
 
-- **HTTP** (e.g. `http://localhost:3080` for Path B) is enough to test **most** headers; **HSTS** must only be sent on **HTTPS** responses.
+- **HTTP** (e.g. `http://localhost:3090` for Path B) is enough to test **most** headers; **HSTS** must only be sent on **HTTPS** responses.
 - **`Strict-Transport-Security`** is commented in `ezkey-admin-ui/docker/Caddyfile` until TLS is terminated there.
 - **mkcert** gives **locally trusted** certificates without browser warning spam. Typical flow: `mkcert -install`, then `mkcert localhost 127.0.0.1 ::1`, mount PEM files into the container or host Caddy, add a `tls` block, then enable the **`@https` HSTS** snippet in the Caddyfile.
 
