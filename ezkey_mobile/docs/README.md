@@ -51,6 +51,7 @@ reference mobile app.
 | Document | Category | When to read it |
 | --- | --- | --- |
 | [MOBILE_CODE_QUALITY_REVIEW.md](MOBILE_CODE_QUALITY_REVIEW.md) | Quality review — multi-session backlog | Starting point for any code quality improvement session. Contains initial observations (2026-05-08), prioritized actions (P1–P3), and a running status table to resume work across sessions. |
+| [MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md](MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md) | Maintenance workflow | Lightweight and repeatable dependency-update routine (monitor, isolate, validate, decide, trace). |
 
 ## Supporting and Operational Docs
 
@@ -60,6 +61,7 @@ reference mobile app.
 | [MOBILE_CRYPTO_REFERENCE.md](MOBILE_CRYPTO_REFERENCE.md) | Supporting security detail | When reviewing mobile-specific crypto wording and storage caveats. |
 | [MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md](MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md) | Supporting security practice | When validating local secret handling, sandbox artifacts, log hygiene, and debug-only instrumentation choices. |
 | [MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md](MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md) | Supporting future design note | When revisiting local-auth integrity, future enrollment policy, or audit/protocol extensions around `respond`. |
+| [MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md](MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md) | Supporting dependency governance | Unblock gates and trial protocol for deferred ESLint 10 / Jest 30 majors. |
 | [MOBILE_RELEASE_SIGNING.md](MOBILE_RELEASE_SIGNING.md) | Operational | When preparing signed Android release artifacts. |
 | [MOBILE_PLAY_PUBLISHING.md](MOBILE_PLAY_PUBLISHING.md) | Operational | When preparing Google Play submission. |
 | [MOBILE_PLAY_RELEASE_READINESS_AUDIT.md](MOBILE_PLAY_RELEASE_READINESS_AUDIT.md) | Operational decision support | When deciding whether the current workspace is close enough to a Play release candidate. |

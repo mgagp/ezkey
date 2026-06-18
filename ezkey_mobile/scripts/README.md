@@ -58,6 +58,42 @@ Yarn alias: `yarn android:preflight:path`.
 
 Sets `JAVA_HOME` to JDK 17/21 (never JDK 25 from PATH). Probes Android Studio JBR (including `Android Studio1`), `C:\Tools\jdk17`, Microsoft JDK 17, and macOS `java_home`. Override with `EZKEY_ANDROID_JAVA_HOME`.
 
+## `dependency-monitor.mjs`
+
+Lightweight dependency monitoring helper for iterative hygiene.
+
+It combines:
+
+- available upgrades (`npm-check-updates`)
+- high-severity audit signal (`yarn npm audit --severity high`)
+- ecosystem gates for known deferred majors (ESLint 10, Jest 30)
+
+From `ezkey_mobile/`:
+
+```bash
+yarn deps:monitor
+```
+
+Strict mode (non-zero when actionable upgrades or high-severity audit findings exist):
+
+```bash
+yarn deps:monitor:strict
+```
+
+History mode (append each run to local NDJSON history):
+
+```bash
+yarn deps:monitor:history
+```
+
+Default history location: `.monitor/dependency-history.ndjson` (local working tree).
+
+You can override it manually:
+
+```bash
+node scripts/dependency-monitor.mjs --history --history-file=.monitor/custom-history.ndjson
+```
+
 ## `verify-android-sensitive-storage.sh`
 
 Runs a repeatable Android debug-build verification for local secret handling:
