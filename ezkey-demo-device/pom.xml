@@ -53,23 +53,10 @@
 			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
 
-		<!-- Jackson JSR310 for date/time deserialization (required for RFC3339InstantDeserializer) -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.datatype</groupId>
-			<artifactId>jackson-datatype-jsr310</artifactId>
-		</dependency>
-
 		<!-- Validation API for generated DTOs -->
 		<dependency>
 			<groupId>jakarta.validation</groupId>
 			<artifactId>jakarta.validation-api</artifactId>
-		</dependency>
-
-		<!-- JsonNullable library for OpenAPI generated DTOs -->
-		<dependency>
-			<groupId>org.openapitools</groupId>
-			<artifactId>jackson-databind-nullable</artifactId>
-			<version>0.2.10</version>
 		</dependency>
 
 		<!-- Testing -->
@@ -119,6 +106,13 @@
 						<configuration>
 							<inputSpec>${project.basedir}/openapi-spec.json</inputSpec>
 							<generatorName>java</generatorName>
+							<addCompileSourceRoot>false</addCompileSourceRoot>
+							<generateApis>false</generateApis>
+							<generateApiTests>false</generateApiTests>
+							<generateApiDocumentation>false</generateApiDocumentation>
+							<generateSupportingFiles>false</generateSupportingFiles>
+							<generateModelTests>false</generateModelTests>
+							<generateModelDocumentation>true</generateModelDocumentation>
 							<configOptions>
 			                    <!-- Configuration temporelle -->
 			                    <dateLibrary>java8</dateLibrary>
@@ -129,12 +123,7 @@
 			                    <!-- Configuration Spring/Jakarta -->
 			                    <library>resttemplate</library>
 			                    <useJakartaEe>true</useJakartaEe>
-			                    <useSpringBoot3>true</useSpringBoot3>
-
-			                    <!-- Configuration génération -->
-			                    <generateApis>false</generateApis>
-			                    <generateSupportingFiles>false</generateSupportingFiles>
-			                    <generateApiDocumentation>false</generateApiDocumentation>
+			                    <useSpringBoot4>true</useSpringBoot4>
 			                    <hideGenerationTimestamp>true</hideGenerationTimestamp>
 
 			                    <!-- Configuration validation/sérialisation -->
@@ -161,8 +150,6 @@
 							<modelPackage>org.ezkey.demodevice.generated.dto</modelPackage>
 							<apiPackage>org.ezkey.demodevice.generated.api</apiPackage>
 							<invokerPackage>org.ezkey.demodevice.generated.client</invokerPackage>
-							<generateModelDocumentation>true</generateModelDocumentation>
-							<generateApiDocumentation>false</generateApiDocumentation>
 							<modelNameSuffix></modelNameSuffix>
 							<removeOperationIdPrefix>true</removeOperationIdPrefix>
 						</configuration>
@@ -170,7 +157,11 @@
 				</executions>
 			</plugin>
 
-			<!-- Add generated sources to compilation -->
+			<!-- Compile generated Auth API DTOs only (models). The java/resttemplate generator
+			     still emits client helpers (RFC3339*, ApiClient) that import
+			     com.fasterxml.jackson.databind; useJackson3 is not supported for resttemplate.
+			     WebClient uses Spring Boot 4 Jackson 3 codecs; DTOs keep
+			     com.fasterxml.jackson.annotation by design (JSTEP-1). -->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>build-helper-maven-plugin</artifactId>
@@ -184,7 +175,7 @@
 						</goals>
 						<configuration>
 							<sources>
-								<source>${project.build.directory}/generated-sources/openapi/src/main/java</source>
+								<source>${project.build.directory}/generated-sources/openapi/src/main/java/org/ezkey/demodevice/generated/dto</source>
 							</sources>
 						</configuration>
 					</execution>
