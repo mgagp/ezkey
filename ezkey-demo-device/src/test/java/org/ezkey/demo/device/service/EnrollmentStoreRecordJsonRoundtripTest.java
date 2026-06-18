@@ -43,4 +43,37 @@ class EnrollmentStoreRecordJsonRoundtripTest {
         mapper.readValue(json, EnrollmentStoreService.Record.class);
     assertThat(back.enrollmentProofToken()).isEqualTo("proof-token-value");
   }
+
+  @Test
+  void enrollmentUrl_roundTrips() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    EnrollmentStoreService.Record original =
+        new EnrollmentStoreService.Record(
+            3,
+            null,
+            "Name",
+            "http://localhost:8080",
+            "integ-pk",
+            "proof-token-value",
+            "dev-pub",
+            "dev-priv",
+            null,
+            "Device",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "NONE");
+    byte[] json = mapper.writeValueAsBytes(original);
+    String asText = new String(json, java.nio.charset.StandardCharsets.UTF_8);
+    assertThat(asText).contains("enrollmentUrl");
+    assertThat(asText).contains("http://localhost:8080");
+
+    EnrollmentStoreService.Record back =
+        mapper.readValue(json, EnrollmentStoreService.Record.class);
+    assertThat(back.enrollmentUrl()).isEqualTo("http://localhost:8080");
+  }
 }
