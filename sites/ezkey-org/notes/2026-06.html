@@ -2,23 +2,24 @@
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta property="og:title" content="Ezkey — Trust &amp; security">
-    <meta property="og:description" content="Ezkey trust model, disclosure posture, open-source visibility, and how to report security issues.">
-    <meta property="og:url" content="https://ezkey.org/trust.html">
+    <meta name="description" content="Informal field notes from June 2026, newest first.">
+    <meta property="og:title" content="Ezkey — Field notes (June 2026)">
+    <meta property="og:description" content="Informal field notes from June 2026, newest first.">
+    <meta property="og:url" content="https://ezkey.org/notes/2026-06.html">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Ezkey">
     <meta property="og:image" content="https://ezkey.org/logo.svg">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Ezkey — Trust &amp; security">
-    <meta name="twitter:description" content="Ezkey trust model, disclosure posture, open-source visibility, and how to report security issues.">
+    <meta name="twitter:title" content="Ezkey — Field notes (June 2026)">
+    <meta name="twitter:description" content="Informal field notes from June 2026, newest first.">
     <meta name="twitter:image" content="https://ezkey.org/logo.svg">
 
-    <link rel="alternate" hreflang="en" href="https://ezkey.org/trust.html">
-    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/trust.html">
-    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/trust.html">
-    <title>Ezkey — Trust &amp; security</title>
-    <meta name="description" content="Ezkey trust model, disclosure posture, open-source visibility, and how to report security issues.">
+    <link rel="canonical" href="https://ezkey.org/notes/2026-06.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/notes/2026-06.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/notes/2026-06.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/notes/2026-06.html">
+    <title>Ezkey — Field notes (June 2026)</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -121,42 +122,112 @@
             color: rgba(255, 255, 255, 0.9);
             font-size: 1.05rem;
             line-height: 1.6;
-            margin-bottom: 22px;
+            margin-bottom: 24px;
             text-align: center;
         }
 
-        .page-panel h2 {
-            color: white;
-            font-size: 1.12rem;
+        .month-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 12px;
+            align-items: center;
+            justify-content: space-between;
+            margin: 0 0 18px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.09);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .month-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .month-link,
+        .month-current {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 0.9rem;
             font-weight: 600;
-            margin: 1.35em 0 0.55em;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            padding-bottom: 2px;
         }
 
-        .page-panel h2:first-of-type { margin-top: 0.35em; }
+        .month-link:hover { color: white; border-bottom-color: white; }
 
-        .page-panel p {
+        .month-current {
+            color: rgba(255, 255, 255, 0.5);
+            border-bottom-color: rgba(255, 255, 255, 0.15);
+            cursor: default;
+        }
+
+        .month-selectors {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .month-selectors label {
             color: rgba(255, 255, 255, 0.9);
-            font-size: 1.02rem;
-            line-height: 1.65;
-            margin-bottom: 12px;
-        }
-
-        .page-panel ul {
-            margin: 8px 0 12px 1.25em;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.02rem;
-            line-height: 1.55;
-        }
-
-        .page-panel li { margin-bottom: 6px; }
-
-        .page-panel a {
-            color: white;
+            font-size: 0.85rem;
             font-weight: 600;
-            text-decoration: underline;
         }
 
-        .page-panel a:hover { text-decoration-thickness: 2px; }
+        .month-selectors select {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            color: #fff;
+            padding: 6px 8px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+        }
+
+        .month-selectors option { color: #111; }
+
+        .month-caption {
+            color: rgba(255, 255, 255, 0.84);
+            font-size: 0.9rem;
+            margin: 0 0 16px;
+            text-align: left;
+        }
+
+        .note-list { list-style: none; margin: 0; padding: 0; }
+
+        .note-entry {
+            padding: 18px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .note-entry:first-of-type { border-top: none; padding-top: 0; }
+        .note-entry:last-child { padding-bottom: 0; }
+
+        .note-meta {
+            font-size: 0.78rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.66);
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .note-title {
+            display: inline-block;
+            color: #fff;
+            font-size: 1.08rem;
+            font-weight: 700;
+            text-decoration: none;
+            margin-bottom: 8px;
+            line-height: 1.35;
+        }
+        .note-title:hover { text-decoration: underline; }
+
+        .note-text {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.98rem;
+            line-height: 1.58;
+        }
 
         .footer {
             color: rgba(255, 255, 255, 0.6);
@@ -195,8 +266,9 @@
         }
 
         @media (max-width: 768px) {
+            .page-panel { padding: 28px 20px 32px; }
+            .page-panel h1 { font-size: 1.45rem; }
             .container { padding: 20px; }
-            .page-panel { padding: 28px 22px 32px; }
         }
     </style>
 </head>
@@ -208,18 +280,18 @@
     <div class="container">
         <p class="lang-switch">
             <span style="color:white;font-weight:600;">English</span>
-            · <a href="/fr/trust.html">Français</a>
+            · <a href="/fr/notes/2026-06.html">Français</a>
         </p>
         <nav class="site-nav" aria-label="Primary">
             <a href="/">Home</a>
             <a href="/source-and-evaluation.html#documentation">Docs</a>
             <a href="/api-docs.html">API Docs</a>
             <a href="/source-and-evaluation.html#run-locally">Run locally</a>
-            <a href="/trust.html" aria-current="page">Trust</a>
+            <a href="/trust.html">Trust</a>
             <a href="/updates.html">Updates</a>
             <a href="/guides.html">Guides</a>
             <a href="/articles.html">Articles</a>
-            <a href="/notes.html">Notes</a>
+            <a href="/notes.html" aria-current="page">Notes</a>
             <a href="/methodology.html">Methodology</a>
         </nav>
         <div class="logo-container">
@@ -231,35 +303,34 @@
         </div>
 
         <div class="page-panel">
-            <span class="section-eyebrow">Diligence</span>
-            <h1>Trust &amp; security</h1>
+            <span class="section-eyebrow">Field notes</span>
+            <h1>Field notes</h1>
             <p class="page-intro">
-                A compact page for evaluators. Canonical technical documentation will ship with the <strong>public</strong> repository; until then, see <a href="/source-and-evaluation.html">Source code &amp; evaluation</a> for the private-repo posture and what is available on this site.
+                Short reflections from day-to-day project work, written in the moment. Voice-first, no imposed structure.
             </p>
 
-            <h2>Trust model (plain language)</h2>
-            <p>Ezkey is backend-first cryptographic MFA: your integration backend and the mobile app participate in an explicit chain of enrollment and authentication. The browser is not the center of the ceremony.</p>
+            <div class="month-toolbar" aria-label="Monthly navigation">
+                <div class="month-nav">
+                    <span class="month-current">June 2026</span>
+                </div>
+                <div class="month-selectors">
+                    <label for="notes-month">View:</label>
+                    <select id="notes-month" onchange="if (this.value) window.location.href=this.value;">
+                        <option value="/notes/2026-06.html" selected>June 2026</option>
+                    </select>
+                </div>
+            </div>
 
-            <h2>What Ezkey claims — and what it does not</h2>
-            <p>The project aims to be materially stronger than passwords and classic TOTP-style flows for some self-hosted, backend-oriented contexts. It is not a WebAuthn / FIDO2 implementation and does not claim formal equivalence to those ecosystems.</p>
-            <p>Security posture reflects deliberate, opinionated trade-offs. For the maintainer&rsquo;s framing of limits and ambition, see <a href="/why-ezkey-exists.html">Why Ezkey exists</a>.</p>
-
-            <h2>Open source &amp; visibility</h2>
-            <p>License: <strong>MIT</strong> (planned for the public tree). The <strong>main repository is private</strong> until the planned public opening around <strong>September&nbsp;2026</strong>; timelines and visibility notes are on <a href="/updates.html">Product updates</a>. There are <strong>no public GitHub URLs</strong> for Ezkey until that opening.</p>
-
-            <h2>Report a security issue</h2>
-            <p>Use <a href="mailto:security@ezkey.org">security@ezkey.org</a>. Do not use public vendor issue trackers for suspected vulnerabilities. A published security policy will accompany the public repository.</p>
-
-            <h2>Technical documentation</h2>
-            <p>Until the repository is public, use this site for high-level material:</p>
-            <ul>
-                <li><a href="/source-and-evaluation.html">Source code &amp; evaluation</a> (private repo posture, evaluation paths)</li>
-                <li><a href="/updates.html">Product updates</a> and <a href="/articles.html">Articles &amp; notes</a> (progress and selected technical context)</li>
-                <li><a href="/experimental-preview-exp1.html">Exp1 preview</a> (technology-preview program framing, where applicable)</li>
+            <ul class="note-list">
+                <li class="note-entry" id="field-note-2026-06-17">
+                    <p class="note-meta">Field note · June 17, 2026</p>
+                    <a class="note-title" href="/field-note-2026-06-17-code-hygiene-and-autonomy.html">Slow down, but keep momentum</a>
+                    <p class="note-text">Code hygiene as a sustained practice: continuous upgrades, exhaustive tests, and practical autonomy with AI.</p>
+                </li>
             </ul>
         </div>
 
-        <p style="text-align:center;margin-bottom:20px;"><a href="/" style="color:rgba(255,255,255,0.9);font-weight:600;text-decoration:underline;">← Back to home</a></p>
+
 
         <div class="footer">
             <p><a href="/privacy.html">Privacy Policy</a></p>

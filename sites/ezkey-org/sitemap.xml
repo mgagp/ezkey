@@ -5,7 +5,7 @@
   <url><loc>https://ezkey.org/admin-api-reference.html</loc><lastmod>2026-05-22</lastmod></url>
   <url><loc>https://ezkey.org/ai-coding-manifesto.html</loc><lastmod>2026-05-13</lastmod></url>
   <url><loc>https://ezkey.org/ai-return-to-foundations-methodology.html</loc><lastmod>2026-05-13</lastmod></url>
-  <url><loc>https://ezkey.org/articles.html</loc><lastmod>2026-06-06</lastmod></url>
+  <url><loc>https://ezkey.org/articles.html</loc><lastmod>2026-06-18</lastmod></url>
   <url><loc>https://ezkey.org/auth-api-reference.html</loc><lastmod>2026-05-22</lastmod></url>
   <url><loc>https://ezkey.org/changelog.html</loc><lastmod>2026-05-13</lastmod></url>
   <url><loc>https://ezkey.org/guides.html</loc><lastmod>2026-05-13</lastmod></url>
@@ -17,7 +17,7 @@
   <url><loc>https://ezkey.org/fr/admin-api-reference.html</loc><lastmod>2026-05-22</lastmod></url>
   <url><loc>https://ezkey.org/fr/ai-coding-manifesto.html</loc><lastmod>2026-05-13</lastmod></url>
   <url><loc>https://ezkey.org/fr/api-docs.html</loc><lastmod>2026-05-22</lastmod></url>
-  <url><loc>https://ezkey.org/fr/articles.html</loc><lastmod>2026-06-06</lastmod></url>
+  <url><loc>https://ezkey.org/fr/articles.html</loc><lastmod>2026-06-18</lastmod></url>
   <url><loc>https://ezkey.org/fr/auth-api-reference.html</loc><lastmod>2026-05-22</lastmod></url>
   <url><loc>https://ezkey.org/fr/changelog.html</loc><lastmod>2026-05-13</lastmod></url>
   <url><loc>https://ezkey.org/fr/guides.html</loc><lastmod>2026-05-13</lastmod></url>
@@ -51,6 +51,12 @@
   <url><loc>https://ezkey.org/integration-api-reference.html</loc><lastmod>2026-05-22</lastmod></url>
   <url><loc>https://ezkey.org/intention-the-next-frontier-human-ai-partnership.html</loc><lastmod>2026-05-31</lastmod></url>
   <url><loc>https://ezkey.org/methodology.html</loc><lastmod>2026-05-25</lastmod></url>
+  <url><loc>https://ezkey.org/notes.html</loc><lastmod>2026-06-18</lastmod></url>
+  <url><loc>https://ezkey.org/fr/notes.html</loc><lastmod>2026-06-18</lastmod></url>
+  <url><loc>https://ezkey.org/notes/2026-06.html</loc><lastmod>2026-06-18</lastmod></url>
+  <url><loc>https://ezkey.org/fr/notes/2026-06.html</loc><lastmod>2026-06-18</lastmod></url>
+  <url><loc>https://ezkey.org/field-note-2026-06-17-code-hygiene-and-autonomy.html</loc><lastmod>2026-06-18</lastmod></url>
+  <url><loc>https://ezkey.org/fr/field-note-2026-06-17-code-hygiene-and-autonomy.html</loc><lastmod>2026-06-18</lastmod></url>
   <url><loc>https://ezkey.org/painting-an-admin-ui-with-ai.html</loc><lastmod>2026-05-26</lastmod></url>
   <url><loc>https://ezkey.org/privacy.html</loc><lastmod>2026-05-13</lastmod></url>
   <url><loc>https://ezkey.org/source-and-evaluation.html</loc><lastmod>2026-05-13</lastmod></url>
