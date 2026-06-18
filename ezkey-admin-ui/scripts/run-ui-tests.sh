@@ -63,4 +63,10 @@ Capture video: ${PLAYWRIGHT_CAPTURE_VIDEO:-0}
 EOF
 
 cd "$ROOT_DIR"
+
+# Playwright npm package does not download browser binaries on `npm install`.
+# After a fresh clone or @playwright/test bump, Chromium must be installed once locally.
+echo "Ensuring Playwright Chromium is installed..."
+npm run test:browser:install
+
 npm run test:browser -- "${PLAYWRIGHT_ARGS[@]}" 2>&1 | tee "$RESULTS_DIR/summary.txt"

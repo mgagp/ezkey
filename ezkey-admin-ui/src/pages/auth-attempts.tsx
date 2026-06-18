@@ -296,6 +296,7 @@ export default function AuthAttemptsPage() {
       key: 'enrollmentId',
       render: (r) => (
         <button
+          type="button"
           className="font-mono text-xs text-accent hover:underline"
           onClick={(e) => { e.stopPropagation(); navigate(`/enrollments/${r.enrollmentId}`); }}
         >

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   type AuthSession,
@@ -61,18 +61,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const value = useMemo(
+    () => ({
+      session,
+      isAuthenticated:
+        session !== null &&
+        (isBrowserSessionCookieBuild() || Boolean(session.token && session.token.length > 0)),
+      isSessionChecking,
+      login,
+      logout,
+    }),
+    [session, isSessionChecking, login, logout],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        session,
-        isAuthenticated:
-          session !== null &&
-          (isBrowserSessionCookieBuild() || Boolean(session.token && session.token.length > 0)),
-        isSessionChecking,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -20,11 +20,22 @@ function getDateLocaleAndOptions(): { locale: string; hour12: boolean } {
   return { locale: 'en-CA', hour12: true };
 }
 
+const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function getCachedDateTimeFormatter(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = JSON.stringify({ locale, ...options });
+  const cached = dateTimeFormatters.get(key);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat(locale, options);
+  dateTimeFormatters.set(key, formatter);
+  return formatter;
+}
+
 /** Format an ISO date string to a human-readable local date/time (locale-aware, 24h for French). */
 export function formatDate(dateStr: string): string {
   const { locale, hour12 } = getDateLocaleAndOptions();
   const tz = getDisplayTimeZoneId();
-  return new Intl.DateTimeFormat(locale, {
+  return getCachedDateTimeFormatter(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -43,7 +54,7 @@ export function formatDateOnly(dateStr: string): string {
   if (!dateStr) return '';
   const { locale } = getDateLocaleAndOptions();
   const tz = getDisplayTimeZoneId();
-  return new Intl.DateTimeFormat(locale, {
+  return getCachedDateTimeFormatter(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -60,7 +71,7 @@ export function formatDateWithTimezone(dateStr: string): string {
   const date = new Date(dateStr);
   const { locale, hour12 } = getDateLocaleAndOptions();
   const tz = getDisplayTimeZoneId();
-  const parts = new Intl.DateTimeFormat(locale, {
+  const parts = getCachedDateTimeFormatter(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

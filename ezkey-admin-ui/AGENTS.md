@@ -243,8 +243,9 @@ Use **start.sh** to build and run the Admin UI in Docker:
   - use the pre-seeded **Demo Device** on `http://localhost:8083`
   - run the Admin UI either with `npm run dev` or `./start.sh`
 - Preferred commands:
-  - Local dev path: `./scripts/run-ui-tests.sh`
+  - Local dev path: `./scripts/run-ui-tests.sh` (runs `npm run test:browser:install` for Chromium first)
   - Docker-only QA path: `./scripts/run-ui-tests-docker.sh`
+  - One-off browser download after clone or `@playwright/test` bump: `npm run test:browser:install`
 - Default scope is intentionally narrow:
   - public login shell
   - real passwordless login approved on Demo Device

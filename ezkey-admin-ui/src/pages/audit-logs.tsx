@@ -940,11 +940,15 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
   useEffect(() => {
     if (!expanded) return;
     if (chainReport || chainLoading) return;
-    const fallback = defaultGapScanRange();
+
+    const effectiveRange =
+      checkRange.from && checkRange.to ? checkRange : defaultGapScanRange();
+
     if (!checkRange.from || !checkRange.to) {
-      setCheckRange(fallback);
+      setCheckRange(effectiveRange);
     }
-    void runChainCheck(checkRange.from && checkRange.to ? checkRange : fallback);
+
+    void runChainCheck(effectiveRange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
 

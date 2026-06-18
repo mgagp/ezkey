@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -103,7 +103,6 @@ function getUpdatedLabelKeyAndParams(
 export default function DashboardPage() {
   const { t } = useTranslation(['dashboard', 'layout', 'audit-logs', 'alerts']);
   const { session } = useAuth();
-  const navigate = useNavigate();
   const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 
   const {
@@ -243,27 +242,32 @@ export default function DashboardPage() {
                   return (
                     <li
                       key={alert.alertId}
-                      className="flex flex-wrap items-baseline gap-2 text-sm border-b border-fg/10 pb-2 last:border-0 last:pb-0 cursor-pointer hover:bg-fg/5 -mx-1 px-1 rounded-sm"
-                      onClick={() => { navigate(`/alerts/${alert.alertId}`); }}
+                      className="border-b border-fg/10 pb-2 last:border-0 last:pb-0"
                     >
-                      <Badge variant="error">
-                        {alert.alertType
-                          ? t(`alerts:type.${alert.alertType}`, { defaultValue: alert.alertType })
-                          : '—'}
-                      </Badge>
-                      <span className="text-fg-muted shrink-0">
-                        {formatRelativeTime(alert.createdAt ?? '')}
-                      </span>
-                      {parsed?.anchorCheckpointId != null && (
-                        <span className="text-fg">
-                          <Tooltip content={t('dashboard:auditChain.help.anchorCheckpoint')}>
-                            <span className="underline decoration-dotted cursor-help">{t('dashboard:auditChain.anchorCheckpointLabel')}</span>
-                          </Tooltip>
-                          : {parsed.anchorCheckpointId}
-                          {parsed.estimatedGapMinutes != null &&
-                            ` · ${t('dashboard:auditChain.gapMinutes', { count: parsed.estimatedGapMinutes })}`}
+                      <Link
+                        to={`/alerts/${alert.alertId}`}
+                        data-testid="dashboard-audit-chain-alert-link"
+                        className="flex flex-wrap items-baseline gap-2 text-sm hover:bg-fg/5 -mx-1 px-1 rounded-sm"
+                      >
+                        <Badge variant="error">
+                          {alert.alertType
+                            ? t(`alerts:type.${alert.alertType}`, { defaultValue: alert.alertType })
+                            : '—'}
+                        </Badge>
+                        <span className="text-fg-muted shrink-0">
+                          {formatRelativeTime(alert.createdAt ?? '')}
                         </span>
-                      )}
+                        {parsed?.anchorCheckpointId != null && (
+                          <span className="text-fg">
+                            <Tooltip content={t('dashboard:auditChain.help.anchorCheckpoint')}>
+                              <span className="underline decoration-dotted cursor-help">{t('dashboard:auditChain.anchorCheckpointLabel')}</span>
+                            </Tooltip>
+                            : {parsed.anchorCheckpointId}
+                            {parsed.estimatedGapMinutes != null &&
+                              ` · ${t('dashboard:auditChain.gapMinutes', { count: parsed.estimatedGapMinutes })}`}
+                          </span>
+                        )}
+                      </Link>
                     </li>
                   );
                 })}

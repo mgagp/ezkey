@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { isDemoMode } from '@/lib/demo-mode';
 import { DemoModeContext } from '@/context/demo-mode-context-value';
 
@@ -23,8 +23,12 @@ function DemoModeProviderInner({ children }: DemoModeProviderProps) {
   const toggleSessionDemo = useCallback(() => {
     setSessionDemoOn((prev) => !prev);
   }, []);
+  const value = useMemo(
+    () => ({ sessionDemoOn, toggleSessionDemo }),
+    [sessionDemoOn, toggleSessionDemo],
+  );
   return (
-    <DemoModeContext.Provider value={{ sessionDemoOn, toggleSessionDemo }}>
+    <DemoModeContext.Provider value={value}>
       {children}
     </DemoModeContext.Provider>
   );
