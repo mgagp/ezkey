@@ -68,6 +68,7 @@ Avoid new ceremony layers. Strengthen **triggers and discoverability** only:
 - [x] Update `product-docs/methodology/session-start-guide.md`
 - [x] Update root `AGENTS.md` § program slice exit
 - [x] Cross-link from [`ML-2026-06-18-demo-device-qr-session.md`](ML-2026-06-18-demo-device-qr-session.md)
+- [x] `minimum-viable-method.md` § *GitHub issue vs product-docs canon*; `closeout` skill § GitHub visibility; `session-start-guide` prompt (2026-06-18 operator retro on issue #223)
 
 ---
 

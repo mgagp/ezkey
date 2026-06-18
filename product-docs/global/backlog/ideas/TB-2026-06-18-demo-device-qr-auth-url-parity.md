@@ -103,7 +103,7 @@ Clean-start stack + Admin UI enrollment with QR (`authApiPublicBaseUrl` / local 
 - analysis gate — incident root cause documented (config vs code) ✅
 - design gate — Grill Me G1–G11 confirmed ✅
 - implementation gate — unit tests + maintainer manual matrix ✅
-- traceability gate — I/TB/grill/ML linked ✅ (GitHub issue optional — not opened)
+- traceability gate — I/TB/grill/ML linked ✅; GitHub **#223** (retroactive visibility, PR #222)
 
 ## Exit criteria
 
@@ -188,7 +188,7 @@ Per [`closeout`](../../../../.cursor/skills/closeout/SKILL.md) after
 
 ### Deferred / residual
 
-- GitHub issue + PR labels (optional hygiene).
+- ~~GitHub issue + PR labels (optional hygiene).~~ **Issue #223** opened retroactively for GitHub visibility; PR #222 `Closes #223`.
 - Clean-start `:8083` regression smoke after client fix (low priority).
 - Playwright Admin UI tests — deferred per evidence plan.
 
