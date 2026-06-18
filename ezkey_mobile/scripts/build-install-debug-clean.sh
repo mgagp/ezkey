@@ -40,6 +40,8 @@ adb devices -l
 
 cd "${MOBILE_ROOT}"
 
+"${MOBILE_ROOT}/scripts/preflight-android-path-length.sh"
+
 if [[ "$NO_UNINSTALL" != true ]]; then
   echo "Uninstalling ${PKG} (ignore failure if not installed)..."
   adb uninstall "${PKG}" 2>/dev/null || true
