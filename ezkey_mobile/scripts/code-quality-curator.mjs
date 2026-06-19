@@ -24,12 +24,19 @@ const hasFlag = name => rawArgs.includes(name);
 
 const rootDir = path.resolve(process.cwd());
 const outputDir = path.resolve(rootDir, parseArg('--output-dir', '.monitor/code-quality'));
-const inputArg = parseArg('--inputs', '.monitor/biome.json,.monitor/semgrep.json,.monitor/detekt.sarif,.monitor/detekt.json');
+const inputArg = parseArg('--inputs', '.monitor/biome-report.json,.monitor/semgrep-report.json,.monitor/detekt.sarif,.monitor/detekt-report.json');
+const excludePathArg = parseArg('--exclude-path-fragments', '');
 const reportBaseName = parseArg('--report-name', 'curated-report');
 const formatArg = parseArg('--format', 'all');
 const topNArg = Number(parseArg('--top', '30'));
 const topN = Number.isFinite(topNArg) && topNArg > 0 ? Math.floor(topNArg) : 30;
 const failOnCritical = hasFlag('--fail-on-critical');
+
+const excludedPathFragments = excludePathArg
+  .split(',')
+  .map(v => v.trim())
+  .filter(Boolean)
+  .map(v => v.replace(/\\/g, '/').toLowerCase());
 
 const ensureDir = dirPath => {
   mkdirSync(dirPath, {recursive: true});
@@ -41,6 +48,23 @@ const tryReadJson = filePath => {
     return JSON.parse(raw);
   } catch (error) {
     return null;
+  }
+};
+
+const tryReadBiomeJson = filePath => {
+  try {
+    const raw = readFileSync(filePath, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    try {
+      const raw = readFileSync(filePath, 'utf8');
+      const fixed = raw.replace(/"path":"([^"]*)"/g, (_, value) => {
+        return `"path":"${String(value).replace(/\\/g, '\\\\')}"`;
+      });
+      return JSON.parse(fixed);
+    } catch (secondError) {
+      return null;
+    }
   }
 };
 
@@ -105,12 +129,13 @@ const normalizeBiome = (json, sourceFile) => {
   const diagnostics = Array.isArray(json?.diagnostics) ? json.diagnostics : [];
   return diagnostics.map(item => {
     const location = item.location || {};
-    const span = location.span || [];
+    const start = location.start || {};
     const ruleId = item.category || item.rule || 'biome/unknown';
-    const message = item.description || item.message || 'Biome finding';
+    const message = item.message || item.description || 'Biome finding';
     const severity = normalizeSeverity(item.severity);
     const filePath = location.path?.file || location.path || sourceFile;
-    const line = Array.isArray(span) && span.length > 0 ? Number(span[0]) || 1 : 1;
+    const line = Number(start.line || 1);
+    const column = Number(start.column || 1);
     const category = classifyCategory(ruleId, message);
 
     return {
@@ -119,9 +144,9 @@ const normalizeBiome = (json, sourceFile) => {
       severity,
       ruleId,
       message,
-      path: String(filePath),
+      path: String(filePath).replace(/\\/g, '/'),
       line,
-      column: 1,
+      column,
       confidence: 'medium',
       evidence: {
         sourceFile,
@@ -148,7 +173,7 @@ const normalizeSemgrep = (json, sourceFile) => {
       severity,
       ruleId,
       message,
-      path: String(pathValue),
+      path: String(pathValue).replace(/\\/g, '/'),
       line,
       column,
       confidence: String(confidence).toLowerCase(),
@@ -184,7 +209,7 @@ const normalizeSarifRuns = (runs, toolName, sourceFile) => {
         severity,
         ruleId,
         message,
-        path: String(filePath),
+        path: String(filePath).replace(/\\/g, '/'),
         line,
         column,
         confidence: 'medium',
@@ -215,7 +240,7 @@ const normalizeDetektJson = (json, sourceFile) => {
       severity,
       ruleId,
       message,
-      path: String(pathValue),
+      path: String(pathValue).replace(/\\/g, '/'),
       line,
       column,
       confidence: 'medium',
@@ -237,12 +262,12 @@ const toRelative = absoluteOrRelativePath => {
 
 const normalizeFile = inputPath => {
   const absPath = path.resolve(rootDir, inputPath);
-  const json = tryReadJson(absPath);
+  const basename = path.basename(inputPath).toLowerCase();
+  const json = basename.includes('biome') ? tryReadBiomeJson(absPath) : tryReadJson(absPath);
   if (!json) {
     return [];
   }
 
-  const basename = path.basename(inputPath).toLowerCase();
   if (basename.includes('semgrep')) {
     return normalizeSemgrep(json, toRelative(inputPath));
   }
@@ -399,6 +424,13 @@ let allFindings = [];
 inputFiles.forEach(file => {
   allFindings = allFindings.concat(normalizeFile(file));
 });
+
+if (excludedPathFragments.length > 0) {
+  allFindings = allFindings.filter(item => {
+    const normalizedPath = String(item.path || '').replace(/\\/g, '/').toLowerCase();
+    return !excludedPathFragments.some(fragment => normalizedPath.includes(fragment));
+  });
+}
 
 const totalRaw = allFindings.length;
 

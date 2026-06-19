@@ -131,10 +131,10 @@ then generates readable reports.
 
 Default expected input snapshots (relative to `ezkey_mobile/`):
 
-- `.monitor/biome.json`
-- `.monitor/semgrep.json`
+- `.monitor/biome-report.json`
+- `.monitor/semgrep-report.json`
 - `.monitor/detekt.sarif`
-- `.monitor/detekt.json`
+- `.monitor/detekt-report.json`
 
 Outputs (default):
 
@@ -164,9 +164,10 @@ Useful options:
 
 ```bash
 node scripts/code-quality-curator.mjs \
-  --inputs=.monitor/biome.json,.monitor/semgrep.json,.monitor/detekt.sarif \
+  --inputs=.monitor/biome-report.json,.monitor/semgrep-report.json,.monitor/detekt.sarif \
   --output-dir=.monitor/code-quality \
   --report-name=run-001 \
+  --exclude-path-fragments=__tests__/,app/hooks/__tests__/ \
   --top=40 \
   --format=all
 ```
