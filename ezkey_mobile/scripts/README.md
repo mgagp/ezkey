@@ -21,8 +21,8 @@ Yarn alias: `yarn android:install:debug:clean`.
 Before build/install, the script now runs a companion preflight:
 
 - `scripts/preflight-android-path-length.sh` - estimates Windows native object
-	path lengths for known React Native codegen offenders and warns early when
-	MAX_PATH risk is high.
+  path lengths for known React Native codegen offenders and warns early when
+  MAX_PATH risk is high.
 
 ### Windows path-length caveat (native CMake)
 
@@ -123,6 +123,59 @@ Requirements:
 - Python (`python3`, `python`, or `py -3`) on the host
 
 This script is intended as a practical investigation aid, not as a formal cryptographic proof.
+
+## `code-quality-curator.mjs`
+
+Curates findings from Biome, Semgrep, and Detekt/SARIF into one normalized model,
+then generates readable reports.
+
+Default expected input snapshots (relative to `ezkey_mobile/`):
+
+- `.monitor/biome.json`
+- `.monitor/semgrep.json`
+- `.monitor/detekt.sarif`
+- `.monitor/detekt.json`
+
+Outputs (default):
+
+- `.monitor/code-quality/curated-report.normalized.json`
+- `.monitor/code-quality/curated-report.md`
+- `.monitor/code-quality/curated-report.html`
+
+From `ezkey_mobile/`:
+
+```bash
+yarn quality:curate
+```
+
+Markdown only:
+
+```bash
+yarn quality:curate:md
+```
+
+HTML only:
+
+```bash
+yarn quality:curate:html
+```
+
+Useful options:
+
+```bash
+node scripts/code-quality-curator.mjs \
+  --inputs=.monitor/biome.json,.monitor/semgrep.json,.monitor/detekt.sarif \
+  --output-dir=.monitor/code-quality \
+  --report-name=run-001 \
+  --top=40 \
+  --format=all
+```
+
+Optional strict mode for later CI gating:
+
+```bash
+node scripts/code-quality-curator.mjs --fail-on-critical
+```
 
 **Pitfall:** One-liners such as `adb shell run-as … strings …/RKStorage | grep …` often exit with **255** and produce no useful output: the app UID sandbox typically does **not** ship `strings`, `sqlite3`, or a full `grep`. Prefer this script (host-side parsing via `adb exec-out`) or the flows in `docs/MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md`.
 
