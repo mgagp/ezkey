@@ -26,6 +26,7 @@ const rootDir = path.resolve(process.cwd());
 const outputDir = path.resolve(rootDir, parseArg('--output-dir', '.monitor/code-quality'));
 const inputArg = parseArg('--inputs', '.monitor/biome-report.json,.monitor/semgrep-report.json,.monitor/detekt.sarif,.monitor/detekt-report.json');
 const excludePathArg = parseArg('--exclude-path-fragments', '');
+const suppressionFileArg = parseArg('--suppression-file', '');
 const reportBaseName = parseArg('--report-name', 'curated-report');
 const formatArg = parseArg('--format', 'all');
 const topNArg = Number(parseArg('--top', '30'));
@@ -38,13 +39,15 @@ const excludedPathFragments = excludePathArg
   .filter(Boolean)
   .map(v => v.replace(/\\/g, '/').toLowerCase());
 
+const normalizePath = value => String(value || '').replace(/\\/g, '/').toLowerCase();
+
 const ensureDir = dirPath => {
   mkdirSync(dirPath, {recursive: true});
 };
 
 const tryReadJson = filePath => {
   try {
-    const raw = readFileSync(filePath, 'utf8');
+    const raw = readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
     return JSON.parse(raw);
   } catch (error) {
     return null;
@@ -53,11 +56,11 @@ const tryReadJson = filePath => {
 
 const tryReadBiomeJson = filePath => {
   try {
-    const raw = readFileSync(filePath, 'utf8');
+    const raw = readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
     return JSON.parse(raw);
   } catch (error) {
     try {
-      const raw = readFileSync(filePath, 'utf8');
+      const raw = readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
       const fixed = raw.replace(/"path":"([^"]*)"/g, (_, value) => {
         return `"path":"${String(value).replace(/\\/g, '\\\\')}"`;
       });
@@ -67,6 +70,43 @@ const tryReadBiomeJson = filePath => {
     }
   }
 };
+
+const normalizeSuppressionFile = filePath => {
+  if (!filePath) {
+    return [];
+  }
+
+  const absolutePath = path.resolve(rootDir, filePath);
+  const json = tryReadJson(absolutePath);
+  if (!json) {
+    return [];
+  }
+
+  const records = Array.isArray(json) ? json : Array.isArray(json?.suppressions) ? json.suppressions : [];
+  return records
+    .map(entry => {
+      const tool = String(entry?.tool || '').trim().toLowerCase();
+      const ruleId = String(entry?.ruleId || '').trim();
+      const pathValue = normalizePath(entry?.path || '');
+      const line = Number(entry?.line || 0);
+      const reason = String(entry?.reason || '').trim();
+
+      if (!ruleId || !pathValue || !Number.isFinite(line) || line <= 0) {
+        return null;
+      }
+
+      return {
+        tool,
+        ruleId,
+        path: pathValue,
+        line,
+        reason,
+      };
+    })
+    .filter(Boolean);
+};
+
+const suppressions = normalizeSuppressionFile(suppressionFileArg);
 
 const normalizeSeverity = value => {
   const input = String(value || '').toLowerCase();
@@ -260,6 +300,23 @@ const toRelative = absoluteOrRelativePath => {
   return String(absoluteOrRelativePath).replace(/\\/g, '/');
 };
 
+const matchesSuppression = (finding, suppression) => {
+  const findingTool = String(finding.tool || '').toLowerCase();
+  const findingPath = normalizePath(finding.path);
+  const findingLine = Number(finding.line || 0);
+
+  if (suppression.tool && suppression.tool !== findingTool) {
+    return false;
+  }
+  if (suppression.ruleId !== finding.ruleId) {
+    return false;
+  }
+  if (suppression.path !== findingPath) {
+    return false;
+  }
+  return suppression.line === findingLine;
+};
+
 const normalizeFile = inputPath => {
   const absPath = path.resolve(rootDir, inputPath);
   const basename = path.basename(inputPath).toLowerCase();
@@ -303,6 +360,7 @@ const renderMarkdown = report => {
   lines.push(`- Findings (raw): ${report.summary.totalRaw}`);
   lines.push(`- Findings (deduplicated): ${report.summary.total}`);
   lines.push(`- Critical set (high severity): ${report.summary.highSeverityCount}`);
+  lines.push(`- Findings suppressed: ${report.summary.suppressedCount}`);
   lines.push('');
   lines.push('## Breakdown');
   lines.push('');
@@ -367,6 +425,7 @@ const renderHtml = report => {
     `Findings (raw): ${report.summary.totalRaw}`,
     `Findings (deduplicated): ${report.summary.total}`,
     `Critical set (high severity): ${report.summary.highSeverityCount}`,
+    `Findings suppressed: ${report.summary.suppressedCount}`,
   ]
     .map(item => `<li>${htmlEscape(item)}</li>`)
     .join('\n');
@@ -410,6 +469,30 @@ const renderHtml = report => {
       ${rows}
     </tbody>
   </table>
+
+  <h2>Suppressed Findings</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Tool</th>
+        <th>Rule</th>
+        <th>Location</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${report.suppressedFindings
+        .map(f => {
+          return `<tr>
+        <td>${htmlEscape(f.tool)}</td>
+        <td>${htmlEscape(f.ruleId)}</td>
+        <td>${htmlEscape(`${f.path}:${f.line}`)}</td>
+        <td>${htmlEscape(f.suppressionReason || '')}</td>
+      </tr>`;
+        })
+        .join('\n')}
+    </tbody>
+  </table>
 </body>
 </html>
 `;
@@ -424,6 +507,24 @@ let allFindings = [];
 inputFiles.forEach(file => {
   allFindings = allFindings.concat(normalizeFile(file));
 });
+
+const suppressedFindings = [];
+if (suppressions.length > 0) {
+  const remainingFindings = [];
+  allFindings.forEach(finding => {
+    const suppression = suppressions.find(entry => matchesSuppression(finding, entry));
+    if (suppression) {
+      suppressedFindings.push({
+        ...finding,
+        suppressionReason: suppression.reason || '',
+      });
+      return;
+    }
+
+    remainingFindings.push(finding);
+  });
+  allFindings = remainingFindings;
+}
 
 if (excludedPathFragments.length > 0) {
   allFindings = allFindings.filter(item => {
@@ -454,15 +555,18 @@ const report = {
   version: 1,
   generatedAt: new Date().toISOString(),
   inputs: inputFiles,
+  suppressions: suppressionFileArg || null,
   summary: {
     totalRaw,
     total: deduped.length,
     highSeverityCount: deduped.filter(f => f.severity === 'high').length,
+    suppressedCount: suppressedFindings.length,
     byTool: countBy(deduped, f => f.tool),
     byCategory: countBy(deduped, f => f.category),
     bySeverity: countBy(deduped, f => f.severity),
   },
   topFindings,
+  suppressedFindings,
   findings: deduped,
 };
 

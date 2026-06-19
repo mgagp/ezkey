@@ -1,0 +1,25 @@
+{
+  "suppressions": [
+    {
+      "tool": "semgrep",
+      "ruleId": "semgrep.rules.ezkey-kotlin-sensitive-log-content",
+      "path": "android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoModule.kt",
+      "line": 261,
+      "reason": "Failure log only; the message does not include secret material."
+    },
+    {
+      "tool": "semgrep",
+      "ruleId": "semgrep.rules.ezkey-js-sensitive-console-logging",
+      "path": "app/services/storage/enrollmentStorage.ts",
+      "line": 119,
+      "reason": "Dev-only warning logs the record id when a secure token is missing; no token value is logged."
+    },
+    {
+      "tool": "semgrep",
+      "ruleId": "semgrep.rules.ezkey-js-hardcoded-http-url",
+      "path": "app/config/env.ts",
+      "line": 7,
+      "reason": "Emulator loopback fallback for local development."
+    }
+  ]
+}

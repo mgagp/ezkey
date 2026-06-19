@@ -212,6 +212,22 @@ Generated artifacts:
 - `.monitor/code-quality/iteration2-semgrep.md`
 - `.monitor/code-quality/iteration2-semgrep.html`
 
+Optional suppression support for iteration 3:
+
+- copy `scripts/quality-suppressions.example.json` to a local file such as
+  `.monitor/code-quality-suppressions.json`
+- run the curator with `--suppression-file=.monitor/code-quality-suppressions.json`
+- suppressed findings stay visible in the report, but no longer count as actionable noise
+
+Example:
+
+```bash
+node scripts/code-quality-curator.mjs \
+  --inputs=.monitor/semgrep-report.json \
+  --report-name=iteration3-semgrep \
+  --suppression-file=.monitor/code-quality-suppressions.json
+```
+
 **Pitfall:** One-liners such as `adb shell run-as … strings …/RKStorage | grep …` often exit with **255** and produce no useful output: the app UID sandbox typically does **not** ship `strings`, `sqlite3`, or a full `grep`. Prefer this script (host-side parsing via `adb exec-out`) or the flows in `docs/MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md`.
 
 ## `generate_android_launcher_icons.py`
