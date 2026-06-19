@@ -178,6 +178,40 @@ Optional strict mode for later CI gating:
 node scripts/code-quality-curator.mjs --fail-on-critical
 ```
 
+## `semgrep/rules/mobile-security.yml` + `semgrep-scan.mjs`
+
+Starter Semgrep pack for iteration 2 (10 focused rules):
+
+- React Native TS/JS: direct `fetch`, sensitive console logging, AsyncStorage sensitive keys,
+  hardcoded bearer token literals, hardcoded non-TLS URLs.
+- Android Kotlin: `Random` usage/import, `Base64.DEFAULT`, sensitive `Log.*` content,
+  insecure `AES/ECB/PKCS5Padding`.
+
+The scan runner supports:
+
+- local `semgrep` CLI when installed,
+- Docker fallback (`semgrep/semgrep`) when CLI is missing.
+
+From `ezkey_mobile/`:
+
+```bash
+node scripts/semgrep-scan.mjs
+```
+
+Or via package scripts:
+
+```bash
+yarn quality:semgrep:scan
+yarn quality:semgrep:report
+```
+
+Generated artifacts:
+
+- `.monitor/semgrep-report.json`
+- `.monitor/code-quality/iteration2-semgrep.normalized.json`
+- `.monitor/code-quality/iteration2-semgrep.md`
+- `.monitor/code-quality/iteration2-semgrep.html`
+
 **Pitfall:** One-liners such as `adb shell run-as … strings …/RKStorage | grep …` often exit with **255** and produce no useful output: the app UID sandbox typically does **not** ship `strings`, `sqlite3`, or a full `grep`. Prefer this script (host-side parsing via `adb exec-out`) or the flows in `docs/MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md`.
 
 ## `generate_android_launcher_icons.py`

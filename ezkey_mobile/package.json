@@ -16,6 +16,8 @@
     "quality:curate": "node scripts/code-quality-curator.mjs",
     "quality:curate:md": "node scripts/code-quality-curator.mjs --format=md",
     "quality:curate:html": "node scripts/code-quality-curator.mjs --format=html",
+    "quality:semgrep:scan": "node scripts/semgrep-scan.mjs",
+    "quality:semgrep:report": "node scripts/code-quality-curator.mjs --inputs=.monitor/semgrep-report.json --report-name=iteration2-semgrep --top=30",
     "android:preflight:path": "bash scripts/preflight-android-path-length.sh",
     "android:clean": "cd android && ./gradlew clean",
     "android:assemble:debug": "cd android && ./gradlew assembleDebug",
