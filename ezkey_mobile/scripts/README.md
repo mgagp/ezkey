@@ -278,6 +278,48 @@ Default consolidated outputs:
 - `.monitor/code-quality/quality-unified.md`
 - `.monitor/code-quality/quality-unified.html`
 
+### Lane A/B triage routine (continuous hygiene)
+
+Goal: keep quality work continuous without turning it into heavy backlog process.
+
+- Lane A (short-term actionable): production-impacting correctness, resilience, and security findings.
+- Lane B (continuous hygiene): maintainability/style/test-noise findings handled opportunistically.
+
+Recommended cadence per cycle:
+
+1. run `yarn quality:pipeline:report`
+2. open `.monitor/code-quality/quality-unified.md`
+3. pick up to 3 items for Lane A
+4. capture up to 5 items for Lane B (fix now or defer)
+5. ship one small focused lot
+
+Copy-paste triage template:
+
+```md
+## Quality cycle YYYY-MM-DD
+
+Run:
+- command: `yarn quality:pipeline:report`
+- report: `.monitor/code-quality/quality-unified.md`
+
+Lane A (act now, max 3)
+1. [rule] file:line - why this matters now
+2. [rule] file:line - why this matters now
+3. [rule] file:line - why this matters now
+
+Lane B (hygiene, max 5)
+1. [rule] file:line - fix now | defer
+2. [rule] file:line - fix now | defer
+3. [rule] file:line - fix now | defer
+4. [rule] file:line - fix now | defer
+5. [rule] file:line - fix now | defer
+
+Decision summary
+- shipped this cycle:
+- deferred:
+- note for next cycle:
+```
+
 **Pitfall:** One-liners such as `adb shell run-as … strings …/RKStorage | grep …` often exit with **255** and produce no useful output: the app UID sandbox typically does **not** ship `strings`, `sqlite3`, or a full `grep`. Prefer this script (host-side parsing via `adb exec-out`) or the flows in `docs/MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md`.
 
 ## `generate_android_launcher_icons.py`
