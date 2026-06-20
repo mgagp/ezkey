@@ -21,9 +21,8 @@ import reactor.core.publisher.Mono;
  * Service to call Ezkey Auth API endpoints needed by the demo device. Uses generated DTOs for type
  * safety and better maintainability.
  *
- * <p>Each method accepts an optional {@code authApiBaseUrl} override for per-enrollment routing
- * (QR {@code authUrl} parity with mobile). When null or blank, the configured default client is
- * used.
+ * <p>Each method accepts an optional {@code authApiBaseUrl} override for per-enrollment routing (QR
+ * {@code authUrl} parity with mobile). When null or blank, the configured default client is used.
  *
  * @since 2025
  */
@@ -129,7 +128,8 @@ public class AuthApiService {
     return responseMono
         .doOnSuccess(
             response ->
-                logger.info("Pending API completed for enrollment {}", requestDto.getEnrollmentId()))
+                logger.info(
+                    "Pending API completed for enrollment {}", requestDto.getEnrollmentId()))
         .doOnError(
             e -> logger.error("Pending failed for enrollment {}", requestDto.getEnrollmentId(), e))
         .onErrorResume(

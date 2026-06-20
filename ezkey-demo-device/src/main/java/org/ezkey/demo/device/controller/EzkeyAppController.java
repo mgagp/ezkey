@@ -109,7 +109,8 @@ public class EzkeyAppController {
     model.addAttribute("enrollmentId", enrollmentId);
     BindResolution bindResolution;
     try {
-      bindResolution = EnrollmentAuthApiUrlResolver.resolveForBind(authApiBaseUrl, configuredAuthApiBase);
+      bindResolution =
+          EnrollmentAuthApiUrlResolver.resolveForBind(authApiBaseUrl, configuredAuthApiBase);
     } catch (InvalidAuthApiUrlException e) {
       model.addAttribute("pageTitle", "New Enrollment");
       model.addAttribute("configuredAuthApiBase", configuredAuthApiBase);

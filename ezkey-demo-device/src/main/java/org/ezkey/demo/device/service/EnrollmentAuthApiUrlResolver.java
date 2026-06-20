@@ -52,9 +52,7 @@ public final class EnrollmentAuthApiUrlResolver {
    * @return effective base URL for Auth API calls
    */
   public static String resolveForStoredEnrollment(Record record, String configuredDefault) {
-    if (record != null
-        && record.enrollmentUrl() != null
-        && !record.enrollmentUrl().isBlank()) {
+    if (record != null && record.enrollmentUrl() != null && !record.enrollmentUrl().isBlank()) {
       return record.enrollmentUrl();
     }
     return configuredDefault;

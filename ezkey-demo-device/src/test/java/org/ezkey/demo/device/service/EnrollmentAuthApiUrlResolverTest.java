@@ -7,9 +7,7 @@ import org.ezkey.demo.device.service.EnrollmentAuthApiUrlResolver.BindResolution
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.junit.jupiter.api.Test;
 
-/**
- * Unit tests for {@link EnrollmentAuthApiUrlResolver} precedence (QR URL vs config default).
- */
+/** Unit tests for {@link EnrollmentAuthApiUrlResolver} precedence (QR URL vs config default). */
 class EnrollmentAuthApiUrlResolverTest {
 
   private static final String CONFIG = "https://exp1-auth-api.ezkey.org";
@@ -28,8 +26,7 @@ class EnrollmentAuthApiUrlResolverTest {
 
   @Test
   void resolveForBind_qrUrl_winsAndPersists() {
-    BindResolution resolution =
-        EnrollmentAuthApiUrlResolver.resolveForBind(LOCAL, CONFIG);
+    BindResolution resolution = EnrollmentAuthApiUrlResolver.resolveForBind(LOCAL, CONFIG);
     assertThat(resolution.apiBaseUrl()).isEqualTo(LOCAL);
     assertThat(resolution.enrollmentUrlToPersist()).isEqualTo(LOCAL);
   }
@@ -46,24 +43,8 @@ class EnrollmentAuthApiUrlResolverTest {
   void resolveForStoredEnrollment_prefersStoredUrl() {
     Record record =
         new Record(
-            1,
-            null,
-            "Name",
-            LOCAL,
-            "pk",
-            "token",
-            "pub",
-            "priv",
-            null,
-            "Device",
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            "NONE");
+            1, null, "Name", LOCAL, "pk", "token", "pub", "priv", null, "Device", null, null, null,
+            null, null, null, null, "NONE");
     assertThat(EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG))
         .isEqualTo(LOCAL);
   }
@@ -72,24 +53,8 @@ class EnrollmentAuthApiUrlResolverTest {
   void resolveForStoredEnrollment_fallsBackToConfig() {
     Record record =
         new Record(
-            1,
-            null,
-            "Name",
-            null,
-            "pk",
-            "token",
-            "pub",
-            "priv",
-            null,
-            "Device",
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            "NONE");
+            1, null, "Name", null, "pk", "token", "pub", "priv", null, "Device", null, null, null,
+            null, null, null, null, "NONE");
     assertThat(EnrollmentAuthApiUrlResolver.resolveForStoredEnrollment(record, CONFIG))
         .isEqualTo(CONFIG);
   }

@@ -1,13 +1,10 @@
 package org.ezkey.demo.device.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Unit tests for {@link AuthApiUrlValidator} — Java mirror of mobile and JS QR URL rules.
- */
+/** Unit tests for {@link AuthApiUrlValidator} — Java mirror of mobile and JS QR URL rules. */
 class AuthApiUrlValidatorTest {
 
   @Test
