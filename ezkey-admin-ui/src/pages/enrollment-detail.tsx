@@ -710,9 +710,14 @@ export default function EnrollmentDetailPage() {
         </div>
 
         {enrollment && enrollment.operational === false &&
-          enrollment.enrollmentStatus === 'VERIFIED' &&
-          enrollment.enrollmentActive === true && (
-          <OperationalWarning message={t('detail.operationalWarning.message')} />
+          enrollment.enrollmentStatus === 'VERIFIED' && (
+          <OperationalWarning
+            message={
+              enrollment.enrollmentActive === false
+                ? t('detail.operationalWarning.deactivated')
+                : t('detail.operationalWarning.message')
+            }
+          />
         )}
 
         {isLoading && (

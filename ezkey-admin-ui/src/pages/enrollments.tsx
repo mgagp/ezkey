@@ -9,10 +9,8 @@ import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
-import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -20,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
+import { useAuth } from '@/context/use-auth';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -438,6 +437,8 @@ function EnrollmentCreateDialog({
 
 export default function EnrollmentsPage() {
   const { t } = useTranslation('enrollments');
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -657,56 +658,143 @@ export default function EnrollmentsPage() {
     enabled: !enrollmentBucket,
   });
 
-  const columns: ColumnDef<EnrollmentResponseDto>[] = [
-    { header: t('list.columns.id'), key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
-    { header: t('list.columns.name'), key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
-    {
+  const columns: ColumnDef<EnrollmentResponseDto>[] = useMemo(() => {
+    const statusCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.status'),
+      key: 'enrollmentStatus',
+      sortKey: 'status',
+      render: (r) => {
+        const showWarning =
+          r.enrollmentStatus === 'VERIFIED' && r.operational === false;
+        const warningTooltip =
+          r.enrollmentActive === false
+            ? t('list.deactivatedWarningTooltip')
+            : t('list.operationalWarningTooltip');
+        return showWarning ? (
+          <Tooltip content={warningTooltip}>
+            <span className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
+              <EnrollmentStatusBadge status={r.enrollmentStatus} />
+              <AlertTriangle className="size-4 text-warning" aria-hidden />
+            </span>
+          </Tooltip>
+        ) : (
+          <EnrollmentStatusBadge status={r.enrollmentStatus} />
+        );
+      },
+    };
+
+    const integrationCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.integration'),
+      key: 'integrationName',
+      sortKey: 'integrationId',
+      render: (r) => {
+        if (r.integrationId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          r.integrationName != null && r.integrationName.trim() !== ''
+            ? r.integrationName.trim()
+            : t('list.integrationFallback', { id: r.integrationId });
+        return (
+          <Link
+            to={`/integrations/${r.integrationId}`}
+            className="text-xs font-medium text-accent hover:underline max-w-[12rem] truncate block"
+            title={label}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
+        );
+      },
+    };
+
+    const tenantCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.tenant'),
+      key: 'tenantName',
+      render: (r) => {
+        const row = r as EnrollmentResponseDto & {
+          tenantId?: number | null;
+          tenantName?: string | null;
+        };
+        if (row.tenantId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          row.tenantName != null && row.tenantName.trim() !== ''
+            ? row.tenantName.trim()
+            : t('list.tenantFallback', { id: row.tenantId });
+        return (
+          <Link
+            to={`/tenants/${row.tenantId}`}
+            className="text-xs font-medium text-accent hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
+        );
+      },
+    };
+
+    const userIdCol: ColumnDef<EnrollmentResponseDto> = {
       header: t('list.columns.userIdentifier'),
       key: 'userIdentifier',
       sortKey: 'userIdentifier',
       render: (r) => (
-        <span className="text-xs text-fg-muted max-w-[10rem] truncate block" title={r.userIdentifier ?? undefined}>
+        <span
+          className="text-xs text-fg-muted max-w-[10rem] truncate block"
+          title={r.userIdentifier ?? undefined}
+        >
           {r.userIdentifier ?? '—'}
         </span>
       ),
-    },
-    { header: t('list.columns.status'), key: 'enrollmentStatus', sortKey: 'status', render: (r) => {
-      const showWarning = r.enrollmentStatus === 'VERIFIED' && r.enrollmentActive === true && r.operational === false;
-      return showWarning ? (
-        <Tooltip content={t('list.operationalWarningTooltip')}>
-          <span className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
-            <EnrollmentStatusBadge status={r.enrollmentStatus} />
-            <AlertTriangle className="size-4 text-warning" aria-hidden />
-          </span>
-        </Tooltip>
-      ) : (
-        <EnrollmentStatusBadge status={r.enrollmentStatus} />
-      );
-    } },
-    { header: t('list.columns.active'), key: 'enrollmentActive', sortKey: 'active', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? t('list.activeYes') : t('list.activeNo')}</Badge> },
-    {
-      header: t('list.columns.integration'),
-      key: 'integrationId',
-      sortKey: 'integrationId',
-      render: (r) => {
-        const integration = integrations.find((i) => i.id === r.integrationId);
-        return (
-          <span className="text-xs text-fg-muted">
-            {integration ? `${integration.code}` : `#${r.integrationId}`}
-          </span>
-        );
+    };
+
+    const createdCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.created'),
+      key: 'createdAt',
+      sortKey: 'createdAt',
+      render: (r) => (
+        <span className="text-xs text-fg-muted whitespace-nowrap">
+          {r.createdAt ? formatDate(r.createdAt) : '—'}
+        </span>
+      ),
+    };
+
+    const lastUsedCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.lastUsed'),
+      key: 'lastUsedAt',
+      sortKey: 'lastUsedAt',
+      render: (r) => (
+        <span className="text-xs text-fg-muted whitespace-nowrap">
+          {r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}
+        </span>
+      ),
+    };
+
+    const base: ColumnDef<EnrollmentResponseDto>[] = [
+      {
+        header: t('list.columns.id'),
+        key: 'enrollmentId',
+        className: 'w-14',
+        sortKey: 'enrollmentId',
+        render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span>,
       },
-    },
-    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.createdAt ? formatDate(r.createdAt) : '—'}</span> },
-    { header: t('list.columns.lastUsed'), key: 'lastUsedAt', sortKey: 'lastUsedAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}</span> },
-    { header: t('list.columns.verified'), key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
-    {
-      header: t('list.columns.keyTier'),
-      key: 'devicePrivateKeyStorageTier',
-      render: (r) => <DevicePrivateKeyTierBadge tier={r.devicePrivateKeyStorageTier} />,
-    },
-    { header: t('list.columns.challenge'), key: 'authAttemptChallengeRequired', sortKey: 'authAttemptChallengeRequired', render: (r) => <Badge variant={r.authAttemptChallengeRequired ? 'warning' : 'muted'}>{r.authAttemptChallengeRequired ? t('list.activeYes') : t('list.activeNo')}</Badge> },
-  ];
+      {
+        header: t('list.columns.name'),
+        key: 'enrollmentName',
+        sortKey: 'enrollmentName',
+        render: (r) => <span className="font-medium">{r.enrollmentName}</span>,
+      },
+      statusCol,
+      integrationCol,
+      userIdCol,
+      ...(isGlobalAdmin ? [tenantCol] : []),
+      createdCol,
+      lastUsedCol,
+    ];
+
+    return base;
+  }, [isGlobalAdmin, t]);
 
   return (
     <AppShell title={t('list.title')}>

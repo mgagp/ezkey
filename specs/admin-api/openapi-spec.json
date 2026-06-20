@@ -7376,11 +7376,20 @@
           },
           "integrationName": {
             "type": "string",
-            "description": "Display name for the enrollment's integration (e.g. Ezkey System); populated on GET by ID"
+            "description": "Display name for the enrollment's integration (e.g. Ezkey System); populated when integration context is joined (list and GET by ID)"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant identifier for the enrollment's integration; populated when integration context is joined"
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "Tenant display name for the enrollment's integration; populated when integration context is joined (list and GET by ID)"
           },
           "isSystemIntegration": {
             "type": "boolean",
-            "description": "Whether this enrollment's integration is the system integration; populated on GET by ID"
+            "description": "Whether this enrollment's integration is the system integration; populated when integration context is joined"
           },
           "operational": {
             "type": "boolean",
@@ -8864,42 +8873,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }

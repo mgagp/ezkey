@@ -218,7 +218,7 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 
 ## Admin UI Browser Validation
 
-- Agent validation ladder (build → API → Playwright): [`docs/testing/AGENT_UI_VALIDATION.md`](../docs/testing/AGENT_UI_VALIDATION.md)
+- Agent validation ladder (build → API → Playwright / MCP smoke): [`docs/testing/AGENT_UI_VALIDATION.md`](docs/testing/AGENT_UI_VALIDATION.md); closeout trigger rule [`.cursor/rules/agent-ui-closeout-validation.mdc`](.cursor/rules/agent-ui-closeout-validation.mdc)
 - The repository includes a **Playwright** browser suite for the Admin UI in `ezkey-admin-ui/`.
 - The preferred validation model is **real end to end** with the standard clean-start stack plus the pre-seeded **Demo Device**.
 - Use the browser suite when a change materially affects Admin UI behavior or the Admin UI ↔ Demo Device flow.

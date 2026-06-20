@@ -119,6 +119,22 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
       // Response is now paginated - content is in "content" field
       List<Map<String, Object>> enrollments = response.jsonPath().getList("content");
       assertThat(enrollments).isNotNull();
+      for (Map<String, Object> row : enrollments) {
+        if (row.get("integrationId") != null) {
+          assertThat(row.get("integrationName"))
+              .as(
+                  "enrollment list row integrationName for integrationId=%s",
+                  row.get("integrationId"))
+              .isInstanceOf(String.class);
+          assertThat(((String) row.get("integrationName")).trim()).isNotEmpty();
+          if (row.get("tenantId") != null) {
+            assertThat(row.get("tenantName"))
+                .as("enrollment list row tenantName for tenantId=%s", row.get("tenantId"))
+                .isInstanceOf(String.class);
+            assertThat(((String) row.get("tenantName")).trim()).isNotEmpty();
+          }
+        }
+      }
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -151,6 +167,9 @@ public class EnrollmentManagementSecurityTest extends AbstractSecurityTest {
       assertThat(response.getStatusCode()).isEqualTo(200);
       assertThat(response.jsonPath().getInt("enrollmentId")).isEqualTo(enrollmentId);
       assertThat(response.jsonPath().getInt("integrationId")).isEqualTo(integrationId);
+      assertThat(response.jsonPath().getString("integrationName")).isNotBlank();
+      assertThat(response.jsonPath().getInt("tenantId")).isPositive();
+      assertThat(response.jsonPath().getString("tenantName")).isNotBlank();
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
