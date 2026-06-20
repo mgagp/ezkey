@@ -28,6 +28,8 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import org.ezkey.mobile.BuildConfig
+import java.io.IOException
+import java.security.GeneralSecurityException
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
@@ -186,7 +188,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       keyPairGenerator.generateKeyPair()
 
       promise.resolve(true)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_KEY_GENERATION, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_KEY_GENERATION, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_KEY_GENERATION, error)
     }
   }
@@ -218,7 +224,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       val encodedBase64 = Base64.encodeToString(encoded, Base64.NO_WRAP)
 
       promise.resolve(encodedBase64)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_PUBLIC_KEY, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_PUBLIC_KEY, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_PUBLIC_KEY, error)
     }
   }
@@ -296,7 +306,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
 
       val encodedBase64 = Base64.encodeToString(signatureBytes, Base64.NO_WRAP)
       promise.resolve(encodedBase64)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_SIGN, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_SIGN, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_SIGN, error)
     }
   }
