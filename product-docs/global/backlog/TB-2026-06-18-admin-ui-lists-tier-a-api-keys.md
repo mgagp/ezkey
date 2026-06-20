@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-18-admin-ui-lists-tier-a-api-keys`
-- **Status:** `draft`
+- **Status:** `done`
 - **Posture:** `single-pass`
 - **Related ideas:** `I-2026-0013`, `I-2026-0014`
 - **GitHub:** #236

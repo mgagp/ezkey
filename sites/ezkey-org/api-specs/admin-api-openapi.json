@@ -7450,6 +7450,22 @@
             "description": "Integration ID this API key authenticates for",
             "example": 123
           },
+          "integrationName": {
+            "type": "string",
+            "description": "Integration display name; populated when integration context is joined (list and GET by ID)",
+            "example": "Acme Portal"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant identifier for the integration; populated when integration context is joined",
+            "example": 1
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "Tenant display name for the integration; populated when integration context is joined",
+            "example": "System Tenant"
+          },
           "integrationKey": {
             "type": "string",
             "description": "Public integration key (safe to display)",
@@ -8873,42 +8889,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }

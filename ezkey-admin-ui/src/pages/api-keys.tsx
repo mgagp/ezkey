@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip } from '@/components/ui/tooltip';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
+import { useAuth } from '@/context/use-auth';
 import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -448,6 +449,8 @@ type BaseParams = {
 
 export default function ApiKeysPage() {
   const { t } = useTranslation('api-keys');
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
@@ -467,7 +470,7 @@ export default function ApiKeysPage() {
     return Number.isNaN(id) ? undefined : id;
   }, [searchParams]);
 
-  const { list: integrations, lookup } = useIntegrations();
+  const { list: integrations } = useIntegrations();
 
   const baseParams: BaseParams = {
     integrationId: integrationFilter ? Number(integrationFilter) : undefined,
@@ -500,61 +503,56 @@ export default function ApiKeysPage() {
     defaultSort: 'createdAt,DESC',
   });
 
-  const columns: ColumnDef<ApiKeyResponseDto>[] = [
-    {
-      header: t('list.columns.id'),
-      key: 'apiKeyId',
-      className: 'w-14',
-      sortKey: 'apiKeyId',
-      render: (r) => <span className="font-mono text-xs">{r.apiKeyId}</span>,
-    },
-    {
+  const columns: ColumnDef<ApiKeyResponseDto>[] = useMemo(() => {
+    const integrationCol: ColumnDef<ApiKeyResponseDto> = {
       header: t('list.columns.integration'),
-      key: 'integrationId',
-      sortKey: 'integrationKey',
-      render: (r) => (
-        <span className="text-xs font-medium">{lookup.get(r.integrationId!) ?? `#${r.integrationId ?? '?'}`}</span>
-      ),
-    },
-    {
-      header: t('list.columns.description'),
-      key: 'description',
-      sortKey: 'description',
-      render: (r) => (
-        <span className="text-xs text-fg-muted">{r.description ?? '—'}</span>
-      ),
-    },
-    {
-      header: t('list.columns.status'),
-      key: 'active',
-      sortKey: 'active',
-      render: (r) => <KeyStatusBadge apiKey={r} />,
-    },
-    {
-      header: t('list.columns.created'),
-      key: 'createdAt',
-      sortKey: 'createdAt',
-      render: (r) => (
-        <span className="text-xs text-fg-muted">{r.createdAt ? formatDate(r.createdAt) : '—'}</span>
-      ),
-    },
-    {
-      header: t('list.columns.expires'),
-      key: 'expiresAt',
-      sortKey: 'expiresAt',
-      render: (r) => (
-        <span className="text-xs text-fg-muted">{r.expiresAt ? formatDate(r.expiresAt) : '—'}</span>
-      ),
-    },
-    {
-      header: t('list.columns.lastUsed'),
-      key: 'lastUsedAt',
-      sortKey: 'lastUsedAt',
-      render: (r) => (
-        <span className="text-xs text-fg-muted">{r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}</span>
-      ),
-    },
-    {
+      key: 'integrationName',
+      sortKey: 'integrationId',
+      render: (r) => {
+        if (r.integrationId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          r.integrationName != null && r.integrationName.trim() !== ''
+            ? r.integrationName.trim()
+            : t('list.integrationFallback', { id: r.integrationId });
+        return (
+          <Link
+            to={`/integrations/${r.integrationId}`}
+            className="text-xs font-medium text-accent hover:underline max-w-[12rem] truncate block"
+            title={label}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
+        );
+      },
+    };
+
+    const tenantCol: ColumnDef<ApiKeyResponseDto> = {
+      header: t('list.columns.tenant'),
+      key: 'tenantName',
+      render: (r) => {
+        if (r.tenantId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          r.tenantName != null && r.tenantName.trim() !== ''
+            ? r.tenantName.trim()
+            : t('list.tenantFallback', { id: r.tenantId });
+        return (
+          <Link
+            to={`/tenants/${r.tenantId}`}
+            className="text-xs font-medium text-accent hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
+        );
+      },
+    };
+
+    const actionsCol: ColumnDef<ApiKeyResponseDto> = {
       header: '',
       key: 'actions',
       className: 'w-10',
@@ -564,15 +562,80 @@ export default function ApiKeysPage() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={(e) => { e.stopPropagation(); setRevokeTarget(r); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setRevokeTarget(r);
+              }}
               className="gap-1 px-2"
             >
               <ShieldOff className="size-3" />
             </Button>
           </Tooltip>
         ) : null,
-    },
-  ];
+    };
+
+    return [
+      {
+        header: t('list.columns.id'),
+        key: 'apiKeyId',
+        className: 'w-14',
+        sortKey: 'apiKeyId',
+        render: (r) => <span className="font-mono text-xs">{r.apiKeyId}</span>,
+      },
+      {
+        header: t('list.columns.description'),
+        key: 'description',
+        sortKey: 'description',
+        render: (r) => (
+          <span
+            className="text-xs font-medium max-w-[14rem] truncate block"
+            title={r.description ?? undefined}
+          >
+            {r.description ?? '—'}
+          </span>
+        ),
+      },
+      {
+        header: t('list.columns.status'),
+        key: 'active',
+        sortKey: 'active',
+        render: (r) => <KeyStatusBadge apiKey={r} />,
+      },
+      integrationCol,
+      ...(isGlobalAdmin ? [tenantCol] : []),
+      {
+        header: t('list.columns.created'),
+        key: 'createdAt',
+        sortKey: 'createdAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted whitespace-nowrap">
+            {r.createdAt ? formatDate(r.createdAt) : '—'}
+          </span>
+        ),
+      },
+      {
+        header: t('list.columns.expires'),
+        key: 'expiresAt',
+        sortKey: 'expiresAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted whitespace-nowrap">
+            {r.expiresAt ? formatDate(r.expiresAt) : '—'}
+          </span>
+        ),
+      },
+      {
+        header: t('list.columns.lastUsed'),
+        key: 'lastUsedAt',
+        sortKey: 'lastUsedAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted whitespace-nowrap">
+            {r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}
+          </span>
+        ),
+      },
+      actionsCol,
+    ];
+  }, [isGlobalAdmin, t]);
 
   return (
     <AppShell title={t('list.title')}>

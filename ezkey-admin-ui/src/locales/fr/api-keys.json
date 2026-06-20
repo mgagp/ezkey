@@ -18,8 +18,11 @@
       "status": "Statut",
       "created": "Créé",
       "expires": "Expire",
-      "lastUsed": "Dernière utilisation"
+      "lastUsed": "Dernière utilisation",
+      "tenant": "Tenant"
     },
+    "integrationFallback": "Intégration #{{id}}",
+    "tenantFallback": "Tenant #{{id}}",
     "revokeTooltip": "Révoquer cette clé",
     "operationalWarningTooltip": "L'intégration ou le tenant est inactif — les appels API seront rejetés"
   },

@@ -115,7 +115,7 @@ class ApiKeyControllerTest {
 
   @Mock private HttpServletRequest httpServletRequest;
 
-  @Mock private IntegrationRepository auditFkIntegrationRepository;
+  @Mock private IntegrationRepository integrationRepository;
 
   @Mock private EnrollmentRepository auditFkEnrollmentRepository;
 
@@ -123,11 +123,20 @@ class ApiKeyControllerTest {
 
   @BeforeEach
   void setUp() {
-    lenient().when(auditFkIntegrationRepository.existsById(any())).thenReturn(true);
+    lenient().when(integrationRepository.existsById(any())).thenReturn(true);
     lenient().when(auditFkEnrollmentRepository.existsById(any())).thenReturn(true);
     AuditEntityFkResolver auditEntityFkResolver =
-        new AuditEntityFkResolver(auditFkIntegrationRepository, auditFkEnrollmentRepository);
+        new AuditEntityFkResolver(integrationRepository, auditFkEnrollmentRepository);
     lenient().when(eligibilityService.isApiKeyFullyOperational(any(), any())).thenReturn(true);
+    lenient()
+        .when(integrationRepository.findAllByIdWithTenant(any()))
+        .thenAnswer(
+            invocation -> {
+              Integration integration = new Integration();
+              integration.setId(123);
+              integration.setName("Acme Integration");
+              return List.of(integration);
+            });
     controller =
         new ApiKeyController(
             apiKeyService,
@@ -137,7 +146,8 @@ class ApiKeyControllerTest {
             accessControlService,
             auditLogService,
             auditEntityFkResolver,
-            eligibilityService);
+            eligibilityService,
+            integrationRepository);
 
     // Setup authentication context with admin user
     setupAdminAuthentication();
@@ -220,7 +230,7 @@ class ApiKeyControllerTest {
       int missingId = 99999;
       ApiKeyCreateRequestDto request =
           new ApiKeyCreateRequestDto(missingId, "Test API Key", null, null);
-      doReturn(false).when(auditFkIntegrationRepository).existsById(missingId);
+      doReturn(false).when(integrationRepository).existsById(missingId);
       when(apiKeyService.createApiKey(anyInt(), any(EzkeyAdmin.class), anyString(), any(), any()))
           .thenThrow(new ApiKeyCreateValidationException("Invalid integration ID"));
 
@@ -302,6 +312,7 @@ class ApiKeyControllerTest {
       ApiKeyResponseDto firstKey = page.getContent().get(0);
       assertEquals(1, firstKey.apiKeyId());
       assertEquals(123, firstKey.integrationId());
+      assertEquals("Acme Integration", firstKey.integrationName());
       assertEquals("integration-key-1", firstKey.integrationKey());
     }
 
