@@ -19,6 +19,7 @@
     },
     "statusActive": "Active",
     "statusRetired": "Retired",
+    "tenantFallback": "Tenant n° {{id}}",
     "operationalWarningTooltip": "Le tenant est inactif — l'authentification est bloquée pour cette intégration"
   },
   "create": {

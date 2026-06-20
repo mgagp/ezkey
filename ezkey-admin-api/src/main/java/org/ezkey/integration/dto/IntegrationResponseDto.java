@@ -34,6 +34,8 @@ import org.ezkey.integration.domain.IntegrationLifecycleStatus;
  * @param id Unique identifier for the integration (auto-generated primary key from the database)
  * @param code Unique business identifier code for the integration (must be unique per tenant)
  * @param tenantId Tenant ID that owns this integration (for multi-tenant isolation verification)
+ * @param tenantName Display name of the owning tenant (populated on list/detail when tenant is
+ *     joined; null when tenant is absent)
  * @param lifecycleStatus Explicit lifecycle status for the integration
  * @param operational Whether the integration is currently operational: {@code ACTIVE} lifecycle
  *     state <em>and</em> parent tenant active
@@ -56,6 +58,8 @@ public record IntegrationResponseDto(
             example = "web-portal")
         String code,
     @Schema(description = "Tenant ID that owns this integration", example = "2") Integer tenantId,
+    @Schema(description = "Display name of the owning tenant", example = "Acme Corp")
+        String tenantName,
     @Schema(description = "Explicit integration lifecycle status", example = "ACTIVE")
         IntegrationLifecycleStatus lifecycleStatus,
     @Schema(

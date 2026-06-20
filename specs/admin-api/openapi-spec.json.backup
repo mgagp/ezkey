@@ -31,44 +31,20 @@
   ],
   "tags": [
     {
-      "name": "Encryption Keys",
-      "description": "Encryption key lifecycle management and rotation operations"
-    },
-    {
-      "name": "Dashboard",
-      "description": "Dashboard overview and aggregated stats for Admin UI"
-    },
-    {
-      "name": "Admin Enrollment Management",
-      "description": "Administrator enrollment management and device recovery after loss"
-    },
-    {
-      "name": "Alerts",
-      "description": "Operator-facing alert subsystem (Global Admin only). Surfaces internal Ezkey signals such as undeclared audit chain gaps; resolved automatically by the matching producer workflow."
-    },
-    {
-      "name": "Auth Attempts",
-      "description": "Authentication attempt management API"
+      "name": "Public",
+      "description": "Unauthenticated instance metadata, evaluator preview signup, and related public endpoints"
     },
     {
       "name": "Admin Authentication",
       "description": "Administrator authentication and session management for passwordless login and recovery"
     },
     {
-      "name": "Audit Logs",
-      "description": "Audit log query and reporting API for security monitoring and compliance"
-    },
-    {
-      "name": "Public",
-      "description": "Unauthenticated instance metadata and preview signup"
-    },
-    {
       "name": "Tenants",
       "description": "Tenant management API"
     },
     {
-      "name": "Administrator Provisioning",
-      "description": "Administrator provisioning API"
+      "name": "Integrations",
+      "description": "Integration management API"
     },
     {
       "name": "Enrollments",
@@ -79,12 +55,32 @@
       "description": "API key management for machine-to-machine (Integration API) authentication"
     },
     {
-      "name": "Integrations",
-      "description": "Integration management API"
+      "name": "Auth Attempts",
+      "description": "Authentication attempt management API"
     },
     {
-      "name": "Public",
-      "description": "Unauthenticated instance metadata"
+      "name": "Admin Enrollment Management",
+      "description": "Administrator enrollment management and device recovery after loss"
+    },
+    {
+      "name": "Administrator Provisioning",
+      "description": "Administrator provisioning API"
+    },
+    {
+      "name": "Audit Logs",
+      "description": "Audit log query and reporting API for security monitoring and compliance"
+    },
+    {
+      "name": "Encryption Keys",
+      "description": "Encryption key lifecycle management and rotation operations"
+    },
+    {
+      "name": "Alerts",
+      "description": "Operator-facing alert subsystem (Global Admin only). Surfaces internal Ezkey signals such as undeclared audit chain gaps; resolved automatically by the matching producer workflow."
+    },
+    {
+      "name": "Dashboard",
+      "description": "Dashboard overview and aggregated stats for Admin UI"
     }
   ],
   "paths": {
@@ -7760,6 +7756,11 @@
             "description": "Tenant ID that owns this integration",
             "example": 2
           },
+          "tenantName": {
+            "type": "string",
+            "description": "Display name of the owning tenant",
+            "example": "Acme Corp"
+          },
           "lifecycleStatus": {
             "type": "string",
             "description": "Explicit integration lifecycle status",
@@ -8860,5 +8861,45 @@
         "bearerFormat": "JWT"
       }
     }
-  }
+  },
+  "x-tagGroups": [
+    {
+      "tags": [
+        "Public",
+        "Admin Authentication"
+      ],
+      "name": "Getting started"
+    },
+    {
+      "tags": [
+        "Tenants",
+        "Integrations",
+        "Enrollments",
+        "API Keys"
+      ],
+      "name": "Tenant and integration setup"
+    },
+    {
+      "tags": [
+        "Auth Attempts",
+        "Admin Enrollment Management"
+      ],
+      "name": "MFA operations"
+    },
+    {
+      "tags": [
+        "Administrator Provisioning"
+      ],
+      "name": "Administration"
+    },
+    {
+      "tags": [
+        "Audit Logs",
+        "Encryption Keys",
+        "Alerts",
+        "Dashboard"
+      ],
+      "name": "Platform operations"
+    }
+  ]
 }

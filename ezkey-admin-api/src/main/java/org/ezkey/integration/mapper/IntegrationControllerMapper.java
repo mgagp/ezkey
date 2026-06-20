@@ -78,6 +78,7 @@ public interface IntegrationControllerMapper {
    * @return the corresponding IntegrationResponseDto
    */
   @Mapping(source = "tenant.tenantId", target = "tenantId")
+  @Mapping(source = "tenant.tenantName", target = "tenantName")
   @Mapping(
       target = "operational",
       expression =

@@ -19,6 +19,7 @@
     },
     "statusActive": "Active",
     "statusRetired": "Retired",
+    "tenantFallback": "Tenant #{{id}}",
     "operationalWarningTooltip": "Tenant is inactive — authentication is blocked for this integration"
   },
   "create": {

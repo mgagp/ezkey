@@ -42,6 +42,8 @@ class IntegrationResponseDtoTest {
 
   private static final Integer TEST_TENANT_ID = 2;
 
+  private static final String TEST_TENANT_NAME = "Acme Corp";
+
   private static final Boolean TEST_OPERATIONAL = true;
 
   private static final IntegrationLifecycleStatus TEST_LIFECYCLE_STATUS =
@@ -62,6 +64,7 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             TEST_CREATED_AT,
@@ -72,6 +75,7 @@ class IntegrationResponseDtoTest {
     assertThat(dto.id()).isEqualTo(TEST_ID);
     assertThat(dto.code()).isEqualTo(TEST_CODE);
     assertThat(dto.tenantId()).isEqualTo(TEST_TENANT_ID);
+    assertThat(dto.tenantName()).isEqualTo(TEST_TENANT_NAME);
     assertThat(dto.operational()).isEqualTo(TEST_OPERATIONAL);
     assertThat(dto.lifecycleStatus()).isEqualTo(TEST_LIFECYCLE_STATUS);
     assertThat(dto.createdAt()).isEqualTo(TEST_CREATED_AT);
@@ -88,6 +92,7 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             TEST_CREATED_AT,
@@ -108,6 +113,7 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             TEST_CREATED_AT,
@@ -127,6 +133,7 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            null,
             IntegrationLifecycleStatus.RETIRED,
             false,
             TEST_CREATED_AT,
@@ -146,6 +153,7 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             TEST_CREATED_AT,
@@ -157,6 +165,7 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             TEST_CREATED_AT,
@@ -168,6 +177,7 @@ class IntegrationResponseDtoTest {
             2,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             TEST_CREATED_AT,
@@ -188,6 +198,7 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             TEST_CREATED_AT,
@@ -212,6 +223,7 @@ class IntegrationResponseDtoTest {
             1,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             utcTime,
@@ -223,6 +235,7 @@ class IntegrationResponseDtoTest {
             2,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             estTime,
@@ -234,6 +247,7 @@ class IntegrationResponseDtoTest {
             3,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             jstTime,
@@ -257,6 +271,7 @@ class IntegrationResponseDtoTest {
               id,
               TEST_CODE,
               TEST_TENANT_ID,
+              TEST_TENANT_NAME,
               TEST_LIFECYCLE_STATUS,
               TEST_OPERATIONAL,
               TEST_CREATED_AT,
@@ -275,6 +290,7 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            TEST_TENANT_NAME,
             TEST_LIFECYCLE_STATUS,
             TEST_OPERATIONAL,
             null,
@@ -293,6 +309,7 @@ class IntegrationResponseDtoTest {
             TEST_ID,
             TEST_CODE,
             TEST_TENANT_ID,
+            null,
             null,
             null,
             TEST_CREATED_AT,

@@ -237,6 +237,7 @@ Use **start.sh** to build and run the Admin UI in Docker:
 
 ## Browser UI Tests
 
+- Agent validation ladder (build → API → Playwright): [`docs/testing/AGENT_UI_VALIDATION.md`](../../docs/testing/AGENT_UI_VALIDATION.md)
 - The Admin UI now has a **Playwright** browser suite under `e2e/`.
 - The primary validation model is **device-backed end to end**:
   - start the EZKey backend stack with `clean-start`

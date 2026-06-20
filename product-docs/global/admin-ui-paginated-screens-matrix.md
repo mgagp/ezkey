@@ -33,7 +33,7 @@ Canonical **operator-first** decisions for every paginated Admin UI list: what t
 |----------------|------------|------|------------------------------|----------------------------|-------------------------|------------------|--------|-------|
 | Admins | `GET /api/v1/admins` | A | Who can operate this instance and in what role? | username, admin type, tenant, status, … | **Done** — joins; reference implementation | Both (scoped) | `implemented` | Gold standard |
 | Tenants | `GET /api/v1/tenants` | A | Which tenants exist and are they active? | *TBD analysis* | Labels not FK IDs | Global Admin | `draft` | |
-| Integrations | `GET /api/v1/integrations` | A | Which apps are protected and under which tenant? | *TBD* | Integration + tenant names in list | Both | `draft` | |
+| Integrations | `GET /api/v1/integrations` | A | Which apps are protected and under which tenant? | **ID**, code, name, status (+ operational warning), **tenant name** (Global Admin), created | **Done** — `tenantName` via list join; ID kept as primary key | Both (tenant col GA only) | `implemented` | First operator-lists TB (`TB-2026-06-18-admin-ui-lists-tier-a-integrations`) |
 | Enrollments | `GET /api/v1/enrollments` | A | Which devices/users are enrolled and in what state? | *TBD* | Integration (and tenant) names in list | Both | `draft` | |
 | API keys | `GET /api/v1/api-keys/...` | A | Which keys exist and for which integration? | *TBD* | Integration name, not integrationId only | Both | `draft` | |
 | Encryption keys | `GET /api/v1/encryption-keys` | A | Key lifecycle and migration backlog? | *TBD* | Bounded; joins as needed for labels | Global Admin | `draft` | |
