@@ -267,7 +267,13 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
             else -> "NONE"
           }
       promise.resolve(tier)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      Log.e(TAG, "getEnrollmentPrivateKeyStorageTier failed", error)
+      promise.reject(ERROR_CODE_STORAGE_TIER, error)
+    } catch (error: IOException) {
+      Log.e(TAG, "getEnrollmentPrivateKeyStorageTier failed", error)
+      promise.reject(ERROR_CODE_STORAGE_TIER, error)
+    } catch (error: IllegalStateException) {
       Log.e(TAG, "getEnrollmentPrivateKeyStorageTier failed", error)
       promise.reject(ERROR_CODE_STORAGE_TIER, error)
     }
@@ -445,7 +451,9 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
 
         prompt.authenticate(promptInfo)
       }
-    } catch (error: Exception) {
+    } catch (error: SecurityException) {
+      promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
     }
   }
@@ -572,7 +580,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       }
 
       promise.resolve(true)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_DELETE, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_DELETE, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_DELETE, error)
     }
   }
