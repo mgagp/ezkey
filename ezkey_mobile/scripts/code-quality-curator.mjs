@@ -136,6 +136,58 @@ const classifyCategory = (ruleId, message) => {
   return 'style';
 };
 
+const classifyDetektCategory = (ruleId, message) => {
+  const normalizedRuleId = String(ruleId || '').trim();
+  const correctnessRules = new Set([
+    'TooGenericExceptionCaught',
+    'SwallowedException',
+    'UseCheckOrError',
+    'UnsafeCallOnNullableType',
+  ]);
+  const maintainabilityRules = new Set([
+    'TooManyFunctions',
+    'LongMethod',
+    'CyclomaticComplexMethod',
+    'ComplexMethod',
+    'ReturnCount',
+    'ThrowsCount',
+  ]);
+  const styleRules = new Set([
+    'MaxLineLength',
+    'NewLineAtEndOfFile',
+    'UnusedParameter',
+    'UnusedPrivateProperty',
+  ]);
+
+  if (correctnessRules.has(normalizedRuleId)) {
+    return 'correctness';
+  }
+  if (maintainabilityRules.has(normalizedRuleId)) {
+    return 'maintainability';
+  }
+  if (styleRules.has(normalizedRuleId)) {
+    return 'style';
+  }
+
+  return classifyCategory(ruleId, message);
+};
+
+const normalizeFindingPath = pathValue => {
+  const rawPath = String(pathValue || '').replace(/\\/g, '/');
+  if (/^file:\/\//i.test(rawPath)) {
+    const withoutScheme = rawPath.replace(/^file:\/\/+/, '');
+    const decoded = decodeURIComponent(withoutScheme);
+    const windowsCandidate = /^[A-Za-z]:\//.test(decoded) ? decoded : `/${decoded}`;
+    const absolutePath = path.resolve(windowsCandidate);
+    if (absolutePath.startsWith(rootDir)) {
+      return path.relative(rootDir, absolutePath).replace(/\\/g, '/');
+    }
+    return windowsCandidate;
+  }
+
+  return rawPath;
+};
+
 const severityWeight = {
   high: 3,
   medium: 2,
@@ -145,14 +197,27 @@ const severityWeight = {
 const categoryWeight = {
   security: 3,
   correctness: 2,
-  maintainability: 1,
+  maintainability: 2,
   style: 0.5,
+};
+
+const computePathWeight = finding => {
+  const normalizedPath = String(finding.path || '').replace(/\\/g, '/').toLowerCase();
+  if (
+    normalizedPath.includes('__tests__/') ||
+    normalizedPath.includes('/src/test/') ||
+    normalizedPath.startsWith('src/test/')
+  ) {
+    return 0.5;
+  }
+  return 1;
 };
 
 const computeScore = finding => {
   const s = severityWeight[finding.severity] ?? 1;
   const c = categoryWeight[finding.category] ?? 1;
-  return Number((s * c).toFixed(2));
+  const p = computePathWeight(finding);
+  return Number((s * c * p).toFixed(2));
 };
 
 const buildFingerprint = finding => {
@@ -201,7 +266,7 @@ const normalizeSemgrep = (json, sourceFile) => {
     const severity = normalizeSeverity(item?.extra?.severity);
     const ruleId = item.check_id || 'semgrep/unknown';
     const message = item?.extra?.message || 'Semgrep finding';
-    const pathValue = item.path || sourceFile;
+    const pathValue = normalizeFindingPath(item.path || sourceFile);
     const line = Number(item?.start?.line || 1);
     const column = Number(item?.start?.col || 1);
     const category = classifyCategory(ruleId, message);
@@ -238,10 +303,12 @@ const normalizeSarifRuns = (runs, toolName, sourceFile) => {
       const ruleId = ruleNameById.get(ruleIdRaw) || ruleIdRaw;
       const message = result.message?.text || 'SARIF finding';
       const severity = normalizeSeverity(result.level || result.properties?.severity);
-      const filePath = location?.artifactLocation?.uri || sourceFile;
+      const filePath = normalizeFindingPath(location?.artifactLocation?.uri || sourceFile);
       const line = Number(region.startLine || 1);
       const column = Number(region.startColumn || 1);
-      const category = classifyCategory(ruleId, message);
+      const category = toolName === 'detekt'
+        ? classifyDetektCategory(ruleId, message)
+        : classifyCategory(ruleId, message);
 
       findings.push({
         tool: toolName,

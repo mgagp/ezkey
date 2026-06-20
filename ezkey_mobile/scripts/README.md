@@ -228,6 +228,56 @@ node scripts/code-quality-curator.mjs \
   --suppression-file=.monitor/code-quality-suppressions.json
 ```
 
+## `detekt/detekt.yml` + `detekt-scan.mjs`
+
+Detekt adds a Kotlin-specific static analysis angle complementary to Semgrep.
+
+From `ezkey_mobile/`:
+
+```bash
+node scripts/detekt-scan.mjs
+```
+
+Or via package scripts:
+
+```bash
+yarn quality:detekt:scan
+yarn quality:detekt:report
+```
+
+Generated artifact:
+
+- `.monitor/detekt.sarif`
+
+## `quality-pipeline.mjs` (unified invocation)
+
+Runs the current quality signal sources in one pass, then generates one consolidated prioritized report
+through the curator model.
+
+Current pipeline includes:
+
+- Semgrep scan
+- Detekt scan
+- Curator consolidation (`.monitor/biome-report.json` included automatically if present)
+
+From `ezkey_mobile/`:
+
+```bash
+yarn quality:pipeline
+```
+
+With explicit report name:
+
+```bash
+node scripts/quality-pipeline.mjs --report-name=quality-unified
+```
+
+Default consolidated outputs:
+
+- `.monitor/code-quality/quality-unified.normalized.json`
+- `.monitor/code-quality/quality-unified.md`
+- `.monitor/code-quality/quality-unified.html`
+
 **Pitfall:** One-liners such as `adb shell run-as … strings …/RKStorage | grep …` often exit with **255** and produce no useful output: the app UID sandbox typically does **not** ship `strings`, `sqlite3`, or a full `grep`. Prefer this script (host-side parsing via `adb exec-out`) or the flows in `docs/MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md`.
 
 ## `generate_android_launcher_icons.py`
