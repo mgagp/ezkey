@@ -99,3 +99,4 @@ When designing or reviewing a change:
 - [`architecture-overview.md`](architecture-overview.md)
 - [`architecture-decisions.md`](architecture-decisions.md)
 - [`lifecycle-model.md`](lifecycle-model.md)
+- [`admin-ui-list-quick-security-actions.md`](admin-ui-list-quick-security-actions.md)
