@@ -319,7 +319,9 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   fun canUseProtectedSigning(promise: Promise) {
     try {
       promise.resolve(canUseProtectedSigningNow())
-    } catch (error: Exception) {
+    } catch (error: SecurityException) {
+      promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
     }
   }
@@ -361,7 +363,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
                       signature.update(data.toByteArray(StandardCharsets.UTF_8))
                       val signatureBytes = signature.sign()
                       promise.resolve(Base64.encodeToString(signatureBytes, Base64.NO_WRAP))
-                    } catch (error: Exception) {
+                    } catch (error: GeneralSecurityException) {
+                      promise.reject(ERROR_CODE_SIGN, error)
+                    } catch (error: IOException) {
+                      promise.reject(ERROR_CODE_SIGN, error)
+                    } catch (error: IllegalStateException) {
                       promise.reject(ERROR_CODE_SIGN, error)
                     }
                   }
@@ -385,7 +391,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
 
         prompt.authenticate(promptInfo)
       }
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_SIGN, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_SIGN, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_SIGN, error)
     }
   }
@@ -464,7 +474,13 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
         )
       }
       promise.resolve(valid)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      Log.e(TAG, "verify threw", error)
+      promise.reject(ERROR_CODE_VERIFY, error)
+    } catch (error: IllegalArgumentException) {
+      Log.e(TAG, "verify threw", error)
+      promise.reject(ERROR_CODE_VERIFY, error)
+    } catch (error: IllegalStateException) {
       Log.e(TAG, "verify threw", error)
       promise.reject(ERROR_CODE_VERIFY, error)
     }
