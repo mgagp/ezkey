@@ -505,7 +505,9 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   fun getBuildTimestamp(promise: Promise) {
     try {
       promise.resolve(BuildConfig.BUILD_TIMESTAMP)
-    } catch (error: Exception) {
+    } catch (error: SecurityException) {
+      promise.reject(ERROR_CODE_BUILD_TIMESTAMP, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_BUILD_TIMESTAMP, error)
     }
   }
@@ -530,7 +532,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       val randomPart = base64UrlEncodeNoPadding(randomBytes)
       val saltPart = base64UrlEncodeNoPadding(saltBytes)
       promise.resolve("$randomPart.$saltPart")
-    } catch (error: Exception) {
+    } catch (error: SecurityException) {
+      promise.reject(ERROR_CODE_PROOF_TOKEN, error)
+    } catch (error: IllegalArgumentException) {
+      promise.reject(ERROR_CODE_PROOF_TOKEN, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_PROOF_TOKEN, error)
     }
   }
@@ -544,7 +550,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     try {
       val envelope = SealedSecretEnvelope.seal(getOrCreateAppSealKey(), logicalKey, plaintext)
       promise.resolve(envelope.toJson())
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_SEAL_SECRET, error)
+    } catch (error: IllegalArgumentException) {
+      promise.reject(ERROR_CODE_SEAL_SECRET, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_SEAL_SECRET, error)
     }
   }
@@ -557,7 +567,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     try {
       val envelope = SealedSecretEnvelope.fromJson(sealedPayload)
       promise.resolve(SealedSecretEnvelope.unseal(getOrCreateAppSealKey(), logicalKey, envelope))
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_UNSEAL_SECRET, error)
+    } catch (error: IllegalArgumentException) {
+      promise.reject(ERROR_CODE_UNSEAL_SECRET, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_UNSEAL_SECRET, error)
     }
   }
