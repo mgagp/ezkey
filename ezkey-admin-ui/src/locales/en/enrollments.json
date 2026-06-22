@@ -36,7 +36,9 @@
     "integrationFallback": "Integration #{{id}}",
     "tenantFallback": "Tenant #{{id}}",
     "operationalWarningTooltip": "Integration or tenant is inactive — authentication is blocked",
-    "deactivatedWarningTooltip": "Enrollment deactivated — authentication is blocked"
+    "deactivatedWarningTooltip": "Enrollment deactivated — authentication is blocked",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate"
   },
   "create": {
     "title": "New Enrollment",

@@ -62,15 +62,15 @@ screen without reason.
 | Re-encryption batches | No | — | — | Progress monitoring |
 | Integrations | No | Retire | No | Too exceptional; detail + reason only |
 | Tenants | No (default) | Deactivate | Yes | High blast radius; detail + confirmation preferred |
-| Enrollments | **Yes (planned)** | Deactivate / Reactivate | Yes | Strong candidate — not yet in list UI |
+| Enrollments | **Yes** | Deactivate / Reactivate | Yes | Implemented — labeled button + lifecycle dialog |
 | API keys | **Yes** | Revoke | No | Implemented — icon + tooltip |
 | Admins | **Yes** | Deactivate | Yes | Implemented — labeled button (Global Admin, active rows) |
 
-### Enrollment (follow-on)
+### Enrollment (normative)
 
-List inline **deactivate** (and reactivate where applicable) should mirror admins: trailing column,
-dialog confirmation, row click still opens detail. **Revoke** and **delete** remain detail-only
-with required reason per lifecycle governance.
+List inline **deactivate** and **reactivate** mirror admins: trailing column, labeled buttons,
+lifecycle dialog with optional audited reason, `stopPropagation` on row actions. **Revoke** and
+**delete** remain detail-only with required reason per lifecycle governance.
 
 ### API keys (normative)
 

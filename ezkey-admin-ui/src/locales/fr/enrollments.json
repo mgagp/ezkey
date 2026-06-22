@@ -36,7 +36,9 @@
     "integrationFallback": "Intégration #{{id}}",
     "tenantFallback": "Tenant #{{id}}",
     "operationalWarningTooltip": "L'intégration ou le tenant est inactif — l'authentification est bloquée",
-    "deactivatedWarningTooltip": "Enrôlement désactivé — l'authentification est bloquée"
+    "deactivatedWarningTooltip": "Enrôlement désactivé — l'authentification est bloquée",
+    "deactivate": "Désactiver",
+    "reactivate": "Réactiver"
   },
   "create": {
     "title": "Nouvel enrôlement",
