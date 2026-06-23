@@ -1,0 +1,67 @@
+rules:
+  - id: ezkey-js-no-direct-fetch
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Use the centralized API client/http mutator instead of direct fetch() calls.
+    patterns:
+      - pattern: fetch($URL, ...)
+
+  - id: ezkey-js-sensitive-console-logging
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Avoid logging sensitive auth/crypto data (token/signature/challenge/secret/key).
+    pattern-regex: '(?i)console[.](log|warn|error|info|debug).*(enrollmentProofToken|proofToken|integrationPublicKey|signature)'
+
+  - id: ezkey-js-asyncstorage-sensitive-key
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Do not persist sensitive material directly through AsyncStorage.setItem().
+    patterns:
+      - pattern: AsyncStorage.setItem($KEY, $VALUE)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: '(?i).*(proof-token|enrollmentProofToken|integration-public-key|private-key|secret).*'
+
+  - id: ezkey-js-hardcoded-bearer
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Avoid hardcoded Bearer tokens in source code.
+    pattern-regex: '(?i)Authorization.*Bearer +[A-Za-z0-9._-]+'
+
+  - id: ezkey-js-hardcoded-http-url
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Avoid hardcoded non-TLS HTTP URLs in app code.
+    pattern-regex: '(?i)http://(?!127\.0\.0\.1|localhost)'
+
+  - id: ezkey-kotlin-no-java-util-random-import
+    languages: [kotlin]
+    severity: ERROR
+    message: Do not import java.util.Random for security-sensitive workflows.
+    pattern: import java.util.Random
+
+  - id: ezkey-kotlin-no-random-constructor
+    languages: [kotlin]
+    severity: ERROR
+    message: Prefer SecureRandom over Random() in security-sensitive mobile code.
+    pattern: Random(...)
+
+  - id: ezkey-kotlin-no-base64-default-flags
+    languages: [kotlin]
+    severity: WARNING
+    message: Avoid Base64.DEFAULT flags for security protocol payloads; prefer explicit URL-safe/no-wrap behavior.
+    pattern-either:
+      - pattern: Base64.encodeToString($DATA, Base64.DEFAULT)
+      - pattern: Base64.decode($DATA, Base64.DEFAULT)
+
+  - id: ezkey-kotlin-sensitive-log-content
+    languages: [kotlin]
+    severity: ERROR
+    message: Avoid logging sensitive auth/crypto data in Android logs.
+    pattern-regex: '(?i)Log[.](d|i|w|e|v).*(proofToken|signature|integrationPublicKey)'
+
+  - id: ezkey-kotlin-insecure-cipher-mode
+    languages: [kotlin]
+    severity: ERROR
+    message: Avoid insecure cipher mode (AES/ECB/PKCS5Padding).
+    pattern: Cipher.getInstance("AES/ECB/PKCS5Padding")

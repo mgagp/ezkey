@@ -382,14 +382,8 @@ export function usePendingAuth(
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: individual fields used to avoid full object re-comparison; stable identity of nav callbacks managed by the screen
   }, [
-    enrollment?.enrollmentProofToken,
-    enrollment?.id,
-    enrollment?.installation?.authUrl,
-    enrollment?.integrationName,
-    enrollment?.integrationPublicKey,
-    enrollment?.tenantName,
+    enrollment,
     extractErrorMessage,
     handleNoPendingResult,
     markEnrollmentPendingChecked,
@@ -413,8 +407,7 @@ export function usePendingAuth(
     }
     autoLoadEnrollmentRef.current = enrollment.id;
     loadPendingAttempt();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: individual fields used to avoid full object re-comparison; stable identity of nav callbacks managed by the screen
-  }, [enrollment?.id, initialAttempt, isEnrollmentLoading, loadPendingAttempt]);
+  }, [enrollment, initialAttempt, isEnrollmentLoading, loadPendingAttempt]);
 
   // -------------------------------------------------------------------------
   // Respond (approve / deny)

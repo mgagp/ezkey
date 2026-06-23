@@ -28,6 +28,8 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import org.ezkey.mobile.BuildConfig
+import java.io.IOException
+import java.security.GeneralSecurityException
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
@@ -186,7 +188,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       keyPairGenerator.generateKeyPair()
 
       promise.resolve(true)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_KEY_GENERATION, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_KEY_GENERATION, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_KEY_GENERATION, error)
     }
   }
@@ -218,7 +224,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       val encodedBase64 = Base64.encodeToString(encoded, Base64.NO_WRAP)
 
       promise.resolve(encodedBase64)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_PUBLIC_KEY, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_PUBLIC_KEY, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_PUBLIC_KEY, error)
     }
   }
@@ -257,7 +267,13 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
             else -> "NONE"
           }
       promise.resolve(tier)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      Log.e(TAG, "getEnrollmentPrivateKeyStorageTier failed", error)
+      promise.reject(ERROR_CODE_STORAGE_TIER, error)
+    } catch (error: IOException) {
+      Log.e(TAG, "getEnrollmentPrivateKeyStorageTier failed", error)
+      promise.reject(ERROR_CODE_STORAGE_TIER, error)
+    } catch (error: IllegalStateException) {
       Log.e(TAG, "getEnrollmentPrivateKeyStorageTier failed", error)
       promise.reject(ERROR_CODE_STORAGE_TIER, error)
     }
@@ -296,7 +312,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
 
       val encodedBase64 = Base64.encodeToString(signatureBytes, Base64.NO_WRAP)
       promise.resolve(encodedBase64)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_SIGN, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_SIGN, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_SIGN, error)
     }
   }
@@ -305,7 +325,9 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   fun canUseProtectedSigning(promise: Promise) {
     try {
       promise.resolve(canUseProtectedSigningNow())
-    } catch (error: Exception) {
+    } catch (error: SecurityException) {
+      promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
     }
   }
@@ -347,7 +369,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
                       signature.update(data.toByteArray(StandardCharsets.UTF_8))
                       val signatureBytes = signature.sign()
                       promise.resolve(Base64.encodeToString(signatureBytes, Base64.NO_WRAP))
-                    } catch (error: Exception) {
+                    } catch (error: GeneralSecurityException) {
+                      promise.reject(ERROR_CODE_SIGN, error)
+                    } catch (error: IOException) {
+                      promise.reject(ERROR_CODE_SIGN, error)
+                    } catch (error: IllegalStateException) {
                       promise.reject(ERROR_CODE_SIGN, error)
                     }
                   }
@@ -371,7 +397,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
 
         prompt.authenticate(promptInfo)
       }
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_SIGN, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_SIGN, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_SIGN, error)
     }
   }
@@ -421,7 +451,9 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
 
         prompt.authenticate(promptInfo)
       }
-    } catch (error: Exception) {
+    } catch (error: SecurityException) {
+      promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_AUTH_UNAVAILABLE, error)
     }
   }
@@ -450,7 +482,13 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
         )
       }
       promise.resolve(valid)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      Log.e(TAG, "verify threw", error)
+      promise.reject(ERROR_CODE_VERIFY, error)
+    } catch (error: IllegalArgumentException) {
+      Log.e(TAG, "verify threw", error)
+      promise.reject(ERROR_CODE_VERIFY, error)
+    } catch (error: IllegalStateException) {
       Log.e(TAG, "verify threw", error)
       promise.reject(ERROR_CODE_VERIFY, error)
     }
@@ -467,7 +505,9 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   fun getBuildTimestamp(promise: Promise) {
     try {
       promise.resolve(BuildConfig.BUILD_TIMESTAMP)
-    } catch (error: Exception) {
+    } catch (error: SecurityException) {
+      promise.reject(ERROR_CODE_BUILD_TIMESTAMP, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_BUILD_TIMESTAMP, error)
     }
   }
@@ -492,7 +532,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       val randomPart = base64UrlEncodeNoPadding(randomBytes)
       val saltPart = base64UrlEncodeNoPadding(saltBytes)
       promise.resolve("$randomPart.$saltPart")
-    } catch (error: Exception) {
+    } catch (error: SecurityException) {
+      promise.reject(ERROR_CODE_PROOF_TOKEN, error)
+    } catch (error: IllegalArgumentException) {
+      promise.reject(ERROR_CODE_PROOF_TOKEN, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_PROOF_TOKEN, error)
     }
   }
@@ -506,7 +550,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     try {
       val envelope = SealedSecretEnvelope.seal(getOrCreateAppSealKey(), logicalKey, plaintext)
       promise.resolve(envelope.toJson())
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_SEAL_SECRET, error)
+    } catch (error: IllegalArgumentException) {
+      promise.reject(ERROR_CODE_SEAL_SECRET, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_SEAL_SECRET, error)
     }
   }
@@ -519,7 +567,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     try {
       val envelope = SealedSecretEnvelope.fromJson(sealedPayload)
       promise.resolve(SealedSecretEnvelope.unseal(getOrCreateAppSealKey(), logicalKey, envelope))
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_UNSEAL_SECRET, error)
+    } catch (error: IllegalArgumentException) {
+      promise.reject(ERROR_CODE_UNSEAL_SECRET, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_UNSEAL_SECRET, error)
     }
   }
@@ -542,7 +594,11 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       }
 
       promise.resolve(true)
-    } catch (error: Exception) {
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_DELETE, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_DELETE, error)
+    } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_DELETE, error)
     }
   }
