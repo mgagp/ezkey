@@ -167,7 +167,8 @@ class AuditReasonPropagationTest {
             accessControlService,
             auditLogService,
             apiKeyFkResolver,
-            eligibilityService);
+            eligibilityService,
+            apiKeyAuditFkIntegrationRepository);
 
     when(apiKeyService.revokeApiKey(eq(42), any(EzkeyAdmin.class))).thenReturn(true);
 
@@ -204,7 +205,8 @@ class AuditReasonPropagationTest {
             accessControlService,
             auditLogService,
             apiKeyFkResolver,
-            eligibilityService);
+            eligibilityService,
+            apiKeyAuditFkIntegrationRepository);
 
     when(apiKeyService.revokeApiKey(eq(42), any(EzkeyAdmin.class))).thenReturn(true);
 

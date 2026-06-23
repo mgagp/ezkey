@@ -10,13 +10,21 @@
 
 package org.ezkey.integration.domain.repository;
 
+import jakarta.persistence.QueryHint;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.ezkey.integration.domain.IntegrationLifecycleStatus;
 import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.entity.Tenant;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -39,6 +47,29 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface IntegrationRepository
     extends JpaRepository<Integration, Integer>, JpaSpecificationExecutor<Integration> {
+
+  /**
+   * Paginates integrations matching a dynamic {@link Specification} with the owning {@code tenant}
+   * association loaded in the same round-trip (avoids N+1 when mapping list DTO tenant labels).
+   *
+   * @param spec dynamic filter specification
+   * @param pageable pagination and sorting parameters
+   * @return page of integrations with tenant initialized
+   */
+  @EntityGraph(attributePaths = {"tenant"})
+  @Override
+  Page<Integration> findAll(Specification<Integration> spec, Pageable pageable);
+
+  /**
+   * Loads integrations by ID with the owning {@code tenant} association for list enrichment (e.g.
+   * enrollment rows mapped with integration and tenant labels). Read-only to avoid cascade hazards.
+   *
+   * @param ids integration primary keys to load
+   * @return integrations with tenant initialized; empty when {@code ids} is empty
+   */
+  @Query("SELECT DISTINCT i FROM Integration i LEFT JOIN FETCH i.tenant WHERE i.id IN :ids")
+  @QueryHints(@QueryHint(name = "org.hibernate.readOnly", value = "true"))
+  List<Integration> findAllByIdWithTenant(@Param("ids") Collection<Integer> ids);
 
   // Standard CRUD operations are inherited from JpaRepository:
   // - save(EzkeyIntegration entity)

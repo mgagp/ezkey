@@ -68,6 +68,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -106,6 +109,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             false, // inactive
@@ -132,6 +138,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             null, // no description
             TEST_ACTIVE,
@@ -167,6 +176,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -193,6 +205,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -218,6 +233,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -242,6 +260,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -258,6 +279,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -274,6 +298,9 @@ class ApiKeyResponseDtoTest {
             999, // different ID
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -300,6 +327,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -316,6 +346,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -343,6 +376,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -370,6 +406,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,
@@ -398,6 +437,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             "Compromised key - emergency revocation",
             false,
@@ -425,6 +467,9 @@ class ApiKeyResponseDtoTest {
             TEST_API_KEY_ID,
             0L, // version
             TEST_INTEGRATION_ID,
+            null,
+            null,
+            null,
             TEST_INTEGRATION_KEY,
             TEST_DESCRIPTION,
             TEST_ACTIVE,

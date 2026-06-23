@@ -19,7 +19,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.EnrollmentUpdateRequestDto;
 import org.ezkey.admin.security.AccessControlService;
@@ -240,20 +246,18 @@ public class EnrollmentController {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     Integer tenantId = extractTenantId(auth);
 
-    Page<EnrollmentResponseDto> enrollments =
-        enrollmentService
-            .findByFilters(
-                status,
-                integrationId,
-                enrollmentName,
-                active,
-                createdAfter,
-                createdBefore,
-                tenantId,
-                pageable)
-            .map(enrollmentMapper::toResponse);
+    Page<Enrollment> enrollmentPage =
+        enrollmentService.findByFilters(
+            status,
+            integrationId,
+            enrollmentName,
+            active,
+            createdAfter,
+            createdBefore,
+            tenantId,
+            pageable);
 
-    return ResponseEntity.ok(enrollments);
+    return ResponseEntity.ok(mapEnrollmentPageWithIntegration(enrollmentPage));
   }
 
   /**
@@ -1000,5 +1004,36 @@ public class EnrollmentController {
         .findById(enrollmentId)
         .map(enrollment -> resolveTenantId(enrollment.getIntegrationId()))
         .orElse(null);
+  }
+
+  /**
+   * Maps a page of enrollments to response DTOs with integration and tenant labels joined in batch
+   * (avoids N+1 and client-side integration lookups on list screens).
+   *
+   * @param page enrollments from the service layer
+   * @return page of enriched enrollment response DTOs
+   */
+  private Page<EnrollmentResponseDto> mapEnrollmentPageWithIntegration(Page<Enrollment> page) {
+    List<Enrollment> content = page.getContent();
+    if (content.isEmpty()) {
+      return page.map(enrollmentMapper::toResponse);
+    }
+
+    Set<Integer> integrationIds =
+        content.stream()
+            .map(Enrollment::getIntegrationId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+    Map<Integer, Integration> integrationsById =
+        integrationIds.isEmpty()
+            ? Map.of()
+            : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
+                .collect(Collectors.toMap(Integration::getId, Function.identity()));
+
+    return page.map(
+        enrollment ->
+            enrollmentMapper.toResponseWithIntegration(
+                enrollment, integrationsById.get(enrollment.getIntegrationId())));
   }
 }

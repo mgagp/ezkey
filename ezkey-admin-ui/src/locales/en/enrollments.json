@@ -24,6 +24,7 @@
       "status": "Status",
       "active": "Active",
       "integration": "Integration",
+      "tenant": "Tenant",
       "created": "Created",
       "lastUsed": "Last used",
       "challenge": "Challenge",
@@ -32,7 +33,12 @@
     },
     "activeYes": "Yes",
     "activeNo": "No",
-    "operationalWarningTooltip": "Integration or tenant is inactive — authentication is blocked"
+    "integrationFallback": "Integration #{{id}}",
+    "tenantFallback": "Tenant #{{id}}",
+    "operationalWarningTooltip": "Integration or tenant is inactive — authentication is blocked",
+    "deactivatedWarningTooltip": "Enrollment deactivated — authentication is blocked",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate"
   },
   "create": {
     "title": "New Enrollment",
@@ -178,7 +184,8 @@
     },
     "testAuthBlockedTooltip": "Authentication is currently blocked — the integration or tenant is inactive.",
     "operationalWarning": {
-      "message": "This enrollment's parent integration or tenant is currently inactive. End-user authentication is blocked until the parent is reactivated."
+      "message": "This enrollment's parent integration or tenant is currently inactive. End-user authentication is blocked until the parent is reactivated.",
+      "deactivated": "This enrollment is deactivated. End-user authentication is blocked until it is reactivated."
     },
     "deleteReasonLabel": "Reason (min 10 chars, required for audit)",
     "deleteReasonPlaceholder": "Reason for deleting this enrollment...",

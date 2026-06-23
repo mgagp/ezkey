@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
+import { useAuth } from '@/context/use-auth';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { useDebounce } from '@/hooks/use-debounce';
 import { getIntegrationName } from '@/hooks/use-integrations';
@@ -164,6 +165,8 @@ function CreateIntegrationDialog({ open, onClose }: { open: boolean; onClose: ()
 
 export default function IntegrationsPage() {
   const { t } = useTranslation('integrations');
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [nameInput, setNameInput] = useState('');
@@ -197,34 +200,68 @@ export default function IntegrationsPage() {
     fetchPage: (params) => search(params) as Promise<PagedModelIntegrationResponseDto>,
   });
 
-  const columns: ColumnDef<IntegrationResponseDto>[] = [
-    { header: t('list.columns.id'), key: 'id', className: 'w-14', sortKey: 'id', render: (row) => <span className="font-mono text-xs">{row.id}</span> },
-    { header: t('list.columns.code'), key: 'code', render: (row) => <span className="font-mono text-xs">{row.code}</span> },
-    { header: t('list.columns.name'), key: 'name', render: (row) => <span className="font-medium">{getIntegrationName(row)}</span> },
-    {
-      header: t('list.columns.status'),
-      key: 'lifecycleStatus',
-      sortKey: 'lifecycleStatus',
+  const columns: ColumnDef<IntegrationResponseDto>[] = useMemo(() => {
+    const base: ColumnDef<IntegrationResponseDto>[] = [
+      { header: t('list.columns.id'), key: 'id', className: 'w-14', sortKey: 'id', render: (row) => <span className="font-mono text-xs">{row.id}</span> },
+      { header: t('list.columns.code'), key: 'code', render: (row) => <span className="font-mono text-xs">{row.code}</span> },
+      { header: t('list.columns.name'), key: 'name', render: (row) => <span className="font-medium">{getIntegrationName(row)}</span> },
+      {
+        header: t('list.columns.status'),
+        key: 'lifecycleStatus',
+        sortKey: 'lifecycleStatus',
+        render: (row) => {
+          const isActive = row.lifecycleStatus === 'ACTIVE';
+          const showWarning = isActive && row.operational === false;
+          return showWarning ? (
+            <Tooltip content={t('list.operationalWarningTooltip')}>
+              <div className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
+                <Badge variant="success">{t('list.statusActive')}</Badge>
+                <AlertTriangle className="size-4 text-warning shrink-0" aria-hidden />
+              </div>
+            </Tooltip>
+          ) : (
+            <Badge variant={isActive ? 'success' : 'muted'}>
+              {isActive ? t('list.statusActive') : t('list.statusRetired')}
+            </Badge>
+          );
+        },
+      },
+    ];
+
+    const tenantCol: ColumnDef<IntegrationResponseDto> = {
+      header: t('list.columns.tenant'),
+      key: 'tenantName',
       render: (row) => {
-        const isActive = row.lifecycleStatus === 'ACTIVE';
-        const showWarning = isActive && row.operational === false;
-        return showWarning ? (
-          <Tooltip content={t('list.operationalWarningTooltip')}>
-            <div className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
-              <Badge variant="success">{t('list.statusActive')}</Badge>
-              <AlertTriangle className="size-4 text-warning shrink-0" aria-hidden />
-            </div>
-          </Tooltip>
-        ) : (
-          <Badge variant={isActive ? 'success' : 'muted'}>
-            {isActive ? t('list.statusActive') : t('list.statusRetired')}
-          </Badge>
+        if (row.tenantId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          row.tenantName != null && row.tenantName.trim() !== ''
+            ? row.tenantName.trim()
+            : t('list.tenantFallback', { id: row.tenantId });
+        return (
+          <Link
+            to={`/tenants/${row.tenantId}`}
+            className="text-xs font-medium text-accent hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
         );
       },
-    },
-    { header: t('list.columns.tenant'), key: 'tenantId', className: 'w-16', render: (row) => <span className="font-mono text-xs">{row.tenantId ?? '—'}</span> },
-    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (row) => <span className="text-xs text-fg-muted">{formatDate(row.createdAt ?? '')}</span> },
-  ];
+    };
+
+    const createdCol: ColumnDef<IntegrationResponseDto> = {
+      header: t('list.columns.created'),
+      key: 'createdAt',
+      sortKey: 'createdAt',
+      render: (row) => <span className="text-xs text-fg-muted">{formatDate(row.createdAt ?? '')}</span>,
+    };
+
+    return isGlobalAdmin
+      ? [...base, tenantCol, createdCol]
+      : [...base, createdCol];
+  }, [isGlobalAdmin, t]);
 
   return (
     <AppShell title={t('list.title')}>

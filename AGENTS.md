@@ -193,12 +193,14 @@ surface, you should assume the Postman collection must also be updated. Do not w
 1. controller change,
 2. contract review,
 3. Postman collection update,
-4. generated spec refresh when authorized and applicable.
+4. generated spec refresh (clean-start + `./scripts/update-specs.sh` + client regen when applicable).
 
-Agents must never hand-edit generated OpenAPI artifacts under `specs/**`. When the user explicitly
-authorizes autonomous contract refresh and a clean-start stack is freshly running, agents may run
-`./scripts/update-specs.sh` and then regenerate dependent clients such as the Admin UI Orval client
-(`npm run generate:api` in `ezkey-admin-ui` when provisioning or shared DTO clients must align).
+**OpenAPI refresh is part of contract-changing work by default** — not a separate approval gate. See
+`.cursor/rules/openapi-specs.mdc`. Agents must never hand-edit generated OpenAPI under `specs/**`
+**or dispatched copies** (e.g. `ezkey-admin-ui/openapi-spec.json`). When the stack is available,
+run clean-start, then `./scripts/update-specs.sh`, then regenerate dependent clients (e.g.
+`npm run generate:api` in `ezkey-admin-ui`). Skip only when the user explicitly defers refresh or
+the environment cannot run Docker; report pending refresh instead of patching specs by hand.
 Generated output should be reviewed for obvious scope drift and reported in the close-out.
 
 ---
@@ -216,6 +218,7 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 
 ## Admin UI Browser Validation
 
+- Agent validation ladder (build → API → Playwright / MCP smoke): [`docs/testing/AGENT_UI_VALIDATION.md`](docs/testing/AGENT_UI_VALIDATION.md); closeout trigger rule [`.cursor/rules/agent-ui-closeout-validation.mdc`](.cursor/rules/agent-ui-closeout-validation.mdc)
 - The repository includes a **Playwright** browser suite for the Admin UI in `ezkey-admin-ui/`.
 - The preferred validation model is **real end to end** with the standard clean-start stack plus the pre-seeded **Demo Device**.
 - Use the browser suite when a change materially affects Admin UI behavior or the Admin UI ↔ Demo Device flow.

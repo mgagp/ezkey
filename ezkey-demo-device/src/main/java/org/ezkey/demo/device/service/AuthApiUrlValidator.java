@@ -4,8 +4,8 @@ import java.net.URI;
 import java.util.Set;
 
 /**
- * Validates and normalizes Auth API base URLs from enrollment QR payloads. Rules mirror
- * {@code ezkey_mobile/app/utils/urlValidation.ts} and {@code enrollment-qr-import.js}.
+ * Validates and normalizes Auth API base URLs from enrollment QR payloads. Rules mirror {@code
+ * ezkey_mobile/app/utils/urlValidation.ts} and {@code enrollment-qr-import.js}.
  *
  * @since 2025
  */

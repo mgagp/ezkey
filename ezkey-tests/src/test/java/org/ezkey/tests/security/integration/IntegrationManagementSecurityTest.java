@@ -119,6 +119,15 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       // Response is now paginated - content is in "content" field
       List<Map<String, Object>> integrations = response.jsonPath().getList("content");
       assertThat(integrations).isNotNull();
+      // Operator list enrichment (I-2026-0014): list rows with tenantId must expose tenantName
+      for (Map<String, Object> row : integrations) {
+        if (row.get("tenantId") != null) {
+          assertThat(row.get("tenantName"))
+              .as("integration list row tenantName for tenantId=%s", row.get("tenantId"))
+              .isInstanceOf(String.class);
+          assertThat(((String) row.get("tenantName")).trim()).isNotEmpty();
+        }
+      }
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");
@@ -151,6 +160,8 @@ public class IntegrationManagementSecurityTest extends AbstractSecurityTest {
       assertThat(response.jsonPath().getInt("id")).isEqualTo(integrationId);
       assertThat(response.jsonPath().getBoolean("operational")).isNotNull();
       assertThat(response.jsonPath().getString("lifecycleStatus")).isEqualTo("ACTIVE");
+      assertThat(response.jsonPath().getInt("tenantId")).isPositive();
+      assertThat(response.jsonPath().getString("tenantName")).isNotBlank();
     } catch (IllegalStateException e) {
       org.junit.jupiter.api.Assumptions.assumeTrue(
           false, "Admin token not available. Set EZKEY_ADMIN_TOKEN environment variable.");

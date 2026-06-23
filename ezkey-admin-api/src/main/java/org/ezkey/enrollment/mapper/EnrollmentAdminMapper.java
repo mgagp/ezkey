@@ -87,6 +87,8 @@ public interface EnrollmentAdminMapper {
   @Mapping(source = "status", target = "enrollmentStatus")
   @Mapping(source = "active", target = "enrollmentActive")
   @Mapping(target = "integrationName", ignore = true)
+  @Mapping(target = "tenantId", ignore = true)
+  @Mapping(target = "tenantName", ignore = true)
   @Mapping(target = "isSystemIntegration", ignore = true)
   @Mapping(
       target = "operational",
@@ -110,6 +112,14 @@ public interface EnrollmentAdminMapper {
       Enrollment entity, Integration integration) {
     EnrollmentResponseDto base = toResponse(entity);
     String name = integration != null ? integration.getName() : null;
+    Integer tenantId =
+        integration != null && integration.getTenant() != null
+            ? integration.getTenant().getTenantId()
+            : null;
+    String tenantName =
+        integration != null && integration.getTenant() != null
+            ? integration.getTenant().getTenantName()
+            : null;
     Boolean isSystem =
         integration != null ? Boolean.TRUE.equals(integration.getIsSystemIntegration()) : null;
     // Full-chain operational: VERIFIED + active + integration ACTIVE + tenant active
@@ -148,6 +158,8 @@ public interface EnrollmentAdminMapper {
         base.revokedAt(),
         base.revokedByAdminId(),
         name,
+        tenantId,
+        tenantName,
         isSystem,
         operational);
   }

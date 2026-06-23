@@ -24,6 +24,7 @@
       "status": "Statut",
       "active": "Actif",
       "integration": "Intégration",
+      "tenant": "Tenant",
       "created": "Créé",
       "lastUsed": "Dernière utilisation",
       "challenge": "Défi",
@@ -32,7 +33,12 @@
     },
     "activeYes": "Oui",
     "activeNo": "Non",
-    "operationalWarningTooltip": "L'intégration ou le tenant est inactif — l'authentification est bloquée"
+    "integrationFallback": "Intégration #{{id}}",
+    "tenantFallback": "Tenant #{{id}}",
+    "operationalWarningTooltip": "L'intégration ou le tenant est inactif — l'authentification est bloquée",
+    "deactivatedWarningTooltip": "Enrôlement désactivé — l'authentification est bloquée",
+    "deactivate": "Désactiver",
+    "reactivate": "Réactiver"
   },
   "create": {
     "title": "Nouvel enrôlement",
@@ -178,7 +184,8 @@
     },
     "testAuthBlockedTooltip": "L'authentification est actuellement bloquée — l'intégration ou le tenant est inactif.",
     "operationalWarning": {
-      "message": "L'intégration ou le tenant parent de cet enrôlement est actuellement inactif. L'authentification de l'utilisateur final est bloquée jusqu'à la réactivation du parent."
+      "message": "L'intégration ou le tenant parent de cet enrôlement est actuellement inactif. L'authentification de l'utilisateur final est bloquée jusqu'à la réactivation du parent.",
+      "deactivated": "Cet enrôlement est désactivé. L'authentification de l'utilisateur final est bloquée jusqu'à sa réactivation."
     },
     "deleteReasonLabel": "Raison (min. 10 caractères, obligatoire pour l'audit)",
     "deleteReasonPlaceholder": "Raison de la suppression de cet enrôlement...",

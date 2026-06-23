@@ -65,4 +65,4 @@ mvn test -pl 'ezkey-admin-api,!ezkey-tests'
 - Keep REST semantics consistent with `docs/ENDPOINT.md`.
 - Update any Postman collections if they are impacted (`postman/collections/`).
 - Prefer adding focused docs to an existing README rather than creating a new `.md`.
-- **OpenAPI spec files under `specs/` are generated.** Do not edit `specs/**/openapi-spec.json` (or other generated spec files) manually. The workflow is: implement in Java + annotations → run tests → clean start (Docker) → run `scripts/update-specs.sh` (or `.bat`). See the project Cursor rule **OpenAPI Specifications — Do Not Edit Manually** (`.cursor/rules/openapi-specs.mdc`).
+- **OpenAPI spec files under `specs/` are generated.** Do not edit `specs/**/openapi-spec.json`, dispatched copies (e.g. Admin UI), or other generated spec files manually. For contract-changing work, the default close-out is: Java + tests → clean-start → `scripts/update-specs.sh` → regenerate clients. See `.cursor/rules/openapi-specs.mdc`.

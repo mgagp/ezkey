@@ -1,48 +1,65 @@
 ---
-description: OpenAPI spec files are generated artifacts; agents may refresh them only through the approved script when explicitly authorized
+description: OpenAPI spec files are generated artifacts; refresh via clean-start + update-specs when API contracts change — never hand-edit specs or dispatched copies
 globs: "**/specs/**/*.json"
 alwaysApply: true
 ---
 
 # OpenAPI Specifications — Generated Artifacts
 
-**The OpenAPI spec files (e.g. `specs/admin-api/openapi-spec.json`, `specs/auth-api/openapi-spec.json`) are generated artifacts. Do not edit them by hand.**
+**OpenAPI spec files under `specs/` (and copies dispatched to Admin UI, mobile, SDK, etc.) are generated artifacts. Do not edit them by hand.**
 
-## Correct workflow
+## Correct workflow (human and agent)
 
-1. **Implement or change** endpoints, DTOs, and Springdoc/OpenAPI annotations in the Java code (controllers, request/response classes).
-2. **Run unit tests** and fix any failures.
-3. **Run clean start** (Docker Compose or equivalent) so the Admin API and Auth API are running.
-4. **When explicitly authorized**, run the update-specs script to extract the OpenAPI definitions from the running services:
-   - Linux/macOS: `./scripts/update-specs.sh`
+When **Admin API, Auth API, or Integration API contract** changes (DTO fields, endpoints, annotations):
+
+1. **Implement** in Java (controllers, request/response records, Springdoc annotations).
+2. **Run unit tests** and Maven baseline (`./scripts/build.sh` or `scripts/build-local.cmd`).
+3. **Clean-start** the Docker stack so running services include the new code:
+   - From `ezkey-tests/`: `./clean-start.sh`
+4. **Wait** until target APIs are healthy (Admin API `http://localhost:9080/actuator/health`, etc.).
+5. **Update specs** from live `/api-docs`:
+   - Linux/macOS/Git Bash: `./scripts/update-specs.sh` (or `--admin-only` when only Admin API changed)
    - Windows: `scripts\update-specs.bat`
+6. **Regenerate dependent clients** when applicable (e.g. `npm run generate:api` in `ezkey-admin-ui`).
+7. **Report** that specs and dispatched copies were refreshed; review diff for obvious scope drift only.
 
-The script fetches the live API docs (e.g. from `http://localhost:9080/api-docs` and `http://localhost:8080/api-docs`) and writes the JSON/YAML into `specs/`. That is the single source of truth for the *generated* spec files.
+This is the **single canonical procedure** for contract refresh. Humans and agents follow the same steps.
 
-## Agent autonomy
+## Agent autonomy — default for contract-changing work
 
-Agents must never manually edit generated OpenAPI files under `specs/**`.
+**Do not wait for a separate "update-specs authorization" when the current task already changes the API surface.** Completing a DTO or controller change **includes** spec refresh when a clean-start stack can be run.
 
-Agents may run `./scripts/update-specs.sh` only when all conditions are met:
+| Situation | Agent action |
+|-----------|--------------|
+| API contract changed in this task; stack can be clean-started | Run clean-start → update-specs → regenerate clients — **part of the same change set** |
+| API contract changed; stack unavailable (time, environment) | Finish Java/tests; **do not** hand-edit specs; report that refresh is pending |
+| UI-only change (no Java contract) | No update-specs |
+| User explicitly says "skip spec refresh for now" | Skip; note debt in close-out |
 
-- The user explicitly authorizes autonomous spec refresh for the current task.
-- The API contract changed in Java code or annotations.
-- The local Docker stack has been clean-started or is known to be freshly running.
-- The agent treats the resulting `specs/**` changes as generated output and reviews them only for obvious scope drift.
-- If Admin UI generated clients depend on the changed Admin API spec, the agent may then run `npm run generate:api` in `ezkey-admin-ui`.
-- The agent reports that generated specs/client files were refreshed.
+**Never** hand-edit:
 
-Agents must not run `update-specs` speculatively for unrelated changes, and must not hand-edit generated spec/client output to "fix" generation issues.
+- `specs/**/*.json` (or generated YAML)
+- Dispatched copies (`ezkey-admin-ui/openapi-spec.json`, `ezkey_mobile/openapi-spec.json`, etc.)
+
+If Orval or a client build fails before refresh, **do not patch the spec file** to unblock — run the workflow above or state that the stack refresh is blocked.
+
+The old failure mode to avoid: patching `ezkey-admin-ui/openapi-spec.json` locally while `specs/admin-api/` stays stale. That breaks determinism and misleads functional tests against a non-rebuilt API.
+
+## When update-specs is optional
+
+- Copy, layout, or Admin UI changes with **no** Java DTO/controller/annotation change.
+- Documentation-only edits.
+
+Do **not** run update-specs speculatively for unrelated work.
+
+## What you may edit directly
+
+- **Java** code and **Springdoc/OpenAPI annotations** in API modules.
+- **Documentation** (e.g. `docs/ENDPOINT.md`, Postman when contract changed).
+- **Generated Orval output** only via `npm run generate:api` after a proper spec refresh — not by hand.
 
 ## Why this matters
 
-- Manual edits to `openapi-spec.json` (or other files under `specs/`) are overwritten the next time the script runs.
-- Keeping the workflow (code + annotations → tests → clean start → update-specs) avoids drift and ensures specs match the running APIs.
-- If you add or change an endpoint or DTO, update the Java code and the annotations; then refresh generated specs only through the approved script when explicitly authorized.
-
-## What you may do
-
-- Edit **Java** code and **Springdoc/OpenAPI annotations** (e.g. `@Operation`, `@ApiResponse`, schema classes) in the API modules.
-- Update **documentation** (e.g. `docs/ENDPOINT.md`) to describe new or changed endpoints.
-- Do **not** add, remove, or modify paths or schemas in `specs/**/*.json` (or generated YAML) by hand.
-- Run the generated-spec refresh workflow when explicitly authorized and the clean-start stack is available.
+- Manual edits are overwritten on the next `update-specs` run and drift from running APIs.
+- Functional tests and Demo Device flows assume the **running stack matches** the Java code and refreshed specs.
+- One procedure keeps human and agent collaboration predictable: **code → tests → clean-start → update-specs → clients**.

@@ -6,7 +6,7 @@ Canonical **operator-first** decisions for every paginated Admin UI list: what t
 
 **Grilled:** Blitz 2026-05-08-2 D8 + D9 ([`backlog/grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`](backlog/grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md)).
 
-**Backlog:** [`I-2026-0013`](backlog/ideas/I-2026-0013-paginated-screens-functional-review.md) (analysis), [`I-2026-0014`](backlog/ideas/I-2026-0014-paginated-screens-display-strategy.md) (API/UI implementation).
+**Backlog:** [`I-2026-0013`](backlog/ideas/I-2026-0013-paginated-screens-functional-review.md) (analysis), [`I-2026-0014`](backlog/ideas/I-2026-0014-paginated-screens-display-strategy.md) (API/UI implementation). **Post–Tier A follow-up queue:** [`I-2026-0028`](backlog/ideas/I-2026-0028-admin-ui-operator-experience-follow-up.md).
 
 **Methodology note:** This file is the **living canonical home** for screen-level operator/display choices. Legacy docs under `docs/` remain linked for mechanics until gradually retrofitted into product-docs.
 
@@ -33,9 +33,9 @@ Canonical **operator-first** decisions for every paginated Admin UI list: what t
 |----------------|------------|------|------------------------------|----------------------------|-------------------------|------------------|--------|-------|
 | Admins | `GET /api/v1/admins` | A | Who can operate this instance and in what role? | username, admin type, tenant, status, … | **Done** — joins; reference implementation | Both (scoped) | `implemented` | Gold standard |
 | Tenants | `GET /api/v1/tenants` | A | Which tenants exist and are they active? | *TBD analysis* | Labels not FK IDs | Global Admin | `draft` | |
-| Integrations | `GET /api/v1/integrations` | A | Which apps are protected and under which tenant? | *TBD* | Integration + tenant names in list | Both | `draft` | |
-| Enrollments | `GET /api/v1/enrollments` | A | Which devices/users are enrolled and in what state? | *TBD* | Integration (and tenant) names in list | Both | `draft` | |
-| API keys | `GET /api/v1/api-keys/...` | A | Which keys exist and for which integration? | *TBD* | Integration name, not integrationId only | Both | `draft` | |
+| Integrations | `GET /api/v1/integrations` | A | Which apps are protected and under which tenant? | **ID**, code, name, status (+ operational warning), **tenant name** (Global Admin), created | **Done** — `tenantName` via list join; ID kept as primary key | Both (tenant col GA only) | `implemented` | First operator-lists TB (`TB-2026-06-18-admin-ui-lists-tier-a-integrations`) |
+| Enrollments | `GET /api/v1/enrollments` | A | Which devices/users are enrolled and in what state? | **ID**, name, status (+ warning), **integration name**, user ID, **tenant name** (GA), created, last used, **deactivate/reactivate** | **Done** — order: identity → state → scope → time; batch integration+tenant join; quick lifecycle actions | Both (tenant col GA only) | `implemented` | TB enrollments + `TB-2026-06-20-admin-ui-enrollments-list-quick-actions` |
+| API keys | `GET /api/v1/api-keys/...` | A | Which keys exist and for which integration? | **ID**, description, status (+ warning), **integration name**, **tenant name** (GA), created, expires, last used, revoke action | **Done** — batch integration+tenant join; order identity → state → scope → time | Both | `implemented` | TB `TB-2026-06-18-admin-ui-lists-tier-a-api-keys` |
 | Encryption keys | `GET /api/v1/encryption-keys` | A | Key lifecycle and migration backlog? | *TBD* | Bounded; joins as needed for labels | Global Admin | `draft` | |
 | Re-encryption batches | `GET .../reencryption-batches` | A | Batch progress and failures? | *TBD* | Bounded | Global Admin | `draft` | |
 | Alerts | `GET /api/v1/alerts` (or equivalent) | A | What needs operator action now? | *TBD* | Bounded | Global Admin | `draft` | |

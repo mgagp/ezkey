@@ -81,7 +81,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param contactPhoneNumber Optional contact phone number for the end-user
  * @param userIdentifier Optional user identifier from the integrating application
  * @param integrationName Display name for the enrollment's integration (e.g. "Ezkey System"); set
- *     when enrichment is used (e.g. GET by ID)
+ *     when enrichment is used (list and GET by ID)
+ * @param tenantId Tenant identifier for the enrollment's integration; set when enrichment is used
+ * @param tenantName Tenant display name; set when enrichment is used (list and GET by ID)
  * @param isSystemIntegration Whether this enrollment's integration is the system integration; set
  *     when enrichment is used (e.g. GET by ID)
  * @param operational Whether the enrollment is currently operational: VERIFIED status, active flag
@@ -161,13 +163,23 @@ public record EnrollmentResponseDto(
         Integer revokedByAdminId,
     @Schema(
             description =
-                "Display name for the enrollment's integration (e.g. Ezkey System); populated on"
-                    + " GET by ID")
+                "Display name for the enrollment's integration (e.g. Ezkey System); populated when"
+                    + " integration context is joined (list and GET by ID)")
         String integrationName,
     @Schema(
             description =
-                "Whether this enrollment's integration is the system integration; populated on GET"
-                    + " by ID")
+                "Tenant identifier for the enrollment's integration; populated when integration"
+                    + " context is joined")
+        Integer tenantId,
+    @Schema(
+            description =
+                "Tenant display name for the enrollment's integration; populated when integration"
+                    + " context is joined (list and GET by ID)")
+        String tenantName,
+    @Schema(
+            description =
+                "Whether this enrollment's integration is the system integration; populated when"
+                    + " integration context is joined")
         Boolean isSystemIntegration,
     @Schema(
             description =

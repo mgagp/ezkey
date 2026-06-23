@@ -24,6 +24,10 @@ import java.time.OffsetDateTime;
  * <ul>
  *   <li><b>apiKeyId:</b> Database ID for the key record
  *   <li><b>integrationId:</b> Integration this key belongs to
+ *   <li><b>integrationName:</b> Display name for the integration (populated when integration
+ *       context is joined)
+ *   <li><b>tenantId:</b> Tenant identifier for the integration (populated when joined)
+ *   <li><b>tenantName:</b> Tenant display name (populated when joined)
  *   <li><b>integrationKey:</b> Public integration key (always visible)
  *   <li><b>description:</b> Human-readable description
  *   <li><b>active:</b> Whether the key is active or revoked
@@ -44,6 +48,9 @@ import java.time.OffsetDateTime;
  *
  * @param apiKeyId Database ID of the API key
  * @param integrationId Integration ID this API key belongs to
+ * @param integrationName Integration display name when integration context is joined
+ * @param tenantId Tenant identifier when integration context is joined
+ * @param tenantName Tenant display name when integration context is joined
  * @param integrationKey Public integration key (safe to display), format: ezkey_ikey_[20 hex chars]
  * @param description Optional human-readable description
  * @param active Flag indicating whether this API key is active (false if revoked)
@@ -70,6 +77,24 @@ public record ApiKeyResponseDto(
         Long version,
     @Schema(description = "Integration ID this API key authenticates for", example = "123")
         Integer integrationId,
+    @Schema(
+            description =
+                "Integration display name; populated when integration context is joined (list and"
+                    + " GET by ID)",
+            example = "Acme Portal")
+        String integrationName,
+    @Schema(
+            description =
+                "Tenant identifier for the integration; populated when integration context is"
+                    + " joined",
+            example = "1")
+        Integer tenantId,
+    @Schema(
+            description =
+                "Tenant display name for the integration; populated when integration context is"
+                    + " joined",
+            example = "System Tenant")
+        String tenantName,
     @Schema(
             description = "Public integration key (safe to display)",
             example = "ezkey_ikey_a1b2c3d4e5f6g7h8i9j0")

@@ -3,16 +3,16 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Plus, QrCode, RefreshCw, Search } from 'lucide-react';
+import { AlertTriangle, Plus, Power, PowerOff, QrCode, RefreshCw, Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
-import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
+import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -20,16 +20,24 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
+import { useAuth } from '@/context/use-auth';
+import { useToast } from '@/context/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ENROLLMENT_BUCKET_PARAM, type EnrollmentDrilldownBucket } from '@/lib/dashboard-drilldown-links';
 import { ApiError, fetchBlobUrl } from '@/lib/api-client';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
 import { formatDate } from '@/lib/utils';
-import { create1, search1 } from '@/generated/admin-api/enrollments/enrollments';
+import {
+  create1,
+  search1,
+  useDeactivate,
+  useReactivate,
+} from '@/generated/admin-api/enrollments/enrollments';
 import type {
   EnrollmentCreateRequestDto,
   EnrollmentCreateResponseDto,
@@ -434,10 +442,145 @@ function EnrollmentCreateDialog({
   );
 }
 
+// ── List lifecycle dialog (deactivate / reactivate) ───────────────────────────
+
+type EnrollmentLifecycleAction = 'deactivate' | 'reactivate';
+
+function EnrollmentLifecycleDialog({
+  open,
+  onClose,
+  enrollment,
+  action,
+}: {
+  open: boolean;
+  onClose: () => void;
+  enrollment: EnrollmentResponseDto | null;
+  action: EnrollmentLifecycleAction | null;
+}) {
+  const { t } = useTranslation('enrollments');
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [reason, setReason] = useState('');
+
+  const enrollmentId = enrollment?.enrollmentId ?? 0;
+
+  const deactivateMutation = useDeactivate({
+    mutation: {
+      onSuccess: async () => {
+        void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+        toast(t('detail.toastDeactivated'));
+        setReason('');
+        onClose();
+      },
+    },
+  });
+
+  const reactivateMutation = useReactivate({
+    mutation: {
+      onSuccess: async () => {
+        void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+        toast(t('detail.toastReactivated'));
+        setReason('');
+        onClose();
+      },
+    },
+  });
+
+  const handleClose = () => {
+    setReason('');
+    deactivateMutation.reset();
+    reactivateMutation.reset();
+    onClose();
+  };
+
+  const isDeactivate = action === 'deactivate';
+  const mutation = isDeactivate ? deactivateMutation : reactivateMutation;
+  const reasonInvalid = reason.trim().length > 0 && reason.trim().length < 10;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      title={isDeactivate ? t('lifecycleDialog.deactivateTitle') : t('lifecycleDialog.reactivateTitle')}
+      size="sm"
+      dismissible={false}
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-fg">
+          {isDeactivate
+            ? t('lifecycleDialog.deactivateMessage')
+            : t('lifecycleDialog.reactivateMessage')}
+          {enrollment?.enrollmentName != null && (
+            <span className="block mt-1 font-medium">{enrollment.enrollmentName}</span>
+          )}
+        </p>
+        <ReasonFieldRow
+          presetGroup="enrollment_lifecycle"
+          idPrefix="enrollment-list-lifecycle"
+          inputId="enrollment-list-lifecycle-reason"
+          value={reason}
+          onChange={setReason}
+          label={
+            <>
+              {t('lifecycleDialog.reasonLabel')}{' '}
+              <span className="text-fg-muted font-normal">{t('lifecycleDialog.reasonHint')}</span>
+            </>
+          }
+          placeholder={t('lifecycleDialog.reasonPlaceholder')}
+          showMinLengthError={reasonInvalid}
+          childrenAfterInput={<DemoReasonBadges onSelect={setReason} />}
+        />
+        {mutation.isError && (
+          <Alert variant="error">
+            {getTranslatedApiError(
+              mutation.error,
+              t,
+              isDeactivate ? t('detail.errorDeactivate') : t('detail.errorReactivate'),
+            )}
+          </Alert>
+        )}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="ghost" onClick={handleClose}>
+            {t('lifecycleDialog.cancel')}
+          </Button>
+          <Button
+            variant={isDeactivate ? 'destructive' : 'primary'}
+            isLoading={mutation.isPending}
+            disabled={reasonInvalid}
+            onClick={() => {
+              if (action === null || enrollmentId <= 0) return;
+              const params = reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
+              if (isDeactivate) {
+                deactivateMutation.mutate({ id: enrollmentId, params });
+              } else {
+                reactivateMutation.mutate({ id: enrollmentId, params });
+              }
+            }}
+          >
+            {isDeactivate ? (
+              <>
+                <PowerOff className="size-3.5 mr-1.5" />
+                {t('lifecycleDialog.deactivate')}
+              </>
+            ) : (
+              <>
+                <Power className="size-3.5 mr-1.5" />
+                {t('lifecycleDialog.reactivate')}
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function EnrollmentsPage() {
   const { t } = useTranslation('enrollments');
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -465,6 +608,10 @@ export default function EnrollmentsPage() {
   const [integrationFilter, setIntegrationFilter] = useState(searchParams.get('integrationId') ?? '');
   const [activeFilter, setActiveFilter] = useState(() => searchParams.get('active') ?? '');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [lifecycleTarget, setLifecycleTarget] = useState<{
+    enrollment: EnrollmentResponseDto;
+    action: EnrollmentLifecycleAction;
+  } | null>(null);
 
   const debouncedName = useDebounce(nameInput, 300);
   const { list: integrations } = useIntegrations();
@@ -657,56 +804,185 @@ export default function EnrollmentsPage() {
     enabled: !enrollmentBucket,
   });
 
-  const columns: ColumnDef<EnrollmentResponseDto>[] = [
-    { header: t('list.columns.id'), key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
-    { header: t('list.columns.name'), key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
-    {
+  const columns: ColumnDef<EnrollmentResponseDto>[] = useMemo(() => {
+    const statusCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.status'),
+      key: 'enrollmentStatus',
+      sortKey: 'status',
+      render: (r) => {
+        const showWarning =
+          r.enrollmentStatus === 'VERIFIED' && r.operational === false;
+        const warningTooltip =
+          r.enrollmentActive === false
+            ? t('list.deactivatedWarningTooltip')
+            : t('list.operationalWarningTooltip');
+        return showWarning ? (
+          <Tooltip content={warningTooltip}>
+            <span className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
+              <EnrollmentStatusBadge status={r.enrollmentStatus} />
+              <AlertTriangle className="size-4 text-warning" aria-hidden />
+            </span>
+          </Tooltip>
+        ) : (
+          <EnrollmentStatusBadge status={r.enrollmentStatus} />
+        );
+      },
+    };
+
+    const integrationCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.integration'),
+      key: 'integrationName',
+      sortKey: 'integrationId',
+      render: (r) => {
+        if (r.integrationId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          r.integrationName != null && r.integrationName.trim() !== ''
+            ? r.integrationName.trim()
+            : t('list.integrationFallback', { id: r.integrationId });
+        return (
+          <Link
+            to={`/integrations/${r.integrationId}`}
+            className="text-xs font-medium text-accent hover:underline max-w-[12rem] truncate block"
+            title={label}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
+        );
+      },
+    };
+
+    const tenantCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.tenant'),
+      key: 'tenantName',
+      render: (r) => {
+        const row = r as EnrollmentResponseDto & {
+          tenantId?: number | null;
+          tenantName?: string | null;
+        };
+        if (row.tenantId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          row.tenantName != null && row.tenantName.trim() !== ''
+            ? row.tenantName.trim()
+            : t('list.tenantFallback', { id: row.tenantId });
+        return (
+          <Link
+            to={`/tenants/${row.tenantId}`}
+            className="text-xs font-medium text-accent hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
+        );
+      },
+    };
+
+    const userIdCol: ColumnDef<EnrollmentResponseDto> = {
       header: t('list.columns.userIdentifier'),
       key: 'userIdentifier',
       sortKey: 'userIdentifier',
       render: (r) => (
-        <span className="text-xs text-fg-muted max-w-[10rem] truncate block" title={r.userIdentifier ?? undefined}>
+        <span
+          className="text-xs text-fg-muted max-w-[10rem] truncate block"
+          title={r.userIdentifier ?? undefined}
+        >
           {r.userIdentifier ?? '—'}
         </span>
       ),
-    },
-    { header: t('list.columns.status'), key: 'enrollmentStatus', sortKey: 'status', render: (r) => {
-      const showWarning = r.enrollmentStatus === 'VERIFIED' && r.enrollmentActive === true && r.operational === false;
-      return showWarning ? (
-        <Tooltip content={t('list.operationalWarningTooltip')}>
-          <span className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
-            <EnrollmentStatusBadge status={r.enrollmentStatus} />
-            <AlertTriangle className="size-4 text-warning" aria-hidden />
-          </span>
-        </Tooltip>
-      ) : (
-        <EnrollmentStatusBadge status={r.enrollmentStatus} />
-      );
-    } },
-    { header: t('list.columns.active'), key: 'enrollmentActive', sortKey: 'active', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? t('list.activeYes') : t('list.activeNo')}</Badge> },
-    {
-      header: t('list.columns.integration'),
-      key: 'integrationId',
-      sortKey: 'integrationId',
+    };
+
+    const createdCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.created'),
+      key: 'createdAt',
+      sortKey: 'createdAt',
+      render: (r) => (
+        <span className="text-xs text-fg-muted whitespace-nowrap">
+          {r.createdAt ? formatDate(r.createdAt) : '—'}
+        </span>
+      ),
+    };
+
+    const lastUsedCol: ColumnDef<EnrollmentResponseDto> = {
+      header: t('list.columns.lastUsed'),
+      key: 'lastUsedAt',
+      sortKey: 'lastUsedAt',
+      render: (r) => (
+        <span className="text-xs text-fg-muted whitespace-nowrap">
+          {r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}
+        </span>
+      ),
+    };
+
+    const actionsCol: ColumnDef<EnrollmentResponseDto> = {
+      header: '',
+      key: 'actions',
+      className: 'w-fit',
       render: (r) => {
-        const integration = integrations.find((i) => i.id === r.integrationId);
+        if (r.enrollmentStatus === 'REVOKED') {
+          return null;
+        }
+        if (r.enrollmentActive) {
+          return (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-error hover:bg-error/10 border border-error/30 hover:border-error"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLifecycleTarget({ enrollment: r, action: 'deactivate' });
+              }}
+            >
+              <PowerOff className="size-3" />
+              {t('list.deactivate')}
+            </Button>
+          );
+        }
         return (
-          <span className="text-xs text-fg-muted">
-            {integration ? `${integration.code}` : `#${r.integrationId}`}
-          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLifecycleTarget({ enrollment: r, action: 'reactivate' });
+            }}
+          >
+            <Power className="size-3" />
+            {t('list.reactivate')}
+          </Button>
         );
       },
-    },
-    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.createdAt ? formatDate(r.createdAt) : '—'}</span> },
-    { header: t('list.columns.lastUsed'), key: 'lastUsedAt', sortKey: 'lastUsedAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}</span> },
-    { header: t('list.columns.verified'), key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted whitespace-nowrap">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
-    {
-      header: t('list.columns.keyTier'),
-      key: 'devicePrivateKeyStorageTier',
-      render: (r) => <DevicePrivateKeyTierBadge tier={r.devicePrivateKeyStorageTier} />,
-    },
-    { header: t('list.columns.challenge'), key: 'authAttemptChallengeRequired', sortKey: 'authAttemptChallengeRequired', render: (r) => <Badge variant={r.authAttemptChallengeRequired ? 'warning' : 'muted'}>{r.authAttemptChallengeRequired ? t('list.activeYes') : t('list.activeNo')}</Badge> },
-  ];
+    };
+
+    const base: ColumnDef<EnrollmentResponseDto>[] = [
+      {
+        header: t('list.columns.id'),
+        key: 'enrollmentId',
+        className: 'w-14',
+        sortKey: 'enrollmentId',
+        render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span>,
+      },
+      {
+        header: t('list.columns.name'),
+        key: 'enrollmentName',
+        sortKey: 'enrollmentName',
+        render: (r) => <span className="font-medium">{r.enrollmentName}</span>,
+      },
+      statusCol,
+      integrationCol,
+      userIdCol,
+      ...(isGlobalAdmin ? [tenantCol] : []),
+      createdCol,
+      lastUsedCol,
+      actionsCol,
+    ];
+
+    return base;
+  }, [isGlobalAdmin, t]);
 
   return (
     <AppShell title={t('list.title')}>
@@ -852,6 +1128,13 @@ export default function EnrollmentsPage() {
         open={dialogOpen}
         initialIntegrationId={integrationFilter}
         onClose={() => setDialogOpen(false)}
+      />
+
+      <EnrollmentLifecycleDialog
+        open={lifecycleTarget !== null}
+        onClose={() => setLifecycleTarget(null)}
+        enrollment={lifecycleTarget?.enrollment ?? null}
+        action={lifecycleTarget?.action ?? null}
       />
     </AppShell>
   );

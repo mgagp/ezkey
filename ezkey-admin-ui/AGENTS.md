@@ -147,6 +147,18 @@ For any screen that uses a **paginated** list API (e.g. `usePaginatedFromOrval` 
 Clicking a new column sorts DESC by default; clicking the same column toggles ASC ↔ DESC.
 The active column shows `↑` (ASC) or `↓` (DESC); inactive sortable columns show `⇅`.
 
+### List quick security actions (trailing column)
+
+Some paginated lists include a **right-edge actions column** for incident-relevant controls (API
+key **Revoke**, admin **Deactivate**). Do not remove these for column-count hygiene when the canon
+says they apply. Enrollment list inline deactivate is planned; integration **Retire** and tenant
+deactivate stay detail-only.
+
+Authoritative eligibility matrix:
+[`product-docs/global/admin-ui-list-quick-security-actions.md`](../product-docs/global/admin-ui-list-quick-security-actions.md).
+**Icon + tooltip** when space is tight and intent is unambiguous (revoke); **labeled button** when
+wording disambiguates reversible suspend (deactivate).
+
 ### List refresh after mutations
 
 After a successful create/edit/delete that affects a list, **invalidate that list's query key** so the list refetches and stays in sync. Use the **same key** as the list query so `invalidateQueries` targets the right cache.
@@ -237,6 +249,7 @@ Use **start.sh** to build and run the Admin UI in Docker:
 
 ## Browser UI Tests
 
+- Agent validation ladder (build → API → Playwright): [`docs/testing/AGENT_UI_VALIDATION.md`](../../docs/testing/AGENT_UI_VALIDATION.md)
 - The Admin UI now has a **Playwright** browser suite under `e2e/`.
 - The primary validation model is **device-backed end to end**:
   - start the EZKey backend stack with `clean-start`

@@ -62,6 +62,15 @@ Design consequences:
 
 This posture pairs with **Design Principle #1** (simplicity), **#5** (operator-first), and **#14** (beautiful problems — defer scale tooling until adoption earns it).
 
+## List quick security actions
+
+During a suspected compromise, operators must cut credential exposure **without hunting through
+detail pages**. Paginated lists may include a **trailing actions column** only for incident-relevant
+controls (API key revoke, admin deactivate; enrollment deactivate planned).
+
+Full eligibility matrix, icon vs label guidance, and anti-patterns:
+[`admin-ui-list-quick-security-actions.md`](admin-ui-list-quick-security-actions.md).
+
 ## Usage in workflow
 
 - Reference in `grill-me` and component design packs when role visibility or dashboard copy is in question.

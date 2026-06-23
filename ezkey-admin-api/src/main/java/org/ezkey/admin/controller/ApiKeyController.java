@@ -22,8 +22,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.dto.request.ApiKeyCreateRequestDto;
 import org.ezkey.admin.dto.request.ApiKeyUpdateRequestDto;
@@ -42,8 +48,10 @@ import org.ezkey.exception.RateLimitExceededException;
 import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.service.ApiKeyService;
 import org.ezkey.service.EntityEligibilityService;
@@ -122,6 +130,7 @@ public class ApiKeyController {
   private final AuditLogService auditLogService;
   private final AuditEntityFkResolver auditEntityFkResolver;
   private final EntityEligibilityService eligibilityService;
+  private final IntegrationRepository integrationRepository;
 
   /**
    * Constructs a new ApiKeyController.
@@ -134,6 +143,7 @@ public class ApiKeyController {
    * @param auditLogService the audit log service for security monitoring
    * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
    * @param eligibilityService the service for computing operational status of API keys
+   * @param integrationRepository integration lookups for list enrichment labels
    */
   public ApiKeyController(
       ApiKeyService apiKeyService,
@@ -143,7 +153,8 @@ public class ApiKeyController {
       AccessControlService accessControlService,
       AuditLogService auditLogService,
       AuditEntityFkResolver auditEntityFkResolver,
-      EntityEligibilityService eligibilityService) {
+      EntityEligibilityService eligibilityService,
+      IntegrationRepository integrationRepository) {
     this.apiKeyService = apiKeyService;
     this.apiKeyRepository = apiKeyRepository;
     this.adminOpsRateLimitService = adminOpsRateLimitService;
@@ -152,6 +163,7 @@ public class ApiKeyController {
     this.auditLogService = auditLogService;
     this.auditEntityFkResolver = auditEntityFkResolver;
     this.eligibilityService = eligibilityService;
+    this.integrationRepository = integrationRepository;
   }
 
   /**
@@ -399,7 +411,7 @@ public class ApiKeyController {
         };
 
     Page<ApiKeyResponseDto> page =
-        apiKeyRepository.findAll(spec, pageable).map(this::mapToResponseDto);
+        mapApiKeyPageWithIntegration(apiKeyRepository.findAll(spec, pageable));
 
     logger.info(
         "Returning page {} with {} API keys for admin: {} (type: {})",
@@ -467,7 +479,7 @@ public class ApiKeyController {
         };
 
     Page<ApiKeyResponseDto> page =
-        apiKeyRepository.findAll(spec, pageable).map(this::mapToResponseDto);
+        mapApiKeyPageWithIntegration(apiKeyRepository.findAll(spec, pageable));
 
     logger.info(
         "Returning page {} with {} API keys for integration: {}",
@@ -752,7 +764,44 @@ public class ApiKeyController {
   }
 
   /**
-   * Maps an ApiKey entity to a response DTO.
+   * Maps a page of API keys to response DTOs with integration and tenant labels joined in batch.
+   *
+   * @param page API keys from the repository
+   * @return page of enriched API key response DTOs
+   */
+  private Page<ApiKeyResponseDto> mapApiKeyPageWithIntegration(Page<ApiKey> page) {
+    List<ApiKey> content = page.getContent();
+    if (content.isEmpty()) {
+      return page.map(apiKey -> mapToResponseDto(apiKey, null));
+    }
+
+    Set<Integer> integrationIds =
+        content.stream()
+            .map(ApiKey::getIntegration)
+            .filter(Objects::nonNull)
+            .map(Integration::getId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+    Map<Integer, Integration> integrationsById =
+        integrationIds.isEmpty()
+            ? Map.of()
+            : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
+                .collect(Collectors.toMap(Integration::getId, Function.identity()));
+
+    return page.map(
+        apiKey -> {
+          Integration integration = apiKey.getIntegration();
+          Integration enriched =
+              integration != null && integration.getId() != null
+                  ? integrationsById.get(integration.getId())
+                  : null;
+          return mapToResponseDto(apiKey, enriched);
+        });
+  }
+
+  /**
+   * Maps an ApiKey entity to a response DTO, optionally enriching integration and tenant labels.
    *
    * <p>Note: Secret key is never included in the mapping for security.
    *
@@ -760,17 +809,49 @@ public class ApiKeyController {
    * @return the response DTO
    */
   private ApiKeyResponseDto mapToResponseDto(ApiKey apiKey) {
+    Integration integration = apiKey.getIntegration();
+    if (integration == null || integration.getId() == null) {
+      return mapToResponseDto(apiKey, null);
+    }
+    Integration enriched =
+        integrationRepository.findAllByIdWithTenant(List.of(integration.getId())).stream()
+            .findFirst()
+            .orElse(integration);
+    return mapToResponseDto(apiKey, enriched);
+  }
+
+  /**
+   * Maps an ApiKey entity to a response DTO with optional integration context for display fields.
+   *
+   * @param apiKey the API key entity
+   * @param integration integration with tenant loaded, or null
+   * @return the response DTO
+   */
+  private ApiKeyResponseDto mapToResponseDto(ApiKey apiKey, Integration integration) {
     String revokedByUsername = null;
     if (apiKey.getRevokedByAdmin() != null) {
       revokedByUsername = apiKey.getRevokedByAdmin().getUsername();
     }
-    boolean operational =
-        eligibilityService.isApiKeyFullyOperational(apiKey, apiKey.getIntegration());
+    Integration resolved = integration != null ? integration : apiKey.getIntegration();
+    Integer integrationId = resolved != null ? resolved.getId() : null;
+    String integrationName = resolved != null ? resolved.getName() : null;
+    Integer tenantId =
+        resolved != null && resolved.getTenant() != null
+            ? resolved.getTenant().getTenantId()
+            : null;
+    String tenantName =
+        resolved != null && resolved.getTenant() != null
+            ? resolved.getTenant().getTenantName()
+            : null;
+    boolean operational = eligibilityService.isApiKeyFullyOperational(apiKey, resolved);
 
     return new ApiKeyResponseDto(
         apiKey.getApiKeyId(),
         apiKey.getVersion(),
-        apiKey.getIntegration().getId(),
+        integrationId,
+        integrationName,
+        tenantId,
+        tenantName,
         apiKey.getIntegrationKey(),
         apiKey.getDescription(),
         apiKey.getActive(),

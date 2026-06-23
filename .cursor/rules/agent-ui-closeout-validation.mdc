@@ -1,0 +1,52 @@
+---
+description: Closeout validation ladder after Admin UI operator-list or list-DTO slices (clean-start, API tests, specs, optional browser smoke).
+globs:
+alwaysApply: false
+---
+
+# Agent UI closeout validation
+
+Use when the operator asks for **closeout validation**, **slice validation**, or after completing an
+**operator lists** slice (`I-2026-0013` / `I-2026-0014`) that changes Admin API list DTOs and/or
+Admin UI list columns.
+
+Authoritative recipe: [`docs/testing/AGENT_UI_VALIDATION.md`](../../docs/testing/AGENT_UI_VALIDATION.md).
+
+## Mandatory sequence (list DTO / API contract changed)
+
+1. **Build** — root Maven baseline (`./scripts/build.sh` or `scripts/build-local.cmd` on Windows).
+2. **Clean-start** — `cd ezkey-tests && ./clean-start.sh` (fresh Docker stack + bootstrap).
+3. **API functional tests** — targeted `ezkey-tests` assertions on enriched list fields for the
+   slice (see recipe doc for class/method examples).
+4. **OpenAPI refresh** — `./scripts/update-specs.sh --admin-only` (or full script when multiple
+   APIs changed); never hand-edit `specs/**`.
+5. **Admin UI client** — `cd ezkey-admin-ui && npm run generate:api` (and `npm run build` if not
+   using dev server).
+6. **Optional UI smoke** — Playwright `@smoke` preferred; MCP browser spot-check acceptable for
+   operator-lists closeout when Playwright is not run (see recipe § MCP browser).
+
+## Operator trigger phrase (examples)
+
+- *Closeout validation: clean-start, API tests for enrollments slice, update-specs, smoke UI.*
+- *Valider la slice integrations avant commit.*
+
+## Browser smoke defaults
+
+| Setting | Value |
+|---------|--------|
+| Admin UI | `http://localhost:5173` (dev) or `http://127.0.0.1:4173` |
+| Demo Device | `http://localhost:8083` |
+| Bootstrap admin | `admin.docker` |
+| Demo Device auth URL | `http://localhost:8083/phone/ezkey/enrollments/1/auth` |
+
+## Do not
+
+- Skip clean-start then assert list DTO fields against a stale Admin API image.
+- Hand-edit generated OpenAPI or Orval output.
+- Default to MCP browser for copy-only or single-column label tweaks.
+- Loop Demo Device polling indefinitely — retry a few times, then report blocker.
+
+## GitHub visibility
+
+When work tracks [#236](https://github.com/mgagp/ezkey/issues/236) or a program issue, add a short
+comment with: clean-start OK, API test classes, spec refresh, optional UI smoke result.
