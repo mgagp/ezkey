@@ -19,8 +19,9 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `ready` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-24` |
 | `I-2026-0011` | Bootstrap clean-start: activation-code mode as default | `incubating` | `P1` | `admin-api`, `infra`, `bootstrap`, `docs` | `2026-05-19` |
 | `I-2026-0012` | Hard-coded Ezkey System user sensitivity audit | `incubating` | `P2` | `admin-api`, `core`, `infra` | `2026-05-19` |
-| `I-2026-0013` | Paginated admin screens: functional and operational pertinence review | `incubating` | `P2` | `admin-ui`, `admin-api` | `2026-05-19` |
-| `I-2026-0014` | Paginated screens display strategy: foreign keys vs intelligent joins | `incubating` | `P2` | `admin-ui`, `admin-api`, `audit` | `2026-05-19` |
+| `I-2026-0013` | Paginated admin screens: functional and operational pertinence review | `incubating` | `P2` | `admin-ui`, `admin-api` | `2026-06-20` |
+| `I-2026-0014` | Paginated screens display strategy: foreign keys vs intelligent joins | `incubating` | `P2` | `admin-ui`, `admin-api`, `audit` | `2026-06-20` |
+| `I-2026-0028` | Admin UI operator experience — post–Tier A follow-up (prioritized queue) | `ready` | `P2` | `admin-ui`, `admin-api` | `2026-06-20` |
 | `I-2026-0015` | Business limits on potentially large-volume SQL queries | `incubating` | `P2` | `admin-api`, `auth-api`, `integration-api`, `repositories` | `2026-05-24` |
 | `I-2026-0017` | Profile elaboration template, skill, and per-client document workflow | `captured` | `P1` | `docs (product-docs)`, `methodology`, `skills` | `2026-05-08` |
 | `I-2026-0018` | Profile generator skill: elaboration document to runtime configs | `captured` | `P2` | `docs (product-docs)`, `methodology`, `skills`, `infra` | `2026-05-08` |

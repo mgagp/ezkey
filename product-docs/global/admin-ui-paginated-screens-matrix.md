@@ -6,7 +6,7 @@ Canonical **operator-first** decisions for every paginated Admin UI list: what t
 
 **Grilled:** Blitz 2026-05-08-2 D8 + D9 ([`backlog/grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`](backlog/grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md)).
 
-**Backlog:** [`I-2026-0013`](backlog/ideas/I-2026-0013-paginated-screens-functional-review.md) (analysis), [`I-2026-0014`](backlog/ideas/I-2026-0014-paginated-screens-display-strategy.md) (API/UI implementation).
+**Backlog:** [`I-2026-0013`](backlog/ideas/I-2026-0013-paginated-screens-functional-review.md) (analysis), [`I-2026-0014`](backlog/ideas/I-2026-0014-paginated-screens-display-strategy.md) (API/UI implementation). **Post–Tier A follow-up queue:** [`I-2026-0028`](backlog/ideas/I-2026-0028-admin-ui-operator-experience-follow-up.md).
 
 **Methodology note:** This file is the **living canonical home** for screen-level operator/display choices. Legacy docs under `docs/` remain linked for mechanics until gradually retrofitted into product-docs.
 

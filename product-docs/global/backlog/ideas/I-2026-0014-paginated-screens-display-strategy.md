@@ -6,8 +6,8 @@
 - **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-06-20`
+- **Last reviewed at:** `2026-06-20`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`, `audit`
 - **Captured by:** Marc
@@ -55,6 +55,19 @@ See [`../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`](../gri
 ## Promotion notes
 
 Implement per matrix row after `I-2026-0013` marks row `reviewed`; **`TB-*` by screen group**.
+
+### Execution progress (2026-06-20)
+
+**Tier A join pattern shipped** on integrations, enrollments, API keys (batch
+`findAllByIdWithTenant` / entity graph — see delivered TBs under #236). Admins list remains the
+reference implementation.
+
+**Interim « More details » pattern:** still present on several detail pages (`RelatedDetailsButton`).
+Target state is **removal** once follow-up slices (see
+[`I-2026-0028`](I-2026-0028-admin-ui-operator-experience-follow-up.md) § Related details retirement)
+cover daily operator paths with list/detail labels.
+
+**Tier B not started:** auth attempts (placeholder integration column), audit logs (selective joins).
 
 ## Links
 

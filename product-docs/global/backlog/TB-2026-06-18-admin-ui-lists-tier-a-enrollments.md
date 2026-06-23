@@ -61,7 +61,8 @@ filter remains in toolbar — no Active column.
 - Primary `enrollmentId` column unchanged
 - Maven tests green for touched modules
 - Functional regression: `EnrollmentManagementSecurityTest` list + getById enrichment assertions
-- OpenAPI: clean-start + `./scripts/update-specs.sh --admin-only` + `npm run generate:api` (pending stack refresh)
+- OpenAPI: clean-start + `./scripts/update-specs.sh --admin-only` + `npm run generate:api` (on branch with refreshed stack)
+- Quick actions: `TB-2026-06-20-admin-ui-enrollments-list-quick-actions` (`done`)
 
 ## Links
 

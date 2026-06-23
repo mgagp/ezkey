@@ -6,7 +6,7 @@
 - **Status:** `done`
 - **Posture:** `single-pass`
 - **Related ideas:** `I-2026-0013`, `I-2026-0014`
-- **Lane:** `A` (bounded volume — joins in list API)
+- **GitHub:** #236
 - **Created at:** `2026-06-18`
 
 ## Objective

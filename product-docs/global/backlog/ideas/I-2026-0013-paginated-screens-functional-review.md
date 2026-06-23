@@ -6,8 +6,8 @@
 - **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-06-20`
+- **Last reviewed at:** `2026-06-20`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-ui`, `admin-api`
 - **Captured by:** Marc
@@ -54,6 +54,21 @@ See [`../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`](../gri
 ## Promotion notes
 
 Complete matrix analysis rows (`draft` → `reviewed`), then **`TB-*` per screen group** with `I-2026-0014`.
+
+### Execution progress (2026-06-20)
+
+**Tier A core (GitHub #236) — done:**
+
+| Matrix row | TB | Notes |
+|------------|-----|-------|
+| Integrations | `TB-2026-06-18-admin-ui-lists-tier-a-integrations` | `implemented` |
+| Enrollments | `TB-2026-06-18-…-enrollments` + quick-actions TB | `implemented` |
+| API keys | `TB-2026-06-18-admin-ui-lists-tier-a-api-keys` | `implemented` |
+
+**Still `draft` in matrix:** Tenants, encryption keys, alerts, re-encryption batches, Tier B rows,
+embedded lists.
+
+**Follow-up queue:** [`I-2026-0028-admin-ui-operator-experience-follow-up.md`](I-2026-0028-admin-ui-operator-experience-follow-up.md)
 
 ## Links
 
