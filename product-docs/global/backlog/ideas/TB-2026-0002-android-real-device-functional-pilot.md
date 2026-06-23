@@ -6,9 +6,10 @@
 - **Status:** `active`
 - **Related idea:** `I-2026-0019`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-31`
+- **Updated at:** `2026-06-23`
 - **Captured by:** Marc
 - **Related follow-ups:** `I-2026-05-31-mobile-android-stack-followups` — **F1** = churn harness (active priority); **F2** = enrollment automation (future)
+- **GitHub issue (F1):** `#239`
 
 ## Pilot status (Maestro slice — pending/respond)
 
@@ -18,7 +19,7 @@ The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 
 
 ## Next slice — auth churn harness (F1 — priority)
 
-**Owner:** [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) (**F1**, `scheduled`).
+**Owner:** [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) (**F1**, `active`).
 
 **Goal:** After **one manual enrollment per session**, run an **autonomous seeded loop** (target ~2 h or N iterations): **`ezkey-tests` / JUnit** creates auth attempts (challenge on/off, etc.) → **Maestro** consumes on device (approve, deny, challenge, timeout / not-consumed) → **correlated artifacts** per iteration to investigate intermittent **first check-pending / device-proof** failures.
 
@@ -53,7 +54,7 @@ The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 
 - `yarn validate:ci` green if mobile/JS touched.
 - Churn session produces expected artifact layout; Maestro + attempt ids correlate in `meta.md`.
 
-**Status:** `scheduled` (scope confirmed 2026-05-31); execution not started.
+**Status:** `active` (started 2026-06-23 via GitHub issue `#239` and branch `feat/mobile-f1-auth-churn-harness-issue-239`).
 
 ## Future slice — Android enrollment + QR (F2 — deferred)
 
