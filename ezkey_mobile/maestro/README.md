@@ -109,6 +109,25 @@ If **Settings → Security** uses a protected mode that requires biometric or de
 | --- | --- |
 | `flows/pilot_pending_respond.yaml` | Home → detail → check pending → approve (no challenge input). |
 | `flows/pilot_pending_respond_with_challenge.yaml` | Same, plus 2-digit challenge entry. |
+| `flows/pilot_enrollment_seed_bypass.yaml` | Home → wizard → controlled test seed (F2a) to reach verify stage without camera scan. |
+| `flows/pilot_enrollment_seed_bypass_visibility.yaml` | Home → wizard; asserts controlled bypass entry is visible (fast smoke gate for F2a enablement). |
+
+## Controlled Seed Bypass (F2a)
+
+`pilot_enrollment_seed_bypass.yaml` is a **debug/test bootstrap aid**, not a product shortcut.
+
+Security boundaries:
+
+- Available only in development builds (`__DEV__` gate in app code).
+- Requires explicit env opt-in and acknowledgement token at build time.
+- Does not bypass bind/verify cryptographic trust checks.
+- Must never be used to justify skipping periodic human validation of camera + QR path.
+
+Relevant env flags in `.env` (requires native rebuild):
+
+- `EZKEY_ENROLLMENT_SEED_BYPASS_ENABLED=true`
+- `EZKEY_ENROLLMENT_SEED_BYPASS_ACK=F2A_TEST_ONLY`
+- `EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD=...`
 
 ## Runner
 
