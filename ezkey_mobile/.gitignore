@@ -71,6 +71,9 @@ yarn-error.log
 # testing
 /coverage
 
+# Local Maestro / churn evidence
+/maestro/sessions/
+
 # Yarn
 .yarn/*
 !.yarn/patches

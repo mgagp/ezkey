@@ -28,6 +28,7 @@ The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 
 - Clean-start Docker stack; debug APK on device (`build-install-debug-clean.sh`).
 - **Manual enrollment once** per session; known `ENROLLMENT_ID`.
 - Existing Maestro flows + runner; design in `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`.
+- Runner preflight must confirm app readiness before API attempt creation (Home root + target enrollment row).
 
 **In scope**
 
@@ -58,11 +59,22 @@ The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 
 
 ## Future slice — Android enrollment + QR (F2 — deferred)
 
-**Owner:** same `I-2026-05-31` (**F2**, `pending`).
+**Owner:** same `I-2026-05-31` (**F2a/F2b**, `pending`).
 
-**Goal:** After F1 proves orchestration value, automate **wizard → QR → steady state** (likely **hybrid v2** or debug deep-link — not required for churn v1).
+**Goal (split):**
 
-**Status:** `pending` — do not start before F1 Phase B at minimum.
+- **F2a:** controlled enrollment-seed bypass for harness autonomy (debug/test posture only).
+- **F2b:** full wizard/camera/QR automation for cold-device end-to-end coverage.
+
+**Security guardrails for F2a:**
+
+- unavailable in release builds;
+- explicit opt-in only;
+- no bypass of bind/verify cryptographic trust checks;
+- explicit run metadata marker when the bypass is used.
+
+**Status:** `pending` — keep F1 as active slice; treat F2a as the next autonomy-oriented follow-up once F1
+Phase A/B evidence is stable.
 
 ## Next phase — churn harness (design reference)
 

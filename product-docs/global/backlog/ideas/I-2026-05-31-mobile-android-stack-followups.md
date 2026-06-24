@@ -29,6 +29,10 @@ not currently reproducing.
 **Future phase (generalization):** automate enrollment (wizard + QR) so cold device → enroll → churn runs
 without manual onboarding — deferred until churn orchestration is proven valuable.
 
+**Reprioritization note (2026-06-23):** add a bounded **F2a** slice for a controlled enrollment-seed bypass
+(debug/test posture only) to improve agent autonomy for churn harness setup, while keeping full camera/QR
+automation as **F2b**.
+
 ## Scope decision — churn v1 (2026-05-31)
 
 | Decision | Choice |
@@ -36,6 +40,7 @@ without manual onboarding — deferred until churn orchestration is proven valua
 | **Enrollment per session** | **Once, manual** (QR / bind-verify on device), same posture as existing Maestro pilot |
 | **Automation focus** | **Create attempt (JUnit/API) → consume on phone (Maestro) → repeat** with artifacts |
 | **Maestro flows** | Reuse `pilot_pending_respond` (+ challenge); add **deny** and orchestration; **no** wizard/QR flow in v1 |
+| **Readiness gate** | Mandatory preflight before attempt creation: app must expose Home root + target enrollment row |
 | **Learning value** | JUnit ↔ Maestro coordination and session evidence layout — reusable pattern for later generalization |
 | **Success criterion** | Repeatable unattended loop after manual enroll; rich artifacts when/if flaky behaviour appears — not “must reproduce bug on first run” |
 
@@ -83,9 +88,19 @@ Promote a row to **`TB-*`** execution when starting a branch. Runtime gates: `va
 | ID | Slice | Target / note | TB when started | Status |
 |----|-------|---------------|-----------------|--------|
 | **F1** | **Auth churn harness** (JUnit + Maestro) | Extend **`TB-2026-0002`**; manual enroll **once per session**; seeded loop; deny flow; artifacts | **`TB-2026-0002`** (active phase) | **`active`** |
-| F2 | Maestro **enrollment + QR** (Android) | **Future generalization** after F1; hybrid or deep-link strategy TBD | `TB-2026-0002` or new TB | `pending` |
+| F2a | Controlled enrollment seed bypass (Android) | Debug/test-only bootstrap path for harness autonomy; preserve bind/verify trust checks | `TB-2026-0002` extension or dedicated TB | `pending` |
+| F2b | Maestro enrollment + full QR automation (Android) | Future generalization after F2a/F1 evidence; camera permission + QR decode automation | `TB-2026-0002` or new TB | `pending` |
 | F3 | **react-native-gesture-handler** 3.x | Major; navigation / gestures | `TB-2026-…-gesture-handler-3` | `pending` |
 | F4 | **react-native-nitro-image** 0.15.x | Minor Nitro | Sub-step of F3 or own TB | `pending` |
+
+## Security posture for F2a controlled bypass
+
+- The bypass must be strictly **non-production**: unavailable in release builds and disabled by default.
+- Activation must require explicit test intent (for example, dedicated debug flag / test-only launch path).
+- The bypass must not skip protocol trust anchors: bind/verify cryptographic validation remains mandatory.
+- Runs using the bypass must emit explicit evidence markers (session metadata) so traceability is honest.
+- Code and docs must clearly justify the risk model to reduce false positives during static analysis or
+  agent-led code quality review.
 
 ### Tier 2 — when convenient (tooling / hygiene)
 

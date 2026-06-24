@@ -24,6 +24,7 @@ The automation goal is **not** to encode one fragile sequence believed to reprod
 3. **Bounded complexity:** start with a **deterministic happy-path loop** (fixed sequence, few iterations) to validate orchestration and the **artifact folder contract**; only then add randomization and long runs.
 4. **Reproducibility:** support a fixed **random seed** (same spirit as `run-operational-churn.sh --seed`) for any randomized scenario picker.
 5. **No over-engineering on “live log intelligence”:** iteration `meta.md` plus raw logs first; optional **second-pass** script that aggregates pass/fail into a small table is explicitly a later add-on.
+6. **Fail fast on missing seed state:** before creating an auth attempt, the harness must verify that the app is in steady state (Home root visible and target enrollment row reachable). If not, stop with an explicit blocked outcome.
 
 ## High-level architecture
 
@@ -64,6 +65,9 @@ All paths below are **conventions** for local developer runs (gitignored parent 
 - `random_seed` / `draw_index` (if using a scenario deck).
 - `maestro_exit_code`.
 - `outcome`: `pass` | `fail_maestro` | `fail_api_assert` | `unknown` (operator-set or script-set).
+
+For preflight failures, prefer a distinct outcome such as `blocked_missing_seed` so quality reports can
+distinguish readiness issues from protocol or transport failures.
 
 ### `SESSION.md` (session level)
 

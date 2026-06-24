@@ -145,6 +145,32 @@ done
 
 **Planned:** JUnit-driven loops, per-iteration artifact folders, and seeded scenario variance are specified in `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md` (`TB-2026-0002` next phase).
 
+## F1 Phase A harness (single deterministic iteration)
+
+For the first end-to-end harness slice (issue #239), use the dedicated runner from `ezkey_mobile/`:
+
+```bash
+ENROLLMENT_ID=123 ./scripts/run-f1-auth-churn-phase-a.sh
+```
+
+What this script does:
+
+- creates a session root under `maestro/sessions/f1-phase-a-<UTC>/`;
+- creates `iterations/00001/`;
+- runs a readiness preflight (Home root + `ENROLLMENT_ID` row must be visible) before creating any attempt;
+- invokes JUnit (`ezkey-tests`) to create one auth attempt for `ENROLLMENT_ID`;
+- invokes Maestro to consume that attempt on the real device;
+- normalizes correlated artifacts (`meta.md`, `maestro.xml`, `maestro.log`, `logcat.txt`, `junit-side.log`, `summary.jsonl`).
+
+If preflight fails, the runner exits early with outcome `blocked_missing_seed` and does not create an auth attempt.
+
+Optional env vars:
+
+- `SESSION_ROOT` to force an output directory;
+- `CHALLENGE_REQUESTED` (`false` by default);
+- `CHALLENGE_CODE` and/or `FLOW` when running the challenge flow;
+- `MAESTRO_LOGCAT`, `MAESTRO_VERBOSE`, `MAESTRO_DEBUG_OUTPUT` (forwarded to the pilot runner).
+
 ## `ezkey-tests` touchpoints
 
 - **`TestDataFactory#createAuthAttempt`** — programmatic queue via Admin API (`challengeRequested` flag).
