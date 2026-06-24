@@ -59,7 +59,7 @@ Login response (non-error):
 
 | DTO field | Domain concept | Transformation | Notes |
 |-----------|----------------|----------------|-------|
-| `authAttemptId`, `challengeCode` | Correlation handle | identity | Must match the pending attempt from `/login`. |
+| `authAttemptId`, `challengeCode` | Correlation handle | identity | If persisted attempt has `authAttemptChallenge`, `challengeCode` is required and must match; otherwise `challengeCode` must be omitted. |
 
 Outcome mapping:
 
