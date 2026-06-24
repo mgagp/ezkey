@@ -15,6 +15,14 @@ const parseNumber = (value: string | undefined, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const parseText = (value: string | undefined): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 /**
  * Parses optional boolean env vars. Accepts: 1 / true / yes (case-insensitive) as true; unset or
  * other values as false.
@@ -59,4 +67,18 @@ export const env = {
    * {@code scripts/run-real-device-pilot-maestro.sh} when Maestro pilot diagnosis is done.
    */
   pendingAuthFlowTrace: parseBool(Config.EZKEY_PENDING_AUTH_FLOW_TRACE, false),
+  /**
+   * Controlled enrollment seed bypass (F2a): intentionally bounded to debug/test workflows.
+   *
+   * Security posture:
+   * - This flag only permits showing the bypass action in development builds.
+   * - A second explicit acknowledgement token is required.
+   * - The payload is still processed through the standard bind/verify trust path.
+   *
+   * This mechanism exists to avoid camera/QR automation complexity in harness bootstrap while
+   * preserving protocol integrity and keeping release behavior unchanged.
+   */
+  enrollmentSeedBypassEnabled: parseBool(Config.EZKEY_ENROLLMENT_SEED_BYPASS_ENABLED, false),
+  enrollmentSeedBypassAck: parseText(Config.EZKEY_ENROLLMENT_SEED_BYPASS_ACK),
+  enrollmentSeedBypassQrPayload: parseText(Config.EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD),
 };

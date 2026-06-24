@@ -17,6 +17,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -132,6 +133,9 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     enrollmentChallenge,
     challengeError,
     scannerVisible,
+    controlledBypassAvailable,
+    controlledBypassUsed,
+    controlledBypassSeedInput,
     primaryLabel,
     secondaryLabel,
     primaryDisabled,
@@ -143,12 +147,15 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
     handleSecondary,
     handleBack,
     handleQrScanned,
+    setControlledBypassSeedInput,
+    handleControlledBypass,
     handleScannerDismiss,
   } = useEnrollmentWizard(navigation.popToTop);
 
   return (
     <>
     <KeyboardAvoidingView
+      testID="ezkey.e2e.enrollmentWizard.screen"
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
@@ -159,6 +166,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
         showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity
+            testID="ezkey.e2e.enrollmentWizard.back"
             onPress={() => handleBack(navigation.goBack)}
             style={styles.backButton}>
             <Text style={styles.backLabel}>{t('enrollmentWizard.back')}</Text>
@@ -177,13 +185,41 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                     <Text style={styles.errorBannerText}>{bindError ?? cameraError}</Text>
                   </View>
                 ) : null}
+                {controlledBypassAvailable ? (
+                  <View style={styles.bypassContainer}>
+                    <TextInput
+                      testID="ezkey.e2e.enrollmentWizard.controlledBypassSeedInput"
+                      value={controlledBypassSeedInput}
+                      onChangeText={setControlledBypassSeedInput}
+                      placeholder={t('enrollmentWizard.controlledBypassInputPlaceholder')}
+                      placeholderTextColor="#7f8da6"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      style={styles.bypassInput}
+                    />
+                    <TouchableOpacity
+                      testID="ezkey.e2e.enrollmentWizard.controlledBypassSeed"
+                      style={styles.bypassButton}
+                      onPress={handleControlledBypass}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('enrollmentWizard.controlledBypassAction')}
+                      accessibilityHint={t('enrollmentWizard.controlledBypassHint')}>
+                      <Text style={styles.bypassButtonLabel}>
+                        {t('enrollmentWizard.controlledBypassAction')}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text style={styles.bypassHint}>{t('enrollmentWizard.controlledBypassHint')}</Text>
+                  </View>
+                ) : null}
               </View>
             </>
           ) : null}
           {hasDraft && draft ? (
             <>
               <Text style={styles.flowSectionLabel}>{t('enrollmentWizard.verifyLabel')}</Text>
-              <View style={styles.challengeSection}>
+              <View
+                testID="ezkey.e2e.enrollmentWizard.verifyStep"
+                style={styles.challengeSection}>
                 <Text style={styles.challengeHeading}>{t('enrollmentWizard.verifyTitle')}</Text>
                 <Text style={styles.challengeHint}>
                   {t('enrollmentWizard.verifyHint', {name: draft.integrationName})}
@@ -206,6 +242,13 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                 ) : null}
               </View>
               <Text style={styles.enrollmentDetailsLabel}>{t('enrollmentWizard.enrollmentDetails')}</Text>
+              {controlledBypassUsed ? (
+                <View style={styles.bypassActiveBadge}>
+                  <Text style={styles.bypassActiveBadgeLabel}>
+                    {t('enrollmentWizard.controlledBypassActive')}
+                  </Text>
+                </View>
+              ) : null}
               <EnrollmentInfoCard draft={draft} compact />
             </>
           ) : null}
@@ -213,12 +256,14 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
       </ScrollView>
       <View style={styles.actions}>
         <TouchableOpacity
+          testID="ezkey.e2e.enrollmentWizard.secondaryAction"
           style={[styles.secondaryButton, secondaryDisabled ? styles.disabledButton : undefined]}
           onPress={handleSecondary}
           disabled={secondaryDisabled}>
           <Text style={styles.secondaryLabel}>{secondaryLabel}</Text>
         </TouchableOpacity>
         <TouchableOpacity
+          testID="ezkey.e2e.enrollmentWizard.primaryAction"
           style={[styles.primaryButton, primaryDisabled ? styles.disabledButton : undefined]}
           onPress={() => handlePrimary(hasCameraPermission, requestPermission)}
           disabled={primaryDisabled}>
@@ -315,6 +360,58 @@ const styles = StyleSheet.create({
     color: '#c2c8d5',
     marginTop: 8,
     marginBottom: 24,
+  },
+  bypassContainer: {
+    marginTop: 8,
+    gap: 8,
+  },
+  bypassButton: {
+    borderWidth: 1,
+    borderColor: '#4f8ff8',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(79, 143, 248, 0.08)',
+  },
+  bypassInput: {
+    backgroundColor: '#151923',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(79, 143, 248, 0.32)',
+    color: '#d7e6ff',
+    fontSize: 12,
+    lineHeight: 18,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  bypassButtonLabel: {
+    color: '#9ec2ff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  bypassHint: {
+    color: '#7f8da6',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  bypassActiveBadge: {
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(242, 168, 67, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(242, 168, 67, 0.5)',
+  },
+  bypassActiveBadgeLabel: {
+    color: '#ffd58f',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   form: {
     width: '100%',
