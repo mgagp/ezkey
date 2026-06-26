@@ -327,7 +327,8 @@ public class AdminAuthService {
    *     non-blocking flow
    * @return authentication response with token on success
    * @throws IllegalArgumentException if auth attempt is not found
-   * @throws org.ezkey.admin.exception.AdminAuthenticationException if challenge code is invalid
+   * @throws org.ezkey.admin.exception.AdminAuthenticationException if challenge code is missing for
+   *     challenge-backed attempts or does not match persisted challenge
    */
   public AdminLoginResponseDto waitForPasswordlessAuth(
       Integer authAttemptId, Integer challengeCode) {
@@ -342,17 +343,30 @@ public class AdminAuthService {
             .findById(authAttemptId)
             .orElseThrow(() -> new IllegalArgumentException("Auth attempt not found"));
 
-    // 2. SECURITY: Verify challenge code only if provided (challenge flow)
-    // If challengeCode is null, we're in non-blocking flow (challenge already verified in
-    // login)
-    if (challengeCode != null) {
-      if (!challengeCode.equals(authAttempt.getAuthAttemptChallenge())) {
+    // 2. SECURITY: Enforce challenge requirement from persisted auth attempt state.
+    // If an attempt has a stored challenge, clients must provide a matching challengeCode.
+    Integer persistedChallenge = authAttempt.getAuthAttemptChallenge();
+    if (persistedChallenge != null) {
+      if (challengeCode == null) {
+        logger.warn(
+            "❌ Missing challenge code for challenge-backed authAttemptId: {}"
+                + " (enumeration attack detected)",
+            authAttemptId);
+        throw new AdminAuthenticationException("Invalid challenge code - authentication failed");
+      }
+      if (!challengeCode.equals(persistedChallenge)) {
         logger.warn(
             "❌ Invalid challenge code for authAttemptId: {} (enumeration attack detected)",
             authAttemptId);
         throw new AdminAuthenticationException("Invalid challenge code - authentication failed");
       }
       logger.debug("✅ Challenge code verified for authAttemptId: {}", authAttemptId);
+    } else if (challengeCode != null) {
+      logger.warn(
+          "❌ Unexpected challenge code for non-challenge authAttemptId: {}"
+              + " (enumeration attack detected)",
+          authAttemptId);
+      throw new AdminAuthenticationException("Invalid challenge code - authentication failed");
     } else {
       logger.debug("ℹ️ No challenge code (non-blocking flow) for authAttemptId: {}", authAttemptId);
     }
