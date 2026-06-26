@@ -39,7 +39,7 @@ Canonical **operator-first** decisions for every paginated Admin UI list: what t
 | Encryption keys | `GET /api/v1/encryption-keys` | A | Key lifecycle and migration backlog? | *TBD* | Bounded; joins as needed for labels | Global Admin | `draft` | |
 | Re-encryption batches | `GET .../reencryption-batches` | A | Batch progress and failures? | *TBD* | Bounded | Global Admin | `draft` | |
 | Alerts | `GET /api/v1/alerts` (or equivalent) | A | What needs operator action now? | *TBD* | Bounded | Global Admin | `draft` | |
-| Auth attempts | `GET /api/v1/auth-attempts` | B | What auth flows happened and outcomes? | status, time, **integration name**, **tenant name** (Global Admin) | Selective indexed joins; **malleable** | Both | `draft` | Grill default |
+| Auth attempts | `GET /api/v1/auth-attempts` | B | What auth flows happened and outcomes? | **ID**, status, **enrollment name**, **integration name**, **tenant name** (GA), challenge, created, expires | Batch enrollment → integration join per page | Both | `implemented` | TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels` |
 | Audit logs | `GET /api/v1/audit-logs` | B | Who did what, when, with what result? | time, event type, actor, status; names if indexed | Selective joins only | Both | `draft` | |
 | Audit chain checkpoints | `GET .../chain-checkpoints` | B | Integrity windows healthy? | *TBD* | Careful on volume | Global Admin | `draft` | Embedded in audit-logs UI |
 | Tenant detail → admins | scoped admins list | A | Admins for this tenant? | *TBD* | Same as admins tier A | Global Admin | `draft` | Embedded list |

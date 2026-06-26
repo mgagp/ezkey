@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FileText, RefreshCw, Shield } from 'lucide-react';
@@ -18,6 +18,7 @@ import { useDetailNavigation } from '@/hooks/use-detail-navigation';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { useAuth } from '@/context/use-auth';
 import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { useIntegrations } from '@/hooks/use-integrations';
@@ -31,6 +32,15 @@ import {
 } from '@/lib/dashboard-drilldown-links';
 import { search2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import type { AuthAttemptDto, PagedModelAuthAttemptDto, Search2Params } from '@/generated/admin-api/model';
+
+/** List/detail labels from admin API batch enrichment (Orval regen after spec refresh). */
+type EnrichedAuthAttemptDto = AuthAttemptDto & {
+  integrationId?: number | null;
+  integrationName?: string | null;
+  enrollmentName?: string | null;
+  tenantId?: number | null;
+  tenantName?: string | null;
+};
 
 const AUTH_STATUSES = ['PENDING', 'READ', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'INVALID'] as const;
 
@@ -132,15 +142,39 @@ function AttemptDetailDialog({
           <DetailInfoRow label={t('detail.labelId')}><span className="font-mono">{attempt.authAttemptId}</span></DetailInfoRow>
           <DetailInfoRow label={t('detail.labelStatus')}><AuthAttemptStatusBadge status={attempt.authAttemptStatus} /></DetailInfoRow>
           <DetailInfoRow label={t('detail.labelEnrollment')}>
-            <span className="font-mono">#{attempt.enrollmentId}</span>
-          </DetailInfoRow>
-          {relatedDetails.isExpanded && relatedDetails.enrollment && (
-            <DetailInfoRow label={t('common:detail.relatedEnrollment')}>
+            {attempt.enrollmentId != null ? (
               <Link
-                to={`/enrollments/${relatedDetails.enrollment.enrollmentId}`}
-                className="font-medium text-accent hover:underline"
+                to={`/enrollments/${attempt.enrollmentId}`}
+                className="text-sm font-medium text-accent hover:underline"
               >
-                {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId} (ID {relatedDetails.enrollment.enrollmentId})
+                {(attempt as EnrichedAuthAttemptDto).enrollmentName?.trim()
+                  || t('list.enrollmentFallback', { id: attempt.enrollmentId })}
+              </Link>
+            ) : (
+              <span className="text-fg-muted">—</span>
+            )}
+          </DetailInfoRow>
+          {(attempt as EnrichedAuthAttemptDto).integrationId != null && (
+            <DetailInfoRow label={t('detail.labelIntegration')}>
+              <Link
+                to={`/integrations/${(attempt as EnrichedAuthAttemptDto).integrationId}`}
+                className="text-sm font-medium text-accent hover:underline"
+              >
+                {(attempt as EnrichedAuthAttemptDto).integrationName?.trim()
+                  || t('list.integrationFallback', {
+                    id: (attempt as EnrichedAuthAttemptDto).integrationId,
+                  })}
+              </Link>
+            </DetailInfoRow>
+          )}
+          {(attempt as EnrichedAuthAttemptDto).tenantId != null && (
+            <DetailInfoRow label={t('detail.labelTenant')}>
+              <Link
+                to={`/tenants/${(attempt as EnrichedAuthAttemptDto).tenantId}`}
+                className="text-sm font-medium text-accent hover:underline"
+              >
+                {(attempt as EnrichedAuthAttemptDto).tenantName?.trim()
+                  || t('list.tenantFallback', { id: (attempt as EnrichedAuthAttemptDto).tenantId })}
               </Link>
             </DetailInfoRow>
           )}
@@ -174,8 +208,9 @@ function AttemptDetailDialog({
 
 export default function AuthAttemptsPage() {
   const { t } = useTranslation('auth-attempts');
+  const { session } = useAuth();
+  const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
   const { effectiveTimeZoneId } = useDisplayTimezone();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [statusFilter, setStatusFilter] = useState(() => parseAuthStatusFilter(searchParams.get('status')));
@@ -192,14 +227,14 @@ export default function AuthAttemptsPage() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const debouncedEnrollmentId = useDebounce(enrollmentIdInput, 400);
-  const { list: integrations, lookup } = useIntegrations();
+  const { list: integrations } = useIntegrations();
 
   const apiDateParams =
     !presetRolling24h && dateRange.from && dateRange.to
       ? dateRangeToApiParams(dateRange.from, dateRange.to, effectiveTimeZoneId)
       : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
-  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuthAttemptDto, {
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<EnrichedAuthAttemptDto, {
     status?: string;
     enrollmentId?: number;
     integrationId?: number;
@@ -288,47 +323,124 @@ export default function AuthAttemptsPage() {
     });
   }, [data.length]);
 
-  const columns: ColumnDef<AuthAttemptDto>[] = [
-    { header: t('list.columns.id'), key: 'authAttemptId', className: 'w-14', sortKey: 'authAttemptId', render: (r) => <span className="font-mono text-xs">{r.authAttemptId}</span> },
-    { header: t('list.columns.status'), key: 'authAttemptStatus', sortKey: 'authAttemptStatus', render: (r) => <AuthAttemptStatusBadge status={r.authAttemptStatus} /> },
-    {
+  const columns: ColumnDef<EnrichedAuthAttemptDto>[] = useMemo(() => {
+    const enrollmentCol: ColumnDef<EnrichedAuthAttemptDto> = {
       header: t('list.columns.enrollment'),
       key: 'enrollmentId',
-      render: (r) => (
-        <button
-          type="button"
-          className="font-mono text-xs text-accent hover:underline"
-          onClick={(e) => { e.stopPropagation(); navigate(`/enrollments/${r.enrollmentId}`); }}
-        >
-          #{r.enrollmentId}
-        </button>
-      ),
-    },
-    {
-      header: t('list.columns.integration'),
-      key: 'integration',
+      sortKey: 'enrollmentId',
       render: (r) => {
-        const name = Array.from(lookup.entries()).find(() => false);
-        void name;
-        return <span className="text-xs text-fg-muted">via #{r.enrollmentId}</span>;
+        if (r.enrollmentId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          r.enrollmentName != null && r.enrollmentName.trim() !== ''
+            ? r.enrollmentName.trim()
+            : t('list.enrollmentFallback', { id: r.enrollmentId });
+        return (
+          <Link
+            to={`/enrollments/${r.enrollmentId}`}
+            className="text-xs font-medium text-accent hover:underline max-w-[12rem] truncate block"
+            title={label}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
+        );
       },
-    },
-    {
-      header: t('list.columns.challenge'),
-      key: 'authAttemptChallenge',
-      render: (r) =>
-        r.authAttemptChallenge != null ? (
-          <span className="font-mono font-bold">{String(r.authAttemptChallenge).padStart(2, '0')}</span>
-        ) : (
-          <span className="text-fg-muted">—</span>
-        ),
-    },
-    { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatRelativeTime(r.createdAt)}</span> },
-    { header: t('list.columns.expires'), key: 'expiresAt', sortKey: 'expiresAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.expiresAt)}</span> },
-  ];
+    };
 
-  // Suppress unused variable warning
-  void integrations;
+    const integrationCol: ColumnDef<EnrichedAuthAttemptDto> = {
+      header: t('list.columns.integration'),
+      key: 'integrationName',
+      render: (r) => {
+        if (r.integrationId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          r.integrationName != null && r.integrationName.trim() !== ''
+            ? r.integrationName.trim()
+            : t('list.integrationFallback', { id: r.integrationId });
+        return (
+          <Link
+            to={`/integrations/${r.integrationId}`}
+            className="text-xs font-medium text-accent hover:underline max-w-[12rem] truncate block"
+            title={label}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
+        );
+      },
+    };
+
+    const tenantCol: ColumnDef<EnrichedAuthAttemptDto> = {
+      header: t('list.columns.tenant'),
+      key: 'tenantName',
+      render: (r) => {
+        if (r.tenantId == null) {
+          return <span className="text-fg-muted">—</span>;
+        }
+        const label =
+          r.tenantName != null && r.tenantName.trim() !== ''
+            ? r.tenantName.trim()
+            : t('list.tenantFallback', { id: r.tenantId });
+        return (
+          <Link
+            to={`/tenants/${r.tenantId}`}
+            className="text-xs font-medium text-accent hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {label}
+          </Link>
+        );
+      },
+    };
+
+    return [
+      {
+        header: t('list.columns.id'),
+        key: 'authAttemptId',
+        className: 'w-14',
+        sortKey: 'authAttemptId',
+        render: (r) => <span className="font-mono text-xs">{r.authAttemptId}</span>,
+      },
+      {
+        header: t('list.columns.status'),
+        key: 'authAttemptStatus',
+        sortKey: 'authAttemptStatus',
+        render: (r) => <AuthAttemptStatusBadge status={r.authAttemptStatus} />,
+      },
+      enrollmentCol,
+      integrationCol,
+      ...(isGlobalAdmin ? [tenantCol] : []),
+      {
+        header: t('list.columns.challenge'),
+        key: 'authAttemptChallenge',
+        render: (r) =>
+          r.authAttemptChallenge != null ? (
+            <span className="font-mono font-bold">{String(r.authAttemptChallenge).padStart(2, '0')}</span>
+          ) : (
+            <span className="text-fg-muted">—</span>
+          ),
+      },
+      {
+        header: t('list.columns.created'),
+        key: 'createdAt',
+        sortKey: 'createdAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted whitespace-nowrap">{formatRelativeTime(r.createdAt)}</span>
+        ),
+      },
+      {
+        header: t('list.columns.expires'),
+        key: 'expiresAt',
+        sortKey: 'expiresAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted whitespace-nowrap">{formatDate(r.expiresAt)}</span>
+        ),
+      },
+    ];
+  }, [isGlobalAdmin, t]);
 
   return (
     <AppShell title={t('list.title')}>

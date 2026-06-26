@@ -113,7 +113,8 @@ class AuthAttemptControllerTest {
     Pageable pageable = PageRequest.of(0, 10);
 
     AuthAttempt authAttempt = new AuthAttempt();
-    authAttempt.setAuthAttemptId(1); // Use Integer
+    authAttempt.setAuthAttemptId(1);
+    authAttempt.setEnrollmentId(enrollmentId);
     List<AuthAttempt> attempts = List.of(authAttempt);
     Page<AuthAttempt> attemptPage = new PageImpl<>(attempts, pageable, 1);
 
@@ -129,6 +130,11 @@ class AuthAttemptControllerTest {
             now.plusMinutes(5), // expiresAt
             null,
             null,
+            null,
+            null,
+            null,
+            null,
+            null,
             null);
 
     when(authAttemptService.findByFilters(
@@ -140,7 +146,9 @@ class AuthAttemptControllerTest {
             any(), // tenantId (null for tests)
             any(Pageable.class)))
         .thenReturn(attemptPage);
-    when(authAttemptMapper.toDto(authAttempt)).thenReturn(dto);
+    when(enrollmentRepository.findAllById(any())).thenReturn(List.of());
+    lenient().when(integrationRepository.findAllByIdWithTenant(any())).thenReturn(List.of());
+    when(authAttemptMapper.toDtoWithLabels(eq(authAttempt), any(), any())).thenReturn(dto);
 
     // Act
     ResponseEntity<Page<AuthAttemptDto>> response =
@@ -171,19 +179,25 @@ class AuthAttemptControllerTest {
     Pageable pageable = PageRequest.of(0, 20);
 
     AuthAttempt authAttempt = new AuthAttempt();
+    authAttempt.setAuthAttemptId(1);
+    authAttempt.setEnrollmentId(100);
     List<AuthAttempt> attempts = List.of(authAttempt);
     Page<AuthAttempt> attemptPage = new PageImpl<>(attempts, pageable, 1);
 
-    // Create DTO using record constructor
     AuthAttemptDto dto =
         new AuthAttemptDto(
-            1, // authAttemptId
-            100, // enrollmentId
-            AuthAttemptStatus.PENDING, // status
-            123456, // challenge
-            "token", // proof token
-            OffsetDateTime.now(), // createdAt
-            OffsetDateTime.now().plusMinutes(5), // expiresAt
+            1,
+            100,
+            AuthAttemptStatus.PENDING,
+            123456,
+            "token",
+            OffsetDateTime.now(),
+            OffsetDateTime.now().plusMinutes(5),
+            null,
+            null,
+            null,
+            null,
+            null,
             null,
             null,
             null);
@@ -197,7 +211,9 @@ class AuthAttemptControllerTest {
             any(), // tenantId (null for tests)
             any(Pageable.class)))
         .thenReturn(attemptPage);
-    when(authAttemptMapper.toDto(authAttempt)).thenReturn(dto);
+    when(enrollmentRepository.findAllById(any())).thenReturn(List.of());
+    lenient().when(integrationRepository.findAllByIdWithTenant(any())).thenReturn(List.of());
+    when(authAttemptMapper.toDtoWithLabels(eq(authAttempt), any(), any())).thenReturn(dto);
 
     // Act
     ResponseEntity<Page<AuthAttemptDto>> response =
@@ -224,6 +240,8 @@ class AuthAttemptControllerTest {
     Pageable pageable = PageRequest.of(2, 50);
 
     AuthAttempt authAttempt = new AuthAttempt();
+    authAttempt.setAuthAttemptId(1);
+    authAttempt.setEnrollmentId(100);
     List<AuthAttempt> attempts = List.of(authAttempt);
     Page<AuthAttempt> attemptPage = new PageImpl<>(attempts, pageable, 1);
 
@@ -238,6 +256,11 @@ class AuthAttemptControllerTest {
             OffsetDateTime.now().plusMinutes(5), // expiresAt
             null,
             null,
+            null,
+            null,
+            null,
+            null,
+            null,
             null);
 
     when(authAttemptService.findByFilters(
@@ -249,7 +272,9 @@ class AuthAttemptControllerTest {
             any(), // tenantId (null for tests)
             any(Pageable.class)))
         .thenReturn(attemptPage);
-    when(authAttemptMapper.toDto(authAttempt)).thenReturn(dto);
+    when(enrollmentRepository.findAllById(any())).thenReturn(List.of());
+    lenient().when(integrationRepository.findAllByIdWithTenant(any())).thenReturn(List.of());
+    when(authAttemptMapper.toDtoWithLabels(eq(authAttempt), any(), any())).thenReturn(dto);
 
     // Act
     controller.search(null, null, null, null, null, pageable);
@@ -273,6 +298,8 @@ class AuthAttemptControllerTest {
     Pageable pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "authAttemptId"));
 
     AuthAttempt authAttempt = new AuthAttempt();
+    authAttempt.setAuthAttemptId(1);
+    authAttempt.setEnrollmentId(100);
     List<AuthAttempt> attempts = List.of(authAttempt);
     Page<AuthAttempt> attemptPage = new PageImpl<>(attempts, pageable, 1);
 
@@ -287,6 +314,11 @@ class AuthAttemptControllerTest {
             OffsetDateTime.now().plusMinutes(5), // expiresAt
             null,
             null,
+            null,
+            null,
+            null,
+            null,
+            null,
             null);
 
     when(authAttemptService.findByFilters(
@@ -298,7 +330,9 @@ class AuthAttemptControllerTest {
             any(), // tenantId (null for tests)
             any(Pageable.class)))
         .thenReturn(attemptPage);
-    when(authAttemptMapper.toDto(authAttempt)).thenReturn(dto);
+    when(enrollmentRepository.findAllById(any())).thenReturn(List.of());
+    lenient().when(integrationRepository.findAllByIdWithTenant(any())).thenReturn(List.of());
+    when(authAttemptMapper.toDtoWithLabels(eq(authAttempt), any(), any())).thenReturn(dto);
 
     // Act
     ResponseEntity<Page<AuthAttemptDto>> response =
