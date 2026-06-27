@@ -3,13 +3,14 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`
-- **Status:** `in_progress`
+- **Status:** `done`
 - **Related idea:** `I-2026-0028` (P2 audit logs row)
 - **Lane:** `A` / `B` (Tier B list enrichment)
 - **Posture:** `single-pass`
 - **GitHub issue:** #258
 - **Issue labels:** `lane:a`, `type:feat`, `component:admin-api`, `component:admin-ui`, `priority:p2`, `status:ready`
 - **GitHub branch:** `feat/admin-ui-audit-logs-tier-b`
+- **GitHub PR:** #259 (merged)
 - **Created at:** `2026-06-23`
 - **Captured by:** Marc
 
@@ -92,7 +93,14 @@ Max four extra queries per page; no per-row fetches.
 
 ## Exit criteria
 
-- List actor column shows admin username without expand-in-place fetch
-- Detail modal shows integration/enrollment names when IDs present
-- Maven admin-api tests + `npm run build` pass
-- `I-2026-0028` audit logs row marked done on merge
+- [x] List actor column shows admin username without expand-in-place fetch
+- [x] Detail modal shows integration/enrollment names when IDs present
+- [x] Maven admin-api tests + `npm run build` pass
+- [x] `I-2026-0028` audit logs row marked done on merge (PR #259)
+- [x] Matrix audit logs row → `implemented`
+- [x] P4 re-eval gate passed — next: [`TB-2026-06-23-admin-ui-retire-related-details.md`](TB-2026-06-23-admin-ui-retire-related-details.md)
+
+## Closeout
+
+Merged **2026-06-23** via PR #259. Method log:
+[`ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md`](method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md).

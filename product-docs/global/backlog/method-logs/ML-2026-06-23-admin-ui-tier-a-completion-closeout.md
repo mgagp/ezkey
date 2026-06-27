@@ -28,6 +28,6 @@ Extracted `EnrollmentListLifecycleDialog` shared component to avoid duplicating 
 
 ## Residual
 
-- P2 audit logs slice in `I-2026-0028` unchanged
-- P4 Related details retirement still blocked on audit logs + criteria in idea doc
+- P2 audit logs — **closed** (PR #259); see [`ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md`](ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md)
+- **P4 next:** [`TB-2026-06-23-admin-ui-retire-related-details.md`](../TB-2026-06-23-admin-ui-retire-related-details.md)
 - Auth attempts list **Created** column uses absolute `formatDate` (aligned with Expires and Tier A lists); relative-only timestamps remain on some detail/dashboard surfaces (e.g. last login) as secondary hints — not part of this PR

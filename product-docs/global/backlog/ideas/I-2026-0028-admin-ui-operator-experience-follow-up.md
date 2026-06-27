@@ -6,8 +6,8 @@
 - **Status:** `ready`
 - **Priority:** `P2`
 - **Created at:** `2026-06-20`
-- **Updated at:** `2026-06-26`
-- **Last reviewed at:** `2026-06-26`
+- **Updated at:** `2026-06-23`
+- **Last reviewed at:** `2026-06-23`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-ui`, `admin-api`
 - **Lane:** `A` / `B` (mixed — see priority table)
@@ -31,6 +31,9 @@ Expected anchor documents (read in order):
 
 Delivered program (closed): GitHub **#236**, branch `feat/admin-ui-operator-lists-tier-a`, TBs
 `TB-2026-06-18-*` (integrations, enrollments, API keys) + `TB-2026-06-20-admin-ui-enrollments-list-quick-actions`.
+
+**P2 follow-up (closed):** auth attempts #257 / PR #253; audit logs #258 / PR #259; admin ID column +
+navigation fixes in PR #259.
 
 ## Intent
 
@@ -58,12 +61,12 @@ or incident patterns change.
 |------|------|------|------|--------|------|-----------|
 | **P1** | **Integration detail → enrollments** list alignment | A | UI (+ reuse list patterns) | Small | Low | **Done** — TB `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants`, #252 |
 | **P1** | **Tenants** list — analysis + polish | A | Analysis → small UI | Small | Low | **Done** — same TB; country trimmed from list |
-| **P2** | **Auth attempts** — integration + tenant labels | B | API (core DTO) + UI | Medium | Medium | **Done** — TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`, #257 |
-| **P2** | **Audit logs** — selective name joins | B | API + UI | Large | High | **In progress** — TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258 |
+| **P2** | **Auth attempts** — integration + tenant labels | B | API (core DTO) + UI | Medium | Medium | **Done** — TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`, #257, PR #253 |
+| **P2** | **Audit logs** — selective name joins | B | API + UI | Large | High | **Done** — TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258, PR #259 |
 | **P3** | **Encryption keys** + **re-encryption batches** | A | Analysis | Small–medium | Low | Operator surface exists; matrix rows `draft`. Crypto-ops domain, not FK-label pattern. |
 | **P3** | **Alerts** list | A | Analysis | Small | Low | List already usable; resolve/snooze stays detail per quick-actions canon. |
-| **P3** | **Tenant detail → admins** embedded list | A | UI consistency | Small | Low | Low ROI vs main `/admins`; align only if touching tenant detail anyway. |
-| **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **Re-evaluate after audit logs #258 merge** — criteria 1–2 done; criterion 3 = this slice; then grep call sites and promote P4 TB |
+| **P3** | **Tenant detail → admins** embedded list | A | UI consistency | Small | Low | **Done** — ID column + `adminListDetailHref` (PR #259) |
+| **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **Ready** — criteria 1–3 done; TB [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md) |
 
 ### Explicit non-goals (keep out of this queue)
 
@@ -87,17 +90,15 @@ Operator daily path should be **scannable labels in the list**, not expand-in-pl
 
 1. Matrix Tier A bounded lists used daily are `implemented` with labels (including Tenants review). — **Done**
 2. Auth attempts Tier B slice shipped OR honest stub column removed. — **Done** (#257 / PR #253)
-3. Audit logs: at least filter context + detail paths show names where IDs appear today. — **This slice** (`TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258); re-evaluate « More details » **immediately after merge + validation**
-4. Help copy (`help.json` `fkRelatedDetails`) and any tooltip strings removed or rewritten.
-5. Playwright spot-check on one detail page per former call site.
+3. Audit logs: at least filter context + detail paths show names where IDs appear today. — **Done** (#258 / PR #259)
+4. Help copy (`help.json` `fkRelatedDetails`) and any tooltip strings removed or rewritten. — **P4 TB**
+5. Playwright spot-check on one detail page per former call site. — **P4 TB** (pragmatic manual smoke acceptable)
 
-**Null-label fallback:** When enrichment returns null but an FK ID is present, show `#id` and offer
-« More details » only on audit detail when any label is still missing (deleted / unreachable entity).
-See audit logs TB § *Null enrichment fallback*. Full button removal remains **P4** after criterion 3
-is validated and remaining call sites are grep-reviewed.
+**Null-label fallback (post-P4):** When enrichment returns null but an FK ID is present, show `#id` only —
+no on-demand expand. Audit logs previously used conditional « More details »; P4 removes it.
 
-**Call sites (2026-06-26):** `integration-detail.tsx`, `admins.tsx` (detail panel), `api-key-detail.tsx`,
-`enrollment-detail.tsx`, `audit-logs.tsx`. Grep `RelatedDetailsButton` before P4 TB.
+**Call sites (remove in P4):** `integration-detail.tsx`, `admins.tsx`, `api-key-detail.tsx`,
+`enrollment-detail.tsx`, `audit-logs.tsx`, `auth-attempts.tsx`. Grep before merge.
 
 ## Scope
 
@@ -113,15 +114,20 @@ When starting a row:
 2. Update matrix row status.
 3. Optional GitHub issue for PR visibility only.
 
-Suggested **first TB candidates:** integration-detail enrollments alignment; Tenants analysis slice.
+Suggested **next TB:** [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md) (P4).
 
 ## Links
 
 - Closed program: GitHub #236
+- P2 closed: #257 (auth attempts), #258 / PR #259 (audit logs)
 - Matrix: [`../../admin-ui-paginated-screens-matrix.md`](../../admin-ui-paginated-screens-matrix.md)
 - Quick actions: [`../../admin-ui-list-quick-security-actions.md`](../../admin-ui-list-quick-security-actions.md)
 - Parent: [`I-2026-0013`](I-2026-0013-paginated-screens-functional-review.md),
   [`I-2026-0014`](I-2026-0014-paginated-screens-display-strategy.md)
 - Delivered TBs: `TB-2026-06-18-admin-ui-lists-tier-a-{integrations,enrollments,api-keys}.md`,
-  `TB-2026-06-20-admin-ui-enrollments-list-quick-actions.md`
-- Historical plan: `.cursor/plans/archived/2026-04/fk_more_details_ux_04799c66.plan.md`
+  `TB-2026-06-20-admin-ui-enrollments-list-quick-actions.md`,
+  `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants.md`,
+  `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels.md`,
+  `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels.md`
+- Next: `TB-2026-06-23-admin-ui-retire-related-details.md`
+- Closeout: [`method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md`](../method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md)

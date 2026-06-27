@@ -8,6 +8,7 @@
 - **Lane:** `A` / `B` (Tier B list enrichment)
 - **Posture:** `single-pass`
 - **GitHub issue:** #257
+- **GitHub PR:** #253 (merged)
 - **GitHub branch:** `feat/admin-ui-tier-a-completion`
 - **Created at:** `2026-06-23`
 - **Captured by:** Marc
