@@ -1,13 +1,12 @@
 import { useEffect, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleHelp, X } from 'lucide-react';
-import type { HelpPatternId, HelpTopicId } from '@/lib/help-topics';
+import type { HelpTopicId } from '@/lib/help-topics';
 
 interface HelpDrawerProps {
   open: boolean;
   onClose: () => void;
   topicId: HelpTopicId;
-  patternId: HelpPatternId | null;
   isGlobalAdmin: boolean;
   showDemoExtra: boolean;
 }
@@ -19,7 +18,6 @@ export function HelpDrawer({
   open,
   onClose,
   topicId,
-  patternId,
   isGlobalAdmin,
   showDemoExtra,
 }: HelpDrawerProps) {
@@ -46,8 +44,8 @@ export function HelpDrawer({
 
   if (!open) return null;
 
-  const base = patternId ? `patterns.${patternId}` : `topics.${topicId}`;
-  const demoExtraText = patternId ? '' : t(`${base}.demoExtra`, { defaultValue: '' });
+  const base = `topics.${topicId}`;
+  const demoExtraText = t(`${base}.demoExtra`, { defaultValue: '' });
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -105,35 +103,35 @@ export function HelpDrawer({
           </p>
           <div className="whitespace-pre-wrap">{t(`${base}.body`)}</div>
 
-          {!patternId && topicId === 'dashboard' && (
+          {topicId === 'dashboard' && (
             <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg-muted">
               {t('topics.dashboard.authHealth')}
             </p>
           )}
 
-          {!patternId && topicId === 'dashboard' && isGlobalAdmin && (
+          {topicId === 'dashboard' && isGlobalAdmin && (
             <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
               {t('topics.dashboard.globalContext')}
             </p>
           )}
-          {!patternId && topicId === 'dashboard' && !isGlobalAdmin && (
+          {topicId === 'dashboard' && !isGlobalAdmin && (
             <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
               {t('topics.dashboard.tenantContext')}
             </p>
           )}
 
-          {!patternId && topicId === 'encryption-keys' && isGlobalAdmin && (
+          {topicId === 'encryption-keys' && isGlobalAdmin && (
             <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
               {t('topics.encryption-keys.globalOps')}
             </p>
           )}
-          {!patternId && topicId === 'encryption-keys' && (
+          {topicId === 'encryption-keys' && (
             <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg-muted text-xs leading-relaxed">
               {t('topics.encryption-keys.developerContext')}
             </p>
           )}
 
-          {!patternId && topicId === 'audit-logs' && (
+          {topicId === 'audit-logs' && (
             <>
               <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
                 {t('topics.audit-logs.eventTypeVsStatus')}

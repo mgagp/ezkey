@@ -66,7 +66,7 @@ or incident patterns change.
 | **P3** | **Encryption keys** + **re-encryption batches** | A | Analysis | Small–medium | Low | Operator surface exists; matrix rows `draft`. Crypto-ops domain, not FK-label pattern. |
 | **P3** | **Alerts** list | A | Analysis | Small | Low | List already usable; resolve/snooze stays detail per quick-actions canon. |
 | **P3** | **Tenant detail → admins** embedded list | A | UI consistency | Small | Low | **Done** — ID column + `adminListDetailHref` (PR #259) |
-| **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **Ready** — criteria 1–3 done; TB [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md) |
+| **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **Done** — TB [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md) |
 
 ### Explicit non-goals (keep out of this queue)
 
@@ -74,31 +74,17 @@ or incident patterns change.
 - Tenant **deactivate** in list (detail-only — blast radius)
 - Integration **retire** in list
 
-## Related details retirement (interim → remove)
+## Related details retirement (shipped P4)
 
-**Current mechanism:** `RelatedDetailsButton` + `useExpandableRelatedDetails` on several detail
-pages; on-demand API fetch + TanStack Query cache reuse; EN **More details**, FR **Plus de détails**.
+**Removed (2026-06-23):** `RelatedDetailsButton`, `useExpandableRelatedDetails`, and related help/i18n.
+Detail surfaces now rely on **server-side labels** from list/detail DTOs; when enrichment is null but
+an FK ID is present, the UI shows **`#id`** only (no on-demand expand).
 
-**Why it existed:** Paginated lists and detail panels showed FK IDs; operators needed a second click
-to resolve names/links (`I-2026-0014` Tier A/B grill).
+**Retirement criteria:** all five items satisfied — see TB
+[`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md).
 
-**Why it should go away:** As list APIs and detail headers expose **integrationName**, **tenantName**,
-and links (Tier A program + follow-ups), the button adds cognitive load and duplicate fetching.
-Operator daily path should be **scannable labels in the list**, not expand-in-place on detail.
-
-**Retirement criteria (all should be true before removal):**
-
-1. Matrix Tier A bounded lists used daily are `implemented` with labels (including Tenants review). — **Done**
-2. Auth attempts Tier B slice shipped OR honest stub column removed. — **Done** (#257 / PR #253)
-3. Audit logs: at least filter context + detail paths show names where IDs appear today. — **Done** (#258 / PR #259)
-4. Help copy (`help.json` `fkRelatedDetails`) and any tooltip strings removed or rewritten. — **P4 TB**
-5. Playwright spot-check on one detail page per former call site. — **P4 TB** (pragmatic manual smoke acceptable)
-
-**Null-label fallback (post-P4):** When enrichment returns null but an FK ID is present, show `#id` only —
-no on-demand expand. Audit logs previously used conditional « More details »; P4 removes it.
-
-**Call sites (remove in P4):** `integration-detail.tsx`, `admins.tsx`, `api-key-detail.tsx`,
-`enrollment-detail.tsx`, `audit-logs.tsx`, `auth-attempts.tsx`. Grep before merge.
+**Former call sites (now inline labels/links):** `integration-detail.tsx`, `admins.tsx`,
+`api-key-detail.tsx`, `enrollment-detail.tsx`, `audit-logs.tsx`, `auth-attempts.tsx`.
 
 ## Scope
 
@@ -114,7 +100,7 @@ When starting a row:
 2. Update matrix row status.
 3. Optional GitHub issue for PR visibility only.
 
-Suggested **next TB:** [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md) (P4).
+Suggested **next TB:** P3 matrix rows (encryption keys, alerts, audit chain checkpoints) when operator chooses.
 
 ## Links
 
@@ -129,5 +115,6 @@ Suggested **next TB:** [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2
   `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants.md`,
   `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels.md`,
   `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels.md`
-- Next: `TB-2026-06-23-admin-ui-retire-related-details.md`
+- Next: P3 matrix rows (encryption keys, alerts) — see priority table
+- P4 closeout: [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md)
 - Closeout: [`method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md`](../method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md)

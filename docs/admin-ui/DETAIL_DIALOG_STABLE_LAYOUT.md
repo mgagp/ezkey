@@ -38,7 +38,7 @@
 | Admins | Modal | **No** | Per operator review. |
 | **Encryption keys** (key detail) | Modal | **Yes (candidate)** | **Notes** row is conditional (`keyData.notes`); when absent the dialog is shorter than when notes exist. Reserve space or always show the row to stabilize height. |
 | Re-encryption batches | Modal | **No** | Per operator review. |
-| **Audit logs** | Modal | **All attributes shown** | Same `lg` single-column layout; **every scalar field always listed** with `—` when empty. Reason / Details / Error use bordered blocks (`border border-fg/10`) with placeholder `—`. Related-entity rows after “More details” remain conditional. Prev/next unchanged. |
+| **Audit logs** | Modal | **All attributes shown** | Same `lg` single-column layout; **every scalar field always listed** with `—` when empty. Reason / Details / Error use bordered blocks (`border border-fg/10`) with placeholder `—`. Related entities use server-side labels with `#id` fallback when enrichment is null. Prev/next unchanged. |
 
 ---
 

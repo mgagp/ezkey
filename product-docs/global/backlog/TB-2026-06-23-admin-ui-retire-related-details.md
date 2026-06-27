@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-23-admin-ui-retire-related-details`
-- **Status:** `ready`
+- **Status:** `done`
 - **Related idea:** `I-2026-0028` (P4 row)
 - **Lane:** `A` / `B` (UI removal + doc hygiene)
 - **Posture:** `single-pass`
-- **GitHub issue:** _(optional — open when branch starts)_
+- **GitHub issue:** #260
 - **Created at:** `2026-06-23`
 - **Captured by:** Marc (post–audit logs Tier B closeout)
 
@@ -68,4 +68,4 @@ references; accept `#id` when enrichment is null (deleted entity) without on-dem
 
 - Parent: [`I-2026-0028`](ideas/I-2026-0028-admin-ui-operator-experience-follow-up.md)
 - Prior slice: [`TB-2026-06-23-admin-ui-audit-logs-tier-b-labels.md`](TB-2026-06-23-admin-ui-audit-logs-tier-b-labels.md)
-- Closeout: [`method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md`](method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md)
+- Closeout: [`method-logs/ML-2026-06-23-admin-ui-retire-related-details-closeout.md`](method-logs/ML-2026-06-23-admin-ui-retire-related-details-closeout.md)

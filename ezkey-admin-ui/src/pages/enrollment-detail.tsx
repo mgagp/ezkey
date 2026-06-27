@@ -8,7 +8,6 @@ import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
-import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -23,9 +22,8 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { useToast } from '@/context/use-toast';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
-import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
-import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
+import { useIntegrations } from '@/hooks/use-integrations';
 import { ApiError, fetchBlobUrl } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
@@ -481,11 +479,6 @@ export default function EnrollmentDetailPage() {
     { query: { enabled: !isNaN(enrollmentId) } },
   );
 
-  const relatedDetails = useExpandableRelatedDetails({
-    integrationId: enrollment?.integrationId ?? undefined,
-    adminId: enrollment?.createdByAdminId ?? undefined,
-  });
-
   const deleteMutation = useDelete({
     mutation: {
       onSuccess: () => {
@@ -748,13 +741,6 @@ export default function EnrollmentDetailPage() {
                       {t('detail.editMetadata')}
                     </Button>
                   )}
-                  {relatedDetails.hasAnyFk && (
-                    <RelatedDetailsButton
-                      onClick={relatedDetails.expand}
-                      isExpanded={relatedDetails.isExpanded}
-                      isLoading={relatedDetails.isLoading}
-                    />
-                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -770,11 +756,9 @@ export default function EnrollmentDetailPage() {
                   <InfoRow label={t('detail.infoIntegration')}>
                     {(() => {
                       const displayName =
-                        relatedDetails.isExpanded && relatedDetails.integration
-                          ? `${getIntegrationName(relatedDetails.integration)} (ID ${relatedDetails.integration.id})`
-                          : enrollment.integrationName ??
-                              lookup.get(enrollment.integrationId ?? 0) ??
-                              `#${enrollment.integrationId ?? '?'}`;
+                        enrollment.integrationName ??
+                        lookup.get(enrollment.integrationId ?? 0) ??
+                        `#${enrollment.integrationId ?? '?'}`;
                       return enrollment.isSystemIntegration ? (
                         <span className="font-medium">{displayName}</span>
                       ) : (
@@ -788,6 +772,21 @@ export default function EnrollmentDetailPage() {
                       );
                     })()}
                   </InfoRow>
+                  {enrollment.tenantId != null && (
+                    <InfoRow label={t('list.columns.tenant')}>
+                      {enrollment.tenantName != null && enrollment.tenantName.trim() !== '' ? (
+                        <Link
+                          to={`/tenants/${enrollment.tenantId}`}
+                          className="font-medium text-accent hover:underline"
+                        >
+                          {enrollment.tenantName.trim()}
+                          <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {enrollment.tenantId})</span>
+                        </Link>
+                      ) : (
+                        <span className="font-mono">#{enrollment.tenantId}</span>
+                      )}
+                    </InfoRow>
+                  )}
                   <InfoRow label={t('detail.infoChallenge')}>
                     <Badge variant={enrollment.authAttemptChallengeRequired ? 'warning' : 'muted'}>
                       {enrollment.authAttemptChallengeRequired ? t('detail.challengeRequired') : t('detail.challengeNotRequired')}
@@ -807,17 +806,12 @@ export default function EnrollmentDetailPage() {
                   </InfoRow>
                   {enrollment.createdByAdminId != null && (
                     <InfoRow label={t('detail.infoCreatedByAdmin')}>
-                      {relatedDetails.isExpanded && relatedDetails.admin ? (
-                        <Link
-                          to={adminListDetailHref(enrollment.createdByAdminId)}
-                          className="font-medium text-accent hover:underline"
-                        >
-                          {relatedDetails.admin.username ?? relatedDetails.admin.adminId} (ID{' '}
-                          {relatedDetails.admin.adminId})
-                        </Link>
-                      ) : (
-                        <span className="font-mono text-fg-muted">{enrollment.createdByAdminId}</span>
-                      )}
+                      <Link
+                        to={adminListDetailHref(enrollment.createdByAdminId)}
+                        className="font-medium text-accent hover:underline"
+                      >
+                        #{enrollment.createdByAdminId}
+                      </Link>
                     </InfoRow>
                   )}
                   <InfoRow label={t('detail.infoVersion')}>

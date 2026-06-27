@@ -8,13 +8,6 @@
   "demo": {
     "sectionTitle": "Mode démo"
   },
-  "patterns": {
-    "fkRelatedDetails": {
-      "title": "Détails liés",
-      "summary": "Cette action enrichit le panneau courant avec des noms et des liens pour les enregistrements référencés par des identifiants de clé étrangère.",
-      "body": "Utilisez « Plus de détails » lorsqu’un panneau n’affiche que des identifiants ou des libellés partiels pour des enregistrements liés comme un tenant, une intégration, un enrôlement ou un administrateur.\n\nLors de la première utilisation pour le panneau courant, l’interface active des appels API à la demande pour les enregistrements liés présents, puis insère des lignes ou des liens plus riches directement dans l’affichage.\n\nSi le même enregistrement lié a déjà été chargé ailleurs dans l’Admin UI, TanStack Query peut réutiliser le cache client partagé. Dans ce cas, l’enrichissement peut apparaître immédiatement, avec peu ou pas d’état de chargement visible.\n\n« Détails liés affichés » signifie que le panneau utilise déjà les données enrichies disponibles pour ce pattern. Cela ne veut pas dire qu’une couche supplémentaire de détails reste cachée derrière un second clic."
-    }
-  },
   "topics": {
     "default": {
       "title": "Aide",

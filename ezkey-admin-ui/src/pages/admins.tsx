@@ -9,7 +9,6 @@ import { z } from 'zod';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
-import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
@@ -27,7 +26,6 @@ import { useAuth } from '@/context/use-auth';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { useToast } from '@/context/use-toast';
 import { useDetailNavigation } from '@/hooks/use-detail-navigation';
-import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { fetchApi, fetchBlobUrl } from '@/lib/api-client';
@@ -456,11 +454,6 @@ function AdminDetailDialog({
 
   const adm = (detail ?? admin) as RecoveryAwareAdmin | null;
 
-  const relatedDetails = useExpandableRelatedDetails({
-    tenantId: adm?.tenantId ?? undefined,
-    enrollmentId: adm?.enrollmentId ?? undefined,
-  });
-
   const [activateReason, setActivateReason] = useState('');
 
   const activateMutation = useMutation({
@@ -661,15 +654,6 @@ function AdminDetailDialog({
             {tc('detailNav.endOfPageMore')}
           </p>
         )}
-        {relatedDetails.hasAnyFk && (
-          <div className="flex justify-end">
-            <RelatedDetailsButton
-              onClick={relatedDetails.expand}
-              isExpanded={relatedDetails.isExpanded}
-              isLoading={relatedDetails.isLoading}
-            />
-          </div>
-        )}
         {/* Info section */}
         <dl className="space-y-2.5">
           <DetailInfoRow label={t('detail.labelAdminId')} valueClassName="break-all"><span className="font-mono">{adm.adminId}</span></DetailInfoRow>
@@ -692,27 +676,11 @@ function AdminDetailDialog({
           )}
           {adm.enrollmentId != null && (
             <DetailInfoRow label={t('detail.labelEnrollmentId')} valueClassName="break-all">
-              <span className="font-mono">{adm.enrollmentId}</span>
-            </DetailInfoRow>
-          )}
-          {relatedDetails.isExpanded && relatedDetails.tenant && (
-            <DetailInfoRow label={t('common:detail.relatedTenant')} valueClassName="break-all">
-              <Link
-                to={`/tenants/${relatedDetails.tenant.tenantId}`}
-                className="font-medium text-accent hover:underline"
-              >
-                {relatedDetails.tenant.tenantName ?? relatedDetails.tenant.tenantId} (ID {relatedDetails.tenant.tenantId})
-              </Link>
-            </DetailInfoRow>
-          )}
-          {relatedDetails.isExpanded && relatedDetails.enrollment && adm.enrollmentId != null && (
-            <DetailInfoRow label={t('common:detail.relatedEnrollment')} valueClassName="break-all">
               <Link
                 to={`/enrollments/${adm.enrollmentId}`}
                 className="font-medium text-accent hover:underline"
               >
-                {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId}{' '}
-                (ID {relatedDetails.enrollment.enrollmentId})
+                #{adm.enrollmentId}
               </Link>
             </DetailInfoRow>
           )}

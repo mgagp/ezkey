@@ -7,7 +7,6 @@ import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
-import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -21,9 +20,8 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { ContextHelp } from '@/components/ui/context-help';
 import { useToast } from '@/context/use-toast';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
-import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
-import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
+import { useIntegrations } from '@/hooks/use-integrations';
 import { ApiError } from '@/lib/api-client';
 import { parseAndValidateIpWhitelist } from '@/lib/ip-whitelist-validation';
 import { formatDate } from '@/lib/utils';
@@ -221,10 +219,12 @@ export default function ApiKeyDetailPage() {
   const isActive = apiKey?.active && !apiKey?.revokedAt;
   const isExpired = apiKey?.expiresAt ? new Date(apiKey.expiresAt) < new Date() : false;
   const integrationName = apiKey?.integrationId ? lookup.get(apiKey.integrationId) : undefined;
-
-  const relatedDetails = useExpandableRelatedDetails({
-    integrationId: apiKey?.integrationId ?? undefined,
-  });
+  const integrationLabel =
+    apiKey?.integrationName != null && apiKey.integrationName.trim() !== ''
+      ? apiKey.integrationName.trim()
+      : apiKey?.integrationId
+        ? integrationName ?? `#${apiKey.integrationId}`
+        : undefined;
 
   return (
     <AppShell
@@ -256,15 +256,8 @@ export default function ApiKeyDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* ── Details card ──────────────────────────────── */}
             <Card className="lg:col-span-2">
-              <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <CardHeader>
                 <CardTitle>{t('detail.cardDetails')}</CardTitle>
-                {relatedDetails.hasAnyFk && (
-                  <RelatedDetailsButton
-                    onClick={relatedDetails.expand}
-                    isExpanded={relatedDetails.isExpanded}
-                    isLoading={relatedDetails.isLoading}
-                  />
-                )}
               </CardHeader>
               <CardContent>
                 <dl className="space-y-3">
@@ -278,9 +271,7 @@ export default function ApiKeyDetailPage() {
                         to={`/integrations/${apiKey.integrationId}`}
                         className="font-medium text-accent hover:underline"
                       >
-                        {relatedDetails.isExpanded && relatedDetails.integration
-                          ? `${getIntegrationName(relatedDetails.integration)} (ID ${relatedDetails.integration.id})`
-                          : integrationName ?? `#${apiKey.integrationId}`}
+                        {integrationLabel}
                       </Link>
                     ) : (
                       <span className="text-fg-muted">—</span>

@@ -12,7 +12,6 @@ import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { EnrollmentListLifecycleDialog, type EnrollmentLifecycleAction } from '@/components/feature/enrollment-list-lifecycle-dialog';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
-import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,7 +19,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/use-toast';
-import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getIntegrationName } from '@/hooks/use-integrations';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
@@ -324,10 +322,6 @@ export default function IntegrationDetailPage() {
   const isSystemIntegration = (integration as { isSystemIntegration?: boolean } | undefined)?.isSystemIntegration === true;
   const isRetired = integration?.lifecycleStatus === 'RETIRED';
 
-  const relatedDetails = useExpandableRelatedDetails({
-    tenantId: integration?.tenantId ?? undefined,
-  });
-
   return (
     <AppShell
       title={isLoading ? t('detail.fallbackTitle') : name}
@@ -356,31 +350,26 @@ export default function IntegrationDetailPage() {
         {integration && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className="lg:col-span-2">
-              <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <CardHeader>
                 <CardTitle>{t('detail.integrationDetails')}</CardTitle>
-                {relatedDetails.hasAnyFk && (
-                  <RelatedDetailsButton
-                    onClick={relatedDetails.expand}
-                    isExpanded={relatedDetails.isExpanded}
-                    isLoading={relatedDetails.isLoading}
-                  />
-                )}
               </CardHeader>
               <CardContent>
                 <dl className="space-y-3">
                   <InfoRow label={t('detail.infoId')}><span className="font-mono">{integration.id}</span></InfoRow>
                   <InfoRow label={t('detail.infoCode')}><span className="font-mono">{integration.code}</span></InfoRow>
                   {integration.tenantId != null && (
-                    <InfoRow label={t('detail.infoTenantId')}><span className="font-mono">{integration.tenantId}</span></InfoRow>
-                  )}
-                  {relatedDetails.isExpanded && relatedDetails.tenant && (
-                    <InfoRow label={t('common:detail.relatedTenant')}>
-                      <Link
-                        to={`/tenants/${relatedDetails.tenant.tenantId}`}
-                        className="font-medium text-accent hover:underline"
-                      >
-                        {relatedDetails.tenant.tenantName ?? relatedDetails.tenant.tenantId} (ID {relatedDetails.tenant.tenantId})
-                      </Link>
+                    <InfoRow label={t('detail.infoTenantId')}>
+                      {integration.tenantName != null && integration.tenantName.trim() !== '' ? (
+                        <Link
+                          to={`/tenants/${integration.tenantId}`}
+                          className="font-medium text-accent hover:underline"
+                        >
+                          {integration.tenantName.trim()}
+                          <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {integration.tenantId})</span>
+                        </Link>
+                      ) : (
+                        <span className="font-mono">#{integration.tenantId}</span>
+                      )}
                     </InfoRow>
                   )}
                   <InfoRow label={t('detail.infoName')}>

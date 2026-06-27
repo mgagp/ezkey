@@ -10,7 +10,7 @@ import { useAuth } from '@/context/use-auth';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { HelpDrawer } from '@/components/help/help-drawer';
 import { isDemoMode } from '@/lib/demo-mode';
-import { type HelpPatternId, type HelpTopicId, resolveHelpTopicId } from '@/lib/help-topics';
+import { type HelpTopicId, resolveHelpTopicId } from '@/lib/help-topics';
 import { HelpContext } from '@/context/help-context-value';
 import type { OpenHelpOptions } from '@/context/help-context-value';
 
@@ -27,18 +27,15 @@ export function HelpProvider({ children }: { children: ReactNode }) {
   const [override, setOverride] = useState<{
     pathname: string;
     topicId: HelpTopicId | null;
-    patternId: HelpPatternId | null;
   } | null>(null);
   const routeTopicId = useMemo(() => resolveHelpTopicId(location.pathname), [location.pathname]);
   const activeOverride = override?.pathname === location.pathname ? override : null;
   const topicId = activeOverride?.topicId ?? routeTopicId;
-  const patternId = activeOverride?.patternId ?? null;
 
   const openHelp = useCallback((options?: OpenHelpOptions) => {
     setOverride({
       pathname: location.pathname,
       topicId: options?.topicId ?? null,
-      patternId: options?.patternId ?? null,
     });
     setOpen(true);
   }, [location.pathname]);
@@ -64,18 +61,17 @@ export function HelpProvider({ children }: { children: ReactNode }) {
     () => ({
       open,
       topicId,
-      patternId,
       openHelp,
       closeHelp,
       toggleHelp,
     }),
-    [open, topicId, patternId, openHelp, closeHelp, toggleHelp],
+    [open, topicId, openHelp, closeHelp, toggleHelp],
   );
 
   return (
     <HelpContext.Provider value={value}>
       {children}
-      <HelpDrawerShell open={open} onClose={closeHelp} topicId={topicId} patternId={patternId} />
+      <HelpDrawerShell open={open} onClose={closeHelp} topicId={topicId} />
     </HelpContext.Provider>
   );
 }
@@ -84,12 +80,10 @@ function HelpDrawerShell({
   open,
   onClose,
   topicId,
-  patternId,
 }: {
   open: boolean;
   onClose: () => void;
   topicId: HelpTopicId;
-  patternId: HelpPatternId | null;
 }) {
   const { session } = useAuth();
   const { sessionDemoOn } = useDemoModeSession();
@@ -101,10 +95,8 @@ function HelpDrawerShell({
       open={open}
       onClose={onClose}
       topicId={topicId}
-      patternId={patternId}
       isGlobalAdmin={isGlobalAdmin}
       showDemoExtra={showDemoExtra}
     />
   );
 }
-

@@ -9,7 +9,6 @@ import { Pagination } from '@/components/data-table/pagination';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { ContextHelp } from '@/components/ui/context-help';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -21,9 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { useDetailNavigation } from '@/hooks/use-detail-navigation';
-import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
-import { getIntegrationName } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
@@ -70,26 +67,6 @@ type AuditLogQueryParams = GetAuditLogsParams & {
 type AuditEventStatusFilter = NonNullable<GetAuditLogsParams['eventStatus']> | '';
 type AuditApiNameFilter = NonNullable<GetAuditLogsParams['apiName']> | '';
 type ContextEntityType = 'enrollment' | 'authAttempt' | 'integration' | '';
-
-/**
- * True when the audit row still has FK IDs without server-side display labels — the operator may
- * need the interim « More details » expand to attempt a live entity fetch (e.g. deleted entity).
- */
-function auditLogNeedsMoreDetailsFallback(log: AuditLogResponseDto): boolean {
-  if (log.adminId != null && !log.adminUsername) {
-    return true;
-  }
-  if (log.integrationId != null && !log.integrationName) {
-    return true;
-  }
-  if (log.enrollmentId != null && !log.enrollmentName) {
-    return true;
-  }
-  if (log.tenantId != null && !log.tenantName) {
-    return true;
-  }
-  return false;
-}
 
 /** Operational heartbeat incident row (Admin API lifecycle). */
 type AuditChainIncidentRow = {
@@ -256,13 +233,6 @@ function AuditLogDetailDialog({
     onNext,
   });
 
-  const relatedDetails = useExpandableRelatedDetails({
-    adminId: log?.adminId ?? undefined,
-    integrationId: log?.integrationId ?? undefined,
-    enrollmentId: log?.enrollmentId ?? undefined,
-    tenantId: log?.tenantId ?? undefined,
-  });
-
   if (!log) return null;
 
   return (
@@ -288,15 +258,6 @@ function AuditLogDetailDialog({
             {tc('detailNav.endOfPageMore')}
           </p>
         )}
-        <div className="flex justify-end items-start gap-2 min-h-[2.25rem]">
-          {auditLogNeedsMoreDetailsFallback(log) && (
-            <RelatedDetailsButton
-              onClick={relatedDetails.expand}
-              isExpanded={relatedDetails.isExpanded}
-              isLoading={relatedDetails.isLoading}
-            />
-          )}
-        </div>
         <dl className="space-y-2.5">
           <DetailInfoRow label={t('detail.labelId')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all"><span className="font-mono">{log.auditLogId}</span></DetailInfoRow>
           <DetailInfoRow label={t('detail.labelEventType')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
@@ -339,13 +300,6 @@ function AuditLogDetailDialog({
               )}
             </DetailInfoRow>
           )}
-          {relatedDetails.isExpanded && relatedDetails.admin && !log.adminUsername && (
-            <DetailInfoRow label={t('common:detail.relatedAdmin')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
-              <span className="font-medium">
-                {relatedDetails.admin.username ?? relatedDetails.admin.adminId} (ID {relatedDetails.admin.adminId})
-              </span>
-            </DetailInfoRow>
-          )}
           <DetailInfoRow label={t('detail.labelIntegration')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.integrationId != null ? (
               log.integrationName ? (
@@ -360,16 +314,6 @@ function AuditLogDetailDialog({
               <span className="text-fg-muted">—</span>
             )}
           </DetailInfoRow>
-          {relatedDetails.isExpanded && relatedDetails.integration && !log.integrationName && (
-            <DetailInfoRow label={t('common:detail.relatedIntegration')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
-              <Link
-                to={`/integrations/${relatedDetails.integration.id}`}
-                className="font-medium text-accent hover:underline"
-              >
-                {getIntegrationName(relatedDetails.integration)} (ID {relatedDetails.integration.id})
-              </Link>
-            </DetailInfoRow>
-          )}
           <DetailInfoRow label={t('detail.labelEnrollment')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.enrollmentId != null ? (
               log.enrollmentName ? (
@@ -384,16 +328,6 @@ function AuditLogDetailDialog({
               <span className="text-fg-muted">—</span>
             )}
           </DetailInfoRow>
-          {relatedDetails.isExpanded && relatedDetails.enrollment && !log.enrollmentName && (
-            <DetailInfoRow label={t('common:detail.relatedEnrollment')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
-              <Link
-                to={`/enrollments/${relatedDetails.enrollment.enrollmentId}`}
-                className="font-medium text-accent hover:underline"
-              >
-                {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId} (ID {relatedDetails.enrollment.enrollmentId})
-              </Link>
-            </DetailInfoRow>
-          )}
           {log.tenantId != null && (
             <DetailInfoRow label={t('detail.labelTenant')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
               {log.tenantName ? (
@@ -404,16 +338,6 @@ function AuditLogDetailDialog({
               ) : (
                 <span className="font-mono">#{log.tenantId}</span>
               )}
-            </DetailInfoRow>
-          )}
-          {relatedDetails.isExpanded && relatedDetails.tenant && !log.tenantName && (
-            <DetailInfoRow label={t('common:detail.relatedTenant')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
-              <Link
-                to={`/tenants/${relatedDetails.tenant.tenantId}`}
-                className="font-medium text-accent hover:underline"
-              >
-                {relatedDetails.tenant.tenantName ?? relatedDetails.tenant.tenantId} (ID {relatedDetails.tenant.tenantId})
-              </Link>
             </DetailInfoRow>
           )}
           <DetailInfoRow label={t('detail.labelAuthAttempt')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
