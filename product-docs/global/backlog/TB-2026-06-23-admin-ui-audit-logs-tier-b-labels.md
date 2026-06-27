@@ -8,6 +8,7 @@
 - **Lane:** `A` / `B` (Tier B list enrichment)
 - **Posture:** `single-pass`
 - **GitHub issue:** #258
+- **Issue labels:** `lane:a`, `type:feat`, `component:admin-api`, `component:admin-ui`, `priority:p2`, `status:ready`
 - **GitHub branch:** `feat/admin-ui-audit-logs-tier-b`
 - **Created at:** `2026-06-23`
 - **Captured by:** Marc

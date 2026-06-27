@@ -49,7 +49,8 @@ If you only need the fastest reliable entry, start with [`minimum-viable-method.
 1. `plan-incubation-workflow.md`
 2. `legacy-retrofit-workflow.md`
 3. `blitz-intake-pattern.md`
-4. `github-issues-workflow.md`
+4. `github-issues-workflow.md` — label taxonomy and mandatory checklist; agent skill:
+   `.cursor/skills/github-issue-promote/SKILL.md`
 5. `multi-branch-workflow.md`
 6. `release-management-workflow.md`
 7. `methodology-publication-and-versioning.md`

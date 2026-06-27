@@ -280,6 +280,19 @@ optional visibility (PR board, labels, `Closes #NNN`). Proactively state at star
 program slice whether an issue helps — retroactive issues are valid. See
 `minimum-viable-method.md` § *GitHub issue vs product-docs canon*.
 
+## GitHub issues — labels mandatory on create
+
+When opening a GitHub issue (operator request, program slice visibility, or retroactive board
+anchor):
+
+1. Read [`product-docs/methodology/github-issues-workflow.md`](product-docs/methodology/github-issues-workflow.md).
+2. Run skill [`.cursor/skills/github-issue-promote/SKILL.md`](.cursor/skills/github-issue-promote/SKILL.md).
+3. Apply **all five label groups** via `gh issue create --label ...` (lane, type, component, priority, status).
+4. Verify with `gh issue view <N> --json labels` before reporting the issue URL.
+5. Record `#NNN` (and label list) in `I-*` / `TB-*` metadata.
+
+Rule file: [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc). An unlabeled issue is **incomplete** — same severity as missing TB traceability.
+
 - Keep scope small and local: high-signal fixes first, no broad refactor campaign.
 - Use issue + branch + iterative PR as the default visibility path.
 - Prefer these labels for this lane when applicable:

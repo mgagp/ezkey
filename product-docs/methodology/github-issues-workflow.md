@@ -86,6 +86,50 @@ to open a corresponding GitHub issue.
 The skill **proposes** — it does not auto-create. A human or an explicit agent action
 must approve and run `gh issue create`.
 
+**Implementation:** [`.cursor/skills/github-issue-promote/SKILL.md`](../../.cursor/skills/github-issue-promote/SKILL.md)
+
+## Mandatory label checklist (agents)
+
+Before reporting an issue as created, confirm **all five groups** are present on the issue.
+Cold sessions must read this section (or run skill `github-issue-promote`) — unlabeled issues are
+a recurring defect, not an optional polish step.
+
+| Step | Action |
+| ---- | ------ |
+| 1 | Read `I-*` / `TB-*` Metadata (Lane, Priority, Component tags, Grill status) |
+| 2 | List proposed labels in the agent response **before** `gh issue create` |
+| 3 | Pass every label on `gh issue create` via repeated `--label "..."` |
+| 4 | Verify: `gh issue view <N> --json labels` |
+| 5 | If missing, `gh issue edit <N> --add-label "..."` immediately |
+| 6 | Record `#NNN` (and optional label list) in `I-*` / `TB-*` Metadata |
+
+### Minimum label set (example)
+
+Program slice touching Admin API + Admin UI, P2, Grill complete, Lane A:
+
+```text
+lane:a, type:feat, component:admin-api, component:admin-ui, priority:p2, status:ready
+```
+
+### `gh issue create` template
+
+```bash
+gh issue create \
+  --title "<conventional short title>" \
+  --body-file <path-to-body.md> \
+  --label "lane:a" \
+  --label "type:feat" \
+  --label "component:admin-api" \
+  --label "component:admin-ui" \
+  --label "priority:p2" \
+  --label "status:ready"
+```
+
+Windows PATH fallback: `"C:\Program Files\GitHub CLI\gh.exe" issue create ...`
+
+**Do not** treat label application as post-closeout hygiene unless the operator explicitly asks to
+defer it — apply at create time by default.
+
 ### Issue body template
 
 ```markdown
@@ -120,7 +164,11 @@ After creating the issue, add to the I-* `## Metadata`:
 
 ```markdown
 - **GitHub issue:** `#NNN`
+- **Issue labels:** `lane:a`, `type:feat`, `component:admin-ui`, `priority:p2`, `status:ready`
 ```
+
+(Omit the labels line only if the issue predates this convention and labels were backfilled without
+recording — prefer recording for discoverability.)
 
 And add to `## Links` when an implementation branch or PR exists (see
 [Branch naming and issue linking](#branch-naming-and-issue-linking) below):
