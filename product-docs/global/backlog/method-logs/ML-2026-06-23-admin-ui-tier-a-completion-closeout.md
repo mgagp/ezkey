@@ -28,5 +28,6 @@ Extracted `EnrollmentListLifecycleDialog` shared component to avoid duplicating 
 
 ## Residual
 
-- P2 queue in `I-2026-0028` unchanged (auth attempts, audit logs)
-- P4 Related details retirement still blocked on Tier B + criteria in idea doc
+- P2 audit logs slice in `I-2026-0028` unchanged
+- P4 Related details retirement still blocked on audit logs + criteria in idea doc
+- Auth attempts list **Created** column uses absolute `formatDate` (aligned with Expires and Tier A lists); relative-only timestamps remain on some detail/dashboard surfaces (e.g. last login) as secondary hints — not part of this PR

@@ -23,7 +23,7 @@ import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { dateRangeToApiParams } from '@/lib/date-range-presets';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { useDebounce } from '@/hooks/use-debounce';
-import { formatDate, formatRelativeTime } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import {
   ROLLING_24H_PRESET_PARAM,
   ROLLING_24H_PRESET_VALUE,
@@ -32,15 +32,6 @@ import {
 } from '@/lib/dashboard-drilldown-links';
 import { search2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import type { AuthAttemptDto, PagedModelAuthAttemptDto, Search2Params } from '@/generated/admin-api/model';
-
-/** List/detail labels from admin API batch enrichment (Orval regen after spec refresh). */
-type EnrichedAuthAttemptDto = AuthAttemptDto & {
-  integrationId?: number | null;
-  integrationName?: string | null;
-  enrollmentName?: string | null;
-  tenantId?: number | null;
-  tenantName?: string | null;
-};
 
 const AUTH_STATUSES = ['PENDING', 'READ', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'INVALID'] as const;
 
@@ -147,34 +138,34 @@ function AttemptDetailDialog({
                 to={`/enrollments/${attempt.enrollmentId}`}
                 className="text-sm font-medium text-accent hover:underline"
               >
-                {(attempt as EnrichedAuthAttemptDto).enrollmentName?.trim()
+                {attempt.enrollmentName?.trim()
                   || t('list.enrollmentFallback', { id: attempt.enrollmentId })}
               </Link>
             ) : (
               <span className="text-fg-muted">—</span>
             )}
           </DetailInfoRow>
-          {(attempt as EnrichedAuthAttemptDto).integrationId != null && (
+          {attempt.integrationId != null && (
             <DetailInfoRow label={t('detail.labelIntegration')}>
               <Link
-                to={`/integrations/${(attempt as EnrichedAuthAttemptDto).integrationId}`}
+                to={`/integrations/${attempt.integrationId}`}
                 className="text-sm font-medium text-accent hover:underline"
               >
-                {(attempt as EnrichedAuthAttemptDto).integrationName?.trim()
+                {attempt.integrationName?.trim()
                   || t('list.integrationFallback', {
-                    id: (attempt as EnrichedAuthAttemptDto).integrationId,
+                    id: attempt.integrationId,
                   })}
               </Link>
             </DetailInfoRow>
           )}
-          {(attempt as EnrichedAuthAttemptDto).tenantId != null && (
+          {attempt.tenantId != null && (
             <DetailInfoRow label={t('detail.labelTenant')}>
               <Link
-                to={`/tenants/${(attempt as EnrichedAuthAttemptDto).tenantId}`}
+                to={`/tenants/${attempt.tenantId}`}
                 className="text-sm font-medium text-accent hover:underline"
               >
-                {(attempt as EnrichedAuthAttemptDto).tenantName?.trim()
-                  || t('list.tenantFallback', { id: (attempt as EnrichedAuthAttemptDto).tenantId })}
+                {attempt.tenantName?.trim()
+                  || t('list.tenantFallback', { id: attempt.tenantId })}
               </Link>
             </DetailInfoRow>
           )}
@@ -234,7 +225,7 @@ export default function AuthAttemptsPage() {
       ? dateRangeToApiParams(dateRange.from, dateRange.to, effectiveTimeZoneId)
       : { createdAfter: undefined as string | undefined, createdBefore: undefined as string | undefined };
 
-  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<EnrichedAuthAttemptDto, {
+  const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<AuthAttemptDto, {
     status?: string;
     enrollmentId?: number;
     integrationId?: number;
@@ -323,8 +314,8 @@ export default function AuthAttemptsPage() {
     });
   }, [data.length]);
 
-  const columns: ColumnDef<EnrichedAuthAttemptDto>[] = useMemo(() => {
-    const enrollmentCol: ColumnDef<EnrichedAuthAttemptDto> = {
+  const columns: ColumnDef<AuthAttemptDto>[] = useMemo(() => {
+    const enrollmentCol: ColumnDef<AuthAttemptDto> = {
       header: t('list.columns.enrollment'),
       key: 'enrollmentId',
       sortKey: 'enrollmentId',
@@ -349,7 +340,7 @@ export default function AuthAttemptsPage() {
       },
     };
 
-    const integrationCol: ColumnDef<EnrichedAuthAttemptDto> = {
+    const integrationCol: ColumnDef<AuthAttemptDto> = {
       header: t('list.columns.integration'),
       key: 'integrationName',
       render: (r) => {
@@ -373,7 +364,7 @@ export default function AuthAttemptsPage() {
       },
     };
 
-    const tenantCol: ColumnDef<EnrichedAuthAttemptDto> = {
+    const tenantCol: ColumnDef<AuthAttemptDto> = {
       header: t('list.columns.tenant'),
       key: 'tenantName',
       render: (r) => {
@@ -428,7 +419,7 @@ export default function AuthAttemptsPage() {
         key: 'createdAt',
         sortKey: 'createdAt',
         render: (r) => (
-          <span className="text-xs text-fg-muted whitespace-nowrap">{formatRelativeTime(r.createdAt)}</span>
+          <span className="text-xs text-fg-muted whitespace-nowrap">{formatDate(r.createdAt)}</span>
         ),
       },
       {
