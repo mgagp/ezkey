@@ -9,9 +9,8 @@ import { z } from 'zod';
 import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
-import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { EnrollmentListLifecycleDialog, type EnrollmentLifecycleAction } from '@/components/feature/enrollment-list-lifecycle-dialog';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
-import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -21,13 +20,11 @@ import { Select } from '@/components/ui/select';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { useAuth } from '@/context/use-auth';
-import { useToast } from '@/context/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useIntegrations } from '@/hooks/use-integrations';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { ENROLLMENT_BUCKET_PARAM, type EnrollmentDrilldownBucket } from '@/lib/dashboard-drilldown-links';
 import { ApiError, fetchBlobUrl } from '@/lib/api-client';
-import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { enrollmentDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { buildListDetailNavState } from '@/lib/list-detail-navigation';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
@@ -35,8 +32,6 @@ import { formatDate } from '@/lib/utils';
 import {
   create1,
   search1,
-  useDeactivate,
-  useReactivate,
 } from '@/generated/admin-api/enrollments/enrollments';
 import type {
   EnrollmentCreateRequestDto,
@@ -438,139 +433,6 @@ function EnrollmentCreateDialog({
           </div>
         </form>
       )}
-    </Dialog>
-  );
-}
-
-// ── List lifecycle dialog (deactivate / reactivate) ───────────────────────────
-
-type EnrollmentLifecycleAction = 'deactivate' | 'reactivate';
-
-function EnrollmentLifecycleDialog({
-  open,
-  onClose,
-  enrollment,
-  action,
-}: {
-  open: boolean;
-  onClose: () => void;
-  enrollment: EnrollmentResponseDto | null;
-  action: EnrollmentLifecycleAction | null;
-}) {
-  const { t } = useTranslation('enrollments');
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [reason, setReason] = useState('');
-
-  const enrollmentId = enrollment?.enrollmentId ?? 0;
-
-  const deactivateMutation = useDeactivate({
-    mutation: {
-      onSuccess: async () => {
-        void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-        toast(t('detail.toastDeactivated'));
-        setReason('');
-        onClose();
-      },
-    },
-  });
-
-  const reactivateMutation = useReactivate({
-    mutation: {
-      onSuccess: async () => {
-        void queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-        toast(t('detail.toastReactivated'));
-        setReason('');
-        onClose();
-      },
-    },
-  });
-
-  const handleClose = () => {
-    setReason('');
-    deactivateMutation.reset();
-    reactivateMutation.reset();
-    onClose();
-  };
-
-  const isDeactivate = action === 'deactivate';
-  const mutation = isDeactivate ? deactivateMutation : reactivateMutation;
-  const reasonInvalid = reason.trim().length > 0 && reason.trim().length < 10;
-
-  return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      title={isDeactivate ? t('lifecycleDialog.deactivateTitle') : t('lifecycleDialog.reactivateTitle')}
-      size="sm"
-      dismissible={false}
-    >
-      <div className="space-y-4">
-        <p className="text-sm text-fg">
-          {isDeactivate
-            ? t('lifecycleDialog.deactivateMessage')
-            : t('lifecycleDialog.reactivateMessage')}
-          {enrollment?.enrollmentName != null && (
-            <span className="block mt-1 font-medium">{enrollment.enrollmentName}</span>
-          )}
-        </p>
-        <ReasonFieldRow
-          presetGroup="enrollment_lifecycle"
-          idPrefix="enrollment-list-lifecycle"
-          inputId="enrollment-list-lifecycle-reason"
-          value={reason}
-          onChange={setReason}
-          label={
-            <>
-              {t('lifecycleDialog.reasonLabel')}{' '}
-              <span className="text-fg-muted font-normal">{t('lifecycleDialog.reasonHint')}</span>
-            </>
-          }
-          placeholder={t('lifecycleDialog.reasonPlaceholder')}
-          showMinLengthError={reasonInvalid}
-          childrenAfterInput={<DemoReasonBadges onSelect={setReason} />}
-        />
-        {mutation.isError && (
-          <Alert variant="error">
-            {getTranslatedApiError(
-              mutation.error,
-              t,
-              isDeactivate ? t('detail.errorDeactivate') : t('detail.errorReactivate'),
-            )}
-          </Alert>
-        )}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={handleClose}>
-            {t('lifecycleDialog.cancel')}
-          </Button>
-          <Button
-            variant={isDeactivate ? 'destructive' : 'primary'}
-            isLoading={mutation.isPending}
-            disabled={reasonInvalid}
-            onClick={() => {
-              if (action === null || enrollmentId <= 0) return;
-              const params = reason.trim().length >= 10 ? { reason: reason.trim() } : undefined;
-              if (isDeactivate) {
-                deactivateMutation.mutate({ id: enrollmentId, params });
-              } else {
-                reactivateMutation.mutate({ id: enrollmentId, params });
-              }
-            }}
-          >
-            {isDeactivate ? (
-              <>
-                <PowerOff className="size-3.5 mr-1.5" />
-                {t('lifecycleDialog.deactivate')}
-              </>
-            ) : (
-              <>
-                <Power className="size-3.5 mr-1.5" />
-                {t('lifecycleDialog.reactivate')}
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
     </Dialog>
   );
 }
@@ -1130,7 +992,7 @@ export default function EnrollmentsPage() {
         onClose={() => setDialogOpen(false)}
       />
 
-      <EnrollmentLifecycleDialog
+      <EnrollmentListLifecycleDialog
         open={lifecycleTarget !== null}
         onClose={() => setLifecycleTarget(null)}
         enrollment={lifecycleTarget?.enrollment ?? null}

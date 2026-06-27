@@ -380,6 +380,33 @@
             "type": "boolean",
             "description": "Demo MITM opt-in at creation time (Pending tampering only when Auth API demo flag is on)",
             "example": false
+          },
+          "integrationId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Integration ID resolved via enrollment (admin enrichment)",
+            "example": 3
+          },
+          "integrationName": {
+            "type": "string",
+            "description": "Integration display name (admin list enrichment)",
+            "example": "Web Portal"
+          },
+          "enrollmentName": {
+            "type": "string",
+            "description": "Enrollment display name (admin list enrichment)",
+            "example": "Alice Device"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID (admin list enrichment)",
+            "example": 2
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "Tenant display name (admin list enrichment)",
+            "example": "Acme Corp"
           }
         },
         "required": [

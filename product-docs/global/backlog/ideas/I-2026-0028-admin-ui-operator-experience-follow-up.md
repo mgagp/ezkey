@@ -6,13 +6,13 @@
 - **Status:** `ready`
 - **Priority:** `P2`
 - **Created at:** `2026-06-20`
-- **Updated at:** `2026-06-20`
-- **Last reviewed at:** `2026-06-20`
+- **Updated at:** `2026-06-23`
+- **Last reviewed at:** `2026-06-23`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-ui`, `admin-api`
 - **Lane:** `A` / `B` (mixed — see priority table)
 - **Captured by:** Marc (session closeout after #236 / `feat/admin-ui-operator-lists-tier-a`)
-- **GitHub issue:** _(none by design — product-docs canon; reopen GitHub only when a slice ships)_
+- **GitHub issue:** #252 (Tier A completion slice — embedded enrollments + tenants)
 
 ## Session restart phrase
 
@@ -56,9 +56,9 @@ or incident patterns change.
 
 | Rank | Item | Tier | Type | Effort | Risk | Rationale |
 |------|------|------|------|--------|------|-----------|
-| **P1** | **Integration detail → enrollments** list alignment | A | UI (+ reuse list patterns) | Small | Low | Visible drift: embedded list still shows Active / Verified / Key tier while main `/enrollments` uses Tier A columns + quick actions. API already returns enriched DTO. |
-| **P1** | **Tenants** list — analysis + polish | A | Analysis → small UI | Small | Low | Last Tier A top-level row still `draft` in matrix. List already readable; work is operator review (trim/reorder?) not heavy joins. |
-| **P2** | **Auth attempts** — integration + tenant labels | B | API (core DTO) + UI | Medium | Medium | List column Integration is a **placeholder** (`via #enrollmentId`). Needs `AuthAttemptDto` enrichment + perf-aware join. Separate TB. |
+| **P1** | **Integration detail → enrollments** list alignment | A | UI (+ reuse list patterns) | Small | Low | **Done** — TB `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants`, #252 |
+| **P1** | **Tenants** list — analysis + polish | A | Analysis → small UI | Small | Low | **Done** — same TB; country trimmed from list |
+| **P2** | **Auth attempts** — integration + tenant labels | B | API (core DTO) + UI | Medium | Medium | **Done** — TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`, #257 |
 | **P2** | **Audit logs** — selective name joins | B | API + UI | Large | High | High volume; detail modal still shows `#integrationId`. Requires indexed join strategy per `I-2026-0014`. |
 | **P3** | **Encryption keys** + **re-encryption batches** | A | Analysis | Small–medium | Low | Operator surface exists; matrix rows `draft`. Crypto-ops domain, not FK-label pattern. |
 | **P3** | **Alerts** list | A | Analysis | Small | Low | List already usable; resolve/snooze stays detail per quick-actions canon. |

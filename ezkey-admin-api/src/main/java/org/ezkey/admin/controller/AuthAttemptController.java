@@ -19,7 +19,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.ezkey.admin.constants.AdminAuditConstants;
 import org.ezkey.admin.security.AccessControlService;
 import org.ezkey.admin.security.AdminPrincipal;
@@ -225,19 +231,11 @@ public class AuthAttemptController {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     Integer tenantId = extractTenantId(auth);
 
-    Page<AuthAttemptDto> authAttempts =
-        authAttemptService
-            .findByFilters(
-                status,
-                enrollmentId,
-                integrationId,
-                createdAfter,
-                createdBefore,
-                tenantId,
-                pageable)
-            .map(authAttemptMapper::toDto);
+    Page<AuthAttempt> attemptPage =
+        authAttemptService.findByFilters(
+            status, enrollmentId, integrationId, createdAfter, createdBefore, tenantId, pageable);
 
-    return ResponseEntity.ok(authAttempts);
+    return ResponseEntity.ok(mapAuthAttemptPageWithLabels(attemptPage));
   }
 
   /**
@@ -303,7 +301,13 @@ public class AuthAttemptController {
           Integer id) {
     try {
       AuthAttempt authAttempt = authAttemptService.getById(id);
-      AuthAttemptDto response = authAttemptMapper.toDto(authAttempt);
+      Enrollment enrollment =
+          authAttempt.getEnrollmentId() != null
+              ? enrollmentRepository.findById(authAttempt.getEnrollmentId()).orElse(null)
+              : null;
+      Integration integration = resolveIntegrationForEnrollment(enrollment);
+      AuthAttemptDto response =
+          authAttemptMapper.toDtoWithLabels(authAttempt, enrollment, integration);
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
@@ -1019,5 +1023,86 @@ public class AuthAttemptController {
     } catch (Exception e) {
       return null;
     }
+  }
+
+  /**
+   * Maps a page of auth attempts to DTOs with enrollment and integration labels joined in batch
+   * (avoids N+1 and client-side integration lookups on list screens).
+   *
+   * @param page auth attempts from the service layer
+   * @return page of enriched auth attempt DTOs
+   */
+  private Page<AuthAttemptDto> mapAuthAttemptPageWithLabels(Page<AuthAttempt> page) {
+    List<AuthAttempt> content = page.getContent();
+    if (content.isEmpty()) {
+      return page.map(authAttemptMapper::toDto);
+    }
+
+    Set<Integer> enrollmentIds =
+        content.stream()
+            .map(AuthAttempt::getEnrollmentId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+    Map<Integer, Enrollment> enrollmentsById =
+        enrollmentIds.isEmpty()
+            ? Map.of()
+            : enrollmentRepository.findAllById(enrollmentIds).stream()
+                .collect(Collectors.toMap(Enrollment::getEnrollmentId, Function.identity()));
+
+    Set<Integer> integrationIds =
+        enrollmentsById.values().stream()
+            .map(Enrollment::getIntegrationId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
+    Map<Integer, Integration> integrationsById =
+        integrationIds.isEmpty()
+            ? Map.of()
+            : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
+                .collect(Collectors.toMap(Integration::getId, Function.identity()));
+
+    return page.map(
+        attempt -> {
+          Enrollment enrollment =
+              attempt.getEnrollmentId() != null
+                  ? enrollmentsById.get(attempt.getEnrollmentId())
+                  : null;
+          Integration integration = resolveIntegrationForEnrollment(enrollment, integrationsById);
+          return authAttemptMapper.toDtoWithLabels(attempt, enrollment, integration);
+        });
+  }
+
+  /**
+   * Resolves the integration entity for an enrollment using a preloaded map or a single fetch.
+   *
+   * @param enrollment the enrollment, or null
+   * @param integrationsById batch-loaded integrations keyed by integration ID (may be empty)
+   * @return the integration, or null
+   */
+  private Integration resolveIntegrationForEnrollment(
+      Enrollment enrollment, Map<Integer, Integration> integrationsById) {
+    if (enrollment == null || enrollment.getIntegrationId() == null) {
+      return null;
+    }
+    Integration cached = integrationsById.get(enrollment.getIntegrationId());
+    if (cached != null) {
+      return cached;
+    }
+    return integrationRepository
+        .findAllByIdWithTenant(Set.of(enrollment.getIntegrationId()))
+        .stream()
+        .findFirst()
+        .orElse(null);
+  }
+
+  /**
+   * Resolves the integration for an enrollment (single-row enrichment for GET by ID).
+   *
+   * @param enrollment the enrollment, or null
+   * @return the integration with tenant loaded, or null
+   */
+  private Integration resolveIntegrationForEnrollment(Enrollment enrollment) {
+    return resolveIntegrationForEnrollment(enrollment, Map.of());
   }
 }

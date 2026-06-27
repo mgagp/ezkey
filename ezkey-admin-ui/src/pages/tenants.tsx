@@ -260,18 +260,6 @@ export default function TenantsPage() {
     { header: t('list.columns.id'), key: 'tenantId', className: 'w-14', sortKey: 'tenantId', render: (r) => <span className="font-mono text-xs">{r.tenantId}</span> },
     { header: t('list.columns.name'), key: 'tenantName', sortKey: 'tenantName', render: (r) => <span className="font-medium">{r.tenantName}</span> },
     {
-      header: t('list.columns.organization'),
-      key: 'organizationName',
-      render: (r) => <span className="text-xs text-fg-muted">{r.organizationName ?? '—'}</span>,
-    },
-    {
-      header: t('list.columns.domain'),
-      key: 'organizationDomain',
-      render: (r) => r.organizationDomain
-        ? <span className="font-mono text-xs">{r.organizationDomain}</span>
-        : <span className="text-fg-muted">—</span>,
-    },
-    {
       header: t('list.columns.status'),
       key: 'active',
       sortKey: 'active',
@@ -288,9 +276,17 @@ export default function TenantsPage() {
       ),
     },
     {
-      header: t('list.columns.country'),
-      key: 'countryCode',
-      render: (r) => <span className="text-xs">{r.countryCode ?? '—'}</span>,
+      header: t('list.columns.organization'),
+      key: 'organizationName',
+      sortKey: 'organizationName',
+      render: (r) => <span className="text-xs text-fg-muted">{r.organizationName ?? '—'}</span>,
+    },
+    {
+      header: t('list.columns.domain'),
+      key: 'organizationDomain',
+      render: (r) => r.organizationDomain
+        ? <span className="font-mono text-xs">{r.organizationDomain}</span>
+        : <span className="text-fg-muted">—</span>,
     },
     { header: t('list.columns.created'), key: 'createdAt', sortKey: 'createdAt', render: (r) => <span className="text-xs text-fg-muted">{formatDate(r.createdAt ?? '')}</span> },
   ];

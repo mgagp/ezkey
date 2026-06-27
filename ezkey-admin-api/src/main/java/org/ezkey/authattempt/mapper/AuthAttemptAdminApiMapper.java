@@ -21,7 +21,10 @@ import org.ezkey.authattempt.dto.AuthAttemptCreateResponseDto;
 import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.integration.domain.entity.Integration;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 /**
@@ -87,7 +90,53 @@ public interface AuthAttemptAdminApiMapper {
    * @see AuthAttempt
    * @see AuthAttemptDto
    */
+  @Mapping(target = "integrationId", ignore = true)
+  @Mapping(target = "integrationName", ignore = true)
+  @Mapping(target = "enrollmentName", ignore = true)
+  @Mapping(target = "tenantId", ignore = true)
+  @Mapping(target = "tenantName", ignore = true)
   AuthAttemptDto toDto(AuthAttempt entity);
+
+  /**
+   * Converts an auth attempt to a DTO with enrollment and integration display labels for admin list
+   * and detail screens.
+   *
+   * @param entity the auth attempt entity
+   * @param enrollment the enrollment for this attempt, or null
+   * @param integration the integration for the enrollment, or null
+   * @return DTO with optional enrichment fields populated when context is available
+   */
+  default AuthAttemptDto toDtoWithLabels(
+      AuthAttempt entity, Enrollment enrollment, Integration integration) {
+    AuthAttemptDto base = toDto(entity);
+    String enrollmentName = enrollment != null ? enrollment.getEnrollmentName() : null;
+    Integer integrationId = enrollment != null ? enrollment.getIntegrationId() : null;
+    String integrationName = integration != null ? integration.getName() : null;
+    Integer tenantId =
+        integration != null && integration.getTenant() != null
+            ? integration.getTenant().getTenantId()
+            : null;
+    String tenantName =
+        integration != null && integration.getTenant() != null
+            ? integration.getTenant().getTenantName()
+            : null;
+    return new AuthAttemptDto(
+        base.authAttemptId(),
+        base.enrollmentId(),
+        base.authAttemptStatus(),
+        base.authAttemptChallenge(),
+        base.authAttemptProofToken(),
+        base.createdAt(),
+        base.expiresAt(),
+        base.contextTitle(),
+        base.contextMessage(),
+        base.demoMitmSignatureEnabled(),
+        integrationId,
+        integrationName,
+        enrollmentName,
+        tenantId,
+        tenantName);
+  }
 
   /**
    * Converts a list of EzkeyAuthAttempt entities to a list of EzkeyAuthAttemptDto objects.

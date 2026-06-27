@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Key, ListOrdered, Power, PowerOff, ShieldOff, Trash2, Users } from 'lucide-react';
@@ -10,7 +10,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { ContextHelp } from '@/components/ui/context-help';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
-import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
+import { EnrollmentListLifecycleDialog, type EnrollmentLifecycleAction } from '@/components/feature/enrollment-list-lifecycle-dialog';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { Alert } from '@/components/ui/alert';
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useToast } from '@/context/use-toast';
 import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
@@ -165,6 +166,7 @@ function DangerConfirmDialog({
 
 export default function IntegrationDetailPage() {
   const { t } = useTranslation('integrations');
+  const { t: tEnrollments } = useTranslation('enrollments');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -183,6 +185,10 @@ export default function IntegrationDetailPage() {
     });
 
   const [dangerAction, setDangerAction] = useState<'revoke-all' | 'deactivate-all' | 'reactivate-all' | 'retire' | 'delete' | null>(null);
+  const [lifecycleTarget, setLifecycleTarget] = useState<{
+    enrollment: EnrollmentResponseDto;
+    action: EnrollmentLifecycleAction;
+  } | null>(null);
 
   const { data: integration, isLoading } = useQuery({
     queryKey: ['integration', integrationId],
@@ -197,18 +203,122 @@ export default function IntegrationDetailPage() {
     fetchPage: (params) => search1(params) as Promise<PagedModelEnrollmentResponseDto>,
   });
 
-  const enrollmentColumns: ColumnDef<EnrollmentResponseDto>[] = [
-    { header: t('detail.enrollmentColumns.id'), key: 'enrollmentId', className: 'w-14', sortKey: 'enrollmentId', render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span> },
-    { header: t('detail.enrollmentColumns.name'), key: 'enrollmentName', sortKey: 'enrollmentName', render: (r) => <span className="font-medium">{r.enrollmentName}</span> },
-    { header: t('detail.enrollmentColumns.status'), key: 'enrollmentStatus', sortKey: 'status', render: (r) => <EnrollmentStatusBadge status={r.enrollmentStatus} /> },
-    { header: t('detail.enrollmentColumns.active'), key: 'enrollmentActive', render: (r) => <Badge variant={r.enrollmentActive ? 'success' : 'muted'}>{r.enrollmentActive ? t('detail.activeYes') : t('detail.activeNo')}</Badge> },
-    { header: t('detail.enrollmentColumns.verified'), key: 'verifiedAt', sortKey: 'verifiedAt', render: (r) => <span className="text-xs text-fg-muted">{r.verifiedAt ? formatDate(r.verifiedAt) : '—'}</span> },
-    {
-      header: t('detail.enrollmentColumns.keyTier'),
-      key: 'devicePrivateKeyStorageTier',
-      render: (r) => <DevicePrivateKeyTierBadge tier={r.devicePrivateKeyStorageTier} />,
-    },
-  ];
+  const enrollmentColumns: ColumnDef<EnrollmentResponseDto>[] = useMemo(() => {
+    const statusCol: ColumnDef<EnrollmentResponseDto> = {
+      header: tEnrollments('list.columns.status'),
+      key: 'enrollmentStatus',
+      sortKey: 'status',
+      render: (r) => {
+        const showWarning = r.enrollmentStatus === 'VERIFIED' && r.operational === false;
+        const warningTooltip =
+          r.enrollmentActive === false
+            ? tEnrollments('list.deactivatedWarningTooltip')
+            : tEnrollments('list.operationalWarningTooltip');
+        return showWarning ? (
+          <Tooltip content={warningTooltip}>
+            <span className="inline-flex items-center gap-1.5 border border-warning/40 rounded-sm px-1.5">
+              <EnrollmentStatusBadge status={r.enrollmentStatus} />
+              <AlertTriangle className="size-4 text-warning" aria-hidden />
+            </span>
+          </Tooltip>
+        ) : (
+          <EnrollmentStatusBadge status={r.enrollmentStatus} />
+        );
+      },
+    };
+
+    const actionsCol: ColumnDef<EnrollmentResponseDto> = {
+      header: '',
+      key: 'actions',
+      className: 'w-fit',
+      render: (r) => {
+        if (r.enrollmentStatus === 'REVOKED') {
+          return null;
+        }
+        if (r.enrollmentActive) {
+          return (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-error hover:bg-error/10 border border-error/30 hover:border-error"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLifecycleTarget({ enrollment: r, action: 'deactivate' });
+              }}
+            >
+              <PowerOff className="size-3" />
+              {tEnrollments('list.deactivate')}
+            </Button>
+          );
+        }
+        return (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLifecycleTarget({ enrollment: r, action: 'reactivate' });
+            }}
+          >
+            <Power className="size-3" />
+            {tEnrollments('list.reactivate')}
+          </Button>
+        );
+      },
+    };
+
+    return [
+      {
+        header: tEnrollments('list.columns.id'),
+        key: 'enrollmentId',
+        className: 'w-14',
+        sortKey: 'enrollmentId',
+        render: (r) => <span className="font-mono text-xs">{r.enrollmentId}</span>,
+      },
+      {
+        header: tEnrollments('list.columns.name'),
+        key: 'enrollmentName',
+        sortKey: 'enrollmentName',
+        render: (r) => <span className="font-medium">{r.enrollmentName}</span>,
+      },
+      statusCol,
+      {
+        header: tEnrollments('list.columns.userIdentifier'),
+        key: 'userIdentifier',
+        sortKey: 'userIdentifier',
+        render: (r) => (
+          <span
+            className="text-xs text-fg-muted max-w-[10rem] truncate block"
+            title={r.userIdentifier ?? undefined}
+          >
+            {r.userIdentifier ?? '—'}
+          </span>
+        ),
+      },
+      {
+        header: tEnrollments('list.columns.created'),
+        key: 'createdAt',
+        sortKey: 'createdAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted whitespace-nowrap">
+            {r.createdAt ? formatDate(r.createdAt) : '—'}
+          </span>
+        ),
+      },
+      {
+        header: tEnrollments('list.columns.lastUsed'),
+        key: 'lastUsedAt',
+        sortKey: 'lastUsedAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted whitespace-nowrap">
+            {r.lastUsedAt ? formatDate(r.lastUsedAt) : '—'}
+          </span>
+        ),
+      },
+      actionsCol,
+    ];
+  }, [tEnrollments]);
 
   const name = integration ? getIntegrationName(integration) : '...';
   const isSystemIntegration = (integration as { isSystemIntegration?: boolean } | undefined)?.isSystemIntegration === true;
@@ -594,6 +704,14 @@ export default function IntegrationDetailPage() {
             })
             .catch((e) => toast(getTranslatedApiError(e, t, t('detail.errorDeleteFailed')), 'error'));
         }}
+      />
+      <EnrollmentListLifecycleDialog
+        open={lifecycleTarget !== null}
+        onClose={() => setLifecycleTarget(null)}
+        enrollment={lifecycleTarget?.enrollment ?? null}
+        action={lifecycleTarget?.action ?? null}
+        idPrefix="integration-detail-enrollment-lifecycle"
+        renderReasonBadges={renderReasonBadges}
       />
     </AppShell>
   );

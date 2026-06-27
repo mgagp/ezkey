@@ -38,6 +38,12 @@ import org.ezkey.authattempt.domain.AuthAttemptStatus;
  * @param contextMessage optional descriptive message explaining the approval request
  * @param demoMitmSignatureEnabled when true, attempt was created with demo MITM opt-in (see Auth
  *     API demo settings)
+ * @param integrationId integration ID resolved via enrollment (list/detail enrichment; null when
+ *     not enriched)
+ * @param integrationName integration display name from batch join (admin list enrichment)
+ * @param enrollmentName enrollment display name from batch join (admin list enrichment)
+ * @param tenantId tenant ID when integration tenant is loaded (Global Admin list enrichment)
+ * @param tenantName tenant display name when integration tenant is loaded
  * @author Ezkey contributors
  * @since 2025
  */
@@ -116,4 +122,34 @@ public record AuthAttemptDto(
                     + " is on)",
             example = "false",
             requiredMode = RequiredMode.NOT_REQUIRED)
-        Boolean demoMitmSignatureEnabled) {}
+        Boolean demoMitmSignatureEnabled,
+    /** Integration ID for the enrollment (admin list enrichment). */
+    @Schema(
+            description = "Integration ID resolved via enrollment (admin enrichment)",
+            example = "3",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        Integer integrationId,
+    /** Integration display name (admin list enrichment). */
+    @Schema(
+            description = "Integration display name (admin list enrichment)",
+            example = "Web Portal",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String integrationName,
+    /** Enrollment display name (admin list enrichment). */
+    @Schema(
+            description = "Enrollment display name (admin list enrichment)",
+            example = "Alice Device",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String enrollmentName,
+    /** Tenant ID when integration tenant is loaded (admin list enrichment). */
+    @Schema(
+            description = "Tenant ID (admin list enrichment)",
+            example = "2",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        Integer tenantId,
+    /** Tenant display name (admin list enrichment). */
+    @Schema(
+            description = "Tenant display name (admin list enrichment)",
+            example = "Acme Corp",
+            requiredMode = RequiredMode.NOT_REQUIRED)
+        String tenantName) {}
