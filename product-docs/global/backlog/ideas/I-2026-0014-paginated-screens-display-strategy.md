@@ -25,7 +25,7 @@ Adopt a deliberate, screen-by-screen display strategy for paginated views, balan
 
 See [`../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`](../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md).
 
-- **Tier A:** joins in list API, labels not FK IDs; demote « More information » as daily path.
+- **Tier A:** joins in list API, **human labels in business columns**; **primary key (`ID`) stays visible** as the first list column (monospace) — labels complement the ID, they do not replace it; demote « More information » as daily path.
 - **Tier B:** auth attempts — integration (+ tenant for Global Admin) names; audit logs — selective indexed joins.
 - Indexes when joins ship; readability wins on Tier A (#14).
 
@@ -60,8 +60,9 @@ Implement per matrix row after `I-2026-0013` marks row `reviewed`; **`TB-*` by s
 
 **Tier A join pattern shipped** on integrations, enrollments, API keys, tenants list, and
 integration-detail embedded enrollments (batch `findAllByIdWithTenant` / entity graph — see TBs
-under #236 and `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants`). Admins list remains the
-reference implementation.
+under #236 and `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants`). Admins list is the
+reference for **join labels + ID-first column**; detail opens on the list route via `?adminId=`
+(see matrix § List navigation patterns).
 
 **Tier B — auth attempts:** **Done** — batch enrollment → integration (+ tenant) labels on list and
 GET by id (`TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`, #257, PR #253). List **Created**

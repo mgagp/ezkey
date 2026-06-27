@@ -32,6 +32,7 @@ import { AUDIT_EVENT_TYPE_GROUPS, auditEventFilterToApiParams } from '@/lib/audi
 import { api } from '@/lib/api-client';
 import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
+import { adminListDetailHref } from '@/lib/list-detail-navigation';
 import { cn, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/use-auth';
 import { useDisplayTimezone } from '@/context/use-display-timezone';
@@ -315,7 +316,7 @@ function AuditLogDetailDialog({
           <DetailInfoRow label={t('detail.labelAdminId')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.adminId != null ? (
               log.adminUsername ? (
-                <Link to={`/admins/${log.adminId}`} className="font-medium text-accent hover:underline">
+                <Link to={adminListDetailHref(log.adminId)} className="font-medium text-accent hover:underline">
                   {log.adminUsername}
                   <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {log.adminId})</span>
                 </Link>
@@ -329,7 +330,7 @@ function AuditLogDetailDialog({
           {log.targetAdminId != null && (
             <DetailInfoRow label={t('detail.labelTargetAdmin')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
               {log.targetAdminUsername ? (
-                <Link to={`/admins/${log.targetAdminId}`} className="font-medium text-accent hover:underline">
+                <Link to={adminListDetailHref(log.targetAdminId)} className="font-medium text-accent hover:underline">
                   {log.targetAdminUsername}
                   <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {log.targetAdminId})</span>
                 </Link>
@@ -2148,7 +2149,7 @@ export default function AuditLogsPage() {
       render: (r) =>
         r.adminId ? (
           r.adminUsername ? (
-            <Link to={`/admins/${r.adminId}`} className="text-xs font-medium text-accent hover:underline">
+            <Link to={adminListDetailHref(r.adminId)} className="text-xs font-medium text-accent hover:underline">
               {r.adminUsername}
             </Link>
           ) : (

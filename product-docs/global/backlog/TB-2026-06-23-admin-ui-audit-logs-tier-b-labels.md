@@ -73,9 +73,9 @@ decision is « remove vs keep minimal fallback », not « ship labels ».
 
 | Surface | Change |
 |---------|--------|
-| List **Admin** | Username link; ID fallback |
+| List **Admin** | Username link via `adminListDetailHref(id)` → `/admins?adminId=`; ID fallback `#id` |
 | List **Time** | Keep absolute timestamp (`formatDateWithTimezone`); relative line optional secondary |
-| Detail **Admin / target admin** | Username when enriched (add target row when `targetAdminId` set) |
+| Detail **Admin / target admin** | Username when enriched; link uses `adminListDetailHref` (not `/admins/:id`) |
 | Detail **Integration / enrollment / tenant** | Name + link when enriched; ID as secondary; tenant row when `tenantId` present (GA-scoped list already filters tenant) |
 
 ## Join strategy (per page / context slice)

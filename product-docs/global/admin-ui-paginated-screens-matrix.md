@@ -22,7 +22,7 @@ Canonical **operator-first** decisions for every paginated Admin UI list: what t
 
 | Tier | Expectation | Join posture |
 |------|-------------|--------------|
-| **A — bounded** | PME-scale row counts (integrations, enrollments, …) | Prefer **labels in list DTO** via query joins; avoid raw FK IDs in list columns |
+| **A — bounded** | PME-scale row counts (integrations, enrollments, …) | Prefer **labels in list DTO** via query joins; **keep primary `ID` column**; avoid FK-only columns with no label (e.g. bare `integrationId`) |
 | **B — high volume** | Audit logs, auth attempts, large checkpoints | **Selective** indexed joins; prioritize glance fields; defer heavy enrichment |
 
 **Reference screen (both D8 + D9):** Administrators list — use as quality bar.
@@ -37,11 +37,27 @@ Tier B audit logs may keep absolute + muted relative on **Time** as a visual com
 and Tier A list **Created** columns use absolute only. Detail surfaces (e.g. last login) may still
 use relative in parentheses when it aids scanning without replacing the primary fact.
 
+## List navigation patterns (cross-cutting)
+
+Tier A lists use a **consistent primary-key column** (`**ID**` first, monospace) alongside human
+labels from joins. Cross-screen links must match how each entity opens detail:
+
+| Entity | List route | Detail navigation | Link helper / pattern |
+|--------|------------|-------------------|------------------------|
+| Integration | `/integrations` | `/integrations/:id` page | path param |
+| Enrollment | `/enrollments` | `/enrollments/:id` page | path param |
+| Tenant | `/tenants` | `/tenants/:id` page | path param |
+| API key | `/api-keys` | list + dialog (query) | follow existing screen |
+| **Administrator** | `/admins` | list + dialog (`?adminId=`) | `adminListDetailHref(id)` in `@/lib/list-detail-navigation` |
+
+**Do not** link to `/admins/:id` — that route does not exist. Audit logs, enrollment detail, and
+tenant detail embedded lists must use `adminListDetailHref` (or equivalent `?adminId=` URL).
+
 ## Matrix
 
 | Screen / route | API (list) | Tier | Operator question (1 line) | Target list columns (draft) | Join / display decision | Global vs Tenant | Status | Notes |
 |----------------|------------|------|------------------------------|----------------------------|-------------------------|------------------|--------|-------|
-| Admins | `GET /api/v1/admins` | A | Who can operate this instance and in what role? | username, admin type, tenant, status, … | **Done** — joins; reference implementation | Both (scoped) | `implemented` | Gold standard |
+| Admins | `GET /api/v1/admins` | A | Who can operate this instance and in what role? | **ID**, username, name, type, tenant (GA), status, last login, created | **Done** — joins + **ID** first column; detail via list `?adminId=` | Both (scoped) | `implemented` | Reference for joins; navigation pattern below |
 | Tenants | `GET /api/v1/tenants` | A | Which tenants exist and are they active? | **ID**, name, status (+ system badge), organization, domain, created | No joins — root entity; country on detail only | Global Admin | `implemented` | TB `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants` |
 | Integrations | `GET /api/v1/integrations` | A | Which apps are protected and under which tenant? | **ID**, code, name, status (+ operational warning), **tenant name** (Global Admin), created | **Done** — `tenantName` via list join; ID kept as primary key | Both (tenant col GA only) | `implemented` | First operator-lists TB (`TB-2026-06-18-admin-ui-lists-tier-a-integrations`) |
 | Enrollments | `GET /api/v1/enrollments` | A | Which devices/users are enrolled and in what state? | **ID**, name, status (+ warning), **integration name**, user ID, **tenant name** (GA), created, last used, **deactivate/reactivate** | **Done** — order: identity → state → scope → time; batch integration+tenant join; quick lifecycle actions | Both (tenant col GA only) | `implemented` | TB enrollments + `TB-2026-06-20-admin-ui-enrollments-list-quick-actions` |
@@ -52,7 +68,7 @@ use relative in parentheses when it aids scanning without replacing the primary 
 | Auth attempts | `GET /api/v1/auth-attempts` | B | What auth flows happened and outcomes? | **ID**, status, **enrollment name**, **integration name**, **tenant name** (GA), challenge, **created** (absolute), **expires** (absolute) | Batch enrollment → integration join per page | Both | `implemented` | TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`; Created/Expires = `formatDate` |
 | Audit logs | `GET /api/v1/audit-logs` | B | Who did what, when, with what result? | time, event type, actor, status; names if indexed | Selective joins only | Both | `in_progress` | TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258 |
 | Audit chain checkpoints | `GET .../chain-checkpoints` | B | Integrity windows healthy? | *TBD* | Careful on volume | Global Admin | `draft` | Embedded in audit-logs UI |
-| Tenant detail → admins | scoped admins list | A | Admins for this tenant? | *TBD* | Same as admins tier A | Global Admin | `draft` | Embedded list |
+| Tenant detail → admins | scoped admins list | A | Admins for this tenant? | **ID**, username, name, type, status, last login, created (same as admins minus tenant col) | Same as admins Tier A | Global Admin | `implemented` | Embedded list; row opens `/admins?adminId=` |
 | Integration detail → enrollments | scoped enrollments | A | Enrollments for this integration? | **ID**, name, status (+ warning), user ID, created, last used, **deactivate/reactivate** | Same as enrollments Tier A minus integration/tenant columns | Both | `implemented` | TB `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants` |
 
 *Analysis fills TBD rows; add rows if new paginated surfaces ship.*

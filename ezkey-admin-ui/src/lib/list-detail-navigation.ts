@@ -31,6 +31,14 @@ export type ResolvedListDetailNav<T extends string | number = number> = {
 };
 
 /**
+ * Admins open detail on the list route via {@code ?adminId=} — there is no {@code /admins/:id} page route.
+ * Use this helper for every cross-screen link to an administrator.
+ */
+export function adminListDetailHref(adminId: number): string {
+  return `/admins?adminId=${adminId}`;
+}
+
+/**
  * Validates location.state and returns adjacent IDs for the current entity, or null if navigation is unavailable.
  */
 export function resolveListDetailNavigation<T extends string | number>(
