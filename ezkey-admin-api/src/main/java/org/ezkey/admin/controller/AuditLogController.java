@@ -19,11 +19,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.ezkey.admin.security.AdminPrincipal;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.EventTypeFamily;
+import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.dto.ArchiveConfirmArchivedRequest;
 import org.ezkey.audit.dto.ArchiveConfirmArchivedResult;
 import org.ezkey.audit.dto.ArchiveEligibilityResult;
@@ -45,8 +53,17 @@ import org.ezkey.audit.integrity.AuditLifecycleService;
 import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
 import org.ezkey.audit.mapper.AuditLogMapper;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
+import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.entity.Tenant;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.domain.repository.TenantRepository;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -115,6 +132,10 @@ public class AuditLogController {
   private final AuditChainVerificationService auditChainVerificationService;
   private final AuditLifecycleService auditLifecycleService;
   private final AuditChainIncidentService auditChainIncidentService;
+  private final EzkeyAdminRepository adminRepository;
+  private final EnrollmentRepository enrollmentRepository;
+  private final IntegrationRepository integrationRepository;
+  private final TenantRepository tenantRepository;
 
   /**
    * Constructs the audit log controller with required dependencies.
@@ -128,6 +149,10 @@ public class AuditLogController {
    * @param auditLifecycleService the chain lifecycle service for archive sealing and gap
    *     declaration
    * @param auditChainIncidentService heartbeat operational incident listing and declaration
+   * @param adminRepository repository for actor/target admin label enrichment
+   * @param enrollmentRepository repository for enrollment label enrichment
+   * @param integrationRepository repository for integration label enrichment
+   * @param tenantRepository repository for tenant label enrichment
    */
   public AuditLogController(
       AuditLogService auditLogService,
@@ -137,7 +162,11 @@ public class AuditLogController {
       AuditIntegrityService auditIntegrityService,
       AuditChainVerificationService auditChainVerificationService,
       AuditLifecycleService auditLifecycleService,
-      AuditChainIncidentService auditChainIncidentService) {
+      AuditChainIncidentService auditChainIncidentService,
+      EzkeyAdminRepository adminRepository,
+      EnrollmentRepository enrollmentRepository,
+      IntegrationRepository integrationRepository,
+      TenantRepository tenantRepository) {
     this.auditLogService = auditLogService;
     this.auditLogMapper = auditLogMapper;
     this.auditChainCheckpointService = auditChainCheckpointService;
@@ -146,6 +175,10 @@ public class AuditLogController {
     this.auditChainVerificationService = auditChainVerificationService;
     this.auditLifecycleService = auditLifecycleService;
     this.auditChainIncidentService = auditChainIncidentService;
+    this.adminRepository = adminRepository;
+    this.enrollmentRepository = enrollmentRepository;
+    this.integrationRepository = integrationRepository;
+    this.tenantRepository = tenantRepository;
   }
 
   /**
@@ -268,8 +301,8 @@ public class AuditLogController {
     }
 
     Page<AuditLogResponseDto> auditLogs =
-        auditLogService
-            .findByFilters(
+        mapAuditLogPageWithLabels(
+            auditLogService.findByFilters(
                 eventType,
                 eventTypeFamily,
                 eventStatus,
@@ -283,8 +316,7 @@ public class AuditLogController {
                 filterTenantId,
                 createdAfter,
                 createdBefore,
-                pageable)
-            .map(auditLogMapper::toResponseDto);
+                pageable));
 
     return ResponseEntity.ok(auditLogs);
   }
@@ -344,7 +376,7 @@ public class AuditLogController {
     response.setAnchorAuditLogId(slice.getAnchorAuditLogId());
     response.setHasMoreBefore(slice.isHasMoreBefore());
     response.setHasMoreAfter(slice.isHasMoreAfter());
-    response.setItems(slice.getItems().stream().map(auditLogMapper::toResponseDto).toList());
+    response.setItems(mapAuditLogListWithLabels(slice.getItems()));
     return ResponseEntity.ok(response);
   }
 
@@ -865,6 +897,154 @@ public class AuditLogController {
     Object principal = auth.getPrincipal();
     if (principal instanceof AdminPrincipal adminPrincipal) {
       return adminPrincipal.adminId();
+    }
+    return null;
+  }
+
+  /**
+   * Maps a page of audit logs to response DTOs with batch-loaded display labels (avoids N+1 on
+   * investigation lists).
+   *
+   * @param page audit log entities from the service layer
+   * @return page of enriched response DTOs
+   */
+  private Page<AuditLogResponseDto> mapAuditLogPageWithLabels(Page<AuditLog> page) {
+    List<AuditLog> content = page.getContent();
+    if (content.isEmpty()) {
+      return page.map(auditLogMapper::toResponseDto);
+    }
+    List<AuditLogResponseDto> enriched = mapAuditLogListWithLabels(content);
+    return new PageImpl<>(enriched, page.getPageable(), page.getTotalElements());
+  }
+
+  /**
+   * Maps audit log entities to response DTOs with batch-loaded display labels.
+   *
+   * @param auditLogs audit log entities (non-null)
+   * @return enriched response DTOs in the same order
+   */
+  private List<AuditLogResponseDto> mapAuditLogListWithLabels(List<AuditLog> auditLogs) {
+    if (auditLogs.isEmpty()) {
+      return List.of();
+    }
+
+    Set<Integer> adminIds = new LinkedHashSet<>();
+    Set<Integer> enrollmentIds = new LinkedHashSet<>();
+    Set<Integer> integrationIds = new LinkedHashSet<>();
+    Set<Integer> tenantIds = new LinkedHashSet<>();
+
+    for (AuditLog log : auditLogs) {
+      if (log.getAdminId() != null) {
+        adminIds.add(log.getAdminId());
+      }
+      if (log.getTargetAdminId() != null) {
+        adminIds.add(log.getTargetAdminId());
+      }
+      if (log.getEnrollmentId() != null) {
+        enrollmentIds.add(log.getEnrollmentId());
+      }
+      if (log.getIntegrationId() != null) {
+        integrationIds.add(log.getIntegrationId());
+      }
+      if (log.getTenantId() != null) {
+        tenantIds.add(log.getTenantId());
+      }
+    }
+
+    Map<Integer, EzkeyAdmin> adminsById =
+        adminIds.isEmpty()
+            ? Map.of()
+            : adminRepository.findAllById(adminIds).stream()
+                .collect(Collectors.toMap(EzkeyAdmin::getAdminId, Function.identity()));
+
+    Map<Integer, Enrollment> enrollmentsById =
+        enrollmentIds.isEmpty()
+            ? Map.of()
+            : enrollmentRepository.findAllById(enrollmentIds).stream()
+                .collect(Collectors.toMap(Enrollment::getEnrollmentId, Function.identity()));
+
+    for (Enrollment enrollment : enrollmentsById.values()) {
+      if (enrollment.getIntegrationId() != null) {
+        integrationIds.add(enrollment.getIntegrationId());
+      }
+    }
+
+    Map<Integer, Integration> integrationsById =
+        integrationIds.isEmpty()
+            ? Map.of()
+            : integrationRepository.findAllByIdWithTenant(integrationIds).stream()
+                .collect(Collectors.toMap(Integration::getId, Function.identity()));
+
+    for (Integration integration : integrationsById.values()) {
+      if (integration.getTenant() != null && integration.getTenant().getTenantId() != null) {
+        tenantIds.add(integration.getTenant().getTenantId());
+      }
+    }
+
+    Map<Integer, Tenant> tenantsById =
+        tenantIds.isEmpty()
+            ? Map.of()
+            : tenantRepository.findAllById(tenantIds).stream()
+                .collect(Collectors.toMap(Tenant::getTenantId, Function.identity()));
+
+    List<AuditLogResponseDto> result = new ArrayList<>(auditLogs.size());
+    for (AuditLog log : auditLogs) {
+      EzkeyAdmin actor = log.getAdminId() != null ? adminsById.get(log.getAdminId()) : null;
+      EzkeyAdmin target =
+          log.getTargetAdminId() != null ? adminsById.get(log.getTargetAdminId()) : null;
+      Enrollment enrollment =
+          log.getEnrollmentId() != null ? enrollmentsById.get(log.getEnrollmentId()) : null;
+      Integration integration = resolveIntegrationForAuditLog(log, enrollment, integrationsById);
+      Tenant tenant = resolveTenantForAuditLog(log, integration, tenantsById);
+
+      result.add(
+          auditLogMapper.toResponseDtoWithLabels(
+              log,
+              actor != null ? actor.getUsername() : null,
+              target != null ? target.getUsername() : null,
+              integration != null ? integration.getName() : null,
+              enrollment != null ? enrollment.getEnrollmentName() : null,
+              tenant != null ? tenant.getTenantName() : null));
+    }
+    return result;
+  }
+
+  /**
+   * Resolves the integration for an audit log using direct FK or enrollment chain.
+   *
+   * @param log the audit log row
+   * @param enrollment preloaded enrollment for {@code log.enrollmentId}, or null
+   * @param integrationsById batch-loaded integrations
+   * @return integration entity, or null
+   */
+  private Integration resolveIntegrationForAuditLog(
+      AuditLog log, Enrollment enrollment, Map<Integer, Integration> integrationsById) {
+    if (log.getIntegrationId() != null) {
+      return integrationsById.get(log.getIntegrationId());
+    }
+    if (enrollment != null && enrollment.getIntegrationId() != null) {
+      return integrationsById.get(enrollment.getIntegrationId());
+    }
+    return null;
+  }
+
+  /**
+   * Resolves tenant display context from audit log FK or integration tenant.
+   *
+   * @param log the audit log row
+   * @param integration resolved integration, or null
+   * @param tenantsById batch-loaded tenants
+   * @return tenant entity, or null
+   */
+  private Tenant resolveTenantForAuditLog(
+      AuditLog log, Integration integration, Map<Integer, Tenant> tenantsById) {
+    if (log.getTenantId() != null) {
+      return tenantsById.get(log.getTenantId());
+    }
+    if (integration != null
+        && integration.getTenant() != null
+        && integration.getTenant().getTenantId() != null) {
+      return tenantsById.get(integration.getTenant().getTenantId());
     }
     return null;
   }

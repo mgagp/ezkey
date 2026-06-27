@@ -30,6 +30,7 @@ import { ContextHelp } from '@/components/ui/context-help';
 import { getCountryOptionsGrouped } from '@/lib/countries';
 import { getTimeZoneOptionsGrouped } from '@/lib/timezones';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
+import { adminListDetailHref } from '@/lib/list-detail-navigation';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
 import { listAdmins } from '@/generated/admin-api/administrator-provisioning/administrator-provisioning';
 import {
@@ -373,6 +374,13 @@ export default function TenantDetailPage() {
   const adminColumns: ColumnDef<AdminResponseDto>[] = useMemo(
     () => [
       {
+        header: tAdm('list.columns.id'),
+        key: 'adminId',
+        className: 'w-14',
+        sortKey: 'adminId',
+        render: (r) => <span className="font-mono text-xs">{r.adminId}</span>,
+      },
+      {
         header: t('detail.adminColumns.username'),
         key: 'username',
         sortKey: 'username',
@@ -595,7 +603,9 @@ export default function TenantDetailPage() {
                 columns={adminColumns}
                 data={admins}
                 isLoading={loadingAdmins}
-                onRowClick={(row) => navigate(`/admins?adminId=${row.adminId}`)}
+                onRowClick={(row) => {
+                  if (row.adminId != null) navigate(adminListDetailHref(row.adminId));
+                }}
                 keyExtractor={(r, i) => r.adminId ?? i}
                 emptyMessage={t('detail.adminsEmpty')}
                 currentSort={admPagination.sort}

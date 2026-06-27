@@ -1772,6 +1772,13 @@ export default function AdminsPage() {
   };
 
   const columns: ColumnDef<AdminResponseDto>[] = useMemo(() => {
+    const idCol: ColumnDef<AdminResponseDto> = {
+      header: t('list.columns.id'),
+      key: 'adminId',
+      className: 'w-14',
+      sortKey: 'adminId',
+      render: (r) => <span className="font-mono text-xs">{r.adminId}</span>,
+    };
     const usernameCol: ColumnDef<AdminResponseDto> = {
       header: t('list.columns.username'),
       key: 'username',
@@ -1873,6 +1880,7 @@ export default function AdminsPage() {
 
     if (isGlobalAdmin) {
       return [
+        idCol,
         usernameCol,
         nameCol,
         emailCol,
@@ -1885,6 +1893,7 @@ export default function AdminsPage() {
       ];
     }
     return [
+      idCol,
       usernameCol,
       nameCol,
       emailCol,

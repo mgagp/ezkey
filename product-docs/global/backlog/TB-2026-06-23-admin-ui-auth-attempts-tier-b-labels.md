@@ -42,7 +42,7 @@ per page.
 | 4 | Integration | Name link |
 | 5 | Tenant | Global Admin only |
 | 6 | Challenge | |
-| 7 | Created | Relative time |
+| 7 | Created | Absolute `formatDate` (same as Expires; not relative-only on investigation lists) |
 | 8 | Expires | |
 
 ## Join path

@@ -6,8 +6,8 @@
 - **Status:** `ready`
 - **Priority:** `P2`
 - **Created at:** `2026-06-20`
-- **Updated at:** `2026-06-23`
-- **Last reviewed at:** `2026-06-23`
+- **Updated at:** `2026-06-26`
+- **Last reviewed at:** `2026-06-26`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-ui`, `admin-api`
 - **Lane:** `A` / `B` (mixed — see priority table)
@@ -59,11 +59,11 @@ or incident patterns change.
 | **P1** | **Integration detail → enrollments** list alignment | A | UI (+ reuse list patterns) | Small | Low | **Done** — TB `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants`, #252 |
 | **P1** | **Tenants** list — analysis + polish | A | Analysis → small UI | Small | Low | **Done** — same TB; country trimmed from list |
 | **P2** | **Auth attempts** — integration + tenant labels | B | API (core DTO) + UI | Medium | Medium | **Done** — TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`, #257 |
-| **P2** | **Audit logs** — selective name joins | B | API + UI | Large | High | High volume; detail modal still shows `#integrationId`. Requires indexed join strategy per `I-2026-0014`. |
+| **P2** | **Audit logs** — selective name joins | B | API + UI | Large | High | **In progress** — TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258 |
 | **P3** | **Encryption keys** + **re-encryption batches** | A | Analysis | Small–medium | Low | Operator surface exists; matrix rows `draft`. Crypto-ops domain, not FK-label pattern. |
 | **P3** | **Alerts** list | A | Analysis | Small | Low | List already usable; resolve/snooze stays detail per quick-actions canon. |
 | **P3** | **Tenant detail → admins** embedded list | A | UI consistency | Small | Low | Low ROI vs main `/admins`; align only if touching tenant detail anyway. |
-| **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **End-state cleanup** after P1–P2 reduce FK-only surfaces. Interim pattern documented in `help.json` `patterns.fkRelatedDetails`. Do **not** start until list/detail labels cover daily operator paths. See § Related details retirement. |
+| **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **Re-evaluate after audit logs #258 merge** — criteria 1–2 done; criterion 3 = this slice; then grep call sites and promote P4 TB |
 
 ### Explicit non-goals (keep out of this queue)
 
@@ -85,14 +85,19 @@ Operator daily path should be **scannable labels in the list**, not expand-in-pl
 
 **Retirement criteria (all should be true before removal):**
 
-1. Matrix Tier A bounded lists used daily are `implemented` with labels (including Tenants review).
-2. Auth attempts Tier B slice shipped OR honest stub column removed.
-3. Audit logs: at least filter context + detail paths show names where IDs appear today.
+1. Matrix Tier A bounded lists used daily are `implemented` with labels (including Tenants review). — **Done**
+2. Auth attempts Tier B slice shipped OR honest stub column removed. — **Done** (#257 / PR #253)
+3. Audit logs: at least filter context + detail paths show names where IDs appear today. — **This slice** (`TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258); re-evaluate « More details » **immediately after merge + validation**
 4. Help copy (`help.json` `fkRelatedDetails`) and any tooltip strings removed or rewritten.
 5. Playwright spot-check on one detail page per former call site.
 
-**Call sites (2026-06-20):** `integration-detail.tsx`, `admins.tsx` (detail panel), `api-key-detail.tsx`,
-`enrollment-detail.tsx` (verify), `audit-logs.tsx` (verify). Grep `RelatedDetailsButton` before TB.
+**Null-label fallback:** When enrichment returns null but an FK ID is present, show `#id` and offer
+« More details » only on audit detail when any label is still missing (deleted / unreachable entity).
+See audit logs TB § *Null enrichment fallback*. Full button removal remains **P4** after criterion 3
+is validated and remaining call sites are grep-reviewed.
+
+**Call sites (2026-06-26):** `integration-detail.tsx`, `admins.tsx` (detail panel), `api-key-detail.tsx`,
+`enrollment-detail.tsx`, `audit-logs.tsx`. Grep `RelatedDetailsButton` before P4 TB.
 
 ## Scope
 

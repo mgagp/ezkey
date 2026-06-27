@@ -30,8 +30,11 @@ New ideas or improvements start as a backlog idea (`I-*`) under `product-docs/gl
 - `product-docs/methodology/session-start-guide.md` — choose your lane and skill sequence
 - `product-docs/methodology/README.md` — full methodology overview
 
-**2 — Open a GitHub issue**  
-Once the idea passes the "title that stands alone" test, open an issue on `mgagp/ezkey`. Apply the appropriate labels (`lane:*`, `type:*`, `component:*`, `priority:*`). See `product-docs/methodology/github-issues-workflow.md` for the skill and label taxonomy.
+**2 — Open a GitHub issue**
+Once the idea passes the "title that stands alone" test, open an issue on `mgagp/ezkey`. Apply **all**
+appropriate labels (`lane:*`, `type:*`, `component:*`, `priority:*`, `status:*`) at create time via
+`gh issue create --label ...`. See `product-docs/methodology/github-issues-workflow.md` and skill
+`.cursor/skills/github-issue-promote/SKILL.md` for the checklist and taxonomy.
 
 **3 — Branch from the issue**  
 Create a branch using the convention:

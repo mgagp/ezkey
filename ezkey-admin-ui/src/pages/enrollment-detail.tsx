@@ -30,6 +30,7 @@ import { ApiError, fetchBlobUrl } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
+import { adminListDetailHref } from '@/lib/list-detail-navigation';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
@@ -808,7 +809,7 @@ export default function EnrollmentDetailPage() {
                     <InfoRow label={t('detail.infoCreatedByAdmin')}>
                       {relatedDetails.isExpanded && relatedDetails.admin ? (
                         <Link
-                          to={`/admins?adminId=${enrollment.createdByAdminId}`}
+                          to={adminListDetailHref(enrollment.createdByAdminId)}
                           className="font-medium text-accent hover:underline"
                         >
                           {relatedDetails.admin.username ?? relatedDetails.admin.adminId} (ID{' '}

@@ -37,7 +37,11 @@ import org.ezkey.audit.integrity.CheckpointLifecycleState;
 import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
 import org.ezkey.audit.mapper.AuditLogMapper;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
+import org.ezkey.integration.domain.repository.IntegrationRepository;
+import org.ezkey.integration.domain.repository.TenantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,6 +73,10 @@ class AuditLogControllerChainCheckpointsTest {
   @Mock private AuditChainVerificationService auditChainVerificationService;
   @Mock private AuditLifecycleService auditLifecycleService;
   @Mock private AuditChainIncidentService auditChainIncidentService;
+  @Mock private EzkeyAdminRepository adminRepository;
+  @Mock private EnrollmentRepository enrollmentRepository;
+  @Mock private IntegrationRepository integrationRepository;
+  @Mock private TenantRepository tenantRepository;
 
   private AuditLogController controller;
 
@@ -89,7 +97,11 @@ class AuditLogControllerChainCheckpointsTest {
             auditIntegrityService,
             auditChainVerificationService,
             auditLifecycleService,
-            auditChainIncidentService);
+            auditChainIncidentService,
+            adminRepository,
+            enrollmentRepository,
+            integrationRepository,
+            tenantRepository);
   }
 
   @Test

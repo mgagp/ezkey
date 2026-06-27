@@ -38,6 +38,7 @@ Use this skill sequence by default unless the user asks otherwise:
 - `grill-me`
 - `plan-incubation` when a live working plan is preferred first
 - `tracer-bullet-promote`
+- `github-issue-promote` when a program slice needs GitHub visibility (read `github-issues-workflow.md`; labels mandatory)
 - `component-design-pack`
 - `test-strategy-planner`
 - `quality-gatekeeper`
@@ -58,3 +59,6 @@ Closeout proportionality:
 - Classify **hygiene vs program** first (`product-docs/methodology/minimum-viable-method.md`,
   decision `2026-06-06-methodological-closeout-vs-code-hygiene.md`).
 - For hygiene: commit/PR + targeted docs; challenge before creating backlog artifacts.
+
+**GitHub issues:** when a slice needs an issue, read `product-docs/methodology/github-issues-workflow.md`
+and apply [`.cursor/rules/github-issue-labels.mdc`](../rules/github-issue-labels.mdc) — labels at create time, not after.

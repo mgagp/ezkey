@@ -50,6 +50,21 @@ public class AuditLogResponseDto {
   private OffsetDateTime createdAt;
   private String reason;
 
+  /** Actor admin username (admin list enrichment; null when adminId absent or not found). */
+  private String adminUsername;
+
+  /** Target admin username when {@code targetAdminId} is set (admin enrichment). */
+  private String targetAdminUsername;
+
+  /** Integration display name (admin list enrichment). */
+  private String integrationName;
+
+  /** Enrollment display name (admin list enrichment). */
+  private String enrollmentName;
+
+  /** Tenant display name (admin list enrichment). */
+  private String tenantName;
+
   // Constructors
 
   public AuditLogResponseDto() {}
@@ -206,5 +221,45 @@ public class AuditLogResponseDto {
 
   public void setReason(String reason) {
     this.reason = reason;
+  }
+
+  public String getAdminUsername() {
+    return adminUsername;
+  }
+
+  public void setAdminUsername(String adminUsername) {
+    this.adminUsername = adminUsername;
+  }
+
+  public String getTargetAdminUsername() {
+    return targetAdminUsername;
+  }
+
+  public void setTargetAdminUsername(String targetAdminUsername) {
+    this.targetAdminUsername = targetAdminUsername;
+  }
+
+  public String getIntegrationName() {
+    return integrationName;
+  }
+
+  public void setIntegrationName(String integrationName) {
+    this.integrationName = integrationName;
+  }
+
+  public String getEnrollmentName() {
+    return enrollmentName;
+  }
+
+  public void setEnrollmentName(String enrollmentName) {
+    this.enrollmentName = enrollmentName;
+  }
+
+  public String getTenantName() {
+    return tenantName;
+  }
+
+  public void setTenantName(String tenantName) {
+    this.tenantName = tenantName;
   }
 }

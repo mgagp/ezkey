@@ -79,6 +79,10 @@ hygiene with a single small PR.
 **Timing:** at implementation start (preferred) or **retroactively** at closeout/PR — both are valid.
 Issue body: link to canonical `I-*` / `TB-*` paths; do not copy the full TB.
 
+**Labels:** if an issue was opened this slice, confirm all five label groups are present
+(`gh issue view <N> --json labels`). If missing, add with `gh issue edit` before closeout. See
+`github-issue-promote` skill and `github-issues-workflow.md` § Mandatory label checklist.
+
 See `product-docs/methodology/minimum-viable-method.md` § *GitHub issue vs product-docs canon*.
 
 ## Status guidance

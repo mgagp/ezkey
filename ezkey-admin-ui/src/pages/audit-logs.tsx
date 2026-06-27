@@ -32,6 +32,7 @@ import { AUDIT_EVENT_TYPE_GROUPS, auditEventFilterToApiParams } from '@/lib/audi
 import { api } from '@/lib/api-client';
 import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
+import { adminListDetailHref } from '@/lib/list-detail-navigation';
 import { cn, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/use-auth';
 import { useDisplayTimezone } from '@/context/use-display-timezone';
@@ -69,6 +70,26 @@ type AuditLogQueryParams = GetAuditLogsParams & {
 type AuditEventStatusFilter = NonNullable<GetAuditLogsParams['eventStatus']> | '';
 type AuditApiNameFilter = NonNullable<GetAuditLogsParams['apiName']> | '';
 type ContextEntityType = 'enrollment' | 'authAttempt' | 'integration' | '';
+
+/**
+ * True when the audit row still has FK IDs without server-side display labels — the operator may
+ * need the interim « More details » expand to attempt a live entity fetch (e.g. deleted entity).
+ */
+function auditLogNeedsMoreDetailsFallback(log: AuditLogResponseDto): boolean {
+  if (log.adminId != null && !log.adminUsername) {
+    return true;
+  }
+  if (log.integrationId != null && !log.integrationName) {
+    return true;
+  }
+  if (log.enrollmentId != null && !log.enrollmentName) {
+    return true;
+  }
+  if (log.tenantId != null && !log.tenantName) {
+    return true;
+  }
+  return false;
+}
 
 /** Operational heartbeat incident row (Admin API lifecycle). */
 type AuditChainIncidentRow = {
@@ -239,6 +260,7 @@ function AuditLogDetailDialog({
     adminId: log?.adminId ?? undefined,
     integrationId: log?.integrationId ?? undefined,
     enrollmentId: log?.enrollmentId ?? undefined,
+    tenantId: log?.tenantId ?? undefined,
   });
 
   if (!log) return null;
@@ -267,24 +289,12 @@ function AuditLogDetailDialog({
           </p>
         )}
         <div className="flex justify-end items-start gap-2 min-h-[2.25rem]">
-          {relatedDetails.hasAnyFk ? (
+          {auditLogNeedsMoreDetailsFallback(log) && (
             <RelatedDetailsButton
               onClick={relatedDetails.expand}
               isExpanded={relatedDetails.isExpanded}
               isLoading={relatedDetails.isLoading}
             />
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="invisible pointer-events-none"
-              tabIndex={-1}
-              aria-hidden
-              disabled
-            >
-              {t('common:detail.moreDetails')}
-            </Button>
           )}
         </div>
         <dl className="space-y-2.5">
@@ -305,12 +315,31 @@ function AuditLogDetailDialog({
           </DetailInfoRow>
           <DetailInfoRow label={t('detail.labelAdminId')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.adminId != null ? (
-              <span className="font-mono">#{log.adminId}</span>
+              log.adminUsername ? (
+                <Link to={adminListDetailHref(log.adminId)} className="font-medium text-accent hover:underline">
+                  {log.adminUsername}
+                  <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {log.adminId})</span>
+                </Link>
+              ) : (
+                <span className="font-mono">#{log.adminId}</span>
+              )
             ) : (
               <span className="text-fg-muted">—</span>
             )}
           </DetailInfoRow>
-          {relatedDetails.isExpanded && relatedDetails.admin && (
+          {log.targetAdminId != null && (
+            <DetailInfoRow label={t('detail.labelTargetAdmin')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
+              {log.targetAdminUsername ? (
+                <Link to={adminListDetailHref(log.targetAdminId)} className="font-medium text-accent hover:underline">
+                  {log.targetAdminUsername}
+                  <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {log.targetAdminId})</span>
+                </Link>
+              ) : (
+                <span className="font-mono">#{log.targetAdminId}</span>
+              )}
+            </DetailInfoRow>
+          )}
+          {relatedDetails.isExpanded && relatedDetails.admin && !log.adminUsername && (
             <DetailInfoRow label={t('common:detail.relatedAdmin')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
               <span className="font-medium">
                 {relatedDetails.admin.username ?? relatedDetails.admin.adminId} (ID {relatedDetails.admin.adminId})
@@ -319,12 +348,19 @@ function AuditLogDetailDialog({
           )}
           <DetailInfoRow label={t('detail.labelIntegration')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.integrationId != null ? (
-              <span className="font-mono">#{log.integrationId}</span>
+              log.integrationName ? (
+                <Link to={`/integrations/${log.integrationId}`} className="font-medium text-accent hover:underline">
+                  {log.integrationName}
+                  <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {log.integrationId})</span>
+                </Link>
+              ) : (
+                <span className="font-mono">#{log.integrationId}</span>
+              )
             ) : (
               <span className="text-fg-muted">—</span>
             )}
           </DetailInfoRow>
-          {relatedDetails.isExpanded && relatedDetails.integration && (
+          {relatedDetails.isExpanded && relatedDetails.integration && !log.integrationName && (
             <DetailInfoRow label={t('common:detail.relatedIntegration')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
               <Link
                 to={`/integrations/${relatedDetails.integration.id}`}
@@ -336,18 +372,47 @@ function AuditLogDetailDialog({
           )}
           <DetailInfoRow label={t('detail.labelEnrollment')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
             {log.enrollmentId != null ? (
-              <span className="font-mono">#{log.enrollmentId}</span>
+              log.enrollmentName ? (
+                <Link to={`/enrollments/${log.enrollmentId}`} className="font-medium text-accent hover:underline">
+                  {log.enrollmentName}
+                  <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {log.enrollmentId})</span>
+                </Link>
+              ) : (
+                <span className="font-mono">#{log.enrollmentId}</span>
+              )
             ) : (
               <span className="text-fg-muted">—</span>
             )}
           </DetailInfoRow>
-          {relatedDetails.isExpanded && relatedDetails.enrollment && (
+          {relatedDetails.isExpanded && relatedDetails.enrollment && !log.enrollmentName && (
             <DetailInfoRow label={t('common:detail.relatedEnrollment')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
               <Link
                 to={`/enrollments/${relatedDetails.enrollment.enrollmentId}`}
                 className="font-medium text-accent hover:underline"
               >
                 {relatedDetails.enrollment.enrollmentName ?? relatedDetails.enrollment.enrollmentId} (ID {relatedDetails.enrollment.enrollmentId})
+              </Link>
+            </DetailInfoRow>
+          )}
+          {log.tenantId != null && (
+            <DetailInfoRow label={t('detail.labelTenant')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
+              {log.tenantName ? (
+                <Link to={`/tenants/${log.tenantId}`} className="font-medium text-accent hover:underline">
+                  {log.tenantName}
+                  <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {log.tenantId})</span>
+                </Link>
+              ) : (
+                <span className="font-mono">#{log.tenantId}</span>
+              )}
+            </DetailInfoRow>
+          )}
+          {relatedDetails.isExpanded && relatedDetails.tenant && !log.tenantName && (
+            <DetailInfoRow label={t('common:detail.relatedTenant')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
+              <Link
+                to={`/tenants/${relatedDetails.tenant.tenantId}`}
+                className="font-medium text-accent hover:underline"
+              >
+                {relatedDetails.tenant.tenantName ?? relatedDetails.tenant.tenantId} (ID {relatedDetails.tenant.tenantId})
               </Link>
             </DetailInfoRow>
           )}
@@ -2081,7 +2146,18 @@ export default function AuditLogsPage() {
     {
       header: t('list.columns.admin'),
       key: 'adminId',
-      render: (r) => r.adminId ? <span className="font-mono text-xs">#{r.adminId}</span> : <span className="text-fg-muted">—</span>,
+      render: (r) =>
+        r.adminId ? (
+          r.adminUsername ? (
+            <Link to={adminListDetailHref(r.adminId)} className="text-xs font-medium text-accent hover:underline">
+              {r.adminUsername}
+            </Link>
+          ) : (
+            <span className="font-mono text-xs">#{r.adminId}</span>
+          )
+        ) : (
+          <span className="text-fg-muted">—</span>
+        ),
     },
     {
       header: t('list.columns.reason'),

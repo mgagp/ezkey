@@ -211,6 +211,14 @@ prevents stale data from a previous user appearing on the next login.
 3. Add a lazy route in `routes.tsx`
 4. Use `usePaginatedQuery` + `DataTable` + `Pagination` for list views
 
+### Tier A list conventions (ID column + cross-links)
+
+Canonical matrix: [`product-docs/global/admin-ui-paginated-screens-matrix.md`](../product-docs/global/admin-ui-paginated-screens-matrix.md).
+
+- **ID first:** bounded Tier A paginated lists show the entity primary key as the **first column** (`font-mono text-xs`, server `sortKey` when supported).
+- **Labels alongside ID:** join-enriched names (tenant, integration, username) live in their business columns; they do not replace the ID column.
+- **Administrator links:** there is **no** `/admins/:id` route. Detail opens on `/admins` with `?adminId=`. Use `adminListDetailHref(id)` from `@/lib/list-detail-navigation` for every cross-screen link to an admin (audit logs, enrollment detail, tenant embedded list, etc.).
+
 ### Dialog (modal) — dismissible
 
 The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (default `true`). When `dismissible={false}`, backdrop click and Escape do **not** close the dialog; only the close button (X) and explicit actions (Cancel, Submit, Done) do. Optional `size`: `sm` | `md` | `lg` | `lg-wide` (the last is ~26.5% wider than `lg`, for content-heavy read-only modals such as audit log detail).

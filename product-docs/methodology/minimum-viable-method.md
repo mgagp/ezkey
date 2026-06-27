@@ -161,6 +161,12 @@ source of truth.
 the tracer bullet. Retroactive issues after canon closeout are normal when scope or visibility needs
 become clear en route (e.g. dual-repo sync).
 
+**Labels (mandatory):** read [`github-issues-workflow.md`](github-issues-workflow.md) § Mandatory label
+checklist and run skill [`.cursor/skills/github-issue-promote/SKILL.md`](../../.cursor/skills/github-issue-promote/SKILL.md).
+Every new issue needs `lane:*`, `type:*`, `component:*`, `priority:*`, and `status:*` at create time
+(`gh issue create --label ...`), verified before the agent reports success. See also
+[`.cursor/rules/github-issue-labels.mdc`](../../.cursor/rules/github-issue-labels.mdc).
+
 ### Agent challenge (required on mismatch)
 
 If the operator requests full methodology artifacts and you classify **hygiene**, say so explicitly,
