@@ -6,8 +6,8 @@
 - **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-06-20`
-- **Last reviewed at:** `2026-06-20`
+- **Updated at:** `2026-06-26`
+- **Last reviewed at:** `2026-06-26`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`, `audit`
 - **Captured by:** Marc
@@ -56,18 +56,26 @@ See [`../grill-sessions/blitz-2026-05-08-2-D8-D9-pagination-grill-me.md`](../gri
 
 Implement per matrix row after `I-2026-0013` marks row `reviewed`; **`TB-*` by screen group**.
 
-### Execution progress (2026-06-20)
+### Execution progress (2026-06-26)
 
-**Tier A join pattern shipped** on integrations, enrollments, API keys (batch
-`findAllByIdWithTenant` / entity graph — see delivered TBs under #236). Admins list remains the
+**Tier A join pattern shipped** on integrations, enrollments, API keys, tenants list, and
+integration-detail embedded enrollments (batch `findAllByIdWithTenant` / entity graph — see TBs
+under #236 and `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants`). Admins list remains the
 reference implementation.
+
+**Tier B — auth attempts:** **Done** — batch enrollment → integration (+ tenant) labels on list and
+GET by id (`TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`, #257, PR #253). List **Created**
+and **Expires** use absolute timestamps (`formatDate`), not relative-only — investigation lists need
+unambiguous operational time.
+
+**Tier B — audit logs:** **In progress** — selective batch joins on list + context endpoints
+(`TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258). List actor column and detail FK paths
+get server-side labels; « More details » remains fallback when entities are missing.
 
 **Interim « More details » pattern:** still present on several detail pages (`RelatedDetailsButton`).
 Target state is **removal** once follow-up slices (see
 [`I-2026-0028`](I-2026-0028-admin-ui-operator-experience-follow-up.md) § Related details retirement)
 cover daily operator paths with list/detail labels.
-
-**Tier B not started:** auth attempts (placeholder integration column), audit logs (selective joins).
 
 ## Links
 

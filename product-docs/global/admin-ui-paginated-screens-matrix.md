@@ -27,6 +27,16 @@ Canonical **operator-first** decisions for every paginated Admin UI list: what t
 
 **Reference screen (both D8 + D9):** Administrators list — use as quality bar.
 
+## Timestamp display (cross-cutting)
+
+**Operational clarity first:** list and investigation surfaces show an **absolute** timestamp
+(timezone-aware where the screen already uses display timezone). Relative time (`2 m ago`) is optional
+**secondary** hint only — never the sole value on a column meant for forensics or correlation.
+
+Tier B audit logs may keep absolute + muted relative on **Time** as a visual comfort; auth attempts
+and Tier A list **Created** columns use absolute only. Detail surfaces (e.g. last login) may still
+use relative in parentheses when it aids scanning without replacing the primary fact.
+
 ## Matrix
 
 | Screen / route | API (list) | Tier | Operator question (1 line) | Target list columns (draft) | Join / display decision | Global vs Tenant | Status | Notes |
@@ -39,8 +49,8 @@ Canonical **operator-first** decisions for every paginated Admin UI list: what t
 | Encryption keys | `GET /api/v1/encryption-keys` | A | Key lifecycle and migration backlog? | *TBD* | Bounded; joins as needed for labels | Global Admin | `draft` | |
 | Re-encryption batches | `GET .../reencryption-batches` | A | Batch progress and failures? | *TBD* | Bounded | Global Admin | `draft` | |
 | Alerts | `GET /api/v1/alerts` (or equivalent) | A | What needs operator action now? | *TBD* | Bounded | Global Admin | `draft` | |
-| Auth attempts | `GET /api/v1/auth-attempts` | B | What auth flows happened and outcomes? | **ID**, status, **enrollment name**, **integration name**, **tenant name** (GA), challenge, created, expires | Batch enrollment → integration join per page | Both | `implemented` | TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels` |
-| Audit logs | `GET /api/v1/audit-logs` | B | Who did what, when, with what result? | time, event type, actor, status; names if indexed | Selective joins only | Both | `draft` | |
+| Auth attempts | `GET /api/v1/auth-attempts` | B | What auth flows happened and outcomes? | **ID**, status, **enrollment name**, **integration name**, **tenant name** (GA), challenge, **created** (absolute), **expires** (absolute) | Batch enrollment → integration join per page | Both | `implemented` | TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`; Created/Expires = `formatDate` |
+| Audit logs | `GET /api/v1/audit-logs` | B | Who did what, when, with what result? | time, event type, actor, status; names if indexed | Selective joins only | Both | `in_progress` | TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258 |
 | Audit chain checkpoints | `GET .../chain-checkpoints` | B | Integrity windows healthy? | *TBD* | Careful on volume | Global Admin | `draft` | Embedded in audit-logs UI |
 | Tenant detail → admins | scoped admins list | A | Admins for this tenant? | *TBD* | Same as admins tier A | Global Admin | `draft` | Embedded list |
 | Integration detail → enrollments | scoped enrollments | A | Enrollments for this integration? | **ID**, name, status (+ warning), user ID, created, last used, **deactivate/reactivate** | Same as enrollments Tier A minus integration/tenant columns | Both | `implemented` | TB `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants` |
