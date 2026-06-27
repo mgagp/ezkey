@@ -115,6 +115,7 @@ class AuditReasonPropagationTest {
   @Mock private AdminProvisioningService provisioningService;
   @Mock private EnrollmentRepository enrollmentRepository;
   @Mock private IntegrationRepository integrationRepository;
+
   @Mock private EnrollmentRevocationService enrollmentRevocationService;
   @Mock private EnrollmentUpdateService enrollmentUpdateService;
   @Mock private AuthAttemptRepository authAttemptRepository;
@@ -256,6 +257,7 @@ class AuditReasonPropagationTest {
             accessControlService,
             enrollmentRepository,
             integrationRepository,
+            adminRepository,
             enrollmentRevocationService,
             enrollmentUpdateService,
             enrollmentFkResolver);
@@ -313,6 +315,7 @@ class AuditReasonPropagationTest {
             accessControlService,
             enrollmentRepository,
             integrationRepository,
+            adminRepository,
             enrollmentRevocationService,
             enrollmentUpdateService,
             enrollmentFkResolver);

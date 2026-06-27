@@ -7,6 +7,7 @@ import { AlertTriangle, Check, Copy, KeyRound, Pencil, Plus, Power, PowerOff, Qr
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
+import { EnrollmentFkLink } from '@/components/feature/fk-detail-links';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { AppShell } from '@/components/layout/app-shell';
@@ -676,12 +677,11 @@ function AdminDetailDialog({
           )}
           {adm.enrollmentId != null && (
             <DetailInfoRow label={t('detail.labelEnrollmentId')} valueClassName="break-all">
-              <Link
-                to={`/enrollments/${adm.enrollmentId}`}
-                className="font-medium text-accent hover:underline"
-              >
-                #{adm.enrollmentId}
-              </Link>
+              <EnrollmentFkLink
+                enrollmentId={adm.enrollmentId}
+                enrollmentName={(adm as { enrollmentName?: string | null }).enrollmentName}
+                fallbackLabel={t('detail.enrollmentFallback', { id: adm.enrollmentId })}
+              />
             </DetailInfoRow>
           )}
           <DetailInfoRow label={t('detail.labelStatus')} valueClassName="break-all">{renderAdminStatusBadge(adm, t, 'detail')}</DetailInfoRow>

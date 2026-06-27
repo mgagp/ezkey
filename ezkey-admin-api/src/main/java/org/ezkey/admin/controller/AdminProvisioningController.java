@@ -141,6 +141,8 @@ public class AdminProvisioningController {
   private static AdminResponseDto toAdminResponseDto(EzkeyAdmin admin) {
     Integer enrollmentId =
         admin.getEnrollment() != null ? admin.getEnrollment().getEnrollmentId() : null;
+    String enrollmentName =
+        admin.getEnrollment() != null ? admin.getEnrollment().getEnrollmentName() : null;
     String tenantName = admin.getTenant() != null ? admin.getTenant().getTenantName() : null;
     boolean operational =
         Boolean.TRUE.equals(admin.getActive())
@@ -160,6 +162,7 @@ public class AdminProvisioningController {
         admin.getTenant() != null ? admin.getTenant().getTenantId() : null,
         tenantName,
         enrollmentId,
+        enrollmentName,
         admin.getActive(),
         admin.getLifecycleStatus().name(),
         admin.getCreatedAt(),

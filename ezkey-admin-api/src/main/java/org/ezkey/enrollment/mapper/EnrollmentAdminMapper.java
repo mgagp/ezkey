@@ -11,6 +11,7 @@
 package org.ezkey.enrollment.mapper;
 
 import java.util.List;
+import java.util.Map;
 import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentCreateRequest;
 import org.ezkey.enrollment.domain.EnrollmentCreateResponse;
@@ -90,6 +91,9 @@ public interface EnrollmentAdminMapper {
   @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "tenantName", ignore = true)
   @Mapping(target = "isSystemIntegration", ignore = true)
+  @Mapping(target = "createdByAdminUsername", ignore = true)
+  @Mapping(target = "deactivatedByAdminUsername", ignore = true)
+  @Mapping(target = "revokedByAdminUsername", ignore = true)
   @Mapping(
       target = "operational",
       expression =
@@ -110,6 +114,20 @@ public interface EnrollmentAdminMapper {
    */
   default EnrollmentResponseDto toResponseWithIntegration(
       Enrollment entity, Integration integration) {
+    return toResponseWithIntegrationAndAdminUsernames(entity, integration, Map.of());
+  }
+
+  /**
+   * Same as {@link #toResponseWithIntegration(Enrollment, Integration)} with optional admin
+   * username labels for detail surfaces (GET/PATCH by ID).
+   *
+   * @param entity the enrollment entity
+   * @param integration the integration context, or null
+   * @param adminUsernamesById map of adminId → username from a batch lookup (may be empty)
+   * @return enriched enrollment response DTO
+   */
+  default EnrollmentResponseDto toResponseWithIntegrationAndAdminUsernames(
+      Enrollment entity, Integration integration, Map<Integer, String> adminUsernamesById) {
     EnrollmentResponseDto base = toResponse(entity);
     String name = integration != null ? integration.getName() : null;
     Integer tenantId =
@@ -132,6 +150,7 @@ public interface EnrollmentAdminMapper {
             && (integration.getTenant() == null
                 || Boolean.TRUE.equals(integration.getTenant().getActive()));
     Boolean operational = localOp && integrationOp;
+    Map<Integer, String> usernames = adminUsernamesById != null ? adminUsernamesById : Map.of();
     return new EnrollmentResponseDto(
         base.enrollmentId(),
         base.version(),
@@ -149,19 +168,36 @@ public interface EnrollmentAdminMapper {
         base.expiresAt(),
         base.createdAt(),
         base.createdByAdminId(),
+        usernameFor(usernames, base.createdByAdminId()),
         base.lastUsedAt(),
         base.contactEmail(),
         base.contactPhoneNumber(),
         base.userIdentifier(),
         base.deactivatedAt(),
         base.deactivatedByAdminId(),
+        usernameFor(usernames, base.deactivatedByAdminId()),
         base.revokedAt(),
         base.revokedByAdminId(),
+        usernameFor(usernames, base.revokedByAdminId()),
         name,
         tenantId,
         tenantName,
         isSystem,
         operational);
+  }
+
+  /**
+   * Resolves a username from a batch lookup map.
+   *
+   * @param adminUsernamesById admin id to username map
+   * @param adminId foreign key, may be null
+   * @return username or null when id is null or not in map
+   */
+  static String usernameFor(Map<Integer, String> adminUsernamesById, Integer adminId) {
+    if (adminId == null) {
+      return null;
+    }
+    return adminUsernamesById.get(adminId);
   }
 
   /**

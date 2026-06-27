@@ -76,6 +76,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param verifiedAt When enrollment was verified (device completed binding)
  * @param expiresAt Optional expiration for pending enrollment (null = no expiration)
  * @param createdByAdminId Admin who created this enrollment (null when via API key)
+ * @param createdByAdminUsername Username of the creating admin; null when unknown or admin removed
  * @param lastUsedAt When enrollment was last used for successful authentication
  * @param contactEmail Optional contact email for the end-user
  * @param contactPhoneNumber Optional contact phone number for the end-user
@@ -142,6 +143,13 @@ public record EnrollmentResponseDto(
         java.time.OffsetDateTime createdAt,
     @Schema(description = "Admin who created this enrollment (null when via API key)")
         Integer createdByAdminId,
+    @Schema(
+            description =
+                "Username of the admin who created this enrollment; null when via API key, admin"
+                    + " removed, or not resolved",
+            example = "tenant.admin",
+            nullable = true)
+        String createdByAdminUsername,
     @Schema(description = "When enrollment was last used for successful authentication")
         java.time.OffsetDateTime lastUsedAt,
     @Schema(description = "Optional contact email for the end-user") String contactEmail,
@@ -157,10 +165,18 @@ public record EnrollmentResponseDto(
         java.time.OffsetDateTime deactivatedAt,
     @Schema(description = "Admin who deactivated this enrollment; null if never deactivated")
         Integer deactivatedByAdminId,
+    @Schema(
+            description = "Username of the admin who deactivated this enrollment; null if unknown",
+            nullable = true)
+        String deactivatedByAdminUsername,
     @Schema(description = "When the enrollment was permanently revoked; null if never")
         java.time.OffsetDateTime revokedAt,
     @Schema(description = "Admin who revoked this enrollment; null if never revoked")
         Integer revokedByAdminId,
+    @Schema(
+            description = "Username of the admin who revoked this enrollment; null if unknown",
+            nullable = true)
+        String revokedByAdminUsername,
     @Schema(
             description =
                 "Display name for the enrollment's integration (e.g. Ezkey System); populated when"

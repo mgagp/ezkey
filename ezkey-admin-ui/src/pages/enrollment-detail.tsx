@@ -8,6 +8,7 @@ import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
+import { AdminFkLink } from '@/components/feature/fk-detail-links';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +29,6 @@ import { ApiError, fetchBlobUrl } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
-import { adminListDetailHref } from '@/lib/list-detail-navigation';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
@@ -49,6 +49,13 @@ import type {
 } from '@/generated/admin-api/model';
 
 // ── Local types (not yet in OpenAPI spec) ────────────────────────────────────
+
+/** Admin username labels on enrollment GET (until spec refresh). */
+type EnrollmentDetailDto = EnrollmentResponseDto & {
+  createdByAdminUsername?: string | null;
+  deactivatedByAdminUsername?: string | null;
+  revokedByAdminUsername?: string | null;
+};
 
 /** Response from POST /api/v1/auth-attempts — not yet specified in the OpenAPI schema. */
 interface AuthAttemptCreateResponse {
@@ -474,7 +481,7 @@ export default function EnrollmentDetailPage() {
   const { toast } = useToast();
   const { lookup } = useIntegrations();
 
-  const { data: enrollment, isLoading } = useGetById<EnrollmentResponseDto>(
+  const { data: enrollment, isLoading } = useGetById<EnrollmentDetailDto>(
     isNaN(enrollmentId) ? 0 : enrollmentId,
     { query: { enabled: !isNaN(enrollmentId) } },
   );
@@ -758,7 +765,7 @@ export default function EnrollmentDetailPage() {
                       const displayName =
                         enrollment.integrationName ??
                         lookup.get(enrollment.integrationId ?? 0) ??
-                        `#${enrollment.integrationId ?? '?'}`;
+                        t('list.integrationFallback', { id: enrollment.integrationId ?? '?' });
                       return enrollment.isSystemIntegration ? (
                         <span className="font-medium">{displayName}</span>
                       ) : (
@@ -783,7 +790,12 @@ export default function EnrollmentDetailPage() {
                           <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {enrollment.tenantId})</span>
                         </Link>
                       ) : (
-                        <span className="font-mono">#{enrollment.tenantId}</span>
+                        <Link
+                          to={`/tenants/${enrollment.tenantId}`}
+                          className="font-medium text-accent hover:underline"
+                        >
+                          {t('list.tenantFallback', { id: enrollment.tenantId })}
+                        </Link>
                       )}
                     </InfoRow>
                   )}
@@ -806,12 +818,11 @@ export default function EnrollmentDetailPage() {
                   </InfoRow>
                   {enrollment.createdByAdminId != null && (
                     <InfoRow label={t('detail.infoCreatedByAdmin')}>
-                      <Link
-                        to={adminListDetailHref(enrollment.createdByAdminId)}
-                        className="font-medium text-accent hover:underline"
-                      >
-                        #{enrollment.createdByAdminId}
-                      </Link>
+                      <AdminFkLink
+                        adminId={enrollment.createdByAdminId}
+                        username={enrollment.createdByAdminUsername}
+                        fallbackLabel={t('list.adminFallback', { id: enrollment.createdByAdminId })}
+                      />
                     </InfoRow>
                   )}
                   <InfoRow label={t('detail.infoVersion')}>
@@ -834,7 +845,15 @@ export default function EnrollmentDetailPage() {
                       <span className="text-fg-muted">
                         {formatDate(enrollment.deactivatedAt)}
                         {enrollment.deactivatedByAdminId != null && (
-                          <span className="ml-1">{t('detail.infoByAdmin', { id: enrollment.deactivatedByAdminId })}</span>
+                          <span className="ml-2 inline-flex items-center gap-1">
+                            <AdminFkLink
+                              adminId={enrollment.deactivatedByAdminId}
+                              username={enrollment.deactivatedByAdminUsername}
+                              fallbackLabel={t('list.adminFallback', {
+                                id: enrollment.deactivatedByAdminId,
+                              })}
+                            />
+                          </span>
                         )}
                       </span>
                     </InfoRow>
@@ -844,7 +863,15 @@ export default function EnrollmentDetailPage() {
                       <span className="text-fg-muted">
                         {formatDate(enrollment.revokedAt)}
                         {enrollment.revokedByAdminId != null && (
-                          <span className="ml-1">{t('detail.infoByAdmin', { id: enrollment.revokedByAdminId })}</span>
+                          <span className="ml-2 inline-flex items-center gap-1">
+                            <AdminFkLink
+                              adminId={enrollment.revokedByAdminId}
+                              username={enrollment.revokedByAdminUsername}
+                              fallbackLabel={t('list.adminFallback', {
+                                id: enrollment.revokedByAdminId,
+                              })}
+                            />
+                          </span>
                         )}
                       </span>
                     </InfoRow>

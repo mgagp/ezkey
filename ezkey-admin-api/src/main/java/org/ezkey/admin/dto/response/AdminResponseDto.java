@@ -70,6 +70,7 @@ import java.time.OffsetDateTime;
  * @param tenantId Tenant ID (null for global admins)
  * @param tenantName Tenant display name (null for global admins)
  * @param enrollmentId MFA enrollment ID (null if not linked)
+ * @param enrollmentName Display name of the linked MFA enrollment (null when not linked)
  * @param active Flag indicating if the administrator is currently active
  * @param lifecycleStatus Explicit lifecycle status (PENDING_ACTIVATION, ACTIVE, DEACTIVATED)
  * @param createdAt Timestamp when the administrator was created (with timezone)
@@ -115,6 +116,13 @@ public record AdminResponseDto(
             example = "123",
             nullable = true)
         Integer enrollmentId,
+    @Schema(
+            description =
+                "Human-readable name of the linked MFA enrollment (null when enrollmentId is"
+                    + " null)",
+            example = "admin.docker MFA",
+            nullable = true)
+        String enrollmentName,
     @Schema(
             description = "Flag indicating if the administrator is currently active",
             example = "true")

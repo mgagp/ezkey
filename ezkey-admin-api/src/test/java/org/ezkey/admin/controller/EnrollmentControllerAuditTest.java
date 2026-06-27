@@ -90,6 +90,8 @@ class EnrollmentControllerAuditTest {
 
   @Mock private org.ezkey.integration.domain.repository.IntegrationRepository integrationRepository;
 
+  @Mock private org.ezkey.integration.domain.repository.EzkeyAdminRepository adminRepository;
+
   @Mock private EnrollmentRevocationService enrollmentRevocationService;
 
   @Mock private EnrollmentUpdateService enrollmentUpdateService;
@@ -149,6 +151,7 @@ class EnrollmentControllerAuditTest {
             accessControlService,
             enrollmentRepository,
             integrationRepository,
+            adminRepository,
             enrollmentRevocationService,
             enrollmentUpdateService,
             auditEntityFkResolver);

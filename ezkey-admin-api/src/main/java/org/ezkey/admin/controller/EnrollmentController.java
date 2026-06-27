@@ -57,7 +57,9 @@ import org.ezkey.exception.EnrollmentCreateValidationException;
 import org.ezkey.exception.ResourceNotFoundException;
 import org.ezkey.exception.SystemIntegrationEnrollmentCreationException;
 import org.ezkey.exception.TenantInactiveException;
+import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.Integration;
+import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
 import org.ezkey.integration.exception.IntegrationLifecycleStateException;
 import org.springdoc.core.annotations.ParameterObject;
@@ -127,6 +129,7 @@ public class EnrollmentController {
   private final AccessControlService accessControlService;
   private final EnrollmentRepository enrollmentRepository;
   private final IntegrationRepository integrationRepository;
+  private final EzkeyAdminRepository adminRepository;
   private final EnrollmentRevocationService enrollmentRevocationService;
   private final EnrollmentUpdateService enrollmentUpdateService;
   private final AuditEntityFkResolver auditEntityFkResolver;
@@ -142,6 +145,7 @@ public class EnrollmentController {
    * @param accessControlService the access control service for tenant scoping validation
    * @param enrollmentRepository the enrollment repository for audit queries
    * @param integrationRepository the integration repository for tenant resolution in audit logs
+   * @param adminRepository the administrator repository for detail username enrichment
    * @param enrollmentRevocationService the service for enrollment revocation lifecycle
    * @param enrollmentUpdateService the service for enrollment metadata partial updates
    * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
@@ -155,6 +159,7 @@ public class EnrollmentController {
       AccessControlService accessControlService,
       EnrollmentRepository enrollmentRepository,
       IntegrationRepository integrationRepository,
+      EzkeyAdminRepository adminRepository,
       EnrollmentRevocationService enrollmentRevocationService,
       EnrollmentUpdateService enrollmentUpdateService,
       AuditEntityFkResolver auditEntityFkResolver) {
@@ -166,6 +171,7 @@ public class EnrollmentController {
     this.accessControlService = accessControlService;
     this.enrollmentRepository = enrollmentRepository;
     this.integrationRepository = integrationRepository;
+    this.adminRepository = adminRepository;
     this.enrollmentRevocationService = enrollmentRevocationService;
     this.enrollmentUpdateService = enrollmentUpdateService;
     this.auditEntityFkResolver = auditEntityFkResolver;
@@ -296,7 +302,7 @@ public class EnrollmentController {
               ? integrationRepository.findById(enrollment.getIntegrationId())
               : java.util.Optional.<Integration>empty();
       EnrollmentResponseDto response =
-          enrollmentMapper.toResponseWithIntegration(enrollment, integration.orElse(null));
+          mapEnrollmentDetailResponse(enrollment, integration.orElse(null));
       return ResponseEntity.ok(response);
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
@@ -360,7 +366,7 @@ public class EnrollmentController {
               ? integrationRepository.findById(integrationIdForResponse)
               : java.util.Optional.<Integration>empty();
       EnrollmentResponseDto response =
-          enrollmentMapper.toResponseWithIntegration(updated, integrationForResponse.orElse(null));
+          mapEnrollmentDetailResponse(updated, integrationForResponse.orElse(null));
       Integer tenantId = resolveTenantId(updated.getIntegrationId());
 
       auditLogService.log(
@@ -1004,6 +1010,44 @@ public class EnrollmentController {
         .findById(enrollmentId)
         .map(enrollment -> resolveTenantId(enrollment.getIntegrationId()))
         .orElse(null);
+  }
+
+  /**
+   * Maps a single enrollment for detail responses (GET/PATCH) with integration and admin username
+   * labels.
+   *
+   * @param enrollment enrollment entity
+   * @param integration integration context, or null
+   * @return enriched response DTO
+   */
+  private EnrollmentResponseDto mapEnrollmentDetailResponse(
+      Enrollment enrollment, Integration integration) {
+    return enrollmentMapper.toResponseWithIntegrationAndAdminUsernames(
+        enrollment, integration, resolveAdminUsernames(enrollment));
+  }
+
+  /**
+   * Batch-resolves administrator usernames referenced on an enrollment detail row.
+   *
+   * @param enrollment enrollment with optional admin FK fields
+   * @return map of adminId to username for rows that still exist
+   */
+  private Map<Integer, String> resolveAdminUsernames(Enrollment enrollment) {
+    Set<Integer> adminIds = new LinkedHashSet<>();
+    if (enrollment.getCreatedByAdminId() != null) {
+      adminIds.add(enrollment.getCreatedByAdminId());
+    }
+    if (enrollment.getDeactivatedByAdminId() != null) {
+      adminIds.add(enrollment.getDeactivatedByAdminId());
+    }
+    if (enrollment.getRevokedByAdminId() != null) {
+      adminIds.add(enrollment.getRevokedByAdminId());
+    }
+    if (adminIds.isEmpty()) {
+      return Map.of();
+    }
+    return adminRepository.findAllById(adminIds).stream()
+        .collect(Collectors.toMap(EzkeyAdmin::getAdminId, EzkeyAdmin::getUsername));
   }
 
   /**
