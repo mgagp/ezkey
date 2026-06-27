@@ -6480,6 +6480,33 @@
             "type": "boolean",
             "description": "Demo MITM opt-in at creation time (Pending tampering only when Auth API demo flag is on)",
             "example": false
+          },
+          "integrationId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Integration ID resolved via enrollment (admin enrichment)",
+            "example": 3
+          },
+          "integrationName": {
+            "type": "string",
+            "description": "Integration display name (admin list enrichment)",
+            "example": "Web Portal"
+          },
+          "enrollmentName": {
+            "type": "string",
+            "description": "Enrollment display name (admin list enrichment)",
+            "example": "Alice Device"
+          },
+          "tenantId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Tenant ID (admin list enrichment)",
+            "example": 2
+          },
+          "tenantName": {
+            "type": "string",
+            "description": "Tenant display name (admin list enrichment)",
+            "example": "Acme Corp"
           }
         },
         "required": [
@@ -8460,6 +8487,21 @@
           },
           "reason": {
             "type": "string"
+          },
+          "adminUsername": {
+            "type": "string"
+          },
+          "targetAdminUsername": {
+            "type": "string"
+          },
+          "integrationName": {
+            "type": "string"
+          },
+          "enrollmentName": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
           }
         }
       },
@@ -8889,42 +8931,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }
