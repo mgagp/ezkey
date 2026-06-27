@@ -7,6 +7,8 @@
 - **Related idea:** `I-2026-0028` (post-P4 editorial closeout)
 - **Lane:** `A` / `B` (Admin API enrichment + Admin UI detail surfaces)
 - **Posture:** `single-pass`
+- **GitHub issue:** #262
+- **GitHub PR:** #263 (stacked on #261)
 - **Created at:** `2026-06-23`
 
 ## Objective
