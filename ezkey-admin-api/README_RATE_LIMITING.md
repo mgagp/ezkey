@@ -38,6 +38,7 @@ ezkey.admin.rate-limit.login.block-duration-minutes=30
 
 **Protected Endpoints**:
 - `POST /api/v1/admin/auth/login`
+- `POST /api/v1/admin/auth/passwordless-wait`
 - `POST /api/v1/admin/auth/recover`
 
 **Features**:
