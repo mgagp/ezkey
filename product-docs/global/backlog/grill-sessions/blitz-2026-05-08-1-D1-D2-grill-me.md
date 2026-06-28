@@ -99,6 +99,6 @@ Link to `V-2026-0010` profile elaboration when documenting.
 ## Links
 
 - [`../blitz-archive/blitz-2026-05-08-1.md`](../blitz-archive/blitz-2026-05-08-1.md)
-- [`../ideas/I-2026-0002-reencryption-batch-async-button.md`](../ideas/I-2026-0002-reencryption-batch-async-button.md)
+- [`../ideas/I-2026-0002-reencryption-batch-async-button.md`](../ideas/I-2026-0002-reencryption-batch-async-button.md) — **done** (PR #265, 2026-06-28)
 - [`../ideas/I-2026-0003-ha-docker-stack-parity-review.md`](../ideas/I-2026-0003-ha-docker-stack-parity-review.md)
 - [`../../vision/product-orientation-notes.md`](../../vision/product-orientation-notes.md) (`V-2026-0010`)

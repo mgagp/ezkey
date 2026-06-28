@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0002`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-06-27`
-- **Last reviewed at:** `2026-06-27`
+- **Updated at:** `2026-06-28`
+- **Last reviewed at:** `2026-06-28`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`
 - **Captured by:** Marc
@@ -56,7 +56,14 @@ See [`../grill-sessions/blitz-2026-05-08-1-D1-D2-grill-me.md`](../grill-sessions
 
 Promoted to **TB-2026-06-27-admin-ui-encryption-reencryption-async** (2026-06-27). GitHub **#264**.
 
-Ready for implementation on branch `feat/admin-ui-encryption-reencryption-async`.
+## Closeout (2026-06-28)
+
+**Shipped** via PR **#265** (merged to `main`). Manual triggers are enqueue-only (**202 Accepted**);
+progress via existing batches table on `/encryption-keys`.
+
+- TB: [`TB-2026-06-27-admin-ui-encryption-reencryption-async`](../TB-2026-06-27-admin-ui-encryption-reencryption-async.md) → `done`
+- Method log: [`method-logs/ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md`](../method-logs/ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md)
+- Matrix: encryption keys + re-encryption batches → `implemented`
 
 ## Links
 

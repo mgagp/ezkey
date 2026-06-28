@@ -9,19 +9,16 @@ This index provides a lightweight list of active ideas and their current state.
 | ID | Title | Status | Priority | Components | Last reviewed |
 |----|-------|--------|----------|------------|---------------|
 | `I-2026-0001` | Per-enrollment local authentication policy for mobile respond | `incubating` | `P1` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-07` |
-| `I-2026-0002` | Re-encryption batch UI: async button behavior | `incubating` | `P2` | `admin-ui`, `admin-api` | `2026-05-19` |
 | `I-2026-0003` | High-availability Docker stack: parity review with `cleanstart.sh` | `incubating` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api` | `2026-05-19` |
 | `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `promoted` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-05-25` |
 | `I-2026-0005` | Checkpoint integrity breaks: declared remediation and reattachment | `incubating` | `P1` | `admin-api`, `audit` | `2026-05-17` |
 | `I-2026-0006` | Nightly retroactive integrity validation batch | `incubating` | `P1` | `admin-api`, `audit`, `infra` | `2026-05-19` |
 | `I-2026-0007` | Admin Dashboard: batch health and integrity widgets | `incubating` | `P1` | `admin-ui`, `admin-api` | `2026-05-19` |
-| `I-2026-0008` | Rate-limit baseline analysis and generalization | `done` | `P2` | `admin-api`, `auth-api`, `integration-api` | `2026-05-24` |
 | `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `ready` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-24` |
 | `I-2026-0011` | Bootstrap clean-start: activation-code mode as default | `incubating` | `P1` | `admin-api`, `infra`, `bootstrap`, `docs` | `2026-05-19` |
 | `I-2026-0012` | Hard-coded Ezkey System user sensitivity audit | `incubating` | `P2` | `admin-api`, `core`, `infra` | `2026-05-19` |
 | `I-2026-0013` | Paginated admin screens: functional and operational pertinence review | `incubating` | `P2` | `admin-ui`, `admin-api` | `2026-06-20` |
 | `I-2026-0014` | Paginated screens display strategy: foreign keys vs intelligent joins | `incubating` | `P2` | `admin-ui`, `admin-api`, `audit` | `2026-06-20` |
-| `I-2026-0028` | Admin UI operator experience — post–Tier A follow-up (prioritized queue) | `ready` | `P2` | `admin-ui`, `admin-api` | `2026-06-20` |
 | `I-2026-0015` | Business limits on potentially large-volume SQL queries | `incubating` | `P2` | `admin-api`, `auth-api`, `integration-api`, `repositories` | `2026-05-24` |
 | `I-2026-0017` | Profile elaboration template, skill, and per-client document workflow | `captured` | `P1` | `docs (product-docs)`, `methodology`, `skills` | `2026-05-08` |
 | `I-2026-0018` | Profile generator skill: elaboration document to runtime configs | `captured` | `P2` | `docs (product-docs)`, `methodology`, `skills`, `infra` | `2026-05-08` |
@@ -37,6 +34,8 @@ This index provides a lightweight list of active ideas and their current state.
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-0002` | Re-encryption batch UI: async button behavior | `2026-06-28` | PR #265 / issue #264. Async manual triggers (202 Accepted); TB `TB-2026-06-27-admin-ui-encryption-reencryption-async`; matrix encryption keys + batches → `implemented`. Origin: Blitz D1. |
+| `I-2026-0028` | Admin UI operator experience — post–Tier A follow-up | `2026-06-27` | Program closed #236 → P4 + detail FK parity (#261, #263). ML `ML-2026-06-27-admin-ui-operator-experience-program-closeout`. P3 encryption slice spun out → `I-2026-0002` (done 2026-06-28). |
 | `I-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity` | Admin enrollment vs admin login UX clarity | `2026-06-06` | PR #192 / issue #191 closed. Lane D first cut: dual-state admin detail, recovery-code gating tooltip, activation/recovery copy (EN/FR). Hygiene #182 first slice co-merged; #182 closed 2026-06-18 (React Doctor campaign #232/#234). |
 | `I-2026-06-18-demo-device-qr-auth-url-parity` | Demo Device QR authUrl routing parity | `2026-06-18` | PR #222 / issue #223; dual-repo delivery; `TB-*` + `ML-2026-06-18-demo-device-qr-session`. Post-close Jackson/standalone hygiene in consolidation ML. |
 | `I-2026-05-29-mobile-stack-modernization` | Mobile stack modernization (#177) | `2026-05-31` | RN 0.85.3, VC5+Nitro, AS3, CI `validate:ci`, ESLint 9, post-merge dep bumps, canonical Android build scripts. Maestro enrollment deferred to `TB-2026-0002`. |

@@ -3,14 +3,15 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-27-admin-ui-encryption-reencryption-async`
-- **Status:** `ready`
+- **Status:** `done`
 - **Related idea:** `I-2026-0002-reencryption-batch-async-button`
-- **Parent context:** `I-2026-0028` P3 residual; matrix rows encryption keys / re-encryption batches (`draft`)
+- **Parent context:** `I-2026-0028` P3 residual; matrix rows encryption keys / re-encryption batches (`implemented`)
 - **Feature:** `F-encryption-key-rotation`
 - **Lane:** `A` (API contract + Admin UI operational UX)
 - **Posture:** `single-pass` with design pack gate
-- **GitHub issue:** #264
+- **GitHub issue:** #264 (closed via PR #265)
 - **Created at:** `2026-06-27`
+- **Closed at:** `2026-06-28`
 
 ## Objective
 
@@ -27,22 +28,16 @@ manual paths (per-key, full trigger, create batches + execute) on the same async
 - **Admin API** `EncryptionKeyController`: list keys, list batches, resume batch, rotate, manual triggers.
 - **Grill done** (2026-05-19, blitz D1/D2): per-key trigger confirmed **synchronous** today.
 
-### Gap (confirmed on main)
+### Gap (resolved 2026-06-28)
 
-Manual trigger endpoints still **process batches inline** before HTTP returns (`200 OK` + summary):
-
-- `POST /api/v1/encryption-keys/reencrypt/trigger` (full)
-- `POST /api/v1/encryption-keys/{keyId}/reencrypt` (per key)
-- `POST /api/v1/encryption-keys/reencrypt/batches/create` (create + execute path — verify in controller)
-
-OpenAPI descriptions still say *"processes them immediately"*. UI dialogs wait on `mutation.isPending`
-and show batch counts from the synchronous response — **does not scale** for large datasets.
+Manual trigger endpoints previously processed batches inline (`200 OK` + synchronous summary). **Fixed:**
+enqueue-only + **202 Accepted**; UI fire-and-forget with batches table as progress surface.
+`POST /reencrypt/create-batches` remains **200** (create-only, by design).
 
 ### Matrix posture
 
-Rows remain `draft` not because UI is missing, but because **operator column canon** was never
-written. Existing columns are largely Tier-A-aligned (ID, status, lifecycle, absolute timestamps).
-Close matrix as part of this slice after async work lands.
+Rows **`implemented`** — async triggers + existing paginated keys/batches UI; operator column canon
+still *TBD* for future editorial pass (non-blocking).
 
 ## In scope
 
@@ -79,9 +74,15 @@ Close matrix as part of this slice after async work lands.
 
 ## Validation
 
-- Maven baseline + targeted admin-api tests
-- `npm run build` (Admin UI)
-- Manual: trigger per-key re-encrypt on Demo stack → HTTP returns quickly; batches table shows IN_PROGRESS
+- Maven baseline + targeted admin-api tests — OK
+- `npm run build` (Admin UI) — OK
+- Maintainer: functional test (Global Admin → Encryption Keys → trigger/create batches) — OK
+- Maintainer: elective suite including concurrent re-encryption test — OK
+
+## Closeout
+
+- **I-2026-0002** → `done`
+- Method log: [`method-logs/ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md`](method-logs/ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md)
 
 ## Links
 

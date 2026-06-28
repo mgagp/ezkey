@@ -6,8 +6,8 @@
 - **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-06-20`
-- **Updated at:** `2026-06-27`
-- **Last reviewed at:** `2026-06-27`
+- **Updated at:** `2026-06-28`
+- **Last reviewed at:** `2026-06-28`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-ui`, `admin-api`
 - **Lane:** `A` / `B` (mixed — see priority table)
@@ -44,8 +44,9 @@ All queued items through **P4** and **detail FK editorial parity** are **shipped
 The operator-list / investigation / detail-link posture for Tier A and Tier B surfaces in the matrix
 is **complete** for this program slice.
 
-**Residual (optional future slices, not blockers):** matrix rows still `draft` — encryption keys,
-re-encryption batches, alerts, audit chain checkpoints. Promote only when operator chooses P3.
+**Residual (optional future slices, not blockers):** matrix rows still `draft` — **alerts**, audit
+chain checkpoints. Encryption keys + re-encryption batches **done** (2026-06-28, `I-2026-0002` /
+PR #265). Promote remaining rows when operator chooses.
 
 **Hygiene:** Orval-generated DTOs are the sole source for enrollment admin usernames and admin
 `enrollmentName` (removed interim local types in Admin UI closeout).
@@ -78,7 +79,7 @@ or incident patterns change.
 | **P1** | **Tenants** list — analysis + polish | A | Analysis → small UI | Small | Low | **Done** — same TB; country trimmed from list |
 | **P2** | **Auth attempts** — integration + tenant labels | B | API (core DTO) + UI | Medium | Medium | **Done** — TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`, #257, PR #253 |
 | **P2** | **Audit logs** — selective name joins | B | API + UI | Large | High | **Done** — TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258, PR #259 |
-| **P3** | **Encryption keys** + **re-encryption batches** | A | Analysis | Small–medium | Low | Operator surface exists; matrix rows `draft`. Crypto-ops domain, not FK-label pattern. |
+| **P3** | **Encryption keys** + **re-encryption batches** | A | API + UI | Medium | Low | **Done** — `I-2026-0002` / TB `TB-2026-06-27-admin-ui-encryption-reencryption-async`, #264, PR #265 (async 202 triggers) |
 | **P3** | **Alerts** list | A | Analysis | Small | Low | List already usable; resolve/snooze stays detail per quick-actions canon. |
 | **P3** | **Tenant detail → admins** embedded list | A | UI consistency | Small | Low | **Done** — ID column + `adminListDetailHref` (PR #259) |
 | **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **Done** — TB [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md) |
@@ -120,8 +121,8 @@ When starting a row:
 2. Update matrix row status.
 3. Optional GitHub issue for PR visibility only.
 
-Suggested **next slice (optional):** P3 matrix rows (encryption keys, alerts, audit chain checkpoints)
-when operator chooses — **outside** this closed program.
+Suggested **next slice (optional):** P3 matrix rows (**alerts**, audit chain checkpoints) when
+operator chooses — encryption keys slice **closed** (see `I-2026-0002`).
 
 ## Links
 
@@ -136,7 +137,10 @@ when operator chooses — **outside** this closed program.
   `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants.md`,
   `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels.md`,
   `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels.md`
-- Next (optional P3): encryption keys, alerts — see priority table; program **I-2026-0028 closed**
+- P3 encryption (spin-out from this program): [`I-2026-0002`](I-2026-0002-reencryption-batch-async-button.md) **done** —
+  [`TB-2026-06-27-admin-ui-encryption-reencryption-async`](../TB-2026-06-27-admin-ui-encryption-reencryption-async.md),
+  PR #265, ML [`ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md`](../method-logs/ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md)
+- Next (optional P3): **alerts**, audit chain checkpoints — see priority table
 - P4 closeout: [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md)
 - Detail FK parity: [`TB-2026-06-23-admin-ui-detail-fk-label-parity`](../TB-2026-06-23-admin-ui-detail-fk-label-parity.md)
 - Program closeout: [`method-logs/ML-2026-06-27-admin-ui-operator-experience-program-closeout.md`](../method-logs/ML-2026-06-27-admin-ui-operator-experience-program-closeout.md)

@@ -25,8 +25,10 @@ on clean-start stack. Maintainer confirmed functional tests green after merge of
 
 ## Residual (out of program)
 
-Matrix `draft` rows: encryption keys, re-encryption batches, alerts, audit chain checkpoints.
-Promote to new `I-*` / `TB-*` only when operator picks P3.
+Matrix `draft` rows: **alerts**, audit chain checkpoints. Encryption keys + re-encryption batches
+**done** (2026-06-28 — `I-2026-0002`, PR #265). See
+[`ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md`](ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md).
+Promote remaining rows when operator chooses.
 
 ## Validation
 
