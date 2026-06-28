@@ -10,6 +10,14 @@ For full product and technical context, read **PRD.md**, **README.md**, **docs/P
 - Use **milestone** for product-level progression, roadmap, and release-orientation statements.
 - When reporting current product progress, answer with milestone language, not phase language.
 
+## Where are we? (release priority compass)
+
+When the question is **what to implement next** or **current release priority** (September 2026
+operable-release target), read first:
+
+- [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)
+- [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) § Current prioritization anchor
+
 ## Fresh-session workflow bootstrap (product-docs method)
 
 When a new session starts and the user is bringing a new idea, use this lightweight bootstrap before deep analysis:

@@ -14,7 +14,8 @@
   and weekly/monthly mega-batches rejected for R1.
 - **Potential impact:** `admin-api` (schedulers, properties), `audit`
   (`AuditChainVerificationService`), `admin-ui`, operator docs.
-- **Next step:** D6 grilling (widgets); design pack; `TB-*` for `I-2026-0006` + batch table.
+- **Next step:** Design pack → `TB-*` for cluster items. **Release order:**
+  [`operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md).
   See `integrity-cluster-D4-D6-grill-me.md`.
 - **Captured by:** Marc
 

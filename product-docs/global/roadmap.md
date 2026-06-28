@@ -67,6 +67,10 @@ Milestone identifiers are stable; adding a milestone appends a new entry. Reorde
 
 **Status.** `in-progress`.
 
+**Release-order compass (September 2026 target):**
+[`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md).
+Integrity cluster (`I-2026-0005`–`0007`) precedes Alerts UI polish.
+
 **Key features.**
 
 - `F-encryption-key-rotation` — primary key rotation and re-encryption batches.
@@ -116,6 +120,7 @@ These themes shape decisions without being scheduled milestones yet:
 
 ## Related Documents
 
+- [`operational-readiness-prioritization-2026-09.md`](operational-readiness-prioritization-2026-09.md) — **current release-order compass** (September 2026 target)
 - [`product-intent.md`](product-intent.md)
 - [`features-and-phases.md`](features-and-phases.md)
 - [`architecture-overview.md`](architecture-overview.md)
