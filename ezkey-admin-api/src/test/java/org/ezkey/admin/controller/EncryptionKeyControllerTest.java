@@ -262,19 +262,50 @@ class EncryptionKeyControllerTest {
   }
 
   @Test
-  @DisplayName("listBatches ignores invalid status enum")
-  void listBatchesInvalidStatusIgnored() {
-    Pageable pageable = PageRequest.of(0, 20);
-    Page<ReencryptionBatch> repoPage = new PageImpl<>(java.util.List.of(batch1), pageable, 1);
+  @DisplayName("triggerFullReencryption returns 202 Accepted with enqueue summary")
+  void triggerFullReencryptionReturnsAccepted() {
+    when(reencryptionService.enqueueFullReencryption())
+        .thenReturn(
+            new ReencryptionService.ManualReencryptionEnqueueResult(2, java.util.List.of(10, 11)));
 
-    when(batchRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(repoPage);
+    ResponseEntity<EncryptionKeyController.ReencryptionTriggerResponse> response =
+        controller.triggerFullReencryption();
 
-    ResponseEntity<Page<EncryptionKeyController.ReencryptionBatchResponse>> response =
-        controller.listBatches("NOT_A_STATUS", null, null, null, null, null, null, pageable);
-
-    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
     assertNotNull(response.getBody());
-    assertEquals(1, response.getBody().getContent().size());
-    verify(batchRepository).findAll(any(Specification.class), eq(pageable));
+    assertEquals(2, response.getBody().batchesEnqueued());
+    assertEquals(java.util.List.of(10, 11), response.getBody().batchIds());
+    verify(reencryptionService).enqueueFullReencryption();
+  }
+
+  @Test
+  @DisplayName("triggerReencryptionForKey returns 202 Accepted with enqueue summary")
+  void triggerReencryptionForKeyReturnsAccepted() {
+    when(reencryptionService.enqueueReencryptionForKey(101L))
+        .thenReturn(
+            new ReencryptionService.ManualReencryptionEnqueueResult(1, java.util.List.of(5)));
+
+    ResponseEntity<EncryptionKeyController.ReencryptionKeyResponse> response =
+        controller.triggerReencryptionForKey(101L);
+
+    assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+    assertNotNull(response.getBody());
+    assertEquals(101L, response.getBody().keyId());
+    assertEquals(1, response.getBody().batchesEnqueued());
+    verify(reencryptionService).enqueueReencryptionForKey(101L);
+  }
+
+  @Test
+  @DisplayName("resumeBatch returns 202 Accepted")
+  void resumeBatchReturnsAccepted() {
+    when(batchRepository.findById(1)).thenReturn(java.util.Optional.of(batch1));
+
+    ResponseEntity<EncryptionKeyController.BatchResumeResponse> response =
+        controller.resumeBatch(1);
+
+    assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
+    assertNotNull(response.getBody());
+    assertEquals(1, response.getBody().batchId());
+    verify(reencryptionService).enqueueBatchProcessing(java.util.List.of(batch1));
   }
 }

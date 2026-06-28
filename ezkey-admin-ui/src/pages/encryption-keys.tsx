@@ -194,25 +194,19 @@ function ReencryptKeyDialog({
   const { t } = useTranslation('encryption-keys');
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [result, setResult] = useState<ReencryptionKeyResponse | null>(null);
 
   const mutation = useTriggerReencryptionForKey({
     mutation: {
       onSuccess: (data) => {
         const res = data as unknown as ReencryptionKeyResponse;
-        setResult(res);
-        toast(res.message ?? t('reencryptDialog.toastSuccess', { id: keyData!.keyId }), 'success');
+        toast(res.message ?? t('reencryptDialog.toastAccepted', { id: keyData!.keyId }), 'success');
         queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+        onClose();
       },
       onError: (e) => toast(getTranslatedApiError(e, t, t('reencryptDialog.errorTrigger')), 'error'),
     },
   });
-
-  function handleClose() {
-    setResult(null);
-    onClose();
-  }
 
   if (!keyData) return null;
 
@@ -222,53 +216,26 @@ function ReencryptKeyDialog({
   }
 
   return (
-    <Dialog open={keyData !== null} onClose={handleClose} title={t('reencryptDialog.title', { id: keyData.keyId })} size="md">
-      {result ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-success">
-            <RotateCcw className="size-5" />
-            <span className="font-bold">{t('reencryptDialog.triggered')}</span>
-          </div>
-          <p className="text-sm">{result.message}</p>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="border-2 border-fg/20 p-2">
-              <p className="text-lg font-mono font-bold">{result.batchesCreated ?? 0}</p>
-              <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">{t('reencryptDialog.created')}</p>
-            </div>
-            <div className="border-2 border-fg/20 p-2">
-              <p className="text-lg font-mono font-bold">{result.batchesProcessed ?? 0}</p>
-              <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">{t('reencryptDialog.processed')}</p>
-            </div>
-            <div className="border-2 border-fg/20 p-2">
-              <p className="text-lg font-mono font-bold text-error">{result.batchesFailed ?? 0}</p>
-              <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">{t('reencryptDialog.failed')}</p>
-            </div>
-          </div>
-          <div className="flex justify-end pt-2">
-            <Button onClick={handleClose}>{t('reencryptDialog.done')}</Button>
-          </div>
+    <Dialog open={keyData !== null} onClose={onClose} title={t('reencryptDialog.title', { id: keyData.keyId })} size="md" dismissible={false}>
+      <div className="space-y-4">
+        <div className="flex items-start gap-2 p-3 border-2 border-warning/40 bg-warning/5">
+          <AlertTriangle className="size-4 text-warning mt-0.5 shrink-0" />
+          <p className="text-xs text-fg-muted">
+            {t('reencryptDialog.warning', { id: keyData.keyId })}
+          </p>
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-start gap-2 p-3 border-2 border-warning/40 bg-warning/5">
-            <AlertTriangle className="size-4 text-warning mt-0.5 shrink-0" />
-            <p className="text-xs text-fg-muted">
-              {t('reencryptDialog.warning', { id: keyData.keyId })}
-            </p>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={handleClose}>{t('reencryptDialog.cancel')}</Button>
-            <Button
-              onClick={handleTrigger}
-              disabled={mutation.isPending}
-              className="gap-1.5"
-            >
-              <RotateCcw className="size-3.5" />
-              {mutation.isPending ? t('reencryptDialog.submitting') : t('reencryptDialog.submit')}
-            </Button>
-          </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>{t('reencryptDialog.cancel')}</Button>
+          <Button
+            onClick={handleTrigger}
+            disabled={mutation.isPending}
+            className="gap-1.5"
+          >
+            <RotateCcw className="size-3.5" />
+            {mutation.isPending ? t('reencryptDialog.submitting') : t('reencryptDialog.submit')}
+          </Button>
         </div>
-      )}
+      </div>
     </Dialog>
   );
 }
@@ -728,8 +695,13 @@ function ReencryptionBatchesSection() {
     mutation: {
       onSuccess: (data) => {
         const res = data as unknown as ReencryptionTriggerResponse;
-        toast(res.message ?? t('batchesSection.toastTrigger', { count: res.batchesCreated }), 'success');
+        toast(
+          res.message
+            ?? t('batchesSection.toastTriggerAccepted', { count: res.batchesEnqueued ?? 0 }),
+          'success',
+        );
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
+        queryClient.invalidateQueries({ queryKey: ['encryption-keys'] });
       },
       onError: (e) => toast(getTranslatedApiError(e, t, t('batchesSection.errorTrigger')), 'error'),
     },
@@ -750,7 +722,7 @@ function ReencryptionBatchesSection() {
     mutation: {
       onSuccess: (data) => {
         const res = data as unknown as BatchResumeResponse;
-        toast(res.message ?? t('batchesSection.toastResume', { id: res.batchId }), 'success');
+        toast(res.message ?? t('batchesSection.toastResumeAccepted', { id: res.batchId }), 'success');
         queryClient.invalidateQueries({ queryKey: ['reencryption-batches'] });
       },
       onError: (e) => toast(getTranslatedApiError(e, t, t('batchesSection.errorResume')), 'error'),

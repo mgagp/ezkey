@@ -167,11 +167,104 @@ public class ReencryptionService {
     batchProcessingService.processBatchInternal(batch);
   }
 
+  /**
+   * Schedules one or more batches on the background executor (HTTP-safe; does not wait for
+   * completion).
+   *
+   * @param batches batches to process asynchronously
+   */
+  public void enqueueBatchProcessing(List<ReencryptionBatch> batches) {
+    submitBatchesForBackgroundProcessing(batches);
+  }
+
   /** Enqueues batches for all applicable old keys and targets (no row crypto). */
   public void createBatchesForOldKeys() {
     batchCreationService.createBatchesForOldKeys();
   }
 
+  /**
+   * Enqueues full manual re-encryption: creates batches, then schedules processing on the batch
+   * executor (non-blocking for HTTP callers).
+   *
+   * @return enqueue summary with batch ids submitted for processing
+   */
+  public ManualReencryptionEnqueueResult enqueueFullReencryption() {
+    if (!encryptionOperations.isEncryptionAvailable()) {
+      throw new IllegalStateException("Encryption not available");
+    }
+
+    logger.info("Manual full re-encryption accepted (enqueue)");
+
+    batchCreationService.createBatchesForOldKeys();
+
+    List<ReencryptionBatch> batchesToProcess = collectPendingAndResumableBatches();
+    submitBatchesForBackgroundProcessing(batchesToProcess);
+
+    List<Integer> batchIds = batchesToProcess.stream().map(ReencryptionBatch::getBatchId).toList();
+
+    logger.info("Manual full re-encryption enqueued {} batch(es): {}", batchIds.size(), batchIds);
+
+    return new ManualReencryptionEnqueueResult(batchIds.size(), batchIds);
+  }
+
+  /**
+   * Enqueues re-encryption for one old key: creates target batches, then schedules processing on
+   * the batch executor (non-blocking for HTTP callers).
+   *
+   * @param keyId old key identifier (must not be PRIMARY)
+   * @return enqueue summary with batch ids submitted for processing
+   */
+  public ManualReencryptionEnqueueResult enqueueReencryptionForKey(Long keyId) {
+    if (!encryptionOperations.isEncryptionAvailable()) {
+      throw new IllegalStateException("Encryption not available");
+    }
+
+    EncryptionKey oldKey =
+        keyRepository
+            .findById(keyId)
+            .orElseThrow(() -> new IllegalArgumentException("Key not found: " + keyId));
+
+    if (oldKey.getKeyStatus() == EncryptionKey.KeyStatus.PRIMARY) {
+      throw new IllegalArgumentException("Cannot re-encrypt PRIMARY key: " + keyId);
+    }
+
+    logger.info("Manual re-encryption accepted for key {} (enqueue)", keyId);
+
+    EncryptionKey primaryKey = batchCreationService.getPrimaryKeyFromKeyset();
+    if (primaryKey == null) {
+      throw new IllegalStateException("No PRIMARY key found");
+    }
+
+    List<ReencryptionBatchCreationService.Target> targets =
+        batchCreationService.discoverReencryptableTargets();
+
+    List<ReencryptionBatch> created = new ArrayList<>();
+
+    for (ReencryptionBatchCreationService.Target target : targets) {
+      created.addAll(
+          batchCreationService.createBatchesForTarget(oldKey, primaryKey, target, "ADMIN_MANUAL"));
+    }
+
+    submitBatchesForBackgroundProcessing(created);
+
+    List<Integer> batchIds = created.stream().map(ReencryptionBatch::getBatchId).toList();
+
+    logger.info(
+        "Manual re-encryption for key {} enqueued {} batch(es): {}",
+        keyId,
+        batchIds.size(),
+        batchIds);
+
+    return new ManualReencryptionEnqueueResult(batchIds.size(), batchIds);
+  }
+
+  /**
+   * Synchronous full re-encryption (legacy). Prefer {@link #enqueueFullReencryption()} for HTTP
+   * manual triggers.
+   *
+   * @deprecated Use {@link #enqueueFullReencryption()} for HTTP manual triggers.
+   */
+  @Deprecated
   public ReencryptionSummary triggerFullReencryption() {
     if (!encryptionOperations.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
@@ -219,6 +312,13 @@ public class ReencryptionService {
     return new ReencryptionSummary(batchesCreated, batchesProcessed, batchesFailed);
   }
 
+  /**
+   * Synchronous per-key re-encryption (legacy). Prefer {@link #enqueueReencryptionForKey(Long)}
+   * for HTTP manual triggers.
+   *
+   * @deprecated Use {@link #enqueueReencryptionForKey(Long)} for HTTP manual triggers.
+   */
+  @Deprecated
   public ReencryptionSummary triggerReencryptionForKey(Long keyId) {
     if (!encryptionOperations.isEncryptionAvailable()) {
       throw new IllegalStateException("Encryption not available");
@@ -289,6 +389,33 @@ public class ReencryptionService {
 
     return new ReencryptionSummary(batchesCreated, batchesProcessed, batchesFailed);
   }
+
+  private List<ReencryptionBatch> collectPendingAndResumableBatches() {
+    List<ReencryptionBatch> batchesToProcess = new ArrayList<>();
+    batchesToProcess.addAll(batchRepository.findBatchesEligibleForResume());
+    batchesToProcess.addAll(batchRepository.findByStatus(BatchStatus.PENDING));
+    return batchesToProcess;
+  }
+
+  private void submitBatchesForBackgroundProcessing(List<ReencryptionBatch> batches) {
+    if (batches.isEmpty()) {
+      return;
+    }
+    parallelRunner.runBatchesAsync(
+        batches,
+        (batch, e) -> {
+          logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
+          batchProcessingService.markBatchFailed(batch, e.getMessage());
+        });
+  }
+
+  /**
+   * Result of accepting a manual re-encryption trigger (HTTP returns before row crypto completes).
+   *
+   * @param batchesEnqueued number of batches submitted to the background executor
+   * @param batchIds identifiers of enqueued batches (may be empty when nothing to process)
+   */
+  public record ManualReencryptionEnqueueResult(int batchesEnqueued, List<Integer> batchIds) {}
 
   /**
    * Summary of re-encryption operation.

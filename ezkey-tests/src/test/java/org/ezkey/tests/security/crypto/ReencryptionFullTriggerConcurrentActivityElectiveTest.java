@@ -38,9 +38,11 @@ import org.slf4j.LoggerFactory;
  * Elective regression for {@code ObjectOptimisticLockingFailureException} during full re-encryption
  * when other work updates {@code ezkey_enrollment} rows (version bumps) concurrently.
  *
- * <p>Reproduces the failure mode described for long {@code triggerFullReencryption} runs under
- * operational churn: background threads issue SQL updates that increment {@code version} on rows
- * still targeted by sequential column batches.
+ * <p>Reproduces the failure mode described for long full re-encryption runs under operational
+ * churn: background threads issue SQL updates that increment {@code version} on rows still
+ * targeted by sequential column batches. The trigger endpoint returns {@code 202 Accepted} and
+ * processes batches in the background; this test waits for completion then asserts no failed
+ * batches.
  *
  * <p>Run: {@code mvn test -pl ezkey-tests -P elective-tests} against a healthy Docker stack.
  *
@@ -166,13 +168,58 @@ public class ReencryptionFullTriggerConcurrentActivityElectiveTest extends Abstr
     }
 
     assertThat(triggerResponse.getStatusCode())
-        .as("Full re-encryption trigger should return HTTP 200")
-        .isEqualTo(200);
+        .as("Full re-encryption trigger should return HTTP 202 Accepted (async enqueue)")
+        .isEqualTo(202);
 
-    int batchesFailed = triggerResponse.jsonPath().getInt("batchesFailed");
+    int batchesEnqueued = triggerResponse.jsonPath().getInt("batchesEnqueued");
+    assertThat(batchesEnqueued)
+        .as("At least one batch should be enqueued after rotation and enrollment churn")
+        .isGreaterThan(0);
+
+    waitForReencryptionBatchesToSettle(300);
+
+    int batchesFailed = countReencryptionBatchesByStatus("FAILED");
     assertThat(batchesFailed)
         .as("No re-encryption batches should fail (check admin-api logs if non-zero)")
         .isZero();
+  }
+
+  /**
+   * Polls until no batches remain in {@code PENDING} or {@code IN_PROGRESS}, or times out.
+   *
+   * @param timeoutSeconds maximum wait
+   */
+  private void waitForReencryptionBatchesToSettle(int timeoutSeconds) throws InterruptedException {
+    int waited = 0;
+    while (waited < timeoutSeconds) {
+      int active =
+          countReencryptionBatchesByStatus("PENDING")
+              + countReencryptionBatchesByStatus("IN_PROGRESS");
+      if (active == 0) {
+        log.info("Re-encryption batches settled after {}s", waited);
+        return;
+      }
+      log.debug("Waiting for re-encryption batches (active={})...", active);
+      Thread.sleep(2000);
+      waited += 2;
+    }
+    throw new AssertionError(
+        "Re-encryption batches did not settle within "
+            + timeoutSeconds
+            + "s (PENDING="
+            + countReencryptionBatchesByStatus("PENDING")
+            + ", IN_PROGRESS="
+            + countReencryptionBatchesByStatus("IN_PROGRESS")
+            + ")");
+  }
+
+  private int countReencryptionBatchesByStatus(String status) {
+    String result =
+        databaseHelper.executeQuerySingleValue(
+            "SELECT COUNT(*)::text FROM ezkey_reencryption_batch WHERE status = '"
+                + status.replace("'", "''")
+                + "'");
+    return result != null ? Integer.parseInt(result.trim()) : 0;
   }
 
   private Long getCurrentPrimaryKeyId() {

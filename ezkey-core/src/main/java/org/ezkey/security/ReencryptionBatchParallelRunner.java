@@ -59,6 +59,17 @@ public class ReencryptionBatchParallelRunner {
   }
 
   /**
+   * Submits batch processing to {@code reencryptionBatchExecutor} and returns immediately (manual
+   * HTTP triggers must not block on row crypto).
+   */
+  public void runBatchesAsync(List<ReencryptionBatch> batches, BatchFailureCallback onFailure) {
+    if (batches.isEmpty()) {
+      return;
+    }
+    reencryptionBatchExecutor.execute(() -> runBatches(batches, onFailure));
+  }
+
+  /**
    * Processes each batch; on failure invokes {@code onFailure} with the batch and exception (caller
    * typically marks the batch failed).
    */

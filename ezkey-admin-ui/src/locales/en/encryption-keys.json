@@ -98,6 +98,7 @@
     "cancel": "Cancel",
     "submit": "Re-encrypt",
     "submitting": "Re-encrypting…",
+    "toastAccepted": "Re-encryption accepted for key #{{id}} — watch the batches table",
     "toastSuccess": "Re-encryption triggered for key #{{id}}",
     "errorTrigger": "Re-encryption failed"
   },
@@ -181,8 +182,10 @@
     "columnsPerf": "Timing",
     "tooltipPerf": "Wall time between start and completion; rate is records done divided by that duration.",
     "resume": "Resume",
+    "toastTriggerAccepted": "Accepted — {{count}} batch(es) enqueued",
     "toastTrigger": "Triggered — {{count}} batches",
     "toastCreate": "Created {{count}} batches",
+    "toastResumeAccepted": "Batch #{{id}} resume accepted",
     "toastResume": "Batch #{{id}} resumed",
     "errorTrigger": "Trigger failed",
     "errorCreate": "Batch creation failed",

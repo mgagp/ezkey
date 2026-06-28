@@ -98,6 +98,7 @@
     "cancel": "Annuler",
     "submit": "Re-chiffrer",
     "submitting": "Re-chiffrement…",
+    "toastAccepted": "Re-chiffrement accepté pour la clé #{{id}} — suivez la table des lots",
     "toastSuccess": "Re-chiffrement déclenché pour la clé #{{id}}",
     "errorTrigger": "Échec du re-chiffrement"
   },
@@ -181,8 +182,10 @@
     "columnsPerf": "Temps",
     "tooltipPerf": "Durée entre début et fin ; débit = enregistrements traités ÷ durée.",
     "resume": "Reprendre",
+    "toastTriggerAccepted": "Accepté — {{count}} lot(s) en file",
     "toastTrigger": "Déclenché — {{count}} lots",
     "toastCreate": "{{count}} lots créés",
+    "toastResumeAccepted": "Reprise du lot #{{id}} acceptée",
     "toastResume": "Lot #{{id}} repris",
     "errorTrigger": "Échec du déclenchement",
     "errorCreate": "Échec de la création des lots",
