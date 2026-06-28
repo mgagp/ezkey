@@ -937,6 +937,7 @@ public class AdminProvisioningService {
     admin.getLastLoginAt();
     if (admin.getEnrollment() != null) {
       admin.getEnrollment().getEnrollmentId();
+      admin.getEnrollment().getEnrollmentName();
     }
   }
 

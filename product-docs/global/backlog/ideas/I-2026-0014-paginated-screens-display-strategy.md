@@ -73,8 +73,8 @@ unambiguous operational time.
 (`TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258, PR #259). Primary operator path is
 server-side labels; `#id` when entity unreachable.
 
-**Interim « More details » pattern:** scheduled for removal — [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md)
-(P4 in [`I-2026-0028`](I-2026-0028-admin-ui-operator-experience-follow-up.md)).
+**Related details expand (removed):** P4 shipped — inline labels only; see
+[`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md).
 
 ## Links
 

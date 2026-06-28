@@ -8,13 +8,6 @@
   "demo": {
     "sectionTitle": "Demo mode"
   },
-  "patterns": {
-    "fkRelatedDetails": {
-      "title": "Related details",
-      "summary": "This action enriches the current panel with names and links for records referenced by foreign key IDs.",
-      "body": "Use “More details” when a panel shows only IDs or partial labels for related records such as a tenant, integration, enrollment, or administrator.\n\nOn first use for the current panel, the UI enables on-demand API calls for the related records that are present and then inserts richer rows or links inline.\n\nIf the same related record was already loaded elsewhere in the Admin UI, TanStack Query can reuse the shared client-side cache. In that case, the enrichment may appear immediately, with little or no visible loading state.\n\n“Related details shown” means the panel is already using the richer related data available for that pattern. It does not mean a new layer of detail remains hidden behind a second click."
-    }
-  },
   "topics": {
     "default": {
       "title": "Help",

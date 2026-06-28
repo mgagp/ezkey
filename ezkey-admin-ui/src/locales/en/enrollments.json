@@ -35,6 +35,7 @@
     "activeNo": "No",
     "integrationFallback": "Integration #{{id}}",
     "tenantFallback": "Tenant #{{id}}",
+    "adminFallback": "Administrator #{{id}}",
     "operationalWarningTooltip": "Integration or tenant is inactive — authentication is blocked",
     "deactivatedWarningTooltip": "Enrollment deactivated — authentication is blocked",
     "deactivate": "Deactivate",

@@ -1,12 +1,11 @@
 import { CircleHelp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useHelp } from '@/context/use-help';
-import type { HelpPatternId, HelpTopicId } from '@/lib/help-topics';
+import type { HelpTopicId } from '@/lib/help-topics';
 
 interface HelpInlineButtonProps {
   className?: string;
   topicId?: HelpTopicId;
-  patternId?: HelpPatternId;
   ariaLabel?: string;
   title?: string;
 }
@@ -17,7 +16,6 @@ interface HelpInlineButtonProps {
 export function HelpInlineButton({
   className,
   topicId,
-  patternId,
   ariaLabel,
   title,
 }: HelpInlineButtonProps) {
@@ -28,7 +26,7 @@ export function HelpInlineButton({
   return (
     <button
       type="button"
-      onClick={() => openHelp(topicId || patternId ? { topicId, patternId } : undefined)}
+      onClick={() => openHelp(topicId ? { topicId } : undefined)}
       className={className}
       aria-label={ariaLabel ?? defaultLabel}
       title={title ?? defaultLabel}

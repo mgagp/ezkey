@@ -8,7 +8,7 @@ import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
-import { RelatedDetailsButton } from '@/components/feature/related-details-button';
+import { AdminFkLink } from '@/components/feature/fk-detail-links';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -23,14 +23,12 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { useDemoModeSession } from '@/context/use-demo-mode-session';
 import { useToast } from '@/context/use-toast';
 import { useListDetailPageNavigation } from '@/hooks/use-list-detail-page-navigation';
-import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailPageNav } from '@/components/ui/detail-page-nav';
-import { getIntegrationName, useIntegrations } from '@/hooks/use-integrations';
+import { useIntegrations } from '@/hooks/use-integrations';
 import { ApiError, fetchBlobUrl } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { authContextDemoPresets, isDemoMode } from '@/lib/demo-mode';
 import { isPhoneNumberInputValid, normalizePhoneNumberInput } from '@/lib/phone-number';
-import { adminListDetailHref } from '@/lib/list-detail-navigation';
 import { formatChallengeCode, formatCountdown, formatDate } from '@/lib/utils';
 import { useCancel, useCreate2, useGetById2 } from '@/generated/admin-api/auth-attempts/auth-attempts';
 import {
@@ -51,6 +49,13 @@ import type {
 } from '@/generated/admin-api/model';
 
 // ── Local types (not yet in OpenAPI spec) ────────────────────────────────────
+
+/** Admin username labels on enrollment GET (until spec refresh). */
+type EnrollmentDetailDto = EnrollmentResponseDto & {
+  createdByAdminUsername?: string | null;
+  deactivatedByAdminUsername?: string | null;
+  revokedByAdminUsername?: string | null;
+};
 
 /** Response from POST /api/v1/auth-attempts — not yet specified in the OpenAPI schema. */
 interface AuthAttemptCreateResponse {
@@ -476,15 +481,10 @@ export default function EnrollmentDetailPage() {
   const { toast } = useToast();
   const { lookup } = useIntegrations();
 
-  const { data: enrollment, isLoading } = useGetById<EnrollmentResponseDto>(
+  const { data: enrollment, isLoading } = useGetById<EnrollmentDetailDto>(
     isNaN(enrollmentId) ? 0 : enrollmentId,
     { query: { enabled: !isNaN(enrollmentId) } },
   );
-
-  const relatedDetails = useExpandableRelatedDetails({
-    integrationId: enrollment?.integrationId ?? undefined,
-    adminId: enrollment?.createdByAdminId ?? undefined,
-  });
 
   const deleteMutation = useDelete({
     mutation: {
@@ -748,13 +748,6 @@ export default function EnrollmentDetailPage() {
                       {t('detail.editMetadata')}
                     </Button>
                   )}
-                  {relatedDetails.hasAnyFk && (
-                    <RelatedDetailsButton
-                      onClick={relatedDetails.expand}
-                      isExpanded={relatedDetails.isExpanded}
-                      isLoading={relatedDetails.isLoading}
-                    />
-                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -770,11 +763,9 @@ export default function EnrollmentDetailPage() {
                   <InfoRow label={t('detail.infoIntegration')}>
                     {(() => {
                       const displayName =
-                        relatedDetails.isExpanded && relatedDetails.integration
-                          ? `${getIntegrationName(relatedDetails.integration)} (ID ${relatedDetails.integration.id})`
-                          : enrollment.integrationName ??
-                              lookup.get(enrollment.integrationId ?? 0) ??
-                              `#${enrollment.integrationId ?? '?'}`;
+                        enrollment.integrationName ??
+                        lookup.get(enrollment.integrationId ?? 0) ??
+                        t('list.integrationFallback', { id: enrollment.integrationId ?? '?' });
                       return enrollment.isSystemIntegration ? (
                         <span className="font-medium">{displayName}</span>
                       ) : (
@@ -788,6 +779,26 @@ export default function EnrollmentDetailPage() {
                       );
                     })()}
                   </InfoRow>
+                  {enrollment.tenantId != null && (
+                    <InfoRow label={t('list.columns.tenant')}>
+                      {enrollment.tenantName != null && enrollment.tenantName.trim() !== '' ? (
+                        <Link
+                          to={`/tenants/${enrollment.tenantId}`}
+                          className="font-medium text-accent hover:underline"
+                        >
+                          {enrollment.tenantName.trim()}
+                          <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {enrollment.tenantId})</span>
+                        </Link>
+                      ) : (
+                        <Link
+                          to={`/tenants/${enrollment.tenantId}`}
+                          className="font-medium text-accent hover:underline"
+                        >
+                          {t('list.tenantFallback', { id: enrollment.tenantId })}
+                        </Link>
+                      )}
+                    </InfoRow>
+                  )}
                   <InfoRow label={t('detail.infoChallenge')}>
                     <Badge variant={enrollment.authAttemptChallengeRequired ? 'warning' : 'muted'}>
                       {enrollment.authAttemptChallengeRequired ? t('detail.challengeRequired') : t('detail.challengeNotRequired')}
@@ -807,17 +818,11 @@ export default function EnrollmentDetailPage() {
                   </InfoRow>
                   {enrollment.createdByAdminId != null && (
                     <InfoRow label={t('detail.infoCreatedByAdmin')}>
-                      {relatedDetails.isExpanded && relatedDetails.admin ? (
-                        <Link
-                          to={adminListDetailHref(enrollment.createdByAdminId)}
-                          className="font-medium text-accent hover:underline"
-                        >
-                          {relatedDetails.admin.username ?? relatedDetails.admin.adminId} (ID{' '}
-                          {relatedDetails.admin.adminId})
-                        </Link>
-                      ) : (
-                        <span className="font-mono text-fg-muted">{enrollment.createdByAdminId}</span>
-                      )}
+                      <AdminFkLink
+                        adminId={enrollment.createdByAdminId}
+                        username={enrollment.createdByAdminUsername}
+                        fallbackLabel={t('list.adminFallback', { id: enrollment.createdByAdminId })}
+                      />
                     </InfoRow>
                   )}
                   <InfoRow label={t('detail.infoVersion')}>
@@ -840,7 +845,15 @@ export default function EnrollmentDetailPage() {
                       <span className="text-fg-muted">
                         {formatDate(enrollment.deactivatedAt)}
                         {enrollment.deactivatedByAdminId != null && (
-                          <span className="ml-1">{t('detail.infoByAdmin', { id: enrollment.deactivatedByAdminId })}</span>
+                          <span className="ml-2 inline-flex items-center gap-1">
+                            <AdminFkLink
+                              adminId={enrollment.deactivatedByAdminId}
+                              username={enrollment.deactivatedByAdminUsername}
+                              fallbackLabel={t('list.adminFallback', {
+                                id: enrollment.deactivatedByAdminId,
+                              })}
+                            />
+                          </span>
                         )}
                       </span>
                     </InfoRow>
@@ -850,7 +863,15 @@ export default function EnrollmentDetailPage() {
                       <span className="text-fg-muted">
                         {formatDate(enrollment.revokedAt)}
                         {enrollment.revokedByAdminId != null && (
-                          <span className="ml-1">{t('detail.infoByAdmin', { id: enrollment.revokedByAdminId })}</span>
+                          <span className="ml-2 inline-flex items-center gap-1">
+                            <AdminFkLink
+                              adminId={enrollment.revokedByAdminId}
+                              username={enrollment.revokedByAdminUsername}
+                              fallbackLabel={t('list.adminFallback', {
+                                id: enrollment.revokedByAdminId,
+                              })}
+                            />
+                          </span>
                         )}
                       </span>
                     </InfoRow>

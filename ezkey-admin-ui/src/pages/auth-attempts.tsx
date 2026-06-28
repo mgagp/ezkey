@@ -6,7 +6,6 @@ import { AppShell } from '@/components/layout/app-shell';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { AuthAttemptStatusBadge } from '@/components/feature/auth-attempt-status-badge';
-import { RelatedDetailsButton } from '@/components/feature/related-details-button';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { Dialog } from '@/components/ui/dialog';
 import { DetailInfoRow } from '@/components/ui/detail-info-row';
@@ -15,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useDetailNavigation } from '@/hooks/use-detail-navigation';
-import { useExpandableRelatedDetails } from '@/hooks/use-expandable-related-details';
 import { DetailDialogHeaderNav } from '@/components/ui/detail-dialog-header-nav';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { useAuth } from '@/context/use-auth';
@@ -85,10 +83,6 @@ function AttemptDetailDialog({
     onNext,
   });
 
-  const relatedDetails = useExpandableRelatedDetails({
-    enrollmentId: attempt?.enrollmentId ?? undefined,
-  });
-
   if (!attempt) return null;
 
   return (
@@ -121,13 +115,6 @@ function AttemptDetailDialog({
           >
             {t('detail.viewRelatedAudits')}
           </Button>
-          {relatedDetails.hasAnyFk && (
-            <RelatedDetailsButton
-              onClick={relatedDetails.expand}
-              isExpanded={relatedDetails.isExpanded}
-              isLoading={relatedDetails.isLoading}
-            />
-          )}
         </div>
         <dl className="space-y-3">
           <DetailInfoRow label={t('detail.labelId')}><span className="font-mono">{attempt.authAttemptId}</span></DetailInfoRow>

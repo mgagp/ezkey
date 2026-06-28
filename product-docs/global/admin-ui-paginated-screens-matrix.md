@@ -73,6 +73,22 @@ tenant detail embedded lists must use `adminListDetailHref` (or equivalent `?adm
 
 *Analysis fills TBD rows; add rows if new paginated surfaces ship.*
 
+## Detail FK links (post–P4 editorial parity)
+
+Detail pages and list dialogs must match Tier A/B **label + link** posture. No client-side expand
+fetch.
+
+| Pattern | When | UI |
+|---------|------|-----|
+| Enriched | API returns display name | `{name}` link + `(ID n)` mono suffix |
+| Fallback link | FK present, name null, entity likely exists | `{Entity} #n` linked (auth-attempt detail, admin enrollment row) |
+| Gone | FK present, name null, entity removed | `#n` plain text, no link (audit logs, `AdminFkLink` on enrollment detail for deleted admins) |
+
+**Implemented surfaces (2026-06-23):** admin detail → enrollment (`enrollmentName` on
+`AdminResponseDto`); enrollment detail → created/deactivated/revoked admin usernames;
+integration/api-key detail → tenant/integration fallbacks. Shared components:
+`fk-detail-links.tsx`. TB: `TB-2026-06-23-admin-ui-detail-fk-label-parity`.
+
 ## Related documents
 
 | Document | Role |
