@@ -41,6 +41,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 class AdminRateLimitFilterTest {
 
   private static final String LOGIN_PATH = "/api/v1/admin/auth/login";
+  private static final String PASSWORDLESS_WAIT_PATH = "/api/v1/admin/auth/passwordless-wait";
 
   @Mock private FilterChain filterChain;
 
@@ -81,5 +82,52 @@ class AdminRateLimitFilterTest {
     filter.doFilter(request2, response2, filterChain);
     assertThat(response2.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
     assertThat(response2.getHeader("Retry-After")).isNotNull();
+  }
+
+  @Test
+  @DisplayName("POST passwordless-wait is rate limited per client IP")
+  void passwordlessWait_rateLimitedPerClientIp() throws Exception {
+    MockHttpServletRequest request1 = new MockHttpServletRequest("POST", PASSWORDLESS_WAIT_PATH);
+    request1.setRemoteAddr("203.0.113.60");
+    MockHttpServletResponse response1 = new MockHttpServletResponse();
+    filter.doFilter(request1, response1, filterChain);
+    assertThat(response1.getStatus()).isEqualTo(HttpStatus.OK.value());
+
+    MockHttpServletRequest request2 = new MockHttpServletRequest("POST", PASSWORDLESS_WAIT_PATH);
+    request2.setRemoteAddr("203.0.113.60");
+    MockHttpServletResponse response2 = new MockHttpServletResponse();
+    filter.doFilter(request2, response2, filterChain);
+    assertThat(response2.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+    assertThat(response2.getHeader("Retry-After")).isNotNull();
+  }
+
+  @Test
+  @DisplayName("Login and passwordless-wait share the same rate-limit bucket per client IP")
+  void loginAndPasswordlessWait_shareRateLimitBucket() throws Exception {
+    MockHttpServletRequest loginRequest = new MockHttpServletRequest("POST", LOGIN_PATH);
+    loginRequest.setRemoteAddr("203.0.113.70");
+    MockHttpServletResponse loginResponse = new MockHttpServletResponse();
+    filter.doFilter(loginRequest, loginResponse, filterChain);
+    assertThat(loginResponse.getStatus()).isEqualTo(HttpStatus.OK.value());
+
+    MockHttpServletRequest waitRequest = new MockHttpServletRequest("POST", PASSWORDLESS_WAIT_PATH);
+    waitRequest.setRemoteAddr("203.0.113.70");
+    MockHttpServletResponse waitResponse = new MockHttpServletResponse();
+    filter.doFilter(waitRequest, waitResponse, filterChain);
+    assertThat(waitResponse.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+  }
+
+  @Test
+  @DisplayName("Failure tracking maps evict entries beyond cache capacity")
+  void failureTrackingMaps_evictBeyondCapacity() {
+    properties.getLogin().setBlockAfterFailures(1);
+    filter = new AdminRateLimitFilter(properties, trustedProxyProperties, meterRegistry);
+
+    for (int i = 0; i < 10_500; i++) {
+      filter.recordFailedAttempt("198.51.100." + i);
+    }
+    filter.runFailureTrackingMaintenanceForTest();
+
+    assertThat(filter.failureTrackingEntryCount()).isLessThanOrEqualTo(10_000);
   }
 }

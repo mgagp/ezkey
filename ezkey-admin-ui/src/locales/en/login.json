@@ -45,7 +45,7 @@
       "serverUnreachable": "Could not reach the server. Is the Admin API running?"
     }
   },
-  "footer": "Powered by {{brand}} — Eat Your Own Dog Food",
+  "footer": "Powered by {{brand}} — Self-hosted · Full visibility",
   "recovery": {
     "useRecoveryLink": "Lost your device? Use a recovery code",
     "intro": "Emergency access: enter your username and one single-use recovery code. This starts a limited recovery flow (reset MFA enrollment), not a full console session.",

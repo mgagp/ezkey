@@ -45,7 +45,7 @@
       "serverUnreachable": "Impossible de joindre le serveur. L'API Admin est-elle démarrée ?"
     }
   },
-  "footer": "Propulsé par {{brand}} — Eat Your Own Dog Food",
+  "footer": "Propulsé par {{brand}} — Auto-hébergé · Visibilité complète",
   "recovery": {
     "useRecoveryLink": "Appareil perdu ? Utiliser un code de récupération",
     "intro": "Accès d'urgence : saisissez votre nom d'utilisateur et un code de récupération à usage unique. Cela lance un flux limité (réinitialisation de l'inscription MFA), pas une session console complète.",
