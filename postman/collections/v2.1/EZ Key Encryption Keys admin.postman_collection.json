@@ -349,15 +349,15 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 200, 404, or 500\", function () {",
-              "    pm.expect([200, 404, 500]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 202, 404, or 500\", function () {",
+              "    pm.expect([202, 404, 500]).to.include(pm.response.code);",
               "});",
               "",
-              "if (pm.response.code === 200) {",
+              "if (pm.response.code === 202) {",
               "    var jsonData = pm.response.json();",
-              "    pm.test(\"Resume successful\", function () {",
+              "    pm.test(\"Resume accepted\", function () {",
               "        pm.expect(jsonData.batchId).to.be.a('number');",
-              "        pm.expect(jsonData.message).to.include('successfully');",
+              "        pm.expect(jsonData.message).to.be.a('string');",
               "    });",
               "}"
             ],
@@ -390,7 +390,7 @@
             }
           ]
         },
-        "description": "Resumes processing of a failed or paused re-encryption batch. Use the batchId from the list re-encryption batches response. The batch will continue from where it left off."
+        "description": "Accepts resume for a failed or paused re-encryption batch (202 Accepted). Use the batchId from the list re-encryption batches response; progress appears in the batches table."
       },
       "response": []
     },
@@ -401,17 +401,17 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 200, 400, or 500\", function () {",
-              "    pm.expect([200, 400, 500]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 202, 400, or 500\", function () {",
+              "    pm.expect([202, 400, 500]).to.include(pm.response.code);",
               "});",
               "",
-              "if (pm.response.code === 200) {",
+              "if (pm.response.code === 202) {",
               "    var jsonData = pm.response.json();",
-              "    pm.test(\"Response has batchesCreated\", function () {",
-              "        pm.expect(jsonData).to.have.property('batchesCreated');",
+              "    pm.test(\"Response has batchesEnqueued\", function () {",
+              "        pm.expect(jsonData).to.have.property('batchesEnqueued');",
               "    });",
-              "    pm.test(\"Response has batchesProcessed\", function () {",
-              "        pm.expect(jsonData).to.have.property('batchesProcessed');",
+              "    pm.test(\"Response has batchIds\", function () {",
+              "        pm.expect(jsonData).to.have.property('batchIds');",
               "    });",
               "    pm.test(\"Response has message\", function () {",
               "        pm.expect(jsonData).to.have.property('message');",
@@ -439,7 +439,7 @@
             "trigger"
           ]
         },
-        "description": "Manually triggers full re-encryption process. Creates batches for all old keys and processes them immediately. Useful for testing or emergency re-encryption operations. ⚠️ Use with caution in production as this may process large amounts of data."
+        "description": "Manually triggers full re-encryption: creates batches for all old keys and enqueues background processing. Returns 202 Accepted immediately; monitor progress in the re-encryption batches list."
       },
       "response": []
     },
@@ -450,17 +450,17 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Status code is 200, 400, 404, or 500\", function () {",
-              "    pm.expect([200, 400, 404, 500]).to.include(pm.response.code);",
+              "pm.test(\"Status code is 202, 400, 404, or 500\", function () {",
+              "    pm.expect([202, 400, 404, 500]).to.include(pm.response.code);",
               "});",
               "",
-              "if (pm.response.code === 200) {",
+              "if (pm.response.code === 202) {",
               "    var jsonData = pm.response.json();",
               "    pm.test(\"Response has keyId\", function () {",
               "        pm.expect(jsonData).to.have.property('keyId');",
               "    });",
-              "    pm.test(\"Response has batchesCreated\", function () {",
-              "        pm.expect(jsonData).to.have.property('batchesCreated');",
+              "    pm.test(\"Response has batchesEnqueued\", function () {",
+              "        pm.expect(jsonData).to.have.property('batchesEnqueued');",
               "    });",
               "    pm.test(\"Response has message\", function () {",
               "        pm.expect(jsonData).to.have.property('message');",
@@ -495,7 +495,7 @@
             }
           ]
         },
-        "description": "Creates and processes re-encryption batches for a specific old key. The key must not be PRIMARY. Useful for targeted re-encryption operations. Use the keyId from the list keys response (select an ENABLED key, not PRIMARY)."
+        "description": "Creates and enqueues re-encryption batches for a specific old key (202 Accepted). The key must not be PRIMARY. Monitor progress in the batches list."
       },
       "response": []
     },
