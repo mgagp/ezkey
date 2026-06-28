@@ -35,6 +35,7 @@
     "activeNo": "Non",
     "integrationFallback": "Intégration #{{id}}",
     "tenantFallback": "Tenant #{{id}}",
+    "adminFallback": "Administrateur #{{id}}",
     "operationalWarningTooltip": "L'intégration ou le tenant est inactif — l'authentification est bloquée",
     "deactivatedWarningTooltip": "Enrôlement désactivé — l'authentification est bloquée",
     "deactivate": "Désactiver",

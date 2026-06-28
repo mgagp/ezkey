@@ -368,7 +368,12 @@ export default function IntegrationDetailPage() {
                           <span className="ml-1.5 font-mono text-xs text-fg-muted">(ID {integration.tenantId})</span>
                         </Link>
                       ) : (
-                        <span className="font-mono">#{integration.tenantId}</span>
+                        <Link
+                          to={`/tenants/${integration.tenantId}`}
+                          className="font-medium text-accent hover:underline"
+                        >
+                          {t('enrollments:list.tenantFallback', { id: integration.tenantId })}
+                        </Link>
                       )}
                     </InfoRow>
                   )}

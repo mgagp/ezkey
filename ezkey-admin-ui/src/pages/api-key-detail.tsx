@@ -219,12 +219,13 @@ export default function ApiKeyDetailPage() {
   const isActive = apiKey?.active && !apiKey?.revokedAt;
   const isExpired = apiKey?.expiresAt ? new Date(apiKey.expiresAt) < new Date() : false;
   const integrationName = apiKey?.integrationId ? lookup.get(apiKey.integrationId) : undefined;
-  const integrationLabel =
+  const integrationDisplayName =
     apiKey?.integrationName != null && apiKey.integrationName.trim() !== ''
       ? apiKey.integrationName.trim()
-      : apiKey?.integrationId
-        ? integrationName ?? `#${apiKey.integrationId}`
-        : undefined;
+      : integrationName ??
+        (apiKey?.integrationId != null
+          ? t('list.integrationFallback', { id: apiKey.integrationId })
+          : undefined);
 
   return (
     <AppShell
@@ -271,7 +272,12 @@ export default function ApiKeyDetailPage() {
                         to={`/integrations/${apiKey.integrationId}`}
                         className="font-medium text-accent hover:underline"
                       >
-                        {integrationLabel}
+                        {integrationDisplayName}
+                        {apiKey.integrationName?.trim() ? (
+                          <span className="ml-1.5 font-mono text-xs text-fg-muted">
+                            (ID {apiKey.integrationId})
+                          </span>
+                        ) : null}
                       </Link>
                     ) : (
                       <span className="text-fg-muted">—</span>

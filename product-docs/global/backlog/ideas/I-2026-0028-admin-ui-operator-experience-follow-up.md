@@ -86,6 +86,11 @@ an FK ID is present, the UI shows **`#id`** only (no on-demand expand).
 **Former call sites (now inline labels/links):** `integration-detail.tsx`, `admins.tsx`,
 `api-key-detail.tsx`, `enrollment-detail.tsx`, `audit-logs.tsx`, `auth-attempts.tsx`.
 
+**Detail FK editorial parity (2026-06-23):** After P4, remaining gaps (admin enrollment row,
+enrollment created-by, tenant/integration fallbacks on detail) were closed with API enrichment +
+`fk-detail-links.tsx`. See TB `TB-2026-06-23-admin-ui-detail-fk-label-parity` and matrix § Detail FK
+links.
+
 ## Scope
 
 - **In scope:** priority table above; promotion to `TB-*` per row when execution starts; matrix row
@@ -117,4 +122,5 @@ Suggested **next TB:** P3 matrix rows (encryption keys, alerts, audit chain chec
   `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels.md`
 - Next: P3 matrix rows (encryption keys, alerts) — see priority table
 - P4 closeout: [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md)
+- Detail FK parity: [`TB-2026-06-23-admin-ui-detail-fk-label-parity`](../TB-2026-06-23-admin-ui-detail-fk-label-parity.md)
 - Closeout: [`method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md`](../method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md)

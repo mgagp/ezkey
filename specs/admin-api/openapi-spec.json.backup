@@ -7364,6 +7364,14 @@
             "format": "int32",
             "description": "Admin who created this enrollment (null when via API key)"
           },
+          "createdByAdminUsername": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Username of the admin who created this enrollment; null when via API key, admin removed, or not resolved",
+            "example": "tenant.admin"
+          },
           "lastUsedAt": {
             "type": "string",
             "format": "date-time",
@@ -7391,6 +7399,13 @@
             "format": "int32",
             "description": "Admin who deactivated this enrollment; null if never deactivated"
           },
+          "deactivatedByAdminUsername": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Username of the admin who deactivated this enrollment; null if unknown"
+          },
           "revokedAt": {
             "type": "string",
             "format": "date-time",
@@ -7400,6 +7415,13 @@
             "type": "integer",
             "format": "int32",
             "description": "Admin who revoked this enrollment; null if never revoked"
+          },
+          "revokedByAdminUsername": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Username of the admin who revoked this enrollment; null if unknown"
           },
           "integrationName": {
             "type": "string",
@@ -7674,6 +7696,14 @@
             "format": "int32",
             "description": "Enrollment ID for MFA (passwordless admin identity). Null if not linked to an enrollment.",
             "example": 123
+          },
+          "enrollmentName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Human-readable name of the linked MFA enrollment (null when enrollmentId is null)",
+            "example": "admin.docker MFA"
           },
           "active": {
             "type": "boolean",
@@ -8931,42 +8961,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }

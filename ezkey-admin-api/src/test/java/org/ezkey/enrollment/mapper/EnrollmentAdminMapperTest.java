@@ -12,6 +12,7 @@ package org.ezkey.enrollment.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.dto.EnrollmentResponseDto;
@@ -64,6 +65,20 @@ class EnrollmentAdminMapperTest {
     assertThat(dto.tenantId()).isEqualTo(42);
     assertThat(dto.tenantName()).isEqualTo("Acme Corp");
     assertThat(dto.operational()).isTrue();
+  }
+
+  @Test
+  @DisplayName("toResponseWithIntegrationAndAdminUsernames maps admin usernames")
+  void toResponseWithIntegrationAndAdminUsernames_mapsAdminUsernames() {
+    Enrollment enrollment = new Enrollment(7, "Alice Phone", "proof-token");
+    enrollment.setEnrollmentId(100);
+    enrollment.setCreatedByAdminId(3);
+
+    EnrollmentResponseDto dto =
+        mapper.toResponseWithIntegrationAndAdminUsernames(
+            enrollment, null, Map.of(3, "tenant.admin"));
+
+    assertThat(dto.createdByAdminUsername()).isEqualTo("tenant.admin");
   }
 
   @Test
