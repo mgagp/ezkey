@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0028-admin-ui-operator-experience-follow-up`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-06-20`
-- **Updated at:** `2026-06-23`
-- **Last reviewed at:** `2026-06-23`
+- **Updated at:** `2026-06-27`
+- **Last reviewed at:** `2026-06-27`
 - **Phase tags:** `P1-operability`
 - **Component tags:** `admin-ui`, `admin-api`
 - **Lane:** `A` / `B` (mixed — see priority table)
@@ -34,6 +34,21 @@ Delivered program (closed): GitHub **#236**, branch `feat/admin-ui-operator-list
 
 **P2 follow-up (closed):** auth attempts #257 / PR #253; audit logs #258 / PR #259; admin ID column +
 navigation fixes in PR #259.
+
+**P4 + detail FK parity (closed):** retire Related details #260 / PR #261; detail FK labels #262 /
+PR #263. Functional validation on clean-start stack (2026-06-27).
+
+## Program closeout (2026-06-27)
+
+All queued items through **P4** and **detail FK editorial parity** are **shipped and validated**.
+The operator-list / investigation / detail-link posture for Tier A and Tier B surfaces in the matrix
+is **complete** for this program slice.
+
+**Residual (optional future slices, not blockers):** matrix rows still `draft` — encryption keys,
+re-encryption batches, alerts, audit chain checkpoints. Promote only when operator chooses P3.
+
+**Hygiene:** Orval-generated DTOs are the sole source for enrollment admin usernames and admin
+`enrollmentName` (removed interim local types in Admin UI closeout).
 
 ## Intent
 
@@ -105,7 +120,8 @@ When starting a row:
 2. Update matrix row status.
 3. Optional GitHub issue for PR visibility only.
 
-Suggested **next TB:** P3 matrix rows (encryption keys, alerts, audit chain checkpoints) when operator chooses.
+Suggested **next slice (optional):** P3 matrix rows (encryption keys, alerts, audit chain checkpoints)
+when operator chooses — **outside** this closed program.
 
 ## Links
 
@@ -120,7 +136,7 @@ Suggested **next TB:** P3 matrix rows (encryption keys, alerts, audit chain chec
   `TB-2026-06-23-admin-ui-tier-a-completion-embedded-tenants.md`,
   `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels.md`,
   `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels.md`
-- Next: P3 matrix rows (encryption keys, alerts) — see priority table
+- Next (optional P3): encryption keys, alerts — see priority table; program **I-2026-0028 closed**
 - P4 closeout: [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md)
 - Detail FK parity: [`TB-2026-06-23-admin-ui-detail-fk-label-parity`](../TB-2026-06-23-admin-ui-detail-fk-label-parity.md)
-- Closeout: [`method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md`](../method-logs/ML-2026-06-23-admin-ui-audit-logs-tier-b-closeout.md)
+- Program closeout: [`method-logs/ML-2026-06-27-admin-ui-operator-experience-program-closeout.md`](../method-logs/ML-2026-06-27-admin-ui-operator-experience-program-closeout.md)

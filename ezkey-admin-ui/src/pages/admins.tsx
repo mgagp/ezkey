@@ -679,7 +679,7 @@ function AdminDetailDialog({
             <DetailInfoRow label={t('detail.labelEnrollmentId')} valueClassName="break-all">
               <EnrollmentFkLink
                 enrollmentId={adm.enrollmentId}
-                enrollmentName={(adm as { enrollmentName?: string | null }).enrollmentName}
+                enrollmentName={adm.enrollmentName}
                 fallbackLabel={t('detail.enrollmentFallback', { id: adm.enrollmentId })}
               />
             </DetailInfoRow>

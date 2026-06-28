@@ -50,13 +50,6 @@ import type {
 
 // ── Local types (not yet in OpenAPI spec) ────────────────────────────────────
 
-/** Admin username labels on enrollment GET (until spec refresh). */
-type EnrollmentDetailDto = EnrollmentResponseDto & {
-  createdByAdminUsername?: string | null;
-  deactivatedByAdminUsername?: string | null;
-  revokedByAdminUsername?: string | null;
-};
-
 /** Response from POST /api/v1/auth-attempts — not yet specified in the OpenAPI schema. */
 interface AuthAttemptCreateResponse {
   authAttemptId: number;
@@ -481,7 +474,7 @@ export default function EnrollmentDetailPage() {
   const { toast } = useToast();
   const { lookup } = useIntegrations();
 
-  const { data: enrollment, isLoading } = useGetById<EnrollmentDetailDto>(
+  const { data: enrollment, isLoading } = useGetById<EnrollmentResponseDto>(
     isNaN(enrollmentId) ? 0 : enrollmentId,
     { query: { enabled: !isNaN(enrollmentId) } },
   );
