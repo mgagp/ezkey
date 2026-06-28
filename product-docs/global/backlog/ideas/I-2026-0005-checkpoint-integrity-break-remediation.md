@@ -11,6 +11,7 @@
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `audit`
 - **Captured by:** Marc
+- **GitHub issue:** #269 (Wave B program umbrella — B2 slice)
 
 ## Intent
 
@@ -105,7 +106,7 @@ positive loop. `I-2026-0022` should capture this boundary rule in the scheduled 
 
 ## Promotion notes
 
-Grilling: C7 settled 2026-05-19 — **ready for component design pack** on manipulation path + alert queue model. Close C8–C9 and INC-1 in grill session or design pack. Align with `I-2026-0006` / `I-2026-0007` before `TB-*`.
+Grilling: C7 settled 2026-05-19 — **ready for component design pack** on manipulation path + alert queue model. **Wave B B2** after `TB-2026-06-28` nightly batch. Design pack: [`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md). Program issue **#269**.
 
 ## Links
 

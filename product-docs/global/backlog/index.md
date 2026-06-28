@@ -11,8 +11,8 @@ This index provides a lightweight list of active ideas and their current state.
 → [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
 
 **Summary (2026-06-28):** Integrity cluster (`I-2026-0005`, `I-2026-0006`, `I-2026-0007`) **before**
-Alerts list UI polish (`I-2026-0028` P3). Method log:
-[`method-logs/ML-2026-06-28-operational-readiness-prioritization-exercise.md`](method-logs/ML-2026-06-28-operational-readiness-prioritization-exercise.md).
+Alerts list UI polish (`I-2026-0028` P3). **Wave B kicked off:** design pack + TB B1 promoted; GitHub **#269**.
+Method log: [`method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md`](method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md).
 
 ## Active ideas
 

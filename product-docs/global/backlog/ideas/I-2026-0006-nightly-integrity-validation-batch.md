@@ -3,14 +3,16 @@
 ## Metadata
 
 - **ID:** `I-2026-0006`
-- **Status:** `incubating`
+- **Status:** `promoted`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-06-28`
+- **Last reviewed at:** `2026-06-28`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `audit`, `infra`
 - **Captured by:** Marc
+- **GitHub issue:** #269 (Wave B program umbrella)
+- **Issue labels:** `lane:a`, `type:feat`, `component:admin-api`, `component:admin-ui`, `component:core`, `priority:p1`, `status:ready`
 
 ## Intent
 
@@ -60,11 +62,17 @@ Introduce a periodic (typically **daily**) retroactive integrity validation batc
 
 ## Promotion notes
 
-Moved to `incubating` after D5 grilling. Promote to `TB-*` with `I-2026-0007` batch table schema. Close D5-13/14/15 in design pack.
+Moved to `incubating` after D5 grilling. **Promoted** to
+[`TB-2026-06-28-nightly-integrity-validation-batch`](../TB-2026-06-28-nightly-integrity-validation-batch.md)
+(2026-06-28) under program issue **#269**. Design pack:
+[`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md).
 
 ## Links
 
 - Grill session: [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/integrity-cluster-D4-D6-grill-me.md) (D5)
+- Design pack: [`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md)
+- TB (B1): [`../TB-2026-06-28-nightly-integrity-validation-batch.md`](../TB-2026-06-28-nightly-integrity-validation-batch.md)
+- Program issue: GitHub **#269**
 - Related vision: `V-2026-0004`
 - Related backlog: `I-2026-0005`, `I-2026-0007`
 - Code reference (rolling attach today): `ezkey-core/.../AuditChainScheduler.java`, `AuditChainProperties.lookbackMinutes`

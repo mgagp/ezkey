@@ -124,11 +124,14 @@ stop/start scenarios).
 
 ### Wave B — Integrity cluster R1 (priority now)
 
-1. Component design pack from integrity grill session.
-2. Promote **`I-2026-0006`** → TB (nightly batch + batch last-run persistence).
-3. Promote **`I-2026-0005`** → TB (manipulation path + alert queue semantics) — may split if too large.
-4. Promote **`I-2026-0007`** → TB (dashboard widgets) after batch table exists.
-5. Scenario tests: Admin API down, checkpoint stall, gap declaration, induced integrity break (lab only).
+1. Component design pack from integrity grill session — **done** [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md).
+2. GitHub program issue **#269** — **open**.
+3. Promote **`I-2026-0006`** → TB [`TB-2026-06-28-nightly-integrity-validation-batch`](backlog/TB-2026-06-28-nightly-integrity-validation-batch.md) — **done**.
+4. Promote **`I-2026-0005`** → TB (manipulation path) — at B1 closeout.
+5. Promote **`I-2026-0007`** → TB (dashboard widgets) — at B2 closeout.
+6. Scenario tests: Admin API down, checkpoint stall, gap declaration, induced integrity break (lab only).
+
+**Kickoff ML:** [`backlog/method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md`](backlog/method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md).
 
 **Exit gate for Wave B:** `F-audit-chain` exit criteria in [`roadmap.md`](roadmap.md) are met for R1;
 [`docs/ALERTS.md`](../../docs/ALERTS.md) reflects all R1 alert types and resolution paths.

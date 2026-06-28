@@ -11,6 +11,7 @@
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`
 - **Captured by:** Marc
+- **GitHub issue:** #269 (Wave B program umbrella — B3 slice)
 
 ## Intent
 
@@ -66,7 +67,8 @@ Generalized **batch last-run** model: table row per job (`last_execution_at`, `l
 
 ## Promotion notes
 
-D6 express grilling complete. Promote to `TB-*` with `I-2026-0006` + batch table schema. Design pack: wire banner to alert count API.
+D6 express grilling complete. **Wave B B3** after B1/B2. Design pack:
+[`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md). Program issue **#269**.
 
 ## Links
 
