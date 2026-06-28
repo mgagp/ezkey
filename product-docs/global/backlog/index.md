@@ -41,6 +41,7 @@ Method log: [`method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md`](me
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
 | `I-2026-06-28-audit-archive-export-spi` | Audit archive export SPI: sealed-batch detachment + vendor-neutral immutable retention | `incubating` | `P3` | `core`, `admin-api`, `admin-ui`, `audit`, `infra`, `docs`, peripheral | `2026-06-28` |
 | `I-2026-0029` | Re-encryption: indexed encryption key id columns (replace LIKE scans) | `ready` | `P2` | `core`, `admin-api`, `infra`, `docs` | `2026-06-28` |
+| `I-2026-0030` | Admin Dashboard: widget signal model review and realignment | `ready` | `P2` | `admin-ui`, `admin-api`, `docs (product-docs)` | `2026-06-28` |
 
 ## Recently completed
 
