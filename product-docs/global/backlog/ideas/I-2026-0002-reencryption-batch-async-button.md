@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0002`
-- **Status:** `incubating`
+- **Status:** `ready`
 - **Priority:** `P2`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-19`
-- **Last reviewed at:** `2026-05-19`
+- **Updated at:** `2026-06-27`
+- **Last reviewed at:** `2026-06-27`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`
 - **Captured by:** Marc
@@ -54,7 +54,9 @@ See [`../grill-sessions/blitz-2026-05-08-1-D1-D2-grill-me.md`](../grill-sessions
 
 ## Promotion notes
 
-Ready for **design pack** / tracer bullet: API response DTO, `@Async` or delegate-to-scheduler pattern, UI mutation + invalidation keys.
+Promoted to **TB-2026-06-27-admin-ui-encryption-reencryption-async** (2026-06-27). GitHub **#264**.
+
+Ready for implementation on branch `feat/admin-ui-encryption-reencryption-async`.
 
 ## Links
 
