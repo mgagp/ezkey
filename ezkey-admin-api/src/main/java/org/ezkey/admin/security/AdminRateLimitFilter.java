@@ -24,7 +24,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.ezkey.admin.config.AdminRateLimitProperties;
 import org.ezkey.admin.config.TrustedProxyProperties;
@@ -44,6 +45,7 @@ import org.springframework.http.HttpStatus;
  *
  * <ul>
  *   <li>POST /api/v1/admin/auth/login
+ *   <li>POST /api/v1/admin/auth/passwordless-wait
  * </ul>
  *
  * <p><b>Rate Limiting Strategy:</b>
@@ -73,14 +75,28 @@ import org.springframework.http.HttpStatus;
 public class AdminRateLimitFilter implements Filter {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminRateLimitFilter.class);
+
   private static final String LOGIN_ENDPOINT_PATH = "/api/v1/admin/auth/login";
+  private static final String PASSWORDLESS_WAIT_ENDPOINT_PATH =
+      "/api/v1/admin/auth/passwordless-wait";
+
+  /** POST admin auth endpoints sharing the login rate-limit bucket (per client IP). */
+  private static final List<String> RATE_LIMITED_PATHS =
+      List.of(LOGIN_ENDPOINT_PATH, PASSWORDLESS_WAIT_ENDPOINT_PATH);
+
+  private static final int FAILURE_COUNT_CACHE_MAX_SIZE = 10_000;
+  private static final Duration FAILURE_COUNT_CACHE_TTL = Duration.ofHours(1);
+  private static final int BLOCKED_UNTIL_CACHE_MAX_SIZE = 10_000;
+  private static final Duration BLOCKED_UNTIL_CACHE_TTL = Duration.ofHours(2);
 
   private final AdminRateLimitProperties properties;
   private final TrustedProxyProperties trustedProxyProperties;
   private final MeterRegistry meterRegistry;
   private final Cache<String, Bucket> bucketCache;
-  private final ConcurrentHashMap<String, AtomicInteger> failureCountMap;
-  private final ConcurrentHashMap<String, Long> blockedUntilMap;
+  private final Cache<String, AtomicInteger> failureCountCache;
+  private final Cache<String, Long> blockedUntilCache;
+  private final Map<String, AtomicInteger> failureCountMap;
+  private final Map<String, Long> blockedUntilMap;
 
   /**
    * Constructs the rate limiting filter with configuration properties.
@@ -101,9 +117,19 @@ public class AdminRateLimitFilter implements Filter {
     this.bucketCache =
         Caffeine.newBuilder().maximumSize(1000).expireAfterAccess(Duration.ofHours(1)).build();
 
-    // Track failure counts and blocked IPs
-    this.failureCountMap = new ConcurrentHashMap<>();
-    this.blockedUntilMap = new ConcurrentHashMap<>();
+    // Track failure counts and blocked IPs with bounded eviction (SEC-003)
+    this.failureCountCache =
+        Caffeine.newBuilder()
+            .maximumSize(FAILURE_COUNT_CACHE_MAX_SIZE)
+            .expireAfterWrite(FAILURE_COUNT_CACHE_TTL)
+            .build();
+    this.failureCountMap = failureCountCache.asMap();
+    this.blockedUntilCache =
+        Caffeine.newBuilder()
+            .maximumSize(BLOCKED_UNTIL_CACHE_MAX_SIZE)
+            .expireAfterWrite(BLOCKED_UNTIL_CACHE_TTL)
+            .build();
+    this.blockedUntilMap = blockedUntilCache.asMap();
 
     logger.info(
         "AdminRateLimitFilter initialized with login limit: {} requests per {} minutes",
@@ -127,7 +153,7 @@ public class AdminRateLimitFilter implements Filter {
     String requestUri = req.getRequestURI();
     String requestMethod = req.getMethod();
 
-    // Apply rate limiting only to login endpoint
+    // Apply rate limiting to admin auth POST endpoints (login + passwordless-wait)
     if (shouldApplyRateLimit(requestUri, requestMethod)) {
       String clientId = ClientIpResolver.resolve(req, trustedProxyProperties.getCidrs());
 
@@ -180,12 +206,11 @@ public class AdminRateLimitFilter implements Filter {
    * @return true if rate limiting should be applied
    */
   private boolean shouldApplyRateLimit(String requestUri, String requestMethod) {
-    // Only apply to POST requests on login endpoint
     if (!"POST".equals(requestMethod)) {
       return false;
     }
 
-    return requestUri.contains(LOGIN_ENDPOINT_PATH);
+    return RATE_LIMITED_PATHS.stream().anyMatch(requestUri::contains);
   }
 
   /**
@@ -294,6 +319,22 @@ public class AdminRateLimitFilter implements Filter {
     failureCountMap.remove(clientId);
     blockedUntilMap.remove(clientId);
     logger.debug("Successful login for IP: {} - Failure count reset", clientId);
+  }
+
+  /**
+   * Returns the number of tracked failure-count entries. Package-private for unit tests verifying
+   * bounded cache eviction (SEC-003).
+   *
+   * @return current failure-count map size
+   */
+  int failureTrackingEntryCount() {
+    return failureCountMap.size();
+  }
+
+  /** Triggers Caffeine maintenance for unit tests verifying bounded eviction (SEC-003). */
+  void runFailureTrackingMaintenanceForTest() {
+    failureCountCache.cleanUp();
+    blockedUntilCache.cleanUp();
   }
 
   /** Result of a rate limit check operation. */
