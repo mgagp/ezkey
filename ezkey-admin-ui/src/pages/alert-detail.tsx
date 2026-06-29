@@ -49,6 +49,17 @@ interface AuditChainGapPayload {
   message?: string;
 }
 
+interface AuditIntegrityRupturePayload {
+  windowStart?: string;
+  windowEnd?: string;
+  chainStatus?: string;
+  violationCount?: number;
+  entryHmacViolationCount?: number;
+  failBoundary?: string;
+  resumeBoundary?: string;
+  message?: string;
+}
+
 function parsePayload(payload: string | undefined): unknown | null {
   if (!payload) return null;
   try {
@@ -59,6 +70,10 @@ function parsePayload(payload: string | undefined): unknown | null {
 }
 
 function isAuditChainGapPayload(value: unknown): value is AuditChainGapPayload {
+  return typeof value === 'object' && value !== null;
+}
+
+function isAuditIntegrityRupturePayload(value: unknown): value is AuditIntegrityRupturePayload {
   return typeof value === 'object' && value !== null;
 }
 
@@ -103,6 +118,54 @@ function AuditChainGapPayloadView({ payload }: { payload: AuditChainGapPayload }
   );
 }
 
+function AuditIntegrityRupturePayloadView({ payload }: { payload: AuditIntegrityRupturePayload }) {
+  const { t } = useTranslation(['alerts']);
+  return (
+    <dl className="space-y-3">
+      {payload.windowStart && (
+        <InfoRow label={t('alerts:detail.auditIntegrityRupture.windowStart')}>
+          <span className="text-xs text-fg-muted">{formatDate(payload.windowStart)}</span>
+        </InfoRow>
+      )}
+      {payload.windowEnd && (
+        <InfoRow label={t('alerts:detail.auditIntegrityRupture.windowEnd')}>
+          <span className="text-xs text-fg-muted">{formatDate(payload.windowEnd)}</span>
+        </InfoRow>
+      )}
+      {payload.chainStatus && (
+        <InfoRow label={t('alerts:detail.auditIntegrityRupture.chainStatus')}>
+          <span className="font-mono text-xs">{payload.chainStatus}</span>
+        </InfoRow>
+      )}
+      {payload.violationCount != null && (
+        <InfoRow label={t('alerts:detail.auditIntegrityRupture.violationCount')}>
+          <span className="font-mono text-xs">{payload.violationCount}</span>
+        </InfoRow>
+      )}
+      {payload.entryHmacViolationCount != null && (
+        <InfoRow label={t('alerts:detail.auditIntegrityRupture.entryHmacViolationCount')}>
+          <span className="font-mono text-xs">{payload.entryHmacViolationCount}</span>
+        </InfoRow>
+      )}
+      {payload.failBoundary && (
+        <InfoRow label={t('alerts:detail.auditIntegrityRupture.failBoundary')}>
+          <span className="text-xs text-fg-muted">{formatDate(payload.failBoundary)}</span>
+        </InfoRow>
+      )}
+      {payload.resumeBoundary && (
+        <InfoRow label={t('alerts:detail.auditIntegrityRupture.resumeBoundary')}>
+          <span className="text-xs text-fg-muted">{formatDate(payload.resumeBoundary)}</span>
+        </InfoRow>
+      )}
+      {payload.message && (
+        <InfoRow label={t('alerts:detail.auditIntegrityRupture.message')}>
+          <span className="text-sm">{payload.message}</span>
+        </InfoRow>
+      )}
+    </dl>
+  );
+}
+
 export default function AlertDetailPage() {
   const { t } = useTranslation(['alerts', 'common']);
   const { alertId } = useParams<{ alertId: string }>();
@@ -115,6 +178,7 @@ export default function AlertDetailPage() {
 
   const parsedPayload = useMemo(() => parsePayload(alert?.payload), [alert?.payload]);
   const isGapAlert = alert?.alertType === 'AUDIT_CHAIN_GAP_PENDING';
+  const isIntegrityRuptureAlert = alert?.alertType === 'AUDIT_INTEGRITY_RUPTURE';
 
   return (
     <AppShell
@@ -226,7 +290,18 @@ export default function AlertDetailPage() {
                   <AuditChainGapPayloadView payload={parsedPayload as AuditChainGapPayload} />
                 </div>
               )}
-              {alert.payload && (!isGapAlert || !isAuditChainGapPayload(parsedPayload)) && (
+              {alert.payload
+                && isIntegrityRuptureAlert
+                && isAuditIntegrityRupturePayload(parsedPayload) && (
+                <div className="space-y-4">
+                  <AuditIntegrityRupturePayloadView
+                    payload={parsedPayload as AuditIntegrityRupturePayload}
+                  />
+                </div>
+              )}
+              {alert.payload
+                && (!isGapAlert || !isAuditChainGapPayload(parsedPayload))
+                && (!isIntegrityRuptureAlert || !isAuditIntegrityRupturePayload(parsedPayload)) && (
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted mb-2">
                     {t('alerts:detail.payloadRawHeading')}

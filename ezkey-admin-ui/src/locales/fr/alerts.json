@@ -54,6 +54,16 @@
       "estimatedGapMinutes": "Durée estimée (min)",
       "message": "Message",
       "viewAuditLogs": "Ouvrir dans les journaux d'audit"
+    },
+    "auditIntegrityRupture": {
+      "windowStart": "Début de fenêtre",
+      "windowEnd": "Fin de fenêtre",
+      "chainStatus": "Statut chaîne",
+      "violationCount": "Violations chaîne",
+      "entryHmacViolationCount": "Violations HMAC entrée",
+      "failBoundary": "Frontière d'échec",
+      "resumeBoundary": "Frontière de reprise",
+      "message": "Message"
     }
   },
   "severity": {
@@ -70,6 +80,7 @@
     "MANUAL": "Manuelle"
   },
   "type": {
-    "AUDIT_CHAIN_GAP_PENDING": "Chaîne d'audit — coupure non déclarée"
+    "AUDIT_CHAIN_GAP_PENDING": "Chaîne d'audit — coupure non déclarée",
+    "AUDIT_INTEGRITY_RUPTURE": "Intégrité d'audit — rupture détectée"
   }
 }

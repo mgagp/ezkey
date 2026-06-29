@@ -9,6 +9,9 @@
 *.swo
 *.orig
 
+# Agent commit helper message file (see scripts/git-commit.sh canonical zero-argument flow)
+.ezkey/commit-msg.txt
+
 # ==========================
 # Build Java / Spring Boot
 # ==========================

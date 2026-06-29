@@ -91,6 +91,12 @@ Ezkey may use secure private-key storage on supported devices. That is useful an
 - **Open source transparency**: make the protocol and implementation inspectable.
 - **Self-hosted control**: preserve operational ownership for teams that want it.
 
+## Honest Security Posture
+
+Ezkey states plainly what it does, what it does not do, and what it aims to do — including the current
+integrity ceiling and the deliberately-deferred, vendor-neutral external archival direction. See
+[`SECURITY_POSTURE.md`](SECURITY_POSTURE.md). The claim is **tamper-evident, not tamper-proof**.
+
 ## Closing Position
 
 Ezkey is an opinionated project.

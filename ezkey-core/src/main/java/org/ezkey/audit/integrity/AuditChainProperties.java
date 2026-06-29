@@ -38,8 +38,11 @@ public class AuditChainProperties {
   /** Time window size in minutes for each checkpoint (default: 5). */
   private int windowMinutes = 5;
 
-  /** Lookback window in minutes for catch-up after restarts (default: 60). */
+  /** Lookback window in minutes for catch-up after restarts (default: 60). Bounds: 15–480. */
   private int lookbackMinutes = 60;
+
+  private static final int MIN_LOOKBACK_MINUTES = 15;
+  private static final int MAX_LOOKBACK_MINUTES = 480;
 
   public boolean isEnabled() {
     return enabled;
@@ -62,6 +65,13 @@ public class AuditChainProperties {
   }
 
   public void setLookbackMinutes(int lookbackMinutes) {
+    if (lookbackMinutes < MIN_LOOKBACK_MINUTES || lookbackMinutes > MAX_LOOKBACK_MINUTES) {
+      throw new IllegalArgumentException(
+          "ezkey.audit.chain.lookback-minutes must be between "
+              + MIN_LOOKBACK_MINUTES
+              + " and "
+              + MAX_LOOKBACK_MINUTES);
+    }
     this.lookbackMinutes = lookbackMinutes;
   }
 }

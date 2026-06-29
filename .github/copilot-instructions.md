@@ -199,6 +199,33 @@ src/main/java/org/ezkey/{domain}/
 - Keep commits focused and atomic
 - Include issue numbers when applicable
 
+#### Committing on Windows (avoid recurring shell failures)
+
+This workstation's agent shell is usually **PowerShell**, which makes `git commit` fail for avoidable
+reasons: Cursor may inject `--trailer "... <...>"` (PowerShell parses `<` as redirection), and
+multi-layer quoting (PowerShell → `bash -lc '...'` → `git commit`) mangles any of `( ) " ' # ! < >`.
+Conventional prefixes like `docs(product):` always contain `()`, so inline `-m` is fragile.
+
+**Reliable principle:** never let the commit *message text* cross a shell boundary. Use the repo
+helper `scripts/git-commit.sh` with its **canonical zero-argument flow**:
+
+1. `git add <paths>` (stage only this commit's files).
+2. Write the full commit message (subject + optional blank line + body) to **`.ezkey/commit-msg.txt`**
+   with the file-writing tool — any characters are safe there.
+3. Run the **single constant command** (`&` call operator required for the quoted path):
+
+   ```text
+   & "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-commit.sh'
+   ```
+
+   Inside Git Bash, just run `./scripts/git-commit.sh`. The script commits via `git commit -F` and
+   removes the message file. Power-user forms: `./scripts/git-commit.sh -F <file>` or `-m "subject"`.
+
+Do **not** use bare PowerShell `git commit`, HEREDOC, `&&` chains, or WSL bash
+(`C:\Windows\System32\bash.exe`); always use **Git Bash** (`C:\Program Files\Git\bin\bash.exe`).
+Cursor mirror of this rule: `.cursor/rules/git-commit-windows.mdc`; repo-wide context:
+`AGENTS.md` § *Git commit on Windows (agent shell)*.
+
 ## Security Guidelines
 
 ### Input Validation

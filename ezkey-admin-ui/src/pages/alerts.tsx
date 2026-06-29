@@ -203,6 +203,9 @@ export default function AlertsPage() {
               <option value="AUDIT_CHAIN_GAP_PENDING">
                 {t('alerts:type.AUDIT_CHAIN_GAP_PENDING')}
               </option>
+              <option value="AUDIT_INTEGRITY_RUPTURE">
+                {t('alerts:type.AUDIT_INTEGRITY_RUPTURE')}
+              </option>
             </Select>
           </div>
           <Button
