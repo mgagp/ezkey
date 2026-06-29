@@ -26,6 +26,7 @@ this index is updated only post-merge on `main`, never on feature branches.
 | `V-2026-0011` | Android-first real-device mobile validation | `under-review` | `2026-05-08` | [V-2026-0011](V-2026-0011-android-real-device-validation.md) |
 | `V-2026-0012` | Dedicated batch backend (future): optional split from Admin API | `draft` | `2026-05-19` | [V-2026-0012](V-2026-0012-dedicated-batch-backend-future.md) |
 | `V-2026-0013` | Meta-resolution over long windows (future, exceptional) | `draft` | `2026-05-19` | [V-2026-0013](V-2026-0013-meta-resolution-long-windows.md) |
+| `V-2026-06-28` | Audit archive export SPI: vendor-neutral immutable retention and cryptographic batch detachment | `under-review` | `2026-06-28` | [V-2026-06-28](V-2026-06-28-audit-archive-export-spi.md) |
 
 ## Recently promoted
 

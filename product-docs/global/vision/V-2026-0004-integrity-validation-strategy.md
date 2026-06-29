@@ -19,6 +19,17 @@
   See `integrity-cluster-D4-D6-grill-me.md`.
 - **Captured by:** Marc
 
+## Scope guard
+
+The two-layer model (rolling attach + nightly detect) stays. "Remarkable solidity" against a
+host-rooted adversary is explicitly relocated to a **future external immutable export boundary**,
+delivered via a vendor-neutral SPI and **deliberately deferred** to Phase 2
+([`V-2026-06-28-audit-archive-export-spi`](V-2026-06-28-audit-archive-export-spi.md)) — not to in-DB
+checkpoint granularity or incident-response sophistication. Any new integrity control must pass the
+red-line test in [`../integrity-assurance-honest-line.md`](../integrity-assurance-honest-line.md)
+before it is treated as essential rather than accidental complexity. The honest Phase-1 posture is
+documented in [`../../../docs/SECURITY_POSTURE.md`](../../../docs/SECURITY_POSTURE.md).
+
 ## Related artifacts
 
 - `I-2026-0005` — Checkpoint integrity breaks: declared remediation and reattachment

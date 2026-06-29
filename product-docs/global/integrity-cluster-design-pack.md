@@ -159,6 +159,20 @@ Functional tests in `ezkey-tests` where stable; elective tests for long-running 
 | `F-audit-chain` | Feature milestone in [`features-and-phases.md`](features-and-phases.md) |
 | `ML-2026-06-28-wave-b-integrity-cluster-kickoff.md` | Method log for this kickoff |
 
+## Complexity compass (scope guard)
+
+Marginal in-DB integrity sophistication is bounded by
+[`integrity-assurance-honest-line.md`](integrity-assurance-honest-line.md): the HMAC key is off-DB,
+so the chain is genuinely tamper-evident against accidental corruption and DB-only adversaries, but
+blind to a host-rooted adversary. The move that changes that adversary class — external immutable
+export — is **deliberately deferred to Phase 2** via a vendor-neutral SPI
+([`vision/V-2026-06-28-audit-archive-export-spi.md`](vision/V-2026-06-28-audit-archive-export-spi.md);
+the `AuditLifecycleService` seal/confirm FSM intentionally reserves the export transition). For R1,
+finish the nightly detective minimum (`I-2026-0006`), keep manipulation-remediation machinery
+proportional, and make the **honest Phase-1 posture** discoverable
+([`../../docs/SECURITY_POSTURE.md`](../../docs/SECURITY_POSTURE.md)). Apply the red-line test before
+adding controls.
+
 ## Out of scope (cluster R1)
 
 - Snooze UI/API (grilled yes for R1 — schedule in B2 with `I-2026-0005` unless split)
