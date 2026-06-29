@@ -4453,6 +4453,7 @@
                 "AUDIT_CHAIN_ARCHIVE_EXPORTED",
                 "AUDIT_CHAIN_GAP_DECLARED",
                 "AUDIT_CHAIN_INCIDENT_DECLARED",
+                "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
                 "ALERT_RAISED",
                 "ALERT_RESOLVED"
               ]
@@ -5392,7 +5393,8 @@
               "type": "string",
               "enum": [
                 "AUDIT_CHAIN_GAP_PENDING",
-                "AUDIT_CHAIN_HEARTBEAT_STALE"
+                "AUDIT_CHAIN_HEARTBEAT_STALE",
+                "AUDIT_INTEGRITY_RUPTURE"
               ]
             }
           },
@@ -8095,7 +8097,8 @@
             "type": "string",
             "enum": [
               "AUDIT_CHAIN_GAP_PENDING",
-              "AUDIT_CHAIN_HEARTBEAT_STALE"
+              "AUDIT_CHAIN_HEARTBEAT_STALE",
+              "AUDIT_INTEGRITY_RUPTURE"
             ]
           },
           "severity": {
@@ -8444,6 +8447,7 @@
               "AUDIT_CHAIN_ARCHIVE_EXPORTED",
               "AUDIT_CHAIN_GAP_DECLARED",
               "AUDIT_CHAIN_INCIDENT_DECLARED",
+              "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
               "ALERT_RAISED",
               "ALERT_RESOLVED"
             ]
@@ -8822,7 +8826,8 @@
             "type": "string",
             "enum": [
               "AUDIT_CHAIN_GAP_PENDING",
-              "AUDIT_CHAIN_HEARTBEAT_STALE"
+              "AUDIT_CHAIN_HEARTBEAT_STALE",
+              "AUDIT_INTEGRITY_RUPTURE"
             ]
           },
           "severity": {

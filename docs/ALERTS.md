@@ -45,12 +45,19 @@ Producers include **automated lifecycle checks** (`AuditChainScheduler`) and **c
 |------------|-----------|-------------|---------|---------------------|
 | `AUDIT_CHAIN_GAP_PENDING` | `AuditChainScheduler` detects an undeclared temporal gap (`window_start`/`window_end` holes) spanning completed audit epochs | `"AUDIT_CHAIN_GAP_PENDING:" + anchorCheckpointId` | `WARNING` | Global Admin declares the gap (`POST /api/v1/audit-logs/lifecycle/declare-gap`). Auto-resolution reason `GAP_DECLARED`. |
 | `AUDIT_CHAIN_HEARTBEAT_STALE` | `AuditChainHeartbeatGuardService` observes peripheral-ready fail-closing because Admin API checkpoints stalled past grace semantics | Stable singleton **`AUDIT_CHAIN_HEARTBEAT_STALE`** (see [`AuditChainHeartbeatGuardService`](../ezkey-core/src/main/java/org/ezkey/audit/integrity/AuditChainHeartbeatGuardService.java)) | `WARNING` | A fresh advancing checkpoint restores heartbeat; subsystem auto-resolves with reason `HEARTBEAT_RESTORED`. Operators subsequently close **`RECOVERED_PENDING_DECLARATION`** incidents via lifecycle APIs. |
+| `AUDIT_INTEGRITY_RUPTURE` | `NightlyIntegrityValidationService` detects per-entry HMAC or checkpoint chain rupture in the retroactive nightly window | `"AUDIT_INTEGRITY_RUPTURE:" + windowStartEpochMillis` | `CRITICAL` | Remediation flows owned by `I-2026-0005` (Wave B B2). R1 raises/touches only; no auto-resolve in B1. |
 
 `AUDIT_CHAIN_GAP_PENDING` payload (JSON string): `anchorCheckpointId`, `gapStart`, `estimatedGapEnd`, `estimatedGapMinutes`, `message`.
 
 `AUDIT_CHAIN_HEARTBEAT_STALE` payload (JSON string): `phase`, `anchorCheckpointId`, `latestWindowEnd`.
 
+`AUDIT_INTEGRITY_RUPTURE` payload (JSON string): `windowStart`, `windowEnd`, `chainStatus`, `violationCount`, `entryHmacViolationCount`, `failBoundary`, `resumeBoundary`, `message`.
+
 `AuditLifecycleService.declareGap` resolves matching `AUDIT_CHAIN_GAP_PENDING` alerts by anchor dedupe key when a gap is formally declared.
+
+**C8-6 classifier:** when the only chain finding in the nightly window is undeclared gaps and an OPEN
+`AUDIT_CHAIN_HEARTBEAT_STALE` alert already explains the outage, B1 defers raising
+`AUDIT_INTEGRITY_RUPTURE` for that window.
 
 ## Adding a new alert type
 

@@ -35,5 +35,11 @@ public enum AlertType {
    * windows (Admin API scheduler appears stalled). Resolved automatically when checkpoints advance
    * again.
    */
-  AUDIT_CHAIN_HEARTBEAT_STALE
+  AUDIT_CHAIN_HEARTBEAT_STALE,
+
+  /**
+   * Nightly retroactive integrity validation detected checkpoint or per-audit HMAC rupture in the
+   * configured window. Resolution flows are owned by {@code I-2026-0005} (B2).
+   */
+  AUDIT_INTEGRITY_RUPTURE
 }

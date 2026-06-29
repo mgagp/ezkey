@@ -119,6 +119,9 @@ public enum EventType {
   AUDIT_CHAIN_GAP_DECLARED, // Admin-declared downtime gap formally documented in the chain
   AUDIT_CHAIN_INCIDENT_DECLARED, // Admin-declared heartbeat outage narrative (operational overlay)
 
+  // Scheduled integrity validation
+  NIGHTLY_INTEGRITY_VALIDATION_COMPLETED, // Nightly retroactive integrity batch finished
+
   // Alert subsystem lifecycle events (raised/resolved by org.ezkey.alert.service.AlertService)
   ALERT_RAISED, // A new operator-facing alert row was created in ezkey_alert
   ALERT_RESOLVED // An existing OPEN alert was transitioned to RESOLVED

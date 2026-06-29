@@ -60,6 +60,7 @@ export const EVENT_TYPE_KEYS = [
   'AUDIT_CHAIN_ARCHIVE_SEALED',
   'AUDIT_CHAIN_GAP_DECLARED',
   'AUDIT_CHAIN_GAP_PENDING',
+  'NIGHTLY_INTEGRITY_VALIDATION_COMPLETED',
 ] as const;
 
 export type AuditEventTypeKey = (typeof EVENT_TYPE_KEYS)[number];

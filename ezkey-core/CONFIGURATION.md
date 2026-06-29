@@ -173,7 +173,7 @@ Auth API and Integration API set `ezkey.audit.chain.enabled=false`.
 |---|---|---|---|---|
 | `ezkey.audit.chain.enabled` | `boolean` | `true` | optionnel | Enable/disable chain checkpoint job. Set to `false` in Auth API and Integration API. |
 | `ezkey.audit.chain.window-minutes` | `int` | `5` | optionnel | Time window size in minutes for each checkpoint. |
-| `ezkey.audit.chain.lookback-minutes` | `int` | `60` | optionnel | Lookback window in minutes for catch-up after restarts. |
+| `ezkey.audit.chain.lookback-minutes` | `int` | `60` | optionnel | Lookback window in minutes for catch-up after restarts. **Bounds:** 15–480 (validated at bind time). |
 | `ezkey.audit.chain.cron` | `String` | `1 */5 * * * ?` | optionnel | Quartz-style cron controlling how often **`AuditChainScheduler`** attempts catch-up checkpoints (runs **only when** `enabled=true`; run just after the window boundary so a second-zero tick cannot seal an incomplete window or defer it by a full cycle; Admin API Docker profile sets this explicitly — see [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md)). |
 
 **Derived peripheral timing reminder:** Auth API / Integration APIs compute earliest peripheral HTTP fail-close time as **`latest.window_end + grace_windows × window_minutes − stop_before_next_window`** (see **`ezkey.audit.chain.heartbeat.*`** plus [`docs/AUDIT_LOG_INTEGRITY.md`](../docs/AUDIT_LOG_INTEGRITY.md)). Keeping **`window-minutes`** identical everywhere guards against configuration-driven false positives.
@@ -202,6 +202,25 @@ Grace durations are expressed as multiples of **`ezkey.audit.chain.window-minute
 | `ezkey.audit.chain.heartbeat.bootstrap-grace` | `Duration` | `PT10M` | optionnel | Startup tolerance before checkpoints exist (clean install). |
 | `ezkey.audit.chain.heartbeat.admin-evaluate-scheduler-enabled` | `boolean` | `true` | optionnel | Admin API scheduler ping (`@Scheduled`) — keeps incidents/alerts fresh without peripheral traffic. |
 | `ezkey.audit.chain.heartbeat.admin-evaluate-fixed-delay-ms` | `long` | `30000` | optionnel | Delay between Admin heartbeat evaluations (milliseconds). |
+
+---
+
+### Nightly retroactive integrity validation (`ezkey.audit.integrity.nightly.*`)
+
+**Description:** Scheduled batch that retroactively validates per-entry HMAC integrity and checkpoint
+chain continuity over a completed window (default 24 h). Raises `AUDIT_INTEGRITY_RUPTURE` on anomaly;
+updates `ezkey_scheduled_job_last_run` for operator visibility (Wave B B1).
+
+**Defined in:** `NightlyIntegrityProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.audit.integrity.nightly.enabled` | `boolean` | `true` | optionnel | Enable/disable nightly batch. Set `false` in native/Windows dev profiles without HMAC. |
+| `ezkey.audit.integrity.nightly.cron` | `String` | `0 0 2 * * ?` | optionnel | Quartz cron for nightly run (default 02:00 UTC). |
+| `ezkey.audit.integrity.nightly.window-hours` | `int` | `24` | optionnel | Retroactive validation window length in hours. |
+
+**Registry:** successful runs update `NIGHTLY_INTEGRITY_VALIDATION` in `ezkey_scheduled_job_last_run`.
+Batch infrastructure failures record `FAILED` on the registry row only (C9 — no “batch did not run” alert).
 
 ---
 

@@ -84,6 +84,7 @@ public class AuditChainScheduler {
   private final AuditHmacService auditHmacService;
   private final AuditLogService auditLogService;
   private final AlertService alertService;
+  private final ScheduledJobLastRunService jobLastRunService;
 
   /**
    * Constructs the scheduler with required dependencies.
@@ -94,6 +95,7 @@ public class AuditChainScheduler {
    * @param auditHmacService HMAC signing service
    * @param auditLogService audit log service for emitting checkpoint meta-entries
    * @param alertService alert subsystem entry point for raising undeclared-gap alerts
+   * @param jobLastRunService scheduled job registry updates
    */
   public AuditChainScheduler(
       AuditChainProperties chainProperties,
@@ -101,13 +103,15 @@ public class AuditChainScheduler {
       AuditLogRepository auditLogRepository,
       AuditHmacService auditHmacService,
       AuditLogService auditLogService,
-      AlertService alertService) {
+      AlertService alertService,
+      ScheduledJobLastRunService jobLastRunService) {
     this.chainProperties = chainProperties;
     this.checkpointRepository = checkpointRepository;
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
     this.auditLogService = auditLogService;
     this.alertService = alertService;
+    this.jobLastRunService = jobLastRunService;
   }
 
   /**
@@ -172,6 +176,9 @@ public class AuditChainScheduler {
       } else {
         logger.debug("All chain checkpoints up to date");
       }
+
+      jobLastRunService.recordSuccess(
+          ScheduledJobKey.AUDIT_CHAIN_CHECKPOINT, "Lookback " + lookbackMinutes + " min");
     } catch (Exception e) {
       logger.error("Failed to create audit chain checkpoints: {}", e.getMessage(), e);
     }

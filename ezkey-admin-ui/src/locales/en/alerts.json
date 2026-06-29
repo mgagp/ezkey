@@ -54,6 +54,16 @@
       "estimatedGapMinutes": "Estimated duration (min)",
       "message": "Message",
       "viewAuditLogs": "Open in audit logs"
+    },
+    "auditIntegrityRupture": {
+      "windowStart": "Window start",
+      "windowEnd": "Window end",
+      "chainStatus": "Chain status",
+      "violationCount": "Chain violations",
+      "entryHmacViolationCount": "Entry HMAC violations",
+      "failBoundary": "Fail boundary",
+      "resumeBoundary": "Resume boundary",
+      "message": "Message"
     }
   },
   "severity": {
@@ -70,6 +80,7 @@
     "MANUAL": "Manual"
   },
   "type": {
-    "AUDIT_CHAIN_GAP_PENDING": "Audit chain — undeclared gap"
+    "AUDIT_CHAIN_GAP_PENDING": "Audit chain — undeclared gap",
+    "AUDIT_INTEGRITY_RUPTURE": "Audit integrity — rupture detected"
   }
 }
