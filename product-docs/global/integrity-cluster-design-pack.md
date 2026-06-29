@@ -40,8 +40,8 @@ mode, alert queue semantics, batch last-run visibility, and the **implementation
 | Ad hoc verification API | **Shipped** | Lifecycle / verification endpoints (operator-triggered) |
 | Alerts list + detail (read-only) | **Shipped** | Admin UI `/alerts`; no manual resolve/snooze UI yet |
 | Dashboard open-alert strip | **Shipped** | `DashboardService` includes recent OPEN alerts |
-| **Nightly retroactive batch** | **Gap** | `I-2026-0006` |
-| **Manipulation remediation flow** | **Gap** | `I-2026-0005` |
+| **Nightly retroactive batch** | **Shipped** (B1 / PR #270) | `NightlyIntegrityValidationScheduler`, `ezkey.audit.integrity.nightly.*` |
+| **Manipulation remediation flow** | **Gap** (B2 active) | `I-2026-0005` / `TB-2026-06-28-manipulation-integrity-remediation` |
 | **Batch last-run registry + widgets** | **Gap** | `I-2026-0007` |
 | **Snooze** | **Gap** | Grilled C9; deferred to `I-2026-0005` or follow-on TB |
 
@@ -107,8 +107,8 @@ run” alert.
 
 | Wave | TB | Backlog | Primary deliverable |
 |------|-----|---------|---------------------|
-| **B1** | `TB-2026-06-28-nightly-integrity-validation-batch` | `I-2026-0006` | Nightly scheduler + registry table + rupture alert type + scheduler last-run hooks |
-| **B2** | `TB-2026-06-28-…` (next) | `I-2026-0005` | Manipulation remediation UI/API + conciliation + crypto reattachment |
+| **B1** | `TB-2026-06-28-nightly-integrity-validation-batch` | `I-2026-0006` | Nightly scheduler + registry table + rupture alert type + scheduler last-run hooks — **merged PR #270** |
+| **B2** | `TB-2026-06-28-manipulation-integrity-remediation` | `I-2026-0005` | Manipulation remediation UI/API + conciliation + crypto reattachment — **in progress** |
 | **B3** | `TB-2026-06-28-…` (next) | `I-2026-0007` | Dashboard widgets + open-alert count banner + config summary |
 
 **Branch rule:** one `feature/<issue#>-i-2026-0006-…` branch per TB when **code** starts; design pack
