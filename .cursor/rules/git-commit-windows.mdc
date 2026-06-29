@@ -31,15 +31,36 @@ Attribution** off. Restart Cursor. Optionally set in `%USERPROFILE%\.cursor\cli-
 User/commit rules may prescribe HEREDOC (`git commit -m "$(cat <<'EOF' …)"`). That is **Git Bash
 only**; PowerShell cannot run it. Same for `&&` chains in some PowerShell versions.
 
-## Agent procedure when the user asks for a commit
+## Failure 3 — Multi-layer quoting mangles the message
 
-1. **Stage** with plain `git add` (works from PowerShell or Bash).
-2. **Commit** via **Git Bash**, not bare PowerShell `git commit`:
-   - Preferred: `"C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-commit.sh -m "subject line"'`
-   - Multi-line body: write message to a temp file, then
-     `./scripts/git-commit.sh -F path/to/msgfile`
-3. Do **not** retry the same failing PowerShell `git commit` more than once — switch to Bash or
-   `scripts/git-commit.sh` immediately.
-4. `git push` is usually fine from PowerShell; if a command fails on `<` in arguments, use Git Bash.
+Even via `scripts/git-commit.sh`, passing the message **inline** breaks across
+**PowerShell → `bash -lc '...'` → `git commit`**: any of `( ) " ' # ! < >` is re-parsed. Conventional
+prefixes like `docs(product):` **always** contain `()`, so `-m "type(scope): ..."` reliably fails
+from PowerShell. **Root cause:** the message *text* crosses shell boundaries. **Fix:** never let it —
+pass only a file path, or use the zero-argument flow below.
 
-See root `AGENTS.md` § *Git commit on Windows (agent shell)* for context and maintainer setup.
+## Agent procedure when the user asks for a commit (canonical)
+
+1. **Stage** with plain `git add <paths>` (either shell is fine). Stage **only** files for this commit.
+2. **Write the commit message** (subject + optional blank line + body) to **`.ezkey/commit-msg.txt`**
+   using the file-writing tool. The message can contain `()`, `#`, `!`, etc. freely — it never
+   touches a shell.
+3. **Commit** with the **single constant command** (no escaping, ever):
+
+   ```text
+   & "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-commit.sh'
+   ```
+
+   (Already inside Git Bash: just `./scripts/git-commit.sh`.) The script reads the file, commits with
+   `git commit -F`, then removes the message file. The `&` call operator is required because the
+   executable path is quoted.
+
+4. Do **not** use bare PowerShell `git commit`, HEREDOC, `&&` chains, inline `-m "type(scope):"`, or
+   WSL bash (`C:\Windows\System32\bash.exe`). Use **Git Bash** (`C:\Program Files\Git\bin\bash.exe`).
+5. `git push` is usually fine from PowerShell; if a command fails on `<` in arguments, use Git Bash.
+
+**Power-user forms** (still supported): `./scripts/git-commit.sh -F path/to/msgfile` (robust) or
+`./scripts/git-commit.sh -m "subject"` (avoid from PowerShell when the subject has `()`).
+
+See root `AGENTS.md` § *Git commit on Windows (agent shell)* and `.github/copilot-instructions.md`
+for the same procedure.

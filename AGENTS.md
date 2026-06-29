@@ -331,13 +331,27 @@ redirection → commit never runs. Retrying the same PowerShell command wastes t
 Attribution** (and PR attribution if undesired). Restart Cursor. For CLI/cloud agents, also set
 `attributeCommitsToAgent: false` in `%USERPROFILE%\.cursor\cli-config.json` if trailers persist.
 
-**Agent procedure when committing:**
+A second failure mode is **multi-layer quoting**: even through `git-commit.sh`, an **inline** message
+crossing PowerShell → `bash -lc '...'` → `git commit` mangles `( ) " ' # ! < >`. Conventional prefixes
+like `docs(product):` always contain `()`, so inline `-m` is fragile. The reliable principle: **never
+let the message text cross a shell boundary** — pass a file path instead.
 
-1. `git add` — either shell is fine.
-2. Commit via Git Bash, not PowerShell `git commit`:
-   - `"C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-commit.sh -m "conventional subject"'`
-   - Multi-line body: write a message file, then `./scripts/git-commit.sh -F path/to/msgfile`
-3. After one PowerShell commit failure, switch to Bash/`git-commit.sh`; do not loop on HEREDOC or
-   `&&` in PowerShell.
+**Agent procedure when committing (canonical zero-argument flow):**
 
-Authoritative rule: `.cursor/rules/git-commit-windows.mdc`.
+1. `git add <paths>` — either shell is fine; stage only this commit's files.
+2. Write the full commit message (subject + optional blank line + body) to **`.ezkey/commit-msg.txt`**
+   with the file-writing tool. Any characters are safe; the text never touches a shell.
+3. Run the **single constant command** (the `&` call operator is required for the quoted path):
+
+   ```text
+   & "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-commit.sh'
+   ```
+
+   The script commits with `git commit -F .ezkey/commit-msg.txt` and removes the file afterward.
+   Inside Git Bash, just run `./scripts/git-commit.sh`.
+4. Do **not** use bare PowerShell `git commit`, HEREDOC, `&&` chains, inline `-m "type(scope):"`, or
+   WSL bash; use **Git Bash** (`C:\Program Files\Git\bin\bash.exe`). Power-user forms still work:
+   `./scripts/git-commit.sh -F <file>` or `-m "subject"`.
+
+Authoritative rule: `.cursor/rules/git-commit-windows.mdc`. Copilot mirror:
+`.github/copilot-instructions.md` § *Git Standards*.
