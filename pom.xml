@@ -199,7 +199,7 @@
     					<dependency>
       						<groupId>com.puppycrawl.tools</groupId>
       						<artifactId>checkstyle</artifactId>
-      						<version>13.6.0</version> <!-- Override default -->
+      						<version>13.7.0</version> <!-- Override default -->
     					</dependency>
 						<dependency>
 							<groupId>org.ezkey</groupId>
