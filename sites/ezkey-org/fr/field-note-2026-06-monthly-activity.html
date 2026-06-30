@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Note de terrain mensuelle: juin 2026 en revue — Ezkey">
+    <meta property="og:description" content="Un sommaire distill&eacute; du travail de juin 2026 sur Ezkey: listes op&eacute;rateur de l'Admin UI, vague d'hygi&egrave;ne de code, modernisation mobile et backend, correctifs de s&eacute;curit&eacute;, et une m&eacute;thode plus mature.">
+    <meta property="og:url" content="https://ezkey.org/fr/field-note-2026-06-monthly-activity.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Note de terrain mensuelle: juin 2026 en revue — Ezkey">
+    <meta name="twitter:description" content="Un sommaire distill&eacute; du travail de juin 2026 sur Ezkey: listes op&eacute;rateur de l'Admin UI, vague d'hygi&egrave;ne de code, modernisation mobile et backend, correctifs de s&eacute;curit&eacute;, et une m&eacute;thode plus mature.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/fr/field-note-2026-06-monthly-activity.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/field-note-2026-06-monthly-activity.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/field-note-2026-06-monthly-activity.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/field-note-2026-06-monthly-activity.html">
+    <title>Note de terrain mensuelle: juin 2026 en revue — Ezkey</title>
+    <meta name="description" content="Un sommaire distill&eacute; du travail de juin 2026 sur Ezkey: listes op&eacute;rateur de l'Admin UI, vague d'hygi&egrave;ne de code, modernisation mobile et backend, correctifs de s&eacute;curit&eacute;, et une m&eacute;thode plus mature.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/fr/notes.html">Notes de terrain</a> &middot; <a href="/field-note-2026-06-monthly-activity.html">Read in English</a></p>
+        <article>
+            <p class="doc-meta">Note de terrain mensuelle &middot; juin 2026</p>
+            <header class="hero-title">
+                <p class="label">Juin 2026 en revue</p>
+                <h1>Hygi&egrave;ne, une console plus utile, et une m&eacute;thode plus assur&eacute;e</h1>
+                <p class="tagline">Un regard distill&eacute; sur o&ugrave; le travail de juin est r&eacute;ellement all&eacute; — dans l'interface d'administration, le backend, le mobile, et la fa&ccedil;on dont le projet est men&eacute;.</p>
+            </header>
+
+            <h2>En bref</h2>
+            <p class="lead">Juin a tourn&eacute; sur deux efforts en parall&egrave;le. Le premier a rendu la console d'administration plus utile au quotidien: ses listes et ses &eacute;crans de d&eacute;tail affichent maintenant des noms et du contexte ayant du sens plut&ocirc;t que de simples identifiants. Le second a &eacute;t&eacute; la vaste vague de maintenance et de mises &agrave; niveau d&eacute;crite dans la note du 17 juin — garder les d&eacute;pendances &agrave; jour et moderniser &agrave; la fois le backend (Spring Boot 4.1, Jackson 3) et la pile mobile. En parall&egrave;le, la fa&ccedil;on de mener le projet a m&ucirc;ri vers une m&eacute;thode plus d&eacute;lib&eacute;r&eacute;e et versionn&eacute;e, et quelques faiblesses de s&eacute;curit&eacute; ont &eacute;t&eacute; corrig&eacute;es.</p>
+
+            <h2>Documentation &amp; m&eacute;thodologie</h2>
+            <p>La m&eacute;thode de travail du projet est devenue plus structur&eacute;e: elle a gagn&eacute; ses premi&egrave;res publications versionn&eacute;es, des r&egrave;gles plus claires pour distinguer la maintenance courante d'un programme suivi, et une discipline resserr&eacute;e sur la fa&ccedil;on dont le travail est consign&eacute; et suivi. C&ocirc;t&eacute; produit, le mois a fix&eacute; les priorit&eacute;s pour la cible de mise en service de septembre, affin&eacute; une posture honn&ecirc;te sur les garanties d'int&eacute;grit&eacute; que le syst&egrave;me offre r&eacute;ellement, et amorc&eacute; un chantier visant &agrave; pouvoir v&eacute;rifier que la piste d'audit n'a pas &eacute;t&eacute; alt&eacute;r&eacute;e.</p>
+
+            <h2>Hygi&egrave;ne de code</h2>
+            <p>Ce fut un fil conducteur d&eacute;terminant du mois, et la suite directe de la note du 17 juin. Les mises &agrave; jour automatis&eacute;es des d&eacute;pendances ont gard&eacute; la console d'administration &agrave; jour (dont le passage &agrave; la derni&egrave;re version de React), et la discipline a d&eacute;bord&eacute; le simple changement de version — en gardant les lockfiles, les planchers de versions et l'outillage coh&eacute;rents &agrave; travers les nombreuses sous-parties du projet.</p>
+
+            <h2>Admin UI</h2>
+            <p>Rendre la vue quotidienne de l'op&eacute;rateur plus informative a &eacute;t&eacute; la plus grosse zone de travail. &Agrave; travers les listes principales — cl&eacute;s API, enr&ocirc;lements, int&eacute;grations, tenants — et les &eacute;crans de d&eacute;tail, les enregistrements li&eacute;s apparaissent d&eacute;sormais par leur nom et leur contexte plut&ocirc;t que sous forme d'identifiants bruts. Les op&eacute;rateurs ont aussi gagn&eacute; des actions rapides en ligne (d&eacute;sactiver ou r&eacute;activer un enr&ocirc;lement sur place), une distinction plus claire entre enr&ocirc;ler un admin et le connecter, et le retrait d'un ancien motif « more details » maladroit. Un peu d'attention est aussi all&eacute;e &agrave; la r&eacute;activit&eacute; et &agrave; l'accessibilit&eacute;.</p>
+
+            <h2>Application mobile</h2>
+            <p>L'application mobile a travers&eacute; une modernisation d&eacute;lib&eacute;r&eacute;e: une mise &agrave; niveau majeure de React Native et de React, ainsi que de l'outillage qui l'entoure (TypeScript, Babel, ESLint, navigation et gestion des gestes). Au-del&agrave; des mises &agrave; niveau, l'app a gagn&eacute; son propre suivi continu de qualit&eacute; et de d&eacute;pendances, une protection contre les limites de longueur de chemin sous Windows pour Android, et une gestion des erreurs plus pr&eacute;cise dans le code de cryptographie, d'authentification et de stockage.</p>
+
+            <h2>Backend &amp; contrats d'API</h2>
+            <p>La s&eacute;curit&eacute; a &eacute;t&eacute; en t&ecirc;te d'affiche: le mois a corrig&eacute; des faiblesses pr&eacute;cises dans la connexion admin sans mot de passe et dans la protection contre les rafales de requ&ecirc;tes. Un chantier a aussi d&eacute;marr&eacute; pour permettre aux op&eacute;rateurs de faire confiance &agrave; la piste d'audit — dont une v&eacute;rification automatique nocturne — et le re-chiffrement des donn&eacute;es stock&eacute;es est devenu une op&eacute;ration en arri&egrave;re-plan plut&ocirc;t que bloquante. C&ocirc;t&eacute; d&eacute;veloppeurs, les r&eacute;f&eacute;rences d'API publiques ont &eacute;t&eacute; r&eacute;ordonn&eacute;es pour se lire dans l'ordre qu'un d&eacute;veloppeur suit r&eacute;ellement, leur structure a &eacute;t&eacute; rendue coh&eacute;rente, et le backend a &eacute;t&eacute; align&eacute; sur des biblioth&egrave;ques de base &agrave; jour.</p>
+
+            <h2>Le reste, digne de mention</h2>
+            <ul>
+                <li><strong>Site public:</strong> la section des notes de terrain elle-m&ecirc;me a &eacute;t&eacute; lanc&eacute;e sur le site, et un nouvel essai personnel a &eacute;t&eacute; publi&eacute;.</li>
+                <li><strong>Infrastructure &amp; tests:</strong> la m&ecirc;me mise &agrave; niveau de framework (Spring Boot 4.1, Jackson 3) a balay&eacute; les composants de test et de d&eacute;mo, et l'appareil de test dans le navigateur suit d&eacute;sormais le bon lien d'enr&ocirc;lement &agrave; partir d'un code scann&eacute;.</li>
+                <li><strong>SDK:</strong> les biblioth&egrave;ques clientes g&eacute;n&eacute;r&eacute;es ont &eacute;t&eacute; gard&eacute;es au diapason des changements d'API.</li>
+                <li><strong>Outillage:</strong> l'outillage de commit et de publication est devenu plus fiable sous Windows, et le nettoyage de routine des d&eacute;ploiements de preview est devenu plus simple.</li>
+            </ul>
+
+            <div class="closing">
+                <p>Juin se lit comme un mois de consolidation — moins de surface fonctionnelle in&eacute;dite, plus de profondeur, de s&eacute;curit&eacute; et de m&eacute;thode. La question ouverte de la note du 17 juin a maintenant une r&eacute;ponse partielle: la maintenance devient un syst&egrave;me plut&ocirc;t qu'un effort ad hoc. La suite naturelle: en faire un rythme r&eacute;gulier et soutenable plut&ocirc;t que des rafales &agrave; intervalles irr&eacute;guliers.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>English:</strong> <a href="/field-note-2026-06-monthly-activity.html">English version of this note</a></p>
+            <p class="doc-link-sibling"><strong>Retour &agrave; l'index:</strong> <a href="/fr/notes.html">Notes de terrain</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/fr/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>

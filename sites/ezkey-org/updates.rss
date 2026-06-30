@@ -7,6 +7,13 @@
     <language>en</language>
     <atom:link href="https://ezkey.org/updates.rss" rel="self" type="application/rss+xml"/>
     <item>
+      <title>June 2026 — Milestone</title>
+      <link>https://ezkey.org/updates.html#update-2026-06</link>
+      <guid isPermaLink="true">https://ezkey.org/updates.html#update-2026-06</guid>
+      <pubDate>Sun, 01 Jun 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[Still on a consolidation rhythm: a more useful day-to-day admin console, broad upgrades across backend and mobile, and a few security gaps closed. Less new surface, more depth. Detailed monthly field note: https://ezkey.org/field-note-2026-06-monthly-activity.html]]></description>
+    </item>
+    <item>
       <title>May 2026 — Milestone</title>
       <link>https://ezkey.org/updates.html#update-2026-05</link>
       <guid isPermaLink="true">https://ezkey.org/updates.html#update-2026-05</guid>

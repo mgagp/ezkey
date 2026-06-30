@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Monthly field note: June 2026 in review — Ezkey">
+    <meta property="og:description" content="A distilled digest of Ezkey's June 2026 work: Admin UI operator lists, a broad code-hygiene wave, mobile and backend modernization, security fixes, and a maturing method.">
+    <meta property="og:url" content="https://ezkey.org/field-note-2026-06-monthly-activity.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Monthly field note: June 2026 in review — Ezkey">
+    <meta name="twitter:description" content="A distilled digest of Ezkey's June 2026 work: Admin UI operator lists, a broad code-hygiene wave, mobile and backend modernization, security fixes, and a maturing method.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/field-note-2026-06-monthly-activity.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/field-note-2026-06-monthly-activity.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/field-note-2026-06-monthly-activity.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/field-note-2026-06-monthly-activity.html">
+    <title>Monthly field note: June 2026 in review — Ezkey</title>
+    <meta name="description" content="A distilled digest of Ezkey's June 2026 work: Admin UI operator lists, a broad code-hygiene wave, mobile and backend modernization, security fixes, and a maturing method.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/notes.html">Field notes</a> &middot; <a href="/fr/field-note-2026-06-monthly-activity.html">Lire en francais</a></p>
+        <article>
+            <p class="doc-meta">Monthly field note &middot; June 2026</p>
+            <header class="hero-title">
+                <p class="label">June 2026 in review</p>
+                <h1>Hygiene, a more useful console, and a steadier method</h1>
+                <p class="tagline">A distilled look at where June's work actually went — across the admin interface, the backend, mobile, and the way the project is run.</p>
+            </header>
+
+            <h2>In short</h2>
+            <p class="lead">June ran on two parallel efforts. The first made the admin console more useful day to day: its lists and detail screens now show meaningful names and context instead of bare identifiers. The second was the broad maintenance and upgrade wave described in the June 17 note — keeping dependencies current and modernizing both the backend (Spring Boot 4.1, Jackson 3) and the mobile stack. Alongside both, the way the project is run matured into a more deliberate, versioned method, and a few security weaknesses were closed.</p>
+
+            <h2>Documentation &amp; methodology</h2>
+            <p>The project's working method became more structured: it gained its first versioned releases, clearer rules for telling routine maintenance apart from tracked programs, and tighter discipline around how work is recorded and followed. On the product side, the month set priorities for the September operable-release target, sharpened an honest stance on what integrity guarantees the system genuinely offers, and opened a body of work around being able to verify that the audit trail has not been tampered with.</p>
+
+            <h2>Code hygiene</h2>
+            <p>This was a defining thread of the month, and the direct continuation of the June 17 note. Automated dependency updates kept the admin console current (including a move to the latest React), and the discipline went well beyond version bumps — keeping lockfiles, version floors, and tooling consistent across the project's many sub-parts.</p>
+
+            <h2>Admin UI</h2>
+            <p>Making the operator's daily view more informative was the single largest area of work. Across the main lists — API keys, enrollments, integrations, tenants — and the detail screens, related records now appear by name and context rather than as raw identifiers. Operators also gained quick inline actions (deactivating or reactivating an enrollment in place), a clearer distinction between enrolling an admin and signing one in, and the removal of an awkward older "more details" pattern. Some attention also went to responsiveness and accessibility.</p>
+
+            <h2>Mobile app</h2>
+            <p>The mobile app went through a deliberate modernization: a major React Native and React upgrade, together with the surrounding toolchain (TypeScript, Babel, ESLint, navigation, and gesture handling). Beyond the upgrades, the app gained its own ongoing quality and dependency monitoring, a safeguard for Windows build-path limits on Android, and more precise error handling in the cryptography, authentication, and storage code.</p>
+
+            <h2>Backend &amp; API contracts</h2>
+            <p>Security was the headline: the month closed specific weaknesses in passwordless admin sign-in and in protection against request flooding. Work also began on letting operators trust the audit trail — including an automatic nightly check — and re-encrypting stored data became a background operation rather than a blocking one. On the developer-facing side, the public API references were reordered to read in the sequence a developer actually follows, their structure was made consistent, and the backend was aligned on current core libraries.</p>
+
+            <h2>The rest worth mentioning</h2>
+            <ul>
+                <li><strong>Public site:</strong> the field notes section itself launched on the site, and a new personal essay was published.</li>
+                <li><strong>Infrastructure &amp; tests:</strong> the same framework upgrade (Spring Boot 4.1, Jackson 3) swept the test and demo components, and the browser-based test device now follows the right enrollment link from a scanned code.</li>
+                <li><strong>SDK:</strong> the generated client libraries were kept in step with the API changes.</li>
+                <li><strong>Tooling:</strong> the commit and release tooling became more reliable on Windows, and routine cleanup of preview deployments got easier.</li>
+            </ul>
+
+            <div class="closing">
+                <p>June reads as a consolidation month — less brand-new feature surface, more depth, safety, and method. The open question from the June 17 note now has a partial answer: maintenance is becoming a system rather than an ad-hoc effort. The natural next step is turning that into a regular, sustainable rhythm instead of bursts at irregular intervals.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>Francais:</strong> <a href="/fr/field-note-2026-06-monthly-activity.html">Version francaise de cette note</a></p>
+            <p class="doc-link-sibling"><strong>Back to index:</strong> <a href="/notes.html">Field notes</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>

@@ -236,6 +236,26 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 - Canonical + `hreflang` pairing is required for every monthly index page.
 - Keep the editorial posture unchanged: informal tone, implicit structure, no visible rigid template.
 
+### Monthly activity digest (structured sub-type)
+
+There is **one deliberate exception** to the brain-dump posture above: the **monthly activity
+digest**. Once per calendar month, an agent distills the month's Git history into a structured
+field note (executive summary + a breakdown by subject) so the maintainer can follow the project's
+direction month over month.
+
+- **Trigger phrase:** the operator says something like *"time for the monthly activity field note"*
+  or *"do the monthly digest"*. A cold agent should then run the skill below.
+- **Skill:** [`.cursor/skills/monthly-field-note/SKILL.md`](../../.cursor/skills/monthly-field-note/SKILL.md)
+  holds the procedure (Git window, path → subject buckets, distillation rules, publication steps).
+- **Template:** [`../ezkey-org-editorial/templates/monthly-field-note.template.md`](../ezkey-org-editorial/templates/monthly-field-note.template.md)
+  (flexible; omit empty sections, keep the subject palette order for month-over-month comparison).
+- **Posture for this sub-type only:** light visible section headers **are** allowed (it is a
+  distilled summary, not a brain dump). Still sober and factual; still a summary, never a
+  commit-by-commit dump.
+- **Naming:** slug `field-note-YYYY-MM-monthly-activity.html` (no day component); meta line renders
+  as `Monthly field note · <Month> <Year>`.
+- **Language:** author in English first (canonical), then produce the French mirror at publish time.
+
 ---
 
 ## Visual design identity and patterns
