@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Note de terrain mensuelle: mai 2026 en revue — Ezkey">
+    <meta property="og:description" content="Un sommaire distill&eacute; du travail de mai 2026 sur Ezkey: fondations et m&eacute;thodologie, mobile pr&ecirc;t pour les testeurs, portail API public, et une vague soutenue de maintenance des d&eacute;pendances.">
+    <meta property="og:url" content="https://ezkey.org/fr/field-note-2026-05-monthly-activity.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Note de terrain mensuelle: mai 2026 en revue — Ezkey">
+    <meta name="twitter:description" content="Un sommaire distill&eacute; du travail de mai 2026 sur Ezkey: fondations et m&eacute;thodologie, mobile pr&ecirc;t pour les testeurs, portail API public, et une vague soutenue de maintenance des d&eacute;pendances.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/fr/field-note-2026-05-monthly-activity.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/field-note-2026-05-monthly-activity.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/field-note-2026-05-monthly-activity.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/field-note-2026-05-monthly-activity.html">
+    <title>Note de terrain mensuelle: mai 2026 en revue — Ezkey</title>
+    <meta name="description" content="Un sommaire distill&eacute; du travail de mai 2026 sur Ezkey: fondations et m&eacute;thodologie, mobile pr&ecirc;t pour les testeurs, portail API public, et une vague soutenue de maintenance des d&eacute;pendances.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/fr/notes/2026-05.html">Notes de terrain</a> &middot; <a href="/field-note-2026-05-monthly-activity.html">Read in English</a></p>
+        <article>
+            <p class="doc-meta">Note de terrain mensuelle &middot; mai 2026</p>
+            <header class="hero-title">
+                <p class="label">Mai 2026 en revue</p>
+                <h1>Retour aux fondations, et une vitrine publique qui prend forme</h1>
+                <p class="tagline">Un regard distill&eacute; sur un mois de consolidation — m&eacute;thode et sp&eacute;cification d&rsquo;abord, l&rsquo;application mobile pr&ecirc;te pour les testeurs, et ezkey.org qui gagne son portail API et son explorateur de m&eacute;thodologie.</p>
+            </header>
+
+            <h2>En bref</h2>
+            <p class="lead">Mai a d&eacute;lib&eacute;r&eacute;ment &eacute;chang&eacute; la vitesse de livraison fonctionnelle contre des fondations. L&rsquo;&eacute;nergie dominante est all&eacute;e &agrave; rendre la m&eacute;thode de travail du projet explicite et publiable — skills, vues enrichies, pack t&eacute;l&eacute;chargeable, et fronti&egrave;res plus claires entre m&eacute;thodologie et artefacts de livraison. En parall&egrave;le, le site public a gagn&eacute; son portail API, son explorateur de m&eacute;thodologie, et des parcours d&rsquo;&eacute;valuation pour l&rsquo;aper&ccedil;u exp&eacute;rimental, tandis que l&rsquo;application mobile a franchi le seuil des tests internes avec un support bilingue et une s&eacute;curit&eacute; resserr&eacute;e. Un courant soutenu de maintenance des d&eacute;pendances a couru tout au long du mois, dont un passage &agrave; Spring Boot 4.0 et la mont&eacute;e en version Vite 8 de l&rsquo;Admin UI.</p>
+
+            <h2>Documentation &amp; m&eacute;thodologie</h2>
+            <p>La m&eacute;thode de travail a m&ucirc;ri d&rsquo;une pratique informelle vers quelque chose de versionnable et explorable: minimum viable method, skills de workflow, plan incubation, discipline GitHub Issues, et principes de jugement de design sont tous arriv&eacute;s le m&ecirc;me mois. La m&eacute;thodologie a gagn&eacute; une vue enrichie publique avec assistant de navigation, mode sombre, et t&eacute;l&eacute;chargement hors ligne — ainsi qu&rsquo;une politique de publication explicite s&eacute;parant ce qui sort comme produit m&eacute;thode des registres internes de livraison. La documentation backlog et composants a grandi en parall&egrave;le, et la terminologie a &eacute;t&eacute; resserr&eacute;e (langage de milestone &agrave; la place des tags de phase, posture plus claire sur rate-limit et tests).</p>
+
+            <h2>Hygi&egrave;ne de code</h2>
+            <p>L&rsquo;entretien des d&eacute;pendances a &eacute;t&eacute; continu plut&ocirc;t qu&rsquo;&eacute;pisodique: Dependabot a &eacute;t&eacute; configur&eacute; &agrave; l&rsquo;&eacute;chelle du projet, Spring Boot est pass&eacute; en 4.0.6, et la toolchain Admin UI a bondi vers Vite 8 avec une longue cha&icirc;ne de mont&eacute;es Orval. Une passe React Doctor a cibl&eacute; lint et polish dans la console d&rsquo;administration. Le CI mobile s&rsquo;est align&eacute; sur Yarn 4 via Corepack, et les scripts de conformit&eacute; de licences se sont am&eacute;lior&eacute;s.</p>
+
+            <h2>Admin UI</h2>
+            <p>Au-del&agrave; des mont&eacute;es de toolchain, la console a gagn&eacute; des horodatages de journaux d&rsquo;audit adapt&eacute;s &agrave; la corr&eacute;lation d&rsquo;incidents et une passe de nettoyage lint qui a resserr&eacute; l&rsquo;usage du contexte. Le travail &eacute;tait pr&eacute;paratoire plut&ocirc;t que massif — l&rsquo;enrichissement lourd des listes op&eacute;rateur viendrait le mois suivant.</p>
+
+            <h2>Application mobile</h2>
+            <p>C&rsquo;est le fil produit le plus fort du mois. L&rsquo;application a atteint les tests Android internes — un parcours complet d&rsquo;enr&ocirc;lement &agrave; authentification pour des testeurs ext&eacute;rieurs — et a livr&eacute; une interface bilingue anglais/fran&ccedil;ais. C&ocirc;t&eacute; s&eacute;curit&eacute;: stockage Android scell&eacute; pour les valeurs d&rsquo;enr&ocirc;lement de longue dur&eacute;e, et un &eacute;cran d&eacute;di&eacute; aux pr&eacute;f&eacute;rences de s&eacute;curit&eacute;. Les flux orient&eacute;s op&eacute;rateur se sont am&eacute;lior&eacute;s: nettoyage de l&rsquo;assistant d&rsquo;enr&ocirc;lement, suivi de derni&egrave;re activit&eacute;, retour inline sur l&rsquo;authentification, saisie PIN r&eacute;utilisable, et hooks refactoris&eacute;s pour auth en attente et enr&ocirc;lement. Fin mai a ouvert une piste d&eacute;lib&eacute;r&eacute;e de modernisation de stack (React Native 0.85, ESLint 9, garde-fous CI).</p>
+
+            <h2>Backend &amp; contrats d&rsquo;API</h2>
+            <p>Les changements backend ont soutenu les workflows op&eacute;rateur et mobile: API de cr&eacute;ation d&rsquo;enr&ocirc;lement, r&eacute;&eacute;mission de code d&rsquo;activation pour admins en attente, et gestion admin avec contexte tenant. La journalisation d&rsquo;audit a &eacute;t&eacute; affin&eacute;e pour la corr&eacute;lation. Spring Boot 4.0.6 est arriv&eacute; &agrave; travers la stack. Les pages de r&eacute;f&eacute;rence API publiques sur ezkey.org ont &eacute;t&eacute; finalis&eacute;es en parall&egrave;le de la documentation interne des contrats.</p>
+
+            <h2>Le reste, digne de mention</h2>
+            <ul>
+                <li><strong>Site public:</strong> portail API, hub guides, inscription et visite guid&eacute;e de l&rsquo;aper&ccedil;u exp&eacute;rimental, plusieurs nouveaux essais, raffinements de navigation et d&rsquo;identit&eacute; visuelle.</li>
+                <li><strong>Infrastructure:</strong> automatisation de nettoyage des previews Cloudflare; am&eacute;liorations Docker et Vite pour la publication de m&eacute;thodologie.</li>
+                <li><strong>SDK:</strong> clients g&eacute;n&eacute;r&eacute;s tenus au diapason des mont&eacute;es Orval.</li>
+                <li><strong>Outillage:</strong> un syst&egrave;me de documentation unifi&eacute; a &eacute;t&eacute; &eacute;tabli au niveau du d&eacute;p&ocirc;t.</li>
+            </ul>
+
+            <div class="closing">
+                <p>Mai se lit comme un pivot intentionnel — investir dans le design explicite et la m&eacute;thode avant de pousser plus de surface. L&rsquo;application mobile est d&eacute;sormais entre les mains de testeurs; le site public peut expliquer APIs et m&eacute;thodologie; la m&eacute;thode interne n&rsquo;est plus un savoir tribal. La suite naturelle en juin: rendre cette fondation op&eacute;rationnelle au quotidien (rythme d&rsquo;hygi&egrave;ne, vues op&eacute;rateur plus riches) plut&ocirc;t que d&rsquo;inventer de nouvelles voies.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>English:</strong> <a href="/field-note-2026-05-monthly-activity.html">English version of this note</a></p>
+            <p class="doc-link-sibling"><strong>Retour &agrave; l&rsquo;index:</strong> <a href="/fr/notes/2026-05.html">Notes de terrain (mai 2026)</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/fr/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>
