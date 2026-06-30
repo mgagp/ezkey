@@ -212,49 +212,31 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 
 ---
 
-## Informal field notes (brain dump lane)
+## Monthly activity field notes
 
-- Use this lane for short, day-level reflections that are neither monthly updates nor long-form essays.
-- Keep the author's voice intact; do not rewrite into corporate or academic prose.
-- Do not impose visible section headers such as Context, Blocker, Insight, or Next step.
-- The agent may apply an implicit structure behind the scenes to improve readability.
-- Start with a brief natural-language summary (2-4 lines) that captures the core signal.
-- Reorder lightly when needed, but preserve wording and intent as much as possible.
-- End with a natural opening: a next angle, a question, or a tentative direction.
-- Target concise readability (typically 3-7 short paragraphs, optional short list only if useful).
-- Avoid repetitive rigid patterns across entries; uniformity should stay subtle.
-- Final check before publish: still sounds like the author, and the key signal is clear fast.
+The **Field notes** nav lane (`/notes.html`, `/fr/notes.html`) is dedicated to **monthly
+Git-distilled activity digests** only — not day-level reflections or long-form essays.
 
-### Access model (monthly window)
-
-- Default landing: show the **current month** (newest first) on `/notes.html` and `/fr/notes.html`.
-- Monthly archives: one static page per month, e.g. `/notes/2026-06.html` and `/fr/notes/2026-06.html`.
-- Keep navigation lightweight: `Previous month` / `Next month` / `Current month` links.
-- Add a compact Year + Month selector (no advanced filtering UI).
-- Keep page length reasonable by month; if one month exceeds about 40-60 entries, split by week.
-- In list view, show only date + title + short excerpt; full text lives on each note page.
-- Canonical + `hreflang` pairing is required for every monthly index page.
-- Keep the editorial posture unchanged: informal tone, implicit structure, no visible rigid template.
-
-### Monthly activity digest (structured sub-type)
-
-There is **one deliberate exception** to the brain-dump posture above: the **monthly activity
-digest**. Once per calendar month, an agent distills the month's Git history into a structured
-field note (executive summary + a breakdown by subject) so the maintainer can follow the project's
-direction month over month.
-
-- **Trigger phrase:** the operator says something like *"time for the monthly activity field note"*
-  or *"do the monthly digest"*. A cold agent should then run the skill below.
-- **Skill:** [`.cursor/skills/monthly-field-note/SKILL.md`](../../.cursor/skills/monthly-field-note/SKILL.md)
-  holds the procedure (Git window, path → subject buckets, distillation rules, publication steps).
+- **Trigger phrase:** *"time for the monthly activity field note"* or *"do the monthly digest"*.
+  A cold agent should run [`.cursor/skills/monthly-field-note/SKILL.md`](../../.cursor/skills/monthly-field-note/SKILL.md).
 - **Template:** [`../ezkey-org-editorial/templates/monthly-field-note.template.md`](../ezkey-org-editorial/templates/monthly-field-note.template.md)
-  (flexible; omit empty sections, keep the subject palette order for month-over-month comparison).
-- **Posture for this sub-type only:** light visible section headers **are** allowed (it is a
-  distilled summary, not a brain dump). Still sober and factual; still a summary, never a
-  commit-by-commit dump.
-- **Naming:** slug `field-note-YYYY-MM-monthly-activity.html` (no day component); meta line renders
-  as `Monthly field note · <Month> <Year>`.
-- **Language:** author in English first (canonical), then produce the French mirror at publish time.
+- **Detailed note slug:** `field-note-YYYY-MM-monthly-activity.html`; meta line:
+  `Monthly field note · <Month> <Year>`.
+- **Index:** single page (`notes.html` / `fr/notes.html`), newest month first — no monthly archive
+  pages under `notes/YYYY-MM.html`.
+- **Product updates pairing:** each new digest also produces a one-paragraph milestone blurb on
+  `updates.html` (EN + FR + RSS) with a link to the detailed note. Pre-existing hand-written
+  updates may keep their copy; add the link when a digest is published retroactively.
+- **Tone:** sober, factual, structured summary — never a commit log. Author in English first,
+  then French mirror at publish time.
+
+**Distinction from other lanes:**
+
+| Lane | Role |
+| ---- | ---- |
+| **Product updates** | Short outward-facing milestone paragraph (+ link to detailed note when available) |
+| **Field notes** | Detailed monthly digest by subject |
+| **Articles** | Long-form essays and craft writing |
 
 ---
 

@@ -25,7 +25,7 @@ A distilled look at where June's work actually went — across the admin interfa
 
 ## In short
 
-June ran on two parallel efforts. The first made the admin console more useful day to day: its lists and detail screens now show meaningful names and context instead of bare identifiers. The second was the broad maintenance and upgrade wave described in the June 17 note — keeping dependencies current and modernizing both the backend (Spring Boot 4.1, Jackson 3) and the mobile stack. Alongside both, the way the project is run matured into a more deliberate, versioned method, and a few security weaknesses were closed.
+June ran on two parallel efforts. The first made the admin console more useful day to day: its lists and detail screens now show meaningful names and context instead of bare identifiers. The second was a broad maintenance and upgrade wave throughout the month — keeping dependencies current and modernizing both the backend (Spring Boot 4.1, Jackson 3) and the mobile stack. Alongside both, the way the project is run matured into a more deliberate, versioned method, and a few security weaknesses were closed.
 
 ## Documentation & methodology
 
@@ -33,7 +33,7 @@ The project's working method became more structured: it gained its first version
 
 ## Code hygiene
 
-This was a defining thread of the month, and the direct continuation of the June 17 note. Automated dependency updates kept the admin console current (including a move to the latest React), and the discipline went well beyond version bumps — keeping lockfiles, version floors, and tooling consistent across the project's many sub-parts.
+This was a defining thread of the month. Automated dependency updates kept the admin console current (including a move to the latest React), and the discipline went well beyond version bumps — keeping lockfiles, version floors, and tooling consistent across the project's many sub-parts.
 
 ## Admin UI
 
@@ -56,4 +56,4 @@ Security was the headline: the month closed specific weaknesses in passwordless 
 
 ## Where this is heading
 
-June reads as a consolidation month — less brand-new feature surface, more depth, safety, and method. The open question from the June 17 note now has a partial answer: maintenance is becoming a system rather than an ad-hoc effort. The natural next step is turning that into a regular, sustainable rhythm instead of bursts at irregular intervals.
+June reads as a consolidation month — less brand-new feature surface, more depth, safety, and method. Maintenance is becoming a system rather than an ad-hoc effort. The natural next step is turning that into a regular, sustainable rhythm instead of bursts at irregular intervals.

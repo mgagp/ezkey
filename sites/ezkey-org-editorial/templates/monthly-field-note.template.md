@@ -13,14 +13,14 @@ TEMPLATE — monthly field note (activity digest sub-type of the field-notes lan
 How to use this template:
 - Copy it to sites/ezkey-org-editorial/fr/draft-field-note-YYYY-MM-monthly-activity.md
 - Author the body in English first (canonical), then produce the French mirror at publish time.
-- This is NOT a brain-dump note: light section headers ARE allowed for this sub-type.
-- It is a distilled SUMMARY, never a commit-by-commit dump.
+- This is a distilled SUMMARY, never a commit-by-commit dump.
 - Omit any section that has no real content this month — never render empty sections.
 - Keep the subject palette stable across months so readers can compare month over month,
   but only include the subjects that actually saw activity.
 - Tone: sober, factual, concrete. No inflated or marketing language. Honest about scope.
 - Target length: a comfortable scan (roughly 1 short executive paragraph + 3-6 short
   subject blocks + an optional closing). Longer than a day note, but still distilled.
+- Light section headers ARE allowed in the detailed note HTML.
 
 Subject palette (include only the active ones, in this order):
 - Documentation & methodology
@@ -78,5 +78,18 @@ site, security/integrity. One short line each. Omit the whole section if nothing
 ## Where this is heading
 
 <Optional closing, 1-3 sentences. A trend you notice, an open question, or a tentative
-direction for next month. Consistent with the field-note habit of ending on an opening.
-Omit if the digest reads complete without it.>
+direction for next month. Omit if the digest reads complete without it.>
+
+<!-- ezkey-org:exclude-start
+Product Update blurb — draft only; published into updates.html / RSS, NOT into the detailed note HTML.
+One short paragraph (3-5 sentences), milestone tone, derived from "In short".
+Must end with link to the detailed note (EN/FR labels per skill).
+ezkey-org:exclude-end -->
+
+## Product update blurb (draft only)
+
+<EN paragraph for updates.html — include inline link placeholder to detailed note.>
+
+## Product update blurb FR (draft only)
+
+<FR mirror for fr/updates.html — include inline link placeholder to detailed note.>
