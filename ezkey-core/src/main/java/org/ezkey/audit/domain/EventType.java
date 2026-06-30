@@ -119,6 +119,9 @@ public enum EventType {
   AUDIT_CHAIN_GAP_DECLARED, // Admin-declared downtime gap formally documented in the chain
   AUDIT_CHAIN_INCIDENT_DECLARED, // Admin-declared heartbeat outage narrative (operational overlay)
 
+  /** Global Admin reconciled an integrity rupture with a manipulation conciliation checkpoint. */
+  AUDIT_INTEGRITY_RUPTURE_CONCILIATED,
+
   // Scheduled integrity validation
   NIGHTLY_INTEGRITY_VALIDATION_COMPLETED, // Nightly retroactive integrity batch finished
 

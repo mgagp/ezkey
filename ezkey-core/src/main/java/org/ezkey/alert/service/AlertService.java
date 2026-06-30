@@ -207,6 +207,37 @@ public class AlertService {
   }
 
   /**
+   * Returns the OPEN alert with the given dedupe key, if any.
+   *
+   * @param dedupeKey deduplication key
+   * @return the open alert when present
+   */
+  @Transactional(readOnly = true)
+  public Optional<Alert> findOpenByDedupeKey(String dedupeKey) {
+    if (dedupeKey == null || dedupeKey.isBlank()) {
+      return Optional.empty();
+    }
+    return alertRepository.findByDedupeKeyAndStatus(dedupeKey, AlertStatus.OPEN);
+  }
+
+  /**
+   * Returns whether an OPEN {@code AUDIT_CHAIN_HEARTBEAT_STALE} alert is active.
+   *
+   * <p>Integrity rupture reconciliation is blocked while this alert is open (R1 posture).
+   *
+   * @return true when heartbeat stale alert is open
+   */
+  @Transactional(readOnly = true)
+  public boolean hasOpenHeartbeatStaleAlert() {
+    return alertRepository
+        .findByDedupeKeyAndStatus(
+            org.ezkey.audit.integrity.AuditChainHeartbeatGuardService
+                .HEARTBEAT_STALE_ALERT_DEDUPE_KEY,
+            AlertStatus.OPEN)
+        .isPresent();
+  }
+
+  /**
    * Returns the most recent OPEN alerts, newest first. Used by the dashboard widget.
    *
    * @param limit maximum number of rows to return (must be positive)

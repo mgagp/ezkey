@@ -77,6 +77,8 @@
   },
   "resolutionReason": {
     "GAP_DECLARED": "Coupure déclarée",
+    "HEARTBEAT_RESTORED": "Battement rétabli",
+    "INTEGRITY_RUPTURE_CONCILIATED": "Rupture d'intégrité conciliée",
     "MANUAL": "Manuelle"
   },
   "type": {

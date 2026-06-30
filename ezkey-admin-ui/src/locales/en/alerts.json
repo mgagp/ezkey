@@ -77,6 +77,8 @@
   },
   "resolutionReason": {
     "GAP_DECLARED": "Gap declared",
+    "HEARTBEAT_RESTORED": "Heartbeat restored",
+    "INTEGRITY_RUPTURE_CONCILIATED": "Integrity rupture reconciled",
     "MANUAL": "Manual"
   },
   "type": {

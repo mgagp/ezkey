@@ -32,5 +32,11 @@ public enum AlertResolutionReason {
   HEARTBEAT_RESTORED,
 
   /** Resolved manually by an administrator (reserved; no producer in the current iteration). */
-  MANUAL
+  MANUAL,
+
+  /**
+   * Resolved after Global Admin reconciled an {@code AUDIT_INTEGRITY_RUPTURE} alert with a signed
+   * {@code MANIPULATION_CONCILIATION} checkpoint.
+   */
+  INTEGRITY_RUPTURE_CONCILIATED
 }

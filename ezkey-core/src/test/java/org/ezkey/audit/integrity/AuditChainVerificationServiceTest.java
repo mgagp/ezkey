@@ -279,6 +279,37 @@ class AuditChainVerificationServiceTest {
     assertEquals("OK", report.status());
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  void verifyChain_manipulationConciliationCheckpoint_skipsDigestRecompute() {
+    AuditLog e1 = buildSignedEntry(1L);
+    AuditLog e2 = buildSignedEntry(2L);
+
+    AuditChainCheckpoint cp1 = buildGenesisCheckpoint(List.of(e1));
+    OffsetDateTime failStart = WIN_END;
+    OffsetDateTime resumeStart = WIN_END.plusMinutes(10);
+    AuditChainCheckpoint conciliationCp =
+        buildManipulationConciliationCheckpoint(cp1.getChainHmac(), failStart, resumeStart);
+    AuditChainCheckpoint cp2 =
+        buildLinkedCheckpointWithWindow(
+            List.of(e2), conciliationCp.getChainHmac(), resumeStart, resumeStart.plusMinutes(5));
+
+    when(checkpointRepository.findByWindowRange(any(), any()))
+        .thenReturn(List.of(cp1, conciliationCp, cp2));
+    when(auditLogRepository.findAll(
+            any(Specification.class), eq(Sort.by("auditLogId").ascending())))
+        .thenReturn(List.of(e1))
+        .thenReturn(List.of(e2));
+
+    ChainVerificationReport report = verificationService.verifyChain(null, null);
+
+    assertEquals(3, report.totalCheckpoints());
+    assertEquals(3, report.validCheckpoints());
+    assertEquals(0, report.invalidCheckpoints());
+    assertTrue(report.intact());
+    assertEquals("OK", report.status());
+  }
+
   // -----------------------------------------------------------------------
   // Boundary coverage: no leading/trailing gap when range extends beyond full extent
   // -----------------------------------------------------------------------
@@ -454,6 +485,32 @@ class AuditChainVerificationServiceTest {
     cp.setChainHmac(chainHmac);
     cp.setCheckpointType("GAP_DECLARATION");
     cp.setNotes("Declared downtime gap test");
+    return cp;
+  }
+
+  /**
+   * Builds a MANIPULATION_CONCILIATION checkpoint (same digest formula as AuditLifecycleService).
+   */
+  private AuditChainCheckpoint buildManipulationConciliationCheckpoint(
+      String prevChainHmac, OffsetDateTime failStart, OffsetDateTime resumeStart) {
+    String conciliationDigestInput =
+        "MANIPULATION_CONCILIATION:"
+            + failStart.withOffsetSameInstant(ZoneOffset.UTC)
+            + "|"
+            + resumeStart.withOffsetSameInstant(ZoneOffset.UTC);
+    String entriesDigest = hmacService.computeHmac(conciliationDigestInput);
+    String chainInput = entriesDigest + "|" + prevChainHmac;
+    String chainHmac = hmacService.computeHmac(chainInput);
+
+    AuditChainCheckpoint cp = new AuditChainCheckpoint();
+    cp.setWindowStart(failStart);
+    cp.setWindowEnd(resumeStart);
+    cp.setEntryCount(0);
+    cp.setEntriesDigest(entriesDigest);
+    cp.setPrevChainHmac(prevChainHmac);
+    cp.setChainHmac(chainHmac);
+    cp.setCheckpointType("MANIPULATION_CONCILIATION");
+    cp.setNotes("Integrity rupture conciliation test");
     return cp;
   }
 

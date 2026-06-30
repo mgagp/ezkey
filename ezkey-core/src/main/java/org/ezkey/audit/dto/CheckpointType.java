@@ -32,5 +32,8 @@ package org.ezkey.audit.dto;
 public enum CheckpointType {
   REGULAR,
   ARCHIVE_SEAL,
-  GAP_DECLARATION
+  GAP_DECLARATION,
+
+  /** Admin-reconciled integrity rupture spanning a cryptographic discontinuity. */
+  MANIPULATION_CONCILIATION
 }
