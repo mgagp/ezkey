@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Monthly digest: April 2026 in review — Ezkey">
+    <meta property="og:description" content="A distilled digest of Ezkey's April 2026 work: mobile pre-release and Play submission path, admin session hardening, lifecycle governance, and public site guides.">
+    <meta property="og:url" content="https://ezkey.org/monthly-digest-2026-04.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Monthly digest: April 2026 in review — Ezkey">
+    <meta name="twitter:description" content="A distilled digest of Ezkey's April 2026 work: mobile pre-release and Play submission path, admin session hardening, lifecycle governance, and public site guides.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/monthly-digest-2026-04.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest-2026-04.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest-2026-04.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest-2026-04.html">
+    <title>Monthly digest: April 2026 in review — Ezkey</title>
+    <meta name="description" content="A distilled digest of Ezkey's April 2026 work: mobile pre-release and Play submission path, admin session hardening, lifecycle governance, and public site guides.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/monthly-digest.html">Monthly digests</a> &middot; <a href="/fr/monthly-digest-2026-04.html">Lire en francais</a></p>
+        <article>
+            <p class="doc-meta">Monthly digest &middot; April 2026</p>
+            <header class="hero-title">
+                <p class="label">April 2026 in review</p>
+                <h1>Play submission in sight, with hardening across the stack</h1>
+                <p class="tagline">A distilled look at April — the mobile app moving toward Google Play, operator console security tightening, and lifecycle governance landing across backend and docs.</p>
+            </header>
+
+            <h2>In short</h2>
+            <p class="lead">April converged on making Ezkey credible as a technology preview. The mobile app advanced through pre-release planning, production security hardening, and package cleanup on the path to Google Play submission. The admin console gained HttpOnly sessions, CSRF protection, dashboard widgets with audit drill-downs, and its first browser-based test suite. Backend work deepened lifecycle governance, standardized error responses, re-encryption and recovery flows, and audit log operability. The public site published several guides and essays while deployment and preview workflows matured.</p>
+
+            <h2>Documentation &amp; methodology</h2>
+            <p>Lifecycle governance became a first-class reference — how entities relate, when operations block, and how admin identity differs from enrollment. Supporting docs covered SQL injection posture, mobile Auth API client strategy, JPA transaction design, and audit reason semantics. Several long-form articles and evaluator guides landed on ezkey.org, including testing strategy and mobile signing walkthroughs.</p>
+
+            <h2>Code hygiene</h2>
+            <p>Dependency upkeep continued across backend, mobile, and tooling. A Docker-only build validation path appeared, preview deployment cleanup was automated, and local Maven configuration was made explicitly workstation-specific. Mobile CI and debug build documentation were tightened after stack upgrades.</p>
+
+            <h2>Admin UI</h2>
+            <p>Operator-facing security moved forward: sessions carried by HttpOnly cookies, mutating requests protected by CSRF tokens, and session expiry aligned with the authentication cycle. Dashboard widgets surfaced enrollment aggregates with links into the audit trail. Tenant timezone handling arrived in the console and API. Error messages gained an internationalization strategy, audit log screens simplified gap declaration, and Playwright browser tests were introduced for regression coverage.</p>
+
+            <h2>Mobile app</h2>
+            <p>This was the month's defining product thread. Work focused on pre-release readiness — production security hardening for Android, privacy compliance planning, namespace cleanup, and enrollment flows refined for canonical payloads, device key storage tiers, and Ed25519 signing. The app gained QR-based enrollment import for demo flows, improved navigation and theming, and clearer handling of pending authentication. Policy surfacing experiments came and went as the UX was simplified ahead of submission.</p>
+
+            <h2>Backend &amp; API contracts</h2>
+            <p>Core security was extracted into a dedicated module. Entity eligibility checks, integration retirement, recovery-code regeneration, and bootstrap recovery-first mode made lifecycle rules enforceable in code. Re-encryption gained parallel processing and clearer key semantics. APIs moved toward ProblemDetail-shaped errors with a shared catalog. Audit logging expanded — event families, auth-attempt expiry records, contextual navigation around anchor events, and operational heartbeat incident handling. Auth API contracts and Postman collections were refactored for session cookies, instance metadata, and enrollment alignment.</p>
+
+            <h2>The rest worth mentioning</h2>
+            <ul>
+                <li><strong>Public site:</strong> privacy policy pages, homepage security copy refresh, Cloudflare static-site restructure, and new craft essays on AI-assisted development.</li>
+                <li><strong>Infrastructure &amp; tests:</strong> experimental hybrid deployment scripts, CORS configuration for the Admin API, and API client unit tests.</li>
+                <li><strong>SDK:</strong> kept in step with contract refactors where applicable.</li>
+            </ul>
+
+            <div class="closing">
+                <p>April reads as a pre-preview consolidation — less about new lanes, more about making the existing stack defensible for outside eyes. The natural follow-through is publishing the method and public API story more deliberately while keeping the mobile submission and hardening tracks on rhythm.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>Francais:</strong> <a href="/fr/monthly-digest-2026-04.html">Version francaise de cette note</a></p>
+            <p class="doc-link-sibling"><strong>Back to index:</strong> <a href="/monthly-digest.html">Monthly digests</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>

@@ -21,11 +21,11 @@
       <description><![CDATA[Methode et specification d'abord, mobile pret pour les testeurs, portail API public, et maintenance soutenue des dependances.]]></description>
     </item>
     <item>
-      <title>Avril 2026 — Jalon</title>
-      <link>https://ezkey.org/fr/monthly-digest.html#digest-2026-04</link>
-      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest.html#digest-2026-04</guid>
-      <pubDate>Wed, 01 Apr 2026 12:00:00 GMT</pubDate>
-      <description><![CDATA[L'application Android Ezkey est soumise a Google Play comme preversion technologique destinee aux premiers adoptants. Le code source est pour l'instant prive, le temps de finaliser le durcissement et la documentation.]]></description>
+      <title>Avril 2026 — Soumission Play en vue, et durcissement a travers la stack</title>
+      <link>https://ezkey.org/fr/monthly-digest-2026-04.html</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest-2026-04.html</guid>
+      <pubDate>Tue, 01 Apr 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[L'application Android Ezkey est soumise a Google Play comme preversion technologique destinee aux premiers adoptants. Le code source est pour l'instant prive, le temps de finaliser le durcissement et la documentation. L'objectif actuel est d'ouvrir le depot publiquement en septembre 2026, avec la premiere version officielle, sous reserve du travail de preversion habituel.]]></description>
     </item>
     <item>
       <title>Mars 2026 — Etat</title>

@@ -21,10 +21,10 @@
       <description><![CDATA[Method and specification upfront, mobile ready for testers, public API portal, and steady dependency maintenance.]]></description>
     </item>
     <item>
-      <title>April 2026 — Milestone</title>
-      <link>https://ezkey.org/monthly-digest.html#digest-2026-04</link>
-      <guid isPermaLink="true">https://ezkey.org/monthly-digest.html#digest-2026-04</guid>
-      <pubDate>Wed, 01 Apr 2026 12:00:00 GMT</pubDate>
+      <title>April 2026 — Play submission in sight, with hardening across the stack</title>
+      <link>https://ezkey.org/monthly-digest-2026-04.html</link>
+      <guid isPermaLink="true">https://ezkey.org/monthly-digest-2026-04.html</guid>
+      <pubDate>Tue, 01 Apr 2026 12:00:00 GMT</pubDate>
       <description><![CDATA[The Ezkey Android app is being submitted to Google Play as a technology preview for early adopters. The source code is currently kept private while we finalize hardening and documentation. The current plan is to open the repository publicly in September 2026, with the first official release, subject to the usual pre-release work.]]></description>
     </item>
     <item>
