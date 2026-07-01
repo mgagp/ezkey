@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Monthly digest: March 2026 in review — Ezkey">
+    <meta property="og:description" content="A distilled digest of Ezkey's March 2026 work: admin console maturing with pagination and dashboards, Integration API rename, enrollment lifecycle, and mobile rewrite in progress.">
+    <meta property="og:url" content="https://ezkey.org/monthly-digest-2026-03.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Monthly digest: March 2026 in review — Ezkey">
+    <meta name="twitter:description" content="A distilled digest of Ezkey's March 2026 work: admin console maturing with pagination and dashboards, Integration API rename, enrollment lifecycle, and mobile rewrite in progress.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/monthly-digest-2026-03.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest-2026-03.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest-2026-03.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest-2026-03.html">
+    <title>Monthly digest: March 2026 in review — Ezkey</title>
+    <meta name="description" content="A distilled digest of Ezkey's March 2026 work: admin console maturing with pagination and dashboards, Integration API rename, enrollment lifecycle, and mobile rewrite in progress.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/monthly-digest.html">Monthly digests</a> &middot; <a href="/fr/monthly-digest-2026-03.html">Lire en francais</a></p>
+        <article>
+            <p class="doc-meta">Monthly digest &middot; March 2026</p>
+            <header class="hero-title">
+                <p class="label">March 2026 in review</p>
+                <h1>The console takes shape, with mobile and contracts in motion</h1>
+                <p class="tagline">A distilled look at March — the admin interface nearing feature completeness, the mobile app rewriting, and backend contracts hardening under heavier QA.</p>
+            </header>
+
+            <h2>In short</h2>
+            <p class="lead">March was an admin console and backend consolidation month. Energy went into paginated operator lists, dashboard widgets, demo mode, audit log integrity tooling, enrollment and admin lifecycle operations, and migrating the console to generated API clients. The Integration API replaced the older machine-to-machine naming; integration signatures moved toward Ed25519. Mobile work continued as a rewrite with Android build improvements. Documentation and branding caught up with the product's cryptographic MFA positioning while QA pressure surfaced more issues to fix before release.</p>
+
+            <h2>Documentation &amp; methodology</h2>
+            <p>Written artifacts tracked the product's shift toward cryptographic MFA positioning, with terminology and crypto references cleaned up across docs. Plans landed for load testing, operational churn testing, admin recovery codes, token security, and strategic security reviews. Migration inventories documented the move from hand-written API hooks to Orval-generated clients.</p>
+
+            <h2>Code hygiene</h2>
+            <p>The admin console migration to Orval-generated hooks progressed across audit logs, encryption keys, login, and paginated lists. Docker builds gained OpenAPI spec and client generation steps. Partition management and distributed test tagging improved backend hygiene.</p>
+
+            <h2>Admin UI</h2>
+            <p>This was the month's dominant thread. Server-side pagination and filtering arrived for tenants, integrations, API keys, enrollments, and re-encryption batches. A dashboard overview with auth health and pending-attempt widgets gave operators a landing view. Demo mode with themed presets supported development and walkthroughs. Contextual help, prev/next detail navigation, expandable related entities, and date-range presets made lists and audit screens more usable. Login recovery, remember-username, and clearer error mapping tightened the operator sign-in path.</p>
+
+            <h2>Mobile app</h2>
+            <p>Work continued on the deliberate rewrite — including Android JDK 17 support and general app improvements — while the admin-side product moved faster. The month reads as parallel tracks rather than a finished mobile milestone.</p>
+
+            <h2>Backend &amp; API contracts</h2>
+            <p>The machine-to-machine API was renamed and reframed as the Integration API, with contracts, Postman collections, and integration-signed respond flows updated accordingly. Enrollment lifecycle grew substantially: partial metadata updates, expiration and cleanup, bulk deactivation and reactivation, and guardrails when deleting enrollments tied to admin MFA. Admin management, tenant activation, recovery audit trails, and scheduled auth-attempt expiry rounded out operator workflows. Re-encryption gained optimistic locking; rate limiting and trusted-proxy client IP resolution hardened edge behavior. Error responses moved toward ProblemDetail-shaped payloads across several APIs.</p>
+
+            <h2>The rest worth mentioning</h2>
+            <ul>
+                <li><strong>Crypto &amp; security:</strong> Ed25519 replaced ECDSA for integration signatures; encryption key management and rotation documentation expanded.</li>
+                <li><strong>TUI / demo device:</strong> Read-only TUI highlights and demo-device enrollment writing improved test and demo flows.</li>
+                <li><strong>Infrastructure:</strong> Public instance metadata endpoint, churn testing framework hooks, and non-root Docker user setup.</li>
+            </ul>
+
+            <div class="closing">
+                <p>March reads as depth before polish — the console's shape became clear while mobile rewrite and release QA still had runway. The natural follow-through is hardening, session security, and Play readiness rather than inventing new surface area.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>Francais:</strong> <a href="/fr/monthly-digest-2026-03.html">Version francaise de cette note</a></p>
+            <p class="doc-link-sibling"><strong>Back to index:</strong> <a href="/monthly-digest.html">Monthly digests</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>

@@ -28,9 +28,9 @@
       <description><![CDATA[The Ezkey Android app is being submitted to Google Play as a technology preview for early adopters. The source code is currently kept private while we finalize hardening and documentation. The current plan is to open the repository publicly in September 2026, with the first official release, subject to the usual pre-release work.]]></description>
     </item>
     <item>
-      <title>March 2026 — Status</title>
-      <link>https://ezkey.org/monthly-digest.html#digest-2026-03</link>
-      <guid isPermaLink="true">https://ezkey.org/monthly-digest.html#digest-2026-03</guid>
+      <title>March 2026 — The console takes shape, with mobile and contracts in motion</title>
+      <link>https://ezkey.org/monthly-digest-2026-03.html</link>
+      <guid isPermaLink="true">https://ezkey.org/monthly-digest-2026-03.html</guid>
       <pubDate>Sun, 01 Mar 2026 12:00:00 GMT</pubDate>
       <description><![CDATA[The admin UI is about 90% complete. The mobile app is being rewritten, and the crypto APIs are under review. QA is getting more thorough and surfacing many issues to fix before a release. Progress is steady, and the product is starting to take shape.]]></description>
     </item>
