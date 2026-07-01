@@ -41,7 +41,7 @@ mode, alert queue semantics, batch last-run visibility, and the **implementation
 | Alerts list + detail (read-only) | **Shipped** | Admin UI `/alerts`; no manual resolve/snooze UI yet |
 | Dashboard open-alert strip | **Shipped** | `DashboardService` includes recent OPEN alerts |
 | **Nightly retroactive batch** | **Shipped** (B1 / PR #270) | `NightlyIntegrityValidationScheduler`, `ezkey.audit.integrity.nightly.*` |
-| **Manipulation remediation flow** | **Gap** (B2 active) | `I-2026-0005` / `TB-2026-06-28-manipulation-integrity-remediation` |
+| **Manipulation remediation flow** | **B2 shipped / B2.5 ready** | Reconcile (`I-2026-0005`); investigation UX `TB-2026-06-30-integrity-investigation-operability` |
 | **Batch last-run registry + widgets** | **Gap** | `I-2026-0007` |
 | **Snooze** | **Gap** | Grilled C9; deferred to `I-2026-0005` or follow-on TB |
 

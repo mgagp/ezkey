@@ -10,11 +10,13 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
 
-**Summary (2026-06-29):** Integrity cluster (`I-2026-0005`, `I-2026-0006`, `I-2026-0007`) **before**
-Alerts list UI polish (`I-2026-0028` P3). **Wave B:** B1 merged (#270); **B2 promoted** (`I-2026-0005` /
-`TB-2026-06-28-manipulation-integrity-remediation`); GitHub **#269**.
+**Summary (2026-06-30):** Integrity cluster (`I-2026-0005`, `I-2026-0006`, `I-2026-0007`) **before**
+Alerts list UI polish (`I-2026-0028` P3). **Wave B:** B1 merged (#270); B2 reconcile on branch;
+**B2.5 ready** (`TB-2026-06-30-integrity-investigation-operability` — investigation operability);
+GitHub **#269**.
 Method logs: [`method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md`](method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md),
-[`method-logs/ML-2026-06-29-wave-b-b2-manipulation-remediation-kickoff.md`](method-logs/ML-2026-06-29-wave-b-b2-manipulation-remediation-kickoff.md).
+[`method-logs/ML-2026-06-29-wave-b-b2-manipulation-remediation-kickoff.md`](method-logs/ML-2026-06-29-wave-b-b2-manipulation-remediation-kickoff.md),
+[`method-logs/ML-2026-06-30-wave-b-b25-investigation-operability-kickoff.md`](method-logs/ML-2026-06-30-wave-b-b25-investigation-operability-kickoff.md).
 
 ## Active ideas
 
