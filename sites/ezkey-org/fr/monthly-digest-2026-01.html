@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Sommaire mensuel: janvier 2026 en revue — Ezkey">
+    <meta property="og:description" content="Un sommaire distill&eacute; du travail de janvier 2026 sur Ezkey: TUI texte comme surface admin retenue, migration JDK 25, endpoints Crypto API, et consolidation documentaire pragmatique.">
+    <meta property="og:url" content="https://ezkey.org/fr/monthly-digest-2026-01.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sommaire mensuel: janvier 2026 en revue — Ezkey">
+    <meta name="twitter:description" content="Un sommaire distill&eacute; du travail de janvier 2026 sur Ezkey: TUI texte comme surface admin retenue, migration JDK 25, endpoints Crypto API, et consolidation documentaire pragmatique.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/fr/monthly-digest-2026-01.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest-2026-01.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest-2026-01.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest-2026-01.html">
+    <title>Sommaire mensuel: janvier 2026 en revue — Ezkey</title>
+    <meta name="description" content="Un sommaire distill&eacute; du travail de janvier 2026 sur Ezkey: TUI texte comme surface admin retenue, migration JDK 25, endpoints Crypto API, et consolidation documentaire pragmatique.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/fr/monthly-digest.html">Sommaires mensuels</a> &middot; <a href="/monthly-digest-2026-01.html">Read in English</a></p>
+        <article>
+            <p class="doc-meta">Sommaire mensuel &middot; janvier 2026</p>
+            <header class="hero-title">
+                <p class="label">Janvier 2026 en revue</p>
+                <h1>Admin d&rsquo;abord en terminal — le pari TUI, consolidation doc et fondations plateforme</h1>
+                <p class="tagline">Un regard distill&eacute; sur janvier — une console admin texte construite comme la vraie surface op&eacute;rateur, une consolidation documentaire pragmatique apr&egrave;s un rythme de build effr&eacute;n&eacute;, et pr&eacute;paration JDK&nbsp;25 / Spring Boot&nbsp;4 &agrave; travers la stack.</p>
+            </header>
+
+            <h2>En bref</h2>
+            <p class="lead">Janvier a &eacute;t&eacute; un mois plateforme centr&eacute; sur comment administrer Ezkey sans s&rsquo;engager encore dans un stack UI web complet. Le fil dominant: un TUI Python interactif — tenants, int&eacute;grations, cl&eacute;s API, tentatives auth, journaux d&rsquo;audit, cl&eacute;s de chiffrement, lots de re-chiffrement — construit comme l&rsquo;outil d&rsquo;administration retenu, pas comme couche d&rsquo;inspection temporaire avant une console graphique. Le besoin d&rsquo;interface op&eacute;rateur &eacute;tait clair; un stack web classique avec React et son &eacute;cosyst&egrave;me ne semblait pas pr&ecirc;t &agrave; &ecirc;tre assum&eacute;. En parall&egrave;le, la stack a avanc&eacute; sur JDK&nbsp;25, pr&eacute;paration migration Spring Boot&nbsp;4, hygi&egrave;ne des d&eacute;pendances, et versioning Maven CI-friendly. L&rsquo;API Crypto a gagn&eacute; des endpoints encrypt/decrypt; les flux auth ont m&ucirc;ri avec codes challenge, annulation de tentatives, et s&eacute;mantique reject/expired plus claire. Bootstrap Docker, health checks, et une application d&eacute;mo ACME ont facilit&eacute; le d&eacute;marrage de la stack. La documentation a connu une large consolidation — apr&egrave;s un rythme effr&eacute;n&eacute; de plans s&eacute;quentiels, parfois deux ou trois sessions &agrave; la fois, ayant produit un corpus tentaculaire — un rangement pragmatique court terme plut&ocirc;t qu&rsquo;un arr&ecirc;t de livraison pour reset m&eacute;thodologique complet. Tests fonctionnels et multi-tenant ont &eacute;t&eacute; &eacute;largis. Le mois se lit comme le choix du terminal comme admin, le durcissement plateforme, et l&rsquo;apurement de dette doc avant que f&eacute;vrier n&rsquo;ouvre la voie console graphique.</p>
+
+            <h2>Documentation &amp; m&eacute;thodologie</h2>
+            <p>Une consolidation large a retir&eacute; plans obsol&egrave;tes et fusionn&eacute; guides d&eacute;veloppement, jetons et tests — pas du m&eacute;nage pour le m&eacute;nage, mais une r&eacute;ponse pragmatique &agrave; un corpus documentaire devenu vite volumineux et d&eacute;sordonn&eacute; sous sessions de build parall&egrave;les. De nouveaux &eacute;crits sont quand m&ecirc;me arriv&eacute;s: strat&eacute;gie de partitionnement base de donn&eacute;es, analyse m&eacute;canisme de synchronisation keyset, strat&eacute;gie tests fonctionnels CLI, et configuration profils Spring. Collections Postman ont suivi l&rsquo;API Crypto naissante. Gains m&eacute;thodologiques report&eacute;s; la passe visait &agrave; restaurer la clart&eacute; sans freiner l&rsquo;&eacute;lan.</p>
+
+            <h2>Hygi&egrave;ne de code</h2>
+            <p>Migration JDK&nbsp;25 d&eacute;ploy&eacute;e sur services et images Docker de base. Travail migration Spring Boot&nbsp;4 d&eacute;marr&eacute; avec mises &agrave; jour gestion d&rsquo;erreurs et configuration. Versions de d&eacute;pendances mises &agrave; jour pour PMD, ZXing, Bucket4j, plugins Maven, et RestAssured. Versioning CI-friendly entr&eacute; dans les POM Maven. Checkstyle ajust&eacute; pour compatibilit&eacute; Google Java Format. THIRD-PARTY.txt rafra&icirc;chi.</p>
+
+            <h2>Admin UI</h2>
+            <p>Pas d&rsquo;UI admin graphique ce mois-ci. L&rsquo;administration devait passer par le TUI texte — premi&egrave;re surface op&eacute;rateur, et &agrave; l&rsquo;&eacute;poque celle retenue. Un stack UI web complet semblait encore un pari trop lourd tant que profondeur backend, crypto et op&eacute;rabilit&eacute; restaient prioritaires. R&eacute;trospectivement, les limites d&rsquo;une console texte pousseraient vers un admin React plus tard dans l&rsquo;ann&eacute;e; en janvier, le TUI &eacute;tait le plan, pas une marche interm&eacute;diaire.</p>
+
+            <h2>Application mobile</h2>
+            <p>Calme en janvier d&rsquo;apr&egrave;s l&rsquo;activit&eacute; Git sur cette fen&ecirc;tre.</p>
+
+            <h2>Backend &amp; contrats d&rsquo;API</h2>
+            <p>Tentatives auth: annulation, support codes challenge, s&eacute;paration DTO/mappers entre Admin et Auth APIs, et correctifs confusion reject/expired sur le parcours d&rsquo;attente. L&rsquo;API Crypto a ajout&eacute; endpoints encrypt et decrypt avec couverture Postman &agrave; jour. Contraintes d&rsquo;unicit&eacute; enr&ocirc;lement pour enrollments v&eacute;rifi&eacute;s, avec plans et tests. Endpoints gestion tenant et specs OpenAPI rafra&icirc;chis. Export credentials bootstrap et configuration chiffrement par profil ont renforc&eacute; premier d&eacute;marrage et stockage des cl&eacute;s.</p>
+
+            <h2>Le reste, digne de mention</h2>
+            <ul>
+                <li><strong>CLI / TUI:</strong> fil dominant du mois — TUI admin interactif avec &eacute;crans int&eacute;grations (modal filtre), journaux audit, tentatives auth, cl&eacute;s API, validation crypto, cl&eacute;s chiffrement, lots re-chiffrement, gestion tenants; support souris si disponible; utilitaires pagination; tests CLI et c&acirc;blage entrypoint Docker; modales onboarding et cr&eacute;ation admin en fin de mois.</li>
+                <li><strong>D&eacute;mo &amp; Docker:</strong> structure application d&eacute;mo ACME avec auth backend; fichiers config Docker et Windows; scripts stack PowerShell; health checks et ports management am&eacute;lior&eacute;s.</li>
+                <li><strong>Tests:</strong> tests isolation multi-tenant, documentation tests fonctionnels et am&eacute;liorations r&eacute;silience, couverture int&eacute;gration unicit&eacute; enr&ocirc;lement.</li>
+            </ul>
+
+            <div class="closing">
+                <p>Janvier a pari&eacute; sur le terminal comme console admin. Travail plateforme et contrats a suivi en dessous. La voie admin graphique — d&rsquo;abord cadr&eacute;e tenant UI, plus tard unifi&eacute;e — s&rsquo;ouvrirait en f&eacute;vrier une fois la surface texte ayant prouv&eacute; le mod&egrave;le d&rsquo;exploitation mais aussi son plafond pour op&eacute;rateurs non d&eacute;veloppeurs.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>English:</strong> <a href="/monthly-digest-2026-01.html">English version of this note</a></p>
+            <p class="doc-link-sibling"><strong>Retour &agrave; l&rsquo;index:</strong> <a href="/fr/monthly-digest.html">Sommaires mensuels</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/fr/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>

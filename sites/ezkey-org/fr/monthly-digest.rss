@@ -41,5 +41,12 @@
       <pubDate>Sun, 01 Feb 2026 12:00:00 GMT</pubDate>
       <description><![CDATA[Construire un systeme d'authentification, c'est exigeant. Le rendre sur et fiable, c'est encore plus dur. Ezkey sera publie par phases ; la premiere est prevue dans les prochains mois. Ce sera une preversion technologique : elle montrera le potentiel du systeme mais ne sera pas prete pour la production. Cote activites : une interface d'administration web a commence a prendre forme ce mois-ci — d'abord centree sur l'administration de locataires — accompagnee d'une integrite des logs d'audit par chaine HMAC signee, de la desactivation d'administrateurs et d'une option d'authentification non bloquante. La construction avait vraiment commence.]]></description>
     </item>
+    <item>
+      <title>Janvier 2026 — Admin d'abord en terminal — le pari TUI, consolidation doc et fondations plateforme</title>
+      <link>https://ezkey.org/fr/monthly-digest-2026-01.html</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest-2026-01.html</guid>
+      <pubDate>Thu, 01 Jan 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[La console admin a demarre comme un TUI texte — la surface operateur retenue, pas encore un pari UI web — avec preparation JDK 25, endpoints Crypto API, et une consolidation documentaire pragmatique.]]></description>
+    </item>
   </channel>
 </rss>
