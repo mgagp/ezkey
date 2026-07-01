@@ -6,7 +6,7 @@ This folder is the **source of truth** for the static public site served at **ez
 
 | Path | Purpose |
 |------|---------|
-| `index.html` | English (`lang="en"`): compact landing — hero, pillars, evaluation CTAs (run locally, docs, trust), secondary links to updates/articles. Inline CSS. |
+| `index.html` | English (`lang="en"`): compact landing — hero, pillars, evaluation CTAs (run locally, docs, trust), secondary links to monthly digests/articles. Inline CSS. |
 | `fr/index.html` | French (`lang="fr"`): same structure, translated copy. Served at **`/fr/`** when deployed. |
 | `source-and-evaluation.html` / `fr/source-and-evaluation.html` | Explains private repository until public opening; targets for **Docs** / **Run locally** in nav (anchors `#documentation`, `#run-locally`). |
 | `api-docs.html` | English-first public API portal landing page. |
@@ -18,16 +18,16 @@ This folder is the **source of truth** for the static public site served at **ez
 | `fr/auth-api-reference.html` | French Auth API public reference page powered by ReDoc CE. |
 | `fr/integration-api-reference.html` | French Integration API public reference page powered by ReDoc CE. |
 | `trust.html` / `fr/trust.html` | Short trust / security diligence (no off-site repo links while private). |
-| `updates.html` / `fr/updates.html` | Product updates: reverse-chronological, dated entries (optional type pill per entry). |
+| `monthly-digest.html` / `fr/monthly-digest.html` | Monthly digests: reverse-chronological index (Git-distilled months link to detail pages; legacy entries index-only). |
 | `articles.html` / `fr/articles.html` | Guides & walkthroughs lane + index of essays (cards link to standalone HTML pages). |
-| `changelog.html` / `fr/changelog.html` | Placeholder for future technical release notes; linked from Updates; omitted from primary nav until filled. |
+| `changelog.html` / `fr/changelog.html` | Placeholder for future technical release notes; linked from Monthly digests; omitted from primary nav until filled. |
 | `*.html` under root / `fr/` | Article bodies and other standalone pages (each includes Open Graph + Twitter Card meta for sharing). |
 
 | File | Purpose |
 |------|---------|
 | `sitemap.xml` | Sitemap; URL listed in `robots.txt`. |
 | `robots.txt` | `Allow: /` and `Sitemap:` pointer. |
-| `updates.rss` / `fr/updates.rss` | RSS feeds for **Updates**; keep in sync when adding entries (see **AGENTS.md**). |
+| `monthly-digest.rss` / `fr/monthly-digest.rss` | RSS feeds for **Monthly digests**; keep in sync when adding entries (see **AGENTS.md**). |
 | `api-specs/` | Static OpenAPI JSON assets consumed by the public API portal pages. |
 
 **Locales:** Default URL `/` is English; `/fr/` is French. Hub pages expose `hreflang` alternates; in-page language switches link between paired locales.

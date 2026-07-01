@@ -1,14 +1,19 @@
 ---
-status: draft
+published_html_en: /monthly-digest-2026-06.html
+published_html_fr: /fr/monthly-digest-2026-06.html
+published_date: 2026-06-30
+html_amended_post_publish: false
+source_of_truth: html
+status: published
 audience: "Developers and maintainers following the project's month-over-month activity and direction"
-planned_slug_en: "field-note-2026-06-monthly-activity.html"
-planned_slug_fr: "field-note-2026-06-monthly-activity.html"
-planned_canonical_en: "https://ezkey.org/field-note-2026-06-monthly-activity.html"
-planned_canonical_fr: "https://ezkey.org/fr/field-note-2026-06-monthly-activity.html"
+planned_slug_en: "monthly-digest-2026-06.html"
+planned_slug_fr: "monthly-digest-2026-06.html"
+planned_canonical_en: "https://ezkey.org/monthly-digest-2026-06.html"
+planned_canonical_fr: "https://ezkey.org/fr/monthly-digest-2026-06.html"
 ---
 
 <!-- ezkey-org:exclude-start
-Monthly activity digest — June 2026 (test generation, not published).
+Monthly activity digest — June 2026.
 Source: git log --no-merges 2026-06-01..2026-07-01, distilled by subject and intent.
 Editorial posture: summarize the nature and intent of the work, not internal tracking
 notations. Internal codes (tier labels, wave/cluster codenames, security-finding IDs,
@@ -16,7 +21,7 @@ issue/PR numbers, HTTP status codes) are translated into plain meaning or droppe
 Body authored in English first (canonical); French mirror generated from this source.
 ezkey-org:exclude-end -->
 
-<!-- Meta line: "Monthly field note · June 2026" -->
+<!-- Meta line: "Monthly digest · June 2026" -->
 <!-- Eyebrow label: "June 2026 in review" -->
 
 # Hygiene, a more useful console, and a steadier method
@@ -49,7 +54,7 @@ Security was the headline: the month closed specific weaknesses in passwordless 
 
 ## The rest worth mentioning
 
-- **Public site:** the field notes section itself launched on the site, and a new personal essay was published.
+- **Public site:** the monthly digest lane launched on the site, and a new personal essay was published.
 - **Infrastructure & tests:** the same framework upgrade (Spring Boot 4.1, Jackson 3) swept the test and demo components, and the browser-based test device now follows the right enrollment link from a scanned code.
 - **SDK:** the generated client libraries were kept in step with the API changes.
 - **Tooling:** the commit and release tooling became more reliable on Windows, and routine cleanup of preview deployments got easier.
@@ -57,3 +62,11 @@ Security was the headline: the month closed specific weaknesses in passwordless 
 ## Where this is heading
 
 June reads as a consolidation month — less brand-new feature surface, more depth, safety, and method. Maintenance is becoming a system rather than an ad-hoc effort. The natural next step is turning that into a regular, sustainable rhythm instead of bursts at irregular intervals.
+
+## Index excerpt (draft only)
+
+A more useful admin console, a broad maintenance and upgrade wave, security fixes, and a steadier method.
+
+## Index excerpt FR (draft only)
+
+Une console plus utile, une vaste vague de maintenance et de mises &agrave; niveau, des correctifs de s&eacute;curit&eacute;, et une m&eacute;thode plus assur&eacute;e.

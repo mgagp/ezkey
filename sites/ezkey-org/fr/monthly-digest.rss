@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Ezkey — Sommaires mensuels</title>
+    <link>https://ezkey.org/fr/monthly-digest.html</link>
+    <description>Sommaires mensuels de l'activite du projet Ezkey — ou le travail est alle, mois par mois. Pour les notes techniques versionnees apres les sorties publiques, voir le changelog.</description>
+    <language>fr</language>
+    <atom:link href="https://ezkey.org/fr/monthly-digest.rss" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>Juin 2026 — Hygiene, une console plus utile, et une methode plus assuree</title>
+      <link>https://ezkey.org/fr/monthly-digest-2026-06.html</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest-2026-06.html</guid>
+      <pubDate>Sun, 01 Jun 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[Une console plus utile, une vaste vague de maintenance et de mises a niveau, des correctifs de securite, et une methode plus assuree.]]></description>
+    </item>
+    <item>
+      <title>Mai 2026 — Retour aux fondations, et une vitrine publique qui prend forme</title>
+      <link>https://ezkey.org/fr/monthly-digest-2026-05.html</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest-2026-05.html</guid>
+      <pubDate>Fri, 01 May 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[Methode et specification d'abord, mobile pret pour les testeurs, portail API public, et maintenance soutenue des dependances.]]></description>
+    </item>
+    <item>
+      <title>Avril 2026 — Jalon</title>
+      <link>https://ezkey.org/fr/monthly-digest.html#digest-2026-04</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest.html#digest-2026-04</guid>
+      <pubDate>Wed, 01 Apr 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[L'application Android Ezkey est soumise a Google Play comme preversion technologique destinee aux premiers adoptants. Le code source est pour l'instant prive, le temps de finaliser le durcissement et la documentation.]]></description>
+    </item>
+    <item>
+      <title>Mars 2026 — Etat</title>
+      <link>https://ezkey.org/fr/monthly-digest.html#digest-2026-03</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest.html#digest-2026-03</guid>
+      <pubDate>Sun, 01 Mar 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[L'interface d'administration est complete a environ 90 %. L'application mobile est en cours de reecriture, et les API cryptographiques sont revues.]]></description>
+    </item>
+    <item>
+      <title>Fevrier 2026 — Jalon</title>
+      <link>https://ezkey.org/fr/monthly-digest.html#digest-2026-02</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest.html#digest-2026-02</guid>
+      <pubDate>Sun, 01 Feb 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[Construire un systeme d'authentification, c'est exigeant. Ezkey sera publie par phases ; la premiere est prevue dans les prochains mois.]]></description>
+    </item>
+  </channel>
+</rss>

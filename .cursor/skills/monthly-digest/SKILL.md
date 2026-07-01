@@ -1,24 +1,24 @@
 ---
-name: monthly-field-note
-description: Distills a calendar month of Git activity into a structured monthly field note (activity digest) published in the ezkey.org field-notes lane, plus a one-paragraph Product Update blurb linked to the detailed note. Use when the operator asks for the monthly activity field note / monthly digest.
+name: monthly-digest
+description: Distills a calendar month of Git activity into a structured monthly digest published in the ezkey.org monthly-digests lane (index excerpt + detailed page). Use when the operator asks for the monthly digest / monthly activity recap.
 disable-model-invocation: true
 ---
-# Monthly Field Note
+# Monthly Digest
 
 ## Purpose
 
 Turn one calendar month of repository Git history into a short, distilled activity digest —
-an executive summary plus a breakdown by subject — and publish it on ezkey.org. Also produce
-a one-paragraph **Product Update** blurb (EN + FR) for `updates.html`, with a link to the
-detailed note. The value is comparable month-over-month signal, not an exhaustive changelog.
+an executive summary plus a breakdown by subject — and publish it on ezkey.org in the unified
+**Monthly digests** lane. The value is comparable month-over-month signal, not an exhaustive
+changelog.
 
 ## Boundary contract
 
-- **Enter when:** the operator asks for the monthly activity field note / monthly digest, or a
+- **Enter when:** the operator asks for the monthly digest / monthly activity recap, or a
   calendar month has closed and a recap is wanted.
-- **Exit when:** the digest is distilled into the template, the bilingual field note is published
-  (or staged), the Product Update blurb is added to `updates.html` / RSS (EN + FR), and
-  `notes.html` / `sitemap.xml` are updated.
+- **Exit when:** the digest is distilled into the template, the bilingual detail page is
+  published (or staged), the index excerpt is added to `monthly-digest.html` / RSS (EN + FR),
+  and `sitemap.xml` is updated.
 - **Call next:** the Cloudflare preview deploy for human visual validation, then production.
 - **Not needed when:** the operator wants a product-facing **versioned** release note (use
   `changelog.html` when that lane carries real content).
@@ -28,20 +28,19 @@ detailed note. The value is comparable month-over-month signal, not an exhaustiv
 - The target month (default: the most recently completed calendar month).
 - Repository Git history for that window (working/default branch).
 - Optional enrichment: `I-*` / `TB-*` artifacts closed during the month for program names.
-- Template: `sites/ezkey-org-editorial/templates/monthly-field-note.template.md`.
+- Template: `sites/ezkey-org-editorial/templates/monthly-digest.template.md`.
 
 ## Output
 
-- A draft at `sites/ezkey-org-editorial/fr/draft-field-note-YYYY-MM-monthly-activity.md`
+- A draft at `sites/ezkey-org-editorial/fr/draft-monthly-digest-YYYY-MM.md`
   (body authored in English first).
-- Published bilingual HTML: `sites/ezkey-org/field-note-YYYY-MM-monthly-activity.html` (EN) and
-  `sites/ezkey-org/fr/field-note-YYYY-MM-monthly-activity.html` (FR).
-- **Product Update blurb** (draft section in the markdown file; published into the matching
-  `<li class="update-entry" id="update-YYYY-MM">` on `updates.html` and `fr/updates.html`, plus
-  RSS mirrors).
-- One new `<li class="note-entry">` at the **top** of `notes.html` and `fr/notes.html` (newest
-  first).
-- URLs added to `sitemap.xml`.
+- Published bilingual HTML detail pages: `sites/ezkey-org/monthly-digest-YYYY-MM.html` (EN) and
+  `sites/ezkey-org/fr/monthly-digest-YYYY-MM.html` (FR).
+- **Index excerpt** (draft section in the markdown file; published into the matching
+  `<li class="digest-entry" id="digest-YYYY-MM">` on `monthly-digest.html` and
+  `fr/monthly-digest.html`, plus RSS mirrors).
+- One new digest entry at the **top** of the index lists (newest first).
+- Detail page URLs added to `sitemap.xml`.
 
 ## Procedure
 
@@ -56,35 +55,42 @@ detailed note. The value is comparable month-over-month signal, not an exhaustiv
    The proportion across buckets drives the "In short" trend sentence.
 4. **Distill, do not dump.** Write the executive summary, then 1-3 sentences per *active* bucket.
    Cite at most a few concrete milestones. Never list commits line by line.
-5. **Write the Product Update blurb** (see rules below) — a tighter version of "In short".
+5. **Write the index excerpt** (see rules below) — a tighter version of "In short" for the hub page.
 6. **Instantiate the template** into the draft path above; author in English first.
 7. **Omit empty sections** — only render buckets that saw real activity. Keep the palette order so
    months stay comparable.
-8. **Publish bilingually:** create EN + FR HTML for the detailed note; prepend the index entry on
-   `notes.html` and `fr/notes.html`; add or update the Product Update entry on `updates.html`,
-   `fr/updates.html`, and both RSS feeds; add URLs to `sitemap.xml`.
+8. **Publish bilingually:** create EN + FR HTML for the detailed digest; prepend the index entry on
+   `monthly-digest.html` and `fr/monthly-digest.html`; add matching RSS `<item>` at the top of
+   [`monthly-digest.rss`](../../sites/ezkey-org/monthly-digest.rss) and
+   [`fr/monthly-digest.rss`](../../sites/ezkey-org/fr/monthly-digest.rss); add detail URLs to
+   `sitemap.xml`.
 9. **Hand off to deploy:** Cloudflare preview -> human visual validation -> production.
 
-## Product Update blurb rules
+## Index excerpt rules
 
-- **Length:** one short paragraph (typically 3–5 sentences). No bullet lists.
-- **Source:** derived from the detailed note's "In short" block — same facts, tighter prose.
-- **Tone:** milestone posture — sober, outward-facing, momentum and context (matches existing
-  `data-update-type="milestone"` entries).
-- **Required link:** end the paragraph with an inline link to the detailed monthly note:
-  - EN label: `Detailed monthly field note` → `/field-note-YYYY-MM-monthly-activity.html`
-  - FR label: `Note de terrain mensuelle détaillée` → `/fr/field-note-YYYY-MM-monthly-activity.html`
-  - Use the same inline link styling as existing update entries (`color:white;font-weight:600;text-decoration:underline`).
-- **RSS:** mirror the HTML blurb in the matching `<item>` description; include the detailed note URL.
-- **Pre-existing hand-written updates:** do not rewrite older milestone copy unless the operator
-  asks. When a month already has a hand-written update, adding the link to the detailed note is
-  sufficient.
+- **Length:** one short sentence or two (typically under ~30 words). No bullet lists.
+- **Source:** derived from the detailed digest's "In short" block — same facts, tighter prose.
+- **No month prefix:** do **not** open with "A distilled digest of [Month]:" (EN) or
+  "Un sommaire distillé de [month]:" (FR). The month already appears in `.digest-date`; go
+  straight to the substance (e.g. *"A more useful admin console, …"* not *"A distilled digest of
+  June: a more useful admin console, …"*).
+- **Tone:** sober, outward-facing, momentum and context.
+- **Index HTML pattern** (months with a full digest):
+  - Month label in `.digest-date`
+  - Title as link (`.digest-title`) → `/monthly-digest-YYYY-MM.html` (EN) /
+    `/fr/monthly-digest-YYYY-MM.html` (FR)
+  - Excerpt in `.digest-text`
+- **RSS:** mirror the excerpt in the matching `<item>` description; link to the detail page URL.
+- **Legacy index-only months:** older hand-written entries (Feb–Apr 2026 and earlier without a
+  digest page) keep their paragraph on the index with an optional type pill; do not rewrite unless
+  the operator asks. Retrofill later by running this skill for those months.
 
-## Field notes index (single page)
+## Monthly digests index (single page)
 
-- **One index only:** `/notes.html` and `/fr/notes.html` — no monthly archive pages under
-  `notes/YYYY-MM.html`.
-- **Content:** monthly Git-distilled activity digests only (no day-level notes).
+- **One index only:** `/monthly-digest.html` and `/fr/monthly-digest.html` — no monthly archive
+  pages under `monthly-digest/YYYY-MM/`.
+- **Content:** monthly Git-distilled activity digests (detail pages when published) plus legacy
+  index-only milestone paragraphs for months not yet retrofilled.
 - **Ordering:** newest month first.
 - **Page intro:** state that these are monthly distilled looks at project activity from Git
   history — not day-by-day reflections.
@@ -120,10 +126,16 @@ detailed note. The value is comparable month-over-month signal, not an exhaustiv
 - **French HTML accents use named HTML entities** (`&eacute;`, `&egrave;`, `&agrave;`, `&ccedil;`,
   `&ocirc;`, ...), never raw accented characters. This is a deliberate convention adopted after
   repeated UTF-8 handling problems: verbose but infallible across the toolchain. Match the existing
-  published French notes.
+  published French digests.
 - **French technical vocabulary follows common developer usage, not the most formal OQLF term**
   when the two diverge. Clear, expected wording wins. In particular, use **`framework`** (not
   *cadriciel* or *cadre applicatif*).
+
+## Detail page conventions
+
+- **Slug:** `monthly-digest-YYYY-MM.html` (same filename under `fr/`).
+- **Meta line:** `Monthly digest · <Month> <Year>` (FR: `Sommaire mensuel · <Month> <Year>`).
+- **Nav back-link:** `/monthly-digest.html` (EN) / `/fr/monthly-digest.html` (FR).
 
 ## Rule
 
@@ -132,5 +144,5 @@ short; do not pad with empty sections to look productive.
 
 ## Related documents
 
-- `sites/ezkey-org/AGENTS.md` § *Monthly activity field notes*
-- `sites/ezkey-org-editorial/templates/monthly-field-note.template.md`
+- `sites/ezkey-org/AGENTS.md` § *Monthly digests*
+- `sites/ezkey-org-editorial/templates/monthly-digest.template.md`

@@ -2,24 +2,25 @@
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Chronological product and build updates from Ezkey — newest first.">
-    <meta property="og:title" content="Ezkey — Product updates">
-    <meta property="og:description" content="Chronological product and build updates from Ezkey — newest first.">
-    <meta property="og:url" content="https://ezkey.org/updates.html">
+    <meta name="description" content="Monthly digests of Ezkey project activity — where the work went, month by month. Newest first.">
+    <meta property="og:title" content="Ezkey — Monthly digests">
+    <meta property="og:description" content="Monthly digests of Ezkey project activity — where the work went, month by month. Newest first.">
+    <meta property="og:url" content="https://ezkey.org/monthly-digest.html">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Ezkey">
     <meta property="og:image" content="https://ezkey.org/logo.svg">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Ezkey — Product updates">
-    <meta name="twitter:description" content="Chronological product and build updates from Ezkey — newest first.">
+    <meta name="twitter:title" content="Ezkey — Monthly digests">
+    <meta name="twitter:description" content="Monthly digests of Ezkey project activity — where the work went, month by month. Newest first.">
     <meta name="twitter:image" content="https://ezkey.org/logo.svg">
 
-    <link rel="alternate" hreflang="en" href="https://ezkey.org/updates.html">
-    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/updates.html">
-    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/updates.html">
-    <link rel="alternate" type="application/rss+xml" title="Ezkey product updates" href="https://ezkey.org/updates.rss">
-    <title>Ezkey — Product updates</title>
+    <link rel="canonical" href="https://ezkey.org/monthly-digest.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest.html">
+    <link rel="alternate" type="application/rss+xml" title="Ezkey monthly digests" href="https://ezkey.org/monthly-digest.rss">
+    <title>Ezkey — Monthly digests</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -129,16 +130,16 @@
             text-align: center;
         }
 
-        .update-list { list-style: none; margin: 0; padding: 0; }
+        .digest-list { list-style: none; margin: 0; padding: 0; }
 
-        .update-entry {
+        .digest-entry {
             padding: 16px 0;
             border-top: 1px solid rgba(255, 255, 255, 0.18);
         }
-        .update-entry:first-of-type { border-top: none; padding-top: 0; }
-        .update-entry:last-child { padding-bottom: 0; }
+        .digest-entry:first-of-type { border-top: none; padding-top: 0; }
+        .digest-entry:last-child { padding-bottom: 0; }
 
-        .update-meta {
+        .digest-meta {
             display: flex;
             flex-wrap: wrap;
             align-items: baseline;
@@ -146,14 +147,14 @@
             margin-bottom: 8px;
         }
 
-        .update-date {
+        .digest-date {
             font-size: 0.82rem;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.65);
             letter-spacing: 0.02em;
         }
 
-        .update-type {
+        .digest-type {
             font-size: 0.68rem;
             letter-spacing: 0.12em;
             text-transform: uppercase;
@@ -165,7 +166,18 @@
             padding: 4px 10px;
         }
 
-        .update-text {
+        .digest-title {
+            display: block;
+            color: #fff;
+            font-size: 1.12rem;
+            font-weight: 700;
+            text-decoration: none;
+            margin-bottom: 8px;
+            line-height: 1.35;
+        }
+        .digest-title:hover { text-decoration: underline; }
+
+        .digest-text {
             color: rgba(255, 255, 255, 0.92);
             font-size: 1rem;
             line-height: 1.6;
@@ -239,7 +251,7 @@
     <div class="container">
         <p class="lang-switch">
             <span style="color:white;font-weight:600;">English</span>
-            · <a href="/fr/updates.html">Français</a>
+            · <a href="/fr/monthly-digest.html">Français</a>
         </p>
         <nav class="site-nav" aria-label="Primary">
             <a href="/">Home</a>
@@ -247,10 +259,9 @@
             <a href="/api-docs.html">API Docs</a>
             <a href="/source-and-evaluation.html#run-locally">Run locally</a>
             <a href="/trust.html">Trust</a>
-            <a href="/updates.html" aria-current="page">Updates</a>
+            <a href="/monthly-digest.html" aria-current="page">Monthly digests</a>
             <a href="/guides.html">Guides</a>
             <a href="/articles.html">Articles</a>
-            <a href="/notes.html">Notes</a>
             <a href="/methodology.html">Methodology</a>
         </nav>
         <div class="logo-container">
@@ -262,57 +273,47 @@
         </div>
 
         <div class="page-panel">
-            <span class="section-eyebrow">Build status</span>
-            <h1><span class="pulse" aria-hidden="true"></span>Product updates</h1>
+            <span class="section-eyebrow">Project activity</span>
+            <h1><span class="pulse" aria-hidden="true"></span>Monthly digests</h1>
             <p class="page-intro">
-                Newest first. <strong>Product updates</strong> (this page) are short narrative notes for the outside world — momentum and context — kept separate from long-form <a href="/articles.html">articles</a>.
+                Newest first. Each month, a distilled look at where the work actually went — from Git history, broken down by subject. Kept separate from long-form <a href="/articles.html">articles</a>.
                 When public releases begin, <strong>versioned technical release notes</strong> will live on the <a href="/changelog.html">changelog</a>.
             </p>
-            <ul class="update-list">
-                <li class="update-entry" id="update-2026-06" data-update-type="milestone">
-                    <div class="update-meta">
-                        <span class="update-date">June 2026</span>
-                        <span class="update-type">Milestone</span>
+            <ul class="digest-list">
+                <li class="digest-entry" id="digest-2026-06">
+                    <div class="digest-meta">
+                        <span class="digest-date">June 2026</span>
                     </div>
-                    <div class="update-text">
-                        Still on a consolidation rhythm: a more useful day-to-day admin console, broad upgrades across backend and mobile, and a few security gaps closed. Less new surface, more depth. <a href="/field-note-2026-06-monthly-activity.html" style="color:white;font-weight:600;text-decoration:underline;">Detailed monthly field note</a>.
-                    </div>
+                    <a class="digest-title" href="/monthly-digest-2026-06.html">Hygiene, a more useful console, and a steadier method</a>
+                    <p class="digest-text">A more useful admin console, a broad maintenance and upgrade wave, security fixes, and a steadier method.</p>
                 </li>
-                <li class="update-entry" id="update-2026-05" data-update-type="milestone">
-                    <div class="update-meta">
-                        <span class="update-date">May 2026</span>
-                        <span class="update-type">Milestone</span>
+                <li class="digest-entry" id="digest-2026-05">
+                    <div class="digest-meta">
+                        <span class="digest-date">May 2026</span>
                     </div>
-                    <div class="update-text">
-                        May was a consolidation month, deliberately. The Android app reached internal test &mdash; the first time real testers outside the project encountered a complete Ezkey flow: enrollment, pending authentication, and end-to-end cryptographic chain. The app is now available in French and English. A conversation this month clarified something that had been building for a while: the right move now is to invest in explicit design, specification, and methodology rather than sustaining a high feature pace. The <a href="/ai-return-to-foundations-methodology.html" style="color:white;font-weight:600;text-decoration:underline;">Back to foundations</a> essay, published mid-month, is the written-out version of that shift. It is not a detour &mdash; it is how the project matures responsibly before a public release. <a href="/field-note-2026-05-monthly-activity.html" style="color:white;font-weight:600;text-decoration:underline;">Detailed monthly field note</a>.
-                    </div>
+                    <a class="digest-title" href="/monthly-digest-2026-05.html">Back to foundations, with the public face taking shape</a>
+                    <p class="digest-text">Method and specification upfront, mobile ready for testers, public API portal, and steady dependency maintenance.</p>
                 </li>
-                <li class="update-entry" id="update-2026-04" data-update-type="milestone">
-                    <div class="update-meta">
-                        <span class="update-date">April 2026</span>
-                        <span class="update-type">Milestone</span>
+                <li class="digest-entry" id="digest-2026-04">
+                    <div class="digest-meta">
+                        <span class="digest-date">April 2026</span>
+                        <span class="digest-type">Milestone</span>
                     </div>
-                    <div class="update-text">
-                        The Ezkey Android app is being submitted to Google Play as a technology preview for early adopters. The source code is currently kept private while we finalize hardening and documentation. The current plan is to open the repository publicly in September 2026, with the first official release, subject to the usual pre-release work.
-                    </div>
+                    <p class="digest-text">The Ezkey Android app is being submitted to Google Play as a technology preview for early adopters. The source code is currently kept private while we finalize hardening and documentation. The current plan is to open the repository publicly in September 2026, with the first official release, subject to the usual pre-release work.</p>
                 </li>
-                <li class="update-entry" id="update-2026-03" data-update-type="status">
-                    <div class="update-meta">
-                        <span class="update-date">March 2026</span>
-                        <span class="update-type">Status</span>
+                <li class="digest-entry" id="digest-2026-03">
+                    <div class="digest-meta">
+                        <span class="digest-date">March 2026</span>
+                        <span class="digest-type">Status</span>
                     </div>
-                    <div class="update-text">
-                        The admin UI is about 90% complete. The mobile app is being rewritten, and the crypto APIs are under review. QA is getting more thorough and surfacing many issues to fix before a release. Progress is steady, and the product is starting to take shape.
-                    </div>
+                    <p class="digest-text">The admin UI is about 90% complete. The mobile app is being rewritten, and the crypto APIs are under review. QA is getting more thorough and surfacing many issues to fix before a release. Progress is steady, and the product is starting to take shape.</p>
                 </li>
-                <li class="update-entry" id="update-2026-02" data-update-type="milestone">
-                    <div class="update-meta">
-                        <span class="update-date">February 2026</span>
-                        <span class="update-type">Milestone</span>
+                <li class="digest-entry" id="digest-2026-02">
+                    <div class="digest-meta">
+                        <span class="digest-date">February 2026</span>
+                        <span class="digest-type">Milestone</span>
                     </div>
-                    <div class="update-text">
-                        Building an authentication system is challenging. Making it safe and reliable is harder. Ezkey will ship in phases; the first is due in the coming months. It will be a technology preview: it will show what the system can do, but it will <strong>not</strong> be production-ready. On the activity side: a web Admin UI began taking shape this month &mdash; initially scoped to tenant administration &mdash; alongside audit log integrity through HMAC-signed chains, admin deactivation, and a non-blocking authentication option. The construction had begun in earnest.
-                    </div>
+                    <p class="digest-text">Building an authentication system is challenging. Making it safe and reliable is harder. Ezkey will ship in phases; the first is due in the coming months. It will be a technology preview: it will show what the system can do, but it will <strong>not</strong> be production-ready. On the activity side: a web Admin UI began taking shape this month &mdash; initially scoped to tenant administration &mdash; alongside audit log integrity through HMAC-signed chains, admin deactivation, and a non-blocking authentication option. The construction had begun in earnest.</p>
                 </li>
             </ul>
         </div>
@@ -322,7 +323,7 @@
         <div class="footer">
             <p>
                 <a href="/privacy.html">Privacy Policy</a>
-                · <a href="/updates.rss">RSS</a>
+                · <a href="/monthly-digest.rss">RSS</a>
             </p>
         </div>
     </div>

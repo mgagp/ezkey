@@ -1,15 +1,15 @@
 ---
-published_html_en: /field-note-2026-05-monthly-activity.html
-published_html_fr: /fr/field-note-2026-05-monthly-activity.html
+published_html_en: /monthly-digest-2026-05.html
+published_html_fr: /fr/monthly-digest-2026-05.html
 published_date: 2026-06-30
 html_amended_post_publish: false
 source_of_truth: html
 status: published
 audience: "Developers and maintainers following the project's month-over-month activity and direction"
-planned_slug_en: "field-note-2026-05-monthly-activity.html"
-planned_slug_fr: "field-note-2026-05-monthly-activity.html"
-planned_canonical_en: "https://ezkey.org/field-note-2026-05-monthly-activity.html"
-planned_canonical_fr: "https://ezkey.org/fr/field-note-2026-05-monthly-activity.html"
+planned_slug_en: "monthly-digest-2026-05.html"
+planned_slug_fr: "monthly-digest-2026-05.html"
+planned_canonical_en: "https://ezkey.org/monthly-digest-2026-05.html"
+planned_canonical_fr: "https://ezkey.org/fr/monthly-digest-2026-05.html"
 ---
 
 <!-- ezkey-org:exclude-start
@@ -18,7 +18,7 @@ Source: git log --no-merges 2026-05-01..2026-06-01, distilled by subject and int
 Body authored in English first (canonical); French mirror generated from this source.
 ezkey-org:exclude-end -->
 
-<!-- Meta line: "Monthly field note · May 2026" -->
+<!-- Meta line: "Monthly digest · May 2026" -->
 <!-- Eyebrow label: "May 2026 in review" -->
 
 # Back to foundations, with the public face taking shape
@@ -59,3 +59,11 @@ Backend changes supported operator and mobile workflows: an enrollment creation 
 ## Where this is heading
 
 May reads as an intentional pivot — investing in explicit design and method before pushing more surface area. The mobile app is now in testers' hands; the public site can explain APIs and methodology; the internal method is no longer tribal knowledge. June's natural follow-through is making that foundation operational day to day (hygiene rhythm, richer operator views) rather than inventing new lanes.
+
+## Index excerpt (draft only)
+
+Method and specification upfront, mobile ready for testers, public API portal, and steady dependency maintenance.
+
+## Index excerpt FR (draft only)
+
+M&eacute;thode et sp&eacute;cification d&rsquo;abord, mobile pr&ecirc;t pour les testeurs, portail API public, et maintenance soutenue des d&eacute;pendances.

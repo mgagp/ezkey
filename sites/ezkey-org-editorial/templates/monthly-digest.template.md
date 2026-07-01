@@ -1,17 +1,17 @@
 ---
 status: draft
 audience: "Developers and maintainers following the project's month-over-month activity and direction"
-planned_slug_en: "field-note-YYYY-MM-monthly-activity.html"
-planned_slug_fr: "field-note-YYYY-MM-monthly-activity.html"
-planned_canonical_en: "https://ezkey.org/field-note-YYYY-MM-monthly-activity.html"
-planned_canonical_fr: "https://ezkey.org/fr/field-note-YYYY-MM-monthly-activity.html"
+planned_slug_en: "monthly-digest-YYYY-MM.html"
+planned_slug_fr: "monthly-digest-YYYY-MM.html"
+planned_canonical_en: "https://ezkey.org/monthly-digest-YYYY-MM.html"
+planned_canonical_fr: "https://ezkey.org/fr/monthly-digest-YYYY-MM.html"
 ---
 
 <!-- ezkey-org:exclude-start
-TEMPLATE — monthly field note (activity digest sub-type of the field-notes lane).
+TEMPLATE — monthly digest (Git-distilled activity recap).
 
 How to use this template:
-- Copy it to sites/ezkey-org-editorial/fr/draft-field-note-YYYY-MM-monthly-activity.md
+- Copy it to sites/ezkey-org-editorial/fr/draft-monthly-digest-YYYY-MM.md
 - Author the body in English first (canonical), then produce the French mirror at publish time.
 - This is a distilled SUMMARY, never a commit-by-commit dump.
 - Omit any section that has no real content this month — never render empty sections.
@@ -20,7 +20,7 @@ How to use this template:
 - Tone: sober, factual, concrete. No inflated or marketing language. Honest about scope.
 - Target length: a comfortable scan (roughly 1 short executive paragraph + 3-6 short
   subject blocks + an optional closing). Longer than a day note, but still distilled.
-- Light section headers ARE allowed in the detailed note HTML.
+- Light section headers ARE allowed in the detailed digest HTML.
 
 Subject palette (include only the active ones, in this order):
 - Documentation & methodology
@@ -30,10 +30,10 @@ Subject palette (include only the active ones, in this order):
 - Backend & API contracts
 - The rest worth mentioning: SDK, test/Docker infrastructure, public site, security/integrity
 
-See the procedure and distillation rules in .cursor/skills/monthly-field-note/SKILL.md
+See the procedure and distillation rules in .cursor/skills/monthly-digest/SKILL.md
 ezkey-org:exclude-end -->
 
-<!-- Meta line rendered on the note page: "Monthly field note · <Month> <Year>" -->
+<!-- Meta line rendered on the detail page: "Monthly digest · <Month> <Year>" -->
 <!-- Eyebrow label: a 2-4 word theme for the month -->
 
 # <Short evocative title capturing the month's dominant theme>
@@ -81,15 +81,14 @@ site, security/integrity. One short line each. Omit the whole section if nothing
 direction for next month. Omit if the digest reads complete without it.>
 
 <!-- ezkey-org:exclude-start
-Product Update blurb — draft only; published into updates.html / RSS, NOT into the detailed note HTML.
-One short paragraph (3-5 sentences), milestone tone, derived from "In short".
-Must end with link to the detailed note (EN/FR labels per skill).
+Index excerpt — draft only; published into monthly-digest.html / RSS, NOT into the detail page HTML.
+One short sentence or two, derived from "In short". Do NOT prefix with the month or "distilled digest" — the index already shows the month label.
 ezkey-org:exclude-end -->
 
-## Product update blurb (draft only)
+## Index excerpt (draft only)
 
-<EN paragraph for updates.html — include inline link placeholder to detailed note.>
+<EN excerpt for monthly-digest.html — title link goes to detail page separately.>
 
-## Product update blurb FR (draft only)
+## Index excerpt FR (draft only)
 
-<FR mirror for fr/updates.html — include inline link placeholder to detailed note.>
+<FR mirror for fr/monthly-digest.html.>

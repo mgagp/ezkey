@@ -16,11 +16,11 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 - **Landing pages (compact):** [`index.html`](index.html) (en), [`fr/index.html`](fr/index.html) (fr) — hero, pillars, primary navigation, evaluation CTAs (run locally, docs, trust), and secondary links into product writing. They are **not** the archive for updates or articles.
 - **Trust / diligence (short):** [`trust.html`](trust.html) / [`fr/trust.html`](fr/trust.html) — plain-language trust model, disclosure posture, security reporting (`security@ezkey.org`), and **on-site** pointers (no public GitHub URLs while the repository stays private).
 - **Source & evaluation hub:** [`source-and-evaluation.html`](source-and-evaluation.html) / [`fr/source-and-evaluation.html`](fr/source-and-evaluation.html) — explains that Ezkey is **planned** as MIT open source but the **main repository is private** until the scheduled public opening; anchors `#documentation` and `#run-locally` are the nav targets for **Docs** / **Run locally**.
-- **Product updates (reverse chronological, dated):** [`updates.html`](updates.html) / [`fr/updates.html`](fr/updates.html) — short build-status notes; optional `data-update-type` on each `<li class="update-entry">` for future filtering. This is the **product-facing timeline**. It cross-links to the changelog for future versioned notes.
+- **Monthly digests (reverse chronological):** [`monthly-digest.html`](monthly-digest.html) / [`fr/monthly-digest.html`](fr/monthly-digest.html) — distilled month-by-month activity from Git history; optional type pill on legacy index-only entries. Full months link to detail pages (`monthly-digest-YYYY-MM.html`). Cross-links to the changelog for future versioned release notes.
 - **Guides & walkthroughs hub:** [`guides.html`](guides.html) / [`fr/guides.html`](fr/guides.html) — dedicated hub for evaluator-oriented step-by-step content (exp1 guided tour, upcoming guides). Linked from the primary nav as **Guides**.
 - **Articles & notes index:** [`articles.html`](articles.html) / [`fr/articles.html`](fr/articles.html) — two labeled sections: **About Ezkey** (product-explaining content, newest first) and **Craft & engineering** (independent essays, newest first). No longer contains a guides lane.
-- **Changelog placeholder (technical release notes later):** [`changelog.html`](changelog.html) / [`fr/changelog.html`](fr/changelog.html) — reserved for versioned technical notes. **Not** listed on the primary navigation of the landing page or content hubs so an empty section does not dilute IA integrity; the changelog page itself repeats full nav **plus** a contextual “Changelog” / “Notes de version” item with `aria-current="page"`. Discoverable by URL and from copy on **Updates**.
-- **Discovery & sharing (static):** [`sitemap.xml`](sitemap.xml) and [`robots.txt`](robots.txt) at the site root; [`updates.rss`](updates.rss) / [`fr/updates.rss`](fr/updates.rss) mirror the dated entries on **Updates** (newest items first in the feed). All published `*.html` pages include **Open Graph** and **Twitter Card** meta tags (`og:*`, `twitter:*`), using `https://ezkey.org/logo.svg` as the share image unless you introduce a dedicated social image later.
+- **Changelog placeholder (technical release notes later):** [`changelog.html`](changelog.html) / [`fr/changelog.html`](fr/changelog.html) — reserved for versioned technical notes. **Not** listed on the primary navigation of the landing page or content hubs so an empty section does not dilute IA integrity; the changelog page itself repeats full nav **plus** a contextual “Changelog” / “Notes de version” item with `aria-current="page"`. Discoverable by URL and from copy on **Monthly digests**.
+- **Discovery & sharing (static):** [`sitemap.xml`](sitemap.xml) and [`robots.txt`](robots.txt) at the site root; [`monthly-digest.rss`](monthly-digest.rss) / [`fr/monthly-digest.rss`](fr/monthly-digest.rss) mirror the monthly digest entries (newest items first in the feed). All published `*.html` pages include **Open Graph** and **Twitter Card** meta tags (`og:*`, `twitter:*`), using `https://ezkey.org/logo.svg` as the share image unless you introduce a dedicated social image later.
 - **Logo / hero signature:** landing and inner hub pages reuse the same gradient, floating logo treatment, and particle background as before (`<img src="/logo.svg">` on published pages).
 - **Public hostname:** **`ezkey.org`** (canonical production URL for this site).
 - **Cloudflare:** The live site is deployed via **Cloudflare Pages** (project `ezkey-org`, domain `ezkey.org`). **Always use the dedicated scripts** — never invoke Wrangler ad hoc:
@@ -33,7 +33,7 @@ For repo-wide rules (Maven, Java, etc.), see **[../../AGENTS.md](../../AGENTS.md
 
 ## Primary navigation (evaluation-first)
 
-Hub pages (`index`, `updates`, `articles`, `trust`) share a consistent **primary** nav (EN/FR labels):
+Hub pages (`index`, `monthly-digest`, `articles`, `trust`) share a consistent **primary** nav (EN/FR labels):
 
 | English | French | Target |
 | ------ | ------ | ------ |
@@ -42,15 +42,14 @@ Hub pages (`index`, `updates`, `articles`, `trust`) share a consistent **primary
 | API Docs | Documentation API | `/api-docs.html` / `/fr/api-docs.html` |
 | Run locally | Exécuter en local | `/source-and-evaluation.html#run-locally` / `/fr/source-and-evaluation.html#run-locally` |
 | Trust | Confiance | `/trust.html` / `/fr/trust.html` |
-| Updates | Mises à jour | `/updates.html` / `/fr/updates.html` |
+| Monthly digests | Sommaires mensuels | `/monthly-digest.html` / `/fr/monthly-digest.html` |
 | Guides | Guides | `/guides.html` / `/fr/guides.html` |
 | Articles | Articles | `/articles.html` / `/fr/articles.html` |
-| Notes | Notes | `/notes.html` / `/fr/notes.html` |
 | Methodology | Méthodologie | `/methodology.html` / `/fr/methodologie.html` |
 
 **Changelog** is intentionally **omitted** from that primary strip until the page carries real versioned notes. **Methodology** (`/methodology.html` / `/fr/methodologie.html`) is the published rich view generated from `product-docs/methodology/view/index.html` via `scripts/publish-methodology-view.ps1`; update by re-running that script whenever the canonical changes. On **changelog** pages only, append the changelog item with `aria-current="page"`.
 
-**Public site and private repository:** Do **not** link from **ezkey.org** to GitHub (or any authenticated-only host) for Ezkey source, docs, or `SECURITY.md` while the repository remains **private**. The intended public URL and onboarding copy will be wired when the repository opens (planned alongside the first public release — see **Updates**). Internal package metadata or future **`SECURITY.md`** in git may still name a future canonical repo URL for maintainers; that does not override this public-site rule.
+**Public site and private repository:** Do **not** link from **ezkey.org** to GitHub (or any authenticated-only host) for Ezkey source, docs, or `SECURITY.md` while the repository remains **private**. The intended public URL and onboarding copy will be wired when the repository opens (planned alongside the first public release — see **Monthly digests**). Internal package metadata or future **`SECURITY.md`** in git may still name a future canonical repo URL for maintainers; that does not override this public-site rule.
 
 When the repository is **public**, replace **Docs** / **Run locally** nav targets and homepage CTAs with the canonical README and docs index URLs in **one** coordinated edit (and trim redundant wording on [`source-and-evaluation.html`](source-and-evaluation.html) if appropriate).
 
@@ -177,7 +176,8 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 | `/source-and-evaluation.html` | `/fr/source-and-evaluation.html` | Private-repo posture; docs/run-local explanation |
 | `/api-docs.html` | `/fr/api-docs.html` | API portal landing page |
 | `/trust.html` | `/fr/trust.html` | Trust, reporting, on-site pointers |
-| `/updates.html` | `/fr/updates.html` | Product updates (newest first) |
+| `/monthly-digest.html` | `/fr/monthly-digest.html` | Monthly digests index (newest first) |
+| `/monthly-digest-YYYY-MM.html` | `/fr/monthly-digest-YYYY-MM.html` | Full monthly digest detail (when published) |
 | `/guides.html` | `/fr/guides.html` | Evaluator guides & walkthroughs hub |
 | `/articles.html` | `/fr/articles.html` | Guides lane + article index |
 | `/admin-api-reference.html` | `/fr/admin-api-reference.html` | Admin API public reference |
@@ -188,11 +188,11 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 
 **Rules:**
 
-1. **Parallel URLs:** use the **same filename** under `fr/` as under the site root for hub pages (`updates.html`, `articles.html`, `changelog.html`, `trust.html`, `source-and-evaluation.html`).
+1. **Parallel URLs:** use the **same filename** under `fr/` as under the site root for hub pages (`monthly-digest.html`, `articles.html`, `changelog.html`, `trust.html`, `source-and-evaluation.html`).
 2. **Pair every hub page with `hreflang`:** each of these files includes `link rel="alternate" hreflang="en"`, `hreflang="fr"`, and `hreflang="x-default"` (x-default follows the English canonical for the site).
 3. **Pair article slugs:** English articles live at `/some-slug.html`; French translations at `/fr/some-slug.html` when both exist (same slug, `fr/` prefix).
 4. **Navigation:** use the **Primary navigation** table above for hub pages; do not add **Changelog** to that strip until the page has substantive versioned content (changelog HTML pages may still list the item for `aria-current` on that route only).
-5. **New product updates:** add a dated entry at the **top** of the list on **both** `updates.html` and `fr/updates.html`; keep wording aligned across locales. Add a matching **RSS `<item>`** at the **top** of [`updates.rss`](updates.rss) and [`fr/updates.rss`](fr/updates.rss) (reuse the same `id` / fragment as the new `<li id="update-YYYY-MM">` on the HTML page). Bump `lastmod` for the updates pages and RSS URLs in [`sitemap.xml`](sitemap.xml) when you publish.
+5. **New monthly digests:** add a `<li class="digest-entry" id="digest-YYYY-MM">` at the **top** of the list on **both** `monthly-digest.html` and `fr/monthly-digest.html`; keep wording aligned across locales. Publish bilingual detail pages at `monthly-digest-YYYY-MM.html`. Add a matching **RSS `<item>`** at the **top** of [`monthly-digest.rss`](monthly-digest.rss) and [`fr/monthly-digest.rss`](fr/monthly-digest.rss). Bump `lastmod` for the index, detail pages, and RSS URLs in [`sitemap.xml`](sitemap.xml) when you publish.
 6. **New standalone HTML pages:** copy the Open Graph / Twitter block from an existing hub page and set `og:url`, `og:title`, `og:description`, and `og:locale` (`en_US` vs `fr_FR`) to match; add the page URL to [`sitemap.xml`](sitemap.xml).
 
 ---
@@ -203,7 +203,7 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 - **Experimental does not mean casual:** when copy mentions that the project is opinionated, AI-first, or exploratory, pair that with signals of discipline, seriousness, and care.
 - **Keep the homepage short:** the landing page may contain a compact positioning block, but longer arguments belong in standalone article pages linked from the home or `articles.html`.
 - **Use the founder article as the canonical long explanation:** the current anchor text is [`why-ezkey-exists.html`](why-ezkey-exists.html) / [`fr/why-ezkey-exists.html`](fr/why-ezkey-exists.html); reuse and refine that narrative instead of re-explaining it differently on every page.
-- **Distinguish content lanes clearly:** product momentum belongs on `updates.html`; evaluator walkthroughs belong on `guides.html`; product-explaining writing belongs in the **About Ezkey** section on `articles.html`; engineering craft essays belong in the **Craft & engineering** section on `articles.html`.
+- **Distinguish content lanes clearly:** month-over-month activity belongs on `monthly-digest.html`; evaluator walkthroughs belong on `guides.html`; product-explaining writing belongs in the **About Ezkey** section on `articles.html`; engineering craft essays belong in the **Craft & engineering** section on `articles.html`.
 - **Write for a serious technical audience:** sober tone, concrete claims, explicit constraints, and no inflated startup-style language.
 - **Avoid defensive wording:** do not over-explain that the project is solo, AI-assisted, or unconventional; present those facts plainly and move quickly to architecture, trust boundaries, APIs, and operator value.
 - **Do not overstate security assurance:** describe Ezkey as a pragmatic, opinionated middle ground that aims to be stronger than passwords and classic TOTP for some backend-oriented contexts; do not imply formal attestation chains, standards equivalence, complete certificate validation, or full-strength certificate pinning unless those capabilities truly exist.
@@ -212,21 +212,20 @@ When generating HTML from a draft, **omit** the YAML front matter and **omit** e
 
 ---
 
-## Monthly activity field notes
+## Monthly digests
 
-The **Field notes** nav lane (`/notes.html`, `/fr/notes.html`) is dedicated to **monthly
-Git-distilled activity digests** only — not day-level reflections or long-form essays.
+The **Monthly digests** nav lane (`/monthly-digest.html`, `/fr/monthly-digest.html`) is the unified
+home for **monthly Git-distilled activity recaps** — index excerpt plus optional detail page. It
+replaces the former separate Updates and Field notes lanes.
 
-- **Trigger phrase:** *"time for the monthly activity field note"* or *"do the monthly digest"*.
-  A cold agent should run [`.cursor/skills/monthly-field-note/SKILL.md`](../../.cursor/skills/monthly-field-note/SKILL.md).
-- **Template:** [`../ezkey-org-editorial/templates/monthly-field-note.template.md`](../ezkey-org-editorial/templates/monthly-field-note.template.md)
-- **Detailed note slug:** `field-note-YYYY-MM-monthly-activity.html`; meta line:
-  `Monthly field note · <Month> <Year>`.
-- **Index:** single page (`notes.html` / `fr/notes.html`), newest month first — no monthly archive
-  pages under `notes/YYYY-MM.html`.
-- **Product updates pairing:** each new digest also produces a one-paragraph milestone blurb on
-  `updates.html` (EN + FR + RSS) with a link to the detailed note. Pre-existing hand-written
-  updates may keep their copy; add the link when a digest is published retroactively.
+- **Trigger phrase:** *"time for the monthly digest"* or *"do the monthly activity recap"*.
+  A cold agent should run [`.cursor/skills/monthly-digest/SKILL.md`](../../.cursor/skills/monthly-digest/SKILL.md).
+- **Template:** [`../ezkey-org-editorial/templates/monthly-digest.template.md`](../ezkey-org-editorial/templates/monthly-digest.template.md)
+- **Detail slug:** `monthly-digest-YYYY-MM.html`; meta line:
+  `Monthly digest · <Month> <Year>` (FR: `Sommaire mensuel · <Month> <Year>`).
+- **Index:** single page (`monthly-digest.html` / `fr/monthly-digest.html`), newest month first.
+  Months with a full digest show title + excerpt linking to the detail page. Legacy hand-written
+  months (Feb–Apr 2026) remain index-only until retrofilled by the skill.
 - **Tone:** sober, factual, structured summary — never a commit log. Author in English first,
   then French mirror at publish time.
 
@@ -234,9 +233,9 @@ Git-distilled activity digests** only — not day-level reflections or long-form
 
 | Lane | Role |
 | ---- | ---- |
-| **Product updates** | Short outward-facing milestone paragraph (+ link to detailed note when available) |
-| **Field notes** | Detailed monthly digest by subject |
+| **Monthly digests** | Month-over-month activity signal (index + detail when published) |
 | **Articles** | Long-form essays and craft writing |
+| **Changelog** | Versioned technical release notes (future) |
 
 ---
 
@@ -302,12 +301,13 @@ The site uses a **single coherent palette** derived from the background gradient
 | [fr/index.html](fr/index.html) | French landing page |
 | [source-and-evaluation.html](source-and-evaluation.html) / [fr/source-and-evaluation.html](fr/source-and-evaluation.html) | Private repo; docs/run-local framing |
 | [trust.html](trust.html) / [fr/trust.html](fr/trust.html) | Trust & security diligence |
-| [updates.html](updates.html) / [fr/updates.html](fr/updates.html) | Product updates archive |
+| [monthly-digest.html](monthly-digest.html) / [fr/monthly-digest.html](fr/monthly-digest.html) | Monthly digests index |
+| [monthly-digest-YYYY-MM.html](monthly-digest-2026-06.html) / [fr/monthly-digest-YYYY-MM.html](fr/monthly-digest-2026-06.html) | Full monthly digest detail pages |
 | [guides.html](guides.html) / [fr/guides.html](fr/guides.html) | Evaluator guides & walkthroughs hub |
 | [articles.html](articles.html) / [fr/articles.html](fr/articles.html) | About Ezkey + Craft & engineering sections |
 | [exp1-guided-tour.html](exp1-guided-tour.html) / [fr/exp1-guided-tour.html](fr/exp1-guided-tour.html) | Exp1 guided tour (EN/FR) |
 | [changelog.html](changelog.html) / [fr/changelog.html](fr/changelog.html) | Changelog placeholder |
 | [sitemap.xml](sitemap.xml) | Sitemap for crawlers |
 | [robots.txt](robots.txt) | Robots + sitemap URL |
-| [updates.rss](updates.rss) / [fr/updates.rss](fr/updates.rss) | Product updates RSS |
+| [monthly-digest.rss](monthly-digest.rss) / [fr/monthly-digest.rss](fr/monthly-digest.rss) | Monthly digests RSS |
 | [../../docs/cloudflare/README.md](../../docs/cloudflare/README.md) | Cloudflare docs index |
