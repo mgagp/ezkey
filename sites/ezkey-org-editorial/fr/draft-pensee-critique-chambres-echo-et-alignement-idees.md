@@ -39,21 +39,13 @@ Les premiers modèles de l'explosion de popularité — et encore une bonne part
 
 C'est précisément pour cela qu'il est si important d'ajuster son vocabulaire lorsqu'on interagit avec l'IA. Dès qu'on prononce quelques mots, on laisse entendre qu'on a une idée plus ou moins ferme — même si, en réalité, c'est encore flou. Cela vient *peindre* la discussion et cela coupe les ailes probabilistes de l'IA. J'en ai déjà parlé ailleurs : la capacité d'introspection et d'ajustement vers un discours de neutralité ouverte est une compétence clé. Ce que je veux insister ici, c'est à quel point je la vis **encore**, tous les jours, malgré un an de pratique et malgré des modèles de plus en plus capables.
 
-## Un biais de mai : quand « comme en juin » contamine le passé
+## Quand le cadre de la tâche se mélange
 
-J'ai un exemple récent, modeste mais parlant.
+Il arrive qu'une seule phrase mélange deux cadres : celui de la tâche — rétrospective, contrainte temporelle, périmètre — et celui d'une référence récente, une méthode déjà essayée, un succès voisin. L'IA ne sépare pas toujours ces plans. Elle poursuit ce qui domine probabilistiquement, souvent la référence la plus fraîche, et le cadre affiché se déforme sans que le modèle le traite comme une erreur de jugement.
 
-J'ai généré un skill et une note d'activité mensuelle à partir des logs Git — pour le mois courant, juin. Ça s'est bien passé. Je crois avoir adopté un vocabulaire adéquat pour faire ressortir ce qui était nécessaire et ce qui était véritablement désiré pour la tâche. Ensuite, par curiosité, j'ai dit en substance : « Parfait, appliquons rétrospectivement le skill comme on l'a fait pour juin, mais pour le mois de mai. »
+Je l'ai vécu récemment : une rétrospective cadrée sur une période passée, formulée en même temps qu'une allusion à un exercice déjà mené sur une autre période. Le résultat a glissé — références temporelles incohérentes, cadre de la tâche absorbé par la continuité probabiliste. Rien de spectaculaire ; mais frappant, parce que le modèle était très capable — guardrails, prudence des fournisseurs — et que l'incohérence me paraissait évidente. Elle ne le lui a pas été.
 
-Pour tout ce travail, j'ai utilisé un modèle frontière paramétré pour offrir son maximum de rendement — réflexion étendue, le meilleur de ce que le fournisseur propose aujourd'hui.
-
-On pourrait croire qu'avec un tel modèle, on s'écarte du risque d'hallucination, du risque de biais, du risque de chambre d'écho. Il y a une évolution, certes : guardrails, règles, prudence des grands fournisseurs. C'est indéniable. Cependant, le risque est toujours présent. Il nous attend à tous les détours.
-
-Le simple fait d'avoir mentionné, dans la même phrase, mon souhait d'appliquer la nouvelle méthode pour **mai** en incluant que l'on **répétait l'exercice du mois de juin** a suffi pour introduire un biais. Lors de la génération, l'IA a produit certaines phrases où il y avait une référence au travail subséquent de juin. Or l'exercice était positionné pour faire une rétrospective de mai — comme si cela avait été fait en mai. Une référence à un événement futur n'était pas logique, pas appropriée. L'IA n'a pas été en mesure de détecter cette incohérence temporelle et d'appliquer le jugement qui s'imposait.
-
-Petit exemple. Exemple qui démontre pourtant que la pensée critique, le discours neutre, l'introspection sur la parole — conserver un ton ouvert là où il faut garder les voies probabilistes ouvertes, et opinionné seulement là où il faut trancher — reste un enjeu constant.
-
-Les IA vont assurément évoluer pour adopter des éléments de pensée critique. J'en suis convaincu, et ça élèvera le jeu. Mais d'ici là, il faut garder ce phénomène en tête et se donner à soi-même une rétrospective de discours appropriée.
+Cela confirme ce que les sections précédentes avancent : la pensée critique, le discours neutre, l'introspection sur sa propre parole — garder les voies ouvertes là où le cadre doit rester malléable, trancher seulement là où l'intention l'exige — ne cède pas devant la puissance du modèle. Les IA gagneront en jugement critique ; d'ici là, une rétrospective sur sa formulation, avant de produire, reste une discipline essentielle.
 
 ## Alignement d'idées : une phrase qui change la conversation
 
