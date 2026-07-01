@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Monthly digest: February 2026 in review — Ezkey">
+    <meta property="og:description" content="A distilled digest of Ezkey's February 2026 work: tenant admin UI bootstrap, HMAC-signed audit chains, admin deactivation, non-blocking authentication, and OAuth token patterns.">
+    <meta property="og:url" content="https://ezkey.org/monthly-digest-2026-02.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Monthly digest: February 2026 in review — Ezkey">
+    <meta name="twitter:description" content="A distilled digest of Ezkey's February 2026 work: tenant admin UI bootstrap, HMAC-signed audit chains, admin deactivation, non-blocking authentication, and OAuth token patterns.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/monthly-digest-2026-02.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest-2026-02.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest-2026-02.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest-2026-02.html">
+    <title>Monthly digest: February 2026 in review — Ezkey</title>
+    <meta name="description" content="A distilled digest of Ezkey's February 2026 work: tenant admin UI bootstrap, HMAC-signed audit chains, admin deactivation, non-blocking authentication, and OAuth token patterns.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/monthly-digest.html">Monthly digests</a> &middot; <a href="/fr/monthly-digest-2026-02.html">Lire en francais</a></p>
+        <article>
+            <p class="doc-meta">Monthly digest &middot; February 2026</p>
+            <header class="hero-title">
+                <p class="label">February 2026 in review</p>
+                <h1>Construction in earnest — admin console bootstrap, audit integrity, and operator guardrails</h1>
+                <p class="tagline">A distilled look at February — the first tenant-scoped admin UI pages, HMAC-signed audit chains, and the operator lifecycle guardrails that set the tone for the technology preview.</p>
+            </header>
+
+            <h2>In short</h2>
+            <p class="lead">February marked the shift from backend-only progress to visible operator-facing construction. Energy split between bootstrapping a tenant-scoped web admin console, hardening the audit trail with HMAC-signed chains and lifecycle sealing, and expanding admin and enrollment lifecycle operations — deactivation, non-blocking re-authentication, OAuth token patterns, and richer tenant identity fields. Spring Boot 4 and PostgreSQL 18 upgrades kept the stack current while the CLI and TUI gained context headers and improved error handling.</p>
+
+            <h2>Documentation &amp; methodology</h2>
+            <p>Written rationale clarified why enrollment credentials and access control sit across separate APIs. Planning artifacts outlined device simulation, SDK extraction, admin TUI, and tenant deactivation integrity. Postman environments and API docs tracked the evolving local-development workflow.</p>
+
+            <h2>Code hygiene</h2>
+            <p>Spring Boot moved to 4.0.3; PostgreSQL Docker images to version 18. The SDK module entered the Maven reactor with refactored configuration records and a minimal JSON helper. Broad formatting and import cleanups ran through services and tests without changing product direction.</p>
+
+            <h2>Admin UI</h2>
+            <p>This was the month's headline. The tenant admin UI project started from scratch — tenants, admin management, audit logs, enrollment detail with a test-authentication action, reusable data tables with sorting and page-size controls, and Docker wiring for local runs. Runtime API key configuration and login integration connected the console to live backends.</p>
+
+            <h2>Backend &amp; API contracts</h2>
+            <p>Audit logging gained HMAC integrity with chain checkpoints, sealing, gap declaration, tenant-scoped visibility, integration ID snapshots, and optional reason fields on entries. Admin deactivation arrived with structured error responses. Authentication flows picked up a non-blocking option and OAuth-style access/refresh tokens for the Admin API. Tenant and enrollment models enriched with governance and lifecycle fields; the Crypto API moved to EC P-256 key pairs. Exception handling consolidated around ProblemDetail-shaped validation and constraint errors.</p>
+
+            <h2>The rest worth mentioning</h2>
+            <ul>
+                <li><strong>CLI / TUI:</strong> Context headers showing operator identity, improved CLI/TUI mode handling, and RFC 9457-aware client error parsing.</li>
+                <li><strong>Infrastructure:</strong> Docker Compose gained init configuration volumes; Auth API port standardization to 8085.</li>
+            </ul>
+
+            <div class="closing">
+                <p>February reads as foundation-laying — the admin console existed as a real surface, audit integrity became a first-class concern, and operator lifecycle guardrails started to appear. March's natural follow-through was depth: pagination, dashboards, and contract hardening across the console.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>Francais:</strong> <a href="/fr/monthly-digest-2026-02.html">Version francaise de cette note</a></p>
+            <p class="doc-link-sibling"><strong>Back to index:</strong> <a href="/monthly-digest.html">Monthly digests</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>

@@ -35,11 +35,11 @@
       <description><![CDATA[L'interface d'administration est complete a environ 90 %. L'application mobile est en cours de reecriture, et les API cryptographiques sont revues. L'assurance qualite se renforce et met au jour de nombreux points a traiter avant d'envisager une sortie. Les progres sont reguliers et le produit prend vraiment forme.]]></description>
     </item>
     <item>
-      <title>Fevrier 2026 — Jalon</title>
-      <link>https://ezkey.org/fr/monthly-digest.html#digest-2026-02</link>
-      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest.html#digest-2026-02</guid>
+      <title>Fevrier 2026 — La construction s'engage — bootstrap console admin, integrite d'audit et garde-fous operateur</title>
+      <link>https://ezkey.org/fr/monthly-digest-2026-02.html</link>
+      <guid isPermaLink="true">https://ezkey.org/fr/monthly-digest-2026-02.html</guid>
       <pubDate>Sun, 01 Feb 2026 12:00:00 GMT</pubDate>
-      <description><![CDATA[Construire un systeme d'authentification, c'est exigeant. Ezkey sera publie par phases ; la premiere est prevue dans les prochains mois.]]></description>
+      <description><![CDATA[Construire un systeme d'authentification, c'est exigeant. Le rendre sur et fiable, c'est encore plus dur. Ezkey sera publie par phases ; la premiere est prevue dans les prochains mois. Ce sera une preversion technologique : elle montrera le potentiel du systeme mais ne sera pas prete pour la production. Cote activites : une interface d'administration web a commence a prendre forme ce mois-ci — d'abord centree sur l'administration de locataires — accompagnee d'une integrite des logs d'audit par chaine HMAC signee, de la desactivation d'administrateurs et d'une option d'authentification non bloquante. La construction avait vraiment commence.]]></description>
     </item>
   </channel>
 </rss>

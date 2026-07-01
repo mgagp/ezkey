@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Sommaire mensuel: f&eacute;vrier 2026 en revue — Ezkey">
+    <meta property="og:description" content="Un sommaire distill&eacute; du travail de f&eacute;vrier 2026 sur Ezkey: bootstrap console admin locataire, cha&icirc;nes d&rsquo;audit HMAC sign&eacute;es, d&eacute;sactivation admin, authentification non bloquante, et jetons OAuth.">
+    <meta property="og:url" content="https://ezkey.org/fr/monthly-digest-2026-02.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="fr_FR">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sommaire mensuel: f&eacute;vrier 2026 en revue — Ezkey">
+    <meta name="twitter:description" content="Un sommaire distill&eacute; du travail de f&eacute;vrier 2026 sur Ezkey: bootstrap console admin locataire, cha&icirc;nes d&rsquo;audit HMAC sign&eacute;es, d&eacute;sactivation admin, authentification non bloquante, et jetons OAuth.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/fr/monthly-digest-2026-02.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest-2026-02.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest-2026-02.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest-2026-02.html">
+    <title>Sommaire mensuel: f&eacute;vrier 2026 en revue — Ezkey</title>
+    <meta name="description" content="Un sommaire distill&eacute; du travail de f&eacute;vrier 2026 sur Ezkey: bootstrap console admin locataire, cha&icirc;nes d&rsquo;audit HMAC sign&eacute;es, d&eacute;sactivation admin, authentification non bloquante, et jetons OAuth.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/fr/monthly-digest.html">Sommaires mensuels</a> &middot; <a href="/monthly-digest-2026-02.html">Read in English</a></p>
+        <article>
+            <p class="doc-meta">Sommaire mensuel &middot; f&eacute;vrier 2026</p>
+            <header class="hero-title">
+                <p class="label">F&eacute;vrier 2026 en revue</p>
+                <h1>La construction s&rsquo;engage — bootstrap console admin, int&eacute;grit&eacute; d&rsquo;audit et garde-fous op&eacute;rateur</h1>
+                <p class="tagline">Un regard distill&eacute; sur f&eacute;vrier — les premi&egrave;res pages admin centr&eacute;es locataire, les cha&icirc;nes d&rsquo;audit HMAC sign&eacute;es, et les garde-fous de cycle de vie op&eacute;rateur qui posent le ton de la pr&eacute;version technologique.</p>
+            </header>
+
+            <h2>En bref</h2>
+            <p class="lead">F&eacute;vrier marque le passage d&rsquo;un progr&egrave;s surtout backend &agrave; une construction visible c&ocirc;t&eacute; op&eacute;rateur. L&rsquo;&eacute;nergie s&rsquo;est partag&eacute;e entre le bootstrap d&rsquo;une console admin web centr&eacute;e locataire, le durcissement de la piste d&rsquo;audit avec cha&icirc;nes HMAC sign&eacute;es et scellement de cycle de vie, et l&rsquo;extension des op&eacute;rations de cycle de vie admin et enr&ocirc;lement — d&eacute;sactivation, r&eacute;authentification non bloquante, jetons OAuth, et champs d&rsquo;identit&eacute; tenant plus riches. Les mont&eacute;es Spring Boot&nbsp;4 et PostgreSQL&nbsp;18 ont maintenu la stack &agrave; jour, tandis que le CLI et le TUI ont gagn&eacute; en-t&ecirc;tes de contexte et meilleure gestion d&rsquo;erreurs.</p>
+
+            <h2>Documentation &amp; m&eacute;thodologie</h2>
+            <p>Des &eacute;crits de fond ont clarifi&eacute; pourquoi identifiants d&rsquo;enr&ocirc;lement et contr&ocirc;le d&rsquo;acc&egrave;s reposent sur des API s&eacute;par&eacute;es. Des artefacts de planification ont esquiss&eacute; simulation d&rsquo;appareil, extraction SDK, TUI admin, et int&eacute;grit&eacute; de d&eacute;sactivation tenant. Environnements Postman et docs API ont suivi l&rsquo;&eacute;volution du workflow de d&eacute;veloppement local.</p>
+
+            <h2>Hygi&egrave;ne de code</h2>
+            <p>Spring Boot est pass&eacute; en 4.0.3; les images Docker PostgreSQL en version&nbsp;18. Le module SDK est entr&eacute; dans le r&eacute;acteur Maven avec records de configuration refactoris&eacute;s et helper JSON minimal. Des nettoyages larges de formatage et d&rsquo;imports ont travers&eacute; services et tests sans changer la direction produit.</p>
+
+            <h2>Admin UI</h2>
+            <p>C&rsquo;est le fil dominant du mois. Le projet UI admin locataire a d&eacute;marr&eacute; de z&eacute;ro — tenants, gestion admin, journaux d&rsquo;audit, d&eacute;tail enr&ocirc;lement avec action de test d&rsquo;authentification, tableaux de donn&eacute;es r&eacute;utilisables avec tri et choix de taille de page, et c&acirc;blage Docker pour ex&eacute;cution locale. Configuration runtime de cl&eacute; API et int&eacute;gration login ont connect&eacute; la console aux backends live.</p>
+
+            <h2>Backend &amp; contrats d&rsquo;API</h2>
+            <p>La journalisation d&rsquo;audit a gagn&eacute; l&rsquo;int&eacute;grit&eacute; HMAC avec points de contr&ocirc;le de cha&icirc;ne, scellement, d&eacute;claration d&rsquo;&eacute;cart, visibilit&eacute; centr&eacute;e locataire, instantan&eacute;s d&rsquo;ID d&rsquo;int&eacute;gration, et champs raison optionnels sur les entr&eacute;es. La d&eacute;sactivation admin est arriv&eacute;e avec r&eacute;ponses d&rsquo;erreur structur&eacute;es. Les flux d&rsquo;authentification ont pris une option non bloquante et des jetons access/refresh de style OAuth pour l&rsquo;Admin API. Mod&egrave;les tenant et enr&ocirc;lement enrichis avec gouvernance et champs de cycle de vie; l&rsquo;API Crypto est pass&eacute;e aux paires de cl&eacute;s EC P-256. La gestion d&rsquo;exceptions s&rsquo;est consolid&eacute;e autour de validation et erreurs de contrainte au format ProblemDetail.</p>
+
+            <h2>Le reste, digne de mention</h2>
+            <ul>
+                <li><strong>CLI / TUI:</strong> en-t&ecirc;tes de contexte montrant l&rsquo;identit&eacute; op&eacute;rateur, meilleure gestion mode CLI/TUI, et parsing d&rsquo;erreurs client compatible RFC&nbsp;9457.</li>
+                <li><strong>Infrastructure:</strong> Docker Compose a gagn&eacute; volumes de configuration init; standardisation du port Auth API vers 8085.</li>
+            </ul>
+
+            <div class="closing">
+                <p>F&eacute;vrier se lit comme pose des fondations — la console admin existait comme surface r&eacute;elle, l&rsquo;int&eacute;grit&eacute; d&rsquo;audit est devenue pr&eacute;occupation de premier plan, et les garde-fous de cycle de vie op&eacute;rateur ont commenc&eacute; &agrave; appara&icirc;tre. La suite naturelle en mars: profondeur — pagination, tableaux de bord, et durcissement des contrats dans la console.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>English:</strong> <a href="/monthly-digest-2026-02.html">English version of this note</a></p>
+            <p class="doc-link-sibling"><strong>Retour &agrave; l&rsquo;index:</strong> <a href="/fr/monthly-digest.html">Sommaires mensuels</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/fr/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>
