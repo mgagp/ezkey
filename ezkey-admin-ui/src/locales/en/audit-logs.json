@@ -142,6 +142,7 @@
     "TENANT_ACTIVATED": "Tenant Activated",
     "AUDIT_CHAIN_ARCHIVE_SEALED": "Audit Chain Archive Sealed",
     "AUDIT_CHAIN_GAP_DECLARED": "Audit Chain Gap Declared",
+    "AUDIT_INTEGRITY_RUPTURE_CONCILIATED": "Audit Integrity Rupture Conciliated",
     "AUDIT_CHAIN_GAP_PENDING": "Audit Chain Gap Pending",
     "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED": "Nightly Integrity Validation Completed"
   },

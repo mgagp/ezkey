@@ -45,6 +45,8 @@ import org.ezkey.audit.dto.CheckpointType;
 import org.ezkey.audit.dto.DeclareAuditChainIncidentRequest;
 import org.ezkey.audit.dto.GapDeclarationRequest;
 import org.ezkey.audit.dto.GapDeclarationResult;
+import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
+import org.ezkey.audit.dto.IntegrityRuptureReconciliationResult;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
 import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
@@ -809,6 +811,57 @@ public class AuditLogController {
   public ResponseEntity<GapDeclarationResult> declareGap(
       @Valid @RequestBody GapDeclarationRequest request) {
     return ResponseEntity.ok(auditLifecycleService.declareGap(request));
+  }
+
+  /**
+   * Reconciles an open {@code AUDIT_INTEGRITY_RUPTURE} alert with a signed manipulation
+   * conciliation checkpoint.
+   *
+   * @param request rupture boundaries, justification, category, and alert reference
+   * @return conciliation result with checkpoint id and chain HMAC
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @PostMapping("/lifecycle/reconcile-integrity-rupture")
+  @Operation(
+      summary = "Reconcile an integrity rupture alert",
+      description =
+          "Creates a MANIPULATION_CONCILIATION checkpoint spanning failBoundary to"
+              + " resumeBoundary, removes REGULAR checkpoints in that window, re-chains"
+              + " downstream checkpoints, emits an audit meta-event, and resolves the open"
+              + " AUDIT_INTEGRITY_RUPTURE alert. Blocked while AUDIT_CHAIN_HEARTBEAT_STALE is"
+              + " OPEN. Global Admin only.\n\n"
+              + "Identify the alert by `alertId` or `dedupeKey` (exactly one). Boundaries must"
+              + " match the alert payload failBoundary/resumeBoundary (or windowStart/windowEnd"
+              + " when those are absent).")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Integrity rupture reconciled successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid request: alert not found, wrong type/status, boundary mismatch, or"
+                    + " missing alert reference",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Conflicting checkpoint types in rupture window or conciliation already exists",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Not authenticated",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Not a Global Admin",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+      })
+  public ResponseEntity<IntegrityRuptureReconciliationResult> reconcileIntegrityRupture(
+      @Valid @RequestBody IntegrityRuptureReconciliationRequest request) {
+    return ResponseEntity.ok(
+        auditLifecycleService.reconcileIntegrityRupture(request, extractRequesterAdminId()));
   }
 
   /**

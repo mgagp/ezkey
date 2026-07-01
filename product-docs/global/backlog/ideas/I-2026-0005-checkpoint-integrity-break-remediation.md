@@ -3,15 +3,16 @@
 ## Metadata
 
 - **ID:** `I-2026-0005`
-- **Status:** `incubating`
+- **Status:** `promoted`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-06-05`
-- **Last reviewed at:** `2026-06-05`
+- **Updated at:** `2026-06-29`
+- **Last reviewed at:** `2026-06-29`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `audit`
 - **Captured by:** Marc
-- **GitHub issue:** #269 (Wave B program umbrella — B2 slice)
+- **GitHub issue:** #269 (Wave B program umbrella)
+- **Issue labels:** `lane:a`, `type:feat`, `component:admin-api`, `component:admin-ui`, `component:core`, `priority:p1`, `status:ready`
 
 ## Intent
 
@@ -106,7 +107,10 @@ positive loop. `I-2026-0022` should capture this boundary rule in the scheduled 
 
 ## Promotion notes
 
-Grilling: C7 settled 2026-05-19 — **ready for component design pack** on manipulation path + alert queue model. **Wave B B2** after `TB-2026-06-28` nightly batch. Design pack: [`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md). Program issue **#269**.
+Grilling: C7 settled 2026-05-19 — **ready for component design pack** on manipulation path + alert queue model. **Wave B B2** after B1 (`TB-2026-06-28-nightly-integrity-validation-batch`, merged PR #270). **Promoted** to
+[`TB-2026-06-28-manipulation-integrity-remediation`](../TB-2026-06-28-manipulation-integrity-remediation.md)
+(2026-06-29) under program issue **#269**. Design pack:
+[`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md).
 
 ## Links
 
@@ -114,5 +118,6 @@ Grilling: C7 settled 2026-05-19 — **ready for component design pack** on manip
 - Related vision: `V-2026-0013` (future meta-resolution, not R1)
 - Related vision: `V-2026-0004` (integrity validation strategy)
 - Related backlog: `I-2026-0006` (automatic detection batch), `I-2026-0007` (dashboard visibility)
+- TB (B2): [`../TB-2026-06-28-manipulation-integrity-remediation.md`](../TB-2026-06-28-manipulation-integrity-remediation.md)
 - Related feature: `F-audit-chain`
 - Related principles: `#1` (simplicity), `#11` (lifecycle without surprise), `#12` (security as posture)

@@ -1,17 +1,55 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { ExternalLink } from 'lucide-react';
+import { CheckCircle, ExternalLink } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
+import { Alert as UiAlert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDate } from '@/lib/utils';
-import { useGetAlert } from '@/generated/admin-api/alerts/alerts';
+import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { ReasonFieldRow } from '@/components/feature/reason-field-row';
+import { useToast } from '@/context/use-toast';
+import { getGetAlertQueryKey, useGetAlert } from '@/generated/admin-api/alerts/alerts';
+import { useReconcileIntegrityRupture } from '@/generated/admin-api/audit-logs/audit-logs';
 import type {
   AlertResponseDto,
   AlertResponseDtoSeverity,
   AlertResponseDtoStatus,
+  IntegrityRuptureReconciliationRequestCategory,
+  IntegrityRuptureReconciliationResult,
 } from '@/generated/admin-api/model';
+import { IntegrityRuptureReconciliationRequestCategory as ReconcileCategory } from '@/generated/admin-api/model';
+import { getTranslatedApiError } from '@/lib/api-error-i18n';
+import { formatDate } from '@/lib/utils';
+
+function InfoPair({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex gap-2 text-sm">
+      <span className="text-fg-muted shrink-0">{label}:</span>
+      <span className={mono ? 'font-mono text-xs break-all' : ''}>{value}</span>
+    </div>
+  );
+}
+
+const RECONCILE_CATEGORIES = [
+  ReconcileCategory.ACCIDENTAL_DBA_EDIT,
+  ReconcileCategory.CORRUPTION,
+  ReconcileCategory.INVESTIGATED_BENIGN,
+  ReconcileCategory.OTHER,
+] as const satisfies readonly IntegrityRuptureReconciliationRequestCategory[];
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -170,6 +208,18 @@ export default function AlertDetailPage() {
   const { t } = useTranslation(['alerts', 'common']);
   const { alertId } = useParams<{ alertId: string }>();
   const id = Number(alertId);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [reconcileJustification, setReconcileJustification] = useState('');
+  const [reconcileCategory, setReconcileCategory] =
+    useState<IntegrityRuptureReconciliationRequestCategory>(
+      ReconcileCategory.INVESTIGATED_BENIGN,
+    );
+  const [reconcileTicketRef, setReconcileTicketRef] = useState('');
+  const [reconcileResult, setReconcileResult] =
+    useState<IntegrityRuptureReconciliationResult | null>(null);
 
   const { data: alert, isLoading } = useGetAlert<AlertResponseDto>(
     Number.isNaN(id) ? 0 : id,
@@ -179,6 +229,54 @@ export default function AlertDetailPage() {
   const parsedPayload = useMemo(() => parsePayload(alert?.payload), [alert?.payload]);
   const isGapAlert = alert?.alertType === 'AUDIT_CHAIN_GAP_PENDING';
   const isIntegrityRuptureAlert = alert?.alertType === 'AUDIT_INTEGRITY_RUPTURE';
+
+  const rupturePayload = useMemo(() => {
+    if (!isIntegrityRuptureAlert || !isAuditIntegrityRupturePayload(parsedPayload)) {
+      return null;
+    }
+    return parsedPayload;
+  }, [isIntegrityRuptureAlert, parsedPayload]);
+
+  const failBoundary = rupturePayload?.failBoundary ?? rupturePayload?.windowStart;
+  const resumeBoundary = rupturePayload?.resumeBoundary ?? rupturePayload?.windowEnd;
+  const canReconcile =
+    alert?.status === 'OPEN'
+    && isIntegrityRuptureAlert
+    && Boolean(failBoundary && resumeBoundary);
+
+  const reconcileMutation = useReconcileIntegrityRupture({
+    mutation: {
+      onSuccess: async (data) => {
+        const result = data as unknown as IntegrityRuptureReconciliationResult;
+        setReconcileResult(result);
+        toast(t('alerts:reconcileDialog.toastSuccess'), 'success');
+        if (!Number.isNaN(id)) {
+          await queryClient.invalidateQueries({ queryKey: getGetAlertQueryKey(id) });
+        }
+        await queryClient.invalidateQueries({ queryKey: ['/api/v1/alerts'] });
+      },
+      onError: (error) => {
+        toast(
+          getTranslatedApiError(error, t, t('alerts:reconcileDialog.errorFailed')),
+          'error',
+        );
+      },
+    },
+  });
+
+  const closeReconcileDialog = () => {
+    setReconcileOpen(false);
+    setReconcileJustification('');
+    setReconcileCategory(ReconcileCategory.INVESTIGATED_BENIGN);
+    setReconcileTicketRef('');
+    setReconcileResult(null);
+    reconcileMutation.reset();
+  };
+
+  const openReconcileDialog = () => {
+    setReconcileResult(null);
+    setReconcileOpen(true);
+  };
 
   return (
     <AppShell
@@ -272,6 +370,16 @@ export default function AlertDetailPage() {
                     </span>
                   </InfoRow>
                 </dl>
+                {canReconcile && (
+                  <div className="mt-4 pt-4 border-t-2 border-fg/10">
+                    <Button type="button" size="sm" onClick={openReconcileDialog}>
+                      {t('alerts:reconcileDialog.openAction')}
+                    </Button>
+                    <p className="mt-2 text-xs text-fg-muted">
+                      {t('alerts:reconcileDialog.openHint')}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -315,6 +423,162 @@ export default function AlertDetailPage() {
           </Card>
         </div>
       )}
+
+      <Dialog
+        open={reconcileOpen}
+        onClose={closeReconcileDialog}
+        title={t('alerts:reconcileDialog.title')}
+        size="md"
+        dismissible={false}
+      >
+        {reconcileResult ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle className="size-5" />
+              <span className="font-bold">{t('alerts:reconcileDialog.successTitle')}</span>
+            </div>
+            <dl className="space-y-1.5 text-sm">
+              <InfoPair
+                label={t('alerts:reconcileDialog.resultBoundaries')}
+                value={
+                  reconcileResult.failBoundary && reconcileResult.resumeBoundary
+                    ? `${formatDate(reconcileResult.failBoundary)} → ${formatDate(reconcileResult.resumeBoundary)}`
+                    : '—'
+                }
+              />
+              <InfoPair
+                label={t('alerts:reconcileDialog.resultCheckpointId')}
+                value={String(reconcileResult.conciliationCheckpointId ?? '—')}
+              />
+              <InfoPair
+                label={t('alerts:reconcileDialog.resultChainHmac')}
+                value={reconcileResult.conciliationChainHmac ?? '—'}
+                mono
+              />
+              <InfoPair
+                label={t('alerts:reconcileDialog.resultAuditLogId')}
+                value={String(reconcileResult.auditLogId ?? '—')}
+              />
+            </dl>
+            <div className="flex justify-end pt-2">
+              <Button type="button" onClick={closeReconcileDialog}>
+                {t('alerts:reconcileDialog.done')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!canReconcile || !failBoundary || !resumeBoundary || Number.isNaN(id)) {
+                return;
+              }
+              reconcileMutation.mutate({
+                data: {
+                  alertId: id,
+                  failBoundary,
+                  resumeBoundary,
+                  justification: reconcileJustification.trim(),
+                  category: reconcileCategory,
+                  externalTicketReference: reconcileTicketRef.trim() || undefined,
+                },
+              });
+            }}
+            className="space-y-4"
+          >
+            <p className="text-xs text-fg-muted">{t('alerts:reconcileDialog.intro')}</p>
+            {failBoundary && resumeBoundary && (
+              <div className="border-2 border-warning/40 bg-warning/5 p-3 space-y-1">
+                <p className="text-[10px] uppercase tracking-wider text-fg-muted font-bold">
+                  {t('alerts:reconcileDialog.boundariesHeading')}
+                </p>
+                <p className="text-sm font-bold">
+                  {formatDate(failBoundary)} → {formatDate(resumeBoundary)}
+                </p>
+              </div>
+            )}
+            <div className="space-y-1">
+              <Label htmlFor="reconcile-category" className="text-xs">
+                {t('alerts:reconcileDialog.categoryLabel')}
+              </Label>
+              <Select
+                id="reconcile-category"
+                value={reconcileCategory}
+                onChange={(e) =>
+                  setReconcileCategory(
+                    e.target.value as IntegrityRuptureReconciliationRequestCategory,
+                  )}
+              >
+                {RECONCILE_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {t(`alerts:reconcileDialog.category.${category}`)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="reconcile-ticket" className="text-xs">
+                {t('alerts:reconcileDialog.ticketLabel')}{' '}
+                <span className="text-fg-muted font-normal">
+                  {t('alerts:reconcileDialog.ticketOptional')}
+                </span>
+              </Label>
+              <Input
+                id="reconcile-ticket"
+                value={reconcileTicketRef}
+                onChange={(e) => setReconcileTicketRef(e.target.value)}
+                maxLength={128}
+                placeholder={t('alerts:reconcileDialog.ticketPlaceholder')}
+              />
+            </div>
+            <ReasonFieldRow
+              presetGroup="audit_chain_justification"
+              idPrefix="alert-reconcile"
+              inputId="reconcile-just"
+              value={reconcileJustification}
+              onChange={setReconcileJustification}
+              label={
+                <>
+                  {t('alerts:reconcileDialog.justification')}{' '}
+                  <span className="text-fg-muted font-normal">
+                    {t('alerts:reconcileDialog.justificationHint')}
+                  </span>
+                </>
+              }
+              placeholder={t('alerts:reconcileDialog.justificationPlaceholder')}
+              showMinLengthError={
+                reconcileJustification.trim().length > 0
+                && reconcileJustification.trim().length < 10
+              }
+              minLengthErrorTone="justification"
+            />
+            {reconcileMutation.isError && (
+              <UiAlert variant="error">
+                {getTranslatedApiError(
+                  reconcileMutation.error,
+                  t,
+                  t('alerts:reconcileDialog.errorFailed'),
+                )}
+              </UiAlert>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={closeReconcileDialog}>
+                {t('alerts:reconcileDialog.cancel')}
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  reconcileMutation.isPending || reconcileJustification.trim().length < 10
+                }
+              >
+                {reconcileMutation.isPending
+                  ? t('alerts:reconcileDialog.submitting')
+                  : t('alerts:reconcileDialog.submit')}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
     </AppShell>
   );
 }

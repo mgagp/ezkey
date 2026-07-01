@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-28-nightly-integrity-validation-batch`
-- **Status:** `ready`
+- **Status:** `completed`
 - **Related idea:** `I-2026-0006-nightly-integrity-validation-batch`
 - **Parent context:** Wave B integrity cluster; design pack
   [`integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md)
@@ -11,7 +11,9 @@
 - **Lane:** `A` (admin-api / core scheduler + alert producer)
 - **Posture:** `single-pass` for B1 scope; manipulation remediation deferred to B2 (`I-2026-0005`)
 - **GitHub issue:** #269 (Wave B program umbrella)
+- **GitHub PR:** #270 (merged)
 - **Created at:** `2026-06-28`
+- **Completed at:** `2026-06-29`
 
 ## Objective
 
@@ -71,9 +73,9 @@ rupture — without blocking on dashboard widgets (`I-2026-0007`, B3).
 
 ## Validation
 
-- [ ] Maven baseline (root reactor).
-- [ ] Unit tests for nightly orchestration and registry.
-- [ ] clean-start: scheduler enabled; manual trigger or shortened cron in test profile.
+- [x] Maven baseline (root reactor).
+- [x] Unit tests for nightly orchestration and registry.
+- [x] clean-start: scheduler enabled; manual trigger or shortened cron in test profile.
 - [ ] Manual lab: induce audit tampering in window → alert after batch (maintainer).
 - [ ] Manual lab: Admin API stop → heartbeat path unchanged (regression).
 

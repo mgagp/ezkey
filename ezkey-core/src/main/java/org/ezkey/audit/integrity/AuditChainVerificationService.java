@@ -38,14 +38,16 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>Undeclared temporal gaps (missing checkpoints between consecutive windows)
  * </ul>
  *
- * <p><b>Lifecycle-aware verification:</b> Checkpoints of type {@code ARCHIVE_SEAL} and {@code
- * GAP_DECLARATION} are handled specially:
+ * <p><b>Lifecycle-aware verification:</b> Checkpoints of type {@code ARCHIVE_SEAL}, {@code
+ * GAP_DECLARATION}, and {@code MANIPULATION_CONCILIATION} are handled specially:
  *
  * <ul>
  *   <li>{@code ARCHIVE_SEAL}: entries_digest re-computation is skipped (entries no longer in DB by
  *       design). Chain HMAC linkage is still fully verified.
  *   <li>{@code GAP_DECLARATION}: entries_digest re-computation is skipped (no entries expected).
  *       Chain HMAC linkage is still fully verified.
+ *   <li>{@code MANIPULATION_CONCILIATION}: entries_digest re-computation is skipped (integrity
+ *       rupture bridge). Chain HMAC linkage is still fully verified.
  * </ul>
  *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
@@ -147,6 +149,7 @@ public class AuditChainVerificationService {
       String type = checkpoint.getCheckpointType();
       boolean isArchiveSeal = "ARCHIVE_SEAL".equals(type);
       boolean isGapDeclaration = "GAP_DECLARATION".equals(type);
+      boolean isManipulationConciliation = "MANIPULATION_CONCILIATION".equals(type);
 
       if (isArchiveSeal) {
         archivedCheckpoints++;
@@ -159,6 +162,13 @@ public class AuditChainVerificationService {
         logger.debug(
             "Skipping entries_digest re-computation for GAP_DECLARATION checkpoint at window {} "
                 + "(declared downtime gap: {})",
+            checkpoint.getWindowStart(),
+            checkpoint.getNotes());
+      } else if (isManipulationConciliation) {
+        gapDeclaredCheckpoints++;
+        logger.debug(
+            "Skipping entries_digest re-computation for MANIPULATION_CONCILIATION checkpoint at"
+                + " window {} (integrity rupture conciliation: {})",
             checkpoint.getWindowStart(),
             checkpoint.getNotes());
       } else {

@@ -20,10 +20,18 @@ import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
+import org.ezkey.alert.domain.AlertResolutionReason;
+import org.ezkey.alert.domain.AlertSeverity;
+import org.ezkey.alert.domain.AlertStatus;
+import org.ezkey.alert.domain.AlertType;
+import org.ezkey.alert.domain.entity.Alert;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.dto.ArchiveConfirmArchivedRequest;
 import org.ezkey.audit.dto.ArchiveEligibilityResult;
 import org.ezkey.audit.dto.ArchiveSealRequest;
+import org.ezkey.audit.dto.IntegrityRuptureConciliationCategory;
+import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
 import org.ezkey.audit.exception.AuditLifecycleConflictException;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
@@ -220,5 +228,99 @@ class AuditLifecycleServiceTest {
     assertEquals("digest-0123456789abcdef", checkpoint.getExportBundleDigest());
     assertEquals(1, result.checkpointsExported());
     verify(checkpointRepository).saveAll(any());
+  }
+
+  @Test
+  void reconcileIntegrityRupture_whenHeartbeatStaleOpen_rejected() {
+    OffsetDateTime fail = OffsetDateTime.of(2026, 6, 1, 10, 0, 0, 0, ZoneOffset.UTC);
+    OffsetDateTime resume = fail.plusMinutes(30);
+
+    when(alertService.hasOpenHeartbeatStaleAlert()).thenReturn(true);
+
+    IntegrityRuptureReconciliationRequest request =
+        new IntegrityRuptureReconciliationRequest(
+            7L,
+            null,
+            fail,
+            resume,
+            "Investigated benign false alarm after nightly validation review.",
+            null,
+            IntegrityRuptureConciliationCategory.INVESTIGATED_BENIGN);
+
+    assertThrows(
+        IllegalStateException.class, () -> lifecycleService.reconcileIntegrityRupture(request, 1));
+    verify(checkpointRepository, never()).deleteAll(any());
+  }
+
+  @Test
+  void reconcileIntegrityRupture_whenValid_createsConciliationAndResolvesAlert() {
+    OffsetDateTime fail = OffsetDateTime.of(2026, 6, 1, 10, 0, 0, 0, ZoneOffset.UTC);
+    OffsetDateTime resume = fail.plusMinutes(30);
+    Alert alert = openIntegrityRuptureAlert(7L, fail, resume);
+
+    AuditChainCheckpoint anchor = new AuditChainCheckpoint();
+    anchor.setCheckpointId(100L);
+    anchor.setWindowStart(fail.minusMinutes(5));
+    anchor.setWindowEnd(fail);
+    anchor.setEntriesDigest("anchor-digest");
+    anchor.setChainHmac("anchor-chain-hmac");
+    anchor.setCheckpointType("REGULAR");
+
+    AuditChainCheckpoint corrupt = new AuditChainCheckpoint();
+    corrupt.setCheckpointId(101L);
+    corrupt.setWindowStart(fail);
+    corrupt.setWindowEnd(fail.plusMinutes(5));
+    corrupt.setCheckpointType("REGULAR");
+
+    AuditChainCheckpoint after = new AuditChainCheckpoint();
+    after.setCheckpointId(102L);
+    after.setWindowStart(resume);
+    after.setWindowEnd(resume.plusMinutes(5));
+    after.setEntriesDigest("after-digest");
+    after.setPrevChainHmac("stale-prev");
+    after.setChainHmac("stale-chain");
+    after.setCheckpointType("REGULAR");
+
+    when(alertService.hasOpenHeartbeatStaleAlert()).thenReturn(false);
+    when(alertService.findById(7L)).thenReturn(Optional.of(alert));
+    when(checkpointRepository.findByWindowRange(fail, resume)).thenReturn(List.of(corrupt));
+    when(checkpointRepository.findLatestBefore(fail)).thenReturn(Optional.of(anchor));
+    when(checkpointRepository.findAllWithWindowStartAtOrAfter(resume)).thenReturn(List.of(after));
+
+    IntegrityRuptureReconciliationRequest request =
+        new IntegrityRuptureReconciliationRequest(
+            7L,
+            null,
+            fail,
+            resume,
+            "Investigated benign false alarm after nightly validation review.",
+            "INC-12345",
+            IntegrityRuptureConciliationCategory.INVESTIGATED_BENIGN);
+
+    var result = lifecycleService.reconcileIntegrityRupture(request, 1);
+
+    assertEquals(fail, result.failBoundary());
+    assertEquals(resume, result.resumeBoundary());
+    assertEquals(7L, result.resolvedAlertId());
+    assertEquals(IntegrityRuptureConciliationCategory.INVESTIGATED_BENIGN, result.category());
+    verify(checkpointRepository).deleteAll(List.of(corrupt));
+    verify(checkpointRepository, times(2)).save(any(AuditChainCheckpoint.class));
+    verify(alertService)
+        .resolveByDedupeKey(
+            alert.getDedupeKey(), AlertResolutionReason.INTEGRITY_RUPTURE_CONCILIATED, 1);
+    verify(auditLogService).log(any());
+  }
+
+  private static Alert openIntegrityRuptureAlert(
+      Long alertId, OffsetDateTime fail, OffsetDateTime resume) {
+    Alert alert = new Alert();
+    alert.setAlertId(alertId);
+    alert.setAlertType(AlertType.AUDIT_INTEGRITY_RUPTURE);
+    alert.setSeverity(AlertSeverity.CRITICAL);
+    alert.setStatus(AlertStatus.OPEN);
+    alert.setDedupeKey("AUDIT_INTEGRITY_RUPTURE:" + fail.toInstant().toEpochMilli());
+    alert.setPayload(
+        "{" + "\"failBoundary\":\"" + fail + "\"," + "\"resumeBoundary\":\"" + resume + "\"" + "}");
+    return alert;
   }
 }

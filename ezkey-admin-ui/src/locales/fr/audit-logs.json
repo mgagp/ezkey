@@ -142,6 +142,7 @@
     "TENANT_ACTIVATED": "Tenant activé",
     "AUDIT_CHAIN_ARCHIVE_SEALED": "Archive chaîne d'audit scellée",
     "AUDIT_CHAIN_GAP_DECLARED": "Lacune chaîne d'audit déclarée",
+    "AUDIT_INTEGRITY_RUPTURE_CONCILIATED": "Rupture d'intégrité conciliée",
     "AUDIT_CHAIN_GAP_PENDING": "Trou de chaîne d'audit en attente",
     "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED": "Validation d'intégrité nocturne terminée"
   },

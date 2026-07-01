@@ -66,6 +66,37 @@
       "message": "Message"
     }
   },
+  "reconcileDialog": {
+    "openAction": "Reconcile integrity rupture",
+    "openHint": "Creates a signed MANIPULATION_CONCILIATION checkpoint and resolves this alert.",
+    "title": "Reconcile integrity rupture",
+    "intro": "Confirm the rupture boundaries from the alert payload, classify the incident, and provide a justification. This action is irreversible for this alert.",
+    "boundariesHeading": "Rupture boundaries",
+    "categoryLabel": "Category",
+    "category": {
+      "ACCIDENTAL_DBA_EDIT": "Accidental DBA edit",
+      "CORRUPTION": "Storage corruption (investigated)",
+      "INVESTIGATED_BENIGN": "Investigated — benign",
+      "OTHER": "Other"
+    },
+    "ticketLabel": "External ticket",
+    "ticketOptional": "(optional)",
+    "ticketPlaceholder": "e.g. INC-12345",
+    "justification": "Justification",
+    "justificationHint": "(min. 10 characters)",
+    "justificationPlaceholder": "Describe investigation outcome and why conciliation is appropriate…",
+    "cancel": "Cancel",
+    "submit": "Reconcile",
+    "submitting": "Reconciling…",
+    "done": "Done",
+    "successTitle": "Integrity rupture reconciled",
+    "resultBoundaries": "Boundaries",
+    "resultCheckpointId": "Conciliation checkpoint",
+    "resultChainHmac": "Chain HMAC",
+    "resultAuditLogId": "Audit log id",
+    "toastSuccess": "Integrity rupture reconciled.",
+    "errorFailed": "Reconciliation failed."
+  },
   "severity": {
     "INFO": "Info",
     "WARNING": "Warning",
@@ -77,6 +108,8 @@
   },
   "resolutionReason": {
     "GAP_DECLARED": "Gap declared",
+    "HEARTBEAT_RESTORED": "Heartbeat restored",
+    "INTEGRITY_RUPTURE_CONCILIATED": "Integrity rupture reconciled",
     "MANUAL": "Manual"
   },
   "type": {

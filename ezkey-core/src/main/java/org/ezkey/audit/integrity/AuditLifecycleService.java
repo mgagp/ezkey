@@ -15,6 +15,9 @@ import java.time.ZoneOffset;
 import java.util.EnumSet;
 import java.util.List;
 import org.ezkey.alert.domain.AlertResolutionReason;
+import org.ezkey.alert.domain.AlertStatus;
+import org.ezkey.alert.domain.AlertType;
+import org.ezkey.alert.domain.entity.Alert;
 import org.ezkey.alert.service.AlertService;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
@@ -28,6 +31,8 @@ import org.ezkey.audit.dto.ArchiveSealRequest;
 import org.ezkey.audit.dto.ArchiveSealResult;
 import org.ezkey.audit.dto.GapDeclarationRequest;
 import org.ezkey.audit.dto.GapDeclarationResult;
+import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
+import org.ezkey.audit.dto.IntegrityRuptureReconciliationResult;
 import org.ezkey.audit.exception.AuditLifecycleConflictException;
 import org.ezkey.audit.service.AuditLogService;
 import org.slf4j.Logger;
@@ -35,6 +40,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Service for audit chain lifecycle operations.
@@ -69,10 +76,13 @@ public class AuditLifecycleService {
 
   private static final String CHECKPOINT_TYPE_ARCHIVE_SEAL = "ARCHIVE_SEAL";
   private static final String CHECKPOINT_TYPE_GAP_DECLARATION = "GAP_DECLARATION";
+  private static final String CHECKPOINT_TYPE_MANIPULATION_CONCILIATION =
+      "MANIPULATION_CONCILIATION";
   private static final String CHECKPOINT_TYPE_REGULAR = "REGULAR";
   private static final String FIELD_SEPARATOR = "|";
   private static final String GENESIS_MARKER = "GENESIS";
   private static final String AUTO_SEAL_NOTES = "Auto-sealed by audit lifecycle policy.";
+  private static final ObjectMapper PAYLOAD_OBJECT_MAPPER = new ObjectMapper();
 
   private final AuditChainCheckpointRepository checkpointRepository;
   private final AuditLogRepository auditLogRepository;
@@ -650,6 +660,277 @@ public class AuditLifecycleService {
         chainHmac,
         metaEntry.getAuditLogId(),
         request.justification());
+  }
+
+  /**
+   * Reconciles an open {@code AUDIT_INTEGRITY_RUPTURE} alert with a signed {@code
+   * MANIPULATION_CONCILIATION} checkpoint.
+   *
+   * <p>Removes {@code REGULAR} checkpoints in the rupture window, inserts a conciliation checkpoint
+   * spanning {@code failBoundary} to {@code resumeBoundary}, re-chains downstream checkpoints,
+   * emits {@link EventType#AUDIT_INTEGRITY_RUPTURE_CONCILIATED}, and resolves the alert.
+   *
+   * @param request reconciliation boundaries, justification, and alert reference
+   * @param adminId Global Admin performing the reconciliation
+   * @return conciliation result with checkpoint id and chain HMAC
+   * @throws IllegalArgumentException when the alert or boundaries are invalid
+   * @throws IllegalStateException when HMAC is inactive or heartbeat stale blocks reconciliation
+   * @throws AuditLifecycleConflictException when non-regular checkpoints occupy the rupture window
+   */
+  @Transactional
+  public IntegrityRuptureReconciliationResult reconcileIntegrityRupture(
+      IntegrityRuptureReconciliationRequest request, Integer adminId) {
+    if (!auditHmacService.isActive()) {
+      throw new IllegalStateException(
+          "HMAC signing is not active. Integrity rupture reconciliation requires an active HMAC"
+              + " key.");
+    }
+
+    if (request.alertId() == null
+        && (request.dedupeKey() == null || request.dedupeKey().isBlank())) {
+      throw new IllegalArgumentException("Either alertId or dedupeKey must be provided.");
+    }
+    if (request.alertId() != null
+        && request.dedupeKey() != null
+        && !request.dedupeKey().isBlank()) {
+      throw new IllegalArgumentException("Provide either alertId or dedupeKey, not both.");
+    }
+
+    OffsetDateTime failBoundary = normalizeUtc(request.failBoundary());
+    OffsetDateTime resumeBoundary = normalizeUtc(request.resumeBoundary());
+    if (!resumeBoundary.isAfter(failBoundary)) {
+      throw new IllegalArgumentException("resumeBoundary must be strictly after failBoundary.");
+    }
+
+    if (alertService.hasOpenHeartbeatStaleAlert()) {
+      throw new IllegalStateException(
+          "Integrity rupture reconciliation rejected: AUDIT_CHAIN_HEARTBEAT_STALE alert is OPEN. "
+              + "Resolve heartbeat supervision first.");
+    }
+
+    Alert alert = resolveIntegrityRuptureAlert(request);
+    validateIntegrityRuptureAlert(alert, failBoundary, resumeBoundary);
+
+    List<AuditChainCheckpoint> inRuptureWindow =
+        checkpointRepository.findByWindowRange(failBoundary, resumeBoundary);
+    for (AuditChainCheckpoint checkpoint : inRuptureWindow) {
+      String type = checkpoint.getCheckpointType();
+      if (CHECKPOINT_TYPE_MANIPULATION_CONCILIATION.equals(type)) {
+        throw new AuditLifecycleConflictException(
+            "Integrity rupture reconciliation rejected: MANIPULATION_CONCILIATION checkpoint "
+                + checkpoint.getCheckpointId()
+                + " already exists in the rupture window.");
+      }
+      if (!CHECKPOINT_TYPE_REGULAR.equals(type)) {
+        throw new AuditLifecycleConflictException(
+            "Integrity rupture reconciliation rejected: checkpoint "
+                + checkpoint.getCheckpointId()
+                + " in the rupture window is not REGULAR (type="
+                + type
+                + "). Resolve archive or gap checkpoints separately.");
+      }
+    }
+
+    if (!inRuptureWindow.isEmpty()) {
+      checkpointRepository.deleteAll(inRuptureWindow);
+      logger.info(
+          "Removed {} REGULAR checkpoint(s) in rupture window [{} to {})",
+          inRuptureWindow.size(),
+          failBoundary,
+          resumeBoundary);
+    }
+
+    String prevChainHmac =
+        checkpointRepository
+            .findLatestBefore(failBoundary)
+            .map(AuditChainCheckpoint::getChainHmac)
+            .orElse(null);
+
+    String conciliationDigestInput =
+        "MANIPULATION_CONCILIATION:" + failBoundary + FIELD_SEPARATOR + resumeBoundary;
+    String entriesDigest = auditHmacService.computeHmac(conciliationDigestInput);
+
+    String chainInput =
+        entriesDigest + FIELD_SEPARATOR + (prevChainHmac != null ? prevChainHmac : GENESIS_MARKER);
+    String chainHmac = auditHmacService.computeHmac(chainInput);
+
+    AuditChainCheckpoint conciliationCheckpoint = new AuditChainCheckpoint();
+    conciliationCheckpoint.setWindowStart(failBoundary);
+    conciliationCheckpoint.setWindowEnd(resumeBoundary);
+    conciliationCheckpoint.setEntryCount(0);
+    conciliationCheckpoint.setEntriesDigest(entriesDigest);
+    conciliationCheckpoint.setPrevChainHmac(prevChainHmac);
+    conciliationCheckpoint.setChainHmac(chainHmac);
+    conciliationCheckpoint.setCheckpointType(CHECKPOINT_TYPE_MANIPULATION_CONCILIATION);
+    conciliationCheckpoint.setNotes(request.justification());
+    checkpointRepository.save(conciliationCheckpoint);
+
+    List<AuditChainCheckpoint> afterRupture =
+        checkpointRepository.findAllWithWindowStartAtOrAfter(resumeBoundary);
+    String previousChainHmac = conciliationCheckpoint.getChainHmac();
+    for (AuditChainCheckpoint cp : afterRupture) {
+      cp.setPrevChainHmac(previousChainHmac);
+      String rechainInput =
+          cp.getEntriesDigest()
+              + FIELD_SEPARATOR
+              + (previousChainHmac != null ? previousChainHmac : GENESIS_MARKER);
+      String newChainHmac = auditHmacService.computeHmac(rechainInput);
+      cp.setChainHmac(newChainHmac);
+      checkpointRepository.save(cp);
+      previousChainHmac = newChainHmac;
+    }
+    if (!afterRupture.isEmpty()) {
+      logger.info(
+          "Re-chained {} checkpoint(s) after integrity rupture [{} to {}) from"
+              + " MANIPULATION_CONCILIATION id={}",
+          afterRupture.size(),
+          failBoundary,
+          resumeBoundary,
+          conciliationCheckpoint.getCheckpointId());
+    }
+
+    String eventDetails =
+        "{"
+            + "\"alertId\":"
+            + alert.getAlertId()
+            + ","
+            + "\"failBoundary\":\""
+            + failBoundary
+            + "\","
+            + "\"resumeBoundary\":\""
+            + resumeBoundary
+            + "\","
+            + "\"conciliationCheckpointId\":"
+            + conciliationCheckpoint.getCheckpointId()
+            + ","
+            + "\"conciliationChainHmac\":\""
+            + chainHmac
+            + "\","
+            + "\"category\":\""
+            + request.category().name()
+            + "\","
+            + "\"externalTicketReference\":\""
+            + escapeJson(request.externalTicketReference())
+            + "\","
+            + "\"justification\":\""
+            + escapeJson(request.justification())
+            + "\""
+            + "}";
+
+    AuditLog metaEntry =
+        AuditLog.builder()
+            .eventType(EventType.AUDIT_INTEGRITY_RUPTURE_CONCILIATED)
+            .eventAction("audit-chain-lifecycle")
+            .eventStatus(EventStatus.SUCCESS)
+            .apiName(ApiName.ADMIN_API)
+            .adminId(adminId)
+            .eventDetails(eventDetails)
+            .reason(request.justification())
+            .build();
+    auditLogService.log(metaEntry);
+
+    alertService.resolveByDedupeKey(
+        alert.getDedupeKey(), AlertResolutionReason.INTEGRITY_RUPTURE_CONCILIATED, adminId);
+
+    logger.info(
+        "Reconciled AUDIT_INTEGRITY_RUPTURE alert id={} with MANIPULATION_CONCILIATION checkpoint"
+            + " id={} for [{} to {})",
+        alert.getAlertId(),
+        conciliationCheckpoint.getCheckpointId(),
+        failBoundary,
+        resumeBoundary);
+
+    return new IntegrityRuptureReconciliationResult(
+        failBoundary,
+        resumeBoundary,
+        conciliationCheckpoint.getCheckpointId(),
+        chainHmac,
+        metaEntry.getAuditLogId(),
+        alert.getAlertId(),
+        request.justification(),
+        request.category());
+  }
+
+  private Alert resolveIntegrityRuptureAlert(IntegrityRuptureReconciliationRequest request) {
+    if (request.alertId() != null) {
+      Alert alert =
+          alertService
+              .findById(request.alertId())
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          "Alert id " + request.alertId() + " not found."));
+      if (alert.getStatus() != AlertStatus.OPEN) {
+        throw new IllegalArgumentException(
+            "Alert id " + request.alertId() + " is not OPEN (status=" + alert.getStatus() + ").");
+      }
+      return alert;
+    }
+    return alertService
+        .findOpenByDedupeKey(request.dedupeKey())
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "No OPEN alert found for dedupeKey " + request.dedupeKey() + "."));
+  }
+
+  private void validateIntegrityRuptureAlert(
+      Alert alert, OffsetDateTime failBoundary, OffsetDateTime resumeBoundary) {
+    if (alert.getAlertType() != AlertType.AUDIT_INTEGRITY_RUPTURE) {
+      throw new IllegalArgumentException(
+          "Alert id "
+              + alert.getAlertId()
+              + " is not AUDIT_INTEGRITY_RUPTURE (type="
+              + alert.getAlertType()
+              + ").");
+    }
+
+    OffsetDateTime payloadFail = parsePayloadBoundary(alert.getPayload(), "failBoundary");
+    if (payloadFail == null) {
+      payloadFail = parsePayloadBoundary(alert.getPayload(), "windowStart");
+    }
+    OffsetDateTime payloadResume = parsePayloadBoundary(alert.getPayload(), "resumeBoundary");
+    if (payloadResume == null) {
+      payloadResume = parsePayloadBoundary(alert.getPayload(), "windowEnd");
+    }
+
+    if (payloadFail != null && !payloadFail.equals(failBoundary)) {
+      throw new IllegalArgumentException(
+          "failBoundary does not match alert payload (expected "
+              + payloadFail
+              + ", got "
+              + failBoundary
+              + ").");
+    }
+    if (payloadResume != null && !payloadResume.equals(resumeBoundary)) {
+      throw new IllegalArgumentException(
+          "resumeBoundary does not match alert payload (expected "
+              + payloadResume
+              + ", got "
+              + resumeBoundary
+              + ").");
+    }
+  }
+
+  private static OffsetDateTime parsePayloadBoundary(String payload, String field) {
+    if (payload == null || payload.isBlank()) {
+      return null;
+    }
+    try {
+      JsonNode root = PAYLOAD_OBJECT_MAPPER.readTree(payload);
+      JsonNode node = root.get(field);
+      if (node == null || node.isNull()) {
+        return null;
+      }
+      return normalizeUtc(OffsetDateTime.parse(node.asString()));
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "Unable to parse " + field + " from alert payload: " + e.getMessage());
+    }
+  }
+
+  private static OffsetDateTime normalizeUtc(OffsetDateTime value) {
+    return value.withOffsetSameInstant(ZoneOffset.UTC);
   }
 
   private void validateSealableCheckpoints(List<AuditChainCheckpoint> checkpoints) {

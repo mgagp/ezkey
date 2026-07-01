@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0006`
-- **Status:** `promoted`
+- **Status:** `completed`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-06-28`
-- **Last reviewed at:** `2026-06-28`
+- **Updated at:** `2026-06-29`
+- **Last reviewed at:** `2026-06-29`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `audit`, `infra`
 - **Captured by:** Marc
@@ -64,7 +64,7 @@ Introduce a periodic (typically **daily**) retroactive integrity validation batc
 
 Moved to `incubating` after D5 grilling. **Promoted** to
 [`TB-2026-06-28-nightly-integrity-validation-batch`](../TB-2026-06-28-nightly-integrity-validation-batch.md)
-(2026-06-28) under program issue **#269**. Design pack:
+(2026-06-28) under program issue **#269**. **Delivered** PR #270 (2026-06-29). Design pack:
 [`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md).
 
 ## Links

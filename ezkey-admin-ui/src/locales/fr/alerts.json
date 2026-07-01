@@ -66,6 +66,37 @@
       "message": "Message"
     }
   },
+  "reconcileDialog": {
+    "openAction": "Concilier la rupture d'intégrité",
+    "openHint": "Crée un checkpoint MANIPULATION_CONCILIATION signé et résout cette alerte.",
+    "title": "Concilier la rupture d'intégrité",
+    "intro": "Confirmez les frontières de rupture issues de la charge utile, classifiez l'incident et fournissez une justification. Cette action est irréversible pour cette alerte.",
+    "boundariesHeading": "Frontières de rupture",
+    "categoryLabel": "Catégorie",
+    "category": {
+      "ACCIDENTAL_DBA_EDIT": "Modification DBA accidentelle",
+      "CORRUPTION": "Corruption stockage (investiguée)",
+      "INVESTIGATED_BENIGN": "Investigué — bénin",
+      "OTHER": "Autre"
+    },
+    "ticketLabel": "Ticket externe",
+    "ticketOptional": "(optionnel)",
+    "ticketPlaceholder": "p. ex. INC-12345",
+    "justification": "Justification",
+    "justificationHint": "(min. 10 caractères)",
+    "justificationPlaceholder": "Décrivez l'investigation et pourquoi la conciliation est appropriée…",
+    "cancel": "Annuler",
+    "submit": "Concilier",
+    "submitting": "Conciliation…",
+    "done": "Terminé",
+    "successTitle": "Rupture d'intégrité conciliée",
+    "resultBoundaries": "Frontières",
+    "resultCheckpointId": "Checkpoint de conciliation",
+    "resultChainHmac": "HMAC chaîne",
+    "resultAuditLogId": "Id journal d'audit",
+    "toastSuccess": "Rupture d'intégrité conciliée.",
+    "errorFailed": "Échec de la conciliation."
+  },
   "severity": {
     "INFO": "Info",
     "WARNING": "Avertissement",
@@ -77,6 +108,8 @@
   },
   "resolutionReason": {
     "GAP_DECLARED": "Coupure déclarée",
+    "HEARTBEAT_RESTORED": "Battement rétabli",
+    "INTEGRITY_RUPTURE_CONCILIATED": "Rupture d'intégrité conciliée",
     "MANUAL": "Manuelle"
   },
   "type": {

@@ -820,6 +820,68 @@
       "response": []
     },
     {
+      "name": "recovery reconcile integrity rupture",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has reconciliation fields\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('failBoundary');",
+              "    pm.expect(jsonData).to.have.property('resumeBoundary');",
+              "    pm.expect(jsonData).to.have.property('conciliationCheckpointId');",
+              "    pm.expect(jsonData).to.have.property('conciliationChainHmac');",
+              "    pm.expect(jsonData).to.have.property('auditLogId');",
+              "    pm.expect(jsonData).to.have.property('resolvedAlertId');",
+              "    pm.expect(jsonData).to.have.property('justification');",
+              "    pm.expect(jsonData).to.have.property('category');",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"alertId\": {{integrity_rupture_alert_id}},\n  \"failBoundary\": \"{{integrity_fail_boundary}}\",\n  \"resumeBoundary\": \"{{integrity_resume_boundary}}\",\n  \"justification\": \"{{integrity_reconcile_justification}}\",\n  \"externalTicketReference\": \"{{integrity_ticket_ref}}\",\n  \"category\": \"{{integrity_reconcile_category}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/lifecycle/reconcile-integrity-rupture",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "lifecycle",
+            "reconcile-integrity-rupture"
+          ]
+        },
+        "description": "Reconciles an open `AUDIT_INTEGRITY_RUPTURE` alert with a signed `MANIPULATION_CONCILIATION` checkpoint.\n\n**Access:** Global Admin only.\n\n**Prerequisites:**\n- OPEN `AUDIT_INTEGRITY_RUPTURE` alert (see EZ Key Alerts admin collection)\n- No OPEN `AUDIT_CHAIN_HEARTBEAT_STALE` alert\n- `failBoundary` / `resumeBoundary` must match alert payload\n\n**Collection variables:**\n- `integrity_rupture_alert_id` — alert id from GET /api/v1/alerts\n- `integrity_fail_boundary` — ISO-8601 fail boundary from alert payload\n- `integrity_resume_boundary` — ISO-8601 resume boundary from alert payload\n- `integrity_reconcile_justification` — operator justification (10–500 chars)\n- `integrity_ticket_ref` — optional external ticket reference\n- `integrity_reconcile_category` — ACCIDENTAL_DBA_EDIT | CORRUPTION | INVESTIGATED_BENIGN | OTHER\n\n**Status Codes:** 200 OK · 400 Invalid alert/boundaries · 409 Conflicting checkpoints · 401 · 403"
+      },
+      "response": []
+    },
+    {
       "name": "lifecycle list heartbeat incidents",
       "request": {
         "method": "GET",

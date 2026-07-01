@@ -1946,6 +1946,78 @@
         }
       }
     },
+    "/api/v1/audit-logs/lifecycle/reconcile-integrity-rupture": {
+      "post": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Reconcile an integrity rupture alert",
+        "description": "Creates a MANIPULATION_CONCILIATION checkpoint spanning failBoundary to resumeBoundary, removes REGULAR checkpoints in that window, re-chains downstream checkpoints, emits an audit meta-event, and resolves the open AUDIT_INTEGRITY_RUPTURE alert. Blocked while AUDIT_CHAIN_HEARTBEAT_STALE is OPEN. Global Admin only.\n\nIdentify the alert by `alertId` or `dedupeKey` (exactly one). Boundaries must match the alert payload failBoundary/resumeBoundary (or windowStart/windowEnd when those are absent).",
+        "operationId": "reconcileIntegrityRupture",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntegrityRuptureReconciliationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Integrity rupture reconciled successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrityRuptureReconciliationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request: alert not found, wrong type/status, boundary mismatch, or missing alert reference",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting checkpoint types in rupture window or conciliation already exists",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit-logs/lifecycle/incidents/{incidentId}/declare": {
       "post": {
         "tags": [
@@ -4453,6 +4525,7 @@
                 "AUDIT_CHAIN_ARCHIVE_EXPORTED",
                 "AUDIT_CHAIN_GAP_DECLARED",
                 "AUDIT_CHAIN_INCIDENT_DECLARED",
+                "AUDIT_INTEGRITY_RUPTURE_CONCILIATED",
                 "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
                 "ALERT_RAISED",
                 "ALERT_RESOLVED"
@@ -5171,7 +5244,8 @@
               "enum": [
                 "REGULAR",
                 "ARCHIVE_SEAL",
-                "GAP_DECLARATION"
+                "GAP_DECLARATION",
+                "MANIPULATION_CONCILIATION"
               ]
             }
           },
@@ -6570,6 +6644,91 @@
           },
           "justification": {
             "type": "string"
+          }
+        }
+      },
+      "IntegrityRuptureReconciliationRequest": {
+        "type": "object",
+        "properties": {
+          "alertId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dedupeKey": {
+            "type": "string"
+          },
+          "failBoundary": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resumeBoundary": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "justification": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10
+          },
+          "externalTicketReference": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ACCIDENTAL_DBA_EDIT",
+              "CORRUPTION",
+              "INVESTIGATED_BENIGN",
+              "OTHER"
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "failBoundary",
+          "justification",
+          "resumeBoundary"
+        ]
+      },
+      "IntegrityRuptureReconciliationResult": {
+        "type": "object",
+        "properties": {
+          "failBoundary": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resumeBoundary": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "conciliationCheckpointId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "conciliationChainHmac": {
+            "type": "string"
+          },
+          "auditLogId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resolvedAlertId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "justification": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ACCIDENTAL_DBA_EDIT",
+              "CORRUPTION",
+              "INVESTIGATED_BENIGN",
+              "OTHER"
+            ]
           }
         }
       },
@@ -8447,6 +8606,7 @@
               "AUDIT_CHAIN_ARCHIVE_EXPORTED",
               "AUDIT_CHAIN_GAP_DECLARED",
               "AUDIT_CHAIN_INCIDENT_DECLARED",
+              "AUDIT_INTEGRITY_RUPTURE_CONCILIATED",
               "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
               "ALERT_RAISED",
               "ALERT_RESOLVED"
@@ -8778,7 +8938,8 @@
             "enum": [
               "REGULAR",
               "ARCHIVE_SEAL",
-              "GAP_DECLARATION"
+              "GAP_DECLARATION",
+              "MANIPULATION_CONCILIATION"
             ]
           },
           "notes": {
@@ -8877,7 +9038,8 @@
             "enum": [
               "GAP_DECLARED",
               "HEARTBEAT_RESTORED",
-              "MANUAL"
+              "MANUAL",
+              "INTEGRITY_RUPTURE_CONCILIATED"
             ]
           }
         }
