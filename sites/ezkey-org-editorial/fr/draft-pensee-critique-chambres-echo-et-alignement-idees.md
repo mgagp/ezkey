@@ -7,7 +7,7 @@ planned_canonical: "https://ezkey.org/fr/pensee-critique-chambres-echo-et-aligne
 published_html_en: /critical-thinking-echo-chambers-and-idea-alignment.html
 published_html_fr: /fr/pensee-critique-chambres-echo-et-alignement-idees-ia.html
 published_date: 2026-06-30
-html_amended_post_publish: false
+html_amended_post_publish: true
 source_of_truth: html
 ---
 
@@ -29,15 +29,7 @@ La pensée critique, on en fait l'apologie depuis toujours. C'est une compétenc
 
 J'ai moi-même écrit, dans un article antérieur, que l'introspection et l'ajustement du vocabulaire vers un discours plus neutre et ouvert constituent une compétence clé pour interagir avec l'IA. Ce n'est pas moi qui l'invente : c'est devenu un refrain. Sauf qu'avec l'intelligence artificielle, je n'ai jamais vu cette compétence être aussi *concrètement* nécessaire. Les preuves se sont multipliées au fil de mon expérience sur Ezkey.
 
-Ce que je développe ci-dessous, c'est le pourquoi — à travers les chambres d'écho, un type de biais probabiliste, et le vocabulaire que j'ai adopté pour tenir le cap.
-
-## Les chambres d'écho existaient avant l'IA
-
-Le risque de chambre d'écho n'est pas nouveau — le concept est assez connu pour qu'on n'ait pas besoin de s'y attarder. Ce qui compte pour la suite, c'est une dynamique plus simple : des **écarts de vie** — contraintes, rythmes, centres d'intérêt — finissent par compartimenter les conversations. Moins on se croise, plus les idées circulent entre voisins de vie et se confortent entre elles.
-
-Un exemple suffit. Quelqu'un dont les journées sont prises par le concret — matière, geste, ce qui se voit — peut, au fil des ans, développer des références différentes de quelqu'un dont le métier vit surtout dans l'abstrait. Ce n'est ni une question de valeur ni d'intelligence : ce sont des trajectoires qui divergent, et, avec elles, les occasions de se parler assez pour s'aligner.
-
-Ce cadre posé : l'IA n'a certes pas inventé ce compartimentage. Elle l'amplifie — et le rend frappant pour celui qui collabore avec elle au quotidien.
+Les chambres d'écho ne sont pas nées avec l'IA : c'est un phénomène humain — entendre surtout ce qui conforte ce qu'on croit déjà. Les réseaux sociaux l'ont rendu visible à grande échelle ; avec les grands modèles, il revient sous une autre forme, celle de la **poursuite probabiliste**. Ce que je développe ci-dessous, c'est ce mécanisme — et le vocabulaire que j'ai adopté pour le contrer.
 
 ## Un moteur probabiliste qui poursuit l'idée
 
