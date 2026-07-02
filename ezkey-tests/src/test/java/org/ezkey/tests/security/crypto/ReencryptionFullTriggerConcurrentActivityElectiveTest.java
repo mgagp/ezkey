@@ -39,10 +39,9 @@ import org.slf4j.LoggerFactory;
  * when other work updates {@code ezkey_enrollment} rows (version bumps) concurrently.
  *
  * <p>Reproduces the failure mode described for long full re-encryption runs under operational
- * churn: background threads issue SQL updates that increment {@code version} on rows still
- * targeted by sequential column batches. The trigger endpoint returns {@code 202 Accepted} and
- * processes batches in the background; this test waits for completion then asserts no failed
- * batches.
+ * churn: background threads issue SQL updates that increment {@code version} on rows still targeted
+ * by sequential column batches. The trigger endpoint returns {@code 202 Accepted} and processes
+ * batches in the background; this test waits for completion then asserts no failed batches.
  *
  * <p>Run: {@code mvn test -pl ezkey-tests -P elective-tests} against a healthy Docker stack.
  *

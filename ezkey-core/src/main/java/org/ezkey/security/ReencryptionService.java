@@ -313,8 +313,8 @@ public class ReencryptionService {
   }
 
   /**
-   * Synchronous per-key re-encryption (legacy). Prefer {@link #enqueueReencryptionForKey(Long)}
-   * for HTTP manual triggers.
+   * Synchronous per-key re-encryption (legacy). Prefer {@link #enqueueReencryptionForKey(Long)} for
+   * HTTP manual triggers.
    *
    * @deprecated Use {@link #enqueueReencryptionForKey(Long)} for HTTP manual triggers.
    */
