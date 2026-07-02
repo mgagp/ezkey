@@ -9,6 +9,7 @@ package org.ezkey.audit.integrity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -37,6 +38,7 @@ import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -304,7 +306,13 @@ class AuditLifecycleServiceTest {
     assertEquals(7L, result.resolvedAlertId());
     assertEquals(IntegrityRuptureConciliationCategory.INVESTIGATED_BENIGN, result.category());
     verify(checkpointRepository).deleteAll(List.of(corrupt));
-    verify(checkpointRepository, times(2)).save(any(AuditChainCheckpoint.class));
+    ArgumentCaptor<AuditChainCheckpoint> savedCaptor =
+        ArgumentCaptor.forClass(AuditChainCheckpoint.class);
+    verify(checkpointRepository, times(2)).save(savedCaptor.capture());
+    assertTrue(
+        savedCaptor.getAllValues().stream()
+            .anyMatch(cp -> "MANIPULATION_CONCILIATION".equals(cp.getCheckpointType())),
+        "conciliation checkpoint must use MANIPULATION_CONCILIATION type (fits DB VARCHAR(40))");
     verify(alertService)
         .resolveByDedupeKey(
             alert.getDedupeKey(), AlertResolutionReason.INTEGRITY_RUPTURE_CONCILIATED, 1);

@@ -68,7 +68,7 @@
     "anchorBadge": "Ancre",
     "focusedContextBadge": "Contexte initial",
     "viewDetails": "Voir les détails",
-    "hmacTooltip": "Code d'authentification de message (HMAC) ; garantit l'intégrité de l'entrée.",
+    "hmacTooltip": "Champ de preuve d'intégrité présent (signé). Vert/rouge seulement après vérification dans un contexte d'intégrité.",
     "columnTooltips": {
       "event": "Type d'événement — catégorie d'opération (que s'est-il passé ?). Ouvrez une ligne pour l'action et le détail.",
       "status": "Résultat de l'étape : réussite, échec attendu (règles ou fin MFA), ou erreur (traitement inattendu).",
@@ -248,7 +248,10 @@
     "labelError": "Erreur",
     "labelCreated": "Créé",
     "labelHmacIntegrity": "Intégrité HMAC",
-    "chainIntact": "Chaîne intacte",
+    "hmacUnsigned": "Non signé",
+    "hmacChecking": "Vérification…",
+    "hmacVerified": "Intégrité vérifiée",
+    "hmacViolation": "Violation d'intégrité",
     "notAvailable": "Non disponible",
     "labelInstance": "Instance"
   },
@@ -275,6 +278,27 @@
     "statUndeclaredGaps": "Lacunes non déclarées",
     "gapDeclaredCheckpoints": "Checkpoints avec lacune déclarée : {{count}}",
     "violations": "Violations :",
+    "structuredEntryViolations": "IDs de journaux affectés :",
+    "structuredChainViolations": "Checkpoints affectés :",
+    "hmacBadge": {
+      "signed": "Signé",
+      "signedTooltip": "HMAC présent — pas encore vérifié dans cette session",
+      "verified": "Vérifié",
+      "verifiedTooltip": "HMAC recalculé et concordant (dernière vérification de session)",
+      "violation": "Violation",
+      "violationTooltip": "HMAC invalide ou absent lors de la dernière vérification"
+    },
+    "investigation": {
+      "contextBanner": "Contexte d'investigation — rupture d'intégrité",
+      "exitContext": "Quitter le contexte d'investigation",
+      "offPageViolations": "{{offPage}} violations sur {{total}} ne sont pas sur cette page",
+      "showAffectedOnly": "Afficher seulement les entrées affectées",
+      "affectedOnlyTitle": "Entrées affectées (selon vérification)",
+      "backToList": "Retour à la liste complète",
+      "reasonColumn": "Raison",
+      "viewAround": "Voir autour de l'événement",
+      "noAffectedEntries": "Aucune entrée affectée en session"
+    },
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Lacune(s) non déclarée(s)",
     "reportViolation": "Violation",

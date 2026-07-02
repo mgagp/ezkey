@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { CheckCircle, ExternalLink } from 'lucide-react';
+import { CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
 import { Alert as UiAlert } from '@/components/ui/alert';
@@ -15,16 +15,31 @@ import { Select } from '@/components/ui/select';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { useToast } from '@/context/use-toast';
 import { getGetAlertQueryKey, useGetAlert } from '@/generated/admin-api/alerts/alerts';
-import { useReconcileIntegrityRupture } from '@/generated/admin-api/audit-logs/audit-logs';
+import {
+  checkChainIntegrity,
+  checkIntegrity,
+  useReconcileIntegrityRupture,
+} from '@/generated/admin-api/audit-logs/audit-logs';
 import type {
   AlertResponseDto,
   AlertResponseDtoSeverity,
   AlertResponseDtoStatus,
+  ChainIntegrityViolation,
+  ChainVerificationReport,
+  EntryIntegrityViolation,
+  IntegrityReport,
   IntegrityRuptureReconciliationRequestCategory,
   IntegrityRuptureReconciliationResult,
 } from '@/generated/admin-api/model';
 import { IntegrityRuptureReconciliationRequestCategory as ReconcileCategory } from '@/generated/admin-api/model';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
+import {
+  buildInvestigationSession,
+  type CappedViolationListPayload,
+  formatHighlightAuditLogIds,
+  saveIntegrityInvestigationSession,
+  clearIntegrityInvestigationSession,
+} from '@/lib/integrity-investigation-session';
 import { formatDate } from '@/lib/utils';
 
 function InfoPair({
@@ -96,6 +111,8 @@ interface AuditIntegrityRupturePayload {
   failBoundary?: string;
   resumeBoundary?: string;
   message?: string;
+  entryViolations?: CappedViolationListPayload<EntryIntegrityViolation>;
+  chainViolations?: CappedViolationListPayload<ChainIntegrityViolation>;
 }
 
 function parsePayload(payload: string | undefined): unknown | null {
@@ -153,6 +170,248 @@ function AuditChainGapPayloadView({ payload }: { payload: AuditChainGapPayload }
         </InfoRow>
       )}
     </dl>
+  );
+}
+
+function ViolationTruncationNote({
+  truncated,
+  totalCount,
+  returnedCount,
+}: {
+  truncated?: boolean;
+  totalCount?: number;
+  returnedCount?: number;
+}) {
+  const { t } = useTranslation(['alerts']);
+  if (!truncated) {
+    return null;
+  }
+  return (
+    <p className="text-xs text-fg-muted">
+      {t('alerts:detail.auditIntegrityRupture.truncatedList', {
+        returned: returnedCount ?? 0,
+        total: totalCount ?? 0,
+      })}
+    </p>
+  );
+}
+
+function IntegrityRuptureInvestigationSection({
+  payload,
+  alertOpen,
+}: {
+  payload: AuditIntegrityRupturePayload;
+  alertOpen: boolean;
+}) {
+  const { t } = useTranslation(['alerts']);
+  const [liveEntryReport, setLiveEntryReport] = useState<IntegrityReport | null>(null);
+  const [liveChainReport, setLiveChainReport] = useState<ChainVerificationReport | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  const windowFrom = payload.failBoundary ?? payload.windowStart;
+  const windowTo = payload.resumeBoundary ?? payload.windowEnd;
+
+  useEffect(() => {
+    if (!alertOpen || !windowFrom || !windowTo) {
+      return;
+    }
+    let cancelled = false;
+    setLiveLoading(true);
+    setLiveError(null);
+    void (async () => {
+      try {
+        const [entryReport, chainReport] = await Promise.all([
+          checkIntegrity({ from: windowFrom, to: windowTo }) as unknown as Promise<IntegrityReport>,
+          checkChainIntegrity({ from: windowFrom, to: windowTo }) as unknown as Promise<ChainVerificationReport>,
+        ]);
+        if (cancelled) {
+          return;
+        }
+        setLiveEntryReport(entryReport);
+        setLiveChainReport(chainReport);
+      } catch (e) {
+        if (!cancelled) {
+          setLiveError(
+            e instanceof Error ? e.message : t('alerts:detail.auditIntegrityRupture.liveVerifyFailed'),
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLiveLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [alertOpen, windowFrom, windowTo, t]);
+
+  const snapshotEntries = payload.entryViolations?.items ?? [];
+  const snapshotChains = payload.chainViolations?.items ?? [];
+  const liveEntries = liveEntryReport?.entryViolations?.items ?? [];
+  const liveChains = liveChainReport?.chainViolations ?? [];
+
+  const investigateHref = useMemo(() => {
+    if (!windowFrom || !windowTo) {
+      return null;
+    }
+    const params = new URLSearchParams();
+    params.set('integrity', '1');
+    params.set('source', 'integrity-alert');
+    params.set('createdAfter', windowFrom);
+    params.set('createdBefore', windowTo);
+    const highlightIds = liveEntries
+      .map((v) => v.auditLogId)
+      .filter((id): id is number => id != null && id > 0);
+    if (highlightIds.length > 0) {
+      params.set('highlightAuditLogIds', formatHighlightAuditLogIds(highlightIds));
+    }
+    return `/audit-logs?${params.toString()}`;
+  }, [windowFrom, windowTo, liveEntries]);
+
+  const handleInvestigateClick = () => {
+    if (!windowFrom || !windowTo) {
+      return;
+    }
+    saveIntegrityInvestigationSession(
+      buildInvestigationSession({
+        source: 'integrity-alert',
+        windowFrom,
+        windowTo,
+        entryViolations: liveEntries.length > 0 ? liveEntries : snapshotEntries,
+        chainViolations: liveChains.length > 0 ? liveChains : snapshotChains,
+        highlightAuditLogIds: liveEntries
+          .map((v) => v.auditLogId)
+          .filter((id): id is number => id != null && id > 0),
+      }),
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <AuditIntegrityRupturePayloadView payload={payload} />
+
+      <div className="border-t-2 border-fg/10 pt-4 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-bold text-sm uppercase tracking-wider">
+            {t('alerts:detail.auditIntegrityRupture.investigationHeading')}
+          </h3>
+          {liveLoading && (
+            <span className="inline-flex items-center gap-1 text-xs text-fg-muted">
+              <Loader2 className="size-3 animate-spin" />
+              {t('alerts:detail.auditIntegrityRupture.liveVerifying')}
+            </span>
+          )}
+        </div>
+
+        {liveError && (
+          <UiAlert variant="error">{liveError}</UiAlert>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="border-2 border-fg/10 p-3 space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">
+              {t('alerts:detail.auditIntegrityRupture.atDetection')}
+            </p>
+            <p className="text-xs font-bold">{t('alerts:detail.auditIntegrityRupture.entrySection')}</p>
+            {snapshotEntries.length === 0 ? (
+              <p className="text-xs text-fg-muted">{t('alerts:detail.auditIntegrityRupture.noEntryViolations')}</p>
+            ) : (
+              <ul className="text-xs space-y-1">
+                {snapshotEntries.map((v) => (
+                  <li key={v.auditLogId} className="font-mono">
+                    #{v.auditLogId} — {v.reason ?? '—'}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <ViolationTruncationNote
+              truncated={payload.entryViolations?.truncated}
+              totalCount={payload.entryViolations?.totalCount}
+              returnedCount={payload.entryViolations?.returnedCount}
+            />
+            <p className="text-xs font-bold pt-2">{t('alerts:detail.auditIntegrityRupture.chainSection')}</p>
+            {snapshotChains.length === 0 ? (
+              <p className="text-xs text-fg-muted">{t('alerts:detail.auditIntegrityRupture.noChainViolations')}</p>
+            ) : (
+              <ul className="text-xs space-y-1">
+                {snapshotChains.map((v) => (
+                  <li key={`${v.checkpointId}-${v.violationType}`}>
+                    <span className="font-mono">#{v.checkpointId}</span> — {v.violationType}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <ViolationTruncationNote
+              truncated={payload.chainViolations?.truncated}
+              totalCount={payload.chainViolations?.totalCount}
+              returnedCount={payload.chainViolations?.returnedCount}
+            />
+          </div>
+
+          <div className="border-2 border-fg/10 p-3 space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">
+              {t('alerts:detail.auditIntegrityRupture.verifiedNow')}
+            </p>
+            {!liveLoading && !liveEntryReport && !liveChainReport && !liveError && (
+              <p className="text-xs text-fg-muted">{t('alerts:detail.auditIntegrityRupture.livePending')}</p>
+            )}
+            {liveEntryReport && (
+              <>
+                <p className="text-xs font-bold">{t('alerts:detail.auditIntegrityRupture.entrySection')}</p>
+                {liveEntries.length === 0 ? (
+                  <p className="text-xs text-success">{t('alerts:detail.auditIntegrityRupture.noEntryViolations')}</p>
+                ) : (
+                  <ul className="text-xs space-y-1">
+                    {liveEntries.map((v) => (
+                      <li key={v.auditLogId} className="font-mono text-error">
+                        #{v.auditLogId} — {v.reason ?? '—'}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+            {liveChainReport && (
+              <>
+                <p className="text-xs font-bold pt-2">{t('alerts:detail.auditIntegrityRupture.chainSection')}</p>
+                {liveChains.length === 0 ? (
+                  <p className="text-xs text-success">{t('alerts:detail.auditIntegrityRupture.noChainViolations')}</p>
+                ) : (
+                  <ul className="text-xs space-y-1">
+                    {liveChains.map((v) => (
+                      <li key={`${v.checkpointId}-${v.violationType}`} className="text-error">
+                        <span className="font-mono">#{v.checkpointId}</span> — {v.violationType}
+                        {v.checkpointId != null && (
+                          <Link
+                            to={`/audit-logs?integrity=1&focusCheckpointId=${v.checkpointId}&createdAfter=${encodeURIComponent(windowFrom ?? '')}&createdBefore=${encodeURIComponent(windowTo ?? '')}`}
+                            className="ml-2 text-accent underline text-[10px]"
+                          >
+                            {t('alerts:detail.auditIntegrityRupture.viewCheckpoint')}
+                          </Link>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {investigateHref && (
+          <Link
+            to={investigateHref}
+            onClick={handleInvestigateClick}
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-accent hover:underline"
+          >
+            {t('alerts:detail.auditIntegrityRupture.investigateCta')}
+            <ExternalLink className="size-3.5" />
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -249,6 +508,7 @@ export default function AlertDetailPage() {
       onSuccess: async (data) => {
         const result = data as unknown as IntegrityRuptureReconciliationResult;
         setReconcileResult(result);
+        clearIntegrityInvestigationSession();
         toast(t('alerts:reconcileDialog.toastSuccess'), 'success');
         if (!Number.isNaN(id)) {
           await queryClient.invalidateQueries({ queryKey: getGetAlertQueryKey(id) });
@@ -401,11 +661,10 @@ export default function AlertDetailPage() {
               {alert.payload
                 && isIntegrityRuptureAlert
                 && isAuditIntegrityRupturePayload(parsedPayload) && (
-                <div className="space-y-4">
-                  <AuditIntegrityRupturePayloadView
-                    payload={parsedPayload as AuditIntegrityRupturePayload}
-                  />
-                </div>
+                <IntegrityRuptureInvestigationSection
+                  payload={parsedPayload as AuditIntegrityRupturePayload}
+                  alertOpen={alert.status === 'OPEN'}
+                />
               )}
               {alert.payload
                 && (!isGapAlert || !isAuditChainGapPayload(parsedPayload))

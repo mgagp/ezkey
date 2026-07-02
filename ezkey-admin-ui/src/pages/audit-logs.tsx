@@ -31,12 +31,21 @@ import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
 import { queryKeys } from '@/lib/query-keys';
 import { adminListDetailHref } from '@/lib/list-detail-navigation';
 import { cn, formatDateOnly, formatDateWithTimezone, formatRelativeTime } from '@/lib/utils';
+import {
+  loadIntegrityInvestigationSession,
+  parseHighlightAuditLogIds,
+  resolveEntryHmacDisplayState,
+  saveIntegrityInvestigationSession,
+  buildInvestigationSession,
+} from '@/lib/integrity-investigation-session';
 import { useAuth } from '@/context/use-auth';
 import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { useToast } from '@/context/use-toast';
+import { EntryHmacBadge } from '@/components/feature/entry-hmac-badge';
 import {
   checkChainIntegrity,
   checkIntegrity,
+  checkSingleEntryIntegrity,
   getArchiveEligibility,
   getAuditLogContext,
   getAuditLogs,
@@ -225,6 +234,35 @@ function AuditLogDetailDialog({
 }) {
   const { t } = useTranslation('audit-logs');
   const { t: tc } = useTranslation('common');
+  const [entryIntegrity, setEntryIntegrity] = useState<IntegrityReport | null>(null);
+  const [entryIntegrityLoading, setEntryIntegrityLoading] = useState(false);
+
+  useEffect(() => {
+    if (!log?.auditLogId) {
+      return;
+    }
+    let cancelled = false;
+    setEntryIntegrityLoading(true);
+    void checkSingleEntryIntegrity(log.auditLogId)
+      .then((report) => {
+        if (!cancelled) {
+          setEntryIntegrity(report as unknown as IntegrityReport);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setEntryIntegrity(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setEntryIntegrityLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [log?.auditLogId]);
 
   useDetailNavigation(log !== null && showNav, {
     hasPrev: hasPrev && showNav,
@@ -384,13 +422,20 @@ function AuditLogDetailDialog({
             </span>
           </DetailInfoRow>
           <DetailInfoRow label={t('detail.labelHmacIntegrity')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
-            {log.entryHmac ? (
+            {entryIntegrityLoading ? (
+              <span className="text-xs text-fg-muted">{t('detail.hmacChecking')}</span>
+            ) : !log.entryHmac ? (
+              <span className="text-xs text-fg-muted">{t('detail.hmacUnsigned')}</span>
+            ) : entryIntegrity?.intact === false || (entryIntegrity?.invalidEntries ?? 0) > 0 ? (
               <div className="flex items-center gap-1.5">
-                <ShieldCheck className="size-3.5 text-success" />
-                <span className="text-xs text-success font-bold">{t('detail.chainIntact')}</span>
+                <ShieldAlert className="size-3.5 text-error" />
+                <span className="text-xs text-error font-bold">{t('detail.hmacViolation')}</span>
               </div>
             ) : (
-              <span className="text-xs text-fg-muted">{t('detail.notAvailable')}</span>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="size-3.5 text-success" />
+                <span className="text-xs text-success font-bold">{t('detail.hmacVerified')}</span>
+              </div>
             )}
           </DetailInfoRow>
           <DetailInfoRow label={t('detail.labelInstance')} className="min-w-0" valueClassName="min-w-0 flex-1 break-all">
@@ -459,6 +504,7 @@ function CheckpointTimelineTable({
   currentSort,
   onSort,
   focusGap,
+  focusCheckpointId,
 }: {
   rows: CheckpointRowItem[];
   isLoading: boolean;
@@ -466,6 +512,8 @@ function CheckpointTimelineTable({
   onSort: (s: string) => void;
   /** When set, highlight checkpoint rows immediately before/after this gap (bordering rows). */
   focusGap?: { gapStart: string; gapEnd: string } | null;
+  /** When set, highlight the checkpoint row with this id (integrity / gap deep link). */
+  focusCheckpointId?: number | null;
 }) {
   const [field = '', dir = ''] = currentSort.split(',');
   const handleSort = (sortKey: string) => {
@@ -540,12 +588,15 @@ function CheckpointTimelineTable({
               const isAnchor = focusGap && gapStartMs != null && rowEndMs === gapStartMs;
               const isAfterGap = focusGap && gapEndMs != null && rowStartMs === gapEndMs;
               const isBorderingGap = isAnchor || isAfterGap;
+              const isFocusedCheckpoint =
+                focusCheckpointId != null && r.checkpointId === focusCheckpointId;
               return (
                 <tr
                   key={r.checkpointId ?? index}
                   className={cn(
                     'border-b border-fg/10 bg-surface even:bg-bg',
                     isBorderingGap && '!bg-warning/25 border-2 border-warning shadow-brutal',
+                    isFocusedCheckpoint && '!bg-accent/15 border-l-4 border-l-accent',
                   )}
                 >
                   <td className="px-3 py-2 font-mono text-xs">
@@ -582,7 +633,15 @@ function CheckpointTimelineTable({
 
 // ── Integrity Panel (GLOBAL_ADMIN only) ───────────────────────────────────────
 
-function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean }) {
+function IntegrityPanel({
+  expandFromQuery = false,
+  focusCheckpointId = null,
+  initialCheckRange = null,
+}: {
+  expandFromQuery?: boolean;
+  focusCheckpointId?: number | null;
+  initialCheckRange?: { createdAfter: string; createdBefore: string } | null;
+}) {
   const { t } = useTranslation('audit-logs');
   const { effectiveTimeZoneId } = useDisplayTimezone();
   const { toast } = useToast();
@@ -601,6 +660,22 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
       document.getElementById('integrity-lifecycle-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }, [expanded, expandFromQuery]);
+
+  useEffect(() => {
+    if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
+      return;
+    }
+    setCheckRange({
+      from: toDateInputValue(initialCheckRange.createdAfter),
+      to: toDateInputValue(initialCheckRange.createdBefore),
+    });
+  }, [initialCheckRange?.createdAfter, initialCheckRange?.createdBefore]);
+
+  useEffect(() => {
+    if (focusCheckpointId != null) {
+      setTimelineExpanded(true);
+    }
+  }, [focusCheckpointId]);
 
   // ── Check results ──
   const [chainReport, setChainReport] = useState<ChainVerificationReport | null>(null);
@@ -796,6 +871,31 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
     return { from: toYYYYMMDD(past), to: toYYYYMMDD(now) };
   }
 
+  function persistInvestigationSession(
+    entry: IntegrityReport,
+    chain: ChainVerificationReport,
+    range: { from: string; to: string },
+  ) {
+    if (!initialCheckRange?.createdAfter || !initialCheckRange.createdBefore) {
+      return;
+    }
+    const { createdAfter, createdBefore } = dateRangeToApiParams(
+      range.from,
+      range.to,
+      effectiveTimeZoneId,
+    );
+    saveIntegrityInvestigationSession(
+      buildInvestigationSession({
+        source: 'integrity-alert',
+        windowFrom: createdAfter ?? initialCheckRange.createdAfter,
+        windowTo: createdBefore ?? initialCheckRange.createdBefore,
+        entryViolations: entry.entryViolations?.items ?? [],
+        chainViolations: chain.chainViolations ?? [],
+        focusCheckpointId: focusCheckpointId ?? undefined,
+      }),
+    );
+  }
+
   async function runChainCheck(rangeOverride?: { from: string; to: string }) {
     const range = rangeOverride ?? checkRange;
     setChainLoading(true);
@@ -818,6 +918,9 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
       setChainReport(report);
       if (range.from && range.to) {
         setChainReportRange({ from: range.from, to: range.to });
+      }
+      if (initialCheckRange && integrityReport) {
+        persistInvestigationSession(integrityReport, report, range);
       }
     } catch (e) {
       toast(getTranslatedApiError(e, t, t('integrity.errorChainCheck')), 'error');
@@ -846,6 +949,9 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
       setIntegrityReport(report);
       if (checkRange.from && checkRange.to) {
         setIntegrityReportRange({ from: checkRange.from, to: checkRange.to });
+      }
+      if (initialCheckRange && chainReport) {
+        persistInvestigationSession(report, chainReport, checkRange);
       }
     } catch (e) {
       toast(getTranslatedApiError(e, t, t('integrity.errorIntegrityCheck')), 'error');
@@ -1037,6 +1143,18 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
                     </ul>
                   </div>
                 )}
+                {chainReport.chainViolations && chainReport.chainViolations.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-bold text-error mb-1">{t('integrity.structuredChainViolations')}</p>
+                    <ul className="text-xs text-error space-y-1">
+                      {chainReport.chainViolations.map((v) => (
+                        <li key={`${v.checkpointId}-${v.violationType}`} className="font-mono">
+                          #{v.checkpointId} {v.violationType}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1066,6 +1184,18 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
                   <Stat label={t('integrity.statInvalid')} value={integrityReport.invalidEntries} bad />
                   <Stat label={t('integrity.statUnsigned')} value={integrityReport.unsignedEntries} />
                 </div>
+                {integrityReport.entryViolations?.items && integrityReport.entryViolations.items.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-bold text-error mb-1">{t('integrity.structuredEntryViolations')}</p>
+                    <ul className="text-xs text-error space-y-1">
+                      {integrityReport.entryViolations.items.map((v) => (
+                        <li key={v.auditLogId} className="font-mono">
+                          #{v.auditLogId} — {v.reason ?? '—'}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1374,6 +1504,7 @@ function IntegrityPanel({ expandFromQuery = false }: { expandFromQuery?: boolean
                   currentSort={checkpointPagination.sort}
                   onSort={checkpointPagination.setSort}
                   focusGap={focusedGap}
+                  focusCheckpointId={focusCheckpointId}
                 />
                 <Pagination
                   page={checkpointPagination.page}
@@ -1772,6 +1903,21 @@ export default function AuditLogsPage() {
     && isExpandedEntityContext
     && Boolean(contextEntityType && contextEntityId);
   const expandedContextEntityId = Number.parseInt(contextEntityId, 10);
+  const highlightAuditLogIds = useMemo(
+    () => parseHighlightAuditLogIds(searchParams.get('highlightAuditLogIds')),
+    [searchParams],
+  );
+  const focusCheckpointIdParam = useMemo(() => {
+    const raw = searchParams.get('focusCheckpointId');
+    if (!raw) {
+      return null;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [searchParams]);
+  const isIntegrityAlertContext = searchParams.get('source') === 'integrity-alert';
+  const integritySession = useMemo(() => loadIntegrityInvestigationSession(), [searchParams]);
+  const [showAffectedOnly, setShowAffectedOnly] = useState(false);
 
   const listApiDateParams = contextualDateRange
     ? {
@@ -1826,6 +1972,22 @@ export default function AuditLogsPage() {
     if (contextBaseDateRange?.createdAfter && contextBaseDateRange.createdBefore) {
       next.set('contextBaseCreatedAfter', contextBaseDateRange.createdAfter);
       next.set('contextBaseCreatedBefore', contextBaseDateRange.createdBefore);
+    }
+    const integrityFlag = searchParams.get('integrity');
+    if (integrityFlag) {
+      next.set('integrity', integrityFlag);
+    }
+    const investigationSource = searchParams.get('source');
+    if (investigationSource) {
+      next.set('source', investigationSource);
+    }
+    const highlightParam = searchParams.get('highlightAuditLogIds');
+    if (highlightParam) {
+      next.set('highlightAuditLogIds', highlightParam);
+    }
+    const focusCheckpointParam = searchParams.get('focusCheckpointId');
+    if (focusCheckpointParam) {
+      next.set('focusCheckpointId', focusCheckpointParam);
     }
 
     if (next.toString() !== searchParams.toString()) {
@@ -2023,6 +2185,29 @@ export default function AuditLogsPage() {
     setContextAfterCount((value) => Math.min(50, value + 10));
   }, []);
 
+  const clearIntegrityInvestigationContext = useCallback(() => {
+    setShowAffectedOnly(false);
+    const next = new URLSearchParams(searchParams);
+    next.delete('source');
+    next.delete('highlightAuditLogIds');
+    next.delete('focusCheckpointId');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const violatedEntryIds = integritySession?.violatedEntryIds.length
+    ? integritySession.violatedEntryIds
+    : highlightAuditLogIds;
+  const totalViolationCount = violatedEntryIds.length;
+  const violationsOnCurrentPage = data.filter(
+    (row) => row.auditLogId != null && violatedEntryIds.includes(row.auditLogId),
+  ).length;
+  const showOffPageViolationsBanner =
+    !isAuditLogContextMode
+    && !showAffectedOnly
+    && isIntegrityAlertContext
+    && totalViolationCount > 0
+    && violationsOnCurrentPage < totalViolationCount;
+
   const columns: ColumnDef<AuditLogResponseDto>[] = [
     {
       header: t('list.columns.id'),
@@ -2099,12 +2284,15 @@ export default function AuditLogsPage() {
       header: t('list.columns.hmac'),
       headerTooltip: t('list.hmacTooltip'),
       key: 'entryHmac',
-      render: (r) =>
-          r.entryHmac ? (
-            <ShieldCheck className="size-3.5 text-success" />
-          ) : (
-          <span className="text-fg-muted text-xs">—</span>
-        ),
+      render: (r) => (
+        <EntryHmacBadge
+          state={resolveEntryHmacDisplayState(
+            r.auditLogId,
+            Boolean(r.entryHmac),
+            integritySession,
+          )}
+        />
+      ),
     },
     {
       header: t('list.columns.time'),
@@ -2318,7 +2506,77 @@ export default function AuditLogsPage() {
         </p>
 
         <div>
-          {isAuditLogContextMode ? (
+          {isIntegrityAlertContext && (
+            <div className="mb-3 border-2 border-fg/20 bg-fg/[0.03] px-3 py-2 text-sm flex flex-wrap items-center gap-2">
+              <span>{t('integrity.investigation.contextBanner')}</span>
+              <button
+                type="button"
+                className="ml-auto text-xs font-medium text-accent underline hover:text-accent/80"
+                onClick={clearIntegrityInvestigationContext}
+              >
+                {t('integrity.investigation.exitContext')}
+              </button>
+            </div>
+          )}
+          {showOffPageViolationsBanner && (
+            <div className="mb-3 border-2 border-warning/50 bg-warning/10 px-3 py-2 text-sm flex flex-wrap items-center gap-2">
+              <span>
+                {t('integrity.investigation.offPageViolations', {
+                  offPage: totalViolationCount - violationsOnCurrentPage,
+                  total: totalViolationCount,
+                })}
+              </span>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setShowAffectedOnly(true)}>
+                {t('integrity.investigation.showAffectedOnly')}
+              </Button>
+            </div>
+          )}
+          {showAffectedOnly && integritySession ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold">{t('integrity.investigation.affectedOnlyTitle')}</span>
+                <Button type="button" size="sm" variant="secondary" onClick={() => setShowAffectedOnly(false)}>
+                  {t('integrity.investigation.backToList')}
+                </Button>
+              </div>
+              <DataTable
+                columns={[
+                  {
+                    header: t('list.columns.id'),
+                    key: 'auditLogId',
+                    render: (v) => <span className="font-mono text-xs">#{v.auditLogId}</span>,
+                  },
+                  {
+                    header: t('list.columns.event'),
+                    key: 'eventType',
+                    render: (v) => <span className="font-mono text-xs">{v.eventType ?? '—'}</span>,
+                  },
+                  {
+                    header: t('integrity.investigation.reasonColumn'),
+                    key: 'reason',
+                    render: (v) => <span className="text-xs">{v.reason ?? '—'}</span>,
+                  },
+                  {
+                    header: '',
+                    key: 'action',
+                    render: (v) =>
+                      v.auditLogId != null ? (
+                        <Link
+                          to={`/audit-logs?anchorAuditLogId=${v.auditLogId}&beforeCount=10&afterCount=10&source=audit-log-context`}
+                          className="text-xs font-bold text-accent underline"
+                        >
+                          {t('integrity.investigation.viewAround')}
+                        </Link>
+                      ) : null,
+                  },
+                ]}
+                data={integritySession.entryViolations}
+                isLoading={false}
+                keyExtractor={(v, i) => v.auditLogId ?? i}
+                emptyMessage={t('integrity.investigation.noAffectedEntries')}
+              />
+            </div>
+          ) : isAuditLogContextMode ? (
             <DataTable
               columns={columns}
               data={activeData}
@@ -2346,10 +2604,16 @@ export default function AuditLogsPage() {
               currentSort={pagination.sort}
               onSort={pagination.setSort}
               pagination={pagination}
-              rowClassName={(row) =>
-                matchesFocusedContext(row)
-                  ? '!bg-warning/10 border-l-4 border-l-warning'
-                  : undefined}
+              rowClassName={(row) => {
+                const classes: string[] = [];
+                if (row.auditLogId != null && highlightAuditLogIds.includes(row.auditLogId)) {
+                  classes.push('!bg-error/10 border-l-4 border-l-error');
+                }
+                if (matchesFocusedContext(row)) {
+                  classes.push('!bg-warning/10 border-l-4 border-l-warning');
+                }
+                return classes.length > 0 ? classes.join(' ') : undefined;
+              }}
             />
           )}
         </div>
@@ -2357,7 +2621,18 @@ export default function AuditLogsPage() {
 
       {/* Integrity panel — visible only for GLOBAL_ADMIN */}
       {isGlobalAdmin && (
-        <IntegrityPanel expandFromQuery={searchParams.get('integrity') === '1'} />
+        <IntegrityPanel
+          expandFromQuery={searchParams.get('integrity') === '1'}
+          focusCheckpointId={focusCheckpointIdParam}
+          initialCheckRange={
+            listApiDateParams.createdAfter && listApiDateParams.createdBefore
+              ? {
+                  createdAfter: listApiDateParams.createdAfter,
+                  createdBefore: listApiDateParams.createdBefore,
+                }
+              : null
+          }
+        />
       )}
 
       <AuditLogDetailDialog

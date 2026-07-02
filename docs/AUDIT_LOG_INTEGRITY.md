@@ -33,7 +33,9 @@ integrationId|enrollmentId|tenantId|eventDetails|errorMessage|createdAt|instance
 
 ### Verification
 
-`GET /api/v1/audit-logs/integrity-check` (Global Admin only) recomputes the HMAC for each entry in a date range and compares it to the stored value. Any mismatch is reported as a potential integrity violation. **Query parameters `from` and `to` (ISO-8601, inclusive start / exclusive end) are required;** omitting either returns 400 Bad Request.
+`GET /api/v1/audit-logs/integrity-check` (Global Admin only) recomputes the HMAC for each entry in a date range and compares it to the stored value. Any mismatch is reported as a potential integrity violation. **Query parameters `from` and `to` (ISO-8601, inclusive start / exclusive end) are required;** omitting either returns 400 Bad Request. The response includes `entryViolations` (`items`, `totalCount`, `returnedCount`, `truncated`) with structured rows (`auditLogId`, `eventType`, `createdAt`, `reason`) — uncapped for the requested window.
+
+`GET /api/v1/audit-logs/chain-integrity` returns `chainViolations` with the same list metadata shape plus checkpoint fields (`checkpointId`, `windowStart`, `windowEnd`, `violationType`, `detail`). Legacy string `violations` remains for backward compatibility.
 
 ### Instance Tracking
 

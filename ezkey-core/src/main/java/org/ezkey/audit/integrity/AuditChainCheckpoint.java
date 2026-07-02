@@ -91,9 +91,11 @@ public class AuditChainCheckpoint {
    *       re-verified against live DB entries by design
    *   <li>{@code GAP_DECLARATION} – admin-declared downtime gap; no entries expected, gap is
    *       formally documented in the chain with a justification
+   *   <li>{@code MANIPULATION_CONCILIATION} – admin-reconciled integrity rupture bridge spanning
+   *       fail/resume boundaries (B2)
    * </ul>
    */
-  @Column(name = "checkpoint_type", nullable = false, length = 20)
+  @Column(name = "checkpoint_type", nullable = false, length = 40)
   private String checkpointType = "REGULAR";
 
   /**

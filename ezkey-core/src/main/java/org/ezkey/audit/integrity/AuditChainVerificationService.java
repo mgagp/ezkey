@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.dto.ChainIntegrityViolation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
@@ -66,6 +67,10 @@ public class AuditChainVerificationService {
   private static final String GENESIS_MARKER = "GENESIS";
   private static final String FIELD_SEPARATOR = "|";
 
+  static final String VIOLATION_ENTRIES_DIGEST_MISMATCH = "ENTRIES_DIGEST_MISMATCH";
+  static final String VIOLATION_CHAIN_LINK_BROKEN = "CHAIN_LINK_BROKEN";
+  static final String VIOLATION_CHAIN_HMAC_MISMATCH = "CHAIN_HMAC_MISMATCH";
+
   private final AuditChainCheckpointRepository checkpointRepository;
   private final AuditLogRepository auditLogRepository;
   private final AuditHmacService auditHmacService;
@@ -107,6 +112,7 @@ public class AuditChainVerificationService {
           0,
           List.of(),
           List.of(),
+          List.of(),
           null,
           null,
           null,
@@ -127,6 +133,7 @@ public class AuditChainVerificationService {
           0,
           List.of(),
           List.of(),
+          List.of(),
           null,
           null,
           null,
@@ -141,6 +148,7 @@ public class AuditChainVerificationService {
     int archivedCheckpoints = 0;
     int gapDeclaredCheckpoints = 0;
     List<String> violations = new ArrayList<>();
+    List<ChainIntegrityViolation> chainViolations = new ArrayList<>();
     List<UndeclaredGap> undeclaredGaps = new ArrayList<>();
 
     for (int i = 0; i < checkpoints.size(); i++) {
@@ -178,10 +186,12 @@ public class AuditChainVerificationService {
 
         if (!checkpoint.getEntriesDigest().equals(recomputedDigest)) {
           valid = false;
-          violations.add(
+          String detail =
               "Entries digest mismatch at window "
                   + checkpoint.getWindowStart()
-                  + " (possible entry modification, insertion, or deletion)");
+                  + " (possible entry modification, insertion, or deletion)";
+          addChainViolation(
+              violations, chainViolations, checkpoint, VIOLATION_ENTRIES_DIGEST_MISMATCH, detail);
         }
       }
 
@@ -191,11 +201,14 @@ public class AuditChainVerificationService {
         String expectedPrevHmac = prev.getChainHmac();
         if (!java.util.Objects.equals(checkpoint.getPrevChainHmac(), expectedPrevHmac)) {
           valid = false;
-          violations.add(
+          String suffix = isArchiveSeal ? " [ARCHIVE_SEAL]" : isGapDeclaration ? " [GAP]" : "";
+          String detail =
               "Chain link broken at window "
                   + checkpoint.getWindowStart()
                   + " (prev_chain_hmac does not match previous checkpoint's chain_hmac)"
-                  + (isArchiveSeal ? " [ARCHIVE_SEAL]" : isGapDeclaration ? " [GAP]" : ""));
+                  + suffix;
+          addChainViolation(
+              violations, chainViolations, checkpoint, VIOLATION_CHAIN_LINK_BROKEN, detail);
         }
         // 2b. Temporal continuity: detect undeclared gap between consecutive checkpoints
         OffsetDateTime prevEnd = prev.getWindowEnd();
@@ -216,11 +229,14 @@ public class AuditChainVerificationService {
       String recomputedChainHmac = auditHmacService.computeHmac(chainInput);
       if (!checkpoint.getChainHmac().equals(recomputedChainHmac)) {
         valid = false;
-        violations.add(
+        String suffix = isArchiveSeal ? " [ARCHIVE_SEAL]" : isGapDeclaration ? " [GAP]" : "";
+        String detail =
             "Chain HMAC mismatch at window "
                 + checkpoint.getWindowStart()
                 + " (checkpoint record may have been tampered with)"
-                + (isArchiveSeal ? " [ARCHIVE_SEAL]" : isGapDeclaration ? " [GAP]" : ""));
+                + suffix;
+        addChainViolation(
+            violations, chainViolations, checkpoint, VIOLATION_CHAIN_HMAC_MISMATCH, detail);
       }
 
       if (valid) {
@@ -294,6 +310,7 @@ public class AuditChainVerificationService {
         archivedCheckpoints,
         gapDeclaredCheckpoints,
         violations,
+        chainViolations,
         undeclaredGaps,
         coverageStart,
         coverageEnd,
@@ -302,6 +319,22 @@ public class AuditChainVerificationService {
         continuousCoverage,
         intact,
         status);
+  }
+
+  private static void addChainViolation(
+      List<String> violations,
+      List<ChainIntegrityViolation> chainViolations,
+      AuditChainCheckpoint checkpoint,
+      String violationType,
+      String detail) {
+    violations.add(detail);
+    chainViolations.add(
+        new ChainIntegrityViolation(
+            checkpoint.getCheckpointId(),
+            checkpoint.getWindowStart(),
+            checkpoint.getWindowEnd(),
+            violationType,
+            detail));
   }
 
   /** Recomputes the entries_digest for a given time window from current audit log data. */
@@ -348,6 +381,7 @@ public class AuditChainVerificationService {
    * @param archivedCheckpoints ARCHIVE_SEAL checkpoints (entries_digest skipped, chain verified)
    * @param gapDeclaredCheckpoints GAP_DECLARATION checkpoints (downtime gaps, chain verified)
    * @param violations list of human-readable violation descriptions
+   * @param chainViolations structured checkpoint violations for operator investigation
    * @param undeclaredGaps temporal gaps between consecutive checkpoints (no checkpoint coverage)
    * @param coverageStart window start of the first checkpoint in range (null if none)
    * @param coverageEnd window end of the last checkpoint in range (null if none)
@@ -369,6 +403,7 @@ public class AuditChainVerificationService {
       int archivedCheckpoints,
       int gapDeclaredCheckpoints,
       List<String> violations,
+      List<ChainIntegrityViolation> chainViolations,
       List<UndeclaredGap> undeclaredGaps,
       OffsetDateTime coverageStart,
       OffsetDateTime coverageEnd,

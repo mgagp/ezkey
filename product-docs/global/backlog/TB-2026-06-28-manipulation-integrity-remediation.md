@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-06-28-manipulation-integrity-remediation`
-- **Status:** `ready`
+- **Status:** `completed`
 - **Related idea:** `I-2026-0005-checkpoint-integrity-break-remediation`
 - **Parent context:** Wave B integrity cluster; design pack
   [`integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md)
@@ -97,11 +97,13 @@ subsequent validation passes treat the period as conciliated (D5 skip rule).
 
 ## Validation
 
-- [ ] Maven baseline (root reactor).
-- [ ] Unit tests for conciliation bridge + alert resolution.
-- [ ] clean-start lab: tamper audit row → nightly/ad hoc alert → reconcile → verify green.
-- [ ] Regression: gap declare + heartbeat paths unchanged.
-- [ ] Admin UI reconcile flow (slice 2) — manual exploratory on clean-start.
+- [x] Maven baseline (root reactor).
+- [x] Unit tests for conciliation bridge + alert resolution.
+- [x] clean-start lab: tamper audit row → nightly/ad hoc alert → reconcile → verify green (after V14
+  `checkpoint_type` widen — see
+  [`ML-2026-07-01-b2-reconcile-checkpoint-type-varchar-gap.md`](method-logs/ML-2026-07-01-b2-reconcile-checkpoint-type-varchar-gap.md)).
+- [ ] Regression: gap declare + heartbeat paths unchanged (not re-run in final lab pass).
+- [x] Admin UI reconcile flow (slice 2) — manual exploratory on clean-start.
 
 ## Links
 

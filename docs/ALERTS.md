@@ -51,7 +51,9 @@ Producers include **automated lifecycle checks** (`AuditChainScheduler`) and **c
 
 `AUDIT_CHAIN_HEARTBEAT_STALE` payload (JSON string): `phase`, `anchorCheckpointId`, `latestWindowEnd`.
 
-`AUDIT_INTEGRITY_RUPTURE` payload (JSON string): `windowStart`, `windowEnd`, `chainStatus`, `violationCount`, `entryHmacViolationCount`, `failBoundary`, `resumeBoundary`, `message`.
+`AUDIT_INTEGRITY_RUPTURE` payload (JSON string): `windowStart`, `windowEnd`, `chainStatus`, `violationCount`, `entryHmacViolationCount`, `failBoundary`, `resumeBoundary`, `message`, plus structured `entryViolations` and `chainViolations` objects. Each list object has `items`, `totalCount`, `returnedCount`, and `truncated` (alert caps: 25 entry / 10 chain per TB B2.5).
+
+`NIGHTLY_INTEGRITY_VALIDATION_COMPLETED` audit `event_details` includes the same structured list shape with tighter caps (10 entry / 5 chain) for compliance traceability.
 
 `AuditLifecycleService.declareGap` resolves matching `AUDIT_CHAIN_GAP_PENDING` alerts by anchor dedupe key when a gap is formally declared.
 

@@ -8,6 +8,7 @@ import {
   saveSession,
 } from '@/lib/auth';
 import { fetchApi } from '@/lib/api-client';
+import { clearIntegrityInvestigationSession } from '@/lib/integrity-investigation-session';
 import { queryClient } from '@/lib/query-client';
 import { AuthContext } from '@/context/auth-context-value';
 
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearSession();
+    clearIntegrityInvestigationSession();
     queryClient.clear();
     setSession(null);
   }, []);

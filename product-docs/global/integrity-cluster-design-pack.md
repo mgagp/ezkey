@@ -41,7 +41,10 @@ mode, alert queue semantics, batch last-run visibility, and the **implementation
 | Alerts list + detail (read-only) | **Shipped** | Admin UI `/alerts`; no manual resolve/snooze UI yet |
 | Dashboard open-alert strip | **Shipped** | `DashboardService` includes recent OPEN alerts |
 | **Nightly retroactive batch** | **Shipped** (B1 / PR #270) | `NightlyIntegrityValidationScheduler`, `ezkey.audit.integrity.nightly.*` |
-| **Manipulation remediation flow** | **Gap** (B2 active) | `I-2026-0005` / `TB-2026-06-28-manipulation-integrity-remediation` |
+| **Manipulation remediation flow (chain)** | **Shipped** (B2) | `MANIPULATION_CONCILIATION` + reconcile API |
+| **Integrity investigation UX** | **Shipped** (B2.5) | `TB-2026-06-30-integrity-investigation-operability` |
+| **Entry HMAC conciliation + alert dedupe coherence** | **Ready → B2.6** | [`TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence.md`](backlog/TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence.md) |
+| **Retroactive validation operability (generic detect + operator POST)** | **Ready → B2.7** | [`TB-2026-07-02-retroactive-integrity-validation-operability.md`](backlog/TB-2026-07-02-retroactive-integrity-validation-operability.md) |
 | **Batch last-run registry + widgets** | **Gap** | `I-2026-0007` |
 | **Snooze** | **Gap** | Grilled C9; deferred to `I-2026-0005` or follow-on TB |
 
@@ -52,10 +55,15 @@ Reference: [`docs/ALERTS.md`](../docs/ALERTS.md).
 | Layer | Job | Detection posture | Default config |
 |-------|-----|-------------------|----------------|
 | **Rolling attach** | `AuditChainScheduler` | Chains checkpoints in lookback; **does not** promise manipulation detection inside lookback | `lookbackMinutes=60`, bounds **15 min–8 h** (enforce in config validation) |
-| **Nightly retroactive** | New `NightlyIntegrityValidationScheduler` (name TBD in TB) | Full HMAC + checkpoint chain pass over **completed** window → alert on anomaly | Window **24 h**, cron **once per 24 h** (off-peak default) |
+| **Nightly retroactive** | Scheduled batch (default **24 h** window) | Full HMAC + checkpoint chain validation; anomalies → alert | Window **24 h**, cron **once per 24 h** (off-peak default) |
+| **Operator retroactive run** | `POST integrity-validation/run` (B2.7) | Same orchestration as nightly; operator-chosen `[from, to)`; may raise/touch alert | Independent of `nightly.enabled`; capped window (TB B2.7) |
+| **Ad hoc verify (read-only)** | `GET integrity-check` / `chain-integrity` | Forensic reports only — **no** alert side effects | Always when HMAC active |
 
-**Skip rule:** Periods already closed via gap declaration, heartbeat conciliation, or manipulation
-resolution are **excluded** from re-litigation (D5).
+**Layer 1** = rolling attach only. **Layer 2 (detect)** = scheduled nightly + operator retroactive run
+(shared orchestration per B2.7) + read-only verify for investigation without alert side effects. Periods already closed via gap declaration, heartbeat conciliation, or manipulation
+resolution are **excluded** from re-litigation (D5). **Chain:** implemented via conciliation
+checkpoint types. **Entry HMAC:** gap — requires `EntryIntegrityConciliation` registry (TB B2.6);
+detection must skip alert-eligible re-litigation while verify remains honestly HMAC-invalid.
 
 ## Batch last-run registry (shared by `I-2026-0006` + `I-2026-0007`)
 
@@ -97,7 +105,7 @@ run” alert.
 
 | ID | Decision for R1 |
 |----|-----------------|
-| **D5-13** Ad hoc + nightly same day | Nightly window is **fixed retroactive**; ad hoc uses operator-selected range. Same calendar day overlap is allowed; nightly skips periods already flagged **resolved** in conciliation store. |
+| **D5-13** Ad hoc + nightly same day | **Settled (B2.7 + B2.6 D4):** Overlap allowed; incident fingerprint dedupe + entry conciliation skip prevent duplicate OPEN alerts. Operator POST and scheduled batch share `RetroactiveIntegrityValidationService`. |
 | **D5-14** Nightly disable in dev | `ezkey.audit.integrity.nightly.enabled=false` default in `application-dev` profile optional; **enabled=true** in Docker clean-start / EXP1. Document in `CONFIGURATION.md`. |
 | **D5-15** Sealed audits in window | `ARCHIVE_SEAL` checkpoints: verification **skips entries_digest recompute** (existing service behavior); nightly pass still verifies **chain_hmac** linkage. |
 | **C8-6** False manipulation vs heartbeat | Classifier step before alert: if rupture is explainable by active/recovered heartbeat incident in window, emit **heartbeat family** path only. |
@@ -108,7 +116,9 @@ run” alert.
 | Wave | TB | Backlog | Primary deliverable |
 |------|-----|---------|---------------------|
 | **B1** | `TB-2026-06-28-nightly-integrity-validation-batch` | `I-2026-0006` | Nightly scheduler + registry table + rupture alert type + scheduler last-run hooks — **merged PR #270** |
-| **B2** | `TB-2026-06-28-manipulation-integrity-remediation` | `I-2026-0005` | Manipulation remediation UI/API + conciliation + crypto reattachment — **in progress** |
+| **B2.5** | `TB-2026-06-30-integrity-investigation-operability` | B2.5 | Investigation UX — shipped |
+| **B2.6** | `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence` | `I-2026-0005` | Entry conciliation + alert dedupe — **under review** |
+| **B2.7** | `TB-2026-07-02-retroactive-integrity-validation-operability` | `I-2026-0006` (extends) | Generic retroactive validation + operator POST — **under review** |
 | **B3** | `TB-2026-06-28-…` (next) | `I-2026-0007` | Dashboard widgets + open-alert count banner + config summary |
 
 **Branch rule:** one `feature/<issue#>-i-2026-0006-…` branch per TB when **code** starts; design pack
@@ -156,8 +166,12 @@ Functional tests in `ezkey-tests` where stable; elective tests for long-running 
 | `I-2026-0005` | Rupture remediation (B2) |
 | `I-2026-0006` | Nightly batch (B1) — **first TB promoted** |
 | `I-2026-0007` | Dashboard (B3) |
+| `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence` | B2.6 — entry conciliation + dedupe |
+| `TB-2026-07-02-retroactive-integrity-validation-operability` | B2.7 — generic detect + operator POST |
+| [`integrity-wave-b-operator-end-state-compass.md`](integrity-wave-b-operator-end-state-compass.md) | Fresh-session end-state + corpus map |
 | `F-audit-chain` | Feature milestone in [`features-and-phases.md`](features-and-phases.md) |
 | `ML-2026-06-28-wave-b-integrity-cluster-kickoff.md` | Method log for this kickoff |
+| `ML-2026-07-02-entry-integrity-conciliation-kickoff.md` | B2.6 + B2.7 analysis kickoff |
 
 ## Complexity compass (scope guard)
 
