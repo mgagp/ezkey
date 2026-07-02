@@ -56,6 +56,9 @@ Transactional boundary on `reconcileIntegrityRupture` prevented partial chain da
 
 Redeploy admin-api (or `clean-start`) required for existing stacks so Flyway applies V14.
 
+**Manual validation (maintainer, 2026-07-01):** After V14 + stack rebuild, reconcile dialog succeeds;
+alert resolved; chain conciliation persisted.
+
 ## Relation to B2.5
 
 Orthogonal to investigation operability TB; blocks **resolution** path until schema fix lands.
