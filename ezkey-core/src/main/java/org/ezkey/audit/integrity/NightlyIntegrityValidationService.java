@@ -12,8 +12,9 @@ package org.ezkey.audit.integrity;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.ezkey.alert.domain.AlertSeverity;
 import org.ezkey.alert.domain.AlertStatus;
 import org.ezkey.alert.domain.AlertType;
@@ -25,12 +26,13 @@ import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.dto.ChainIntegrityViolation;
+import org.ezkey.audit.dto.EntryIntegrityViolation;
+import org.ezkey.audit.dto.IntegrityViolationCappedList;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -99,22 +101,24 @@ public class NightlyIntegrityValidationService {
       return NightlyIntegrityValidationResult.skipped(scope, "HMAC signing is not active");
     }
 
-    List<String> entryHmacViolations = verifyEntryHmacs(windowStart, windowEndExclusive);
+    List<EntryIntegrityViolation> entryViolations =
+        EntryHmacViolationCollector.collectAll(
+            auditLogRepository, auditHmacService, windowStart, windowEndExclusive);
     AuditChainVerificationService.ChainVerificationReport chainReport =
         chainVerificationService.verifyChain(windowStart, windowEndExclusive);
 
-    boolean entryHmacIntact = entryHmacViolations.isEmpty();
+    boolean entryHmacIntact = entryViolations.isEmpty();
     boolean chainIntact = chainReport.intact();
     boolean integrityFailure = !entryHmacIntact || !chainIntact;
 
     boolean alertRaised = false;
     if (integrityFailure && shouldRaiseIntegrityAlert(chainReport, entryHmacIntact)) {
-      raiseIntegrityRuptureAlert(windowStart, windowEndExclusive, chainReport, entryHmacViolations);
+      raiseIntegrityRuptureAlert(windowStart, windowEndExclusive, chainReport, entryViolations);
       alertRaised = true;
     }
 
     emitCompletionAudit(
-        windowStart, windowEndExclusive, chainReport, entryHmacViolations, integrityFailure);
+        windowStart, windowEndExclusive, chainReport, entryViolations, integrityFailure);
 
     logger.info(
         "Nightly integrity validation completed: window=[{} to {}), intact={}, alertRaised={},"
@@ -124,7 +128,7 @@ public class NightlyIntegrityValidationService {
         !integrityFailure,
         alertRaised,
         chainReport.status(),
-        entryHmacViolations.size());
+        entryViolations.size());
 
     return new NightlyIntegrityValidationResult(
         windowStart,
@@ -133,29 +137,92 @@ public class NightlyIntegrityValidationService {
         !integrityFailure,
         alertRaised,
         chainReport.status(),
-        entryHmacViolations.size(),
+        entryViolations.size(),
         chainReport.violations().size());
   }
 
-  private List<String> verifyEntryHmacs(OffsetDateTime from, OffsetDateTime to) {
-    Specification<AuditLog> spec =
-        (root, query, cb) ->
-            cb.and(
-                cb.greaterThanOrEqualTo(root.get("createdAt"), from),
-                cb.lessThan(root.get("createdAt"), to));
+  private void raiseIntegrityRuptureAlert(
+      OffsetDateTime windowStart,
+      OffsetDateTime windowEnd,
+      AuditChainVerificationService.ChainVerificationReport chainReport,
+      List<EntryIntegrityViolation> entryViolations) {
+    IntegrityViolationCappedList<EntryIntegrityViolation> cappedEntries =
+        IntegrityViolationCappedList.of(
+            entryViolations, IntegrityViolationCappedList.ALERT_ENTRY_CAP);
+    IntegrityViolationCappedList<ChainIntegrityViolation> cappedChains =
+        IntegrityViolationCappedList.of(
+            chainReport.chainViolations(), IntegrityViolationCappedList.ALERT_CHAIN_CAP);
 
-    List<AuditLog> entries = auditLogRepository.findAll(spec, Sort.by("auditLogId").ascending());
-    List<String> violations = new ArrayList<>();
-    for (AuditLog entry : entries) {
-      if (entry.getEntryHmac() == null) {
-        violations.add("Missing entry_hmac on auditLogId=" + entry.getAuditLogId());
-        continue;
-      }
-      if (!auditHmacService.verifyHmac(entry)) {
-        violations.add("Entry HMAC mismatch on auditLogId=" + entry.getAuditLogId());
-      }
-    }
-    return violations;
+    String dedupeKey = INTEGRITY_RUPTURE_DEDUPE_PREFIX + windowStart.toInstant().toEpochMilli();
+    String payload =
+        AuditDetailsBuilder.builder()
+            .custom("windowStart", windowStart.toString())
+            .custom("windowEnd", windowEnd.toString())
+            .custom("chainStatus", chainReport.status())
+            .custom("violationCount", chainReport.violations().size())
+            .custom("entryHmacViolationCount", entryViolations.size())
+            .custom("entryViolations", cappedListToMap(cappedEntries))
+            .custom("chainViolations", cappedListToMap(cappedChains))
+            .custom(
+                "failBoundary",
+                chainReport.coverageStart() != null ? chainReport.coverageStart().toString() : null)
+            .custom(
+                "resumeBoundary",
+                chainReport.coverageEnd() != null ? chainReport.coverageEnd().toString() : null)
+            .custom(
+                "message",
+                "Nightly integrity validation detected a rupture in the retroactive window")
+            .toJson();
+
+    Alert alert =
+        alertService.raiseOrTouch(
+            AlertType.AUDIT_INTEGRITY_RUPTURE, AlertSeverity.CRITICAL, dedupeKey, payload);
+    logger.warn(
+        "Raised/touched AUDIT_INTEGRITY_RUPTURE alert id={} for window [{} to {})",
+        alert.getAlertId(),
+        windowStart,
+        windowEnd);
+  }
+
+  private void emitCompletionAudit(
+      OffsetDateTime windowStart,
+      OffsetDateTime windowEnd,
+      AuditChainVerificationService.ChainVerificationReport chainReport,
+      List<EntryIntegrityViolation> entryViolations,
+      boolean integrityFailure) {
+    IntegrityViolationCappedList<EntryIntegrityViolation> cappedEntries =
+        IntegrityViolationCappedList.of(
+            entryViolations, IntegrityViolationCappedList.EVENT_ENTRY_CAP);
+    IntegrityViolationCappedList<ChainIntegrityViolation> cappedChains =
+        IntegrityViolationCappedList.of(
+            chainReport.chainViolations(), IntegrityViolationCappedList.EVENT_CHAIN_CAP);
+
+    String details =
+        AuditDetailsBuilder.builder()
+            .custom("windowStart", windowStart.toString())
+            .custom("windowEnd", windowEnd.toString())
+            .custom("intact", !integrityFailure)
+            .custom("chainStatus", chainReport.status())
+            .custom("entryHmacViolationCount", entryViolations.size())
+            .custom("chainViolationCount", chainReport.violations().size())
+            .custom("entryViolations", cappedListToMap(cappedEntries))
+            .custom("chainViolations", cappedListToMap(cappedChains))
+            .toJson();
+
+    AuditLog entry =
+        AuditLog.builder()
+            .eventType(EventType.NIGHTLY_INTEGRITY_VALIDATION_COMPLETED)
+            .eventAction("nightly-integrity-validation")
+            .eventStatus(integrityFailure ? EventStatus.FAILURE : EventStatus.SUCCESS)
+            .apiName(ApiName.ADMIN_API)
+            .eventDetails(details)
+            .build();
+    auditLogService.log(entry);
+  }
+
+  private String formatScope(OffsetDateTime start, OffsetDateTime end) {
+    long hours = java.time.Duration.between(start, end).toHours();
+    return "Validated " + hours + " h ending " + end.withOffsetSameInstant(ZoneOffset.UTC);
   }
 
   /**
@@ -186,70 +253,13 @@ public class NightlyIntegrityValidationService {
         .isPresent();
   }
 
-  private void raiseIntegrityRuptureAlert(
-      OffsetDateTime windowStart,
-      OffsetDateTime windowEnd,
-      AuditChainVerificationService.ChainVerificationReport chainReport,
-      List<String> entryHmacViolations) {
-    String dedupeKey = INTEGRITY_RUPTURE_DEDUPE_PREFIX + windowStart.toInstant().toEpochMilli();
-    String payload =
-        AuditDetailsBuilder.builder()
-            .custom("windowStart", windowStart.toString())
-            .custom("windowEnd", windowEnd.toString())
-            .custom("chainStatus", chainReport.status())
-            .custom("violationCount", chainReport.violations().size())
-            .custom("entryHmacViolationCount", entryHmacViolations.size())
-            .custom(
-                "failBoundary",
-                chainReport.coverageStart() != null ? chainReport.coverageStart().toString() : null)
-            .custom(
-                "resumeBoundary",
-                chainReport.coverageEnd() != null ? chainReport.coverageEnd().toString() : null)
-            .custom(
-                "message",
-                "Nightly integrity validation detected a rupture in the retroactive window")
-            .toJson();
-
-    Alert alert =
-        alertService.raiseOrTouch(
-            AlertType.AUDIT_INTEGRITY_RUPTURE, AlertSeverity.CRITICAL, dedupeKey, payload);
-    logger.warn(
-        "Raised/touched AUDIT_INTEGRITY_RUPTURE alert id={} for window [{} to {})",
-        alert.getAlertId(),
-        windowStart,
-        windowEnd);
-  }
-
-  private void emitCompletionAudit(
-      OffsetDateTime windowStart,
-      OffsetDateTime windowEnd,
-      AuditChainVerificationService.ChainVerificationReport chainReport,
-      List<String> entryHmacViolations,
-      boolean integrityFailure) {
-    String details =
-        AuditDetailsBuilder.builder()
-            .custom("windowStart", windowStart.toString())
-            .custom("windowEnd", windowEnd.toString())
-            .custom("intact", !integrityFailure)
-            .custom("chainStatus", chainReport.status())
-            .custom("entryHmacViolationCount", entryHmacViolations.size())
-            .custom("chainViolationCount", chainReport.violations().size())
-            .toJson();
-
-    AuditLog entry =
-        AuditLog.builder()
-            .eventType(EventType.NIGHTLY_INTEGRITY_VALIDATION_COMPLETED)
-            .eventAction("nightly-integrity-validation")
-            .eventStatus(integrityFailure ? EventStatus.FAILURE : EventStatus.SUCCESS)
-            .apiName(ApiName.ADMIN_API)
-            .eventDetails(details)
-            .build();
-    auditLogService.log(entry);
-  }
-
-  private String formatScope(OffsetDateTime start, OffsetDateTime end) {
-    long hours = java.time.Duration.between(start, end).toHours();
-    return "Validated " + hours + " h ending " + end.withOffsetSameInstant(ZoneOffset.UTC);
+  private static Map<String, Object> cappedListToMap(IntegrityViolationCappedList<?> capped) {
+    Map<String, Object> map = new HashMap<>();
+    map.put("items", capped.items());
+    map.put("totalCount", capped.totalCount());
+    map.put("returnedCount", capped.returnedCount());
+    map.put("truncated", capped.truncated());
+    return map;
   }
 
   /**

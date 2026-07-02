@@ -11,9 +11,12 @@
 package org.ezkey.audit.integrity;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.dto.EntryIntegrityViolation;
+import org.ezkey.audit.dto.IntegrityViolationCappedList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -74,13 +77,14 @@ public class AuditIntegrityService {
   @Transactional(readOnly = true)
   public IntegrityReport verifyRange(OffsetDateTime from, OffsetDateTime to) {
     if (!auditHmacService.isActive()) {
-      return new IntegrityReport(0, 0, 0, 0, false, "HMAC signing is not active");
+      return inactiveReport();
     }
 
     long totalEntries = 0;
     long validEntries = 0;
     long invalidEntries = 0;
     long unsignedEntries = 0;
+    List<EntryIntegrityViolation> violations = new ArrayList<>();
 
     int page = 0;
     boolean hasMore = true;
@@ -97,10 +101,12 @@ public class AuditIntegrityService {
         totalEntries++;
         if (entry.getEntryHmac() == null) {
           unsignedEntries++;
+          violations.add(toViolation(entry, EntryHmacViolationCollector.REASON_MISSING_ENTRY_HMAC));
         } else if (auditHmacService.verifyHmac(entry)) {
           validEntries++;
         } else {
           invalidEntries++;
+          violations.add(toViolation(entry, EntryHmacViolationCollector.REASON_HMAC_MISMATCH));
           logger.warn(
               "HMAC verification FAILED for audit_log_id={}, event_type={}, created_at={}",
               entry.getAuditLogId(),
@@ -127,7 +133,13 @@ public class AuditIntegrityService {
         status);
 
     return new IntegrityReport(
-        totalEntries, validEntries, invalidEntries, unsignedEntries, invalidEntries == 0, status);
+        totalEntries,
+        validEntries,
+        invalidEntries,
+        unsignedEntries,
+        invalidEntries == 0,
+        status,
+        IntegrityViolationCappedList.uncapped(violations));
   }
 
   /**
@@ -142,7 +154,7 @@ public class AuditIntegrityService {
   @Transactional(readOnly = true)
   public IntegrityReport verifySingle(Long id) {
     if (!auditHmacService.isActive()) {
-      return new IntegrityReport(0, 0, 0, 0, false, "HMAC signing is not active");
+      return inactiveReport();
     }
 
     return auditLogRepository
@@ -151,7 +163,16 @@ public class AuditIntegrityService {
             entry -> {
               if (entry.getEntryHmac() == null) {
                 logger.info("Audit entry id={} has no HMAC signature (unsigned)", id);
-                return new IntegrityReport(1, 0, 0, 1, true, "UNSIGNED");
+                EntryIntegrityViolation violation =
+                    toViolation(entry, EntryHmacViolationCollector.REASON_MISSING_ENTRY_HMAC);
+                return new IntegrityReport(
+                    1,
+                    0,
+                    0,
+                    1,
+                    true,
+                    "UNSIGNED",
+                    IntegrityViolationCappedList.uncapped(List.of(violation)));
               }
               boolean valid = auditHmacService.verifyHmac(entry);
               if (!valid) {
@@ -165,9 +186,42 @@ public class AuditIntegrityService {
               String status = valid ? "OK" : "INTEGRITY_VIOLATION_DETECTED";
               long invalid = valid ? 0L : 1L;
               long validCount = valid ? 1L : 0L;
-              return new IntegrityReport(1, validCount, invalid, 0, valid, status);
+              List<EntryIntegrityViolation> violations =
+                  valid
+                      ? List.of()
+                      : List.of(
+                          toViolation(entry, EntryHmacViolationCollector.REASON_HMAC_MISMATCH));
+              return new IntegrityReport(
+                  1,
+                  validCount,
+                  invalid,
+                  0,
+                  valid,
+                  status,
+                  IntegrityViolationCappedList.uncapped(violations));
             })
-        .orElse(new IntegrityReport(0, 0, 0, 0, true, "NOT_FOUND"));
+        .orElse(
+            new IntegrityReport(
+                0, 0, 0, 0, true, "NOT_FOUND", IntegrityViolationCappedList.uncapped(List.of())));
+  }
+
+  private static EntryIntegrityViolation toViolation(AuditLog entry, String reason) {
+    return new EntryIntegrityViolation(
+        entry.getAuditLogId(),
+        entry.getEventType() != null ? entry.getEventType().name() : null,
+        entry.getCreatedAt(),
+        reason);
+  }
+
+  private static IntegrityReport inactiveReport() {
+    return new IntegrityReport(
+        0,
+        0,
+        0,
+        0,
+        false,
+        "HMAC signing is not active",
+        IntegrityViolationCappedList.uncapped(List.of()));
   }
 
   private void logDiagnostics(AuditLog entry) {
@@ -197,18 +251,10 @@ public class AuditIntegrityService {
   }
 
   private Specification<AuditLog> buildRangeSpec(OffsetDateTime from, OffsetDateTime to) {
-    return (root, query, cb) -> {
-      if (from != null && to != null) {
-        return cb.and(
+    return (root, query, cb) ->
+        cb.and(
             cb.greaterThanOrEqualTo(root.get("createdAt"), from),
             cb.lessThan(root.get("createdAt"), to));
-      } else if (from != null) {
-        return cb.greaterThanOrEqualTo(root.get("createdAt"), from);
-      } else if (to != null) {
-        return cb.lessThan(root.get("createdAt"), to);
-      }
-      return cb.conjunction();
-    };
   }
 
   /**
@@ -220,6 +266,7 @@ public class AuditIntegrityService {
    * @param unsignedEntries entries without HMAC (created before signing was enabled)
    * @param intact true if no HMAC mismatches were found
    * @param status human-readable status string
+   * @param entryViolations structured violations (API uncapped)
    */
   public record IntegrityReport(
       long totalEntries,
@@ -227,5 +274,6 @@ public class AuditIntegrityService {
       long invalidEntries,
       long unsignedEntries,
       boolean intact,
-      String status) {}
+      String status,
+      IntegrityViolationCappedList<EntryIntegrityViolation> entryViolations) {}
 }

@@ -21,7 +21,6 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.alert.domain.AlertSeverity;
@@ -40,7 +39,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
@@ -94,8 +95,8 @@ class NightlyIntegrityValidationServiceTest {
   @Test
   void validateWindow_intactPath_doesNotRaiseAlert() {
     when(auditHmacService.isActive()).thenReturn(true);
-    when(auditLogRepository.findAll(any(Specification.class), any(Sort.class)))
-        .thenReturn(Collections.emptyList());
+    when(auditLogRepository.findAll(any(Specification.class), any(PageRequest.class)))
+        .thenReturn(Page.empty());
     when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
 
     NightlyIntegrityValidationService.NightlyIntegrityValidationResult result =
@@ -113,8 +114,8 @@ class NightlyIntegrityValidationServiceTest {
     AuditLog badEntry = new AuditLog();
     badEntry.setAuditLogId(42L);
     badEntry.setEntryHmac("bad");
-    when(auditLogRepository.findAll(any(Specification.class), any(Sort.class)))
-        .thenReturn(List.of(badEntry));
+    when(auditLogRepository.findAll(any(Specification.class), any(PageRequest.class)))
+        .thenReturn(new PageImpl<>(List.of(badEntry)));
     when(auditHmacService.verifyHmac(badEntry)).thenReturn(false);
     when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
     Alert saved = new Alert();
@@ -142,8 +143,8 @@ class NightlyIntegrityValidationServiceTest {
   @Test
   void validateWindow_c8_6_defersAlertWhenOnlyUndeclaredGapsAndHeartbeatOpen() {
     when(auditHmacService.isActive()).thenReturn(true);
-    when(auditLogRepository.findAll(any(Specification.class), any(Sort.class)))
-        .thenReturn(Collections.emptyList());
+    when(auditLogRepository.findAll(any(Specification.class), any(PageRequest.class)))
+        .thenReturn(Page.empty());
     AuditChainVerificationService.UndeclaredGap gap =
         new AuditChainVerificationService.UndeclaredGap(
             WINDOW_END.minusHours(2), WINDOW_END.minusHours(1), 60);
@@ -164,8 +165,8 @@ class NightlyIntegrityValidationServiceTest {
   @Test
   void validateWindow_emitsCompletionAuditWithEventType() {
     when(auditHmacService.isActive()).thenReturn(true);
-    when(auditLogRepository.findAll(any(Specification.class), any(Sort.class)))
-        .thenReturn(Collections.emptyList());
+    when(auditLogRepository.findAll(any(Specification.class), any(PageRequest.class)))
+        .thenReturn(Page.empty());
     when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
 
     service.validateWindow(WINDOW_END);
@@ -183,6 +184,7 @@ class NightlyIntegrityValidationServiceTest {
         0,
         0,
         0,
+        List.of(),
         List.of(),
         List.of(),
         WINDOW_END.minusHours(24),
@@ -203,6 +205,7 @@ class NightlyIntegrityValidationServiceTest {
         0,
         0,
         List.of("Undeclared gap"),
+        List.of(),
         gaps,
         null,
         null,
