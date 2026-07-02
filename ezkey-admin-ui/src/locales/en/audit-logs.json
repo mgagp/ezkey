@@ -68,7 +68,7 @@
     "anchorBadge": "Anchor",
     "focusedContextBadge": "Initial context",
     "viewDetails": "View details",
-    "hmacTooltip": "Hash-based message authentication code; ensures entry tamper-evidence.",
+    "hmacTooltip": "Tamper-evidence field present (signed). Green/red only after verification in an integrity context.",
     "columnTooltips": {
       "event": "Event type — the category of operation (what happened). Open a row for the action string and full detail.",
       "status": "How the step finished: Success, Failure (expected rules or terminal MFA outcomes), or Error (unexpected processing).",
@@ -248,7 +248,10 @@
     "labelError": "Error",
     "labelCreated": "Created",
     "labelHmacIntegrity": "HMAC Integrity",
-    "chainIntact": "Chain intact",
+    "hmacUnsigned": "Unsigned",
+    "hmacChecking": "Verifying…",
+    "hmacVerified": "Verified intact",
+    "hmacViolation": "Integrity violation",
     "notAvailable": "Not available",
     "labelInstance": "Instance"
   },
@@ -275,6 +278,27 @@
     "statUndeclaredGaps": "Undeclared gaps",
     "gapDeclaredCheckpoints": "Gap-declared checkpoints: {{count}}",
     "violations": "Violations:",
+    "structuredEntryViolations": "Affected audit log IDs:",
+    "structuredChainViolations": "Affected checkpoints:",
+    "hmacBadge": {
+      "signed": "Signed",
+      "signedTooltip": "Entry HMAC present — not verified in this session yet",
+      "verified": "Verified",
+      "verifiedTooltip": "HMAC recomputed and matches (latest verification in this session)",
+      "violation": "Violation",
+      "violationTooltip": "HMAC mismatch or missing signature in latest verification"
+    },
+    "investigation": {
+      "contextBanner": "Integrity rupture investigation context",
+      "exitContext": "Exit investigation context",
+      "offPageViolations": "{{offPage}} of {{total}} integrity violations are not on this page",
+      "showAffectedOnly": "Show only affected entries",
+      "affectedOnlyTitle": "Affected entries (from verification)",
+      "backToList": "Back to full list",
+      "reasonColumn": "Reason",
+      "viewAround": "View around event",
+      "noAffectedEntries": "No affected entries in session"
+    },
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Undeclared gap(s)",
     "reportViolation": "Violation",

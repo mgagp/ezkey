@@ -63,7 +63,20 @@
       "entryHmacViolationCount": "Violations HMAC entrée",
       "failBoundary": "Frontière d'échec",
       "resumeBoundary": "Frontière de reprise",
-      "message": "Message"
+      "message": "Message",
+      "investigationHeading": "Investigation",
+      "atDetection": "À la détection",
+      "verifiedNow": "Vérifié maintenant",
+      "entrySection": "Violations HMAC entrée",
+      "chainSection": "Violations chaîne",
+      "noEntryViolations": "Aucune violation entrée",
+      "noChainViolations": "Aucune violation chaîne",
+      "liveVerifying": "Re-vérification…",
+      "livePending": "En attente de la vérification en direct…",
+      "liveVerifyFailed": "Échec de la vérification en direct",
+      "truncatedList": "{{returned}} sur {{total}} affichés (liste tronquée dans l'alerte)",
+      "investigateCta": "Investiguer dans les journaux d'audit",
+      "viewCheckpoint": "Voir le checkpoint"
     }
   },
   "reconcileDialog": {

@@ -63,7 +63,20 @@
       "entryHmacViolationCount": "Entry HMAC violations",
       "failBoundary": "Fail boundary",
       "resumeBoundary": "Resume boundary",
-      "message": "Message"
+      "message": "Message",
+      "investigationHeading": "Investigation",
+      "atDetection": "At detection",
+      "verifiedNow": "Verified now",
+      "entrySection": "Entry HMAC violations",
+      "chainSection": "Chain violations",
+      "noEntryViolations": "No entry violations",
+      "noChainViolations": "No chain violations",
+      "liveVerifying": "Re-verifying…",
+      "livePending": "Waiting for live verification…",
+      "liveVerifyFailed": "Live verification failed",
+      "truncatedList": "Showing {{returned}} of {{total}} (truncated in alert snapshot)",
+      "investigateCta": "Investigate in Audit Logs",
+      "viewCheckpoint": "View checkpoint"
     }
   },
   "reconcileDialog": {
