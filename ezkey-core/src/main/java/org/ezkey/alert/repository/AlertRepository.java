@@ -47,4 +47,12 @@ public interface AlertRepository
    * @return alerts in the requested page
    */
   List<Alert> findByStatusOrderByCreatedAtDesc(AlertStatus status, Pageable pageable);
+
+  /**
+   * Returns the number of alerts with the given status.
+   *
+   * @param status status to count
+   * @return count of matching alerts
+   */
+  long countByStatus(AlertStatus status);
 }

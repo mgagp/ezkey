@@ -58,6 +58,10 @@
   },
   "auditChain": {
     "title": "Audit chain alerts",
+    "bannerTitle": "Open alerts",
+    "bannerMessage_one": "{{count}} resolution pending",
+    "bannerMessage_other": "{{count}} resolutions pending",
+    "openAlertsLink": "Review alerts →",
     "undeclaredGapsLabel": "Undeclared gap(s)",
     "help": {
       "undeclaredGaps": "Periods with no checkpoints that have not been formally declared.",
@@ -68,6 +72,30 @@
     "gapMinutes": "~{{count}} min gap",
     "openAuditLogs": "Open Audit Logs →",
     "openAlerts": "Open Alerts →"
+  },
+  "batchHealth": {
+    "integrityTitle": "System / integrity jobs",
+    "operationalTitle": "Operational jobs",
+    "configSummary": "Chain lookback {{lookback}} min · Nightly window {{window}} h",
+    "configDisabled": "disabled",
+    "lastRun": "Last run",
+    "scope": "Scope",
+    "error": "Error",
+    "neverRun": "Never run",
+    "status": {
+      "SUCCESS": "Success",
+      "FAILED": "Failed",
+      "NEVER_RUN": "Never run"
+    },
+    "jobs": {
+      "AUDIT_CHAIN_CHECKPOINT": "Audit chain checkpoint",
+      "NIGHTLY_INTEGRITY_VALIDATION": "Nightly integrity validation",
+      "REENCRYPTION": "Re-encryption"
+    },
+    "links": {
+      "integrityPanel": "Open integrity panel →",
+      "encryptionKeys": "Open encryption keys →"
+    }
   },
   "followUp": {
     "title": "Operational follow-up",

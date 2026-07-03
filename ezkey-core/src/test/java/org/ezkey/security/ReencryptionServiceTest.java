@@ -100,6 +100,7 @@ class ReencryptionServiceTest {
   @Mock private AuditLogService auditLogService;
   @Mock private EntityManager entityManager;
   @Mock private ObjectProvider<MeterRegistry> meterRegistryProvider;
+  @Mock private org.ezkey.audit.integrity.ScheduledJobLastRunService jobLastRunService;
 
   private ReencryptionRecordCipher recordCipher;
   private ReencryptionTargetQueryService targetQueryService;
@@ -162,7 +163,8 @@ class ReencryptionServiceTest {
             auditLogService,
             batchCreationService,
             batchProcessingService,
-            parallelRunner);
+            parallelRunner,
+            jobLastRunService);
 
     // Setup encryption keys
     oldKey = new EncryptionKey();

@@ -8567,6 +8567,30 @@
           }
         }
       },
+      "DashboardIntegrityConfigSummaryDto": {
+        "type": "object",
+        "description": "Active integrity configuration summary for dashboard widgets",
+        "properties": {
+          "chainLookbackMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Rolling checkpoint lookback window in minutes"
+          },
+          "nightlyWindowHours": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Nightly retroactive validation window in hours"
+          },
+          "chainCheckpointsEnabled": {
+            "type": "boolean",
+            "description": "Whether rolling audit chain checkpoints are enabled"
+          },
+          "nightlyValidationEnabled": {
+            "type": "boolean",
+            "description": "Whether nightly retroactive integrity validation is enabled"
+          }
+        }
+      },
       "DashboardOverviewDto": {
         "type": "object",
         "description": "Aggregated dashboard overview (stats, recent activity, optional alerts)",
@@ -8586,12 +8610,35 @@
               "$ref": "#/components/schemas/DashboardRecentActivityItemDto"
             }
           },
+          "openAlertCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Count of OPEN operator-facing alerts. Populated only for Global Admin."
+          },
           "alerts": {
             "type": "array",
-            "description": "Instance-level alerts (e.g. audit chain gap pending). Populated only for Global Admin.",
+            "description": "Recent OPEN alerts (newest first, capped). Populated only for Global Admin.",
             "items": {
               "$ref": "#/components/schemas/DashboardAlertItemDto"
             }
+          },
+          "integrityJobs": {
+            "type": "array",
+            "description": "System/integrity scheduled jobs (checkpoint, nightly validation). Global Admin only.",
+            "items": {
+              "$ref": "#/components/schemas/DashboardScheduledJobRowDto"
+            }
+          },
+          "operationalJobs": {
+            "type": "array",
+            "description": "Other operational scheduled jobs (e.g. re-encryption). Global Admin only.",
+            "items": {
+              "$ref": "#/components/schemas/DashboardScheduledJobRowDto"
+            }
+          },
+          "integrityConfigSummary": {
+            "$ref": "#/components/schemas/DashboardIntegrityConfigSummaryDto",
+            "description": "Active integrity configuration summary (non-secret). Global Admin only."
           }
         }
       },
@@ -8622,6 +8669,44 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "DashboardScheduledJobRowDto": {
+        "type": "object",
+        "description": "Scheduled job last-run row for dashboard batch health widgets",
+        "properties": {
+          "jobKey": {
+            "type": "string",
+            "description": "Stable job identifier",
+            "enum": [
+              "AUDIT_CHAIN_CHECKPOINT",
+              "NIGHTLY_INTEGRITY_VALIDATION",
+              "REENCRYPTION"
+            ],
+            "example": "AUDIT_CHAIN_CHECKPOINT"
+          },
+          "lastExecutionAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the most recent execution (null when never run)"
+          },
+          "lastStatus": {
+            "type": "string",
+            "description": "Outcome of the most recent execution",
+            "enum": [
+              "SUCCESS",
+              "FAILED",
+              "NEVER_RUN"
+            ]
+          },
+          "lastRunScope": {
+            "type": "string",
+            "description": "Human-readable scope of the last run (e.g. validated window)"
+          },
+          "lastErrorSummary": {
+            "type": "string",
+            "description": "Safe operator-facing error summary when lastStatus is FAILED"
           }
         }
       },
@@ -9396,42 +9481,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }

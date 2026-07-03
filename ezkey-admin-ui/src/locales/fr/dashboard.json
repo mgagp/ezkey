@@ -58,6 +58,10 @@
   },
   "auditChain": {
     "title": "Alertes chaîne d'audit",
+    "bannerTitle": "Alertes ouvertes",
+    "bannerMessage_one": "{{count}} résolution en attente",
+    "bannerMessage_other": "{{count}} résolutions en attente",
+    "openAlertsLink": "Voir les alertes →",
     "undeclaredGapsLabel": "Trou(s) non déclaré(s)",
     "help": {
       "undeclaredGaps": "Périodes sans point de contrôle qui n'ont pas été formellement déclarées.",
@@ -68,6 +72,30 @@
     "gapMinutes": "~{{count}} min de trou",
     "openAuditLogs": "Ouvrir les journaux d'audit →",
     "openAlerts": "Ouvrir les alertes →"
+  },
+  "batchHealth": {
+    "integrityTitle": "Tâches système / intégrité",
+    "operationalTitle": "Tâches opérationnelles",
+    "configSummary": "Fenêtre chaîne {{lookback}} min · Fenêtre nocturne {{window}} h",
+    "configDisabled": "désactivé",
+    "lastRun": "Dernière exécution",
+    "scope": "Périmètre",
+    "error": "Erreur",
+    "neverRun": "Jamais exécuté",
+    "status": {
+      "SUCCESS": "Succès",
+      "FAILED": "Échec",
+      "NEVER_RUN": "Jamais exécuté"
+    },
+    "jobs": {
+      "AUDIT_CHAIN_CHECKPOINT": "Point de contrôle chaîne d'audit",
+      "NIGHTLY_INTEGRITY_VALIDATION": "Validation d'intégrité nocturne",
+      "REENCRYPTION": "Re-chiffrement"
+    },
+    "links": {
+      "integrityPanel": "Ouvrir le panneau intégrité →",
+      "encryptionKeys": "Ouvrir les clés de chiffrement →"
+    }
   },
   "followUp": {
     "title": "Suivi opérationnel",

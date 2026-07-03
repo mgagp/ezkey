@@ -70,7 +70,7 @@ Grill reference: [`backlog/grill-sessions/integrity-cluster-D4-D6-grill-me.md`](
 
 | ID | Item | Role |
 |----|------|------|
-| **B3** | `I-2026-0007` dashboard widgets | Last-run visibility, open-alert banner polish |
+| **B3** | `I-2026-0007` dashboard widgets | Last-run visibility, open-alert count banner — **in review** |
 | **C9** | Snooze | Deferred |
 | **Runtime docs** | `docs/ALERTS.md`, `docs/AUDIT_LOG_INTEGRITY.md` | Update on implementation, not analysis |
 
@@ -145,7 +145,7 @@ only if implementation reveals conflict with C7/C8 grill (e.g. partial conciliat
 | No explain same entry twice | Yes | B2.6 unique ACTIVE per audit_log_id |
 | Ad hoc report / take action | Yes | B2.7 POST |
 | DB + audit for lifecycle acts | Yes (chain); Planned (entry) | B2 events; B2.6 table + event |
-| Batch visibility | Partial | B3 still gap |
+| Batch visibility | **Shipped (B3)** | Dashboard widgets + `openAlertCount` banner |
 
 **Verdict:** Session analysis is **captured** for implementation planning. **Not yet** in runtime
 `docs/*` until code lands. **Single gap in corpus before today:** no one-page end-state compass —

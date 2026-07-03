@@ -253,6 +253,16 @@ public class AlertService {
   }
 
   /**
+   * Returns the count of OPEN operator-facing alerts.
+   *
+   * @return number of OPEN alerts
+   */
+  @Transactional(readOnly = true)
+  public long countOpen() {
+    return alertRepository.countByStatus(AlertStatus.OPEN);
+  }
+
+  /**
    * Paginated search with optional filters.
    *
    * @param status optional status filter
