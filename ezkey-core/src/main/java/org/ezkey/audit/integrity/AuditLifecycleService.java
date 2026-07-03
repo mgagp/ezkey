@@ -12,6 +12,7 @@ package org.ezkey.audit.integrity;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import org.ezkey.alert.domain.AlertResolutionReason;
@@ -29,6 +30,7 @@ import org.ezkey.audit.dto.ArchiveConfirmArchivedResult;
 import org.ezkey.audit.dto.ArchiveEligibilityResult;
 import org.ezkey.audit.dto.ArchiveSealRequest;
 import org.ezkey.audit.dto.ArchiveSealResult;
+import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.dto.GapDeclarationRequest;
 import org.ezkey.audit.dto.GapDeclarationResult;
 import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
@@ -92,6 +94,8 @@ public class AuditLifecycleService {
   private final AuditChainProperties chainProperties;
   private final AuditArchiveProperties archiveProperties;
   private final AlertService alertService;
+  private final EntryIntegrityViolationClassifier entryIntegrityViolationClassifier;
+  private final AuditEntryIntegrityConciliationService entryIntegrityConciliationService;
 
   /**
    * Constructs the lifecycle service with required dependencies.
@@ -104,6 +108,8 @@ public class AuditLifecycleService {
    * @param chainProperties chain configuration (window size for gapEnd auto-derivation)
    * @param archiveProperties archive lifecycle policy configuration
    * @param alertService alert subsystem entry point for auto-resolving matching gap alerts
+   * @param entryIntegrityViolationClassifier per-entry HMAC violation classifier
+   * @param entryIntegrityConciliationService per-entry conciliation registry
    */
   public AuditLifecycleService(
       AuditChainCheckpointRepository checkpointRepository,
@@ -113,7 +119,9 @@ public class AuditLifecycleService {
       AuditLogService auditLogService,
       AuditChainProperties chainProperties,
       AuditArchiveProperties archiveProperties,
-      AlertService alertService) {
+      AlertService alertService,
+      EntryIntegrityViolationClassifier entryIntegrityViolationClassifier,
+      AuditEntryIntegrityConciliationService entryIntegrityConciliationService) {
     this.checkpointRepository = checkpointRepository;
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
@@ -122,6 +130,8 @@ public class AuditLifecycleService {
     this.chainProperties = chainProperties;
     this.archiveProperties = archiveProperties;
     this.alertService = alertService;
+    this.entryIntegrityViolationClassifier = entryIntegrityViolationClassifier;
+    this.entryIntegrityConciliationService = entryIntegrityConciliationService;
   }
 
   /**
@@ -711,6 +721,25 @@ public class AuditLifecycleService {
     Alert alert = resolveIntegrityRuptureAlert(request);
     validateIntegrityRuptureAlert(alert, failBoundary, resumeBoundary);
 
+    EntryIntegrityViolationClassifier.ViolationCollection liveEntryViolations =
+        entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, failBoundary, resumeBoundary);
+    List<Long> requiredAcknowledgements =
+        liveEntryViolations.alertEligibleViolations().stream()
+            .map(EntryIntegrityViolation::auditLogId)
+            .sorted()
+            .toList();
+    List<Long> providedAcknowledgements = normalizeAcknowledgedAuditLogIds(request);
+    if (!requiredAcknowledgements.equals(providedAcknowledgements)) {
+      throw new IllegalArgumentException(
+          "acknowledgedAuditLogIds must exactly match live unacknowledged entry violations in the"
+              + " rupture window. Expected "
+              + requiredAcknowledgements
+              + " but received "
+              + providedAcknowledgements
+              + ".");
+    }
+
     List<AuditChainCheckpoint> inRuptureWindow =
         checkpointRepository.findByWindowRange(failBoundary, resumeBoundary);
     for (AuditChainCheckpoint checkpoint : inRuptureWindow) {
@@ -829,6 +858,30 @@ public class AuditLifecycleService {
             .build();
     auditLogService.log(metaEntry);
 
+    List<Long> conciliatedAuditLogIds = new ArrayList<>();
+    for (Long auditLogId : providedAcknowledgements) {
+      AuditLog entry =
+          auditLogRepository
+              .findById(auditLogId)
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          "Audit log id " + auditLogId + " not found for entry conciliation."));
+      String violationReason =
+          entry.getEntryHmac() == null
+              ? EntryHmacViolationCollector.REASON_MISSING_ENTRY_HMAC
+              : EntryHmacViolationCollector.REASON_HMAC_MISMATCH;
+      entryIntegrityConciliationService.createConciliation(
+          entry,
+          violationReason,
+          request.category(),
+          request.justification(),
+          request.externalTicketReference(),
+          alert.getAlertId(),
+          adminId);
+      conciliatedAuditLogIds.add(auditLogId);
+    }
+
     alertService.resolveByDedupeKey(
         alert.getDedupeKey(), AlertResolutionReason.INTEGRITY_RUPTURE_CONCILIATED, adminId);
 
@@ -848,7 +901,17 @@ public class AuditLifecycleService {
         metaEntry.getAuditLogId(),
         alert.getAlertId(),
         request.justification(),
-        request.category());
+        request.category(),
+        List.copyOf(conciliatedAuditLogIds),
+        conciliatedAuditLogIds.size());
+  }
+
+  private static List<Long> normalizeAcknowledgedAuditLogIds(
+      IntegrityRuptureReconciliationRequest request) {
+    if (request.acknowledgedAuditLogIds() == null || request.acknowledgedAuditLogIds().isEmpty()) {
+      return List.of();
+    }
+    return request.acknowledgedAuditLogIds().stream().sorted().distinct().toList();
   }
 
   private Alert resolveIntegrityRuptureAlert(IntegrityRuptureReconciliationRequest request) {

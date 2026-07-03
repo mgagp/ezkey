@@ -31,9 +31,9 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     Info;
 
   const styles: Record<ToastVariant, string> = {
-    success: 'border-success bg-success/10 text-fg',
-    error:   'border-error   bg-error/40   text-fg',
-    info:    'border-accent  bg-accent/10  text-fg',
+    success: 'border-success bg-surface text-fg',
+    error: 'border-error bg-surface text-fg',
+    info: 'border-accent bg-surface text-fg',
   };
 
   const iconStyles: Record<ToastVariant, string> = {
@@ -45,8 +45,8 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
   return (
     <div
       className={cn(
-        'flex items-start gap-3 px-4 py-3 border-2 shadow-brutal min-w-72 max-w-96',
-        'bg-surface animate-[slideIn_200ms_ease-out]',
+        'flex items-start gap-3 px-4 py-3 border-2 shadow-brutal-lg min-w-72 max-w-96',
+        'animate-[slideIn_200ms_ease-out]',
         styles[toast.variant],
       )}
       role="alert"

@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.dto.EntryIntegrityConciliationStatus;
 import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,7 +32,7 @@ final class EntryHmacViolationCollector {
   static final String REASON_MISSING_ENTRY_HMAC = "MISSING_ENTRY_HMAC";
   static final String REASON_HMAC_MISMATCH = "HMAC_MISMATCH";
 
-  private static final int VERIFICATION_BATCH_SIZE = 500;
+  static final int VERIFICATION_BATCH_SIZE = 500;
 
   private EntryHmacViolationCollector() {}
 
@@ -67,14 +68,18 @@ final class EntryHmacViolationCollector {
           entry.getAuditLogId(),
           entry.getEventType() != null ? entry.getEventType().name() : null,
           entry.getCreatedAt(),
-          REASON_MISSING_ENTRY_HMAC);
+          REASON_MISSING_ENTRY_HMAC,
+          EntryIntegrityConciliationStatus.NONE,
+          null);
     }
     if (!auditHmacService.verifyHmac(entry)) {
       return new EntryIntegrityViolation(
           entry.getAuditLogId(),
           entry.getEventType() != null ? entry.getEventType().name() : null,
           entry.getCreatedAt(),
-          REASON_HMAC_MISMATCH);
+          REASON_HMAC_MISMATCH,
+          EntryIntegrityConciliationStatus.NONE,
+          null);
     }
     return null;
   }

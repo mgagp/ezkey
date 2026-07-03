@@ -328,6 +328,53 @@ For multi-tenant SaaS deployments:
 
 ---
 
+## Flyway greenfield patterns (pre-production)
+
+Ezkey has **no production database** yet. Each new Flyway migration should read as if the schema
+were designed **once, correctly**, rather than as a minimal patch on an earlier gap.
+
+### Partitioned table identity
+
+| Table | Partition key | Row identity / FK target |
+|-------|---------------|----------------------------|
+| `ezkey_auth_attempt` | `created_at` (RANGE) | `(auth_attempt_id, created_at)` — PK in V4 |
+| `ezkey_audit_log` | `created_at` (RANGE) + `api_name` (LIST) | `(audit_log_id, created_at, api_name)` if a FK is ever needed; **no PK on parent today** |
+
+PostgreSQL requires unique constraints on partitioned parents to **include all partition key
+columns** at every level. `auth_attempt` needs only `created_at`; `audit_log` also requires
+`api_name`. A naive `PRIMARY KEY (audit_log_id, created_at)` fails at migrate time (`SQLSTATE 0A000`).
+
+### Referencing audit entries from other tables
+
+**Pattern A — live FK while target row must exist:** composite columns matching the full partition
+key. Example: audit log → auth attempt uses `(auth_attempt_id, auth_attempt_created_at)` (RANGE
+only). A hypothetical FK to audit log would need `(audit_log_id, created_at, api_name)`.
+
+**Pattern B — durable operational overlay (survives purge):** store immutable snapshot
+`(audit_log_id, audit_log_created_at)` **without FK**. Used by
+`ezkey_audit_entry_integrity_conciliation` (B2.6): the operator act must persist after
+archive-sealed audit partitions are physically deleted. `audit_log_id` is globally unique; the
+snapshot is sufficient for lookup and SOC 2 narrative without encoding `api_name`.
+
+Do **not** assume audit rows are permanent. Lifecycle progression
+(`ACTIVE → SEALED → [EXPORTED] → PURGEABLE → PURGED`) authorizes physical deletion via
+`AuditLogService.purgeLifecycleEligibleLogs()` once covering checkpoints are `PURGEABLE`.
+A FK without `ON DELETE` semantics would block purge; `CASCADE` would destroy SOC 2 narrative.
+
+### Agent rule of thumb
+
+1. Check whether the target table is partitioned (`V4` migrations) and whether it uses LIST
+   sub-partitioning (`api_name` on audit log).
+2. If RANGE-only (auth attempt): composite `(id, created_at)` for FK targets.
+3. If RANGE+LIST (audit log): FK target shape is `(audit_log_id, created_at, api_name)` — prefer
+   snapshot-without-FK when the row must outlive purge.
+4. Ask whether the referencing row must **outlive** audit partition purge → snapshot without FK.
+
+See also: `ezkey-core/AGENTS.md` (§ Partitioned tables and Flyway),
+`.cursor/rules/flyway-partitioned-tables.mdc`.
+
+---
+
 ## Security and Compliance
 
 ### Role Separation

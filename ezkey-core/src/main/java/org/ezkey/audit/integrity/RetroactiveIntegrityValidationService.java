@@ -4,12 +4,13 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Service: NightlyIntegrityValidationService
+ * Service: RetroactiveIntegrityValidationService
  * Description: Retroactive integrity validation over a completed time window.
  */
 
 package org.ezkey.audit.integrity;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
@@ -40,120 +41,224 @@ import org.springframework.transaction.annotation.Transactional;
  * Runs retroactive integrity validation over a completed window: per-audit HMAC checks plus
  * checkpoint chain verification via {@link AuditChainVerificationService}.
  *
+ * <p>Used by the nightly scheduler and by Global Admin {@code POST …/integrity-validation/run}.
+ *
  * @since 2026
  */
 @Service
-public class NightlyIntegrityValidationService {
+public class RetroactiveIntegrityValidationService {
 
   private static final Logger logger =
-      LoggerFactory.getLogger(NightlyIntegrityValidationService.class);
-
-  private static final String INTEGRITY_RUPTURE_DEDUPE_PREFIX = "AUDIT_INTEGRITY_RUPTURE:";
+      LoggerFactory.getLogger(RetroactiveIntegrityValidationService.class);
 
   private final NightlyIntegrityProperties nightlyProperties;
+  private final RetroactiveIntegrityProperties retroactiveProperties;
   private final AuditChainVerificationService chainVerificationService;
   private final AuditHmacService auditHmacService;
   private final AuditLogRepository auditLogRepository;
   private final AlertService alertService;
   private final AlertRepository alertRepository;
   private final AuditLogService auditLogService;
+  private final EntryIntegrityViolationClassifier entryIntegrityViolationClassifier;
 
   /**
    * Constructs the service.
    *
-   * @param nightlyProperties nightly batch configuration
+   * @param nightlyProperties nightly batch window configuration
+   * @param retroactiveProperties operator-trigger limits
    * @param chainVerificationService checkpoint chain verification
    * @param auditHmacService per-entry HMAC verification
    * @param auditLogRepository audit log access
    * @param alertService alert raise/touch
    * @param alertRepository alert existence checks
    * @param auditLogService audit log for batch completion events
+   * @param entryIntegrityViolationClassifier reporting vs alert-eligible entry classifier
    */
-  public NightlyIntegrityValidationService(
+  public RetroactiveIntegrityValidationService(
       NightlyIntegrityProperties nightlyProperties,
+      RetroactiveIntegrityProperties retroactiveProperties,
       AuditChainVerificationService chainVerificationService,
       AuditHmacService auditHmacService,
       AuditLogRepository auditLogRepository,
       AlertService alertService,
       AlertRepository alertRepository,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      EntryIntegrityViolationClassifier entryIntegrityViolationClassifier) {
     this.nightlyProperties = nightlyProperties;
+    this.retroactiveProperties = retroactiveProperties;
     this.chainVerificationService = chainVerificationService;
     this.auditHmacService = auditHmacService;
     this.auditLogRepository = auditLogRepository;
     this.alertService = alertService;
     this.alertRepository = alertRepository;
     this.auditLogService = auditLogService;
+    this.entryIntegrityViolationClassifier = entryIntegrityViolationClassifier;
   }
 
   /**
-   * Validates the retroactive window ending at {@code windowEndExclusive}.
+   * Validates the retroactive window ending at {@code windowEndExclusive} using the configured
+   * nightly window length.
    *
    * @param windowEndExclusive end of the validation window (exclusive), typically batch start time
    * @return structured result for registry and audit logging
    */
   @Transactional
-  public NightlyIntegrityValidationResult validateWindow(OffsetDateTime windowEndExclusive) {
+  public RetroactiveIntegrityValidationResult validateWindow(OffsetDateTime windowEndExclusive) {
     OffsetDateTime windowStart = windowEndExclusive.minusHours(nightlyProperties.getWindowHours());
-    String scope = formatScope(windowStart, windowEndExclusive);
+    return runValidation(
+        windowStart, windowEndExclusive, RetroactiveIntegrityValidationOptions.scheduled());
+  }
+
+  /**
+   * Validates audit integrity over {@code [from, to)} with explicit bounds and run options.
+   *
+   * @param from inclusive window start
+   * @param to exclusive window end
+   * @param options per-run alert and trigger metadata
+   * @return structured result for API, registry, and audit logging
+   */
+  @Transactional
+  public RetroactiveIntegrityValidationResult runValidation(
+      OffsetDateTime from, OffsetDateTime to, RetroactiveIntegrityValidationOptions options) {
+    String scope = formatScope(from, to);
 
     if (!auditHmacService.isActive()) {
-      return NightlyIntegrityValidationResult.skipped(scope, "HMAC signing is not active");
+      return RetroactiveIntegrityValidationResult.skipped(
+          scope, "HMAC signing is not active", options.triggerSource());
     }
 
-    List<EntryIntegrityViolation> entryViolations =
-        EntryHmacViolationCollector.collectAll(
-            auditLogRepository, auditHmacService, windowStart, windowEndExclusive);
+    EntryIntegrityViolationClassifier.ViolationCollection entryViolationCollection =
+        entryIntegrityViolationClassifier.collectRangeViolations(auditLogRepository, from, to);
+    List<EntryIntegrityViolation> entryViolations = entryViolationCollection.reportingViolations();
+    List<EntryIntegrityViolation> alertEligibleEntryViolations =
+        entryViolationCollection.alertEligibleViolations();
     AuditChainVerificationService.ChainVerificationReport chainReport =
-        chainVerificationService.verifyChain(windowStart, windowEndExclusive);
+        chainVerificationService.verifyChain(from, to);
 
     boolean entryHmacIntact = entryViolations.isEmpty();
     boolean chainIntact = chainReport.intact();
     boolean integrityFailure = !entryHmacIntact || !chainIntact;
+    boolean hasOpenHeartbeatStale = hasOpenHeartbeatStaleAlert();
 
     boolean alertRaised = false;
-    if (integrityFailure && shouldRaiseIntegrityAlert(chainReport, entryHmacIntact)) {
-      raiseIntegrityRuptureAlert(windowStart, windowEndExclusive, chainReport, entryViolations);
+    Long alertId = null;
+    if (options.raiseAlert()
+        && integrityFailure
+        && shouldRaiseIntegrityAlert(
+            chainReport, alertEligibleEntryViolations, hasOpenHeartbeatStale)) {
+      alertId =
+          raiseIntegrityRuptureAlert(
+              from,
+              to,
+              chainReport,
+              entryViolations,
+              alertEligibleEntryViolations,
+              hasOpenHeartbeatStale,
+              options.triggerSource());
       alertRaised = true;
     }
 
     emitCompletionAudit(
-        windowStart, windowEndExclusive, chainReport, entryViolations, integrityFailure);
+        from,
+        to,
+        chainReport,
+        entryViolations,
+        integrityFailure,
+        options.triggerSource(),
+        options.requestedByAdminId());
 
     logger.info(
-        "Nightly integrity validation completed: window=[{} to {}), intact={}, alertRaised={},"
-            + " chainStatus={}, entryViolations={}",
-        windowStart,
-        windowEndExclusive,
+        "Retroactive integrity validation completed: trigger={}, window=[{} to {}), intact={},"
+            + " alertRaised={}, chainStatus={}, entryViolations={}",
+        options.triggerSource(),
+        from,
+        to,
         !integrityFailure,
         alertRaised,
         chainReport.status(),
         entryViolations.size());
 
-    return new NightlyIntegrityValidationResult(
-        windowStart,
-        windowEndExclusive,
+    return new RetroactiveIntegrityValidationResult(
+        from,
+        to,
         scope,
+        false,
+        null,
         !integrityFailure,
         alertRaised,
+        alertId,
         chainReport.status(),
         entryViolations.size(),
-        chainReport.violations().size());
+        alertEligibleEntryViolations.size(),
+        chainReport.violations().size(),
+        options.triggerSource());
   }
 
-  private void raiseIntegrityRuptureAlert(
+  /**
+   * Validates operator-selected bounds before {@link #runValidation}.
+   *
+   * @param from inclusive window start
+   * @param to exclusive window end
+   * @throws IllegalArgumentException when bounds are invalid or exceed the configured cap
+   */
+  public void validateOperatorWindow(OffsetDateTime from, OffsetDateTime to) {
+    if (from == null || to == null) {
+      throw new IllegalArgumentException(
+          "Date range is required. Provide from (inclusive) and to (exclusive) as ISO-8601.");
+    }
+    if (!to.isAfter(from)) {
+      throw new IllegalArgumentException(
+          "Invalid date range: to must be after from (exclusive end, inclusive start).");
+    }
+    int maxHours = resolveOperatorMaxWindowHours();
+    Duration duration = Duration.between(from, to);
+    if (duration.compareTo(Duration.ofHours(maxHours)) > 0) {
+      throw new IllegalArgumentException(
+          "Validation window exceeds maximum of " + maxHours + " hours.");
+    }
+  }
+
+  private int resolveOperatorMaxWindowHours() {
+    Integer configured = retroactiveProperties.getOperatorMaxWindowHours();
+    if (configured != null) {
+      return configured;
+    }
+    return nightlyProperties.getWindowHours();
+  }
+
+  private Long raiseIntegrityRuptureAlert(
       OffsetDateTime windowStart,
       OffsetDateTime windowEnd,
       AuditChainVerificationService.ChainVerificationReport chainReport,
-      List<EntryIntegrityViolation> entryViolations) {
+      List<EntryIntegrityViolation> entryViolations,
+      List<EntryIntegrityViolation> alertEligibleEntryViolations,
+      boolean hasOpenHeartbeatStale,
+      RetroactiveIntegrityValidationTriggerSource triggerSource) {
     IntegrityViolationCappedList<EntryIntegrityViolation> cappedEntries =
         IntegrityViolationCappedList.of(
             entryViolations, IntegrityViolationCappedList.ALERT_ENTRY_CAP);
+    boolean chainAlertEligible =
+        IntegrityRuptureIncidentFingerprint.isChainAlertEligible(
+            chainReport, hasOpenHeartbeatStale);
+    List<ChainIntegrityViolation> alertEligibleChains =
+        IntegrityRuptureIncidentFingerprint.alertEligibleChainViolations(
+            chainReport, chainAlertEligible);
+    IntegrityRuptureIncidentFingerprint.BoundaryPair boundaries =
+        IntegrityRuptureIncidentFingerprint.fingerprintBoundaries(chainReport, chainAlertEligible);
     IntegrityViolationCappedList<ChainIntegrityViolation> cappedChains =
         IntegrityViolationCappedList.of(
             chainReport.chainViolations(), IntegrityViolationCappedList.ALERT_CHAIN_CAP);
 
-    String dedupeKey = INTEGRITY_RUPTURE_DEDUPE_PREFIX + windowStart.toInstant().toEpochMilli();
+    String dedupeKey =
+        IntegrityRuptureIncidentFingerprint.computeDedupeKey(
+            boundaries.failBoundary(),
+            boundaries.resumeBoundary(),
+            alertEligibleEntryViolations,
+            alertEligibleChains);
+    String message =
+        triggerSource == RetroactiveIntegrityValidationTriggerSource.OPERATOR
+            ? "Operator retroactive integrity validation detected a rupture in the window"
+            : "Retroactive integrity validation detected a rupture in the window";
     String payload =
         AuditDetailsBuilder.builder()
             .custom("windowStart", windowStart.toString())
@@ -165,13 +270,11 @@ public class NightlyIntegrityValidationService {
             .custom("chainViolations", cappedListToMap(cappedChains))
             .custom(
                 "failBoundary",
-                chainReport.coverageStart() != null ? chainReport.coverageStart().toString() : null)
+                boundaries.failBoundary() != null ? boundaries.failBoundary().toString() : null)
             .custom(
                 "resumeBoundary",
-                chainReport.coverageEnd() != null ? chainReport.coverageEnd().toString() : null)
-            .custom(
-                "message",
-                "Nightly integrity validation detected a rupture in the retroactive window")
+                boundaries.resumeBoundary() != null ? boundaries.resumeBoundary().toString() : null)
+            .custom("message", message)
             .toJson();
 
     Alert alert =
@@ -182,6 +285,7 @@ public class NightlyIntegrityValidationService {
         alert.getAlertId(),
         windowStart,
         windowEnd);
+    return alert.getAlertId();
   }
 
   private void emitCompletionAudit(
@@ -189,7 +293,9 @@ public class NightlyIntegrityValidationService {
       OffsetDateTime windowEnd,
       AuditChainVerificationService.ChainVerificationReport chainReport,
       List<EntryIntegrityViolation> entryViolations,
-      boolean integrityFailure) {
+      boolean integrityFailure,
+      RetroactiveIntegrityValidationTriggerSource triggerSource,
+      Integer requestedByAdminId) {
     IntegrityViolationCappedList<EntryIntegrityViolation> cappedEntries =
         IntegrityViolationCappedList.of(
             entryViolations, IntegrityViolationCappedList.EVENT_ENTRY_CAP);
@@ -197,7 +303,7 @@ public class NightlyIntegrityValidationService {
         IntegrityViolationCappedList.of(
             chainReport.chainViolations(), IntegrityViolationCappedList.EVENT_CHAIN_CAP);
 
-    String details =
+    AuditDetailsBuilder builder =
         AuditDetailsBuilder.builder()
             .custom("windowStart", windowStart.toString())
             .custom("windowEnd", windowEnd.toString())
@@ -207,12 +313,16 @@ public class NightlyIntegrityValidationService {
             .custom("chainViolationCount", chainReport.violations().size())
             .custom("entryViolations", cappedListToMap(cappedEntries))
             .custom("chainViolations", cappedListToMap(cappedChains))
-            .toJson();
+            .custom("triggerSource", triggerSource.name());
+    if (requestedByAdminId != null) {
+      builder.custom("requestedByAdminId", requestedByAdminId);
+    }
+    String details = builder.toJson();
 
     AuditLog entry =
         AuditLog.builder()
             .eventType(EventType.NIGHTLY_INTEGRITY_VALIDATION_COMPLETED)
-            .eventAction("nightly-integrity-validation")
+            .eventAction("retroactive-integrity-validation")
             .eventStatus(integrityFailure ? EventStatus.FAILURE : EventStatus.SUCCESS)
             .apiName(ApiName.ADMIN_API)
             .eventDetails(details)
@@ -221,7 +331,7 @@ public class NightlyIntegrityValidationService {
   }
 
   private String formatScope(OffsetDateTime start, OffsetDateTime end) {
-    long hours = java.time.Duration.between(start, end).toHours();
+    long hours = Duration.between(start, end).toHours();
     return "Validated " + hours + " h ending " + end.withOffsetSameInstant(ZoneOffset.UTC);
   }
 
@@ -230,20 +340,14 @@ public class NightlyIntegrityValidationService {
    * duplicate integrity alert.
    */
   private boolean shouldRaiseIntegrityAlert(
-      AuditChainVerificationService.ChainVerificationReport chainReport, boolean entryHmacIntact) {
-    if (!entryHmacIntact) {
+      AuditChainVerificationService.ChainVerificationReport chainReport,
+      List<EntryIntegrityViolation> alertEligibleEntryViolations,
+      boolean hasOpenHeartbeatStale) {
+    if (!alertEligibleEntryViolations.isEmpty()) {
       return true;
     }
-    if (chainReport.invalidCheckpoints() > 0) {
-      return true;
-    }
-    if (chainReport.intact()) {
-      return false;
-    }
-    if (chainReport.undeclaredGaps().isEmpty()) {
-      return true;
-    }
-    return !hasOpenHeartbeatStaleAlert();
+    return IntegrityRuptureIncidentFingerprint.isChainAlertEligible(
+        chainReport, hasOpenHeartbeatStale);
   }
 
   private boolean hasOpenHeartbeatStaleAlert() {
@@ -263,29 +367,41 @@ public class NightlyIntegrityValidationService {
   }
 
   /**
-   * Result of a nightly integrity validation run.
+   * Result of a retroactive integrity validation run.
    *
    * @param windowStart inclusive start of validated window
    * @param windowEnd exclusive end of validated window
    * @param scope human-readable scope for registry
+   * @param skipped true when validation did not run
+   * @param skipReason reason when skipped
    * @param intact true when no integrity failures were detected
    * @param alertRaised true when an integrity rupture alert was raised/touched
+   * @param alertId alert id when raised/touched
    * @param chainStatus status string from chain verification
-   * @param entryHmacViolationCount count of per-entry HMAC failures
+   * @param entryHmacViolationCount count of per-entry HMAC failures (reporting set)
+   * @param entryAlertEligibleCount count of alert-eligible entry violations
    * @param chainViolationCount count of chain-level violation messages
+   * @param triggerSource scheduled or operator origin
    */
-  public record NightlyIntegrityValidationResult(
+  public record RetroactiveIntegrityValidationResult(
       OffsetDateTime windowStart,
       OffsetDateTime windowEnd,
       String scope,
+      boolean skipped,
+      String skipReason,
       boolean intact,
       boolean alertRaised,
+      Long alertId,
       String chainStatus,
       int entryHmacViolationCount,
-      int chainViolationCount) {
+      int entryAlertEligibleCount,
+      int chainViolationCount,
+      RetroactiveIntegrityValidationTriggerSource triggerSource) {
 
-    static NightlyIntegrityValidationResult skipped(String scope, String reason) {
-      return new NightlyIntegrityValidationResult(null, null, scope, true, false, reason, 0, 0);
+    static RetroactiveIntegrityValidationResult skipped(
+        String scope, String reason, RetroactiveIntegrityValidationTriggerSource triggerSource) {
+      return new RetroactiveIntegrityValidationResult(
+          null, null, scope, true, reason, true, false, null, reason, 0, 0, 0, triggerSource);
     }
   }
 }

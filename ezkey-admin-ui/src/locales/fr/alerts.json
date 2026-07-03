@@ -76,15 +76,26 @@
       "liveVerifyFailed": "Échec de la vérification en direct",
       "truncatedList": "{{returned}} sur {{total}} affichés (liste tronquée dans l'alerte)",
       "investigateCta": "Investiguer dans les journaux d'audit",
-      "viewCheckpoint": "Voir le checkpoint"
+      "viewCheckpoint": "Voir le checkpoint",
+      "conciliationStatus": {
+        "ACKNOWLEDGED": "Concilié (invalidité connue)",
+        "RE_TAMPER_SUSPECTED": "Modifié depuis la conciliation"
+      }
     }
   },
   "reconcileDialog": {
     "openAction": "Concilier la rupture d'intégrité",
     "openHint": "Crée un checkpoint MANIPULATION_CONCILIATION signé et résout cette alerte.",
     "title": "Concilier la rupture d'intégrité",
-    "intro": "Confirmez les frontières de rupture issues de la charge utile, classifiez l'incident et fournissez une justification. Cette action est irréversible pour cette alerte.",
+    "intro": "Confirmez les frontières de rupture, classifiez l'incident et fournissez une justification. Cochez ci-dessous chaque violation HMAC entrée encore ouverte. Cette action est irréversible pour cette alerte.",
     "boundariesHeading": "Frontières de rupture",
+    "entryAckHeading": "Violations entrée (vérif. en direct)",
+    "entryAckHint": "Cochez chaque violation ouverte que vous reconnaissez. Les entrées déjà conciliées sont affichées à titre informatif sans case à cocher.",
+    "entryAckNone": "Aucune violation HMAC entrée dans la fenêtre de rupture.",
+    "entryAckExplainedNote": "Déjà conciliée — exclue de la liste obligatoire.",
+    "entryAckValidation": "Cochez toutes les violations ouvertes avant de concilier.",
+    "liveLoading": "Vérification HMAC entrée…",
+    "liveVerifyFailed": "Échec de la vérification entrée en direct.",
     "categoryLabel": "Catégorie",
     "category": {
       "ACCIDENTAL_DBA_EDIT": "Modification DBA accidentelle",
@@ -107,6 +118,8 @@
     "resultCheckpointId": "Checkpoint de conciliation",
     "resultChainHmac": "HMAC chaîne",
     "resultAuditLogId": "Id journal d'audit",
+    "resultEntryConciliationCount": "Conciliations entrée",
+    "resultConciliatedEntries": "Ids journaux conciliés",
     "toastSuccess": "Rupture d'intégrité conciliée.",
     "errorFailed": "Échec de la conciliation."
   },

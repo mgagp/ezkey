@@ -2247,6 +2247,68 @@
         }
       }
     },
+    "/api/v1/audit-logs/integrity-validation/run": {
+      "post": {
+        "tags": [
+          "Audit Logs"
+        ],
+        "summary": "Run retroactive integrity validation",
+        "description": "Detective-layer validation over a date range: same semantics as the nightly batch. May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain alert-eligible. Global Admin only. Use GET integrity-check / chain-integrity for read-only forensic verify.",
+        "operationId": "runRetroactiveIntegrityValidation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetroactiveIntegrityValidationRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Validation completed (including skipped when HMAC inactive)",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetroactiveIntegrityValidationRunResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid bounds or window exceeds configured maximum",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetroactiveIntegrityValidationRunResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Global Admin",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetroactiveIntegrityValidationRunResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/api-keys": {
       "get": {
         "tags": [
@@ -4526,6 +4588,7 @@
                 "AUDIT_CHAIN_GAP_DECLARED",
                 "AUDIT_CHAIN_INCIDENT_DECLARED",
                 "AUDIT_INTEGRITY_RUPTURE_CONCILIATED",
+                "AUDIT_ENTRY_INTEGRITY_CONCILIATED",
                 "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
                 "ALERT_RAISED",
                 "ALERT_RESOLVED"
@@ -6683,6 +6746,13 @@
               "INVESTIGATED_BENIGN",
               "OTHER"
             ]
+          },
+          "acknowledgedAuditLogIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
           }
         },
         "required": [
@@ -6729,6 +6799,17 @@
               "INVESTIGATED_BENIGN",
               "OTHER"
             ]
+          },
+          "conciliatedAuditLogIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "entryConciliationCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -6931,6 +7012,80 @@
           "auditLogId": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "RetroactiveIntegrityValidationRunRequest": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "raiseAlert": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ]
+      },
+      "RetroactiveIntegrityValidationRunResponse": {
+        "type": "object",
+        "properties": {
+          "windowStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "windowEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "skipped": {
+            "type": "boolean"
+          },
+          "skipReason": {
+            "type": "string"
+          },
+          "intact": {
+            "type": "boolean"
+          },
+          "alertRaised": {
+            "type": "boolean"
+          },
+          "alertId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "chainStatus": {
+            "type": "string"
+          },
+          "entryHmacViolationCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "entryAlertEligibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chainViolationCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "triggerSource": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "OPERATOR"
+            ]
           }
         }
       },
@@ -8607,6 +8762,7 @@
               "AUDIT_CHAIN_GAP_DECLARED",
               "AUDIT_CHAIN_INCIDENT_DECLARED",
               "AUDIT_INTEGRITY_RUPTURE_CONCILIATED",
+              "AUDIT_ENTRY_INTEGRITY_CONCILIATED",
               "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
               "ALERT_RAISED",
               "ALERT_RESOLVED"
@@ -8711,6 +8867,36 @@
           }
         }
       },
+      "EntryIntegrityConciliationSummary": {
+        "type": "object",
+        "properties": {
+          "conciliationId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "conciliatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ACCIDENTAL_DBA_EDIT",
+              "CORRUPTION",
+              "INVESTIGATED_BENIGN",
+              "OTHER"
+            ]
+          },
+          "conciliatedByAdminId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sourceAlertId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "EntryIntegrityViolation": {
         "type": "object",
         "properties": {
@@ -8727,6 +8913,17 @@
           },
           "reason": {
             "type": "string"
+          },
+          "conciliationStatus": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "ACKNOWLEDGED",
+              "RE_TAMPER_SUSPECTED"
+            ]
+          },
+          "conciliationSummary": {
+            "$ref": "#/components/schemas/EntryIntegrityConciliationSummary"
           }
         }
       },

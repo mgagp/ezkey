@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * Request body for reconciling an open {@code AUDIT_INTEGRITY_RUPTURE} alert.
@@ -48,4 +49,11 @@ public record IntegrityRuptureReconciliationRequest(
         String externalTicketReference,
 
     /** Operator classification of the rupture. */
-    @NotNull IntegrityRuptureConciliationCategory category) {}
+    @NotNull IntegrityRuptureConciliationCategory category,
+
+    /**
+     * Audit log ids of entry HMAC violations acknowledged in this reconcile act. Required to
+     * exactly match live unacknowledged entry violations when any remain; absent or empty for
+     * chain-only ruptures.
+     */
+    List<Long> acknowledgedAuditLogIds) {}

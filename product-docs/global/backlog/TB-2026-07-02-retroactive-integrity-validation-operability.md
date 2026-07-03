@@ -281,6 +281,33 @@ B2.6 slice 2 UI → B2.7 slice 2 UI.
 2. ~~**raiseAlert flag**~~ — settled in D1 (`false` allowed API; UI defaults true).
 3. ~~**Max window cap**~~ — settled in D1 (hard reject 400).
 4. ~~**Ship order**~~ — settled in D6 (B2.6 slice 1 → B2.7 slice 1, or combined refactor PR).
+5. **Operator max window vs UI date picker (2026-07-03 lab)** — functional test showed Verify (7-day
+   range) detecting a tampered entry while Run validation (after narrowing to a ≤24h calendar
+   window) returned `intact: true`. Root cause: **not** divergent backend scanners (both use
+   `EntryIntegrityViolationClassifier.collectRangeViolations` over `[from, to)`), but **different
+   effective windows**. Example: tampered `audit_log_id=1104` at `2026-07-03T11:56:27Z` was outside
+   operator run window `[2026-07-02T04:00Z, 2026-07-03T03:59:59.999Z)` (yesterday-only in
+   America/New_York). Verify with last-7-days included it; run with yesterday-only did not. UI fix
+   (slice 2 follow-up): exclusive `to` conversion for integrity endpoints, pre-disable Run when
+   range exceeds cap, show API window bounds in result panel, clarify copy. **Design follow-up:**
+   should manual Run honor the operator-selected range up to list-verify parity (drop or raise the
+   24h cap), or offer a rolling-24h preset aligned with nightly batch?
+
+## Root cause analysis — Verify vs Run perceived gap (2026-07-03)
+
+| Observation | Evidence |
+|-------------|----------|
+| Verify entry HMAC found tamper | Admin API log: `HMAC verification FAILED for audit_log_id=1104` |
+| Run validation reported intact | Completion audits 1108/1109: `entryHmacViolationCount=0`, window end `2026-07-03T03:59:59.999Z` |
+| Tampered row timestamp | `created_at=2026-07-03T11:56:27Z` — after run window end |
+
+**Conclusion:** Expected behavior given mismatched windows + 24h operator cap forcing a narrower
+range than Verify. **Not** a classifier bug. Operator journey in D5 assumes POST over **the same**
+`[from, to)` as GET verify; the cap breaks that when Verify uses presets &gt; 24h unless the operator
+narrows to a sub-range that still contains the tampered rows (e.g. **Today**, not **Yesterday**).
+
+**UI secondary gap:** `dateRangeToApiParams` used inclusive end-of-day for integrity APIs documented
+as exclusive `to`; fixed via `integrityExclusiveDateRangeToApiParams` in Admin UI.
 
 ## Links
 

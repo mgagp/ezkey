@@ -1,0 +1,53 @@
+---
+description: Flyway and schema design for PostgreSQL partitioned tables (audit log, auth attempts)
+globs:
+  - ezkey-core/src/main/resources/db/migration/**
+  - ezkey-core/src/main/java/org/ezkey/audit/**
+---
+
+# Flyway — partitioned tables (audit log, auth attempts)
+
+Apply when writing Flyway migrations or entities that reference `ezkey_audit_log` or
+`ezkey_auth_attempt`.
+
+## Greenfield mindset (pre-production)
+
+Write migrations as if designing the final schema **now**, not as a minimal fix for an earlier
+omission. Ezkey has no production database; prefer the natural PostgreSQL formulation.
+
+## Composite identity
+
+| Table | Partitioning | FK / PK shape (if ever needed) |
+|-------|--------------|--------------------------------|
+| `ezkey_auth_attempt` | RANGE (`created_at`) | `(auth_attempt_id, created_at)` — PK in V4 |
+| `ezkey_audit_log` | RANGE + LIST (`api_name`) | `(audit_log_id, created_at, api_name)` — **no parent PK today** |
+
+Unique constraints on partitioned parents **must include every partition key column**. Audit log
+is **not** the same shape as auth attempt; `PRIMARY KEY (audit_log_id, created_at)` fails
+(`SQLSTATE 0A000`, missing `api_name`).
+
+## Referencing audit entries
+
+| Need | Pattern |
+|------|---------|
+| Row lives only while audit entry exists | Composite FK including `api_name` if targeting `ezkey_audit_log` |
+| Durable overlay must survive audit **purge** | Snapshot `(audit_log_id, audit_log_created_at)` **without FK** (e.g. entry integrity conciliation) |
+
+## Audit log is purgeable
+
+Archive lifecycle (`SEAL → [EXPORTED] → PURGEABLE → physical delete`) removes audit rows from
+sealed partitions. Do **not** assume audit entries are permanent. Restrictive FKs block purge;
+`ON DELETE CASCADE` destroys operator narrative.
+
+## Invalid pattern (fails at migrate time)
+
+```sql
+-- WRONG: audit_log_id alone has no unique constraint on partitioned parent
+FOREIGN KEY (audit_log_id) REFERENCES ezkey_audit_log (audit_log_id)
+```
+
+## Canonical docs
+
+- `docs/DATABASE_PARTITIONING_IMPLEMENTATION.md` (§ Flyway greenfield patterns)
+- `docs/AUDIT_LOG_INTEGRITY.md` (§ Entry integrity conciliation registry)
+- `ezkey-core/AGENTS.md` (§ Partitioned tables and Flyway)

@@ -222,6 +222,20 @@ updates `ezkey_scheduled_job_last_run` for operator visibility (Wave B B1).
 **Registry:** successful runs update `NIGHTLY_INTEGRITY_VALIDATION` in `ezkey_scheduled_job_last_run`.
 Batch infrastructure failures record `FAILED` on the registry row only (C9 — no “batch did not run” alert).
 
+`enabled=false` idles the **scheduler only** — operator `POST /api/v1/audit-logs/integrity-validation/run` remains available when HMAC is active.
+
+---
+
+### Operator retroactive validation (`ezkey.audit.integrity.retroactive.*`)
+
+**Description:** Caps and configuration for Global Admin `POST …/integrity-validation/run` (B2.7). Uses the same orchestration as the nightly batch; operator runs do **not** update the nightly job registry.
+
+**Defined in:** `RetroactiveIntegrityProperties`
+
+| Property | Type | Default | Obligation | Description |
+|---|---|---|---|---|
+| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `Integer` | *(null → nightly `window-hours`)* | optionnel | Hard reject when operator-selected `[from, to)` exceeds this many hours. |
+
 ---
 
 ### Audit Log Archive (`ezkey.audit.archive.*`)

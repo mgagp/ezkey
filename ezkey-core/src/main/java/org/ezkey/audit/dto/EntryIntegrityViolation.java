@@ -20,7 +20,15 @@ import java.time.OffsetDateTime;
  * @param createdAt audit row timestamp
  * @param reason machine-readable failure code (e.g. {@code HMAC_MISMATCH}, {@code
  *     MISSING_ENTRY_HMAC})
+ * @param conciliationStatus operator conciliation posture at verify time
+ * @param conciliationSummary ACTIVE conciliation metadata; {@code null} when {@code
+ *     conciliationStatus} is {@link EntryIntegrityConciliationStatus#NONE}
  * @since 2026
  */
 public record EntryIntegrityViolation(
-    Long auditLogId, String eventType, OffsetDateTime createdAt, String reason) {}
+    Long auditLogId,
+    String eventType,
+    OffsetDateTime createdAt,
+    String reason,
+    EntryIntegrityConciliationStatus conciliationStatus,
+    EntryIntegrityConciliationSummary conciliationSummary) {}

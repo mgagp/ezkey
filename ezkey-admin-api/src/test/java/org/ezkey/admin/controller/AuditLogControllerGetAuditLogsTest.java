@@ -21,6 +21,7 @@ import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
+import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
 import org.ezkey.audit.mapper.AuditLogMapper;
 import org.ezkey.audit.service.AuditLogService;
@@ -53,6 +54,7 @@ class AuditLogControllerGetAuditLogsTest {
   @Mock private AuditIntegrityService auditIntegrityService;
   @Mock private AuditChainVerificationService auditChainVerificationService;
   @Mock private AuditLifecycleService auditLifecycleService;
+  @Mock private RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   @Mock private AuditChainIncidentService auditChainIncidentService;
   @Mock private EzkeyAdminRepository adminRepository;
   @Mock private EnrollmentRepository enrollmentRepository;
@@ -72,6 +74,7 @@ class AuditLogControllerGetAuditLogsTest {
             auditIntegrityService,
             auditChainVerificationService,
             auditLifecycleService,
+            retroactiveIntegrityValidationService,
             auditChainIncidentService,
             adminRepository,
             enrollmentRepository,

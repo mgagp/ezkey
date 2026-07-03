@@ -11,6 +11,7 @@
 package org.ezkey.audit.dto;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * Result of reconciling an {@code AUDIT_INTEGRITY_RUPTURE} alert.
@@ -25,4 +26,6 @@ public record IntegrityRuptureReconciliationResult(
     Long auditLogId,
     Long resolvedAlertId,
     String justification,
-    IntegrityRuptureConciliationCategory category) {}
+    IntegrityRuptureConciliationCategory category,
+    List<Long> conciliatedAuditLogIds,
+    int entryConciliationCount) {}

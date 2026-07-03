@@ -124,3 +124,29 @@ spring.jpa.open-in-view=false
 - **Self-invocation bypasses proxy:** Calling `this::method` or `this.helper()` does not go through the Spring proxy. `@Transactional` on the called method is ignored. Place `@Transactional` on the entry point (e.g. event listener, controller-called service) so the whole flow runs in one transaction.
 - **Avoid nested @Transactional:** Prefer a single transactional boundary at the top-level use case. Inner services should not declare `@Transactional` unless they need `REQUIRES_NEW`.
 - **See:** `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md` for full lessons learned.
+
+---
+
+## Partitioned tables and Flyway (audit log, auth attempts)
+
+High-volume tables `ezkey_audit_log` and `ezkey_auth_attempt` are **range-partitioned by
+`created_at`**. When adding migrations or entities that reference audit entries:
+
+- **Greenfield formulation:** write Flyway SQL as if designing the schema fresh (pre-production).
+  Prefer the natural PostgreSQL shape, not a workaround for an earlier migration gap.
+- **Composite identity:** partitioned row identity depends on partition strategy:
+  - RANGE only (`ezkey_auth_attempt`): `(auth_attempt_id, created_at)` — PK in V4.
+  - RANGE + LIST (`ezkey_audit_log`): full FK target would be
+    `(audit_log_id, created_at, api_name)`; no parent PK today.
+- **Primary key on partitioned parents:** must include **every** partition key column. Auth attempt
+  needs `created_at`; audit log also needs `api_name`. Do not copy the auth_attempt PK shape blindly.
+- **Durable overlays vs purgeable facts:** tables that must **outlive** audit partition purge
+  (e.g. `ezkey_audit_entry_integrity_conciliation`) store an **immutable composite snapshot** and
+  **omit FK** to `ezkey_audit_log`. A restrictive FK would block
+  `AuditLogService.purgeLifecycleEligibleLogs()` or destroy SOC 2 narrative on `ON DELETE CASCADE`.
+- **When FK is appropriate:** reference non-partitioned tables (`ezkey_alert`, `ezkey_admin`) or
+  use composite FK to partitioned tables only when the dependent row lifecycle matches the target
+  (same purge window or `ON DELETE` semantics explicitly designed).
+
+Authoritative detail: `docs/DATABASE_PARTITIONING_IMPLEMENTATION.md` (§ Flyway greenfield patterns),
+`.cursor/rules/flyway-partitioned-tables.mdc`.

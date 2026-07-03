@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
+import { EntryHmacBadge } from '@/components/feature/entry-hmac-badge';
 import { useToast } from '@/context/use-toast';
 import { getGetAlertQueryKey, useGetAlert } from '@/generated/admin-api/alerts/alerts';
 import {
@@ -36,7 +37,10 @@ import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import {
   buildInvestigationSession,
   type CappedViolationListPayload,
+  entryViolationDisplayState,
   formatHighlightAuditLogIds,
+  isEntryReconcileAckRequired,
+  listReconcileRequiredEntryViolations,
   saveIntegrityInvestigationSession,
   clearIntegrityInvestigationSession,
 } from '@/lib/integrity-investigation-session';
@@ -56,6 +60,32 @@ function InfoPair({
       <span className="text-fg-muted shrink-0">{label}:</span>
       <span className={mono ? 'font-mono text-xs break-all' : ''}>{value}</span>
     </div>
+  );
+}
+
+function EntryViolationContent({ violation }: { violation: EntryIntegrityViolation }) {
+  const { t } = useTranslation(['alerts']);
+  const displayState = entryViolationDisplayState(violation);
+  const status = violation.conciliationStatus ?? 'NONE';
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+      <EntryHmacBadge state={displayState} />
+      <span className="font-mono">#{violation.auditLogId}</span>
+      <span className="text-fg-muted">— {violation.reason ?? '—'}</span>
+      {status !== 'NONE' && (
+        <span className="text-[10px] font-bold uppercase tracking-wide text-fg-muted">
+          {t(`alerts:detail.auditIntegrityRupture.conciliationStatus.${status}`)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function EntryViolationLine({ violation }: { violation: EntryIntegrityViolation }) {
+  return (
+    <li>
+      <EntryViolationContent violation={violation} />
+    </li>
   );
 }
 
@@ -363,11 +393,9 @@ function IntegrityRuptureInvestigationSection({
                 {liveEntries.length === 0 ? (
                   <p className="text-xs text-success">{t('alerts:detail.auditIntegrityRupture.noEntryViolations')}</p>
                 ) : (
-                  <ul className="text-xs space-y-1">
+                  <ul className="text-xs space-y-1.5">
                     {liveEntries.map((v) => (
-                      <li key={v.auditLogId} className="font-mono text-error">
-                        #{v.auditLogId} — {v.reason ?? '—'}
-                      </li>
+                      <EntryViolationLine key={v.auditLogId} violation={v} />
                     ))}
                   </ul>
                 )}
@@ -479,6 +507,11 @@ export default function AlertDetailPage() {
   const [reconcileTicketRef, setReconcileTicketRef] = useState('');
   const [reconcileResult, setReconcileResult] =
     useState<IntegrityRuptureReconciliationResult | null>(null);
+  const [reconcileLiveEntries, setReconcileLiveEntries] = useState<EntryIntegrityViolation[]>([]);
+  const [reconcileLiveLoading, setReconcileLiveLoading] = useState(false);
+  const [reconcileLiveError, setReconcileLiveError] = useState<string | null>(null);
+  const [checkedAckIds, setCheckedAckIds] = useState<number[]>([]);
+  const [ackValidationError, setAckValidationError] = useState(false);
 
   const { data: alert, isLoading } = useGetAlert<AlertResponseDto>(
     Number.isNaN(id) ? 0 : id,
@@ -502,6 +535,59 @@ export default function AlertDetailPage() {
     alert?.status === 'OPEN'
     && isIntegrityRuptureAlert
     && Boolean(failBoundary && resumeBoundary);
+
+  const requiredAckViolations = useMemo(
+    () => listReconcileRequiredEntryViolations(reconcileLiveEntries),
+    [reconcileLiveEntries],
+  );
+  const requiredAckIds = useMemo(
+    () =>
+      requiredAckViolations
+        .map((v) => v.auditLogId)
+        .filter((id): id is number => id != null && id > 0)
+        .sort((a, b) => a - b),
+    [requiredAckViolations],
+  );
+  const allRequiredAckChecked =
+    requiredAckIds.length === 0
+    || requiredAckIds.every((id) => checkedAckIds.includes(id));
+
+  useEffect(() => {
+    if (!reconcileOpen || !failBoundary || !resumeBoundary) {
+      return;
+    }
+    let cancelled = false;
+    setReconcileLiveLoading(true);
+    setReconcileLiveError(null);
+    setCheckedAckIds([]);
+    setAckValidationError(false);
+    void (async () => {
+      try {
+        const report = (await checkIntegrity({
+          from: failBoundary,
+          to: resumeBoundary,
+        })) as unknown as IntegrityReport;
+        if (cancelled) {
+          return;
+        }
+        setReconcileLiveEntries(report.entryViolations?.items ?? []);
+      } catch (e) {
+        if (!cancelled) {
+          setReconcileLiveError(
+            e instanceof Error ? e.message : t('alerts:reconcileDialog.liveVerifyFailed'),
+          );
+          setReconcileLiveEntries([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setReconcileLiveLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reconcileOpen, failBoundary, resumeBoundary, t]);
 
   const reconcileMutation = useReconcileIntegrityRupture({
     mutation: {
@@ -530,12 +616,30 @@ export default function AlertDetailPage() {
     setReconcileCategory(ReconcileCategory.INVESTIGATED_BENIGN);
     setReconcileTicketRef('');
     setReconcileResult(null);
+    setReconcileLiveEntries([]);
+    setReconcileLiveError(null);
+    setCheckedAckIds([]);
+    setAckValidationError(false);
     reconcileMutation.reset();
   };
 
   const openReconcileDialog = () => {
     setReconcileResult(null);
+    setReconcileLiveEntries([]);
+    setReconcileLiveError(null);
+    setCheckedAckIds([]);
+    setAckValidationError(false);
     setReconcileOpen(true);
+  };
+
+  const toggleAckEntry = (auditLogId: number, checked: boolean) => {
+    setCheckedAckIds((prev) => {
+      if (checked) {
+        return prev.includes(auditLogId) ? prev : [...prev, auditLogId].sort((a, b) => a - b);
+      }
+      return prev.filter((id) => id !== auditLogId);
+    });
+    setAckValidationError(false);
   };
 
   return (
@@ -718,6 +822,25 @@ export default function AlertDetailPage() {
                 label={t('alerts:reconcileDialog.resultAuditLogId')}
                 value={String(reconcileResult.auditLogId ?? '—')}
               />
+              {(reconcileResult.entryConciliationCount ?? 0) > 0 && (
+                <>
+                  <InfoPair
+                    label={t('alerts:reconcileDialog.resultEntryConciliationCount')}
+                    value={String(reconcileResult.entryConciliationCount ?? 0)}
+                  />
+                  <InfoPair
+                    label={t('alerts:reconcileDialog.resultConciliatedEntries')}
+                    value={
+                      reconcileResult.conciliatedAuditLogIds?.length
+                        ? reconcileResult.conciliatedAuditLogIds
+                            .map((entryId) => `#${entryId}`)
+                            .join(', ')
+                        : '—'
+                    }
+                    mono
+                  />
+                </>
+              )}
             </dl>
             <div className="flex justify-end pt-2">
               <Button type="button" onClick={closeReconcileDialog}>
@@ -732,6 +855,10 @@ export default function AlertDetailPage() {
               if (!canReconcile || !failBoundary || !resumeBoundary || Number.isNaN(id)) {
                 return;
               }
+              if (!allRequiredAckChecked) {
+                setAckValidationError(true);
+                return;
+              }
               reconcileMutation.mutate({
                 data: {
                   alertId: id,
@@ -740,6 +867,8 @@ export default function AlertDetailPage() {
                   justification: reconcileJustification.trim(),
                   category: reconcileCategory,
                   externalTicketReference: reconcileTicketRef.trim() || undefined,
+                  acknowledgedAuditLogIds:
+                    requiredAckIds.length > 0 ? requiredAckIds : undefined,
                 },
               });
             }}
@@ -756,6 +885,65 @@ export default function AlertDetailPage() {
                 </p>
               </div>
             )}
+            <div className="space-y-2 border-2 border-fg/10 p-3">
+              <p className="text-[10px] uppercase tracking-wider text-fg-muted font-bold">
+                {t('alerts:reconcileDialog.entryAckHeading')}
+              </p>
+              <p className="text-xs text-fg-muted">{t('alerts:reconcileDialog.entryAckHint')}</p>
+              {reconcileLiveLoading && (
+                <p className="inline-flex items-center gap-1 text-xs text-fg-muted">
+                  <Loader2 className="size-3 animate-spin" />
+                  {t('alerts:reconcileDialog.liveLoading')}
+                </p>
+              )}
+              {reconcileLiveError && <UiAlert variant="error">{reconcileLiveError}</UiAlert>}
+              {!reconcileLiveLoading && !reconcileLiveError && reconcileLiveEntries.length === 0 && (
+                <p className="text-xs text-success">{t('alerts:reconcileDialog.entryAckNone')}</p>
+              )}
+              {!reconcileLiveLoading && reconcileLiveEntries.length > 0 && (
+                <ul className="space-y-2">
+                  {reconcileLiveEntries.map((violation) => {
+                    const auditLogId = violation.auditLogId;
+                    if (auditLogId == null) {
+                      return null;
+                    }
+                    const needsAck = isEntryReconcileAckRequired(violation);
+                    return (
+                      <li
+                        key={auditLogId}
+                        className="flex items-start gap-2 border-b border-fg/10 pb-2 last:border-0 last:pb-0"
+                      >
+                        {needsAck ? (
+                          <input
+                            type="checkbox"
+                            id={`reconcile-ack-${auditLogId}`}
+                            checked={checkedAckIds.includes(auditLogId)}
+                            onChange={(ev) => toggleAckEntry(auditLogId, ev.target.checked)}
+                            className="mt-0.5 size-4 border-2 border-fg"
+                          />
+                        ) : (
+                          <span className="mt-0.5 size-4 shrink-0" aria-hidden />
+                        )}
+                        <label
+                          htmlFor={needsAck ? `reconcile-ack-${auditLogId}` : undefined}
+                          className="flex-1 cursor-pointer"
+                        >
+                          <EntryViolationContent violation={violation} />
+                          {!needsAck && (
+                            <p className="text-[10px] text-fg-muted mt-0.5">
+                              {t('alerts:reconcileDialog.entryAckExplainedNote')}
+                            </p>
+                          )}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {ackValidationError && (
+                <UiAlert variant="error">{t('alerts:reconcileDialog.entryAckValidation')}</UiAlert>
+              )}
+            </div>
             <div className="space-y-1">
               <Label htmlFor="reconcile-category" className="text-xs">
                 {t('alerts:reconcileDialog.categoryLabel')}
@@ -827,7 +1015,10 @@ export default function AlertDetailPage() {
               <Button
                 type="submit"
                 disabled={
-                  reconcileMutation.isPending || reconcileJustification.trim().length < 10
+                  reconcileMutation.isPending
+                  || reconcileJustification.trim().length < 10
+                  || reconcileLiveLoading
+                  || Boolean(reconcileLiveError)
                 }
               >
                 {reconcileMutation.isPending

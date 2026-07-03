@@ -31,6 +31,8 @@ import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.dto.ArchiveConfirmArchivedRequest;
 import org.ezkey.audit.dto.ArchiveEligibilityResult;
 import org.ezkey.audit.dto.ArchiveSealRequest;
+import org.ezkey.audit.dto.EntryIntegrityConciliationStatus;
+import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.dto.IntegrityRuptureConciliationCategory;
 import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
 import org.ezkey.audit.exception.AuditLifecycleConflictException;
@@ -50,6 +52,8 @@ class AuditLifecycleServiceTest {
   @Mock private AuditChainVerificationService chainVerificationService;
   @Mock private AuditLogService auditLogService;
   @Mock private org.ezkey.alert.service.AlertService alertService;
+  @Mock private EntryIntegrityViolationClassifier entryIntegrityViolationClassifier;
+  @Mock private AuditEntryIntegrityConciliationService entryIntegrityConciliationService;
 
   private AuditLifecycleService lifecycleService;
   private AuditHmacService hmacService;
@@ -69,7 +73,9 @@ class AuditLifecycleServiceTest {
             auditLogService,
             chainProperties,
             archiveProperties,
-            alertService);
+            alertService,
+            entryIntegrityViolationClassifier,
+            entryIntegrityConciliationService);
   }
 
   @Test
@@ -247,7 +253,8 @@ class AuditLifecycleServiceTest {
             resume,
             "Investigated benign false alarm after nightly validation review.",
             null,
-            IntegrityRuptureConciliationCategory.INVESTIGATED_BENIGN);
+            IntegrityRuptureConciliationCategory.INVESTIGATED_BENIGN,
+            null);
 
     assertThrows(
         IllegalStateException.class, () -> lifecycleService.reconcileIntegrityRupture(request, 1));
@@ -285,6 +292,9 @@ class AuditLifecycleServiceTest {
 
     when(alertService.hasOpenHeartbeatStaleAlert()).thenReturn(false);
     when(alertService.findById(7L)).thenReturn(Optional.of(alert));
+    when(entryIntegrityViolationClassifier.collectRangeViolations(auditLogRepository, fail, resume))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
     when(checkpointRepository.findByWindowRange(fail, resume)).thenReturn(List.of(corrupt));
     when(checkpointRepository.findLatestBefore(fail)).thenReturn(Optional.of(anchor));
     when(checkpointRepository.findAllWithWindowStartAtOrAfter(resume)).thenReturn(List.of(after));
@@ -297,7 +307,8 @@ class AuditLifecycleServiceTest {
             resume,
             "Investigated benign false alarm after nightly validation review.",
             "INC-12345",
-            IntegrityRuptureConciliationCategory.INVESTIGATED_BENIGN);
+            IntegrityRuptureConciliationCategory.INVESTIGATED_BENIGN,
+            null);
 
     var result = lifecycleService.reconcileIntegrityRupture(request, 1);
 
@@ -305,6 +316,7 @@ class AuditLifecycleServiceTest {
     assertEquals(resume, result.resumeBoundary());
     assertEquals(7L, result.resolvedAlertId());
     assertEquals(IntegrityRuptureConciliationCategory.INVESTIGATED_BENIGN, result.category());
+    assertEquals(0, result.entryConciliationCount());
     verify(checkpointRepository).deleteAll(List.of(corrupt));
     ArgumentCaptor<AuditChainCheckpoint> savedCaptor =
         ArgumentCaptor.forClass(AuditChainCheckpoint.class);
@@ -330,5 +342,45 @@ class AuditLifecycleServiceTest {
     alert.setPayload(
         "{" + "\"failBoundary\":\"" + fail + "\"," + "\"resumeBoundary\":\"" + resume + "\"" + "}");
     return alert;
+  }
+
+  @Test
+  void reconcileIntegrityRupture_whenOpenEntryViolationsAndIncompleteAck_rejected() {
+    OffsetDateTime fail = OffsetDateTime.of(2026, 6, 1, 10, 0, 0, 0, ZoneOffset.UTC);
+    OffsetDateTime resume = fail.plusMinutes(30);
+    Alert alert = openIntegrityRuptureAlert(7L, fail, resume);
+    EntryIntegrityViolation openViolation =
+        new EntryIntegrityViolation(
+            99L,
+            "ADMIN_LOGIN",
+            fail.plusMinutes(5),
+            "HMAC_MISMATCH",
+            EntryIntegrityConciliationStatus.NONE,
+            null);
+
+    when(alertService.hasOpenHeartbeatStaleAlert()).thenReturn(false);
+    when(alertService.findById(7L)).thenReturn(Optional.of(alert));
+    when(entryIntegrityViolationClassifier.collectRangeViolations(auditLogRepository, fail, resume))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(
+                List.of(openViolation), List.of(openViolation)));
+
+    IntegrityRuptureReconciliationRequest request =
+        new IntegrityRuptureReconciliationRequest(
+            7L,
+            null,
+            fail,
+            resume,
+            "Investigated entry tamper after nightly validation review.",
+            null,
+            IntegrityRuptureConciliationCategory.ACCIDENTAL_DBA_EDIT,
+            List.of());
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> lifecycleService.reconcileIntegrityRupture(request, 1));
+    verify(checkpointRepository, never()).deleteAll(any());
+    verify(entryIntegrityConciliationService, never())
+        .createConciliation(any(), any(), any(), any(), any(), any(), any());
   }
 }

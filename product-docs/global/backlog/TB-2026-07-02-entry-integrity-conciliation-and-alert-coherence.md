@@ -134,7 +134,8 @@ Parallel alert types (`AUDIT_ENTRY_HMAC_*`) are **rejected** for R1.
 | Column | Purpose |
 |--------|---------|
 | `conciliation_id` | Surrogate PK (`BIGINT GENERATED ALWAYS AS IDENTITY`) |
-| `audit_log_id` | Target entry (FK → `ezkey_audit_log`) |
+| `audit_log_id` | Target entry id (part 1 of partitioned entry identity) |
+| `audit_log_created_at` | Target entry `created_at` (part 2); immutable snapshot at conciliation time |
 | `violation_reason` | `HMAC_MISMATCH` or `MISSING_ENTRY_HMAC` at conciliation time |
 | `observed_state_fingerprint` | SHA-256 hex (64 chars) of canonical entry form **at conciliation** (see D2) |
 | `category` | Reuse `IntegrityRuptureConciliationCategory` |
@@ -145,6 +146,14 @@ Parallel alert types (`AUDIT_ENTRY_HMAC_*`) are **rejected** for R1.
 | `conciliated_at` | TIMESTAMPTZ UTC |
 | `status` | `AuditEntryIntegrityConciliationStatus`: `ACTIVE` (R1 default) or `SUPERSEDED` |
 | `created_at` / `updated_at` | Row touch timestamps (same pattern as `ezkey_audit_chain_incident`) |
+
+**Entry reference (partition + purge aware):** store composite snapshot `(audit_log_id,
+audit_log_created_at)` matching partitioned `ezkey_audit_log` identity. **No FK** to
+`ezkey_audit_log` — archive-sealed partitions are physically purged (`SEALED → PURGEABLE → delete`)
+while this registry must survive for SOC 2 operator narrative. Audit log uses RANGE+LIST
+(`created_at`, `api_name`) partitioning — a FK target would need `(audit_log_id, created_at,
+api_name)`; V15 does **not** add a parent PK (conciliation needs no FK). See
+`docs/DATABASE_PARTITIONING_IMPLEMENTATION.md` § Flyway greenfield patterns.
 
 **Unique constraint:** partial unique index — one `ACTIVE` conciliation per `audit_log_id`:
 
@@ -342,8 +351,12 @@ Copy must distinguish **cryptographic invalid** vs **operationally acknowledged*
 populated from verify responses; invalidate on logout, reconcile success, explicit verify refresh.
 List column without active session falls back to **signed** (neutral) — no false Explained badge.
 
+**ADR-0005 (2026-07-03):** opening audit log **Detail** runs single-entry integrity-check and
+**seeds** the session for that row so list badges align on close (amber Explained after conciliation).
+Reconcile clear unchanged; panel Verify remains the range-wide path.
+
 **Slice 2 surfaces:** `entry-hmac-badge.tsx`, audit list + banner, alert detail « Verified now »
-column, i18n EN/FR.
+column, audit log detail HMAC row, i18n EN/FR.
 
 ---
 

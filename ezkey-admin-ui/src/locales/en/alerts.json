@@ -76,15 +76,26 @@
       "liveVerifyFailed": "Live verification failed",
       "truncatedList": "Showing {{returned}} of {{total}} (truncated in alert snapshot)",
       "investigateCta": "Investigate in Audit Logs",
-      "viewCheckpoint": "View checkpoint"
+      "viewCheckpoint": "View checkpoint",
+      "conciliationStatus": {
+        "ACKNOWLEDGED": "Acknowledged (known invalid)",
+        "RE_TAMPER_SUSPECTED": "Changed since acknowledgement"
+      }
     }
   },
   "reconcileDialog": {
     "openAction": "Reconcile integrity rupture",
     "openHint": "Creates a signed MANIPULATION_CONCILIATION checkpoint and resolves this alert.",
     "title": "Reconcile integrity rupture",
-    "intro": "Confirm the rupture boundaries from the alert payload, classify the incident, and provide a justification. This action is irreversible for this alert.",
+    "intro": "Confirm the rupture boundaries from the alert payload, classify the incident, and provide a justification. Entry HMAC violations that still require acknowledgement must be checked below. This action is irreversible for this alert.",
     "boundariesHeading": "Rupture boundaries",
+    "entryAckHeading": "Entry violations (live verify)",
+    "entryAckHint": "Check every open entry violation you are acknowledging. Explained entries are shown for context but do not require a checkbox.",
+    "entryAckNone": "No entry HMAC violations in the rupture window.",
+    "entryAckExplainedNote": "Already acknowledged — excluded from required checklist.",
+    "entryAckValidation": "Check every open entry violation before reconciling.",
+    "liveLoading": "Verifying entry HMAC…",
+    "liveVerifyFailed": "Live entry verification failed.",
     "categoryLabel": "Category",
     "category": {
       "ACCIDENTAL_DBA_EDIT": "Accidental DBA edit",
@@ -107,6 +118,8 @@
     "resultCheckpointId": "Conciliation checkpoint",
     "resultChainHmac": "Chain HMAC",
     "resultAuditLogId": "Audit log id",
+    "resultEntryConciliationCount": "Entry conciliations",
+    "resultConciliatedEntries": "Conciliated audit log ids",
     "toastSuccess": "Integrity rupture reconciled.",
     "errorFailed": "Reconciliation failed."
   },

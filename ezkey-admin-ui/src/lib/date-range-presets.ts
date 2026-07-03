@@ -161,6 +161,69 @@ export function getPresetDateRange(
  * Without {@code timeZone}: start/end of day in the browser local zone.
  * With {@code timeZone}: start/end of day in that IANA zone.
  */
+/** Default operator cap for POST integrity-validation/run (matches nightly window-hours). */
+export const OPERATOR_INTEGRITY_MAX_WINDOW_HOURS = 24;
+
+/**
+ * Converts calendar YYYY-MM-DD bounds to integrity API params with an exclusive `to`.
+ *
+ * Integrity verify and validation endpoints treat `to` as exclusive (`created_at < to`). List
+ * endpoints use inclusive `createdBefore`; do not use this helper for list filters.
+ */
+export function integrityExclusiveDateRangeToApiParams(
+  from: string,
+  to: string,
+  timeZone?: string,
+): { createdAfter: string; createdBefore: string } {
+  if (!timeZone) {
+    const [yFrom, mFrom, dFrom] = from.split('-').map(Number);
+    const [yTo, mTo, dTo] = to.split('-').map(Number);
+    const startLocal = new Date(yFrom, mFrom - 1, dFrom, 0, 0, 0, 0);
+    const endExclusiveLocal = new Date(yTo, mTo - 1, dTo + 1, 0, 0, 0, 0);
+    return {
+      createdAfter: startLocal.toISOString(),
+      createdBefore: endExclusiveLocal.toISOString(),
+    };
+  }
+  const start = startOfDayInTimeZone(from, timeZone);
+  const endExclusive = startOfDayInTimeZone(addDaysYmd(to, 1), timeZone);
+  return {
+    createdAfter: start.toISOString(),
+    createdBefore: endExclusive.toISOString(),
+  };
+}
+
+/**
+ * Estimates the wall-clock hours between integrity API bounds for a calendar date range.
+ */
+export function estimateIntegrityWindowHours(
+  from: string,
+  to: string,
+  timeZone?: string,
+): number {
+  const { createdAfter, createdBefore } = integrityExclusiveDateRangeToApiParams(
+    from,
+    to,
+    timeZone,
+  );
+  const ms = new Date(createdBefore).getTime() - new Date(createdAfter).getTime();
+  return ms / 3_600_000;
+}
+
+/**
+ * Rolling window ending at now — matches nightly batch semantics (`window-hours`).
+ */
+export function getRollingHoursWindow(hours: number): {
+  createdAfter: string;
+  createdBefore: string;
+} {
+  const now = new Date();
+  return {
+    createdAfter: new Date(now.getTime() - hours * 3_600_000).toISOString(),
+    createdBefore: now.toISOString(),
+  };
+}
+
 export function dateRangeToApiParams(
   from: string,
   to: string,
