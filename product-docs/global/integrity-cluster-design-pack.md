@@ -45,7 +45,7 @@ mode, alert queue semantics, batch last-run visibility, and the **implementation
 | **Integrity investigation UX** | **Shipped** (B2.5) | `TB-2026-06-30-integrity-investigation-operability` |
 | **Entry HMAC conciliation + alert dedupe coherence** | **Ready → B2.6** | [`TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence.md`](backlog/TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence.md) |
 | **Retroactive validation operability (generic detect + operator POST)** | **Ready → B2.7** | [`TB-2026-07-02-retroactive-integrity-validation-operability.md`](backlog/TB-2026-07-02-retroactive-integrity-validation-operability.md) |
-| **Batch last-run registry + widgets** | **Gap** | `I-2026-0007` |
+| **Batch last-run registry + widgets** | **Shipped** (B3) | `I-2026-0007` — dashboard widgets + open-alert count banner |
 | **Snooze** | **Gap** | Grilled C9; deferred to `I-2026-0005` or follow-on TB |
 
 Reference: [`docs/ALERTS.md`](../docs/ALERTS.md).
@@ -119,7 +119,7 @@ run” alert.
 | **B2.5** | `TB-2026-06-30-integrity-investigation-operability` | B2.5 | Investigation UX — shipped |
 | **B2.6** | `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence` | `I-2026-0005` | Entry conciliation + alert dedupe — **under review** |
 | **B2.7** | `TB-2026-07-02-retroactive-integrity-validation-operability` | `I-2026-0006` (extends) | Generic retroactive validation + operator POST — **under review** |
-| **B3** | `TB-2026-06-28-…` (next) | `I-2026-0007` | Dashboard widgets + open-alert count banner + config summary |
+| **B3** | `TB-2026-07-03-dashboard-batch-health-widgets` | `I-2026-0007` | Dashboard widgets + open-alert count banner + config summary — **in review** |
 
 **Branch rule:** one `feature/<issue#>-i-2026-0006-…` branch per TB when **code** starts; design pack
 and TB artifacts land on `main`.

@@ -3,10 +3,10 @@
 ## Metadata
 
 - **ID:** `I-2026-0007`
-- **Status:** `incubating`
+- **Status:** `ready` (B3 implementation — branch `feature/269-b3-dashboard-batch-widgets`)
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-19`
+- **Updated at:** `2026-07-03`
 - **Last reviewed at:** `2026-05-19`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`
@@ -67,8 +67,9 @@ Generalized **batch last-run** model: table row per job (`last_execution_at`, `l
 
 ## Promotion notes
 
-D6 express grilling complete. **Wave B B3** after B1/B2. Design pack:
-[`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md). Program issue **#269**.
+D6 express grilling complete. **Wave B B3** — implementation on `feature/269-b3-dashboard-batch-widgets`.
+Tracer: [`../TB-2026-07-03-dashboard-batch-health-widgets.md`](../TB-2026-07-03-dashboard-batch-health-widgets.md).
+Design pack: [`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md). Program issue **#269**.
 
 ## Links
 

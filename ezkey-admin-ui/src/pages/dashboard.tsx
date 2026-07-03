@@ -6,6 +6,7 @@ import {
   Activity,
   AlertTriangle,
   ClipboardList,
+  Clock,
   FileText,
   Key,
   Puzzle,
@@ -21,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
 import { EventStatusBadge } from '@/components/feature/event-status-badge';
 import { getAuditEventTypeLabel } from '@/lib/audit-event-type';
-import { formatCountdown, formatRelativeTime } from '@/lib/utils';
+import { formatCountdown, formatDate, formatRelativeTime } from '@/lib/utils';
 import { useAuth } from '@/context/use-auth';
 import { useGetOverview } from '@/generated/admin-api/dashboard/dashboard';
 import type { DashboardOverviewDto } from '@/generated/admin-api/model';
@@ -47,6 +48,112 @@ const REFRESH_INTERVAL_OVERVIEW_MS = 60_000;
 type DashboardIntegrationStatsWithRetired = NonNullable<DashboardOverviewDto['integrations']> & {
   retired?: number;
 };
+
+type DashboardScheduledJobRow = {
+  jobKey?: string;
+  lastExecutionAt?: string;
+  lastStatus?: 'SUCCESS' | 'FAILED' | 'NEVER_RUN';
+  lastRunScope?: string;
+  lastErrorSummary?: string;
+};
+
+type DashboardIntegrityConfigSummary = {
+  chainLookbackMinutes?: number;
+  nightlyWindowHours?: number;
+  chainCheckpointsEnabled?: boolean;
+  nightlyValidationEnabled?: boolean;
+};
+
+type DashboardOverviewWithBatchHealth = DashboardOverviewDto & {
+  openAlertCount?: number;
+  integrityJobs?: DashboardScheduledJobRow[];
+  operationalJobs?: DashboardScheduledJobRow[];
+  integrityConfigSummary?: DashboardIntegrityConfigSummary;
+};
+
+type ScheduledJobStatus = NonNullable<DashboardScheduledJobRow['lastStatus']>;
+
+function jobStatusBadgeVariant(
+  status: ScheduledJobStatus | undefined,
+): 'success' | 'error' | 'muted' {
+  if (status === 'SUCCESS') return 'success';
+  if (status === 'FAILED') return 'error';
+  return 'muted';
+}
+
+function jobDeepLink(jobKey: string | undefined): string | null {
+  switch (jobKey) {
+    case 'AUDIT_CHAIN_CHECKPOINT':
+    case 'NIGHTLY_INTEGRITY_VALIDATION':
+      return '/audit-logs?integrity=1#integrity-lifecycle-panel';
+    case 'REENCRYPTION':
+      return '/encryption-keys';
+    default:
+      return null;
+  }
+}
+
+function BatchJobRow({
+  row,
+  t,
+}: {
+  row: DashboardScheduledJobRow;
+  t: ReturnType<typeof useTranslation>['t'];
+}) {
+  const status = row.lastStatus ?? 'NEVER_RUN';
+  const deepLink = jobDeepLink(row.jobKey);
+  const jobLabel = row.jobKey
+    ? t(`dashboard:batchHealth.jobs.${row.jobKey}`, { defaultValue: row.jobKey })
+    : '—';
+
+  const content = (
+    <div className="space-y-1.5 py-2 border-b border-fg/10 last:border-0 last:pb-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-bold text-fg">{jobLabel}</span>
+        <Badge variant={jobStatusBadgeVariant(status)}>
+          {t(`dashboard:batchHealth.status.${status}`)}
+        </Badge>
+      </div>
+      <div className="text-xs text-fg-muted space-y-0.5">
+        <p>
+          <span className="font-semibold text-fg/80">{t('dashboard:batchHealth.lastRun')}:</span>{' '}
+          {row.lastExecutionAt
+            ? formatRelativeTime(row.lastExecutionAt)
+            : t('dashboard:batchHealth.neverRun')}
+          {row.lastExecutionAt ? (
+            <span className="text-fg-muted"> · {formatDate(row.lastExecutionAt)}</span>
+          ) : null}
+        </p>
+        {row.lastRunScope ? (
+          <p>
+            <span className="font-semibold text-fg/80">{t('dashboard:batchHealth.scope')}:</span>{' '}
+            {row.lastRunScope}
+          </p>
+        ) : null}
+        {status === 'FAILED' && row.lastErrorSummary ? (
+          <p className="text-error">
+            <span className="font-semibold">{t('dashboard:batchHealth.error')}:</span>{' '}
+            {row.lastErrorSummary}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  if (deepLink) {
+    return (
+      <Link
+        to={deepLink}
+        className="block hover:bg-fg/5 -mx-1 px-1 rounded-sm transition-colors"
+        data-testid={`dashboard-batch-job-${row.jobKey}`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <div data-testid={`dashboard-batch-job-${row.jobKey}`}>{content}</div>;
+}
 
 // ── Shared ────────────────────────────────────────────────────────────────────
 
@@ -111,7 +218,7 @@ export default function DashboardPage() {
     dataUpdatedAt: overviewUpdatedAt,
     refetch: overviewRefetch,
     isFetching: overviewFetching,
-  } = useGetOverview<DashboardOverviewDto>({
+  } = useGetOverview<DashboardOverviewWithBatchHealth>({
     query: {
       staleTime: REFRESH_INTERVAL_OVERVIEW_MS,
       refetchInterval: REFRESH_INTERVAL_OVERVIEW_MS,
@@ -173,7 +280,10 @@ export default function DashboardPage() {
   const rejectedDenyCount = overview?.auth24h?.rejected;
 
   const recentLogs = overview?.recentActivity ?? [];
-  const alerts = overview?.alerts ?? [];
+  const openAlertCount = overview?.openAlertCount ?? 0;
+  const integrityJobs = overview?.integrityJobs ?? [];
+  const operationalJobs = overview?.operationalJobs ?? [];
+  const integrityConfig = overview?.integrityConfigSummary;
 
   const updatedLabel = getUpdatedLabelKeyAndParams(overviewUpdatedAt ?? 0);
   const updatedText =
@@ -215,71 +325,116 @@ export default function DashboardPage() {
           </Tooltip>
         </div>
 
-        {/* Audit chain alerts (Global Admin only) */}
-        {isGlobalAdmin && alerts.length > 0 && (
+        {/* Open alerts count banner (Global Admin only) */}
+        {isGlobalAdmin && openAlertCount > 0 && (
           <Card className="border-2 border-error/50 bg-error/5">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <CardTitle className="flex items-center gap-2 text-error">
-                  <AlertTriangle className="size-5" />
-                  {t('dashboard:auditChain.title')}
+                  <AlertTriangle className="size-5 shrink-0" />
+                  {t('dashboard:auditChain.bannerTitle')}
                 </CardTitle>
+                <Badge variant="error" className="shrink-0">
+                  {openAlertCount}
+                </Badge>
               </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-fg-muted mb-3">
-                <Tooltip content={t('dashboard:auditChain.help.undeclaredGaps')}>
-                  <span className="underline decoration-dotted cursor-help">{t('dashboard:auditChain.undeclaredGapsLabel')}</span>
-                </Tooltip>
-                {' '}{t('dashboard:auditChain.detectedMessage')}
+            <CardContent className="space-y-3">
+              <p className="text-sm text-fg">
+                {t('dashboard:auditChain.bannerMessage', { count: openAlertCount })}
               </p>
-              <ul className="space-y-2">
-                {alerts.map((alert) => {
-                  let parsed: { anchorCheckpointId?: number; estimatedGapMinutes?: number } | null = null;
-                  if (alert.payload) {
-                    try { parsed = JSON.parse(alert.payload); } catch { parsed = null; }
-                  }
-                  return (
-                    <li
-                      key={alert.alertId}
-                      className="border-b border-fg/10 pb-2 last:border-0 last:pb-0"
-                    >
-                      <Link
-                        to={`/alerts/${alert.alertId}`}
-                        data-testid="dashboard-audit-chain-alert-link"
-                        className="flex flex-wrap items-baseline gap-2 text-sm hover:bg-fg/5 -mx-1 px-1 rounded-sm"
-                      >
-                        <Badge variant="error">
-                          {alert.alertType
-                            ? t(`alerts:type.${alert.alertType}`, { defaultValue: alert.alertType })
-                            : '—'}
-                        </Badge>
-                        <span className="text-fg-muted shrink-0">
-                          {formatRelativeTime(alert.createdAt ?? '')}
-                        </span>
-                        {parsed?.anchorCheckpointId != null && (
-                          <span className="text-fg">
-                            <Tooltip content={t('dashboard:auditChain.help.anchorCheckpoint')}>
-                              <span className="underline decoration-dotted cursor-help">{t('dashboard:auditChain.anchorCheckpointLabel')}</span>
-                            </Tooltip>
-                            : {parsed.anchorCheckpointId}
-                            {parsed.estimatedGapMinutes != null &&
-                              ` · ${t('dashboard:auditChain.gapMinutes', { count: parsed.estimatedGapMinutes })}`}
-                          </span>
-                        )}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
               <Link
                 to="/alerts"
-                className="mt-3 inline-block text-sm font-bold text-accent hover:underline"
+                data-testid="dashboard-open-alerts-link"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-accent hover:underline"
               >
-                {t('dashboard:auditChain.openAlerts')}
+                {t('dashboard:auditChain.openAlertsLink')}
               </Link>
             </CardContent>
           </Card>
+        )}
+
+        {/* Batch health widgets (Global Admin only) */}
+        {isGlobalAdmin && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck className="size-4 text-fg-muted shrink-0" />
+                    {t('dashboard:batchHealth.integrityTitle')}
+                  </CardTitle>
+                  <Clock className="size-4 text-fg-muted shrink-0" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {integrityConfig ? (
+                  <p className="text-xs text-fg-muted font-medium">
+                    {t('dashboard:batchHealth.configSummary', {
+                      lookback: integrityConfig.chainCheckpointsEnabled
+                        ? integrityConfig.chainLookbackMinutes
+                        : t('dashboard:batchHealth.configDisabled'),
+                      window: integrityConfig.nightlyValidationEnabled
+                        ? integrityConfig.nightlyWindowHours
+                        : t('dashboard:batchHealth.configDisabled'),
+                    })}
+                  </p>
+                ) : null}
+                {overviewLoading ? (
+                  <div className="py-4 flex justify-center">
+                    <span className="size-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
+                  </div>
+                ) : integrityJobs.length === 0 ? (
+                  <p className="text-sm text-fg-muted italic">{t('dashboard:batchHealth.neverRun')}</p>
+                ) : (
+                  <div>
+                    {integrityJobs.map((row) => (
+                      <BatchJobRow key={row.jobKey ?? 'integrity-job'} row={row} t={t} />
+                    ))}
+                  </div>
+                )}
+                <Link
+                  to="/audit-logs?integrity=1#integrity-lifecycle-panel"
+                  className="inline-block text-sm font-bold text-accent hover:underline"
+                >
+                  {t('dashboard:batchHealth.links.integrityPanel')}
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Key className="size-4 text-fg-muted shrink-0" />
+                    {t('dashboard:batchHealth.operationalTitle')}
+                  </CardTitle>
+                  <Clock className="size-4 text-fg-muted shrink-0" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {overviewLoading ? (
+                  <div className="py-4 flex justify-center">
+                    <span className="size-5 border-2 border-fg/30 border-t-fg rounded-full animate-spin" />
+                  </div>
+                ) : operationalJobs.length === 0 ? (
+                  <p className="text-sm text-fg-muted italic">{t('dashboard:batchHealth.neverRun')}</p>
+                ) : (
+                  <div>
+                    {operationalJobs.map((row) => (
+                      <BatchJobRow key={row.jobKey ?? 'operational-job'} row={row} t={t} />
+                    ))}
+                  </div>
+                )}
+                <Link
+                  to="/encryption-keys"
+                  className="inline-block text-sm font-bold text-accent hover:underline"
+                >
+                  {t('dashboard:batchHealth.links.encryptionKeys')}
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Operational follow-up: heartbeat incidents awaiting operator declaration (Global Admin only) */}

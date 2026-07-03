@@ -20,6 +20,8 @@ import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
+import org.ezkey.audit.integrity.ScheduledJobKey;
+import org.ezkey.audit.integrity.ScheduledJobLastRunService;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.config.TinkProperties;
@@ -57,6 +59,7 @@ public class ReencryptionService {
   private final ReencryptionBatchCreationService batchCreationService;
   private final ReencryptionBatchProcessingService batchProcessingService;
   private final ReencryptionBatchParallelRunner parallelRunner;
+  private final ScheduledJobLastRunService jobLastRunService;
 
   public ReencryptionService(
       EncryptionOperations encryptionOperations,
@@ -66,7 +69,8 @@ public class ReencryptionService {
       AuditLogService auditLogService,
       ReencryptionBatchCreationService batchCreationService,
       ReencryptionBatchProcessingService batchProcessingService,
-      ReencryptionBatchParallelRunner parallelRunner) {
+      ReencryptionBatchParallelRunner parallelRunner,
+      ScheduledJobLastRunService jobLastRunService) {
     this.encryptionOperations = encryptionOperations;
     this.keyRepository = keyRepository;
     this.batchRepository = batchRepository;
@@ -75,6 +79,7 @@ public class ReencryptionService {
     this.batchCreationService = batchCreationService;
     this.batchProcessingService = batchProcessingService;
     this.parallelRunner = parallelRunner;
+    this.jobLastRunService = jobLastRunService;
   }
 
   @Scheduled(cron = "${ezkey.encryption.reencryption.schedule:0 0 3 * * ?}")
@@ -104,8 +109,8 @@ public class ReencryptionService {
 
       batchCreationService.createBatchesForOldKeys();
 
+      int batchesProcessed = 0;
       if (parallelWorkers <= 1) {
-        int batchesProcessed = 0;
         for (ReencryptionBatch batch : batchesToProcess) {
           if (batchesProcessed >= maxBatches) {
             logger.info("Reached max batches per run limit: {}", maxBatches);
@@ -139,14 +144,20 @@ public class ReencryptionService {
         }
         parallelRunner.runBatches(
             slice, (batch, e) -> batchProcessingService.markBatchFailed(batch, e.getMessage()));
+        batchesProcessed = slice.size();
         logger.info(
             "✅ Re-encryption batch processing completed (parallel workers={}). Submitted {}"
                 + " batches",
             parallelWorkers,
-            slice.size());
+            batchesProcessed);
       }
+
+      String scope = buildReencryptionScope(batchesProcessed);
+      jobLastRunService.recordSuccess(ScheduledJobKey.REENCRYPTION, scope);
     } catch (Exception e) {
       logger.error("Failed to process re-encryption batches", e);
+      jobLastRunService.recordFailure(
+          ScheduledJobKey.REENCRYPTION, "Batch re-encryption cycle", e.getMessage());
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.REENCRYPTION_FAILED)
@@ -407,6 +418,13 @@ public class ReencryptionService {
           logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
           batchProcessingService.markBatchFailed(batch, e.getMessage());
         });
+  }
+
+  private static String buildReencryptionScope(int batchesProcessed) {
+    if (batchesProcessed == 1) {
+      return "Batch re-encryption cycle (1 batch)";
+    }
+    return "Batch re-encryption cycle (" + batchesProcessed + " batches)";
   }
 
   /**
