@@ -8867,36 +8867,6 @@
           }
         }
       },
-      "EntryIntegrityViolation": {
-        "type": "object",
-        "properties": {
-          "auditLogId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "eventType": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "reason": {
-            "type": "string"
-          },
-          "conciliationStatus": {
-            "type": "string",
-            "enum": [
-              "NONE",
-              "ACKNOWLEDGED",
-              "RE_TAMPER_SUSPECTED"
-            ]
-          },
-          "conciliationSummary": {
-            "$ref": "#/components/schemas/EntryIntegrityConciliationSummary"
-          }
-        }
-      },
       "EntryIntegrityConciliationSummary": {
         "type": "object",
         "properties": {
@@ -8924,6 +8894,36 @@
           "sourceAlertId": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "EntryIntegrityViolation": {
+        "type": "object",
+        "properties": {
+          "auditLogId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "conciliationStatus": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "ACKNOWLEDGED",
+              "RE_TAMPER_SUSPECTED"
+            ]
+          },
+          "conciliationSummary": {
+            "$ref": "#/components/schemas/EntryIntegrityConciliationSummary"
           }
         }
       },
