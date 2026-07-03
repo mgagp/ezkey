@@ -81,7 +81,7 @@ or incident patterns change.
 | **P2** | **Auth attempts** — integration + tenant labels | B | API (core DTO) + UI | Medium | Medium | **Done** — TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`, #257, PR #253 |
 | **P2** | **Audit logs** — selective name joins | B | API + UI | Large | High | **Done** — TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258, PR #259 |
 | **P3** | **Encryption keys** + **re-encryption batches** | A | API + UI | Medium | Low | **Done** — `I-2026-0002` / TB `TB-2026-06-27-admin-ui-encryption-reencryption-async`, #264, PR #265 (async 202 triggers) |
-| **P3** | **Alerts** list | A | Analysis → UI polish | Small | Low | **Next (Wave C)** — TB [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-2026-07-03-admin-ui-alerts-list-polish.md); deferred until post-Wave B (now unblocked). |
+| **P3** | **Alerts** list | A | Analysis → UI polish | Small | Low | **Done** — TB [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-2026-07-03-admin-ui-alerts-list-polish.md) (Wave C list summary + filters). |
 | **P3** | **Tenant detail → admins** embedded list | A | UI consistency | Small | Low | **Done** — ID column + `adminListDetailHref` (PR #259) |
 | **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **Done** — TB [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md) |
 

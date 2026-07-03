@@ -134,8 +134,8 @@ stop/start scenarios).
 
 ### Wave C — Operator UI residuals (**priority now**)
 
-- Alerts list matrix → `implemented` (draft TB:
-  [`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md)).
+- Alerts list matrix → `implemented` (TB
+  [`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md) — **done** Wave C).
 - Audit chain checkpoints matrix row.
 - Any manual resolve/snooze UI **only if** API contracts exist (today: auto-resolve only).
 
@@ -149,7 +149,6 @@ stop/start scenarios).
 
 | Item | Reason |
 |------|--------|
-| **`I-2026-0028` P3 Alerts polish** | Downstream of integrity cluster; see above. |
 | Mobile / channel features (`I-2026-0010`, `I-2026-0023`, `I-2026-0024`) | Not on operability critical path for first release line. |
 | Profile generator / methodology product (`I-2026-0017`, `I-2026-0018`) | Methodology publication; parallel to product release. |
 | HA Docker parity (`I-2026-0003`) | Valuable; not blocking EXP1 experimental soak. |

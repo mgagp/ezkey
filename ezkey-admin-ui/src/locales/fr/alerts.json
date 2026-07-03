@@ -16,10 +16,17 @@
       "type": "Type",
       "severity": "Sévérité",
       "status": "Statut",
+      "summary": "Résumé",
       "occurrences": "Occurrences",
       "createdAt": "Émise",
       "lastSeenAt": "Dernière vue",
       "resolvedAt": "Résolue"
+    },
+    "summary": {
+      "gapPending": "Checkpoint d'ancrage n°{{anchorCheckpointId}} · coupure ~{{gapMinutes}} min",
+      "heartbeatStale": "{{phase}} · ancrage n°{{anchorCheckpointId}}",
+      "integrityRupture": "{{entryCount}} entrée(s) + {{chainCount}} violation(s) chaîne",
+      "unavailable": "—"
     },
     "emptyMessage": "Aucune alerte ne correspond aux filtres.",
     "help": {
@@ -138,8 +145,15 @@
     "INTEGRITY_RUPTURE_CONCILIATED": "Rupture d'intégrité conciliée",
     "MANUAL": "Manuelle"
   },
+  "heartbeatPhase": {
+    "OK": "Battement OK",
+    "BOOTSTRAPPING": "Amorçage",
+    "UNSUPERVISED_ACTIVITY": "Activité non supervisée",
+    "DEGRADED_SERVICE": "Service dégradé"
+  },
   "type": {
     "AUDIT_CHAIN_GAP_PENDING": "Chaîne d'audit — coupure non déclarée",
+    "AUDIT_CHAIN_HEARTBEAT_STALE": "Chaîne d'audit — battement périmé",
     "AUDIT_INTEGRITY_RUPTURE": "Intégrité d'audit — rupture détectée"
   }
 }
