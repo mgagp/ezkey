@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-03-admin-ui-alerts-list-polish`
-- **Status:** `draft` (ready for execution — promote to `ready` when starting code)
+- **Status:** `done`
 - **Related idea:** `I-2026-0028` (P3 alerts row — residual from closed operator program)
 - **Lane:** `A` (Tier A bounded list — Global Admin only)
 - **Posture:** `single-pass`

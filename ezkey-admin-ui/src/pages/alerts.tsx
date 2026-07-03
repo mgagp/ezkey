@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { type ColumnDef } from '@/components/data-table/data-table';
 import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
+import { resolveAlertListSummary } from '@/lib/alert-list-summary';
 import { formatDate } from '@/lib/utils';
 import { listAlerts } from '@/generated/admin-api/alerts/alerts';
 import type {
@@ -73,88 +74,115 @@ export default function AlertsPage() {
     defaultSort: 'createdAt,DESC',
   });
 
-  const columns: ColumnDef<AlertResponseDto>[] = [
-    {
-      header: t('alerts:list.columns.id'),
-      key: 'alertId',
-      className: 'w-14',
-      sortKey: 'alertId',
-      render: (r) => <span className="font-mono text-xs">{r.alertId}</span>,
-    },
-    {
-      header: t('alerts:list.columns.type'),
-      key: 'alertType',
-      sortKey: 'alertType',
-      render: (r) => (
-        <span className="text-xs font-medium">
-          {r.alertType
-            ? t(`alerts:type.${r.alertType}`, { defaultValue: r.alertType })
-            : '—'}
-        </span>
-      ),
-    },
-    {
-      header: t('alerts:list.columns.severity'),
-      key: 'severity',
-      sortKey: 'severity',
-      render: (r) => (
-        <Badge variant={severityVariant(r.severity)}>
-          {r.severity
-            ? t(`alerts:severity.${r.severity}`, { defaultValue: r.severity })
-            : '—'}
-        </Badge>
-      ),
-    },
-    {
-      header: t('alerts:list.columns.status'),
-      key: 'status',
-      sortKey: 'status',
-      render: (r) => (
-        <Badge variant={statusVariant(r.status)}>
-          {r.status
-            ? t(`alerts:status.${r.status}`, { defaultValue: r.status })
-            : '—'}
-        </Badge>
-      ),
-    },
-    {
-      header: t('alerts:list.columns.occurrences'),
-      key: 'occurrenceCount',
-      className: 'w-24 text-right',
-      render: (r) => (
-        <span className="text-xs font-mono text-fg-muted">{r.occurrenceCount ?? 1}</span>
-      ),
-    },
-    {
-      header: t('alerts:list.columns.createdAt'),
-      key: 'createdAt',
-      sortKey: 'createdAt',
-      render: (r) => (
-        <span className="text-xs text-fg-muted">
-          {r.createdAt ? formatDate(r.createdAt) : '—'}
-        </span>
-      ),
-    },
-    {
-      header: t('alerts:list.columns.lastSeenAt'),
-      key: 'lastSeenAt',
-      sortKey: 'lastSeenAt',
-      render: (r) => (
-        <span className="text-xs text-fg-muted">
-          {r.lastSeenAt ? formatDate(r.lastSeenAt) : '—'}
-        </span>
-      ),
-    },
-    {
-      header: t('alerts:list.columns.resolvedAt'),
-      key: 'resolvedAt',
-      render: (r) => (
-        <span className="text-xs text-fg-muted">
-          {r.resolvedAt ? formatDate(r.resolvedAt) : '—'}
-        </span>
-      ),
-    },
-  ];
+  const showResolvedAt = statusFilter !== 'OPEN';
+
+  const columns: ColumnDef<AlertResponseDto>[] = useMemo(() => {
+    const base: ColumnDef<AlertResponseDto>[] = [
+      {
+        header: t('alerts:list.columns.id'),
+        key: 'alertId',
+        className: 'w-14',
+        sortKey: 'alertId',
+        render: (r) => <span className="font-mono text-xs">{r.alertId}</span>,
+      },
+      {
+        header: t('alerts:list.columns.type'),
+        key: 'alertType',
+        sortKey: 'alertType',
+        render: (r) => (
+          <span className="text-xs font-medium">
+            {r.alertType
+              ? t(`alerts:type.${r.alertType}`, { defaultValue: r.alertType })
+              : '—'}
+          </span>
+        ),
+      },
+      {
+        header: t('alerts:list.columns.severity'),
+        key: 'severity',
+        sortKey: 'severity',
+        render: (r) => (
+          <Badge variant={severityVariant(r.severity)}>
+            {r.severity
+              ? t(`alerts:severity.${r.severity}`, { defaultValue: r.severity })
+              : '—'}
+          </Badge>
+        ),
+      },
+      {
+        header: t('alerts:list.columns.status'),
+        key: 'status',
+        sortKey: 'status',
+        render: (r) => (
+          <Badge variant={statusVariant(r.status)}>
+            {r.status
+              ? t(`alerts:status.${r.status}`, { defaultValue: r.status })
+              : '—'}
+          </Badge>
+        ),
+      },
+      {
+        header: t('alerts:list.columns.summary'),
+        key: 'summary',
+        render: (r) => {
+          const summary = resolveAlertListSummary(r.alertType, r.payload);
+          const params = { ...summary.params };
+          if (typeof params.phase === 'string') {
+            params.phase = t(`alerts:heartbeatPhase.${params.phase}`, {
+              defaultValue: params.phase,
+            });
+          }
+          return (
+            <span className="text-xs text-fg">
+              {t(`alerts:${summary.templateKey}`, params)}
+            </span>
+          );
+        },
+      },
+      {
+        header: t('alerts:list.columns.occurrences'),
+        key: 'occurrenceCount',
+        className: 'w-24 text-right',
+        render: (r) => (
+          <span className="text-xs font-mono text-fg-muted">{r.occurrenceCount ?? 1}</span>
+        ),
+      },
+      {
+        header: t('alerts:list.columns.createdAt'),
+        key: 'createdAt',
+        sortKey: 'createdAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted">
+            {r.createdAt ? formatDate(r.createdAt) : '—'}
+          </span>
+        ),
+      },
+      {
+        header: t('alerts:list.columns.lastSeenAt'),
+        key: 'lastSeenAt',
+        sortKey: 'lastSeenAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted">
+            {r.lastSeenAt ? formatDate(r.lastSeenAt) : '—'}
+          </span>
+        ),
+      },
+    ];
+
+    if (showResolvedAt) {
+      base.push({
+        header: t('alerts:list.columns.resolvedAt'),
+        key: 'resolvedAt',
+        render: (r) => (
+          <span className="text-xs text-fg-muted">
+            {r.resolvedAt ? formatDate(r.resolvedAt) : '—'}
+          </span>
+        ),
+      });
+    }
+
+    return base;
+  }, [showResolvedAt, t]);
 
   return (
     <AppShell title={t('alerts:list.title')}>
@@ -202,6 +230,9 @@ export default function AlertsPage() {
               <option value="">{t('alerts:list.filterAlertTypeAll')}</option>
               <option value="AUDIT_CHAIN_GAP_PENDING">
                 {t('alerts:type.AUDIT_CHAIN_GAP_PENDING')}
+              </option>
+              <option value="AUDIT_CHAIN_HEARTBEAT_STALE">
+                {t('alerts:type.AUDIT_CHAIN_HEARTBEAT_STALE')}
               </option>
               <option value="AUDIT_INTEGRITY_RUPTURE">
                 {t('alerts:type.AUDIT_INTEGRITY_RUPTURE')}

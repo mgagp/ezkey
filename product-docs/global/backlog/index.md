@@ -10,9 +10,9 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
 
-**Summary (2026-07-03):** Wave B integrity cluster R1 **closed** (GitHub #269). **Next:** Wave C —
+**Summary (2026-07-03):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C alerts list polish **done** —
 [`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md)
-(`I-2026-0028` P3). Closeout:
+(`I-2026-0028` P3). Wave B closeout:
 [`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
 ## Active ideas

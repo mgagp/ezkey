@@ -16,10 +16,17 @@
       "type": "Type",
       "severity": "Severity",
       "status": "Status",
+      "summary": "Summary",
       "occurrences": "Occurrences",
       "createdAt": "Raised",
       "lastSeenAt": "Last seen",
       "resolvedAt": "Resolved"
+    },
+    "summary": {
+      "gapPending": "Anchor checkpoint #{{anchorCheckpointId}} · ~{{gapMinutes}} min gap",
+      "heartbeatStale": "{{phase}} · anchor #{{anchorCheckpointId}}",
+      "integrityRupture": "{{entryCount}} entry + {{chainCount}} chain violations",
+      "unavailable": "—"
     },
     "emptyMessage": "No alerts match the current filters.",
     "help": {
@@ -138,8 +145,15 @@
     "INTEGRITY_RUPTURE_CONCILIATED": "Integrity rupture reconciled",
     "MANUAL": "Manual"
   },
+  "heartbeatPhase": {
+    "OK": "Heartbeat OK",
+    "BOOTSTRAPPING": "Bootstrapping",
+    "UNSUPERVISED_ACTIVITY": "Unsupervised activity",
+    "DEGRADED_SERVICE": "Degraded service"
+  },
   "type": {
     "AUDIT_CHAIN_GAP_PENDING": "Audit chain — undeclared gap",
+    "AUDIT_CHAIN_HEARTBEAT_STALE": "Audit chain — heartbeat stale",
     "AUDIT_INTEGRITY_RUPTURE": "Audit integrity — rupture detected"
   }
 }
