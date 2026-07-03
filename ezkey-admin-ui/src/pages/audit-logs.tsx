@@ -50,6 +50,7 @@ import {
   getAuditLogContext,
   getAuditLogs,
   getChainCheckpoints,
+  runRetroactiveIntegrityValidation,
   useDeclareGap,
   useSealArchive,
 } from '@/generated/admin-api/audit-logs/audit-logs';
@@ -67,6 +68,7 @@ import type {
   GapDeclarationResult,
   PagedModelAuditLogResponseDto,
   PagedModelAuditChainCheckpointResponseDto,
+  RetroactiveIntegrityValidationRunResponse,
 } from '@/generated/admin-api/model';
 
 type AuditLogQueryParams = GetAuditLogsParams & {
@@ -684,6 +686,9 @@ function IntegrityPanel({
   const [integrityReportRange, setIntegrityReportRange] = useState<{ from: string; to: string } | null>(null);
   const [chainLoading, setChainLoading] = useState(false);
   const [integrityLoading, setIntegrityLoading] = useState(false);
+  const [validationRunLoading, setValidationRunLoading] = useState(false);
+  const [validationRunResult, setValidationRunResult] =
+    useState<RetroactiveIntegrityValidationRunResponse | null>(null);
 
   // ── Date range for integrity checks (shared DateRangeFilter) ──
   const [checkRange, setCheckRange] = useState({ from: '', to: '' });
@@ -960,6 +965,47 @@ function IntegrityPanel({
     }
   }
 
+  async function runRetroactiveValidation() {
+    if (!checkRange.from || !checkRange.to) {
+      return;
+    }
+    setValidationRunLoading(true);
+    setValidationRunResult(null);
+    try {
+      const { createdAfter, createdBefore } = dateRangeToApiParams(
+        checkRange.from,
+        checkRange.to,
+        effectiveTimeZoneId,
+      );
+      if (!createdAfter || !createdBefore) {
+        return;
+      }
+      const result = (await runRetroactiveIntegrityValidation({
+        from: createdAfter,
+        to: createdBefore,
+        raiseAlert: true,
+      })) as unknown as RetroactiveIntegrityValidationRunResponse;
+      setValidationRunResult(result);
+      if (result.skipped) {
+        toast(
+          t('integrity.validationRun.skipped', { reason: result.skipReason ?? '—' }),
+          'info',
+        );
+      } else if (result.alertRaised && result.alertId != null) {
+        toast(t('integrity.validationRun.alertRaised', { id: result.alertId }), 'success');
+        await queryClient.invalidateQueries({ queryKey: ['/api/v1/alerts'] });
+      } else if (result.intact) {
+        toast(t('integrity.validationRun.intact'), 'success');
+      } else {
+        toast(t('integrity.validationRun.completed'), 'success');
+      }
+    } catch (e) {
+      toast(getTranslatedApiError(e, t, t('integrity.validationRun.error')), 'error');
+    } finally {
+      setValidationRunLoading(false);
+    }
+  }
+
   const sealMutation = useSealArchive({
     mutation: {
       onSuccess: (data) => {
@@ -1079,7 +1125,7 @@ function IntegrityPanel({
               emptyOptionLabel={t('integrity.dateRangeSelect')}
             />
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 size="sm"
                 variant="secondary"
@@ -1089,7 +1135,7 @@ function IntegrityPanel({
                 title={!checkRange.from || !checkRange.to ? t('integrity.selectDateRangeToRun') : undefined}
               >
                 <ShieldCheck className="size-3.5" />
-                {chainLoading ? t('integrity.checking') : t('integrity.chainIntegrity')}
+                {chainLoading ? t('integrity.checking') : t('integrity.verifyChain')}
               </Button>
               <Button
                 size="sm"
@@ -1100,9 +1146,20 @@ function IntegrityPanel({
                 title={!checkRange.from || !checkRange.to ? t('integrity.selectDateRangeToRun') : undefined}
               >
                 <ShieldCheck className="size-3.5" />
-                {integrityLoading ? t('integrity.checking') : t('integrity.entryIntegrity')}
+                {integrityLoading ? t('integrity.checking') : t('integrity.verifyEntry')}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => void runRetroactiveValidation()}
+                disabled={validationRunLoading || !checkRange.from || !checkRange.to}
+                className="gap-1.5 ml-auto"
+                title={!checkRange.from || !checkRange.to ? t('integrity.selectDateRangeToRun') : undefined}
+              >
+                <ShieldAlert className="size-3.5" />
+                {validationRunLoading ? t('integrity.validationRun.running') : t('integrity.runValidation')}
               </Button>
             </div>
+            <p className="text-xs text-fg-muted">{t('integrity.verifyVsRunHint')}</p>
 
             {/* Chain report */}
             {chainReport && (
@@ -1195,6 +1252,59 @@ function IntegrityPanel({
                       ))}
                     </ul>
                   </div>
+                )}
+              </div>
+            )}
+
+            {validationRunResult && (
+              <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-xs uppercase tracking-wider">
+                    {t('integrity.validationRun.title')}
+                  </span>
+                  {validationRunResult.skipped ? (
+                    <Badge variant="warning">{t('integrity.validationRun.skippedBadge')}</Badge>
+                  ) : validationRunResult.intact ? (
+                    <Badge variant="success">{t('integrity.reportIntact')}</Badge>
+                  ) : (
+                    <Badge variant="error">{t('integrity.reportViolation')}</Badge>
+                  )}
+                </div>
+                {validationRunResult.skipReason && (
+                  <p className="text-xs text-fg-muted">{validationRunResult.skipReason}</p>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <Stat
+                    label={t('integrity.validationRun.entryViolations')}
+                    value={validationRunResult.entryHmacViolationCount ?? 0}
+                    bad={(validationRunResult.entryHmacViolationCount ?? 0) > 0}
+                  />
+                  <Stat
+                    label={t('integrity.validationRun.entryAlertEligible')}
+                    value={validationRunResult.entryAlertEligibleCount ?? 0}
+                    bad={(validationRunResult.entryAlertEligibleCount ?? 0) > 0}
+                  />
+                  <Stat
+                    label={t('integrity.validationRun.chainViolations')}
+                    value={validationRunResult.chainViolationCount ?? 0}
+                    bad={(validationRunResult.chainViolationCount ?? 0) > 0}
+                  />
+                  {validationRunResult.chainStatus && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-fg-muted">
+                        {t('integrity.validationRun.chainStatus')}
+                      </p>
+                      <p className="font-mono text-xs font-bold">{validationRunResult.chainStatus}</p>
+                    </div>
+                  )}
+                </div>
+                {validationRunResult.alertRaised && validationRunResult.alertId != null && (
+                  <Link
+                    to={`/alerts/${validationRunResult.alertId}`}
+                    className="inline-flex items-center gap-1 text-sm font-bold text-accent hover:underline"
+                  >
+                    {t('integrity.validationRun.viewAlert', { id: validationRunResult.alertId })}
+                  </Link>
                 )}
               </div>
             )}

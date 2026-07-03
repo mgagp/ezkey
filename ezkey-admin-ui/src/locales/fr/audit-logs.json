@@ -1,7 +1,7 @@
 {
   "help": {
     "integrityLifecycle": {
-      "content": "Les checkpoints de chaîne scellent des lots d'entrées d'audit toutes les 5 minutes. Utilisez <strong>Vérification</strong> pour contrôler l'intégrité de la chaîne et des entrées, et <strong>Vue lifecycle</strong> pour comprendre ce qui est scellé, en attente de confirmation d'archive, ou proche de l'éligibilité à la purge. Les actions manuelles restent des chemins de maintenance exceptionnels, pas le workflow opérateur normal."
+      "content": "Les checkpoints de chaîne scellent des lots d'entrées d'audit toutes les 5 minutes. Utilisez <strong>Vérifier la chaîne</strong> et <strong>Vérifier le HMAC entrée</strong> pour des contrôles forensiques en lecture seule (sans effet sur les alertes). Utilisez <strong>Lancer la validation</strong> pour le chemin detective (même sémantique que le job nocturne) — peut créer ou mettre à jour une alerte <strong>AUDIT_INTEGRITY_RUPTURE</strong> si des violations alert-eligible subsistent. Utilisez <strong>Vue lifecycle</strong> pour comprendre ce qui est scellé, en attente de confirmation d'archive, ou proche de l'éligibilité à la purge. Les actions manuelles restent des chemins de maintenance exceptionnels."
     },
     "sealArchive": {
       "content": "Scelle une plage de checkpoints pour archivage (ex. avant suppression d'une partition BDD). Vous pouvez indiquer la période par horodatages ou par ID de checkpoints. Une vérification d'intégrité préalable s'exécute automatiquement."
@@ -261,6 +261,10 @@
     "verification": "Vérification",
     "dateRangeSelect": "Choisir une période",
     "selectDateRangeToRun": "Sélectionnez une plage de dates pour lancer la vérification",
+    "verifyChain": "Vérifier la chaîne",
+    "verifyEntry": "Vérifier le HMAC entrée",
+    "runValidation": "Lancer la validation et alerter si nécessaire",
+    "verifyVsRunHint": "Vérifier recalcule le HMAC et les liens de chaîne sans ouvrir ni mettre à jour d'alerte. Lancer la validation utilise le chemin detective et peut créer ou mettre à jour une alerte de rupture d'intégrité.",
     "chainIntegrity": "Intégrité de la chaîne",
     "entryIntegrity": "Intégrité des entrées",
     "checking": "Vérification…",
@@ -306,6 +310,21 @@
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Lacune(s) non déclarée(s)",
     "reportViolation": "Violation",
+    "validationRun": {
+      "title": "Exécution validation",
+      "running": "Validation en cours…",
+      "error": "Échec de la validation.",
+      "intact": "Aucune violation alert-eligible dans la plage.",
+      "completed": "Validation terminée.",
+      "alertRaised": "Alerte #{{id}} créée ou mise à jour.",
+      "skipped": "Ignoré : {{reason}}",
+      "skippedBadge": "Ignoré",
+      "entryViolations": "HMAC entrée KO",
+      "entryAlertEligible": "Entrées alert-eligible",
+      "chainViolations": "Violations chaîne",
+      "chainStatus": "Statut chaîne",
+      "viewAlert": "Voir l'alerte #{{id}}"
+    },
     "lifecycleOverview": "Vue lifecycle",
     "lifecyclePolicyTitle": "Lifecycle piloté par policy",
     "lifecyclePolicyHint": "Le système fait progresser automatiquement les états lifecycle des checkpoints. Ce panneau sert d'abord à la visibilité opérateur.",

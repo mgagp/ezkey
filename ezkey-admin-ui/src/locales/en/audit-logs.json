@@ -1,7 +1,7 @@
 {
   "help": {
     "integrityLifecycle": {
-      "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verification</strong> to check chain and entry integrity, and use <strong>Lifecycle overview</strong> to understand what is currently sealed, awaiting archive confirmation, or approaching purge eligibility. Manual lifecycle actions remain exceptional maintenance paths, not the normal operator workflow."
+      "content": "Chain checkpoints seal batches of audit entries every 5 minutes. Use <strong>Verify chain</strong> and <strong>Verify entry HMAC</strong> for read-only forensic checks (no alert side effects). Use <strong>Run validation</strong> for the detective batch path — same semantics as the nightly job — which may raise or touch an <strong>AUDIT_INTEGRITY_RUPTURE</strong> alert when alert-eligible violations remain. Use <strong>Lifecycle overview</strong> to understand what is currently sealed, awaiting archive confirmation, or approaching purge eligibility. Manual lifecycle actions remain exceptional maintenance paths, not the normal operator workflow."
     },
     "sealArchive": {
       "content": "Seals a range of checkpoints for archival (e.g. before dropping a DB partition). You can specify a period by timestamps or by checkpoint IDs. A pre-flight integrity check runs automatically."
@@ -261,6 +261,10 @@
     "verification": "Verification",
     "dateRangeSelect": "Select a range",
     "selectDateRangeToRun": "Select a date range to run verification",
+    "verifyChain": "Verify chain",
+    "verifyEntry": "Verify entry HMAC",
+    "runValidation": "Run validation and raise alert if needed",
+    "verifyVsRunHint": "Verify recomputes HMAC and chain links without opening or updating alerts. Run validation uses the detective batch path and may raise or touch an integrity rupture alert.",
     "chainIntegrity": "Chain Integrity",
     "entryIntegrity": "Entry Integrity",
     "checking": "Checking…",
@@ -306,6 +310,21 @@
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Undeclared gap(s)",
     "reportViolation": "Violation",
+    "validationRun": {
+      "title": "Validation run",
+      "running": "Running validation…",
+      "error": "Validation run failed.",
+      "intact": "No alert-eligible violations in range.",
+      "completed": "Validation completed.",
+      "alertRaised": "Alert #{{id}} raised or updated.",
+      "skipped": "Skipped: {{reason}}",
+      "skippedBadge": "Skipped",
+      "entryViolations": "Entry HMAC KO",
+      "entryAlertEligible": "Alert-eligible entries",
+      "chainViolations": "Chain violations",
+      "chainStatus": "Chain status",
+      "viewAlert": "View alert #{{id}}"
+    },
     "lifecycleOverview": "Lifecycle Overview",
     "lifecyclePolicyTitle": "Policy-driven lifecycle",
     "lifecyclePolicyHint": "The system progresses checkpoint lifecycle states automatically. This panel is primarily for operator visibility.",
