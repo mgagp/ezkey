@@ -313,6 +313,12 @@
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Undeclared gap(s)",
     "reportViolation": "Violation",
+    "entryReportSummary": {
+      "allExplainedLabel": "All explained",
+      "intactTooltip": "No HMAC mismatches in this window.",
+      "violationTooltip": "One or more entries have an unexplained HMAC mismatch or re-tamper signal. Red: action may still be required.",
+      "allExplainedTooltip": "Every listed HMAC mismatch is cryptographically invalid but acknowledged by an operator (known invalid state). Orange does not mean the signature is valid."
+    },
     "validationRun": {
       "title": "Validation run",
       "running": "Running validation…",

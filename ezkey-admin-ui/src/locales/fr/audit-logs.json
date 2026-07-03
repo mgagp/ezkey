@@ -313,6 +313,12 @@
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Lacune(s) non déclarée(s)",
     "reportViolation": "Violation",
+    "entryReportSummary": {
+      "allExplainedLabel": "Tout expliqué",
+      "intactTooltip": "Aucune discordance HMAC dans cette fenêtre.",
+      "violationTooltip": "Une ou plusieurs entrées ont une discordance HMAC non expliquée ou un signal de re-tamper. Rouge : une action peut encore être requise.",
+      "allExplainedTooltip": "Chaque discordance HMAC listée est cryptographiquement invalide mais reconnue par un opérateur (état invalide connu). L'orange ne signifie pas que la signature est valide."
+    },
     "validationRun": {
       "title": "Exécution validation",
       "running": "Validation en cours…",

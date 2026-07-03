@@ -39,6 +39,7 @@ import {
   mergeSingleEntryVerificationIntoSession,
   parseHighlightAuditLogIds,
   resolveEntryHmacDisplayState,
+  resolveEntryIntegrityReportSummaryState,
   resolveIntegrityReportEntryDisplayState,
   saveIntegrityInvestigationSession,
   buildInvestigationSession,
@@ -49,6 +50,8 @@ import { useAuth } from '@/context/use-auth';
 import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { useToast } from '@/context/use-toast';
 import { EntryHmacBadge } from '@/components/feature/entry-hmac-badge';
+import { EntryIntegrityReportBadge } from '@/components/feature/entry-integrity-report-badge';
+import { EntryIntegrityViolationLine } from '@/components/feature/entry-integrity-violation-line';
 import {
   checkChainIntegrity,
   checkIntegrity,
@@ -1267,12 +1270,7 @@ function IntegrityPanel({
               <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.entryIntegrityReport')}</span>
-                  <ReportBadge
-                    intact={integrityReport.intact}
-                    intactLabel={t('integrity.reportIntact')}
-                    undeclaredGapsLabel={t('integrity.reportUndeclaredGaps')}
-                    violationLabel={t('integrity.reportViolation')}
-                  />
+                  <EntryIntegrityReportBadge report={integrityReport} />
                 </div>
                 {integrityReportRange && (
                   <p className="text-xs text-fg-muted">
@@ -1290,12 +1288,19 @@ function IntegrityPanel({
                 </div>
                 {integrityReport.entryViolations?.items && integrityReport.entryViolations.items.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs font-bold text-error mb-1">{t('integrity.structuredEntryViolations')}</p>
-                    <ul className="text-xs text-error space-y-1">
+                    <p
+                      className={cn(
+                        'text-xs font-bold mb-1',
+                        resolveEntryIntegrityReportSummaryState(integrityReport) === 'allExplained'
+                          ? 'text-warning'
+                          : 'text-error',
+                      )}
+                    >
+                      {t('integrity.structuredEntryViolations')}
+                    </p>
+                    <ul className="text-xs space-y-1">
                       {integrityReport.entryViolations.items.map((v) => (
-                        <li key={v.auditLogId} className="font-mono">
-                          #{v.auditLogId} — {v.reason ?? '—'}
-                        </li>
+                        <EntryIntegrityViolationLine key={v.auditLogId} violation={v} />
                       ))}
                     </ul>
                   </div>
