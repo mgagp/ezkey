@@ -48,8 +48,6 @@ public class NightlyIntegrityValidationService {
   private static final Logger logger =
       LoggerFactory.getLogger(NightlyIntegrityValidationService.class);
 
-  private static final String INTEGRITY_RUPTURE_DEDUPE_PREFIX = "AUDIT_INTEGRITY_RUPTURE:";
-
   private final NightlyIntegrityProperties nightlyProperties;
   private final AuditChainVerificationService chainVerificationService;
   private final AuditHmacService auditHmacService;
@@ -57,6 +55,7 @@ public class NightlyIntegrityValidationService {
   private final AlertService alertService;
   private final AlertRepository alertRepository;
   private final AuditLogService auditLogService;
+  private final EntryIntegrityViolationClassifier entryIntegrityViolationClassifier;
 
   /**
    * Constructs the service.
@@ -68,6 +67,7 @@ public class NightlyIntegrityValidationService {
    * @param alertService alert raise/touch
    * @param alertRepository alert existence checks
    * @param auditLogService audit log for batch completion events
+   * @param entryIntegrityViolationClassifier reporting vs alert-eligible entry classifier
    */
   public NightlyIntegrityValidationService(
       NightlyIntegrityProperties nightlyProperties,
@@ -76,7 +76,8 @@ public class NightlyIntegrityValidationService {
       AuditLogRepository auditLogRepository,
       AlertService alertService,
       AlertRepository alertRepository,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      EntryIntegrityViolationClassifier entryIntegrityViolationClassifier) {
     this.nightlyProperties = nightlyProperties;
     this.chainVerificationService = chainVerificationService;
     this.auditHmacService = auditHmacService;
@@ -84,6 +85,7 @@ public class NightlyIntegrityValidationService {
     this.alertService = alertService;
     this.alertRepository = alertRepository;
     this.auditLogService = auditLogService;
+    this.entryIntegrityViolationClassifier = entryIntegrityViolationClassifier;
   }
 
   /**
@@ -101,19 +103,31 @@ public class NightlyIntegrityValidationService {
       return NightlyIntegrityValidationResult.skipped(scope, "HMAC signing is not active");
     }
 
-    List<EntryIntegrityViolation> entryViolations =
-        EntryHmacViolationCollector.collectAll(
-            auditLogRepository, auditHmacService, windowStart, windowEndExclusive);
+    EntryIntegrityViolationClassifier.ViolationCollection entryViolationCollection =
+        entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, windowStart, windowEndExclusive);
+    List<EntryIntegrityViolation> entryViolations = entryViolationCollection.reportingViolations();
+    List<EntryIntegrityViolation> alertEligibleEntryViolations =
+        entryViolationCollection.alertEligibleViolations();
     AuditChainVerificationService.ChainVerificationReport chainReport =
         chainVerificationService.verifyChain(windowStart, windowEndExclusive);
 
     boolean entryHmacIntact = entryViolations.isEmpty();
     boolean chainIntact = chainReport.intact();
     boolean integrityFailure = !entryHmacIntact || !chainIntact;
+    boolean hasOpenHeartbeatStale = hasOpenHeartbeatStaleAlert();
 
     boolean alertRaised = false;
-    if (integrityFailure && shouldRaiseIntegrityAlert(chainReport, entryHmacIntact)) {
-      raiseIntegrityRuptureAlert(windowStart, windowEndExclusive, chainReport, entryViolations);
+    if (integrityFailure
+        && shouldRaiseIntegrityAlert(
+            chainReport, alertEligibleEntryViolations, hasOpenHeartbeatStale)) {
+      raiseIntegrityRuptureAlert(
+          windowStart,
+          windowEndExclusive,
+          chainReport,
+          entryViolations,
+          alertEligibleEntryViolations,
+          hasOpenHeartbeatStale);
       alertRaised = true;
     }
 
@@ -145,15 +159,30 @@ public class NightlyIntegrityValidationService {
       OffsetDateTime windowStart,
       OffsetDateTime windowEnd,
       AuditChainVerificationService.ChainVerificationReport chainReport,
-      List<EntryIntegrityViolation> entryViolations) {
+      List<EntryIntegrityViolation> entryViolations,
+      List<EntryIntegrityViolation> alertEligibleEntryViolations,
+      boolean hasOpenHeartbeatStale) {
     IntegrityViolationCappedList<EntryIntegrityViolation> cappedEntries =
         IntegrityViolationCappedList.of(
             entryViolations, IntegrityViolationCappedList.ALERT_ENTRY_CAP);
+    boolean chainAlertEligible =
+        IntegrityRuptureIncidentFingerprint.isChainAlertEligible(
+            chainReport, hasOpenHeartbeatStale);
+    List<ChainIntegrityViolation> alertEligibleChains =
+        IntegrityRuptureIncidentFingerprint.alertEligibleChainViolations(
+            chainReport, chainAlertEligible);
+    IntegrityRuptureIncidentFingerprint.BoundaryPair boundaries =
+        IntegrityRuptureIncidentFingerprint.fingerprintBoundaries(chainReport, chainAlertEligible);
     IntegrityViolationCappedList<ChainIntegrityViolation> cappedChains =
         IntegrityViolationCappedList.of(
             chainReport.chainViolations(), IntegrityViolationCappedList.ALERT_CHAIN_CAP);
 
-    String dedupeKey = INTEGRITY_RUPTURE_DEDUPE_PREFIX + windowStart.toInstant().toEpochMilli();
+    String dedupeKey =
+        IntegrityRuptureIncidentFingerprint.computeDedupeKey(
+            boundaries.failBoundary(),
+            boundaries.resumeBoundary(),
+            alertEligibleEntryViolations,
+            alertEligibleChains);
     String payload =
         AuditDetailsBuilder.builder()
             .custom("windowStart", windowStart.toString())
@@ -165,10 +194,10 @@ public class NightlyIntegrityValidationService {
             .custom("chainViolations", cappedListToMap(cappedChains))
             .custom(
                 "failBoundary",
-                chainReport.coverageStart() != null ? chainReport.coverageStart().toString() : null)
+                boundaries.failBoundary() != null ? boundaries.failBoundary().toString() : null)
             .custom(
                 "resumeBoundary",
-                chainReport.coverageEnd() != null ? chainReport.coverageEnd().toString() : null)
+                boundaries.resumeBoundary() != null ? boundaries.resumeBoundary().toString() : null)
             .custom(
                 "message",
                 "Nightly integrity validation detected a rupture in the retroactive window")
@@ -230,20 +259,14 @@ public class NightlyIntegrityValidationService {
    * duplicate integrity alert.
    */
   private boolean shouldRaiseIntegrityAlert(
-      AuditChainVerificationService.ChainVerificationReport chainReport, boolean entryHmacIntact) {
-    if (!entryHmacIntact) {
+      AuditChainVerificationService.ChainVerificationReport chainReport,
+      List<EntryIntegrityViolation> alertEligibleEntryViolations,
+      boolean hasOpenHeartbeatStale) {
+    if (!alertEligibleEntryViolations.isEmpty()) {
       return true;
     }
-    if (chainReport.invalidCheckpoints() > 0) {
-      return true;
-    }
-    if (chainReport.intact()) {
-      return false;
-    }
-    if (chainReport.undeclaredGaps().isEmpty()) {
-      return true;
-    }
-    return !hasOpenHeartbeatStaleAlert();
+    return IntegrityRuptureIncidentFingerprint.isChainAlertEligible(
+        chainReport, hasOpenHeartbeatStale);
   }
 
   private boolean hasOpenHeartbeatStaleAlert() {

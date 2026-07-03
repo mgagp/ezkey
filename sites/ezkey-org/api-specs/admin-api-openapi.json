@@ -4526,6 +4526,7 @@
                 "AUDIT_CHAIN_GAP_DECLARED",
                 "AUDIT_CHAIN_INCIDENT_DECLARED",
                 "AUDIT_INTEGRITY_RUPTURE_CONCILIATED",
+                "AUDIT_ENTRY_INTEGRITY_CONCILIATED",
                 "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
                 "ALERT_RAISED",
                 "ALERT_RESOLVED"
@@ -6683,6 +6684,13 @@
               "INVESTIGATED_BENIGN",
               "OTHER"
             ]
+          },
+          "acknowledgedAuditLogIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
           }
         },
         "required": [
@@ -6729,6 +6737,17 @@
               "INVESTIGATED_BENIGN",
               "OTHER"
             ]
+          },
+          "conciliatedAuditLogIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "entryConciliationCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -8607,6 +8626,7 @@
               "AUDIT_CHAIN_GAP_DECLARED",
               "AUDIT_CHAIN_INCIDENT_DECLARED",
               "AUDIT_INTEGRITY_RUPTURE_CONCILIATED",
+              "AUDIT_ENTRY_INTEGRITY_CONCILIATED",
               "NIGHTLY_INTEGRITY_VALIDATION_COMPLETED",
               "ALERT_RAISED",
               "ALERT_RESOLVED"

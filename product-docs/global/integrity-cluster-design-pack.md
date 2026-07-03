@@ -187,6 +187,39 @@ proportional, and make the **honest Phase-1 posture** discoverable
 ([`../../docs/SECURITY_POSTURE.md`](../../docs/SECURITY_POSTURE.md)). Apply the red-line test before
 adding controls.
 
+## Archive lifecycle and cross-table reference integrity
+
+**Discovered during B2.6 (2026-07-02):** integrity and remediation design had focused on *cryptographic*
+continuity (checkpoints, HMAC, conciliation) but under-specified how **physical audit purge** interacts
+with **operational overlays** that reference audit entries.
+
+### What purge does
+
+Audit log rows in sealed tranches progress `SEALED → [EXPORTED] → PURGEABLE → PURGED`. After
+`PURGEABLE`, `AuditLogService.purgeLifecycleEligibleLogs()` **deletes** partition rows. Checkpoints
+**remain** — they carry the normative chain narrative for the sealed period.
+
+### Design rule for Wave B (and beyond)
+
+When modeling tables that reference `ezkey_audit_log`, classify each reference explicitly:
+
+| Class | Lifecycle | Schema pattern | Examples |
+|-------|-----------|----------------|----------|
+| **Ephemeral** | Dies with audit row | Composite FK including full partition key (`audit_log_id`, `created_at`, `api_name`) if ever needed | Rare — most audit joins are read-time only |
+| **Durable overlay** | Must survive purge | Immutable snapshot columns, **no FK** to audit log | Entry integrity conciliation (B2.6), future operator acts on purged periods |
+| **Normative anchor** | Independent of row purge | Own table, not deleted with audit rows | Chain checkpoints, gap declarations, incidents |
+
+**Integrity implication:** post-purge verify over purged windows relies on **checkpoints + external
+archive** (Phase 2 SPI), not live audit rows. Conciliation registries preserve *who acknowledged what*
+even when the tampered row no longer exists in the primary store.
+
+**Schema implication:** do not assume audit entries are permanent; do not add restrictive FKs that
+block purge or `ON DELETE CASCADE` that silently erase SOC 2 operator narrative.
+
+Authoritative detail: [`docs/DATABASE_PARTITIONING_IMPLEMENTATION.md`](../../docs/DATABASE_PARTITIONING_IMPLEMENTATION.md)
+(§ Flyway greenfield patterns), [`docs/AUDIT_LOG_INTEGRITY.md`](../../docs/AUDIT_LOG_INTEGRITY.md)
+(§ Entry integrity conciliation registry), [`docs/AUDIT_LOG_LIFECYCLE_NEXT_SESSION_BRIEF.md`](../../docs/AUDIT_LOG_LIFECYCLE_NEXT_SESSION_BRIEF.md).
+
 ## Out of scope (cluster R1)
 
 - Snooze UI/API (grilled yes for R1 — schedule in B2 with `I-2026-0005` unless split)

@@ -345,6 +345,28 @@ the subsystem raises **`AUDIT_CHAIN_HEARTBEAT_STALE`** (`/api/v1/alerts`). Auto-
 once a fresh checkpoint advances the heartbeat again. Separate **`AUDIT_CHAIN_INCIDENT_DECLARED`** audit events record
 operator declaration via `POST /api/v1/audit-logs/lifecycle/incidents/{id}/declare`.
 
+### Entry integrity conciliation registry (B2.6)
+
+Per-entry HMAC violations can be **acknowledged** by Global Admin reconcile without re-signing
+`entry_hmac`. Rows live in `ezkey_audit_entry_integrity_conciliation` — an operational overlay
+**distinct** from mutating audit log content.
+
+| Aspect | Behavior |
+|--------|----------|
+| Entry reference | Immutable snapshot `(audit_log_id, audit_log_created_at)` at conciliation time |
+| FK to audit log | **None** — registry must survive audit partition purge after archive seal |
+| Fingerprint | SHA-256 of canonical entry form at conciliation; gates re-alert skip vs re-tamper |
+| Meta-audit | `AUDIT_ENTRY_INTEGRITY_CONCILIATED` event + conciliation row for SOC 2 lookup |
+
+After reconcile, verify still reports HMAC KO on the entry (tamper-evident); conciliation only
+records that the organization accepted the known invalid state under justification.
+
+**Archive / purge interaction:** conciliation rows are **durable overlays** — they must remain
+queryable after the referenced audit partition is purged. This is the first Wave B table explicitly
+designed for purge-surviving reference semantics; see
+[`integrity-cluster-design-pack.md`](../product-docs/global/integrity-cluster-design-pack.md)
+(§ Archive lifecycle and cross-table reference integrity).
+
 ---
 
 ## 5. What This Does NOT Cover (Accepted Limitations)

@@ -31,7 +31,7 @@ final class EntryHmacViolationCollector {
   static final String REASON_MISSING_ENTRY_HMAC = "MISSING_ENTRY_HMAC";
   static final String REASON_HMAC_MISMATCH = "HMAC_MISMATCH";
 
-  private static final int VERIFICATION_BATCH_SIZE = 500;
+  static final int VERIFICATION_BATCH_SIZE = 500;
 
   private EntryHmacViolationCollector() {}
 

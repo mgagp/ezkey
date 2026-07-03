@@ -122,6 +122,9 @@ public enum EventType {
   /** Global Admin reconciled an integrity rupture with a manipulation conciliation checkpoint. */
   AUDIT_INTEGRITY_RUPTURE_CONCILIATED,
 
+  /** Global Admin acknowledged a per-entry HMAC integrity violation under audited justification. */
+  AUDIT_ENTRY_INTEGRITY_CONCILIATED,
+
   // Scheduled integrity validation
   NIGHTLY_INTEGRITY_VALIDATION_COMPLETED, // Nightly retroactive integrity batch finished
 

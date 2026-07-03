@@ -32,6 +32,7 @@ import org.ezkey.alert.service.AlertService;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,10 +40,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * Unit tests for {@link NightlyIntegrityValidationService}.
@@ -62,6 +59,7 @@ class NightlyIntegrityValidationServiceTest {
   @Mock private AlertService alertService;
   @Mock private AlertRepository alertRepository;
   @Mock private AuditLogService auditLogService;
+  @Mock private EntryIntegrityViolationClassifier entryIntegrityViolationClassifier;
 
   private NightlyIntegrityValidationService service;
 
@@ -75,7 +73,8 @@ class NightlyIntegrityValidationServiceTest {
             auditLogRepository,
             alertService,
             alertRepository,
-            auditLogService);
+            auditLogService,
+            entryIntegrityViolationClassifier);
     when(nightlyProperties.getWindowHours()).thenReturn(24);
   }
 
@@ -95,8 +94,10 @@ class NightlyIntegrityValidationServiceTest {
   @Test
   void validateWindow_intactPath_doesNotRaiseAlert() {
     when(auditHmacService.isActive()).thenReturn(true);
-    when(auditLogRepository.findAll(any(Specification.class), any(PageRequest.class)))
-        .thenReturn(Page.empty());
+    when(entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
     when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
 
     NightlyIntegrityValidationService.NightlyIntegrityValidationResult result =
@@ -111,12 +112,13 @@ class NightlyIntegrityValidationServiceTest {
   @Test
   void validateWindow_entryHmacViolation_raisesIntegrityRuptureAlert() {
     when(auditHmacService.isActive()).thenReturn(true);
-    AuditLog badEntry = new AuditLog();
-    badEntry.setAuditLogId(42L);
-    badEntry.setEntryHmac("bad");
-    when(auditLogRepository.findAll(any(Specification.class), any(PageRequest.class)))
-        .thenReturn(new PageImpl<>(List.of(badEntry)));
-    when(auditHmacService.verifyHmac(badEntry)).thenReturn(false);
+    EntryIntegrityViolation violation =
+        new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
+    when(entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(
+                List.of(violation), List.of(violation)));
     when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
     Alert saved = new Alert();
     saved.setAlertId(7L);
@@ -143,8 +145,10 @@ class NightlyIntegrityValidationServiceTest {
   @Test
   void validateWindow_c8_6_defersAlertWhenOnlyUndeclaredGapsAndHeartbeatOpen() {
     when(auditHmacService.isActive()).thenReturn(true);
-    when(auditLogRepository.findAll(any(Specification.class), any(PageRequest.class)))
-        .thenReturn(Page.empty());
+    when(entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
     AuditChainVerificationService.UndeclaredGap gap =
         new AuditChainVerificationService.UndeclaredGap(
             WINDOW_END.minusHours(2), WINDOW_END.minusHours(1), 60);
@@ -165,8 +169,10 @@ class NightlyIntegrityValidationServiceTest {
   @Test
   void validateWindow_emitsCompletionAuditWithEventType() {
     when(auditHmacService.isActive()).thenReturn(true);
-    when(auditLogRepository.findAll(any(Specification.class), any(PageRequest.class)))
-        .thenReturn(Page.empty());
+    when(entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
     when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
 
     service.validateWindow(WINDOW_END);
@@ -175,6 +181,26 @@ class NightlyIntegrityValidationServiceTest {
     verify(auditLogService).log(captor.capture());
     assertTrue(
         captor.getValue().getEventType() == EventType.NIGHTLY_INTEGRITY_VALIDATION_COMPLETED);
+  }
+
+  @Test
+  void validateWindow_onlyExplainedEntryViolations_doesNotRaiseAlert() {
+    when(auditHmacService.isActive()).thenReturn(true);
+    EntryIntegrityViolation explained =
+        new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
+    when(entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(
+                List.of(explained), List.of()));
+    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+
+    NightlyIntegrityValidationService.NightlyIntegrityValidationResult result =
+        service.validateWindow(WINDOW_END);
+
+    assertFalse(result.intact());
+    assertFalse(result.alertRaised());
+    verify(alertService, never()).raiseOrTouch(any(), any(), anyString(), any());
   }
 
   private static AuditChainVerificationService.ChainVerificationReport intactReport() {

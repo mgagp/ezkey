@@ -8711,6 +8711,25 @@
           }
         }
       },
+      "EntryIntegrityViolation": {
+        "type": "object",
+        "properties": {
+          "auditLogId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
       "IntegrityReport": {
         "type": "object",
         "properties": {
@@ -8735,6 +8754,31 @@
           },
           "status": {
             "type": "string"
+          },
+          "entryViolations": {
+            "$ref": "#/components/schemas/IntegrityViolationCappedListEntryIntegrityViolation"
+          }
+        }
+      },
+      "IntegrityViolationCappedListEntryIntegrityViolation": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntryIntegrityViolation"
+            }
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "returnedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "truncated": {
+            "type": "boolean"
           }
         }
       },
@@ -8804,6 +8848,29 @@
           }
         }
       },
+      "ChainIntegrityViolation": {
+        "type": "object",
+        "properties": {
+          "checkpointId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "windowStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "windowEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "violationType": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
       "ChainVerificationReport": {
         "type": "object",
         "properties": {
@@ -8831,6 +8898,12 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          },
+          "chainViolations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChainIntegrityViolation"
             }
           },
           "undeclaredGaps": {
