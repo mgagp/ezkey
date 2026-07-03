@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence`
-- **Status:** `ready` (design decisions D1–D6 decided 2026-07-02)
+- **Status:** `done` (merged PR #287 — program #269)
 - **Related idea:** `I-2026-0005-checkpoint-integrity-break-remediation` (extends manipulation path)
 - **Parent context:** Wave B integrity cluster; closes asymmetric chain vs entry remediation gap
 - **Feature:** `F-audit-chain`

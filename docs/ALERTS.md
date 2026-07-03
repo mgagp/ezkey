@@ -35,7 +35,7 @@ All endpoints require Global Admin (`GLOBAL_ADMIN`). Tenant Admins receive `403`
 - `GET /api/v1/alerts/{alertId}` — single alert detail.
 
 The Admin UI exposes both via the **Alerts** page (Global Admin only) at `/alerts` and a detail
-view at `/alerts/{alertId}`. The Dashboard alerts widget links into the same pages.
+view at `/alerts/{alertId}`. The Dashboard **open-alert count banner** (B3) links to `/alerts`.
 
 ## Producers
 

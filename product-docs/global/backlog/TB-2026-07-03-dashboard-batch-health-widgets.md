@@ -3,10 +3,11 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-03-dashboard-batch-health-widgets`
-- **Status:** `under-review`
+- **Status:** `done`
 - **Priority:** `P1`
 - **Lane:** Wave B integrity cluster (GitHub #269, slice B3)
 - **Backlog idea:** [`I-2026-0007`](ideas/I-2026-0007-admin-dashboard-integrity-widgets.md)
+- **GitHub PR:** #289 (merged)
 - **Branch:** `feature/269-b3-dashboard-batch-widgets`
 - **Created at:** `2026-07-03`
 
@@ -28,7 +29,8 @@ config summary) and count-first open-alerts banner.
 - Maven baseline (`./scripts/build.sh`) — pass
 - `DashboardServiceTest`, `ScheduledJobLastRunServiceTest`, `ReencryptionServiceTest` — pass
 - `npm run build` (admin-ui) — pass
-- Spec refresh (`update-specs` + `generate:api`) — **pending** (stack not running at implementation time)
+- Maintainer exploratory: Global Admin dashboard widgets + alert count banner — OK
+- OpenAPI spec refresh — included in PR #289
 
 ## Non-goals (unchanged)
 

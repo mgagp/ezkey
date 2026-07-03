@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0005`
-- **Status:** `promoted`
+- **Status:** `done`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-06-29`
-- **Last reviewed at:** `2026-06-29`
+- **Updated at:** `2026-07-03`
+- **Last reviewed at:** `2026-07-03`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `admin-api`, `audit`
 - **Captured by:** Marc

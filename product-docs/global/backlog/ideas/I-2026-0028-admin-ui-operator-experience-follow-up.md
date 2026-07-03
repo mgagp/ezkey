@@ -81,7 +81,7 @@ or incident patterns change.
 | **P2** | **Auth attempts** — integration + tenant labels | B | API (core DTO) + UI | Medium | Medium | **Done** — TB `TB-2026-06-23-admin-ui-auth-attempts-tier-b-labels`, #257, PR #253 |
 | **P2** | **Audit logs** — selective name joins | B | API + UI | Large | High | **Done** — TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258, PR #259 |
 | **P3** | **Encryption keys** + **re-encryption batches** | A | API + UI | Medium | Low | **Done** — `I-2026-0002` / TB `TB-2026-06-27-admin-ui-encryption-reencryption-async`, #264, PR #265 (async 202 triggers) |
-| **P3** | **Alerts** list | A | Analysis | Small | Low | **Deferred** — matrix polish after integrity cluster (`I-2026-0005`–`0007`); see [`operational-readiness-prioritization-2026-09.md`](../../operational-readiness-prioritization-2026-09.md). List usable read-only today; resolve/snooze stays detail per quick-actions canon when APIs exist. |
+| **P3** | **Alerts** list | A | Analysis → UI polish | Small | Low | **Next (Wave C)** — TB [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-2026-07-03-admin-ui-alerts-list-polish.md); deferred until post-Wave B (now unblocked). |
 | **P3** | **Tenant detail → admins** embedded list | A | UI consistency | Small | Low | **Done** — ID column + `adminListDetailHref` (PR #259) |
 | **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **Done** — TB [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md) |
 
@@ -122,9 +122,8 @@ When starting a row:
 2. Update matrix row status.
 3. Optional GitHub issue for PR visibility only.
 
-Suggested **next slice (optional):** integrity cluster (`I-2026-0005`–`0007`) per
-[`operational-readiness-prioritization-2026-09.md`](../../operational-readiness-prioritization-2026-09.md);
-then P3 matrix rows (**alerts**, audit chain checkpoints).
+Suggested **next slice:** [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-2026-07-03-admin-ui-alerts-list-polish.md)
+(Wave C); then audit chain checkpoints matrix row.
 
 ## Links
 
@@ -142,8 +141,8 @@ then P3 matrix rows (**alerts**, audit chain checkpoints).
 - P3 encryption (spin-out from this program): [`I-2026-0002`](I-2026-0002-reencryption-batch-async-button.md) **done** —
   [`TB-2026-06-27-admin-ui-encryption-reencryption-async`](../TB-2026-06-27-admin-ui-encryption-reencryption-async.md),
   PR #265, ML [`ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md`](../method-logs/ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md)
-- Next (optional P3): **alerts** (deferred), audit chain checkpoints — see
-  [`operational-readiness-prioritization-2026-09.md`](../../operational-readiness-prioritization-2026-09.md)
+- Next (Wave C): **alerts** — [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-2026-07-03-admin-ui-alerts-list-polish.md);
+  audit chain checkpoints — see [`operational-readiness-prioritization-2026-09.md`](../../operational-readiness-prioritization-2026-09.md)
 - P4 closeout: [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md)
 - Detail FK parity: [`TB-2026-06-23-admin-ui-detail-fk-label-parity`](../TB-2026-06-23-admin-ui-detail-fk-label-parity.md)
 - Program closeout: [`method-logs/ML-2026-06-27-admin-ui-operator-experience-program-closeout.md`](../method-logs/ML-2026-06-27-admin-ui-operator-experience-program-closeout.md)

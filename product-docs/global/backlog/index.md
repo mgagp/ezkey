@@ -10,13 +10,10 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
 
-**Summary (2026-07-02):** Integrity cluster (`I-2026-0005`, `I-2026-0006`, `I-2026-0007`) **before**
-Alerts list UI polish (`I-2026-0028` P3). **Wave B:** B1 merged (#270); B2/B2.5 shipped on branch;
-**B2.6 + B2.7 ready** (entry conciliation + retroactive validation operability TBs); GitHub **#269**.
-Method logs: [`method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md`](method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md),
-[`method-logs/ML-2026-06-29-wave-b-b2-manipulation-remediation-kickoff.md`](method-logs/ML-2026-06-29-wave-b-b2-manipulation-remediation-kickoff.md),
-[`method-logs/ML-2026-06-30-wave-b-b25-investigation-operability-kickoff.md`](method-logs/ML-2026-06-30-wave-b-b25-investigation-operability-kickoff.md),
-[`method-logs/ML-2026-07-02-entry-integrity-conciliation-kickoff.md`](method-logs/ML-2026-07-02-entry-integrity-conciliation-kickoff.md).
+**Summary (2026-07-03):** Wave B integrity cluster R1 **closed** (GitHub #269). **Next:** Wave C —
+[`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md)
+(`I-2026-0028` P3). Closeout:
+[`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
 ## Active ideas
 
@@ -25,8 +22,6 @@ Method logs: [`method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md`](m
 | `I-2026-0001` | Per-enrollment local authentication policy for mobile respond | `incubating` | `P1` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-07` |
 | `I-2026-0003` | High-availability Docker stack: parity review with `cleanstart.sh` | `incubating` | `P2` | `infra`, `admin-api`, `auth-api`, `integration-api` | `2026-05-19` |
 | `I-2026-0004` | Admin API: configurable acceptance of API-key authentication | `promoted` | `P1` | `admin-api`, `sdk-java`, `docs` | `2026-05-25` |
-| `I-2026-0005` | Checkpoint integrity breaks: declared remediation and reattachment | `promoted` | `P1` | `admin-api`, `audit` | `2026-06-29` |
-| `I-2026-0007` | Admin Dashboard: batch health and integrity widgets | `incubating` | `P1` | `admin-ui`, `admin-api` | `2026-05-19` |
 | `I-2026-0010` | Phone-to-phone enrollment transfer ceremony | `ready` | `P2` | `mobile`, `auth-api`, `admin-api`, `admin-ui` | `2026-05-24` |
 | `I-2026-0011` | Bootstrap clean-start: activation-code mode as default | `incubating` | `P1` | `admin-api`, `infra`, `bootstrap`, `docs` | `2026-05-19` |
 | `I-2026-0012` | Hard-coded Ezkey System user sensitivity audit | `incubating` | `P2` | `admin-api`, `core`, `infra` | `2026-05-19` |
@@ -50,7 +45,9 @@ Method logs: [`method-logs/ML-2026-06-28-wave-b-integrity-cluster-kickoff.md`](m
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
-| `I-2026-0006` | Nightly retroactive integrity validation batch (Wave B B1) | `2026-06-29` | PR #270 / TB `TB-2026-06-28-nightly-integrity-validation-batch`. Detective layer + job registry + `AUDIT_INTEGRITY_RUPTURE`. Program #269 stays open for B2/B3. |
+| `I-2026-0007` | Admin Dashboard: batch health and integrity widgets (Wave B B3) | `2026-07-03` | PR #289 / TB `TB-2026-07-03-dashboard-batch-health-widgets`. Program #269 closed same day. |
+| `I-2026-0005` | Checkpoint integrity breaks: remediation + entry conciliation (Wave B B2/B2.6) | `2026-07-03` | PR #287 (B2.6) + earlier B2 chain reconcile. TB `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence`. |
+| `I-2026-0006` | Nightly retroactive integrity validation batch (Wave B B1) | `2026-06-29` | PR #270 / TB `TB-2026-06-28-nightly-integrity-validation-batch`. Detective layer + job registry + `AUDIT_INTEGRITY_RUPTURE`. |
 | `I-2026-0002` | Re-encryption batch UI: async button behavior | `2026-06-28` | PR #265 / issue #264. Async manual triggers (202 Accepted); TB `TB-2026-06-27-admin-ui-encryption-reencryption-async`; matrix encryption keys + batches → `implemented`. Origin: Blitz D1. |
 | `I-2026-0028` | Admin UI operator experience — post–Tier A follow-up | `2026-06-27` | Program closed #236 → P4 + detail FK parity (#261, #263). ML `ML-2026-06-27-admin-ui-operator-experience-program-closeout`. P3 encryption slice spun out → `I-2026-0002` (done 2026-06-28). |
 | `I-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity` | Admin enrollment vs admin login UX clarity | `2026-06-06` | PR #192 / issue #191 closed. Lane D first cut: dual-state admin detail, recovery-code gating tooltip, activation/recovery copy (EN/FR). Hygiene #182 first slice co-merged; #182 closed 2026-06-18 (React Doctor campaign #232/#234). |

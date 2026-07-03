@@ -39,13 +39,13 @@ mode, alert queue semantics, batch last-run visibility, and the **implementation
 | Chain verification service | **Shipped** | `AuditChainVerificationService.verifyChain(from, to)` |
 | Ad hoc verification API | **Shipped** | Lifecycle / verification endpoints (operator-triggered) |
 | Alerts list + detail (read-only) | **Shipped** | Admin UI `/alerts`; no manual resolve/snooze UI yet |
-| Dashboard open-alert strip | **Shipped** | `DashboardService` includes recent OPEN alerts |
+| Dashboard open-alert count banner | **Shipped** (B3) | `openAlertCount` + link to `/alerts` |
 | **Nightly retroactive batch** | **Shipped** (B1 / PR #270) | `NightlyIntegrityValidationScheduler`, `ezkey.audit.integrity.nightly.*` |
-| **Manipulation remediation flow (chain)** | **Shipped** (B2) | `MANIPULATION_CONCILIATION` + reconcile API |
+| **Manipulation remediation flow (chain + entry)** | **Shipped** (B2 / B2.6) | `MANIPULATION_CONCILIATION` + entry conciliation + reconcile API |
 | **Integrity investigation UX** | **Shipped** (B2.5) | `TB-2026-06-30-integrity-investigation-operability` |
-| **Entry HMAC conciliation + alert dedupe coherence** | **Ready → B2.6** | [`TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence.md`](backlog/TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence.md) |
-| **Retroactive validation operability (generic detect + operator POST)** | **Ready → B2.7** | [`TB-2026-07-02-retroactive-integrity-validation-operability.md`](backlog/TB-2026-07-02-retroactive-integrity-validation-operability.md) |
-| **Batch last-run registry + widgets** | **Shipped** (B3) | `I-2026-0007` — dashboard widgets + open-alert count banner |
+| **Entry HMAC conciliation + alert dedupe coherence** | **Shipped** (B2.6 / PR #287) | [`TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence.md`](backlog/TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence.md) |
+| **Retroactive validation operability (generic detect + operator POST)** | **Shipped** (B2.7 / PR #287) | [`TB-2026-07-02-retroactive-integrity-validation-operability.md`](backlog/TB-2026-07-02-retroactive-integrity-validation-operability.md) |
+| **Batch last-run registry + widgets** | **Shipped** (B3 / PR #289) | `I-2026-0007` — dashboard widgets + open-alert count banner |
 | **Snooze** | **Gap** | Grilled C9; deferred to `I-2026-0005` or follow-on TB |
 
 Reference: [`docs/ALERTS.md`](../docs/ALERTS.md).
@@ -61,9 +61,9 @@ Reference: [`docs/ALERTS.md`](../docs/ALERTS.md).
 
 **Layer 1** = rolling attach only. **Layer 2 (detect)** = scheduled nightly + operator retroactive run
 (shared orchestration per B2.7) + read-only verify for investigation without alert side effects. Periods already closed via gap declaration, heartbeat conciliation, or manipulation
-resolution are **excluded** from re-litigation (D5). **Chain:** implemented via conciliation
-checkpoint types. **Entry HMAC:** gap — requires `EntryIntegrityConciliation` registry (TB B2.6);
-detection must skip alert-eligible re-litigation while verify remains honestly HMAC-invalid.
+resolution are **excluded** from re-litigation (D5). **Chain:** conciliation checkpoint types.
+**Entry HMAC:** `EntryIntegrityConciliation` registry (B2.6); detection skips alert-eligible
+re-litigation while verify remains honestly HMAC-invalid.
 
 ## Batch last-run registry (shared by `I-2026-0006` + `I-2026-0007`)
 
@@ -117,9 +117,12 @@ run” alert.
 |------|-----|---------|---------------------|
 | **B1** | `TB-2026-06-28-nightly-integrity-validation-batch` | `I-2026-0006` | Nightly scheduler + registry table + rupture alert type + scheduler last-run hooks — **merged PR #270** |
 | **B2.5** | `TB-2026-06-30-integrity-investigation-operability` | B2.5 | Investigation UX — shipped |
-| **B2.6** | `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence` | `I-2026-0005` | Entry conciliation + alert dedupe — **under review** |
-| **B2.7** | `TB-2026-07-02-retroactive-integrity-validation-operability` | `I-2026-0006` (extends) | Generic retroactive validation + operator POST — **under review** |
-| **B3** | `TB-2026-07-03-dashboard-batch-health-widgets` | `I-2026-0007` | Dashboard widgets + open-alert count banner + config summary — **in review** |
+| **B2.6** | `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence` | `I-2026-0005` | Entry conciliation + alert dedupe — **merged PR #287** |
+| **B2.7** | `TB-2026-07-02-retroactive-integrity-validation-operability` | `I-2026-0006` (extends) | Generic retroactive validation + operator POST — **merged PR #287** |
+| **B3** | `TB-2026-07-03-dashboard-batch-health-widgets` | `I-2026-0007` | Dashboard widgets + open-alert count banner + config summary — **merged PR #289** |
+
+**Program #269:** Wave B R1 implementation **closed** 2026-07-03. See
+[`ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](backlog/method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
 **Branch rule:** one `feature/<issue#>-i-2026-0006-…` branch per TB when **code** starts; design pack
 and TB artifacts land on `main`.

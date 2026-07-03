@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-02-retroactive-integrity-validation-operability`
-- **Status:** `ready` (design decisions D1–D6 decided 2026-07-02)
+- **Status:** `done` (merged PR #287 — program #269)
 - **Related idea:** `I-2026-0006-nightly-integrity-validation-batch` (extends detective layer operability)
 - **Parent context:** Wave B integrity cluster; companion to B2.6 entry conciliation
 - **Feature:** `F-audit-chain`
