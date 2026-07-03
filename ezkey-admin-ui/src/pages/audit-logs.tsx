@@ -25,9 +25,7 @@ import { usePaginatedFromOrval } from '@/hooks/use-paginated-orval';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import {
   dateRangeToApiParams,
-  estimateIntegrityWindowHours,
   integrityExclusiveDateRangeToApiParams,
-  OPERATOR_INTEGRITY_MAX_WINDOW_HOURS,
 } from '@/lib/date-range-presets';
 import { EventStatusBadge } from '@/components/feature/event-status-badge';
 import { AUDIT_EVENT_TYPE_GROUPS, auditEventFilterToApiParams } from '@/lib/audit-event-type-family';
@@ -41,6 +39,7 @@ import {
   mergeSingleEntryVerificationIntoSession,
   parseHighlightAuditLogIds,
   resolveEntryHmacDisplayState,
+  resolveEntryIntegrityReportSummaryState,
   resolveIntegrityReportEntryDisplayState,
   saveIntegrityInvestigationSession,
   buildInvestigationSession,
@@ -51,6 +50,8 @@ import { useAuth } from '@/context/use-auth';
 import { useDisplayTimezone } from '@/context/use-display-timezone';
 import { useToast } from '@/context/use-toast';
 import { EntryHmacBadge } from '@/components/feature/entry-hmac-badge';
+import { EntryIntegrityReportBadge } from '@/components/feature/entry-integrity-report-badge';
+import { EntryIntegrityViolationLine } from '@/components/feature/entry-integrity-violation-line';
 import {
   checkChainIntegrity,
   checkIntegrity,
@@ -956,13 +957,6 @@ function IntegrityPanel({
     return { from: createdAfter, to: createdBefore };
   }
 
-  const integrityWindowHours =
-    checkRange.from && checkRange.to
-      ? estimateIntegrityWindowHours(checkRange.from, checkRange.to, effectiveTimeZoneId)
-      : 0;
-  const runValidationWindowExceeded =
-    integrityWindowHours > OPERATOR_INTEGRITY_MAX_WINDOW_HOURS;
-
   async function runChainCheck(rangeOverride?: { from: string; to: string }) {
     const range = rangeOverride ?? checkRange;
     setChainLoading(true);
@@ -1201,17 +1195,12 @@ function IntegrityPanel({
                   validationRunLoading
                   || !checkRange.from
                   || !checkRange.to
-                  || runValidationWindowExceeded
                 }
                 className="gap-1.5 ml-auto"
                 title={
                   !checkRange.from || !checkRange.to
                     ? t('integrity.selectDateRangeToRun')
-                    : runValidationWindowExceeded
-                      ? t('integrity.validationRun.windowExceeded', {
-                          hours: OPERATOR_INTEGRITY_MAX_WINDOW_HOURS,
-                        })
-                      : undefined
+                    : undefined
                 }
               >
                 <ShieldAlert className="size-3.5" />
@@ -1219,15 +1208,8 @@ function IntegrityPanel({
               </Button>
             </div>
             <p className="text-xs text-fg-muted">
-              {t('integrity.verifyVsRunHint', { hours: OPERATOR_INTEGRITY_MAX_WINDOW_HOURS })}
+              {t('integrity.verifyVsRunHint')}
             </p>
-            {runValidationWindowExceeded && checkRange.from && checkRange.to && (
-              <p className="text-xs text-accent font-medium">
-                {t('integrity.validationRun.windowExceeded', {
-                  hours: OPERATOR_INTEGRITY_MAX_WINDOW_HOURS,
-                })}
-              </p>
-            )}
 
             {/* Chain report */}
             {chainReport && (
@@ -1288,12 +1270,7 @@ function IntegrityPanel({
               <div className="border-2 border-fg/10 p-3 space-y-2 bg-bg">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs uppercase tracking-wider">{t('integrity.entryIntegrityReport')}</span>
-                  <ReportBadge
-                    intact={integrityReport.intact}
-                    intactLabel={t('integrity.reportIntact')}
-                    undeclaredGapsLabel={t('integrity.reportUndeclaredGaps')}
-                    violationLabel={t('integrity.reportViolation')}
-                  />
+                  <EntryIntegrityReportBadge report={integrityReport} />
                 </div>
                 {integrityReportRange && (
                   <p className="text-xs text-fg-muted">
@@ -1311,12 +1288,19 @@ function IntegrityPanel({
                 </div>
                 {integrityReport.entryViolations?.items && integrityReport.entryViolations.items.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs font-bold text-error mb-1">{t('integrity.structuredEntryViolations')}</p>
-                    <ul className="text-xs text-error space-y-1">
+                    <p
+                      className={cn(
+                        'text-xs font-bold mb-1',
+                        resolveEntryIntegrityReportSummaryState(integrityReport) === 'allExplained'
+                          ? 'text-warning'
+                          : 'text-error',
+                      )}
+                    >
+                      {t('integrity.structuredEntryViolations')}
+                    </p>
+                    <ul className="text-xs space-y-1">
                       {integrityReport.entryViolations.items.map((v) => (
-                        <li key={v.auditLogId} className="font-mono">
-                          #{v.auditLogId} — {v.reason ?? '—'}
-                        </li>
+                        <EntryIntegrityViolationLine key={v.auditLogId} violation={v} />
                       ))}
                     </ul>
                   </div>

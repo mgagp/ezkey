@@ -267,7 +267,7 @@
     "verifyChain": "Verify chain",
     "verifyEntry": "Verify entry HMAC",
     "runValidation": "Run validation and raise alert if needed",
-    "verifyVsRunHint": "Verify recomputes HMAC and chain links without opening or updating alerts. Run validation uses the detective batch path and may raise or touch an integrity rupture alert. Both actions scan the same date range shown above. Run validation is limited to {{hours}} hours; use the same range you verified (for example Today) before running validation.",
+    "verifyVsRunHint": "Verify recomputes HMAC and chain links without opening or updating alerts. Run validation uses the detective batch path and may raise or touch an integrity rupture alert. Both actions scan the same date range shown above — verify first, then run validation on that range when you are ready to detect and alert.",
     "chainIntegrity": "Chain Integrity",
     "entryIntegrity": "Entry Integrity",
     "checking": "Checking…",
@@ -313,6 +313,12 @@
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Undeclared gap(s)",
     "reportViolation": "Violation",
+    "entryReportSummary": {
+      "allExplainedLabel": "All explained",
+      "intactTooltip": "No HMAC mismatches in this window.",
+      "violationTooltip": "One or more entries have an unexplained HMAC mismatch or re-tamper signal. Red: action may still be required.",
+      "allExplainedTooltip": "Every listed HMAC mismatch is cryptographically invalid but acknowledged by an operator (known invalid state). Orange does not mean the signature is valid."
+    },
     "validationRun": {
       "title": "Validation run",
       "running": "Running validation…",
@@ -320,7 +326,6 @@
       "intact": "No integrity violations in the selected window.",
       "completed": "Validation completed.",
       "violationsNoAlert": "Violations were found but no alert was raised (already explained or chain-only deferral). See counts below.",
-      "windowExceeded": "Run validation is limited to {{hours}} hours. Narrow the range (for example Today) to match the period you verified.",
       "windowBounds": "API window: {{from}} → {{to}} (to is exclusive)",
       "alertRaised": "Alert #{{id}} raised or updated.",
       "skipped": "Skipped: {{reason}}",

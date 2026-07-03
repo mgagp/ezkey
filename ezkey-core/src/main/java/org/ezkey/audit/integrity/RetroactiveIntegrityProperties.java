@@ -25,8 +25,9 @@ import org.springframework.context.annotation.Configuration;
 public class RetroactiveIntegrityProperties {
 
   /**
-   * Maximum operator-selected window length in hours. When {@code null}, {@link
-   * NightlyIntegrityProperties#getWindowHours()} is used at runtime.
+   * Optional maximum operator-selected window length in hours. When {@code null}, operator POST
+   * accepts the same {@code [from, to)} bounds as GET verify endpoints (no duration cap). When set,
+   * requests exceeding this length are rejected with HTTP 400.
    */
   private Integer operatorMaxWindowHours;
 

@@ -267,7 +267,7 @@
     "verifyChain": "Vérifier la chaîne",
     "verifyEntry": "Vérifier le HMAC entrée",
     "runValidation": "Lancer la validation et alerter si nécessaire",
-    "verifyVsRunHint": "Vérifier recalcule le HMAC et les liens de chaîne sans ouvrir ni mettre à jour d'alerte. Lancer la validation utilise le chemin detective et peut créer ou mettre à jour une alerte de rupture d'intégrité. Les deux actions portent sur la même plage affichée ci-dessus. Lancer la validation est limité à {{hours}} h ; utilisez la même plage que pour la vérification (par ex. Aujourd'hui) avant de lancer la validation.",
+    "verifyVsRunHint": "Vérifier recalcule le HMAC et les liens de chaîne sans ouvrir ni mettre à jour d'alerte. Lancer la validation utilise le chemin detective et peut créer ou mettre à jour une alerte de rupture d'intégrité. Les deux actions portent sur la même plage affichée ci-dessus — vérifiez d'abord, puis lancez la validation sur cette plage lorsque vous êtes prêt à détecter et alerter.",
     "chainIntegrity": "Intégrité de la chaîne",
     "entryIntegrity": "Intégrité des entrées",
     "checking": "Vérification…",
@@ -313,6 +313,12 @@
     "reportIntact": "Intact",
     "reportUndeclaredGaps": "Lacune(s) non déclarée(s)",
     "reportViolation": "Violation",
+    "entryReportSummary": {
+      "allExplainedLabel": "Tout expliqué",
+      "intactTooltip": "Aucune discordance HMAC dans cette fenêtre.",
+      "violationTooltip": "Une ou plusieurs entrées ont une discordance HMAC non expliquée ou un signal de re-tamper. Rouge : une action peut encore être requise.",
+      "allExplainedTooltip": "Chaque discordance HMAC listée est cryptographiquement invalide mais reconnue par un opérateur (état invalide connu). L'orange ne signifie pas que la signature est valide."
+    },
     "validationRun": {
       "title": "Exécution validation",
       "running": "Validation en cours…",
@@ -320,7 +326,6 @@
       "intact": "Aucune violation d'intégrité dans la plage sélectionnée.",
       "completed": "Validation terminée.",
       "violationsNoAlert": "Des violations ont été trouvées mais aucune alerte n'a été levée (déjà expliquées ou report chaîne seule). Voir les compteurs ci-dessous.",
-      "windowExceeded": "Lancer la validation est limité à {{hours}} h. Réduisez la plage (par ex. Aujourd'hui) pour correspondre à la période vérifiée.",
       "windowBounds": "Fenêtre API : {{from}} → {{to}} (fin exclusive)",
       "alertRaised": "Alerte #{{id}} créée ou mise à jour.",
       "skipped": "Ignoré : {{reason}}",

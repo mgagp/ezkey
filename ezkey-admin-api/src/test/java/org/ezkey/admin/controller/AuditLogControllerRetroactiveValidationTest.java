@@ -140,7 +140,9 @@ class AuditLogControllerRetroactiveValidationTest {
 
   @Test
   void runRetroactiveIntegrityValidation_propagatesInvalidWindow() {
-    doThrow(new IllegalArgumentException("Validation window exceeds maximum of 24 hours."))
+    doThrow(
+            new IllegalArgumentException(
+                "Invalid date range: to must be after from (exclusive end, inclusive start)."))
         .when(retroactiveIntegrityValidationService)
         .validateOperatorWindow(FROM, TO);
 

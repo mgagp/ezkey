@@ -135,6 +135,32 @@ export function entryViolationDisplayState(
   }
 }
 
+/** Aggregate summary for the entry HMAC verify report panel (not chain verify). */
+export type EntryIntegrityReportSummaryState = 'intact' | 'violation' | 'allExplained';
+
+/**
+ * Derives panel badge color from verify response violations and conciliation posture.
+ *
+ * Green when no violations; red when any violation is unexplained or re-tamper suspected;
+ * orange when every listed violation is ACKNOWLEDGED.
+ */
+export function resolveEntryIntegrityReportSummaryState(
+  report: IntegrityReport | null | undefined,
+): EntryIntegrityReportSummaryState {
+  if (!report || report.intact === true) {
+    return 'intact';
+  }
+  const items = report.entryViolations?.items ?? [];
+  if (items.length > 0) {
+    const allAcknowledged = items.every((v) => v.conciliationStatus === 'ACKNOWLEDGED');
+    return allAcknowledged ? 'allExplained' : 'violation';
+  }
+  if ((report.invalidEntries ?? 0) > 0 || report.intact === false) {
+    return 'violation';
+  }
+  return 'intact';
+}
+
 /** True when reconcile must include this entry in acknowledgedAuditLogIds. */
 export function isEntryReconcileAckRequired(violation: EntryIntegrityViolation): boolean {
   return violation.conciliationStatus !== 'ACKNOWLEDGED';

@@ -161,9 +161,6 @@ export function getPresetDateRange(
  * Without {@code timeZone}: start/end of day in the browser local zone.
  * With {@code timeZone}: start/end of day in that IANA zone.
  */
-/** Default operator cap for POST integrity-validation/run (matches nightly window-hours). */
-export const OPERATOR_INTEGRITY_MAX_WINDOW_HOURS = 24;
-
 /**
  * Converts calendar YYYY-MM-DD bounds to integrity API params with an exclusive `to`.
  *

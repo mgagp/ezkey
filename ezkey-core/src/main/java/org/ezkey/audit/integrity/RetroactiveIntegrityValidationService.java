@@ -210,20 +210,14 @@ public class RetroactiveIntegrityValidationService {
       throw new IllegalArgumentException(
           "Invalid date range: to must be after from (exclusive end, inclusive start).");
     }
-    int maxHours = resolveOperatorMaxWindowHours();
-    Duration duration = Duration.between(from, to);
-    if (duration.compareTo(Duration.ofHours(maxHours)) > 0) {
-      throw new IllegalArgumentException(
-          "Validation window exceeds maximum of " + maxHours + " hours.");
+    Integer configuredMaxHours = retroactiveProperties.getOperatorMaxWindowHours();
+    if (configuredMaxHours != null) {
+      Duration duration = Duration.between(from, to);
+      if (duration.compareTo(Duration.ofHours(configuredMaxHours)) > 0) {
+        throw new IllegalArgumentException(
+            "Validation window exceeds maximum of " + configuredMaxHours + " hours.");
+      }
     }
-  }
-
-  private int resolveOperatorMaxWindowHours() {
-    Integer configured = retroactiveProperties.getOperatorMaxWindowHours();
-    if (configured != null) {
-      return configured;
-    }
-    return nightlyProperties.getWindowHours();
   }
 
   private Long raiseIntegrityRuptureAlert(

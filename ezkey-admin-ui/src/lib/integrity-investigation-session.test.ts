@@ -3,6 +3,7 @@ import type { EntryIntegrityViolation, IntegrityReport } from '@/generated/admin
 import {
   entryViolationDisplayState,
   mergeSingleEntryVerificationIntoSession,
+  resolveEntryIntegrityReportSummaryState,
   resolveIntegrityReportEntryDisplayState,
 } from '@/lib/integrity-investigation-session';
 
@@ -19,6 +20,62 @@ beforeEach(() => {
     clear: () => {
       store.clear();
     },
+  });
+});
+
+describe('resolveEntryIntegrityReportSummaryState', () => {
+  it('returns intact when report.intact is true', () => {
+    expect(
+      resolveEntryIntegrityReportSummaryState({
+        intact: true,
+        totalEntries: 10,
+      } as IntegrityReport),
+    ).toBe('intact');
+  });
+
+  it('returns violation when any listed violation is not ACKNOWLEDGED', () => {
+    expect(
+      resolveEntryIntegrityReportSummaryState({
+        intact: false,
+        invalidEntries: 2,
+        entryViolations: {
+          items: [
+            { auditLogId: 1, conciliationStatus: 'ACKNOWLEDGED' } as EntryIntegrityViolation,
+            { auditLogId: 2, conciliationStatus: 'NONE' } as EntryIntegrityViolation,
+          ],
+        },
+      } as IntegrityReport),
+    ).toBe('violation');
+  });
+
+  it('returns allExplained when every listed violation is ACKNOWLEDGED', () => {
+    expect(
+      resolveEntryIntegrityReportSummaryState({
+        intact: false,
+        invalidEntries: 2,
+        entryViolations: {
+          items: [
+            { auditLogId: 1, conciliationStatus: 'ACKNOWLEDGED' } as EntryIntegrityViolation,
+            { auditLogId: 2, conciliationStatus: 'ACKNOWLEDGED' } as EntryIntegrityViolation,
+          ],
+        },
+      } as IntegrityReport),
+    ).toBe('allExplained');
+  });
+
+  it('returns violation for RE_TAMPER_SUSPECTED even when mixed with ACKNOWLEDGED', () => {
+    expect(
+      resolveEntryIntegrityReportSummaryState({
+        intact: false,
+        invalidEntries: 2,
+        entryViolations: {
+          items: [
+            { auditLogId: 1, conciliationStatus: 'ACKNOWLEDGED' } as EntryIntegrityViolation,
+            { auditLogId: 2, conciliationStatus: 'RE_TAMPER_SUSPECTED' } as EntryIntegrityViolation,
+          ],
+        },
+      } as IntegrityReport),
+    ).toBe('violation');
   });
 });
 

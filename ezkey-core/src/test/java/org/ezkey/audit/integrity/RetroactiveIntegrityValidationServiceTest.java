@@ -297,7 +297,14 @@ class RetroactiveIntegrityValidationServiceTest {
   }
 
   @Test
-  void validateOperatorWindow_rejectsWindowExceedingCap() {
+  void validateOperatorWindow_allowsWideWindowWhenCapUnset() {
+    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(null);
+
+    service.validateOperatorWindow(WINDOW_START, WINDOW_START.plusDays(7));
+  }
+
+  @Test
+  void validateOperatorWindow_rejectsWindowExceedingConfiguredCap() {
     when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(24);
 
     IllegalArgumentException ex =
