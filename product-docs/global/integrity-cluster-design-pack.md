@@ -56,7 +56,7 @@ Reference: [`docs/ALERTS.md`](../docs/ALERTS.md).
 |-------|-----|-------------------|----------------|
 | **Rolling attach** | `AuditChainScheduler` | Chains checkpoints in lookback; **does not** promise manipulation detection inside lookback | `lookbackMinutes=60`, bounds **15 min–8 h** (enforce in config validation) |
 | **Nightly retroactive** | Scheduled batch (default **24 h** window) | Full HMAC + checkpoint chain validation; anomalies → alert | Window **24 h**, cron **once per 24 h** (off-peak default) |
-| **Operator retroactive run** | `POST integrity-validation/run` (B2.7) | Same orchestration as nightly; operator-chosen `[from, to)`; may raise/touch alert | Independent of `nightly.enabled`; capped window (TB B2.7) |
+| **Operator retroactive run** | `POST integrity-validation/run` (B2.7) | Same orchestration as nightly; operator-chosen `[from, to)`; may raise/touch alert | Same bounds as GET verify; optional property cap when set |
 | **Ad hoc verify (read-only)** | `GET integrity-check` / `chain-integrity` | Forensic reports only — **no** alert side effects | Always when HMAC active |
 
 **Layer 1** = rolling attach only. **Layer 2 (detect)** = scheduled nightly + operator retroactive run

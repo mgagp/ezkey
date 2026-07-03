@@ -234,7 +234,7 @@ Batch infrastructure failures record `FAILED` on the registry row only (C9 — n
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `Integer` | *(null → nightly `window-hours`)* | optionnel | Hard reject when operator-selected `[from, to)` exceeds this many hours. |
+| `ezkey.audit.integrity.retroactive.operator-max-window-hours` | `Integer` | *(null — no cap)* | optionnel | When set, hard-reject operator POST when `[from, to)` exceeds this many hours. When unset, operator POST accepts the same bounds as GET verify (no duration limit). Nightly scheduled window remains `nightly.window-hours`. |
 
 ---
 

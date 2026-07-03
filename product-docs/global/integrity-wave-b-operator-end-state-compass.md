@@ -123,7 +123,7 @@ only if implementation reveals conflict with C7/C8 grill (e.g. partial conciliat
 | 2 | Deleted entry (no row) — entry conciliation N/A | B2.6 open Q2 | Chain-only reconcile |
 | 3 | EventType naming for entry conciliation + completion `triggerSource` | B2.6 Q3, B2.7 Q1 | Min churn: add fields to existing events |
 | 4 | POST `raiseAlert: false` dry-run | B2.7 Q2 | Yes for API; UI defaults true |
-| 5 | Operator max window cap | B2.7 Q3 | Hard reject |
+| 5 | Operator max window cap | B2.7 Q5 | **Decided 2026-07-03:** no default cap — POST parity with GET verify; optional `operator-max-window-hours` only when explicitly set |
 | 6 | Partial entry conciliation (close alert with subset) | B2.6 D3 | Out of R1 — confirm unchanged |
 | 7 | Integrity of conciliation records themselves | Session | Table + signed audit meta-event; no HMAC on conciliation row R1 (host boundary) — document only |
 
