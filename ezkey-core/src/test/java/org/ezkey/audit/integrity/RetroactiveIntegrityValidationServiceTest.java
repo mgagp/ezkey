@@ -34,6 +34,7 @@ import org.ezkey.alert.service.AlertService;
 import org.ezkey.audit.domain.EventType;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.dto.EntryIntegrityConciliationStatus;
 import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,7 +105,13 @@ class RetroactiveIntegrityValidationServiceTest {
   void runValidation_operatorPath_returnsAlertIdAndTriggerSource() {
     when(auditHmacService.isActive()).thenReturn(true);
     EntryIntegrityViolation violation =
-        new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
+        new EntryIntegrityViolation(
+            42L,
+            "ADMIN_LOGIN",
+            WINDOW_END.minusHours(1),
+            "HMAC_MISMATCH",
+            EntryIntegrityConciliationStatus.NONE,
+            null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
             auditLogRepository, WINDOW_START, WINDOW_END))
         .thenReturn(
@@ -135,7 +142,13 @@ class RetroactiveIntegrityValidationServiceTest {
   void runValidation_raiseAlertFalse_doesNotRaiseAlert() {
     when(auditHmacService.isActive()).thenReturn(true);
     EntryIntegrityViolation violation =
-        new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
+        new EntryIntegrityViolation(
+            42L,
+            "ADMIN_LOGIN",
+            WINDOW_END.minusHours(1),
+            "HMAC_MISMATCH",
+            EntryIntegrityConciliationStatus.NONE,
+            null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
             auditLogRepository, WINDOW_START, WINDOW_END))
         .thenReturn(
@@ -177,7 +190,13 @@ class RetroactiveIntegrityValidationServiceTest {
     stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     EntryIntegrityViolation violation =
-        new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
+        new EntryIntegrityViolation(
+            42L,
+            "ADMIN_LOGIN",
+            WINDOW_END.minusHours(1),
+            "HMAC_MISMATCH",
+            EntryIntegrityConciliationStatus.NONE,
+            null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
             auditLogRepository, WINDOW_START, WINDOW_END))
         .thenReturn(
@@ -255,7 +274,13 @@ class RetroactiveIntegrityValidationServiceTest {
     stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     EntryIntegrityViolation explained =
-        new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
+        new EntryIntegrityViolation(
+            42L,
+            "ADMIN_LOGIN",
+            WINDOW_END.minusHours(1),
+            "HMAC_MISMATCH",
+            EntryIntegrityConciliationStatus.NONE,
+            null);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
             auditLogRepository, WINDOW_START, WINDOW_END))
         .thenReturn(

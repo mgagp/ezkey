@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.ezkey.audit.dto.ChainIntegrityViolation;
+import org.ezkey.audit.dto.EntryIntegrityConciliationStatus;
 import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,14 @@ class IntegrityRuptureIncidentFingerprintTest {
   @Test
   void computeFingerprint_isStableForSameIncident() {
     List<EntryIntegrityViolation> entries =
-        List.of(new EntryIntegrityViolation(5L, "ADMIN_LOGIN", FAIL, "HMAC_MISMATCH"));
+        List.of(
+            new EntryIntegrityViolation(
+                5L,
+                "ADMIN_LOGIN",
+                FAIL,
+                "HMAC_MISMATCH",
+                EntryIntegrityConciliationStatus.NONE,
+                null));
     List<ChainIntegrityViolation> chains =
         List.of(
             new ChainIntegrityViolation(9L, FAIL, RESUME, "CHAIN_HMAC_MISMATCH", "broken link"));
@@ -54,11 +62,30 @@ class IntegrityRuptureIncidentFingerprintTest {
   @Test
   void computeFingerprint_changesWhenAlertEligibleEntrySetChanges() {
     List<EntryIntegrityViolation> one =
-        List.of(new EntryIntegrityViolation(1L, "ADMIN_LOGIN", FAIL, "HMAC_MISMATCH"));
+        List.of(
+            new EntryIntegrityViolation(
+                1L,
+                "ADMIN_LOGIN",
+                FAIL,
+                "HMAC_MISMATCH",
+                EntryIntegrityConciliationStatus.NONE,
+                null));
     List<EntryIntegrityViolation> two =
         List.of(
-            new EntryIntegrityViolation(1L, "ADMIN_LOGIN", FAIL, "HMAC_MISMATCH"),
-            new EntryIntegrityViolation(2L, "ADMIN_LOGIN", FAIL, "HMAC_MISMATCH"));
+            new EntryIntegrityViolation(
+                1L,
+                "ADMIN_LOGIN",
+                FAIL,
+                "HMAC_MISMATCH",
+                EntryIntegrityConciliationStatus.NONE,
+                null),
+            new EntryIntegrityViolation(
+                2L,
+                "ADMIN_LOGIN",
+                FAIL,
+                "HMAC_MISMATCH",
+                EntryIntegrityConciliationStatus.NONE,
+                null));
 
     String fingerprintOne =
         IntegrityRuptureIncidentFingerprint.computeFingerprint(null, null, one, List.of());

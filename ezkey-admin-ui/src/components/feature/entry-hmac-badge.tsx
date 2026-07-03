@@ -10,10 +10,29 @@ export function EntryHmacBadge({ state }: { state: EntryHmacDisplayState }) {
     return <span className="text-fg-muted text-xs">—</span>;
   }
 
-  if (state === 'violation') {
+  if (state === 'violation' || state === 'violationRetamper') {
+    const labelKey =
+      state === 'violationRetamper'
+        ? 'integrity.hmacBadge.violationRetamper'
+        : 'integrity.hmacBadge.violation';
+    const tooltipKey =
+      state === 'violationRetamper'
+        ? 'integrity.hmacBadge.violationRetamperTooltip'
+        : 'integrity.hmacBadge.violationTooltip';
     return (
-      <Tooltip content={t('integrity.hmacBadge.violationTooltip')}>
-        <ShieldAlert className="size-3.5 text-error" aria-label={t('integrity.hmacBadge.violation')} />
+      <Tooltip content={t(tooltipKey)}>
+        <ShieldAlert className="size-3.5 text-error" aria-label={t(labelKey)} />
+      </Tooltip>
+    );
+  }
+
+  if (state === 'violationExplained') {
+    return (
+      <Tooltip content={t('integrity.hmacBadge.violationExplainedTooltip')}>
+        <ShieldAlert
+          className="size-3.5 text-warning"
+          aria-label={t('integrity.hmacBadge.violationExplained')}
+        />
       </Tooltip>
     );
   }

@@ -286,7 +286,11 @@
       "verified": "Vérifié",
       "verifiedTooltip": "HMAC recalculé et concordant (dernière vérification de session)",
       "violation": "Violation",
-      "violationTooltip": "HMAC invalide ou absent lors de la dernière vérification"
+      "violationTooltip": "HMAC invalide ou absent lors de la dernière vérification",
+      "violationExplained": "Concilié",
+      "violationExplainedTooltip": "Cryptographiquement invalide mais concilié par un opérateur (état invalide connu)",
+      "violationRetamper": "Re-manipulation suspectée",
+      "violationRetamperTooltip": "Entrée modifiée depuis la dernière conciliation — traiter comme un nouveau signal d'incident"
     },
     "investigation": {
       "contextBanner": "Contexte d'investigation — rupture d'intégrité",

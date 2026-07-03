@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Optional;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
+import org.ezkey.audit.dto.EntryIntegrityConciliationStatus;
+import org.ezkey.audit.dto.EntryIntegrityConciliationSummary;
 import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -56,21 +58,51 @@ public class EntryIntegrityViolationClassifier {
   public Optional<EntryIntegrityViolation> classifyViolation(AuditLog entry) {
     if (entry.getEntryHmac() == null) {
       return Optional.of(
-          new EntryIntegrityViolation(
-              entry.getAuditLogId(),
-              entry.getEventType() != null ? entry.getEventType().name() : null,
-              entry.getCreatedAt(),
-              EntryHmacViolationCollector.REASON_MISSING_ENTRY_HMAC));
+          buildViolation(entry, EntryHmacViolationCollector.REASON_MISSING_ENTRY_HMAC));
     }
     if (!auditHmacService.verifyHmac(entry)) {
-      return Optional.of(
-          new EntryIntegrityViolation(
-              entry.getAuditLogId(),
-              entry.getEventType() != null ? entry.getEventType().name() : null,
-              entry.getCreatedAt(),
-              EntryHmacViolationCollector.REASON_HMAC_MISMATCH));
+      return Optional.of(buildViolation(entry, EntryHmacViolationCollector.REASON_HMAC_MISMATCH));
     }
     return Optional.empty();
+  }
+
+  private EntryIntegrityViolation buildViolation(AuditLog entry, String reason) {
+    Optional<AuditEntryIntegrityConciliation> activeConciliation =
+        conciliationService.findActiveByAuditLogId(entry.getAuditLogId());
+    if (activeConciliation.isEmpty()) {
+      return new EntryIntegrityViolation(
+          entry.getAuditLogId(),
+          entry.getEventType() != null ? entry.getEventType().name() : null,
+          entry.getCreatedAt(),
+          reason,
+          EntryIntegrityConciliationStatus.NONE,
+          null);
+    }
+    AuditEntryIntegrityConciliation active = activeConciliation.get();
+    boolean fingerprintMatches =
+        conciliationService.fingerprintMatchesActiveConciliation(entry, active);
+    EntryIntegrityConciliationStatus status =
+        fingerprintMatches
+            ? EntryIntegrityConciliationStatus.ACKNOWLEDGED
+            : EntryIntegrityConciliationStatus.RE_TAMPER_SUSPECTED;
+    EntryIntegrityConciliationSummary summary = toSummary(active);
+    return new EntryIntegrityViolation(
+        entry.getAuditLogId(),
+        entry.getEventType() != null ? entry.getEventType().name() : null,
+        entry.getCreatedAt(),
+        reason,
+        status,
+        summary);
+  }
+
+  private static EntryIntegrityConciliationSummary toSummary(
+      AuditEntryIntegrityConciliation conciliation) {
+    return new EntryIntegrityConciliationSummary(
+        conciliation.getConciliationId(),
+        conciliation.getConciliatedAt(),
+        conciliation.getCategory(),
+        conciliation.getConciliatedByAdminId(),
+        conciliation.getSourceAlertId());
   }
 
   /**

@@ -286,7 +286,11 @@
       "verified": "Verified",
       "verifiedTooltip": "HMAC recomputed and matches (latest verification in this session)",
       "violation": "Violation",
-      "violationTooltip": "HMAC mismatch or missing signature in latest verification"
+      "violationTooltip": "HMAC mismatch or missing signature in latest verification",
+      "violationExplained": "Explained",
+      "violationExplainedTooltip": "Cryptographically invalid but acknowledged by an operator (known invalid state)",
+      "violationRetamper": "Re-tamper suspected",
+      "violationRetamperTooltip": "Entry changed since the last acknowledgement — treat as a new incident signal"
     },
     "investigation": {
       "contextBanner": "Integrity rupture investigation context",

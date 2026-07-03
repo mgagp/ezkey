@@ -31,6 +31,7 @@ import org.ezkey.audit.domain.repository.AuditLogRepository;
 import org.ezkey.audit.dto.ArchiveConfirmArchivedRequest;
 import org.ezkey.audit.dto.ArchiveEligibilityResult;
 import org.ezkey.audit.dto.ArchiveSealRequest;
+import org.ezkey.audit.dto.EntryIntegrityConciliationStatus;
 import org.ezkey.audit.dto.EntryIntegrityViolation;
 import org.ezkey.audit.dto.IntegrityRuptureConciliationCategory;
 import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
@@ -349,7 +350,13 @@ class AuditLifecycleServiceTest {
     OffsetDateTime resume = fail.plusMinutes(30);
     Alert alert = openIntegrityRuptureAlert(7L, fail, resume);
     EntryIntegrityViolation openViolation =
-        new EntryIntegrityViolation(99L, "ADMIN_LOGIN", fail.plusMinutes(5), "HMAC_MISMATCH");
+        new EntryIntegrityViolation(
+            99L,
+            "ADMIN_LOGIN",
+            fail.plusMinutes(5),
+            "HMAC_MISMATCH",
+            EntryIntegrityConciliationStatus.NONE,
+            null);
 
     when(alertService.hasOpenHeartbeatStaleAlert()).thenReturn(false);
     when(alertService.findById(7L)).thenReturn(Optional.of(alert));

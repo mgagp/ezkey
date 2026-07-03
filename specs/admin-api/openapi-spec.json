@@ -8883,6 +8883,47 @@
           },
           "reason": {
             "type": "string"
+          },
+          "conciliationStatus": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "ACKNOWLEDGED",
+              "RE_TAMPER_SUSPECTED"
+            ]
+          },
+          "conciliationSummary": {
+            "$ref": "#/components/schemas/EntryIntegrityConciliationSummary"
+          }
+        }
+      },
+      "EntryIntegrityConciliationSummary": {
+        "type": "object",
+        "properties": {
+          "conciliationId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "conciliatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ACCIDENTAL_DBA_EDIT",
+              "CORRUPTION",
+              "INVESTIGATED_BENIGN",
+              "OTHER"
+            ]
+          },
+          "conciliatedByAdminId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sourceAlertId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

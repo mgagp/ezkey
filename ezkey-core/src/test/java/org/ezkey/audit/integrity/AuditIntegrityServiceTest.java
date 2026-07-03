@@ -46,14 +46,25 @@ import org.springframework.data.jpa.domain.Specification;
 class AuditIntegrityServiceTest {
 
   @Mock private AuditLogRepository auditLogRepository;
+  @Mock private AuditEntryIntegrityConciliationRepository conciliationRepository;
 
   private AuditHmacService auditHmacService;
+  private EntryIntegrityViolationClassifier entryIntegrityViolationClassifier;
   private AuditIntegrityService integrityService;
 
   @BeforeEach
   void setUp() throws Exception {
     auditHmacService = TestHmacServiceFactory.create();
-    integrityService = new AuditIntegrityService(auditLogRepository, auditHmacService);
+    AuditEntryIntegrityConciliationService conciliationService =
+        new AuditEntryIntegrityConciliationService(
+            conciliationRepository,
+            auditHmacService,
+            org.mockito.Mockito.mock(org.ezkey.audit.service.AuditLogService.class));
+    entryIntegrityViolationClassifier =
+        new EntryIntegrityViolationClassifier(auditHmacService, conciliationService);
+    integrityService =
+        new AuditIntegrityService(
+            auditLogRepository, auditHmacService, entryIntegrityViolationClassifier);
   }
 
   // -----------------------------------------------------------------------
@@ -118,7 +129,8 @@ class AuditIntegrityServiceTest {
   @Test
   void verifySingle_hmacNotActive_returnsError() {
     AuditHmacService inactive = TestHmacServiceFactory.createInactive();
-    AuditIntegrityService svc = new AuditIntegrityService(auditLogRepository, inactive);
+    AuditIntegrityService svc =
+        new AuditIntegrityService(auditLogRepository, inactive, entryIntegrityViolationClassifier);
 
     IntegrityReport report = svc.verifySingle(1L);
 
@@ -192,7 +204,8 @@ class AuditIntegrityServiceTest {
   @Test
   void verifyRange_hmacNotActive_returnsError() {
     AuditHmacService inactive = TestHmacServiceFactory.createInactive();
-    AuditIntegrityService svc = new AuditIntegrityService(auditLogRepository, inactive);
+    AuditIntegrityService svc =
+        new AuditIntegrityService(auditLogRepository, inactive, entryIntegrityViolationClassifier);
 
     IntegrityReport report = svc.verifyRange(null, null);
 
