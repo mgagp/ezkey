@@ -4,13 +4,15 @@
  * Copyright (c) 2025 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
- * Test: NightlyIntegrityValidationServiceTest
- * Description: Unit tests for nightly retroactive integrity orchestration.
+ * Test: RetroactiveIntegrityValidationServiceTest
+ * Description: Unit tests for retroactive integrity orchestration.
  */
 
 package org.ezkey.audit.integrity;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -42,17 +44,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Unit tests for {@link NightlyIntegrityValidationService}.
+ * Unit tests for {@link RetroactiveIntegrityValidationService}.
  *
  * @since 2026
  */
 @ExtendWith(MockitoExtension.class)
-class NightlyIntegrityValidationServiceTest {
+class RetroactiveIntegrityValidationServiceTest {
 
   private static final OffsetDateTime WINDOW_END =
       OffsetDateTime.of(2026, 6, 28, 2, 0, 0, 0, ZoneOffset.UTC);
+  private static final OffsetDateTime WINDOW_START = WINDOW_END.minusHours(24);
 
   @Mock private NightlyIntegrityProperties nightlyProperties;
+  @Mock private RetroactiveIntegrityProperties retroactiveProperties;
   @Mock private AuditChainVerificationService chainVerificationService;
   @Mock private AuditHmacService auditHmacService;
   @Mock private AuditLogRepository auditLogRepository;
@@ -61,13 +65,14 @@ class NightlyIntegrityValidationServiceTest {
   @Mock private AuditLogService auditLogService;
   @Mock private EntryIntegrityViolationClassifier entryIntegrityViolationClassifier;
 
-  private NightlyIntegrityValidationService service;
+  private RetroactiveIntegrityValidationService service;
 
   @BeforeEach
   void setUp() {
     service =
-        new NightlyIntegrityValidationService(
+        new RetroactiveIntegrityValidationService(
             nightlyProperties,
+            retroactiveProperties,
             chainVerificationService,
             auditHmacService,
             auditLogRepository,
@@ -75,47 +80,33 @@ class NightlyIntegrityValidationServiceTest {
             alertRepository,
             auditLogService,
             entryIntegrityViolationClassifier);
+  }
+
+  private void stubNightlyWindowHours() {
     when(nightlyProperties.getWindowHours()).thenReturn(24);
   }
 
   @Test
   void validateWindow_skipsWhenHmacInactive() {
+    stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(false);
 
-    NightlyIntegrityValidationService.NightlyIntegrityValidationResult result =
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.validateWindow(WINDOW_END);
 
-    assertTrue(result.intact());
+    assertTrue(result.skipped());
     assertFalse(result.alertRaised());
     verify(chainVerificationService, never()).verifyChain(any(), any());
     verify(alertService, never()).raiseOrTouch(any(), any(), anyString(), any());
   }
 
   @Test
-  void validateWindow_intactPath_doesNotRaiseAlert() {
-    when(auditHmacService.isActive()).thenReturn(true);
-    when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
-        .thenReturn(
-            new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
-    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
-
-    NightlyIntegrityValidationService.NightlyIntegrityValidationResult result =
-        service.validateWindow(WINDOW_END);
-
-    assertTrue(result.intact());
-    assertFalse(result.alertRaised());
-    verify(alertService, never()).raiseOrTouch(any(), any(), anyString(), any());
-    verify(auditLogService).log(any(AuditLog.class));
-  }
-
-  @Test
-  void validateWindow_entryHmacViolation_raisesIntegrityRuptureAlert() {
+  void runValidation_operatorPath_returnsAlertIdAndTriggerSource() {
     when(auditHmacService.isActive()).thenReturn(true);
     EntryIntegrityViolation violation =
         new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
+            auditLogRepository, WINDOW_START, WINDOW_END))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(violation), List.of(violation)));
@@ -129,7 +120,80 @@ class NightlyIntegrityValidationServiceTest {
             anyString()))
         .thenReturn(saved);
 
-    NightlyIntegrityValidationService.NightlyIntegrityValidationResult result =
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
+        service.runValidation(
+            WINDOW_START, WINDOW_END, RetroactiveIntegrityValidationOptions.operator(true, 3));
+
+    assertFalse(result.intact());
+    assertTrue(result.alertRaised());
+    assertEquals(7L, result.alertId());
+    assertEquals(RetroactiveIntegrityValidationTriggerSource.OPERATOR, result.triggerSource());
+    assertEquals(1, result.entryAlertEligibleCount());
+  }
+
+  @Test
+  void runValidation_raiseAlertFalse_doesNotRaiseAlert() {
+    when(auditHmacService.isActive()).thenReturn(true);
+    EntryIntegrityViolation violation =
+        new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
+    when(entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, WINDOW_START, WINDOW_END))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(
+                List.of(violation), List.of(violation)));
+    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
+        service.runValidation(
+            WINDOW_START, WINDOW_END, RetroactiveIntegrityValidationOptions.operator(false, 3));
+
+    assertFalse(result.intact());
+    assertFalse(result.alertRaised());
+    verify(alertService, never()).raiseOrTouch(any(), any(), anyString(), any());
+    verify(auditLogService).log(any(AuditLog.class));
+  }
+
+  @Test
+  void validateWindow_intactPath_doesNotRaiseAlert() {
+    stubNightlyWindowHours();
+    when(auditHmacService.isActive()).thenReturn(true);
+    when(entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, WINDOW_START, WINDOW_END))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
+    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
+        service.validateWindow(WINDOW_END);
+
+    assertTrue(result.intact());
+    assertFalse(result.alertRaised());
+    verify(alertService, never()).raiseOrTouch(any(), any(), anyString(), any());
+    verify(auditLogService).log(any(AuditLog.class));
+  }
+
+  @Test
+  void validateWindow_entryHmacViolation_raisesIntegrityRuptureAlert() {
+    stubNightlyWindowHours();
+    when(auditHmacService.isActive()).thenReturn(true);
+    EntryIntegrityViolation violation =
+        new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
+    when(entryIntegrityViolationClassifier.collectRangeViolations(
+            auditLogRepository, WINDOW_START, WINDOW_END))
+        .thenReturn(
+            new EntryIntegrityViolationClassifier.ViolationCollection(
+                List.of(violation), List.of(violation)));
+    when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
+    Alert saved = new Alert();
+    saved.setAlertId(7L);
+    when(alertService.raiseOrTouch(
+            eq(AlertType.AUDIT_INTEGRITY_RUPTURE),
+            eq(AlertSeverity.CRITICAL),
+            anyString(),
+            anyString()))
+        .thenReturn(saved);
+
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.validateWindow(WINDOW_END);
 
     assertFalse(result.intact());
@@ -144,9 +208,10 @@ class NightlyIntegrityValidationServiceTest {
 
   @Test
   void validateWindow_c8_6_defersAlertWhenOnlyUndeclaredGapsAndHeartbeatOpen() {
+    stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
+            auditLogRepository, WINDOW_START, WINDOW_END))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
     AuditChainVerificationService.UndeclaredGap gap =
@@ -158,7 +223,7 @@ class NightlyIntegrityValidationServiceTest {
             AuditChainHeartbeatGuardService.HEARTBEAT_STALE_ALERT_DEDUPE_KEY, AlertStatus.OPEN))
         .thenReturn(Optional.of(new Alert()));
 
-    NightlyIntegrityValidationService.NightlyIntegrityValidationResult result =
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.validateWindow(WINDOW_END);
 
     assertFalse(result.intact());
@@ -167,10 +232,11 @@ class NightlyIntegrityValidationServiceTest {
   }
 
   @Test
-  void validateWindow_emitsCompletionAuditWithEventType() {
+  void validateWindow_emitsCompletionAuditWithEventTypeAndTriggerSource() {
+    stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
+            auditLogRepository, WINDOW_START, WINDOW_END))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(List.of(), List.of()));
     when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
@@ -181,26 +247,42 @@ class NightlyIntegrityValidationServiceTest {
     verify(auditLogService).log(captor.capture());
     assertTrue(
         captor.getValue().getEventType() == EventType.NIGHTLY_INTEGRITY_VALIDATION_COMPLETED);
+    assertEquals("retroactive-integrity-validation", captor.getValue().getEventAction());
   }
 
   @Test
   void validateWindow_onlyExplainedEntryViolations_doesNotRaiseAlert() {
+    stubNightlyWindowHours();
     when(auditHmacService.isActive()).thenReturn(true);
     EntryIntegrityViolation explained =
         new EntryIntegrityViolation(42L, "ADMIN_LOGIN", WINDOW_END.minusHours(1), "HMAC_MISMATCH");
     when(entryIntegrityViolationClassifier.collectRangeViolations(
-            auditLogRepository, WINDOW_END.minusHours(24), WINDOW_END))
+            auditLogRepository, WINDOW_START, WINDOW_END))
         .thenReturn(
             new EntryIntegrityViolationClassifier.ViolationCollection(
                 List.of(explained), List.of()));
     when(chainVerificationService.verifyChain(any(), any())).thenReturn(intactReport());
 
-    NightlyIntegrityValidationService.NightlyIntegrityValidationResult result =
+    RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
         service.validateWindow(WINDOW_END);
 
     assertFalse(result.intact());
     assertFalse(result.alertRaised());
     verify(alertService, never()).raiseOrTouch(any(), any(), anyString(), any());
+  }
+
+  @Test
+  void validateOperatorWindow_rejectsWindowExceedingCap() {
+    when(retroactiveProperties.getOperatorMaxWindowHours()).thenReturn(24);
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                service.validateOperatorWindow(
+                    WINDOW_START, WINDOW_START.plusHours(25).plusMinutes(1)));
+
+    assertTrue(ex.getMessage().contains("24"));
   }
 
   private static AuditChainVerificationService.ChainVerificationReport intactReport() {
@@ -213,9 +295,9 @@ class NightlyIntegrityValidationServiceTest {
         List.of(),
         List.of(),
         List.of(),
-        WINDOW_END.minusHours(24),
+        WINDOW_START,
         WINDOW_END,
-        WINDOW_END.minusHours(24),
+        WINDOW_START,
         WINDOW_END,
         true,
         true,
@@ -235,7 +317,7 @@ class NightlyIntegrityValidationServiceTest {
         gaps,
         null,
         null,
-        WINDOW_END.minusHours(24),
+        WINDOW_START,
         WINDOW_END,
         false,
         false,

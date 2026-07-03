@@ -295,6 +295,7 @@ Relative to **`latest.window_end`** (exclusive end boundary of the most recent p
 | `GET /api/v1/audit-logs/chain-checkpoints` | Global Admin | Search audit chain checkpoints with filters and pagination |
 | `GET /api/v1/audit-logs/integrity-check` | Global Admin | Verify per-entry HMAC signatures |
 | `GET /api/v1/audit-logs/chain-integrity` | Global Admin | Verify chain checkpoint linkage |
+| `POST /api/v1/audit-logs/integrity-validation/run` | Global Admin | Run retroactive detect (may raise/touch rupture alert) |
 | `GET /api/v1/audit-logs/lifecycle/archive-eligibility` | Global Admin | Read lifecycle archive eligibility and awaiting-confirmation tranche |
 | `POST /api/v1/audit-logs/lifecycle/confirm-archived` | Global Admin | Record that a sealed tranche was archived externally |
 | `POST /api/v1/audit-logs/lifecycle/seal-archive` | Global Admin | Seal a period for archival |
@@ -309,6 +310,8 @@ Relative to **`latest.window_end`** (exclusive end boundary of the most recent p
 **Archive confirmation** (`POST /api/v1/audit-logs/lifecycle/confirm-archived`): Records successful external archival by marking a sealed tranche as `EXPORTED`. This is the lifecycle confirmation step, not the external export workflow itself.
 
 Both verification endpoints **require** `from` and `to` query parameters (ISO-8601). Omitting either returns 400 Bad Request with a message that a date range is required.
+
+**Retroactive validation (detect path)** (`POST /api/v1/audit-logs/integrity-validation/run`): Global Admin only. Request body: `from` (inclusive), `to` (exclusive), optional `raiseAlert` (default `true`). Same orchestration as the nightly batch — may raise or touch `AUDIT_INTEGRITY_RUPTURE` when violations remain alert-eligible. Emits `NIGHTLY_INTEGRITY_VALIDATION_COMPLETED` with `event_details.triggerSource=OPERATOR`. Does **not** update the nightly job registry (operator runs are traced via HTTP response + completion audit). Window length is capped by `ezkey.audit.integrity.retroactive.operator-max-window-hours` (defaults to `nightly.window-hours`). Use GET verify endpoints for read-only forensic examine; use POST for detect → alert → reconcile lab flows.
 
 **Declare gap** (`POST /api/v1/audit-logs/lifecycle/declare-gap`): Closes an undeclared gap by writing a `GAP_DECLARATION` checkpoint covering `[gapStart, gapEnd)` with a mandatory `justification` (min 10 chars). The endpoint accepts two equivalent modes:
 

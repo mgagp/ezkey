@@ -47,11 +47,15 @@ import org.ezkey.audit.dto.GapDeclarationRequest;
 import org.ezkey.audit.dto.GapDeclarationResult;
 import org.ezkey.audit.dto.IntegrityRuptureReconciliationRequest;
 import org.ezkey.audit.dto.IntegrityRuptureReconciliationResult;
+import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunRequest;
+import org.ezkey.audit.dto.RetroactiveIntegrityValidationRunResponse;
 import org.ezkey.audit.integrity.AuditChainCheckpointService;
 import org.ezkey.audit.integrity.AuditChainIncidentService;
 import org.ezkey.audit.integrity.AuditChainVerificationService;
 import org.ezkey.audit.integrity.AuditIntegrityService;
 import org.ezkey.audit.integrity.AuditLifecycleService;
+import org.ezkey.audit.integrity.RetroactiveIntegrityValidationOptions;
+import org.ezkey.audit.integrity.RetroactiveIntegrityValidationService;
 import org.ezkey.audit.mapper.AuditChainCheckpointMapper;
 import org.ezkey.audit.mapper.AuditLogMapper;
 import org.ezkey.audit.service.AuditLogService;
@@ -133,6 +137,7 @@ public class AuditLogController {
   private final AuditIntegrityService auditIntegrityService;
   private final AuditChainVerificationService auditChainVerificationService;
   private final AuditLifecycleService auditLifecycleService;
+  private final RetroactiveIntegrityValidationService retroactiveIntegrityValidationService;
   private final AuditChainIncidentService auditChainIncidentService;
   private final EzkeyAdminRepository adminRepository;
   private final EnrollmentRepository enrollmentRepository;
@@ -150,6 +155,8 @@ public class AuditLogController {
    * @param auditChainVerificationService the chain checkpoint verification service
    * @param auditLifecycleService the chain lifecycle service for archive sealing and gap
    *     declaration
+   * @param retroactiveIntegrityValidationService retroactive detect orchestration (nightly +
+   *     operator POST)
    * @param auditChainIncidentService heartbeat operational incident listing and declaration
    * @param adminRepository repository for actor/target admin label enrichment
    * @param enrollmentRepository repository for enrollment label enrichment
@@ -164,6 +171,7 @@ public class AuditLogController {
       AuditIntegrityService auditIntegrityService,
       AuditChainVerificationService auditChainVerificationService,
       AuditLifecycleService auditLifecycleService,
+      RetroactiveIntegrityValidationService retroactiveIntegrityValidationService,
       AuditChainIncidentService auditChainIncidentService,
       EzkeyAdminRepository adminRepository,
       EnrollmentRepository enrollmentRepository,
@@ -176,6 +184,7 @@ public class AuditLogController {
     this.auditIntegrityService = auditIntegrityService;
     this.auditChainVerificationService = auditChainVerificationService;
     this.auditLifecycleService = auditLifecycleService;
+    this.retroactiveIntegrityValidationService = retroactiveIntegrityValidationService;
     this.auditChainIncidentService = auditChainIncidentService;
     this.adminRepository = adminRepository;
     this.enrollmentRepository = enrollmentRepository;
@@ -613,6 +622,50 @@ public class AuditLogController {
     AuditChainVerificationService.ChainVerificationReport report =
         auditChainVerificationService.verifyChain(from, to);
     return ResponseEntity.ok(report);
+  }
+
+  /**
+   * Runs retroactive integrity validation (detect path) over a chosen window.
+   *
+   * <p>Same orchestration as the nightly batch: per-entry HMAC collection, checkpoint chain verify,
+   * optional {@code AUDIT_INTEGRITY_RUPTURE} raise/touch, and completion audit. Distinct from GET
+   * verify endpoints which are read-only.
+   *
+   * @param request inclusive/exclusive bounds and optional {@code raiseAlert} flag
+   * @return structured validation outcome including alert id when raised
+   */
+  @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+  @PostMapping("/integrity-validation/run")
+  @Operation(
+      summary = "Run retroactive integrity validation",
+      description =
+          "Detective-layer validation over a date range: same semantics as the nightly batch."
+              + " May raise or touch AUDIT_INTEGRITY_RUPTURE when violations remain"
+              + " alert-eligible. Global Admin only. Use GET integrity-check / chain-integrity"
+              + " for read-only forensic verify.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation completed (including skipped when HMAC inactive)"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid bounds or window exceeds configured maximum",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(responseCode = "403", description = "Not a Global Admin")
+      })
+  public ResponseEntity<RetroactiveIntegrityValidationRunResponse>
+      runRetroactiveIntegrityValidation(
+          @Valid @RequestBody RetroactiveIntegrityValidationRunRequest request) {
+    retroactiveIntegrityValidationService.validateOperatorWindow(request.from(), request.to());
+    boolean raiseAlert = request.raiseAlert() == null || request.raiseAlert();
+    var result =
+        retroactiveIntegrityValidationService.runValidation(
+            request.from(),
+            request.to(),
+            RetroactiveIntegrityValidationOptions.operator(raiseAlert, extractRequesterAdminId()));
+    return ResponseEntity.ok(RetroactiveIntegrityValidationRunResponse.from(result));
   }
 
   /**

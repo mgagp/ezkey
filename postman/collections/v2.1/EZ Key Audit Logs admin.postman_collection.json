@@ -315,6 +315,66 @@
       "response": []
     },
     {
+      "name": "run retroactive integrity validation",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has retroactive validation fields\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('scope');",
+              "    pm.expect(jsonData).to.have.property('skipped');",
+              "    pm.expect(jsonData).to.have.property('intact');",
+              "    pm.expect(jsonData).to.have.property('alertRaised');",
+              "    pm.expect(jsonData).to.have.property('triggerSource');",
+              "    pm.expect(jsonData.triggerSource).to.equal('OPERATOR');",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"from\": \"2026-01-01T00:00:00Z\",\n  \"to\": \"2026-01-02T00:00:00Z\",\n  \"raiseAlert\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url_admin_api}}/api/v1/audit-logs/integrity-validation/run",
+          "host": [
+            "{{base_url_admin_api}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "audit-logs",
+            "integrity-validation",
+            "run"
+          ]
+        },
+        "description": "Runs retroactive integrity validation (detect path) over a date range. Same orchestration as the nightly batch — may raise or touch AUDIT_INTEGRITY_RUPTURE. Distinct from GET integrity-check / chain-integrity (read-only verify). Global Admin only.\n\n**Body:** `from` (inclusive ISO-8601), `to` (exclusive), optional `raiseAlert` (default true).\n\n**Status Codes:** 200 (including skipped when HMAC inactive) · 400 invalid bounds or window too large · 401 · 403"
+      },
+      "response": []
+    },
+    {
       "name": "inspect chain checkpoints",
       "event": [
         {

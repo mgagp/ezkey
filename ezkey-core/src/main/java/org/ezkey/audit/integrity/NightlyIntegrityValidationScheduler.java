@@ -23,6 +23,10 @@ import org.springframework.stereotype.Component;
  * Runs the nightly retroactive integrity validation batch (detective layer per {@code
  * V-2026-0004}).
  *
+ * <p>Delegates orchestration to {@link RetroactiveIntegrityValidationService}; disabling {@code
+ * ezkey.audit.integrity.nightly.enabled} idles this scheduler only — operator POST detect remains
+ * available when HMAC is active.
+ *
  * @since 2026
  */
 @Component
@@ -36,19 +40,19 @@ public class NightlyIntegrityValidationScheduler {
       LoggerFactory.getLogger(NightlyIntegrityValidationScheduler.class);
 
   private final NightlyIntegrityProperties nightlyProperties;
-  private final NightlyIntegrityValidationService validationService;
+  private final RetroactiveIntegrityValidationService validationService;
   private final ScheduledJobLastRunService jobLastRunService;
 
   /**
    * Constructs the scheduler.
    *
    * @param nightlyProperties nightly batch configuration
-   * @param validationService validation orchestration
+   * @param validationService retroactive validation orchestration
    * @param jobLastRunService registry updates
    */
   public NightlyIntegrityValidationScheduler(
       NightlyIntegrityProperties nightlyProperties,
-      NightlyIntegrityValidationService validationService,
+      RetroactiveIntegrityValidationService validationService,
       ScheduledJobLastRunService jobLastRunService) {
     this.nightlyProperties = nightlyProperties;
     this.validationService = validationService;
@@ -59,7 +63,7 @@ public class NightlyIntegrityValidationScheduler {
    * Scheduled nightly retroactive integrity validation.
    *
    * <p>Batch infrastructure failures update the job registry only (C9); integrity ruptures raise
-   * alerts via {@link NightlyIntegrityValidationService}.
+   * alerts via {@link RetroactiveIntegrityValidationService}.
    */
   @Scheduled(cron = "${ezkey.audit.integrity.nightly.cron:0 0 2 * * ?}")
   @SchedulerLock(name = "NIGHTLY_INTEGRITY_VALIDATION", lockAtMostFor = "PT2H")
@@ -68,7 +72,7 @@ public class NightlyIntegrityValidationScheduler {
     String scope = "Validated " + nightlyProperties.getWindowHours() + " h ending " + windowEnd;
 
     try {
-      NightlyIntegrityValidationService.NightlyIntegrityValidationResult result =
+      RetroactiveIntegrityValidationService.RetroactiveIntegrityValidationResult result =
           validationService.validateWindow(windowEnd);
       if (result.scope() != null) {
         scope = result.scope();
