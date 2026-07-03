@@ -2,6 +2,7 @@ import type {
   ChainIntegrityViolation,
   EntryIntegrityViolation,
   EntryIntegrityViolationConciliationStatus,
+  IntegrityReport,
 } from '@/generated/admin-api/model';
 
 const STORAGE_KEY = 'ezkey_integrity_investigation_session';
@@ -143,6 +144,112 @@ export function listReconcileRequiredEntryViolations(
   violations: EntryIntegrityViolation[],
 ): EntryIntegrityViolation[] {
   return violations.filter(isEntryReconcileAckRequired);
+}
+
+/**
+ * Maps a single-entry integrity-check response to the shared badge display state.
+ */
+export function resolveIntegrityReportEntryDisplayState(
+  hasEntryHmac: boolean,
+  report: IntegrityReport | null | undefined,
+): EntryHmacDisplayState {
+  if (!hasEntryHmac) {
+    return 'unsigned';
+  }
+  if (!report) {
+    return 'signed';
+  }
+  const violation = report.entryViolations?.items?.[0];
+  if (violation) {
+    return entryViolationDisplayState(violation);
+  }
+  if ((report.invalidEntries ?? 0) > 0) {
+    return 'violation';
+  }
+  if ((report.unsignedEntries ?? 0) > 0 || report.status === 'UNSIGNED') {
+    return 'unsigned';
+  }
+  return 'verified';
+}
+
+function upsertEntryViolation(
+  violations: EntryIntegrityViolation[],
+  violation: EntryIntegrityViolation,
+): EntryIntegrityViolation[] {
+  const auditLogId = violation.auditLogId;
+  if (auditLogId == null) {
+    return violations;
+  }
+  return [...violations.filter((v) => v.auditLogId !== auditLogId), violation];
+}
+
+/**
+ * Merges a detail-dialog single-entry verify result into the investigation session so list badges
+ * stay aligned without forcing a full-range Verify pass.
+ */
+export function mergeSingleEntryVerificationIntoSession(
+  existing: IntegrityInvestigationSession | null,
+  auditLogId: number,
+  violation: EntryIntegrityViolation | null | undefined,
+  entryCreatedAt?: string | null,
+): IntegrityInvestigationSession | null {
+  const verifiedAt = new Date().toISOString();
+  const createdAnchor = entryCreatedAt ?? verifiedAt;
+
+  if (!violation) {
+    if (!existing) {
+      return null;
+    }
+    const entryViolations = existing.entryViolations.filter((v) => v.auditLogId !== auditLogId);
+    const violatedEntryIds = entryViolations
+      .map((v) => v.auditLogId)
+      .filter((id): id is number => id != null && id > 0);
+    const highlightAuditLogIds = existing.highlightAuditLogIds.filter((id) => id !== auditLogId);
+    if (entryViolations.length === 0 && highlightAuditLogIds.length === 0) {
+      clearIntegrityInvestigationSession();
+      return null;
+    }
+    const updated: IntegrityInvestigationSession = {
+      ...existing,
+      verifiedAt,
+      entryViolations,
+      violatedEntryIds,
+      highlightAuditLogIds,
+      conciliationByAuditLogId: buildConciliationByAuditLogId(entryViolations),
+    };
+    saveIntegrityInvestigationSession(updated);
+    return updated;
+  }
+
+  const base: IntegrityInvestigationSession =
+    existing ?? {
+      source: 'manual',
+      windowFrom: createdAnchor,
+      windowTo: verifiedAt,
+      verifiedAt,
+      violatedEntryIds: [],
+      entryViolations: [],
+      chainViolations: [],
+      highlightAuditLogIds: [auditLogId],
+      conciliationByAuditLogId: {},
+    };
+
+  const entryViolations = upsertEntryViolation(
+    base.entryViolations,
+    violation.auditLogId === auditLogId ? violation : { ...violation, auditLogId },
+  );
+  const violatedEntryIds = [...new Set([...base.violatedEntryIds, auditLogId])];
+  const highlightAuditLogIds = [...new Set([...base.highlightAuditLogIds, auditLogId])];
+  const updated: IntegrityInvestigationSession = {
+    ...base,
+    verifiedAt,
+    entryViolations,
+    violatedEntryIds,
+    highlightAuditLogIds,
+    conciliationByAuditLogId: buildConciliationByAuditLogId(entryViolations),
+  };
+  saveIntegrityInvestigationSession(updated);
+  return updated;
 }
 
 export function resolveEntryHmacDisplayState(

@@ -351,8 +351,12 @@ Copy must distinguish **cryptographic invalid** vs **operationally acknowledged*
 populated from verify responses; invalidate on logout, reconcile success, explicit verify refresh.
 List column without active session falls back to **signed** (neutral) — no false Explained badge.
 
+**ADR-0005 (2026-07-03):** opening audit log **Detail** runs single-entry integrity-check and
+**seeds** the session for that row so list badges align on close (amber Explained after conciliation).
+Reconcile clear unchanged; panel Verify remains the range-wide path.
+
 **Slice 2 surfaces:** `entry-hmac-badge.tsx`, audit list + banner, alert detail « Verified now »
-column, i18n EN/FR.
+column, audit log detail HMAC row, i18n EN/FR.
 
 ---
 
