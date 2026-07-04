@@ -977,7 +977,7 @@
           "host": ["{{base_url_admin_api}}"],
           "path": ["api", "v1", "audit-logs", "lifecycle", "incidents", "{{incident_id}}", "declare"]
         },
-        "description": "Declare closure for an incident in RECOVERED_PENDING_DECLARATION. Global Admin only. rootCause enum: ADMIN_API_DOWN | SCHEDULER_FAILURE | DB_UNAVAILABLE | NETWORK_PARTITION | MISCONFIGURATION | UNKNOWN."
+        "description": "Declare closure for an incident in RECOVERED_PENDING_DECLARATION. Global Admin only. rootCause enum: PLANNED_SYSTEM_UPGRADE | ADMIN_API_DOWN | SCHEDULER_FAILURE | DB_UNAVAILABLE | NETWORK_PARTITION | MISCONFIGURATION | UNKNOWN."
       },
       "response": []
     }
@@ -1082,13 +1082,13 @@
     },
     {
       "key": "incident_justification",
-      "value": "Admin API was unreachable during maintenance; peripherals continued briefly then entered degraded mode until checkpoints resumed.",
+      "value": "Rolling backend upgrade on EXP1; admin-api containers recreated and checkpoint emission paused until services were healthy again.",
       "description": "Operator justification (10–500 chars) for POST .../lifecycle/incidents/{id}/declare."
     },
     {
       "key": "incident_root_cause",
-      "value": "ADMIN_API_DOWN",
-      "description": "Enum for incident declaration: ADMIN_API_DOWN | SCHEDULER_FAILURE | DB_UNAVAILABLE | NETWORK_PARTITION | MISCONFIGURATION | UNKNOWN."
+      "value": "PLANNED_SYSTEM_UPGRADE",
+      "description": "Enum for incident declaration: PLANNED_SYSTEM_UPGRADE | ADMIN_API_DOWN | SCHEDULER_FAILURE | DB_UNAVAILABLE | NETWORK_PARTITION | MISCONFIGURATION | UNKNOWN."
     },
     {
       "key": "last_seal_chain_hmac",

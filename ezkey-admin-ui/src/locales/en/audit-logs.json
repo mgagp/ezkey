@@ -386,6 +386,7 @@
         "CLOSED": "Closed"
       },
       "rootCauses": {
+        "PLANNED_SYSTEM_UPGRADE": "Planned upgrade or redeploy",
         "ADMIN_API_DOWN": "Admin API unavailable",
         "SCHEDULER_FAILURE": "Scheduler failure",
         "DB_UNAVAILABLE": "Database unavailable",

@@ -386,6 +386,7 @@
         "CLOSED": "Clos"
       },
       "rootCauses": {
+        "PLANNED_SYSTEM_UPGRADE": "Mise à niveau ou redéploiement planifié",
         "ADMIN_API_DOWN": "Admin API indisponible",
         "SCHEDULER_FAILURE": "Échec du planificateur",
         "DB_UNAVAILABLE": "Base de données indisponible",

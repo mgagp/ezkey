@@ -21,6 +21,9 @@ package org.ezkey.audit.integrity;
  * @since 2026
  */
 public enum AuditChainIncidentRootCause {
+  /** Planned rolling upgrade, version bump, or redeploy that stops checkpoint emission briefly. */
+  PLANNED_SYSTEM_UPGRADE,
+
   ADMIN_API_DOWN,
 
   SCHEDULER_FAILURE,
