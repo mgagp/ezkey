@@ -48,6 +48,7 @@ flowchart LR
 - **Primary actor.** Authenticated operator (both roles).
 - **Purpose.** Entry landing: session context, quick links, recent activity (to the extent exposed).
 - **Visibility.** Authenticated.
+- **Widget signal model.** Badge colors, operator questions, and drilldown targets for stat cards and conditional panels are documented in [`dashboard-widget-signal-model.md`](dashboard-widget-signal-model.md) (enrollment **invalid** vs **revoked** split; red reserved for investigate-now states).
 
 ### Integrations List
 

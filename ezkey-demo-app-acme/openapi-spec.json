@@ -8544,10 +8544,15 @@
             "format": "int64",
             "description": "Timed out before verification: EXPIRED (any active state)"
           },
-          "incidents": {
+          "invalid": {
             "type": "integer",
             "format": "int64",
-            "description": "Security events: INVALID or REVOKED (any active state)"
+            "description": "Failed validation: INVALID (any active state)"
+          },
+          "revoked": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Administrator revocations: REVOKED (any active state)"
           }
         }
       },

@@ -50,7 +50,8 @@ class EnrollmentDashboardStatsTest {
     assertEquals(3L, s.suspended());
     assertEquals(0L, s.inProgress());
     assertEquals(0L, s.expired());
-    assertEquals(0L, s.incidents());
+    assertEquals(0L, s.invalid());
+    assertEquals(0L, s.revoked());
   }
 
   @Test
@@ -68,8 +69,8 @@ class EnrollmentDashboardStatsTest {
   }
 
   @Test
-  @DisplayName("fromStatusActiveCounts aggregates INVALID and REVOKED (any active) into incidents")
-  void fromStatusActiveCounts_incidentsAnyActive() {
+  @DisplayName("fromStatusActiveCounts aggregates INVALID and REVOKED separately (any active)")
+  void fromStatusActiveCounts_invalidAndRevokedAnyActive() {
     Map<EnrollmentStatus, Map<Boolean, Long>> c =
         counts(
             EnrollmentStatus.INVALID,
@@ -81,7 +82,8 @@ class EnrollmentDashboardStatsTest {
 
     EnrollmentDashboardStats s = EnrollmentDashboardStats.fromStatusActiveCounts(c);
 
-    assertEquals(9L, s.incidents());
+    assertEquals(4L, s.invalid());
+    assertEquals(5L, s.revoked());
     assertEquals(0L, s.verified());
     assertEquals(0L, s.suspended());
   }
@@ -119,7 +121,8 @@ class EnrollmentDashboardStatsTest {
     assertEquals(2L, s.suspended());
     assertEquals(5L, s.inProgress());
     assertEquals(1L, s.expired());
-    assertEquals(9L, s.incidents());
+    assertEquals(4L, s.invalid());
+    assertEquals(5L, s.revoked());
   }
 
   @Test
@@ -134,6 +137,7 @@ class EnrollmentDashboardStatsTest {
     assertEquals(0L, s.suspended());
     assertEquals(0L, s.inProgress());
     assertEquals(0L, s.expired());
-    assertEquals(0L, s.incidents());
+    assertEquals(0L, s.invalid());
+    assertEquals(0L, s.revoked());
   }
 }

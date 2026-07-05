@@ -42,7 +42,7 @@ import type {
 } from '@/generated/admin-api/model';
 
 function parseEnrollmentBucket(value: string | null): EnrollmentDrilldownBucket | '' {
-  if (value === 'inProgress' || value === 'unavailable' || value === 'incidents') {
+  if (value === 'inProgress' || value === 'unavailable' || value === 'invalid' || value === 'revoked') {
     return value;
   }
   return '';
@@ -576,7 +576,7 @@ export default function EnrollmentsPage() {
         enabled: enrollmentBucket === 'unavailable',
       },
       {
-        queryKey: ['enrollments', 'bucket', 'INVALID-incidents', integrationFilter],
+        queryKey: ['enrollments', 'bucket', 'invalid', integrationFilter],
         queryFn: () =>
           search1({
             status: 'INVALID',
@@ -585,10 +585,10 @@ export default function EnrollmentsPage() {
             sort: ['createdAt,DESC'],
             integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
           } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
-        enabled: enrollmentBucket === 'incidents',
+        enabled: enrollmentBucket === 'invalid',
       },
       {
-        queryKey: ['enrollments', 'bucket', 'REVOKED-incidents', integrationFilter],
+        queryKey: ['enrollments', 'bucket', 'revoked', integrationFilter],
         queryFn: () =>
           search1({
             status: 'REVOKED',
@@ -597,7 +597,7 @@ export default function EnrollmentsPage() {
             sort: ['createdAt,DESC'],
             integrationId: integrationFilter ? parseInt(integrationFilter, 10) : undefined,
           } as Search1Params) as Promise<PagedModelEnrollmentResponseDto>,
-        enabled: enrollmentBucket === 'incidents',
+        enabled: enrollmentBucket === 'revoked',
       },
     ],
   });
@@ -613,10 +613,13 @@ export default function EnrollmentsPage() {
       const b = bucketQueries[3].data?.content ?? [];
       return [...a, ...b].sort((x, y) => (y.createdAt ?? '').localeCompare(x.createdAt ?? ''));
     }
-    if (enrollmentBucket === 'incidents') {
-      const a = bucketQueries[4].data?.content ?? [];
-      const b = bucketQueries[5].data?.content ?? [];
-      return [...a, ...b].sort((x, y) => (y.createdAt ?? '').localeCompare(x.createdAt ?? ''));
+    if (enrollmentBucket === 'invalid') {
+      const rows = bucketQueries[4].data?.content ?? [];
+      return [...rows].sort((x, y) => (y.createdAt ?? '').localeCompare(x.createdAt ?? ''));
+    }
+    if (enrollmentBucket === 'revoked') {
+      const rows = bucketQueries[5].data?.content ?? [];
+      return [...rows].sort((x, y) => (y.createdAt ?? '').localeCompare(x.createdAt ?? ''));
     }
     return [];
   }, [bucketQueries, enrollmentBucket]);
@@ -628,9 +631,10 @@ export default function EnrollmentsPage() {
     || (enrollmentBucket === 'unavailable'
       && ((bucketQueries[2].data?.page?.totalElements ?? 0) > 500
         || (bucketQueries[3].data?.page?.totalElements ?? 0) > 500))
-    || (enrollmentBucket === 'incidents'
-      && ((bucketQueries[4].data?.page?.totalElements ?? 0) > 500
-        || (bucketQueries[5].data?.page?.totalElements ?? 0) > 500));
+    || (enrollmentBucket === 'invalid'
+      && (bucketQueries[4].data?.page?.totalElements ?? 0) > 500)
+    || (enrollmentBucket === 'revoked'
+      && (bucketQueries[5].data?.page?.totalElements ?? 0) > 500);
 
   const bucketSlice = useMemo(() => {
     const start = bucketPage * bucketPageSize;
@@ -644,7 +648,8 @@ export default function EnrollmentsPage() {
         const enabled =
           (enrollmentBucket === 'inProgress' && i < 2)
           || (enrollmentBucket === 'unavailable' && i >= 2 && i < 4)
-          || (enrollmentBucket === 'incidents' && i >= 4);
+          || (enrollmentBucket === 'invalid' && i === 4)
+          || (enrollmentBucket === 'revoked' && i === 5);
         return enabled && q.isLoading;
       })
     : false;

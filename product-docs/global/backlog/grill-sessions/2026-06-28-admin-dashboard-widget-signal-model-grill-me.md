@@ -52,7 +52,8 @@ _None — grill complete._
 
 ## Outcome
 
-Grill complete. **`I-2026-0030`** → **`ready`**. Promote **`TB-*`** when implementation slot opens.
+Grill complete. **`I-2026-0030`** → **`ready`** (2026-06-28). Implementation closed **`done`** on
+`I-*` only (2026-07-05; no retroactive `TB-*`).
 
 ## Links
 

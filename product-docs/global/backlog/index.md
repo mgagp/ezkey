@@ -10,9 +10,11 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
 
-**Summary (2026-07-03):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C alerts list polish **done** —
-[`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md)
-(`I-2026-0028` P3). Wave B closeout:
+**Summary (2026-07-05):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C alerts list polish **done**
+([`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md)).
+Dashboard widget signal model **done** — [`I-2026-0030`](ideas/I-2026-0030-admin-dashboard-widget-signal-model-review.md)
+(enrollment invalid/revoked split + signal-model doc; closed on `I-*` without retroactive `TB-*`).
+Wave B closeout ML:
 [`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
 ## Active ideas
@@ -39,12 +41,12 @@ This index provides a lightweight list of active ideas and their current state.
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
 | `I-2026-06-28-audit-archive-export-spi` | Audit archive export SPI: sealed-batch detachment + vendor-neutral immutable retention | `incubating` | `P3` | `core`, `admin-api`, `admin-ui`, `audit`, `infra`, `docs`, peripheral | `2026-06-28` |
 | `I-2026-0029` | Re-encryption: indexed encryption key id columns (replace LIKE scans) | `ready` | `P2` | `core`, `admin-api`, `infra`, `docs` | `2026-06-28` |
-| `I-2026-0030` | Admin Dashboard: widget signal model review and realignment | `ready` | `P2` | `admin-ui`, `admin-api`, `docs (product-docs)` | `2026-06-28` |
 
 ## Recently completed
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-0030` | Admin Dashboard: widget signal model review and realignment | `2026-07-05` | PR #291. Enrollment `invalid`/`revoked` badges; `dashboard-widget-signal-model.md`. Closed on `I-*` (no `TB-*`). |
 | `I-2026-0007` | Admin Dashboard: batch health and integrity widgets (Wave B B3) | `2026-07-03` | PR #289 / TB `TB-2026-07-03-dashboard-batch-health-widgets`. Program #269 closed same day. |
 | `I-2026-0005` | Checkpoint integrity breaks: remediation + entry conciliation (Wave B B2/B2.6) | `2026-07-03` | PR #287 (B2.6) + earlier B2 chain reconcile. TB `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence`. |
 | `I-2026-0006` | Nightly retroactive integrity validation batch (Wave B B1) | `2026-06-29` | PR #270 / TB `TB-2026-06-28-nightly-integrity-validation-batch`. Detective layer + job registry + `AUDIT_INTEGRITY_RUPTURE`. |

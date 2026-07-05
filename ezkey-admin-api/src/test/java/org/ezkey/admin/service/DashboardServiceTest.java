@@ -169,7 +169,7 @@ class DashboardServiceTest {
             any(PageRequest.class)))
         .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 1), 2));
     when(enrollmentService.aggregateDashboardEnrollmentStats(tenantId))
-        .thenReturn(new EnrollmentDashboardStats(10, 2, 1, 0, 0));
+        .thenReturn(new EnrollmentDashboardStats(10, 2, 1, 0, 0, 0));
     when(authAttemptService.aggregateDashboard24h(any(), eq(tenantId)))
         .thenReturn(new AuthAttemptDashboard24hStats(4, 0, 0, 3, 1, 0, 0, 4, 75, 0, 0, 25));
     when(auditLogService.findByFilters(

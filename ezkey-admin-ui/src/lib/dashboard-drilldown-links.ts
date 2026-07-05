@@ -11,7 +11,7 @@ export const ROLLING_24H_PRESET_VALUE = 'rolling24h';
 
 /** Enrollment list: combined status buckets without a single API status filter. */
 export const ENROLLMENT_BUCKET_PARAM = 'bucket';
-export type EnrollmentDrilldownBucket = 'inProgress' | 'unavailable' | 'incidents';
+export type EnrollmentDrilldownBucket = 'inProgress' | 'unavailable' | 'invalid' | 'revoked';
 
 /** Integration list filter key (matches {@link IntegrationListFilter} in integrations page). */
 export const INTEGRATION_LIFECYCLE_FILTER_PARAM = 'lifecycleFilter';
