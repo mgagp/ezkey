@@ -41,6 +41,7 @@ Wave B closeout ML:
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
 | `I-2026-06-28-audit-archive-export-spi` | Audit archive export SPI: sealed-batch detachment + vendor-neutral immutable retention | `incubating` | `P3` | `core`, `admin-api`, `admin-ui`, `audit`, `infra`, `docs`, peripheral | `2026-06-28` |
 | `I-2026-0029` | Re-encryption: indexed encryption key id columns (replace LIKE scans) | `ready` | `P2` | `core`, `admin-api`, `infra`, `docs` | `2026-06-28` |
+| `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (Spring Boot + operator UI) | `parked` | `P3` | `admin-api`, `admin-ui`, `docs`, ecosystem GitHub, `sdk-java` | `2026-07-05` |
 
 ## Recently completed
 
@@ -67,3 +68,4 @@ Wave B closeout ML:
 |----|-------|--------|-------------|
 | `I-2026-0009` | Global controllers registry | **Dropped** 2026-05-24 — living registry downscoped; see [`methodology/decisions/2026-05-24-controllers-registry-downscope.md`](../methodology/decisions/2026-05-24-controllers-registry-downscope.md) | n/a |
 | `I-2026-0031` | SDK dogfood: first-party consumption and honest narrative | **Parked** 2026-06-30 — pre-analysis complete (layers A/B, no Admin UI → Integration SDK); deferred for September operable-release focus. Insight: [`grill-sessions/2026-06-30-sdk-dogfood-grill-me.md`](grill-sessions/2026-06-30-sdk-dogfood-grill-me.md). `I-2026-0004` unchanged. | post–Sept 2026 milestone or distribution trigger |
+| `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (`ezkey-app-starter`) | **Parked** 2026-07-05 — grill complete (D1–D10); external greenfield starter, not lite platform. Insight: [`grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md`](grill-sessions/2026-07-05-distilled-admin-platform-starter-grill-me.md). | post–Sept 2026 milestone or distribution trigger |
