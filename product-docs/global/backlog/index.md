@@ -42,6 +42,7 @@ Wave B closeout ML:
 | `I-2026-06-28-audit-archive-export-spi` | Audit archive export SPI: sealed-batch detachment + vendor-neutral immutable retention | `incubating` | `P3` | `core`, `admin-api`, `admin-ui`, `audit`, `infra`, `docs`, peripheral | `2026-06-28` |
 | `I-2026-0029` | Re-encryption: indexed encryption key id columns (replace LIKE scans) | `ready` | `P2` | `core`, `admin-api`, `infra`, `docs` | `2026-06-28` |
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (Spring Boot + operator UI) | `parked` | `P3` | `admin-api`, `admin-ui`, `docs`, ecosystem GitHub, `sdk-java` | `2026-07-05` |
+| `I-2026-07-05-enrollment-integration-key-cycling` | Enrollment integration key cycling via auth-exchange hooks | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `docs`, `crypto` | `2026-07-05` |
 
 ## Recently completed
 
