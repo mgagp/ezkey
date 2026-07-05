@@ -46,7 +46,7 @@ Wave B closeout ML:
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
-| `I-2026-0030` | Admin Dashboard: widget signal model review and realignment | `2026-07-05` | Enrollment `invalid`/`revoked` badges; `dashboard-widget-signal-model.md`. Closed on `I-*` (no `TB-*`). Branch `feature/i-2026-0030-dashboard-widget-signal-model`. |
+| `I-2026-0030` | Admin Dashboard: widget signal model review and realignment | `2026-07-05` | PR #291. Enrollment `invalid`/`revoked` badges; `dashboard-widget-signal-model.md`. Closed on `I-*` (no `TB-*`). |
 | `I-2026-0007` | Admin Dashboard: batch health and integrity widgets (Wave B B3) | `2026-07-03` | PR #289 / TB `TB-2026-07-03-dashboard-batch-health-widgets`. Program #269 closed same day. |
 | `I-2026-0005` | Checkpoint integrity breaks: remediation + entry conciliation (Wave B B2/B2.6) | `2026-07-03` | PR #287 (B2.6) + earlier B2 chain reconcile. TB `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence`. |
 | `I-2026-0006` | Nightly retroactive integrity validation batch (Wave B B1) | `2026-06-29` | PR #270 / TB `TB-2026-06-28-nightly-integrity-validation-batch`. Detective layer + job registry + `AUDIT_INTEGRITY_RUPTURE`. |

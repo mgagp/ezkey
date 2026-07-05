@@ -10,6 +10,8 @@
 - **Last reviewed at:** `2026-07-05`
 - **Closed at:** `2026-07-05`
 - **GitHub branch:** `feature/i-2026-0030-dashboard-widget-signal-model`
+- **GitHub PR:** #291
+- **Git commit:** `3d1196ec`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`, `docs (product-docs)`
 - **Feature anchor:** Admin UI operator experience (dashboard entry surface)
