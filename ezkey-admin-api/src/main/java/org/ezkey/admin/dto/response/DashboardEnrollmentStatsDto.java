@@ -23,7 +23,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *   <li>{@code inProgress} — onboarding awaiting completion (CREATED or BOUND, any active)
  *   <li>{@code suspended} — admin-disabled devices (VERIFIED + active=false)
  *   <li>{@code expired} — timed out before verification (EXPIRED, any active)
- *   <li>{@code incidents} — security events (INVALID or REVOKED, any active)
+ *   <li>{@code invalid} — failed validation (INVALID, any active)
+ *   <li>{@code revoked} — administrator revocations (REVOKED, any active)
  * </ul>
  *
  * @since 2025
@@ -45,18 +46,22 @@ public class DashboardEnrollmentStatsDto {
   @Schema(description = "Timed out before verification: EXPIRED (any active state)")
   private long expired;
 
-  @Schema(description = "Security events: INVALID or REVOKED (any active state)")
-  private long incidents;
+  @Schema(description = "Failed validation: INVALID (any active state)")
+  private long invalid;
+
+  @Schema(description = "Administrator revocations: REVOKED (any active state)")
+  private long revoked;
 
   public DashboardEnrollmentStatsDto() {}
 
   public DashboardEnrollmentStatsDto(
-      long verified, long inProgress, long suspended, long expired, long incidents) {
+      long verified, long inProgress, long suspended, long expired, long invalid, long revoked) {
     this.verified = verified;
     this.inProgress = inProgress;
     this.suspended = suspended;
     this.expired = expired;
-    this.incidents = incidents;
+    this.invalid = invalid;
+    this.revoked = revoked;
   }
 
   public long getVerified() {
@@ -91,11 +96,19 @@ public class DashboardEnrollmentStatsDto {
     this.expired = expired;
   }
 
-  public long getIncidents() {
-    return incidents;
+  public long getInvalid() {
+    return invalid;
   }
 
-  public void setIncidents(long incidents) {
-    this.incidents = incidents;
+  public void setInvalid(long invalid) {
+    this.invalid = invalid;
+  }
+
+  public long getRevoked() {
+    return revoked;
+  }
+
+  public void setRevoked(long revoked) {
+    this.revoked = revoked;
   }
 }

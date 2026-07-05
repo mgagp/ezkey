@@ -26,8 +26,10 @@ import java.util.Map;
  *       active = false})
  *   <li>{@link #expired()} — abandoned before completion ({@link EnrollmentStatus#EXPIRED}, any
  *       {@code active})
- *   <li>{@link #incidents()} — security events ({@link EnrollmentStatus#INVALID} or {@link
- *       EnrollmentStatus#REVOKED}, any {@code active})
+ *   <li>{@link #invalid()} — failed validation ({@link EnrollmentStatus#INVALID}, any {@code
+ *       active})
+ *   <li>{@link #revoked()} — admin revocations ({@link EnrollmentStatus#REVOKED}, any {@code
+ *       active})
  * </ul>
  *
  * <p>Buckets do not sum to a single total by design: each represents an independent operational
@@ -37,11 +39,12 @@ import java.util.Map;
  * @param inProgress CREATED or BOUND (any active) — onboarding awaiting completion
  * @param suspended VERIFIED + active=false — valid devices temporarily disabled by an admin
  * @param expired EXPIRED (any active) — enrollments that timed out before verification
- * @param incidents INVALID or REVOKED (any active) — security-relevant events
+ * @param invalid INVALID (any active) — enrollments that failed cryptographic validation
+ * @param revoked REVOKED (any active) — enrollments revoked by an administrator
  * @since 2025
  */
 public record EnrollmentDashboardStats(
-    long verified, long inProgress, long suspended, long expired, long incidents) {
+    long verified, long inProgress, long suspended, long expired, long invalid, long revoked) {
 
   /**
    * Builds dashboard stats from per-status, per-active counts (missing entries treated as zero).
@@ -59,9 +62,9 @@ public record EnrollmentDashboardStats(
     long inProgress =
         getAll(counts, EnrollmentStatus.CREATED) + getAll(counts, EnrollmentStatus.BOUND);
     long expired = getAll(counts, EnrollmentStatus.EXPIRED);
-    long incidents =
-        getAll(counts, EnrollmentStatus.INVALID) + getAll(counts, EnrollmentStatus.REVOKED);
-    return new EnrollmentDashboardStats(verified, inProgress, suspended, expired, incidents);
+    long invalid = getAll(counts, EnrollmentStatus.INVALID);
+    long revoked = getAll(counts, EnrollmentStatus.REVOKED);
+    return new EnrollmentDashboardStats(verified, inProgress, suspended, expired, invalid, revoked);
   }
 
   private static long get(

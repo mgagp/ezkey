@@ -265,7 +265,8 @@ export default function DashboardPage() {
   const enrInProgress = overview?.enrollments?.inProgress;
   const enrSuspended = overview?.enrollments?.suspended;
   const enrExpired = overview?.enrollments?.expired;
-  const enrIncidents = overview?.enrollments?.incidents;
+  const enrInvalid = overview?.enrollments?.invalid;
+  const enrRevoked = overview?.enrollments?.revoked;
 
   const authTotal = overview?.auth24h?.total;
   const authAccepted = overview?.auth24h?.accepted;
@@ -534,12 +535,21 @@ export default function DashboardPage() {
               >
                 <StatNum value={enrExpired} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentExpired')}
               </DashboardStatBadgeLink>
+              <Tooltip content={t('dashboard:stats.enrollmentInvalidHelp')}>
+                <DashboardStatBadgeLink
+                  to={buildEnrollmentsDrilldownUrl({ bucket: 'invalid' })}
+                  variant={(enrInvalid ?? 0) > 0 ? 'error' : 'muted'}
+                  ariaLabel={t('dashboard:drilldown.enrollmentsInvalid')}
+                >
+                  <StatNum value={enrInvalid} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentInvalid')}
+                </DashboardStatBadgeLink>
+              </Tooltip>
               <DashboardStatBadgeLink
-                to={buildEnrollmentsDrilldownUrl({ bucket: 'incidents' })}
-                variant={(enrIncidents ?? 0) > 0 ? 'error' : 'muted'}
-                ariaLabel={t('dashboard:drilldown.enrollmentsIncidents')}
+                to={buildEnrollmentsDrilldownUrl({ bucket: 'revoked' })}
+                variant="muted"
+                ariaLabel={t('dashboard:drilldown.enrollmentsRevoked')}
               >
-                <StatNum value={enrIncidents} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentIncidents')}
+                <StatNum value={enrRevoked} isLoading={overviewLoading} /> {t('dashboard:stats.enrollmentRevoked')}
               </DashboardStatBadgeLink>
             </div>
           </StatCard>

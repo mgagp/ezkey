@@ -3,11 +3,13 @@
 ## Metadata
 
 - **ID:** `I-2026-0030`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-06-28`
-- **Updated at:** `2026-06-28`
-- **Last reviewed at:** `2026-06-28`
+- **Updated at:** `2026-07-05`
+- **Last reviewed at:** `2026-07-05`
+- **Closed at:** `2026-07-05`
+- **GitHub branch:** `feature/i-2026-0030-dashboard-widget-signal-model`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `admin-ui`, `admin-api`, `docs (product-docs)`
 - **Feature anchor:** Admin UI operator experience (dashboard entry surface)
@@ -80,11 +82,39 @@ See
   enrollments bucket queries).
 - **R4:** EN/FR i18n parity for relabeled badges and tooltips (`invalid`, `revoked`).
 
-## Promotion notes
+## Closeout (2026-07-05)
 
-- **Next step:** promote **`TB-*`** when an implementation slot opens (Pass A → C in one or split TBs).
-- **Blocker for `I-2026-0007` TB:** complete Pass A + Pass C of this slice first (G9).
-- **Suggested TB title:** Admin Dashboard enrollment badge split + signal-model doc.
+**Delivery path:** program slice closed on **`I-*` only** (no retroactive `TB-*` — acceptable latitude
+when grill + `I-*` already carry decisions and evidence).
+
+### Delivered
+
+| Pass | Outcome |
+|------|---------|
+| **A** | Split enrollment dashboard buckets: `invalid` (error if > 0) + `revoked` (muted); retired combined `incidents`. Backend `EnrollmentDashboardStats` / `DashboardEnrollmentStatsDto`; UI drilldowns; EN/FR i18n. |
+| **B** | Statu quo (integrations + auth widgets unchanged). |
+| **C** | [`dashboard-widget-signal-model.md`](../../../components/admin-ui/dashboard-widget-signal-model.md) + wireflow cross-link. |
+
+### Validation evidence
+
+- Maven baseline (`install -DskipTests`) — pass
+- `EnrollmentDashboardStatsTest`, `DashboardServiceTest` — pass
+- Admin API container rebuild + `update-specs --admin-only` + Orval regen — pass
+- `npm run build` (admin-ui) — pass
+- Maintainer manual exploratory (dashboard badges + drilldowns EN/FR) — OK
+
+### Residual risks / deferred
+
+- No Playwright coverage for enrollment badge drilldowns (low risk; manual pass sufficient for Lane C).
+- Pass B copy/tooltip polish for integrations/auth not revisited (grill statu quo).
+
+### GitHub issue posture
+
+**Canon sufficient** — no GitHub issue opened (Lane C, single monorepo PR).
+
+### Unblocks
+
+- **`I-2026-0007`** integrity widget follow-ups no longer blocked by G9 (Wave B B3 widgets already shipped; signal-model doc now canonical for future dashboard work).
 
 ## Links
 
@@ -94,3 +124,4 @@ See
 - Prior enrollment widget: `.cursor/plans/archived/2026-04/dashboard_enrollment_widget_1aaa3560.plan.md`
 - Future widgets: [`I-2026-0007-admin-dashboard-integrity-widgets.md`](I-2026-0007-admin-dashboard-integrity-widgets.md)
 - Code: [`../../../../ezkey-admin-ui/src/pages/dashboard.tsx`](../../../../ezkey-admin-ui/src/pages/dashboard.tsx)
+- Signal model: [`../../../components/admin-ui/dashboard-widget-signal-model.md`](../../../components/admin-ui/dashboard-widget-signal-model.md)
