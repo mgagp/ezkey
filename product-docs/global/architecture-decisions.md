@@ -22,6 +22,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0003](#adr-0003-rfc9457-as-external-error-contract) | RFC 9457 Problem Details as external error contract | accepted | 2025-09-01 |
 | [ADR-0004](#adr-0004-lifecycle-without-persistent-cascade) | Lifecycle without persistent downstream cascade | accepted | 2026-01-15 |
 | [ADR-0005](#adr-0005-audit-log-hmac-badge-detail-session-sync) | Audit log HMAC badge — detail verify seeds list session | accepted | 2026-07-03 |
+| [ADR-0006](#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519) | Dual signing algorithms: EC P-256 device, Ed25519 integration | accepted | 2025-07-20 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -222,3 +223,51 @@ second full-range action for every row.
 
 - Extends B2.5 investigation session cache; refines post-reconcile UX from B2.6 D5.
 
+## ADR-0006 — Dual signing algorithms: EC P-256 device, Ed25519 integration
+
+### Metadata
+
+- **ID:** ADR-0006.
+- **Date:** 2025-07-20.
+- **Status:** accepted.
+- **Scope:** global.
+- **Owners:** Platform architecture.
+
+### Context
+
+Early Ezkey enrollment used RSA-2048, then Ed25519 for both integration and device keys. Mobile clients initially signed with Ed25519 in software, which did not map cleanly to platform keystore best practices (Android Keystore / StrongBox, iOS Keychain). Device signing was moved to **EC P-256 (secp256r1) with ECDSA-SHA256** for hardware-backed key isolation.
+
+Integration keys are **server-held** (encrypted at rest on the backend). They sign bind, pending, and respond-result payloads that the mobile **verifies** but does not generate. Uniformly adopting EC P-256 for integration would add ECDSA wire complexity (DER signatures, low-S normalization) without keystore benefit.
+
+### Decision
+
+The protocol uses **two signing contexts**:
+
+- **Device** (per enrollment, platform keystore): **EC P-256 / ECDSA-SHA256** — SPKI public key, DER signatures (standard Base64 on the wire).
+- **Integration** (per enrollment, server-held): **Ed25519** — raw 32-byte public key and raw 64-byte signatures (**Base64URL without padding** on the wire). Phase 1 requires `integrationKeyAlgorithm: "ed25519"`.
+
+Canonical wire formats and payload rules live in [`../../docs/CRYPTO.md`](../../docs/CRYPTO.md), [`../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), and [`../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md).
+
+### Alternatives Considered
+
+- **Ed25519 for both device and integration.** Rejected for device — poor fit with native mobile keystore signing paths at the time of the decision; device keys must stay non-exportable in platform secure storage.
+- **EC P-256 for both device and integration.** Rejected for integration — no keystore gain on the server; loses compact Ed25519 wire format and reintroduces ECDSA interoperability concerns on every integration-signed JSON field.
+- **Single algorithm everywhere for narrative simplicity.** Rejected — conflates two trust boundaries (device participant vs integrating backend) and optimizes the wrong layer.
+
+### Consequences
+
+- **Positive.** Device keys align with platform secure storage; integration signatures stay compact, deterministic, and JDK-native; mobile verifies integration Ed25519 without holding integration private keys.
+- **Negative.** Operators and integrators must understand two algorithm columns in protocol docs; SDKs and tests must implement both paths.
+- **Neutral.** Both families are pre-quantum elliptic-curve schemes; post-quantum migration would be a separate, protocol-wide effort.
+
+### Impact
+
+- All components involved in enrollment and authentication.
+- [`F-enrollment-bind-verify`](features-and-phases.md#f-enrollment-bind-verify), [`F-auth-pending-respond`](features-and-phases.md#f-auth-pending-respond).
+- Component: [mobile ADR-MOB-0002](../components/mobile/design-decisions.md#adr-mob-0002-ec-p256-keys-on-native-keystore), [mobile ADR-MOB-0003](../components/mobile/design-decisions.md#adr-mob-0003-fail-closed-on-signature-checks).
+
+### Related Decisions
+
+- Refines [ADR-0001](#adr-0001-backend-first-cryptographic-protocol) with concrete algorithm choices.
+- Device keystore detail: [ADR-MOB-0002](../components/mobile/design-decisions.md#adr-mob-0002-ec-p256-keys-on-native-keystore).
+- Fail-closed integration algorithm check: [ADR-MOB-0003](../components/mobile/design-decisions.md#adr-mob-0003-fail-closed-on-signature-checks).

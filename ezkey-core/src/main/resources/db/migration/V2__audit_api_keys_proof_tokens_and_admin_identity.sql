@@ -474,17 +474,16 @@ COMMENT ON COLUMN ezkey_enrollment.integration_public_key IS 'Ed25519 public key
 -- Update device_public_key column comment
 COMMENT ON COLUMN ezkey_enrollment.device_public_key IS 'Ed25519 public key from mobile device (32 bytes raw, Base64 encoded) - used to verify signatures from device during authentication attempts, set during binding process.';
 
--- Migration: Replace Ed25519 with EC P-256
--- Description: Updates column comments to reflect EC P-256 instead of Ed25519.
--- This migration aligns the backend with the mobile application's native hardware-backed cryptography.
+-- Migration: Device public key wire format — EC P-256 (secp256r1)
+-- Description: Updates device_public_key comment to EC P-256 SPKI (platform keystore wire format).
+-- Integration keys remain Ed25519 (integration_* comments above). See ADR-0006 and docs/CRYPTO.md.
 
--- Update table comment
-COMMENT ON TABLE ezkey_enrollment IS 'Device enrollment table establishing cryptographic binding between integration, user, and mobile device. Contains EC P-256 key pairs and tracks enrollment lifecycle from creation through verification. Each enrollment enables authentication attempts and includes security configuration like challenge requirements.';
+COMMENT ON TABLE ezkey_enrollment IS 'Device enrollment table establishing cryptographic binding between integration, user, and mobile device. Contains Ed25519 integration signing keys (server-held) and EC P-256 device keys (platform keystore). Tracks enrollment lifecycle from creation through verification. Each enrollment enables authentication attempts and includes security configuration like challenge requirements.';
 
--- Update column comments
-COMMENT ON COLUMN ezkey_enrollment.integration_private_key IS 'EC P-256 private key for integration-side cryptographic operations (PKCS#8 format, Base64 encoded) - SENSITIVE DATA requiring encryption at rest and secure handling. Used by backend to sign authAttemptProofToken for mutual authentication.';
+-- Re-assert integration key comments (Ed25519 unchanged; not migrated to EC P-256)
+COMMENT ON COLUMN ezkey_enrollment.integration_private_key IS 'Ed25519 private key (PKCS#8, Base64 encoded) for integration-side cryptographic operations - SENSITIVE DATA requiring encryption at rest and secure handling. Used by backend to sign enrollment bind, auth pending, and respond-result payloads.';
 
-COMMENT ON COLUMN ezkey_enrollment.integration_public_key IS 'EC P-256 public key for integration-side operations (X.509 SubjectPublicKeyInfo format, Base64 encoded) - corresponding public key for integration_private_key, safe to expose. Used by mobile app to verify backend signatures (authAttemptProofTokenSignedByIntegration).';
+COMMENT ON COLUMN ezkey_enrollment.integration_public_key IS 'Ed25519 public key for integration-side operations (raw 32 bytes, Base64URL on wire) - corresponding public key for integration_private_key, safe to expose. Used by mobile app to verify backend integration signatures.';
 
-COMMENT ON COLUMN ezkey_enrollment.device_public_key IS 'EC P-256 public key from mobile device (X.509 SubjectPublicKeyInfo format, Base64 encoded) - used to verify signatures from device during authentication attempts, set during binding process.';
+COMMENT ON COLUMN ezkey_enrollment.device_public_key IS 'EC P-256 public key from mobile device (X.509 SubjectPublicKeyInfo format, Base64 encoded) - used to verify ECDSA-SHA256 signatures from device during enrollment verify and authentication respond, set during binding process.';
 
