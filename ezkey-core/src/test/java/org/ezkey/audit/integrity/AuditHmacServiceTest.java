@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -94,6 +95,27 @@ class AuditHmacServiceTest {
     noKeyService.init();
 
     assertFalse(noKeyService.isActive());
+  }
+
+  @Test
+  void init_whenRequiredAndNoKeyFile_throws() {
+    AuditHmacProperties required = new AuditHmacProperties();
+    required.setEnabled(true);
+    required.setRequired(true);
+    required.setHmacKeyFile(null);
+    AuditHmacService requiredService = new AuditHmacService(required);
+
+    assertThrows(IllegalStateException.class, requiredService::init);
+  }
+
+  @Test
+  void init_whenRequiredAndIntegrityDisabled_throws() {
+    AuditHmacProperties required = new AuditHmacProperties();
+    required.setEnabled(false);
+    required.setRequired(true);
+    AuditHmacService requiredService = new AuditHmacService(required);
+
+    assertThrows(IllegalStateException.class, requiredService::init);
   }
 
   @Test

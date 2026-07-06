@@ -153,11 +153,17 @@ When generating Javadoc for any class, especially exception handlers:
  * and automatically picked up by Spring's exception handling mechanism.
  *
  * @author Ezkey contributors
- * @since 2025
+ * @since 2026
  * @see ExceptionHandlerBase
  * @see org.springframework.http.ProblemDetail
  */
 ```
+
+---
+
+## `@since` tag (new types only)
+
+When introducing a **new** public type, set `@since` to the **calendar year of authorship** (e.g. `@since 2026` in 2026). Do not retroactively rewrite `@since` on existing types.
 
 ---
 

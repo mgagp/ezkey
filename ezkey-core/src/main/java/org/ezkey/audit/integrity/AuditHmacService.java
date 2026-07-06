@@ -84,7 +84,12 @@ public class AuditHmacService {
   @PostConstruct
   void init() {
     if (!properties.isEnabled()) {
-      logger.info("Audit HMAC integrity signing is disabled");
+      if (properties.isRequired()) {
+        throw new IllegalStateException(
+            "Audit HMAC integrity is required (ezkey.audit.integrity.required=true) but"
+                + " ezkey.audit.integrity.enabled=false");
+      }
+      logger.info("Audit HMAC integrity signing is disabled by configuration");
       return;
     }
 
@@ -93,6 +98,7 @@ public class AuditHmacService {
       logger.warn(
           "Audit HMAC key file not configured (ezkey.audit.integrity.hmac-key-file). "
               + "HMAC signing will be disabled. Configure a key file for SOC 2 compliance.");
+      enforceRequiredIntegrity();
       return;
     }
 
@@ -111,6 +117,7 @@ public class AuditHmacService {
             "Audit HMAC key is too short ({} bytes). Minimum 32 bytes (256 bits) required. "
                 + "HMAC signing will be disabled.",
             keyBytes.length);
+        enforceRequiredIntegrity();
         return;
       }
 
@@ -120,10 +127,35 @@ public class AuditHmacService {
           keyBytes.length,
           properties.getInstanceId() != null ? properties.getInstanceId() : "default");
     } catch (IOException e) {
-      logger.error("Failed to read audit HMAC key file: {}. HMAC signing disabled.", keyFilePath);
+      logger.error(
+          "Failed to read audit HMAC key file: {}. HMAC signing disabled.", keyFilePath, e);
     } catch (IllegalArgumentException e) {
       logger.error(
-          "Invalid Base64 in audit HMAC key file: {}. HMAC signing disabled.", keyFilePath);
+          "Invalid Base64 in audit HMAC key file: {}. HMAC signing disabled.", keyFilePath, e);
+    }
+
+    enforceRequiredIntegrity();
+  }
+
+  /**
+   * Fails startup when audit HMAC integrity is marked required but signing is not active (SEC-008).
+   *
+   * @throws IllegalStateException when {@code ezkey.audit.integrity.required=true} and HMAC is not
+   *     active
+   */
+  void enforceRequiredIntegrity() {
+    if (!properties.isRequired()) {
+      return;
+    }
+    if (!properties.isEnabled()) {
+      throw new IllegalStateException(
+          "Audit HMAC integrity is required (ezkey.audit.integrity.required=true) but"
+              + " ezkey.audit.integrity.enabled=false");
+    }
+    if (!isActive()) {
+      throw new IllegalStateException(
+          "Audit HMAC integrity is required (ezkey.audit.integrity.required=true) but signing is"
+              + " not active. Verify hmac-key-file configuration and startup logs.");
     }
   }
 

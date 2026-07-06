@@ -26,7 +26,7 @@
 
 ### Documentation & Comments
 - [ ] **Javadoc**: Complete documentation for all public methods with `@param`, `@return`, `@throws`
-- [ ] **Class Headers**: Include `@since 2025` and project header
+- [ ] **Class Headers**: Include `@since` with the current calendar year for new types, plus project header
 - [ ] **Comments**: Explain "why" not "what", especially for complex business logic
 - [ ] **API Documentation**: OpenAPI/Swagger annotations where applicable
 

@@ -124,6 +124,11 @@ public class TinkKeyManager implements KeyManagementOperations {
   @PostConstruct
   public void initialize() {
     if (!properties.isEnabled()) {
+      if (properties.isRequired()) {
+        throw new IllegalStateException(
+            "Tink encryption is required (ezkey.encryption.required=true) but"
+                + " ezkey.encryption.enabled=false");
+      }
       logger.info("Tink encryption is disabled via configuration");
       return;
     }
@@ -224,6 +229,30 @@ public class TinkKeyManager implements KeyManagementOperations {
           "Failed to initialize Tink encryption. Encryption will be disabled. "
               + "Application will continue without encryption at rest.",
           e);
+    }
+
+    enforceRequiredEncryption();
+  }
+
+  /**
+   * Fails startup when encryption is marked required but Tink did not initialize (SEC-002).
+   *
+   * @throws IllegalStateException when {@code ezkey.encryption.required=true} and encryption is not
+   *     ready
+   */
+  void enforceRequiredEncryption() {
+    if (!properties.isRequired()) {
+      return;
+    }
+    if (!properties.isEnabled()) {
+      throw new IllegalStateException(
+          "Tink encryption is required (ezkey.encryption.required=true) but"
+              + " ezkey.encryption.enabled=false");
+    }
+    if (!isInitialized()) {
+      throw new IllegalStateException(
+          "Tink encryption is required (ezkey.encryption.required=true) but initialization failed."
+              + " Verify master key file, keyset configuration, and startup logs.");
     }
   }
 
