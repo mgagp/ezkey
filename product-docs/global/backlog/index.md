@@ -14,8 +14,8 @@ This index provides a lightweight list of active ideas and their current state.
 ([`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md)).
 Dashboard widget signal model **done** — [`I-2026-0030`](ideas/I-2026-0030-admin-dashboard-widget-signal-model-review.md)
 (enrollment invalid/revoked split + signal-model doc; closed on `I-*` without retroactive `TB-*`).
+Audit chain checkpoints matrix row **done** — [`TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish.md`](backlog/TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish.md) (Wave C closed).
 Wave B closeout ML:
-[`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
 ## Active ideas
 
