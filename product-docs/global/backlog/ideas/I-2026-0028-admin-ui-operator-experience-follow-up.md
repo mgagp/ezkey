@@ -44,8 +44,9 @@ All queued items through **P4** and **detail FK editorial parity** are **shipped
 The operator-list / investigation / detail-link posture for Tier A and Tier B surfaces in the matrix
 is **complete** for this program slice.
 
-**Residual (optional future slices, not blockers):** matrix rows still `draft` — **alerts** (deferred
-pending integrity cluster), audit chain checkpoints. Encryption keys + re-encryption batches **done**
+**Residual (optional future slices, not blockers):** matrix row **audit chain checkpoints** — **done**
+(Wave C, [`TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish`](../TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish.md)).
+Encryption keys + re-encryption batches **done**
 (2026-06-28, `I-2026-0002` / PR #265). See
 [`operational-readiness-prioritization-2026-09.md`](../../operational-readiness-prioritization-2026-09.md).
 
@@ -82,6 +83,7 @@ or incident patterns change.
 | **P2** | **Audit logs** — selective name joins | B | API + UI | Large | High | **Done** — TB `TB-2026-06-23-admin-ui-audit-logs-tier-b-labels`, #258, PR #259 |
 | **P3** | **Encryption keys** + **re-encryption batches** | A | API + UI | Medium | Low | **Done** — `I-2026-0002` / TB `TB-2026-06-27-admin-ui-encryption-reencryption-async`, #264, PR #265 (async 202 triggers) |
 | **P3** | **Alerts** list | A | Analysis → UI polish | Small | Low | **Done** — TB [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-2026-07-03-admin-ui-alerts-list-polish.md) (Wave C list summary + filters). |
+| **P3** | **Audit chain checkpoints** embedded timeline | B | UI polish | Small | Low | **Done** — TB [`TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish`](../TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish.md) (Wave C). |
 | **P3** | **Tenant detail → admins** embedded list | A | UI consistency | Small | Low | **Done** — ID column + `adminListDetailHref` (PR #259) |
 | **P4** | **Retire « More details / Plus de détails »** (`RelatedDetailsButton`, `useExpandableRelatedDetails`) | A/B | UI removal + doc | Medium | Medium | **Done** — TB [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md) |
 
@@ -122,8 +124,8 @@ When starting a row:
 2. Update matrix row status.
 3. Optional GitHub issue for PR visibility only.
 
-Suggested **next slice:** [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-2026-07-03-admin-ui-alerts-list-polish.md)
-(Wave C); then audit chain checkpoints matrix row.
+Suggested **next slice:** none — Wave C operator-list residuals complete (2026-07-05). See
+[`operational-readiness-prioritization-2026-09.md`](../../operational-readiness-prioritization-2026-09.md) for release compass.
 
 ## Links
 
@@ -141,8 +143,8 @@ Suggested **next slice:** [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-20
 - P3 encryption (spin-out from this program): [`I-2026-0002`](I-2026-0002-reencryption-batch-async-button.md) **done** —
   [`TB-2026-06-27-admin-ui-encryption-reencryption-async`](../TB-2026-06-27-admin-ui-encryption-reencryption-async.md),
   PR #265, ML [`ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md`](../method-logs/ML-2026-06-28-admin-ui-encryption-reencryption-async-closeout.md)
-- Next (Wave C): **alerts** — [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-2026-07-03-admin-ui-alerts-list-polish.md);
-  audit chain checkpoints — see [`operational-readiness-prioritization-2026-09.md`](../../operational-readiness-prioritization-2026-09.md)
+- Wave C closed (2026-07-05): alerts — [`TB-2026-07-03-admin-ui-alerts-list-polish`](../TB-2026-07-03-admin-ui-alerts-list-polish.md);
+  checkpoints — [`TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish`](../TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish.md)
 - P4 closeout: [`TB-2026-06-23-admin-ui-retire-related-details`](../TB-2026-06-23-admin-ui-retire-related-details.md)
 - Detail FK parity: [`TB-2026-06-23-admin-ui-detail-fk-label-parity`](../TB-2026-06-23-admin-ui-detail-fk-label-parity.md)
 - Program closeout: [`method-logs/ML-2026-06-27-admin-ui-operator-experience-program-closeout.md`](../method-logs/ML-2026-06-27-admin-ui-operator-experience-program-closeout.md)

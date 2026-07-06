@@ -533,6 +533,13 @@ function CheckpointTypeBadge({ type }: { type?: string }) {
       </Tooltip>
     );
   }
+  if (type === 'MANIPULATION_CONCILIATION') {
+    return (
+      <Tooltip content={t('integrity.helpCheckpointManipulationConciliation')}>
+        <Badge variant="default">{t('integrity.checkpointTypeConciliation')}</Badge>
+      </Tooltip>
+    );
+  }
   return <span className="text-fg-muted">—</span>;
 }
 
@@ -668,7 +675,7 @@ function CheckpointTimelineTable({
                   <td className="px-3 py-2">
                     <CheckpointLifecycleStateBadge state={r.lifecycleState} />
                   </td>
-                  <td className="px-3 py-2 text-xs text-fg-muted max-w-32 truncate" title={r.notes ?? undefined}>
+                  <td className="px-3 py-2 text-xs text-fg-muted max-w-48 truncate" title={r.notes ?? undefined}>
                     {r.notes ?? '—'}
                   </td>
                 </tr>
@@ -727,6 +734,13 @@ function IntegrityPanel({
     }
   }, [focusCheckpointId]);
 
+  /** Dashboard / integrity deep links should surface the checkpoint timeline without an extra click. */
+  useEffect(() => {
+    if (expandFromQuery) {
+      setTimelineExpanded(true);
+    }
+  }, [expandFromQuery]);
+
   // ── Check results ──
   const [chainReport, setChainReport] = useState<ChainVerificationReport | null>(null);
   const [integrityReport, setIntegrityReport] = useState<IntegrityReport | null>(null);
@@ -764,6 +778,7 @@ function IntegrityPanel({
   const [timelineExpanded, setTimelineExpanded] = useState(false);
   const [checkpointRange, setCheckpointRange] = useState({ from: '', to: '' });
   const [checkpointTypeFilter, setCheckpointTypeFilter] = useState('');
+  const [hideEmptyWindows, setHideEmptyWindows] = useState(false);
   /** Focused gap from "Undeclared gaps for consultation" – highlights bordering checkpoints in timeline */
   const [focusedGap, setFocusedGap] = useState<{ gapStart: string; gapEnd: string; gapMinutes: number } | null>(null);
   const [gapsListExpanded, setGapsListExpanded] = useState(true);
@@ -834,9 +849,16 @@ function IntegrityPanel({
         windowStartAfter: start.toISOString(),
         windowStartBefore: end.toISOString(),
         checkpointType: checkpointTypeFilter || undefined,
+        entryCountMin: hideEmptyWindows ? 1 : undefined,
       } as GetChainCheckpointsParams;
     }
-    if (!checkpointRange.from || !checkpointRange.to) return {};
+    const sharedFilters = {
+      checkpointType: checkpointTypeFilter || undefined,
+      entryCountMin: hideEmptyWindows ? 1 : undefined,
+    };
+    if (!checkpointRange.from || !checkpointRange.to) {
+      return sharedFilters as GetChainCheckpointsParams;
+    }
     const { createdAfter, createdBefore } = dateRangeToApiParams(
       checkpointRange.from,
       checkpointRange.to,
@@ -845,9 +867,9 @@ function IntegrityPanel({
     return {
       windowStartAfter: createdAfter,
       windowStartBefore: createdBefore,
-      checkpointType: checkpointTypeFilter || undefined,
+      ...sharedFilters,
     } as GetChainCheckpointsParams;
-  }, [focusedGap, checkpointRange.from, checkpointRange.to, checkpointTypeFilter, effectiveTimeZoneId]);
+  }, [focusedGap, checkpointRange.from, checkpointRange.to, checkpointTypeFilter, hideEmptyWindows, effectiveTimeZoneId]);
 
   const {
     data: checkpointData,
@@ -855,7 +877,13 @@ function IntegrityPanel({
     isLoading: checkpointLoading,
     refetch: refetchCheckpoints,
   } = usePaginatedFromOrval<AuditChainCheckpointResponseDto, GetChainCheckpointsParams>({
-    queryKey: [...queryKeys.auditChainCheckpoints, checkpointApiParams.windowStartAfter ?? '', checkpointApiParams.windowStartBefore ?? '', checkpointApiParams.checkpointType ?? ''],
+    queryKey: [
+      ...queryKeys.auditChainCheckpoints,
+      checkpointApiParams.windowStartAfter ?? '',
+      checkpointApiParams.windowStartBefore ?? '',
+      checkpointApiParams.checkpointType ?? '',
+      checkpointApiParams.entryCountMin ?? '',
+    ],
     baseParams: checkpointApiParams,
     fetchPage: (params) =>
       getChainCheckpoints(params as GetChainCheckpointsParams) as Promise<PagedModelAuditChainCheckpointResponseDto>,
@@ -1636,8 +1664,18 @@ function IntegrityPanel({
                       <option value="REGULAR">{t('integrity.typeRegular')}</option>
                       <option value="ARCHIVE_SEAL">{t('integrity.typeArchiveSeal')}</option>
                       <option value="GAP_DECLARATION">{t('integrity.typeGapDeclaration')}</option>
+                      <option value="MANIPULATION_CONCILIATION">{t('integrity.typeManipulationConciliation')}</option>
                     </Select>
                   </div>
+                  <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-accent"
+                      checked={hideEmptyWindows}
+                      onChange={(e) => setHideEmptyWindows(e.target.checked)}
+                    />
+                    {t('integrity.hideEmptyWindows')}
+                  </label>
                   <Button size="sm" variant="secondary" onClick={() => refetchCheckpoints()} className="gap-1.5">
                     <ListOrdered className="size-3.5" />
                     {t('list.refresh')}

@@ -132,12 +132,16 @@ stop/start scenarios).
 
 **Exit gate for Wave B:** met for R1 implementation; runtime soak continues on EXP1.
 
-### Wave C — Operator UI residuals (**priority now**)
+### Wave C — Operator UI residuals (**closed** 2026-07-05)
 
 - Alerts list matrix → `implemented` (TB
-  [`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md) — **done** Wave C).
-- Audit chain checkpoints matrix row.
+  [`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md) — **done**).
+- Dashboard widget signal model → `I-2026-0030` / PR #291 — **done**.
+- Audit chain checkpoints matrix row → TB
+  [`TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish.md`](backlog/TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish.md) — **done** (last Wave C slice).
 - Any manual resolve/snooze UI **only if** API contracts exist (today: auto-resolve only).
+
+**Wave C exit gate:** met when checkpoints TB merges and matrix row is `implemented`.
 
 ### Wave D — EXP1 soak & simulation (after Wave B gate)
 
