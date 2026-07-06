@@ -83,6 +83,10 @@ EC P-256 key pairs are generated and held on the native keystore (`Android Keyst
 - All enrollment and authentication flows that require device signatures.
 - Reference: [`../../../ezkey_mobile/docs/NATIVE_MODULES.md`](../../../ezkey_mobile/docs/NATIVE_MODULES.md).
 
+### Related Decisions
+
+- Global: [ADR-0006](../../global/architecture-decisions.md#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519) (integration remains Ed25519; this ADR covers device signing only).
+
 ## ADR-MOB-0003 — Fail-closed on signature and algorithm checks
 
 ### Metadata

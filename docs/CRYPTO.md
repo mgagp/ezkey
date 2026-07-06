@@ -11,6 +11,8 @@ Ezkey uses **two** distinct signing contexts:
 
 The mobile app verifies **integration** signatures with **Ed25519** (`IntegrationKeyVerifier` on Android uses JCA `Signature.getInstance("Ed25519")` with **Conscrypt** registered for consistent behaviour across API levels). **Device** signing and verification remain **EC P-256** via Android Keystore / platform APIs.
 
+**Decision record:** [ADR-0006](../product-docs/global/architecture-decisions.md#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519) (why device and integration use different algorithms).
+
 ## Device: EC P-256 (secp256r1)
 
 ### Key generation
