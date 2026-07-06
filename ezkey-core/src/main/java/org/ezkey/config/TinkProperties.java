@@ -17,6 +17,12 @@ public class TinkProperties {
   /** Enable/disable encryption at rest. If disabled, encryption will be skipped. */
   private boolean enabled = true;
 
+  /**
+   * When true, the application fails to start if encryption is enabled in configuration but Tink
+   * cannot initialize (SEC-002). Default false preserves backward-compatible degraded mode.
+   */
+  private boolean required = false;
+
   /** Path to the master key file (Base64-encoded 256-bit key). */
   private String masterKeyFile;
 
@@ -38,6 +44,14 @@ public class TinkProperties {
 
   public void setEnabled(boolean enabled) {
     this.enabled = enabled;
+  }
+
+  public boolean isRequired() {
+    return required;
+  }
+
+  public void setRequired(boolean required) {
+    this.required = required;
   }
 
   public String getMasterKeyFile() {

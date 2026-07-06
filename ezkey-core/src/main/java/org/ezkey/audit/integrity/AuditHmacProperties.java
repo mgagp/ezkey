@@ -50,6 +50,13 @@ public class AuditHmacProperties {
   private boolean enabled = true;
 
   /**
+   * When true, the application fails to start if integrity signing is enabled in configuration but
+   * the HMAC key cannot be loaded (SEC-008). Default false preserves backward-compatible degraded
+   * mode.
+   */
+  private boolean required = false;
+
+  /**
    * Path to the HMAC key file.
    *
    * <p>The file must contain a Base64-encoded 256-bit (32-byte) secret key used for HMAC-SHA256
@@ -82,6 +89,14 @@ public class AuditHmacProperties {
 
   public void setEnabled(boolean enabled) {
     this.enabled = enabled;
+  }
+
+  public boolean isRequired() {
+    return required;
+  }
+
+  public void setRequired(boolean required) {
+    this.required = required;
   }
 
   public String getHmacKeyFile() {

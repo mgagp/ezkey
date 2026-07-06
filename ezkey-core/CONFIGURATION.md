@@ -12,11 +12,13 @@ instance metadata. Applications that depend on ezkey-core declare these properti
 | Property | Docker env var | Default | Obligation |
 |---|---|---|---|
 | `ezkey.encryption.enabled` | — | `true` | optionnel |
+| `ezkey.encryption.required` | — | `false` | optionnel [prod] |
 | `ezkey.encryption.master-key-file` | — | *(null)* | requis [docker] |
 | `ezkey.encryption.keyset-file` | — | *(null)* | requis [docker] lors du mode FILE/HYBRID |
 | `ezkey.encryption.algorithm` | — | `AES256_GCM` | optionnel |
 | `ezkey.encryption.keyset.storage-mode` | — | `DATABASE` | optionnel |
 | `ezkey.audit.integrity.enabled` | — | `true` | optionnel |
+| `ezkey.audit.integrity.required` | — | `false` | optionnel [prod] |
 | `ezkey.audit.integrity.hmac-key-file` | — | *(null)* | requis [docker] |
 | `ezkey.audit.integrity.instance-id` | `EZKEY_INSTANCE_ID` | *(null)* | optionnel |
 | `ezkey.audit.chain.enabled` | — | `true` | optionnel |
@@ -80,6 +82,7 @@ Rotation and re-encryption jobs run **only in Admin API**; Auth API and Integrat
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.encryption.enabled` | `boolean` | `true` | optionnel | Enable/disable encryption at rest. |
+| `ezkey.encryption.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if encryption is enabled but Tink cannot initialize (SEC-002). |
 | `ezkey.encryption.master-key-file` | `String` | *(null)* | requis [docker] | Path to the Base64-encoded 256-bit master key file (e.g. `/etc/ezkey/secrets/master.key`). |
 | `ezkey.encryption.keyset-file` | `String` | *(null)* | requis [docker] en mode FILE/HYBRID | Path to the encrypted Tink keyset file (e.g. `/etc/ezkey/keysets/keyset.json.encrypted`). |
 | `ezkey.encryption.algorithm` | `String` | `AES256_GCM` | optionnel | AEAD algorithm. Accepted values: `AES256_GCM`, `CHACHA20_POLY1305`. |
@@ -148,6 +151,7 @@ concerns: integrity vs. confidentiality).
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.audit.integrity.enabled` | `boolean` | `true` | optionnel | Enable/disable HMAC signing of audit entries. Disable only in development. |
+| `ezkey.audit.integrity.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if integrity is enabled but HMAC signing is not active (SEC-008). |
 | `ezkey.audit.integrity.hmac-key-file` | `String` | *(null)* | requis [docker] | Path to the Base64-encoded 256-bit HMAC key file (e.g. `/etc/ezkey/secrets/audit-hmac.key`). |
 | `ezkey.audit.integrity.instance-id` | `String` | *(null)* | optionnel | Instance identifier for HA tracking (e.g. `admin-api-1`). Set from `EZKEY_INSTANCE_ID` env var. |
 
