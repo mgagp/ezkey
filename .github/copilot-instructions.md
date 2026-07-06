@@ -150,7 +150,7 @@ src/main/java/org/ezkey/{domain}/
  */
 ```
 
-- Always include `@since 2025` for new classes
+- For **new** classes, include `@since` with the **current calendar year** at authorship (e.g. `@since 2026` in 2026). Do not retroactively change `@since` on existing types.
 - Document all public methods with `@param`, `@return`, and `@throws` where applicable
 - Use descriptive comments that explain "why" not "what"
 
