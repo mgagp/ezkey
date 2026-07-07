@@ -71,9 +71,6 @@ public class ReencryptionTargetQueryService {
       case "auth_attempt_proof_token" ->
           authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
               keyPrefix, shardIndex, shardCount);
-      case "device_proof_token" ->
-          authAttemptRepository.countByEncryptedDeviceProofTokenLike(
-              keyPrefix, shardIndex, shardCount);
       default -> 0;
     };
   }
@@ -116,9 +113,6 @@ public class ReencryptionTargetQueryService {
     return switch (column) {
       case "auth_attempt_proof_token" ->
           authAttemptRepository.findEncryptedAuthAttemptProofTokenLike(
-              keyPrefix, lastId, shardIndex, shardCount, limit);
-      case "device_proof_token" ->
-          authAttemptRepository.findEncryptedDeviceProofTokenLike(
               keyPrefix, lastId, shardIndex, shardCount, limit);
       default -> List.of();
     };

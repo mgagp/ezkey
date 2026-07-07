@@ -156,12 +156,6 @@ public class EncryptionEntityListener implements ApplicationContextAware {
           "encryptedAuthAttemptProofToken",
           operations,
           () -> "auth attempt proof token for authAttempt " + authAttempt.getAuthAttemptId());
-      encryptField(
-          authAttempt,
-          "deviceProofToken",
-          "encryptedDeviceProofToken",
-          operations,
-          () -> "device proof token for authAttempt " + authAttempt.getAuthAttemptId());
     }
   }
 

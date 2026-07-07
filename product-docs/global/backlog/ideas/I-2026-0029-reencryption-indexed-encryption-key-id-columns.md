@@ -53,7 +53,7 @@ These constraints **narrow scope** and avoid accidental migration complexity:
   | `ezkey_enrollment` | `integration_private_key` | `integration_private_key_encryption_key_id` |
   | `ezkey_enrollment` | `enrollment_proof_token` | `enrollment_proof_token_encryption_key_id` |
   | `ezkey_auth_attempt` | `auth_attempt_proof_token` | `auth_attempt_proof_token_encryption_key_id` |
-  | `ezkey_auth_attempt` | `device_proof_token` | `device_proof_token_encryption_key_id` |
+  | ~~`ezkey_auth_attempt`~~ | ~~`device_proof_token`~~ | **Removed from scope** — ADR-0007 / `TB-2026-07-06`: hash-only (`device_proof_token_hash` only, no ciphertext column). |
 
 - **`FOREIGN KEY`** to `ezkey_encryption_key(key_id)` on each column.
 - **Composite indexes** `(encryption_key_id, primary_key)` per table/column target used in batch scans.

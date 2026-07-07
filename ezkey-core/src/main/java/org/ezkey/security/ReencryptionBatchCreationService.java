@@ -279,7 +279,6 @@ public class ReencryptionBatchCreationService {
 
     AuthAttempt authAttemptSample = new AuthAttempt();
     authAttemptSample.setEncryptedField("auth_attempt_proof_token", "PLACEHOLDER");
-    authAttemptSample.setEncryptedField("device_proof_token", "PLACEHOLDER");
 
     List<Reencryptable> sampleEntities = List.of(enrollmentSample, authAttemptSample);
 
