@@ -14,6 +14,25 @@ La fondation cryptographique d'Ezkey est solide. L'architecture backend-first es
 
 **Cependant**, ce challenge révèle plusieurs zones à risque réel qui méritent une attention proactive. La majorité des findings sont de gravité MOYENNE à HAUTE — pas de vulnérabilité critique permettant un compromis total sans conditions externes, mais des lacunes qui fragilisent la posture de sécurité perçue et réelle d'un produit MFA.
 
+### Statut d'implémentation (juillet 2026)
+
+| ID | Statut | Référence |
+|----|--------|-----------|
+| SEC-001 | **Fait** | PR #255 — challenge obligatoire sur `/passwordless-wait` |
+| SEC-002 | **Fait** | PR #293 — `encryption.required` + health Actuator Tink |
+| SEC-003 | **Fait** | PR #266 — Caffeine bounded sur maps rate limit admin |
+| SEC-004 | **Fait** | PR #266 — rate limit `/passwordless-wait` |
+| SEC-005 | **Adressé** | Rate limiting Auth API (`RateLimitFilter` pending/respond) — activer en prod via `ezkey.rate-limit.enabled=true` |
+| SEC-006 | **Fait** | PR #308 — login admin 401 générique (anti-énumération) |
+| SEC-007 | **Fait** | PR #297 — device proof token hash-only (V16) |
+| SEC-008 | **Fait** | PR #293 — `audit.integrity.required` + health HMAC |
+| SEC-009 | Ouvert | Contention `TinkKeyManager.getAeadPrimitive()` |
+| SEC-010 | Ouvert | Chiffrement at-rest du hash API key |
+| SEC-011 | En cours | `trusted-proxies.required` fail-fast au démarrage |
+| SEC-012–016 | Ouvert | Durcissement crypto / défense en profondeur (voir backlog) |
+
+Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–2 de la roadmap sont essentiellement closes ; la phase 3 (posture prod / SOC 2) est en cours.
+
 ### Top 3 risques à traiter en priorité
 
 | # | Finding | Impact | Complexité de fix |
@@ -487,7 +506,7 @@ Identique à F-07-A (dégradation Tink) mais pour la couche intégrité des logs
 
 **Impact :** Attribution incorrecte dans les logs d'audit. Un attaquant peut faire apparaître ses actions comme venant d'une IP interne ou d'un autre utilisateur.
 
-**Mitigation :** Valider que `TrustedProxyProperties.getCidrs()` n'est pas vide en production. Documenter explicitement que `trusted-proxies.cidrs` doit être configuré dans tous les déploiements derrière un reverse proxy.
+**Mitigation :** Valider que `TrustedProxyProperties.getCidrs()` n'est pas vide en production. Propriété `ezkey.trusted-proxies.required=true` (fail-fast au démarrage, SEC-011). Documenter explicitement que `trusted-proxies.cidrs` doit être configuré dans tous les déploiements derrière un reverse proxy.
 
 ---
 

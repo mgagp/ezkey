@@ -20,6 +20,7 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 | `ezkey.rate-limit.respond.window-minutes` | — | `5` | optionnel |
 | `ezkey.rate-limit.verify.requests` | — | `10` | optionnel |
 | `ezkey.rate-limit.bind.requests` | — | `10` | optionnel |
+| `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.demo.mitm-signature-enabled` | `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` | `false` | optionnel |
 | `ezkey.qr.auth-base-url` | `EZKEY_QR_AUTH_BASE_URL` | *(null)* | requis [docker] |
@@ -92,6 +93,7 @@ for the full description.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
+| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies. |
 
 ---

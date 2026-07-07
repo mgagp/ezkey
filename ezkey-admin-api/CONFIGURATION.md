@@ -28,6 +28,7 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 | `ezkey.api-key.rate-limit.enabled` | — | `true` | optionnel |
 | `ezkey.security.admin.max-global-admins` | — | `3` | optionnel |
 | `ezkey.admin.bootstrap.export.enabled` | — | `false` | optionnel |
+| `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 | `ezkey.admin.cors.allowed-origins` | `EZKEY_ADMIN_CORS_ALLOWED_ORIGINS` | *(empty list)* | optionnel |
 | `ezkey.evaluator.self-registration.enabled` | `EZKEY_EVALUATOR_SELF_REGISTRATION_ENABLED` | `false` | optionnel |
@@ -237,6 +238,7 @@ direct TCP connection originates from an IP in this list.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
+| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies (e.g. `10.0.0.0/8`, `172.16.0.0/12`). In Docker, set comma-separated **`EZKEY_TRUSTED_PROXIES_CIDRS`**. |
 
 **YAML example:**
