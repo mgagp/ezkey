@@ -23,6 +23,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0004](#adr-0004-lifecycle-without-persistent-cascade) | Lifecycle without persistent downstream cascade | accepted | 2026-01-15 |
 | [ADR-0005](#adr-0005-audit-log-hmac-badge-detail-session-sync) | Audit log HMAC badge — detail verify seeds list session | accepted | 2026-07-03 |
 | [ADR-0006](#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519) | Dual signing algorithms: EC P-256 device, Ed25519 integration | accepted | 2025-07-20 |
+| [ADR-0007](#adr-0007-proof-token-storage-hash-only-where-protocol-allows) | Proof token storage: hash-only where protocol allows | accepted | 2026-07-06 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -271,3 +272,78 @@ Canonical wire formats and payload rules live in [`../../docs/CRYPTO.md`](../../
 - Refines [ADR-0001](#adr-0001-backend-first-cryptographic-protocol) with concrete algorithm choices.
 - Device keystore detail: [ADR-MOB-0002](../components/mobile/design-decisions.md#adr-mob-0002-ec-p256-keys-on-native-keystore).
 - Fail-closed integration algorithm check: [ADR-MOB-0003](../components/mobile/design-decisions.md#adr-mob-0003-fail-closed-on-signature-checks).
+
+## ADR-0007 — Proof token storage: hash-only where protocol allows
+
+### Metadata
+
+- **ID:** ADR-0007.
+- **Date:** 2026-07-06.
+- **Status:** accepted (Tier 0 execution via `TB-2026-07-06-device-proof-token-hash-only`).
+- **Scope:** global (persistence + protocol).
+- **Owners:** Platform architecture / security.
+
+### Context
+
+Proof tokens on `ezkey_enrollment` and `ezkey_auth_attempt` are stored as **Tink-encrypted ciphertext
+plus SHA-256 hash**. Lookups and uniqueness checks already use hashes. A 2026 security protocol
+audit questioned whether recoverable storage is necessary for all token types, especially after
+encryption was found disabled in one environment. Admin bearer sessions already use **hash-only**
+storage (`bearer_token_hash`), matching the pattern: the server verifies `hash(incoming)` without
+ever storing recoverable secrets.
+
+The session-token analogy applies only when the server **never re-issues** the secret and does not
+need plaintext to rebuild canonical signature strings. Auth attempt **pending** must return
+`authAttemptProofToken` to the device (pull model); **respond** verifies `{proofToken}|{accepted}`
+using the stored server-side token because the device sends only a signature, not the plaintext token.
+
+### Decision
+
+Adopt a **tiered storage policy**:
+
+| Column | Storage | Rationale |
+| --- | --- | --- |
+| `device_proof_token` | **Hash only** (`device_proof_token_hash`) | Client-generated; server never reads stored plaintext; replay via hash uniqueness only |
+| `enrollment_proof_token` | **Encrypted + hash** (unchanged for now) | Admin re-read (QR, GET), verify/respond integration signing still decrypt from DB; Tier 1 optional program |
+| `auth_attempt_proof_token` | **Encrypted + hash** (unchanged) | Server must deliver token on pending and rebuild respond payloads without client echo |
+
+Execute Tier 0 immediately pre-production. Defer Tier 1 (enrollment show-once + verify request field)
+and Tier 2 (auth attempt protocol v2) to separate backlog slices under `I-2026-0032`.
+
+Use **SHA-256 hex** (via `SensitiveDataHasher`) for proof-token hashes — same as bearer tokens —
+not bcrypt, because lookup is by the token value itself.
+
+### Alternatives Considered
+
+- **Hash-only for all proof tokens now.** Rejected — breaks pending delivery and respond verification
+  for `auth_attempt_proof_token`; breaks Admin QR/GET for enrollment without product/protocol changes.
+- **Keep dual storage for device proof token.** Rejected for Tier 0 — no read path exists; SEC-007
+  already recommends hash-only; zero client impact.
+- **Deterministic token derivation instead of storage.** Rejected for auth attempt tokens — server
+  secret compromise exposes all attempts; random per-attempt tokens remain preferred.
+
+### Consequences
+
+- **Positive.** Tier 0 removes one encryptable column from breach and re-encryption scope; aligns
+  device proof token with bearer-token security posture; documents explicit limits of hash-only pattern.
+- **Negative.** Asymmetric storage rules require operator/docs clarity; `I-2026-0029` must drop
+  `device_proof_token` from indexed key-id targets.
+- **Neutral.** Enrollment and auth attempt proof tokens remain in Tink rotation until Tier 1/2.
+
+### Impact
+
+- **Affected components:** `core`, re-encryption subsystem, `auth-api` (behavior unchanged).
+- **Affected features:** [`F-auth-pending-respond`](features-and-phases.md#f-auth-pending-respond).
+- **Backlog:** [`I-2026-0032`](backlog/ideas/I-2026-0032-proof-token-hash-only-storage.md),
+  [`TB-2026-07-06`](backlog/TB-2026-07-06-device-proof-token-hash-only.md).
+
+### Validation
+
+- Tier 0: see [`TSP-2026-07-06-device-proof-token-hash-only.md`](backlog/test-plans/TSP-2026-07-06-device-proof-token-hash-only.md).
+- Manual: clean-start → pending claim → respond; DB hash present, no `device_proof_token` column.
+
+### Related Decisions
+
+- Admin bearer hash-only analysis: [`.cursor/plans/bearer_token_hash_storage_analysis.plan.md`](../../.cursor/plans/bearer_token_hash_storage_analysis.plan.md).
+- Dual signing payloads: [ADR-0006](#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519).
+- Incubation source: [`.cursor/plans/proof_token_hash-only_storage.plan.md`](../../.cursor/plans/proof_token_hash-only_storage.plan.md).
