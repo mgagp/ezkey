@@ -24,7 +24,7 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 
 ## Contract-First Rules
 
-- Orval is pinned at **8.15.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
+- Orval is pinned at **8.20.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
   no global `useQuery` / `useMutation`). Same Option B as Admin UI `TB-2026-05-28` checkpoints 8.10 / 8.11.
 - Never hand-edit `openapi-spec.json` in `ezkey_mobile/`.
 - Refresh specs only through the root scripts `scripts/update-specs.sh` or `scripts/update-specs.bat` after a human has started a clean Docker stack.
