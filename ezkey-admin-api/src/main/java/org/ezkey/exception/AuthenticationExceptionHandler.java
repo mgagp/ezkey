@@ -36,10 +36,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <p><b>Exceptions Handled (7 total):</b>
  *
  * <ul>
- *   <li><b>AdminAuthenticationException (401):</b> Invalid credentials (wrong username, invalid
- *       device, or device rejection)
- *   <li><b>AdminAccountInactiveException (403):</b> Administrator account or tenant is inactive
- *   <li><b>AdminNoEnrollmentException (403):</b> Administrator has no verified device enrollment
+ *   <li><b>AdminAuthenticationException (401):</b> Invalid credentials or login not permitted at
+ *       {@code /login} (generic message for pre-auth failures — SEC-006)
+ *   <li><b>AdminAccountInactiveException (403):</b> Reserved; login pre-auth failures are normalized
+ *       in {@link org.ezkey.admin.service.AdminAuthService}
+ *   <li><b>AdminNoEnrollmentException (403):</b> Reserved; login pre-auth failures are normalized
+ *       in {@link org.ezkey.admin.service.AdminAuthService}
  *   <li><b>AdminAuthenticationExpiredException (400):</b> Authentication attempt expired
  *   <li><b>AdminAuthenticationRejectedException (400):</b> Device explicitly rejected the request
  *   <li><b>AdminDeviceSignatureInvalidException (400):</b> Device signature validation failed

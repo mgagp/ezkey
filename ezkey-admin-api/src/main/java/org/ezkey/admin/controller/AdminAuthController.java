@@ -272,7 +272,8 @@ public class AdminAuthController {
    *   <li><b>401 Unauthorized:</b>
    *       <ul>
    *         <li>{@code https://ezkey.io/problems/authentication/invalid-credentials} - Username not
-   *             found or device signature validation failed
+   *             found, account not eligible for login, or device signature validation failed
+   *             (generic message — SEC-006 anti-enumeration)
    *       </ul>
    *   <li><b>400 Bad Request:</b>
    *       <ul>
@@ -282,13 +283,6 @@ public class AdminAuthController {
    *             rejected the authentication request
    *         <li>{@code https://ezkey.io/problems/authentication/invalid-signature} - Device
    *             signature validation failed
-   *       </ul>
-   *   <li><b>403 Forbidden:</b>
-   *       <ul>
-   *         <li>{@code https://ezkey.io/problems/authentication/account-inactive} - Administrator
-   *             account or tenant is deactivated
-   *         <li>{@code https://ezkey.io/problems/authentication/no-enrollment} - No device enrolled
-   *             for this administrator account
    *       </ul>
    *   <li><b>408 Request Timeout:</b>
    *       <ul>
@@ -337,9 +331,7 @@ public class AdminAuthController {
    * @return ResponseEntity containing authentication response with bearer token or challenge info
    *     (HTTP 200) on success, or error response (HTTP 400-408) on failure via
    *     GlobalExceptionHandler
-   * @throws AdminAuthenticationException (401) if username not found or device signature failed
-   * @throws AdminAccountInactiveException (403) if admin or tenant is deactivated
-   * @throws AdminNoEnrollmentException (403) if no device is enrolled
+   * @throws AdminAuthenticationException (401) if login is not permitted or credentials are invalid
    * @throws AdminAuthenticationExpiredException (400) if auth attempt is superseded or expired
    * @throws AdminAuthenticationRejectedException (400) if device rejects authentication
    * @throws AdminDeviceSignatureInvalidException (400) if device signature validation fails
@@ -370,13 +362,8 @@ public class AdminAuthController {
         @ApiResponse(
             responseCode = "401",
             description =
-                "Unauthorized - Invalid credentials (username not found). "
-                    + "Returns RFC 9457 ProblemDetail: type='...invalid-credentials'"),
-        @ApiResponse(
-            responseCode = "403",
-            description =
-                "Forbidden - Account inactive or no device enrolled. Returns RFC 9457"
-                    + " ProblemDetail: type='...account-inactive' or '...no-enrollment'"),
+                "Unauthorized - Invalid credentials or login not permitted (generic message; "
+                    + "SEC-006). Returns RFC 9457 ProblemDetail: type='...invalid-credentials'"),
         @ApiResponse(
             responseCode = "408",
             description =

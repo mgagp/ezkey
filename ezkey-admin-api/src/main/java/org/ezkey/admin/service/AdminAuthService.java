@@ -17,13 +17,11 @@ import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.dto.AdminAuthAuditContext;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
 import org.ezkey.admin.dto.response.AdminLoginResponseDto;
-import org.ezkey.admin.exception.AdminAccountInactiveException;
 import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.admin.exception.AdminAuthenticationExpiredException;
 import org.ezkey.admin.exception.AdminAuthenticationRejectedException;
 import org.ezkey.admin.exception.AdminAuthenticationTimeoutException;
 import org.ezkey.admin.exception.AdminDeviceSignatureInvalidException;
-import org.ezkey.admin.exception.AdminNoEnrollmentException;
 import org.ezkey.authattempt.domain.AuthAttemptCreateRequest;
 import org.ezkey.authattempt.domain.AuthAttemptCreateResponse;
 import org.ezkey.authattempt.domain.AuthAttemptWaitRequest;
@@ -31,7 +29,6 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.service.AuthAttemptService;
-import org.ezkey.exception.TenantInactiveException;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
@@ -74,6 +71,9 @@ public class AdminAuthService {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminAuthService.class);
 
+  /** Generic client-facing message for all pre-authentication login failures (SEC-006). */
+  private static final String GENERIC_LOGIN_FAILURE_MESSAGE = "Invalid username or password";
+
   private final EzkeyAdminRepository adminRepository;
   private final AdminTokenRepository tokenRepository;
   private final AdminTokenRotationProperties rotationProperties;
@@ -107,10 +107,8 @@ public class AdminAuthService {
    *
    * @param request the login request containing username and optional challenge flag
    * @return AdminLoginResponseDto with authentication result (success only)
-   * @throws AdminAuthenticationException if credentials are invalid (HTTP 401)
-   * @throws AdminAccountInactiveException if account is inactive (HTTP 403)
-   * @throws TenantInactiveException if tenant is inactive (HTTP 403)
-   * @throws AdminNoEnrollmentException if no device enrollment (HTTP 403)
+   * @throws AdminAuthenticationException if credentials are invalid or login is not permitted (HTTP
+   *     401; generic message — see SEC-006)
    * @throws AdminAuthenticationExpiredException if auth attempt expired (HTTP 400)
    * @throws AdminAuthenticationRejectedException if device rejected (HTTP 400)
    * @throws AdminDeviceSignatureInvalidException if signature invalid (HTTP 400)
@@ -154,10 +152,7 @@ public class AdminAuthService {
    * @param request the login request with username, optional challenge flag, and optional
    *     nonBlocking flag
    * @return AdminLoginResponseDto with bearer token or challenge/pending info
-   * @throws AdminAuthenticationException if credentials invalid (HTTP 401)
-   * @throws AdminAccountInactiveException if account inactive (HTTP 403)
-   * @throws TenantInactiveException if tenant inactive (HTTP 403)
-   * @throws AdminNoEnrollmentException if no enrollment (HTTP 403)
+   * @throws AdminAuthenticationException if credentials invalid or login not permitted (HTTP 401)
    * @throws AdminAuthenticationExpiredException if auth expired (HTTP 400)
    * @throws AdminAuthenticationRejectedException if device rejected (HTTP 400)
    * @throws AdminDeviceSignatureInvalidException if signature invalid (HTTP 400)
@@ -171,29 +166,25 @@ public class AdminAuthService {
     EzkeyAdmin admin =
         adminRepository
             .findByUsernameWithEnrollment(request.username())
-            .orElseThrow(() -> new AdminAuthenticationException("Invalid username or password"));
+            .orElseThrow(() -> new AdminAuthenticationException(GENERIC_LOGIN_FAILURE_MESSAGE));
 
     if (!admin.getActive()) {
-      throw new AdminAccountInactiveException("Account has been deactivated");
+      rejectPasswordlessLogin(admin.getUsername(), "account deactivated");
     }
 
     if (admin.getLifecycleStatus() == AdminLifecycleStatus.PENDING_ACTIVATION) {
-      throw new AdminAccountInactiveException(
-          "Account activation is still pending. Complete first-time setup before logging in.");
+      rejectPasswordlessLogin(admin.getUsername(), "account pending activation");
     }
 
     // Check if admin's tenant is active (tenant deactivation blocks login)
     if (admin.getTenant() != null && !admin.getTenant().getActive()) {
-      throw new TenantInactiveException(
-          "Your tenant has been deactivated. Contact your Ezkey administrator.");
+      rejectPasswordlessLogin(admin.getUsername(), "tenant deactivated");
     }
 
     // Passwordless is the ONLY mode - no flag to check
     // Just ensure enrollment exists and is bound
     if (admin.getEnrollment() == null || admin.getEnrollment().getDevicePublicKey() == null) {
-      logger.warn("No bound enrollment for passwordless auth: {}", admin.getUsername());
-      throw new AdminNoEnrollmentException(
-          "No device enrollment found for passwordless authentication");
+      rejectPasswordlessLogin(admin.getUsername(), "no bound device enrollment");
     }
 
     // 2. Create auth attempt in separate transaction that commits immediately
@@ -646,5 +637,17 @@ public class AdminAuthService {
     } catch (Exception e) {
       // Log error but don't throw exception
     }
+  }
+
+  /**
+   * Rejects passwordless login with a generic client message while logging the specific reason
+   * internally (SEC-006 anti-enumeration).
+   *
+   * @param username the username presented at login
+   * @param internalReason operator-safe internal detail for WARN logs and audit follow-up
+   */
+  private void rejectPasswordlessLogin(String username, String internalReason) {
+    logger.warn("Passwordless login rejected for user {}: {}", username, internalReason);
+    throw new AdminAuthenticationException(GENERIC_LOGIN_FAILURE_MESSAGE);
   }
 }
