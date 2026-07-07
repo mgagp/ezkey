@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.admin.dto.request.AdminLoginRequestDto;
-import org.ezkey.admin.exception.AdminAccountInactiveException;
+import org.ezkey.admin.exception.AdminAuthenticationException;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.service.AuthAttemptService;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
@@ -47,7 +47,7 @@ class AdminAuthServicePendingActivationTest {
   @InjectMocks private AdminAuthService adminAuthService;
 
   @Test
-  @DisplayName("authenticate rejects admins whose activation is still pending")
+  @DisplayName("authenticate rejects pending activation with generic login failure (SEC-006)")
   void authenticateRejectsPendingActivationAdmin() {
     EzkeyAdmin admin = new EzkeyAdmin("pending.admin", AdminType.TENANT_ADMIN);
     admin.setActive(true);
@@ -56,16 +56,14 @@ class AdminAuthServicePendingActivationTest {
     when(adminRepository.findByUsernameWithEnrollment("pending.admin"))
         .thenReturn(Optional.of(admin));
 
-    AdminAccountInactiveException exception =
+    AdminAuthenticationException exception =
         assertThrows(
-            AdminAccountInactiveException.class,
+            AdminAuthenticationException.class,
             () ->
                 adminAuthService.authenticate(
                     new AdminLoginRequestDto("pending.admin", false, false)));
 
-    assertEquals(
-        "Account activation is still pending. Complete first-time setup before logging in.",
-        exception.getMessage());
+    assertEquals("Invalid username or password", exception.getMessage());
     verify(adminRepository).findByUsernameWithEnrollment("pending.admin");
     verify(authAttemptTxHelper, never()).createAuthAttempt(org.mockito.ArgumentMatchers.any());
   }
