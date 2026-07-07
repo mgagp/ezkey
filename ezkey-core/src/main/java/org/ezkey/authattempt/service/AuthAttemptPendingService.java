@@ -45,8 +45,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li><b>Enrollment Proof Token Validation:</b> Prevents enumeration attacks
  *   <li><b>Device Signature Validation:</b> Ensures legitimate device access
  *   <li><b>Device Proof Token Uniqueness (on claim):</b> Once a {@code PENDING} attempt is
- *       successfully claimed, the device proof token is persisted on {@link AuthAttempt} and must
- *       not be reused on a later claim. If there is no pending attempt (HTTP 204 from the auth
+ *       successfully claimed, the device proof token hash is persisted on {@link AuthAttempt} and
+ *       must not be reused on a later claim. If there is no pending attempt (HTTP 204 from the
  *       API), no row is updated and the same signed device proof token may be used on subsequent
  *       polls—this is authenticated polling without a state change, not a gap in cryptographic
  *       verification.
@@ -240,8 +240,9 @@ public class AuthAttemptPendingService {
       throw new AuthAttemptStateConflictException("Authentication request failed");
     }
 
-    // Record the device proof token to ensure unicity and update status to READ
-    authAttempt.setDeviceProofToken(request.getDeviceProofToken());
+    // Record the device proof token hash to ensure unicity and update status to READ
+    String deviceProofTokenHash = SensitiveDataHasher.sha256Hex(request.getDeviceProofToken());
+    authAttempt.setDeviceProofTokenHash(deviceProofTokenHash);
     authAttempt.setAuthAttemptStatus(AuthAttemptStatus.READ);
     authAttemptRepository.save(authAttempt);
 

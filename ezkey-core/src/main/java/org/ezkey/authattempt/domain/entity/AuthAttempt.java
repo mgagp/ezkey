@@ -82,13 +82,9 @@ public class AuthAttempt implements Reencryptable {
 
   @Transient private String authAttemptProofToken;
 
-  @Column(name = "device_proof_token", columnDefinition = "TEXT")
-  private String encryptedDeviceProofToken;
-
+  /** SHA-256 hash of the client-generated device proof token (hash-only storage; ADR-0007). */
   @Column(name = "device_proof_token_hash", length = 128, unique = true)
   private String deviceProofTokenHash;
-
-  @Transient private String deviceProofToken;
 
   @Column(name = "context_title", length = 200)
   private String contextTitle;
@@ -258,49 +254,14 @@ public class AuthAttempt implements Reencryptable {
   }
 
   /**
-   * Gets the device proof token.
+   * Sets the SHA-256 hash of the device proof token captured at pending claim.
    *
-   * @return the device proof token
-   */
-  public String getDeviceProofToken() {
-    if (deviceProofToken != null) {
-      return deviceProofToken;
-    }
-
-    if (encryptedDeviceProofToken == null) {
-      return null;
-    }
-
-    EncryptionOperations operations = getEncryptionOperations();
-    if (operations != null && operations.isEncryptionAvailable()) {
-      if (operations.isEncrypted(encryptedDeviceProofToken)) {
-        try {
-          deviceProofToken = operations.decrypt(encryptedDeviceProofToken);
-          return deviceProofToken;
-        } catch (Exception exception) {
-          LoggerFactory.getLogger(AuthAttempt.class)
-              .warn(
-                  "Failed to decrypt device proof token for authAttemptId {}. Returning as-is.",
-                  authAttemptId,
-                  exception);
-          return encryptedDeviceProofToken;
-        }
-      }
-    }
-
-    deviceProofToken = encryptedDeviceProofToken;
-    return deviceProofToken;
-  }
-
-  /**
-   * Sets the device proof token.
+   * <p>Only the hash is persisted; the plaintext token is never stored (ADR-0007).
    *
-   * @param deviceProofToken the device proof token to set
+   * @param deviceProofTokenHash SHA-256 hex digest of the device proof token
    */
-  public void setDeviceProofToken(String deviceProofToken) {
-    this.deviceProofToken = deviceProofToken;
-    this.deviceProofTokenHash = SensitiveDataHasher.sha256Hex(deviceProofToken);
-    this.encryptedDeviceProofToken = deviceProofToken;
+  public void setDeviceProofTokenHash(String deviceProofTokenHash) {
+    this.deviceProofTokenHash = deviceProofTokenHash;
   }
 
   /**
@@ -424,10 +385,6 @@ public class AuthAttempt implements Reencryptable {
     return deviceProofTokenHash;
   }
 
-  public void setDeviceProofTokenHash(String deviceProofTokenHash) {
-    this.deviceProofTokenHash = deviceProofTokenHash;
-  }
-
   private EncryptionOperations getEncryptionOperations() {
     return EncryptionOperationsHolder.get();
   }
@@ -461,26 +418,17 @@ public class AuthAttempt implements Reencryptable {
     if (encryptedAuthAttemptProofToken != null) {
       fields.put("auth_attempt_proof_token", encryptedAuthAttemptProofToken);
     }
-    if (encryptedDeviceProofToken != null) {
-      fields.put("device_proof_token", encryptedDeviceProofToken);
-    }
     return fields;
   }
 
   @Override
   public void setEncryptedField(String columnName, String encryptedValue) {
-    switch (columnName) {
-      case "auth_attempt_proof_token":
-        this.encryptedAuthAttemptProofToken = encryptedValue;
-        this.authAttemptProofToken = null; // Clear transient to force re-decryption
-        break;
-      case "device_proof_token":
-        this.encryptedDeviceProofToken = encryptedValue;
-        this.deviceProofToken = null; // Clear transient to force re-decryption
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
+    if ("auth_attempt_proof_token".equals(columnName)) {
+      this.encryptedAuthAttemptProofToken = encryptedValue;
+      this.authAttemptProofToken = null; // Clear transient to force re-decryption
+      return;
     }
+    throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
   }
 
   @Override

@@ -630,21 +630,15 @@ class ReencryptionServiceTest {
   }
 
   @Test
-  @DisplayName("countRecordsEncryptedWithKey() - Should count AuthAttempt device_proof_token")
-  void countRecordsEncryptedWithKey_ShouldCountAuthAttemptDeviceProofToken() {
-    // Arrange
-    when(authAttemptRepository.countByEncryptedDeviceProofTokenLike(
-            eq("ENC:1111111111:%"), isNull(), isNull()))
-        .thenReturn(7);
-
+  @DisplayName(
+      "countRecordsEncryptedWithKey() - Should return 0 for removed device_proof_token column")
+  void countRecordsEncryptedWithKey_ShouldReturnZeroForRemovedDeviceProofTokenColumn() {
     // Act
     int count =
         invokeCountRecordsEncryptedWithKey("ezkey_auth_attempt", "device_proof_token", 1111111111L);
 
     // Assert
-    assertEquals(7, count);
-    verify(authAttemptRepository)
-        .countByEncryptedDeviceProofTokenLike(eq("ENC:1111111111:%"), isNull(), isNull());
+    assertEquals(0, count);
   }
 
   @Test
@@ -708,7 +702,7 @@ class ReencryptionServiceTest {
   }
 
   @Test
-  @DisplayName("discoverReencryptableTargets() - Should discover all AuthAttempt encrypted fields")
+  @DisplayName("discoverReencryptableTargets() - Should discover AuthAttempt encrypted fields")
   void discoverReencryptableTargets_ShouldDiscoverAuthAttemptFields() {
     // Act
     List<ReencryptionBatchCreationService.Target> targets = invokeDiscoverReencryptableTargets();
@@ -719,21 +713,19 @@ class ReencryptionServiceTest {
             new ReencryptionBatchCreationService.Target(
                 "ezkey_auth_attempt", "auth_attempt_proof_token")),
         "Should discover auth_attempt_proof_token");
-    assertTrue(
-        targets.contains(
-            new ReencryptionBatchCreationService.Target(
-                "ezkey_auth_attempt", "device_proof_token")),
-        "Should discover device_proof_token");
+    assertFalse(
+        targets.stream().anyMatch(t -> "device_proof_token".equals(t.column())),
+        "device_proof_token is hash-only and not re-encryptable");
   }
 
   @Test
-  @DisplayName("discoverReencryptableTargets() - Should discover all 4 encrypted fields")
+  @DisplayName("discoverReencryptableTargets() - Should discover all 3 encrypted fields")
   void discoverReencryptableTargets_ShouldDiscoverAllFields() {
     // Act
     List<ReencryptionBatchCreationService.Target> targets = invokeDiscoverReencryptableTargets();
 
     // Assert
-    assertEquals(4, targets.size(), "Should discover exactly 4 encrypted fields");
+    assertEquals(3, targets.size(), "Should discover exactly 3 encrypted fields");
   }
 
   @Test
@@ -983,12 +975,6 @@ class ReencryptionServiceTest {
     when(authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
             eq("ENC:1111111111:%"), eq(1), eq(2)))
         .thenReturn(0);
-    when(authAttemptRepository.countByEncryptedDeviceProofTokenLike(
-            eq("ENC:1111111111:%"), eq(0), eq(2)))
-        .thenReturn(7);
-    when(authAttemptRepository.countByEncryptedDeviceProofTokenLike(
-            eq("ENC:1111111111:%"), eq(1), eq(2)))
-        .thenReturn(0);
 
     ArgumentCaptor<ReencryptionBatch> batchCaptor =
         ArgumentCaptor.forClass(ReencryptionBatch.class);
@@ -1003,7 +989,7 @@ class ReencryptionServiceTest {
     service.createBatchesForOldKeys();
 
     List<ReencryptionBatch> saved = batchCaptor.getAllValues();
-    assertEquals(2, saved.size());
+    assertEquals(1, saved.size());
     assertTrue(
         saved.stream()
             .allMatch(
@@ -1015,16 +1001,8 @@ class ReencryptionServiceTest {
             .filter(b -> "auth_attempt_proof_token".equals(b.getTargetColumn()))
             .findFirst()
             .orElseThrow();
-    ReencryptionBatch deviceBatch =
-        saved.stream()
-            .filter(b -> "device_proof_token".equals(b.getTargetColumn()))
-            .findFirst()
-            .orElseThrow();
-    for (ReencryptionBatch b : List.of(proofBatch, deviceBatch)) {
-      assertEquals(2, b.getShardCount().intValue());
-      assertEquals(0, b.getShardIndex().intValue());
-    }
+    assertEquals(2, proofBatch.getShardCount().intValue());
+    assertEquals(0, proofBatch.getShardIndex().intValue());
     assertEquals(10, proofBatch.getRecordsTotal());
-    assertEquals(7, deviceBatch.getRecordsTotal());
   }
 }

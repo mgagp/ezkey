@@ -51,11 +51,11 @@ class ReencryptionBatchParallelRunnerTest {
   void mutexKey_authAttempt_sharded_includesColumnAndShard() {
     ReencryptionBatch b = new ReencryptionBatch();
     b.setTargetTable("ezkey_auth_attempt");
-    b.setTargetColumn("device_proof_token");
+    b.setTargetColumn("auth_attempt_proof_token");
     b.setShardCount(4);
     b.setShardIndex(2);
     assertEquals(
-        "ezkey_auth_attempt|device_proof_token|2",
+        "ezkey_auth_attempt|auth_attempt_proof_token|2",
         ReencryptionBatchParallelRunner.mutexKeyForBatch(b));
   }
 }
