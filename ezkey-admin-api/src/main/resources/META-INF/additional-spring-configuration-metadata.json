@@ -91,6 +91,12 @@
       "defaultValue": "client-ip"
     },
     {
+      "name": "ezkey.trusted-proxies.required",
+      "type": "java.lang.Boolean",
+      "description": "When true, fail startup if trusted proxy CIDRs are missing or invalid (SEC-011).",
+      "defaultValue": false
+    },
+    {
       "name": "ezkey.trusted-proxies.cidrs",
       "type": "java.util.List<java.lang.String>",
       "description": "CIDR ranges of trusted reverse proxies (e.g. 10.0.0.0/8)."

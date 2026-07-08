@@ -54,11 +54,25 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class TrustedProxyProperties {
 
   /**
+   * When {@code true}, startup fails if {@link #cidrs} is empty or contains invalid entries
+   * (SEC-011). Default {@code false} preserves local and direct-access deployments.
+   */
+  private boolean required = false;
+
+  /**
    * List of CIDR blocks or single IP addresses. Connections from these IPs are considered trusted
    * proxies; only then are X-Forwarded-For / X-Real-IP / CF-Connecting-IP used for client IP. Empty
    * or unset means only the direct remote address is used (no header trust).
    */
   private List<String> cidrs = new ArrayList<>();
+
+  public boolean isRequired() {
+    return required;
+  }
+
+  public void setRequired(boolean required) {
+    this.required = required;
+  }
 
   /** Returns the list of trusted proxy CIDRs (read-only). Never null. */
   public List<String> getCidrs() {

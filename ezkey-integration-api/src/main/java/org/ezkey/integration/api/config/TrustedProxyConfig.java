@@ -12,6 +12,7 @@
 
 package org.ezkey.integration.api.config;
 
+import org.ezkey.config.TrustedProxyStartupValidator;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,4 +25,15 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableConfigurationProperties(TrustedProxyProperties.class)
-public class TrustedProxyConfig {}
+public class TrustedProxyConfig {
+
+  /**
+   * Validates trusted proxy configuration before the application accepts traffic (SEC-011).
+   *
+   * @param trustedProxyProperties bound trusted proxy settings
+   */
+  public TrustedProxyConfig(TrustedProxyProperties trustedProxyProperties) {
+    TrustedProxyStartupValidator.enforceRequired(
+        trustedProxyProperties.isRequired(), trustedProxyProperties.getCidrs());
+  }
+}

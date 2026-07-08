@@ -18,6 +18,7 @@ jobs** and has **no database of its own** — it reads from the shared schema ma
 | `ezkey.api-key.rate-limit.create-auth-attempt.window-minutes` | — | `1` | optionnel |
 | `ezkey.api-key.rate-limit.wait-auth-attempt.requests` | — | `200` | optionnel |
 | `ezkey.api-key.rate-limit.wait-auth-attempt.window-minutes` | — | `1` | optionnel |
+| `ezkey.trusted-proxies.required` | — | `false` | optionnel [prod] |
 | `ezkey.trusted-proxies.cidrs` | — | *(empty list)* | optionnel |
 
 ---
@@ -69,6 +70,7 @@ for the full description.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
+| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies. |
 
 ---

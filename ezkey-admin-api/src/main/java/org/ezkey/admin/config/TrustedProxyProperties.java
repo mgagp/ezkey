@@ -42,7 +42,21 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "ezkey.trusted-proxies")
 public class TrustedProxyProperties {
 
+  /**
+   * When {@code true}, startup fails if {@link #cidrs} is empty or contains invalid entries
+   * (SEC-011). Default {@code false} preserves local and direct-access deployments.
+   */
+  private boolean required = false;
+
   private List<String> cidrs = new ArrayList<>();
+
+  public boolean isRequired() {
+    return required;
+  }
+
+  public void setRequired(boolean required) {
+    this.required = required;
+  }
 
   public List<String> getCidrs() {
     return cidrs == null ? Collections.emptyList() : Collections.unmodifiableList(cidrs);
