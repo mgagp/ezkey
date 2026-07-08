@@ -66,7 +66,7 @@ docker exec -it $CONTAINER_NAME psql -U postgres -d ezkey_db -c "
 SELECT 
   e.enrollment_id,
   e.integration_id,
-  i18n.integration_i18n_name as integration_name,
+  COALESCE(i.integration_name, 'Integration ' || i.integration_id) as integration_name,
   i.tenant_id as integration_tenant_id,
   CASE 
     WHEN i.tenant_id IS NULL THEN '⚠️  Integration has no tenant assigned'
@@ -74,13 +74,6 @@ SELECT
   END as tenant_status
 FROM ezkey_enrollment e
 LEFT JOIN ezkey_integration i ON e.integration_id = i.integration_id
-LEFT JOIN LATERAL (
-  SELECT integration_i18n_name 
-  FROM ezkey_integration_i18n 
-  WHERE integration_id = i.integration_id 
-  ORDER BY CASE WHEN integration_i18n_lang = 'en' THEN 1 ELSE 2 END 
-  LIMIT 1
-) i18n ON true
 WHERE e.enrollment_id = $ENROLLMENT_ID;
 "
 

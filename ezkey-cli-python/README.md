@@ -168,7 +168,7 @@ ezkey crypto sign --data "text" --private-key @private.pem
 ### 2. Inline JSON
 ```bash
 # Pass JSON directly
-ezkey admin integration create --data '{"logo":"logo.png","i18n":[{"language":"en","name":"Test"}]}'
+ezkey admin integration create --data '{"name":"Test Integration","description":"Demo app"}'
 ```
 
 ## Datetime Format

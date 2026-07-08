@@ -38,7 +38,7 @@ FROM ezkey_enrollment;
 -- Enrollments by integration with detailed status
 SELECT 
     i.integration_id,
-    COALESCE(i18n.integration_i18n_name, 'Integration ' || i.integration_id) as integration_name,
+    COALESCE(i.integration_name, 'Integration ' || i.integration_id) as integration_name,
     COUNT(e.enrollment_id) as total_enrollments,
     COUNT(CASE WHEN e.enrollment_active = true THEN 1 END) as active_enrollments,
     COUNT(CASE WHEN e.enrollment_valid = true THEN 1 END) as valid_enrollments,
@@ -49,10 +49,8 @@ SELECT
     END as active_percentage
 FROM ezkey_integration i
 LEFT JOIN ezkey_enrollment e ON i.integration_id = e.integration_id
-LEFT JOIN ezkey_integration_i18n i18n ON i.integration_id = i18n.integration_id 
-    AND i18n.integration_i18n_lang = 'en'
 WHERE i.integration_active = true
-GROUP BY i.integration_id, integration_name
+GROUP BY i.integration_id, i.integration_name
 ORDER BY total_enrollments DESC;
 
 -- Enrollment creation trend (daily for last 30 days)
@@ -68,7 +66,7 @@ ORDER BY date;
 SELECT 
     e.enrollment_id,
     e.enrollment_name,
-    COALESCE(i18n.integration_i18n_name, 'Integration ' || i.integration_id) as integration_name,
+    COALESCE(i.integration_name, 'Integration ' || i.integration_id) as integration_name,
     e.enrollment_read,
     e.enrollment_verified,
     e.enrollment_valid,
@@ -76,8 +74,6 @@ SELECT
     e.created_at
 FROM ezkey_enrollment e
 INNER JOIN ezkey_integration i ON e.integration_id = i.integration_id
-LEFT JOIN ezkey_integration_i18n i18n ON i.integration_id = i18n.integration_id 
-    AND i18n.integration_i18n_lang = 'en'
 WHERE e.enrollment_valid = true AND e.enrollment_active = false
 ORDER BY e.created_at DESC;
 
@@ -154,7 +150,7 @@ ORDER BY time;
 -- Authentication performance by enrollment (top 20 most active)
 SELECT 
     e.enrollment_name,
-    COALESCE(i18n.integration_i18n_name, 'Integration ' || i.integration_id) as integration_name,
+    COALESCE(i.integration_name, 'Integration ' || i.integration_id) as integration_name,
     COUNT(a.auth_attempt_id) as total_attempts_24h,
     COUNT(CASE WHEN a.auth_attempt_accepted = true THEN 1 END) as successful_attempts,
     COUNT(CASE WHEN a.auth_attempt_responded = true AND a.auth_attempt_accepted = false THEN 1 END) as denied_attempts,
@@ -169,12 +165,10 @@ SELECT
     END as avg_response_time_seconds
 FROM ezkey_enrollment e
 INNER JOIN ezkey_integration i ON e.integration_id = i.integration_id
-LEFT JOIN ezkey_integration_i18n i18n ON i.integration_id = i18n.integration_id 
-    AND i18n.integration_i18n_lang = 'en'
 LEFT JOIN ezkey_auth_attempt a ON e.enrollment_id = a.enrollment_id 
     AND a.created_at >= NOW() - INTERVAL '24 hours'
 WHERE e.enrollment_active = true
-GROUP BY e.enrollment_id, e.enrollment_name, i.integration_id, integration_name
+GROUP BY e.enrollment_id, e.enrollment_name, i.integration_id, i.integration_name
 HAVING COUNT(a.auth_attempt_id) > 0
 ORDER BY total_attempts_24h DESC
 LIMIT 20;
@@ -215,7 +209,7 @@ FROM ezkey_auth_attempt;
 -- Detect enrollments with unusual authentication patterns
 SELECT 
     e.enrollment_name,
-    COALESCE(i18n.integration_i18n_name, 'Integration ' || i.integration_id) as integration_name,
+    COALESCE(i.integration_name, 'Integration ' || i.integration_id) as integration_name,
     COUNT(a.auth_attempt_id) as attempts_today,
     COUNT(CASE WHEN a.auth_attempt_accepted = false AND a.auth_attempt_responded = true THEN 1 END) as denials_today,
     CASE 
@@ -224,12 +218,10 @@ SELECT
     END as denial_rate_percent
 FROM ezkey_enrollment e
 INNER JOIN ezkey_integration i ON e.integration_id = i.integration_id
-LEFT JOIN ezkey_integration_i18n i18n ON i.integration_id = i18n.integration_id 
-    AND i18n.integration_i18n_lang = 'en'
 LEFT JOIN ezkey_auth_attempt a ON e.enrollment_id = a.enrollment_id 
     AND a.created_at >= CURRENT_DATE
 WHERE e.enrollment_active = true
-GROUP BY e.enrollment_id, e.enrollment_name, i.integration_id, integration_name
+GROUP BY e.enrollment_id, e.enrollment_name, i.integration_id, i.integration_name
 HAVING COUNT(a.auth_attempt_id) > 10 OR 
        (COUNT(a.auth_attempt_id) > 0 AND 
         COUNT(CASE WHEN a.auth_attempt_accepted = false AND a.auth_attempt_responded = true THEN 1 END) * 100.0 / COUNT(a.auth_attempt_id) > 50)
@@ -257,5 +249,5 @@ SELECT
     correlation
 FROM pg_stats 
 WHERE schemaname = 'public' 
-    AND tablename IN ('ezkey_integration', 'ezkey_enrollment', 'ezkey_auth_attempt', 'ezkey_integration_i18n')
+    AND tablename IN ('ezkey_integration', 'ezkey_enrollment', 'ezkey_auth_attempt')
 ORDER BY tablename, attname;

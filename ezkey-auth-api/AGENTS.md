@@ -44,35 +44,15 @@ mvn test -pl 'ezkey-auth-api,!ezkey-tests'
 
 ---
 
-## Critical pattern: read-only Integration loading in the bind flow
+## Integration loading in the bind flow
 
-### Why this matters in auth-api
+`Integration` has flat `name` and `description` columns on `ezkey_integration` (V7 removed the
+historical `ezkey_integration_i18n` table). `EnrollmentBindService.loadIntegration()` uses
+standard `integrationRepository.findById()` — there is no i18n child collection to fetch.
 
-`EnrollmentController` and `EnrollmentBindService` (in `ezkey-core`) load the `Integration` entity
-to resolve i18n display names and tenant info for the bind response. The `Integration.i18n`
-association is mapped with `CascadeType.ALL + orphanRemoval = true` in the shared core.
-
-Under concurrent load — multiple devices binding enrollments that all reference the same integration
-(especially the system integration `id=1` used for all admin MFA) — Hibernate can raise:
-
-```
-HibernateException: Found shared references to a collection:
-    org.ezkey.integration.domain.entity.Integration.i18n
-```
-
-This was observed on 2026-02-20 during `MultiTenantGlobalAdminTest` parallel setup.
-
-### The rule
-
-`EnrollmentBindService.loadIntegration()` **must** use
-`IntegrationRepository.findByIdWithI18nAndTenant()` (read-only, JOIN FETCH) instead of the
-standard `findById()`. This method applies `@QueryHints(org.hibernate.readOnly=true)` so Hibernate
-does not track the `i18n` collection for dirty-checking or cascades.
-
-**Never revert this to `findById()`** without understanding the concurrency implication.
-
-See `ezkey-core/AGENTS.md` §"CascadeType.ALL + orphanRemoval shared-reference hazard" for the
-full design pattern documentation and the general rule applicable to all future code.
+For audit tenant resolution, `EnrollmentController.resolveTenantId()` uses the scalar projection
+`integrationRepository.findTenantIdByIntegrationId()` so no `Integration` entity is loaded into
+the persistence context in that path.
 
 ---
 
@@ -96,6 +76,6 @@ caught, logged, and re-thrown — the audit log is the primary observability mec
   key) marks the auth attempt as **INVALID** immediately. There is no failure counter or N-attempts
   retry; this is intentional (strict security posture). Rate limiting on `POST /api/v1/auth-attempts/respond`
   is per `authAttemptId` (from request body), default 1 request per 5 minutes.
-- The `EnrollmentController.resolveTenantId()` method navigates `Enrollment → Integration → Tenant`
-  chain for audit context. It uses standard `findById()` (read-only chain, no i18n access) —
-  this is safe because it does not access any cascade-tracked collection.
+- The `EnrollmentController.resolveTenantId()` method resolves tenant context via
+  `integrationRepository.findTenantIdByIntegrationId()` (scalar projection) — it does not load a
+  full `Integration` entity for audit enrichment.

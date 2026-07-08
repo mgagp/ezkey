@@ -51,11 +51,6 @@ All DTOs in `ezkey-core` currently have **zero validation annotations**. This me
 - **enrollmentProofTokenSigned**: No validation (accepts null, empty)
 
 ### 6. IntegrationCreateRequest
-- **logo**: No validation (accepts null, empty, invalid URLs)
-- **i18n**: No validation (accepts null, empty list)
-
-### 7. IntegrationI18nCreate
-- **language**: No validation (accepts null, empty, invalid codes)
 - **name**: No validation (accepts null, empty, blank)
 - **description**: No validation (accepts null, empty, blank)
 

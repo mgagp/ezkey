@@ -359,8 +359,7 @@ ame (NotNull, NotBlank) but CLI only allows it via --data, not as explicit optio
 2. GET /api/v1/integrations/{id} - Get by ID (Integer)
 
 3. POST /api/v1/integrations - Create
-   - Request DTO: logo (String, optional), i18n (List<IntegrationI18nCreateDto>, optional with @Valid)
-   - Note: Both fields are optional - controller generates defaults if not provided
+   - Request DTO: name (String, required), description (String, optional)
 
 4. DELETE /api/v1/integrations/{id} - Delete (Integer)
 
@@ -379,11 +378,9 @@ ame (NotNull, NotBlank) but CLI only allows it via --data, not as explicit optio
    -  Aligned: --id (required, type int)
 
 3. create command:
-   -  Uses --logo (optional) and --data for JSON input
-   -  Controller expects logo (String, optional) and i18n (List, optional)
-   -  CLI requires either --data or --logo, but controller allows empty request (generates defaults)
-   -  No explicit options for i18n entries (name, description, language)
-   - Note: JSON data approach is flexible but less user-friendly for simple cases
+   - Uses --data for JSON input
+   - Controller expects name (required) and description (optional)
+   - Consider explicit --name and --description options for simple cases
 
 4. delete command:
    -  Aligned: --id (required, type int)
@@ -399,10 +396,9 @@ ame (NotNull, NotBlank) but CLI only allows it via --data, not as explicit optio
    - [ ] Add missing filters: --integration-name, --active, --created-after, --created-before
 
 2. **Create command improvements:**
-   - [ ] Remove validation error when neither --logo nor --data provided (controller allows empty request)
-   - [ ] Consider adding explicit options: --name, --description, --language for simple single-language integrations
-   - [ ] Document JSON structure for multi-language i18n array in help text
-   - [ ] Example: {"i18n": [{"language": "en", "name": "My App", "description": "My app description"}]}
+   - [ ] Consider adding explicit options: --name, --description for simple integrations
+   - [ ] Document JSON structure in help text
+   - [ ] Example: {"name": "My App", "description": "My app description"}
 
 3. **Delete command:**
    - No actions needed - well implemented with confirmation and clear warnings
@@ -505,8 +501,8 @@ ame (NotNull, NotBlank) but CLI only allows it via --data, not as explicit optio
 - [x] **EnrollmentController**: add missing list filters (`--status`, `--enrollment-name`, `--active`, `--created-after`, `--created-before`)
 - [x] **EnrollmentController**: add explicit `--name` and `--challenge-required` options to `create`
 - [x] **IntegrationController**: add missing list filters (`--integration-name`, `--active`, `--created-after`, `--created-before`)
-- [x] **IntegrationController**: allow empty `create` payload (no validation error when no `--logo`/`--data`)
-- [x] **IntegrationController**: add explicit `--name`, `--description`, `--language` for simple i18n
+- [x] **IntegrationController**: allow empty `create` payload (no validation error when no `--data`)
+- [x] **IntegrationController**: add explicit `--name` and `--description` options
 - [x] **ApiKeyController**: add list-all command (`GET /api/v1/api-keys`)
 - [x] **ApiKeyController**: make `description` optional in CLI
 - [x] **AdminAuthController**: enforce dashed recovery code format validation

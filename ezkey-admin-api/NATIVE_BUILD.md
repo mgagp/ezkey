@@ -62,7 +62,7 @@ Located in `src/main/resources/META-INF/native-image/org.ezkey/ezkey-admin-api/`
 Spring configuration class providing runtime hints for:
 - **Controllers**: All 9 REST controllers (IntegrationController, AuthAttemptController, EnrollmentController, AdminEnrollmentController, AdminAuthController, ApiKeyController, EncryptionKeyController, AuditLogController, GlobalExceptionHandler)
 - **DTOs**: All request/response DTOs used in REST endpoints:
-  - Integration DTOs: IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto, IntegrationI18nCreateDto, IntegrationI18nResponseDto
+  - Integration DTOs: IntegrationCreateRequestDto, IntegrationCreateResponseDto, IntegrationResponseDto
   - AuthAttempt DTOs: AuthAttemptDto, AuthAttemptCreateRequestDto, AuthAttemptCreateResponseDto, AuthAttemptWaitRequestDto, AuthAttemptWaitResponseDto
   - Enrollment DTOs: EnrollmentCreateRequestDto, EnrollmentCreateResponseDto, EnrollmentResponseDto
   - Admin DTOs: AdminLoginRequestDto, AdminLoginResponseDto, AdminPasswordlessWaitRequestDto, AdminRecoveryRequestDto, AdminRecoveryResponseDto, EnrollmentResetRequestDto, EnrollmentResetResponseDto
@@ -71,7 +71,7 @@ Spring configuration class providing runtime hints for:
   - AuditLog DTOs: AuditLogResponseDto
   - Error responses: RFC 9457 `ProblemDetail` (Spring-provided; no legacy error DTO)
 - **JPA Entities**: All database entities:
-  - AuthAttempt, Enrollment, Integration, IntegrationI18n
+  - AuthAttempt, Enrollment, Integration
   - ApiKey, EzkeyAdmin, Tenant, AdminToken
   - EncryptionKey, ReencryptionBatch, KeysetBlob
   - AuditLog
