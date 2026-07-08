@@ -268,13 +268,13 @@ public class TenantDeactivationSecurityTest extends AbstractSecurityTest {
   /**
    * Test 4: TenantAdmin login is blocked after tenant deactivation.
    *
-   * <p>Attempting to login with a TenantAdmin whose tenant has been deactivated should fail with
-   * HTTP 403 Forbidden (RFC 9457). The auth service detects the inactive tenant and throws
-   * TenantInactiveException, which GlobalExceptionHandler maps to 403.
+   * <p>Attempting to login with a TenantAdmin whose tenant has been deactivated must fail. Since
+   * SEC-006, pre-authentication login failures return HTTP 401 with generic {@code
+   * invalid-credentials} (anti-enumeration) — not 403 with tenant-specific detail.
    */
   @Test
   @Order(4)
-  @DisplayName("Test 4: TenantAdmin login blocked after deactivation → 403")
+  @DisplayName("Test 4: TenantAdmin login blocked after deactivation → 401 (SEC-006)")
   void test04_tenantAdmin_login_blocked_after_deactivation() {
     log.info("=== Test 4: Verify login blocked ===");
 
@@ -304,10 +304,13 @@ public class TenantDeactivationSecurityTest extends AbstractSecurityTest {
     log.info("Login response status: {}", response.statusCode());
     log.info("Login response body: {}", response.asString());
 
-    // RFC 9457: TenantInactiveException → HTTP 403 Forbidden with ProblemDetail
+    // RFC 9457: SEC-006 maps pre-auth login failures to 401 invalid-credentials (generic detail)
     assertThat(response.statusCode())
-        .as("Login for deactivated tenant should be rejected (403 Forbidden - RFC 9457)")
-        .isEqualTo(403);
+        .as("Login for deactivated tenant should be rejected (401 Unauthorized - SEC-006)")
+        .isEqualTo(401);
+    assertThat(response.contentType()).contains("application/problem+json");
+    assertThat(response.jsonPath().getString("type")).contains("invalid-credentials");
+    assertThat(response.jsonPath().getInt("status")).isEqualTo(401);
 
     log.info("✅ Test 4 PASSED: TenantAdmin login correctly blocked after deactivation");
   }
