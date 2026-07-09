@@ -21,6 +21,7 @@ import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.repository.EncryptionKeyRepository;
@@ -280,7 +281,10 @@ public class ReencryptionBatchCreationService {
     AuthAttempt authAttemptSample = new AuthAttempt();
     authAttemptSample.setEncryptedField("auth_attempt_proof_token", "PLACEHOLDER");
 
-    List<Reencryptable> sampleEntities = List.of(enrollmentSample, authAttemptSample);
+    ApiKey apiKeySample = new ApiKey();
+    apiKeySample.setEncryptedField("secret_key_hash", "PLACEHOLDER");
+
+    List<Reencryptable> sampleEntities = List.of(enrollmentSample, authAttemptSample, apiKeySample);
 
     for (Reencryptable entity : sampleEntities) {
       String table = entity.getTableName();

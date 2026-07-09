@@ -29,6 +29,18 @@ public interface EncryptionOperations {
   boolean isEncryptionAvailable();
 
   /**
+   * Returns whether at-rest encryption is mandatory for this deployment.
+   *
+   * <p>When {@code true} ( {@code ezkey.encryption.required=true} ), callers must fail closed if a
+   * sensitive column is stored without the encrypted format or cannot be decrypted.
+   *
+   * @return true when at-rest encryption is required
+   */
+  default boolean isEncryptionRequired() {
+    return false;
+  }
+
+  /**
    * Returns whether a value already matches the encrypted storage format.
    *
    * @param value candidate encrypted value

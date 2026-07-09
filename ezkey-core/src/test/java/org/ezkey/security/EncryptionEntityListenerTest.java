@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.integration.domain.entity.ApiKey;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,5 +79,27 @@ class EncryptionEntityListenerTest {
     verify(encryptionOperations, times(2)).encrypt(anyString());
     verify(encryptionOperations).encrypt(eq(pkcs8Plaintext));
     assertTrue(((String) persistentField.get(enrollment)).startsWith("ENC:"));
+  }
+
+  @Test
+  void encrypt_encryptsApiKeySecretHashWhenTransientBlankButPersistentHasPlaintext()
+      throws Exception {
+    String bcryptPlaintext = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+
+    ApiKey apiKey = new ApiKey();
+    apiKey.setApiKeyId(42);
+    apiKey.setSecretKeyHash(bcryptPlaintext);
+
+    Field transientField = ApiKey.class.getDeclaredField("secretKeyHashPlaintext");
+    transientField.setAccessible(true);
+    transientField.set(apiKey, null);
+
+    listener.encrypt(apiKey);
+
+    Field persistentField = ApiKey.class.getDeclaredField("secretKeyHash");
+    persistentField.setAccessible(true);
+    assertEquals(CIPHERTEXT, persistentField.get(apiKey));
+    verify(encryptionOperations).encrypt(eq(bcryptPlaintext));
+    assertTrue(((String) persistentField.get(apiKey)).startsWith("ENC:"));
   }
 }

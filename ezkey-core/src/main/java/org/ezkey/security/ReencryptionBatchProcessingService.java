@@ -23,6 +23,7 @@ import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
@@ -118,6 +119,7 @@ public class ReencryptionBatchProcessingService {
 
       List<Integer> pendingEnrollmentIds = new ArrayList<>();
       List<Integer> pendingAuthAttemptIds = new ArrayList<>();
+      List<Integer> pendingApiKeyIds = new ArrayList<>();
 
       for (Reencryptable record : records) {
         try {
@@ -134,6 +136,10 @@ public class ReencryptionBatchProcessingService {
           } else if (record instanceof AuthAttempt a) {
             if (a.getAuthAttemptId() != null) {
               pendingAuthAttemptIds.add(a.getAuthAttemptId());
+            }
+          } else if (record instanceof ApiKey apiKey) {
+            if (apiKey.getApiKeyId() != null) {
+              pendingApiKeyIds.add(apiKey.getApiKeyId());
             }
           }
         } catch (Exception ex) {
@@ -167,6 +173,20 @@ public class ReencryptionBatchProcessingService {
           logger.warn(
               "Failed to persist re-encrypted auth attempt {} in batch {}: {}",
               authAttemptId,
+              batch.getBatchId(),
+              ex.getMessage());
+          recordsFailed++;
+        }
+      }
+      for (Integer apiKeyId : pendingApiKeyIds) {
+        try {
+          rowPersistence.persistApiKeyReencryption(batch, apiKeyId);
+          recordsDone++;
+          recordRowMetric(batch);
+        } catch (Exception ex) {
+          logger.warn(
+              "Failed to persist re-encrypted API key {} in batch {}: {}",
+              apiKeyId,
               batch.getBatchId(),
               ex.getMessage());
           recordsFailed++;

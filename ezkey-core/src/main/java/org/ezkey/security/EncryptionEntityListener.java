@@ -6,6 +6,7 @@ import jakarta.persistence.PreUpdate;
 import java.util.function.Supplier;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.integration.domain.entity.ApiKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -21,7 +22,8 @@ import org.springframework.stereotype.Component;
  * <p>When DEBUG is enabled for this class, integration private key diagnostics log full field
  * values (local development only; not for production or shared logs).
  *
- * <p>Currently encrypts/decrypts: Enrollment.integrationPrivateKey.
+ * <p>Currently encrypts/decrypts: Enrollment.integrationPrivateKey,
+ * Enrollment.enrollmentProofToken, AuthAttempt.authAttemptProofToken, ApiKey.secretKeyHash.
  *
  * <p>This listener uses a static field to store {@link EncryptionOperations} because JPA entity
  * listeners are not managed by Spring and cannot use dependency injection directly. The runtime
@@ -156,6 +158,13 @@ public class EncryptionEntityListener implements ApplicationContextAware {
           "encryptedAuthAttemptProofToken",
           operations,
           () -> "auth attempt proof token for authAttempt " + authAttempt.getAuthAttemptId());
+    } else if (entity instanceof ApiKey apiKey) {
+      encryptField(
+          apiKey,
+          "secretKeyHashPlaintext",
+          "secretKeyHash",
+          operations,
+          () -> "API key secret hash for apiKey " + apiKey.getApiKeyId());
     }
   }
 
@@ -199,6 +208,25 @@ public class EncryptionEntityListener implements ApplicationContextAware {
       }
     }
 
+    if ((plaintext == null || plaintext.isBlank())
+        && "secretKeyHashPlaintext".equals(transientFieldName)
+        && entity instanceof ApiKey) {
+      try {
+        String fromPersistent = getFieldValue(entity, persistentFieldName);
+        if (fromPersistent != null
+            && !fromPersistent.isBlank()
+            && (operations == null || !operations.isEncrypted(fromPersistent))) {
+          plaintext = fromPersistent;
+        }
+      } catch (Exception e) {
+        logger.warn(
+            "Fallback read of API key secret hash from persistent field failed for {}, "
+                + "skipping encryption of secret hash",
+            context,
+            e);
+      }
+    }
+
     // Same pattern as enrollment proof token: setIntegrationPrivateKey copies plaintext into
     // encryptedIntegrationPrivateKey, but the transient integrationPrivateKey can be null when
     // this listener runs (e.g. at PrePersist before id assignment). Without this fallback the
@@ -233,6 +261,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
     }
 
     if (operations == null || !operations.isEncryptionAvailable()) {
+      AtRestEncryptionAccess.requireEncryptionAvailableForPersist(operations, context);
       logger.debug("Encryption unavailable, storing plaintext for {}", context);
       setFieldValue(entity, persistentFieldName, plaintext);
       return;
@@ -252,6 +281,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
           entity, transientFieldName, persistentFieldName, plaintext, operations, "afterEncrypt");
     } catch (Exception exception) {
       logger.error("Failed to encrypt {}", context, exception);
+      AtRestEncryptionAccess.handleEncryptFailure(operations, context, exception);
       setFieldValue(entity, persistentFieldName, plaintext);
     }
   }

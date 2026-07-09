@@ -12,6 +12,7 @@ package org.ezkey.integration.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,8 +20,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.Version;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import org.ezkey.security.AtRestEncryptionAccess;
+import org.ezkey.security.EncryptionEntityListener;
+import org.ezkey.security.EncryptionOperations;
+import org.ezkey.security.EncryptionOperationsHolder;
+import org.ezkey.security.Reencryptable;
 
 /**
  * JPA entity representing an API key for machine-to-machine authentication.
@@ -49,6 +58,7 @@ import java.time.OffsetDateTime;
  *
  * <ul>
  *   <li><b>BCrypt Hashing:</b> Secret keys hashed like passwords, never stored in plain text
+ *   <li><b>At-Rest Encryption:</b> BCrypt hash encrypted with Tink before persistence when enabled
  *   <li><b>IP Whitelist:</b> Optional restriction to specific IP addresses or CIDR ranges
  *   <li><b>Expiration:</b> Optional expiration date for enforced key rotation
  *   <li><b>Revocation:</b> Immediate invalidation capability for compromised keys
@@ -74,7 +84,8 @@ import java.time.OffsetDateTime;
  */
 @Entity
 @Table(name = "ezkey_api_key")
-public class ApiKey {
+@EntityListeners(EncryptionEntityListener.class)
+public class ApiKey implements Reencryptable {
 
   /**
    * Primary key identifier for the API key.
@@ -118,15 +129,21 @@ public class ApiKey {
   private String integrationKey;
 
   /**
-   * BCrypt hash of the secret key.
+   * BCrypt hash of the secret key (persisted; encrypted at rest when Tink is available).
    *
-   * <p>Format: BCrypt hash of ezkey_skey_[40 hex chars]
+   * <p>Format: BCrypt hash of ezkey_skey_[40 hex chars], optionally wrapped with the {@code ENC:}
+   * prefix by {@link EncryptionEntityListener}.
    *
-   * <p>This field stores the hashed secret key. The plain text secret is shown only once during API
-   * key creation and never stored or displayed again. Validated using BCrypt comparison.
+   * <p>The plaintext BCrypt value is maintained in the transient field {@link
+   * #secretKeyHashPlaintext} and encrypted just before persistence.
    */
-  @Column(name = "secret_key_hash", nullable = false, length = 255)
+  @Column(name = "secret_key_hash", columnDefinition = "TEXT", nullable = false)
   private String secretKeyHash;
+
+  /**
+   * Transient plaintext BCrypt hash used for encryption at flush time and decrypt-on-read cache.
+   */
+  @Transient private String secretKeyHashPlaintext;
 
   /**
    * Human-readable description of this API key.
@@ -276,21 +293,38 @@ public class ApiKey {
   }
 
   /**
-   * Gets the secret key hash.
+   * Gets the secret key hash, decrypting it if necessary.
+   *
+   * <p>Returns the BCrypt hash suitable for {@code BCryptPasswordEncoder.matches}. When encryption
+   * is enabled, decrypts the persisted value on first access and caches it in the transient field.
    *
    * @return the BCrypt hash of the secret key
    */
   public String getSecretKeyHash() {
-    return secretKeyHash;
+    secretKeyHashPlaintext =
+        AtRestEncryptionAccess.resolveEncryptedField(
+            getEncryptionOperations(),
+            secretKeyHash,
+            "API key secret hash (apiKeyId=" + apiKeyId + ")");
+    return secretKeyHashPlaintext;
   }
 
   /**
-   * Sets the secret key hash.
+   * Sets the BCrypt hash of the secret key in plaintext.
+   *
+   * <p>Stores the value in both the transient field and the persisted column. {@link
+   * EncryptionEntityListener} overwrites the persisted column with an encrypted value before flush
+   * when encryption is available.
    *
    * @param secretKeyHash the BCrypt hash of the secret key
    */
   public void setSecretKeyHash(String secretKeyHash) {
+    this.secretKeyHashPlaintext = secretKeyHash;
     this.secretKeyHash = secretKeyHash;
+  }
+
+  private static EncryptionOperations getEncryptionOperations() {
+    return EncryptionOperationsHolder.get();
   }
 
   /**
@@ -471,6 +505,35 @@ public class ApiKey {
    */
   public void setVersion(Long version) {
     this.version = version;
+  }
+
+  @Override
+  public Map<String, String> getEncryptedFields() {
+    Map<String, String> fields = new HashMap<>();
+    if (secretKeyHash != null) {
+      fields.put("secret_key_hash", secretKeyHash);
+    }
+    return fields;
+  }
+
+  @Override
+  public void setEncryptedField(String columnName, String encryptedValue) {
+    if ("secret_key_hash".equals(columnName)) {
+      this.secretKeyHash = encryptedValue;
+      this.secretKeyHashPlaintext = null;
+      return;
+    }
+    throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
+  }
+
+  @Override
+  public Long getEntityId() {
+    return apiKeyId != null ? Long.valueOf(apiKeyId) : null;
+  }
+
+  @Override
+  public String getTableName() {
+    return "ezkey_api_key";
   }
 
   /**

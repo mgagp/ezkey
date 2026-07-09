@@ -12,11 +12,13 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.entity.ApiKey;
+import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.springframework.stereotype.Service;
 
 /**
- * Count and fetch helpers for re-encryption targets (enrollment / auth attempt columns).
+ * Count and fetch helpers for re-encryption targets (enrollment / auth attempt / API key columns).
  *
  * <p>Isolated from orchestration so batch creation and processing share one implementation.
  */
@@ -25,11 +27,15 @@ public class ReencryptionTargetQueryService {
 
   private final EnrollmentRepository enrollmentRepository;
   private final AuthAttemptRepository authAttemptRepository;
+  private final ApiKeyRepository apiKeyRepository;
 
   public ReencryptionTargetQueryService(
-      EnrollmentRepository enrollmentRepository, AuthAttemptRepository authAttemptRepository) {
+      EnrollmentRepository enrollmentRepository,
+      AuthAttemptRepository authAttemptRepository,
+      ApiKeyRepository apiKeyRepository) {
     this.enrollmentRepository = enrollmentRepository;
     this.authAttemptRepository = authAttemptRepository;
+    this.apiKeyRepository = apiKeyRepository;
   }
 
   public int countRecordsEncryptedWithKey(String table, String column, Long keyId) {
@@ -51,6 +57,7 @@ public class ReencryptionTargetQueryService {
       case "ezkey_enrollment" -> countEnrollmentRecords(column, keyPrefix);
       case "ezkey_auth_attempt" ->
           countAuthAttemptRecords(column, keyPrefix, shardIndex, shardCount);
+      case "ezkey_api_key" -> countApiKeyRecords(column, keyPrefix);
       default -> 0;
     };
   }
@@ -75,6 +82,13 @@ public class ReencryptionTargetQueryService {
     };
   }
 
+  private int countApiKeyRecords(String column, String keyPrefix) {
+    return switch (column) {
+      case "secret_key_hash" -> apiKeyRepository.countByEncryptedSecretKeyHashLike(keyPrefix);
+      default -> 0;
+    };
+  }
+
   public List<? extends Reencryptable> fetchRecords(
       ReencryptionBatch batch, Long lastRecordId, int batchSize) {
     String keyPrefix = "ENC:" + batch.getOldKey().getKeyId() + ":%";
@@ -88,6 +102,8 @@ public class ReencryptionTargetQueryService {
       case "ezkey_auth_attempt" ->
           fetchAuthAttemptRecords(
               batch.getTargetColumn(), keyPrefix, lastId, batchSize, shardIndex, shardCount);
+      case "ezkey_api_key" ->
+          fetchApiKeyRecords(batch.getTargetColumn(), keyPrefix, lastId, batchSize);
       default -> List.of();
     };
   }
@@ -114,6 +130,15 @@ public class ReencryptionTargetQueryService {
       case "auth_attempt_proof_token" ->
           authAttemptRepository.findEncryptedAuthAttemptProofTokenLike(
               keyPrefix, lastId, shardIndex, shardCount, limit);
+      default -> List.of();
+    };
+  }
+
+  private List<ApiKey> fetchApiKeyRecords(
+      String column, String keyPrefix, Integer lastId, int limit) {
+    return switch (column) {
+      case "secret_key_hash" ->
+          apiKeyRepository.findEncryptedSecretKeyHashLike(keyPrefix, lastId, limit);
       default -> List.of();
     };
   }

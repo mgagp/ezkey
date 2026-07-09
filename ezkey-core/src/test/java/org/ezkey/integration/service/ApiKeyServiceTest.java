@@ -39,6 +39,8 @@ import org.ezkey.integration.exception.ApiKeyIpWhitelistValidationException;
 import org.ezkey.integration.exception.ApiKeyLimitExceededException;
 import org.ezkey.integration.exception.ApiKeyUpdateValidationException;
 import org.ezkey.integration.service.ApiKeyService.ApiKeyCreationResult;
+import org.ezkey.security.EncryptionOperations;
+import org.ezkey.security.EncryptionOperationsHolder;
 import org.ezkey.service.EntityEligibilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -351,6 +353,29 @@ class ApiKeyServiceTest {
       // Assert
       assertTrue(result.isEmpty());
       verify(apiKeyRepository, never()).save(any(ApiKey.class)); // No lastUsedAt update on failure
+    }
+
+    @Test
+    @DisplayName("Should reject API key when encryption required but secret hash is not encrypted")
+    void validateApiKey_WhenEncryptionRequiredAndPlaintextHash_ShouldReturnEmpty() {
+      EncryptionOperations encryptionOps = org.mockito.Mockito.mock(EncryptionOperations.class);
+      when(encryptionOps.isEncryptionRequired()).thenReturn(true);
+      when(encryptionOps.isEncryptionAvailable()).thenReturn(true);
+      when(encryptionOps.isEncrypted("$2a$10$N9qo8uLOickgx2ZMRZoMye")).thenReturn(false);
+      EncryptionOperationsHolder.set(encryptionOps);
+      try {
+        when(apiKeyRepository.findByIntegrationKeyAndActiveTrue("ezkey_ikey_test123"))
+            .thenReturn(Optional.of(testApiKey));
+
+        Optional<Integration> result =
+            apiKeyService.validateApiKey("ezkey_ikey_test123", "testSecret", "192.168.1.100");
+
+        assertTrue(result.isEmpty());
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(apiKeyRepository, never()).save(any(ApiKey.class));
+      } finally {
+        EncryptionOperationsHolder.clear();
+      }
     }
 
     @Test
