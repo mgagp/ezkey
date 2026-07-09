@@ -14,7 +14,7 @@ Authoritative recipe: [`docs/testing/AGENT_UI_VALIDATION.md`](../../docs/testing
 
 ## Mandatory sequence (list DTO / API contract changed)
 
-1. **Build** — root Maven baseline (`./scripts/build.sh` or `scripts/build-local.cmd` on Windows).
+1. **Build** — root Maven baseline (`./scripts/build.sh` from Git Bash).
 2. **Clean-start** — `cd ezkey-tests && ./clean-start.sh` (fresh Docker stack + bootstrap).
 3. **API functional tests** — targeted `ezkey-tests` assertions on enriched list fields for the
    slice (see recipe doc for class/method examples).

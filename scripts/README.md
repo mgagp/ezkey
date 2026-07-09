@@ -4,6 +4,20 @@
 
 This directory contains utility scripts for Ezkey project management, including OpenAPI specification management and database migration tools.
 
+**Portable Bash first:** prefer `./scripts/*.sh` from Git Bash on Windows, Linux, or macOS. Legacy `.bat` siblings may still exist for some tools; they are not the canonical path for agents or cross-platform workflows.
+
+## Maven build (Java reactor)
+
+Single entrypoint for the full validation baseline (Spotless, Checkstyle, clean, install, unit tests):
+
+```bash
+./scripts/build.sh
+```
+
+Diagnostics only: `./scripts/build.sh --diagnose-only`
+
+Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md).
+
 ## Cloudflare (ezkey.org static site)
 
 - [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).
@@ -90,15 +104,17 @@ Ezkey now uses a centralized approach for managing OpenAPI specifications. All s
 
 ### Synchronization Scripts
 
-#### Bash Script (Linux/macOS/Git Bash)
+#### Bash script (canonical — Windows Git Bash, Linux, macOS)
 ```bash
 ./scripts/update-specs.sh [OPTIONS]
 ```
 
-#### Windows Batch Script
+#### Windows batch script (legacy)
 ```cmd
 scripts\update-specs.bat [OPTIONS]
 ```
+
+Prefer `update-specs.sh` from Git Bash on Windows for parity with Linux and macOS.
 
 #### Available Options
 - `--admin-only` : Update only admin-api specification

@@ -22,6 +22,12 @@ if [ -z "${JAVA_HOME:-}" ]; then
   done
 fi
 
+if [ -z "${JAVA_HOME:-}" ] && command -v /usr/libexec/java_home >/dev/null 2>&1; then
+  if jdk25="$(/usr/libexec/java_home -v 25 2>/dev/null)"; then
+    export JAVA_HOME="$jdk25"
+  fi
+fi
+
 if [ -n "${JAVA_HOME:-}" ] && [ -d "$JAVA_HOME/bin" ]; then
   case ":$PATH:" in
     *":$JAVA_HOME/bin:"*) ;;
@@ -43,7 +49,7 @@ echo "  mvn=$(command -v mvn || true)"
 if ! command -v java >/dev/null 2>&1; then
   if command -v java.exe >/dev/null 2>&1; then
     echo "Detected Windows JDK commands as .exe only. This usually means WSL bash was launched instead of Git Bash."
-    echo "Use Git Bash explicitly or run scripts/build-local.cmd from Windows."
+    echo "Use Git Bash explicitly: \"C:\\Program Files\\Git\\bin\\bash.exe\" -lc './scripts/build.sh'"
   else
     echo "No Java runtime found on PATH."
   fi

@@ -19,9 +19,10 @@ When Ezkey or an agent needs **JDK 25** on **this** Windows workstation, use **e
 
 ## How this ties to the repo
 
-- [`scripts/build-local.cmd`](scripts/build-local.cmd) is expected to set `JAVA_HOME` to this path before delegating to `./scripts/build.sh`. If you change the rule, keep `build-local.cmd` in sync.
-- In a **Windows-hosted** shell (PowerShell, `cmd`), agents should prefer **`cmd /c scripts\build-local.cmd`** (or the diagnostics flag documented in [maven-build.mdc](maven-build.mdc)) so Maven runs with this JDK, not whatever `java` happens to be first on PATH.
-- If `build-local.cmd` is wrong or the directory is missing, **fix the script or install JDK to this path** rather than silently using Eclipse Temurin, Oracle, or WSL Java for validation.
+- [`scripts/build.sh`](../../scripts/build.sh) auto-probes this path (and close variants) when `JAVA_HOME` is unset, then runs the Maven baseline. On macOS it may use `/usr/libexec/java_home -v 25` when available.
+- **Validation entrypoint:** always `./scripts/build.sh` from Git Bash — on Windows, Linux, and macOS. Do not use `.cmd` wrappers.
+- When an agent shell is **PowerShell**, invoke Git Bash explicitly: `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'` (see [`maven-build.mdc`](maven-build.mdc)).
+- If validation fails with `release version 25 not supported`, the compiler in use is **not** JDK 25 — set `JAVA_HOME` to the canonical path above (Windows) or install JDK 25 on Linux/macOS and export `JAVA_HOME` before `./scripts/build.sh`.
 
 ## Quick check
 
@@ -31,4 +32,4 @@ From Git Bash after exporting `JAVA_HOME`:
 "$JAVA_HOME/bin/java" -version
 ```
 
-Expect version output that matches **25.0.3** (or the exact Adoptium/Eclipse build under this path). If validation fails with `release version 25 not supported`, the compiler in use is **not** this JDK—set `JAVA_HOME` to the canonical path above and retry.
+Expect version output that matches **25.0.3** (or the exact Adoptium/Eclipse build under this path on Windows).

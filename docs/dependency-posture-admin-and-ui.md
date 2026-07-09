@@ -51,13 +51,14 @@ Lockfile: committed [`ezkey-admin-ui/package-lock.json`](../ezkey-admin-ui/packa
 
 ## Validation commands
 
-**Java (from repo root, Windows):**
+**Java (from repo root, Git Bash — Windows, Linux, or macOS):**
 
-```text
-scripts\build-local.cmd
+```bash
+./scripts/build.sh
 ```
 
-Prefer this entrypoint so Git Bash + **JDK 25** + Maven are aligned (see [`maven-build.mdc`](../.cursor/rules/maven-build.mdc)).
+Single portable entrypoint; auto-detects canonical JDK 25 on the maintainer Windows workstation
+when `JAVA_HOME` is unset (see [`maven-build.mdc`](../.cursor/rules/maven-build.mdc)).
 
 **Admin UI:**
 

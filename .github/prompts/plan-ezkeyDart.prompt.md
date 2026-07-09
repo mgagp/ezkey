@@ -364,7 +364,7 @@ c:\github\ezkey-worktree3\
 
 **Validation finale :**
 ```bash
-# Depuis la racine du monorepo (scripts/build-local.cmd ou Git Bash)
+# From monorepo root (Git Bash: ./scripts/build.sh)
 mvn spotless:apply
 mvn checkstyle:check
 mvn clean install -DskipTests

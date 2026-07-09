@@ -135,11 +135,11 @@ from the repository root in **Bash**:
 
 This is the default autonomous validation path because Checkstyle depends on the reactor-built
 `checkstyle-config` module. Only after that baseline succeeds should you run targeted follow-up
-commands such as `mvn test -pl 'ezkey-admin-api,!ezkey-tests'`. `./scripts/build.sh` is the
-reference example of this workflow. On this Windows workstation, the preferred autonomous
-entrypoint from a Windows-hosted shell is `scripts/build-local.cmd`, because it forces the correct
-Git Bash + JDK 25 + Maven path before delegating to `./scripts/build.sh`. See
-`.cursor/rules/maven-build.mdc` for the authoritative rule.
+commands such as `mvn test -pl 'ezkey-admin-api,!ezkey-tests'`. **`./scripts/build.sh`** (from Git
+Bash on Windows, Linux, or macOS) is the single canonical entrypoint — it runs the full baseline
+including unit tests. When Cursor's agent shell is PowerShell, invoke it via explicit Git Bash:
+`& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'`. Do not use `.cmd` build wrappers.
+See `.cursor/rules/maven-build.mdc` for the authoritative rule.
 
 **Docker-only alternative:** `./scripts/build-docker.sh` runs Spotless apply in a bind-mounted
 container plus the `build-validation` Docker target (see `docs/DEVELOPMENT.md`).

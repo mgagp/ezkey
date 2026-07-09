@@ -27,7 +27,7 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - Orval is pinned at **8.20.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
   no global `useQuery` / `useMutation`). Same Option B as Admin UI `TB-2026-05-28` checkpoints 8.10 / 8.11.
 - Never hand-edit `openapi-spec.json` in `ezkey_mobile/`.
-- Refresh specs only through the root scripts `scripts/update-specs.sh` or `scripts/update-specs.bat` after a human has started a clean Docker stack.
+- Refresh specs only through the root script `scripts/update-specs.sh` (Git Bash) after a human has started a clean Docker stack.
 - After refreshing the spec, run `yarn generate:api`.
 - Treat `app/services/api/generated/auth-api/model/` as the source of truth for Auth API DTOs.
 - Keep `app/services/api/types.ts` thin: local mobile domain types and wrapper input shapes are fine, but no second hand-maintained copy of the Auth API contract.

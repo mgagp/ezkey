@@ -9,36 +9,42 @@ Ezkey's Maven validation is **reactor-sensitive** because Checkstyle resolves th
 `checkstyle-config` module during the build. Do **not** assume that an initial `-pl some-module`
 command is a safe validation path.
 
-## Mandatory baseline for Java changes
+## Canonical entrypoint (all platforms)
 
-When you have implemented or changed Java or other Spotless-covered code, start from the
-**repository root** and run this baseline in **Bash**:
+From the repository root in **Git Bash** (Windows, Linux, macOS):
+
+```bash
+./scripts/build.sh
+```
+
+Diagnostics only: `./scripts/build.sh --diagnose-only`
+
+[`scripts/build.sh`](../../scripts/build.sh) runs the full baseline:
 
 1. `mvn spotless:apply`
 2. `mvn checkstyle:check`
 3. `mvn clean`
 4. `mvn install -DskipTests`
+5. `mvn test -pl '!ezkey-tests'`
 
-`./scripts/build.sh` is the reference example of this health-check flow.
+It auto-detects the canonical JDK 25 path on the maintainer Windows workstation when `JAVA_HOME` is
+unset. On Linux and macOS, set `JAVA_HOME` to JDK 25 or ensure `java` and `mvn` on `PATH` match
+the repo requirement (see [`jdk-25-windows-workstation.mdc`](jdk-25-windows-workstation.mdc) for
+the Windows canonical install path).
 
-## Windows workstation default
+**Do not** add or rely on `.cmd` / `.bat` build wrappers — Bash is the portable contract.
 
-On this Windows workstation, when the agent is driving Maven from a Windows-hosted shell, prefer
-`scripts/build-local.cmd` as the default entrypoint instead of launching bare `bash`.
+## Windows-hosted agent shell (PowerShell)
 
-**Canonical JDK 25 on this machine:** see [`jdk-25-windows-workstation.mdc`](jdk-25-windows-workstation.mdc)
-(`C:\Tools\jdk-25.0.3+9` — do not substitute another JDK for Ezkey validation).
+When Cursor's Shell tool runs PowerShell instead of Bash, invoke the **same** Bash script via Git
+Bash explicitly:
 
-Why:
+```text
+& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'
+```
 
-- bare `bash` may resolve to WSL (`C:\Windows\System32\bash.exe`) instead of Git Bash
-- that path can expose `java.exe` while still leaving `java`/`JAVA_HOME` unusable for Maven
-- `scripts/build-local.cmd` forces Git Bash, JDK 25, and the local Maven installation before
-  delegating to `./scripts/build.sh`
-
-If the agent needs diagnostics first, run:
-
-- `cmd /c scripts\build-local.cmd --diagnose-only`
+- Avoid bare `bash` (may resolve to WSL: `C:\Windows\System32\bash.exe`).
+- Avoid running `mvn` directly from PowerShell when validating Java changes.
 
 ## Targeted commands are follow-up only
 
@@ -63,3 +69,4 @@ successfully at least once in the current environment.
 - `mvn checkstyle:check` confirms style rules explicitly.
 - The full-reactor `clean` + `install -DskipTests` path reliably includes `checkstyle-config` and
   avoids repeated trial-and-error around partial module builds.
+- One Bash entrypoint works the same on Windows (Git Bash), Linux, and macOS.

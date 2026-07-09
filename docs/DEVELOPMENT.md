@@ -262,10 +262,10 @@ mvn install -DskipTests
 ```
 
 This is the most reliable path because Checkstyle depends on the internal `checkstyle-config`
-module from the Maven reactor. `./scripts/build.sh` is the reference example of this health-check
-workflow. On this Windows workstation, `scripts/build-local.cmd` is available as a repo-local
-wrapper and should be the default entrypoint from Windows-hosted automation, because it forces Git
-Bash plus the local JDK 25 / Maven installation before delegating to `./scripts/build.sh`.
+module from the Maven reactor. **`./scripts/build.sh`** is the single portable entrypoint (Git Bash
+on Windows, Linux, or macOS). It auto-detects the canonical JDK 25 path on the maintainer Windows
+workstation when `JAVA_HOME` is unset. From a Windows-hosted agent shell (PowerShell), invoke Git
+Bash explicitly: `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'`.
 
 ### Docker-only Java validation (no host JDK/Maven)
 

@@ -59,7 +59,7 @@ replay prevention via `device_proof_token_hash`.
 
 ## Build verification (required)
 
-From repository root (Windows: `cmd /c scripts\build-local.cmd`):
+From repository root (Git Bash: `./scripts/build.sh`):
 
 | Step | Command | Pass criterion |
 | --- | --- | --- |

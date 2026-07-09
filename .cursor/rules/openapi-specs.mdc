@@ -13,13 +13,12 @@ alwaysApply: true
 When **Admin API, Auth API, or Integration API contract** changes (DTO fields, endpoints, annotations):
 
 1. **Implement** in Java (controllers, request/response records, Springdoc annotations).
-2. **Run unit tests** and Maven baseline (`./scripts/build.sh` or `scripts/build-local.cmd`).
+2. **Run unit tests** and Maven baseline (`./scripts/build.sh` from Git Bash).
 3. **Clean-start** the Docker stack so running services include the new code:
    - From `ezkey-tests/`: `./clean-start.sh`
 4. **Wait** until target APIs are healthy (Admin API `http://localhost:9080/actuator/health`, etc.).
 5. **Update specs** from live `/api-docs`:
-   - Linux/macOS/Git Bash: `./scripts/update-specs.sh` (or `--admin-only` when only Admin API changed)
-   - Windows: `scripts\update-specs.bat`
+   - `./scripts/update-specs.sh` (or `--admin-only` when only Admin API changed) from Git Bash on all platforms
 6. **Regenerate dependent clients** when applicable (e.g. `npm run generate:api` in `ezkey-admin-ui`).
 7. **Report** that specs and dispatched copies were refreshed; review diff for obvious scope drift only.
 
