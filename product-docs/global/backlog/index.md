@@ -44,6 +44,7 @@ Wave B closeout ML:
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (Spring Boot + operator UI) | `parked` | `P3` | `admin-api`, `admin-ui`, `docs`, ecosystem GitHub, `sdk-java` | `2026-07-05` |
 | `I-2026-07-05-enrollment-integration-key-cycling` | Enrollment integration key cycling via auth-exchange hooks | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `docs`, `crypto` | `2026-07-05` |
 | `I-2026-0032` | Proof token hash-only storage (tiered hardening) | `incubating` | `P1` | `core`, `auth-api`, `admin-api`, `docs`, `crypto` | `2026-07-06` |
+| `I-2026-07-09` | `encryption.required` read-path parity (at-rest fields) | `ready` | `P2` | `core`, `core-security`, `admin-api`, `auth-api`, `docs` | `2026-07-09` |
 
 ## Active tracer bullets (ready / in progress)
 
