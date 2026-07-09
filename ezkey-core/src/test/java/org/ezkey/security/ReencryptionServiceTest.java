@@ -41,6 +41,7 @@ import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
@@ -96,6 +97,7 @@ class ReencryptionServiceTest {
   @Mock private ReencryptionBatchRepository batchRepository;
   @Mock private EnrollmentRepository enrollmentRepository;
   @Mock private AuthAttemptRepository authAttemptRepository;
+  @Mock private ApiKeyRepository apiKeyRepository;
   @Mock private TinkProperties properties;
   @Mock private AuditLogService auditLogService;
   @Mock private EntityManager entityManager;
@@ -123,10 +125,15 @@ class ReencryptionServiceTest {
 
     recordCipher = new ReencryptionRecordCipher(encryptionOperations);
     targetQueryService =
-        new ReencryptionTargetQueryService(enrollmentRepository, authAttemptRepository);
+        new ReencryptionTargetQueryService(
+            enrollmentRepository, authAttemptRepository, apiKeyRepository);
     rowPersistence =
         new ReencryptionRowPersistenceService(
-            enrollmentRepository, authAttemptRepository, entityManager, recordCipher);
+            enrollmentRepository,
+            authAttemptRepository,
+            apiKeyRepository,
+            entityManager,
+            recordCipher);
     batchProcessingService =
         new ReencryptionBatchProcessingService(
             batchRepository,
@@ -719,13 +726,17 @@ class ReencryptionServiceTest {
   }
 
   @Test
-  @DisplayName("discoverReencryptableTargets() - Should discover all 3 encrypted fields")
+  @DisplayName("discoverReencryptableTargets() - Should discover all encrypted fields")
   void discoverReencryptableTargets_ShouldDiscoverAllFields() {
     // Act
     List<ReencryptionBatchCreationService.Target> targets = invokeDiscoverReencryptableTargets();
 
     // Assert
-    assertEquals(3, targets.size(), "Should discover exactly 3 encrypted fields");
+    assertEquals(4, targets.size(), "Should discover exactly 4 encrypted fields");
+    assertTrue(
+        targets.contains(
+            new ReencryptionBatchCreationService.Target("ezkey_api_key", "secret_key_hash")),
+        "Should discover secret_key_hash");
   }
 
   @Test

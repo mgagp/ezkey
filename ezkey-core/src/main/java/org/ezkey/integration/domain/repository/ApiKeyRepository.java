@@ -10,13 +10,16 @@
 
 package org.ezkey.integration.domain.repository;
 
+import jakarta.persistence.LockModeType;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.integration.domain.entity.ApiKey;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -68,6 +71,16 @@ public interface ApiKeyRepository
    * @return Optional containing the API key if found and active, empty otherwise
    */
   Optional<ApiKey> findByIntegrationKeyAndActiveTrue(String integrationKey);
+
+  /**
+   * Loads an API key with a pessimistic write lock for re-encryption persistence.
+   *
+   * @param id the API key ID
+   * @return the locked API key, or empty if not found
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT a FROM ApiKey a WHERE a.apiKeyId = :id")
+  Optional<ApiKey> findByIdForReencryptionUpdate(@Param("id") Integer id);
 
   /**
    * Finds all active API keys for a specific integration.
@@ -213,4 +226,33 @@ public interface ApiKeyRepository
       "SELECT a FROM ApiKey a WHERE a.integration.tenant.tenantId = :tenantId ORDER BY"
           + " a.createdAt DESC")
   List<ApiKey> findByIntegration_Tenant_TenantId(@Param("tenantId") Integer tenantId);
+
+  /**
+   * Counts API keys with encrypted secret hash matching the prefix pattern.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @return count of matching records
+   */
+  @NativeQuery("SELECT COUNT(*) FROM ezkey_api_key WHERE secret_key_hash LIKE :prefix")
+  int countByEncryptedSecretKeyHashLike(@Param("prefix") String prefix);
+
+  /**
+   * Finds API keys with encrypted secret hash matching the prefix pattern for re-encryption
+   * batches.
+   *
+   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param lastId the last processed API key ID, or null to start from the beginning
+   * @param limit maximum number of records to return
+   * @return list of matching API keys ordered by primary key
+   */
+  @NativeQuery(
+      """
+      SELECT * FROM ezkey_api_key
+      WHERE secret_key_hash LIKE :prefix
+        AND (:lastId IS NULL OR api_key_id > :lastId)
+      ORDER BY api_key_id ASC
+      LIMIT :limit
+      """)
+  List<ApiKey> findEncryptedSecretKeyHashLike(
+      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
 }

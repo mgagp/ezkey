@@ -12,6 +12,8 @@ import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.entity.ApiKey;
+import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -26,16 +28,19 @@ public class ReencryptionRowPersistenceService {
 
   private final EnrollmentRepository enrollmentRepository;
   private final AuthAttemptRepository authAttemptRepository;
+  private final ApiKeyRepository apiKeyRepository;
   private final EntityManager entityManager;
   private final ReencryptionRecordCipher recordCipher;
 
   public ReencryptionRowPersistenceService(
       EnrollmentRepository enrollmentRepository,
       AuthAttemptRepository authAttemptRepository,
+      ApiKeyRepository apiKeyRepository,
       EntityManager entityManager,
       ReencryptionRecordCipher recordCipher) {
     this.enrollmentRepository = enrollmentRepository;
     this.authAttemptRepository = authAttemptRepository;
+    this.apiKeyRepository = apiKeyRepository;
     this.entityManager = entityManager;
     this.recordCipher = recordCipher;
   }
@@ -71,6 +76,23 @@ public class ReencryptionRowPersistenceService {
       return;
     }
     authAttemptRepository.save(a);
+    entityManager.flush();
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void persistApiKeyReencryption(ReencryptionBatch batch, Integer apiKeyId) {
+    ApiKey apiKey =
+        apiKeyRepository
+            .findByIdForReencryptionUpdate(apiKeyId)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "ApiKey not found for re-encryption persistence: " + apiKeyId));
+    ReencryptionRecordCipher.ReencryptResult result = recordCipher.reencryptRecord(batch, apiKey);
+    if (!result.reencrypted()) {
+      return;
+    }
+    apiKeyRepository.save(apiKey);
     entityManager.flush();
   }
 }

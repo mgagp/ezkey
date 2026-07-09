@@ -274,7 +274,17 @@ public class ApiKeyService {
     }
 
     // Validate secret key with BCrypt
-    if (!passwordEncoder.matches(secretKey, apiKey.getSecretKeyHash())) {
+    final String storedHash;
+    try {
+      storedHash = apiKey.getSecretKeyHash();
+    } catch (IllegalStateException encryptionViolation) {
+      logger.error(
+          "API key rejected: at-rest encryption policy violation for {} — {}",
+          integrationKey,
+          encryptionViolation.getMessage());
+      return Optional.empty();
+    }
+    if (!passwordEncoder.matches(secretKey, storedHash)) {
       logger.warn("Invalid secret key for integration key: {}", integrationKey);
       return Optional.empty();
     }

@@ -27,8 +27,8 @@ La fondation cryptographique d'Ezkey est solide. L'architecture backend-first es
 | SEC-007 | **Fait** | PR #297 — device proof token hash-only (V16) |
 | SEC-008 | **Fait** | PR #293 — `audit.integrity.required` + health HMAC |
 | SEC-009 | Ouvert | Contention `TinkKeyManager.getAeadPrimitive()` |
-| SEC-010 | Ouvert | Chiffrement at-rest du hash API key |
-| SEC-011 | En cours | `trusted-proxies.required` fail-fast au démarrage |
+| SEC-010 | **En cours** | Chiffrement at-rest du hash API key — issue #311 |
+| SEC-011 | **Fait** | PR #310 — `trusted-proxies.required` fail-fast au démarrage |
 | SEC-012–016 | Ouvert | Durcissement crypto / défense en profondeur (voir backlog) |
 
 Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–2 de la roadmap sont essentiellement closes ; la phase 3 (posture prod / SOC 2) est en cours.
@@ -547,7 +547,7 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 | SEC-007 | Device proof token stocké en clair | `AuthAttemptPendingService.java`, `AuthAttempt.java` | Stocker hash uniquement |
 | SEC-008 | Dégradation silencieuse HMAC audit | `AuditHmacService.java` | Health check + propriété `required` |
 | SEC-009 | Contention `getAeadPrimitive()` synchronisé | `TinkKeyManager.java` | `ReadWriteLock` + check DB asynchrone |
-| SEC-010 | Secret API key hash non chiffré at-rest | `ApiKeyService.java`, `ApiKey.java` | Appliquer `@Convert(EncryptedStringConverter)` |
+| SEC-010 | Secret API key hash non chiffré at-rest | `ApiKeyService.java`, `ApiKey.java` | `EncryptionEntityListener` sur `secret_key_hash` (pattern enrollment) |
 | SEC-011 | IP source spoofable dans audit logs | `ClientIpResolver.java` | Validation config au démarrage |
 
 ### Faible priorité / Durcissement

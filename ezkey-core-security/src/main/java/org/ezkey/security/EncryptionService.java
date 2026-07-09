@@ -100,6 +100,11 @@ public class EncryptionService implements EncryptionOperations {
     return keyManager.isInitialized();
   }
 
+  @Override
+  public boolean isEncryptionRequired() {
+    return properties != null && properties.isRequired();
+  }
+
   /**
    * Encrypts the given plaintext string and returns Base64-encoded ciphertext with prefix.
    *
