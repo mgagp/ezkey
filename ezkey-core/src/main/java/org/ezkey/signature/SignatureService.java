@@ -18,6 +18,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.NamedParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -181,14 +182,38 @@ public class SignatureService {
       byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
       PublicKey publicKey =
           KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(keyBytes));
+      byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
+      if (!isCanonicalLowSEcdsaSignature(publicKey, signatureBytes)) {
+        logger.debug("ECDSA signature rejected: non-canonical high-S form");
+        return false;
+      }
       Signature verifier = Signature.getInstance("SHA256withECDSA");
       verifier.initVerify(publicKey);
       verifier.update(data.getBytes(StandardCharsets.UTF_8));
-      return verifier.verify(Base64.getDecoder().decode(signatureBase64));
+      return verifier.verify(signatureBytes);
     } catch (Exception e) {
       logger.debug("ECDSA signature validation failed", e);
       return false;
     }
+  }
+
+  /**
+   * Rejects ECDSA signatures whose {@code s} component is not low-S (canonical form).
+   *
+   * <p>JDK {@code SHA256withECDSA} accepts both low-S and high-S ({@code s'} = {@code n - s})
+   * malleable variants. Ezkey signs with low-S only ({@link #signEcdsaSha256}); verification must
+   * reject high-S for defense in depth (SEC-012).
+   */
+  private static boolean isCanonicalLowSEcdsaSignature(PublicKey publicKey, byte[] signatureBytes) {
+    if (!(publicKey instanceof ECPublicKey ecPublicKey)) {
+      return false;
+    }
+    BigInteger[] rs = EcdsaDerCodec.decodeSignature(signatureBytes);
+    if (rs == null) {
+      return false;
+    }
+    BigInteger halfN = ecPublicKey.getParams().getOrder().shiftRight(1);
+    return rs[1].compareTo(halfN) <= 0;
   }
 
   /**

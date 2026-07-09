@@ -27,11 +27,13 @@ La fondation cryptographique d'Ezkey est solide. L'architecture backend-first es
 | SEC-007 | **Fait** | PR #297 — device proof token hash-only (V16) |
 | SEC-008 | **Fait** | PR #293 — `audit.integrity.required` + health HMAC |
 | SEC-009 | Ouvert | Contention `TinkKeyManager.getAeadPrimitive()` |
-| SEC-010 | **En cours** | Chiffrement at-rest du hash API key — issue #311 |
+| SEC-010 | **Fait** | PR #312 — chiffrement at-rest du hash API key (`EncryptionEntityListener` + V17) |
 | SEC-011 | **Fait** | PR #310 — `trusted-proxies.required` fail-fast au démarrage |
-| SEC-012–016 | Ouvert | Durcissement crypto / défense en profondeur (voir backlog) |
+| SEC-012 | **En cours** | Rejet ECDSA high-S dans `validateSignature()` — issue #313 |
+| SEC-013–016 | Ouvert | Durcissement crypto / défense en profondeur (voir backlog) |
+| **Suivi** | Ouvert | Généraliser `AtRestEncryptionAccess` (fail-closed read quand `encryption.required=true`) sur les getters `Enrollment` / `AuthAttempt` — introduit pour `ApiKey` (SEC-010) ; SEC-002 couvre le fail-fast au démarrage seulement. **Pas d'`I-*` canon à ce jour** — candidat backlog hygiene/programme. |
 
-Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–2 de la roadmap sont essentiellement closes ; la phase 3 (posture prod / SOC 2) est en cours.
+Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–2 de la roadmap sont closes. La phase 3 est presque close côté code (il reste SEC-009, SEC-012, et la posture opérationnelle SEC-005).
 
 ### Top 3 risques à traiter en priorité
 
@@ -589,11 +591,12 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 - SEC-008 : Health check HMAC audit
 
 ### Phase 3 — Milestone 4 / SOC 2 prep
-- SEC-005 : Rate limiting Auth API
-- SEC-009 : `ReadWriteLock` Tink
-- SEC-010 : Chiffrement hash API key
-- SEC-011 : Validation config IP audit
-- SEC-012 : Rejet high-S ECDSA
+- SEC-005 : Rate limiting Auth API (**adressé** — activer en prod)
+- SEC-009 : `ReadWriteLock` Tink (**ouvert**)
+- SEC-010 : Chiffrement hash API key (**fait** — PR #312)
+- SEC-011 : Validation config IP audit (**fait** — PR #310)
+- SEC-012 : Rejet high-S ECDSA (**en cours**)
+- **Suivi** : Parité read-path `encryption.required` sur tous les champs chiffrés (voir tableau statut)
 
 ---
 

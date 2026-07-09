@@ -16,6 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigInteger;
+import java.security.KeyFactory;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -197,6 +202,30 @@ class SignatureServiceTest {
 
     // Assert
     assertTrue(isValid, "Signature should be valid for original data");
+  }
+
+  @Test
+  @DisplayName("Should reject ECDSA high-S malleable signature variant (SEC-012)")
+  void testRejectHighSEcdsaSignature() throws Exception {
+    String lowSSignature = signatureService.signEcdsaSha256(testData, base64PrivateKey);
+    byte[] lowSDer = Base64.getDecoder().decode(lowSSignature);
+    BigInteger[] rs = EcdsaDerCodec.decodeSignature(lowSDer);
+    assertNotNull(rs, "Test setup: signature DER must decode");
+
+    byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
+    ECPublicKey ecPublicKey =
+        (ECPublicKey) KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(keyBytes));
+    BigInteger order = ecPublicKey.getParams().getOrder();
+    BigInteger highS = order.subtract(rs[1]);
+    String highSSignature =
+        Base64.getEncoder().encodeToString(EcdsaDerCodec.encodeSignature(rs[0], highS));
+
+    assertTrue(
+        signatureService.validateSignature(testData, lowSSignature, base64PublicKey),
+        "Canonical low-S signature must verify");
+    assertFalse(
+        signatureService.validateSignature(testData, highSSignature, base64PublicKey),
+        "High-S malleable variant must be rejected before JCA verify");
   }
 
   @Test
