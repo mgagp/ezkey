@@ -26,14 +26,14 @@ La fondation cryptographique d'Ezkey est solide. L'architecture backend-first es
 | SEC-006 | **Fait** | PR #308 — login admin 401 générique (anti-énumération) |
 | SEC-007 | **Fait** | PR #297 — device proof token hash-only (V16) |
 | SEC-008 | **Fait** | PR #293 — `audit.integrity.required` + health HMAC |
-| SEC-009 | Ouvert | Contention `TinkKeyManager.getAeadPrimitive()` |
+| SEC-009 | **Fait** | Issue #316 / [`ADR-0008`](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path) — `ReadWriteLock` + check version keyset asynchrone (`TinkKeyManager`) |
 | SEC-010 | **Fait** | PR #312 — chiffrement at-rest du hash API key (`EncryptionEntityListener` + V17) |
 | SEC-011 | **Fait** | PR #310 — `trusted-proxies.required` fail-fast au démarrage |
 | SEC-012 | **Fait** | PR #314 — rejet ECDSA high-S dans `validateSignature()` |
 | SEC-013–016 | Ouvert | Durcissement crypto / défense en profondeur (voir backlog) |
 | **Suivi** | **Backlog** | Parité read-path `encryption.required` — [`I-2026-07-09-encryption-required-read-path-parity`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md) (SEC-010 a introduit `AtRestEncryptionAccess` sur `ApiKey` seulement) |
 
-Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–2 de la roadmap sont closes. La phase 3 est presque close côté code (il reste SEC-009 et la posture opérationnelle SEC-005 ; le suivi read-path `encryption.required` est backlog `I-2026-07-09`).
+Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–2 de la roadmap sont closes. La phase 3 est presque close côté code (il reste la posture opérationnelle SEC-005 ; le suivi read-path `encryption.required` est backlog `I-2026-07-09`).
 
 ### Top 3 risques à traiter en priorité
 
@@ -403,9 +403,7 @@ public Aead getAeadPrimitive() {
 
 **Ratio impact/complexité :** Modérée. Recommandé si charge élevée prévue (Milestone 3+).
 
----
-
-#### F-07-C — Reencryption batch : auto-invocation Spring AOP (MEDIUM)
+**Statut (2026-07-09) :** **Fait** — [`ADR-0008`](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path) (`ReadWriteLock` + check version asynchrone).
 
 **Fichier :** `ReencryptionService.processBatch()` → `batchProcessingService.processBatchInternal()`
 **OWASP :** A04 — Insecure Design
@@ -548,7 +546,7 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 |----|---------|---------|-----|
 | SEC-007 | Device proof token stocké en clair | `AuthAttemptPendingService.java`, `AuthAttempt.java` | Stocker hash uniquement |
 | SEC-008 | Dégradation silencieuse HMAC audit | `AuditHmacService.java` | Health check + propriété `required` |
-| SEC-009 | Contention `getAeadPrimitive()` synchronisé | `TinkKeyManager.java` | `ReadWriteLock` + check DB asynchrone |
+| SEC-009 | Contention `getAeadPrimitive()` synchronisé | `TinkKeyManager.java` | `ReadWriteLock` + check DB asynchrone — **fait** ([`ADR-0008`](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path)) |
 | SEC-010 | Secret API key hash non chiffré at-rest | `ApiKeyService.java`, `ApiKey.java` | `EncryptionEntityListener` sur `secret_key_hash` (pattern enrollment) |
 | SEC-011 | IP source spoofable dans audit logs | `ClientIpResolver.java` | Validation config au démarrage |
 
@@ -592,7 +590,7 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 
 ### Phase 3 — Milestone 4 / SOC 2 prep
 - SEC-005 : Rate limiting Auth API (**adressé** — activer en prod)
-- SEC-009 : `ReadWriteLock` Tink (**ouvert**)
+- SEC-009 : `ReadWriteLock` Tink (**fait** — [`ADR-0008`](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path))
 - SEC-010 : Chiffrement hash API key (**fait** — PR #312)
 - SEC-011 : Validation config IP audit (**fait** — PR #310)
 - SEC-012 : Rejet high-S ECDSA (**fait** — PR #314)

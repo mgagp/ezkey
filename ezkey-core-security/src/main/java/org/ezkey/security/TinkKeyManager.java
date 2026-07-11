@@ -11,6 +11,7 @@ import com.google.crypto.tink.KeysetWriter;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.subtle.AesGcmJce;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -25,6 +26,11 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.config.TinkProperties.Keyset.StorageMode;
 import org.ezkey.security.domain.entity.KeysetBlob;
@@ -89,6 +95,26 @@ public class TinkKeyManager implements KeyManagementOperations {
 
   /** Minimum interval between database version checks in milliseconds. */
   private static final long DATABASE_CHECK_INTERVAL_MS = 5000;
+
+  /**
+   * Protects {@link #keysetHandle} reads (encrypt/decrypt hot path) vs exclusive reload/rotation.
+   *
+   * <p>SEC-009: replaces method-level {@code synchronized} on {@link #getAeadPrimitive()} so
+   * concurrent encryption does not serialize on keyset version checks.
+   */
+  private final ReentrantReadWriteLock keysetLock = new ReentrantReadWriteLock();
+
+  /** Single-thread executor for throttled keyset version checks outside the read lock. */
+  private final ExecutorService keysetCheckExecutor =
+      Executors.newSingleThreadExecutor(
+          runnable -> {
+            Thread thread = new Thread(runnable, "tink-keyset-version-check");
+            thread.setDaemon(true);
+            return thread;
+          });
+
+  /** Prevents overlapping async keyset version checks. */
+  private final AtomicBoolean keysetCheckScheduled = new AtomicBoolean(false);
 
   /**
    * Constructor with optional KeysetBlobRepository for database-backed keyset storage.
@@ -234,6 +260,68 @@ public class TinkKeyManager implements KeyManagementOperations {
     enforceRequiredEncryption();
   }
 
+  /** Shuts down the async keyset version check executor on application stop. */
+  @PreDestroy
+  void shutdownKeysetCheckExecutor() {
+    keysetCheckExecutor.shutdown();
+    try {
+      if (!keysetCheckExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
+        keysetCheckExecutor.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      keysetCheckExecutor.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  /**
+   * Resets the database version check throttle so the next {@link #getAeadPrimitive()} schedules a
+   * check (tests only).
+   */
+  void resetDatabaseCheckThrottleForTests() {
+    lastDatabaseCheckTime = 0;
+  }
+
+  /**
+   * Runs the keyset version check synchronously on the calling thread (tests only).
+   *
+   * <p>Bypasses the async executor so reload behavior can be asserted deterministically.
+   */
+  void runKeysetVersionCheckSynchronouslyForTests() {
+    CHECKING_DATABASE.set(true);
+    try {
+      checkAndReloadKeysetIfNeeded();
+    } finally {
+      CHECKING_DATABASE.set(false);
+    }
+  }
+
+  /**
+   * Sets the cached database keyset version (tests only).
+   *
+   * @param version optimistic-lock version to simulate stale in-memory cache
+   */
+  void setDatabaseKeysetVersionForTests(long version) {
+    databaseKeysetVersion = version;
+  }
+
+  /**
+   * Waits until any already-scheduled async keyset version check completes (tests only).
+   *
+   * @param timeout maximum wait
+   * @throws InterruptedException if interrupted while waiting
+   */
+  void awaitPendingKeysetVersionCheckForTests(java.time.Duration timeout)
+      throws InterruptedException {
+    try {
+      keysetCheckExecutor.submit(() -> {}).get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+    } catch (java.util.concurrent.ExecutionException e) {
+      throw new IllegalStateException("Keyset version check drain failed", e);
+    } catch (java.util.concurrent.TimeoutException e) {
+      throw new IllegalStateException("Timed out waiting for keyset version check drain", e);
+    }
+  }
+
   /**
    * Fails startup when encryption is marked required but Tink did not initialize (SEC-002).
    *
@@ -260,88 +348,160 @@ public class TinkKeyManager implements KeyManagementOperations {
     return keysetHandle != null && masterAead != null;
   }
 
-  public synchronized KeysetHandle getKeysetHandle() {
-    if (keysetHandle == null) {
-      throw new IllegalStateException(
-          "TinkKeyManager not initialized. "
-              + "Check that master key file exists and encryption is enabled in configuration.");
+  public KeysetHandle getKeysetHandle() {
+    keysetLock.readLock().lock();
+    try {
+      if (keysetHandle == null) {
+        throw new IllegalStateException(
+            "TinkKeyManager not initialized. "
+                + "Check that master key file exists and encryption is enabled in configuration.");
+      }
+      return keysetHandle;
+    } finally {
+      keysetLock.readLock().unlock();
     }
-    return keysetHandle;
   }
 
-  public synchronized Aead getAeadPrimitive() {
+  public Aead getAeadPrimitive() {
     if (!isInitialized()) {
       throw new IllegalStateException(
           "Tink encryption not initialized. "
               + "Check that master key file exists and encryption is enabled.");
     }
 
-    boolean shouldCheckForUpdates = !CHECKING_DATABASE.get();
-    long now = System.currentTimeMillis();
-    boolean throttled = (now - lastDatabaseCheckTime) < DATABASE_CHECK_INTERVAL_MS;
+    scheduleKeysetVersionCheckIfDue();
 
-    if (shouldCheckForUpdates && !throttled) {
-      try {
-        CHECKING_DATABASE.set(true);
-        lastDatabaseCheckTime = now;
-        checkAndReloadKeysetIfNeeded();
-      } finally {
-        CHECKING_DATABASE.set(false);
-      }
+    boolean writeLockHeldByCurrentThread = keysetLock.writeLock().getHoldCount() > 0;
+    if (!writeLockHeldByCurrentThread) {
+      keysetLock.readLock().lock();
     }
-
     try {
       return keysetHandle.getPrimitive(Aead.class);
     } catch (GeneralSecurityException e) {
       throw new IllegalStateException("Unable to obtain AEAD primitive from keyset", e);
+    } finally {
+      if (!writeLockHeldByCurrentThread) {
+        keysetLock.readLock().unlock();
+      }
     }
+  }
+
+  /**
+   * Schedules a throttled keyset version check on a background thread (SEC-009).
+   *
+   * <p>Version checks and reloads run outside the read lock so encrypt/decrypt hot paths stay
+   * concurrent. Reload acquires the write lock only when a newer keyset is detected.
+   */
+  private void scheduleKeysetVersionCheckIfDue() {
+    if (CHECKING_DATABASE.get()) {
+      return;
+    }
+
+    long now = System.currentTimeMillis();
+    if ((now - lastDatabaseCheckTime) < DATABASE_CHECK_INTERVAL_MS) {
+      return;
+    }
+    if (!keysetCheckScheduled.compareAndSet(false, true)) {
+      return;
+    }
+
+    lastDatabaseCheckTime = now;
+    keysetCheckExecutor.execute(
+        () -> {
+          try {
+            CHECKING_DATABASE.set(true);
+            checkAndReloadKeysetIfNeeded();
+          } finally {
+            CHECKING_DATABASE.set(false);
+            keysetCheckScheduled.set(false);
+          }
+        });
   }
 
   private void checkAndReloadKeysetIfNeeded() {
     StorageMode storageMode = properties.getKeyset().getStorageMode();
 
+    boolean shouldReloadFromDatabase = false;
     if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
         && keysetBlobRepository != null) {
       try {
         var dbVersion = keysetBlobRepository.findVersion();
         if (dbVersion.isPresent() && dbVersion.get() > databaseKeysetVersion) {
-          logger.info(
-              "🔄 Database keyset updated (version: {} > {}), reloading keyset...",
-              dbVersion.get(),
-              databaseKeysetVersion);
-          if (loadKeysetFromDatabase()) {
-            logger.info("✅ Keyset reloaded from database successfully");
-          }
+          shouldReloadFromDatabase = true;
         }
       } catch (Exception e) {
         logger.warn(
-            "Failed to check/reload keyset from database. Using cached keyset. Error: {}",
+            "Failed to check keyset version in database. Using cached keyset. Error: {}",
             e.getMessage());
-        logger.debug("Database keyset reload error", e);
+        logger.debug("Database keyset version check error", e);
       }
     }
 
+    boolean shouldReloadFromFile = false;
     if ((storageMode == StorageMode.FILE || storageMode == StorageMode.HYBRID)
         && keysetFilePath != null) {
       try {
         File keysetFile = new File(keysetFilePath);
-        if (keysetFile.exists()) {
-          long currentLastModified = keysetFile.lastModified();
-          if (currentLastModified > keysetFileLastModified) {
-            logger.info(
-                "🔄 Keyset file modified (last modified: {} > {}), reloading keyset...",
-                currentLastModified,
-                keysetFileLastModified);
-            this.keysetHandle = loadEncryptedKeyset(keysetFilePath);
-            this.keysetFileLastModified = currentLastModified;
-            logger.info("✅ Keyset reloaded from file successfully");
-          }
+        if (keysetFile.exists() && keysetFile.lastModified() > keysetFileLastModified) {
+          shouldReloadFromFile = true;
         }
       } catch (Exception e) {
         logger.warn(
-            "Failed to check/reload keyset file. Using cached keyset. Error: {}", e.getMessage());
-        logger.debug("Keyset reload error", e);
+            "Failed to check keyset file modification time. Using cached keyset. Error: {}",
+            e.getMessage());
+        logger.debug("Keyset file version check error", e);
       }
+    }
+
+    if (!shouldReloadFromDatabase && !shouldReloadFromFile) {
+      return;
+    }
+
+    keysetLock.writeLock().lock();
+    try {
+      if (shouldReloadFromDatabase && keysetBlobRepository != null) {
+        try {
+          var dbVersion = keysetBlobRepository.findVersion();
+          if (dbVersion.isPresent() && dbVersion.get() > databaseKeysetVersion) {
+            logger.info(
+                "🔄 Database keyset updated (version: {} > {}), reloading keyset...",
+                dbVersion.get(),
+                databaseKeysetVersion);
+            if (loadKeysetFromDatabaseUnlocked()) {
+              logger.info("✅ Keyset reloaded from database successfully");
+            }
+          }
+        } catch (Exception e) {
+          logger.warn(
+              "Failed to reload keyset from database. Using cached keyset. Error: {}",
+              e.getMessage());
+          logger.debug("Database keyset reload error", e);
+        }
+      }
+
+      if (shouldReloadFromFile && keysetFilePath != null) {
+        try {
+          File keysetFile = new File(keysetFilePath);
+          if (keysetFile.exists()) {
+            long currentLastModified = keysetFile.lastModified();
+            if (currentLastModified > keysetFileLastModified) {
+              logger.info(
+                  "🔄 Keyset file modified (last modified: {} > {}), reloading keyset...",
+                  currentLastModified,
+                  keysetFileLastModified);
+              this.keysetHandle = loadEncryptedKeyset(keysetFilePath);
+              this.keysetFileLastModified = currentLastModified;
+              logger.info("✅ Keyset reloaded from file successfully");
+            }
+          }
+        } catch (Exception e) {
+          logger.warn(
+              "Failed to reload keyset file. Using cached keyset. Error: {}", e.getMessage());
+          logger.debug("Keyset reload error", e);
+        }
+      }
+    } finally {
+      keysetLock.writeLock().unlock();
     }
   }
 
@@ -367,13 +527,18 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   public long getCurrentPrimaryKeyId() {
-    if (!isInitialized()) {
-      throw new IllegalStateException(
-          "Tink encryption not initialized. "
-              + "Check that master key file exists and encryption is enabled.");
+    keysetLock.readLock().lock();
+    try {
+      if (!isInitialized()) {
+        throw new IllegalStateException(
+            "Tink encryption not initialized. "
+                + "Check that master key file exists and encryption is enabled.");
+      }
+      long signedKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+      return toUnsignedLong(signedKeyId);
+    } finally {
+      keysetLock.readLock().unlock();
     }
-    long signedKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
-    return toUnsignedLong(signedKeyId);
   }
 
   private void verifyKeyset() throws GeneralSecurityException {
@@ -578,7 +743,16 @@ public class TinkKeyManager implements KeyManagementOperations {
     return System.getProperty("os.name").toLowerCase().contains("win");
   }
 
-  public synchronized long rotateKey() throws GeneralSecurityException, IOException {
+  public long rotateKey() throws GeneralSecurityException, IOException {
+    keysetLock.writeLock().lock();
+    try {
+      return rotateKeyUnderWriteLock();
+    } finally {
+      keysetLock.writeLock().unlock();
+    }
+  }
+
+  private long rotateKeyUnderWriteLock() throws GeneralSecurityException, IOException {
     if (!isInitialized()) {
       throw new IllegalStateException(
           "Tink encryption not initialized. Cannot rotate keys without initialized keyset.");
@@ -640,7 +814,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
         && keysetBlobRepository != null) {
       try {
-        saveKeysetToDatabase("KEY_ROTATION");
+        saveKeysetToDatabaseUnlocked("KEY_ROTATION");
         logger.info("✅ Rotated keyset saved to database");
       } catch (Exception e) {
         logger.error("Failed to save rotated keyset to database: {}", e.getMessage());
@@ -656,7 +830,16 @@ public class TinkKeyManager implements KeyManagementOperations {
     return newPrimaryKeyId;
   }
 
-  public synchronized long addKeyWithoutPromotion() throws GeneralSecurityException, IOException {
+  public long addKeyWithoutPromotion() throws GeneralSecurityException, IOException {
+    keysetLock.writeLock().lock();
+    try {
+      return addKeyWithoutPromotionUnderWriteLock();
+    } finally {
+      keysetLock.writeLock().unlock();
+    }
+  }
+
+  private long addKeyWithoutPromotionUnderWriteLock() throws GeneralSecurityException, IOException {
     if (!isInitialized()) {
       throw new IllegalStateException(
           "Tink encryption not initialized. Cannot add keys without initialized keyset.");
@@ -710,7 +893,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
         && keysetBlobRepository != null) {
       try {
-        saveKeysetToDatabase("KEY_ADDED_PENDING");
+        saveKeysetToDatabaseUnlocked("KEY_ADDED_PENDING");
         logger.info("✅ Updated keyset (with new pending key) saved to database");
       } catch (Exception e) {
         logger.error("Failed to save updated keyset to database: {}", e.getMessage());
@@ -728,7 +911,16 @@ public class TinkKeyManager implements KeyManagementOperations {
     return newKeyId;
   }
 
-  public synchronized long promoteToPrimary(long keyId)
+  public long promoteToPrimary(long keyId) throws GeneralSecurityException, IOException {
+    keysetLock.writeLock().lock();
+    try {
+      return promoteToPrimaryUnderWriteLock(keyId);
+    } finally {
+      keysetLock.writeLock().unlock();
+    }
+  }
+
+  private long promoteToPrimaryUnderWriteLock(long keyId)
       throws GeneralSecurityException, IOException {
     if (!isInitialized()) {
       throw new IllegalStateException(
@@ -783,7 +975,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     if ((storageMode == StorageMode.DATABASE || storageMode == StorageMode.HYBRID)
         && keysetBlobRepository != null) {
       try {
-        saveKeysetToDatabase("KEY_PROMOTED_PRIMARY");
+        saveKeysetToDatabaseUnlocked("KEY_PROMOTED_PRIMARY");
         logger.info("✅ Keyset with promoted primary key saved to database");
       } catch (Exception e) {
         logger.error("Failed to save keyset to database after promotion: {}", e.getMessage());
@@ -901,21 +1093,31 @@ public class TinkKeyManager implements KeyManagementOperations {
 
   @SuppressWarnings("deprecation")
   public List<Long> getAllKeyIds() {
-    if (!isInitialized()) {
-      throw new IllegalStateException("Tink encryption not initialized");
+    keysetLock.readLock().lock();
+    try {
+      if (!isInitialized()) {
+        throw new IllegalStateException("Tink encryption not initialized");
+      }
+      var keysetInfo = keysetHandle.getKeysetInfo();
+      return keysetInfo.getKeyInfoList().stream()
+          .map(keyInfo -> toUnsignedLong(keyInfo.getKeyId()))
+          .toList();
+    } finally {
+      keysetLock.readLock().unlock();
     }
-    var keysetInfo = keysetHandle.getKeysetInfo();
-    return keysetInfo.getKeyInfoList().stream()
-        .map(keyInfo -> toUnsignedLong(keyInfo.getKeyId()))
-        .toList();
   }
 
   @SuppressWarnings("deprecation")
   public Object getKeysetInfo() {
-    if (!isInitialized()) {
-      throw new IllegalStateException("Tink encryption not initialized");
+    keysetLock.readLock().lock();
+    try {
+      if (!isInitialized()) {
+        throw new IllegalStateException("Tink encryption not initialized");
+      }
+      return keysetHandle.getKeysetInfo();
+    } finally {
+      keysetLock.readLock().unlock();
     }
-    return keysetHandle.getKeysetInfo();
   }
 
   public Aead getMasterAead() {
@@ -923,6 +1125,15 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   public boolean loadKeysetFromDatabase() {
+    keysetLock.writeLock().lock();
+    try {
+      return loadKeysetFromDatabaseUnlocked();
+    } finally {
+      keysetLock.writeLock().unlock();
+    }
+  }
+
+  private boolean loadKeysetFromDatabaseUnlocked() {
     if (keysetBlobRepository == null) {
       logger.debug("KeysetBlobRepository not available, cannot load from database");
       return false;
@@ -970,6 +1181,16 @@ public class TinkKeyManager implements KeyManagementOperations {
       return;
     }
 
+    keysetLock.readLock().lock();
+    try {
+      saveKeysetToDatabaseUnlocked(updatedBy);
+    } finally {
+      keysetLock.readLock().unlock();
+    }
+  }
+
+  private void saveKeysetToDatabaseUnlocked(String updatedBy)
+      throws GeneralSecurityException, IOException {
     if (keysetHandle == null) {
       throw new IllegalStateException("No keyset loaded, cannot save to database");
     }
