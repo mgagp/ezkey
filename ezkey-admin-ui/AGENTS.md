@@ -284,6 +284,7 @@ Use **start.sh** to build and run the Admin UI in Docker:
 
 - Keyword for humans and agents: **`doctor-curated`**.
 - Purpose: a **punctual lint/polish pass** for Admin UI React code. This is intentionally **not** a CI gate and **not** a zero-warning exercise.
+- **Trace (hygiene, not program):** do **not** create `I-*` / `TB-*` / `TSP-*` for a routine doctor-curated cleanup. Prefer a **dedicated branch + PR** (optional GitHub issue only if board visibility helps). Aligns with root `AGENTS.md` lightweight hygiene workflow and `product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`.
 - Default commands from `ezkey-admin-ui/`:
   - `npm run doctor:curated`
   - `scripts\doctor-curated.cmd` on Windows
@@ -298,6 +299,13 @@ Use **start.sh** to build and run the Admin UI in Docker:
   - `only-export-components`
 - Working rule for agents: when the user asks for a **`doctor-curated`** pass, run the script first, read the curated Markdown or JSON, then propose or implement a **small, prioritized** set of fixes. Prefer P1 first, then a narrow slice of P2. Do not turn the pass into a broad refactor campaign.
 - Working rule for humans: treat the curated report as a **triage aid**. The goal is to identify a few high-signal improvements with strong signal-to-effort ratio and stop before diminishing returns.
+- **Maintainer continuous-learning briefing (mandatory before implementing fixes):** the maintainer is **not** a UI specialist and wants a short, project-contextual explanation of the proposed hygiene items — enough to appreciate *why* each finding matters in Ezkey Admin UI, not a React course. Before coding a doctor-curated fix set, a cold agent must:
+  1. Confirm the hygiene trace (branch + PR; no methodology theatre).
+  2. State clearly what is **in** vs **out** of the proposed pass (challenge design-decision items such as wholesale `<dialog>` migrations).
+  3. For each retained item (usually 3–5 max), give a **brief** briefing: what the rule is complaining about, where it shows up in this codebase, why it is worth fixing now, and the narrowest validation step.
+  4. Only then implement, unless the operator explicitly asks to skip the briefing.
+  Keep the briefing short (a few sentences per item). Prefer concrete Admin UI surfaces (DataTable, Dialog, audit logs, pagination) over generic framework theory.
+- **PR body carries the briefing:** when opening the hygiene PR, **reuse that same short briefing** in the pull-request description (Summary + a short “Why these fixes” / learning section). Do not invent a second long write-up — the chat briefing is the draft; the PR is the durable trace for future readers and for the maintainer’s continuous learning. Keep the PR pragmatic: what changed, why it matters in Admin UI, what was deferred, and a minimal test plan.
 
 ### Cursor IDE browser (MCP) spot checks
 

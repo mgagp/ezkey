@@ -237,6 +237,7 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 
 - For Admin UI React lint or polish passes, the shared keyword is **`doctor-curated`**.
 - Run the lightweight curated React Doctor workflow from `ezkey-admin-ui/` before broad analysis; details and output files live in `ezkey-admin-ui/AGENTS.md`.
+- Before implementing a fix set from that pass: brief the maintainer (short project-contextual why for each retained item), then use a **dedicated branch + PR** — not methodology backlog artifacts. **Put that same short briefing in the PR body** (durable learning trace). Full agent contract: `ezkey-admin-ui/AGENTS.md` § React Doctor curated pass.
 
 ## UI Test Autonomy
 
