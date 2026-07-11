@@ -81,12 +81,15 @@ export function formatDateWithTimezone(dateStr: string): string {
     timeZoneName: 'short',
     ...(tz ? { timeZone: tz } : {}),
   }).formatToParts(date);
-  const dateTime = parts
-    .filter((p) => p.type !== 'timeZoneName')
-    .map((p) => p.value)
-    .join('');
-  const tzPart = parts.find((p) => p.type === 'timeZoneName');
-  const tzAbbrev = tzPart?.value ?? 'UTC';
+  let dateTime = '';
+  let tzAbbrev = 'UTC';
+  for (const part of parts) {
+    if (part.type === 'timeZoneName') {
+      tzAbbrev = part.value;
+    } else {
+      dateTime += part.value;
+    }
+  }
   return `${dateTime.trim()} (${tzAbbrev})`;
 }
 
