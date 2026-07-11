@@ -47,6 +47,7 @@ Wave B closeout ML:
 | `I-2026-07-09` | `encryption.required` read-path parity (at-rest fields) | `ready` | `P2` | `core`, `core-security`, `admin-api`, `auth-api`, `docs` | `2026-07-09` |
 | `I-2026-07-10` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `captured` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-07-09` |
 | `I-2026-07-10-nightly-integrity-boundary-false-positives` | Nightly integrity: boundary false positives (grid align + alert honesty) | `active` | `P1` | `core`, `admin-api`, `admin-ui`, `audit`, `docs` | `2026-07-10` |
+| `I-2026-07-11-api-key-expires-at-edit` | API key PATCH: edit or clear `expiresAt` | `captured` | `P2` | `admin-api`, `admin-ui`, `core`, `docs` | `2026-07-11` |
 
 ## Active tracer bullets (ready / in progress)
 
