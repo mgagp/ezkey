@@ -92,6 +92,9 @@ if [ -n "$WITH_PROXY" ]; then
     if [ -z "${EZKEY_TRUSTED_PROXIES_CIDRS:-}" ]; then
         export EZKEY_TRUSTED_PROXIES_CIDRS="172.16.0.0/12,10.0.0.0/8"
     fi
+    if [ -z "${EZKEY_TRUSTED_PROXIES_REQUIRED:-}" ]; then
+        export EZKEY_TRUSTED_PROXIES_REQUIRED="true"
+    fi
 fi
 
 # Optional: enable JMX for VisualVM in local Docker diagnostics mode.

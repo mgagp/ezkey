@@ -93,7 +93,7 @@ for the full description.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). |
+| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on EXP1 / `--with-proxy`. |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies. |
 
 ---
@@ -117,6 +117,8 @@ for the full description.
 | Property | default | docker | docker-test |
 |---|---|---|---|
 | `ezkey.rate-limit.enabled` | `false` | `true` | `false` |
+| `ezkey.encryption.required` | `false` | `true` | `true` (inherited from docker) |
+| `ezkey.audit.integrity.required` | `false` | `true` | `true` (inherited from docker) |
 | `ezkey.rate-limit.pending.key-strategy` | `client-ip` | `enrollment-id` | `enrollment-id` |
 | `ezkey.rate-limit.respond.requests` | `1` | `1` | `1` |
 | `ezkey.rate-limit.respond.key-strategy` | `auth-attempt-id` | `auth-attempt-id` | `auth-attempt-id` |
@@ -144,8 +146,10 @@ for the full description.
 
 ## Security Notes
 
-1. `ezkey.rate-limit.enabled` is `false` by default — always enable it in Docker/production.
+1. `ezkey.rate-limit.enabled` is `false` by default — the **docker** profile sets `true` (SEC-005). Keep it on for EXP1 / production.
 2. Do not change `ezkey.rate-limit.respond.key-strategy`; `auth-attempt-id` is required for
    correct per-attempt throttling.
 3. `ezkey.demo.mitm-signature-enabled` must be `false` in every production environment. The
    Docker development stack sets it `true` by default for demo convenience.
+4. Docker profile also sets `ezkey.encryption.required=true` and `ezkey.audit.integrity.required=true`
+   (SEC-002 / SEC-008). Behind Caddy, set `EZKEY_TRUSTED_PROXIES_REQUIRED=true` (SEC-011).

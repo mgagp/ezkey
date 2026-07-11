@@ -4,6 +4,20 @@
 
 This document provides operational guidance for deploying and configuring Ezkey in production environments. It covers security considerations, performance tuning, monitoring, and infrastructure-specific configurations.
 
+## Production security posture (docker / EXP1)
+
+Spring profile **`docker`** (used by EXP1 Lightsail and `clean-start --prod-safe`) enables fail-closed and rate-limit defaults:
+
+| Property | Docker / EXP1 | Notes |
+|----------|---------------|-------|
+| `ezkey.rate-limit.enabled` | `true` | Auth API pending/respond/bind/verify (SEC-005). `docker-test` turns this off for churn tests only. |
+| `ezkey.encryption.required` | `true` | Fail startup if Tink cannot initialize (SEC-002). |
+| `ezkey.audit.integrity.required` | `true` | Fail startup if HMAC signing is inactive (SEC-008). |
+| `ezkey.trusted-proxies.required` | `true` when behind Caddy | Via `EZKEY_TRUSTED_PROXIES_REQUIRED` on Lightsail and `./docker/start.sh --with-proxy`. Leave `false` for direct-port local stacks (no reverse proxy). |
+| `ezkey.trusted-proxies.cidrs` | set on proxy stacks | `EZKEY_TRUSTED_PROXIES_CIDRS` — must cover the Docker/Caddy network. |
+
+See module `CONFIGURATION.md` files and [`experimental-hybrid/lightsail/.env.example`](../experimental-hybrid/lightsail/.env.example).
+
 ## Table of Contents
 
 1. [Rate Limiting Security](#rate-limiting-security)

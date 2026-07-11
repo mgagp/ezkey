@@ -19,21 +19,21 @@ La fondation cryptographique d'Ezkey est solide. L'architecture backend-first es
 | ID | Statut | Référence |
 |----|--------|-----------|
 | SEC-001 | **Fait** | PR #255 — challenge obligatoire sur `/passwordless-wait` |
-| SEC-002 | **Fait** | PR #293 — `encryption.required` + health Actuator Tink |
+| SEC-002 | **Fait** | PR #293 — `encryption.required` + health Actuator Tink ; **ops:** `true` sur profil `docker` |
 | SEC-003 | **Fait** | PR #266 — Caffeine bounded sur maps rate limit admin |
 | SEC-004 | **Fait** | PR #266 — rate limit `/passwordless-wait` |
-| SEC-005 | **Adressé** | Rate limiting Auth API (`RateLimitFilter` pending/respond) — activer en prod via `ezkey.rate-limit.enabled=true` |
+| SEC-005 | **Fait** | Auth API rate limit — `ezkey.rate-limit.enabled=true` sur profil `docker` (EXP1, `--prod-safe`); `docker-test` le désactive volontairement pour les tests |
 | SEC-006 | **Fait** | PR #308 — login admin 401 générique (anti-énumération) |
 | SEC-007 | **Fait** | PR #297 — device proof token hash-only (V16) |
-| SEC-008 | **Fait** | PR #293 — `audit.integrity.required` + health HMAC |
+| SEC-008 | **Fait** | PR #293 — `audit.integrity.required` + health HMAC ; **ops:** `true` sur profil `docker` |
 | SEC-009 | **Fait** | Issue #316 / [`ADR-0008`](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path) — `ReadWriteLock` + check version keyset asynchrone (`TinkKeyManager`) |
 | SEC-010 | **Fait** | PR #312 — chiffrement at-rest du hash API key (`EncryptionEntityListener` + V17) |
-| SEC-011 | **Fait** | PR #310 — `trusted-proxies.required` fail-fast au démarrage |
+| SEC-011 | **Fait** | PR #310 — `trusted-proxies.required` fail-fast ; **ops:** `EZKEY_TRUSTED_PROXIES_REQUIRED=true` sur Lightsail / `--with-proxy` |
 | SEC-012 | **Fait** | PR #314 — rejet ECDSA high-S dans `validateSignature()` |
 | SEC-013–016 | Ouvert | Durcissement crypto / défense en profondeur (voir backlog) |
 | **Suivi** | **Backlog** | Parité read-path `encryption.required` — [`I-2026-07-09-encryption-required-read-path-parity`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md) (SEC-010 a introduit `AtRestEncryptionAccess` sur `ApiKey` seulement) |
 
-Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–2 de la roadmap sont closes. La phase 3 est presque close côté code (il reste la posture opérationnelle SEC-005 ; le suivi read-path `encryption.required` est backlog `I-2026-07-09`).
+Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–3 côté code et posture docker/EXP1 sont closes (SEC-001→012). Il reste le suivi read-path `encryption.required` (`I-2026-07-09`) et le durcissement LOW SEC-013–016.
 
 ### Top 3 risques à traiter en priorité
 
@@ -589,11 +589,12 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 - SEC-008 : Health check HMAC audit
 
 ### Phase 3 — Milestone 4 / SOC 2 prep
-- SEC-005 : Rate limiting Auth API (**adressé** — activer en prod)
+- SEC-005 : Rate limiting Auth API (**fait** — profil `docker` / EXP1)
 - SEC-009 : `ReadWriteLock` Tink (**fait** — [`ADR-0008`](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path))
 - SEC-010 : Chiffrement hash API key (**fait** — PR #312)
-- SEC-011 : Validation config IP audit (**fait** — PR #310)
+- SEC-011 : Validation config IP audit (**fait** — PR #310 ; ops Lightsail / `--with-proxy`)
 - SEC-012 : Rejet high-S ECDSA (**fait** — PR #314)
+- **Ops docker (2026-07):** `encryption.required=true`, `audit.integrity.required=true` sur profil `docker`
 - **Suivi** : Parité read-path `encryption.required` — [`I-2026-07-09`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md)
 
 ---

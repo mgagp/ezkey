@@ -70,7 +70,7 @@ for the full description.
 
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
-| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). |
+| `ezkey.trusted-proxies.required` | `boolean` | `false` | optionnel [prod] | When `true`, fail startup if `cidrs` is empty or invalid (SEC-011). Set via **`EZKEY_TRUSTED_PROXIES_REQUIRED=true`** on EXP1 / `--with-proxy`. |
 | `ezkey.trusted-proxies.cidrs` | `List<String>` | *(empty)* | optionnel | CIDR ranges of trusted reverse proxies. |
 
 ---
