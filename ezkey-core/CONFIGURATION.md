@@ -87,7 +87,7 @@ version check so encrypt/decrypt does not serialize on DB sync. See
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.encryption.enabled` | `boolean` | `true` | optionnel | Enable/disable encryption at rest. |
-| `ezkey.encryption.required` | `boolean` | `false` | optionnel [prod] / **requis [docker]** | When `true`, fail startup if encryption is enabled but Tink cannot initialize (SEC-002). Docker profile sets `true`. |
+| `ezkey.encryption.required` | `boolean` | `false` | optionnel [prod] / **requis [docker]** | When `true`, fail startup if encryption is enabled but Tink cannot initialize (SEC-002). Also fail-closed on **read** and **write** of at-rest fields via `AtRestEncryptionAccess` (ApiKey, Enrollment, AuthAttempt). Docker profile sets `true`. |
 | `ezkey.encryption.master-key-file` | `String` | *(null)* | requis [docker] | Path to the Base64-encoded 256-bit master key file (e.g. `/etc/ezkey/secrets/master.key`). |
 | `ezkey.encryption.keyset-file` | `String` | *(null)* | requis [docker] en mode FILE/HYBRID | Path to the encrypted Tink keyset file (e.g. `/etc/ezkey/keysets/keyset.json.encrypted`). |
 | `ezkey.encryption.algorithm` | `String` | `AES256_GCM` | optionnel | AEAD algorithm. Accepted values: `AES256_GCM`, `CHACHA20_POLY1305`. |

@@ -26,11 +26,11 @@ import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.enrollment.domain.DevicePrivateKeyStorageTier;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
+import org.ezkey.security.AtRestEncryptionAccess;
 import org.ezkey.security.EncryptionOperations;
 import org.ezkey.security.EncryptionOperationsHolder;
 import org.ezkey.security.Reencryptable;
 import org.ezkey.security.SensitiveDataHasher;
-import org.slf4j.LoggerFactory;
 
 /**
  * JPA entity representing enrollment data in the Ezkey system.
@@ -328,6 +328,16 @@ public class Enrollment implements Reencryptable {
     this.enrollmentChallenge = enrollmentChallenge;
   }
 
+  /**
+   * Gets the enrollment proof token, decrypting it if necessary.
+   *
+   * <p>When {@code ezkey.encryption.required=true}, plaintext-at-rest or decrypt failures fail
+   * closed via {@link AtRestEncryptionAccess} (same policy as {@code ApiKey#getSecretKeyHash}).
+   *
+   * @return the plaintext enrollment proof token
+   * @throws IllegalStateException when encryption is required but the value is not encrypted or
+   *     cannot be decrypted
+   */
   public String getEnrollmentProofToken() {
     if (enrollmentProofToken != null) {
       return enrollmentProofToken;
@@ -337,24 +347,11 @@ public class Enrollment implements Reencryptable {
       return null;
     }
 
-    EncryptionOperations operations = getEncryptionOperations();
-    if (operations != null && operations.isEncryptionAvailable()) {
-      if (operations.isEncrypted(encryptedEnrollmentProofToken)) {
-        try {
-          enrollmentProofToken = operations.decrypt(encryptedEnrollmentProofToken);
-          return enrollmentProofToken;
-        } catch (Exception exception) {
-          LoggerFactory.getLogger(Enrollment.class)
-              .warn(
-                  "Failed to decrypt enrollment proof token for enrollment {}. Returning as-is.",
-                  enrollmentId,
-                  exception);
-          return encryptedEnrollmentProofToken;
-        }
-      }
-    }
-
-    enrollmentProofToken = encryptedEnrollmentProofToken;
+    enrollmentProofToken =
+        AtRestEncryptionAccess.resolveEncryptedField(
+            getEncryptionOperations(),
+            encryptedEnrollmentProofToken,
+            "enrollment proof token (enrollmentId=" + enrollmentId + ")");
     return enrollmentProofToken;
   }
 
@@ -375,48 +372,28 @@ public class Enrollment implements Reencryptable {
   /**
    * Gets the integration private key, decrypting it if necessary.
    *
-   * <p>This method automatically decrypts the encrypted value from the database on first access and
-   * caches the decrypted value in the transient field to avoid repeated decryption operations.
+   * <p>Decrypts on first access and caches plaintext in the transient field. When {@code
+   * ezkey.encryption.required=true}, plaintext-at-rest or decrypt failures fail closed via {@link
+   * AtRestEncryptionAccess} (same policy as {@code ApiKey#getSecretKeyHash}).
    *
-   * <p>If encryption is not available or the value is not encrypted, returns the value as-is
-   * (backward compatibility with plaintext data).
-   *
-   * @return the decrypted integration private key, or plaintext if encryption unavailable
+   * @return the decrypted integration private key, or plaintext when encryption is not required
+   * @throws IllegalStateException when encryption is required but the value is not encrypted or
+   *     cannot be decrypted
    */
   public String getIntegrationPrivateKey() {
-    // If transient field is already populated, return it
     if (integrationPrivateKey != null) {
       return integrationPrivateKey;
     }
 
-    // If encrypted field is null, return null
     if (encryptedIntegrationPrivateKey == null) {
       return null;
     }
 
-    // Decrypt on first access
-    EncryptionOperations operations = getEncryptionOperations();
-    if (operations != null && operations.isEncryptionAvailable()) {
-      if (operations.isEncrypted(encryptedIntegrationPrivateKey)) {
-        try {
-          String decrypted = operations.decrypt(encryptedIntegrationPrivateKey);
-          // Cache in transient field to avoid repeated decryption
-          integrationPrivateKey = decrypted;
-          return decrypted;
-        } catch (Exception e) {
-          LoggerFactory.getLogger(Enrollment.class)
-              .warn(
-                  "Failed to decrypt integration private key for enrollment {}. Returning as-is.",
-                  enrollmentId,
-                  e);
-          // Return encrypted value if decryption fails (backward compatibility)
-          return encryptedIntegrationPrivateKey;
-        }
-      }
-    }
-
-    // Not encrypted or encryption unavailable - return as-is (backward compatibility)
-    integrationPrivateKey = encryptedIntegrationPrivateKey;
+    integrationPrivateKey =
+        AtRestEncryptionAccess.resolveEncryptedField(
+            getEncryptionOperations(),
+            encryptedIntegrationPrivateKey,
+            "integration private key (enrollmentId=" + enrollmentId + ")");
     return integrationPrivateKey;
   }
 

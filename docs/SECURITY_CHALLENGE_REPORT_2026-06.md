@@ -31,9 +31,9 @@ La fondation cryptographique d'Ezkey est solide. L'architecture backend-first es
 | SEC-011 | **Fait** | PR #310 — `trusted-proxies.required` fail-fast ; **ops:** `EZKEY_TRUSTED_PROXIES_REQUIRED=true` sur Lightsail / `--with-proxy` |
 | SEC-012 | **Fait** | PR #314 — rejet ECDSA high-S dans `validateSignature()` |
 | SEC-013–016 | Ouvert | Durcissement crypto / défense en profondeur (voir backlog) |
-| **Suivi** | **Backlog** | Parité read-path `encryption.required` — [`I-2026-07-09-encryption-required-read-path-parity`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md) (SEC-010 a introduit `AtRestEncryptionAccess` sur `ApiKey` seulement) |
+| **Suivi** | **Fait** | Parité read-path `encryption.required` — [`I-2026-07-09`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md) (`AtRestEncryptionAccess` sur `ApiKey`, `Enrollment`, `AuthAttempt`) |
 
-Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–3 côté code et posture docker/EXP1 sont closes (SEC-001→012). Il reste le suivi read-path `encryption.required` (`I-2026-07-09`) et le durcissement LOW SEC-013–016.
+Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–3 et le suivi read-path sont closes côté code/ops docker (SEC-001→012 + `I-2026-07-09`). Il reste le durcissement LOW SEC-013–016.
 
 ### Top 3 risques à traiter en priorité
 
@@ -595,7 +595,7 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 - SEC-011 : Validation config IP audit (**fait** — PR #310 ; ops Lightsail / `--with-proxy`)
 - SEC-012 : Rejet high-S ECDSA (**fait** — PR #314)
 - **Ops docker (2026-07):** `encryption.required=true`, `audit.integrity.required=true` sur profil `docker`
-- **Suivi** : Parité read-path `encryption.required` — [`I-2026-07-09`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md)
+- **Suivi** : Parité read-path `encryption.required` — [`I-2026-07-09`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md) (**fait** — `Enrollment` / `AuthAttempt` via `AtRestEncryptionAccess`)
 
 ---
 

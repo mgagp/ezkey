@@ -44,7 +44,6 @@ Wave B closeout ML:
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (Spring Boot + operator UI) | `parked` | `P3` | `admin-api`, `admin-ui`, `docs`, ecosystem GitHub, `sdk-java` | `2026-07-05` |
 | `I-2026-07-05-enrollment-integration-key-cycling` | Enrollment integration key cycling via auth-exchange hooks | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `docs`, `crypto` | `2026-07-05` |
 | `I-2026-0032` | Proof token hash-only storage (tiered hardening) | `incubating` | `P1` | `core`, `auth-api`, `admin-api`, `docs`, `crypto` | `2026-07-06` |
-| `I-2026-07-09` | `encryption.required` read-path parity (at-rest fields) | `ready` | `P2` | `core`, `core-security`, `admin-api`, `auth-api`, `docs` | `2026-07-09` |
 | `I-2026-07-10` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `captured` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-07-09` |
 | `I-2026-07-10-nightly-integrity-boundary-false-positives` | Nightly integrity: boundary false positives (grid align + alert honesty) | `active` | `P1` | `core`, `admin-api`, `admin-ui`, `audit`, `docs` | `2026-07-10` |
 | `I-2026-07-11-api-key-expires-at-edit` | API key PATCH: edit or clear `expiresAt` | `captured` | `P2` | `admin-api`, `admin-ui`, `core`, `docs` | `2026-07-11` |
@@ -59,6 +58,7 @@ Wave B closeout ML:
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-07-09` | `encryption.required` read-path parity (at-rest fields) | `2026-07-11` | `Enrollment` / `AuthAttempt` getters via `AtRestEncryptionAccess`; Security Challenge Suivi → Fait. |
 | `I-2026-0030` | Admin Dashboard: widget signal model review and realignment | `2026-07-05` | PR #291. Enrollment `invalid`/`revoked` badges; `dashboard-widget-signal-model.md`. Closed on `I-*` (no `TB-*`). |
 | `I-2026-0007` | Admin Dashboard: batch health and integrity widgets (Wave B B3) | `2026-07-03` | PR #289 / TB `TB-2026-07-03-dashboard-batch-health-widgets`. Program #269 closed same day. |
 | `I-2026-0005` | Checkpoint integrity breaks: remediation + entry conciliation (Wave B B2/B2.6) | `2026-07-03` | PR #287 (B2.6) + earlier B2 chain reconcile. TB `TB-2026-07-02-entry-integrity-conciliation-and-alert-coherence`. |

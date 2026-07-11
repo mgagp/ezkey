@@ -3,15 +3,16 @@
 ## Metadata
 
 - **ID:** `I-2026-07-09-encryption-required-read-path-parity`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-07-09`
-- **Updated at:** `2026-07-09`
-- **Last reviewed at:** `2026-07-09`
+- **Updated at:** `2026-07-11`
+- **Last reviewed at:** `2026-07-11`
 - **Progression markers:** `P2-hardening`, `security-challenge-follow-up`
 - **Component tags:** `core`, `core-security`, `admin-api`, `auth-api`, `docs`
 - **Lane:** `D` (security / hardening)
 - **Captured by:** Marc (post SEC-010 hygiene)
+- **Completed at:** `2026-07-11`
 - **Security audit trace:** SEC-002 (startup), SEC-010 (ApiKey read-path), Suivi in
   [`docs/SECURITY_CHALLENGE_REPORT_2026-06.md`](../../../../docs/SECURITY_CHALLENGE_REPORT_2026-06.md)
 
@@ -62,14 +63,22 @@ failure (auth/validation errors or controlled exceptions) instead of degraded re
 
 ## Action checklist (implementation order)
 
-1. Refactor the three enrollment/auth-attempt getters to call
-   `AtRestEncryptionAccess.resolveEncryptedField()` (remove inline warn-and-fallback branches).
-2. Grep for `getIntegrationPrivateKey`, `getEnrollmentProofToken`, `getAuthAttemptProofToken` —
-   ensure no caller assumes plaintext fallback when `required=true`.
-3. Add/adjust tests mirroring `ApiKeySecretKeyHashEncryptionTest` and `AtRestEncryptionAccessTest`.
+1. ~~Refactor the three enrollment/auth-attempt getters to call
+   `AtRestEncryptionAccess.resolveEncryptedField()` (remove inline warn-and-fallback branches).~~
+2. ~~Grep for `getIntegrationPrivateKey`, `getEnrollmentProofToken`, `getAuthAttemptProofToken` —
+   ensure no caller assumes plaintext fallback when `required=true`.~~ (Callers propagate
+   `IllegalStateException`; API key path already fail-closes in `ApiKeyService`.)
+3. ~~Add/adjust tests mirroring `ApiKeySecretKeyHashEncryptionTest` and `AtRestEncryptionAccessTest`.~~
 4. Run full reactor + `ezkey-tests` security suite with Docker `encryption.required=true` (profile or
    env override) once to validate end-to-end auth/enrollment paths.
-5. Update security report Suivi → **Fait** when merged; optional GitHub issue for visibility.
+5. ~~Update security report Suivi → **Fait** when merged; optional GitHub issue for visibility.~~
+
+## Closeout (2026-07-11)
+
+- Getters: `Enrollment.getEnrollmentProofToken`, `Enrollment.getIntegrationPrivateKey`,
+  `AuthAttempt.getAuthAttemptProofToken` → `AtRestEncryptionAccess`.
+- Tests: `EnrollmentAtRestEncryptionReadPathTest`, `AuthAttemptAtRestEncryptionReadPathTest`.
+- Docs: `ezkey-core/CONFIGURATION.md`, Security Challenge Report Suivi → **Fait**.
 
 ## Promotion notes
 
