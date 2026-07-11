@@ -259,6 +259,7 @@ public class RetroactiveIntegrityValidationService {
             .custom("windowEnd", windowEnd.toString())
             .custom("chainStatus", chainReport.status())
             .custom("violationCount", chainReport.violations().size())
+            .custom("undeclaredGapCount", chainReport.undeclaredGaps().size())
             .custom("entryHmacViolationCount", entryViolations.size())
             .custom("entryViolations", cappedListToMap(cappedEntries))
             .custom("chainViolations", cappedListToMap(cappedChains))
@@ -305,6 +306,7 @@ public class RetroactiveIntegrityValidationService {
             .custom("chainStatus", chainReport.status())
             .custom("entryHmacViolationCount", entryViolations.size())
             .custom("chainViolationCount", chainReport.violations().size())
+            .custom("undeclaredGapCount", chainReport.undeclaredGaps().size())
             .custom("entryViolations", cappedListToMap(cappedEntries))
             .custom("chainViolations", cappedListToMap(cappedChains))
             .custom("triggerSource", triggerSource.name());

@@ -40,6 +40,7 @@ public class NightlyIntegrityValidationScheduler {
       LoggerFactory.getLogger(NightlyIntegrityValidationScheduler.class);
 
   private final NightlyIntegrityProperties nightlyProperties;
+  private final AuditChainProperties chainProperties;
   private final RetroactiveIntegrityValidationService validationService;
   private final ScheduledJobLastRunService jobLastRunService;
 
@@ -47,14 +48,17 @@ public class NightlyIntegrityValidationScheduler {
    * Constructs the scheduler.
    *
    * @param nightlyProperties nightly batch configuration
+   * @param chainProperties rolling checkpoint window size (grid alignment)
    * @param validationService retroactive validation orchestration
    * @param jobLastRunService registry updates
    */
   public NightlyIntegrityValidationScheduler(
       NightlyIntegrityProperties nightlyProperties,
+      AuditChainProperties chainProperties,
       RetroactiveIntegrityValidationService validationService,
       ScheduledJobLastRunService jobLastRunService) {
     this.nightlyProperties = nightlyProperties;
+    this.chainProperties = chainProperties;
     this.validationService = validationService;
     this.jobLastRunService = jobLastRunService;
   }
@@ -64,11 +68,16 @@ public class NightlyIntegrityValidationScheduler {
    *
    * <p>Batch infrastructure failures update the job registry only (C9); integrity ruptures raise
    * alerts via {@link RetroactiveIntegrityValidationService}.
+   *
+   * <p>{@code windowEnd} is rounded down to the checkpoint grid (ADR-0008) so sub-second wall-clock
+   * precision cannot exclude the first aligned checkpoint and invent a leading undeclared gap.
    */
   @Scheduled(cron = "${ezkey.audit.integrity.nightly.cron:0 0 2 * * ?}")
   @SchedulerLock(name = "NIGHTLY_INTEGRITY_VALIDATION", lockAtMostFor = "PT2H")
   public void runNightlyValidation() {
-    OffsetDateTime windowEnd = OffsetDateTime.now(ZoneOffset.UTC);
+    OffsetDateTime windowEnd =
+        AuditChainScheduler.roundDownToWindow(
+            OffsetDateTime.now(ZoneOffset.UTC), chainProperties.getWindowMinutes());
     String scope = "Validated " + nightlyProperties.getWindowHours() + " h ending " + windowEnd;
 
     try {

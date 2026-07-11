@@ -37,13 +37,14 @@ describe('resolveAlertListSummary', () => {
       JSON.stringify({
         violationCount: 2,
         entryHmacViolationCount: 3,
+        undeclaredGapCount: 1,
         entryViolations: { totalCount: 5, returnedCount: 5, truncated: false },
         chainViolations: { totalCount: 4, returnedCount: 4, truncated: false },
       }),
     );
     expect(result).toEqual({
       templateKey: 'list.summary.integrityRupture',
-      params: { entryCount: 5, chainCount: 4 },
+      params: { entryCount: 5, chainCount: 4, gapCount: 1 },
     });
   });
 
@@ -57,7 +58,25 @@ describe('resolveAlertListSummary', () => {
     );
     expect(result).toEqual({
       templateKey: 'list.summary.integrityRupture',
-      params: { entryCount: 3, chainCount: 2 },
+      params: { entryCount: 3, chainCount: 2, gapCount: 0 },
+    });
+  });
+
+  it('surfaces undeclared gaps when crypto counts are zero', () => {
+    const result = resolveAlertListSummary(
+      'AUDIT_INTEGRITY_RUPTURE',
+      JSON.stringify({
+        chainStatus: 'UNDECLARED_GAP_DETECTED',
+        violationCount: 0,
+        entryHmacViolationCount: 0,
+        undeclaredGapCount: 1,
+        entryViolations: { totalCount: 0 },
+        chainViolations: { totalCount: 0 },
+      }),
+    );
+    expect(result).toEqual({
+      templateKey: 'list.summary.integrityRupture',
+      params: { entryCount: 0, chainCount: 0, gapCount: 1 },
     });
   });
 
