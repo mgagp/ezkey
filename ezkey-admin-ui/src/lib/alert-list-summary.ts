@@ -28,6 +28,7 @@ interface CappedListPayload {
 interface AuditIntegrityRupturePayload {
   violationCount?: number;
   entryHmacViolationCount?: number;
+  undeclaredGapCount?: number;
   entryViolations?: CappedListPayload;
   chainViolations?: CappedListPayload;
 }
@@ -94,6 +95,7 @@ function asIntegrityRupturePayload(value: unknown): AuditIntegrityRupturePayload
   return {
     violationCount: readNumber(value.violationCount),
     entryHmacViolationCount: readNumber(value.entryHmacViolationCount),
+    undeclaredGapCount: readNumber(value.undeclaredGapCount),
     entryViolations,
     chainViolations,
   };
@@ -162,6 +164,7 @@ export function resolveAlertListSummary(
         params: {
           entryCount: resolveEntryViolationCount(rupture),
           chainCount: resolveChainViolationCount(rupture),
+          gapCount: rupture.undeclaredGapCount ?? 0,
         },
       };
     }

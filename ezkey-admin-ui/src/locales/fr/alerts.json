@@ -25,7 +25,7 @@
     "summary": {
       "gapPending": "Checkpoint d'ancrage n°{{anchorCheckpointId}} · coupure ~{{gapMinutes}} min",
       "heartbeatStale": "{{phase}} · ancrage n°{{anchorCheckpointId}}",
-      "integrityRupture": "{{entryCount}} entrée(s) + {{chainCount}} violation(s) chaîne",
+      "integrityRupture": "{{entryCount}} entrée(s) + {{chainCount}} chaîne · {{gapCount}} trou(s) non déclaré(s)",
       "unavailable": "—"
     },
     "emptyMessage": "Aucune alerte ne correspond aux filtres.",

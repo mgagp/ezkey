@@ -225,8 +225,12 @@ updates `ezkey_scheduled_job_last_run` for operator visibility (Wave B B1).
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.audit.integrity.nightly.enabled` | `boolean` | `true` | optionnel | Enable/disable nightly batch. Set `false` in native/Windows dev profiles without HMAC. |
-| `ezkey.audit.integrity.nightly.cron` | `String` | `0 0 2 * * ?` | optionnel | Quartz cron for nightly run (default 02:00 UTC). |
+| `ezkey.audit.integrity.nightly.cron` | `String` | `0 0 2 * * ?` | optionnel | Quartz cron for nightly run (default 02:00 UTC). Prefer a small margin after the hour (e.g. `0 2 2 * * ?`) if operators want extra headroom vs chain attach at second 1 of each 5-minute tick. |
 | `ezkey.audit.integrity.nightly.window-hours` | `int` | `24` | optionnel | Retroactive validation window length in hours. |
+
+**Window alignment:** The scheduled batch rounds `windowEnd` down to the audit-chain checkpoint grid
+(same `ezkey.audit.chain.window-minutes`, default 5) before validating — see ADR-0009. Do not pass
+raw wall-clock `now()` with sub-second precision into chain range queries.
 
 **Registry:** successful runs update `NIGHTLY_INTEGRITY_VALIDATION` in `ezkey_scheduled_job_last_run`.
 Batch infrastructure failures record `FAILED` on the registry row only (C9 — no “batch did not run” alert).

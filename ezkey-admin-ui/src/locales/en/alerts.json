@@ -25,7 +25,7 @@
     "summary": {
       "gapPending": "Anchor checkpoint #{{anchorCheckpointId}} · ~{{gapMinutes}} min gap",
       "heartbeatStale": "{{phase}} · anchor #{{anchorCheckpointId}}",
-      "integrityRupture": "{{entryCount}} entry + {{chainCount}} chain violations",
+      "integrityRupture": "{{entryCount}} entry + {{chainCount}} chain · {{gapCount}} undeclared gap(s)",
       "unavailable": "—"
     },
     "emptyMessage": "No alerts match the current filters.",

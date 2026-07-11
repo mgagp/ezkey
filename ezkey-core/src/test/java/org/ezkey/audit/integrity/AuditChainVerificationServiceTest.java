@@ -310,6 +310,56 @@ class AuditChainVerificationServiceTest {
     assertEquals("OK", report.status());
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  void verifyChain_subSecondFromExcludesFirstGridCheckpoint_reportsLeadingGap() {
+    // ADR-0008 / EXP1 pitfall: wall-clock from with nanos excludes windowStart == exact grid.
+    AuditLog entry = buildSignedEntry(1L);
+    AuditChainCheckpoint first = buildGenesisCheckpoint(List.of(entry));
+    AuditChainCheckpoint second =
+        buildLinkedCheckpointWithWindow(
+            List.of(entry), first.getChainHmac(), WIN_END, WIN_END.plusMinutes(5));
+    stubAuditLogs(List.of(entry));
+
+    OffsetDateTime from = WIN_START.plusNanos(17_000_000);
+    OffsetDateTime to = WIN_END.plusMinutes(5);
+    when(checkpointRepository.findByWindowRange(eq(from), eq(to))).thenReturn(List.of(second));
+    when(checkpointRepository.findEarliest()).thenReturn(Optional.of(first));
+    when(checkpointRepository.findLatest()).thenReturn(Optional.of(second));
+
+    ChainVerificationReport report = verificationService.verifyChain(from, to);
+
+    assertFalse(report.intact());
+    assertEquals("UNDECLARED_GAP_DETECTED", report.status());
+    assertEquals(1, report.undeclaredGaps().size());
+    assertEquals(from, report.undeclaredGaps().get(0).gapStart());
+    assertEquals(WIN_END, report.undeclaredGaps().get(0).gapEnd());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void verifyChain_gridAlignedFrom_includesFirstCheckpoint_intact() {
+    AuditLog entry = buildSignedEntry(1L);
+    AuditChainCheckpoint first = buildGenesisCheckpoint(List.of(entry));
+    AuditChainCheckpoint second =
+        buildLinkedCheckpointWithWindow(
+            List.of(entry), first.getChainHmac(), WIN_END, WIN_END.plusMinutes(5));
+    stubAuditLogs(List.of(entry));
+
+    OffsetDateTime from = WIN_START;
+    OffsetDateTime to = WIN_END.plusMinutes(5);
+    when(checkpointRepository.findByWindowRange(eq(from), eq(to)))
+        .thenReturn(List.of(first, second));
+    when(checkpointRepository.findEarliest()).thenReturn(Optional.of(first));
+    when(checkpointRepository.findLatest()).thenReturn(Optional.of(second));
+
+    ChainVerificationReport report = verificationService.verifyChain(from, to);
+
+    assertTrue(report.intact());
+    assertEquals("OK", report.status());
+    assertTrue(report.undeclaredGaps().isEmpty());
+  }
+
   // -----------------------------------------------------------------------
   // Boundary coverage: no leading/trailing gap when range extends beyond full extent
   // -----------------------------------------------------------------------

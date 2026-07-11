@@ -25,6 +25,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0006](#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519) | Dual signing algorithms: EC P-256 device, Ed25519 integration | accepted | 2025-07-20 |
 | [ADR-0007](#adr-0007-proof-token-storage-hash-only-where-protocol-allows) | Proof token storage: hash-only where protocol allows | accepted | 2026-07-06 |
 | [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path) | Tink keyset sync: concurrent read path for at-rest encryption | accepted | 2026-07-09 |
+| [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid) | Detective integrity windows align to checkpoint grid | accepted | 2026-07-10 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -349,6 +350,7 @@ not bcrypt, because lookup is by the token value itself.
 - Dual signing payloads: [ADR-0006](#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519).
 - Incubation source: [`.cursor/plans/proof_token_hash-only_storage.plan.md`](../../.cursor/plans/proof_token_hash-only_storage.plan.md).
 - Concurrent Tink keyset access: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
+- Detective integrity windows: [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid).
 
 ## ADR-0008 — Tink keyset sync: concurrent read path for at-rest encryption
 
@@ -408,8 +410,8 @@ Cryptographic formats, storage modes (`FILE` / `DATABASE` / `HYBRID`), and
   the hot-path critical section; reload briefly pauses readers only when the keyset actually
   changes.
 - **Negative.** Slightly more locking surface to reason about (read vs write, async check,
-  re-entrance); operators must not assume “every `getAeadPrimitive()` call synchronously refreshes
-  the keyset.”
+  re-entrance); operators must not assume "every `getAeadPrimitive()` call synchronously refreshes
+  the keyset."
 - **Neutral.** Throttle interval and storage-mode semantics remain as configured; no ciphertext or
   Flyway change.
 
@@ -435,3 +437,81 @@ Cryptographic formats, storage modes (`FILE` / `DATABASE` / `HYBRID`), and
 - Proof-token storage tiers (related Tink surface): [ADR-0007](#adr-0007-proof-token-storage-hash-only-where-protocol-allows).
 - Read-path fail-closed when `encryption.required=true` (orthogonal follow-up):
   [`I-2026-07-09`](backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md).
+- Detective integrity windows: [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid).
+
+## ADR-0009 — Detective integrity windows align to checkpoint grid
+
+### Metadata
+
+- **ID:** ADR-0009.
+- **Date:** 2026-07-10.
+- **Status:** accepted.
+- **Scope:** global (audit integrity / detective layer).
+- **Owners:** Platform architecture / integrity cluster.
+
+### Context
+
+Wave B shipped a two-layer integrity model: rolling **attach** (5-minute checkpoints) and nightly
+**detect** (retroactive HMAC + chain verification). On EXP1, the nightly batch raised daily CRITICAL
+`AUDIT_INTEGRITY_RUPTURE` alerts with zero entry and zero chain crypto violations. Investigation
+showed the detective window used wall-clock `now()` (sub-second precision) while checkpoints sit on
+exact grid boundaries, so `findByWindowRange` excluded the first aligned checkpoint and reported a
+leading undeclared gap. The alert payload and Admin UI summarized only crypto violation counts,
+producing a CRITICAL "0 + 0" signal that operators correctly treated as unfounded.
+
+The original design was right to treat undeclared gaps as integrity failures for forensic honesty.
+It under-specified that **scheduled detective windows must share the checkpoint time base**, and
+that **operator-facing rupture alerts must distinguish coverage findings from crypto violations**.
+
+### Decision
+
+1. **Grid alignment:** Scheduled retroactive integrity validation computes
+   `[windowStart, windowEnd)` from a `windowEnd` rounded down to the configured checkpoint window
+   boundary (reuse `AuditChainScheduler.roundDownToWindow` / same `windowMinutes`). Only completed
+   grid windows are in scope for the default nightly pass.
+2. **Alert honesty:** `AUDIT_INTEGRITY_RUPTURE` payloads and list summaries must not imply "no
+   findings" when `chainStatus` is `UNDECLARED_GAP_DETECTED` (or equivalent). Undeclared-gap signal
+   is first-class in operator-facing text, separate from entry/chain crypto counts.
+3. **Taxonomy guard:** Do not raise manipulation-family CRITICAL alerts solely for **boundary
+   artifacts** of the scheduled scan (misaligned `now()`, or "last sealed window not yet persisted"
+   at the exact cron instant). Interior undeclared gaps and crypto failures remain alert-eligible.
+4. **Scheduler contract:** Document that chain attach (`1 */5 …`) and nightly detect (`0 0 2 …`)
+   are coupled; prefer validating sealed windows and/or a small cron margin after the hour.
+
+### Alternatives Considered
+
+- **Config-only cron shift (e.g. 02:10).** Rejected as sole fix — reduces race odds but leaves
+  sub-second exclusion and "0 + 0" CRITICAL UX intact.
+- **Never alert on undeclared gaps.** Rejected — weakens detective honesty for real interior gaps.
+- **New alert type for boundary gaps.** Deferred — alignment + payload honesty is enough for R1;
+  a separate type can be revisited if operators still need a distinct queue lane.
+
+### Consequences
+
+- **Positive.** Healthy instances stay quiet; CRITICAL integrity alerts regain trust; future
+  integrity jobs inherit an explicit time-base rule.
+- **Negative.** Slightly less "up to the millisecond" coverage at the trailing edge of the nightly
+  window (by design — that edge is not yet a sealed checkpoint).
+- **Neutral.** Historical false-positive OPEN alerts on EXP1 may need manual resolve.
+
+### Impact
+
+- **Affected components:** `core` (schedulers, verification orchestration), `admin-api`,
+  `admin-ui` (alert summary), docs.
+- **Affected features:** [`F-audit-chain`](features-and-phases.md#f-audit-chain).
+- **Backlog:** [`I-2026-07-10-nightly-integrity-boundary-false-positives`](backlog/ideas/I-2026-07-10-nightly-integrity-boundary-false-positives.md),
+  method log [`ML-2026-07-09`](backlog/method-logs/ML-2026-07-09-exp1-nightly-integrity-boundary-false-positives.md).
+- **Design pack:** [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md) pitfall note.
+
+### Validation
+
+- Unit: sub-second window end does not produce leading undeclared gap on a contiguous checkpoint grid.
+- Regression: real interior gap and digest mismatch still raise/touch `AUDIT_INTEGRITY_RUPTURE`.
+- EXP1: after deploy, next nightly run leaves no new zero-violation rupture alert.
+
+### Related Decisions
+
+- Integrity cluster design: [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md).
+- Vision: [`V-2026-0004`](vision/V-2026-0004-integrity-validation-strategy.md).
+- Parent delivery: `I-2026-0006` / nightly batch B1.
+- Tink keyset concurrent read path: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
