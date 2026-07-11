@@ -35,9 +35,9 @@ When a new session starts and the user is bringing a new idea, use this lightwei
 Parallel lane for current-session plan incubation:
 
 1. Read `product-docs/methodology/plan-incubation-workflow.md`.
-2. If the operator prefers to start in agent Plan mode, allow a live working plan under `.cursor/plans/`, `plans/`, or `.github/prompts/plan-*.prompt.md` as the incubation artifact.
+2. If the operator prefers to start in agent Plan mode, allow a live working plan under `.cursor/plans/`, `plans/`, or `.github/prompts/plan-*.prompt.md` as the incubation artifact. Cursor Plan files outside the clone are scaffolding until promoted.
 3. Materialize the durable result into `V-*`, `I-*`, `TB-*`, and related canonical docs once the direction is coherent.
-4. **Pass the bidirectional traceability gate** before closing the lane (corpus ↔ all retained working plans). See `plan-incubation-workflow.md` and skill `plan-incubation`.
+4. **Classify retention:** ephemeral scaffold (canon alone; no half-links) vs retained working plan (then **pass the bidirectional gate**). See `plan-incubation-workflow.md`, skill `plan-incubation`, and decision `2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan`.
 5. Do not frame this as retrofit unless the source is genuinely historical or mixed with historical evidence.
 
 Parallel lane for historical plan retrofit:

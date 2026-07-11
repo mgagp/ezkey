@@ -65,6 +65,12 @@ the durable result into canonical artifacts.
 Lane B is the deliberate freeform entry path into normal delivery work. Once the direction is
 coherent, materialize into `V-*`, `I-*`, or `TB-*` and continue through Lane A.
 
+At materialization, **classify retention**: if Plan mode was only ephemeral scaffolding and the
+canon already holds the full durable signal, do **not** force a repo-hosted plan or claim the
+bidirectional gate — see
+[`decisions/2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md`](decisions/2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md).
+Never half-link corpus docs to plan paths outside the git clone.
+
 ### Lane C — Legacy knowledge retrofit
 
 Use when the goal is extracting value from historical plans, verbal rationale, or ad hoc history.
@@ -122,7 +128,8 @@ instead of creating a new artifact family.
 - `I-*`: backlog idea
 - `TB-*`: tracer bullet execution slice
 - `R-*`: legacy knowledge retrofit slice
-- `working plan`: live non-canonical planning artifact used before canonical materialization
+- `working plan`: live non-canonical planning artifact used before canonical materialization (repo-hosted when retained; Cursor Plan files outside the clone may stay ephemeral)
+- `ephemeral scaffold`: Plan mode output fully absorbed into `V-*` / `I-*` / `TB-*` without retaining the plan in-repo
 - `methodology decision`: a decision about the workflow itself, recorded under `methodology/decisions/`
 - `post-delivery re-entry`: a new change initiated from existing implemented behavior and routed
   back to `TB-*`, `I-*`, or `V-*` only when intent changed
@@ -137,7 +144,7 @@ instead of creating a new artifact family.
 
 ### Start with a live working plan first
 
-`Use plan-incubation. Start in Plan mode with a live working plan for this topic, then materialize the result into V-* and/or I-* once the direction is coherent.`
+`Use plan-incubation. Start in Plan mode with a live working plan for this topic, then materialize the result into V-* and/or I-* once the direction is coherent. Classify ephemeral vs retained before claiming the bidirectional gate.`
 
 ### Start a delivery slice
 

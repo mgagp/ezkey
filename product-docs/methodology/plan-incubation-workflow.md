@@ -37,9 +37,14 @@ A **working plan** is a non-canonical planning artifact used to:
 
 Typical locations:
 
-- `.cursor/plans/`
+- `.cursor/plans/` (inside the **git clone**)
 - `plans/`
 - `.github/prompts/plan-*.prompt.md` (repo-hosted working plans for GitHub Copilot or shared intake)
+
+**Not automatically retained:** Cursor IDE Plan mode may write plan files under the **user** Cursor
+directory (for example `~/.cursor/plans/`), outside the repository. Those files are useful session
+scaffolding; they are **not** methodology working plans until deliberately promoted into a
+repo-hosted location above. See [Ephemeral Plan mode vs retained working plan](#ephemeral-plan-mode-vs-retained-working-plan).
 
 Typical properties:
 
@@ -90,23 +95,42 @@ After convergence, materialize the signal into one or more of:
    - write the canonical artifacts in English;
    - keep them concise and method-aligned;
    - avoid copying the working plan verbatim.
-5. **Bidirectional traceability gate** (mandatory — do not skip)
-   - complete the gate in [Bidirectional traceability gate](#bidirectional-traceability-gate-mandatory-at-materialization) before treating materialization as done.
-6. **Cross-link**
-   - link the canonical artifacts back to the working plan when useful;
+5. **Classify retention** — ephemeral scaffold vs retained working plan (see
+   [Ephemeral Plan mode vs retained working plan](#ephemeral-plan-mode-vs-retained-working-plan)).
+   If ephemeral, skip the bidirectional gate for that plan and do not invent half-links.
+6. **Bidirectional traceability gate** (mandatory **only for retained** working plans)
+   - complete the gate in [Bidirectional traceability gate](#bidirectional-traceability-gate-mandatory-for-retained-plans) before treating retained-plan materialization as done.
+7. **Cross-link**
+   - link the canonical artifacts back to the working plan when the plan is **retained**;
    - record related artifact IDs in the plan if the plan remains in active use.
-7. **Continue or close**
+8. **Continue or close**
    - continue using the plan if it still helps the next slice,
-   - or leave it as a retained supporting artifact once the canonical docs are sufficient.
+   - or leave it as a retained supporting artifact once the canonical docs are sufficient,
+   - or close as ephemeral if classification A applied.
 
-## Bidirectional traceability gate (mandatory at materialization)
+## Ephemeral Plan mode vs retained working plan
 
-When step 4 produces any artifact under `product-docs/` from a working plan, **the lane is not
-complete** until this gate passes. The goal is a **conductive thread** between original intent
-(plan) and canonical record (`product-docs`) so humans and agents can move in either direction
-when revisiting, adjusting, or extending the work.
+Cursor Plan mode is encouraged. At materialization, choose explicitly:
 
-Invoke the `plan-incubation` skill at materialization time; its closeout step enforces this gate.
+| Classification | When | What to do |
+| --- | --- | --- |
+| **A — Ephemeral scaffold** | Durable signal is fully and unambiguously in `V-*` / `I-*` / `TB-*`; plan adds no important residual option space | Materialize canon only. Do **not** copy the plan into the repo just for ceremony. Do **not** link to paths outside the clone. Optional one-line note that Plan mode was ephemeral. Do **not** claim the retained-plan bidirectional gate for that file. |
+| **B — Retained working plan** | Plan still holds useful option space, rejected alternatives, or execution notes | Promote/copy into a repo-hosted location, then pass the **bidirectional gate**. |
+
+Authority: [`decisions/2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md`](decisions/2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md).
+
+**Hard rule:** never leave corpus → plan provenance that a cold agent cannot resolve from a fresh clone.
+
+## Bidirectional traceability gate (mandatory for retained plans)
+
+When step 4 produces any artifact under `product-docs/` from a **retained** working plan, **the
+lane is not complete** until this gate passes. Ephemeral scaffolds (classification A) do not use
+this gate. The goal is a **conductive thread** between original intent (plan) and canonical record
+(`product-docs`) so humans and agents can move in either direction when revisiting, adjusting, or
+extending the work.
+
+Invoke the `plan-incubation` skill at materialization time; its closeout step enforces this gate
+for retained plans.
 
 ### Gate checklist
 
@@ -177,12 +201,13 @@ If a working plan later becomes old and must be mined after the fact, it may bec
 
 - Prefer the lightest canonical destination that preserves the value.
 - Do not force an `R-*` just because a plan file exists.
+- Do not force a repo-hosted plan copy when classification A (ephemeral) already applies.
 - Keep the working plan when it still contains useful option space, rejected alternatives, or execution notes.
 - Promote only what has durable product, delivery, or traceability value.
 
 ## Definition of done
 
-This lane is complete when:
+**Retained** plan incubation (classification B) is complete when:
 
 - the working plan has produced at least one canonical artifact,
 - the canonical artifacts clearly express the durable intent,
@@ -190,8 +215,15 @@ This lane is complete when:
 - the plan's role is explicit (still active support artifact, or retained source only),
 - and the language used is "materialization/canonicalization," not accidental "retrofit," unless the source truly warrants it.
 
+**Ephemeral** Plan-aided capture (classification A) is complete when:
+
+- durable signal lives unambiguously in `V-*` / `I-*` / `TB-*` (or related canon),
+- no half-link points outside the clone,
+- and the optional ephemeral-scaffolding note (if any) does not claim the retained-plan gate.
+
 ## Related documents
 
+- [`decisions/2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md`](decisions/2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md)
 - [`decisions/2026-06-02-plan-incubation-bidirectional-traceability.md`](decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
 - [`workflow-overview.md`](workflow-overview.md)
 - [`session-start-guide.md`](session-start-guide.md)

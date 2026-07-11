@@ -22,7 +22,8 @@ For current-session Plan-mode incubation, use the plan-incubation lane instead o
 1. Read `product-docs/methodology/plan-incubation-workflow.md`.
 2. Allow a live working plan under `.cursor/plans/` or `plans/` when that is the deliberate brainstorming entrypoint.
 3. Materialize the durable output into `V-*`, `I-*`, `TB-*`, and related canonical docs.
-4. Do not describe this as retrofit unless the source is historical or mixed with historical evidence.
+4. Classify **ephemeral scaffold vs retained working plan** before claiming the bidirectional gate; never half-link to plan paths outside the clone (decision `2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan`).
+5. Do not describe this as retrofit unless the source is historical or mixed with historical evidence.
 
 For historical plans, verbal rationale, and ad hoc implementation history, use the retrofit lane:
 
