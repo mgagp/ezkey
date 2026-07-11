@@ -1,5 +1,6 @@
 package org.ezkey.demo.device.service;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -7,6 +8,8 @@ import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
@@ -20,7 +23,8 @@ import org.springframework.stereotype.Service;
 /**
  * Cryptographic utilities for the simulated device (JDK-only, no Bouncy Castle).
  *
- * <p><b>Device keys:</b> EC P-256 (secp256r1), ECDSA-SHA256, DER signatures (Base64).
+ * <p><b>Device keys:</b> EC P-256 (secp256r1), ECDSA-SHA256, DER signatures (Base64), always
+ * normalized to <b>low-S</b> so Auth API SEC-012 validation accepts them.
  *
  * <p><b>Integration verification:</b> Ed25519 raw public key (32 bytes, Base64URL) and signature
  * (64 bytes, Base64URL), matching the Auth API integration material.
@@ -69,7 +73,7 @@ public class DeviceCryptoService {
 
   /**
    * Signs UTF-8 content with an EC P-256 PKCS#8 private key; returns standard Base64 over DER ECDSA
-   * signature.
+   * signature with {@code s} normalized to low-S (Auth API SEC-012 parity).
    */
   public String signStringToBase64(String content, String base64PrivateKey) {
     Objects.requireNonNull(content, "content must not be null");
@@ -82,6 +86,16 @@ public class DeviceCryptoService {
       sig.initSign(privateKey);
       sig.update(content.getBytes(StandardCharsets.UTF_8));
       byte[] der = sig.sign();
+      ECPrivateKey ecPriv = (ECPrivateKey) privateKey;
+      BigInteger n = ecPriv.getParams().getOrder();
+      BigInteger[] rs = EcdsaDerCodec.decodeSignature(der);
+      if (rs == null) {
+        throw new IllegalStateException("Invalid ECDSA DER from provider");
+      }
+      BigInteger s = normalizeEcdsaSToLowS(rs[1], n);
+      if (!s.equals(rs[1])) {
+        der = EcdsaDerCodec.encodeSignature(rs[0], s);
+      }
       return Base64.getEncoder().encodeToString(der);
     } catch (Exception e) {
       logger.error("Failed to sign data", e);
@@ -116,7 +130,7 @@ public class DeviceCryptoService {
 
   /**
    * Verifies a signature: if the public key decodes to 32 bytes, treats Ed25519 (integration); else
-   * EC P-256 ECDSA (device / SPKI).
+   * EC P-256 ECDSA (device / SPKI). ECDSA path rejects non-canonical high-S (SEC-012 parity).
    */
   public boolean validateSignature(String data, String signatureEncoded, String publicKeyEncoded) {
     try {
@@ -157,14 +171,39 @@ public class DeviceCryptoService {
       byte[] keyBytes = Base64.getDecoder().decode(base64PublicKey);
       PublicKey publicKey =
           KeyFactory.getInstance("EC").generatePublic(new X509EncodedKeySpec(keyBytes));
+      byte[] signatureBytes = Base64.getDecoder().decode(signatureBase64);
+      if (!isCanonicalLowSEcdsaSignature(publicKey, signatureBytes)) {
+        logger.debug("ECDSA signature rejected: non-canonical high-S form");
+        return false;
+      }
       Signature verifier = Signature.getInstance("SHA256withECDSA");
       verifier.initVerify(publicKey);
       verifier.update(data.getBytes(StandardCharsets.UTF_8));
-      return verifier.verify(Base64.getDecoder().decode(signatureBase64));
+      return verifier.verify(signatureBytes);
     } catch (Exception e) {
       logger.debug("ECDSA verify failed", e);
       return false;
     }
+  }
+
+  private static boolean isCanonicalLowSEcdsaSignature(PublicKey publicKey, byte[] signatureBytes) {
+    if (!(publicKey instanceof ECPublicKey ecPublicKey)) {
+      return false;
+    }
+    BigInteger[] rs = EcdsaDerCodec.decodeSignature(signatureBytes);
+    if (rs == null) {
+      return false;
+    }
+    BigInteger halfN = ecPublicKey.getParams().getOrder().shiftRight(1);
+    return rs[1].compareTo(halfN) <= 0;
+  }
+
+  private static BigInteger normalizeEcdsaSToLowS(BigInteger s, BigInteger n) {
+    BigInteger halfN = n.shiftRight(1);
+    if (s.compareTo(halfN) > 0) {
+      return n.subtract(s);
+    }
+    return s;
   }
 
   private static byte[] decodeFlexibleBase64(String value) {
