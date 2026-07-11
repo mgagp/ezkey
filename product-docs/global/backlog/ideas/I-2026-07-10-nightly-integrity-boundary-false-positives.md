@@ -77,7 +77,7 @@ separate Grill Me session. Prefer a bounded Lane D fix on one branch; no new vis
 
 - Method log: [`../method-logs/ML-2026-07-09-exp1-nightly-integrity-boundary-false-positives.md`](../method-logs/ML-2026-07-09-exp1-nightly-integrity-boundary-false-positives.md)
 - Design pack: [`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md)
-- ADR: [`../../architecture-decisions.md#adr-0008-detective-integrity-windows-align-to-checkpoint-grid`](../../architecture-decisions.md#adr-0008-detective-integrity-windows-align-to-checkpoint-grid)
+- ADR: [`../../architecture-decisions.md#adr-0009-detective-integrity-windows-align-to-checkpoint-grid`](../../architecture-decisions.md#adr-0009-detective-integrity-windows-align-to-checkpoint-grid)
 - Parent shipped work: `I-2026-0006` / `TB-2026-06-28-nightly-integrity-validation-batch`
 - Vision: [`../../vision/V-2026-0004-integrity-validation-strategy.md`](../../vision/V-2026-0004-integrity-validation-strategy.md)
 - GitHub branch: `feature/315-i-2026-07-10-nightly-integrity-boundary-false-positives`

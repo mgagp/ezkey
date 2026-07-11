@@ -24,7 +24,8 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0005](#adr-0005-audit-log-hmac-badge-detail-session-sync) | Audit log HMAC badge — detail verify seeds list session | accepted | 2026-07-03 |
 | [ADR-0006](#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519) | Dual signing algorithms: EC P-256 device, Ed25519 integration | accepted | 2025-07-20 |
 | [ADR-0007](#adr-0007-proof-token-storage-hash-only-where-protocol-allows) | Proof token storage: hash-only where protocol allows | accepted | 2026-07-06 |
-| [ADR-0008](#adr-0008-detective-integrity-windows-align-to-checkpoint-grid) | Detective integrity windows align to checkpoint grid | accepted | 2026-07-10 |
+| [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path) | Tink keyset sync: concurrent read path for at-rest encryption | accepted | 2026-07-09 |
+| [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid) | Detective integrity windows align to checkpoint grid | accepted | 2026-07-10 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -348,12 +349,101 @@ not bcrypt, because lookup is by the token value itself.
 - Admin bearer hash-only analysis: [`.cursor/plans/bearer_token_hash_storage_analysis.plan.md`](../../.cursor/plans/bearer_token_hash_storage_analysis.plan.md).
 - Dual signing payloads: [ADR-0006](#adr-0006-dual-signing-algorithms-device-ec-p256-integration-ed25519).
 - Incubation source: [`.cursor/plans/proof_token_hash-only_storage.plan.md`](../../.cursor/plans/proof_token_hash-only_storage.plan.md).
+- Concurrent Tink keyset access: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
+- Detective integrity windows: [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid).
 
-## ADR-0008 — Detective integrity windows align to checkpoint grid
+## ADR-0008 — Tink keyset sync: concurrent read path for at-rest encryption
 
 ### Metadata
 
 - **ID:** ADR-0008.
+- **Date:** 2026-07-09.
+- **Status:** accepted.
+- **Scope:** global (core encryption / `TinkKeyManager`).
+- **Owners:** Platform architecture / security.
+
+### Context
+
+Every at-rest encrypt/decrypt path goes through `TinkKeyManager.getAeadPrimitive()` (via
+`EncryptionEntityListener` → `EncryptionService`). In `DATABASE` / `HYBRID` storage modes the
+manager also periodically checks whether the keyset version changed (rotation or multi-instance
+sync) and may reload the in-memory keyset.
+
+A 2026 security challenge (findings F-07-B / F-10-B, backlog **SEC-009**) observed that
+`getAeadPrimitive()` was **method-level `synchronized`**, and that the throttled DB version check
+ran **inside** that exclusive lock. Under concurrent entity access — especially during background
+re-encryption — all encrypt/decrypt threads serialized on one mutex, including while waiting on a
+DB round-trip. This is an **Insecure Design / concurrency** issue (OWASP A04): keyset sync was
+coupled to the hot path, degrading latency under load without changing cryptographic correctness.
+
+### Decision
+
+Decouple keyset synchronization from the encrypt/decrypt hot path:
+
+1. Protect `keysetHandle` with a **`ReentrantReadWriteLock`**: concurrent **read** locks for
+   `getAeadPrimitive()` / read-only keyset queries; exclusive **write** locks for reload, rotation,
+   and keyset mutation.
+2. Schedule throttled keyset version checks (default interval 5 s) on a **daemon background
+   thread**, outside the read lock. Acquire the write lock only when a newer version is confirmed
+   (double-check under write lock before reload).
+3. Keep the existing **`CHECKING_DATABASE` ThreadLocal** guard to prevent JPA listener recursion
+   during version checks.
+4. Allow re-entrant use when the calling thread already holds the write lock (rotation that
+   triggers entity listeners must not deadlock).
+
+Cryptographic formats, storage modes (`FILE` / `DATABASE` / `HYBRID`), and
+`ezkey.encryption.required` fail-fast (SEC-002) are unchanged.
+
+### Alternatives Considered
+
+- **Keep method-level `synchronized`.** Rejected — serializes all encrypt/decrypt on periodic DB
+  checks; root cause of SEC-009.
+- **Synchronous version check under the read lock.** Rejected — still blocks concurrent readers
+  during DB I/O; only slightly better than a full mutex.
+- **External scheduler / separate sync component outside `TinkKeyManager`.** Rejected for this
+  slice — adds accidental complexity; the manager already owns keyset lifecycle and the ThreadLocal
+  recursion guard.
+
+### Consequences
+
+- **Positive.** Encrypt/decrypt threads proceed concurrently; DB version checks no longer sit on
+  the hot-path critical section; reload briefly pauses readers only when the keyset actually
+  changes.
+- **Negative.** Slightly more locking surface to reason about (read vs write, async check,
+  re-entrance); operators must not assume "every `getAeadPrimitive()` call synchronously refreshes
+  the keyset."
+- **Neutral.** Throttle interval and storage-mode semantics remain as configured; no ciphertext or
+  Flyway change.
+
+### Impact
+
+- **Affected components:** `ezkey-core-security` (`TinkKeyManager`), all APIs that encrypt at rest.
+- **Affected features:** [`F-encryption-key-rotation`](features-and-phases.md#f-encryption-key-rotation).
+- **Security audit:** SEC-009 / F-07-B / F-10-B in
+  [`../../docs/SECURITY_CHALLENGE_REPORT_2026-06.md`](../../docs/SECURITY_CHALLENGE_REPORT_2026-06.md);
+  GitHub issue `#316`.
+- **Config pointer:** [`../../ezkey-core/CONFIGURATION.md`](../../ezkey-core/CONFIGURATION.md)
+  (Encryption at Rest).
+
+### Validation
+
+- Unit: `TinkKeyManagerConcurrencyTest` (concurrent readers with slow `findVersion`; DB version
+  bump reload; concurrent readers during `addKeyWithoutPromotion`).
+- Elective E2E spot-check: `ReencryptionFullTriggerConcurrentActivityElectiveTest` (re-encryption
+  under enrollment churn) via `ezkey-tests` profile `elective-tests`.
+
+### Related Decisions
+
+- Proof-token storage tiers (related Tink surface): [ADR-0007](#adr-0007-proof-token-storage-hash-only-where-protocol-allows).
+- Read-path fail-closed when `encryption.required=true` (orthogonal follow-up):
+  [`I-2026-07-09`](backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md).
+- Detective integrity windows: [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid).
+
+## ADR-0009 — Detective integrity windows align to checkpoint grid
+
+### Metadata
+
+- **ID:** ADR-0009.
 - **Date:** 2026-07-10.
 - **Status:** accepted.
 - **Scope:** global (audit integrity / detective layer).
@@ -367,7 +457,7 @@ Wave B shipped a two-layer integrity model: rolling **attach** (5-minute checkpo
 showed the detective window used wall-clock `now()` (sub-second precision) while checkpoints sit on
 exact grid boundaries, so `findByWindowRange` excluded the first aligned checkpoint and reported a
 leading undeclared gap. The alert payload and Admin UI summarized only crypto violation counts,
-producing a CRITICAL “0 + 0” signal that operators correctly treated as unfounded.
+producing a CRITICAL "0 + 0" signal that operators correctly treated as unfounded.
 
 The original design was right to treat undeclared gaps as integrity failures for forensic honesty.
 It under-specified that **scheduled detective windows must share the checkpoint time base**, and
@@ -379,11 +469,11 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
    `[windowStart, windowEnd)` from a `windowEnd` rounded down to the configured checkpoint window
    boundary (reuse `AuditChainScheduler.roundDownToWindow` / same `windowMinutes`). Only completed
    grid windows are in scope for the default nightly pass.
-2. **Alert honesty:** `AUDIT_INTEGRITY_RUPTURE` payloads and list summaries must not imply “no
-   findings” when `chainStatus` is `UNDECLARED_GAP_DETECTED` (or equivalent). Undeclared-gap signal
+2. **Alert honesty:** `AUDIT_INTEGRITY_RUPTURE` payloads and list summaries must not imply "no
+   findings" when `chainStatus` is `UNDECLARED_GAP_DETECTED` (or equivalent). Undeclared-gap signal
    is first-class in operator-facing text, separate from entry/chain crypto counts.
 3. **Taxonomy guard:** Do not raise manipulation-family CRITICAL alerts solely for **boundary
-   artifacts** of the scheduled scan (misaligned `now()`, or “last sealed window not yet persisted”
+   artifacts** of the scheduled scan (misaligned `now()`, or "last sealed window not yet persisted"
    at the exact cron instant). Interior undeclared gaps and crypto failures remain alert-eligible.
 4. **Scheduler contract:** Document that chain attach (`1 */5 …`) and nightly detect (`0 0 2 …`)
    are coupled; prefer validating sealed windows and/or a small cron margin after the hour.
@@ -391,7 +481,7 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
 ### Alternatives Considered
 
 - **Config-only cron shift (e.g. 02:10).** Rejected as sole fix — reduces race odds but leaves
-  sub-second exclusion and “0 + 0” CRITICAL UX intact.
+  sub-second exclusion and "0 + 0" CRITICAL UX intact.
 - **Never alert on undeclared gaps.** Rejected — weakens detective honesty for real interior gaps.
 - **New alert type for boundary gaps.** Deferred — alignment + payload honesty is enough for R1;
   a separate type can be revisited if operators still need a distinct queue lane.
@@ -400,7 +490,7 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
 
 - **Positive.** Healthy instances stay quiet; CRITICAL integrity alerts regain trust; future
   integrity jobs inherit an explicit time-base rule.
-- **Negative.** Slightly less “up to the millisecond” coverage at the trailing edge of the nightly
+- **Negative.** Slightly less "up to the millisecond" coverage at the trailing edge of the nightly
   window (by design — that edge is not yet a sealed checkpoint).
 - **Neutral.** Historical false-positive OPEN alerts on EXP1 may need manual resolve.
 
@@ -424,3 +514,4 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
 - Integrity cluster design: [`integrity-cluster-design-pack.md`](integrity-cluster-design-pack.md).
 - Vision: [`V-2026-0004`](vision/V-2026-0004-integrity-validation-strategy.md).
 - Parent delivery: `I-2026-0006` / nightly batch B1.
+- Tink keyset concurrent read path: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).

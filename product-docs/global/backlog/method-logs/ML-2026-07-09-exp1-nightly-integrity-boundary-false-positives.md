@@ -84,7 +84,7 @@ treated undeclared gaps as integrity failures for forensic honesty. What was und
 3. **Coupled schedulers** (nightly at `:00`, chain at `:01`) need an explicit contract: either
    validate only completed windows, or schedule detect after attach has caught up.
 
-These lessons are recorded as [ADR-0008](../../architecture-decisions.md#adr-0008-detective-integrity-windows-align-to-checkpoint-grid)
+These lessons are recorded as [ADR-0009](../../architecture-decisions.md#adr-0009-detective-integrity-windows-align-to-checkpoint-grid)
 and a pitfall section in the integrity design pack.
 
 ## Recommended fix (implementation slice)
@@ -94,12 +94,12 @@ and a pitfall section in the integrity design pack.
 2. Unit test: sub-second `now` must not produce leading undeclared gap when checkpoints are contiguous
    on the grid.
 3. Payload/UI: surface undeclared-gap count (or status) in list summary when crypto counts are zero.
-4. Docs: this ML, ADR-0008, design-pack pitfall note; optional CONFIGURATION note on cron margin.
+4. Docs: this ML, ADR-0009, design-pack pitfall note; optional CONFIGURATION note on cron margin.
 
 ## Links
 
 - Idea: [`../ideas/I-2026-07-10-nightly-integrity-boundary-false-positives.md`](../ideas/I-2026-07-10-nightly-integrity-boundary-false-positives.md)
 - Design pack: [`../../integrity-cluster-design-pack.md`](../../integrity-cluster-design-pack.md)
-- ADR-0008: [`../../architecture-decisions.md#adr-0008-detective-integrity-windows-align-to-checkpoint-grid`](../../architecture-decisions.md#adr-0008-detective-integrity-windows-align-to-checkpoint-grid)
+- (../../architecture-decisions.md#adr-0009-detective-integrity-windows-align-to-checkpoint-grid)
 - Code: `NightlyIntegrityValidationScheduler`, `AuditChainVerificationService`,
   `RetroactiveIntegrityValidationService`, `alert-list-summary.ts`

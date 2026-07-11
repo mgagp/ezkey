@@ -83,4 +83,5 @@ failure (auth/validation errors or controlled exceptions) instead of degraded re
 - Reference entity: `ezkey-core/.../ApiKey.java` (`getSecretKeyHash`)
 - Listener: `ezkey-core/.../EncryptionEntityListener.java`
 - Config index: `ezkey-core/CONFIGURATION.md` (`ezkey.encryption.required`)
-- Security report: `docs/SECURITY_CHALLENGE_REPORT_2026-06.md` (SEC-002, SEC-010, Suivi)
+- Security audit: [`../../../../docs/SECURITY_CHALLENGE_REPORT_2026-06.md`](../../../../docs/SECURITY_CHALLENGE_REPORT_2026-06.md) (SEC-002, SEC-010, Suivi)
+- Concurrent Tink keyset access (orthogonal): [`ADR-0008`](../../architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path)

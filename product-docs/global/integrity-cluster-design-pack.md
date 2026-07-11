@@ -90,7 +90,7 @@ run” alert.
 
 1. Compute `[windowStart, windowEnd)` = retroactive window ending at batch start (default 24 h).
    **`windowEnd` must be rounded down to the checkpoint grid** (same `windowMinutes` as rolling
-   attach) — see [ADR-0008](architecture-decisions.md#adr-0008-detective-integrity-windows-align-to-checkpoint-grid).
+   attach) — see [ADR-0009](architecture-decisions.md#adr-0009-detective-integrity-windows-align-to-checkpoint-grid).
    Do **not** pass raw `OffsetDateTime.now()` with sub-second precision into `findByWindowRange`.
 2. Skip sub-ranges covered by resolved gap/heartbeat/manipulation conciliation (reuse lifecycle
    queries; TB specifies repository methods).
@@ -112,7 +112,7 @@ Recorded so future integrity changes do not reintroduce silent CRITICAL noise.
 
 | Pitfall | What happens | Guard |
 |---------|--------------|-------|
-| Wall-clock `now()` as `windowEnd` | Sub-second `from` excludes the first grid checkpoint → leading “undeclared gap” with intact crypto | Round `windowEnd` to checkpoint boundary ([ADR-0008](architecture-decisions.md#adr-0008-detective-integrity-windows-align-to-checkpoint-grid)) |
+| Wall-clock `now()` as `windowEnd` | Sub-second `from` excludes the first grid checkpoint → leading “undeclared gap” with intact crypto | Round `windowEnd` to checkpoint boundary ([ADR-0009](architecture-decisions.md#adr-0009-detective-integrity-windows-align-to-checkpoint-grid)) |
 | Nightly cron at second 0 vs chain cron at second 1 | Last sealed 5-min window may not exist yet at batch start | Validate sealed windows only; optional cron margin after `:00` |
 | Rupture alert payload omits undeclared gaps | UI shows “0 entry + 0 chain violations” for CRITICAL | Include gap signal in payload/summary |
 | Fingerprint includes shifting coverage bounds | New OPEN alert every night for the same class of artifact | Fix root cause first; stable fingerprints follow |
@@ -195,7 +195,7 @@ Functional tests in `ezkey-tests` where stable; elective tests for long-running 
 | `ML-2026-06-28-wave-b-integrity-cluster-kickoff.md` | Method log for this kickoff |
 | `ML-2026-07-02-entry-integrity-conciliation-kickoff.md` | B2.6 + B2.7 analysis kickoff |
 | `ML-2026-07-09-exp1-nightly-integrity-boundary-false-positives.md` | EXP1 false CRITICAL from misaligned detective window |
-| [ADR-0008](architecture-decisions.md#adr-0008-detective-integrity-windows-align-to-checkpoint-grid) | Detective windows align to checkpoint grid |
+| [ADR-0009](architecture-decisions.md#adr-0009-detective-integrity-windows-align-to-checkpoint-grid) | Detective windows align to checkpoint grid |
 | `I-2026-07-10-nightly-integrity-boundary-false-positives` | Lane D fix for boundary false positives |
 
 ## Complexity compass (scope guard)

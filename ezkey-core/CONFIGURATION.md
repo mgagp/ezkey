@@ -75,6 +75,11 @@ ezkey.core.auth-attempt.ttl-seconds=120
 Rotation and re-encryption jobs run **only in Admin API**; Auth API and Integration API set
 `rotation.enabled=false` and `reencryption.enabled=false`.
 
+**Concurrency model:** `TinkKeyManager` uses a read/write lock and a throttled async keyset
+version check so encrypt/decrypt does not serialize on DB sync. See
+[ADR-0008](../product-docs/global/architecture-decisions.md#adr-0008-tink-keyset-sync-concurrent-read-path)
+(SEC-009).
+
 **Defined in:** `TinkProperties`
 
 #### Core
@@ -224,7 +229,7 @@ updates `ezkey_scheduled_job_last_run` for operator visibility (Wave B B1).
 | `ezkey.audit.integrity.nightly.window-hours` | `int` | `24` | optionnel | Retroactive validation window length in hours. |
 
 **Window alignment:** The scheduled batch rounds `windowEnd` down to the audit-chain checkpoint grid
-(same `ezkey.audit.chain.window-minutes`, default 5) before validating — see ADR-0008. Do not pass
+(same `ezkey.audit.chain.window-minutes`, default 5) before validating — see ADR-0009. Do not pass
 raw wall-clock `now()` with sub-second precision into chain range queries.
 
 **Registry:** successful runs update `NIGHTLY_INTEGRITY_VALIDATION` in `ezkey_scheduled_job_last_run`.
