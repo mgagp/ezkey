@@ -18,7 +18,8 @@
     "prev": "Préc.",
     "next": "Suiv.",
     "last": "Dernière",
-    "perPage": "{{count}} / page"
+    "perPage": "{{count}} / page",
+    "pageSize": "Lignes par page"
   },
   "notFound": {
     "title": "Page introuvable",

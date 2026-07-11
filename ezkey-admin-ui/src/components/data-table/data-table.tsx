@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
 
 export interface ColumnDef<T> {
@@ -44,6 +44,14 @@ function parseSortString(sort: string): { field: string; dir: string } {
   return { field, dir: dir.toUpperCase() };
 }
 
+/** Activate clickable table controls with Enter or Space (keyboard parity for onClick). */
+function activateOnEnterOrSpace(event: KeyboardEvent, action: () => void): void {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    action();
+  }
+}
+
 /**
  * Reusable data table with neo-brutalism styling and optional server-side sorting.
  * Use alongside <Pagination> for paginated lists.
@@ -81,11 +89,21 @@ export function DataTable<T extends object>({
             {columns.map((col) => {
               const isSortable = !!col.sortKey && !!onSort;
               const isActive = isSortable && col.sortKey === activeField;
+              const sortKey = col.sortKey;
 
               return (
                 <th
                   key={col.key}
-                  onClick={isSortable ? () => handleSort(col.sortKey!) : undefined}
+                  onClick={isSortable && sortKey ? () => handleSort(sortKey) : undefined}
+                  onKeyDown={
+                    isSortable && sortKey
+                      ? (event) => activateOnEnterOrSpace(event, () => handleSort(sortKey))
+                      : undefined
+                  }
+                  tabIndex={isSortable ? 0 : undefined}
+                  aria-sort={
+                    isActive ? (activeDir === 'ASC' ? 'ascending' : 'descending') : undefined
+                  }
                   className={cn(
                     'px-3 py-2.5 text-left text-xs font-black uppercase tracking-wider whitespace-nowrap',
                     isSortable && 'cursor-pointer select-none hover:bg-white/10 transition-colors',
@@ -148,7 +166,13 @@ export function DataTable<T extends object>({
             data.map((row, index) => (
               <tr
                 key={keyExtractor ? keyExtractor(row, index) : index}
-                onClick={() => onRowClick?.(row)}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onKeyDown={
+                  onRowClick
+                    ? (event) => activateOnEnterOrSpace(event, () => onRowClick(row))
+                    : undefined
+                }
+                tabIndex={onRowClick ? 0 : undefined}
                 className={cn(
                   'border-b border-fg/10 bg-surface even:bg-bg',
                   'transition-colors duration-75',

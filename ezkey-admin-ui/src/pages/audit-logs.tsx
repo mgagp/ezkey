@@ -703,12 +703,39 @@ function IntegrityPanel({
   const { effectiveTimeZoneId } = useDisplayTimezone();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const forceTimelineOpen = expandFromQuery || focusCheckpointId != null;
   const [expanded, setExpanded] = useState(expandFromQuery);
+  const [timelineExpanded, setTimelineExpanded] = useState(forceTimelineOpen);
+  const [prevExpandFromQuery, setPrevExpandFromQuery] = useState(expandFromQuery);
+  const [prevForceTimelineOpen, setPrevForceTimelineOpen] = useState(forceTimelineOpen);
 
-  /** Deep-link from Dashboard (?integrity=1): keep panel open when query requests it. */
-  useEffect(() => {
-    if (expandFromQuery) setExpanded(true);
-  }, [expandFromQuery]);
+  // Deep-link props: open during render (no post-paint flash) when the query turns on.
+  if (expandFromQuery !== prevExpandFromQuery) {
+    setPrevExpandFromQuery(expandFromQuery);
+    if (expandFromQuery) {
+      setExpanded(true);
+    }
+  }
+  if (forceTimelineOpen !== prevForceTimelineOpen) {
+    setPrevForceTimelineOpen(forceTimelineOpen);
+    if (forceTimelineOpen) {
+      setTimelineExpanded(true);
+    }
+  }
+
+  // ── Check results ──
+  const [chainReport, setChainReport] = useState<ChainVerificationReport | null>(null);
+  const [integrityReport, setIntegrityReport] = useState<IntegrityReport | null>(null);
+  const [chainReportRange, setChainReportRange] = useState<{ from: string; to: string } | null>(null);
+  const [integrityReportRange, setIntegrityReportRange] = useState<{ from: string; to: string } | null>(null);
+  const [chainLoading, setChainLoading] = useState(false);
+  const [integrityLoading, setIntegrityLoading] = useState(false);
+  const [validationRunLoading, setValidationRunLoading] = useState(false);
+  const [validationRunResult, setValidationRunResult] =
+    useState<RetroactiveIntegrityValidationRunResponse | null>(null);
+
+  // ── Date range for integrity checks (shared DateRangeFilter) ──
+  const [checkRange, setCheckRange] = useState({ from: '', to: '' });
 
   /** Scroll integrity section into view after opening from dashboard link. */
   useEffect(() => {
@@ -727,33 +754,6 @@ function IntegrityPanel({
       to: toDateInputValue(initialCheckRange.createdBefore),
     });
   }, [initialCheckRange?.createdAfter, initialCheckRange?.createdBefore]);
-
-  useEffect(() => {
-    if (focusCheckpointId != null) {
-      setTimelineExpanded(true);
-    }
-  }, [focusCheckpointId]);
-
-  /** Dashboard / integrity deep links should surface the checkpoint timeline without an extra click. */
-  useEffect(() => {
-    if (expandFromQuery) {
-      setTimelineExpanded(true);
-    }
-  }, [expandFromQuery]);
-
-  // ── Check results ──
-  const [chainReport, setChainReport] = useState<ChainVerificationReport | null>(null);
-  const [integrityReport, setIntegrityReport] = useState<IntegrityReport | null>(null);
-  const [chainReportRange, setChainReportRange] = useState<{ from: string; to: string } | null>(null);
-  const [integrityReportRange, setIntegrityReportRange] = useState<{ from: string; to: string } | null>(null);
-  const [chainLoading, setChainLoading] = useState(false);
-  const [integrityLoading, setIntegrityLoading] = useState(false);
-  const [validationRunLoading, setValidationRunLoading] = useState(false);
-  const [validationRunResult, setValidationRunResult] =
-    useState<RetroactiveIntegrityValidationRunResponse | null>(null);
-
-  // ── Date range for integrity checks (shared DateRangeFilter) ──
-  const [checkRange, setCheckRange] = useState({ from: '', to: '' });
 
   // ── Dialogs ──
   const [sealOpen, setSealOpen] = useState(false);
@@ -775,7 +775,6 @@ function IntegrityPanel({
   const [gapJustification, setGapJustification] = useState('');
 
   // ── Checkpoint timeline (nested expandable) ──
-  const [timelineExpanded, setTimelineExpanded] = useState(false);
   const [checkpointRange, setCheckpointRange] = useState({ from: '', to: '' });
   const [checkpointTypeFilter, setCheckpointTypeFilter] = useState('');
   const [hideEmptyWindows, setHideEmptyWindows] = useState(false);

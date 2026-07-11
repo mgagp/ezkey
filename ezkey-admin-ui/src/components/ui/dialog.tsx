@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useId } from 'react';
 
 interface DialogProps {
   open: boolean;
@@ -36,6 +36,8 @@ export function Dialog({
   dismissible = true,
   headerActions,
 }: DialogProps) {
+  const titleId = useId();
+
   useEffect(() => {
     if (!open || !dismissible) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -57,13 +59,19 @@ export function Dialog({
       <div
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         className={cn(
           'relative z-10 w-full bg-surface border-2 border-fg shadow-brutal-lg max-h-[90vh] flex flex-col',
           sizeClasses[size],
         )}
       >
         <div className="flex items-center justify-between gap-2 px-5 py-3 border-b-2 border-fg shrink-0">
-          <h2 className="text-xs font-black uppercase tracking-widest text-fg min-w-0 flex-1 truncate">{title}</h2>
+          <h2
+            id={titleId}
+            className="text-xs font-black uppercase tracking-widest text-fg min-w-0 flex-1 truncate"
+          >
+            {title}
+          </h2>
           {headerActions != null ? <div className="flex items-center gap-1 shrink-0">{headerActions}</div> : null}
           <button
             type="button"
