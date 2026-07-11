@@ -100,7 +100,8 @@ public class SignatureCompatibilityTest {
     String data = "pending-proof-token-for-high-s";
     String lowSSignature =
         deviceCryptoService.signStringToBase64(data, testKeyPair.base64PrivateKey());
-    assertTrue(deviceCryptoService.validateSignature(data, lowSSignature, testKeyPair.base64PublicKey()));
+    assertTrue(
+        deviceCryptoService.validateSignature(data, lowSSignature, testKeyPair.base64PublicKey()));
 
     byte[] der = Base64.getDecoder().decode(lowSSignature);
     BigInteger[] rs = EcdsaDerCodec.decodeSignature(der);

@@ -38,8 +38,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <ul>
  *   <li><b>AdminAuthenticationException (401):</b> Invalid credentials or login not permitted at
  *       {@code /login} (generic message for pre-auth failures — SEC-006)
- *   <li><b>AdminAccountInactiveException (403):</b> Reserved; login pre-auth failures are normalized
- *       in {@link org.ezkey.admin.service.AdminAuthService}
+ *   <li><b>AdminAccountInactiveException (403):</b> Reserved; login pre-auth failures are
+ *       normalized in {@link org.ezkey.admin.service.AdminAuthService}
  *   <li><b>AdminNoEnrollmentException (403):</b> Reserved; login pre-auth failures are normalized
  *       in {@link org.ezkey.admin.service.AdminAuthService}
  *   <li><b>AdminAuthenticationExpiredException (400):</b> Authentication attempt expired

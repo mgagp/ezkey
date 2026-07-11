@@ -16,8 +16,8 @@ import java.util.Arrays;
 /**
  * JDK-only ECDSA signature DER helpers (secp256r1).
  *
- * <p>Mirrored from ezkey-core {@code org.ezkey.signature.EcdsaDerCodec} so the standalone Demo Device
- * module stays free of an ezkey-core dependency.
+ * <p>Mirrored from ezkey-core {@code org.ezkey.signature.EcdsaDerCodec} so the standalone Demo
+ * Device module stays free of an ezkey-core dependency.
  */
 final class EcdsaDerCodec {
 
