@@ -3,14 +3,36 @@
  * Used when the display timezone preference is "tenant" so presets align with tenant-local dates.
  */
 
-/** Format an instant as YYYY-MM-DD in the given IANA time zone. */
-export function formatYmdInTimeZone(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
+const ymdFormatters = new Map<string, Intl.DateTimeFormat>();
+const weekdayFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function getYmdFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = ymdFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(date);
+  });
+  ymdFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+function getWeekdayFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = weekdayFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    weekday: 'short',
+  });
+  weekdayFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+/** Format an instant as YYYY-MM-DD in the given IANA time zone. */
+export function formatYmdInTimeZone(date: Date, timeZone: string): string {
+  const parts = getYmdFormatter(timeZone).formatToParts(date);
   const y = parts.find((p) => p.type === 'year')?.value;
   const m = parts.find((p) => p.type === 'month')?.value;
   const d = parts.find((p) => p.type === 'day')?.value;
@@ -55,10 +77,7 @@ export function endOfDayInTimeZone(ymd: string, timeZone: string): Date {
 /** Weekday 0=Sunday … 6=Saturday for {@code ymd} interpreted in {@code timeZone}. */
 export function weekdaySun0InZone(ymd: string, timeZone: string): number {
   const t = startOfDayInTimeZone(ymd, timeZone);
-  const w = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    weekday: 'short',
-  }).format(t);
+  const w = getWeekdayFormatter(timeZone).format(t);
   const map: Record<string, number> = {
     Sun: 0,
     Mon: 1,

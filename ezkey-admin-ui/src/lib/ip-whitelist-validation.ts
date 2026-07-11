@@ -59,8 +59,10 @@ export function parseAndValidateIpWhitelist(
 ): IpWhitelistParseResult {
   const lines = (textareaValue ?? '')
     .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean);
+    .flatMap((s) => {
+      const trimmed = s.trim();
+      return trimmed ? [trimmed] : [];
+    });
 
   if (lines.length === 0) {
     return { success: true, entries: [] };
@@ -90,6 +92,8 @@ export function parseIpWhitelistLines(
 ): string[] {
   return (textareaValue ?? '')
     .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean);
+    .flatMap((s) => {
+      const trimmed = s.trim();
+      return trimmed ? [trimmed] : [];
+    });
 }

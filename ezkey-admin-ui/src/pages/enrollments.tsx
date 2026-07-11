@@ -467,7 +467,9 @@ export default function EnrollmentsPage() {
   const [statusFilter, setStatusFilter] = useState(() =>
     enrollmentBucket ? '' : (searchParams.get('status') ?? ''),
   );
-  const [integrationFilter, setIntegrationFilter] = useState(searchParams.get('integrationId') ?? '');
+  const [integrationFilter, setIntegrationFilter] = useState(
+    () => searchParams.get('integrationId') ?? '',
+  );
   const [activeFilter, setActiveFilter] = useState(() => searchParams.get('active') ?? '');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [lifecycleTarget, setLifecycleTarget] = useState<{
