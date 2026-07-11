@@ -81,3 +81,4 @@ separate Grill Me session. Prefer a bounded Lane D fix on one branch; no new vis
 - Parent shipped work: `I-2026-0006` / `TB-2026-06-28-nightly-integrity-validation-batch`
 - Vision: [`../../vision/V-2026-0004-integrity-validation-strategy.md`](../../vision/V-2026-0004-integrity-validation-strategy.md)
 - GitHub branch: `feature/315-i-2026-07-10-nightly-integrity-boundary-false-positives`
+- GitHub PR: `#318`
