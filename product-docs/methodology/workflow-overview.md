@@ -41,9 +41,9 @@ In addition to direct ideation capture, use a plan-incubation lane when the oper
 1. Create or evolve a current-session working plan.
 2. Explore options and converge on the useful direction.
 3. Materialize the durable signal into canonical artifacts.
-4. Cross-link the working plan and canonical artifacts when useful.
+4. Classify **ephemeral scaffold vs retained working plan**; apply bidirectional cross-links only when retained (never half-link outside the clone).
 
-See `plan-incubation-workflow.md`.
+See `plan-incubation-workflow.md` and decision `2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan`.
 
 ## Parallel lane: post-delivery evolution and corrective re-entry
 

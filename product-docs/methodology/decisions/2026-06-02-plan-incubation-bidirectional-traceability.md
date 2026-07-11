@@ -58,7 +58,10 @@ Adopt **mandatory bidirectional traceability** at plan-incubation materializatio
 4. Require **`Incubation sources`** (or equivalent back-links) on each materialized corpus artifact
    pointing to **all** retained plan paths.
 
-Lane B is **not** definition-of-done complete until the gate passes.
+Lane B is **not** definition-of-done complete until the gate passes **for retained working plans**.
+Ephemeral Plan mode scaffolding that fully lands in canon without a repo-hosted plan is governed by
+[`2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md`](2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md)
+and does not claim this gate.
 
 ## Consequences
 
@@ -77,6 +80,7 @@ Lane B is **not** definition-of-done complete until the gate passes.
 
 ## Related documents
 
+- [`2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md`](2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md)
 - [`../plan-incubation-workflow.md`](../plan-incubation-workflow.md)
 - [`../../../.cursor/skills/plan-incubation/SKILL.md`](../../../.cursor/skills/plan-incubation/SKILL.md)
 - [`../../../AGENTS.md`](../../../AGENTS.md)
