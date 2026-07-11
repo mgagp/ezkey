@@ -130,6 +130,8 @@ chmod +x clean-start.sh
 
 **`EZKEY_TRUSTED_PROXIES_CIDRS`:** comma-separated CIDRs that include the **Docker bridge** (see `.env.example`). Spring maps this to `ezkey.trusted-proxies.cidrs`. With **orange** Cloudflare, the path is **browser → Cloudflare → Caddy → API**; Caddy is the direct TCP peer to Spring, so those CIDRs must cover Caddy’s network. The apps then read **`CF-Connecting-IP`** / **`X-Forwarded-For`** for the real client. **If audit logs show only Caddy’s IP**, the variable is missing or wrong in the container — recreate the API services after fixing `.env`.
 
+**Fail-fast posture (SEC-002 / SEC-005 / SEC-008 / SEC-011):** profile `docker` sets Auth API rate limiting, `encryption.required=true`, and `audit.integrity.required=true`. Lightsail Compose defaults `EZKEY_TRUSTED_PROXIES_REQUIRED=true` so missing CIDRs abort startup. See [`docs/OPERATIONAL.md`](../docs/OPERATIONAL.md) § Production security posture.
+
 Then **Phase 2** (images) and **Phase 3** (start).
 
 ---

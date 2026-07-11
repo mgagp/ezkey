@@ -8,19 +8,24 @@
 #
 # Direct ports (unchanged) still work for health checks and internal use:
 #   - Admin API: 9080, Auth API: 8080, Integration API: 7080
+#
+# EZKEY_TRUSTED_PROXIES_REQUIRED defaults to true here (SEC-011): startup fails if CIDRs are empty.
 
 services:
   admin-api:
     environment:
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8}
+      EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
 
   auth-api:
     environment:
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8}
+      EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
 
   integration-api:
     environment:
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8}
+      EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}
 
   caddy:
     image: caddy:2-alpine
