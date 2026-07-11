@@ -10,6 +10,7 @@
 #   - AuditLifecycleArchiveEligibilityElectiveTest (archive lifecycle eligibility spot check)
 #   - EncryptionIntegrityElectiveTest (enrollment proof token encryption at rest)
 #   - KeyRotationSyncWindowTest (key rotation sync window)
+#   - ReencryptionFullTriggerConcurrentActivityElectiveTest (full re-encryption under concurrent DB churn)
 #   - ShedLockDistributedTest (distributed locking / HA)
 #
 # Prerequisites:
@@ -38,7 +39,7 @@ PROJECT_ROOT="$(cd "$EZKEY_TESTS_DIR/.." && pwd)"
 
 echo -e "${BLUE}=== Ezkey Elective Tests Spot Check ===${NC}"
 echo -e "${BLUE}[INFO]${NC} Project root: $PROJECT_ROOT"
-echo -e "${BLUE}[INFO]${NC} Running elective tests (AuditIntegrityElectiveTest, AuditLifecycleArchiveEligibilityElectiveTest, EncryptionIntegrityElectiveTest, KeyRotationSyncWindowTest, ShedLockDistributedTest)..."
+echo -e "${BLUE}[INFO]${NC} Running elective tests (AuditIntegrityElectiveTest, AuditLifecycleArchiveEligibilityElectiveTest, EncryptionIntegrityElectiveTest, KeyRotationSyncWindowTest, ReencryptionFullTriggerConcurrentActivityElectiveTest, ShedLockDistributedTest)..."
 echo
 
 cd "$PROJECT_ROOT"
