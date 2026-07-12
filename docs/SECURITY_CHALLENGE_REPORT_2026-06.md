@@ -8,11 +8,53 @@
 
 ---
 
+## Cold-start guidance (agents and operators)
+
+**Read this section first** when the operator asks for a “security challenge”, reopen of
+this report, or “what’s next on SEC-*”.
+
+### Milestone status (July 2026)
+
+| Gate | Status |
+|------|--------|
+| SEC-001 → SEC-012 (HIGH / MEDIUM program items) | **Done** (code + docker/EXP1 ops where applicable) |
+| Follow-up `I-2026-07-09` (`encryption.required` read-path parity) | **Done** (`AtRestEncryptionAccess` on `ApiKey`, `Enrollment`, `AuthAttempt`) |
+| Security Challenge **program milestone** | **Reached** — no remaining HIGH/MEDIUM backlog from this audit |
+| SEC-013 → SEC-016 | **Open but LOW only** — polish / defense-in-depth, not a program queue |
+
+Do **not** treat the historical “Top 3” table or the original “Critique / Haute priorité”
+backlog tables below as a live work queue. Those sections are an **audit archive**;
+implementation status lives in the status table in the executive summary.
+
+### Residual items — worth it?
+
+| ID | Topic | Worth prioritizing? |
+|----|-------|---------------------|
+| SEC-013 | Document intentional flexible Base64 for Ed25519 + DEBUG log | Opportunistic hygiene only |
+| SEC-014 | Pre-check signature string length before decode | Low ROI (post-decode length checks already exist) |
+| SEC-015 | Document / harden `ApiKeyService.findAll()` as GlobalAdmin-only | Optional micro-hygiene PR if idle |
+| SEC-016 | Rate limit Integration API key authentication | **Not** as a priority — secrets are 160-bit SecureRandom; create-attempt limits already exist |
+
+**Recommendation:** close the Security Challenge as complete for release planning. Do **not**
+schedule SEC-013–016 ahead of the September operable-release compass
+([`product-docs/global/operational-readiness-prioritization-2026-09.md`](../product-docs/global/operational-readiness-prioritization-2026-09.md)
+— integrity cluster / EXP1 soak). If idle hygiene time appears, prefer a tiny PR for SEC-015
+(and optionally SEC-013); skip SEC-016 until there is a real observability need.
+
+### If the operator asks “continue the security challenge”
+
+1. Confirm this milestone is already reached (SEC-001→012 + `I-2026-07-09`).
+2. State clearly that remaining SEC-013–016 are optional LOW polish.
+3. Redirect default next work to the operational-readiness prioritization doc, not this report’s
+   historical Top 3.
+
+---
+
 ## Résumé exécutif
 
 La fondation cryptographique d'Ezkey est solide. L'architecture backend-first est cohérente avec les principes du projet. Les algorithmes choisis (EC P-256 / ECDSA-SHA256 pour les devices, Ed25519 pour les intégrations) sont corrects, la normalisation low-S est appliquée, les proof tokens sont générés avec `SecureRandom`, et les bearer tokens admin utilisent SHA-256 pour les comparaisons en base de données.
 
-**Cependant**, ce challenge révèle plusieurs zones à risque réel qui méritent une attention proactive. La majorité des findings sont de gravité MOYENNE à HAUTE — pas de vulnérabilité critique permettant un compromis total sans conditions externes, mais des lacunes qui fragilisent la posture de sécurité perçue et réelle d'un produit MFA.
+**Contexte historique (juin 2026) :** le challenge avait révélé plusieurs zones à risque réel (surtout MOYENNE à HAUTE). **En juillet 2026, le jalon programme est atteint :** SEC-001→012 et le suivi read-path `I-2026-07-09` sont clos. Il ne reste que du durcissement LOW (SEC-013–016), volontairement hors file d’attente release — voir [Cold-start guidance](#cold-start-guidance-agents-and-operators).
 
 ### Statut d'implémentation (juillet 2026)
 
@@ -30,12 +72,14 @@ La fondation cryptographique d'Ezkey est solide. L'architecture backend-first es
 | SEC-010 | **Fait** | PR #312 — chiffrement at-rest du hash API key (`EncryptionEntityListener` + V17) |
 | SEC-011 | **Fait** | PR #310 — `trusted-proxies.required` fail-fast ; **ops:** `EZKEY_TRUSTED_PROXIES_REQUIRED=true` sur Lightsail / `--with-proxy` |
 | SEC-012 | **Fait** | PR #314 — rejet ECDSA high-S dans `validateSignature()` |
-| SEC-013–016 | Ouvert | Durcissement crypto / défense en profondeur (voir backlog) |
+| SEC-013–016 | **Ouvert (LOW)** | Durcissement optionnel — **non prioritaire** (voir [Cold-start guidance](#cold-start-guidance-agents-and-operators)) |
 | **Suivi** | **Fait** | Parité read-path `encryption.required` — [`I-2026-07-09`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md) (`AtRestEncryptionAccess` sur `ApiKey`, `Enrollment`, `AuthAttempt`) |
 
-Les trois risques du Top 3 initial (SEC-001, SEC-002, SEC-003) sont traités. Les phases 1–3 et le suivi read-path sont closes côté code/ops docker (SEC-001→012 + `I-2026-07-09`). Il reste le durcissement LOW SEC-013–016.
+**Jalon challenge :** phases 1–3 + ops docker/EXP1 + suivi read-path = **clos**. Residual = SEC-013–016 only (LOW). Default next work is **not** this report — use the September operational-readiness compass.
 
-### Top 3 risques à traiter en priorité
+### Top 3 risques (historique — juin 2026 ; tous traités)
+
+> Archive only. All three were remediated (SEC-001, SEC-002, SEC-003). Do not re-open as current priorities.
 
 | # | Finding | Impact | Complexité de fix |
 |---|---------|--------|------------------|
@@ -524,6 +568,10 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 
 ## Backlog priorisé
 
+> **Archive of the original June 2026 prioritization.** Live status is in the executive summary
+> and [Cold-start guidance](#cold-start-guidance-agents-and-operators). Do not schedule work from
+> the “Critique / Haute priorité” tables unless the status table still shows them open.
+
 ### Critique — À traiter immédiatement
 
 | ID | Finding | Fichier | Fix |
@@ -550,15 +598,15 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 | SEC-010 | Secret API key hash non chiffré at-rest | `ApiKeyService.java`, `ApiKey.java` | `EncryptionEntityListener` sur `secret_key_hash` (pattern enrollment) |
 | SEC-011 | IP source spoofable dans audit logs | `ClientIpResolver.java` | Validation config au démarrage |
 
-### Faible priorité / Durcissement
+### Faible priorité / Durcissement (residual — optional)
 
 | ID | Finding | Fichier | Fix |
 |----|---------|---------|-----|
-| SEC-012 | ECDSA malléabilité (high-S non rejetée) | `SignatureService.java` | Rejet low-S dans `validateSignature()` |
-| SEC-013 | Décodage Base64 trop permissif (Ed25519) | `SignatureService.java` | Log de voie utilisée, documenter intentionnel |
-| SEC-014 | Absence de validation longueur signature avant décodage | `SignatureService.java` | Pre-check longueur string |
-| SEC-015 | `ApiKeyService.findAll()` sans scope tenant | `ApiKeyService.java` | Documenter + annotation GlobalAdmin-only |
-| SEC-016 | Pas de rate limiting sur auth API key (Integration API) | `ApiKeyService.java` | Rate limit par integrationKey |
+| SEC-012 | ECDSA malléabilité (high-S non rejetée) | `SignatureService.java` | Rejet low-S dans `validateSignature()` — **fait** (PR #314) |
+| SEC-013 | Décodage Base64 trop permissif (Ed25519) | `SignatureService.java` | Log de voie utilisée, documenter intentionnel — **optional** |
+| SEC-014 | Absence de validation longueur signature avant décodage | `SignatureService.java` | Pre-check longueur string — **optional / low ROI** |
+| SEC-015 | `ApiKeyService.findAll()` sans scope tenant | `ApiKeyService.java` | Documenter + annotation GlobalAdmin-only — **optional hygiene** |
+| SEC-016 | Pas de rate limiting sur auth API key (Integration API) | `ApiKeyService.java` | Rate limit par integrationKey — **defer** (160-bit secrets) |
 
 ---
 
@@ -597,6 +645,9 @@ Voir F-07-B. Applicable aussi en Domaine 10 : sous re-encryption concurrente, to
 - **Ops docker (2026-07):** `encryption.required=true`, `audit.integrity.required=true` sur profil `docker`
 - **Suivi** : Parité read-path `encryption.required` — [`I-2026-07-09`](../product-docs/global/backlog/ideas/I-2026-07-09-encryption-required-read-path-parity.md) (**fait** — `Enrollment` / `AuthAttempt` via `AtRestEncryptionAccess`)
 
+### Phase 4 — residual LOW (optional; not on the September critical path)
+- SEC-013–016 only — see [Cold-start guidance](#cold-start-guidance-agents-and-operators). Prefer September operational-readiness work over this phase.
+
 ---
 
 ## Tests recommandés à ajouter
@@ -623,3 +674,4 @@ DeviceProofTokenStorageTest:
 
 *Rapport généré dans le cadre du Security Challenge — Ezkey Backend Cryptographic Audit, juin 2026.*
 *Posture : pen-test pragmatique. Findings basés sur revue de code statique. Aucune exploitation active réalisée.*
+*Closeout guidance (milestone SEC-001→012 + I-2026-07-09 reached; SEC-013–016 optional LOW): juillet 2026.*
