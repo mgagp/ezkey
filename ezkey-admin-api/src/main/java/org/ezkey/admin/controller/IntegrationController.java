@@ -381,7 +381,6 @@ public class IntegrationController {
     ClientContext context = ClientContext.from(httpRequest);
     EzkeyAdmin currentAdmin = getCurrentAdmin();
     Integer requestedTenantId = resolveRequestedIntegrationTenantId(currentAdmin);
-    String requestAuditDetails = integrationCreateAuditDetails(request, currentAdmin).toJson();
 
     try {
       IntegrationCreateResponse savedIntegration =

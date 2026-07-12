@@ -635,7 +635,8 @@ public class AdminAuthService {
         tokenRepository.save(token);
       }
     } catch (Exception e) {
-      // Log error but don't throw exception
+      // Best-effort logout: never fail the API surface; token TTL remains the backstop.
+      logger.warn("Logout token invalidation failed", e);
     }
   }
 

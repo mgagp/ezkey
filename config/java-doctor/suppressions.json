@@ -11,6 +11,24 @@
       "tool": "spotbugs",
       "rule": "EI_EXPOSE_REP2",
       "reason": "Same family as EI_EXPOSE_REP (store mutable reference into field). Default suppress for entity/DTO posture; unsuppress for targeted review."
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD",
+      "pathFragment": "EncryptionEntityListener",
+      "reason": "Intentional: JPA entity listeners are not Spring-managed; EncryptionOperations is injected into a static field by design (documented on the class). See hygiene/java-doctor/2026-07-11-pass-1.md."
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_RANDOM_USED_ONLY_ONCE",
+      "pathFragment": "AuditHmacService",
+      "reason": "One-shot SecureRandom in generateHmacKeyFile (first-startup keyfile bootstrap), not a hot path. Acceptable; see hygiene/java-doctor/2026-07-11-pass-1.md."
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "UC_USELESS_CONDITION",
+      "pathFragment": "TinkKeyManager",
+      "reason": "Harmless local over-defense (normalizePath length check; toUnsignedLong MAX_VALUE after negative branch). Redundancy is obvious within 3–4 lines; leave as-is — no test churn for zero product gain. See hygiene/java-doctor/2026-07-11-pass-1.md and AGENTS.md HITL if-it-ain't-broken rule."
     }
   ]
 }
