@@ -23,6 +23,12 @@
       "rule": "DMI_RANDOM_USED_ONLY_ONCE",
       "pathFragment": "AuditHmacService",
       "reason": "One-shot SecureRandom in generateHmacKeyFile (first-startup keyfile bootstrap), not a hot path. Acceptable; see hygiene/java-doctor/2026-07-11-pass-1.md."
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "UC_USELESS_CONDITION",
+      "pathFragment": "TinkKeyManager",
+      "reason": "Harmless local over-defense (normalizePath length check; toUnsignedLong MAX_VALUE after negative branch). Redundancy is obvious within 3–4 lines; leave as-is — no test churn for zero product gain. See hygiene/java-doctor/2026-07-11-pass-1.md and AGENTS.md HITL if-it-ain't-broken rule."
     }
   ]
 }

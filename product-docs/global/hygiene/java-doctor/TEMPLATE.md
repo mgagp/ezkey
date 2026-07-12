@@ -21,8 +21,11 @@ Brief list of findings chosen for HITL (rule + location hint). Keep small (≈3�
 Decision values:
 
 - **fix** — source change accepted after HITL
-- **suppress** — intentional or accepted noise; reason in `suppressions.json` (and/or SpotBugs exclude)
+- **suppress** — intentional, accepted noise, or clear-but-harmless over-defense left in place;
+  reason in `suppressions.json` (and/or SpotBugs exclude)
 - **skip** — fuzzy or not worth inventing work; no suppress unless it will keep nagging without value
+
+Also remember AGENTS.md: **if it ain't broken, don't fix it** — clear diagnosis does not require a rewrite.
 
 ## Rationale (short)
 

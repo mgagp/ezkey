@@ -16,7 +16,7 @@ When the question is **what to implement next** or **current release priority** 
 operable-release target), read first:
 
 - [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md)
-- [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) § Current prioritization anchor
+- [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) § Current prioritization ancho
 
 ## Fresh-session workflow bootstrap (product-docs method)
 
@@ -173,7 +173,7 @@ The symptom is a clean compile but a startup failure — not caught by unit test
 ## Contract refresh and Postman collections
 
 `scripts/update-specs.sh` refreshes the generated OpenAPI artifacts under `specs/` and dispatched
-copies such as the Admin UI and SDK specs. It does **not** update Postman collections under
+copies such as the Admin UI and SDK specs. It does **not** update Postman collections unde
 `postman/collections/`.
 
 ### Controller changes imply contract review
@@ -183,7 +183,7 @@ otherwise. This must become a default analysis and design reflex, not an afterth
 
 Before finalizing a plan or implementation that touches controller code:
 
-- review whether the request shape, response shape, status codes, validation behavior, error
+- review whether the request shape, response shape, status codes, validation behavior, erro
   semantics, examples, or operator workflow changed;
 - identify the impacted Postman collection(s) up front as part of the design, not only at the end;
 - treat Postman updates as part of the same change set whenever the controller change affects how
@@ -195,7 +195,7 @@ same change set. A backend contract refresh is not considered complete until bot
 OpenAPI files and the affected Postman collections describe the same behavior.
 
 **Stronger practical rule:** if you modify controller behavior in a way that affects the API
-surface, you should assume the Postman collection must also be updated. Do not wait for a later
+surface, you should assume the Postman collection must also be updated. Do not wait for a late
 "docs pass" to decide. The default should be:
 
 1. controller change,
@@ -207,7 +207,7 @@ surface, you should assume the Postman collection must also be updated. Do not w
 `.cursor/rules/openapi-specs.mdc`. Agents must never hand-edit generated OpenAPI under `specs/**`
 **or dispatched copies** (e.g. `ezkey-admin-ui/openapi-spec.json`). When the stack is available,
 run clean-start, then `./scripts/update-specs.sh`, then regenerate dependent clients (e.g.
-`npm run generate:api` in `ezkey-admin-ui`). Skip only when the user explicitly defers refresh or
+`npm run generate:api` in `ezkey-admin-ui`). Skip only when the user explicitly defers refresh o
 the environment cannot run Docker; report pending refresh instead of patching specs by hand.
 Generated output should be reviewed for obvious scope drift and reported in the close-out.
 
@@ -271,20 +271,25 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 1. Run the script; read `logs/java-doctor/java-doctor.curated.md`.
 2. Propose a **small prioritized lot** (usually 3–6 items), not a zero-warning campaign.
 3. **Before any code change:** produce a point-by-point HITL briefing (what the tool said, where to
-   look in source, hypothesis, options, open question). Wait for Go / No-Go / suppress / skip per
+   look in source, hypothesis, options, open question). Wait for Go / No-Go / suppress / skip pe
    item.
 4. **Fuzzy signal rule:** if the finding cannot be tied clearly to source without opening bytecode,
    **skip** — do not invent a problem. Prefer suppress-with-reason only when the pattern is
    understood and intentionally accepted.
-5. Record decisions in a dated campaign note under `product-docs/global/hygiene/java-doctor/`
+5. **If it ain't broken, don't fix it:** when diagnosis is **clear** but the flagged code is
+   harmless local over-defense (redundant guards obvious within a few nearby lines), **leave the
+   code** and suppress with reason. Do not “perfect” it: extra characterization tests and
+   crypto-adjacent churn for zero product gain is a witch-hunt, not hygiene. Clarity of the
+   finding does **not** oblige a rewrite.
+6. Record decisions in a dated campaign note under `product-docs/global/hygiene/java-doctor/`
    (copy `TEMPLATE.md`). Machine-facing suppressions go in `config/java-doctor/suppressions.json`
    (and SpotBugs exclude when class-level).
-6. Only then implement accepted fixes on a **dedicated hygiene branch + PR**; put the same short
+7. Only then implement accepted fixes on a **dedicated hygiene branch + PR**; put the same short
    briefing in the PR body; link the campaign note. Modest low-signal allotment after high-signal
    items is allowed when the operator agrees.
-7. Security-sensitive zones (Tink keyset, HMAC keys, login/logout, encryption listeners): require
-   careful counter-analysis; characterization / complementary tests before refactor when behavior
-   might change.
+8. Security-sensitive zones (Tink keyset, HMAC keys, login/logout, encryption listeners): require
+   careful counter-analysis; characterization / complementary tests before refactor when behavio
+   might change. If the chosen decision is leave+suppress, skip those tests.
 
 - Authority: `product-docs/global/java-doctor-curated-evaluation-2026-07-11.md`,
   `I-2026-07-11-java-doctor-curated-hygiene`, `TB-2026-07-11-java-doctor-curated-mvp`,
@@ -385,7 +390,7 @@ Attribution** (and PR attribution if undesired). Restart Cursor. For CLI/cloud a
 
 A second failure mode is **multi-layer quoting**: even through `git-commit.sh`, an **inline** message
 crossing PowerShell → `bash -lc '...'` → `git commit` mangles `( ) " ' # ! < >`. Conventional prefixes
-like `docs(product):` always contain `()`, so inline `-m` is fragile. The reliable principle: **never
+like `docs(product):` always contain `()`, so inline `-m` is fragile. The reliable principle: **neve
 let the message text cross a shell boundary** — pass a file path instead.
 
 **Agent procedure when committing (canonical zero-argument flow):**
@@ -401,7 +406,7 @@ let the message text cross a shell boundary** — pass a file path instead.
 
    The script commits with `git commit -F .ezkey/commit-msg.txt` and removes the file afterward.
    Inside Git Bash, just run `./scripts/git-commit.sh`.
-4. Do **not** use bare PowerShell `git commit`, HEREDOC, `&&` chains, inline `-m "type(scope):"`, or
+4. Do **not** use bare PowerShell `git commit`, HEREDOC, `&&` chains, inline `-m "type(scope):"`, o
    WSL bash; use **Git Bash** (`C:\Program Files\Git\bin\bash.exe`). Power-user forms still work:
    `./scripts/git-commit.sh -F <file>` or `-m "subject"`.
 
