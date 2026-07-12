@@ -18,6 +18,17 @@ Diagnostics only: `./scripts/build.sh --diagnose-only`
 
 Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md).
 
+## Java doctor-curated (punctual hygiene)
+
+Keyword: **`java-doctor-curated`**. Report-only shortlist (SpotBugs + Semgrep + narrow PMD); not a
+build gate. See root [`AGENTS.md`](../AGENTS.md) § Java doctor-curated.
+
+```bash
+./scripts/java-doctor-curated.sh
+```
+
+Config: [`config/java-doctor/`](../config/java-doctor/). Outputs: `logs/java-doctor/` (gitignored).
+
 ## Cloudflare (ezkey.org static site)
 
 - [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).

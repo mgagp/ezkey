@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclude filter for java-doctor-curated.
+  Prefer curator suppressions.json for rule-level triage; use this file fo
+  bytecode classes that should never enter the report (e.g. generated sources).
+-->
+<FindBugsFilter>
+  <!-- MapStruct generated mapper implementations -->
+  <Match>
+    <Class name="~.*MapperImpl"/>
+  </Match>
+</FindBugsFilter>
