@@ -201,7 +201,7 @@ cleanup_semgrep_scan_dir() {
 }
 
 run_semgrep_docker() {
-  prepare_semgrep_scan_di
+  prepare_semgrep_scan_dir
   local mount_src
   mount_src="$(docker_mount_src "$SEMGREP_SCAN_DIR")"
   # Confine MSYS_NO_PATHCONV to Docker only — otherwise Node resolves /c/... as C:\c\...
@@ -234,7 +234,7 @@ elif command -v docker >/dev/null 2>&1; then
     SEMGREP_STATUS=$?
     echo "[$KEYWORD] WARNING: Semgrep Docker exited non-zero (continuing; report-only)"
   fi
-  cleanup_semgrep_scan_di
+  cleanup_semgrep_scan_dir
   trap - EXIT
 else
   echo "[$KEYWORD] ERROR: neither semgrep nor docker is available." >&2
