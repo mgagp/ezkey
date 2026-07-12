@@ -24,12 +24,12 @@ import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.authattempt.domain.AuthAttemptStatus;
+import org.ezkey.security.AtRestEncryptionAccess;
 import org.ezkey.security.EncryptionEntityListener;
 import org.ezkey.security.EncryptionOperations;
 import org.ezkey.security.EncryptionOperationsHolder;
 import org.ezkey.security.Reencryptable;
 import org.ezkey.security.SensitiveDataHasher;
-import org.slf4j.LoggerFactory;
 
 /**
  * JPA entity representing an authorization attempt within the Ezkey system.
@@ -207,9 +207,14 @@ public class AuthAttempt implements Reencryptable {
   }
 
   /**
-   * Gets the proof token for this authorization attempt.
+   * Gets the proof token for this authorization attempt, decrypting it if necessary.
    *
-   * @return the proof token
+   * <p>When {@code ezkey.encryption.required=true}, plaintext-at-rest or decrypt failures fail
+   * closed via {@link AtRestEncryptionAccess} (same policy as {@code ApiKey#getSecretKeyHash}).
+   *
+   * @return the plaintext proof token
+   * @throws IllegalStateException when encryption is required but the value is not encrypted or
+   *     cannot be decrypted
    */
   public String getAuthAttemptProofToken() {
     if (authAttemptProofToken != null) {
@@ -220,25 +225,11 @@ public class AuthAttempt implements Reencryptable {
       return null;
     }
 
-    EncryptionOperations operations = getEncryptionOperations();
-    if (operations != null && operations.isEncryptionAvailable()) {
-      if (operations.isEncrypted(encryptedAuthAttemptProofToken)) {
-        try {
-          authAttemptProofToken = operations.decrypt(encryptedAuthAttemptProofToken);
-          return authAttemptProofToken;
-        } catch (Exception exception) {
-          LoggerFactory.getLogger(AuthAttempt.class)
-              .warn(
-                  "Failed to decrypt auth attempt proof token for authAttemptId {}. Returning"
-                      + " as-is.",
-                  authAttemptId,
-                  exception);
-          return encryptedAuthAttemptProofToken;
-        }
-      }
-    }
-
-    authAttemptProofToken = encryptedAuthAttemptProofToken;
+    authAttemptProofToken =
+        AtRestEncryptionAccess.resolveEncryptedField(
+            getEncryptionOperations(),
+            encryptedAuthAttemptProofToken,
+            "auth attempt proof token (authAttemptId=" + authAttemptId + ")");
     return authAttemptProofToken;
   }
 
