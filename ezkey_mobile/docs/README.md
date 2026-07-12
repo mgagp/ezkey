@@ -66,4 +66,6 @@ reference mobile app.
 | [MOBILE_PLAY_PUBLISHING.md](MOBILE_PLAY_PUBLISHING.md) | Operational | When preparing Google Play submission. |
 | [MOBILE_PLAY_RELEASE_READINESS_AUDIT.md](MOBILE_PLAY_RELEASE_READINESS_AUDIT.md) | Operational decision support | When deciding whether the current workspace is close enough to a Play release candidate. |
 | [MOBILE_RELEASE_DECISION_MEMO.md](MOBILE_RELEASE_DECISION_MEMO.md) | Product and engineering decision support | When deciding whether to release first on the current stack or upgrade before first publication. |
+| [MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md](MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md) | Real-device test harness | When running or extending Maestro + churn orchestration on a physical Android device (`TB-2026-0002`, F1/F2a). |
+| [../maestro/README.md](../maestro/README.md) | Real-device Maestro operator runbook | Flows, selectors, pilot and campaign entry commands. |
 | [../PRD.md](../PRD.md) | Product scope source | When checking intended scope, constraints, and release framing. |

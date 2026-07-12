@@ -55,6 +55,14 @@ fi
 MAESTRO_VERSION_LINE="$(maestro --version 2>/dev/null || echo 'unknown')"
 echo "  [ok] maestro: $(command -v maestro) (${MAESTRO_VERSION_LINE})"
 
+echo "  [info] normalizing device UI state (wake + unlock swipe + collapse notifications)..."
+adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
+adb shell input swipe 540 2100 540 400 250 >/dev/null 2>&1 || true
+adb shell cmd statusbar collapse >/dev/null 2>&1 || true
+adb shell input keyevent KEYCODE_HOME >/dev/null 2>&1 || true
+sleep 1
+
 mkdir -p "${REPORT_DIR}"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 REPORT_FILE="${REPORT_DIR}/maestro-pilot-${TIMESTAMP}.xml"

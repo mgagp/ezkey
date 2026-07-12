@@ -17,6 +17,73 @@ Observed intermittently in the field: the **first** “check pending” from the
 
 The automation goal is **not** to encode one fragile sequence believed to reproduce the bug, but to run **many varied sequences** (challenge on/off, approve/deny, timeouts where feasible) over volume and time so that **when** the defect appears, **correlated artifacts** exist for root-cause analysis.
 
+## Role segmentation update (2026-06-24)
+
+To reduce operator lockout risk and improve agent autonomy, mobile test operations now use a split-admin model on clean-start stacks:
+
+- `admin.docker`: reserved for human operator ownership and recovery.
+- dedicated mobile test admin: currently `mobile_tester`, with preferred long-term naming `admin.mobile`.
+
+Current validated posture for the dedicated mobile test admin:
+
+- global admin exists and is active;
+- linked enrollment is `VERIFIED` and has server-side `device_public_key`;
+- Demo Device persists the enrollment material in `data/enrollments/<id>.json`, enabling autonomous bind/verify/auth loops.
+
+This split is considered **essential operational complexity** for reliable mobile test autonomy, not accidental complexity.
+
+## Canonical 3-phase campaign sequence (agent-cold restart safe)
+
+This is the current process contract for autonomous mobile campaign runs.
+
+### Phase 1 — Token bootstrap (Demo Device lane)
+
+- Preconditions:
+  - clean-start stack healthy;
+  - dedicated global admin exists (`mobile_tester` now, target `admin.mobile`);
+  - Demo Device enrollment JSON exists for that admin.
+- Execution model (aligned with functional tests helpers):
+  - `POST /api/v1/admin/auth/login` (`challengeRequested=true`)
+  - `POST /api/v1/auth-attempts/pending`
+  - `POST /api/v1/auth-attempts/respond`
+  - `POST /api/v1/admin/auth/passwordless-wait`
+- Outcome: valid Global Admin bearer token for API provisioning.
+
+### Phase 2 — Provisioning (Admin API lane)
+
+- Use the bearer token to:
+  - create or reuse a dedicated integration for mobile campaign work;
+  - create a fresh enrollment for the current run.
+- Persist campaign state (JSON): integration id, enrollment id, timestamps, urls, scenario metadata.
+- Optional bind-on-phone step: run Maestro enrollment flow to consume the fresh enrollment on real phone.
+
+### Phase 3 — Churn execution (Real phone lane)
+
+- Preconditions:
+  - campaign enrollment tile is visible on real phone home screen;
+  - campaign token still valid.
+- Run scenario loop (example set):
+  - approve without challenge;
+  - approve with challenge;
+  - timeout with no action.
+- Validate each iteration using backend status checks (`/api/v1/auth-attempts/{id}`) and keep summary CSV/JSON artifacts.
+
+### Lane boundary rule
+
+- Demo Device lane ends after Phase 1 token bootstrap (and optionally helping phone bind during Phase 2 bootstrap tasks).
+- Real churn truth is Phase 3 on physical phone + Maestro + backend assertions.
+
+## Bootstrap promotion criteria (future)
+
+Automatic creation of `admin.mobile` during clean-start bootstrap is a candidate only after these gates are met:
+
+1. repeated Maestro/JUnit churn runs succeed with fresh one-shot credentials over multiple sessions;
+2. the split-admin practice shows lower lockout and lower recovery-code churn than a single-admin model;
+3. docs and scripts converge on the same baseline checks and naming;
+4. at least one tracer-bullet closeout confirms reproducible execution evidence.
+
+Until those gates pass, keep dedicated mobile test admin setup as an explicit step (human or scripted) after clean-start.
+
 ## Design principles
 
 1. **Keep hybrid enrollment** until a separate initiative justifies full Maestro enrollment: the device is known-good for crypto and storage before the loop starts.
@@ -101,7 +168,26 @@ Use a **deck** or seeded PRNG so the distribution is explicit and replayable.
 
 - Tracer bullet: `product-docs/global/backlog/ideas/TB-2026-0002-android-real-device-functional-pilot.md`
 - Idea: `product-docs/global/backlog/ideas/I-2026-0019-android-real-device-mobile-functional-tests.md`
+- Follow-ups: `product-docs/global/backlog/ideas/I-2026-05-31-mobile-android-stack-followups.md`
+- Test plan slice: `product-docs/global/backlog/test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md`
+- GitHub: [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a)
 - Incubation plan: `.cursor/plans/ezkey_mobile_android_real_device_automation.plan.md` (Phase 3 steady-state)
+
+## Implementation status (2026-06-26)
+
+| Layer | Status | Notes |
+| --- | --- | --- |
+| Maestro pilot (pending/respond) | **Validated** | TB exit #2 |
+| F2a enrollment bypass | **Shipped (code)** | Commit `4d248f42`; hardware re-validation pending |
+| 3-phase campaign model | **Documented** | `run-mobile-test-campaign.ps1` (interim PowerShell) |
+| Churn loop (no recovery) | **Documented** | `run-mobile-churn-no-recovery.ps1` (interim) |
+| JUnit `TestDataFactory` wrapper | **Open** | Phase A deliverable |
+| Session artifact folders (`iterations/<nnnnn>/`) | **Open** | Phase A deliverable |
+| Deny Maestro flow | **Open** | Phase B |
+| Seeded long run (`--seed`) | **Open** | Phase C |
+
+**Next hardware session:** Phase A — one iteration end-to-end with full artifact contract; then
+`traceability-sync` and TB execution bullet update.
 
 ## Documentation cadence (avoid rot)
 
@@ -116,7 +202,7 @@ Advance **one or two harness phases at a time**. Update **canonical** docs only 
 | **Engineering design** | This file + `maestro/README.md` — how to run, artifact layout, open questions | Harness behavior or folder contract changes |
 | **Operator runbook** | `maestro/README.md`, scripts `--help` | Commands, env vars, prerequisites change |
 | **Traceability matrix** | `product-docs/components/mobile/spec-test-traceability.md` (+ global row if promoted) | A new test layer is **real** (named suite, how to run) |
-| **Test plan slice** | `product-docs/.../test-plan-slice-TB-2026-0002-*.md` (create once, amend per phase) | Before Phase A; revise when layers or deferrals change |
+| **Test plan slice** | `product-docs/global/backlog/test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md` | Before Phase A; revise when layers or deferrals change |
 | **Run evidence** | `maestro/sessions/<session>/` (gitignored) — `meta.md`, logs, `summary.jsonl` | Every session; never copy into product-docs |
 
 **Do not** duplicate run logs or per-iteration narratives into backlog files. **Do** add a dated **Execution** bullet under `I-2026-0019` / **Pilot status** under `TB-2026-0002` when a phase gate is met (what passed, what is deferred).
@@ -138,10 +224,10 @@ Advance **one or two harness phases at a time**. Update **canonical** docs only 
 
 **Phase A — skeleton (one iteration end-to-end)**
 
-- [ ] Test plan slice created or updated (`test-strategy-planner`).
-- [ ] TB: mark Phase A **in progress**; link script/test class names once they exist.
-- [ ] This doc: confirm artifact paths match implementation.
-- [ ] `maestro/README.md`: link to session runner when added.
+- [x] Test plan slice created or updated (`test-strategy-planner`) — [`TSP-2026-06-26-mobile-real-device-churn-harness.md`](../../product-docs/global/backlog/test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md).
+- [x] TB: mark Phase A **in progress**; link script/test class names once they exist.
+- [x] This doc: confirm artifact paths match implementation (contract unchanged; interim scripts noted in **Implementation status**).
+- [x] `maestro/README.md`: link to session runner when added (pilot runner + campaign scripts documented).
 - [ ] After green run: TB **Execution** line + `traceability-sync` (gap: “real-device churn harness — Phase A” until matrix row is formal).
 - [ ] `closeout` for Phase A only (TB stays `active`).
 

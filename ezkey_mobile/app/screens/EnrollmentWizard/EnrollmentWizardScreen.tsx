@@ -225,6 +225,7 @@ export const EnrollmentWizardScreen: React.FC<Props> = ({navigation}) => {
                   {t('enrollmentWizard.verifyHint', {name: draft.integrationName})}
                 </Text>
                 <PinCodeInput
+                  testID="ezkey.e2e.enrollmentWizard.challengeInput"
                   length={6}
                   centered
                   gap={8}

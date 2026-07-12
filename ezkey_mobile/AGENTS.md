@@ -22,6 +22,17 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - When discussing stack modernization, treat React, React Native, `react-native-vision-camera`, and camera-adjacent dependencies as a coupled compatibility slice rather than as independent bumps.
 - Treat the current mobile product and security posture as **Android-first**. iOS is a later planned milestone, not a short-term parity target, so do not report missing iOS parity as a current defect unless documentation overclaims it.
 
+## Mobile test operator segmentation
+
+- For clean-start mobile test sessions, treat `admin.docker` as a human-reserved recovery account.
+- Prefer a dedicated global admin for agent-driven mobile testing (`mobile_tester` now, target naming `admin.mobile`).
+- Agent automation should operate on the dedicated mobile test admin and avoid consuming `admin.docker` recovery codes unless explicitly requested by the maintainer.
+- Validate baseline before any churn run:
+  - dedicated test admin exists and is `GLOBAL_ADMIN`, active, lifecycle `ACTIVE`;
+  - linked enrollment is `VERIFIED` with `device_public_key` present;
+  - Demo Device has a persisted enrollment JSON entry under `data/enrollments/` for that enrollment id.
+- Do not hardcode one-shot credentials in docs, scripts, or committed files. Generate fresh bind material per run.
+
 ## Contract-First Rules
 
 - Orval is pinned at **8.20.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —

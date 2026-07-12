@@ -1,6 +1,118 @@
 # Ezkey mobile — utility scripts
 
+## `get-fresh-enrollment-seed.ps1`
+
+PowerShell helper for autonomous Maestro enrollment runs on a one-shot enrollment backend.
+
+It performs, in order:
+
+- `POST /api/v1/admin/auth/recover` with username + recovery code
+- `POST /api/v1/admin/enrollments/reset` with the returned recovery token
+- writes fresh runtime values for Maestro (`ENROLLMENT_ID`, `ENROLLMENT_PROOF_TOKEN`,
+  `ENROLLMENT_AUTH_URL`, `ENROLLMENT_CHALLENGE`) to:
+  - JSON (`maestro/reports/fresh-enrollment-seed.json`)
+  - PowerShell env script (`maestro/reports/fresh-enrollment-seed.ps1`)
+
+Optional switch `-RunMaestro` executes `maestro/flows/pilot_enrollment_full_runtime.yaml`
+immediately with the fresh values.
+
+From `ezkey_mobile/`:
+
+```powershell
+.\scripts\get-fresh-enrollment-seed.ps1 `
+  -AdminApiBaseUrl "http://localhost:8082" `
+  -Username "admin" `
+  -RecoveryCode "1111-2222-3333-4444-5555-6666-7777-8888" `
+  -EnrollmentAuthUrl "https://your-auth-url.example" `
+  -RunMaestro
+```
+
+If needed, force a specific enrollment id:
+
+```powershell
+.\scripts\get-fresh-enrollment-seed.ps1 `
+  -AdminApiBaseUrl "http://localhost:8082" `
+  -Username "admin" `
+  -RecoveryCode "1111-2222-3333-4444-5555-6666-7777-8888" `
+  -EnrollmentAuthUrl "https://your-auth-url.example" `
+  -EnrollmentId 4
+```
+
 ## `build-install-debug-clean.sh` (canonical Android debug install)
+
+## `run-mobile-churn-no-recovery.ps1`
+
+Runs repeated mobile churn iterations without using enrollment recovery/reset:
+
+- creates an auth attempt for an already-verified enrollment via Admin API
+- runs the Maestro pending/respond flow on real device
+- reads final auth attempt status and writes a CSV summary
+
+Requirements:
+
+- verified enrollment already present on device (for example enrollment 2 / `mobile_tester`)
+- valid admin bearer token (`-AdminToken` or `EZKEY_ADMIN_TOKEN`)
+
+Important dual-lane note:
+
+- Demo Device and real phone do not share enrollment state.
+- A JSON under `demo-device:/app/data/enrollments/*.json` does not make that enrollment appear on
+  the real phone home screen.
+- The script now fails fast if `ezkey.e2e.home.enrollment.<id>` is not visible on the phone.
+
+From `ezkey_mobile/`:
+
+```powershell
+.\scripts\run-mobile-churn-no-recovery.ps1 `
+  -Iterations 5 `
+  -EnrollmentId 2 `
+  -AdminApiBaseUrl "http://localhost:9080" `
+  -AdminToken "ezkey_..."
+```
+
+Output summary:
+
+- `maestro/reports/churn-no-recovery/summary.csv`
+
+## `run-mobile-test-campaign.ps1` (3-phase orchestrator)
+
+Implements the mobile test campaign model aligned with Ezkey functional test patterns:
+
+1. **Phase 1** (`Demo Device lane`): obtain Global Admin token by replaying passwordless login
+   (`/admin/auth/login` -> `/auth-attempts/pending` -> `/auth-attempts/respond` ->
+   `/admin/auth/passwordless-wait`) using Demo Device enrollment material for `mobile_tester`
+   (or future `admin.mobile`).
+2. **Phase 2** (`Admin API lane`): create/reuse one integration and create one fresh enrollment,
+   persist campaign state JSON, optionally bind+verify on phone via Maestro enrollment flow.
+3. **Phase 3** (`Real phone lane`): churn loop on phone with Maestro + Admin API auth-attempt checks.
+
+State files:
+
+- `maestro/reports/mobile-test-campaign-state.json`
+- `maestro/reports/mobile-test-campaign-summary.csv`
+
+Run all phases:
+
+```powershell
+.\scripts\run-mobile-test-campaign.ps1 `
+  -Phase all `
+  -Username "mobile_tester" `
+  -Iterations 5
+```
+
+Run one phase:
+
+```powershell
+.\scripts\run-mobile-test-campaign.ps1 -Phase phase1 -Username "mobile_tester"
+.\scripts\run-mobile-test-campaign.ps1 -Phase phase2 -Username "mobile_tester"
+.\scripts\run-mobile-test-campaign.ps1 -Phase phase3 -Username "mobile_tester" -Iterations 5
+```
+
+Notes:
+
+- Phase 3 fails fast if no Android device is visible via `adb devices`.
+- Phase 3 fails fast if the campaign enrollment tile is not visible on the phone home screen.
+- Demo Device is used for token bootstrap only; churn execution remains on real phone.
 
 **Agents and maintainers:** use this for a clean debug build on a connected device. It resolves JDK 17/21 (`resolve-android-jdk.sh`), checks `adb` first, uninstalls `org.ezkey.mobile`, runs `gradlew clean installDebug`, and launches the app.
 
