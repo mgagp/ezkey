@@ -252,7 +252,8 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 ```
 
   Optional: `--skip-compile` when target classes already exist; `--modules csv` to narrow scope.
-  On Windows + Semgrep Docker, the script sets `MSYS_NO_PATHCONV=1` for mount paths.
+  On Windows + Semgrep Docker, the script confines `MSYS_NO_PATHCONV=1` to the Docker subshell and
+  uses a slim scan workspace under `logs/java-doctor/scan-workspace`.
 - Outputs under `logs/java-doctor/` (gitignored):
   - `java-doctor.curated.md` — human-readable shortlist + planning contract
   - `java-doctor.curated.json` — machine-readable summary
@@ -260,12 +261,34 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 - Config under `config/java-doctor/` (pinned Semgrep pack, narrow PMD ruleset, suppressions).
 - Default modules: `ezkey-core`, `ezkey-core-security`, `ezkey-admin-api`, `ezkey-auth-api`,
   `ezkey-integration-api`.
-- Working rule for agents: when the user asks for a **`java-doctor-curated`** pass, run the script
-  first, read the curated Markdown or JSON, then propose or implement a **small, prioritized** set
-  of fixes. Prefer P1 first, then a narrow slice of P2. Brief the maintainer, then hygiene branch +
-  PR; include a modest low-signal allotment after high-signal items.
+- Campaign decision notes (HITL): `product-docs/global/hygiene/java-doctor/` (template + dated
+  pass instances). Do **not** invent `I-*` / `TB-*` / GitHub issues per finding.
+
+### HITL contract (mandatory for cold agents)
+
+When the operator asks for a **`java-doctor-curated`** improvement pass:
+
+1. Run the script; read `logs/java-doctor/java-doctor.curated.md`.
+2. Propose a **small prioritized lot** (usually 3–6 items), not a zero-warning campaign.
+3. **Before any code change:** produce a point-by-point HITL briefing (what the tool said, where to
+   look in source, hypothesis, options, open question). Wait for Go / No-Go / suppress / skip per
+   item.
+4. **Fuzzy signal rule:** if the finding cannot be tied clearly to source without opening bytecode,
+   **skip** — do not invent a problem. Prefer suppress-with-reason only when the pattern is
+   understood and intentionally accepted.
+5. Record decisions in a dated campaign note under `product-docs/global/hygiene/java-doctor/`
+   (copy `TEMPLATE.md`). Machine-facing suppressions go in `config/java-doctor/suppressions.json`
+   (and SpotBugs exclude when class-level).
+6. Only then implement accepted fixes on a **dedicated hygiene branch + PR**; put the same short
+   briefing in the PR body; link the campaign note. Modest low-signal allotment after high-signal
+   items is allowed when the operator agrees.
+7. Security-sensitive zones (Tink keyset, HMAC keys, login/logout, encryption listeners): require
+   careful counter-analysis; characterization / complementary tests before refactor when behavior
+   might change.
+
 - Authority: `product-docs/global/java-doctor-curated-evaluation-2026-07-11.md`,
-  `I-2026-07-11-java-doctor-curated-hygiene`, `TB-2026-07-11-java-doctor-curated-mvp`.
+  `I-2026-07-11-java-doctor-curated-hygiene`, `TB-2026-07-11-java-doctor-curated-mvp`,
+  `product-docs/global/hygiene/java-doctor/README.md`.
 
 ## UI Test Autonomy
 
