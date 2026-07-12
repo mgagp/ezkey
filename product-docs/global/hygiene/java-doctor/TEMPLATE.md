@@ -10,7 +10,11 @@
 
 ## Lot under review
 
-Brief list of findings chosen for HITL (rule + location hint). Keep small (≈3–6).
+Brief numbered overview only (rule + location hint). Keep small (≈3–6).
+
+**Agent briefing style:** do not use a dense options matrix as the primary HITL vehicle. Iterate
+one finding at a time in dialogue with the operator; record the final decisions table here afte
+HITL closes.
 
 ## Decisions
 

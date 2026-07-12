@@ -269,10 +269,15 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 When the operator asks for a **`java-doctor-curated`** improvement pass:
 
 1. Run the script; read `logs/java-doctor/java-doctor.curated.md`.
-2. Propose a **small prioritized lot** (usually 3–6 items), not a zero-warning campaign.
-3. **Before any code change:** produce a point-by-point HITL briefing (what the tool said, where to
-   look in source, hypothesis, options, open question). Wait for Go / No-Go / suppress / skip pe
-   item.
+2. Propose a **small prioritized lot** (usually 3–6 items), not a zero-warning campaign. A short
+   numbered **overview** of the lot is fine (rule + location hint only).
+3. **Before any code change — interactive HITL loop (mandatory):** do **not** replace the dialogue
+   with one dense options matrix that asks for a bulk reply (`1A, 2B, 3B…`). After the overview,
+   **iterate explicitly, one finding at a time**: what the tool said, where to look in source,
+   hypothesis, options, open question — then **wait** for the operator’s Go / No-Go / suppress /
+   skip / clarifying questions on **that** item before presenting the next. The point of HITL here
+   is shared code review and refinement, not a single synthetic table. A compact decision table may
+   appear later in the **campaign note** after decisions are made — not as the primary briefing.
 4. **Fuzzy signal rule:** if the finding cannot be tied clearly to source without opening bytecode,
    **skip** — do not invent a problem. Prefer suppress-with-reason only when the pattern is
    understood and intentionally accepted.
