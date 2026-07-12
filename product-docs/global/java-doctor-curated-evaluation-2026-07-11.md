@@ -70,7 +70,7 @@ with **no plugins wired**. There is no Java equivalent of `doctor-curated` today
   already exists (must be upgraded)
 - **Cons:** Needs compiled classes; weaker on source-only / config / Docker; stale `4.7.3` pin in
   repo must not be used as-is
-- **Verdict:** Primary JVM-bug input to the curator
+- **Verdict:** Primary JVM-bug input to the curato
 
 ### Semgrep OSS (keep)
 
@@ -93,7 +93,7 @@ with **no plugins wired**. There is no Java equivalent of `doctor-curated` today
 ### Error Prone (defer)
 
 - **Family:** Compiler plugin correctness
-- **Pros:** Very high signal; Google-backed; JDK 21+ runner
+- **Pros:** Very high signal; Google-backed; JDK 21+ runne
 - **Cons:** Invasive `javac` / `--add-exports` wiring on modern JDKs; awkward as a punctual
   report-only hygiene tool; overlap with SpotBugs; higher accidental complexity for v1
 - **Verdict:** Strong future candidate if compile integration is cheap after the three-tool curator settles
@@ -134,7 +134,7 @@ with **no plugins wired**. There is no Java equivalent of `doctor-curated` today
 ### OpenRewrite (complement later)
 
 - **Pros:** Already in parent POM; applies fixes
-- **Cons:** Recipe runner, not a triage reporter
+- **Cons:** Recipe runner, not a triage reporte
 - **Verdict:** May help *after* curated findings, not as analyzer #1
 
 ## Smoke notes (this session)
@@ -147,7 +147,9 @@ with **no plugins wired**. There is no Java equivalent of `doctor-curated` today
 
 **Implication for implementation:** first TB must still document a **reproducible invoke** (pinned Semgrep binary or Docker + `MSYS_NO_PATHCONV=1` on Windows, plus SpotBugs and PMD report-only). The zero-hit `p/java` smoke on `ezkey-core` is encouraging for Semgrep noise, but v1 should still **pin small explicit packs** for Semgrep and PMD rather than enabling full catalogues. Also run SpotBugs + narrow-PMD smoke before claiming coverage baselines.
 
-## Recommended shortlist (pending Go / No-Go)
+**Implementation follow-up (same day):** `TB-2026-07-11-java-doctor-curated-mvp` landed `./scripts/java-doctor-curated.sh`. Windows Docker uses a slim workspace under `logs/java-doctor/scan-workspace` (full monorepo mounts hang; MSYS `/tmp` is invisible to Docker Desktop). Dry-run curated **190**/457 after suppressing `EI_EXPOSE_REP*`.
+
+## Recommended shortlist (Go confirmed 2026-07-11)
 
 Three complementary families (operator revision 2026-07-11 — PMD added for design/maintainability):
 
@@ -170,16 +172,17 @@ Mirror Admin UI:
 3. Keyword (proposed: `java-doctor-curated`) + AGENTS.md section; skill only if keyword+AGENTS insufficient
 4. Hygiene posture: briefing → small fix set + modest low-signal allotment → hygiene PR; not methodology theatre for routine polish
 5. Default analysis scope: production modules (`ezkey-core`, `ezkey-core-security`, `ezkey-admin-api`,
-   `ezkey-auth-api`, `ezkey-integration-api`); demos/tests optional later
+   `ezkey-auth-api`, `ezkey-integration-api`); demos/tests optional late
 6. Priority weighting hint: SpotBugs correctness / Semgrep security → lean P1; PMD design smells → lean P2/P3 unless severity is high
 
 ## Go / No-Go checklist (operator)
 
-- [ ] **Go** on SpotBugs + Semgrep + **narrow PMD** as the three analyzer inputs
-- [ ] **Go** on pinning small Semgrep and PMD packs (not full catalogues)
-- [ ] **Go** on deferring FindSecBugs / Error Prone as documented
-- [ ] **Go** on punctual curated report (not CI gate)
-- [ ] After Go: promote `I-2026-07-11-java-doctor-curated-hygiene` toward `ready` / first `TB-*`
+- [x] **Go** on SpotBugs + Semgrep + **narrow PMD** as the three analyzer inputs
+- [x] **Go** on pinning small Semgrep and PMD packs (not full catalogues)
+- [x] **Go** on deferring FindSecBugs / Error Prone as documented
+- [x] **Go** on punctual curated report (not CI gate)
+- [x] After Go: promote `I-2026-07-11-java-doctor-curated-hygiene` toward `ready` / first `TB-*`
+  (`TB-2026-07-11-java-doctor-curated-mvp`)
 
 ## Links
 

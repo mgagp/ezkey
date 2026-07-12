@@ -1,0 +1,52 @@
+# Pinned Semgrep pack for java-doctor-curated (v1).
+# Small, high-signal security / footgun patterns — not p/java full catalogue.
+# Suppress confirmed noise in suppressions.json with a written reason.
+
+rules:
+  - id: ezkey.java.security.weak-message-digest
+    languages: [java]
+    severity: ERROR
+    message: Weak MessageDigest algorithm (MD5/SHA-1) used — prefer SHA-256+ for security-sensitive hashing.
+    metadata:
+      category: security
+      cwe: "CWE-328"
+    patterns:
+      - pattern-either:
+          - pattern: MessageDigest.getInstance("MD5")
+          - pattern: MessageDigest.getInstance("SHA-1")
+          - pattern: MessageDigest.getInstance("SHA1")
+
+  - id: ezkey.java.security.print-stack-trace
+    languages: [java]
+    severity: WARNING
+    message: printStackTrace() can leak internals; prefer structured logging (SLF4J).
+    metadata:
+      category: security
+    pattern: $E.printStackTrace()
+
+  - id: ezkey.java.security.runtime-exec
+    languages: [java]
+    severity: ERROR
+    message: Runtime.exec may be an injection footgun — verify inputs are allowlisted.
+    metadata:
+      category: security
+      cwe: "CWE-78"
+    pattern: Runtime.getRuntime().exec(...)
+
+  - id: ezkey.java.security.process-builde
+    languages: [java]
+    severity: WARNING
+    message: ProcessBuilder may execute OS commands — verify arguments are allowlisted.
+    metadata:
+      category: security
+      cwe: "CWE-78"
+    pattern: new ProcessBuilder(...)
+
+  - id: ezkey.java.security.set-password-literal
+    languages: [java]
+    severity: ERROR
+    message: Possible hardcoded password literal passed to setPassword.
+    metadata:
+      category: security
+      cwe: "CWE-798"
+    pattern: $X.setPassword("...")

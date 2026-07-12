@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Narrow PMD ruleset for java-doctor-curated (design / maintainability).
+  Not the full Java catalogue — keep this list small and deliberate.
+  Suppress individual noise via config/java-doctor/suppressions.json.
+-->
+<ruleset name="ezkey-java-doctor-design"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+  <description>
+    Design and maintainability signals for punctual hygiene triage.
+  </description>
+
+  <!-- Empty catch hides failures — maintainability + correctness smell -->
+  <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
+
+  <!-- Nested control flow — readability / maintainability -->
+  <rule ref="category/java/design.xml/AvoidDeeplyNestedIfStmts">
+    <properties>
+      <property name="problemDepth" value="4"/>
+    </properties>
+  </rule>
+
+  <rule ref="category/java/design.xml/CollapsibleIfStatements"/>
+  <rule ref="category/java/design.xml/SimplifyBooleanReturns"/>
+  <rule ref="category/java/design.xml/SimplifyBooleanExpressions"/>
+
+  <!-- Complexity — lean P2/P3 unless extreme -->
+  <rule ref="category/java/design.xml/CyclomaticComplexity">
+    <properties>
+      <property name="methodReportLevel" value="15"/>
+      <property name="classReportLevel" value="80"/>
+    </properties>
+  </rule>
+
+  <rule ref="category/java/design.xml/NPathComplexity">
+    <properties>
+      <property name="reportLevel" value="200"/>
+    </properties>
+  </rule>
+
+  <!-- PMD 7: ExcessiveMethodLength removed → NcssCount -->
+  <rule ref="category/java/design.xml/NcssCount">
+    <properties>
+      <property name="methodReportLevel" value="60"/>
+      <property name="classReportLevel" value="1500"/>
+    </properties>
+  </rule>
+
+  <rule ref="category/java/design.xml/TooManyMethods">
+    <properties>
+      <property name="maxmethods" value="40"/>
+    </properties>
+  </rule>
+
+  <!-- Questionable constructs that hurt long-term maintenance -->
+  <rule ref="category/java/bestpractices.xml/UnusedPrivateMethod"/>
+  <rule ref="category/java/bestpractices.xml/UnusedLocalVariable"/>
+
+</ruleset>

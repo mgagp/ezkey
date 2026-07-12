@@ -239,6 +239,34 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 - Run the lightweight curated React Doctor workflow from `ezkey-admin-ui/` before broad analysis; details and output files live in `ezkey-admin-ui/AGENTS.md`.
 - Before implementing a fix set from that pass: brief the maintainer (short project-contextual why for each retained item), then use a **dedicated branch + PR** — not methodology backlog artifacts. **Put that same short briefing in the PR body** (durable learning trace). After high-signal items, reserve a **modest low-signal allotment** (cheap P2/P3 continuous-improvement wins) so light polish does not wait forever. Full agent contract: `ezkey-admin-ui/AGENTS.md` § React Doctor curated pass.
 
+## Java doctor-curated keyword
+
+- For Java (and adjacent) static-analysis hygiene, the shared keyword is **`java-doctor-curated`**.
+- Purpose: a **punctual curated pass** mirroring Admin UI `doctor-curated` — SpotBugs + Semgrep
+  (pinned pack) + narrow PMD (design/maintainability) → P1/P2/P3 shortlist. **Not** a CI gate and
+  **not** a zero-warning campaign.
+- Default command from repo root (Git Bash on Windows):
+
+```bash
+./scripts/java-doctor-curated.sh
+```
+
+  Optional: `--skip-compile` when target classes already exist; `--modules csv` to narrow scope.
+  On Windows + Semgrep Docker, the script sets `MSYS_NO_PATHCONV=1` for mount paths.
+- Outputs under `logs/java-doctor/` (gitignored):
+  - `java-doctor.curated.md` — human-readable shortlist + planning contract
+  - `java-doctor.curated.json` — machine-readable summary
+  - `raw/` — SpotBugs/PMD XML + Semgrep JSON inputs
+- Config under `config/java-doctor/` (pinned Semgrep pack, narrow PMD ruleset, suppressions).
+- Default modules: `ezkey-core`, `ezkey-core-security`, `ezkey-admin-api`, `ezkey-auth-api`,
+  `ezkey-integration-api`.
+- Working rule for agents: when the user asks for a **`java-doctor-curated`** pass, run the script
+  first, read the curated Markdown or JSON, then propose or implement a **small, prioritized** set
+  of fixes. Prefer P1 first, then a narrow slice of P2. Brief the maintainer, then hygiene branch +
+  PR; include a modest low-signal allotment after high-signal items.
+- Authority: `product-docs/global/java-doctor-curated-evaluation-2026-07-11.md`,
+  `I-2026-07-11-java-doctor-curated-hygiene`, `TB-2026-07-11-java-doctor-curated-mvp`.
+
 ## UI Test Autonomy
 
 - Treat browser UI tests as a **pragmatic judgment call**, not a mechanical checklist item.

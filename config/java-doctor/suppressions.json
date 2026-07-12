@@ -1,0 +1,16 @@
+{
+  "keyword": "java-doctor-curated",
+  "description": "Rule-level suppressions for the Java doctor-curated pass. Each entry needs a written reason.",
+  "suppressions": [
+    {
+      "tool": "spotbugs",
+      "rule": "EI_EXPOSE_REP",
+      "reason": "Classic FindBugs/SpotBugs noise for JPA entities and DTOs that return mutable field references; not a default P1 for Ezkey. Revisit when auditing a security-sensitive type."
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EI_EXPOSE_REP2",
+      "reason": "Same family as EI_EXPOSE_REP (store mutable reference into field). Default suppress for entity/DTO posture; unsuppress for targeted review."
+    }
+  ]
+}

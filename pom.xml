@@ -66,8 +66,11 @@
 		<spring-boot.version>4.1.0</spring-boot.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<springdoc.version>3.0.3</springdoc.version>
-		<spotbugs.version>4.7.3</spotbugs.version>
+		<!-- SpotBugs engine + Maven plugin (report-only via java-doctor-curated; not a build gate) -->
+		<spotbugs.version>4.10.2</spotbugs.version>
+		<spotbugs-maven-plugin.version>4.10.2.0</spotbugs-maven-plugin.version>
 		<checkstyle.version>3.6.0</checkstyle.version>
+		<!-- maven-pmd-plugin version (narrow ruleset under config/java-doctor/; not a build gate) -->
 		<pmd.version>3.28.0</pmd.version>
 		<jacoco.version>0.8.15</jacoco.version>
 		<zxing.version>3.5.4</zxing.version>
@@ -348,6 +351,47 @@
 					</configuration>
 				</plugin>
 
+				<!-- SpotBugs (report-only; invoked by scripts/java-doctor-curated.sh) -->
+				<plugin>
+					<groupId>com.github.spotbugs</groupId>
+					<artifactId>spotbugs-maven-plugin</artifactId>
+					<version>${spotbugs-maven-plugin.version}</version>
+					<configuration>
+						<failOnError>false</failOnError>
+						<xmlOutput>true</xmlOutput>
+						<xmlOutputDirectory>${project.build.directory}</xmlOutputDirectory>
+						<effort>Default</effort>
+						<threshold>Low</threshold>
+						<excludeFilterFile>${maven.multiModuleProjectDirectory}/config/java-doctor/spotbugs-exclude.xml</excludeFilterFile>
+					</configuration>
+					<dependencies>
+						<dependency>
+							<groupId>com.github.spotbugs</groupId>
+							<artifactId>spotbugs</artifactId>
+							<version>${spotbugs.version}</version>
+						</dependency>
+					</dependencies>
+				</plugin>
+
+				<!-- PMD (narrow design/maintainability ruleset; report-only) -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-pmd-plugin</artifactId>
+					<version>${pmd.version}</version>
+					<configuration>
+						<failOnViolation>false</failOnViolation>
+						<printFailingErrors>true</printFailingErrors>
+						<linkXRef>false</linkXRef>
+						<includeTests>false</includeTests>
+						<rulesets>
+							<ruleset>${maven.multiModuleProjectDirectory}/config/java-doctor/pmd-ruleset.xml</ruleset>
+						</rulesets>
+						<excludeRoots>
+							<excludeRoot>${project.build.directory}/generated-sources</excludeRoot>
+						</excludeRoots>
+					</configuration>
+				</plugin>
+
 				<!-- License Maven Plugin -->
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
@@ -401,6 +445,15 @@
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>license-maven-plugin</artifactId>
+			</plugin>
+			<!-- Available for explicit goals only (spotbugs:spotbugs / pmd:pmd); no lifecycle binding -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-pmd-plugin</artifactId>
 			</plugin>
 
 			<plugin>

@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `I-2026-07-11-java-doctor-curated-hygiene`
-- **Status:** `incubating`
+- **Status:** `ready` (MVP tooling landed under `TB-2026-07-11-java-doctor-curated-mvp`; close when first hygiene campaign PR merges or TB exits)
 - **Priority:** `P3`
 - **Created at:** `2026-07-11`
 - **Updated at:** `2026-07-11`
@@ -12,7 +12,9 @@
 - **Component tags:** `core`, `admin-api`, `auth-api`, `integration-api`, `docs`, `tooling`
 - **Lane:** `C`
 - **Captured by:** Marc (continuous-improvement intent; Plan-mode incubation 2026-07-11)
-- **GitHub issue:** _(none yet — open when implementation TB starts)_
+- **GitHub issue:** `#326`
+- **Issue labels:** `lane:c`, `type:chore`, `component:core`, `component:admin-api`, `component:auth-api`, `component:integration-api`, `component:infra`, `priority:p3`, `status:ready`
+- **Tracer bullet:** `TB-2026-07-11-java-doctor-curated-mvp`
 
 ## Intent
 
@@ -35,12 +37,12 @@ hygiene vs program). This idea is **tooling capability**, not a product-directio
 evaluation lives in the linked evaluation note; a vision note would add ceremony without new
 product intent.
 
-## Evaluation outcome (pending Go / No-Go)
+## Evaluation outcome (Go 2026-07-11)
 
 Authoritative analysis:
 [`../java-doctor-curated-evaluation-2026-07-11.md`](../java-doctor-curated-evaluation-2026-07-11.md).
 
-**Recommended analyzer shortlist (v1):**
+**Analyzer shortlist (v1) — Go confirmed:**
 
 | Tool | Family question |
 |------|-----------------|
@@ -52,17 +54,17 @@ Authoritative analysis:
 **Rejected for v1:** SonarQube, ArchUnit-in-report, OWASP DC-in-curator, Checkstyle re-export,
 full unfiltered PMD or Semgrep catalogues.
 
-**Method (after Go):** Bash entrypoint + curator → `logs/java-doctor/`; keyword
+**Method:** Bash entrypoint + curator → `logs/java-doctor/`; keyword
 `java-doctor-curated`; AGENTS.md contract; report-only (not `scripts/build.sh` fail path).
 
 ## Scope
 
-- **In scope (implementation after Go):**
+- **In scope (implementation):**
   - Wire SpotBugs + PMD report-only (upgrade version properties; do not fail baseline build by default)
-  - Invoke Semgrep with pinned config; normalize JSON into curator
+  - Invoke Semgrep with pinned config; normalize JSON into curato
   - Pin a narrow PMD ruleset aimed at design/maintainability (not the full Java catalogue)
-  - Curator script (suppress / weight / curated MD+JSON) mirroring Admin UI doctor
-  - Agent keyword + AGENTS.md (root and/or module); modest low-signal allotment doctrine
+  - Curator script (suppress / weight / curated MD+JSON) mirroring Admin UI docto
+  - Agent keyword + AGENTS.md (root); modest low-signal allotment doctrine
   - Default module scope: core + core-security + admin/auth/integration APIs
 - **Out of scope (v1):**
   - Making findings a CI or `build.sh` gate
@@ -72,31 +74,32 @@ full unfiltered PMD or Semgrep catalogues.
 
 ## Key assumptions
 
-- Operator confirms Go / No-Go on the evaluation shortlist before Maven/script work.
+- Operator confirmed Go on the evaluation shortlist (2026-07-11).
 - Semgrep and PMD remain **curated packs** (not entire registries).
 - Hygiene posture matches Admin UI: briefing → small set → hygiene PR.
 - Windows agents use Git Bash; Semgrep invocation must avoid MSYS path-conversion pitfalls.
 
 ## Risks and exceptions
 
-- Semgrep Windows/Docker path friction observed during evaluation smoke — first TB must prove a
-  reliable invoke path.
+- Semgrep Windows/Docker path friction observed during evaluation smoke — TB must prove a
+  reliable invoke path (`MSYS_NO_PATHCONV=1`).
 - SpotBugs needs compiled classes → curated script depends on a prior compile of target modules.
 - Over-broad Semgrep or PMD packs will drown the curator; pin early and suppress with reasons.
 - If FindSecBugs later proves necessary, add as SpotBugs plugin rather than a fourth platform.
 
-## Candidate first slice (TB after Go)
+## Candidate first slice (active TB)
 
-1. SpotBugs + narrow PMD report-only on one API module + Semgrep JSON on same source tree
-2. Curator MVP: suppress map stub + P1/P2/P3 + curated MD/JSON under `logs/java-doctor/`
+[`TB-2026-07-11-java-doctor-curated-mvp`](../TB-2026-07-11-java-doctor-curated-mvp.md):
+
+1. SpotBugs + narrow PMD report-only + Semgrep JSON on default production modules
+2. Curator MVP: suppress map + P1/P2/P3 + curated MD/JSON under `logs/java-doctor/`
 3. Keyword + AGENTS.md section
 4. One dry-run campaign briefing (no obligation to fix everything)
 
 ## Promotion notes
 
-- Move to `ready` when operator **Go**s the shortlist in the evaluation checklist.
-- Then create `TB-*` for the curator MVP (and optional GitHub issue for board visibility).
-- Implementation session should **not** re-litigate families unless smoke contradicts the evaluation.
+- Moved to `ready` after operator Go on evaluation checklist (2026-07-11).
+- TB created for curator MVP; GitHub issue opened with implementation session.
 
 ## Automation follow-up (optional)
 
@@ -106,6 +109,7 @@ full unfiltered PMD or Semgrep catalogues.
 ## Links
 
 - Evaluation (decision record): [`../java-doctor-curated-evaluation-2026-07-11.md`](../java-doctor-curated-evaluation-2026-07-11.md)
+- Tracer bullet: [`../TB-2026-07-11-java-doctor-curated-mvp.md`](../TB-2026-07-11-java-doctor-curated-mvp.md)
 - Comparable: `ezkey-admin-ui/AGENTS.md` § React Doctor curated pass; `ezkey-admin-ui/scripts/doctor-curated.mjs`
 - Hygiene vs program: `product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`
 - Plan incubation: ephemeral Plan-mode scaffold (2026-07-11); durable signal in evaluation + this `I-*`
