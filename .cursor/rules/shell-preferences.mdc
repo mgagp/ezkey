@@ -6,6 +6,12 @@ alwaysApply: true
 # Shell preferences
 
 - **Bash over PowerShell:** The maintainer uses Git Bash on Windows. Always propose Bash commands and scripts (e.g. `./scripts/foo.sh`), never PowerShell. Git Bash is installed with Git and is the preferred shell for this project on Windows; the same Bash scripts run on Linux and macOS.
-- **On Windows, avoid bare `bash` when launching from another shell:** `bash` may resolve to `C:\Windows\System32\bash.exe` (WSL) instead of Git Bash. When you need Bash from a Windows-hosted shell, prefer the explicit Git Bash path `C:\Program Files\Git\bin\bash.exe`.
+- **On Windows, avoid bare `bash` when launching from another shell:** `bash` may resolve to `C:\Windows\System32\bash.exe` (WSL) instead of Git Bash.
+- **Mandatory launcher rule (Windows):** from PowerShell/CMD/agent shells, always invoke Bash through the explicit Git for Windows binary:
+	- `& "C:\Program Files\Git\bin\bash.exe" -lc '<command>'`
+- **WSL guardrail:** never use `C:\Windows\System32\bash.exe` for repo scripts. If `Get-Command bash` resolves to System32, do not use bare `bash`; use the explicit Git Bash path above.
+- **Quick identity check (when in doubt):**
+	- `& "C:\Program Files\Git\bin\bash.exe" -lc 'command -v bash; uname -a'`
+	- Expected shell family includes `MINGW`/`MSYS`, not `Linux` from WSL.
 - **Maven baseline:** `./scripts/build.sh` from Git Bash is the single canonical Java validation entrypoint on all platforms. From PowerShell (e.g. Cursor agent shell), use `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'`. Do not introduce or rely on `.cmd` / `.bat` build wrappers.
 - **Avoid Windows-only script formats** (`.cmd`, `.bat`, `.ps1`) for repo tooling unless there is no portable Bash equivalent. Prefer one Bash script that works on Windows (Git Bash), Linux, and macOS.
