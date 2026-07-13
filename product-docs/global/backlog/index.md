@@ -48,6 +48,7 @@ Wave B closeout ML:
 | `I-2026-07-10-nightly-integrity-boundary-false-positives` | Nightly integrity: boundary false positives (grid align + alert honesty) | `active` | `P1` | `core`, `admin-api`, `admin-ui`, `audit`, `docs` | `2026-07-10` |
 | `I-2026-07-11-api-key-expires-at-edit` | API key PATCH: edit or clear `expiresAt` | `captured` | `P2` | `admin-api`, `admin-ui`, `core`, `docs` | `2026-07-11` |
 | `I-2026-07-11-java-doctor-curated-hygiene` | Java doctor-curated continuous hygiene (SpotBugs + Semgrep + narrow PMD) | `ready` | `P3` | `core`, `admin-api`, `auth-api`, `integration-api`, `docs`, `tooling` | `2026-07-11` |
+| `I-2026-07-11-mobile-doctor-curated-hygiene` | Mobile doctor-curated continuous hygiene (react-doctor + Semgrep + Detekt) | `ready` | `P3` | `mobile`, `android`, `docs`, `tooling` | `2026-07-11` |
 | `I-2026-07-12-security-pentest-curated-hygiene` | Security pentest curated hygiene (Schemathesis + ZAP + first-party Nuclei) | `ready` | `P2` | `security`, `tooling`, `infra`, `admin-api`, `auth-api`, `integration-api`, `docs` | `2026-07-12` |
 
 ## Tracer bullets (draft / ready / in progress)
@@ -56,6 +57,7 @@ Wave B closeout ML:
 |----|-------|--------|--------------|
 | `TB-2026-07-12` | Security pentest curated MVP | `draft` | `I-2026-07-12-security-pentest-curated-hygiene` |
 | `TB-2026-07-11` | Java doctor-curated curator MVP | `active` | `I-2026-07-11-java-doctor-curated-hygiene` (#326) |
+| `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `active` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
 | `TB-2026-07-06` | Device proof token hash-only storage (Tier 0) | `active` | `I-2026-0032` (#296) |
 
 ## Recently completed

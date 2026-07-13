@@ -105,6 +105,45 @@ corepack yarn install --immutable
 corepack yarn generate:api
 corepack yarn validate:ci
 ./scripts/build-install-debug-clean.sh
+yarn doctor:curated
 ```
 
 Real-device Maestro pilot (`TB-2026-0002`): see [`maestro/README.md`](maestro/README.md) and `scripts/run-real-device-pilot-maestro.sh`.
+
+## Mobile doctor-curated pass
+
+- Keyword for humans and agents: **`mobile-doctor-curated`**.
+- Purpose: a **punctual** React Native + Kotlin hygiene pass (react-doctor + Semgrep + Detekt →
+  curated P1/P2/P3 shortlist). **Not** a CI gate and **not** a zero-warning campaign.
+- Default commands from `ezkey_mobile/`:
+
+```bash
+yarn doctor:curated
+./scripts/mobile-doctor-curated.sh
+```
+
+  Optional: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--curate-only`.
+- Outputs under `logs/mobile-doctor/` (gitignored via root `logs/`):
+  - `mobile-doctor.curated.md` — human-readable shortlist + planning contract
+  - `mobile-doctor.curated.json` — machine-readable summary
+  - `raw/` — react-doctor / Semgrep / Detekt inputs
+- Config: `config/mobile-doctor/suppressions.json` (reasons required).
+- Campaign decision notes (HITL): `product-docs/global/hygiene/mobile-doctor/` (copy `TEMPLATE.md`).
+- Trace (hygiene, not program): dedicated branch + PR; do **not** invent `I-*` / `TB-*` per finding.
+- Authority: `product-docs/global/mobile-doctor-curated-evaluation-2026-07-11.md`,
+  `I-2026-07-11-mobile-doctor-curated-hygiene`, `TB-2026-07-11-mobile-doctor-curated-mvp`.
+
+### HITL contract (mandatory for cold agents)
+
+When the operator asks for a **`mobile-doctor-curated`** improvement pass:
+
+1. Run the script; read `logs/mobile-doctor/mobile-doctor.curated.md`.
+2. Propose a **small prioritized lot** (usually 3–6 items), not a zero-warning campaign.
+3. **Before any code change — interactive HITL loop:** iterate **one finding at a time**; wait for
+   Go / No-Go / suppress / skip on that item before the next. Do not replace dialogue with one dense
+   options matrix.
+4. **Fuzzy signal rule:** if the finding cannot be tied clearly to source, **skip**.
+5. **If it ain't broken, don't fix it** — especially in crypto / keystore / proof-token code.
+6. Record decisions in a dated campaign note under `product-docs/global/hygiene/mobile-doctor/`.
+7. Only then implement accepted fixes on a **dedicated hygiene branch + PR**; put the briefing in
+   the PR body. Modest low-signal allotment after high-signal items is allowed when the operator agrees.

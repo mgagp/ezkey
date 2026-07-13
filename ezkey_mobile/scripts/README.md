@@ -236,14 +236,42 @@ Requirements:
 
 This script is intended as a practical investigation aid, not as a formal cryptographic proof.
 
-## `code-quality-curator.mjs`
+## `mobile-doctor-curated` (preferred hygiene pass)
 
-Curates findings from Biome, Semgrep, and Detekt/SARIF into one normalized model,
-then generates readable reports.
+Punctual curated pass — keyword **`mobile-doctor-curated`**.
+
+Runs **react-doctor** + **Semgrep** (Ezkey mobile pack) + **Detekt**, then curates into P1/P2/P3.
+
+From `ezkey_mobile/`:
+
+```bash
+yarn doctor:curated
+./scripts/mobile-doctor-curated.sh
+```
+
+Optional flags: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--curate-only`.
+
+Outputs (gitignored under `logs/`):
+
+- `logs/mobile-doctor/mobile-doctor.curated.md`
+- `logs/mobile-doctor/mobile-doctor.curated.json`
+- `logs/mobile-doctor/raw/`
+
+Config: `config/mobile-doctor/suppressions.json`  
+Campaign notes: `product-docs/global/hygiene/mobile-doctor/`  
+Agent contract: `AGENTS.md` § Mobile doctor-curated pass
+
+`yarn quality:pipeline` delegates to this script (legacy alias).
+
+**Not in v1:** Biome (rejected for curated pass — ESLint+Prettier remain the lint/format gates).
+
+## `code-quality-curator.mjs` (legacy multi-format reports)
+
+Optional legacy curator for Semgrep/Detekt snapshots under `.monitor/`. Prefer
+`yarn doctor:curated` for hygiene campaigns.
 
 Default expected input snapshots (relative to `ezkey_mobile/`):
 
-- `.monitor/biome-report.json`
 - `.monitor/semgrep-report.json`
 - `.monitor/detekt.sarif`
 - `.monitor/detekt-report.json`
@@ -276,7 +304,7 @@ Useful options:
 
 ```bash
 node scripts/code-quality-curator.mjs \
-  --inputs=.monitor/biome-report.json,.monitor/semgrep-report.json,.monitor/detekt.sarif \
+  --inputs=.monitor/semgrep-report.json,.monitor/detekt.sarif \
   --output-dir=.monitor/code-quality \
   --report-name=run-001 \
   --exclude-path-fragments=__tests__/,app/hooks/__tests__/ \
@@ -361,76 +389,15 @@ Generated artifact:
 
 - `.monitor/detekt.sarif`
 
-## `quality-pipeline.mjs` (unified invocation)
+## `quality-pipeline.mjs` (legacy alias)
 
-Runs the current quality signal sources in one pass, then generates one consolidated prioritized report
-through the curator model.
-
-Current pipeline includes:
-
-- Semgrep scan
-- Detekt scan
-- Curator consolidation (`.monitor/biome-report.json` included automatically if present)
-
-From `ezkey_mobile/`:
+Delegates to `mobile-doctor-curated.mjs`. Prefer:
 
 ```bash
-yarn quality:pipeline
+yarn doctor:curated
 ```
 
-With explicit report name:
-
-```bash
-node scripts/quality-pipeline.mjs --report-name=quality-unified
-```
-
-Default consolidated outputs:
-
-- `.monitor/code-quality/quality-unified.normalized.json`
-- `.monitor/code-quality/quality-unified.md`
-- `.monitor/code-quality/quality-unified.html`
-
-### Lane A/B triage routine (continuous hygiene)
-
-Goal: keep quality work continuous without turning it into heavy backlog process.
-
-- Lane A (short-term actionable): production-impacting correctness, resilience, and security findings.
-- Lane B (continuous hygiene): maintainability/style/test-noise findings handled opportunistically.
-
-Recommended cadence per cycle:
-
-1. run `yarn quality:pipeline:report`
-2. open `.monitor/code-quality/quality-unified.md`
-3. pick up to 3 items for Lane A
-4. capture up to 5 items for Lane B (fix now or defer)
-5. ship one small focused lot
-
-Copy-paste triage template:
-
-```md
-## Quality cycle YYYY-MM-DD
-
-Run:
-- command: `yarn quality:pipeline:report`
-- report: `.monitor/code-quality/quality-unified.md`
-
-Lane A (act now, max 3)
-1. [rule] file:line - why this matters now
-2. [rule] file:line - why this matters now
-3. [rule] file:line - why this matters now
-
-Lane B (hygiene, max 5)
-1. [rule] file:line - fix now | defer
-2. [rule] file:line - fix now | defer
-3. [rule] file:line - fix now | defer
-4. [rule] file:line - fix now | defer
-5. [rule] file:line - fix now | defer
-
-Decision summary
-- shipped this cycle:
-- deferred:
-- note for next cycle:
-```
+Campaign HITL notes use `product-docs/global/hygiene/mobile-doctor/TEMPLATE.md` (not the old Lane A/B paste block).
 
 **Pitfall:** One-liners such as `adb shell run-as … strings …/RKStorage | grep …` often exit with **255** and produce no useful output: the app UID sandbox typically does **not** ship `strings`, `sqlite3`, or a full `grep`. Prefer this script (host-side parsing via `adb exec-out`) or the flows in `docs/MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md`.
 

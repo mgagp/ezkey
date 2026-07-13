@@ -1,0 +1,26 @@
+{
+  "keyword": "mobile-doctor-curated",
+  "description": "Rule-level suppressions for the mobile doctor-curated pass. Each entry needs a written reason.",
+  "suppressions": [
+    {
+      "tool": "react-doctor",
+      "rule": "unused-file",
+      "reason": "Reachability / unused-file signal is noisy for RN navigation and Ignite-style layout; treat dead-code cleanup as a separate deliberate lot (same posture as Admin UI doctor-curated)."
+    },
+    {
+      "tool": "react-doctor",
+      "rule": "unused-export",
+      "reason": "Often flags intentional public module surfaces and generated-adjacent helpers; not a default punctual-hygiene P1."
+    },
+    {
+      "tool": "react-doctor",
+      "rule": "unused-dependency",
+      "reason": "Dependency graph noise belongs with yarn deps:monitor / a dedicated knip pass, not the default mobile-doctor shortlist."
+    },
+    {
+      "tool": "react-doctor",
+      "rule": "rn-prefer-pressable",
+      "reason": "High-volume Touchable*→Pressable preference (10+ hits on first smoke). Valid improvement as a deliberate UI migration campaign, not default punctual triage noise."
+    }
+  ]
+}
