@@ -430,3 +430,28 @@ let the message text cross a shell boundary** — pass a file path instead.
 
 Authoritative rule: `.cursor/rules/git-commit-windows.mdc`. Copilot mirror:
 `.github/copilot-instructions.md` § *Git Standards*.
+
+## Windows Bash selection (anti-WSL ambiguity)
+
+On Windows, many shells resolve bare `bash` to `C:\Windows\System32\bash.exe` (WSL shim). For
+Ezkey repo scripts, this is not acceptable unless explicitly requested by the operator.
+
+Required default for agents and maintainers:
+
+- Use Git Bash from Git for Windows: `C:\Program Files\Git\bin\bash.exe`
+- From PowerShell/CMD/agent shells, invoke Bash explicitly:
+
+  ```text
+  & "C:\Program Files\Git\bin\bash.exe" -lc '<command>'
+  ```
+
+- Do not use bare `bash` when launched from Windows-hosted shells.
+- Do not use `C:\Windows\System32\bash.exe` for repository workflows.
+
+Quick check when uncertain:
+
+```text
+& "C:\Program Files\Git\bin\bash.exe" -lc 'command -v bash; uname -a'
+```
+
+Expected shell family is `MINGW`/`MSYS`.

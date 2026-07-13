@@ -249,6 +249,27 @@ class OpenApiIntegrationTest {
 - **UTF-8**: All files in UTF-8 without BOM
 - **Javadoc**: Complete and detailed documentation
 
+### Windows Bash Selection (Git for Windows only)
+
+For this repository on Windows, Bash commands must run with **Git Bash from Git for Windows**.
+
+- Required binary: `C:\Program Files\Git\bin\bash.exe`
+- Forbidden for repo scripts: `C:\Windows\System32\bash.exe` (WSL shim)
+
+When running from PowerShell or another Windows-hosted shell, always use:
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" -lc '<command>'
+```
+
+Quick verification command:
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" -lc 'command -v bash; uname -a'
+```
+
+Expected identity is `MINGW`/`MSYS` (Git Bash), not WSL Linux.
+
 ### Reliable Local Maven Validation
 
 For autonomous local validation after substantive Java changes, use the repository-root Bash flow
