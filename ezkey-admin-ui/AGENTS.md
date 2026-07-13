@@ -284,7 +284,9 @@ Use **start.sh** to build and run the Admin UI in Docker:
 
 - Keyword for humans and agents: **`doctor-curated`**.
 - Purpose: a **punctual lint/polish pass** for Admin UI React code. This is intentionally **not** a CI gate and **not** a zero-warning exercise.
+- **Same operating model as Java `java-doctor-curated`:** curator shortlist → small lot → interactive HITL → campaign note → hygiene branch + PR. Sibling lane: root `AGENTS.md` § Java doctor-curated.
 - **Trace (hygiene, not program):** do **not** create `I-*` / `TB-*` / `TSP-*` for a routine doctor-curated cleanup. Prefer a **dedicated branch + PR** (optional GitHub issue only if board visibility helps). Aligns with root `AGENTS.md` lightweight hygiene workflow and `product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`.
+- **Campaign decision notes (HITL):** `product-docs/global/hygiene/react-doctor/` (template + dated pass instances). Do **not** invent `I-*` / `TB-*` / GitHub issues per finding.
 - Default commands from `ezkey-admin-ui/`:
   - `npm run doctor:curated`
   - `scripts\doctor-curated.cmd` on Windows
@@ -293,20 +295,26 @@ Use **start.sh** to build and run the Admin UI in Docker:
   - `react-doctor.curated.json` — filtered summary for follow-up analysis
   - `react-doctor.curated.md` — human-readable shortlist
   - `react-doctor.stderr.log` — CLI warnings / stderr
-- Current low-signal suppressions in the curated pass:
+- Current low-signal suppressions in the curated pass (`SUPPRESSED_RULES` in `scripts/doctor-curated.mjs`):
   - `unused-file`
   - `design-no-em-dash-in-jsx-text`
   - `only-export-components`
-- Working rule for agents: when the user asks for a **`doctor-curated`** pass, run the script first, read the curated Markdown or JSON, then propose or implement a **small, prioritized** set of fixes. Prefer P1 first, then a narrow slice of P2. Do not turn the pass into a broad refactor campaign.
 - Working rule for humans: treat the curated report as a **triage aid**. The goal is to identify a few high-signal improvements with strong signal-to-effort ratio and stop before diminishing returns.
 - **Triage balance — high signal first, modest low-signal allotment:** prioritize findings with strong signal-to-effort ratio (correctness, a11y on shared surfaces, real operator-visible bugs). After that high-signal set is chosen (or confirmed empty / deferred for design reasons), **reserve a small continuous-improvement slot** for cheap, low-risk P2/P3 items (e.g. Intl hoist/cache, lazy `useState` init, single-pass list transforms, dead exports in touched files). Absolute value may be low, but skipping them forever means the backlog never climbs. Keep that slot **modest** (typically 1–3 items, local diffs, no design migrations). Do **not** expand it into `prefer-useReducer`, giant-component splits, or native `<dialog>` rewrites unless the operator widens scope.
-- **Maintainer continuous-learning briefing (mandatory before implementing fixes):** the maintainer is **not** a UI specialist and wants a short, project-contextual explanation of the proposed hygiene items — enough to appreciate *why* each finding matters in Ezkey Admin UI, not a React course. Before coding a doctor-curated fix set, a cold agent must:
-  1. Confirm the hygiene trace (branch + PR; no methodology theatre).
-  2. State clearly what is **in** vs **out** of the proposed pass (challenge design-decision items such as wholesale `<dialog>` migrations). Include the modest low-signal allotment explicitly when proposing a session fix set.
-  3. For each retained item (usually 3–5 max including the low-signal slot), give a **brief** briefing: what the rule is complaining about, where it shows up in this codebase, why it is worth fixing now, and the narrowest validation step.
-  4. Only then implement, unless the operator explicitly asks to skip the briefing.
-  Keep the briefing short (a few sentences per item). Prefer concrete Admin UI surfaces (DataTable, Dialog, audit logs, pagination) over generic framework theory.
-- **PR body carries the briefing:** when opening the hygiene PR, **reuse that same short briefing** in the pull-request description (Summary + a short “Why these fixes” / learning section). Do not invent a second long write-up — the chat briefing is the draft; the PR is the durable trace for future readers and for the maintainer’s continuous learning. Keep the PR pragmatic: what changed, why it matters in Admin UI, what was deferred, and a minimal test plan.
+
+### HITL contract (mandatory for cold agents)
+
+When the operator asks for a **`doctor-curated`** improvement pass:
+
+1. Run the script; read `logs/react-doctor/react-doctor.curated.md`.
+2. Propose a **small prioritized lot** (usually 3–6 items, including any modest low-signal allotment), not a zero-warning campaign. A short numbered **overview** of the lot is fine (rule + location hint only). State clearly what is **in** vs **out** of the pass (challenge design-decision items such as wholesale `<dialog>` migrations).
+3. **Before any code change — interactive HITL loop (mandatory):** do **not** replace the dialogue with one dense options matrix that asks for a bulk reply (`1A, 2B, 3B…`). After the overview, **iterate explicitly, one finding at a time**. Nest the **maintainer continuous-learning briefing** inside each item turn (the maintainer is **not** a UI specialist): what the rule is complaining about, where it shows up in this codebase, why it matters in Ezkey Admin UI (or why leave it), options, open question — then **wait** for the operator’s Go / No-Go / suppress / skip / clarifying questions on **that** item before presenting the next. Keep each turn short (a few sentences). Prefer concrete Admin UI surfaces (DataTable, Dialog, audit logs, pagination) over generic framework theory. A compact decision table may appear later in the **campaign note** after decisions are made — not as the primary briefing.
+4. **Fuzzy signal rule:** if the finding cannot be tied clearly to source (opaque tooling noise, unreachable-file heuristics without a clear locus), **skip** — do not invent a problem. Prefer suppress-with-reason only when the pattern is understood and intentionally accepted.
+5. **If it ain't broken, don't fix it:** when diagnosis is **clear** but the flagged code is an intentional or harmless local pattern, **leave the code** and suppress with reason in `SUPPRESSED_RULES`. Clarity of the finding does **not** oblige a rewrite.
+6. Record decisions in a dated campaign note under `product-docs/global/hygiene/react-doctor/` (copy `TEMPLATE.md`). New machine-facing suppressions go in `SUPPRESSED_RULES` inside `scripts/doctor-curated.mjs`.
+7. Only then implement accepted fixes on a **dedicated hygiene branch + PR**. **PR body carries the briefing:** reuse the same short per-item learning text (Summary + “Why these fixes”); **link the campaign note**. Do not invent a second long write-up. Keep the PR pragmatic: what changed, why it matters in Admin UI, what was deferred, and a minimal test plan. Modest low-signal allotment after high-signal items is allowed when the operator agrees.
+
+Unless the operator explicitly asks to skip the briefing/HITL, do not jump straight to implementation.
 
 ### Cursor IDE browser (MCP) spot checks
 

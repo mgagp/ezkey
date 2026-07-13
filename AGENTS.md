@@ -236,15 +236,28 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 ## Admin UI lint-polish keyword
 
 - For Admin UI React lint or polish passes, the shared keyword is **`doctor-curated`**.
-- Run the lightweight curated React Doctor workflow from `ezkey-admin-ui/` before broad analysis; details and output files live in `ezkey-admin-ui/AGENTS.md`.
-- Before implementing a fix set from that pass: brief the maintainer (short project-contextual why for each retained item), then use a **dedicated branch + PR** — not methodology backlog artifacts. **Put that same short briefing in the PR body** (durable learning trace). After high-signal items, reserve a **modest low-signal allotment** (cheap P2/P3 continuous-improvement wins) so light polish does not wait forever. Full agent contract: `ezkey-admin-ui/AGENTS.md` § React Doctor curated pass.
+- Purpose: a **punctual curated pass** sharing the same hygiene operating model as
+  `java-doctor-curated` — React Doctor → P1/P2/P3 shortlist. **Not** a CI gate and **not** a
+  zero-warning campaign.
+- Run the lightweight curated React Doctor workflow from `ezkey-admin-ui/` before broad analysis;
+  details and output files live in `ezkey-admin-ui/AGENTS.md` § React Doctor curated pass.
+- Campaign decision notes (HITL): `product-docs/global/hygiene/react-doctor/` (template + dated
+  pass instances). Index: `product-docs/global/hygiene/README.md`. Do **not** invent `I-*` /
+  `TB-*` / GitHub issues per finding.
+- Before implementing a fix set: interactive HITL (one finding at a time; nest the short
+  project-contextual continuous-learning briefing in each turn), then a dated campaign note, then
+  a **dedicated hygiene branch + PR** — not methodology backlog artifacts. **Put that same short
+  briefing in the PR body** and **link the campaign note** (durable learning trace). After
+  high-signal items, reserve a **modest low-signal allotment** (cheap P2/P3 continuous-improvement
+  wins) so light polish does not wait forever. Full HITL contract: `ezkey-admin-ui/AGENTS.md`
+  § React Doctor curated pass.
 
 ## Java doctor-curated keyword
 
 - For Java (and adjacent) static-analysis hygiene, the shared keyword is **`java-doctor-curated`**.
 - Purpose: a **punctual curated pass** mirroring Admin UI `doctor-curated` — SpotBugs + Semgrep
   (pinned pack) + narrow PMD (design/maintainability) → P1/P2/P3 shortlist. **Not** a CI gate and
-  **not** a zero-warning campaign.
+  **not** a zero-warning campaign. Sibling lane: Admin UI `doctor-curated` above.
 - Default command from repo root (Git Bash on Windows):
 
 ```bash

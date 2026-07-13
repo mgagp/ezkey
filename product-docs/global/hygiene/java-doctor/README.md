@@ -16,6 +16,8 @@ finding.
 
 ## Related
 
+- Hygiene index: [`../README.md`](../README.md)
 - Keyword contract: root [`AGENTS.md`](../../../AGENTS.md) § Java doctor-curated
 - Machine suppressions: [`config/java-doctor/suppressions.json`](../../../config/java-doctor/suppressions.json)
 - Evaluation: [`../java-doctor-curated-evaluation-2026-07-11.md`](../java-doctor-curated-evaluation-2026-07-11.md)
+- Sibling lane: [`../react-doctor/`](../react-doctor/) (`doctor-curated`)
