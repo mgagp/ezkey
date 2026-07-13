@@ -29,6 +29,20 @@ build gate. See root [`AGENTS.md`](../AGENTS.md) § Java doctor-curated.
 
 Config: [`config/java-doctor/`](../config/java-doctor/). Outputs: `logs/java-doctor/` (gitignored).
 
+## Security pentest curated (runtime hygiene)
+
+Keyword: **`security-pentest-curated`**. Local-first bounded runtime campaign runner for
+Schemathesis + ZAP baseline + first-party Nuclei templates. Report-oriented, not a CI gate.
+
+```bash
+./scripts/security-pentest-curated.sh --dry-run
+./scripts/security-pentest-curated.sh
+```
+
+Configuration: [`config/security-pentest/`](../config/security-pentest/)
+
+Output (gitignored): `logs/security-pentest/`
+
 ## Cloudflare (ezkey.org static site)
 
 - [`cloudflare/deploy-ezkey-org-preview.sh`](cloudflare/deploy-ezkey-org-preview.sh) — deploy [`sites/ezkey-org/`](../sites/ezkey-org/) to Cloudflare Pages as a **preview** (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). See [`docs/cloudflare/ezkey-org-site.md`](../docs/cloudflare/ezkey-org-site.md).
