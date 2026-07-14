@@ -35,6 +35,7 @@ Keyword: **`security-pentest-curated`**. Local-first bounded runtime campaign ru
 Schemathesis + ZAP baseline + first-party Nuclei templates. Report-oriented, not a CI gate.
 
 ```bash
+./scripts/security-pentest-curated-preflight.sh
 ./scripts/security-pentest-curated.sh --dry-run
 ./scripts/security-pentest-curated.sh
 ```
@@ -42,6 +43,12 @@ Schemathesis + ZAP baseline + first-party Nuclei templates. Report-oriented, not
 Configuration: [`config/security-pentest/`](../config/security-pentest/)
 
 Output (gitignored): `logs/security-pentest/`
+
+Current health probe behavior:
+
+- probes multiple health candidates in order (`/api/actuator/health`, `/actuator/health`, `/health`, `/`)
+- classifies `200`, `401`, `403` as reachable/observable
+- checks both proxy and direct URLs to surface Caddy vs Actuator routing drift
 
 ## Cloudflare (ezkey.org static site)
 
