@@ -17,7 +17,7 @@
   <description>Real-world security end-to-end functional tests using RestAssured against Docker stack</description>
 
   <properties>
-    <rest-assured.version>6.0.0</rest-assured.version>
+    <rest-assured.version>6.0.1</rest-assured.version>
     <assertj.version>3.27.7</assertj.version>
   </properties>
 
