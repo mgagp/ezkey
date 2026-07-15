@@ -459,7 +459,7 @@
 			<plugin>
 				<groupId>org.openrewrite.maven</groupId>
 				<artifactId>rewrite-maven-plugin</artifactId>
-				<version>6.43.0</version>
+				<version>6.44.0</version>
 				<configuration>
 					<activeStyles>
 						<style>org.openrewrite.java.GoogleJavaFormat</style>
