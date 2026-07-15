@@ -63,6 +63,7 @@ Wave B closeout ML:
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
 | `I-2026-07-15-sec-021-recovery-token-privilege-boundary` | SEC-021 recovery token privilege boundary | `2026-07-15` | `#357` / TB `TB-2026-07-15-sec-021-recovery-token-privilege-boundary`. Purpose `SESSION`\|`RECOVERY`; session auth rejects recovery; reset + deactivate-after-use. |
+| `I-2026-07-15-sec-022-api-key-object-authorization` | SEC-022/023 API key object authorization | `2026-07-15` | `#362` / TB `TB-2026-07-15-sec-022-api-key-object-authorization`. Tenant Admin cannot get/list/revoke foreign-tenant API keys (`canAccessIntegration`). |
 | `I-2026-07-09` | `encryption.required` read-path parity (at-rest fields) | `2026-07-11` | `Enrollment` / `AuthAttempt` getters via `AtRestEncryptionAccess`; Security Challenge Suivi → Fait. |
 | `I-2026-0030` | Admin Dashboard: widget signal model review and realignment | `2026-07-05` | PR #291. Enrollment `invalid`/`revoked` badges; `dashboard-widget-signal-model.md`. Closed on `I-*` (no `TB-*`). |
 | `I-2026-0007` | Admin Dashboard: batch health and integrity widgets (Wave B B3) | `2026-07-03` | PR #289 / TB `TB-2026-07-03-dashboard-batch-health-widgets`. Program #269 closed same day. |

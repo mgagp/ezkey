@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -336,6 +337,21 @@ class ApiKeyControllerTest {
       assertTrue(response.getBody().getContent().isEmpty());
       assertEquals(0, response.getBody().getTotalElements());
     }
+
+    @Test
+    @DisplayName("Should return 403 FORBIDDEN when integration access denied (SEC-023)")
+    void shouldReturnForbiddenWhenIntegrationAccessDenied() {
+      Integer integrationId = 123;
+      Pageable pageable = PageRequest.of(0, 20);
+      when(accessControlService.canAccessIntegration(any(), eq(integrationId))).thenReturn(false);
+
+      ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =
+          controller.listApiKeys(integrationId, null, pageable);
+
+      assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+      verify(apiKeyRepository, never())
+          .findAll(isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable));
+    }
   }
 
   @Nested
@@ -421,6 +437,19 @@ class ApiKeyControllerTest {
       // Assert
       assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
+
+    @Test
+    @DisplayName("Should return 403 FORBIDDEN when integration access denied (SEC-023)")
+    void shouldReturnForbiddenWhenIntegrationAccessDenied() {
+      Integer keyId = 42;
+      ApiKey mockApiKey = createMockApiKey(keyId);
+      when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.of(mockApiKey));
+      when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(false);
+
+      ResponseEntity<ApiKeyResponseDto> response = controller.getApiKey(keyId);
+
+      assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    }
   }
 
   @Nested
@@ -432,6 +461,7 @@ class ApiKeyControllerTest {
     void shouldRevokeApiKeySuccessfully() {
       // Arrange
       Integer keyId = 42;
+      when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.of(createMockApiKey(keyId)));
       when(apiKeyService.revokeApiKey(eq(keyId), any(EzkeyAdmin.class))).thenReturn(true);
 
       // Act
@@ -447,13 +477,27 @@ class ApiKeyControllerTest {
     void shouldReturnNotFoundWhenApiKeyNotFoundForRevocation() {
       // Arrange
       Integer keyId = 999;
-      when(apiKeyService.revokeApiKey(eq(keyId), any(EzkeyAdmin.class))).thenReturn(false);
+      when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.empty());
 
       // Act
       ResponseEntity<Void> response = controller.revokeApiKey(keyId, null, httpServletRequest);
 
       // Assert
       assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+      verify(apiKeyService, never()).revokeApiKey(anyInt(), any(EzkeyAdmin.class));
+    }
+
+    @Test
+    @DisplayName("Should return 403 FORBIDDEN when integration access denied (SEC-022)")
+    void shouldReturnForbiddenWhenIntegrationAccessDenied() {
+      Integer keyId = 42;
+      when(apiKeyService.getApiKey(keyId)).thenReturn(Optional.of(createMockApiKey(keyId)));
+      when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(false);
+
+      ResponseEntity<Void> response = controller.revokeApiKey(keyId, null, httpServletRequest);
+
+      assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+      verify(apiKeyService, never()).revokeApiKey(anyInt(), any(EzkeyAdmin.class));
     }
   }
 

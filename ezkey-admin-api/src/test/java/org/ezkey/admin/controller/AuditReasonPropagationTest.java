@@ -46,8 +46,10 @@ import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.mapper.EnrollmentAdminMapper;
 import org.ezkey.enrollment.service.EnrollmentService;
+import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
+import org.ezkey.integration.domain.entity.Integration;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.integration.domain.repository.IntegrationRepository;
@@ -171,6 +173,8 @@ class AuditReasonPropagationTest {
             eligibilityService,
             apiKeyAuditFkIntegrationRepository);
 
+    when(apiKeyService.getApiKey(42)).thenReturn(Optional.of(apiKeyWithIntegration(123)));
+    when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(true);
     when(apiKeyService.revokeApiKey(eq(42), any(EzkeyAdmin.class))).thenReturn(true);
 
     // Act
@@ -209,6 +213,8 @@ class AuditReasonPropagationTest {
             eligibilityService,
             apiKeyAuditFkIntegrationRepository);
 
+    when(apiKeyService.getApiKey(42)).thenReturn(Optional.of(apiKeyWithIntegration(123)));
+    when(accessControlService.canAccessIntegration(any(), eq(123))).thenReturn(true);
     when(apiKeyService.revokeApiKey(eq(42), any(EzkeyAdmin.class))).thenReturn(true);
 
     // Act
@@ -477,5 +483,14 @@ class AuditReasonPropagationTest {
     EzkeyAdmin admin = org.mockito.Mockito.mock(EzkeyAdmin.class);
     when(admin.getAdminType()).thenReturn(AdminType.GLOBAL_ADMIN);
     when(adminRepository.findById(1)).thenReturn(Optional.of(admin));
+  }
+
+  private static ApiKey apiKeyWithIntegration(Integer integrationId) {
+    ApiKey apiKey = new ApiKey();
+    apiKey.setApiKeyId(42);
+    Integration integration = new Integration();
+    integration.setId(integrationId);
+    apiKey.setIntegration(integration);
+    return apiKey;
   }
 }

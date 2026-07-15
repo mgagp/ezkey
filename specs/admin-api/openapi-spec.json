@@ -3442,6 +3442,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden - no access to the API key's integration tenant",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            }
+          },
           "404": {
             "description": "API key not found",
             "content": {
@@ -3491,6 +3501,9 @@
           },
           "401": {
             "description": "Unauthorized - admin token required"
+          },
+          "403": {
+            "description": "Forbidden - no access to the API key's integration tenant"
           },
           "404": {
             "description": "API key not found"
@@ -5478,6 +5491,16 @@
           },
           "401": {
             "description": "Unauthorized - admin token required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedModelApiKeyResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - no access to the integration's tenant",
             "content": {
               "*/*": {
                 "schema": {
