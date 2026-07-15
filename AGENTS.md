@@ -313,6 +313,38 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
   `I-2026-07-11-java-doctor-curated-hygiene`, `TB-2026-07-11-java-doctor-curated-mvp`,
   `product-docs/global/hygiene/java-doctor/README.md`.
 
+## Dependabot curated keyword
+
+- For weekly Dependabot dependency-update triage, the shared keyword is **`dependabot-curated`**.
+- Purpose: a **punctual curated pass** that classifies open Dependabot PRs into risk-tiered lots
+  (T1 patch → T4 major/disruptor), runs interactive HITL per lot, merges PRs individually after CI
+  green, then runs a **session closeout** validation ladder. **Not** silent auto-merge and **not**
+  a full `I-*` / `TB-*` program for routine bumps. Sibling hygiene lanes: `doctor-curated` and
+  `java-doctor-curated` above.
+- Skill: [`.cursor/skills/dependabot-curated/SKILL.md`](.cursor/skills/dependabot-curated/SKILL.md).
+- Campaign decision notes: `product-docs/global/hygiene/dependabot/` (template + dated pass
+  instances). Index: `product-docs/global/hygiene/README.md`.
+- **Primary axis:** SemVer risk + known disruptors. **Secondary axis:** ecosystem / surface
+  (Maven, Admin UI, mobile, SDK, Actions). Defer disruptive bumps with a PR comment and, when
+  investigation cost must persist, a single `I-*` (e.g. TypeScript 7 → later release train).
+- Config that reduces future atomization: [`.github/dependabot.yml`](.github/dependabot.yml)
+  groups. Do not invent methodology backlog for the weekly Dependabot habit itself.
+
+### HITL contract (mandatory for cold agents)
+
+When the operator asks for a **`dependabot-curated`** pass:
+
+1. List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
+2. Classify each PR T1–T4; propose **3–6 lots** (overview only).
+3. **Before any merge — interactive HITL loop (mandatory):** iterate **one lot at a time**
+   (members, tier, blast radius, CI status) → wait for Go / No-Go / hold / defer on **that** lot
+   before merging or presenting the next. Do not replace this with a bulk options matrix.
+4. On Go: merge each green PR in the lot individually. On defer: comment; optional one `I-*` if
+   the investigation should not be lost.
+5. Session closeout proportional to highest accepted tier (always `./scripts/build.sh`; stack /
+   functional / Playwright per skill ladder; T1-only shortcut allowed when recorded).
+6. Write a dated campaign note under `product-docs/global/hygiene/dependabot/` (copy `TEMPLATE.md`).
+
 ## UI Test Autonomy
 
 - Treat browser UI tests as a **pragmatic judgment call**, not a mechanical checklist item.

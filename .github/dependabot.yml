@@ -10,6 +10,19 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    groups:
+      maven-spotbugs:
+        patterns:
+          - "com.github.spotbugs:*"
+          - "com.github.spotbugs.snom:*"
+      maven-checkstyle:
+        patterns:
+          - "com.puppycrawl.tools:checkstyle"
+          - "org.apache.maven.plugins:maven-checkstyle-plugin"
+      maven-rewrite:
+        patterns:
+          - "org.openrewrite.maven:*"
+          - "org.openrewrite:*"
 
   - package-ecosystem: "npm"
     directory: "/ezkey-admin-ui"
