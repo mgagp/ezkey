@@ -45,6 +45,11 @@ type AuditChainIncidentDashboardRow = {
 
 const REFRESH_INTERVAL_OVERVIEW_MS = 60_000;
 
+/** Milliseconds until the next refresh is due, based on last successful data time. */
+function msUntilNextRefresh(dataUpdatedAt: number): number {
+  return dataUpdatedAt + REFRESH_INTERVAL_OVERVIEW_MS - Date.now();
+}
+
 type DashboardIntegrationStatsWithRetired = NonNullable<DashboardOverviewDto['integrations']> & {
   retired?: number;
 };
@@ -221,11 +226,10 @@ export default function DashboardPage() {
   } = useGetOverview<DashboardOverviewWithBatchHealth>({
     query: {
       staleTime: REFRESH_INTERVAL_OVERVIEW_MS,
-      refetchInterval: REFRESH_INTERVAL_OVERVIEW_MS,
     },
   });
 
-  const { data: incidentsPage } = useQuery({
+  const { data: incidentsPage, refetch: incidentsRefetch } = useQuery({
     queryKey: ['audit-chain-incidents'],
     queryFn: () =>
       api.get<{ content: AuditChainIncidentDashboardRow[] }>(
@@ -233,28 +237,42 @@ export default function DashboardPage() {
       ),
     enabled: isGlobalAdmin,
     staleTime: REFRESH_INTERVAL_OVERVIEW_MS,
-    refetchInterval: REFRESH_INTERVAL_OVERVIEW_MS,
   });
 
   const pendingIncidentDeclarations =
     incidentsPage?.content?.filter((r) => r.status === 'RECOVERED_PENDING_DECLARATION') ?? [];
 
+  // Countdown + refresh share one clock (dataUpdatedAt + 60s). Do not use
+  // refetchInterval here: it restarts from remount time and desyncs the strip.
   const [secondsUntilNext, setSecondsUntilNext] = useState(0);
   useEffect(() => {
     if (overviewUpdatedAt == null || overviewUpdatedAt <= 0) return;
-    const compute = () => {
-      const next = Math.max(
-        0,
-        Math.floor(
-          (overviewUpdatedAt + REFRESH_INTERVAL_OVERVIEW_MS - Date.now()) / 1000
-        )
-      );
-      setSecondsUntilNext(next);
+
+    let cancelled = false;
+    let refreshInFlight = false;
+
+    const tick = () => {
+      const msLeft = msUntilNextRefresh(overviewUpdatedAt);
+      setSecondsUntilNext(Math.max(0, Math.floor(msLeft / 1000)));
+
+      if (msLeft > 0 || cancelled || refreshInFlight) return;
+
+      refreshInFlight = true;
+      void Promise.all([
+        overviewRefetch(),
+        isGlobalAdmin ? incidentsRefetch() : Promise.resolve(),
+      ]).finally(() => {
+        refreshInFlight = false;
+      });
     };
-    compute();
-    const id = setInterval(compute, 1000);
-    return () => clearInterval(id);
-  }, [overviewUpdatedAt]);
+
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [overviewUpdatedAt, overviewRefetch, incidentsRefetch, isGlobalAdmin]);
 
   const intTotal = overview?.integrations?.total;
   const intActive = overview?.integrations?.active;
