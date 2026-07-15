@@ -25,6 +25,10 @@ const SUPPRESSED_RULES = new Map([
     'only-export-components',
     'Fast Refresh ergonomics warning; useful later, but not a high-signal release-risk item for now.',
   ],
+  [
+    'no-impure-state-updater',
+    'False positives on event handlers and mutation onSuccess that call setState (often with storage/toast beside setState). Not impure functional updaters; leave patterns as-is (pass-1 HITL).',
+  ],
 ]);
 
 const PRIORITY_LABELS = {
