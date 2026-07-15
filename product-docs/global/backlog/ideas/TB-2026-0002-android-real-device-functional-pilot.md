@@ -6,7 +6,7 @@
 - **Status:** `active`
 - **Related idea:** `I-2026-0019`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-06-26`
+- **Updated at:** `2026-07-13`
 - **Captured by:** Marc
 - **GitHub issues:** [#239](https://github.com/mgagp/ezkey/issues/239) (F1 churn harness), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a enrollment seed bypass). Supersedes umbrella tracking in [#179](https://github.com/mgagp/ezkey/issues/179) — prefer #239/#254 for execution.
 - **Test plan slice:** [`TSP-2026-06-26-mobile-real-device-churn-harness.md`](../test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md)
@@ -18,7 +18,7 @@ The **single-attempt** Maestro flows (`pilot_pending_respond`, with and without 
 
 **Active work (F1):** extend this pilot into a **JUnit-coordinated churn loop** — orchestration and documentation aligned **2026-06-26**; **Phase A hardware validation pending**. See **Next slice — auth churn harness** below.
 
-**Active work (F2a):** controlled enrollment seed bypass for debug/test builds ([#254](https://github.com/mgagp/ezkey/issues/254)) — landed in app + Maestro flows (`4d248f42`); supports optional agent bootstrap without camera/QR. **Not** a substitute for F1 artifact contract or manual enroll path for churn v1 steady state.
+**Active work (F2a):** controlled enrollment seed bypass for debug/test builds ([#254](https://github.com/mgagp/ezkey/issues/254)) — app + Maestro flows landed; **2026-07-13** production-clean mechanical gate (`BuildConfig.DEBUG` + env + ack, release env preflight). Contract: `ezkey_mobile/docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`. **Not** a substitute for F1 artifact contract or manual enroll path for churn v1 steady state.
 
 ## Next slice — auth churn harness (F1 — priority)
 

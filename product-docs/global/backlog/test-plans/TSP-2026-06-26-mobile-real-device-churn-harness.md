@@ -21,15 +21,18 @@ autonomy.
 - **Secondary risk:** Operator lockout when automation shares `admin.docker` recovery material;
   mitigated by dedicated mobile test admin (`mobile_tester`, target `admin.mobile`) and Demo Device
   lane separation from the real phone.
-- **F2a secondary risk:** Controlled enrollment seed bypass must stay **debug-only**, opt-in, and
-  must not weaken bind/verify trust checks.
+- **F2a secondary risk:** Controlled enrollment seed bypass must stay **debug-build-only**,
+  opt-in, mechanically gated (native `BuildConfig.DEBUG` + env + ack — not `__DEV__` alone), and
+  must not weaken bind/verify trust checks. Contract:
+  `ezkey_mobile/docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`.
 - **Components touched:** `ezkey_mobile` (Maestro flows, optional bypass harness), orchestration
   scripts, future thin `ezkey-tests` touchpoints; **not** Auth API contract changes in this slice.
 
 ## Unit tests
 
 - **Required:** `yarn validate:ci` (Jest + typecheck + lint) when mobile JS/TS changes land.
-- **Optional:** targeted tests for enrollment bypass gate (`__DEV__` + env flags) once F2a merges.
+- **Required for F2a gate changes:** unit tests on
+  `app/utils/controlledEnrollmentBypass.ts` (debug build + enable + ack).
 - **Rationale:** Existing Jest coverage remains the fast gate; real-device churn is not a substitute
   for unit tests on parsers, hooks, and storage boundaries.
 

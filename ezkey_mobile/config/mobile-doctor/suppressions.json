@@ -1,6 +1,6 @@
 {
   "keyword": "mobile-doctor-curated",
-  "description": "Rule-level suppressions for the mobile doctor-curated pass. Each entry needs a written reason.",
+  "description": "Rule-level suppressions for the mobile doctor-curated pass. Each entry needs a written reason. For F2a / harness findings, read docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md before escalating.",
   "suppressions": [
     {
       "tool": "react-doctor",

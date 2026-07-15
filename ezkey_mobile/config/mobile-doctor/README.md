@@ -17,3 +17,7 @@ Entrypoint: `./scripts/mobile-doctor-curated.sh` or `yarn doctor:curated` from `
 Outputs (gitignored via root `logs/`): `logs/mobile-doctor/mobile-doctor.curated.md|json`.
 
 Campaign notes: `product-docs/global/hygiene/mobile-doctor/`.
+
+When triage hits Maestro / F2a / harness-adjacent findings, read
+`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md` before escalating: intentional gated harness
+code is not a default P1; a missing mechanical release gate is.

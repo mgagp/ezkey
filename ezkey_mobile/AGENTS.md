@@ -110,6 +110,18 @@ yarn doctor:curated
 
 Real-device Maestro pilot (`TB-2026-0002`): see [`maestro/README.md`](maestro/README.md) and `scripts/run-real-device-pilot-maestro.sh`.
 
+## Production-clean test automation
+
+- Canonical contract: [`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md).
+- **Release / production-intent builds** must not activate F2a enrollment seed bypass, respond-path
+  flow trace, or pending-auth debug panel — even if a local `.env` still has those flags set for
+  harness work.
+- F2a availability = native **debug** build type (`BuildConfig.DEBUG`) + explicit env enable +
+  ack `F2A_TEST_ONLY`. Do **not** equate this with React Native `__DEV__`.
+- Release install script runs `scripts/assert-release-production-clean-env.sh` before Gradle.
+- When `mobile-doctor-curated` or a skeptical review flags harness/bypass code: read the contract
+  first; missing mechanical gates are P1; gated intentional harness code is not.
+
 ## Mobile doctor-curated pass
 
 - Keyword for humans and agents: **`mobile-doctor-curated`**.

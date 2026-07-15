@@ -68,15 +68,16 @@ export const env = {
    */
   pendingAuthFlowTrace: parseBool(Config.EZKEY_PENDING_AUTH_FLOW_TRACE, false),
   /**
-   * Controlled enrollment seed bypass (F2a): intentionally bounded to debug/test workflows.
+   * Controlled enrollment seed bypass (F2a): test harness only.
    *
-   * Security posture:
-   * - This flag only permits showing the bypass action in development builds.
-   * - A second explicit acknowledgement token is required.
-   * - The payload is still processed through the standard bind/verify trust path.
+   * Security posture (all required):
+   * - Native **debug** build type ({@code BuildConfig.DEBUG} via {@code readIsDebugBuild()}) —
+   *   not React Native {@code __DEV__} alone.
+   * - Explicit env enable flag + acknowledgement token at build time.
+   * - Payload still processed through the standard bind/verify trust path.
    *
-   * This mechanism exists to avoid camera/QR automation complexity in harness bootstrap while
-   * preserving protocol integrity and keeping release behavior unchanged.
+   * Release builds never expose this UI even if a local {@code .env} still has test flags.
+   * See {@code docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md}.
    */
   enrollmentSeedBypassEnabled: parseBool(Config.EZKEY_ENROLLMENT_SEED_BYPASS_ENABLED, false),
   enrollmentSeedBypassAck: parseText(Config.EZKEY_ENROLLMENT_SEED_BYPASS_ACK),

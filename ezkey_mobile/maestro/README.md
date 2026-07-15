@@ -116,14 +116,18 @@ If **Settings → Security** uses a protected mode that requires biometric or de
 
 `pilot_enrollment_seed_bypass.yaml` is a **debug/test bootstrap aid**, not a product shortcut.
 
+Canonical contract: [`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](../docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md).
+
 Security boundaries:
 
-- Available only in development builds (`__DEV__` gate in app code).
+- Available only on native **debug** builds (`BuildConfig.DEBUG` via `readIsDebugBuild()`), **not**
+  React Native `__DEV__` alone (offline debug APKs may have `__DEV__ === false`).
 - Requires explicit env opt-in and acknowledgement token at build time.
 - Does not bypass bind/verify cryptographic trust checks.
+- Release assemble fails preflight if bypass/trace/debug-panel flags are still true in `.env`.
 - Must never be used to justify skipping periodic human validation of camera + QR path.
 
-Relevant env flags in `.env` (requires native rebuild):
+Relevant env flags in `.env` (requires native **debug** rebuild):
 
 - `EZKEY_ENROLLMENT_SEED_BYPASS_ENABLED=true`
 - `EZKEY_ENROLLMENT_SEED_BYPASS_ACK=F2A_TEST_ONLY`

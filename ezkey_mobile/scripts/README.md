@@ -40,6 +40,16 @@ If needed, force a specific enrollment id:
 
 ## `build-install-debug-clean.sh` (canonical Android debug install)
 
+Preferred debug install path for devices (JDK probe + clean + install). See `AGENTS.md` § Android debug build.
+
+## `build-install-release-clean.sh` + `assert-release-production-clean-env.sh`
+
+Release install path. Before Gradle, sources `assert-release-production-clean-env.sh`, which
+**fails** if `.env` (or `ENVFILE`) still enables F2a bypass, pending-auth flow trace, or the
+pending-auth debug panel. App code also hard-gates F2a on native debug build type.
+
+Contract: [`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](../docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md).
+
 ## `run-mobile-churn-no-recovery.ps1`
 
 Runs repeated mobile churn iterations without using enrollment recovery/reset:

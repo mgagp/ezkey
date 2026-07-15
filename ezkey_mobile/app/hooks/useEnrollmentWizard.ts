@@ -26,8 +26,10 @@ import {cryptoService} from '../services/crypto';
 import {DEFAULT_ENROLLMENT_APPROVAL_POLICY} from '../services/security/approvalRequirement';
 import {StoredEnrollment} from '../services/storage/enrollmentStorage';
 import {env} from '../config/env';
+import {readIsDebugBuild} from '../config/buildFlavor';
 import {integrationKeyAlgorithmBindError} from '../utils/integrationKeyAlgorithm';
 import {buildInstallation, resolveEnrollmentAuthUrl} from '../utils/installationMetadata';
+import {isControlledEnrollmentBypassAvailable} from '../utils/controlledEnrollmentBypass';
 import {parseQrPayload} from '../utils/qrPayload';
 import {
   buildBindPayload,
@@ -149,10 +151,13 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
   const [seedSource, setSeedSource] = useState<EnrollmentSeedSource | undefined>();
   const [controlledBypassSeedInput, setControlledBypassSeedInput] = useState('');
 
-  // F2a is intentionally gated by explicit env + ack so automation works even when debug bundles
-  // are produced with __DEV__ disabled.
-  const controlledBypassAvailable =
-    env.enrollmentSeedBypassEnabled && env.enrollmentSeedBypassAck === 'F2A_TEST_ONLY';
+  // F2a: native debug build type + env enable + ack. Do not use __DEV__ alone — offline debug
+  // APKs can ship with __DEV__ false while remaining BuildConfig.DEBUG=true.
+  const controlledBypassAvailable = isControlledEnrollmentBypassAvailable({
+    enrollmentSeedBypassEnabled: env.enrollmentSeedBypassEnabled,
+    enrollmentSeedBypassAck: env.enrollmentSeedBypassAck,
+    isDebugBuild: readIsDebugBuild(),
+  });
 
   // ---------------------------------------------------------------------------
   // Private helpers

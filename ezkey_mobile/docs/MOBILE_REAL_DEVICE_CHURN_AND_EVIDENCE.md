@@ -178,7 +178,7 @@ Use a **deck** or seeded PRNG so the distribution is explicit and replayable.
 | Layer | Status | Notes |
 | --- | --- | --- |
 | Maestro pilot (pending/respond) | **Validated** | TB exit #2 |
-| F2a enrollment bypass | **Shipped (code)** | Commit `4d248f42`; hardware re-validation pending |
+| F2a enrollment bypass | **Shipped + production-clean gate** | Native debug + env + ack; release env preflight; see `MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md` |
 | 3-phase campaign model | **Documented** | `run-mobile-test-campaign.ps1` (interim PowerShell) |
 | Churn loop (no recovery) | **Documented** | `run-mobile-churn-no-recovery.ps1` (interim) |
 | JUnit `TestDataFactory` wrapper | **Open** | Phase A deliverable |
