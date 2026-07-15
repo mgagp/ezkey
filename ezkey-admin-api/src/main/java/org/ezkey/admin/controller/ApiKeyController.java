@@ -453,7 +453,10 @@ public class ApiKeyController {
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = ApiKeyResponseDto.class))),
-        @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required")
+        @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - no access to the integration's tenant")
       })
   public ResponseEntity<Page<ApiKeyResponseDto>> listApiKeys(
       @Parameter(description = "Integration ID", example = "123") @PathVariable("integrationId")
@@ -466,6 +469,11 @@ public class ApiKeyController {
           Pageable pageable) {
 
     logger.debug("Listing API keys for integration: {}", integrationId);
+
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, integrationId)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
 
     // When active is not provided, default to true (preserve previous behavior: active-only)
     boolean filterActive = active != null ? active : true;
@@ -652,6 +660,9 @@ public class ApiKeyController {
                     mediaType = "application/json",
                     schema = @Schema(implementation = ApiKeyResponseDto.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - no access to the API key's integration tenant"),
         @ApiResponse(responseCode = "404", description = "API key not found")
       })
   public ResponseEntity<ApiKeyResponseDto> getApiKey(
@@ -659,15 +670,19 @@ public class ApiKeyController {
 
     logger.debug("Retrieving API key: {}", keyId);
 
-    return apiKeyService
-        .getApiKey(keyId)
-        .map(this::mapToResponseDto)
-        .map(ResponseEntity::ok)
-        .orElseGet(
-            () -> {
-              logger.warn("API key not found: {}", keyId);
-              return ResponseEntity.notFound().build();
-            });
+    Optional<ApiKey> apiKeyOpt = apiKeyService.getApiKey(keyId);
+    if (apiKeyOpt.isEmpty()) {
+      logger.warn("API key not found: {}", keyId);
+      return ResponseEntity.notFound().build();
+    }
+
+    ApiKey apiKey = apiKeyOpt.get();
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, apiKey.getIntegration().getId())) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    return ResponseEntity.ok(mapToResponseDto(apiKey));
   }
 
   /**
@@ -698,6 +713,9 @@ public class ApiKeyController {
       value = {
         @ApiResponse(responseCode = "204", description = "API key revoked successfully"),
         @ApiResponse(responseCode = "401", description = "Unauthorized - admin token required"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - no access to the API key's integration tenant"),
         @ApiResponse(responseCode = "404", description = "API key not found"),
         @ApiResponse(
             responseCode = "429",
@@ -722,6 +740,28 @@ public class ApiKeyController {
         currentAdmin.getAdminType() == EzkeyAdmin.AdminType.TENANT_ADMIN
             ? currentAdmin.getTenant().getTenantId()
             : null;
+
+    Optional<ApiKey> existingOpt = apiKeyService.getApiKey(keyId);
+    if (existingOpt.isEmpty()) {
+      logger.warn("API key not found for revocation: {}", keyId);
+      auditLogService.log(
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.API_KEY_REVOKED,
+                  AdminAuditConstants.API_KEY_REVOCATION_NOT_FOUND,
+                  adminTenantId)
+              .eventStatus(EventStatus.FAILURE)
+              .adminId(currentAdmin.getAdminId())
+              .errorMessage("API key not found: " + keyId)
+              .build());
+      return ResponseEntity.notFound().build();
+    }
+
+    ApiKey existing = existingOpt.get();
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (!accessControlService.canAccessIntegration(auth, existing.getIntegration().getId())) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
 
     // Check rate limiting for admin operations
     String adminId = currentAdmin.getUsername();

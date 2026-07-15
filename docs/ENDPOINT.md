@@ -1662,7 +1662,7 @@ Authorization: Bearer ezkey_admin_token...
 
 **GET /api/v1/api-keys/integration/{integrationId}**
 
-Lists API keys for a specific integration with server-side pagination. When `active` is omitted, only active keys are returned. When `active` is provided, results are filtered by that value. Secret keys are never included.
+Lists API keys for a specific integration with server-side pagination. When `active` is omitted, only active keys are returned. When `active` is provided, results are filtered by that value. Secret keys are never included. TenantAdmin may access only integrations in their tenant; cross-tenant requests return **403**.
 
 **Query parameters:**
 - `page` (optional, default 0): Zero-based page index.
@@ -1678,13 +1678,18 @@ Authorization: Bearer ezkey_admin_token...
 
 **Response (200 OK):** Paginated envelope with `content` (array of API key objects) and `page` (metadata: `size`, `number`, `totalElements`, `totalPages`).
 
+**Status Codes:**
+- 200: Paginated list
+- 401: Unauthorized
+- 403: Access denied (caller cannot access the integration)
+
 ---
 
 ### d) Get API Key Details
 
 **GET /api/v1/api-keys/{keyId}**
 
-Retrieves details of a specific API key. Secret key is never included.
+Retrieves details of a specific API key. Secret key is never included. TenantAdmin may access only keys for integrations in their tenant; cross-tenant requests return **403**.
 
 **Request:**
 ```http
@@ -1708,6 +1713,12 @@ Authorization: Bearer ezkey_admin_token...
 ```
 
 **Response fields:** `version` is included for optimistic locking. Include it in PATCH requests.
+
+**Status Codes:**
+- 200: API key details
+- 401: Unauthorized
+- 403: Access denied (caller cannot access the key's integration)
+- 404: API key not found
 
 ---
 
@@ -1749,7 +1760,7 @@ Content-Type: application/json
 
 **DELETE /api/v1/api-keys/{keyId}**
 
-Immediately revokes an API key, making it unusable. Preserved for audit.
+Immediately revokes an API key, making it unusable. Preserved for audit. TenantAdmin may revoke only keys for integrations in their tenant; cross-tenant requests return **403** and the key remains active (SEC-022).
 
 **Request:**
 ```http
@@ -1761,6 +1772,13 @@ Authorization: Bearer ezkey_admin_token...
 ```http
 HTTP/1.1 204 No Content
 ```
+
+**Status Codes:**
+- 204: API key revoked
+- 401: Unauthorized
+- 403: Access denied (caller cannot access the key's integration)
+- 404: API key not found
+- 429: Rate limit exceeded
 
 **Use Cases:**
 - Compromised key security incident
