@@ -6,12 +6,12 @@ alwaysApply: true
 # GitHub pull request — Windows agent shell (this workstation)
 
 Cursor's agent **Shell** tool on Windows often runs **PowerShell**, not Git Bash. Creating a PR with
-inline `gh pr create --title "fix(security): …"` or a HEREDOC `--body "$(cat <<'EOF' …)"` fails for
+inline `gh pr create --title "fix(security): …"` or a HEREDOC `--body "$(cat <<'EOF' …)"` fails fo
 the **same root cause** as commits: the title/body *text* crosses
 **PowerShell → `bash -lc '...'` → `gh`**, and any of `( ) " ' # ! < >` is re-parsed. Conventional
 titles **always** contain `()`.
 
-Temporary one-off helper scripts under `.ezkey/` are the wrong end-state. Use the durable wrapper
+Temporary one-off helper scripts under `.ezkey/` are the wrong end-state. Use the durable wrappe
 next to the commit helper:
 
 - Commits → `scripts/git-commit.sh`
