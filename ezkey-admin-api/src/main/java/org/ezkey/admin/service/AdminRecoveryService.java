@@ -21,6 +21,7 @@ import org.ezkey.admin.exception.AuthenticationException;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
@@ -215,7 +216,9 @@ public class AdminRecoveryService {
     OffsetDateTime expiresAt =
         OffsetDateTime.now().plusMinutes(recoveryProperties.getTempTokenDurationMinutes());
 
-    AdminToken token = new AdminToken(tokenHash, admin, admin.getAdminType().name(), expiresAt);
+    AdminToken token =
+        new AdminToken(
+            tokenHash, admin, admin.getAdminType().name(), expiresAt, AdminTokenPurpose.RECOVERY);
     token.setTenant(admin.getTenant());
     token.setIntegration(admin.getIntegration());
     token.setCreatedAt(OffsetDateTime.now());
@@ -269,15 +272,41 @@ public class AdminRecoveryService {
       throw new org.ezkey.admin.exception.AuthenticationException("Recovery token expired");
     }
 
-    // 4. Verify it's a recovery token
-    if (!recoveryToken.startsWith(AdminAuditConstants.RECOVERY_TOKEN_PREFIX)) {
-      logger.warn("❌ Token is not a recovery token");
+    // 4. Durable purpose check (SEC-021) — do not rely on plaintext prefix alone
+    if (token.getTokenPurpose() != AdminTokenPurpose.RECOVERY) {
+      logger.warn("❌ Token is not a recovery-purpose token");
       throw new org.ezkey.admin.exception.AuthenticationException("Invalid recovery token");
     }
 
     logger.debug("✅ Recovery token validated for admin: {}", token.getAdmin().getUsername());
 
     return token.getAdmin();
+  }
+
+  /**
+   * Deactivates a recovery token after successful enrollment reset (single-use token semantics).
+   *
+   * @param recoveryToken the plaintext recovery token to deactivate
+   */
+  @Transactional
+  public void deactivateRecoveryToken(String recoveryToken) {
+    if (recoveryToken == null || recoveryToken.isBlank()) {
+      return;
+    }
+    String tokenHash = SensitiveDataHasher.sha256Hex(recoveryToken);
+    if (tokenHash == null) {
+      return;
+    }
+    tokenRepository
+        .findByBearerTokenHashAndActiveTrue(tokenHash)
+        .ifPresent(
+            token -> {
+              token.setActive(false);
+              tokenRepository.save(token);
+              logger.info(
+                  "✅ Recovery token deactivated after enrollment reset for admin: {}",
+                  token.getAdmin() != null ? token.getAdmin().getUsername() : "unknown");
+            });
   }
 
   /**

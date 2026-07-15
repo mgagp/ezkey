@@ -29,6 +29,7 @@ import org.ezkey.authattempt.domain.AuthAttemptWaitResponse;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.authattempt.service.AuthAttemptService;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
@@ -469,7 +470,9 @@ public class AdminAuthService {
     int hours = Math.max(1, rotationProperties.getExpirationHours());
     OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(hours);
 
-    AdminToken token = new AdminToken(hash, admin, admin.getAdminType().name(), expiresAt);
+    AdminToken token =
+        new AdminToken(
+            hash, admin, admin.getAdminType().name(), expiresAt, AdminTokenPurpose.SESSION);
     token.setTenant(admin.getTenant());
     token.setIntegration(admin.getIntegration());
     token.setCreatedAt(OffsetDateTime.now());

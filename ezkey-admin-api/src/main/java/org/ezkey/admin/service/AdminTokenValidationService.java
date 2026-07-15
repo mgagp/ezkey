@@ -14,6 +14,7 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
@@ -91,6 +92,14 @@ public class AdminTokenValidationService {
       if (tokenOptional.isPresent()) {
         AdminToken adminToken = tokenOptional.get();
 
+        // SEC-021: recovery tokens must not authenticate as Admin API sessions
+        if (adminToken.getTokenPurpose() == AdminTokenPurpose.RECOVERY) {
+          logger.warn(
+              "❌ Token rejected: recovery-purpose token cannot authenticate ordinary Admin API"
+                  + " requests");
+          return Optional.empty();
+        }
+
         // Check if token is expired
         if (adminToken.getExpiresAt().isAfter(OffsetDateTime.now())) {
           EzkeyAdmin admin = adminToken.getAdmin();
@@ -154,12 +163,8 @@ public class AdminTokenValidationService {
         AdminToken adminToken = tokenOptional.get();
         OffsetDateTime now = OffsetDateTime.now();
         adminToken.setLastUsedAt(now);
-        // Sliding expiration: extend expiresAt for normal admin tokens (not recovery tokens).
-        // Recovery tokens have short TTL (e.g. 30 min); infer from expiration window.
-        long minutesToExpiry =
-            java.time.temporal.ChronoUnit.MINUTES.between(
-                adminToken.getCreatedAt(), adminToken.getExpiresAt());
-        if (minutesToExpiry > 31) {
+        // Sliding expiration for SESSION tokens only (SEC-021: never extend RECOVERY).
+        if (adminToken.getTokenPurpose() != AdminTokenPurpose.RECOVERY) {
           int hours = Math.max(1, rotationProperties.getExpirationHours());
           adminToken.setExpiresAt(now.plusHours(hours));
         }

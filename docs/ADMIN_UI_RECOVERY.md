@@ -3,7 +3,7 @@
 ## Contract
 
 - **Passwordless login** uses a normal admin bearer token after device approval (`POST /api/v1/admin/auth/login` + `/passwordless-wait`).
-- **Recovery codes** are single-use break-glass credentials. Entering a valid code at `POST /api/v1/admin/auth/recover` returns a **temporary recovery token** (`ezkey_recovery_*`) that is **not** a full admin session: it is intended for **MFA enrollment reset** only.
+- **Recovery codes** are single-use break-glass credentials. Entering a valid code at `POST /api/v1/admin/auth/recover` returns a **temporary recovery token** (`ezkey_recovery_*`) persisted with purpose `RECOVERY`. It is **not** a full admin session: the shared Admin API authentication filter rejects it on ordinary authenticated routes (SEC-021). It may only be used for **MFA enrollment reset**, and is deactivated after a successful reset.
 - **Reset** (`POST /api/v1/admin/enrollments/reset` with the recovery token) unbinds the old device and returns **new** enrollment proof token and challenge for binding a replacement device in the mobile app.
 - After binding, the operator uses **normal passwordless login** again.
 
