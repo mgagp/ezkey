@@ -75,7 +75,9 @@ Run `npm run doctor:curated` and confirm reduced counts on:
 - `js-hoist-intl`
 - `jsx-no-constructed-context-values`
 
-Defer: `prefer-html-dialog`, `no-giant-component`, `forwardRef` cleanup.
+Defer: `prefer-html-dialog` (promoted 2026-07-14 to
+[`I-2026-07-14-admin-ui-native-html-dialog`](../ideas/I-2026-07-14-admin-ui-native-html-dialog.md)
+— program slice, not hygiene), `no-giant-component`, `forwardRef` cleanup.
 
 ---
 

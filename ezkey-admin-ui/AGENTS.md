@@ -299,6 +299,7 @@ Use **start.sh** to build and run the Admin UI in Docker:
   - `unused-file`
   - `design-no-em-dash-in-jsx-text`
   - `only-export-components`
+  - `no-impure-state-updater`
 - Working rule for humans: treat the curated report as a **triage aid**. The goal is to identify a few high-signal improvements with strong signal-to-effort ratio and stop before diminishing returns.
 - **Triage balance — high signal first, modest low-signal allotment:** prioritize findings with strong signal-to-effort ratio (correctness, a11y on shared surfaces, real operator-visible bugs). After that high-signal set is chosen (or confirmed empty / deferred for design reasons), **reserve a small continuous-improvement slot** for cheap, low-risk P2/P3 items (e.g. Intl hoist/cache, lazy `useState` init, single-pass list transforms, dead exports in touched files). Absolute value may be low, but skipping them forever means the backlog never climbs. Keep that slot **modest** (typically 1–3 items, local diffs, no design migrations). Do **not** expand it into `prefer-useReducer`, giant-component splits, or native `<dialog>` rewrites unless the operator widens scope.
 
