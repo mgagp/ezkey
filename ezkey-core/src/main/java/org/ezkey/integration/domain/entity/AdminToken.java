@@ -12,6 +12,8 @@ package org.ezkey.integration.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -20,6 +22,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 
 /**
  * JPA entity representing a bearer token for administrator authentication.
@@ -97,6 +100,15 @@ public class AdminToken {
    */
   @Column(name = "admin_type", nullable = false, length = 20)
   private String adminType;
+
+  /**
+   * Purpose of this token: session (full Admin API) or recovery (enrollment reset only).
+   *
+   * <p>Enforced by {@code AdminTokenValidationService} for session authentication (SEC-021).
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "token_purpose", nullable = false, length = 20)
+  private AdminTokenPurpose tokenPurpose = AdminTokenPurpose.SESSION;
 
   /**
    * Reference to the tenant associated with this token.
@@ -193,10 +205,29 @@ public class AdminToken {
    */
   public AdminToken(
       String bearerTokenHash, EzkeyAdmin admin, String adminType, OffsetDateTime expiresAt) {
+    this(bearerTokenHash, admin, adminType, expiresAt, AdminTokenPurpose.SESSION);
+  }
+
+  /**
+   * Constructs a new admin token with an explicit purpose.
+   *
+   * @param bearerTokenHash the SHA-256 hash (hex) of the bearer token
+   * @param admin the administrator who owns this token
+   * @param adminType the type of administrator
+   * @param expiresAt the expiration timestamp
+   * @param tokenPurpose session vs recovery purpose
+   */
+  public AdminToken(
+      String bearerTokenHash,
+      EzkeyAdmin admin,
+      String adminType,
+      OffsetDateTime expiresAt,
+      AdminTokenPurpose tokenPurpose) {
     this.bearerTokenHash = bearerTokenHash;
     this.admin = admin;
     this.adminType = adminType;
     this.expiresAt = expiresAt;
+    this.tokenPurpose = tokenPurpose != null ? tokenPurpose : AdminTokenPurpose.SESSION;
     this.createdAt = OffsetDateTime.now();
     this.active = true;
   }
@@ -271,6 +302,24 @@ public class AdminToken {
    */
   public void setAdminType(String adminType) {
     this.adminType = adminType;
+  }
+
+  /**
+   * Gets the token purpose.
+   *
+   * @return the token purpose
+   */
+  public AdminTokenPurpose getTokenPurpose() {
+    return tokenPurpose;
+  }
+
+  /**
+   * Sets the token purpose.
+   *
+   * @param tokenPurpose the token purpose
+   */
+  public void setTokenPurpose(AdminTokenPurpose tokenPurpose) {
+    this.tokenPurpose = tokenPurpose;
   }
 
   /**

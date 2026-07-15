@@ -609,7 +609,8 @@ The `enrollmentId` is the administrator’s MFA enrollment to pass to `POST /api
 - Recovery codes are BCrypt hashed (same security as passwords were)
 - Single-use enforcement (code removed after validation)
 - Recovery token expires after 30 minutes
-- Limited permissions (can only reset enrollment)
+- Recovery tokens are stored with purpose `RECOVERY` and are rejected by ordinary Admin API
+  session authentication (SEC-021); they may only be used for enrollment reset
 - Rate limited: 3 attempts per 15 minutes per IP
 
 ---
@@ -647,10 +648,10 @@ Content-Type: application/json
 4. Resume normal passwordless login
 
 **Security Notes:**
-- Requires recovery token (obtained via `/recover`)
+- Requires recovery token (obtained via `/recover`); ordinary session tokens receive 403
 - Unbinds old device (sets device_public_key to null)
 - Generates new enrollment credentials
-- Recovery token expires after use or 30 minutes
+- Recovery token is deactivated after successful reset, or expires after 30 minutes
 
 #### POST /logout
 Revoke current bearer token and end session.

@@ -226,6 +226,29 @@ Do **not** use bare PowerShell `git commit`, HEREDOC, `&&` chains, or WSL bash
 Cursor mirror of this rule: `.cursor/rules/git-commit-windows.mdc`; repo-wide context:
 `AGENTS.md` § *Git commit on Windows (agent shell)*.
 
+#### Opening pull requests on Windows (avoid recurring shell failures)
+
+`gh pr create` with inline `--title` / HEREDOC `--body` fails for the **same** PowerShell →
+`bash -lc` quoting reasons as commits (parentheses in conventional titles, `$()`, quotes,
+newlines). Use `scripts/git-pr.sh` with its **canonical zero-argument flow**:
+
+1. Push the branch if needed (`git push -u origin HEAD`).
+2. Write the PR title to **`.ezkey/pr-title.txt`** with the file-writing tool.
+3. Write the PR body (Markdown) to **`.ezkey/pr-body.md`** with the file-writing tool.
+4. Run the **single constant command**:
+
+   ```text
+   & "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-pr.sh'
+   ```
+
+   Inside Git Bash, just `./scripts/git-pr.sh`. The script runs `gh pr create --title … --body-file …`
+   and removes the default title/body files. Power-user forms:
+   `./scripts/git-pr.sh --title-file <file> --body-file <file>`, `--draft`, `--base <branch>`.
+
+Do **not** use bare PowerShell `gh pr create` with inline title/body text, or WSL bash.
+Cursor mirror: `.cursor/rules/git-pr-windows.mdc`; repo-wide context:
+`AGENTS.md` § *GitHub pull request on Windows (agent shell)*.
+
 ## Security Guidelines
 
 ### Input Validation

@@ -22,6 +22,7 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.ezkey.admin.config.AdminTokenRotationProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
+import org.ezkey.integration.domain.AdminTokenPurpose;
 import org.ezkey.integration.domain.entity.AdminToken;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.repository.AdminTokenRepository;
@@ -106,16 +107,28 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
-  @DisplayName("updateTokenLastUsed extends expiration for normal admin token (sliding expiration)")
-  void updateTokenLastUsed_extendsExpiration_forNormalToken() {
+  @DisplayName("SEC-021: Should reject RECOVERY-purpose token for ordinary session auth")
+  void validateTokenWithRelations_shouldReturnEmpty_whenTokenPurposeIsRecovery() {
+    String hash = SensitiveDataHasher.sha256Hex(TOKEN);
+    when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(eq(hash)))
+        .thenReturn(Optional.of(adminToken));
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.RECOVERY);
+
+    Optional<AdminToken> result = service.validateTokenWithRelations(TOKEN);
+
+    assertThat(result).isEmpty();
+    verify(adminToken, never()).getAdmin();
+  }
+
+  @Test
+  @DisplayName("updateTokenLastUsed extends expiration for SESSION token (sliding expiration)")
+  void updateTokenLastUsed_extendsExpiration_forSessionToken() {
     String normalToken = "ezkey_normal";
     String hash = SensitiveDataHasher.sha256Hex(normalToken);
     when(rotationProperties.getExpirationHours()).thenReturn(2);
     when(tokenRepository.findByBearerTokenHashAndActiveTrue(eq(hash)))
         .thenReturn(Optional.of(adminToken));
-    OffsetDateTime createdAt = OffsetDateTime.now().minusHours(1);
-    when(adminToken.getCreatedAt()).thenReturn(createdAt);
-    when(adminToken.getExpiresAt()).thenReturn(createdAt.plusHours(2)); // 2h window > 31 min
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.SESSION);
 
     service.updateTokenLastUsed(normalToken);
 
@@ -125,15 +138,13 @@ class AdminTokenValidationServiceTest {
   }
 
   @Test
-  @DisplayName("updateTokenLastUsed does not extend expiration for recovery token")
+  @DisplayName("updateTokenLastUsed does not extend expiration for RECOVERY token")
   void updateTokenLastUsed_doesNotExtendExpiration_forRecoveryToken() {
     String recoveryToken = "ezkey_recovery_abc123";
     String hash = SensitiveDataHasher.sha256Hex(recoveryToken);
     when(tokenRepository.findByBearerTokenHashAndActiveTrue(eq(hash)))
         .thenReturn(Optional.of(adminToken));
-    OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(5);
-    when(adminToken.getCreatedAt()).thenReturn(createdAt);
-    when(adminToken.getExpiresAt()).thenReturn(createdAt.plusMinutes(30)); // 30 min window <= 31
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.RECOVERY);
 
     service.updateTokenLastUsed(recoveryToken);
 
@@ -143,14 +154,15 @@ class AdminTokenValidationServiceTest {
   }
 
   /**
-   * Stubs the token repository to return a valid, non-expired token associated with a mock admin.
-   * The tenant check is bypassed by returning null for the tenant (no tenant-inactive path). Uses
-   * the hash of TOKEN for lookup.
+   * Stubs the token repository to return a valid, non-expired SESSION token associated with a mock
+   * admin. The tenant check is bypassed by returning null for the tenant (no tenant-inactive path).
+   * Uses the hash of TOKEN for lookup.
    */
   private void stubValidNonExpiredToken() {
     String hash = SensitiveDataHasher.sha256Hex(TOKEN);
     when(tokenRepository.findByBearerTokenHashAndActiveTrueWithRelations(eq(hash)))
         .thenReturn(Optional.of(adminToken));
+    when(adminToken.getTokenPurpose()).thenReturn(AdminTokenPurpose.SESSION);
     when(adminToken.getExpiresAt()).thenReturn(OffsetDateTime.now().plusHours(1));
     when(adminToken.getAdmin()).thenReturn(admin);
     when(adminToken.getTenant()).thenReturn(null);

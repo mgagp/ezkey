@@ -1,0 +1,52 @@
+---
+description: Create GitHub PRs from Cursor agents on Windows — use scripts/git-pr.sh (no shell-escaped title/body)
+alwaysApply: true
+---
+
+# GitHub pull request — Windows agent shell (this workstation)
+
+Cursor's agent **Shell** tool on Windows often runs **PowerShell**, not Git Bash. Creating a PR with
+inline `gh pr create --title "fix(security): …"` or a HEREDOC `--body "$(cat <<'EOF' …)"` fails fo
+the **same root cause** as commits: the title/body *text* crosses
+**PowerShell → `bash -lc '...'` → `gh`**, and any of `( ) " ' # ! < >` is re-parsed. Conventional
+titles **always** contain `()`.
+
+Temporary one-off helper scripts under `.ezkey/` are the wrong end-state. Use the durable wrappe
+next to the commit helper:
+
+- Commits → `scripts/git-commit.sh`
+- Pull requests → `scripts/git-pr.sh`
+
+## Agent procedure when the user asks for a pull request (canonical)
+
+1. **Push** the branch first if needed (`git push -u origin HEAD`). Push is usually fine from
+   PowerShell; use Git Bash if an argument contains `<`.
+2. **Write the PR title** (single line) to **`.ezkey/pr-title.txt`** with the file-writing tool.
+3. **Write the PR body** (Markdown: Summary, Test plan, `Closes #NNN`, etc.) to
+   **`.ezkey/pr-body.md`** with the file-writing tool. Any characters are safe there.
+4. **Create the PR** with the **single constant command** (no escaping, ever):
+
+   ```text
+   & "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-pr.sh'
+   ```
+
+   (Already inside Git Bash: just `./scripts/git-pr.sh`.) The script runs
+   `gh pr create --title … --body-file …`, then removes the default title/body files.
+
+5. Do **not** use bare PowerShell `gh pr create` with inline `--title` / HEREDOC `--body`, ad-hoc
+   temp scripts as the durable workflow, `&&` chains that embed PR text, or WSL bash
+   (`C:\Windows\System32\bash.exe`). Use **Git Bash** (`C:\Program Files\Git\bin\bash.exe`).
+6. If `gh` is missing from PATH on Windows, the script also probes
+   `C:\Program Files\GitHub CLI\gh.exe` (same absolute path noted in root `AGENTS.md`).
+
+**Power-user forms** (still supported):
+
+```bash
+./scripts/git-pr.sh --title-file path/to/title.txt --body-file path/to/body.md
+./scripts/git-pr.sh --draft
+./scripts/git-pr.sh --base main
+```
+
+See root `AGENTS.md` § *GitHub pull request on Windows (agent shell)* and
+`.github/copilot-instructions.md` for the same procedure. Sibling commit rule:
+`.cursor/rules/git-commit-windows.mdc`.

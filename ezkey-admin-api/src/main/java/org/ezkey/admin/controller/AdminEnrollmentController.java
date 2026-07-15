@@ -180,6 +180,9 @@ public class AdminEnrollmentController {
       Enrollment resetEnrollment =
           recoveryService.resetEnrollment(request.enrollmentId(), authenticatedAdmin);
 
+      // SEC-021 / contract: recovery token is single-use after successful reset
+      recoveryService.deactivateRecoveryToken(token);
+
       EnrollmentResetResponseDto response =
           EnrollmentResetResponseDto.success(
               resetEnrollment.getEnrollmentId(),

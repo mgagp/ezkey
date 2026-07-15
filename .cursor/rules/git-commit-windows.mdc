@@ -64,3 +64,6 @@ pass only a file path, or use the zero-argument flow below.
 
 See root `AGENTS.md` § *Git commit on Windows (agent shell)* and `.github/copilot-instructions.md`
 for the same procedure.
+
+For **pull requests**, use the sibling helper `scripts/git-pr.sh` and rule
+`.cursor/rules/git-pr-windows.mdc` — never inline `gh pr create` title/body through PowerShell.

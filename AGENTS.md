@@ -463,6 +463,33 @@ let the message text cross a shell boundary** — pass a file path instead.
 Authoritative rule: `.cursor/rules/git-commit-windows.mdc`. Copilot mirror:
 `.github/copilot-instructions.md` § *Git Standards*.
 
+## GitHub pull request on Windows (agent shell)
+
+Creating a PR hits the **same quoting failure mode** as commits: PowerShell re-parses
+`gh pr create --title "fix(security): …"` or HEREDOC `--body "$(cat <<'EOF' …)"` before
+Git Bash/`gh` run. Conventional titles always contain `()`. Do **not** invent a one-off temp
+script as the durable workflow — use the repo helper next to `git-commit.sh`.
+
+**Agent procedure when opening a PR (canonical zero-argument flow):**
+
+1. Push the branch if needed (`git push -u origin HEAD`).
+2. Write the PR title (single line) to **`.ezkey/pr-title.txt`** with the file-writing tool.
+3. Write the PR body (Markdown) to **`.ezkey/pr-body.md`** with the file-writing tool.
+4. Run the **single constant command**:
+
+   ```text
+   & "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-pr.sh'
+   ```
+
+   Inside Git Bash: `./scripts/git-pr.sh`. The script calls `gh pr create --title … --body-file …`
+   and removes the default title/body files afterward.
+5. Do **not** use bare PowerShell `gh pr create` with inline `--title` / HEREDOC `--body`, or WSL
+   bash. Power-user forms: `./scripts/git-pr.sh --title-file <file> --body-file <file>`,
+   `--draft`, `--base <branch>`.
+
+Authoritative rule: `.cursor/rules/git-pr-windows.mdc`. Copilot mirror:
+`.github/copilot-instructions.md` § *Opening pull requests on Windows*.
+
 ## Windows Bash selection (anti-WSL ambiguity)
 
 On Windows, many shells resolve bare `bash` to `C:\Windows\System32\bash.exe` (WSL shim). For
