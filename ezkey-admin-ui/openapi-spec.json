@@ -3109,17 +3109,7 @@
             }
           },
           "401": {
-            "description": "Unauthorized - Invalid credentials (username not found). Returns RFC 9457 ProblemDetail: type='...invalid-credentials'",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdminLoginResponseDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - Account inactive or no device enrolled. Returns RFC 9457 ProblemDetail: type='...account-inactive' or '...no-enrollment'",
+            "description": "Unauthorized - Invalid credentials or login not permitted (generic message; SEC-006). Returns RFC 9457 ProblemDetail: type='...invalid-credentials'",
             "content": {
               "*/*": {
                 "schema": {

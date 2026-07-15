@@ -50,6 +50,16 @@ Follow the tracer bullet (`TB-*`) scope. Use the methodology skills (`component-
 PR title follows conventional commit format: `feat(component): short description (#NNN)`.  
 PR body must include `Closes #NNN` and a traceability block linking to the I-* and TB-* artifacts.
 
+On Windows agent shells (PowerShell), do **not** pass the PR title/body inline to `gh pr create`
+(quoting breaks on conventional titles). Use the same pattern as commits:
+
+1. Write the title to `.ezkey/pr-title.txt` and the body to `.ezkey/pr-body.md`.
+2. Run `./scripts/git-pr.sh` from Git Bash (or
+   `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-pr.sh'` from PowerShell).
+
+See `AGENTS.md` § *GitHub pull request on Windows (agent shell)* and
+`.cursor/rules/git-pr-windows.mdc`.
+
 ## Build and verification
 
 Run the standard build from the repository root:
