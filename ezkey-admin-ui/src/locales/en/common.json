@@ -10,6 +10,10 @@
     "search": "Search",
     "loading": "Loading"
   },
+  "logout": {
+    "inProgress": "Signing out…",
+    "cookieRevocationFailed": "Logout failed on the server. Your session is still active — try again."
+  },
   "pagination": {
     "page": "Page",
     "of": "of",
