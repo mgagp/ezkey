@@ -356,9 +356,11 @@ class AuditReasonPropagationTest {
             keyUsageVerificationService);
 
     when(rotationService.introduceNewKey("ADMIN_MANUAL")).thenReturn(12345L);
+    Authentication auth = mock(Authentication.class);
+    when(auth.getPrincipal()).thenReturn(new AdminPrincipal(7, AdminType.GLOBAL_ADMIN, null, null));
 
     // Act
-    controller.rotateKey("Annual key rotation policy", httpRequest);
+    controller.rotateKey("Annual key rotation policy", auth, httpRequest);
 
     // Assert
     ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
@@ -368,6 +370,7 @@ class AuditReasonPropagationTest {
     assertEquals(EventType.KEY_INTRODUCED, logged.getEventType());
     assertEquals(EventStatus.SUCCESS, logged.getEventStatus());
     assertEquals("Annual key rotation policy", logged.getReason());
+    assertEquals(7, logged.getAdminId());
   }
 
   @Test
@@ -389,10 +392,12 @@ class AuditReasonPropagationTest {
                 99L,
                 "A PENDING key already exists. Wait for it to be promoted or use immediate"
                     + " promotion."));
+    Authentication auth = mock(Authentication.class);
+    when(auth.getPrincipal()).thenReturn(new AdminPrincipal(7, AdminType.GLOBAL_ADMIN, null, null));
 
     assertThrows(
         PendingEncryptionKeyExistsException.class,
-        () -> controller.rotateKey("Annual key rotation policy", httpRequest));
+        () -> controller.rotateKey("Annual key rotation policy", auth, httpRequest));
 
     ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
     verify(auditLogService, times(1)).log(captor.capture());
@@ -401,6 +406,7 @@ class AuditReasonPropagationTest {
     assertEquals(EventType.KEY_INTRODUCED, logged.getEventType());
     assertEquals(EventStatus.FAILURE, logged.getEventStatus());
     assertEquals("Annual key rotation policy", logged.getReason());
+    assertEquals(7, logged.getAdminId());
   }
 
   // -------------------------------------------------------------------------

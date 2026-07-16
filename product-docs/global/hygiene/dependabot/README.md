@@ -22,3 +22,9 @@ without inventing `I-*` / `TB-*` for routine bumps.
 - Dependabot config: [`.github/dependabot.yml`](../../../.github/dependabot.yml)
 - Hygiene vs program: [`../../methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`](../../methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md)
 - Sibling lanes: [`../react-doctor/`](../react-doctor/), [`../java-doctor/`](../java-doctor/)
+
+## Closeout reminder (pins / install / codegen)
+
+When a pass merges Orval or another **exact-pin** / codegen dependency, the campaign note must cover
+exact pin preservation, `AGENTS.md` pin sync, workspace install, and regenerate — see skill
+`dependabot-curated` § *Pin, install, and codegen hygiene*. This is not part of `doctor-curated`.

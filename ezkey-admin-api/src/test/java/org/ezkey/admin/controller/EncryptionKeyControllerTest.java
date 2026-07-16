@@ -16,12 +16,19 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.audit.domain.EventStatus;
+import org.ezkey.audit.domain.EventType;
+import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
+import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
 import org.ezkey.security.KeyRotationService;
 import org.ezkey.security.KeyUsageVerificationService;
 import org.ezkey.security.ReencryptionService;
@@ -35,6 +42,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -44,6 +52,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 
 /**
  * Unit tests for EncryptionKeyController listKeys endpoint (paginated list with optional keyStatus
@@ -76,6 +85,8 @@ class EncryptionKeyControllerTest {
   private EncryptionKey key1;
   private EncryptionKey key2;
   private ReencryptionBatch batch1;
+  private Authentication globalAdminAuth;
+  private HttpServletRequest httpRequest;
 
   @BeforeEach
   void setUp() {
@@ -104,6 +115,18 @@ class EncryptionKeyControllerTest {
     batch1.setBatchId(1);
     batch1.setStatus(BatchStatus.PENDING);
     batch1.setProgressPct(BigDecimal.ZERO);
+
+    globalAdminAuth = mock(Authentication.class);
+    lenient()
+        .when(globalAdminAuth.getPrincipal())
+        .thenReturn(new AdminPrincipal(7, AdminType.GLOBAL_ADMIN, null, null));
+
+    httpRequest = mock(HttpServletRequest.class);
+    lenient().when(httpRequest.getHeader("CF-Connecting-IP")).thenReturn(null);
+    lenient().when(httpRequest.getHeader("X-Forwarded-For")).thenReturn(null);
+    lenient().when(httpRequest.getHeader("X-Real-IP")).thenReturn(null);
+    lenient().when(httpRequest.getRemoteAddr()).thenReturn("203.0.113.50");
+    lenient().when(httpRequest.getHeader("User-Agent")).thenReturn("sec018-test-agent");
 
     lenient()
         .when(keyUsageVerificationService.computeSnapshot(any(EncryptionKey.class)))
@@ -262,50 +285,77 @@ class EncryptionKeyControllerTest {
   }
 
   @Test
-  @DisplayName("triggerFullReencryption returns 202 Accepted with enqueue summary")
+  @DisplayName("triggerFullReencryption returns 202 Accepted with enqueue summary (SEC-018 audit)")
   void triggerFullReencryptionReturnsAccepted() {
     when(reencryptionService.enqueueFullReencryption())
         .thenReturn(
             new ReencryptionService.ManualReencryptionEnqueueResult(2, java.util.List.of(10, 11)));
 
     ResponseEntity<EncryptionKeyController.ReencryptionTriggerResponse> response =
-        controller.triggerFullReencryption();
+        controller.triggerFullReencryption(globalAdminAuth, httpRequest);
 
     assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
     assertNotNull(response.getBody());
     assertEquals(2, response.getBody().batchesEnqueued());
     assertEquals(java.util.List.of(10, 11), response.getBody().batchIds());
     verify(reencryptionService).enqueueFullReencryption();
+
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(captor.capture());
+    AuditLog logged = captor.getValue();
+    assertEquals(EventType.REENCRYPTION_STARTED, logged.getEventType());
+    assertEquals(EventStatus.SUCCESS, logged.getEventStatus());
+    assertEquals(7, logged.getAdminId());
+    assertEquals("203.0.113.50", logged.getIpAddress());
+    assertEquals("sec018-test-agent", logged.getUserAgent());
   }
 
   @Test
-  @DisplayName("triggerReencryptionForKey returns 202 Accepted with enqueue summary")
+  @DisplayName(
+      "triggerReencryptionForKey returns 202 Accepted with enqueue summary (SEC-018 audit)")
   void triggerReencryptionForKeyReturnsAccepted() {
     when(reencryptionService.enqueueReencryptionForKey(101L))
         .thenReturn(
             new ReencryptionService.ManualReencryptionEnqueueResult(1, java.util.List.of(5)));
 
     ResponseEntity<EncryptionKeyController.ReencryptionKeyResponse> response =
-        controller.triggerReencryptionForKey(101L);
+        controller.triggerReencryptionForKey(101L, globalAdminAuth, httpRequest);
 
     assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
     assertNotNull(response.getBody());
     assertEquals(101L, response.getBody().keyId());
     assertEquals(1, response.getBody().batchesEnqueued());
     verify(reencryptionService).enqueueReencryptionForKey(101L);
+
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(captor.capture());
+    AuditLog logged = captor.getValue();
+    assertEquals(EventType.REENCRYPTION_STARTED, logged.getEventType());
+    assertEquals(7, logged.getAdminId());
+    assertEquals("203.0.113.50", logged.getIpAddress());
+    assertEquals("sec018-test-agent", logged.getUserAgent());
   }
 
   @Test
-  @DisplayName("resumeBatch returns 202 Accepted")
+  @DisplayName("resumeBatch returns 202 Accepted and writes attribution audit (SEC-018)")
   void resumeBatchReturnsAccepted() {
     when(batchRepository.findById(1)).thenReturn(java.util.Optional.of(batch1));
 
     ResponseEntity<EncryptionKeyController.BatchResumeResponse> response =
-        controller.resumeBatch(1);
+        controller.resumeBatch(1, globalAdminAuth, httpRequest);
 
     assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
     assertNotNull(response.getBody());
     assertEquals(1, response.getBody().batchId());
     verify(reencryptionService).enqueueBatchProcessing(java.util.List.of(batch1));
+
+    ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+    verify(auditLogService).log(captor.capture());
+    AuditLog logged = captor.getValue();
+    assertEquals(EventType.REENCRYPTION_STARTED, logged.getEventType());
+    assertEquals(EventStatus.SUCCESS, logged.getEventStatus());
+    assertEquals(7, logged.getAdminId());
+    assertEquals("203.0.113.50", logged.getIpAddress());
+    assertEquals("sec018-test-agent", logged.getUserAgent());
   }
 }

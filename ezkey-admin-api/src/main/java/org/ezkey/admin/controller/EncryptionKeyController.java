@@ -23,11 +23,11 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import org.ezkey.admin.constants.AdminAuditConstants;
+import org.ezkey.admin.security.AdminPrincipal;
+import org.ezkey.admin.service.AdminProvisioningService;
 import org.ezkey.admin.util.AuditHelper;
-import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
-import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.service.AuditLogService;
 import org.ezkey.audit.util.AuditDetailsBuilder;
 import org.ezkey.audit.util.ClientContext;
@@ -52,6 +52,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -64,8 +65,9 @@ import org.springframework.web.bind.annotation.RestController;
  * REST controller for encryption key management operations.
  *
  * <p>This controller provides endpoints for manual encryption key operations including rotation,
- * status queries, and batch management. All operations require admin authentication and are
- * audited.
+ * status queries, and batch management. Encryption keys are instance-wide platform assets; all
+ * operations require {@code GLOBAL_ADMIN} and are audited with the acting administrator and client
+ * context.
  *
  * <p><b>Available Operations:</b>
  *
@@ -87,8 +89,9 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><b>Security:</b>
  *
  * <ul>
- *   <li>All endpoints require admin authentication (Bearer token)
- *   <li>Comprehensive audit logging for all operations
+ *   <li>Global Admin only ({@code ROLE_GLOBAL_ADMIN}); Tenant Admins and API keys receive 403
+ *   <li>Manual mutations record adminId, client IP, and user-agent
+ *   <li>Scheduled crypto jobs remain distinct (system actor / triggeredBy in core services)
  *   <li>Rate limiting applied via AdminOperationsRateLimitService
  * </ul>
  *
@@ -102,9 +105,12 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping("/api/v1/encryption-keys")
+@PreAuthorize("hasRole('GLOBAL_ADMIN')")
 @Tag(
     name = "Encryption Keys",
-    description = "Encryption key lifecycle management and rotation operations")
+    description =
+        "Encryption key lifecycle management and rotation (Global Admin only). Instance-wide"
+            + " platform encryption keys; Tenant Admins receive 403.")
 public class EncryptionKeyController {
 
   private static final Logger logger = LoggerFactory.getLogger(EncryptionKeyController.class);
@@ -145,12 +151,14 @@ public class EncryptionKeyController {
           "Returns encryption keys with pagination and optional keyStatus filter. Use page, size,"
               + " sort for pagination. Optional keyStatus: PRIMARY, ENABLED, DISABLED, PENDING."
               + " Sortable: keyId, keyStatus, algorithm, introducedAt, promotedPrimaryAt,"
-              + " disabledAt, recordsEncrypted, recordsReencrypted, createdBy, createdAt.")
+              + " disabledAt, recordsEncrypted, recordsReencrypted, createdBy, createdAt."
+              + " Global Admin only.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Paginated list of keys (content + page)"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(responseCode = "500", description = "Internal server error")
   })
-  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping
   public ResponseEntity<Page<EncryptionKeyResponse>> listKeys(
       @Parameter(
@@ -185,13 +193,16 @@ public class EncryptionKeyController {
    */
   @Operation(
       summary = "Get primary encryption key",
-      description = "Returns the current primary encryption key used for new encryption operations")
+      description =
+          "Returns the current primary encryption key used for new encryption operations. Global"
+              + " Admin only.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Primary key retrieved successfully"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(responseCode = "404", description = "No primary key found"),
     @ApiResponse(responseCode = "500", description = "Internal server error")
   })
-  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/primary")
   public ResponseEntity<EncryptionKeyResponse> getPrimaryKey() {
     return rotationService
@@ -208,13 +219,14 @@ public class EncryptionKeyController {
    */
   @Operation(
       summary = "Get encryption key by ID",
-      description = "Returns details for a specific encryption key")
+      description = "Returns details for a specific encryption key. Global Admin only.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Key retrieved successfully"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(responseCode = "404", description = "Key not found"),
     @ApiResponse(responseCode = "500", description = "Internal server error")
   })
-  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/{keyId}")
   public ResponseEntity<EncryptionKeyResponse> getKey(@PathVariable Long keyId) {
     return keyRepository
@@ -226,18 +238,23 @@ public class EncryptionKeyController {
   /**
    * Manually trigger key rotation.
    *
-   * <p>This endpoint allows administrators to manually trigger key rotation outside of the
-   * scheduled job. Useful for emergency rotations or testing.
+   * <p>This endpoint allows Global Admins to manually trigger key rotation outside of the scheduled
+   * job. Useful for emergency rotations or testing.
    *
+   * @param reason optional audit reason (10–500 characters)
+   * @param auth the authenticated Global Admin
+   * @param httpRequest the HTTP request (client IP / user-agent)
    * @return the new primary key ID
    */
   @Operation(
       summary = "Manually trigger key rotation",
       description =
           "Introduces a new encryption key (typically PENDING until the sync window elapses, then"
-              + " promoted to PRIMARY).")
+              + " promoted to PRIMARY). Global Admin only.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Key rotation completed successfully"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(
         responseCode = "409",
         description =
@@ -250,16 +267,17 @@ public class EncryptionKeyController {
                         implementation = org.springframework.http.ProblemDetail.class))),
     @ApiResponse(responseCode = "500", description = "Key rotation failed")
   })
-  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/rotate")
   public ResponseEntity<KeyRotationResponse> rotateKey(
       @RequestParam(required = false)
           @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
           String reason,
+      Authentication auth,
       HttpServletRequest httpRequest) {
     ClientContext context = ClientContext.from(httpRequest);
+    Integer adminId = resolveAdminId(auth);
     try {
-      logger.info("Manual key rotation triggered by admin");
+      logger.info("Manual key rotation triggered by adminId={}", adminId);
       long newPrimaryKeyId = rotationService.introduceNewKey("ADMIN_MANUAL");
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -267,6 +285,7 @@ public class EncryptionKeyController {
                   EventType.KEY_INTRODUCED,
                   AdminAuditConstants.ENCRYPTION_KEY_ROTATION_MANUAL)
               .eventStatus(EventStatus.SUCCESS)
+              .adminId(adminId)
               .reason(reason)
               .eventDetails(AuditDetailsBuilder.builder().encryptionKeyId(newPrimaryKeyId).toJson())
               .build());
@@ -279,6 +298,7 @@ public class EncryptionKeyController {
                   EventType.KEY_INTRODUCED,
                   AdminAuditConstants.ENCRYPTION_KEY_ROTATION_MANUAL)
               .eventStatus(EventStatus.FAILURE)
+              .adminId(adminId)
               .reason(reason)
               .errorMessage(e.getMessage())
               .eventDetails(
@@ -294,17 +314,18 @@ public class EncryptionKeyController {
     } catch (Exception e) {
       logger.error("Manual key rotation failed", e);
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.REENCRYPTION_FAILED)
-              .eventAction("manual_key_rotation")
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.REENCRYPTION_FAILED,
+                  AdminAuditConstants.ENCRYPTION_KEY_ROTATION_MANUAL)
               .eventStatus(EventStatus.ERROR)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress(context.clientIp())
+              .adminId(adminId)
+              .reason(reason)
+              .errorMessage(e.getMessage())
               .eventDetails(
                   AuditDetailsBuilder.builder()
                       .errorSummary("Manual key rotation failed: " + e.getMessage())
                       .toJson())
-              .errorMessage(e.getMessage())
               .build());
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
           .body(new KeyRotationResponse(null, "Key rotation failed: " + e.getMessage()));
@@ -332,12 +353,14 @@ public class EncryptionKeyController {
               + " COMPLETED, FAILED, PAUSED), targetTable, targetColumn, oldKeyId, newKeyId,"
               + " createdAfter, createdBefore (ISO-8601, inclusive bounds on createdAt). Sortable:"
               + " batchId, status, targetTable, targetColumn, createdAt, startedAt, completedAt,"
-              + " progressPct, recordsTotal, recordsDone, oldKey.keyId, newKey.keyId.")
+              + " progressPct, recordsTotal, recordsDone, oldKey.keyId, newKey.keyId. Global Admin"
+              + " only.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Batches retrieved successfully"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(responseCode = "500", description = "Internal server error")
   })
-  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/reencryption-batches")
   public ResponseEntity<Page<ReencryptionBatchResponse>> listBatches(
       @Parameter(
@@ -411,33 +434,64 @@ public class EncryptionKeyController {
    * Resume a failed or paused re-encryption batch.
    *
    * @param batchId the batch ID
+   * @param auth the authenticated Global Admin
+   * @param httpRequest the HTTP request (client IP / user-agent)
    * @return success response
    */
   @Operation(
       summary = "Resume re-encryption batch",
-      description = "Resumes processing of a failed or paused re-encryption batch")
+      description =
+          "Resumes processing of a failed or paused re-encryption batch. Global Admin only.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "202",
         description = "Batch resume accepted for background processing"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(responseCode = "404", description = "Batch not found"),
     @ApiResponse(responseCode = "500", description = "Failed to enqueue batch resume")
   })
-  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/reencryption-batches/{batchId}/resume")
-  public ResponseEntity<BatchResumeResponse> resumeBatch(@PathVariable Integer batchId) {
+  public ResponseEntity<BatchResumeResponse> resumeBatch(
+      @PathVariable Integer batchId, Authentication auth, HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    Integer adminId = resolveAdminId(auth);
     return batchRepository
         .findById(batchId)
         .map(
             batch -> {
               try {
                 reencryptionService.enqueueBatchProcessing(List.of(batch));
+                auditLogService.log(
+                    AuditHelper.createAdminAudit(
+                            context,
+                            EventType.REENCRYPTION_STARTED,
+                            AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
+                        .eventStatus(EventStatus.SUCCESS)
+                        .adminId(adminId)
+                        .eventDetails(
+                            AuditDetailsBuilder.builder().custom("batch_id", batchId).toJson())
+                        .build());
                 return ResponseEntity.status(HttpStatus.ACCEPTED)
                     .body(
                         new BatchResumeResponse(
                             batchId, "Batch resume accepted; progress in batches table"));
               } catch (Exception e) {
                 logger.error("Failed to enqueue resume for batch {}", batchId, e);
+                auditLogService.log(
+                    AuditHelper.createAdminAudit(
+                            context,
+                            EventType.REENCRYPTION_FAILED,
+                            AdminAuditConstants.ENCRYPTION_BATCH_RESUME)
+                        .eventStatus(EventStatus.ERROR)
+                        .adminId(adminId)
+                        .errorMessage(e.getMessage())
+                        .eventDetails(
+                            AuditDetailsBuilder.builder()
+                                .custom("batch_id", batchId)
+                                .errorSummary("Failed to resume batch: " + e.getMessage())
+                                .toJson())
+                        .build());
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(
                         new BatchResumeResponse(
@@ -450,38 +504,45 @@ public class EncryptionKeyController {
   /**
    * Manually trigger full re-encryption process.
    *
-   * <p>This endpoint creates batches for all old keys and processes them immediately. Useful for
-   * testing or emergency re-encryption operations.
+   * <p>This endpoint creates batches for all old keys and enqueues background processing. Useful
+   * for testing or emergency re-encryption operations.
    *
+   * @param auth the authenticated Global Admin
+   * @param httpRequest the HTTP request (client IP / user-agent)
    * @return summary of re-encryption operation
    */
   @Operation(
       summary = "Trigger full re-encryption",
       description =
           "Accepts a manual full re-encryption request: creates batches for old keys and enqueues"
-              + " background processing. Returns immediately; use the batches list for progress.")
+              + " background processing. Returns immediately; use the batches list for progress."
+              + " Global Admin only.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "202",
         description = "Re-encryption accepted for background processing"),
     @ApiResponse(responseCode = "400", description = "Invalid request (encryption not available)"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(responseCode = "500", description = "Failed to enqueue re-encryption")
   })
-  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/reencrypt/trigger")
-  public ResponseEntity<ReencryptionTriggerResponse> triggerFullReencryption() {
+  public ResponseEntity<ReencryptionTriggerResponse> triggerFullReencryption(
+      Authentication auth, HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    Integer adminId = resolveAdminId(auth);
     try {
-      logger.info("Manual full re-encryption accepted by admin");
+      logger.info("Manual full re-encryption accepted by adminId={}", adminId);
       ReencryptionService.ManualReencryptionEnqueueResult result =
           reencryptionService.enqueueFullReencryption();
 
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.REENCRYPTION_STARTED)
-              .eventAction("manual_full_reencryption_accepted")
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.REENCRYPTION_STARTED,
+                  AdminAuditConstants.ENCRYPTION_FULL_REENCRYPTION_ACCEPTED)
               .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress("127.0.0.1")
+              .adminId(adminId)
               .eventDetails(
                   AuditDetailsBuilder.builder()
                       .custom("batches_enqueued", result.batchesEnqueued())
@@ -507,17 +568,17 @@ public class EncryptionKeyController {
     } catch (Exception e) {
       logger.error("Full re-encryption enqueue failed", e);
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.REENCRYPTION_FAILED)
-              .eventAction("manual_full_reencryption_accepted")
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.REENCRYPTION_FAILED,
+                  AdminAuditConstants.ENCRYPTION_FULL_REENCRYPTION_ACCEPTED)
               .eventStatus(EventStatus.ERROR)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress("127.0.0.1")
+              .adminId(adminId)
+              .errorMessage(e.getMessage())
               .eventDetails(
                   AuditDetailsBuilder.builder()
                       .errorSummary("Manual full re-encryption enqueue failed: " + e.getMessage())
                       .toJson())
-              .errorMessage(e.getMessage())
               .build());
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
           .body(
@@ -529,17 +590,19 @@ public class EncryptionKeyController {
   /**
    * Manually trigger re-encryption for a specific old key.
    *
-   * <p>This endpoint creates and processes re-encryption batches for a specific old key. Useful for
+   * <p>This endpoint creates and enqueues re-encryption batches for a specific old key. Useful for
    * targeted re-encryption operations.
    *
    * @param keyId the old key ID to re-encrypt
+   * @param auth the authenticated Global Admin
+   * @param httpRequest the HTTP request (client IP / user-agent)
    * @return summary of re-encryption operation for this key
    */
   @Operation(
       summary = "Trigger re-encryption for specific key",
       description =
           "Accepts re-encryption for a specific old key: creates batches and enqueues background"
-              + " processing. The key must not be PRIMARY. Returns immediately.")
+              + " processing. The key must not be PRIMARY. Returns immediately. Global Admin only.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "202",
@@ -547,25 +610,28 @@ public class EncryptionKeyController {
     @ApiResponse(
         responseCode = "400",
         description = "Invalid request (key not found or is PRIMARY)"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(responseCode = "404", description = "Key not found"),
     @ApiResponse(responseCode = "500", description = "Failed to enqueue re-encryption")
   })
-  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/{keyId}/reencrypt")
   public ResponseEntity<ReencryptionKeyResponse> triggerReencryptionForKey(
-      @PathVariable Long keyId) {
+      @PathVariable Long keyId, Authentication auth, HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    Integer adminId = resolveAdminId(auth);
     try {
-      logger.info("Manual re-encryption accepted for key {} by admin", keyId);
+      logger.info("Manual re-encryption accepted for key {} by adminId={}", keyId, adminId);
       ReencryptionService.ManualReencryptionEnqueueResult result =
           reencryptionService.enqueueReencryptionForKey(keyId);
 
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.REENCRYPTION_STARTED)
-              .eventAction("manual_key_reencryption_accepted")
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.REENCRYPTION_STARTED,
+                  AdminAuditConstants.ENCRYPTION_KEY_REENCRYPTION_ACCEPTED)
               .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress("127.0.0.1")
+              .adminId(adminId)
               .eventDetails(
                   AuditDetailsBuilder.builder()
                       .custom("key_id", keyId)
@@ -602,19 +668,19 @@ public class EncryptionKeyController {
     } catch (Exception e) {
       logger.error("Re-encryption for key {} enqueue failed", keyId, e);
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.REENCRYPTION_FAILED)
-              .eventAction("manual_key_reencryption_accepted")
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.REENCRYPTION_FAILED,
+                  AdminAuditConstants.ENCRYPTION_KEY_REENCRYPTION_ACCEPTED)
               .eventStatus(EventStatus.ERROR)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress("127.0.0.1")
+              .adminId(adminId)
+              .errorMessage(e.getMessage())
               .eventDetails(
                   AuditDetailsBuilder.builder()
                       .custom("key_id", keyId)
                       .errorSummary(
                           "Manual re-encryption for key enqueue failed: " + e.getMessage())
                       .toJson())
-              .errorMessage(e.getMessage())
               .build());
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
           .body(
@@ -630,22 +696,28 @@ public class EncryptionKeyController {
    * batches will be processed by the scheduled job. Useful for preparing batches before scheduled
    * processing.
    *
+   * @param auth the authenticated Global Admin
+   * @param httpRequest the HTTP request (client IP / user-agent)
    * @return summary of batch creation operation
    */
   @Operation(
       summary = "Create re-encryption batches",
       description =
           "Creates re-encryption batches for all old keys without processing them. Batches will be"
-              + " processed by the scheduled job.")
+              + " processed by the scheduled job. Global Admin only.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Batches created successfully"),
+    @ApiResponse(responseCode = "401", description = "Not authenticated"),
+    @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(responseCode = "500", description = "Batch creation failed")
   })
-  @PreAuthorize("hasRole('ADMIN')")
   @PostMapping("/reencrypt/create-batches")
-  public ResponseEntity<BatchCreationResponse> createBatches() {
+  public ResponseEntity<BatchCreationResponse> createBatches(
+      Authentication auth, HttpServletRequest httpRequest) {
+    ClientContext context = ClientContext.from(httpRequest);
+    Integer adminId = resolveAdminId(auth);
     try {
-      logger.info("Manual batch creation triggered by admin");
+      logger.info("Manual batch creation triggered by adminId={}", adminId);
 
       // Count existing batches before creation
       long batchesBefore = batchRepository.count();
@@ -658,12 +730,12 @@ public class EncryptionKeyController {
       int batchesCreated = (int) (batchesAfter - batchesBefore);
 
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.REENCRYPTION_STARTED)
-              .eventAction("manual_batch_creation")
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.REENCRYPTION_STARTED,
+                  AdminAuditConstants.ENCRYPTION_BATCH_CREATION_MANUAL)
               .eventStatus(EventStatus.SUCCESS)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress("127.0.0.1")
+              .adminId(adminId)
               .eventDetails(
                   AuditDetailsBuilder.builder().custom("batches_created", batchesCreated).toJson())
               .build());
@@ -674,21 +746,32 @@ public class EncryptionKeyController {
     } catch (Exception e) {
       logger.error("Batch creation failed", e);
       auditLogService.log(
-          AuditLog.builder()
-              .eventType(EventType.REENCRYPTION_FAILED)
-              .eventAction("manual_batch_creation")
+          AuditHelper.createAdminAudit(
+                  context,
+                  EventType.REENCRYPTION_FAILED,
+                  AdminAuditConstants.ENCRYPTION_BATCH_CREATION_MANUAL)
               .eventStatus(EventStatus.ERROR)
-              .apiName(ApiName.ADMIN_API)
-              .ipAddress("127.0.0.1")
+              .adminId(adminId)
+              .errorMessage(e.getMessage())
               .eventDetails(
                   AuditDetailsBuilder.builder()
                       .errorSummary("Manual batch creation failed: " + e.getMessage())
                       .toJson())
-              .errorMessage(e.getMessage())
               .build());
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
           .body(new BatchCreationResponse(0, "Batch creation failed: " + e.getMessage()));
     }
+  }
+
+  /**
+   * Resolves the acting administrator id from the security context.
+   *
+   * @param auth Spring Security authentication
+   * @return admin id when the principal is an {@link AdminPrincipal}; otherwise {@code null}
+   */
+  private static Integer resolveAdminId(Authentication auth) {
+    AdminPrincipal principal = AdminProvisioningService.extractAdminPrincipal(auth);
+    return principal != null ? principal.adminId() : null;
   }
 
   private EncryptionKeyResponse toResponse(EncryptionKey key) {

@@ -47,10 +47,17 @@ Do not paste full chat transcripts.
 | Functional tests | yes / no / deferred | |
 | Elective functional | yes / no / n/a | |
 | Playwright Admin UI | yes / no / deferred / n/a | |
+| Exact pin preserved (no accidental `^`) | yes / no / n/a | |
+| Documented pins synced (`AGENTS.md`, …) | yes / no / n/a | |
+| Workspace install (`npm ls` / Yarn clean) | yes / no / n/a | |
+| Codegen after Orval / OpenAPI generator bump | yes / no / n/a | |
 | Exploratory human | yes / no / n/a | |
 
 If **T1-only shortcut** was used, state explicitly that stack/Playwright were deferred to the next
 T2+ session or weekly milestone.
+
+Pin/install/codegen rows are **required when a merge touched those surfaces**; mark `n/a` only when
+no Admin UI / mobile / SDK pin or codegen tool moved in this pass.
 
 ## Holds and deferrals
 
