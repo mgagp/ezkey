@@ -63,7 +63,7 @@ a session-bound CSRF token.
 | P0 | SEC-022 | Cross-tenant API key revocation | Closed — PR #363 |
 | P0 | SEC-017 | Tenant Admin can operate global encryption keys | Closed — Global Admin only on `/api/v1/encryption-keys/**` |
 | P1 | SEC-023 | Cross-tenant API key metadata reads | Closed — PR #363 |
-| P1 | SEC-024 | Recovery username/account-state enumeration | Closed — anti-enumeration (PR TBD) |
+| P1 | SEC-024 | Recovery username/account-state enumeration | Closed — PR #365 |
 | P1 | SEC-025 | API-key pending count is instance-wide | Scope or deny |
 | P1 | SEC-018 | Encryption-key audit attribution gap | Closed — with SEC-017 (manual ops: adminId + ClientContext; resume audited) |
 | P1 | SEC-026–027 | Admin UI recovery/logout session lifecycle | Focused UI/API boundary PR |
@@ -439,7 +439,7 @@ expiration, revocation, and last-use metadata. Secret keys are not returned.
 **OWASP API:** API2 Broken Authentication  
 **CWE:** CWE-204 Observable Response Discrepancy  
 **Status:** Closed — generic client failure message (SEC-006 pattern); distinct reasons in audit/logs
-only. PR TBD.
+only. PR #365.
 
 #### Evidence
 
@@ -690,7 +690,7 @@ None of these candidates is presented as a demonstrated authentication bypass.
 
 5. **SEC-023:** Closed — PR #363 (scoped with SEC-022).
 6. **SEC-024:** Closed — recovery failure responses normalized (generic client message; distinct
-   reasons in audit/logs only). PR TBD.
+   reasons in audit/logs only). PR #365.
 7. **SEC-025:** scope or deny API-key access to pending count.
 
 ### Admin UI session lifecycle
