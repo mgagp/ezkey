@@ -2963,9 +2963,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-navigation/native-stack@npm:7.18.0":
-  version: 7.18.0
-  resolution: "@react-navigation/native-stack@npm:7.18.0"
+"@react-navigation/native-stack@npm:7.18.1":
+  version: 7.18.1
+  resolution: "@react-navigation/native-stack@npm:7.18.1"
   dependencies:
     "@react-navigation/elements": "npm:^2.9.31"
     color: "npm:^4.2.3"
@@ -2977,7 +2977,7 @@ __metadata:
     react-native: "*"
     react-native-safe-area-context: ">= 4.0.0"
     react-native-screens: ">= 4.0.0"
-  checksum: 10c0/0ec028f5a737b611160c989035e50584b097391f046042c60c9e66eb8f8eb1f47110a1eea71e4c072f9a4bc6ad36bca45b444f3be93db8c21936e300a393c00f
+  checksum: 10c0/23ec08f1745db314bac206cd30037c6b874aaed9fc51fd80d5cd0a50c3c698622f4209f729a9bb6e9db597ed003903d7c2fc9c527b1efb41ffa68f0918809dab
   languageName: node
   linkType: hard
 
@@ -5980,7 +5980,7 @@ __metadata:
     "@react-native/metro-config": "npm:0.86.0"
     "@react-native/typescript-config": "npm:0.86.0"
     "@react-navigation/native": "npm:7.3.9"
-    "@react-navigation/native-stack": "npm:7.18.0"
+    "@react-navigation/native-stack": "npm:7.18.1"
     "@react-navigation/stack": "npm:7.10.12"
     "@rnx-kit/third-party-notices": "npm:3.0.0"
     "@tanstack/react-query": "npm:5.101.2"
