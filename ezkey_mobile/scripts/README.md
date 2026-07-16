@@ -66,7 +66,7 @@ It combines:
 
 - available upgrades (`npm-check-updates`)
 - high-severity audit signal (`yarn npm audit --severity high`)
-- ecosystem gates for known deferred majors (ESLint 10, Jest 30)
+- ecosystem gates for known deferred majors (ESLint 10, Jest 30, TypeScript 7+)
 
 From `ezkey_mobile/`:
 
