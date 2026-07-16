@@ -96,6 +96,27 @@ Run **once** at end of session (or at a milestone if the session is split), not 
 CIs were green, closeout may be `./scripts/build.sh` only, with an explicit campaign-note line that
 stack/Playwright were deferred to the next T2+ session or weekly milestone.
 
+## Pin, install, and codegen hygiene (after merges)
+
+Run this checklist in the **same closeout** whenever a merged PR changed a declared pin or a
+codegen tool. Merge + CI green is not enough if docs or local `node_modules` stay behind.
+
+1. **Exact pin preserved:** for packages the repo pins without a caret (notably Orval), confirm
+   `package.json` still uses an exact version (`8.22.0`, not `^8.22.0`) after any manual
+   `npm install` follow-up.
+2. **Documented pins synced:** update version strings in `AGENTS.md` (and any module note that
+   restates the pin) in the **same change set** as the bump when the docs call out an exact pin.
+3. **Workspace install:** in each touched npm/Yarn workspace (`ezkey-admin-ui`, `ezkey_mobile`,
+   SDK, …), run the project’s normal install so `npm ls <pkg>` / Yarn does not report
+   `invalid: "X" from the root project`. Cold agents and the maintainer workstation both need this;
+   Dependabot only updates the lockfile in git.
+4. **Codegen when Orval (or OpenAPI generator) moved:** run `npm run generate:api` (Admin UI) and/or
+   the mobile generate path; commit regenerated clients only if the bump actually changes output.
+   Prefer this **before** Playwright so missing generated imports do not fail the closeout ladder.
+
+Record completion (or N/A) in the campaign note validation table. Orval / OpenAPI generator bumps
+are already **T4 hard escalators** — this checklist is the operational tail of that policy.
+
 ## Merge rules
 
 - Lots = **decision + validation batches**, not umbrella rewrite commits.
