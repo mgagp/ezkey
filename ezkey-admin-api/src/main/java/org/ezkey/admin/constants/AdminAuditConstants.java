@@ -361,4 +361,18 @@ public final class AdminAuditConstants {
 
   /** Audit action for a manually triggered encryption key rotation. */
   public static final String ENCRYPTION_KEY_ROTATION_MANUAL = "encryption_key_rotation_manual";
+
+  /** Audit action for accepting a manual full re-encryption enqueue. */
+  public static final String ENCRYPTION_FULL_REENCRYPTION_ACCEPTED =
+      "manual_full_reencryption_accepted";
+
+  /** Audit action for accepting re-encryption enqueue for a specific old key. */
+  public static final String ENCRYPTION_KEY_REENCRYPTION_ACCEPTED =
+      "manual_key_reencryption_accepted";
+
+  /** Audit action for creating re-encryption batches without processing. */
+  public static final String ENCRYPTION_BATCH_CREATION_MANUAL = "manual_batch_creation";
+
+  /** Audit action for resuming a failed or paused re-encryption batch. */
+  public static final String ENCRYPTION_BATCH_RESUME = "manual_batch_resume";
 }

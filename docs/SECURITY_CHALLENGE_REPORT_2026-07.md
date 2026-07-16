@@ -59,13 +59,13 @@ a session-bound CSRF token.
 
 | Priority | ID | Finding | Disposition |
 | --- | --- | --- | --- |
-| P0 | SEC-021 | Recovery token receives full administrator authority | Fix immediately |
-| P0 | SEC-022 | Cross-tenant API key revocation | Fix immediately |
-| P0 | SEC-017 | Tenant Admin can operate global encryption keys | Fix immediately |
-| P1 | SEC-023 | Cross-tenant API key metadata reads | Fix with SEC-022 |
+| P0 | SEC-021 | Recovery token receives full administrator authority | Closed — PR #359 |
+| P0 | SEC-022 | Cross-tenant API key revocation | Closed — PR #363 |
+| P0 | SEC-017 | Tenant Admin can operate global encryption keys | Closed — Global Admin only on `/api/v1/encryption-keys/**` |
+| P1 | SEC-023 | Cross-tenant API key metadata reads | Closed — PR #363 |
 | P1 | SEC-024 | Recovery username/account-state enumeration | Align with SEC-006 |
 | P1 | SEC-025 | API-key pending count is instance-wide | Scope or deny |
-| P1 | SEC-018 | Encryption-key audit attribution gap | Fix with SEC-017 |
+| P1 | SEC-018 | Encryption-key audit attribution gap | Closed — with SEC-017 (manual ops: adminId + ClientContext; resume audited) |
 | P1 | SEC-026–027 | Admin UI recovery/logout session lifecycle | Focused UI/API boundary PR |
 | P2 | SEC-019 | Conditional backend dependency advisories | Focused dependency PR |
 | P2 | SEC-020 | Native Auth API exposes metrics/info | Harden outside local QA |
@@ -162,6 +162,10 @@ does not expose raw Tink key material, and existing key-state guards limit some 
 5. Review other platform-global controllers using the same role vocabulary; alerts and audit-chain
    integrity endpoints already use the narrower role and provide a useful pattern.
 
+**Status (2026-07-15):** Closed — class-level `@PreAuthorize("hasRole('GLOBAL_ADMIN')")` on
+`EncryptionKeyController`; WebMvc negative tests for Tenant Admin / `ROLE_ADMIN` / API key; docs
+updated to Global Admin only.
+
 ---
 
 ### SEC-018 — Encryption-key operations lack reliable actor and source attribution
@@ -213,6 +217,11 @@ operations.
    enqueue failure.
 
 Do not let the broader audit cleanup delay the SEC-017 authorization fix.
+
+**Status (2026-07-15):** Closed with SEC-017 — manual controller mutations attach `adminId` and
+`ClientContext` (IP / user-agent); `resumeBatch` now audits; generic rotate error path attributes
+the actor. Scheduler / core-service jobs remain explicit system actors via `triggeredBy` /
+`createdBy` (`SYSTEM`); loopback IP there is in-process, not a remote operator claim.
 
 ---
 
@@ -670,17 +679,16 @@ None of these candidates is presented as a demonstrated authentication bypass.
 
 ### Immediate
 
-1. **SEC-021:** enforce the recovery token's reset-only purpose.
-2. **SEC-022:** add object authorization before API key revocation.
-3. **SEC-017:** restrict all encryption-key routes to Global Admin.
-4. Add negative authorization tests for all three boundaries.
+1. **SEC-021:** Closed — PR #359 (recovery token purpose boundary).
+2. **SEC-022:** Closed — PR #363 (API key object authorization).
+3. **SEC-017:** Closed — Global Admin only on all encryption-key routes.
+4. **SEC-018:** Closed with SEC-017 — actor and client context on manual key operations.
 
 ### Next authorization and authentication corrections
 
-5. **SEC-023:** scope API key detail and per-integration list routes.
+5. **SEC-023:** Closed — PR #363 (scoped with SEC-022).
 6. **SEC-024:** normalize recovery failure responses.
 7. **SEC-025:** scope or deny API-key access to pending count.
-8. **SEC-018:** attach actor and real client context to manual key operations.
 
 ### Admin UI session lifecycle
 

@@ -1996,15 +1996,17 @@ Authorization: Bearer ezkey_admin_token...
 
 Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys are automatically rotated on a schedule, and data encrypted with old keys can be re-encrypted with new keys.
 
+**Authorization:** All `/api/v1/encryption-keys/**` routes are **Global Admin only**. Tenant Admins and API-key callers receive **403 Forbidden**. Manual mutations are audited with the acting `adminId`, client IP, and user-agent. Scheduled rotation / re-encryption jobs remain distinct system actors in core services (`triggeredBy` / `createdBy` = `SYSTEM`).
+
 ### Encryption Key Endpoints
 
-**GET    /api/v1/encryption-keys**                    // List encryption keys (paginated)
-**GET    /api/v1/encryption-keys/primary**           // Get current primary key
-**GET    /api/v1/encryption-keys/{keyId}**           // Get key details
-**POST   /api/v1/encryption-keys/rotate**            // Manually trigger key rotation
-**GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches (paginated, optional filters)
-**POST   /api/v1/encryption-keys/reencryption-batches/{batchId}/resume** // Resume failed batch
-**POST   /api/v1/encryption-keys/reencrypt/create-batches** // Create re-encryption batches without processing
+**GET    /api/v1/encryption-keys**                    // List encryption keys (paginated) — Global Admin
+**GET    /api/v1/encryption-keys/primary**           // Get current primary key — Global Admin
+**GET    /api/v1/encryption-keys/{keyId}**           // Get key details — Global Admin
+**POST   /api/v1/encryption-keys/rotate**            // Manually trigger key rotation — Global Admin
+**GET    /api/v1/encryption-keys/reencryption-batches** // List re-encryption batches (paginated, optional filters) — Global Admin
+**POST   /api/v1/encryption-keys/reencryption-batches/{batchId}/resume** // Resume failed batch — Global Admin
+**POST   /api/v1/encryption-keys/reencrypt/create-batches** // Create re-encryption batches without processing — Global Admin
 
 #### Manual key rotation
 
@@ -2118,10 +2120,10 @@ Authorization: Bearer ezkey_admin_token...
 - **500 Internal Server Error**: Re-encryption processing failed
 
 **Security Considerations:**
-- Requires ADMIN role
-- All operations are audited
+- Global Admin only (Tenant Admin / API key → 403)
+- All operations are audited with acting adminId and client context
 - May process large amounts of data - use with caution in production
-- Batches are processed immediately (no throttling limits)
+- Batches are enqueued for background processing (progress via batches list)
 
 ---
 
@@ -2151,8 +2153,8 @@ The `batchesCreated` field is the **net new batch rows** created in this call (c
 - **500 Internal Server Error**: Batch creation failed
 
 **Security Considerations:**
-- Requires ADMIN role
-- Audited as manual batch creation
+- Global Admin only (Tenant Admin / API key → 403)
+- Audited as manual batch creation with acting adminId and client context
 
 ---
 
@@ -2193,9 +2195,9 @@ Authorization: Bearer ezkey_admin_token...
 - **500 Internal Server Error**: Re-encryption processing failed
 
 **Security Considerations:**
-- Requires ADMIN role
-- All operations are audited
+- Global Admin only (Tenant Admin / API key → 403)
+- All operations are audited with acting adminId and client context
 - May process large amounts of data - use with caution in production
-- Batches are processed immediately (no throttling limits)
+- Batches are enqueued for background processing (progress via batches list)
 
 ---
