@@ -65,7 +65,7 @@ a session-bound CSRF token.
 | P0 | SEC-017 | Tenant Admin can operate global encryption keys | Closed — Global Admin only on `/api/v1/encryption-keys/**` |
 | P1 | SEC-023 | Cross-tenant API key metadata reads | Closed — PR #363 |
 | P1 | SEC-024 | Recovery username/account-state enumeration | Closed — PR #365 |
-| P1 | SEC-025 | API-key pending count is instance-wide | Closed — Admin-only (deny ROLE_API_KEY) |
+| P1 | SEC-025 | API-key pending count is instance-wide | Closed — PR #368 |
 | P1 | SEC-018 | Encryption-key audit attribution gap | Closed — with SEC-017 (manual ops: adminId + ClientContext; resume audited) |
 | P1 | SEC-026–027 | Admin UI recovery/logout session lifecycle | Focused UI/API boundary PR |
 | P2 | SEC-019 | Conditional backend dependency advisories | Focused dependency PR |
@@ -510,7 +510,7 @@ integration's scope.
 (`hasRole('ADMIN')`), matching the sibling list endpoint and the Admin UI dashboard purpose.
 Integration API keys receive **403**. Global / Tenant Admin scoping is unchanged. Regression:
 `AuthAttemptPendingCountSecurityWebMvcTest`. OpenAPI annotations and generated Admin API specs
-refreshed.
+refreshed. PR #368.
 
 ### SEC-026 — Recovery token persists across normal login and logout
 
@@ -699,7 +699,7 @@ None of these candidates is presented as a demonstrated authentication bypass.
 6. **SEC-024:** Closed — recovery failure responses normalized (generic client message; distinct
    reasons in audit/logs only). PR #365.
 7. **SEC-025:** Closed — Admin-only deny of `ROLE_API_KEY` on pending-count (dashboard
-   telemetry; sibling list already Admin-only).
+   telemetry; sibling list already Admin-only). PR #368.
 
 ### Admin UI session lifecycle
 
