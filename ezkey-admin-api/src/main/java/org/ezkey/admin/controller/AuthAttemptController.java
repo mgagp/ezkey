@@ -241,22 +241,27 @@ public class AuthAttemptController {
   /**
    * Returns the count of pending auth attempts for the current admin's scope.
    *
-   * <p>Designed for dashboard live widget (e.g. 10s refresh). Tenant Admin sees only their tenant's
-   * pending count; Global Admin sees instance-wide count.
+   * <p>Designed for the Admin UI / operator dashboard live widget (e.g. 10s refresh). Tenant Admin
+   * sees only their tenant's pending count; Global Admin sees instance-wide count. Integration API
+   * keys are denied (SEC-025) — this is operator telemetry, not an integration MFA surface.
    *
    * @return JSON object with single field {@code count}
    */
   @Operation(
       summary = "Get pending auth attempt count",
       description =
-          "Returns the number of auth attempts with status PENDING for the current scope. "
-              + "Designed for dashboard live widget (e.g. 10s refresh).")
+          "Returns the number of auth attempts with status PENDING for the current administrator "
+              + "scope. Designed for the Admin UI dashboard live widget (e.g. 10s refresh). "
+              + "Administrator Bearer only — Integration API keys are not permitted.")
   @ApiResponses(
       value = {
         @ApiResponse(responseCode = "200", description = "Pending count"),
-        @ApiResponse(responseCode = "401", description = "Not authenticated")
+        @ApiResponse(responseCode = "401", description = "Not authenticated"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden — administrator role required (API keys denied)")
       })
-  @PreAuthorize("hasAnyRole('ADMIN', 'API_KEY')")
+  @PreAuthorize("hasRole('ADMIN')")
   @GetMapping("/pending-count")
   public ResponseEntity<java.util.Map<String, Long>> getPendingCount() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
