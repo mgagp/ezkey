@@ -64,6 +64,12 @@ public class AdminRecoveryService {
 
   private static final Logger logger = LoggerFactory.getLogger(AdminRecoveryService.class);
 
+  /**
+   * Generic client-facing message for all pre-authentication recovery failures (SEC-024). Distinct
+   * internal reasons stay in logs and structured audit only.
+   */
+  public static final String GENERIC_RECOVERY_FAILURE_MESSAGE = "Invalid username or recovery code";
+
   private static final String RECOVERY_CODE_CHARS =
       "0123456789"; // Digits only (106-bit entropy with 32 digits)
   private final EzkeyAdminRepository adminRepository;
@@ -165,16 +171,15 @@ public class AdminRecoveryService {
     EzkeyAdmin admin =
         adminRepository
             .findByUsername(username)
-            .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
+            .orElseThrow(() -> rejectRecovery(username, "Invalid credentials"));
 
     if (!admin.getActive()) {
-      throw new AuthenticationException("Account is inactive");
+      throw rejectRecovery(username, "Account is inactive");
     }
 
     // 2. Check if admin has recovery codes
     if (admin.getRecoveryCodes() == null || admin.getRecoveryCodes().length == 0) {
-      logger.warn("❌ No recovery codes available for admin: {}", username);
-      throw new AuthenticationException("No recovery codes available for this account");
+      throw rejectRecovery(username, "No recovery codes available for this account");
     }
 
     // 3. Validate recovery code against hashed codes
@@ -193,8 +198,7 @@ public class AdminRecoveryService {
     }
 
     if (!codeFound) {
-      logger.warn("❌ Invalid recovery code for admin: {}", username);
-      throw new AuthenticationException("Invalid recovery code");
+      throw rejectRecovery(username, "Invalid recovery code");
     }
 
     // 4. Update admin with remaining codes (single-use enforcement)
@@ -232,6 +236,19 @@ public class AdminRecoveryService {
         remainingCodes.size());
 
     return recoveryToken;
+  }
+
+  /**
+   * Logs a distinct internal recovery rejection reason and returns a client-safe exception
+   * (SEC-024).
+   *
+   * @param username administrator username attempted
+   * @param internalReason distinct reason retained for logs and audit mapping
+   * @return authentication exception whose {@link AuthenticationException#getMessage()} is generic
+   */
+  private static AuthenticationException rejectRecovery(String username, String internalReason) {
+    logger.warn("❌ Recovery rejected for admin: {} - Reason: {}", username, internalReason);
+    return new AuthenticationException(GENERIC_RECOVERY_FAILURE_MESSAGE, internalReason);
   }
 
   /**
