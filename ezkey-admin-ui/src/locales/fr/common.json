@@ -10,6 +10,10 @@
     "search": "Rechercher",
     "loading": "Chargement"
   },
+  "logout": {
+    "inProgress": "Déconnexion…",
+    "cookieRevocationFailed": "La déconnexion a échoué côté serveur. Votre session est encore active — réessayez."
+  },
   "pagination": {
     "page": "Page",
     "of": "sur",

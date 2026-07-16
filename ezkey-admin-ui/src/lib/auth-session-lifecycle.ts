@@ -29,3 +29,14 @@ export function clearLocalAuthOnSessionInvalidation(): void {
   clearSession();
   clearRecoverySession();
 }
+
+/**
+ * Whether logout may finish locally after the logout API failed.
+ *
+ * Cookie mode cannot delete the HttpOnly session cookie from JavaScript — failing closed
+ * keeps the operator on an authenticated shell so they can retry (SEC-027).
+ * Mode A stores the bearer in sessionStorage, so local wipe still ends the usable session.
+ */
+export function mayCompleteLogoutLocallyAfterApiFailure(cookieMode: boolean): boolean {
+  return !cookieMode;
+}

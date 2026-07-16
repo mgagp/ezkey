@@ -42,6 +42,7 @@ Several medium findings reinforce those primary defects:
 - **SEC-026 (MEDIUM): Recovery token persists across normal login and logout.** Closed — recovery
   cleared on login/logout/401.
 - **SEC-027 (MEDIUM): Cookie-mode logout reports local success when server revocation fails.**
+  Closed — cookie logout fail-closed with retry toast; Mode A may still wipe local bearer.
 
 The dependency review found current security advisories in the Maven graph. Most have
 configuration-specific preconditions that are not present in the reviewed Ezkey source, but the
@@ -69,7 +70,7 @@ a session-bound CSRF token.
 | P1 | SEC-025 | API-key pending count is instance-wide | Closed — PR #368 |
 | P1 | SEC-018 | Encryption-key audit attribution gap | Closed — with SEC-017 (manual ops: adminId + ClientContext; resume audited) |
 | P1 | SEC-026 | Recovery persists across login/logout | Closed — clear recovery on auth boundaries |
-| P1 | SEC-027 | Cookie-mode logout fail-open on API error | Open — fail-closed + retry |
+| P1 | SEC-027 | Cookie-mode logout fail-open on API error | Closed — fail-closed + retry toast |
 | P2 | SEC-019 | Conditional backend dependency advisories | Focused dependency PR |
 | P2 | SEC-020 | Native Auth API exposes metrics/info | Harden outside local QA |
 
@@ -586,6 +587,12 @@ Reloading or reopening the application can silently restore access.
 - Add a cookie-mode browser test where logout returns 500 and verify the application does not claim
   successful termination.
 
+#### Remediation status
+
+**Closed.** `HeaderLogoutButton` completes local logout only after `POST /logout` succeeds, or in
+Mode A (bearer in sessionStorage) after API failure. Cookie mode shows an error toast and keeps the
+authenticated shell so the operator can retry. Unit: `mayCompleteLogoutLocallyAfterApiFailure`.
+
 ---
 
 ## 4. Admin UI security assessment
@@ -626,8 +633,8 @@ confirmed session-lifecycle defects at the Admin UI / Admin API boundary.
 ### Browser-test judgment
 
 No browser test was run because this pass changed no behavior and no live stack was running.
-Follow-up implementation should add one focused cookie-mode logout failure scenario for SEC-027.
-Unit coverage for SEC-026 is in `auth-session-lifecycle.test.ts`. A role-visibility regression for
+Follow-up for cookie-mode **Playwright** (optional): logout API 500 must not navigate to login.
+Unit coverage for SEC-026/027 is in `auth-session-lifecycle.test.ts`. A role-visibility regression for
 SEC-017 is useful, but backend 403 tests—not Playwright—must prove that security boundary.
 
 ---
@@ -712,7 +719,8 @@ None of these candidates is presented as a demonstrated authentication bypass.
 ### Admin UI session lifecycle
 
 9. **SEC-026:** Closed — recovery cleared on login, logout, and 401 invalidation.
-10. **SEC-027:** make cookie-mode logout failure explicit and retryable.
+10. **SEC-027:** Closed — cookie-mode logout fail-closed with retry toast; Mode A may still
+    wipe local bearer after API failure.
 
 ### Dependency maintenance
 
