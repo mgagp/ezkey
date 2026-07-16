@@ -12,8 +12,8 @@
  */
 
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
-import {Camera} from 'react-native-vision-camera';
+import {ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Camera, useCameraDevice} from 'react-native-vision-camera';
 import {
   useBarcodeScannerOutput,
   type Barcode,
@@ -52,6 +52,9 @@ type Props = {
 export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onScanned}) => {
   const [isActive, setIsActive] = useState(false);
   const lastScannedRef = useRef<string | undefined>(undefined);
+  // VisionCamera 5.1+: resolve a concrete CameraDevice. Passing position string
+  // ("back") to <Camera /> can throw while the device list is still empty.
+  const device = useCameraDevice('back');
 
   useEffect(() => {
     setIsActive(visible);
@@ -96,17 +99,24 @@ export const EnrollmentScannerModal: React.FC<Props> = ({visible, onDismiss, onS
     onError: onScannerError,
   });
 
-  const content = useMemo(
-    () => (
+  const content = useMemo(() => {
+    if (device == null) {
+      return (
+        <View style={styles.cameraPlaceholder}>
+          <ActivityIndicator color="#f4f7ff" />
+        </View>
+      );
+    }
+
+    return (
       <Camera
         style={StyleSheet.absoluteFill}
-        device="back"
+        device={device}
         isActive={isActive}
         outputs={[barcodeOutput]}
       />
-    ),
-    [barcodeOutput, isActive],
-  );
+    );
+  }, [barcodeOutput, device, isActive]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onDismiss} transparent>
@@ -150,6 +160,12 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: 12,
     overflow: 'hidden',
+    backgroundColor: '#000',
+  },
+  cameraPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#000',
   },
   actions: {
