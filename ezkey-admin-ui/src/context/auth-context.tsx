@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   type AuthSession,
-  clearSession,
   getSession,
   isBrowserSessionCookieBuild,
   saveSession,
 } from '@/lib/auth';
 import { fetchApi } from '@/lib/api-client';
-import { clearIntegrityInvestigationSession } from '@/lib/integrity-investigation-session';
+import {
+  clearLocalAuthOnLogout,
+  clearLocalAuthOnSessionInvalidation,
+  clearRecoveryOnSuccessfulLogin,
+} from '@/lib/auth-session-lifecycle';
 import { queryClient } from '@/lib/query-client';
 import { AuthContext } from '@/context/auth-context-value';
 
@@ -35,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(restored);
       } catch {
         if (cancelled) return;
-        clearSession();
+        clearLocalAuthOnSessionInvalidation();
         queryClient.clear();
         setSession(null);
       } finally {
@@ -52,13 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback((newSession: AuthSession) => {
+    clearRecoveryOnSuccessfulLogin();
     saveSession(newSession);
     setSession(newSession);
   }, []);
 
   const logout = useCallback(() => {
-    clearSession();
-    clearIntegrityInvestigationSession();
+    clearLocalAuthOnLogout();
     queryClient.clear();
     setSession(null);
   }, []);

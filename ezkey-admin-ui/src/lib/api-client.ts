@@ -1,11 +1,11 @@
 import {
-  clearSession,
   getBrowserCredentials,
   getCsrfHeaderName,
   getCsrfToken,
   getToken,
   isUnsafeHttpMethod,
 } from './auth';
+import { clearLocalAuthOnSessionInvalidation } from './auth-session-lifecycle';
 
 /**
  * In development, BASE_URL is empty and Vite proxies /api/v1 → localhost:9080.
@@ -140,7 +140,7 @@ export async function fetchApi<T>(path: string, options: FetchOptions = {}): Pro
       }
       /** Session-scoped request (not login/public, not recovery bearer) — 401 always sends user to login. */
       if (requireAuth) {
-        clearSession();
+        clearLocalAuthOnSessionInvalidation();
         window.location.replace('/login');
         throw new ApiError(
           401,
@@ -175,7 +175,7 @@ export async function fetchBlobUrl(path: string): Promise<string> {
     credentials,
   });
   if (response.status === 401) {
-    clearSession();
+    clearLocalAuthOnSessionInvalidation();
     window.location.replace('/login');
     throw new ApiError(401, null, 'Session expired. Please log in again.', null);
   }

@@ -2,21 +2,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const replace = vi.fn();
 const authMocks = vi.hoisted(() => ({
-  clearSession: vi.fn(),
   getBrowserCredentials: vi.fn<() => RequestCredentials | undefined>(() => undefined),
   getCsrfHeaderName: vi.fn(() => 'X-CSRF-TOKEN'),
   getCsrfToken: vi.fn<() => string | null>(() => null),
   getToken: vi.fn(),
   isUnsafeHttpMethod: vi.fn((method?: string) => !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes((method ?? 'GET').toUpperCase())),
 }));
+const lifecycleMocks = vi.hoisted(() => ({
+  clearLocalAuthOnSessionInvalidation: vi.fn(),
+}));
 
 vi.mock('./auth', () => ({
-  clearSession: authMocks.clearSession,
   getBrowserCredentials: authMocks.getBrowserCredentials,
   getCsrfHeaderName: authMocks.getCsrfHeaderName,
   getCsrfToken: authMocks.getCsrfToken,
   getToken: authMocks.getToken,
   isUnsafeHttpMethod: authMocks.isUnsafeHttpMethod,
+}));
+
+vi.mock('./auth-session-lifecycle', () => ({
+  clearLocalAuthOnSessionInvalidation: lifecycleMocks.clearLocalAuthOnSessionInvalidation,
 }));
 
 import { ApiError, fetchApi, fetchBlobUrl } from './api-client';
@@ -38,7 +43,7 @@ describe('fetchApi', () => {
   beforeEach(() => {
     vi.stubGlobal('window', { location: { replace } });
     vi.stubGlobal('fetch', vi.fn());
-    authMocks.clearSession.mockReset();
+    lifecycleMocks.clearLocalAuthOnSessionInvalidation.mockReset();
     authMocks.getBrowserCredentials.mockReset();
     authMocks.getBrowserCredentials.mockReturnValue(undefined);
     authMocks.getCsrfHeaderName.mockReset();
@@ -91,7 +96,7 @@ describe('fetchApi', () => {
       message: 'Session expired. Please log in again.',
     });
 
-    expect(authMocks.clearSession).toHaveBeenCalledOnce();
+    expect(lifecycleMocks.clearLocalAuthOnSessionInvalidation).toHaveBeenCalledOnce();
     expect(replace).toHaveBeenCalledWith('/login');
   });
 
@@ -105,7 +110,7 @@ describe('fetchApi', () => {
       ApiError,
     );
 
-    expect(authMocks.clearSession).not.toHaveBeenCalled();
+    expect(lifecycleMocks.clearLocalAuthOnSessionInvalidation).not.toHaveBeenCalled();
     expect(replace).not.toHaveBeenCalled();
   });
 
@@ -122,7 +127,7 @@ describe('fetchApi', () => {
       }),
     ).rejects.toMatchObject({ status: 401 });
 
-    expect(authMocks.clearSession).not.toHaveBeenCalled();
+    expect(lifecycleMocks.clearLocalAuthOnSessionInvalidation).not.toHaveBeenCalled();
     expect(replace).not.toHaveBeenCalled();
   });
 });
@@ -131,7 +136,7 @@ describe('fetchBlobUrl', () => {
   beforeEach(() => {
     vi.stubGlobal('window', { location: { replace } });
     vi.stubGlobal('fetch', vi.fn());
-    authMocks.clearSession.mockReset();
+    lifecycleMocks.clearLocalAuthOnSessionInvalidation.mockReset();
     authMocks.getBrowserCredentials.mockReset();
     authMocks.getBrowserCredentials.mockReturnValue(undefined);
     authMocks.getCsrfHeaderName.mockReset();
@@ -159,7 +164,7 @@ describe('fetchBlobUrl', () => {
       message: 'Session expired. Please log in again.',
     });
 
-    expect(authMocks.clearSession).toHaveBeenCalledOnce();
+    expect(lifecycleMocks.clearLocalAuthOnSessionInvalidation).toHaveBeenCalledOnce();
     expect(replace).toHaveBeenCalledWith('/login');
   });
 });

@@ -39,8 +39,9 @@ Several medium findings reinforce those primary defects:
   codes.** Closed — generic client message (SEC-006 pattern); distinct reasons in audit/logs only.
 - **SEC-025 (MEDIUM): API-key callers receive an instance-wide pending authentication count.**
   Closed — Admin-only (`hasRole('ADMIN')`); Integration API keys receive 403.
-- **SEC-026 and SEC-027 (MEDIUM):** recovery state survives login/logout, and cookie-mode logout
-  presents local success even when server-side revocation failed.
+- **SEC-026 (MEDIUM): Recovery token persists across normal login and logout.** Closed — recovery
+  cleared on login/logout/401.
+- **SEC-027 (MEDIUM): Cookie-mode logout reports local success when server revocation fails.**
 
 The dependency review found current security advisories in the Maven graph. Most have
 configuration-specific preconditions that are not present in the reviewed Ezkey source, but the
@@ -67,7 +68,8 @@ a session-bound CSRF token.
 | P1 | SEC-024 | Recovery username/account-state enumeration | Closed — PR #365 |
 | P1 | SEC-025 | API-key pending count is instance-wide | Closed — PR #368 |
 | P1 | SEC-018 | Encryption-key audit attribution gap | Closed — with SEC-017 (manual ops: adminId + ClientContext; resume audited) |
-| P1 | SEC-026–027 | Admin UI recovery/logout session lifecycle | Focused UI/API boundary PR |
+| P1 | SEC-026 | Recovery persists across login/logout | Closed — clear recovery on auth boundaries |
+| P1 | SEC-027 | Cookie-mode logout fail-open on API error | Open — fail-closed + retry |
 | P2 | SEC-019 | Conditional backend dependency advisories | Focused dependency PR |
 | P2 | SEC-020 | Native Auth API exposes metrics/info | Harden outside local QA |
 
@@ -544,6 +546,12 @@ resume the recovery funnel—or call ordinary Admin API routes while SEC-021 rem
   cancellation, and session invalidation.
 - Add lifecycle tests covering recover → normal login → logout → reload.
 
+#### Remediation status
+
+**Closed.** `AuthProvider.login` / `logout` and 401 session invalidation clear recovery via
+`auth-session-lifecycle` helpers. Recovery completion/cancel paths already cleared. Unit coverage:
+`auth-session-lifecycle.test.ts`.
+
 ---
 
 ### SEC-027 — Cookie-mode logout reports local success when server revocation fails
@@ -618,8 +626,8 @@ confirmed session-lifecycle defects at the Admin UI / Admin API boundary.
 ### Browser-test judgment
 
 No browser test was run because this pass changed no behavior and no live stack was running.
-Follow-up implementation should add one focused cookie-mode logout failure scenario for SEC-027
-and lifecycle-level unit/integration coverage for SEC-026. A role-visibility regression for
+Follow-up implementation should add one focused cookie-mode logout failure scenario for SEC-027.
+Unit coverage for SEC-026 is in `auth-session-lifecycle.test.ts`. A role-visibility regression for
 SEC-017 is useful, but backend 403 tests—not Playwright—must prove that security boundary.
 
 ---
@@ -703,7 +711,7 @@ None of these candidates is presented as a demonstrated authentication bypass.
 
 ### Admin UI session lifecycle
 
-9. **SEC-026:** clear recovery state on login, logout, completion, cancellation, and invalidation.
+9. **SEC-026:** Closed — recovery cleared on login, logout, and 401 invalidation.
 10. **SEC-027:** make cookie-mode logout failure explicit and retryable.
 
 ### Dependency maintenance
