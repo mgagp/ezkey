@@ -786,7 +786,9 @@ public class AdminAuthController {
                 "Validation error (invalid recovery code format) or invalid request data"),
         @ApiResponse(
             responseCode = "403",
-            description = "Recovery failed (invalid or expired recovery code)"),
+            description =
+                "Recovery failed — generic message for all pre-authentication failures (unknown"
+                    + " user, inactive account, no codes, or wrong code; anti-enumeration)"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
   @PostMapping("/recover")
@@ -854,12 +856,14 @@ public class AdminAuthController {
 
       return ResponseEntity.ok(response);
 
-    } catch (org.ezkey.admin.exception.AuthenticationException e) {
+    } catch (AuthenticationException e) {
+      // SEC-024: client gets a single generic message; distinct reasons stay in logs + audit.
+      String internalDetail = e.getInternalDetail();
       logger.warn(
           "❌ Recovery failed for admin: {} from IP: {} - Reason: {}",
           request.username(),
           context.clientIp(),
-          e.getMessage());
+          internalDetail);
 
       rateLimitFilter.recordFailedAttempt(context.clientIp());
 
@@ -872,18 +876,20 @@ public class AdminAuthController {
                   AdminAuditConstants.RECOVERY_CODE_FAILED,
                   failTenantId)
               .eventStatus(EventStatus.FAILURE)
-              .errorMessage(e.getMessage())
+              .errorMessage(internalDetail)
               .adminId(failAdminId)
               .eventDetails(
                   RecoveryAuditDetails.recoveryCodeRejected(
                       request.username(),
                       failTenantId,
-                      RecoveryAuditDetails.recoveryRejectionReasonCode(e.getMessage()),
-                      e.getMessage()))
+                      RecoveryAuditDetails.recoveryRejectionReasonCode(internalDetail),
+                      internalDetail))
               .build());
 
-      return ResponseEntity.status(403)
-          .body(new AdminRecoveryResponseDto("Recovery failed: " + e.getMessage()));
+      return ResponseEntity.status(HttpStatus.FORBIDDEN)
+          .body(
+              new AdminRecoveryResponseDto(
+                  org.ezkey.admin.service.AdminRecoveryService.GENERIC_RECOVERY_FAILURE_MESSAGE));
 
     } catch (Exception e) {
       logger.error("❌ Recovery error for admin: {} - {}", request.username(), e.getMessage(), e);

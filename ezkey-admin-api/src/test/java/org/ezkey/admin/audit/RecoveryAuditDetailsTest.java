@@ -43,5 +43,11 @@ class RecoveryAuditDetailsTest {
         .isEqualTo("unknown_user");
     assertThat(RecoveryAuditDetails.recoveryRejectionReasonCode("Invalid recovery code"))
         .isEqualTo("invalid_code");
+    assertThat(
+            RecoveryAuditDetails.recoveryRejectionReasonCode(
+                "No recovery codes available for this account"))
+        .isEqualTo("no_codes_remaining");
+    assertThat(RecoveryAuditDetails.recoveryRejectionReasonCode("Account is inactive"))
+        .isEqualTo("account_inactive");
   }
 }

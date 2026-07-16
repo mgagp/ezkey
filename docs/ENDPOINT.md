@@ -592,10 +592,15 @@ Content-Type: application/json
 The `enrollmentId` is the administrator’s MFA enrollment to pass to `POST /api/v1/admin/enrollments/reset` (with the recovery token as bearer). See [ADMIN_UI_RECOVERY.md](ADMIN_UI_RECOVERY.md).
 
 **Failure Response (403 Forbidden):**
+
+All pre-authentication recovery failures return the same status and the same client-safe message
+(unknown username, inactive account, no recovery codes, or wrong code). Distinct reasons are
+recorded only in server logs and structured audit (`reason_code`).
+
 ```json
 {
   "success": false,
-  "message": "Recovery failed: Invalid recovery code"
+  "message": "Invalid username or recovery code"
 }
 ```
 
