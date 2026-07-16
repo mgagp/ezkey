@@ -20,6 +20,8 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - Keep the pull model: no background polling for auth attempts.
 - Do not reintroduce integration logos or related fields.
 - When discussing stack modernization, treat React, React Native, `react-native-vision-camera`, and camera-adjacent dependencies as a coupled compatibility slice rather than as independent bumps.
+- Do **not** add `react-native-worklets/plugin` to `babel.config.js` while the project is on **Babel 8**: the Worklets plugin still pulls Babel-7-era presets and fails the JS bundle (`Requires Babel "^7.0.0-0", but was loaded with "8.0.1"`). Revisit when Software Mansion ships Babel 8–compatible Worklets, or when a real frame-processor/`'worklet'` path needs that transform. The enrollment QR path (`useBarcodeScannerOutput` / ML Kit) does not require the plugin today.
+- For VisionCamera **5.1+**, resolve a concrete device with `useCameraDevice('back')` before mounting `<Camera />`. Passing the position string `device="back"` can throw while the device list is still empty (`This device does not have any "back" Cameras!`) and trip `AppErrorBoundary`.
 - Treat the current mobile product and security posture as **Android-first**. iOS is a later planned milestone, not a short-term parity target, so do not report missing iOS parity as a current defect unless documentation overclaims it.
 
 ## Contract-First Rules
