@@ -38,6 +38,7 @@ Several medium findings reinforce those primary defects:
 - **SEC-024 (MEDIUM): Recovery failures disclose whether an administrator exists and has recovery
   codes.** Closed — generic client message (SEC-006 pattern); distinct reasons in audit/logs only.
 - **SEC-025 (MEDIUM): API-key callers receive an instance-wide pending authentication count.**
+  Closed — Admin-only (`hasRole('ADMIN')`); Integration API keys receive 403.
 - **SEC-026 and SEC-027 (MEDIUM):** recovery state survives login/logout, and cookie-mode logout
   presents local success even when server-side revocation failed.
 
@@ -64,7 +65,7 @@ a session-bound CSRF token.
 | P0 | SEC-017 | Tenant Admin can operate global encryption keys | Closed — Global Admin only on `/api/v1/encryption-keys/**` |
 | P1 | SEC-023 | Cross-tenant API key metadata reads | Closed — PR #363 |
 | P1 | SEC-024 | Recovery username/account-state enumeration | Closed — PR #365 |
-| P1 | SEC-025 | API-key pending count is instance-wide | Scope or deny |
+| P1 | SEC-025 | API-key pending count is instance-wide | Closed — PR #368 |
 | P1 | SEC-018 | Encryption-key audit attribution gap | Closed — with SEC-017 (manual ops: adminId + ClientContext; resume audited) |
 | P1 | SEC-026–027 | Admin UI recovery/logout session lifecycle | Focused UI/API boundary PR |
 | P2 | SEC-019 | Conditional backend dependency advisories | Focused dependency PR |
@@ -503,7 +504,13 @@ integration's scope.
   integration ID carried by the API-key principal.
 - Test two tenants with pending attempts and verify each key sees only its own integration count.
 
----
+#### Remediation status
+
+**Closed — Option A (deny).** `GET /api/v1/auth-attempts/pending-count` is Admin-only
+(`hasRole('ADMIN')`), matching the sibling list endpoint and the Admin UI dashboard purpose.
+Integration API keys receive **403**. Global / Tenant Admin scoping is unchanged. Regression:
+`AuthAttemptPendingCountSecurityWebMvcTest`. OpenAPI annotations and generated Admin API specs
+refreshed. PR #368.
 
 ### SEC-026 — Recovery token persists across normal login and logout
 
@@ -691,7 +698,8 @@ None of these candidates is presented as a demonstrated authentication bypass.
 5. **SEC-023:** Closed — PR #363 (scoped with SEC-022).
 6. **SEC-024:** Closed — recovery failure responses normalized (generic client message; distinct
    reasons in audit/logs only). PR #365.
-7. **SEC-025:** scope or deny API-key access to pending count.
+7. **SEC-025:** Closed — Admin-only deny of `ROLE_API_KEY` on pending-count (dashboard
+   telemetry; sibling list already Admin-only). PR #368.
 
 ### Admin UI session lifecycle
 
@@ -731,7 +739,7 @@ unrelated architectural projects.
   - representative read and write routes pass authorization and preserve existing domain guards.
 - API key:
   - encryption-key routes return 403;
-  - pending count is denied or integration-scoped.
+  - pending count is denied for API keys (Admin-only).
 
 ### Authentication and UI session lifecycle
 

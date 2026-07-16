@@ -4659,7 +4659,7 @@
           "Auth Attempts"
         ],
         "summary": "Get pending auth attempt count",
-        "description": "Returns the number of auth attempts with status PENDING for the current scope. Designed for dashboard live widget (e.g. 10s refresh).",
+        "description": "Returns the number of auth attempts with status PENDING for the current administrator scope. Designed for the Admin UI dashboard live widget (e.g. 10s refresh). Administrator Bearer only — Integration API keys are not permitted.",
         "operationId": "getPendingCount",
         "responses": {
           "200": {
@@ -4678,6 +4678,20 @@
           },
           "401": {
             "description": "Not authenticated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — administrator role required (API keys denied)",
             "content": {
               "*/*": {
                 "schema": {
@@ -9681,42 +9695,42 @@
   },
   "x-tagGroups": [
     {
-      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ]
+      ],
+      "name": "Getting started"
     },
     {
-      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ]
+      ],
+      "name": "Tenant and integration setup"
     },
     {
-      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ]
+      ],
+      "name": "MFA operations"
     },
     {
-      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ]
+      ],
+      "name": "Administration"
     },
     {
-      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ]
+      ],
+      "name": "Platform operations"
     }
   ]
 }
