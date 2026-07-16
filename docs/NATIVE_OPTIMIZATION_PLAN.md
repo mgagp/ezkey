@@ -24,23 +24,28 @@ Add to `ezkey-auth-api/pom.xml`:
 Create/update `ezkey-auth-api/src/main/resources/application-native.properties` with:
 - AOT enabled
 - Reduced logging
-- Actuator metrics enabled (memory, JVM stats)
+- Health-only Actuator exposure by default
 - Optimized Tomcat settings
 
 ### Step 3: Query Memory Metrics
 
-Once running, query:
+For a local diagnostic run, add the dedicated `docker-dev` profile and native Compose override.
+The default native profile exposes only health. Once the diagnostic stack is running, query its
+published management port:
 ```bash
-curl http://localhost:8080/actuator/metrics/jvm.memory.used
-curl http://localhost:8080/actuator/metrics/jvm.memory.max
-curl http://localhost:8080/actuator/metrics/process.uptime
+SPRING_PROFILES_ACTIVE=docker-dev,native docker compose \
+  -f docker/docker-compose.native.yml \
+  -f docker/docker-compose.native.docker-dev.yml up -d
+curl http://localhost:8085/actuator/metrics/jvm.memory.used
+curl http://localhost:8085/actuator/metrics/jvm.memory.max
+curl http://localhost:8085/actuator/metrics/process.uptime
 ```
 
 **Advantages**:
 - ✅ No image modification needed
 - ✅ Real memory usage from JVM/process perspective
 - ✅ Can compare JVM vs Native directly
-- ✅ Production-safe
+- ✅ Bounded to an explicit local diagnostics profile
 
 ---
 
@@ -210,7 +215,7 @@ spring.aot.enabled=true
 - [ ] Add Actuator to auth-api
 - [ ] Create optimized `application-native.properties`
 - [ ] Rebuild native image
-- [ ] Query memory metrics
+- [ ] Query memory metrics through the explicit `docker-dev,native` diagnostics path
 
 ### Priority 3: Optimize Build
 - [ ] Review and enhance `native-image.properties` flags
@@ -234,8 +239,8 @@ spring.aot.enabled=true
 
 ## Next Steps
 
-1. **Add Actuator** to auth-api and create optimized native properties
+1. **Add Actuator** to auth-api and keep default native exposure health-only
 2. **Rebuild** native image with optimizations
-3. **Measure** using Actuator metrics
+3. **Measure** using Actuator metrics through the explicit local diagnostics profile
 4. **Compare** with JVM version
 5. **Iterate** on GraalVM flags if needed

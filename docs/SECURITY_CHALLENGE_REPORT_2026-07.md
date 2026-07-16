@@ -70,7 +70,7 @@ a session-bound CSRF token.
 | P1 | SEC-026 | Recovery persists across login/logout | Closed — PR #370 |
 | P1 | SEC-027 | Cookie-mode logout fail-open on API error | Closed — PR #370 |
 | P2 | SEC-019 | Conditional backend dependency advisories | Closed — PR #372 |
-| P2 | SEC-020 | Native Auth API exposes metrics/info | Harden outside local QA |
+| P2 | SEC-020 | Native Auth API exposes metrics/info | Closed — PR #374 |
 
 There is no evidence supporting a new critical-severity finding in this pass.
 
@@ -314,6 +314,14 @@ application information. This is reconnaissance value, not a direct authenticati
 - Keep metrics on a non-published internal management network, or protect them with an explicit
   monitoring authentication boundary.
 - Add a deployment test asserting that `/actuator/metrics` is unavailable from the public edge.
+
+#### Remediation status
+
+**Closed.** The native Auth API profile now exposes only `health`; the Admin API native profile was
+aligned as same-class hardening. Native Compose keeps the management ports published so existing
+host and container health checks remain compatible, but `/actuator/metrics` and `/actuator/info`
+are no longer exposed by the default native profiles. Richer Actuator diagnostics remain available
+only through the explicit local `docker-dev` override path. PR #374.
 
 ---
 
@@ -741,7 +749,8 @@ None of these candidates is presented as a demonstrated authentication bypass.
 
 ### Deployment hardening
 
-13. **SEC-020:** stop publishing unauthenticated metrics/info in the native Auth API topology.
+13. **SEC-020:** closed — native Auth/Admin profiles expose health only; richer diagnostics remain
+    explicit local `docker-dev` behavior.
 14. Tighten the documented dev/demo versus production boundary described in section 5.
 
 SEC-021, SEC-022, and SEC-017 are program-level security corrections. SEC-019, SEC-020, and the
