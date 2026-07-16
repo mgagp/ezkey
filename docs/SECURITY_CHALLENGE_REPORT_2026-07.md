@@ -69,8 +69,8 @@ a session-bound CSRF token.
 | P1 | SEC-024 | Recovery username/account-state enumeration | Closed — PR #365 |
 | P1 | SEC-025 | API-key pending count is instance-wide | Closed — PR #368 |
 | P1 | SEC-018 | Encryption-key audit attribution gap | Closed — with SEC-017 (manual ops: adminId + ClientContext; resume audited) |
-| P1 | SEC-026 | Recovery persists across login/logout | Closed — clear recovery on auth boundaries |
-| P1 | SEC-027 | Cookie-mode logout fail-open on API error | Closed — fail-closed + retry toast |
+| P1 | SEC-026 | Recovery persists across login/logout | Closed — PR #370 |
+| P1 | SEC-027 | Cookie-mode logout fail-open on API error | Closed — PR #370 |
 | P2 | SEC-019 | Conditional backend dependency advisories | Focused dependency PR |
 | P2 | SEC-020 | Native Auth API exposes metrics/info | Harden outside local QA |
 
@@ -551,7 +551,7 @@ resume the recovery funnel—or call ordinary Admin API routes while SEC-021 rem
 
 **Closed.** `AuthProvider.login` / `logout` and 401 session invalidation clear recovery via
 `auth-session-lifecycle` helpers. Recovery completion/cancel paths already cleared. Unit coverage:
-`auth-session-lifecycle.test.ts`.
+`auth-session-lifecycle.test.ts`. PR #370.
 
 ---
 
@@ -592,6 +592,7 @@ Reloading or reopening the application can silently restore access.
 **Closed.** `HeaderLogoutButton` completes local logout only after `POST /logout` succeeds, or in
 Mode A (bearer in sessionStorage) after API failure. Cookie mode shows an error toast and keeps the
 authenticated shell so the operator can retry. Unit: `mayCompleteLogoutLocallyAfterApiFailure`.
+PR #370.
 
 ---
 
@@ -718,9 +719,9 @@ None of these candidates is presented as a demonstrated authentication bypass.
 
 ### Admin UI session lifecycle
 
-9. **SEC-026:** Closed — recovery cleared on login, logout, and 401 invalidation.
+9. **SEC-026:** Closed — recovery cleared on login, logout, and 401 invalidation. PR #370.
 10. **SEC-027:** Closed — cookie-mode logout fail-closed with retry toast; Mode A may still
-    wipe local bearer after API failure.
+    wipe local bearer after API failure. PR #370.
 
 ### Dependency maintenance
 
