@@ -48,10 +48,8 @@ The dependency review found current security advisories in the Maven graph. Most
 configuration-specific preconditions that are not present in the reviewed Ezkey source, but the
 PostgreSQL JDBC driver finding is relevant to deployments that require TLS channel binding:
 
-- **SEC-019 (MEDIUM, conditional): Backend security patch lag.** `postgresql:42.7.11` is affected by
-  CVE-2026-54291 when `channelBinding=require`; `42.7.12` fixes it. Other reported Logback, Jackson,
-  and Tomcat advisories are not currently reachable through the reviewed Ezkey configuration, but
-  should still be cleared through a controlled dependency update.
+- **SEC-019 (MEDIUM, conditional): Backend security patch lag.** Closed — parent `dependencyManagement`
+  overrides bump PostgreSQL JDBC, Logback, Jackson, and Tomcat to patched versions (see § SEC-019).
 
 No high-severity production dependency issue was reported for the Admin UI. The UI also has strong
 baseline controls: no unsafe HTML rendering was found, production Caddy enforces a strict CSP, the
@@ -71,7 +69,7 @@ a session-bound CSRF token.
 | P1 | SEC-018 | Encryption-key audit attribution gap | Closed — with SEC-017 (manual ops: adminId + ClientContext; resume audited) |
 | P1 | SEC-026 | Recovery persists across login/logout | Closed — PR #370 |
 | P1 | SEC-027 | Cookie-mode logout fail-open on API error | Closed — PR #370 |
-| P2 | SEC-019 | Conditional backend dependency advisories | Focused dependency PR |
+| P2 | SEC-019 | Conditional backend dependency advisories | Closed — PR #372 |
 | P2 | SEC-020 | Native Auth API exposes metrics/info | Harden outside local QA |
 
 There is no evidence supporting a new critical-severity finding in this pass.
@@ -233,22 +231,35 @@ the actor. Scheduler / core-service jobs remain explicit system actors via `trig
 
 **Severity:** MEDIUM remediation priority; current exploitability varies  
 **Confidence:** High for affected versions, conditional for Ezkey exposure  
-**OWASP:** A06 Vulnerable and Outdated Components
+**OWASP:** A06 Vulnerable and Outdated Components  
+**Status:** Closed — PR #372. Parent `dependencyManagement` overrides apply the patched versions;
+`./scripts/build.sh` is green after the bump.
 
-#### SCA result
+#### SCA result (original scan)
 
 A Snyk Maven aggregate scan reported 44 module-level occurrences that reduce to these distinct
 runtime concerns:
 
-| Component | Current | Advisory | Fixed | Ezkey applicability |
-| --- | --- | --- | --- | --- |
-| PostgreSQL JDBC | 42.7.11 | CVE-2026-54291 | 42.7.12 | Conditional: only `channelBinding=require`; relevant to hardened remote-DB deployments |
-| Logback Core | 1.5.34 | CVE-2026-13006 | 1.5.36 or later per Snyk | Preconditions not found: requires Janino conditional config plus config/env control |
-| Jackson Databind 2.x / 3.x | 2.21.4 / 3.1.4 | CVE-2026-59889 | 2.21.5 / 3.1.5 | Vulnerable pattern not found: no `@JsonView` or `@JsonUnwrapped` usage |
-| Tomcat Embed Core | 11.0.22 | CVE-2026-55955 | 11.0.23 | Vulnerable cluster `EncryptInterceptor` not configured |
-| Tomcat Embed Core | 11.0.22 | CVE-2026-53434 | 11.0.23 | Vulnerable FFM connector/CRL configuration not found |
+| Component | Was (scan) | Advisory | Fixed target | Post-remediation | Disposition |
+| --- | --- | --- | --- | --- | --- |
+| PostgreSQL JDBC | 42.7.11 | CVE-2026-54291 | 42.7.12+ | **42.7.12** | **Resolved** — relevant when `channelBinding=require` |
+| Logback Core | 1.5.34 | CVE-2026-13006 | 1.5.36+ | **1.5.36** | **Resolved** — Janino conditional config not used in Ezkey |
+| Jackson Databind 2.x / 3.x | 2.21.4 / 3.1.4 | CVE-2026-59889 | 2.21.5 / 3.1.5 | **2.21.5 / 3.1.5** | **Resolved** — no `@JsonView` / `@JsonUnwrapped` usage found |
+| Tomcat Embed Core | 11.0.22 | CVE-2026-55955, CVE-2026-53434 | 11.0.23 | **11.0.23** | **Resolved** — cluster `EncryptInterceptor` and FFM CRL configs not present |
 
 The Admin UI production dependency scan reported zero high-or-critical issues.
+
+#### Post-remediation SCA note (2026-07-16)
+
+Re-scan after the override commit reports **no** remaining issues for the five rows above. Snyk still
+flags `log4j-api:2.25.4` (CVE-2026-49844) transitively via `log4j-to-slf4j`; that advisory was **not**
+in the original SEC-019 set and is left for a separate Spring Boot / logging hygiene pass.
+
+#### Implementation
+
+Overrides live in `pom.xml` (`postgresql.version`, `logback.version`, `tomcat.version`,
+`jackson-bom.version`, `jackson-2-bom.version`) with explicit `dependencyManagement` entries after the
+Spring Boot BOM import (imported BOMs do not inherit caller property values).
 
 #### PostgreSQL-specific risk
 
@@ -725,7 +736,7 @@ None of these candidates is presented as a demonstrated authentication bypass.
 
 ### Dependency maintenance
 
-11. **SEC-019:** update PostgreSQL JDBC first, then clear applicable BOM advisories.
+11. **SEC-019:** closed — PostgreSQL JDBC, Logback, Jackson, and Tomcat overrides in parent `pom.xml`.
 12. Re-run Maven SCA and preserve a deduplicated advisory/precondition summary.
 
 ### Deployment hardening
@@ -798,7 +809,7 @@ required for SEC-017, SEC-021, SEC-022, SEC-023, and SEC-025.
 | --- | --- | --- |
 | A01 Broken Access Control | SEC-017, SEC-021, SEC-022, SEC-023, SEC-025 | HIGH |
 | A05 Security Misconfiguration | SEC-020 | LOW |
-| A06 Vulnerable and Outdated Components | SEC-019 | MEDIUM, conditional |
+| A06 Vulnerable and Outdated Components | SEC-019 | Closed — dependency overrides |
 | A07 Identification and Authentication Failures | SEC-021, SEC-024, SEC-026, SEC-027 | HIGH |
 | A09 Security Logging and Monitoring Failures | SEC-018 | MEDIUM |
 
