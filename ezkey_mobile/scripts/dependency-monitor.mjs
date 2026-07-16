@@ -80,6 +80,15 @@ const hasMajor = (range, major) => {
   return re.test(String(range));
 };
 
+/** First numeric major from a semver or range string (e.g. "6.0.3" → 6, "^7.1.0" → 7). */
+const parseMajor = version => {
+  if (!version) {
+    return null;
+  }
+  const match = String(version).match(/(\d+)/);
+  return match ? Number(match[1]) : null;
+};
+
 const readJsonIfExists = relativePath => {
   const abs = path.join(rootDir, relativePath);
   if (!existsSync(abs)) {
@@ -139,6 +148,27 @@ const classifyUpgrade = (name, latest) => {
       reason:
         'React Native jest preset/runtime remains on Jest 29 ecosystem in this baseline.',
     };
+  }
+
+  // TypeScript 7+ is an intentional monorepo deferral (Admin UI still on TS ~6).
+  if (name === 'typescript') {
+    const currentMajor = parseMajor(current);
+    const latestMajor = parseMajor(latest);
+    if (
+      currentMajor != null &&
+      latestMajor != null &&
+      latestMajor > currentMajor &&
+      latestMajor >= 7
+    ) {
+      return {
+        name,
+        current,
+        latest,
+        status: 'deferred',
+        reason:
+          'TypeScript 7+ is deferred until Admin UI and monorepo tooling align on the same major.',
+      };
+    }
   }
 
   return {
