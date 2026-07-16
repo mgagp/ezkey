@@ -36,7 +36,7 @@ Several medium findings reinforce those primary defects:
   not attach the authenticated admin ID to these events.
 - **SEC-023 (MEDIUM): API key detail and per-integration list endpoints lack tenant scope checks.**
 - **SEC-024 (MEDIUM): Recovery failures disclose whether an administrator exists and has recovery
-  codes.**
+  codes.** Closed — generic client message (SEC-006 pattern); distinct reasons in audit/logs only.
 - **SEC-025 (MEDIUM): API-key callers receive an instance-wide pending authentication count.**
 - **SEC-026 and SEC-027 (MEDIUM):** recovery state survives login/logout, and cookie-mode logout
   presents local success even when server-side revocation failed.
@@ -63,7 +63,7 @@ a session-bound CSRF token.
 | P0 | SEC-022 | Cross-tenant API key revocation | Closed — PR #363 |
 | P0 | SEC-017 | Tenant Admin can operate global encryption keys | Closed — Global Admin only on `/api/v1/encryption-keys/**` |
 | P1 | SEC-023 | Cross-tenant API key metadata reads | Closed — PR #363 |
-| P1 | SEC-024 | Recovery username/account-state enumeration | Align with SEC-006 |
+| P1 | SEC-024 | Recovery username/account-state enumeration | Closed — anti-enumeration (PR TBD) |
 | P1 | SEC-025 | API-key pending count is instance-wide | Scope or deny |
 | P1 | SEC-018 | Encryption-key audit attribution gap | Closed — with SEC-017 (manual ops: adminId + ClientContext; resume audited) |
 | P1 | SEC-026–027 | Admin UI recovery/logout session lifecycle | Focused UI/API boundary PR |
@@ -437,18 +437,20 @@ expiration, revocation, and last-use metadata. Secret keys are not returned.
 **Confidence:** High  
 **OWASP:** A07 Identification and Authentication Failures  
 **OWASP API:** API2 Broken Authentication  
-**CWE:** CWE-204 Observable Response Discrepancy
+**CWE:** CWE-204 Observable Response Discrepancy  
+**Status:** Closed — generic client failure message (SEC-006 pattern); distinct reasons in audit/logs
+only. PR TBD.
 
 #### Evidence
 
-`AdminRecoveryService.validateRecoveryCode()` produces distinguishable failures:
+`AdminRecoveryService.validateRecoveryCode()` previously produced distinguishable failures:
 
 - unknown username: `Invalid credentials`;
 - inactive account: `Account is inactive`;
 - no recovery codes: `No recovery codes available for this account`;
 - wrong recovery code: `Invalid recovery code`.
 
-Evidence: `AdminRecoveryService.java` lines 163–197. `AdminAuthController` returns the exception
+Evidence: `AdminRecoveryService.java` (pre-fix). `AdminAuthController` returned the exception
 message to the unauthenticated caller instead of applying the generic login-failure policy.
 
 #### Impact
@@ -687,7 +689,8 @@ None of these candidates is presented as a demonstrated authentication bypass.
 ### Next authorization and authentication corrections
 
 5. **SEC-023:** Closed — PR #363 (scoped with SEC-022).
-6. **SEC-024:** normalize recovery failure responses.
+6. **SEC-024:** Closed — recovery failure responses normalized (generic client message; distinct
+   reasons in audit/logs only). PR TBD.
 7. **SEC-025:** scope or deny API-key access to pending count.
 
 ### Admin UI session lifecycle
