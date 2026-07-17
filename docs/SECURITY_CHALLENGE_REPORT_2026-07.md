@@ -16,37 +16,29 @@ Ezkey's security baseline remains credible. The previous June challenge produced
 improvements, and this pass did not find a regression in the remediated SEC-001 through SEC-012
 controls.
 
-This new pass found three high-priority authorization defects:
+This pass found three high-priority authorization defects, all of which are now closed:
 
-- **SEC-017 (HIGH): Tenant Admins can manage instance-wide encryption keys.** Every authenticated
-  administrator receives `ROLE_ADMIN`, and all encryption-key endpoints authorize that generic
-  role. A Tenant Admin can therefore bypass the Admin UI's Global-Admin-only visibility and call
-  the API directly to list keys, rotate the primary key, resume re-encryption batches, or trigger
-  global re-encryption.
-- **SEC-021 (HIGH): Recovery tokens are accepted as full administrator sessions.** Recovery issues
-  a normal active `AdminToken`; the shared authentication filter grants its administrator roles on
-  every authenticated route. The documented reset-only permission boundary is not enforced.
-- **SEC-022 (HIGH): Tenant Admins can revoke API keys across tenants.** The revoke path updates by
-  `keyId` without checking ownership of the key's integration.
+- **SEC-017 (HIGH): Tenant Admins could manage instance-wide encryption keys.** Closed by requiring
+  Global Admin authority across the encryption-key controller.
+- **SEC-021 (HIGH): Recovery tokens were accepted as full administrator sessions.** Closed by
+  enforcing the recovery-token purpose boundary.
+- **SEC-022 (HIGH): Tenant Admins could revoke API keys across tenants.** Closed by enforcing
+  object authorization before API-key operations.
 
-Several medium findings reinforce those primary defects:
+The associated medium findings are also closed:
 
-- **SEC-018 (MEDIUM): Sensitive key operations are not reliably attributed to the acting
-  administrator.** Several re-encryption audit rows hard-code `127.0.0.1`, and the controller does
-  not attach the authenticated admin ID to these events.
-- **SEC-023 (MEDIUM): API key detail and per-integration list endpoints lack tenant scope checks.**
-- **SEC-024 (MEDIUM): Recovery failures disclose whether an administrator exists and has recovery
-  codes.** Closed — generic client message (SEC-006 pattern); distinct reasons in audit/logs only.
-- **SEC-025 (MEDIUM): API-key callers receive an instance-wide pending authentication count.**
-  Closed — Admin-only (`hasRole('ADMIN')`); Integration API keys receive 403.
-- **SEC-026 (MEDIUM): Recovery token persists across normal login and logout.** Closed — recovery
-  cleared on login/logout/401.
-- **SEC-027 (MEDIUM): Cookie-mode logout reports local success when server revocation fails.**
-  Closed — cookie logout fail-closed with retry toast; Mode A may still wipe local bearer.
+- **SEC-018:** manual encryption-key operations now record the acting administrator and real client
+  context.
+- **SEC-023:** API-key detail and per-integration list operations now enforce tenant scope.
+- **SEC-024:** recovery failures now use one generic client response while preserving distinct
+  internal audit reasons.
+- **SEC-025:** pending-count is Admin-only; Integration API keys receive 403.
+- **SEC-026:** recovery state is cleared at login, logout, and 401 session boundaries.
+- **SEC-027:** cookie-mode logout fails closed and presents a retryable error.
 
-The dependency review found current security advisories in the Maven graph. Most have
-configuration-specific preconditions that are not present in the reviewed Ezkey source, but the
-PostgreSQL JDBC driver finding is relevant to deployments that require TLS channel binding:
+The dependency review found security advisories in the Maven graph. SEC-019 is closed through
+patched dependency overrides, including the PostgreSQL JDBC correction relevant to deployments
+that require TLS channel binding:
 
 - **SEC-019 (MEDIUM, conditional): Backend security patch lag.** Closed — parent `dependencyManagement`
   overrides bump PostgreSQL JDBC, Logback, Jackson, and Tomcat to patched versions (see § SEC-019).
@@ -56,7 +48,7 @@ baseline controls: no unsafe HTML rendering was found, production Caddy enforces
 recommended split deployment uses an HttpOnly cookie, and cookie-authenticated unsafe requests use
 a session-bound CSRF token.
 
-### Current priority
+### Remediation closeout
 
 | Priority | ID | Finding | Disposition |
 | --- | --- | --- | --- |
@@ -71,6 +63,10 @@ a session-bound CSRF token.
 | P1 | SEC-027 | Cookie-mode logout fail-open on API error | Closed — PR #370 |
 | P2 | SEC-019 | Conditional backend dependency advisories | Closed — PR #372 |
 | P2 | SEC-020 | Native Auth API exposes metrics/info | Closed — PR #374 |
+
+All numbered findings introduced by this July challenge (SEC-017 through SEC-027) are closed.
+The accepted residual posture, deployment guidance, optional runtime validation, and
+lower-confidence characterization candidates documented below are not open remediation findings.
 
 There is no evidence supporting a new critical-severity finding in this pass.
 
@@ -834,6 +830,13 @@ required for SEC-017, SEC-021, SEC-022, SEC-023, and SEC-025.
   dedicated source for that surface.
 - Findings are ranked using Ezkey-specific exploitability and blast radius, not scanner labels
   alone.
+
+## 11. Closeout
+
+The July 2026 Security Challenge remediation milestone is complete. SEC-017 through SEC-027 were
+closed in PRs #359, #363, #364, #365, #368, #370, #372, and #374. Remaining observations in this
+report are accepted posture, deployment guidance, or optional characterization work and do not
+represent an unassigned security-remediation backlog.
 
 ---
 
