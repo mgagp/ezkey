@@ -221,6 +221,7 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 - **Comparables and best practices**: For any analysis or design, consider comparable projects and admin UIs; adopt widely recognised best practices from those comparables.
 - **Stack and ecosystem**: Stay within the existing stack; avoid new frameworks or libraries unless there is a strong justification. Prefer what developers expect and what is considered best practice for the stack.
 - **Complexity**: **Essential complexity** (required for the feature) is acceptable. **Accidental complexity** (extra indirection, unnecessary abstraction) must be minimised to keep maintenance and evolution manageable.
+- **Fail-open vs fail-closed**: At critical boundaries, name whether failure of a control lets the primary path **continue** (fail-open; keep failure observable) or **stop** (fail-closed; when continuing would silently weaken a claimed guarantee). Light compass — not a ceremony. See `product-docs/global/design-principles.md` §17.
 
 ---
 

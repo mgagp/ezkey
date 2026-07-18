@@ -77,5 +77,6 @@ bootstrap remain P3; the audit HMAC single-INSERT option remains an explicit TB 
 - Comparable effort: `docs/LIFECYCLE_GOVERNANCE.md` (entity lifecycle global analysis pattern)
 - Matrix: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../../../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md)
 - TB: [`TB-2026-07-16-postgresql-application-role-split`](../TB-2026-07-16-postgresql-application-role-split.md)
+- Downstream (P2): [`I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence`](I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence.md) — restore peripheral **INSERT-only** on `ezkey_audit_log` via sequence pre-allocation + single INSERT (removes the two-step HMAC seal UPDATE); promoted from the TB follow-up analysis
 - Downstream (P3): [`I-2026-07-17-alert-resolved-retention-purge`](I-2026-07-17-alert-resolved-retention-purge.md) — no DELETE on `ezkey_alert` is intentional; future retention/purge of aged `RESOLVED` rows
 - Downstream (P3): [`I-2026-07-17-keyset-blob-admin-first-bootstrap`](I-2026-07-17-keyset-blob-admin-first-bootstrap.md) — peripheral INSERT/UPDATE on `ezkey_keyset_blob` is accidental shared startup; Admin-first readiness before SELECT-only

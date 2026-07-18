@@ -120,6 +120,23 @@ Iteration exists to manage uncertainty, not to turn every topic into a staged ce
 
 This applies both to product design and to the methodology itself.
 
+### 12. Name fail-open vs fail-closed at critical boundaries
+
+When a control or side effect can fail, make the **failure posture** explicit:
+
+- **Fail-closed:** stop or refuse the primary path when the control fails — prefer when continuing
+  would silently weaken a claimed security, integrity, or trust guarantee.
+- **Fail-open:** continue the primary path when the control fails — prefer when availability matters
+  more, and only if the failure stays **observable** to operators.
+
+Ask: *if this step fails, does the important path continue or stop — and how do we know?* Use the
+vocabulary as a design compass at boundaries where availability and integrity (or honesty of
+claims) are in tension. Do not build a ceremony or matrix for every call site.
+
+This principle deepens **#3** (explicit boundaries and verification posture: *what happens on
+failure*). Source-project companion with product examples:
+`product-docs/global/design-principles.md` (principle 17).
+
 ## Relationship to existing methodology canon
 
 - [`analysis-and-design-canon.md`](analysis-and-design-canon.md) says **which artifacts** clarify a
@@ -145,3 +162,4 @@ mention it only as a hook or case-study reference.
 - [`methodological-values.md`](methodological-values.md)
 - [`README.md`](README.md)
 - [`decisions/2026-05-29-promote-generic-design-principles-into-methodology.md`](decisions/2026-05-29-promote-generic-design-principles-into-methodology.md)
+- [`decisions/2026-07-18-fail-open-fail-closed-design-compass.md`](decisions/2026-07-18-fail-open-fail-closed-design-compass.md)

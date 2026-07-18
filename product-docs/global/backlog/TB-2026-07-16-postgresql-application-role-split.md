@@ -67,6 +67,11 @@ Revert compose/properties to `postgres` and recreate volume; grants scripts are 
 
 ## Follow-up analysis (open question — do not lose)
 
+> **Promoted 2026-07-18:** this open question now lives as its own first-class backlog idea
+> [`I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence`](ideas/I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence.md)
+> (`incubating`, `P2`). The analysis below is preserved as the source signal; active design work
+> continues in that idea.
+
 **Trigger:** During implementation the audit-log grant had to be widened from the originally
 imagined **INSERT-only** for `ezkey_auth` / `ezkey_integration` to **INSERT + UPDATE**, because
 [`AuditLogService.log()`](../../../ezkey-core/src/main/java/org/ezkey/audit/service/AuditLogService.java)
@@ -160,9 +165,11 @@ Do not tighten grants before that readiness contract exists.
   This slice changes deployment/database trust boundaries, not an API or user-visible feature
   contract. The matrix, this TB, operational documentation, grant verification, functional suites,
   and mobile smoke are the proportionate evidence chain.
-- **Deferred items:** peripheral audit-log UPDATE removal and Admin-first keyset/key-metadata
-  bootstrap are separate hardening analyses; alert retention/purge is a separate P3 lifecycle
-  idea. None blocks the delivered role split.
+- **Deferred items:** peripheral audit-log UPDATE removal
+  ([`I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence`](ideas/I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence.md),
+  `incubating` P2 as of 2026-07-18) and Admin-first keyset/key-metadata bootstrap are separate
+  hardening analyses; alert retention/purge is a separate P3 lifecycle idea. None blocks the
+  delivered role split.
 - **Residual risk:** application credentials still have the documented exceptions required by
   current shared services (audit HMAC seal; keyset bootstrap). PostgreSQL superuser/DBA access
   remains outside application-role containment, as expected.
