@@ -53,6 +53,7 @@ Wave B closeout ML:
 | `I-2026-07-17-keyset-blob-admin-first-bootstrap` | Keyset blob: Admin-first bootstrap before peripheral SELECT-only | `captured` | `P3` | `core`, `core-security`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-17` |
 | `I-2026-07-17-desktop-authenticator-reference-app` | Desktop authenticator reference app (mobile-like enrollment and approval) | `captured` | `P3` | `desktop-authenticator`, `demo-device`, `auth-api`, `docs`, `mobile` | `2026-07-17` |
 | `I-2026-07-18-audit-log-fail-open-exception-swallow` | Audit-log write fail-open (exception swallow) and delivery honesty | `captured` | `P2` | `core`, `audit`, `admin-api`, `auth-api`, `integration-api`, `docs`, `security` | `2026-07-18` |
+| `I-2026-07-18-authentication-wait-evolution` | Authentication wait evolution | `incubating` | `P2` | `core`, `admin-api`, `integration-api`, `sdk`, `infra`, `docs` | `2026-07-18` |
 
 ## Tracer bullets (draft / ready / in progress)
 
