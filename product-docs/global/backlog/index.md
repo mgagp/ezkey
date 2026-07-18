@@ -51,6 +51,7 @@ Wave B closeout ML:
 | `I-2026-07-17-admin-enrollment-reset-missing-authorization-header-500` | Admin enrollment reset: missing Authorization header returns 500 instead of 401 | `captured` | `P1` | `admin-api`, `security`, `testing`, `docs` | `2026-07-17` |
 | `I-2026-07-17-alert-resolved-retention-purge` | Alert resolved-row retention and purge (no DELETE today by design) | `captured` | `P3` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `audit` | `2026-07-17` |
 | `I-2026-07-17-keyset-blob-admin-first-bootstrap` | Keyset blob: Admin-first bootstrap before peripheral SELECT-only | `captured` | `P3` | `core`, `core-security`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-17` |
+| `I-2026-07-17-desktop-authenticator-reference-app` | Desktop authenticator reference app (mobile-like enrollment and approval) | `captured` | `P3` | `desktop-authenticator`, `demo-device`, `auth-api`, `docs`, `mobile` | `2026-07-17` |
 
 ## Tracer bullets (draft / ready / in progress)
 
