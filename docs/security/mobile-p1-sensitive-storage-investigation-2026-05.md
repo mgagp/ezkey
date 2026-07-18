@@ -1,5 +1,12 @@
 # Ezkey Mobile P1 Investigation: Sensitive Enrollment Storage
 
+> **Status (2026-07):** Historical investigation. The Android reference path now seals
+> `enrollmentProofToken` and `integrationPublicKey` via an app-level Android Keystore AES key
+> (`SealedSecretEnvelope` / `secureStorage`), and strips those fields from the AsyncStorage
+> metadata collection. Treat conclusions below as the **pre-seal** baseline. Current posture:
+> [`mobile-protocol-crypto-assessment-2026-07.md`](mobile-protocol-crypto-assessment-2026-07.md)
+> and [`../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md`](../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md).
+
 ## Purpose
 This note investigates the P1 concern around `enrollmentProofToken` storage in Ezkey Mobile.
 

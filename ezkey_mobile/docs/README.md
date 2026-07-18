@@ -50,7 +50,8 @@ reference mobile app.
 
 | Document | Category | When to read it |
 | --- | --- | --- |
-| [MOBILE_CODE_QUALITY_REVIEW.md](MOBILE_CODE_QUALITY_REVIEW.md) | Quality review — multi-session backlog | Starting point for any code quality improvement session. Contains initial observations (2026-05-08), prioritized actions (P1–P3), and a running status table to resume work across sessions. |
+| [../../docs/security/mobile-protocol-crypto-assessment-2026-07.md](../../docs/security/mobile-protocol-crypto-assessment-2026-07.md) | Security assessment — protocol / crypto / Keystore | Formal Android-first white-box assessment (2026-07); prioritized MOB-* findings and claim verdict. HITL: `product-docs/global/hygiene/mobile-protocol-security/`. |
+| [../../docs/security/mobile-security-assessment-2026-05.md](../../docs/security/mobile-security-assessment-2026-05.md) | Security assessment — prior | May 2026 mobile posture assessment; reconcile before re-opening storage/pinning topics. |
 | [MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md](MOBILE_DEPENDENCY_HYGIENE_CEREMONY.md) | Maintenance workflow | Lightweight and repeatable dependency-update routine (monitor, isolate, validate, decide, trace). |
 
 ## Supporting and Operational Docs
