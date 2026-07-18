@@ -135,7 +135,9 @@ Expected outcome:
 Goal: move from release readiness to repeatable assurance.
 
 - Run TB MVP for I-2026-07-12 security-pentest-curated-hygiene and record first campaign cycle.
-- Advance I-2026-0021 from analysis to concrete grants/role split where justified.
+- ~~Advance I-2026-0021 from analysis to concrete grants/role split where justified.~~ **Done
+  2026-07-18** — `TB-2026-07-16-postgresql-application-role-split`, commit `568f1423`;
+  clean-start, grants verification, standard/elective suites, and real-mobile flow validated.
 - Continue I-2026-0032 by promoting next accepted hardening slice only if protocol implications are explicit.
 - Implement I-2026-0029 if still pending.
 

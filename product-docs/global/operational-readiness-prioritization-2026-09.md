@@ -164,7 +164,7 @@ stop/start scenarios).
 |----|-------|
 | `I-2026-0004` | Promoted P1 — API-key auth configurability; orthogonal to integrity. |
 | `I-2026-0011` | Bootstrap activation-code default — operability; schedule after Wave B if bootstrap blocks EXP1. |
-| `I-2026-0021` | PostgreSQL roles matrix — infra hardening; good for release but not alert-test dependency. |
+| `I-2026-0021` | **Done 2026-07-18** — PostgreSQL migrate/runtime role split delivered and validated; linked P3 hardening remains non-blocking. |
 
 ## What “operable release quality” means here
 

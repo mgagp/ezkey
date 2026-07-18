@@ -3,13 +3,14 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-16-postgresql-application-role-split`
-- **Status:** `active`
+- **Status:** `done`
 - **Related idea:** `I-2026-0021-postgresql-application-role-permissions-matrix`
 - **Parent context:** Integrity defense-in-depth; parallel R1 hardening
 - **Lane:** `C`
 - **Posture:** `single-pass`
 - **Created at:** `2026-07-16`
-- **Updated at:** `2026-07-16`
+- **Updated at:** `2026-07-18`
+- **Closed at:** `2026-07-18`
 - **Captured by:** plan incubation → implementation
 
 ## Objective
@@ -43,14 +44,22 @@ Include audit immutability at the DB boundary (no UPDATE/DELETE on `ezkey_audit_
 
 1. Clean-start: init roles → Flyway as `ezkey_migrate` → apply-grants → APIs start with role credentials
 2. Enrollment bind/verify (auth role) + auth-attempt create (integration/admin) + respond (auth)
-3. Audit INSERT from all APIs; forbidden UPDATE/DELETE as auth/integration
+3. Audit INSERT from all APIs; DELETE denied to auth/integration; UPDATE retained only for the
+   current atomic two-step HMAC seal
 4. Admin partition scheduler EXECUTE on `create_monthly_partition`
 
 ## Evidence
 
-- Matrix doc accepted and linked from `I-2026-0021`
-- `verify-grants.sh` passes against clean-start stack
-- Functional / clean-start path healthy with new credentials
+- Matrix doc accepted and linked from `I-2026-0021`.
+- Implementation committed as `568f1423` and present on `main`.
+- Clean-start stack completed with role bootstrap, Flyway as `ezkey_migrate`, grants step, and
+  per-API credentials.
+- `scripts/db/verify-grants.sh --docker` passed, including positive grants and forbidden-operation
+  assertions.
+- Standard functional suite passed under the segregated runtime roles.
+- Elective suite passed: 15 tests, 0 failures/errors, 1 intentional archive-eligibility skip.
+- Operator completed the representative real-mobile workflow successfully after the separate
+  mobile ECDSA low-S correction: integration + enrollment, pending retrieval, and respond.
 
 ## Rollback
 
@@ -139,3 +148,26 @@ Admin-first materialization + peripheral readiness wait, then SELECT-only for pe
 captured as P3
 [`I-2026-07-17-keyset-blob-admin-first-bootstrap`](ideas/I-2026-07-17-keyset-blob-admin-first-bootstrap.md).
 Do not tighten grants before that readiness contract exists.
+
+## Closeout
+
+- **Outcome:** delivered. DDL ownership and runtime DML are separated through `ezkey_migrate`,
+  `ezkey_admin`, `ezkey_auth`, and `ezkey_integration`; Docker variants and application defaults
+  use the intended credentials; the canonical table-operation matrix and verification tooling are
+  available.
+- **Traceability sync:** no row was added to
+  [`../spec-test-traceability.md`](../spec-test-traceability.md) or component feature matrices.
+  This slice changes deployment/database trust boundaries, not an API or user-visible feature
+  contract. The matrix, this TB, operational documentation, grant verification, functional suites,
+  and mobile smoke are the proportionate evidence chain.
+- **Deferred items:** peripheral audit-log UPDATE removal and Admin-first keyset/key-metadata
+  bootstrap are separate hardening analyses; alert retention/purge is a separate P3 lifecycle
+  idea. None blocks the delivered role split.
+- **Residual risk:** application credentials still have the documented exceptions required by
+  current shared services (audit HMAC seal; keyset bootstrap). PostgreSQL superuser/DBA access
+  remains outside application-role containment, as expected.
+- **Next action:** reopen through the linked P3 ideas or a dedicated TB only when those hardening
+  slices are prioritized; no scheduled review is required for this completed TB.
+- **GitHub issue posture:** canon is sufficient. No retroactive issue was opened because the work
+  is already committed on `main`, has no pending PR/coordination need, and the durable evidence is
+  linked here.

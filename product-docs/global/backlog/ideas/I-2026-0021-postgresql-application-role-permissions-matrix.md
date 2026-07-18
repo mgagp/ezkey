@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0021`
-- **Status:** `ready` → `active` (implementation via `TB-2026-07-16`)
+- **Status:** `done`
 - **Priority:** `P1`
 - **Created at:** `2026-05-19`
-- **Updated at:** `2026-07-16`
-- **Last reviewed at:** `2026-07-16`
+- **Updated at:** `2026-07-18`
+- **Last reviewed at:** `2026-07-18`
 - **Matrix:** [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../../../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md)
 - **Tracer bullet:** [`TB-2026-07-16-postgresql-application-role-split`](../TB-2026-07-16-postgresql-application-role-split.md)
 - **Phase tags:** `P2-hardening`
@@ -63,6 +63,11 @@ See [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/
 
 Matrix delivered: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../../../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md).
 Promoted to [`TB-2026-07-16-postgresql-application-role-split`](../TB-2026-07-16-postgresql-application-role-split.md) (single-pass: migrate role + three runtime roles + audit immutability grants + Docker wiring).
+
+Closed 2026-07-18 after clean-start, explicit grant verification, standard and elective functional
+tests, and representative real-mobile pending/respond validation. Residual hardening was captured
+separately rather than holding this idea open: alert retention/purge and Admin-first keyset
+bootstrap remain P3; the audit HMAC single-INSERT option remains an explicit TB follow-up.
 
 ## Links
 
