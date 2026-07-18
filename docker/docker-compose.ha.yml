@@ -13,9 +13,14 @@ services:
     environment:
       POSTGRES_DB: ezkey_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ezkey
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      EZKEY_DB_MIGRATE_PASSWORD: ${EZKEY_DB_MIGRATE_PASSWORD:-ezkey_migrate}
+      EZKEY_DB_ADMIN_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
+      EZKEY_DB_AUTH_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
+      EZKEY_DB_INTEGRATION_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
     volumes:
       - postgres-data-ha:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -39,8 +44,36 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ezkey
+      SPRING_DATASOURCE_USERNAME: ezkey_migrate
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_MIGRATE_PASSWORD:-ezkey_migrate}
+    networks:
+      - ezkey-network-ha
+    restart: "no"
+
+  db-grants:
+    image: postgres:18-alpine
+    container_name: ezkey-db-grants-ha
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+    volumes:
+      - ../scripts/db:/scripts:ro
+    entrypoint:
+      [
+        "psql",
+        "-h",
+        "postgres",
+        "-U",
+        "postgres",
+        "-d",
+        "ezkey_db",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/scripts/apply-grants.sql",
+      ]
     networks:
       - ezkey-network-ha
     restart: "no"
@@ -57,11 +90,13 @@ services:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
+      db-grants:
+        condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ezkey
+      SPRING_DATASOURCE_USERNAME: ezkey_admin
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
       EZKEY_ADMIN_INITIAL_USERNAME: admin.docker
       EZKEY_ADMIN_INITIAL_EMAIL: admin@ezkey.local
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
@@ -98,11 +133,13 @@ services:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
+      db-grants:
+        condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ezkey
+      SPRING_DATASOURCE_USERNAME: ezkey_admin
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
       EZKEY_ADMIN_INITIAL_USERNAME: admin.docker
       EZKEY_ADMIN_INITIAL_EMAIL: admin@ezkey.local
       EZKEY_ADMIN_INITIAL_FIRST_NAME: Admin
@@ -162,11 +199,13 @@ services:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
+      db-grants:
+        condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ezkey
+      SPRING_DATASOURCE_USERNAME: ezkey_auth
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       # Add instance identifier for logging
       EZKEY_INSTANCE_ID: auth-api-1
       # Demo MITM global gate (same as single-node stack; docs/DEMO_MITM_SIGNATURE.md).
@@ -200,11 +239,13 @@ services:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
+      db-grants:
+        condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ezkey_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ezkey
+      SPRING_DATASOURCE_USERNAME: ezkey_auth
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       # Add instance identifier for logging
       EZKEY_INSTANCE_ID: auth-api-2
       EZKEY_DEMO_MITM_SIGNATURE_ENABLED: ${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}

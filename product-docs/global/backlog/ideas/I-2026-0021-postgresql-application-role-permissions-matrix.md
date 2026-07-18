@@ -3,11 +3,13 @@
 ## Metadata
 
 - **ID:** `I-2026-0021`
-- **Status:** `incubating`
+- **Status:** `ready` → `active` (implementation via `TB-2026-07-16`)
 - **Priority:** `P1`
 - **Created at:** `2026-05-19`
-- **Updated at:** `2026-05-24`
-- **Last reviewed at:** `2026-05-24`
+- **Updated at:** `2026-07-16`
+- **Last reviewed at:** `2026-07-16`
+- **Matrix:** [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../../../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md)
+- **Tracer bullet:** [`TB-2026-07-16-postgresql-application-role-split`](../TB-2026-07-16-postgresql-application-role-split.md)
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `infra`, `core`, `admin-api`, `auth-api`, `integration-api`, `audit`
 - **Captured by:** Marc
@@ -30,7 +32,7 @@ Produce a global analysis (decision tables + recommendations) of PostgreSQL role
     - `ezkey_migration` (or equivalent) — Flyway / `ezkey-cli` migration only; DDL + structural changes.
     - `ezkey_app` baseline — runtime default; tightened per table.
   - Evaluate per-backend roles (e.g. `ezkey_admin_app`, `ezkey_auth_app`, `ezkey_integration_app`) — recommended if the matrix shows materially different DML needs without undue deployment cost.
-  - Example rule already identified: `audit_log` — application roles get **SELECT + INSERT only**; no UPDATE/DELETE for runtime app roles.
+  - Example rule: `audit_log` — runtime roles get **SELECT + INSERT + UPDATE** (UPDATE required for `AuditLogService` HMAC seal after identity assign); **DELETE only for `ezkey_admin`** (lifecycle purge). Auth/integration must not DELETE.
   - Observations, risks, phased implementation order, Docker/clean-start credential wiring notes.
 - **In scope — implementation (follow-on, may be TB):**
   - Flyway or init scripts defining roles and grants.
@@ -59,7 +61,8 @@ See [`../grill-sessions/integrity-cluster-D4-D6-grill-me.md`](../grill-sessions/
 
 ## Promotion notes
 
-Move to `ready` when the matrix document exists under `docs/` or `product-docs/components/` and analysis charter is accepted. Promote to `TB-*` for first implementation slice (audit_log immutability grants + migration role split).
+Matrix delivered: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../../../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md).
+Promoted to [`TB-2026-07-16-postgresql-application-role-split`](../TB-2026-07-16-postgresql-application-role-split.md) (single-pass: migrate role + three runtime roles + audit immutability grants + Docker wiring).
 
 ## Links
 
@@ -67,3 +70,7 @@ Move to `ready` when the matrix document exists under `docs/` or `product-docs/c
 - Related backlog: `I-2026-0005` (integrity rupture remediation), `I-2026-0006` (validation batch)
 - Related vision: `V-2026-0004` (integrity strategy)
 - Comparable effort: `docs/LIFECYCLE_GOVERNANCE.md` (entity lifecycle global analysis pattern)
+- Matrix: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../../../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md)
+- TB: [`TB-2026-07-16-postgresql-application-role-split`](../TB-2026-07-16-postgresql-application-role-split.md)
+- Downstream (P3): [`I-2026-07-17-alert-resolved-retention-purge`](I-2026-07-17-alert-resolved-retention-purge.md) — no DELETE on `ezkey_alert` is intentional; future retention/purge of aged `RESOLVED` rows
+- Downstream (P3): [`I-2026-07-17-keyset-blob-admin-first-bootstrap`](I-2026-07-17-keyset-blob-admin-first-bootstrap.md) — peripheral INSERT/UPDATE on `ezkey_keyset_blob` is accidental shared startup; Admin-first readiness before SELECT-only

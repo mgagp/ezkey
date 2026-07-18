@@ -7,6 +7,10 @@ tenant and integration management, enrollment lifecycle, and audit log chain. It
 > **Shared properties** (encryption, audit integrity/chain, organization, QR, enrollment, core)
 > are documented in [ezkey-core/CONFIGURATION.md](../ezkey-core/CONFIGURATION.md).
 
+> **Datasource:** Docker/default role is `ezkey_admin` (`SPRING_DATASOURCE_USERNAME` /
+> `SPRING_DATASOURCE_PASSWORD`). See
+> [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md).
+
 ---
 
 ## Quick Overview

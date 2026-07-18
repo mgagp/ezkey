@@ -72,6 +72,31 @@ Demo projects were using two different approaches for OpenAPI specifications:
 
 ## Database Migration Scripts
 
+### Role-separated migration contract
+
+The migration tool is aligned with the PostgreSQL role split documented in
+[`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md):
+
+- Flyway connects as `ezkey_migrate`; it does not use an application role or the `postgres`
+  superuser.
+- `ezkey_migrate` owns schema objects and performs DDL.
+- Runtime DML grants are deliberately outside Flyway and are applied after a successful migration
+  by [`db/apply-grants.sh`](db/apply-grants.sh).
+- Docker Compose enforces this sequence automatically:
+  `postgres init → migration → db-grants → APIs`.
+- For a new local non-Docker database, run:
+
+  ```bash
+  ./scripts/db/create-roles.sh
+  ./scripts/ezkey-flyway.sh
+  ./scripts/db/apply-grants.sh
+  ./scripts/db/verify-grants.sh  # optional privilege smoke check
+  ```
+
+`ezkey-flyway.sh` and `ezkey-flyway-jar.sh` run Flyway only. They intentionally do not create
+LOGIN roles or apply runtime grants. This keeps schema evolution separate from credential
+provisioning and authorization policy.
+
 ### Spring Boot Mode Scripts (Recommended)
 
 These scripts use the modern Spring Boot Maven plugin approach with `mvn spring-boot:run`.
@@ -291,8 +316,11 @@ See `docs/NATIVE_COMPILATION_STRATEGY.md` for complete strategy details.
 
 ### 1. Daily Development
 ```bash
-# Run database migrations
+# Run database migrations as ezkey_migrate
 ./scripts/ezkey-flyway.sh
+
+# Re-apply runtime DML grants after schema changes (not needed for --info/--validate)
+./scripts/db/apply-grants.sh
 
 # Start the APIs
 mvn spring-boot:run -pl ezkey-auth-api &
@@ -319,13 +347,18 @@ mvn clean compile -pl ezkey-demo-device,ezkey-demo-app-acme
 
 ### 3. Production Deployment
 ```bash
-# Build migration JAR for production
-cd ezkey-core
-mvn clean package -Pmigration-jar
+# Build the dedicated migration JAR
+cd ezkey-migration
+mvn package -Pmigration-jar
 
-# Run migrations in production
+# Supply the ezkey_migrate datasource credentials through the environment,
+# then inspect and run migrations.
 java -jar target/ezkey-migration.jar --info
 java -jar target/ezkey-migration.jar
+
+# Apply the reviewed runtime role matrix after Flyway succeeds.
+cd ..
+./scripts/db/apply-grants.sh
 ```
 
 ### 4. CI/CD

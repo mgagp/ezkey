@@ -222,24 +222,56 @@ Bootstrap services will complete initial global admin setup on first startup:
 
 ## Running Migrations
 
+### Responsibility Boundary
+
+`ezkey-migration` is the dedicated Flyway schema-management CLI. Under the role-separated database
+model:
+
+| Concern | Responsible mechanism |
+|---------|-----------------------|
+| Create/rotate PostgreSQL LOGIN roles | `scripts/db/create-roles.sh` or Docker first-boot init |
+| Apply Flyway DDL and own schema objects | `ezkey-migration` as `ezkey_migrate` |
+| Apply runtime API DML grants | `scripts/db/apply-grants.sh` after Flyway |
+| Verify allowed/denied privileges | `scripts/db/verify-grants.sh` |
+
+The CLI intentionally performs **only Flyway operations**. It does not connect as `postgres`,
+create credentials, or silently modify runtime grants. Docker Compose supplies
+`SPRING_DATASOURCE_USERNAME=ezkey_migrate` and runs the separate `db-grants` one-shot service after
+migration. Local defaults also use `ezkey_migrate`; override them with `SPRING_DATASOURCE_*` for
+other environments.
+
+See [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md) for
+the normative role and table matrix.
+
 ### Fresh Installation
 
 ```bash
+# Run from the repository root.
+
 # 1. Ensure PostgreSQL is running (Docker or native)
 docker ps  # Verify postgres container
 
-# 2. Ensure database exists
+# 2. Ensure database + roles exist
 # Database: ezkey_db
-# User: postgres
-# Password: ezkey (configurable)
+# This bootstrap command connects as postgres and creates ezkey_migrate + runtime roles.
+./scripts/db/create-roles.sh
 
-# 3. Run migrations
-cd ezkey-migration
-mvn spring-boot:run
+# 3. Run migrations as ezkey_migrate
+./scripts/ezkey-flyway.sh
+
+# 4. Apply DML grants (Compose service db-grants does this in Docker)
+./scripts/db/apply-grants.sh
+
+# 5. Optionally verify the privilege boundaries
+./scripts/db/verify-grants.sh
 
 # Expected output:
-# Successfully applied 3 migrations to schema "public", now at version v3
+# Successfully applied N migrations to schema "public"
 ```
+
+For an already provisioned database, steps 2 and 4 remain idempotent. Running `--info` or
+`--validate` does not require re-applying grants because those commands do not create schema
+objects.
 
 ### Migration Reset (Development)
 
@@ -255,13 +287,22 @@ docker exec -it [postgres-container] psql -U postgres -d ezkey_db
 
 -- Reset schema
 DROP SCHEMA public CASCADE;
-CREATE SCHEMA public;
+CREATE SCHEMA public AUTHORIZATION ezkey_migrate;
+GRANT USAGE ON SCHEMA public TO ezkey_admin, ezkey_auth, ezkey_integration;
 
 -- Exit psql
 \q
 ```
 
-Then run migrations again.
+Then run migrations and re-apply runtime grants:
+
+```bash
+./scripts/ezkey-flyway.sh
+./scripts/db/apply-grants.sh
+```
+
+Creating `public` without `AUTHORIZATION ezkey_migrate` would return schema ownership to
+`postgres` and break the intended DDL boundary.
 
 ### Verifying Migration State
 

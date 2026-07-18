@@ -124,27 +124,34 @@ Compose passes `TZ: ${TZ:-UTC}` into services; if `TZ` is unset, behavior stays 
 - **Image**: `postgres:18-alpine`
 - **Port**: `5432` (internal only)
 - **Database**: `ezkey_db`
-- **Username**: `postgres`
-- **Password**: `ezkey`
-- **Data Persistence**: Volume `postgres-data`
+- **Bootstrap superuser**: `postgres` / `${POSTGRES_PASSWORD:-ezkey}` (init and `db-grants` only)
+- **App roles** (created on empty volume via `postgres/init/`): `ezkey_migrate`, `ezkey_admin`, `ezkey_auth`, `ezkey_integration` — see [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md) and `docker/.env.example`
+- **Data Persistence**: Volume `postgres-data` (recreate on clean-start when changing role bootstrap)
 
 ### Migration (migration)
 - **Type**: One-time job
-- **Purpose**: Runs Flyway database migrations
+- **Purpose**: Runs Flyway database migrations as `ezkey_migrate`
 - **Depends on**: PostgreSQL (healthy)
-- **Runs**: Before all API services start
+- **Runs**: Before `db-grants` and all API services
+
+### DB grants (db-grants)
+- **Type**: One-time job
+- **Purpose**: Applies DML grants from `scripts/db/apply-grants.sql` (as `postgres`)
+- **Depends on**: Migration (completed successfully)
 
 ### Admin API (admin-api)
 - **Port**: `9080`
 - **Purpose**: Administration interface for integrations, enrollments, and auth attempts
-- **Depends on**: PostgreSQL (healthy), Migration (completed)
+- **DB role**: `ezkey_admin`
+- **Depends on**: PostgreSQL (healthy), Migration + db-grants (completed)
 - **Health Check**: http://localhost:9080/actuator/health
 - **Encryption**: Uses shared encryption keys from `encryption-secrets` volume
 
 ### Auth API (auth-api)
 - **Port**: `8080`
 - **Purpose**: Mobile authentication API for enrollment and authentication flows
-- **Depends on**: PostgreSQL (healthy), Migration (completed)
+- **DB role**: `ezkey_auth`
+- **Depends on**: PostgreSQL (healthy), Migration + db-grants (completed)
 - **Health Check**: http://localhost:8080/actuator/health
 - **Encryption**: Uses shared encryption keys from `encryption-secrets` volume
 
