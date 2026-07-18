@@ -304,14 +304,8 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       val privateKey = entry?.privateKey
           ?: throw IllegalStateException("Private key not found for enrollment $enrollmentId")
 
-      // Sign using ECDSA with SHA-256
-      val signature = Signature.getInstance("SHA256withECDSA")
-      signature.initSign(privateKey)
-      signature.update(data.toByteArray(StandardCharsets.UTF_8))
-      val signatureBytes = signature.sign()
-
-      val encodedBase64 = Base64.encodeToString(signatureBytes, Base64.NO_WRAP)
-      promise.resolve(encodedBase64)
+      // Sign using ECDSA with SHA-256; normalize to low-S (Auth API SEC-012).
+      promise.resolve(signUtf8WithLowS(privateKey, data))
     } catch (error: GeneralSecurityException) {
       promise.reject(ERROR_CODE_SIGN, error)
     } catch (error: IOException) {
@@ -364,11 +358,8 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
                       val privateKey =
                           entry?.privateKey
                               ?: throw IllegalStateException("Private key not found for enrollment $enrollmentId")
-                      val signature = Signature.getInstance("SHA256withECDSA")
-                      signature.initSign(privateKey)
-                      signature.update(data.toByteArray(StandardCharsets.UTF_8))
-                      val signatureBytes = signature.sign()
-                      promise.resolve(Base64.encodeToString(signatureBytes, Base64.NO_WRAP))
+                      // Low-S normalization required for Auth API SEC-012 (same as Demo Device).
+                      promise.resolve(signUtf8WithLowS(privateKey, data))
                     } catch (error: GeneralSecurityException) {
                       promise.reject(ERROR_CODE_SIGN, error)
                     } catch (error: IOException) {
@@ -662,6 +653,23 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       }
     }
     return encoded
+  }
+
+  /**
+   * Signs UTF-8 data with ECDSA-SHA256 and returns standard Base64 over DER with {@code s}
+   * normalized to low-S (Auth API SEC-012 / Demo Device parity).
+   *
+   * @param privateKey EC P-256 private key from Android Keystore
+   * @param data UTF-8 string to sign
+   * @return Base64 NO_WRAP DER signature
+   */
+  private fun signUtf8WithLowS(privateKey: java.security.PrivateKey, data: String): String {
+    val signature = Signature.getInstance("SHA256withECDSA")
+    signature.initSign(privateKey)
+    signature.update(data.toByteArray(StandardCharsets.UTF_8))
+    val der = signature.sign()
+    val lowSDer = EcdsaLowS.normalizeDerSignature(der, EcdsaLowS.curveOrder(privateKey))
+    return Base64.encodeToString(lowSDer, Base64.NO_WRAP)
   }
 
   companion object {
