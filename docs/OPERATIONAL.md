@@ -442,21 +442,34 @@ effective_io_concurrency = 200
 
 ### Database Security
 
-```sql
--- Create dedicated user for Ezkey
-CREATE USER ezkey_user WITH PASSWORD 'strong_password_here';
-CREATE DATABASE ezkey_production OWNER ezkey_user;
+Ezkey uses **separate PostgreSQL roles** for Flyway vs each runtime API. The
+normative table × privilege matrix is
+[`DATABASE_ROLE_PERMISSIONS_MATRIX.md`](DATABASE_ROLE_PERMISSIONS_MATRIX.md).
 
--- Grant minimal required permissions
-GRANT CONNECT ON DATABASE ezkey_production TO ezkey_user;
-GRANT USAGE ON SCHEMA public TO ezkey_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ezkey_user;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ezkey_user;
+| Role | Purpose |
+|------|---------|
+| `postgres` | Bootstrap / emergency DBA only (not runtime APIs) |
+| `ezkey_migrate` | Flyway DDL |
+| `ezkey_admin` | Admin API + schedulers |
+| `ezkey_auth` | Auth API |
+| `ezkey_integration` | Integration API |
 
--- Revoke dangerous permissions
-REVOKE CREATE ON SCHEMA public FROM ezkey_user;
-REVOKE DROP ON SCHEMA public FROM ezkey_user;
+**Docker / clean-start:** roles are created on first Postgres init
+(`docker/postgres/init/01-create-roles.sh`); DML grants are applied after
+Flyway by `scripts/db/apply-grants.sh` (Compose service `db-grants`).
+
+**Local IDE:**
+
+```bash
+./scripts/db/create-roles.sh
+# run Flyway as ezkey_migrate
+./scripts/db/apply-grants.sh
+./scripts/db/verify-grants.sh   # optional smoke
 ```
+
+**Audit immutability at the DB boundary:** only `ezkey_admin` may `DELETE`
+`ezkey_audit_log` (lifecycle purge). Auth and integration may `INSERT`/`UPDATE`
+(HMAC seal after identity assign) but must not `DELETE`.
 
 ---
 

@@ -91,6 +91,12 @@ logs/
 # Maven: local CLI version overrides (e.g. per–git-worktree buildQualifier). Template: .mvn/maven.config.example
 .mvn/maven.config
 
+# Local generated security-pentest cache
+.schemathesis/
+
+# Temporary scratch copies made while adjusting local Maven config
+.mvn/*Copy.config
+
 # Docker Compose local overrides (e.g. EZKEY_QR_AUTH_BASE_URL for ngrok)
 docker/.env
 

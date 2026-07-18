@@ -16,8 +16,13 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ezkey_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      EZKEY_DB_MIGRATE_PASSWORD: ${EZKEY_DB_MIGRATE_PASSWORD:-ezkey_migrate}
+      EZKEY_DB_ADMIN_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
+      EZKEY_DB_AUTH_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
+      EZKEY_DB_INTEGRATION_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ../../docker/postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
@@ -39,8 +44,37 @@ services:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      SPRING_DATASOURCE_USERNAME: ezkey_migrate
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_MIGRATE_PASSWORD:-ezkey_migrate}
+    networks:
+      - ezkey-exp-net
+    restart: "no"
+
+  db-grants:
+    image: postgres:18-alpine
+    container_name: ezkey-exp-db-grants
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    environment:
+      <<: *container-tz
+      PGPASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+    volumes:
+      - ../../scripts/db:/scripts:ro
+    entrypoint:
+      [
+        "psql",
+        "-h",
+        "postgres",
+        "-U",
+        "postgres",
+        "-d",
+        "${POSTGRES_DB:-ezkey_db}",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-f",
+        "/scripts/apply-grants.sql",
+      ]
     networks:
       - ezkey-exp-net
     restart: "no"
@@ -57,12 +91,14 @@ services:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
+      db-grants:
+        condition: service_completed_successfully
     environment:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      SPRING_DATASOURCE_USERNAME: ezkey_admin
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_ADMIN_PASSWORD:-ezkey_admin}
       EZKEY_ADMIN_INITIAL_USERNAME: ${EZKEY_ADMIN_INITIAL_USERNAME:-admin.docker}
       EZKEY_ADMIN_INITIAL_EMAIL: ${EZKEY_ADMIN_INITIAL_EMAIL:-admin@ezkey.local}
       EZKEY_ADMIN_INITIAL_FIRST_NAME: ${EZKEY_ADMIN_INITIAL_FIRST_NAME:-Admin}
@@ -102,12 +138,14 @@ services:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
+      db-grants:
+        condition: service_completed_successfully
     environment:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      SPRING_DATASOURCE_USERNAME: ezkey_auth
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_AUTH_PASSWORD:-ezkey_auth}
       MANAGEMENT_SERVER_PORT: 8085
       EZKEY_DEMO_MITM_SIGNATURE_ENABLED: ${EZKEY_DEMO_MITM_SIGNATURE_ENABLED:-true}
       EZKEY_QR_AUTH_BASE_URL: ${EZKEY_QR_AUTH_BASE_URL:-https://exp1-auth-api.ezkey.org}
@@ -134,14 +172,16 @@ services:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
+      db-grants:
+        condition: service_completed_successfully
       admin-api:
         condition: service_healthy
     environment:
       <<: *container-tz
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ezkey_db}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-ezkey}
+      SPRING_DATASOURCE_USERNAME: ezkey_integration
+      SPRING_DATASOURCE_PASSWORD: ${EZKEY_DB_INTEGRATION_PASSWORD:-ezkey_integration}
       MANAGEMENT_SERVER_PORT: 7081
       EZKEY_TRUSTED_PROXIES_CIDRS: ${EZKEY_TRUSTED_PROXIES_CIDRS:-172.16.0.0/12,10.0.0.0/8,172.17.0.0/16}
       EZKEY_TRUSTED_PROXIES_REQUIRED: ${EZKEY_TRUSTED_PROXIES_REQUIRED:-true}

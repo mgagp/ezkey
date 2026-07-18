@@ -7,6 +7,9 @@ jobs** and has **no database of its own** — it reads from the shared schema ma
 > **Shared properties** (encryption, audit integrity)
 > are documented in [ezkey-core/CONFIGURATION.md](../ezkey-core/CONFIGURATION.md).
 
+> **Datasource:** Docker/default role is `ezkey_integration` on the shared schema. See
+> [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md).
+
 ---
 
 ## Quick Overview

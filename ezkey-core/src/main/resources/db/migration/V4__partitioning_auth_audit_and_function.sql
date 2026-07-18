@@ -440,15 +440,9 @@ $$;
 -- STEP 2: Set Function Ownership and Permissions
 -- ============================================================================
 
--- Function should be owned by database owner role (not application role)
--- This ensures function executes with owner privileges via SECURITY DEFINER
--- Note: In production, replace 'postgres' with actual owner role name (e.g., EZKEY_owner)
--- ALTER FUNCTION create_monthly_partition OWNER TO EZKEY_owner;
-
--- Grant EXECUTE privilege to application role
--- Application role only needs EXECUTE, not CREATE TABLE privilege
--- Note: Replace EZKEY_app with actual application role name
--- GRANT EXECUTE ON FUNCTION create_monthly_partition(TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ) TO EZKEY_app;
+-- Ownership and EXECUTE grants for runtime roles are applied post-migrate by
+-- scripts/db/apply-grants.sql (roles: ezkey_migrate owner, ezkey_admin EXECUTE).
+-- See docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md.
 
 -- Revoke EXECUTE from public (security best practice)
 REVOKE EXECUTE ON FUNCTION create_monthly_partition(TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC;

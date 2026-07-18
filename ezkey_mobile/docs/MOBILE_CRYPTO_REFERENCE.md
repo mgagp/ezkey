@@ -6,6 +6,9 @@ This document records the current mobile crypto direction for Ezkey and should b
 
 - **Device signing algorithm**: EC P-256 (`secp256r1`) with `ECDSA-SHA256`
 - **Current Android implementation**: `Android Keystore`
+- **ECDSA wire form**: ASN.1 DER, standard Base64, **low-S only** (Auth API SEC-012; same as Demo
+  Device / `SignatureService`). Android Keystore raw `SHA256withECDSA` can emit high-S ~50% of the
+  time; `EzkeyCryptoModule` normalizes before returning signatures.
 - **StrongBox posture**: requested when available, not guaranteed on all devices
 - **Current iOS posture**: native secure-hardware-backed parity is still in progress and must be described conservatively
 - **Private key wording**: private key material is not exposed to application code

@@ -7,6 +7,9 @@ serves them to enrolled mobile devices, and processes responses. It runs **no sc
 > **Shared properties** (encryption, audit integrity, organization, QR, core auth-attempt)
 > are documented in [ezkey-core/CONFIGURATION.md](../ezkey-core/CONFIGURATION.md).
 
+> **Datasource:** Docker/default role is `ezkey_auth`. See
+> [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md).
+
 ---
 
 ## Quick Overview

@@ -33,7 +33,7 @@ Wave B closeout ML:
 | `I-2026-0017` | Profile elaboration template, skill, and per-client document workflow | `captured` | `P1` | `docs (product-docs)`, `methodology`, `skills` | `2026-05-08` |
 | `I-2026-0018` | Profile generator skill: elaboration document to runtime configs | `captured` | `P2` | `docs (product-docs)`, `methodology`, `skills`, `infra` | `2026-05-08` |
 | `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
-| `I-2026-0021` | PostgreSQL application role and table permissions matrix | `incubating` | `P1` | `infra`, `core`, `admin-api`, `auth-api`, `integration-api`, `audit` | `2026-05-24` |
+| `I-2026-0021` | PostgreSQL application role and table permissions matrix | `active` | `P1` | `infra`, `core`, `admin-api`, `auth-api`, `integration-api`, `audit` | `2026-07-16` |
 | `I-2026-0022` | Admin API scheduled jobs catalog (living document) | `incubating` | `P2` | `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
 | `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
@@ -50,11 +50,14 @@ Wave B closeout ML:
 | `I-2026-07-11-java-doctor-curated-hygiene` | Java doctor-curated continuous hygiene (SpotBugs + Semgrep + narrow PMD) | `ready` | `P3` | `core`, `admin-api`, `auth-api`, `integration-api`, `docs`, `tooling` | `2026-07-11` |
 | `I-2026-07-12-security-pentest-curated-hygiene` | Security pentest curated hygiene (Schemathesis + ZAP + first-party Nuclei) | `ready` | `P2` | `security`, `tooling`, `infra`, `admin-api`, `auth-api`, `integration-api`, `docs` | `2026-07-12` |
 | `I-2026-07-17-admin-enrollment-reset-missing-authorization-header-500` | Admin enrollment reset: missing Authorization header returns 500 instead of 401 | `captured` | `P1` | `admin-api`, `security`, `testing`, `docs` | `2026-07-17` |
+| `I-2026-07-17-alert-resolved-retention-purge` | Alert resolved-row retention and purge (no DELETE today by design) | `captured` | `P3` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `audit` | `2026-07-17` |
+| `I-2026-07-17-keyset-blob-admin-first-bootstrap` | Keyset blob: Admin-first bootstrap before peripheral SELECT-only | `captured` | `P3` | `core`, `core-security`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-17` |
 
 ## Tracer bullets (draft / ready / in progress)
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
+| `TB-2026-07-16` | PostgreSQL application role split | `active` | `I-2026-0021` |
 | `TB-2026-07-12` | Security pentest curated MVP | `draft` | `I-2026-07-12-security-pentest-curated-hygiene` |
 | `TB-2026-07-11` | Java doctor-curated curator MVP | `active` | `I-2026-07-11-java-doctor-curated-hygiene` (#326) |
 | `TB-2026-07-06` | Device proof token hash-only storage (Tier 0) | `active` | `I-2026-0032` (#296) |
