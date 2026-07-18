@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Source: product-docs/methodology/view/index.html @ 2026-05-28 -->
+<!-- Source: product-docs/methodology/view/index.html @ 2026-07-18 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -56,12 +56,39 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
+      color-scheme: light;
       --bg: #f8fafc;
       --surface: #ffffff;
+      --surface-alt: #f1f5f9;
+      --surface-subtle: #f8fafc;
+      --surface-hover: #fafbfc;
       --border: #e2e8f0;
       --text: #0f172a;
       --text-secondary: #475569;
       --text-muted: #94a3b8;
+      --code-text: #4f46e5;
+      --badge-blue-bg: #eff6ff;
+      --badge-blue-border: #bfdbfe;
+      --badge-blue-text: #1d4ed8;
+      --badge-green-bg: #f0fdf4;
+      --badge-green-border: #bbf7d0;
+      --badge-green-text: #15803d;
+      --badge-violet-bg: #f5f3ff;
+      --badge-violet-border: #ddd6fe;
+      --badge-violet-text: #6d28d9;
+      --badge-teal-bg: #f0fdfa;
+      --badge-teal-border: #99f6e4;
+      --badge-teal-text: #0d9488;
+      --badge-slate-bg: #f8fafc;
+      --badge-slate-border: #e2e8f0;
+      --badge-slate-text: #475569;
+      --badge-amber-bg: #fffbeb;
+      --badge-amber-text: #b45309;
+      --badge-rose-bg: #fff1f2;
+      --badge-rose-text: #be123c;
+      --tag-slate-bg: #f1f5f9;
+      --tag-slate-border: #cbd5e1;
+      --tag-slate-text: #475569;
       --blue: #2563eb;
       --cyan: #0891b2;
       --amber: #d97706;
@@ -72,6 +99,42 @@
       --green: #16a34a;
       --slate: #475569;
       --radius: 8px;
+    }
+
+    html.is-dark {
+      color-scheme: dark;
+      --bg: #020617;
+      --surface: #0f172a;
+      --surface-alt: #111827;
+      --surface-subtle: #0b1220;
+      --surface-hover: #172033;
+      --border: #1e293b;
+      --text: #e2e8f0;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --code-text: #a5b4fc;
+      --badge-blue-bg: rgba(59, 130, 246, 0.16);
+      --badge-blue-border: rgba(96, 165, 250, 0.35);
+      --badge-blue-text: #bfdbfe;
+      --badge-green-bg: rgba(34, 197, 94, 0.16);
+      --badge-green-border: rgba(74, 222, 128, 0.3);
+      --badge-green-text: #bbf7d0;
+      --badge-violet-bg: rgba(139, 92, 246, 0.16);
+      --badge-violet-border: rgba(167, 139, 250, 0.34);
+      --badge-violet-text: #ddd6fe;
+      --badge-teal-bg: rgba(20, 184, 166, 0.16);
+      --badge-teal-border: rgba(45, 212, 191, 0.3);
+      --badge-teal-text: #99f6e4;
+      --badge-slate-bg: #111827;
+      --badge-slate-border: #334155;
+      --badge-slate-text: #cbd5e1;
+      --badge-amber-bg: rgba(245, 158, 11, 0.16);
+      --badge-amber-text: #fcd34d;
+      --badge-rose-bg: rgba(244, 63, 94, 0.16);
+      --badge-rose-text: #fda4af;
+      --tag-slate-bg: #111827;
+      --tag-slate-border: #334155;
+      --tag-slate-text: #cbd5e1;
     }
 
     body {
@@ -278,12 +341,12 @@
     .ph9 { color: #475569; }
 
     /* badge variants */
-    .bg-i   { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
-    .bg-tb  { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
-    .bg-br  { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
-    .bg-ts  { background: #f0fdfa; border-color: #99f6e4; color: #0d9488; }
-    .bg-st  { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
-    .bg-cd  { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+    .bg-i   { background: var(--badge-blue-bg); border-color: var(--badge-blue-border); color: var(--badge-blue-text); }
+    .bg-tb  { background: var(--badge-green-bg); border-color: var(--badge-green-border); color: var(--badge-green-text); }
+    .bg-br  { background: var(--badge-violet-bg); border-color: var(--badge-violet-border); color: var(--badge-violet-text); }
+    .bg-ts  { background: var(--badge-teal-bg); border-color: var(--badge-teal-border); color: var(--badge-teal-text); }
+    .bg-st  { background: var(--badge-slate-bg); border-color: var(--badge-slate-border); color: var(--badge-slate-text); }
+    .bg-cd  { background: var(--badge-green-bg); border-color: var(--badge-green-border); color: var(--badge-green-text); }
 
     /* ── SECTION 2 — Artifacts table ────────────────────────────── */
     .table-wrap { overflow-x: auto; }
@@ -295,7 +358,7 @@
     }
 
     thead tr {
-      background: #f1f5f9;
+      background: var(--surface-alt);
     }
 
     th {
@@ -318,7 +381,7 @@
     }
 
     tr:last-child td { border-bottom: none; }
-    tbody tr:hover { background: #fafbfc; }
+    tbody tr:hover { background: var(--surface-hover); }
 
     .ab {
       display: inline-flex;
@@ -330,20 +393,20 @@
       white-space: nowrap;
     }
 
-    .ab-v  { background: #f5f3ff; color: #6d28d9; }
-    .ab-i  { background: #eff6ff; color: #1d4ed8; }
-    .ab-tb { background: #f0fdf4; color: #15803d; }
-    .ab-r  { background: #fffbeb; color: #b45309; }
-    .ab-rv { background: #fff1f2; color: #be123c; }
-    .ab-md { background: #f8fafc; color: #475569; }
+    .ab-v  { background: var(--badge-violet-bg); color: var(--badge-violet-text); }
+    .ab-i  { background: var(--badge-blue-bg); color: var(--badge-blue-text); }
+    .ab-tb { background: var(--badge-green-bg); color: var(--badge-green-text); }
+    .ab-r  { background: var(--badge-amber-bg); color: var(--badge-amber-text); }
+    .ab-rv { background: var(--badge-rose-bg); color: var(--badge-rose-text); }
+    .ab-md { background: var(--badge-slate-bg); color: var(--badge-slate-text); }
 
     code {
       font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", ui-monospace, monospace;
       font-size: 0.8em;
-      background: #f1f5f9;
+      background: var(--surface-alt);
       padding: 1px 5px;
       border-radius: 3px;
-      color: var(--indigo);
+      color: var(--code-text);
     }
 
     /* ── SECTION 3 — Parallel lanes ─────────────────────────────── */
@@ -420,9 +483,9 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.07em;
-      color: #475569;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
+      color: var(--tag-slate-text);
+      background: var(--tag-slate-bg);
+      border: 1px solid var(--tag-slate-border);
       border-radius: 4px;
       padding: 2px 8px;
       margin-bottom: 12px;
@@ -446,7 +509,7 @@
       font-size: 0.8rem;
       color: var(--text-secondary);
       padding: 8px 10px;
-      background: #f8fafc;
+      background: var(--surface-subtle);
       border: 1px solid var(--border);
       border-radius: 5px;
       line-height: 1.4;
@@ -492,7 +555,7 @@
     .decision-test {
       font-size: 0.75rem;
       color: var(--slate);
-      background: #f8fafc;
+      background: var(--surface-subtle);
       border: 1px solid var(--border);
       border-radius: 5px;
       padding: 7px 8px;
@@ -520,7 +583,7 @@
 
     .trace-step {
       min-width: 150px;
-      background: #f8fafc;
+      background: var(--surface-subtle);
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 10px 11px;
@@ -557,7 +620,7 @@
       font-size: 0.79rem;
       color: var(--text-secondary);
       border-left: 3px solid var(--teal);
-      background: #f8fafc;
+      background: var(--surface-subtle);
       border-radius: 5px;
       padding: 8px 10px;
       line-height: 1.4;
@@ -596,9 +659,9 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.07em;
-      color: #1d4ed8;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
+      color: var(--badge-blue-text);
+      background: var(--badge-blue-bg);
+      border: 1px solid var(--badge-blue-border);
       border-radius: 4px;
       padding: 2px 8px;
       margin-left: 10px;
@@ -710,6 +773,7 @@
   <a href="#collab">Collab</a>
   <a href="#naming">Naming</a>
   <a href="#traceability">Traceability</a>
+  <a href="#compasses">Compasses</a>
   <a href="#skills">Skills</a>
   <a href="#rich-views">Rich Views</a>
 </nav>
@@ -724,7 +788,7 @@
   <div class="meta">
     <span>Source: Ezkey methodology corpus</span>
     <span>Decision: 2026-05-24-rich-views</span>
-    <span>Updated 2026-05-25</span>
+    <span>Updated 2026-07-18</span>
   </div>
 </header>
 
@@ -992,6 +1056,7 @@
           <li>Create or evolve a working plan in <code>plans/</code></li>
           <li>Explore options and converge on direction (freeform)</li>
           <li>Materialize durable signal into V-*/I-*/TB-*</li>
+          <li>Classify the plan as ephemeral scaffold or retained working plan</li>
           <li>Cross-link plan and canonical artifacts when useful</li>
           <li>Do not treat as retrofit unless genuinely historical</li>
         </ul>
@@ -1210,6 +1275,34 @@
   </section>
 
   <!-- ════════════════════════════════════════════════════════════
+       SECTION 5b — JUDGMENT COMPASSES
+       ════════════════════════════════════════════════════════════ -->
+  <section id="compasses">
+    <h2>Judgment Compasses</h2>
+    <p class="section-intro">
+      Durable decision aids that keep proportionality and safety explicit. They shape how much
+      process a slice earns, how a boundary should fail, and what belongs on the public surface.
+    </p>
+    <div class="values-grid">
+      <div class="value-card">
+        <div class="value-title">Hygiene vs program</div>
+        <p class="value-desc">Before a full closeout, classify the work. Hygiene passes take a commit or PR and targeted docs; only program slices earn <code>I-*</code>, <code>TB-*</code>, and traceability artifacts.</p>
+        <div class="decision-test"><strong>Test:</strong> what concrete risk justifies backlog ceremony here?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Fail-open vs fail-closed</div>
+        <p class="value-desc">At each critical boundary, decide on purpose whether a failing control or side effect blocks the action or lets it through. Never leave the direction implicit.</p>
+        <div class="decision-test"><strong>Test:</strong> if this control fails, should the operation stop or continue?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Curated public surface</div>
+        <p class="value-desc">The public method is a deliberate subset, not a mirror of the source project. New operational skills stay private until a genuinely reusable capability earns publication.</p>
+        <div class="decision-test"><strong>Test:</strong> does publishing this help an external adopter, or just grow the surface?</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
        SECTION 6 — SKILLS REFERENCE
        ════════════════════════════════════════════════════════════ -->
   <section id="skills">
@@ -1265,6 +1358,13 @@
             <td>The <code>TB-*</code> has posture, scope, boundaries, exclusions, and evidence criteria.</td>
             <td><code>component-design-pack</code> and <code>test-strategy-planner</code></td>
             <td>The item lacks direction, or the change is a tiny code/doc fix.</td>
+          </tr>
+          <tr>
+            <td><code>github-issue-promote</code></td>
+            <td>A backlog item or tracer-bullet slice needs GitHub visibility: board, labels, cross-links.</td>
+            <td>The issue exists with mandatory labels, and canon links back to it.</td>
+            <td><code>component-design-pack</code>, or <code>closeout</code> after the slice ships.</td>
+            <td>Product-docs canon alone is enough and no external tracking is wanted.</td>
           </tr>
           <tr>
             <td><code>component-design-pack</code></td>
@@ -1385,7 +1485,7 @@
   <a href="https://methodology.ezkey.org" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600;text-decoration:none;">Open the methodology explorer &#8599;</a>
 </p>
 <footer>
-  Ezkey Methodology Rich View &nbsp;·&nbsp; Last updated 2026-05-25 &nbsp;·&nbsp;
+  Ezkey Methodology Rich View &nbsp;·&nbsp; Last updated 2026-07-18 &nbsp;·&nbsp;
   Source: Ezkey methodology corpus
   &nbsp;·&nbsp;
   Decision: 2026-05-24-rich-views

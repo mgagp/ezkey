@@ -4,7 +4,7 @@
   <p class="skills-eyebrow">Method skill</p>
   <p class="skill-detail-summary">Classifies a methodology SemVer bump, drafts a release note, and updates the canonical version file when publishing to methodology.ezkey.org. Use after a publication milestone following Lane E feedback cycles.</p>
   <div class="skill-chip-row">
-    <span class="skill-chip">Order 13</span>
+    <span class="skill-chip">Order 14</span>
     <span class="skill-chip">Source of truth: <code>.cursor/skills/methodology-release/SKILL.md</code></span>
     
   </div>

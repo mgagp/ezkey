@@ -82,7 +82,8 @@ This is a light design compass, not a required matrix for every call site.
 ## Related documents
 
 - [`../design-judgment-principles.md`](../design-judgment-principles.md) — generic principle 12
-- [`../../global/design-principles.md`](../../global/design-principles.md) — Ezkey principle 17
-- [`../../global/backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md`](../../global/backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md)
 - [`../workflow-overview.md`](../workflow-overview.md) — Lane E feedback and evolution
 - [`../methodology-publication-and-versioning.md`](../methodology-publication-and-versioning.md)
+
+The source project retains the originating audit-log example and its product-specific companion
+principle outside the public methodology corpus.

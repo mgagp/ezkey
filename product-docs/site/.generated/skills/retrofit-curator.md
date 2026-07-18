@@ -4,7 +4,7 @@
   <p class="skills-eyebrow">Legacy retrofit skill</p>
   <p class="skill-detail-summary">Curates legacy retrofit slices by mapping extracted signal (plans, verbal, ad hoc) into canonical product-docs destinations, recording residual gaps, and promoting principle candidates when relevant.</p>
   <div class="skill-chip-row">
-    <span class="skill-chip">Order 12</span>
+    <span class="skill-chip">Order 13</span>
     <span class="skill-chip">Source of truth: <code>.cursor/skills/retrofit-curator/SKILL.md</code></span>
     <span class="skill-chip">Call next: <a href="#/skills/traceability-sync.md">traceability-sync</a>, <a href="#/skills/closeout.md">closeout</a></span>
   </div>

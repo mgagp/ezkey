@@ -314,6 +314,22 @@ $footerBlock
 "@
 
 $frPairs = @(
+    # v1.2.0 enrichment pairs (run first so exact strings match before generic word-level replacements)
+    @('Compasses', 'Boussoles'),
+    @('Hygiene vs program', 'Hygi&egrave;ne vs programme'),
+    @('Before a full closeout, classify the work. Hygiene passes take a commit or PR and targeted docs; only program slices earn <code>I-*</code>, <code>TB-*</code>, and traceability artifacts.', 'Avant une cl&ocirc;ture compl&egrave;te, classez le travail. Les passes d&rsquo;hygi&egrave;ne se contentent d&rsquo;un commit ou d&rsquo;une PR et de docs cibl&eacute;es; seules les tranches de programme m&eacute;ritent des artefacts <code>I-*</code>, <code>TB-*</code> et de tra&ccedil;abilit&eacute;.'),
+    @('what concrete risk justifies backlog ceremony here?', 'quel risque concret justifie la c&eacute;r&eacute;monie de backlog ici?'),
+    @('Fail-open vs fail-closed', 'D&eacute;faillance permissive vs bloquante'),
+    @('At each critical boundary, decide on purpose whether a failing control or side effect blocks the action or lets it through. Never leave the direction implicit.', '&Agrave; chaque fronti&egrave;re critique, d&eacute;cidez d&eacute;lib&eacute;r&eacute;ment si un contr&ocirc;le ou un effet de bord d&eacute;faillant bloque l&rsquo;action ou la laisse passer. Ne laissez jamais la direction implicite.'),
+    @('if this control fails, should the operation stop or continue?', 'si ce contr&ocirc;le &eacute;choue, l&rsquo;op&eacute;ration doit-elle s&rsquo;arr&ecirc;ter ou continuer?'),
+    @('Curated public surface', 'Surface publique cur&eacute;e'),
+    @('The public method is a deliberate subset, not a mirror of the source project. New operational skills stay private until a genuinely reusable capability earns publication.', 'La m&eacute;thode publique est un sous-ensemble d&eacute;lib&eacute;r&eacute;, pas un miroir du projet source. Les nouvelles comp&eacute;tences op&eacute;rationnelles restent priv&eacute;es jusqu&rsquo;&agrave; ce qu&rsquo;une capacit&eacute; vraiment r&eacute;utilisable m&eacute;rite la publication.'),
+    @('does publishing this help an external adopter, or just grow the surface?', 'publier ceci aide-t-il un adoptant externe, ou ne fait-il que grossir la surface?'),
+    @('A backlog item or tracer-bullet slice needs GitHub visibility: board, labels, cross-links.', 'Un item de backlog ou une tranche t&eacute;moin a besoin de visibilit&eacute; GitHub&nbsp;: tableau, &eacute;tiquettes, liens crois&eacute;s.'),
+    @('The issue exists with mandatory labels, and canon links back to it.', 'L&rsquo;issue existe avec les &eacute;tiquettes obligatoires, et le canon y renvoie.'),
+    @('<code>component-design-pack</code>, or <code>closeout</code> after the slice ships.', '<code>component-design-pack</code>, ou <code>closeout</code> apr&egrave;s la livraison de la tranche.'),
+    @('Product-docs canon alone is enough and no external tracking is wanted.', 'Le canon product-docs suffit et aucun suivi externe n&rsquo;est souhait&eacute;.'),
+    @('Classify the plan as ephemeral scaffold or retained working plan', 'Classer le plan comme &eacute;chafaudage &eacute;ph&eacute;m&egrave;re ou plan de travail conserv&eacute;'),
     @('Ezkey <span>Methodology</span>', 'Ezkey <span>M&eacute;thodologie</span>'),
   @('Methodological Values', 'Valeurs m&eacute;thodologiques'),
   @('End-to-End Workflow', 'Flux de travail de bout en bout'),
@@ -336,7 +352,7 @@ $frPairs = @(
     @('Source: Ezkey methodology corpus', 'Source&nbsp;: corpus m&eacute;thodologique Ezkey'),
     @('Source:', 'Source&nbsp;:'),
     @('Decision:', 'D&eacute;cision&nbsp;:'),
-    @('Updated 2026-05-25', 'Mis &agrave; jour le 2026-05-25'),
+    @('Updated 2026-07-18', 'Mis &agrave; jour le 2026-07-18'),
     @('The canonical values live in the Ezkey methodology corpus. This view keeps the operating tests visible: enough rigor to preserve judgment and traceability, but not enough ceremony to slow simple work.', 'Les valeurs canoniques vivent dans le corpus m&eacute;thodologique Ezkey. Cette vue garde les tests op&eacute;ratoires visibles&nbsp;: assez de rigueur pour pr&eacute;server le jugement et la tra&ccedil;abilit&eacute;, sans assez de c&eacute;r&eacute;monie pour ralentir le travail simple.'),
     @('Proportional rigor', 'Rigueur proportionnelle'),
     @('Process weight follows uncertainty and risk, not habit or artifact size.', 'Le poids du processus suit l&rsquo;incertitude et le risque, pas l&rsquo;habitude ni la taille de l&rsquo;artefact.'),
@@ -565,7 +581,8 @@ $frPairs = @(
     @('Single <code>index.html</code>', 'Un seul <code>index.html</code>'),
     @('per view folder; additional files only when navigation genuinely adds value for the specific topic.', 'par dossier de vue; fichiers additionnels seulement si la navigation ajoute vraiment de la valeur pour le sujet.'),
     @('Ezkey Methodology Rich View', 'M&eacute;thodologie Ezkey Vue riche'),
-    @('Last updated 2026-05-25', 'Derni&egrave;re mise &agrave; jour le 2026-05-25')
+    @('Last updated 2026-05-25', 'Derni&egrave;re mise &agrave; jour le 2026-05-25'),
+    @('Last updated 2026-07-18', 'Derni&egrave;re mise &agrave; jour le 2026-07-18')
 )
 
 $frNavBlock    = Update-Replacements $navBlock $frPairs
@@ -830,6 +847,18 @@ $frMainBlock = $rx::Replace(
   '    <p class="section-intro">' + "`n" +
   '      Le flux n&rsquo;est pas seulement un pipeline vers l&rsquo;avant. La cl&ocirc;ture et l&rsquo;audit doivent aussi prouver' + "`n" +
   '      d&rsquo;o&ugrave; vient un artefact, quel canon l&rsquo;a absorb&eacute; et si des d&eacute;cisions ult&eacute;rieures ont chang&eacute; son sens.' + "`n" +
+  '    </p>',
+  $rxOpts)
+
+$frMainBlock = $rx::Replace(
+  $frMainBlock,
+  '(?s)<section id="compasses">\s*<h2>.*?</h2>\s*<p class="section-intro">.*?</p>',
+  '<section id="compasses">' + "`n" +
+  '    <h2>Boussoles de jugement</h2>' + "`n" +
+  '    <p class="section-intro">' + "`n" +
+  '      Des aides &agrave; la d&eacute;cision durables qui gardent la proportionnalit&eacute; et la s&eacute;curit&eacute; explicites.' + "`n" +
+  '      Elles d&eacute;terminent combien de processus une tranche m&eacute;rite, comment une fronti&egrave;re doit &eacute;chouer,' + "`n" +
+  '      et ce qui a sa place sur la surface publique.' + "`n" +
   '    </p>',
   $rxOpts)
 

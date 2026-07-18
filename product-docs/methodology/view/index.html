@@ -711,6 +711,7 @@
   <a href="#collab">Collab</a>
   <a href="#naming">Naming</a>
   <a href="#traceability">Traceability</a>
+  <a href="#compasses">Compasses</a>
   <a href="#skills">Skills</a>
   <a href="#rich-views">Rich Views</a>
 </nav>
@@ -724,7 +725,7 @@
   <div class="meta">
     <span>Source: <a href="../README.md">product-docs/methodology/README.md</a></span>
     <span>Decision: <a href="../decisions/2026-05-24-rich-views.md">2026-05-24-rich-views</a></span>
-    <span>Updated 2026-05-25</span>
+    <span>Updated 2026-07-18</span>
   </div>
 </header>
 
@@ -979,6 +980,7 @@
           <li>Create or evolve a working plan in <code>plans/</code></li>
           <li>Explore options and converge on direction (freeform)</li>
           <li>Materialize durable signal into V-*/I-*/TB-*</li>
+          <li>Classify the plan as ephemeral scaffold or retained working plan</li>
           <li>Cross-link plan and canonical artifacts when useful</li>
           <li>Do not treat as retrofit unless genuinely historical</li>
         </ul>
@@ -1197,6 +1199,34 @@
   </section>
 
   <!-- ════════════════════════════════════════════════════════════
+       SECTION 5b — JUDGMENT COMPASSES
+       ════════════════════════════════════════════════════════════ -->
+  <section id="compasses">
+    <h2>Judgment Compasses</h2>
+    <p class="section-intro">
+      Durable decision aids that keep proportionality and safety explicit. They shape how much
+      process a slice earns, how a boundary should fail, and what belongs on the public surface.
+    </p>
+    <div class="values-grid">
+      <div class="value-card">
+        <div class="value-title">Hygiene vs program</div>
+        <p class="value-desc">Before a full closeout, classify the work. Hygiene passes take a commit or PR and targeted docs; only program slices earn <code>I-*</code>, <code>TB-*</code>, and traceability artifacts.</p>
+        <div class="decision-test"><strong>Test:</strong> what concrete risk justifies backlog ceremony here?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Fail-open vs fail-closed</div>
+        <p class="value-desc">At each critical boundary, decide on purpose whether a failing control or side effect blocks the action or lets it through. Never leave the direction implicit.</p>
+        <div class="decision-test"><strong>Test:</strong> if this control fails, should the operation stop or continue?</div>
+      </div>
+      <div class="value-card">
+        <div class="value-title">Curated public surface</div>
+        <p class="value-desc">The public method is a deliberate subset, not a mirror of the source project. New operational skills stay private until a genuinely reusable capability earns publication.</p>
+        <div class="decision-test"><strong>Test:</strong> does publishing this help an external adopter, or just grow the surface?</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
        SECTION 6 — SKILLS REFERENCE
        ════════════════════════════════════════════════════════════ -->
   <section id="skills">
@@ -1252,6 +1282,13 @@
             <td>The <code>TB-*</code> has posture, scope, boundaries, exclusions, and evidence criteria.</td>
             <td><code>component-design-pack</code> and <code>test-strategy-planner</code></td>
             <td>The item lacks direction, or the change is a tiny code/doc fix.</td>
+          </tr>
+          <tr>
+            <td><code>github-issue-promote</code></td>
+            <td>A backlog item or tracer-bullet slice needs GitHub visibility: board, labels, cross-links.</td>
+            <td>The issue exists with mandatory labels, and canon links back to it.</td>
+            <td><code>component-design-pack</code>, or <code>closeout</code> after the slice ships.</td>
+            <td>Product-docs canon alone is enough and no external tracking is wanted.</td>
           </tr>
           <tr>
             <td><code>component-design-pack</code></td>
@@ -1401,7 +1438,7 @@
 </main>
 
 <footer>
-  Ezkey Methodology Rich View &nbsp;·&nbsp; Last updated 2026-05-25 &nbsp;·&nbsp;
+  Ezkey Methodology Rich View &nbsp;·&nbsp; Last updated 2026-07-18 &nbsp;·&nbsp;
   Source: <a href="../README.md">product-docs/methodology/README.md</a>
   &nbsp;·&nbsp;
   Decision: <a href="../decisions/2026-05-24-rich-views.md">2026-05-24-rich-views</a>

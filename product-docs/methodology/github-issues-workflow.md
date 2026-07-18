@@ -80,13 +80,15 @@ to open a corresponding GitHub issue.
    "Challenge" section with substantive content).
 3. Generates a **proposed issue title** and **body** following the template below.
 4. Proposes the appropriate labels (lane, type, component, priority, status).
-5. Adds a `github_issue: #NNN` line to the I-* artifact's `## Metadata` section once
-   the issue number is known.
+5. When issue creation is explicitly requested or approved, creates the issue with all required
+   labels and verifies them.
+6. Adds the resulting `#NNN` to the canonical artifact's `## Metadata`.
 
-The skill **proposes** — it does not auto-create. A human or an explicit agent action
-must approve and run `gh issue create`.
+The skill does not create external state merely because an idea exists. Invoking it to open an
+issue, or approving its proposal, authorizes the creation step.
 
-**Implementation:** [`.cursor/skills/github-issue-promote/SKILL.md`](../../.cursor/skills/github-issue-promote/SKILL.md)
+The operational source skill is `github-issue-promote`; the public explorer exposes its derived
+reference under **Skills**.
 
 ## Mandatory label checklist (agents)
 

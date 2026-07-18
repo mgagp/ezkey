@@ -4,7 +4,7 @@
   <p class="skills-eyebrow">Legacy retrofit skill</p>
   <p class="skill-detail-summary">Mines legacy project knowledge (historical plans, verbal briefings, ad hoc implementation history) to extract decisions, invariants, patterns, risks, and test signal. Use for weekly or opportunistic retrofit sessions.</p>
   <div class="skill-chip-row">
-    <span class="skill-chip">Order 11</span>
+    <span class="skill-chip">Order 12</span>
     <span class="skill-chip">Source of truth: <code>.cursor/skills/legacy-plan-miner/SKILL.md</code></span>
     <span class="skill-chip">Call next: <a href="#/skills/retrofit-curator.md">retrofit-curator</a></span>
   </div>

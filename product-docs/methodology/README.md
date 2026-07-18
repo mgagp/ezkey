@@ -161,9 +161,9 @@ For example, Admin UI role visibility and **deployment operator geometries** are
 For a visual companion to this methodology pack — workflow diagram, artifact types, parallel lanes,
 naming conventions, and skills reference — open [`view/index.html`](view/index.html).
 
-The public explorer also packages a derived **Skills** section sourced from `.cursor/skills/`, so
-the collaboration mechanics stay discoverable without making the editor-local skill files the
-public corpus of record.
+The public explorer also packages a deliberately curated, derived **Skills** section sourced from
+`.cursor/skills/`, so reusable collaboration mechanics stay discoverable without making every
+editor-local or source-project skill part of the public method.
 
 The next distribution direction is a generated **download pack** for local reuse, with an explicit
 preference for packaging before any installer-style automation. See
