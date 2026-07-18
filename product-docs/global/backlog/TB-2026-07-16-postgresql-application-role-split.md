@@ -65,7 +65,13 @@ Include audit immutability at the DB boundary (no UPDATE/DELETE on `ezkey_audit_
 
 Revert compose/properties to `postgres` and recreate volume; grants scripts are additive and safe to drop with the volume.
 
-## Follow-up analysis (open question — do not lose)
+## Follow-up analysis (resolved 2026-07-18)
+
+> **Resolved 2026-07-18:** delivered by
+> [`TB-2026-07-18-audit-log-insert-only-hmac-seal`](TB-2026-07-18-audit-log-insert-only-hmac-seal.md)
+> / [`I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence`](ideas/I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence.md)
+> (`done`). Peripheral roles are SELECT + INSERT only on `ezkey_audit_log`; single-INSERT HMAC seal
+> via named sequence pre-allocation. The analysis below is preserved as the source signal.
 
 **Trigger:** During implementation the audit-log grant had to be widened from the originally
 imagined **INSERT-only** for `ezkey_auth` / `ezkey_integration` to **INSERT + UPDATE**, because
@@ -160,12 +166,14 @@ Do not tighten grants before that readiness contract exists.
   This slice changes deployment/database trust boundaries, not an API or user-visible feature
   contract. The matrix, this TB, operational documentation, grant verification, functional suites,
   and mobile smoke are the proportionate evidence chain.
-- **Deferred items:** peripheral audit-log UPDATE removal and Admin-first keyset/key-metadata
-  bootstrap are separate hardening analyses; alert retention/purge is a separate P3 lifecycle
-  idea. None blocks the delivered role split.
+- **Deferred items:** Admin-first keyset/key-metadata bootstrap
+  ([`I-2026-07-17-keyset-blob-admin-first-bootstrap`](ideas/I-2026-07-17-keyset-blob-admin-first-bootstrap.md))
+  remains a separate hardening analysis; alert retention/purge is a separate P3 lifecycle idea.
+  Peripheral audit-log UPDATE removal is **resolved** (`TB-2026-07-18` / `I-2026-07-18`, `done`
+  2026-07-18).
 - **Residual risk:** application credentials still have the documented exceptions required by
-  current shared services (audit HMAC seal; keyset bootstrap). PostgreSQL superuser/DBA access
-  remains outside application-role containment, as expected.
+  current shared services (keyset bootstrap). Audit HMAC seal no longer requires peripheral UPDATE.
+  PostgreSQL superuser/DBA access remains outside application-role containment, as expected.
 - **Next action:** reopen through the linked P3 ideas or a dedicated TB only when those hardening
   slices are prioritized; no scheduled review is required for this completed TB.
 - **GitHub issue posture:** canon is sufficient. No retroactive issue was opened because the work

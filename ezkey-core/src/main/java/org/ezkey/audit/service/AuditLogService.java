@@ -10,9 +10,9 @@
 
 package org.ezkey.audit.service;
 
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.Predicate;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -99,19 +99,16 @@ public class AuditLogService {
   private final AuditLogRepository auditLogRepository;
   private final AuditChainCheckpointRepository checkpointRepository;
   private final AuditHmacService auditHmacService;
-  private final EntityManager entityManager;
   private final TransactionTemplate requiresNewTx;
 
   public AuditLogService(
       AuditLogRepository auditLogRepository,
       AuditChainCheckpointRepository checkpointRepository,
       AuditHmacService auditHmacService,
-      EntityManager entityManager,
       PlatformTransactionManager transactionManager) {
     this.auditLogRepository = auditLogRepository;
     this.checkpointRepository = checkpointRepository;
     this.auditHmacService = auditHmacService;
-    this.entityManager = entityManager;
     TransactionTemplate tx = new TransactionTemplate(transactionManager);
     tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     this.requiresNewTx = tx;
@@ -129,17 +126,12 @@ public class AuditLogService {
    * the commit/rollback is fully controlled here, so audit failures are always silently absorbed
    * and never disrupt the calling business operation.
    *
-   * <p><b>HMAC signing order is critical:</b> the {@code audit_log_id} is assigned by the database
-   * on the first {@code save()} call. The HMAC must therefore be computed <em>after</em> the
-   * initial save so that the database-assigned ID is included in the canonical form. A second
-   * {@code save()} persists the computed HMAC. This two-step pattern is intentional: the ID is an
-   * immutable, database-assigned value and must be part of the cryptographic seal.
-   *
-   * <p><b>Timestamp alignment:</b> After the first save, the entity is refreshed from the database
-   * before computing the HMAC. This ensures {@code created_at} used in the canonical form matches
-   * exactly what PostgreSQL stores (microsecond precision, rounded if needed). Without this,
-   * in-memory nanosecond precision could differ from DB-stored value and cause ~50% of entries to
-   * fail verification.
+   * <p><b>Single-INSERT HMAC seal:</b> {@code audit_log_id} is pre-allocated from the named
+   * sequence {@code ezkey_audit_log_id_seq} ({@code nextval}) before signing. The application owns
+   * {@code created_at} truncated to microseconds so the signed value matches PostgreSQL {@code
+   * TIMESTAMPTZ} precision without a post-insert refresh. The HMAC is computed with id + timestamp
+   * already set, then a single {@code save()} (Persistable INSERT) persists id, {@code created_at},
+   * and {@code entry_hmac} together — no UPDATE grant required for peripheral roles.
    *
    * @param auditLog the audit log to save
    */
@@ -150,15 +142,24 @@ public class AuditLogService {
             if (auditLog.getInstanceId() == null) {
               auditLog.setInstanceId(auditHmacService.getInstanceId());
             }
-            AuditLog saved = auditLogRepository.save(auditLog);
 
-            if (saved.getEntryHmac() == null && auditHmacService.isActive()) {
-              entityManager.refresh(saved);
-              saved.setIntegrationIdHmacSnapshot(saved.getIntegrationId());
-              saved.setEnrollmentIdHmacSnapshot(saved.getEnrollmentId());
-              saved.setEntryHmac(auditHmacService.computeHmac(saved));
-              auditLogRepository.save(saved);
+            // Application owns created_at at microsecond precision (signed == stored).
+            OffsetDateTime createdAt =
+                auditLog.getCreatedAt() != null ? auditLog.getCreatedAt() : OffsetDateTime.now();
+            auditLog.setCreatedAt(createdAt.truncatedTo(ChronoUnit.MICROS));
+
+            // Pre-allocate identity so the canonical form can include audit_log_id before INSERT.
+            if (auditLog.getAuditLogId() == null) {
+              auditLog.setAuditLogId(auditLogRepository.nextAuditLogId());
             }
+
+            if (auditLog.getEntryHmac() == null && auditHmacService.isActive()) {
+              auditLog.setIntegrationIdHmacSnapshot(auditLog.getIntegrationId());
+              auditLog.setEnrollmentIdHmacSnapshot(auditLog.getEnrollmentId());
+              auditLog.setEntryHmac(auditHmacService.computeHmac(auditLog));
+            }
+
+            auditLogRepository.save(auditLog);
             return null;
           });
     } catch (Exception e) {

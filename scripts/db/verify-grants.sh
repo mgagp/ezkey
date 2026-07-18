@@ -66,8 +66,27 @@ expect_ok "auth can SELECT ezkey_enrollment" \
 expect_fail "auth cannot DELETE ezkey_audit_log" \
   run_psql ezkey_auth "${AUTH_PASS}" -c "DELETE FROM ezkey_audit_log WHERE false;"
 
-expect_ok "auth can UPDATE ezkey_audit_log (HMAC seal path)" \
+expect_fail "auth cannot UPDATE ezkey_audit_log (append-only)" \
   run_psql ezkey_auth "${AUTH_PASS}" -c "UPDATE ezkey_audit_log SET api_name = api_name WHERE false;"
+
+# Use a real EventType enum value; roll back so smoke rows do not pollute integrity checks.
+expect_ok "auth can INSERT ezkey_audit_log" \
+  run_psql ezkey_auth "${AUTH_PASS}" -v ON_ERROR_STOP=1 -c \
+  "BEGIN;
+   INSERT INTO ezkey_audit_log (event_type, event_action, event_status, api_name)
+   VALUES ('ADMIN_LOGIN', 'verify_grants_insert', 'SUCCESS', 'AUTH_API');
+   ROLLBACK;"
+
+expect_fail "integration cannot UPDATE ezkey_audit_log (append-only)" \
+  run_psql ezkey_integration "${INTEGRATION_PASS}" -c \
+  "UPDATE ezkey_audit_log SET api_name = api_name WHERE false;"
+
+expect_ok "integration can INSERT ezkey_audit_log" \
+  run_psql ezkey_integration "${INTEGRATION_PASS}" -v ON_ERROR_STOP=1 -c \
+  "BEGIN;
+   INSERT INTO ezkey_audit_log (event_type, event_action, event_status, api_name)
+   VALUES ('ADMIN_LOGIN', 'verify_grants_insert', 'SUCCESS', 'INTEGRATION_API');
+   ROLLBACK;"
 
 expect_fail "integration cannot UPDATE ezkey_enrollment" \
   run_psql ezkey_integration "${INTEGRATION_PASS}" -c "UPDATE ezkey_enrollment SET name = name WHERE false;"

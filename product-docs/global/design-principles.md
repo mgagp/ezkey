@@ -107,6 +107,29 @@ trade-off discussion that distilled this principle is recorded in
 [`integrity-assurance-honest-line.md`](integrity-assurance-honest-line.md) and method log
 [`backlog/method-logs/ML-2026-06-28-integrity-honesty-and-export-spi.md`](backlog/method-logs/ML-2026-06-28-integrity-honesty-and-export-spi.md).
 
+### 17. Name fail-open vs fail-closed at critical boundaries
+
+When a component, side effect, or control can fail, name the **failure posture** explicitly:
+
+- **Fail-closed:** the primary operation or path stops (or refuses new work) when the control
+  fails. Prefer this when continuing would silently weaken a security, integrity, or trust
+  guarantee the product claims.
+- **Fail-open:** the primary operation continues when the control fails. Prefer this when
+  blocking would harm availability more than the control protects, and when the failure remains
+  **observable** (log, metric, alert) rather than silent to operators.
+
+Ask, for each critical boundary: *if this step fails, does the user-visible or security-relevant
+path continue or stop — and how do we know?* Record the choice in the brief, TB, ADR, or posture
+doc when the trade-off is non-obvious. Do **not** invent a control matrix for every call site;
+apply the vocabulary where availability, integrity, or honesty of claims are in tension.
+
+This principle pairs with **#4** (explicit trust boundaries), **#12** (security as posture), and
+**#1** / **#2** (keep the analysis light). First product capture that elevated the vocabulary:
+[`backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md`](backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md).
+Lane E decision:
+[`../methodology/decisions/2026-07-18-fail-open-fail-closed-design-compass.md`](../methodology/decisions/2026-07-18-fail-open-fail-closed-design-compass.md).
+Honesty surface: [`../../docs/SECURITY_POSTURE.md`](../../docs/SECURITY_POSTURE.md).
+
 ## How Principles Apply
 
 When designing or reviewing a change:
@@ -115,6 +138,8 @@ When designing or reviewing a change:
 - Identify which principles apply.
 - If any principle is in tension with the change, document it as an ADR and explain the trade-off explicitly.
 - Keep the change proportional to the intent — do not over-engineer, do not under-specify.
+- When a side effect or control can fail, name **fail-open** vs **fail-closed** (principle **#17**)
+  if availability and integrity/honesty pull in different directions.
 
 ## Related Documents
 
