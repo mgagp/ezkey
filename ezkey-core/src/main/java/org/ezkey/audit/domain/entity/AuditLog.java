@@ -14,14 +14,16 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.OffsetDateTime;
 import org.ezkey.audit.domain.ApiName;
 import org.ezkey.audit.domain.EventStatus;
 import org.ezkey.audit.domain.EventType;
+import org.springframework.data.domain.Persistable;
 
 /**
  * JPA entity representing an audit log entry.
@@ -40,6 +42,11 @@ import org.ezkey.audit.domain.EventType;
  * <p><b>Database Table:</b> ezkey_audit_log (composite: RANGE created_at by month, LIST api_name
  * per month)
  *
+ * <p><b>Identity:</b> {@code audit_log_id} is application-assigned from the named sequence {@code
+ * ezkey_audit_log_id_seq} (via {@code nextval} in {@code AuditLogService}) before the single INSERT
+ * HMAC seal. Not {@code @GeneratedValue}: Hibernate rejects {@code persist()} of a pre-set id under
+ * {@code GenerationType.SEQUENCE}.
+ *
  * <p><b>Project:</b> Ezkey - Open Source Cryptographic MFA Platform
  *
  * <p><b>License:</b> MIT
@@ -49,12 +56,18 @@ import org.ezkey.audit.domain.EventType;
  */
 @Entity
 @Table(name = "ezkey_audit_log")
-public class AuditLog {
+public class AuditLog implements Persistable<Long> {
 
+  /** Application-assigned from {@code ezkey_audit_log_id_seq} before INSERT. */
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "audit_log_id")
   private Long auditLogId;
+
+  /**
+   * Spring Data {@link Persistable} flag so a pre-allocated {@code audit_log_id} still routes
+   * through {@code persist()} (INSERT) rather than {@code merge()} (which would require UPDATE).
+   */
+  @Transient private boolean newEntity = true;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "event_type", nullable = false, length = 50)
@@ -141,6 +154,22 @@ public class AuditLog {
   /** Default constructor for JPA. */
   public AuditLog() {
     this.createdAt = OffsetDateTime.now();
+  }
+
+  @Override
+  public Long getId() {
+    return auditLogId;
+  }
+
+  @Override
+  public boolean isNew() {
+    return newEntity;
+  }
+
+  @PostPersist
+  @PostLoad
+  void markNotNew() {
+    this.newEntity = false;
   }
 
   /**

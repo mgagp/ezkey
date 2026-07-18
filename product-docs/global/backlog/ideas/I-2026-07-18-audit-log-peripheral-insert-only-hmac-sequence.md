@@ -3,11 +3,12 @@
 ## Metadata
 
 - **ID:** `I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-07-18`
 - **Updated at:** `2026-07-18`
 - **Last reviewed at:** `2026-07-18`
+- **Closed at:** `2026-07-18`
 - **Progression markers:** `P2-hardening`
 - **Component tags:** `core`, `audit`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`
 - **Lane:** `D`
@@ -183,7 +184,16 @@ missing or unsigned audit rows. Posture:
 ## Promotion notes
 
 Promoted to `ready` on 2026-07-18. Execution slice:
-[`../TB-2026-07-18-audit-log-insert-only-hmac-seal.md`](../TB-2026-07-18-audit-log-insert-only-hmac-seal.md).
+[`../TB-2026-07-18-audit-log-insert-only-hmac-seal.md`](../TB-2026-07-18-audit-log-insert-only-hmac-seal.md)
+(`done` 2026-07-18).
+
+## Closeout
+
+Delivered: named sequence + single-INSERT HMAC seal; peripheral `ezkey_audit_log` grants are
+SELECT + INSERT only; functional suite + `AuditIntegrityElectiveTest` + `verify-grants.sh --docker`
+green. Pragmatic JPA/SQL deltas vs grill (assigned id + `DEFAULT nextval`, not IDENTITY /
+`GenerationType.SEQUENCE`) are recorded on the TB. Fail-open swallow remains out of scope
+([`I-2026-07-18-audit-log-fail-open-exception-swallow`](I-2026-07-18-audit-log-fail-open-exception-swallow.md)).
 
 ## Links
 
@@ -193,6 +203,6 @@ Promoted to `ready` on 2026-07-18. Execution slice:
 - Sibling follow-up on same TB: [`I-2026-07-17-keyset-blob-admin-first-bootstrap.md`](I-2026-07-17-keyset-blob-admin-first-bootstrap.md)
 - Sibling (orthogonal — delivery, not seal/grants): [`I-2026-07-18-audit-log-fail-open-exception-swallow.md`](I-2026-07-18-audit-log-fail-open-exception-swallow.md) — `log()` fail-open / exception swallow; out of scope for the INSERT-only TB
 - Related integrity vision: `V-2026-0004` (integrity validation strategy)
-- Code: `org.ezkey.audit.service.AuditLogService` (`log()` two-step seal), `org.ezkey.audit.integrity.AuditHmacService` (`buildCanonicalForm`, `formatTimestamp`), entity `org.ezkey.audit.domain.entity.AuditLog` (`@GeneratedValue(strategy = IDENTITY)`)
-- Migration: `ezkey-core/src/main/resources/db/migration/V4__partitioning_auth_audit_and_function.sql` (`audit_log_id BIGINT GENERATED ALWAYS AS IDENTITY`)
+- Code: `org.ezkey.audit.service.AuditLogService` (`log()` single-INSERT seal), `org.ezkey.audit.integrity.AuditHmacService` (`buildCanonicalForm`, `formatTimestamp`), entity `org.ezkey.audit.domain.entity.AuditLog` (assigned id + `Persistable`)
+- Migration: `ezkey-core/src/main/resources/db/migration/V4__partitioning_auth_audit_and_function.sql` (`ezkey_audit_log_id_seq` + `DEFAULT nextval`)
 - Grants: `scripts/db/apply-grants.sql`, `scripts/db/verify-grants.sh`

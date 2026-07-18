@@ -79,7 +79,7 @@ Legend: **S**=SELECT · **I**=INSERT · **U**=UPDATE · **D**=DELETE · **X**=EX
 | `ezkey_enrollment` | owner | S I U D | S U | S | Auth: bind/verify/`lastUsedAt`; integration: read |
 | `ezkey_auth_attempt` | owner | S I U | S U | S I U | Auth does not create attempts |
 | `ezkey_api_key` | owner | S I U D | — | S U | Integration: `lastUsedAt` on validate |
-| `ezkey_audit_log` | owner | S I U D | S I U | S I U | **DELETE admin only** (lifecycle purge). All runtime roles need **UPDATE** for `AuditLogService` two-step HMAC seal after identity assign — not a business mutate API. |
+| `ezkey_audit_log` | owner | S I U D | S I | S I | **DELETE admin only** (lifecycle purge). Peripherals are **SELECT + INSERT** only (single-INSERT HMAC seal via named sequence `ezkey_audit_log_id_seq`; no UPDATE). `ezkey_admin` retains UPDATE/DELETE. |
 | `ezkey_encryption_key` | owner | S I U | S | S | Writers: key rotation (admin) |
 | `ezkey_reencryption_batch` | owner | S I U | — | — | Admin schedulers only |
 | `ezkey_keyset_blob` | owner | S I U | S I U | S I U | Shared `TinkKeyManager` startup can upsert from any API today. Desired hardening: Admin-first bootstrap, then peripheral **SELECT-only** — [`I-2026-07-17-keyset-blob-admin-first-bootstrap`](../product-docs/global/backlog/ideas/I-2026-07-17-keyset-blob-admin-first-bootstrap.md) |
@@ -93,7 +93,7 @@ Legend: **S**=SELECT · **I**=INSERT · **U**=UPDATE · **D**=DELETE · **X**=EX
 
 ### Sequences / identity
 
-All three runtime roles receive `USAGE, SELECT` on sequences in `public` so `GENERATED ALWAYS AS IDENTITY` inserts succeed where INSERT is granted.
+All three runtime roles receive `USAGE, SELECT` on sequences in `public` so identity/sequence-backed inserts succeed where INSERT is granted. `ezkey_audit_log.audit_log_id` uses an explicit named sequence (`ezkey_audit_log_id_seq`) with `DEFAULT nextval(...)`; the application pre-allocates via `nextval` for the single-INSERT HMAC seal (assigned id + Persistable INSERT).
 
 ### Partitioned tables
 
@@ -101,7 +101,7 @@ Grants on parents `ezkey_audit_log` and `ezkey_auth_attempt` apply to partitions
 
 ## Explicit exceptions
 
-1. **Audit immutability:** only `ezkey_admin` may DELETE `ezkey_audit_log` (lifecycle purge). Auth/integration must not DELETE. They retain UPDATE solely for the HMAC post-insert seal (`AuditLogService`); row-level “no mutate after seal” remains an application/integrity concern (triggers/RLS out of scope for R1). **Follow-up:** restoring peripheral **INSERT-only** is an active analysis — preferred candidate to validate is an **explicit sequence** (allocate id → compute HMAC → single INSERT), which would also remove the two-step INSERT+UPDATE accidental complexity. Tracked in [`I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence`](../product-docs/global/backlog/ideas/I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence.md) (`incubating` P2); source signal in [`TB-2026-07-16`](../product-docs/global/backlog/TB-2026-07-16-postgresql-application-role-split.md) § Follow-up analysis. Current two-step seal is atomic (single transaction); that property must be preserved.
+1. **Audit immutability:** only `ezkey_admin` may DELETE `ezkey_audit_log` (lifecycle purge). Auth/integration must not DELETE or UPDATE — they hold **SELECT + INSERT** only. The HMAC seal is a **single INSERT** (`AuditLogService.log()`): named sequence pre-allocates `audit_log_id`, the application owns micros-truncated `created_at`, and `entry_hmac` is written on that INSERT inside `REQUIRES_NEW`. Delivered by [`TB-2026-07-18`](../product-docs/global/backlog/TB-2026-07-18-audit-log-insert-only-hmac-seal.md) / [`I-2026-07-18`](../product-docs/global/backlog/ideas/I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence.md); source signal in [`TB-2026-07-16`](../product-docs/global/backlog/TB-2026-07-16-postgresql-application-role-split.md) § Follow-up analysis.
 2. **Integrity chain tables:** checkpoints/conciliation are admin-write; incidents are writable by peripherals for heartbeat sync.
 3. **Partition DDL:** app roles never get CREATE TABLE; only EXECUTE on the whitelist function.
 4. **RLS / column grants:** out of scope (see `I-2026-0021`).

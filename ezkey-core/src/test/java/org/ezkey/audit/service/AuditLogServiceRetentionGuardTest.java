@@ -13,7 +13,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
 import java.util.EnumSet;
 import org.ezkey.audit.domain.repository.AuditLogRepository;
@@ -33,7 +32,6 @@ class AuditLogServiceRetentionGuardTest {
   @Mock private AuditLogRepository auditLogRepository;
   @Mock private AuditChainCheckpointRepository checkpointRepository;
   @Mock private AuditHmacService auditHmacService;
-  @Mock private EntityManager entityManager;
   @Mock private PlatformTransactionManager transactionManager;
 
   private AuditLogService auditLogService;
@@ -42,11 +40,7 @@ class AuditLogServiceRetentionGuardTest {
   void setUp() {
     auditLogService =
         new AuditLogService(
-            auditLogRepository,
-            checkpointRepository,
-            auditHmacService,
-            entityManager,
-            transactionManager);
+            auditLogRepository, checkpointRepository, auditHmacService, transactionManager);
   }
 
   @Test

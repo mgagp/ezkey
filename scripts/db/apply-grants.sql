@@ -61,7 +61,7 @@ TO ezkey_admin;
 
 GRANT SELECT, INSERT, UPDATE ON TABLE ezkey_auth_attempt TO ezkey_admin;
 
--- Audit log: INSERT/UPDATE for HMAC seal; DELETE for lifecycle purge only
+-- Audit log: INSERT (single-INSERT HMAC seal); UPDATE retained for admin ops; DELETE for lifecycle purge
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE ezkey_audit_log TO ezkey_admin;
 
 GRANT SELECT, UPDATE ON TABLE ezkey_scheduled_job_last_run TO ezkey_admin;
@@ -82,9 +82,9 @@ GRANT SELECT, UPDATE ON TABLE
   ezkey_auth_attempt
 TO ezkey_auth;
 
--- INSERT + UPDATE: AuditLogService two-step HMAC seal (identity then UPDATE entry_hmac).
--- DELETE denied (immutability / no purge from Auth API).
-GRANT SELECT, INSERT, UPDATE ON TABLE ezkey_audit_log TO ezkey_auth;
+-- SELECT + INSERT only: single-INSERT HMAC seal (id + created_at + entry_hmac on INSERT).
+-- DELETE denied (immutability / no purge from Auth API); UPDATE denied (append-only).
+GRANT SELECT, INSERT ON TABLE ezkey_audit_log TO ezkey_auth;
 
 GRANT SELECT, INSERT, UPDATE ON TABLE
   ezkey_keyset_blob,
@@ -108,8 +108,8 @@ GRANT SELECT, INSERT, UPDATE ON TABLE ezkey_auth_attempt TO ezkey_integration;
 
 GRANT SELECT, UPDATE ON TABLE ezkey_api_key TO ezkey_integration;
 
--- INSERT + UPDATE: AuditLogService two-step HMAC seal (see ezkey_auth note).
-GRANT SELECT, INSERT, UPDATE ON TABLE ezkey_audit_log TO ezkey_integration;
+-- SELECT + INSERT only: single-INSERT HMAC seal (see ezkey_auth note).
+GRANT SELECT, INSERT ON TABLE ezkey_audit_log TO ezkey_integration;
 
 GRANT SELECT, INSERT, UPDATE ON TABLE
   ezkey_keyset_blob,
