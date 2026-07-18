@@ -62,6 +62,8 @@ Turn a `ready` idea into a validated first vertical slice (`TB-*`).
 4. Define critical nominal and exception path.
 5. Define expected evidence (tests, docs, traceability).
 6. Mark explicit exclusions for this slice.
+7. When GitHub visibility is needed, call **`github-issue-promote`** before implementation
+   (labels mandatory — see `github-issues-workflow.md`).
 
 ## Rule
 

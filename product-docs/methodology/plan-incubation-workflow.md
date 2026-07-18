@@ -157,7 +157,7 @@ Add this block at the end of each retained working plan after ingestion:
 - Tracer bullet: `product-docs/global/backlog/ideas/TB-...` (if any)
 - Design / other canon: `product-docs/global/...` (if any)
 - GitHub issue / branch: `#NNN`, `feature/NNN-...` (if implementation started)
-- Methodology gate: `product-docs/methodology/decisions/2026-06-02-plan-incubation-bidirectional-traceability.md`
+- Methodology gate: retained-plan bidirectional traceability completed
 - Plan role after materialization: retained source and option-space record; canonical direction lives in the linked artifacts above.
 ```
 
@@ -224,7 +224,6 @@ If a working plan later becomes old and must be mined after the fact, it may bec
 ## Related documents
 
 - [`decisions/2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md`](decisions/2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan.md)
-- [`decisions/2026-06-02-plan-incubation-bidirectional-traceability.md`](decisions/2026-06-02-plan-incubation-bidirectional-traceability.md)
 - [`workflow-overview.md`](workflow-overview.md)
 - [`session-start-guide.md`](session-start-guide.md)
 - [`legacy-retrofit-workflow.md`](legacy-retrofit-workflow.md)

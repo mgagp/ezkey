@@ -28,12 +28,15 @@ const FALLBACK_RETROFIT_ORDER = [
   'retrofit-curator',
 ];
 
+// This sequence is both the publication allowlist and the reader-facing navigation order.
+// Operational skills remain private until deliberately added here.
 export const PUBLIC_SKILLS_SEQUENCE = [
   'README',
   'vision-intake',
   'backlog-triage',
   'grill-me',
   'tracer-bullet-promote',
+  'github-issue-promote',
   'component-design-pack',
   'test-strategy-planner',
   'quality-gatekeeper',
@@ -52,11 +55,13 @@ export function prepareSkillsPublicCorpus() {
   mkdirp(GENERATED_SKILLS_DIR);
 
   const orders = readSkillOrders();
-  const orderedNames = dedupe([
-    ...orders.workflow,
-    ...orders.retrofit,
-    ...listUnorderedSkillDirs(),
-  ]);
+  const orderedNames = PUBLIC_SKILLS_SEQUENCE.filter((name) => name !== 'README');
+  const missingSkills = orderedNames.filter(
+    (name) => !fs.existsSync(path.join(SKILLS_SOURCE_DIR, name, 'SKILL.md')),
+  );
+  if (missingSkills.length > 0) {
+    throw new Error(`Public skill allowlist references missing skills: ${missingSkills.join(', ')}`);
+  }
 
   const skills = orderedNames
     .map((skillName, index) => parseSkill(skillName, index + 1))
@@ -144,15 +149,6 @@ function sectionBody(markdown, title) {
 
 function stripInlineCode(value) {
   return String(value || '').replace(/`([^`]+)`/g, '$1');
-}
-
-function listUnorderedSkillDirs() {
-  if (!fs.existsSync(SKILLS_SOURCE_DIR)) return [];
-  return fs.readdirSync(SKILLS_SOURCE_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .filter((name) => fs.existsSync(path.join(SKILLS_SOURCE_DIR, name, 'SKILL.md')))
-    .sort();
 }
 
 function parseSkill(skillName, order) {
@@ -257,8 +253,9 @@ function buildOverviewDoc({ skills, workflowOrder, retrofitOrder }) {
     site.
   </p>
   <p class="skills-sublede">
-    The source of truth remains <code>.cursor/skills/</code>. The pages here are derived views
-    packaged for discoverability, traceability, and public explanation.
+    The source of truth remains <code>.cursor/skills/</code>. These curated pages are derived views
+    packaged for discoverability, traceability, and public explanation; source-project automation
+    stays outside the public method by default.
   </p>
 </section>
 
@@ -456,10 +453,6 @@ function compareSkillsForPublicOrder(left, right) {
   const rankDiff = publicSkillRank(left.name) - publicSkillRank(right.name);
   if (rankDiff !== 0) return rankDiff;
   return left.name.localeCompare(right.name);
-}
-
-function dedupe(values) {
-  return [...new Set(values.filter(Boolean))];
 }
 
 function rmrf(targetPath) {

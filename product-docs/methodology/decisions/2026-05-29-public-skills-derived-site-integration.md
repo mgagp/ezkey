@@ -41,16 +41,23 @@ The methodology site now packages a **derived public skills layer** generated fr
 This layer is meant for explanation and navigation. It does not replace the canonical operational
 skill files.
 
+The public layer is an **explicitly curated subset**, not an automatic mirror of every operational
+skill. A skill belongs in the public sequence only when it teaches a reusable methodology
+capability. Source-project automation remains available to agents without expanding the public
+method.
+
 ## Consequences
 
 - The site pipeline gains a small generation step that prepares public skill pages before serving or building the site.
 - The public site can expose skills in navigation, search, and track reading without duplicating skill maintenance by hand.
 - The site remains method-first: skills are attached to the methodology, not published as a separate framework.
+- New operational skills are private by default until deliberately added to the public allowlist.
 - Future refinement can add richer cards or dedicated visualization without changing the source-of-truth location.
 
 ## Related documents
 
 - [`../ai-collaboration-model.md`](../ai-collaboration-model.md)
 - [`../README.md`](../README.md)
+- [`2026-07-18-curated-public-skills-allowlist.md`](2026-07-18-curated-public-skills-allowlist.md)
 - methodology site pipeline README
 - source-repo `.cursor/skills/README.md`

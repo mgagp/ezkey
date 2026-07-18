@@ -1,5 +1,5 @@
 ---
-public: false
+public: true
 ---
 # Cursor Plan mode: ephemeral scaffold vs retained working plan
 
@@ -11,8 +11,7 @@ public: false
 
 Cursor **Plan mode** is a durable product habit: operators and agents use it to compare options and
 converge before writing canonical `product-docs`. The plan-incubation lane already requires
-**bidirectional traceability** when a **retained** working plan is ingested
-([`2026-06-02-plan-incubation-bidirectional-traceability.md`](2026-06-02-plan-incubation-bidirectional-traceability.md)).
+**bidirectional traceability** when a **retained** working plan is ingested.
 
 A recurring friction appeared when Plan mode wrote a plan **outside the git clone** (typical Cursor
 user path such as `~/.cursor/plans/*.plan.md`), the durable signal was then fully captured in an
@@ -22,10 +21,9 @@ user path such as `~/.cursor/plans/*.plan.md`), the durable signal was then full
 - felt obliged to **copy the plan into the repository** even when it added no residual option space
   beyond the `I-*`.
 
-The API-key `expiresAt` edit evaluation (2026-07-11) was the concrete trigger: the investigation
-plan was thin; [`I-2026-07-11-api-key-expires-at-edit`](../../global/backlog/ideas/I-2026-07-11-api-key-expires-at-edit.md)
-already held the matrix and non-goals. Forcing repo materialization of the plan would have been
-ceremony without signal.
+A source-project API-key edit evaluation was the concrete trigger: the investigation plan was
+thin, while the canonical backlog artifact already held the matrix and non-goals. Forcing repo
+materialization of the plan would have been ceremony without signal.
 
 ## Source signal
 
@@ -97,18 +95,16 @@ Never leave corpus → plan provenance that cold agents cannot resolve from a fr
 - Agents stop over-materializing empty plans and stop half-linking outside the repo.
 - Retained incubation remains available when the plan still earns its keep.
 - Surfaces updated: [`../plan-incubation-workflow.md`](../plan-incubation-workflow.md),
-  [`.cursor/skills/plan-incubation/SKILL.md`](../../../.cursor/skills/plan-incubation/SKILL.md),
-  [`../session-start-guide.md`](../session-start-guide.md), root [`AGENTS.md`](../../../AGENTS.md).
+  [`../session-start-guide.md`](../session-start-guide.md), and the operational
+  `plan-incubation` skill.
 
 ## Applied example
 
 | Session | Classification | Canon |
 | --- | --- | --- |
-| API key editable attributes / `expiresAt` (2026-07-11) | **A — ephemeral** | `I-2026-07-11-api-key-expires-at-edit` only; no in-repo plan |
+| Source-project API-key editable attributes (2026-07-11) | **A — ephemeral** | Canonical backlog artifact only; no in-repo plan |
 
 ## Related documents
 
-- [`2026-06-02-plan-incubation-bidirectional-traceability.md`](2026-06-02-plan-incubation-bidirectional-traceability.md)
 - [`../plan-incubation-workflow.md`](../plan-incubation-workflow.md)
 - [`../minimum-viable-method.md`](../minimum-viable-method.md) (lightest honest closeout)
-- [`../../global/backlog/ideas/I-2026-07-11-api-key-expires-at-edit.md`](../../global/backlog/ideas/I-2026-07-11-api-key-expires-at-edit.md)

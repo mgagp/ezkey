@@ -28,15 +28,6 @@ When speed matters more than completeness, use this reduced entry:
 
 See [`minimum-viable-method.md`](minimum-viable-method.md) for the compact version.
 
-## Where are we? (Ezkey product priority)
-
-When the question is **current release priority** or **what to implement next** (not methodology
-mechanics), read first:
-
-→ [`../global/operational-readiness-prioritization-2026-09.md`](../global/operational-readiness-prioritization-2026-09.md)
-
-Then the [backlog index](../global/backlog/index.md) and any linked `I-*` / `TB-*` for the active wave.
-
 ## Choose the lane
 
 ### Lane A — Default ideation-to-delivery workflow

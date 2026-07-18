@@ -7,8 +7,9 @@
     site.
   </p>
   <p class="skills-sublede">
-    The source of truth remains <code>.cursor/skills/</code>. The pages here are derived views
-    packaged for discoverability, traceability, and public explanation.
+    The source of truth remains <code>.cursor/skills/</code>. These curated pages are derived views
+    packaged for discoverability, traceability, and public explanation; source-project automation
+    stays outside the public method by default.
   </p>
 </section>
 
@@ -113,7 +114,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">05</span>
+      <span class="skill-card-order">06</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/component-design-pack.md"><code>component-design-pack</code></a></h3>
@@ -127,7 +128,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">06</span>
+      <span class="skill-card-order">07</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/test-strategy-planner.md"><code>test-strategy-planner</code></a></h3>
@@ -141,7 +142,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">07</span>
+      <span class="skill-card-order">08</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/quality-gatekeeper.md"><code>quality-gatekeeper</code></a></h3>
@@ -155,7 +156,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">08</span>
+      <span class="skill-card-order">09</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/traceability-sync.md"><code>traceability-sync</code></a></h3>
@@ -169,7 +170,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">09</span>
+      <span class="skill-card-order">10</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/closeout.md"><code>closeout</code></a></h3>
@@ -183,11 +184,11 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--workflow">
     <div class="skill-card-meta">
-      <span class="skill-card-order">10</span>
+      <span class="skill-card-order">11</span>
       <span class="skill-card-kind">Workflow skill</span>
     </div>
     <h3><a href="#/skills/plan-incubation.md"><code>plan-incubation</code></a></h3>
-    <p class="skill-card-summary">Incubates a live working plan, then materializes durable output into product-docs with mandatory bidirectional traceability. Use when starting from a current-session plan under .cursor/plans/, plans/, or .github/prompts/plan-*.prompt.md before creating V-*, I-*, or TB-* artifacts.</p>
+    <p class="skill-card-summary">Incubates a live working plan, then materializes durable output into product-docs. Classify ephemeral vs retained; apply bidirectional traceability only for retained plans. Use when starting from a current-session plan under .cursor/plans/, plans/, or .github/prompts/plan-*.prompt.md before creating V-*, I-*, or TB-* artifacts.</p>
     <div class="skill-card-facts">
       <p><strong>Enter when</strong><br />the operator deliberately starts from a current-session working plan before canonical docs.</p>
       <p><strong>Call next</strong><br /><a href="#/skills/vision-intake.md">vision-intake</a>, <a href="#/skills/backlog-triage.md">backlog-triage</a>, <a href="#/skills/tracer-bullet-promote.md">tracer-bullet-promote</a></p>
@@ -202,7 +203,7 @@ flowchart LR
 <div class="skill-card-grid">
   <article class="skill-card skill-card--retrofit">
     <div class="skill-card-meta">
-      <span class="skill-card-order">11</span>
+      <span class="skill-card-order">12</span>
       <span class="skill-card-kind">Legacy retrofit skill</span>
     </div>
     <h3><a href="#/skills/legacy-plan-miner.md"><code>legacy-plan-miner</code></a></h3>
@@ -216,7 +217,7 @@ flowchart LR
   </article>
   <article class="skill-card skill-card--retrofit">
     <div class="skill-card-meta">
-      <span class="skill-card-order">12</span>
+      <span class="skill-card-order">13</span>
       <span class="skill-card-kind">Legacy retrofit skill</span>
     </div>
     <h3><a href="#/skills/retrofit-curator.md"><code>retrofit-curator</code></a></h3>
@@ -235,7 +236,21 @@ flowchart LR
 <div class="skill-card-grid">
   <article class="skill-card skill-card--additional">
     <div class="skill-card-meta">
-      <span class="skill-card-order">13</span>
+      <span class="skill-card-order">05</span>
+      <span class="skill-card-kind">Method skill</span>
+    </div>
+    <h3><a href="#/skills/github-issue-promote.md"><code>github-issue-promote</code></a></h3>
+    <p class="skill-card-summary">Opens a GitHub issue from I-* or TB-* with mandatory labels, traceability body, and canon back-reference. Use when an operator or program slice needs GitHub visibility (issue, billet, ticket).</p>
+    <div class="skill-card-facts">
+      <p><strong>Enter when</strong><br />an idea or tracer bullet warrants GitHub visibility (program slice, PR board,</p>
+      <p><strong>Call next</strong><br />Context-dependent.</p>
+      <p><strong>Not needed when</strong><br />hygiene-only work with a single small PR and the operator did not ask for an issue.</p>
+    </div>
+    <p class="skill-card-link"><a href="#/skills/github-issue-promote.md">Open detail</a></p>
+  </article>
+  <article class="skill-card skill-card--additional">
+    <div class="skill-card-meta">
+      <span class="skill-card-order">14</span>
       <span class="skill-card-kind">Method skill</span>
     </div>
     <h3><a href="#/skills/methodology-release.md"><code>methodology-release</code></a></h3>

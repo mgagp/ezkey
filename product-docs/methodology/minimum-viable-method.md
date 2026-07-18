@@ -143,7 +143,8 @@ An operator saying **“commit”** or **“let's close this”** on such a slic
 not permission to skip them. The hygiene challenge rule (above) reduces *over*-materialization; this
 sequence prevents *under*-closure when program artifacts are already open.
 
-Retrospective: [`../global/backlog/method-logs/ML-2026-06-18-closeout-skill-before-commit-gap.md`](../global/backlog/method-logs/ML-2026-06-18-closeout-skill-before-commit-gap.md).
+This sequence comes from a source-project retrospective in which implementation was committed
+before already-open program artifacts were closed.
 
 ### GitHub issue vs `product-docs` canon
 
@@ -153,7 +154,7 @@ source of truth.
 
 | Profile | GitHub issue |
 | --- | --- |
-| **Hygiene (Lane C)** — local fix, known recipe, no cross-repo sync | Optional; PR alone is often enough |
+| **Hygiene** — local fix, known recipe, no cross-repo sync | Optional; PR alone is often enough |
 | **Program (Lane A/D)** — monorepo PR, dual-repo sync, or scope that grew en route | **Proactive check:** state one line at implementation start or closeout whether an issue helps; open at start **or retroactively** before/with PR |
 | **Operator preference** | Follow operator; retroactive issue after canon closeout is **valid**, not a methodology fault |
 
@@ -162,10 +163,9 @@ the tracer bullet. Retroactive issues after canon closeout are normal when scope
 become clear en route (e.g. dual-repo sync).
 
 **Labels (mandatory):** read [`github-issues-workflow.md`](github-issues-workflow.md) § Mandatory label
-checklist and run skill [`.cursor/skills/github-issue-promote/SKILL.md`](../../.cursor/skills/github-issue-promote/SKILL.md).
+checklist and run the `github-issue-promote` skill.
 Every new issue needs `lane:*`, `type:*`, `component:*`, `priority:*`, and `status:*` at create time
-(`gh issue create --label ...`), verified before the agent reports success. See also
-[`.cursor/rules/github-issue-labels.mdc`](../../.cursor/rules/github-issue-labels.mdc).
+(`gh issue create --label ...`), verified before the agent reports success.
 
 ### Agent challenge (required on mismatch)
 
