@@ -94,12 +94,12 @@ describe('SecurityScreen', () => {
     });
 
     expect(() =>
-      tree!.root.findByProps({children: 'This protection is currently declarative'}),
+      tree!.root.findByProps({children: 'This protection is enforced by the app'}),
     ).not.toThrow();
     expect(() =>
       tree!.root.findByProps({
         children:
-          'In the current version, the app requests local device confirmation before responding, but the backend does not yet receive a cryptographic proof that this local authentication was inseparably bound to the signature itself.',
+          'The app asks for local device confirmation before responding. The signing key itself does not require that confirmation, and the backend receives no cryptographic proof that it occurred or was bound to the signature.',
       }),
     ).not.toThrow();
   });

@@ -147,7 +147,7 @@ public class AdminAuthService {
    *   <li>No password to steal or guess
    *   <li>Phishing resistant (cryptographic signatures)
    *   <li>Device-bound credentials
-   *   <li>Biometric verification on device
+   *   <li>Optional local device confirmation in the enrolled app; not server-attested
    * </ul>
    *
    * @param request the login request with username, optional challenge flag, and optional

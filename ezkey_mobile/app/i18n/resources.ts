@@ -47,7 +47,7 @@ export const resources = {
         confirmationBody:
           'Ask for device confirmation before approving or denying a request.',
         current: 'Current setting',
-        unavailableTitle: 'Biometric confirmation unavailable',
+        unavailableTitle: 'Device confirmation unavailable',
         unavailableBody:
           'This device does not currently support the stronger device confirmation mode required for protected approvals.',
         preferenceNoteEyebrow: 'This phone',
@@ -55,9 +55,9 @@ export const resources = {
         preferenceNoteBody:
           'When enabled, this phone asks for device confirmation before it approves or denies requests. Android may use strong biometrics or the device credential, depending on what is available.',
         declarativeNoteEyebrow: 'Current version',
-        declarativeNoteTitle: 'This protection is currently declarative',
+        declarativeNoteTitle: 'This protection is enforced by the app',
         declarativeNoteBody:
-          'In the current version, the app requests local device confirmation before responding, but the backend does not yet receive a cryptographic proof that this local authentication was inseparably bound to the signature itself.',
+          'The app asks for local device confirmation before responding. The signing key itself does not require that confirmation, and the backend receives no cryptographic proof that it occurred or was bound to the signature.',
         settingChangeCancelled:
           'The change was canceled. Protected confirmation remains enabled.',
         settingChangeUnavailable:
@@ -385,7 +385,7 @@ export const resources = {
         confirmationBody:
           'Demande une confirmation de l’appareil avant d’approuver ou de refuser une demande.',
         current: 'Réglage actuel',
-        unavailableTitle: 'Confirmation biométrique indisponible',
+        unavailableTitle: 'Confirmation de l’appareil indisponible',
         unavailableBody:
           'Cet appareil ne prend pas actuellement en charge le mode de confirmation renforcée requis pour les approbations protégées.',
         preferenceNoteEyebrow: 'Ce téléphone',
@@ -393,9 +393,9 @@ export const resources = {
         preferenceNoteBody:
           'Lorsque ce mode est activé, ce téléphone demande une confirmation de l’appareil avant d’approuver ou de refuser une demande. Android peut utiliser une biométrie forte ou le code de l’appareil selon ce qui est disponible.',
         declarativeNoteEyebrow: 'Version actuelle',
-        declarativeNoteTitle: 'Cette protection reste actuellement déclarative',
+        declarativeNoteTitle: 'Cette protection est appliquée par l’application',
         declarativeNoteBody:
-          'Dans la version actuelle, l’application demande une confirmation locale de l’appareil avant de répondre, mais le backend ne reçoit pas encore de preuve cryptographique que cette authentification locale était inséparable de la signature elle-même.',
+          'L’application demande une confirmation locale de l’appareil avant de répondre. La clé de signature elle-même n’exige pas cette confirmation et le backend ne reçoit aucune preuve cryptographique qu’elle a eu lieu ou qu’elle était liée à la signature.',
         settingChangeCancelled:
           'Le changement a été annulé. La confirmation renforcée reste activée.',
         settingChangeUnavailable:

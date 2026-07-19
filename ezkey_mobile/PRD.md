@@ -16,7 +16,7 @@ Deliver a cross-platform (iOS + Android) React Native mobile application that ma
 - Provide a publish-ready codebase that respects platform guidelines and privacy expectations.
 
 ### Constraints & Assumptions
-- Device authentication (PIN/biometric) is out-of-scope for the first iteration but must remain extensible.
+- Optional local device confirmation (strong biometric or device credential) before approving or denying is in scope as app-enforced UX. Keystore auth-bound signing remains deferred.
 - Push notifications are out-of-scope; polling and in-app refresh cover pending auth attempts.
 - The ngrok URL may change; it must be isolated behind configuration to swap environments quickly.
 - Integration logo has been removed from the platform; the app does not display or store logos.

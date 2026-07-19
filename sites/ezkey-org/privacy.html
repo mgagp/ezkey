@@ -357,13 +357,14 @@
                     <td>No (see section 4)</td>
                 </tr>
                 <tr>
-                    <td><strong>Biometric / Fingerprint</strong>
-                        <br><em>(declared, not active in v0.0.1)</em></td>
-                    <td>This permission is declared in the app manifest by a third-party
-                        library dependency (<code>androidx.biometric</code>, used for secure
-                        credential storage). The current version of the app does not present
-                        any biometric prompt to the user. Biometric-gated operations are
-                        planned for a future release.</td>
+                    <td><strong>Biometric / device credential</strong>
+                        <br><em>(optional local confirmation)</em></td>
+                    <td>The app may ask for a strong biometric or the device PIN, pattern, or
+                        password before approving or denying a request, and before lowering the
+                        local confirmation setting. Biometric templates and device credentials
+                        remain managed by Android and are not sent to Ezkey. This confirmation is
+                        enforced by the app flow; the backend receives no cryptographic proof that
+                        it occurred or was bound to the response signature.</td>
                     <td>No</td>
                 </tr>
             </tbody>

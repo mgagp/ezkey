@@ -371,14 +371,16 @@
                     <td>Non (voir section&nbsp;4)</td>
                 </tr>
                 <tr>
-                    <td><strong>Biométrie / Empreinte</strong>
-                        <br><em>(déclarée, non active dans la v0.0.1)</em></td>
-                    <td>Cette permission est déclarée dans le manifeste de l&rsquo;application
-                        par une dépendance tierce (<code>androidx.biometric</code>, utilisée
-                        pour le stockage sécurisé des identifiants). La version actuelle de
-                        l&rsquo;application n&rsquo;affiche aucune invite biométrique à
-                        l&rsquo;utilisateur. Les opérations protégées par biométrie sont
-                        prévues dans une version future.</td>
+                    <td><strong>Biométrie / identifiant de l&rsquo;appareil</strong>
+                        <br><em>(confirmation locale facultative)</em></td>
+                    <td>L&rsquo;application peut demander une biométrie forte ou le code, le schéma
+                        ou le mot de passe de l&rsquo;appareil avant d&rsquo;approuver ou de refuser
+                        une demande, ainsi qu&rsquo;avant de réduire le réglage de confirmation
+                        locale. Les modèles biométriques et les identifiants de l&rsquo;appareil
+                        restent gérés par Android et ne sont pas transmis à Ezkey. Cette confirmation
+                        est appliquée par le parcours de l&rsquo;application&nbsp;; le backend ne
+                        reçoit aucune preuve cryptographique qu&rsquo;elle a eu lieu ou qu&rsquo;elle
+                        était liée à la signature de la réponse.</td>
                     <td>Non</td>
                 </tr>
             </tbody>

@@ -233,6 +233,14 @@ if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 }
 ```
 
+The reference app's optional protected-approval mode is separate from these key-generation
+parameters. It shows a `BiometricPrompt` for strong biometric or device-credential confirmation,
+then signs with the enrollment key. Because the key is generated with
+`setUserAuthenticationRequired(false)` and signing does not use a
+`BiometricPrompt.CryptoObject`, this is app-enforced confirmation on an honest client, not
+Keystore-bound biometric signing. The backend receives no cryptographic proof of the local
+confirmation step.
+
 Important properties:
 
 - The private key is never exported to JavaScript or application storage.

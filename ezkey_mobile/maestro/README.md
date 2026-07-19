@@ -70,7 +70,7 @@ Lines use prefix **`[PendingAuthRespond]`** with an ISO timestamp and a step id,
 | --- | --- |
 | `pendingAuth_ui_approve_press` | Approve / Deny `TouchableOpacity` `onPress` ran (UI layer). |
 | `handleRespond_try_begin` | Hook entered the respond `try` (after challenge length gate). |
-| `handleRespond_after_prefs` | Includes **`protectedSigning`** (biometric gate when true). |
+| `handleRespond_after_prefs` | Includes **`protectedSigning`** (app biometric/device-credential prompt when true). |
 | `handleRespond_after_device_sign` | Device signing finished; about to call HTTP `respond`. |
 | `handleRespond_http_verified` | HTTP response verified; about to navigate back. |
 | `handleRespond_skipped_*` / `handleRespond_abort_*` / `handleRespond_catch` | Early exit or error (see JSON detail / truncated message). |
@@ -81,7 +81,7 @@ No challenge digits or tokens are logged — correlate **`authAttemptId`** with 
 
 ## Local auth / biometrics
 
-If **Settings → Security** uses a protected mode that requires biometric or device credential for **respond**, Maestro may block on the system sheet. For the first pilot iterations, use **standard** signing posture on the device, or complete the biometric prompt manually when experimenting.
+If **Settings → Security** uses a protected mode in which the app requests biometric or device-credential confirmation before **respond**, Maestro may block on the system sheet. For the first pilot iterations, use **standard** signing posture on the device, or complete the prompt manually when experimenting.
 
 ## Selector inventory (`testID`)
 

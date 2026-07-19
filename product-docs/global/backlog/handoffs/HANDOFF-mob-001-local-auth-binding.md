@@ -1,6 +1,6 @@
 # Handoff — MOB-001 Local protected approval binding
 
-**Status:** ready for cold agent after operator Go  
+**Status:** Track A completed; Track B deferred to a separate program plan
 **Finding:** MOB-001 (P1)  
 **Assessment:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)  
 **Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
@@ -13,15 +13,17 @@ Protected approval today shows `BiometricPrompt`, then signs with a Keystore key
 `setUserAuthenticationRequired(false)` and **without** `BiometricPrompt.CryptoObject`. Local
 confirmation is honest-client UX, not Keystore-enforced authentication intent.
 
-## In scope (choose one track — confirm with operator)
+## Selected scope
 
-### Track A — Wording / claim lockdown (hygiene, default if Go-wording)
+### Track A — Wording / claim lockdown (hygiene)
 
 1. Audit mobile copy (`SecurityScreen`, i18n), `MOBILE_CRYPTO_REFERENCE.md`, PRD/README StrongBox /
    confirmation phrasing.
 2. Ensure no claim of server-verified local auth or Keystore-bound biometric signing.
 3. Align Admin UI tier/confirmation language if it overclaims.
 4. Unit/docs only; no native key-model change.
+
+## Deferred scope
 
 ### Track B — CryptoObject / auth-bound keys (program)
 
@@ -55,6 +57,15 @@ confirmation is honest-client UX, not Keystore-enforced authentication intent.
 
 - Track A: no remaining “biometric-bound signature” overclaim in living docs/UI.
 - Track B: Keystore rejects sign without successful user auth; Maestro/manual evidence attached.
+
+## Track A closeout
+
+- **Operator decision:** Track A selected on 2026-07-18.
+- **Result:** Mobile copy, Android prompt wording, living mobile/product docs, public privacy
+  wording, and admin passwordless documentation now describe confirmation as app-enforced
+  honest-client UX rather than Keystore-auth-bound or server-attested proof.
+- **Track B:** Explicitly deferred; it requires a separate program plan and physical-device
+  validation.
 
 ## Suggested session opening message (copy-paste)
 
