@@ -1,0 +1,18 @@
+appId: org.ezkey.mobile
+---
+## Pilot: validate F2a controlled bypass entry is present in debug/test mode.
+## Preconditions: app built with F2a flags enabled.
+- launchApp:
+    clearState: false
+    stopApp: false
+- runFlow:
+    when:
+      visible:
+        id: "ezkey.e2e.home.root"
+    commands:
+      - tapOn:
+          id: "ezkey.e2e.home.fabAddEnrollment"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentWizard.controlledBypassSeed"
+    timeout: 30000

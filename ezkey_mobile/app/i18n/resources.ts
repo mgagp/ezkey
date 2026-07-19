@@ -230,6 +230,16 @@ export const resources = {
         qrEmptyPayload: 'Empty payload',
         qrInvalidAuthUrl: 'Invalid Auth API URL in QR payload.',
         qrUnsupportedFormat: 'Unsupported QR format',
+        controlledBypassAction: 'Use controlled test seed',
+        controlledBypassInputPlaceholder:
+          'Optional: paste runtime enrollment seed payload (JSON or enrollmentId|proofToken)',
+        controlledBypassHint:
+          'Debug/test only. Camera scan is bypassed, but bind/verify trust checks still run.',
+        controlledBypassActive: 'Controlled bypass seed used',
+        controlledBypassDisabled:
+          'Controlled test seed bypass is disabled. Enable explicit F2a test flags and rebuild.',
+        controlledBypassMissingPayload:
+          'Controlled test seed payload is missing. Set EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD and rebuild.',
       },
       pendingAuth: {
         challengeInput: 'Challenge code input',
@@ -560,6 +570,16 @@ export const resources = {
         qrEmptyPayload: 'Charge utile vide',
         qrInvalidAuthUrl: 'URL Auth API invalide dans la charge utile QR.',
         qrUnsupportedFormat: 'Format QR non pris en charge',
+        controlledBypassAction: 'Utiliser la seed de test contrôlée',
+        controlledBypassInputPlaceholder:
+          'Optionnel : collez la charge seed runtime (JSON ou enrollmentId|proofToken)',
+        controlledBypassHint:
+          'Debug/test uniquement. Le scan caméra est contourné, mais les vérifications de confiance bind/verify restent actives.',
+        controlledBypassActive: 'Seed via contournement contrôlé utilisée',
+        controlledBypassDisabled:
+          'Le contournement contrôlé de seed de test est désactivé. Activez les flags F2a explicites puis reconstruisez.',
+        controlledBypassMissingPayload:
+          'La charge utile de seed de test contrôlée est absente. Définissez EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD puis reconstruisez.',
       },
       pendingAuth: {
         challengeInput: 'Saisie du code de challenge',

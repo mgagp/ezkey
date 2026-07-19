@@ -24,6 +24,17 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - For VisionCamera **5.1+**, resolve a concrete device with `useCameraDevice('back')` before mounting `<Camera />`. Passing the position string `device="back"` can throw while the device list is still empty (`This device does not have any "back" Cameras!`) and trip `AppErrorBoundary`.
 - Treat the current mobile product and security posture as **Android-first**. iOS is a later planned milestone, not a short-term parity target, so do not report missing iOS parity as a current defect unless documentation overclaims it.
 
+## Mobile test operator segmentation
+
+- For clean-start mobile test sessions, treat `admin.docker` as a human-reserved recovery account.
+- Prefer a dedicated global admin for agent-driven mobile testing (`mobile_tester` now, target naming `admin.mobile`).
+- Agent automation should operate on the dedicated mobile test admin and avoid consuming `admin.docker` recovery codes unless explicitly requested by the maintainer.
+- Validate baseline before any churn run:
+  - dedicated test admin exists and is `GLOBAL_ADMIN`, active, lifecycle `ACTIVE`;
+  - linked enrollment is `VERIFIED` with `device_public_key` present;
+  - Demo Device has a persisted enrollment JSON entry under `data/enrollments/` for that enrollment id.
+- Do not hardcode one-shot credentials in docs, scripts, or committed files. Generate fresh bind material per run.
+
 ## Contract-First Rules
 
 - Orval is pinned at **8.22.0** (exact). Config uses verb-aware defaults only (`query: { version: 5 }` —
@@ -97,6 +108,57 @@ corepack yarn install --immutable
 corepack yarn generate:api
 corepack yarn validate:ci
 ./scripts/build-install-debug-clean.sh
+yarn doctor:curated
 ```
 
 Real-device Maestro pilot (`TB-2026-0002`): see [`maestro/README.md`](maestro/README.md) and `scripts/run-real-device-pilot-maestro.sh`.
+
+## Production-clean test automation
+
+- Canonical contract: [`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md).
+- **Release / production-intent builds** must not activate F2a enrollment seed bypass, respond-path
+  flow trace, or pending-auth debug panel — even if a local `.env` still has those flags set for
+  harness work.
+- F2a availability = native **debug** build type (`BuildConfig.DEBUG`) + explicit env enable +
+  ack `F2A_TEST_ONLY`. Do **not** equate this with React Native `__DEV__`.
+- Release install script runs `scripts/assert-release-production-clean-env.sh` before Gradle.
+- When `mobile-doctor-curated` or a skeptical review flags harness/bypass code: read the contract
+  first; missing mechanical gates are P1; gated intentional harness code is not.
+
+## Mobile doctor-curated pass
+
+- Keyword for humans and agents: **`mobile-doctor-curated`**.
+- Purpose: a **punctual** React Native + Kotlin hygiene pass (react-doctor + Semgrep + Detekt →
+  curated P1/P2/P3 shortlist). **Not** a CI gate and **not** a zero-warning campaign.
+- Default commands from `ezkey_mobile/`:
+
+```bash
+yarn doctor:curated
+./scripts/mobile-doctor-curated.sh
+```
+
+  Optional: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--curate-only`.
+- Outputs under `logs/mobile-doctor/` (gitignored via root `logs/`):
+  - `mobile-doctor.curated.md` — human-readable shortlist + planning contract
+  - `mobile-doctor.curated.json` — machine-readable summary
+  - `raw/` — react-doctor / Semgrep / Detekt inputs
+- Config: `config/mobile-doctor/suppressions.json` (reasons required).
+- Campaign decision notes (HITL): `product-docs/global/hygiene/mobile-doctor/` (copy `TEMPLATE.md`).
+- Trace (hygiene, not program): dedicated branch + PR; do **not** invent `I-*` / `TB-*` per finding.
+- Authority: `product-docs/global/mobile-doctor-curated-evaluation-2026-07-11.md`,
+  `I-2026-07-11-mobile-doctor-curated-hygiene`, `TB-2026-07-11-mobile-doctor-curated-mvp`.
+
+### HITL contract (mandatory for cold agents)
+
+When the operator asks for a **`mobile-doctor-curated`** improvement pass:
+
+1. Run the script; read `logs/mobile-doctor/mobile-doctor.curated.md`.
+2. Propose a **small prioritized lot** (usually 3–6 items), not a zero-warning campaign.
+3. **Before any code change — interactive HITL loop:** iterate **one finding at a time**; wait for
+   Go / No-Go / suppress / skip on that item before the next. Do not replace dialogue with one dense
+   options matrix.
+4. **Fuzzy signal rule:** if the finding cannot be tied clearly to source, **skip**.
+5. **If it ain't broken, don't fix it** — especially in crypto / keystore / proof-token code.
+6. Record decisions in a dated campaign note under `product-docs/global/hygiene/mobile-doctor/`.
+7. Only then implement accepted fixes on a **dedicated hygiene branch + PR**; put the briefing in
+   the PR body. Modest low-signal allotment after high-signal items is allowed when the operator agrees.

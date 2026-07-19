@@ -1,6 +1,128 @@
 # Ezkey mobile — utility scripts
 
+## `get-fresh-enrollment-seed.ps1`
+
+PowerShell helper for autonomous Maestro enrollment runs on a one-shot enrollment backend.
+
+It performs, in order:
+
+- `POST /api/v1/admin/auth/recover` with username + recovery code
+- `POST /api/v1/admin/enrollments/reset` with the returned recovery token
+- writes fresh runtime values for Maestro (`ENROLLMENT_ID`, `ENROLLMENT_PROOF_TOKEN`,
+  `ENROLLMENT_AUTH_URL`, `ENROLLMENT_CHALLENGE`) to:
+  - JSON (`maestro/reports/fresh-enrollment-seed.json`)
+  - PowerShell env script (`maestro/reports/fresh-enrollment-seed.ps1`)
+
+Optional switch `-RunMaestro` executes `maestro/flows/pilot_enrollment_full_runtime.yaml`
+immediately with the fresh values.
+
+From `ezkey_mobile/`:
+
+```powershell
+.\scripts\get-fresh-enrollment-seed.ps1 `
+  -AdminApiBaseUrl "http://localhost:8082" `
+  -Username "admin" `
+  -RecoveryCode "1111-2222-3333-4444-5555-6666-7777-8888" `
+  -EnrollmentAuthUrl "https://your-auth-url.example" `
+  -RunMaestro
+```
+
+If needed, force a specific enrollment id:
+
+```powershell
+.\scripts\get-fresh-enrollment-seed.ps1 `
+  -AdminApiBaseUrl "http://localhost:8082" `
+  -Username "admin" `
+  -RecoveryCode "1111-2222-3333-4444-5555-6666-7777-8888" `
+  -EnrollmentAuthUrl "https://your-auth-url.example" `
+  -EnrollmentId 4
+```
+
 ## `build-install-debug-clean.sh` (canonical Android debug install)
+
+Preferred debug install path for devices (JDK probe + clean + install). See `AGENTS.md` § Android debug build.
+
+## `build-install-release-clean.sh` + `assert-release-production-clean-env.sh`
+
+Release install path. Before Gradle, sources `assert-release-production-clean-env.sh`, which
+**fails** if `.env` (or `ENVFILE`) still enables F2a bypass, pending-auth flow trace, or the
+pending-auth debug panel. App code also hard-gates F2a on native debug build type.
+
+Contract: [`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](../docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md).
+
+## `run-mobile-churn-no-recovery.ps1`
+
+Runs repeated mobile churn iterations without using enrollment recovery/reset:
+
+- creates an auth attempt for an already-verified enrollment via Admin API
+- runs the Maestro pending/respond flow on real device
+- reads final auth attempt status and writes a CSV summary
+
+Requirements:
+
+- verified enrollment already present on device (for example enrollment 2 / `mobile_tester`)
+- valid admin bearer token (`-AdminToken` or `EZKEY_ADMIN_TOKEN`)
+
+Important dual-lane note:
+
+- Demo Device and real phone do not share enrollment state.
+- A JSON under `demo-device:/app/data/enrollments/*.json` does not make that enrollment appear on
+  the real phone home screen.
+- The script now fails fast if `ezkey.e2e.home.enrollment.<id>` is not visible on the phone.
+
+From `ezkey_mobile/`:
+
+```powershell
+.\scripts\run-mobile-churn-no-recovery.ps1 `
+  -Iterations 5 `
+  -EnrollmentId 2 `
+  -AdminApiBaseUrl "http://localhost:9080" `
+  -AdminToken "ezkey_..."
+```
+
+Output summary:
+
+- `maestro/reports/churn-no-recovery/summary.csv`
+
+## `run-mobile-test-campaign.ps1` (3-phase orchestrator)
+
+Implements the mobile test campaign model aligned with Ezkey functional test patterns:
+
+1. **Phase 1** (`Demo Device lane`): obtain Global Admin token by replaying passwordless login
+   (`/admin/auth/login` -> `/auth-attempts/pending` -> `/auth-attempts/respond` ->
+   `/admin/auth/passwordless-wait`) using Demo Device enrollment material for `mobile_tester`
+   (or future `admin.mobile`).
+2. **Phase 2** (`Admin API lane`): create/reuse one integration and create one fresh enrollment,
+   persist campaign state JSON, optionally bind+verify on phone via Maestro enrollment flow.
+3. **Phase 3** (`Real phone lane`): churn loop on phone with Maestro + Admin API auth-attempt checks.
+
+State files:
+
+- `maestro/reports/mobile-test-campaign-state.json`
+- `maestro/reports/mobile-test-campaign-summary.csv`
+
+Run all phases:
+
+```powershell
+.\scripts\run-mobile-test-campaign.ps1 `
+  -Phase all `
+  -Username "mobile_tester" `
+  -Iterations 5
+```
+
+Run one phase:
+
+```powershell
+.\scripts\run-mobile-test-campaign.ps1 -Phase phase1 -Username "mobile_tester"
+.\scripts\run-mobile-test-campaign.ps1 -Phase phase2 -Username "mobile_tester"
+.\scripts\run-mobile-test-campaign.ps1 -Phase phase3 -Username "mobile_tester" -Iterations 5
+```
+
+Notes:
+
+- Phase 3 fails fast if no Android device is visible via `adb devices`.
+- Phase 3 fails fast if the campaign enrollment tile is not visible on the phone home screen.
+- Demo Device is used for token bootstrap only; churn execution remains on real phone.
 
 **Agents and maintainers:** use this for a clean debug build on a connected device. It resolves JDK 17/21 (`resolve-android-jdk.sh`), checks `adb` first, uninstalls `org.ezkey.mobile`, runs `gradlew clean installDebug`, and launches the app.
 
@@ -124,14 +246,42 @@ Requirements:
 
 This script is intended as a practical investigation aid, not as a formal cryptographic proof.
 
-## `code-quality-curator.mjs`
+## `mobile-doctor-curated` (preferred hygiene pass)
 
-Curates findings from Biome, Semgrep, and Detekt/SARIF into one normalized model,
-then generates readable reports.
+Punctual curated pass — keyword **`mobile-doctor-curated`**.
+
+Runs **react-doctor** + **Semgrep** (Ezkey mobile pack) + **Detekt**, then curates into P1/P2/P3.
+
+From `ezkey_mobile/`:
+
+```bash
+yarn doctor:curated
+./scripts/mobile-doctor-curated.sh
+```
+
+Optional flags: `--skip-react-doctor`, `--skip-semgrep`, `--skip-detekt`, `--curate-only`.
+
+Outputs (gitignored under `logs/`):
+
+- `logs/mobile-doctor/mobile-doctor.curated.md`
+- `logs/mobile-doctor/mobile-doctor.curated.json`
+- `logs/mobile-doctor/raw/`
+
+Config: `config/mobile-doctor/suppressions.json`  
+Campaign notes: `product-docs/global/hygiene/mobile-doctor/`  
+Agent contract: `AGENTS.md` § Mobile doctor-curated pass
+
+`yarn quality:pipeline` delegates to this script (legacy alias).
+
+**Not in v1:** Biome (rejected for curated pass — ESLint+Prettier remain the lint/format gates).
+
+## `code-quality-curator.mjs` (legacy multi-format reports)
+
+Optional legacy curator for Semgrep/Detekt snapshots under `.monitor/`. Prefer
+`yarn doctor:curated` for hygiene campaigns.
 
 Default expected input snapshots (relative to `ezkey_mobile/`):
 
-- `.monitor/biome-report.json`
 - `.monitor/semgrep-report.json`
 - `.monitor/detekt.sarif`
 - `.monitor/detekt-report.json`
@@ -164,7 +314,7 @@ Useful options:
 
 ```bash
 node scripts/code-quality-curator.mjs \
-  --inputs=.monitor/biome-report.json,.monitor/semgrep-report.json,.monitor/detekt.sarif \
+  --inputs=.monitor/semgrep-report.json,.monitor/detekt.sarif \
   --output-dir=.monitor/code-quality \
   --report-name=run-001 \
   --exclude-path-fragments=__tests__/,app/hooks/__tests__/ \
@@ -249,76 +399,15 @@ Generated artifact:
 
 - `.monitor/detekt.sarif`
 
-## `quality-pipeline.mjs` (unified invocation)
+## `quality-pipeline.mjs` (legacy alias)
 
-Runs the current quality signal sources in one pass, then generates one consolidated prioritized report
-through the curator model.
-
-Current pipeline includes:
-
-- Semgrep scan
-- Detekt scan
-- Curator consolidation (`.monitor/biome-report.json` included automatically if present)
-
-From `ezkey_mobile/`:
+Delegates to `mobile-doctor-curated.mjs`. Prefer:
 
 ```bash
-yarn quality:pipeline
+yarn doctor:curated
 ```
 
-With explicit report name:
-
-```bash
-node scripts/quality-pipeline.mjs --report-name=quality-unified
-```
-
-Default consolidated outputs:
-
-- `.monitor/code-quality/quality-unified.normalized.json`
-- `.monitor/code-quality/quality-unified.md`
-- `.monitor/code-quality/quality-unified.html`
-
-### Lane A/B triage routine (continuous hygiene)
-
-Goal: keep quality work continuous without turning it into heavy backlog process.
-
-- Lane A (short-term actionable): production-impacting correctness, resilience, and security findings.
-- Lane B (continuous hygiene): maintainability/style/test-noise findings handled opportunistically.
-
-Recommended cadence per cycle:
-
-1. run `yarn quality:pipeline:report`
-2. open `.monitor/code-quality/quality-unified.md`
-3. pick up to 3 items for Lane A
-4. capture up to 5 items for Lane B (fix now or defer)
-5. ship one small focused lot
-
-Copy-paste triage template:
-
-```md
-## Quality cycle YYYY-MM-DD
-
-Run:
-- command: `yarn quality:pipeline:report`
-- report: `.monitor/code-quality/quality-unified.md`
-
-Lane A (act now, max 3)
-1. [rule] file:line - why this matters now
-2. [rule] file:line - why this matters now
-3. [rule] file:line - why this matters now
-
-Lane B (hygiene, max 5)
-1. [rule] file:line - fix now | defer
-2. [rule] file:line - fix now | defer
-3. [rule] file:line - fix now | defer
-4. [rule] file:line - fix now | defer
-5. [rule] file:line - fix now | defer
-
-Decision summary
-- shipped this cycle:
-- deferred:
-- note for next cycle:
-```
+Campaign HITL notes use `product-docs/global/hygiene/mobile-doctor/TEMPLATE.md` (not the old Lane A/B paste block).
 
 **Pitfall:** One-liners such as `adb shell run-as … strings …/RKStorage | grep …` often exit with **255** and produce no useful output: the app UID sandbox typically does **not** ship `strings`, `sqlite3`, or a full `grep`. Prefer this script (host-side parsing via `adb exec-out`) or the flows in `docs/MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md`.
 

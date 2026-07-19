@@ -1,0 +1,30 @@
+appId: org.ezkey.mobile
+---
+## Pilot: Home or Enrollment wizard -> controlled bypass seed
+## Purpose: validate F2a bootstrap entry point (debug/test only) without camera scan.
+## Preconditions:
+##   - app built in debug with F2a bypass env flags enabled
+##   - EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD configured in .env at build time
+## Accept both starting points:
+##   - already on wizard, or
+##   - on Home (tap Add Enrollment first).
+- launchApp:
+    clearState: false
+    stopApp: false
+- runFlow:
+    when:
+      visible:
+        id: "ezkey.e2e.home.root"
+    commands:
+      - tapOn:
+          id: "ezkey.e2e.home.fabAddEnrollment"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentWizard.controlledBypassSeed"
+    timeout: 60000
+- tapOn:
+    id: "ezkey.e2e.enrollmentWizard.controlledBypassSeed"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentWizard.verifyStep"
+    timeout: 60000

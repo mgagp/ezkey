@@ -23,6 +23,9 @@ adb devices -l
 
 cd "${MOBILE_ROOT}"
 
+# shellcheck source=assert-release-production-clean-env.sh
+source "${MOBILE_ROOT}/scripts/assert-release-production-clean-env.sh"
+
 echo "Uninstalling ${PKG} (ignore failure if not installed)..."
 adb uninstall "${PKG}" 2>/dev/null || true
 

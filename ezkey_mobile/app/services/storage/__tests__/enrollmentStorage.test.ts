@@ -15,12 +15,20 @@ jest.mock('../secureStorage', () => ({
   },
 }));
 
+jest.mock('../../crypto/nativeCrypto', () => ({
+  nativeCrypto: {
+    deleteKeyPair: jest.fn(),
+  },
+}));
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {nativeCrypto} from '../../crypto/nativeCrypto';
 import {enrollmentStorage} from '../enrollmentStorage';
 import {secureStorage} from '../secureStorage';
 
 const mockAsyncStorage = jest.mocked(AsyncStorage);
 const mockSecureStorage = jest.mocked(secureStorage);
+const mockDeleteKeyPair = jest.mocked(nativeCrypto.deleteKeyPair);
 
 describe('enrollmentStorage', () => {
   beforeEach(() => {
@@ -31,6 +39,7 @@ describe('enrollmentStorage', () => {
     mockSecureStorage.getItem.mockResolvedValue(undefined);
     mockSecureStorage.setItem.mockResolvedValue();
     mockSecureStorage.removeItem.mockResolvedValue();
+    mockDeleteKeyPair.mockResolvedValue(true);
   });
 
   it('rehydrates a nested installation object from legacy flat storage records', async () => {
@@ -197,6 +206,7 @@ describe('enrollmentStorage', () => {
 
     await enrollmentStorage.deleteEnrollment('enrollment-1');
 
+    expect(mockDeleteKeyPair).toHaveBeenCalledWith('enrollment-1');
     expect(mockSecureStorage.removeItem).toHaveBeenCalledWith(
       'ezkey-mobile/enrollment-proof-token.enrollment-1',
     );
@@ -207,6 +217,39 @@ describe('enrollmentStorage', () => {
       'ezkey-mobile/enrollments',
       JSON.stringify([]),
     );
+  });
+
+  it('continues enrollment delete when native key pair deletion fails', async () => {
+    mockDeleteKeyPair.mockRejectedValue(new Error('keystore unavailable'));
+    mockAsyncStorage.getItem.mockResolvedValue(
+      JSON.stringify([
+        {
+          id: 'enrollment-1',
+          integrationId: 'integration-1',
+          integrationName: 'Admin Console',
+          createdAt: '2026-05-01T12:00:00.000Z',
+          lastActivityAt: '2026-05-01T12:00:00.000Z',
+        },
+      ]),
+    );
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await enrollmentStorage.deleteEnrollment('enrollment-1');
+
+    expect(mockDeleteKeyPair).toHaveBeenCalledWith('enrollment-1');
+    expect(mockSecureStorage.removeItem).toHaveBeenCalledWith(
+      'ezkey-mobile/enrollment-proof-token.enrollment-1',
+    );
+    expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+      'ezkey-mobile/enrollments',
+      JSON.stringify([]),
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[enrollmentStorage] Failed to delete enrollment key pair (continuing wipe):',
+      'enrollment-1',
+      expect.any(Error),
+    );
+    warnSpy.mockRestore();
   });
 
   it('replaces enrollments and removes secure values for records no longer present', async () => {
@@ -349,6 +392,8 @@ describe('enrollmentStorage', () => {
 
     await enrollmentStorage.clearAll();
 
+    expect(mockDeleteKeyPair).toHaveBeenCalledWith('enrollment-1');
+    expect(mockDeleteKeyPair).toHaveBeenCalledWith('enrollment-2');
     expect(mockSecureStorage.removeItem).toHaveBeenCalledWith(
       'ezkey-mobile/enrollment-proof-token.enrollment-1',
     );
@@ -362,5 +407,61 @@ describe('enrollmentStorage', () => {
       'ezkey-mobile/integration-public-key.enrollment-2',
     );
     expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
+  });
+
+  it('continues clear-all when native key pair deletion fails for one enrollment', async () => {
+    mockDeleteKeyPair.mockImplementation(async enrollmentId => {
+      if (enrollmentId === 'enrollment-1') {
+        throw new Error('keystore unavailable');
+      }
+      return true;
+    });
+    mockAsyncStorage.getItem.mockResolvedValue(
+      JSON.stringify([
+        {
+          id: 'enrollment-1',
+          integrationId: 'integration-1',
+          integrationName: 'Admin Console',
+          createdAt: '2026-05-01T12:00:00.000Z',
+          lastActivityAt: '2026-05-01T12:00:00.000Z',
+        },
+        {
+          id: 'enrollment-2',
+          integrationId: 'integration-2',
+          integrationName: 'Support Console',
+          createdAt: '2026-05-02T12:00:00.000Z',
+          lastActivityAt: '2026-05-02T12:00:00.000Z',
+        },
+      ]),
+    );
+    mockSecureStorage.getItem.mockImplementation(async key => {
+      if (key === 'ezkey-mobile/enrollment-proof-token.enrollment-1') {
+        return 'secure-token-1';
+      }
+      if (key === 'ezkey-mobile/integration-public-key.enrollment-1') {
+        return 'secure-integration-public-key-1';
+      }
+      if (key === 'ezkey-mobile/enrollment-proof-token.enrollment-2') {
+        return 'secure-token-2';
+      }
+      if (key === 'ezkey-mobile/integration-public-key.enrollment-2') {
+        return 'secure-integration-public-key-2';
+      }
+      return undefined;
+    });
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await enrollmentStorage.clearAll();
+
+    expect(mockDeleteKeyPair).toHaveBeenCalledWith('enrollment-1');
+    expect(mockDeleteKeyPair).toHaveBeenCalledWith('enrollment-2');
+    expect(mockSecureStorage.removeItem).toHaveBeenCalledWith(
+      'ezkey-mobile/enrollment-proof-token.enrollment-1',
+    );
+    expect(mockSecureStorage.removeItem).toHaveBeenCalledWith(
+      'ezkey-mobile/enrollment-proof-token.enrollment-2',
+    );
+    expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
+    warnSpy.mockRestore();
   });
 });
