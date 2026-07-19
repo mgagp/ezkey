@@ -12,10 +12,9 @@
 
 | Module | Platform | Responsibility | Entry Point |
 |--------|----------|----------------|-------------|
-| `EzkeyCryptoModule` | Android (Kotlin) | EC P-256 key management via `Android Keystore`, with `StrongBox` requested when available | `android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt` |
+| `EzkeyCryptoModule` | Android (Kotlin) | EC P-256 key management via `Android Keystore`, with `StrongBox` requested when available | `android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoModule.kt` |
 | `EzkeyCryptoModule` | iOS (Swift) | Native secure-hardware-backed EC P-256 parity is not yet complete | `ios/EzkeyMobile/Crypto/EzkeyCryptoModule.swift` |
-| `EzkeyCryptoPackage` | Android (Kotlin) | Registers crypto module with React Native | `android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoPackage.kt` |
-| `EzkeyQrFrameProcessorPlugin` | Android (Kotlin) | Decodes QR payloads via Vision Camera frame processors | `android/app/src/main/java/com/ezkeymobile/qr/EzkeyQrFrameProcessorPlugin.kt` |
+| `EzkeyCryptoPackage` | Android (Kotlin) | Registers crypto module with React Native | `android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoPackage.kt` |
 | `EzkeyCryptoModuleBridge` | iOS (Objective-C) | Exposes Swift crypto module to React Native bridge | `ios/EzkeyMobile/Crypto/EzkeyCryptoModuleBridge.m` |
 
 ## Communication Flow
@@ -36,7 +35,7 @@ sequenceDiagram
 - JavaScript calls are issued through `app/services/crypto/nativeCrypto.ts`.
 - Android uses `Android Keystore` (`AndroidKeyStore`) and requests `StrongBox` when available; one EC P-256 key pair is generated per enrollment, and private key material is not exposed to application code.
 - iOS native secure-hardware-backed EC P-256 support is not yet at parity with the Android path and should be described as planned / in progress rather than assumed.
-- QR scanning is Android-only today; iOS uses JS-based fallbacks until a Swift counterpart is implemented.
+- Enrollment QR capture uses Vision Camera plus `react-native-vision-camera-barcode-scanner` (`useBarcodeScannerOutput` / ML Kit) in JavaScript — there is no custom native QR frame-processor plugin.
 
 Important boundary: `EzkeyCryptoModule` is a **signing and verification** bridge. It does not currently expose a
 general encrypt/decrypt or wrap/unwrap API for all local mobile secrets. In the present Android app,

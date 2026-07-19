@@ -24,7 +24,7 @@
 | Presentation | Screens, components, navigation, theming | `app/screens`, `app/components`, `app/navigation` |
 | State and Hooks | Query caching, local state, storage orchestration | `app/hooks`, `app/state` |
 | Services | API clients, crypto adapters, storage facades | `app/services/api`, `app/services/crypto`, `app/services/storage` |
-| Native modules | Platform crypto bridge and QR frame processing | `android/app/src/main/java/com/ezkeymobile`, `ios/EzkeyMobile` |
+| Native modules | Platform crypto bridge (`org.ezkey.mobile.crypto`) | `android/app/src/main/java/org/ezkey/mobile/crypto`, `ios/EzkeyMobile` |
 
 ## React Native Flow
 
