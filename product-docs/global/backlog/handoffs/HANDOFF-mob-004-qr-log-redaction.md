@@ -1,6 +1,6 @@
 # Handoff — MOB-004 QR and debug secret redaction
 
-**Status:** ready for cold agent after operator Go  
+**Status:** implemented on `mobile` (awaiting commit/PR)  
 **Finding:** MOB-004 (P2)  
 **Assessment:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)  
 **Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
@@ -46,6 +46,13 @@
 
 - Scanning a QR in a debug build does not print the proof token to logcat by default.
 - Debug panel does not display full proof tokens when enabled.
+
+## Implementation notes (2026-07-19)
+
+- Shared helper: `ezkey_mobile/app/utils/enrollmentSeedLogRedaction.ts` (camera + F2a `ingestSeedPayload`).
+- Opt-in plaintext dumps: `EZKEY_ENROLLMENT_SEED_RAW_DUMP` (release preflight forbidden).
+- Pending debug panel: hashes / lengths / short prefixes only (removed payload preview + base64).
+- Semgrep: `ezkey-js-no-default-enrollment-seed-raw-console`.
 
 ## Suggested session opening message (copy-paste)
 

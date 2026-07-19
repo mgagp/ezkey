@@ -57,7 +57,13 @@ jest.mock('../../utils/installationMetadata', () => ({
 }));
 
 jest.mock('../../config/env', () => ({
-  env: {configuredApiBaseUrl: 'https://ezkey.example.com'},
+  env: {
+    configuredApiBaseUrl: 'https://ezkey.example.com',
+    enrollmentSeedRawDump: false,
+    enrollmentSeedBypassEnabled: false,
+    enrollmentSeedBypassAck: undefined,
+    enrollmentSeedBypassQrPayload: undefined,
+  },
 }));
 
 import React from 'react';

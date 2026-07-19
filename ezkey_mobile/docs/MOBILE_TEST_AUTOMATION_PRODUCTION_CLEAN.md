@@ -39,8 +39,9 @@ Related: GitHub [#254](https://github.com/mgagp/ezkey/issues/254) (F2a), `TB-202
 | Surface | Gate |
 | --- | --- |
 | F2a controlled enrollment seed bypass UI/action | Native **debug** build (`BuildConfig.DEBUG` via `readIsDebugBuild()`) **and** `EZKEY_ENROLLMENT_SEED_BYPASS_ENABLED` **and** ack `F2A_TEST_ONLY` |
+| `EZKEY_ENROLLMENT_SEED_RAW_DUMP` plaintext QR/seed logcat dumps (MOB-004) | Default false; release preflight forbids true. Independent of F2a and `__DEV__`. Default path logs redacted length/hash only via `enrollmentSeedLogRedaction.ts`. |
 | `EZKEY_PENDING_AUTH_FLOW_TRACE` respond-path console tracing | Default false; release preflight forbids true |
-| `EZKEY_PENDING_AUTH_DEBUG_PANEL` support debug panel | Default false; release preflight forbids true |
+| `EZKEY_PENDING_AUTH_DEBUG_PANEL` support debug panel | Default false; release preflight forbids true. Panel shows hashes/lengths/short prefixes only — not full pending payloads or proof tokens. |
 
 **Important:** do **not** equate this with React Native `__DEV__`. Offline-capable debug APKs on
 this project often run with `__DEV__ === false` while remaining Gradle `debug` (`BuildConfig.DEBUG
