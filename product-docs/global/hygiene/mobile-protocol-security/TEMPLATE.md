@@ -19,12 +19,12 @@ final decisions table here after HITL closes. Do not paste raw tool dumps.
 
 | # | Finding | Severity | Decision | Action |
 | --- | --- | --- | --- | --- |
-| 1 | `MOB-NNN` | P1/P2/P3 | fix / defer / suppress / skip | What was done / handoff path |
+| 1 | `MOB-NNN` | P1/P2/P3 | fix / defer / suppress / skip | PR / commit / evidence (not a durable handoff path) |
 
 Decision values:
 
-- **fix** - source/test/docs change accepted after HITL; create one `HANDOFF-*.md`
-- **defer** - acknowledged; track for later program or next pass; no handoff yet
+- **fix** - source/test/docs change accepted after HITL; optional ephemeral `HANDOFF-*.md` while coding, then consolidate here and delete the handoff on closeout
+- **defer** - acknowledged; track for later program or next pass
 - **suppress** - intentional posture; reason recorded; do not “perfect” harmless over-defense
 - **skip** - duplicate, fuzzy, or not worth acting on
 
@@ -38,10 +38,11 @@ One short subsection per item (2-8 lines). Record risks, design posture, and why
 
 ## Follow-ups
 
-- Handoffs created
+- Ephemeral handoffs deleted after consolidation (list which)
 - `I-*` / `TB-*` promoted (if any)
 - Code/docs/tests touched
 - Physical-device validation required?
+- Assessment § backlog / dispositions updated?
 
 ## Out of scope this pass
 

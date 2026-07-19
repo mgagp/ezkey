@@ -23,17 +23,25 @@ Do **not** use this folder for live API DAST (`security-pentest-curated`) or Adm
 | Path | Role |
 | --- | --- |
 | [`TEMPLATE.md`](TEMPLATE.md) | Copy for each new campaign / lot |
-| `YYYY-MM-DD-pass-N.md` | Dated instance with assessment link, lot, decisions, and rationale |
+| `YYYY-MM-DD-pass-N.md` | Dated instance — **canonical remediation register** after closeout |
 
 ## Operating contract
 
 1. Produce or update a formal assessment under `docs/security/`.
 2. Propose a small lot (usually 3–6 findings).
-3. Review **one finding at a time** with the operator (no bulk options matrix as the primary vehicle).
+3. Review **one finding at a time** with the operator.
 4. Record decisions as `fix`, `defer`, `suppress`, or `skip` with short rationale.
-5. For each **accepted** fix, create one cold-agent handoff under
-   `product-docs/global/backlog/handoffs/`.
+5. While a finding is **in flight**, an optional ephemeral cold-agent handoff under
+   `product-docs/global/backlog/handoffs/` may help. On closeout:
+   - consolidate outcome + PR links into the dated campaign note and the assessment backlog,
+   - **delete** the handoff file so completed prompts do not accumulate noise.
 6. Escalate only material protocol redesigns into `I-*` / `TB-*` + labeled GitHub issue.
+
+## Current pass
+
+| Pass | Status | Notes |
+| --- | --- | --- |
+| [`2026-07-16-pass-1.md`](2026-07-16-pass-1.md) | **Closed** | Lot A remediations done; Lot B documentary / claim-honesty verified 2026-07-19 (assessment §13); deferred programs only remain |
 
 ## Related
 
