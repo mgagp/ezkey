@@ -29,6 +29,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -46,6 +47,7 @@ import org.springframework.web.context.request.WebRequest;
  * <ul>
  *   <li><b>MethodArgumentNotValidException (400):</b> Bean Validation failures on request
  *       parameters
+ *   <li><b>MissingRequestHeaderException (401/400):</b> Missing required request header
  *   <li><b>ConstraintViolationException (400):</b> {@code @Validated} + {@code @Size} on
  *       {@code @RequestParam} (e.g., short {@code reason} param)
  *   <li><b>HttpMessageNotReadableException (400):</b> JSON deserialization errors (missing fields,
@@ -517,6 +519,37 @@ public class ValidationExceptionHandler {
         AdminApiProblemCatalog.TYPE_VALIDATION_FAILED,
         AdminApiProblemCatalog.TITLE_VALIDATION_FAILED,
         "Required parameter '" + ex.getParameterName() + "' is missing",
+        request);
+  }
+
+  /**
+   * Handles MissingRequestHeaderException and returns HTTP 401 or 400.
+   *
+   * <p>Missing {@code Authorization} is treated as an authentication contract failure (401).
+   * Missing other required headers are treated as client validation errors (400).
+   *
+   * @param ex the MissingRequestHeaderException that was thrown
+   * @param request the web request that caused the exception
+   * @return ResponseEntity containing error details and HTTP 401/400 status
+   * @since 2026
+   */
+  @ExceptionHandler(MissingRequestHeaderException.class)
+  public ResponseEntity<ProblemDetail> handleMissingRequestHeader(
+      MissingRequestHeaderException ex, WebRequest request) {
+    if ("Authorization".equalsIgnoreCase(ex.getHeaderName())) {
+      return problemResponse(
+          HttpStatus.UNAUTHORIZED,
+          "https://ezkey.io/problems/authentication/missing-authorization-header",
+          "Authentication Required",
+          "Missing required Authorization header",
+          request);
+    }
+
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AdminApiProblemCatalog.TYPE_VALIDATION_FAILED,
+        AdminApiProblemCatalog.TITLE_VALIDATION_FAILED,
+        "Required header '" + ex.getHeaderName() + "' is missing",
         request);
   }
 

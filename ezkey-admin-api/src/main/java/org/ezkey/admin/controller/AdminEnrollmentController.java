@@ -11,6 +11,9 @@
 package org.ezkey.admin.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.ezkey.admin.audit.RecoveryAuditDetails;
@@ -110,6 +113,25 @@ public class AdminEnrollmentController {
    * @param httpRequest the HTTP request (client context for audit)
    * @return ResponseEntity containing new enrollment credentials or error
    */
+  @Operation(
+      summary = "Reset enrollment after recovery",
+      description =
+          "Resets an administrator enrollment using a recovery token from /auth/recover."
+              + " Missing Authorization header returns 401. Invalid token type or token"
+              + " validation failures return 403.")
+  @ApiResponses(
+      value = {
+        @ApiResponse(responseCode = "200", description = "Enrollment reset successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Missing required Authorization header"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Invalid token type or recovery token validation failed"),
+        @ApiResponse(responseCode = "429", description = "Rate limit exceeded"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
   @PostMapping("/reset")
   public ResponseEntity<EnrollmentResetResponseDto> resetEnrollment(
       @RequestHeader("Authorization") String authorization,
