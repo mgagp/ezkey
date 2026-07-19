@@ -85,8 +85,6 @@ export const resources = {
           'Further work is planned on authentication policy, local-auth rules, and stronger cryptographic validation boundaries.',
         comingNextItem2:
           'Certificate pinning is planned in a lightweight Ezkey form, starting with trust on first use during enrollment and a controlled refresh path later if the pin changes.',
-        comingNextItem3:
-          'The language experience should also improve over time so changing language does not keep feeling tied to an app restart.',
         notesTitle: 'Important notes',
         note1: 'This publication is intended for a limited experimental audience.',
       },
@@ -106,24 +104,15 @@ export const resources = {
           body:
             'Certificate pinning is planned in a pragmatic lightweight form. The initial direction is trust on first use during enrollment, followed by a controlled refresh path if the pin no longer matches, so later authentication cycles get meaningful network trust hardening without pretending to reach the most extreme pinning model.',
         },
-        language: {
-          title: 'Language switching without restart',
-          body:
-            'The current language flow still asks for an app restart. A future UX improvement should make language changes feel smoother and more immediate while keeping the app stable and predictable.',
-        },
         footer:
           'Ezkey Mobile is intentionally aiming for practical, explicit security improvements rather than over-claiming perfection. Future work will continue in that same spirit.',
       },
       locale: {
         title: 'Language',
-        intro:
-          'Choose the app language. Changes are saved immediately and applied after the next app restart.',
+        intro: 'Choose the app language. Changes are saved and applied immediately.',
         english: 'English',
         french: 'French',
         current: 'Current language',
-        restartRequiredTitle: 'Restart required',
-        restartRequiredMessage:
-          'Close and reopen the app to apply the selected language everywhere.',
       },
       about: {
         accessibilityLabel: 'About Ezkey Authenticator',
@@ -424,8 +413,6 @@ export const resources = {
           'Du travail supplémentaire est prévu sur la policy d’authentification, les règles de réauthentification locale et des frontières de validation cryptographique plus fortes.',
         comingNextItem2:
           'Le certificate pinning est prévu sous une forme légère à la manière Ezkey, en commençant par un trust on first use pendant l’enrôlement et un parcours contrôlé de rafraîchissement si le pin change par la suite.',
-        comingNextItem3:
-          'L’expérience de changement de langue devrait aussi s’améliorer avec le temps pour ne plus dépendre autant d’un redémarrage de l’application.',
         notesTitle: 'Notes importantes',
         note1: 'Cette publication s’adresse à un auditoire expérimental limité.',
       },
@@ -445,24 +432,16 @@ export const resources = {
           body:
             'Le certificate pinning est prévu sous une forme légère et assumée. La direction initiale est un trust on first use pendant l’enrôlement, suivi d’un petit cycle de rafraîchissement contrôlé si le pin ne correspond plus, afin de renforcer utilement la confiance réseau des cycles d’authentification suivants sans prétendre atteindre le modèle de pinning le plus extrême.',
         },
-        language: {
-          title: 'Changement de langue sans redémarrage',
-          body:
-            'Le parcours actuel de changement de langue demande encore un redémarrage de l’application. Une amélioration UX future devrait rendre ce changement plus fluide et plus immédiat, tout en gardant l’application stable et prévisible.',
-        },
         footer:
           'Ezkey Mobile vise volontairement des améliorations de sécurité pratiques et explicites plutôt que des promesses excessives. La suite du travail restera dans ce même esprit.',
       },
       locale: {
         title: 'Langue',
         intro:
-          'Choisissez la langue de l’application. Les changements sont enregistrés immédiatement et appliqués après le prochain redémarrage.',
+          'Choisissez la langue de l’application. Les changements sont enregistrés et appliqués immédiatement.',
         english: 'Anglais',
         french: 'Français',
         current: 'Langue actuelle',
-        restartRequiredTitle: 'Redémarrage requis',
-        restartRequiredMessage:
-          'Fermez puis rouvrez l’application pour appliquer la langue choisie partout.',
       },
       about: {
         accessibilityLabel: 'À propos de l’authentificateur Ezkey',
