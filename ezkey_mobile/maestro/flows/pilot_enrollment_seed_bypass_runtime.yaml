@@ -1,0 +1,36 @@
+﻿appId: org.ezkey.mobile
+---
+## Pilot runtime path: inject enrollment seed payload at execution time (no app rebuild per invitation).
+## Variables required:
+##   ENROLLMENT_ID          - numeric enrollment ID (e.g. 2)
+##   ENROLLMENT_PROOF_TOKEN - the proof token string
+##   ENROLLMENT_AUTH_URL    - auth server base URL (e.g. https://xxx.ngrok-free.dev)
+##
+## Example (PowerShell -- no JSON quoting issues):
+##   Set-Location C:\w\e\ezkey_mobile
+##   maestro test maestro/flows/pilot_enrollment_seed_bypass_runtime.yaml `
+##     -e ENROLLMENT_ID=2 `
+##     -e ENROLLMENT_PROOF_TOKEN=TOKEN `
+##     -e ENROLLMENT_AUTH_URL=https://xxx.ngrok-free.dev
+- launchApp:
+    clearState: false
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.home.root"
+    timeout: 30000
+- tapOn:
+    id: "ezkey.e2e.home.fabAddEnrollment"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentWizard.controlledBypassSeed"
+    timeout: 60000
+- tapOn:
+    id: "ezkey.e2e.enrollmentWizard.controlledBypassSeedInput"
+- inputText: "${ENROLLMENT_ID}|${ENROLLMENT_PROOF_TOKEN}|${ENROLLMENT_AUTH_URL}"
+- tapOn:
+    id: "ezkey.e2e.enrollmentWizard.controlledBypassSeed"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentWizard.verifyStep"
+    timeout: 60000

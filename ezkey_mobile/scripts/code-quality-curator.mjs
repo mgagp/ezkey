@@ -2,9 +2,11 @@
 /*
  * Code quality curator (iteration 0 foundation)
  *
- * This script normalizes findings from Biome, Semgrep, and Detekt/SARIF,
- * deduplicates noisy overlaps, computes a simple priority score, and writes
- * readable Markdown/HTML reports from a single normalized JSON model.
+ * Legacy multi-format curator (Semgrep / Detekt / optional Biome snapshots).
+ *
+ * Prefer the punctual hygiene keyword path: `yarn doctor:curated`
+ * (`scripts/mobile-doctor-curated.mjs`) — react-doctor + Semgrep + Detekt →
+ * logs/mobile-doctor/*. Biome is not part of the v1 mobile-doctor shortlist.
  */
 
 import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
@@ -24,7 +26,7 @@ const hasFlag = name => rawArgs.includes(name);
 
 const rootDir = path.resolve(process.cwd());
 const outputDir = path.resolve(rootDir, parseArg('--output-dir', '.monitor/code-quality'));
-const inputArg = parseArg('--inputs', '.monitor/biome-report.json,.monitor/semgrep-report.json,.monitor/detekt.sarif,.monitor/detekt-report.json');
+const inputArg = parseArg('--inputs', '.monitor/semgrep-report.json,.monitor/detekt.sarif,.monitor/detekt-report.json');
 const excludePathArg = parseArg('--exclude-path-fragments', '');
 const suppressionFileArg = parseArg('--suppression-file', '');
 const reportBaseName = parseArg('--report-name', 'curated-report');

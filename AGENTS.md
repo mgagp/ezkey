@@ -346,6 +346,30 @@ When the operator asks for a **`dependabot-curated`** pass:
    functional / Playwright per skill ladder; T1-only shortcut allowed when recorded).
 6. Write a dated campaign note under `product-docs/global/hygiene/dependabot/` (copy `TEMPLATE.md`).
 
+## Mobile doctor-curated keyword
+
+- For Ezkey Mobile (`ezkey_mobile/`) static-analysis hygiene, the shared keyword is
+  **`mobile-doctor-curated`**.
+- Purpose: punctual curated pass — react-doctor + Semgrep (Ezkey mobile pack) + Detekt → P1/P2/P3
+  shortlist. **Not** a CI gate and **not** a zero-warning campaign.
+- Default command from `ezkey_mobile/` (Git Bash on Windows):
+
+```bash
+yarn doctor:curated
+# or
+./scripts/mobile-doctor-curated.sh
+```
+
+- Outputs under `ezkey_mobile/logs/mobile-doctor/` (gitignored):
+  - `mobile-doctor.curated.md` — human-readable shortlist + planning contract
+  - `mobile-doctor.curated.json` — machine-readable summary
+  - `raw/` — analyzer inputs
+- Config: `ezkey_mobile/config/mobile-doctor/suppressions.json`
+- Campaign notes: `product-docs/global/hygiene/mobile-doctor/`
+- HITL and operating rules: `ezkey_mobile/AGENTS.md` § Mobile doctor-curated pass
+- Authority: `product-docs/global/mobile-doctor-curated-evaluation-2026-07-11.md`,
+  `I-2026-07-11-mobile-doctor-curated-hygiene`, `TB-2026-07-11-mobile-doctor-curated-mvp`
+
 ## UI Test Autonomy
 
 - Treat browser UI tests as a **pragmatic judgment call**, not a mechanical checklist item.

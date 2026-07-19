@@ -61,10 +61,13 @@ reference mobile app.
 | [NATIVE_MODULES.md](NATIVE_MODULES.md) | Supporting technical detail | When the primary architecture doc is not deep enough on Android/iOS bridges. |
 | [MOBILE_CRYPTO_REFERENCE.md](MOBILE_CRYPTO_REFERENCE.md) | Supporting security detail | When reviewing mobile-specific crypto wording and storage caveats. |
 | [MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md](MOBILE_SECURITY_INVESTIGATION_TECHNIQUES.md) | Supporting security practice | When validating local secret handling, sandbox artifacts, log hygiene, and debug-only instrumentation choices. |
+| [MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md](MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md) | Test automation / release posture | When adding Maestro, F2a bypass, or other test-only surfaces — mechanical gates and scrutiny resistance. |
 | [MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md](MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md) | Supporting future design note | When revisiting local-auth integrity, future enrollment policy, or audit/protocol extensions around `respond`. |
 | [MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md](MOBILE_ESLINT10_JEST30_UNBLOCK_MEMO.md) | Supporting dependency governance | Unblock gates and trial protocol for deferred ESLint 10 / Jest 30 majors. |
 | [MOBILE_RELEASE_SIGNING.md](MOBILE_RELEASE_SIGNING.md) | Operational | When preparing signed Android release artifacts. |
 | [MOBILE_PLAY_PUBLISHING.md](MOBILE_PLAY_PUBLISHING.md) | Operational | When preparing Google Play submission. |
 | [MOBILE_PLAY_RELEASE_READINESS_AUDIT.md](MOBILE_PLAY_RELEASE_READINESS_AUDIT.md) | Operational decision support | When deciding whether the current workspace is close enough to a Play release candidate. |
 | [MOBILE_RELEASE_DECISION_MEMO.md](MOBILE_RELEASE_DECISION_MEMO.md) | Product and engineering decision support | When deciding whether to release first on the current stack or upgrade before first publication. |
+| [MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md](MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md) | Real-device test harness | When running or extending Maestro + churn orchestration on a physical Android device (`TB-2026-0002`, F1/F2a). |
+| [../maestro/README.md](../maestro/README.md) | Real-device Maestro operator runbook | Flows, selectors, pilot and campaign entry commands. |
 | [../PRD.md](../PRD.md) | Product scope source | When checking intended scope, constraints, and release framing. |

@@ -3,13 +3,14 @@
 ## Metadata
 
 - **ID:** `I-2026-05-31-mobile-android-stack-followups`
-- **Status:** `incubating`
+- **Status:** `active`
 - **Priority:** `P2`
 - **Created at:** `2026-05-31`
-- **Updated at:** `2026-05-31`
+- **Updated at:** `2026-06-26`
 - **Phase tags:** `P2-maintainability`, `toolchain`, `mobile-quality`, `android`, `P2-hardening`
 - **Component tags:** `mobile`, `android`, `ezkey-tests`
 - **Lane:** `A` (promote per-slice `TB-*` when execution starts)
+- **GitHub issues:** [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a)
 - **Spawned from:** `I-2026-05-29-mobile-stack-modernization` (GitHub **#177**, `done` 2026-05-31)
 - **Captured by:** Marc (post-merge planning session after mobile stack closeout)
 
@@ -81,8 +82,9 @@ Promote a row to **`TB-*`** execution when starting a branch. Runtime gates: `va
 
 | ID | Slice | Target / note | TB when started | Status |
 |----|-------|---------------|-----------------|--------|
-| **F1** | **Auth churn harness** (JUnit + Maestro) | Extend **`TB-2026-0002`**; manual enroll **once per session**; seeded loop; deny flow; artifacts | **`TB-2026-0002`** (next phase) | **`scheduled`** |
-| F2 | Maestro **enrollment + QR** (Android) | **Future generalization** after F1; hybrid or deep-link strategy TBD | `TB-2026-0002` or new TB | `pending` |
+| **F1** | **Auth churn harness** (JUnit + Maestro) | Extend **`TB-2026-0002`**; manual enroll **once per session** (or F2a bootstrap when opted-in); seeded loop; deny flow; artifacts | **`TB-2026-0002`** · [#239](https://github.com/mgagp/ezkey/issues/239) | **`in progress`** |
+| **F2a** | Controlled **enrollment seed bypass** (debug/test) | Maestro bind+verify without camera; **not** steady-state churn default | [#254](https://github.com/mgagp/ezkey/issues/254) · `feat/mobile-f2a-enrollment-seed-bypass-issue-254` | **`in progress`** |
+| F2b | Maestro **enrollment + QR** (Android) | **Future generalization** after F1 Phase B | `TB-2026-0002` or new TB | `pending` |
 | F3 | **react-native-gesture-handler** 3.x | Major; navigation / gestures | `TB-2026-…-gesture-handler-3` | `pending` |
 | F4 | **react-native-nitro-image** 0.15.x | Minor Nitro | Sub-step of F3 or own TB | `pending` |
 
@@ -112,6 +114,7 @@ Promote a row to **`TB-*`** execution when starting a branch. Runtime gates: `va
 - [`TB-2026-0002-android-real-device-functional-pilot.md`](TB-2026-0002-android-real-device-functional-pilot.md) — **F1 owner**
 - [`I-2026-0019-android-real-device-mobile-functional-tests.md`](I-2026-0019-android-real-device-mobile-functional-tests.md) — parent real-device idea
 - [`ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`](../../../ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md)
+- [`TSP-2026-06-26-mobile-real-device-churn-harness.md`](../test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md)
 - [`ezkey_mobile/maestro/README.md`](../../../ezkey_mobile/maestro/README.md) — existing pilot flows
 - [`ML-2026-05-29-mobile-stack-modernization.md`](../method-logs/ML-2026-05-29-mobile-stack-modernization.md)
 - [`2026-05-31-mobile-android-build-jdk-resolution.md`](../../../methodology/decisions/2026-05-31-mobile-android-build-jdk-resolution.md)
@@ -119,7 +122,7 @@ Promote a row to **`TB-*`** execution when starting a branch. Runtime gates: `va
 ## Status transitions
 
 - `captured` → `incubating` when the first Tier-1 slice is scheduled. **Reached 2026-05-31** (F1 churn scope confirmed).
-- `incubating` → `active` when F1 TB execution starts (issue + branch).
+- `incubating` → `active` when F1 TB execution starts (issue + branch). **Reached 2026-06-26** ([#239](https://github.com/mgagp/ezkey/issues/239), F1/F2a in progress).
 - `active` → `done` when Tier 1 slices are closed or explicitly deferred; Tier 2/3 item-by-item.
 
 ## Grill Me (inline)

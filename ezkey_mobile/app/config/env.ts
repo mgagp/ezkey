@@ -15,6 +15,14 @@ const parseNumber = (value: string | undefined, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const parseText = (value: string | undefined): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 /**
  * Parses optional boolean env vars. Accepts: 1 / true / yes (case-insensitive) as true; unset or
  * other values as false.
@@ -59,4 +67,19 @@ export const env = {
    * {@code scripts/run-real-device-pilot-maestro.sh} when Maestro pilot diagnosis is done.
    */
   pendingAuthFlowTrace: parseBool(Config.EZKEY_PENDING_AUTH_FLOW_TRACE, false),
+  /**
+   * Controlled enrollment seed bypass (F2a): test harness only.
+   *
+   * Security posture (all required):
+   * - Native **debug** build type ({@code BuildConfig.DEBUG} via {@code readIsDebugBuild()}) —
+   *   not React Native {@code __DEV__} alone.
+   * - Explicit env enable flag + acknowledgement token at build time.
+   * - Payload still processed through the standard bind/verify trust path.
+   *
+   * Release builds never expose this UI even if a local {@code .env} still has test flags.
+   * See {@code docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md}.
+   */
+  enrollmentSeedBypassEnabled: parseBool(Config.EZKEY_ENROLLMENT_SEED_BYPASS_ENABLED, false),
+  enrollmentSeedBypassAck: parseText(Config.EZKEY_ENROLLMENT_SEED_BYPASS_ACK),
+  enrollmentSeedBypassQrPayload: parseText(Config.EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD),
 };
