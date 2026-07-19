@@ -1,0 +1,59 @@
+﻿appId: org.ezkey.mobile
+---
+## Full enrollment E2E flow: bind via runtime bypass + verify challenge + confirm enrolled.
+## Variables required:
+##   ENROLLMENT_ID          - numeric enrollment ID
+##   ENROLLMENT_PROOF_TOKEN - proof token string
+##   ENROLLMENT_AUTH_URL    - auth server base URL
+##   ENROLLMENT_CHALLENGE   - 6-digit challenge code shown in admin console
+##
+## Example (PowerShell):
+##   Set-Location C:\w\e\ezkey_mobile
+##   maestro test maestro/flows/pilot_enrollment_full_runtime.yaml `
+##     -e ENROLLMENT_ID=4 `
+##     -e ENROLLMENT_PROOF_TOKEN=TOKEN `
+##     -e ENROLLMENT_AUTH_URL=https://xxx.ngrok-free.dev `
+##     -e ENROLLMENT_CHALLENGE=123456
+- launchApp:
+    clearState: false
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.home.root"
+    timeout: 30000
+- tapOn:
+    id: "ezkey.e2e.home.fabAddEnrollment"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentWizard.controlledBypassSeed"
+    timeout: 60000
+- tapOn:
+    id: "ezkey.e2e.enrollmentWizard.controlledBypassSeedInput"
+- inputText: "${ENROLLMENT_ID}|${ENROLLMENT_PROOF_TOKEN}|${ENROLLMENT_AUTH_URL}"
+- tapOn:
+    id: "ezkey.e2e.enrollmentWizard.controlledBypassSeed"
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentWizard.verifyStep"
+    timeout: 60000
+- tapOn:
+    id: "ezkey.e2e.enrollmentWizard.challengeInput"
+- inputText: "${ENROLLMENT_CHALLENGE}"
+- tapOn:
+    id: "ezkey.e2e.enrollmentWizard.verifyStep"
+    point: 50%, 10%
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: "ezkey.e2e.enrollmentWizard.verifyStep"
+    timeout: 10000
+- tapOn:
+    id: "ezkey.e2e.enrollmentWizard.primaryAction"
+- extendedWaitUntil:
+    notVisible:
+      id: "ezkey.e2e.enrollmentWizard.verifyStep"
+    timeout: 60000
+- extendedWaitUntil:
+        visible:
+            id: "ezkey.e2e.home.root"
+        timeout: 60000

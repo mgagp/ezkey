@@ -26,8 +26,10 @@ import {cryptoService} from '../services/crypto';
 import {DEFAULT_ENROLLMENT_APPROVAL_POLICY} from '../services/security/approvalRequirement';
 import {StoredEnrollment} from '../services/storage/enrollmentStorage';
 import {env} from '../config/env';
+import {readIsDebugBuild} from '../config/buildFlavor';
 import {integrationKeyAlgorithmBindError} from '../utils/integrationKeyAlgorithm';
 import {buildInstallation, resolveEnrollmentAuthUrl} from '../utils/installationMetadata';
+import {isControlledEnrollmentBypassAvailable} from '../utils/controlledEnrollmentBypass';
 import {parseQrPayload} from '../utils/qrPayload';
 import {
   buildBindPayload,
@@ -53,6 +55,31 @@ type EnrollmentDraft = {
   deviceLabel?: string;
 };
 
+type EnrollmentSeedSource = 'camera' | 'controlled-bypass';
+
+const normalizeSeedPayload = (value: string): string => {
+  let normalized = value.trim();
+  if (
+    (normalized.startsWith("'") && normalized.endsWith("'")) ||
+    (normalized.startsWith('"') && normalized.endsWith('"'))
+  ) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+  normalized = normalized.replace(/\\"/g, '"');
+
+  // Pipe-delimited format: enrollmentId|proofToken|authUrl
+  // Used by Maestro runtime flow to avoid JSON quoting issues in PowerShell.
+  if (!normalized.startsWith('{') && normalized.includes('|')) {
+    const parts = normalized.split('|');
+    if (parts.length === 3) {
+      const [enrollmentId, enrollmentProofToken, authUrl] = parts.map(p => p.trim());
+      normalized = JSON.stringify({enrollmentId, enrollmentProofToken, authUrl});
+    }
+  }
+
+  return normalized;
+};
+
 /**
  * Values returned by the hook that the screen needs to render itself.
  *
@@ -68,6 +95,9 @@ export type EnrollmentWizardState = {
   enrollmentChallenge: string;
   challengeError: string | undefined;
   scannerVisible: boolean;
+  controlledBypassAvailable: boolean;
+  controlledBypassUsed: boolean;
+  controlledBypassSeedInput: string;
   // Derived UI helpers
   primaryLabel: string;
   secondaryLabel: string;
@@ -81,6 +111,8 @@ export type EnrollmentWizardState = {
   handleSecondary: () => void;
   handleBack: (goBack: () => void) => void;
   handleQrScanned: (value: string) => void;
+  setControlledBypassSeedInput: (value: string) => void;
+  handleControlledBypass: () => void;
   handleScannerDismiss: () => void;
 };
 
@@ -116,6 +148,16 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
   const [challengeError, setChallengeError] = useState<string | undefined>();
   const [scannerVisible, setScannerVisible] = useState(false);
   const [authUrl, setAuthUrl] = useState<string | undefined>();
+  const [seedSource, setSeedSource] = useState<EnrollmentSeedSource | undefined>();
+  const [controlledBypassSeedInput, setControlledBypassSeedInput] = useState('');
+
+  // F2a: native debug build type + env enable + ack. Do not use __DEV__ alone — offline debug
+  // APKs can ship with __DEV__ false while remaining BuildConfig.DEBUG=true.
+  const controlledBypassAvailable = isControlledEnrollmentBypassAvailable({
+    enrollmentSeedBypassEnabled: env.enrollmentSeedBypassEnabled,
+    enrollmentSeedBypassAck: env.enrollmentSeedBypassAck,
+    isDebugBuild: readIsDebugBuild(),
+  });
 
   // ---------------------------------------------------------------------------
   // Private helpers
@@ -316,6 +358,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
       };
       await saveEnrollment.mutateAsync(record);
       setDraft(undefined);
+      setSeedSource(undefined);
       setEnrollmentChallenge('');
       popToTop();
     } catch (error) {
@@ -379,6 +422,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
     if (draft) {
       if (!isBinding && !isSubmitting) {
         setDraft(undefined);
+          setSeedSource(undefined);
         setEnrollmentChallenge('');
         setChallengeError(undefined);
         popToTop();
@@ -397,6 +441,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         setChallengeError(undefined);
         setEnrollmentChallenge('');
         setDraft(undefined);
+        setSeedSource(undefined);
         return;
       }
       goBack();
@@ -404,16 +449,19 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
     [draft, isBinding, isSubmitting],
   );
 
-  const handleQrScanned = useCallback(
-    (value: string) => {
+  const ingestSeedPayload = useCallback(
+    (value: string, source: EnrollmentSeedSource) => {
+      const normalizedValue = normalizeSeedPayload(value);
       if (__DEV__) {
         console.log('[EnrollmentWizard] Raw QR value:', JSON.stringify(value));
+        console.log('[EnrollmentWizard] Normalized QR value:', JSON.stringify(normalizedValue));
       }
       try {
-        const parsed = parseQrPayload(value);
+        const parsed = parseQrPayload(normalizedValue);
         if (__DEV__) {
           console.log('[EnrollmentWizard] Parsed QR payload:', JSON.stringify(parsed));
         }
+        setSeedSource(source);
         setAuthUrl(parsed.authUrl);
         setBindForm(() => ({
           enrollmentId: parsed.enrollmentId,
@@ -430,6 +478,8 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
           rawMessage,
           '| raw:',
           JSON.stringify(value),
+          '| normalized:',
+          JSON.stringify(normalizedValue),
         );
         Alert.alert(
           t('enrollmentWizard.invalidQrTitle'),
@@ -440,6 +490,29 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
     [localizeQrError, performBinding, t],
   );
 
+  const handleQrScanned = useCallback(
+    (value: string) => {
+      ingestSeedPayload(value, 'camera');
+    },
+    [ingestSeedPayload],
+  );
+
+  const handleControlledBypass = useCallback(() => {
+    if (!controlledBypassAvailable) {
+      setCameraError(t('enrollmentWizard.controlledBypassDisabled'));
+      return;
+    }
+    const payload = controlledBypassSeedInput.trim() || env.enrollmentSeedBypassQrPayload;
+    if (!payload) {
+      setBindError(t('enrollmentWizard.controlledBypassMissingPayload'));
+      return;
+    }
+    setCameraError(undefined);
+    setBindError(undefined);
+    setScannerVisible(false);
+    ingestSeedPayload(payload, 'controlled-bypass');
+  }, [controlledBypassAvailable, controlledBypassSeedInput, ingestSeedPayload, t]);
+
   const handleScannerDismiss = useCallback(() => {
     setScannerVisible(false);
   }, []);
@@ -449,6 +522,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
   // ---------------------------------------------------------------------------
 
   const hasDraft = Boolean(draft);
+  const controlledBypassUsed = seedSource === 'controlled-bypass';
   const challengeMissing = hasDraft && enrollmentChallenge.trim().length !== 6;
   const primaryDisabled =
     (hasDraft && isSubmitting) || (!hasDraft && isBinding) || challengeMissing;
@@ -473,6 +547,9 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
     enrollmentChallenge,
     challengeError,
     scannerVisible,
+    controlledBypassAvailable,
+    controlledBypassUsed,
+    controlledBypassSeedInput,
     primaryLabel,
     secondaryLabel,
     primaryDisabled,
@@ -484,6 +561,8 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
     handleSecondary,
     handleBack,
     handleQrScanned,
+    setControlledBypassSeedInput,
+    handleControlledBypass,
     handleScannerDismiss,
   };
 }

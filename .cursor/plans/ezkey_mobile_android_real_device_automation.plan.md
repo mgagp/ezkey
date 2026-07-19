@@ -42,6 +42,10 @@ This working plan has been materialized into:
 - `I-2026-0019` in `product-docs/global/backlog/ideas/I-2026-0019-android-real-device-mobile-functional-tests.md`
 - `TB-2026-0002` in `product-docs/global/backlog/ideas/TB-2026-0002-android-real-device-functional-pilot.md`
 - Next-phase churn + evidence contract: `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`
+- Test plan slice (2026-06-26): `product-docs/global/backlog/test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md`
+- GitHub execution: [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a)
+
+**Pilot status (2026-06-26):** Maestro pending/respond validated; F1 Phase A documentation aligned; hardware validation deferred.
 
 ## Context and design goal
 

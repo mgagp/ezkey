@@ -136,6 +136,20 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   override fun getName(): String = NAME
 
   /**
+   * Exposes native build flavor constants to JS (sync).
+   *
+   * {@code isDebugBuild} mirrors Android {@link BuildConfig#DEBUG}. Test-only UI such as the F2a
+   * enrollment seed bypass must require this flag in addition to explicit env opt-in so a release
+   * APK cannot enable harness surfaces even if a local {@code .env} still has test flags set.
+   *
+   * @return map of constant name to value for React Native
+   * @since 2025
+   */
+  override fun getConstants(): MutableMap<String, Any> {
+    return hashMapOf("isDebugBuild" to BuildConfig.DEBUG)
+  }
+
+  /**
    * Generates an EC P-256 key pair for a specific enrollment.
    *
    * The key pair is stored in Android Keystore with StrongBox preference when available.

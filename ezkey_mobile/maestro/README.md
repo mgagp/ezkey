@@ -109,6 +109,62 @@ If **Settings → Security** uses a protected mode that requires biometric or de
 | --- | --- |
 | `flows/pilot_pending_respond.yaml` | Home → detail → check pending → approve (no challenge input). |
 | `flows/pilot_pending_respond_with_challenge.yaml` | Same, plus 2-digit challenge entry. |
+| `flows/pilot_enrollment_seed_bypass.yaml` | Home → wizard → controlled test seed (F2a) to reach verify stage without camera scan. |
+| `flows/pilot_enrollment_seed_bypass_visibility.yaml` | Home → wizard; asserts controlled bypass entry is visible (fast smoke gate for F2a enablement). |
+
+## Controlled Seed Bypass (F2a)
+
+`pilot_enrollment_seed_bypass.yaml` is a **debug/test bootstrap aid**, not a product shortcut.
+
+Canonical contract: [`docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md`](../docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md).
+
+Security boundaries:
+
+- Available only on native **debug** builds (`BuildConfig.DEBUG` via `readIsDebugBuild()`), **not**
+  React Native `__DEV__` alone (offline debug APKs may have `__DEV__ === false`).
+- Requires explicit env opt-in and acknowledgement token at build time.
+- Does not bypass bind/verify cryptographic trust checks.
+- Release assemble fails preflight if bypass/trace/debug-panel flags are still true in `.env`.
+- Must never be used to justify skipping periodic human validation of camera + QR path.
+
+Relevant env flags in `.env` (requires native **debug** rebuild):
+
+- `EZKEY_ENROLLMENT_SEED_BYPASS_ENABLED=true`
+- `EZKEY_ENROLLMENT_SEED_BYPASS_ACK=F2A_TEST_ONLY`
+- `EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD=...`
+
+## Autonomous Fresh Enrollment Seed (PowerShell)
+
+Because enrollment invitations are one-shot, rerunning full bind+verify with stale values will fail
+before or at verify. For unattended loops on Windows, use:
+
+- `scripts/get-fresh-enrollment-seed.ps1`
+
+This script calls:
+
+1. `POST /api/v1/admin/auth/recover`
+2. `POST /api/v1/admin/enrollments/reset`
+
+Then it emits fresh values for Maestro (`ENROLLMENT_ID`, `ENROLLMENT_PROOF_TOKEN`,
+`ENROLLMENT_AUTH_URL`, `ENROLLMENT_CHALLENGE`) and can immediately run
+`flows/pilot_enrollment_full_runtime.yaml`.
+
+Example (from `ezkey_mobile/`):
+
+```powershell
+.\scripts\get-fresh-enrollment-seed.ps1 `
+   -AdminApiBaseUrl "http://localhost:8082" `
+   -Username "admin" `
+   -RecoveryCode "1111-2222-3333-4444-5555-6666-7777-8888" `
+   -EnrollmentAuthUrl "https://your-auth-url.example" `
+   -RunMaestro
+```
+
+Notes:
+
+- `reason` sent to reset must be at least 10 characters (backend validation).
+- The script writes outputs to `maestro/reports/fresh-enrollment-seed.json` and
+   `maestro/reports/fresh-enrollment-seed.ps1` by default.
 
 ## Runner
 
@@ -143,7 +199,21 @@ for i in 1 2 3; do
 done
 ```
 
-**Planned:** JUnit-driven loops, per-iteration artifact folders, and seeded scenario variance are specified in `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md` (`TB-2026-0002` next phase).
+**Planned:** JUnit-driven loops, per-iteration artifact folders, and seeded scenario variance are specified in `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md` (`TB-2026-0002` F1). Test plan: `product-docs/global/backlog/test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md`.
+
+## Campaign and churn orchestration (F1 — interim)
+
+Full design: [`docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`](../docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md). Operator commands: [`scripts/README.md`](../scripts/README.md).
+
+| Script | Purpose |
+| --- | --- |
+| `run-mobile-test-campaign.ps1` | 3-phase model: Demo Device token → Admin API provisioning → phone churn loop |
+| `run-mobile-churn-no-recovery.ps1` | Simple N-iteration loop when enrollment is already on device (no recovery/reset) |
+| `get-fresh-enrollment-seed.ps1` | F2a: fresh bind material via recover+reset (**explicit opt-in**; not for steady-state churn) |
+
+**Lane rule:** Demo Device enrollment JSON does **not** populate the phone Home list. Phase 3 and churn scripts fail fast if `ezkey.e2e.home.enrollment.<id>` is missing on the device.
+
+**GitHub:** [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a).
 
 ## `ezkey-tests` touchpoints
 

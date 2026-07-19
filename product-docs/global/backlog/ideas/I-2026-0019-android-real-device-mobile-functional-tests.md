@@ -6,10 +6,11 @@
 - **Status:** `active`
 - **Priority:** `P1`
 - **Created at:** `2026-05-08`
-- **Updated at:** `2026-05-08`
-- **Last reviewed at:** `2026-05-08`
+- **Updated at:** `2026-06-26`
+- **Last reviewed at:** `2026-06-26`
 - **Phase tags:** `P1-operability`, `P2-hardening`
 - **Component tags:** `ezkey-mobile`, `ezkey-tests`, `auth-api`, `admin-api`, `docker`
+- **GitHub issues:** [#239](https://github.com/mgagp/ezkey/issues/239) (F1), [#254](https://github.com/mgagp/ezkey/issues/254) (F2a). Umbrella [#179](https://github.com/mgagp/ezkey/issues/179) superseded by #239 for execution tracking.
 - **Captured by:** Marc
 
 ## Intent
@@ -65,9 +66,11 @@ Introduce a pragmatic, repeatable Android real-device functional test capability
 
 Promoted to tracer bullet pilot on `2026-05-08`: **`TB-2026-0002`** (`product-docs/global/backlog/ideas/TB-2026-0002-android-real-device-functional-pilot.md`). Execution and exit criteria are owned by that brief.
 
-**Execution (`2026-05-08`):** Maestro flows, Bash runner, and `ezkey.e2e.*` testIDs landed under `ezkey_mobile/maestro/` and `ezkey_mobile/scripts/run-real-device-pilot-maestro.sh`. Exit criteria in the TB still apply until validated on hardware.
+**Execution (`2026-05-08`):** Maestro flows, Bash runner, and `ezkey.e2e.*` testIDs landed under `ezkey_mobile/maestro/` and `ezkey_mobile/scripts/run-real-device-pilot-maestro.sh`. **TB exit #2 validated on hardware** (single pending/respond slice).
 
-**Next execution slice:** **F1 auth churn harness** (JUnit + Maestro loop; manual enroll once per session) — see [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) and `TB-2026-0002` F1 section. **F2** enrollment Maestro = future generalization.
+**Execution (`2026-06-26`):** Documentation alignment for F1 churn harness and F2a enrollment bypass. Test plan slice [`TSP-2026-06-26-mobile-real-device-churn-harness.md`](../test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md). Phase A hardware validation and JUnit integration **pending** (device session deferred).
+
+**Next execution slice:** **F1 auth churn harness** (Phase A → B) — see [`I-2026-05-31-mobile-android-stack-followups`](I-2026-05-31-mobile-android-stack-followups.md) and `TB-2026-0002` F1 section. **F2a** enrollment bootstrap in progress ([#254](https://github.com/mgagp/ezkey/issues/254)); **F2b** full QR automation remains future.
 
 ## Links
 
@@ -77,4 +80,6 @@ Promoted to tracer bullet pilot on `2026-05-08`: **`TB-2026-0002`** (`product-do
 - Related documentation: `ezkey_mobile/docs/MOBILE_FUNCTIONAL_FLOWS.md`, `ezkey_mobile/docs/MOBILE_STACK_AND_ARCHITECTURE.md`, `ezkey-tests/README.md`, `docker/README.md`, `docs/ENDPOINT.md`
 - Related diagnostic context: `ezkey_mobile/MOBILE_PENDING_DEBUG_PLAN.md`
 - Churn + evidence design (next phase): `ezkey_mobile/docs/MOBILE_REAL_DEVICE_CHURN_AND_EVIDENCE.md`
+- Test plan slice: [`TSP-2026-06-26-mobile-real-device-churn-harness.md`](../test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md)
 - Related operational pattern: `ezkey-tests/scripts/run-operational-churn.sh`
+- GitHub: [#239](https://github.com/mgagp/ezkey/issues/239), [#254](https://github.com/mgagp/ezkey/issues/254)
