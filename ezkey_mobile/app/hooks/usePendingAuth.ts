@@ -30,6 +30,7 @@ import {
 } from '../services/pendingAuth/claimPendingAttempt';
 import {PendingAttempt} from '../services/pendingAuth/types';
 import {securityPreferenceStorage} from '../services/storage/securityPreferenceStorage';
+import type {StoredEnrollment} from '../services/storage/enrollmentStorage';
 import {useEnrollmentStore} from '../state/enrollmentStore';
 import {env} from '../config/env';
 

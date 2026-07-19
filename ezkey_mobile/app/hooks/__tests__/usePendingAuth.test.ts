@@ -139,11 +139,25 @@ const mockSetRecentAuthResult = jest.fn();
 // Helpers
 // ---------------------------------------------------------------------------
 
+type RenderedHook = {
+  result: {current: PendingAuthState};
+  unmount: () => void;
+};
+
+const mountedHooks: Array<() => void> = [];
+
+afterEach(() => {
+  while (mountedHooks.length > 0) {
+    const unmount = mountedHooks.pop();
+    unmount?.();
+  }
+});
+
 function renderHook(
   enrollmentId = 'enr-1',
   initialAttempt: PendingAttempt | undefined = undefined,
   nav = defaultNav,
-): {result: {current: PendingAuthState}} {
+): RenderedHook {
   const result = {current: null as unknown as PendingAuthState};
 
   function Probe() {
@@ -151,11 +165,19 @@ function renderHook(
     return null;
   }
 
+  let tree: ReturnType<typeof create> | undefined;
   act(() => {
-    create(React.createElement(Probe));
+    tree = create(React.createElement(Probe));
   });
 
-  return {result};
+  const unmount = () => {
+    act(() => {
+      tree?.unmount();
+    });
+  };
+  mountedHooks.push(unmount);
+
+  return {result, unmount};
 }
 
 // ---------------------------------------------------------------------------

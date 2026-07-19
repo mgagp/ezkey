@@ -70,7 +70,7 @@ const sampleEnrollment: StoredEnrollment = {
 describe('claimPendingAttempt', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockCryptoService.ensureEnrollmentKeyPair.mockResolvedValue(undefined);
+    mockCryptoService.ensureEnrollmentKeyPair.mockResolvedValue(true);
     mockGenerateProofToken.mockResolvedValue('device-proof-token');
     mockCryptoService.sign.mockResolvedValue('device-proof-sig');
     mockBuildPendingPayload.mockReturnValue('pending-payload');
