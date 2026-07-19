@@ -2977,6 +2977,8 @@
         "tags": [
           "Admin Enrollment Management"
         ],
+        "summary": "Reset enrollment after recovery",
+        "description": "Resets an administrator enrollment using a recovery token from /auth/recover. Missing Authorization header returns 401. Invalid token type or token validation failures return 403.",
         "operationId": "resetEnrollment",
         "parameters": [
           {
@@ -3000,7 +3002,57 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Enrollment reset successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResetResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResetResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing required Authorization header",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResetResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid token type or recovery token validation failed",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResetResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentResetResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "*/*": {
                 "schema": {
@@ -9695,42 +9747,42 @@
   },
   "x-tagGroups": [
     {
+      "name": "Getting started",
       "tags": [
         "Public",
         "Admin Authentication"
-      ],
-      "name": "Getting started"
+      ]
     },
     {
+      "name": "Tenant and integration setup",
       "tags": [
         "Tenants",
         "Integrations",
         "Enrollments",
         "API Keys"
-      ],
-      "name": "Tenant and integration setup"
+      ]
     },
     {
+      "name": "MFA operations",
       "tags": [
         "Auth Attempts",
         "Admin Enrollment Management"
-      ],
-      "name": "MFA operations"
+      ]
     },
     {
+      "name": "Administration",
       "tags": [
         "Administrator Provisioning"
-      ],
-      "name": "Administration"
+      ]
     },
     {
+      "name": "Platform operations",
       "tags": [
         "Audit Logs",
         "Encryption Keys",
         "Alerts",
         "Dashboard"
-      ],
-      "name": "Platform operations"
+      ]
     }
   ]
 }
