@@ -912,8 +912,8 @@ Use these repository files as the normative implementation references alongside 
 - `docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`
 - `docs/CONTEXTUAL_AUTH.md`
 - `docs/ENDPOINT.md`
-- `ezkey_mobile/android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt`
-- `ezkey_mobile/android/app/src/main/java/com/ezkeymobile/crypto/IntegrationKeyVerifier.kt`
+- `ezkey_mobile/android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoModule.kt`
+- `ezkey_mobile/android/app/src/main/java/org/ezkey/mobile/crypto/IntegrationKeyVerifier.kt`
 - `ezkey-demo-device/src/main/java/org/ezkey/demo/device/service/DeviceCryptoService.java`
 
 ## Common Implementation Mistakes

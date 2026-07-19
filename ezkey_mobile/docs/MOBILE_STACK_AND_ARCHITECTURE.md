@@ -94,7 +94,7 @@ does **not** use the enrollment private key itself to unwrap all other local sec
 | `app/services/storage` | Enrollment persistence and secure item wrappers | Keeps local record handling out of screen code. |
 | `app/services/crypto` | Native crypto abstraction and payload helpers | Owns device signing, verification, and payload construction. |
 | `app/utils` | Focused derivation logic and formatting helpers | Installation metadata normalization, tenant grouping, proof token generation, URL validation. |
-| `android` | Android native project | Current reference-strength native crypto path and QR frame processor. |
+| `android` | Android native project | Current reference-strength native crypto path (`org.ezkey.mobile.crypto`). QR enrollment uses Vision Camera + ML Kit from JS. |
 | `ios` | iOS native project | Native parity is in progress and documented conservatively. |
 | `docs` | Mobile-specific documentation | Primary conceptual corpus plus supporting technical and operational notes. |
 

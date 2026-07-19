@@ -188,8 +188,8 @@ Critical points to avoid implementation errors:
 - `docs/CONTEXTUAL_AUTH.md` — Context fields
 - `docs/ARCHITECTURE.md` — Overall architecture
 - `PRD.md` — Product positioning
-- `ezkey_mobile/android/app/src/main/java/com/ezkeymobile/crypto/EzkeyCryptoModule.kt` — Android KeyStore reference
-- `ezkey_mobile/android/app/src/main/java/com/ezkeymobile/crypto/IntegrationKeyVerifier.kt` — Ed25519 verification reference
+- `ezkey_mobile/android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoModule.kt` — Android KeyStore reference
+- `ezkey_mobile/android/app/src/main/java/org/ezkey/mobile/crypto/IntegrationKeyVerifier.kt` — Ed25519 verification reference
 - `ezkey-demo-device/src/main/java/org/ezkey/demo/device/service/DeviceCryptoService.java` — JVM protocol reference
 
 ---

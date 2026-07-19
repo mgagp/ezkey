@@ -1,3 +1,11 @@
+> **Historical / partially stale (2026-07):** This prompt is a historical protocol-security audit
+> record, not the current defect list. Several findings have been remediated — notably
+> `POST /api/v1/auth-attempts/respond` is covered by
+> [`RateLimitFilter`](../../ezkey-auth-api/src/main/java/org/ezkey/auth/config/RateLimitFilter.java)
+> alongside `/pending`, `/verify`, and `/bind`. Do not re-open remediated gaps as new work from this
+> file alone. For the current Android-first posture, read
+> [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../docs/security/mobile-protocol-crypto-assessment-2026-07.md).
+
 ## Plan: Audit de sécurité — Protocole Pending/Respond d'EZKey
 
 ### TL;DR
