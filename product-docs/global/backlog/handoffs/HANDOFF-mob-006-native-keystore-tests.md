@@ -1,7 +1,8 @@
 # Handoff — MOB-006 Native Keystore / StrongBox test coverage
 
-**Status:** ready for cold agent after operator Go  
+**Status:** implemented — PR [#386](https://github.com/mgagp/ezkey/pull/386)  
 **Finding:** MOB-006 (P2)  
+
 **Assessment:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)  
 **Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
 

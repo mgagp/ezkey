@@ -91,8 +91,25 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 | `scripts/resolve-android-jdk.sh` | Source to export `JAVA_HOME` for any Gradle command |
 | `scripts/android-with-jdk17.sh` | `react-native run-android` with correct JDK |
 | `scripts/install-debug-after-uninstall.sh` | Uninstall + `installDebug` (signature mismatch) |
+| `scripts/run-android-instrumented-crypto-tests.sh` | MOB-006 — `EzkeyCryptoModule` Keystore `androidTest` (emulator OK; not StrongBox CI) |
 
 Human-oriented troubleshooting: `README.md` § Android build troubleshooting.
+
+### Native Keystore instrumentation (MOB-006)
+
+- **Emulator / any adb device** (JDK 17 resolver, Git Bash from `ezkey_mobile/`):
+
+  ```bash
+  adb devices -l
+  yarn android:test:instrumented:crypto
+  # or: ./scripts/run-android-instrumented-crypto-tests.sh
+  ```
+
+- Covers enrollment key create → `getPublicKey` → `sign` round-trip, `deleteKeyPair`,
+  `sealSecret` / `unsealSecret` via the module, and
+  `getEnrollmentPrivateKeyStorageTier` ∈ `{NONE,STANDARD,STRONG}`.
+- **Do not** treat a green emulator run as StrongBox proof. Physical StrongBox evidence:
+  [`docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md`](docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md).
 
 ## Build Reset Heuristic
 
@@ -108,10 +125,12 @@ corepack yarn install --immutable
 corepack yarn generate:api
 corepack yarn validate:ci
 ./scripts/build-install-debug-clean.sh
+yarn android:test:instrumented:crypto
 yarn doctor:curated
 ```
 
 Real-device Maestro pilot (`TB-2026-0002`): see [`maestro/README.md`](maestro/README.md) and `scripts/run-real-device-pilot-maestro.sh`.
+StrongBox physical checklist (MOB-006): [`docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md`](docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md).
 
 ## Production-clean test automation
 

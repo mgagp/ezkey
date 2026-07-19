@@ -173,33 +173,8 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
         return
       }
 
-      val keyPairGenerator = KeyPairGenerator.getInstance(
-          KeyProperties.KEY_ALGORITHM_EC,
-          ANDROID_KEY_STORE
-      )
-
-        val builder = KeyGenParameterSpec.Builder(
-          alias,
-          KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
-      )
-          .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1")) // EC P-256
-          .setDigests(KeyProperties.DIGEST_SHA256)
-          .setUserAuthenticationRequired(false)
-
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        builder.setUnlockedDeviceRequired(true)
-      }
-
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        try {
-          builder.setIsStrongBoxBacked(true) // Hardware-backed if available
-        } catch (error: StrongBoxUnavailableException) {
-          // Device does not provide StrongBox; continue without it.
-        }
-      }
-
-      keyPairGenerator.initialize(builder.build())
-      keyPairGenerator.generateKeyPair()
+      // StrongBox is requested first; generateKeyPair throws when unavailable — then retry without.
+      generateEnrollmentEcKeyPair(alias, requestStrongBox = true)
 
       promise.resolve(true)
     } catch (error: GeneralSecurityException) {
@@ -208,6 +183,51 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       promise.reject(ERROR_CODE_KEY_GENERATION, error)
     } catch (error: IllegalStateException) {
       promise.reject(ERROR_CODE_KEY_GENERATION, error)
+    } catch (error: StrongBoxUnavailableException) {
+      promise.reject(ERROR_CODE_KEY_GENERATION, error)
+    }
+  }
+
+  /**
+   * Creates an EC P-256 enrollment key in Android Keystore, preferring StrongBox when requested.
+   *
+   * {@link StrongBoxUnavailableException} is thrown at key generation time (not when setting the
+   * builder flag), so callers that want "StrongBox when available" must retry without StrongBox.
+   *
+   * @param alias Keystore alias for the enrollment key pair
+   * @param requestStrongBox when true, set StrongBox-backed and fall back once if unavailable
+   */
+  private fun generateEnrollmentEcKeyPair(alias: String, requestStrongBox: Boolean) {
+    val keyPairGenerator =
+        KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, ANDROID_KEY_STORE)
+
+    val builder =
+        KeyGenParameterSpec.Builder(
+                alias,
+                KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY,
+            )
+            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1")) // EC P-256
+            .setDigests(KeyProperties.DIGEST_SHA256)
+            .setUserAuthenticationRequired(false)
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      builder.setUnlockedDeviceRequired(true)
+    }
+
+    if (requestStrongBox && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      builder.setIsStrongBoxBacked(true)
+    }
+
+    try {
+      keyPairGenerator.initialize(builder.build())
+      keyPairGenerator.generateKeyPair()
+    } catch (error: StrongBoxUnavailableException) {
+      if (!requestStrongBox) {
+        throw error
+      }
+      Log.w(TAG, "StrongBox unavailable for enrollment key; falling back to regular Keystore")
+      deleteAliasIfPresent(alias)
+      generateEnrollmentEcKeyPair(alias, requestStrongBox = false)
     }
   }
 
@@ -627,6 +647,16 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
           ?: throw IllegalStateException("App seal key entry missing for alias $APP_SEAL_KEY_ALIAS")
     }
 
+    return createAppSealKey(requestStrongBox = true)
+  }
+
+  /**
+   * Creates the app-level AES/GCM seal key, preferring StrongBox when requested.
+   *
+   * @param requestStrongBox when true, set StrongBox-backed and fall back once if unavailable
+   * @return newly generated Keystore secret key
+   */
+  private fun createAppSealKey(requestStrongBox: Boolean): SecretKey {
     val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEY_STORE)
     val builder =
         KeyGenParameterSpec.Builder(
@@ -642,16 +672,28 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       builder.setUnlockedDeviceRequired(true)
     }
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      try {
-        builder.setIsStrongBoxBacked(true)
-      } catch (error: StrongBoxUnavailableException) {
-        Log.w(TAG, "StrongBox unavailable for app seal key; falling back to regular Keystore")
-      }
+    if (requestStrongBox && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      builder.setIsStrongBoxBacked(true)
     }
 
-    keyGenerator.init(builder.build())
-    return keyGenerator.generateKey()
+    return try {
+      keyGenerator.init(builder.build())
+      keyGenerator.generateKey()
+    } catch (error: StrongBoxUnavailableException) {
+      if (!requestStrongBox) {
+        throw error
+      }
+      Log.w(TAG, "StrongBox unavailable for app seal key; falling back to regular Keystore")
+      deleteAliasIfPresent(APP_SEAL_KEY_ALIAS)
+      createAppSealKey(requestStrongBox = false)
+    }
+  }
+
+  private fun deleteAliasIfPresent(alias: String) {
+    val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+    if (keyStore.containsAlias(alias)) {
+      keyStore.deleteEntry(alias)
+    }
   }
 
   /** Base64 URL-safe encoding without padding (parity with JDK {@code Base64.getUrlEncoder().withoutPadding()}). */
