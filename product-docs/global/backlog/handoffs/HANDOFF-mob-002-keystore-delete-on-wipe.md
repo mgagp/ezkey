@@ -1,9 +1,10 @@
 # Handoff — MOB-002 Keystore delete on enrollment wipe
 
-**Status:** ready for cold agent after operator Go  
+**Status:** implemented (fail-open) — 2026-07-19  
 **Finding:** MOB-002 (P1)  
 **Assessment:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)  
-**Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
+**Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../hygiene/mobile-protocol-security/2026-07-16-pass-1.md)  
+**Posture:** native `deleteKeyPair` is best-effort; storage wipe always proceeds; failures logged via `console.warn`
 
 ---
 
