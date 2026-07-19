@@ -16,6 +16,6 @@ describe('ComingSoonScreen', () => {
     expect(textContent).toContain('Coming soon');
     expect(textContent).toContain('Authentication policy and stronger validation');
     expect(textContent).toContain('Certificate pinning, Ezkey-style');
-    expect(textContent).toContain('Language switching without restart');
+    expect(textContent).not.toContain('Language switching without restart');
   });
 });

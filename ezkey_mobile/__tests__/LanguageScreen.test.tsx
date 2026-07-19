@@ -55,7 +55,7 @@ describe('LanguageScreen', () => {
     expect(textContent).toContain('Current language');
   });
 
-  it('persists the selected language and shows the restart alert', async () => {
+  it('persists the selected language without a restart alert', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     let tree: renderer.ReactTestRenderer;
 
@@ -76,15 +76,12 @@ describe('LanguageScreen', () => {
     });
 
     expect(mockChangeAppLanguage).toHaveBeenCalledWith('fr');
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Restart required',
-      'Close and reopen the app to apply the selected language everywhere.',
-    );
+    expect(alertSpy).not.toHaveBeenCalled();
 
     alertSpy.mockRestore();
   });
 
-  it('does not persist or alert when reselecting the current language', async () => {
+  it('does not persist when reselecting the current language', async () => {
     getLocaleSpy.mockResolvedValue('fr');
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     let tree: renderer.ReactTestRenderer;
