@@ -1,6 +1,6 @@
 # Handoff — MOB-007 Deduplicate pending claim path
 
-**Status:** ready for cold agent after operator Go  
+**Status:** implemented — PR [#384](https://github.com/mgagp/ezkey/pull/384)  
 **Finding:** MOB-007 (P2)  
 **Assessment:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)  
 **Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
