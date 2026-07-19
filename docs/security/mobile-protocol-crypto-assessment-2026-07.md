@@ -10,15 +10,17 @@
 
 Ezkey’s protocol design for enrollment (`bind`/`verify`) and authentication (`pending`/`respond`) remains **credible and coherent**: dual algorithms (device EC P-256, integration Ed25519), one-time proof tokens, signed contextual pending payloads, signed respond decisions, and signed result outcomes. The Android reference client largely follows that contract and now seals long-lived enrollment secrets at rest via an app-level Android Keystore AES key — closing the May 2026 P1 cleartext AsyncStorage defect for the intended write path.
 
-The remaining gaps that most threaten **announced product quality** are not exotic crypto breaks. They are **honesty and lifecycle gaps** between Keystore/StrongBox, app-owned secrets, and local confirmation:
+**Lot A (2026-07 hygiene cycle) is closed** — see §9 and the campaign note. **Lot B documentary / claim-honesty checks were completed 2026-07-19** — see §13; do not reopen those as “Admin UI overclaim” or “missing positioning” defects without new evidence.
 
-1. Local “protected approval” is **UX-gated**, not Keystore-enforced (`userAuthenticationRequired=false`, no `BiometricPrompt.CryptoObject`).
-2. Enrollment Keystore key pairs are **orphaned** on local delete/clear (`deleteKeyPair` exists but is never called).
-3. `devicePrivateKeyStorageTier` remains **client-reported and outside the signed verify payload**.
-4. Transport trust remains **platform TLS only** (pinning still roadmap).
-5. Native Keystore / StrongBox / biometric binding paths have **almost no automated tests**.
+Residual **product/protocol** gaps that remain intentional or deferred (not false positives):
 
-None of the confirmed findings, by themselves, constitute a remote authentication bypass of an honest enrolled device over ordinary TLS. Several **do** weaken resistance to compromised-app, rooted-device, or hostile-trust-store adversaries, and several create **claim risk** if marketing or Admin UI language overstates StrongBox or local confirmation.
+1. Local “protected approval” remains **UX-gated**, not Keystore-enforced (MOB-001 Track B / CryptoObject — future program).
+2. `devicePrivateKeyStorageTier` remains **client-reported and outside the signed verify payload** (MOB-003 — protocol; operator-facing honesty already verified).
+3. Transport trust remains **platform TLS only** (MOB-005 pinning — roadmap / `R-2026-0001`).
+4. Device integrity / tamper resistance remains minimal (MOB-009 — deferred; no overclaim found).
+5. QR enrollment bootstrap remains trust-on-issuer (MOB-010 — by design; host is shown in UX).
+
+None of the confirmed findings, by themselves, constitute a remote authentication bypass of an honest enrolled device over ordinary TLS.
 
 ## 2. Assessment method and standards mapping
 
@@ -118,8 +120,8 @@ Critical honesty boundary: **honest-client assertions** (storage tier, local bio
 | Sealed local secrets for proof token / integration key | **Supported** (Android intended path) | `secureStorage` + `SealedSecretEnvelope`; May P1 largely remediated |
 | Local confirmation before approve | **Conditionally supported** | BiometricPrompt UX exists; **not** Keystore-bound |
 | Cryptographic continuity bind↔verify and pending↔respond | **Supported** | Payload builders + mobile verify steps + core services |
-| Server-verified StrongBox / hardware tier | **Unsupported** (correctly documented as non-claim) | Tier outside signed verify payload; no attestation |
-| Certificate / SPKI pinning | **Unsupported** (roadmap / Coming Soon) | Axios default trust only |
+| Server-verified StrongBox / hardware tier | **Unsupported** (correctly documented as non-claim) | Tier outside signed verify payload; no attestation; Admin UI tooltips state client-reported (verified 2026-07-19, §13) |
+| Certificate / SPKI pinning | **Unsupported** (roadmap / Coming Soon) | Axios default trust only; Coming Soon frames as planned (verified 2026-07-19, §13) |
 | iOS secure-hardware parity | **Out of scope** / deferred | Docs Android-first; iOS module lag expected |
 
 ## 5. Reconciliation with May 2026 assessment
@@ -128,8 +130,8 @@ Critical honesty boundary: **honest-client assertions** (storage tier, local bio
 | --- | --- | --- |
 | Sensitive material in cleartext AsyncStorage collection | **Resolved (intended path)** | `enrollmentStorage` strips secrets; Android seals via Keystore AES; legacy migration on read |
 | iOS deferred framing | **Still valid boundary** | Not treated as current defect |
-| No certificate pinning | **Residual** | See MOB-007 |
-| Debug / QR logging | **Residual** | See MOB-004 |
+| No certificate pinning | **Residual** (honest roadmap) | See MOB-005 |
+| Debug / QR logging | **Resolved** (Lot A) | See MOB-004 |
 | EXP1 Cloudflare edge posture | **Out of this assessment** | Deployment edge, not mobile protocol |
 | Minimal root/tamper resistance | **Residual / deferred** | See MOB-009 |
 
@@ -147,11 +149,13 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P1 |
 | **Confidence** | Confirmed |
-| **Disposition (proposed)** | Fix or explicitly defer with claim lockdown |
+| **Disposition** | **Track A completed** (2026-07-18 wording/docs lockdown); Track B (CryptoObject) deferred to a future program; Track A honesty **re-verified 2026-07-19** |
 | **MASVS** | AUTH, CRYPTO, PLATFORM |
 | **NIST lens** | Authentication intent not cryptographically bound to key use |
 
 **Issue.** Enrollment keys are created with `setUserAuthenticationRequired(false)`. `signWithAuthentication` shows `BiometricPrompt`, then calls ordinary `Signature.initSign` / `sign()` without `BiometricPrompt.CryptoObject`. A compromised app process that can invoke the native module’s `sign()` can approve or deny without the prompt.
+
+**2026-07-19 Track A residual check.** Security screen i18n remains explicit: “This protection is enforced by the app” / signing key does not require confirmation / backend receives no cryptographic proof (`ezkey_mobile/app/i18n/resources.ts` `declarativeNote*`). Do **not** re-open Track A as a wording defect. Track B (CryptoObject) remains a deliberate program gap, not an uninvestigated hygiene miss.
 
 **Evidence.**
 - [`EzkeyCryptoModule.kt`](../../ezkey_mobile/android/app/src/main/java/org/ezkey/mobile/crypto/EzkeyCryptoModule.kt) — key gen ~L173; `signWithAuthentication` ~L336–398; plain `sign` ~L293–322
@@ -177,7 +181,7 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P1 |
 | **Confidence** | Confirmed |
-| **Disposition (proposed)** | Fix |
+| **Disposition** | **Fixed** — PR [#381](https://github.com/mgagp/ezkey/pull/381) (fail-open Keystore delete on wipe) |
 | **MASVS** | CRYPTO (key lifecycle), STORAGE |
 
 **Issue.** `nativeCrypto.deleteKeyPair` is implemented but never called from `enrollmentStorage.deleteEnrollment`, `clearAll`, `useDeleteEnrollment`, or Danger Zone. Local delete removes metadata + sealed secrets, leaving `ezkey_enrollment_{id}` signable if metadata/secrets were restored or another bug rehydrated identity.
@@ -204,20 +208,24 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P1 (claim integrity) / P2 (protocol) |
 | **Confidence** | Confirmed |
-| **Disposition (proposed)** | Defer protocol change; Fix docs/Admin wording if any overclaim |
+| **Disposition** | **Claim honesty verified adequate (2026-07-19)**; protocol attestation / signed-tier binding remains **deferred program** |
 | **MASVS** | CRYPTO, AUTH |
 | **Android** | Key Attestation not used |
 
-**Issue.** Tier (`NONE`/`STANDARD`/`STRONG`) is client-chosen telemetry, not in the ECDSA verify payload, and not validated via Key Attestation. Docs already state this; residual risk is Admin UI / sales language treating `STRONG` as proven StrongBox.
+**Issue.** Tier (`NONE`/`STANDARD`/`STRONG`) is client-chosen telemetry, not in the ECDSA verify payload, and not validated via Key Attestation. Residual risk was Admin UI / sales language treating `STRONG` as proven StrongBox.
 
-**Evidence.**
-- `docs/CRYPTO.md`, `docs/MOBILE_DEVELOPER_GUIDE.md` trust-boundary sections
-- `EnrollmentVerifyService` stores request tier as-is
-- Mobile derives tier from `KeyInfo` honestly on reference client
+**2026-07-19 verification (documentary / operator-facing — no handoff required).**
 
-**Recommended action.** Audit operator-facing copy; keep tier informational; track attestation as future program (not hygiene).
+| Surface | Result |
+| --- | --- |
+| Admin UI badge tooltips | Explicit **client-reported / not attested by the server** for NONE, STANDARD, and STRONG (`ezkey-admin-ui/src/locales/en/enrollments.json` `keyTier.help*`; FR equivalents present) |
+| Admin UI presentation | `DevicePrivateKeyTierBadge` uses help text as tooltip on enrollment detail (`device-private-key-tier-badge.tsx`, `enrollment-detail.tsx`) — no “verified hardware” label |
+| Protocol / developer docs | `docs/MOBILE_DEVELOPER_GUIDE.md` trust-model table; `docs/CRYPTO.md`; `ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md` — all state server does not prove tier |
+| Public site / PRD | No “server-verified StrongBox” overclaim found in spot check |
 
-**Verification class.** Static/docs review; physical device only if validating honest-client KeyInfo mapping.
+**Conclusion for future campaigns:** Do **not** re-open MOB-003 as an Admin UI honesty defect unless new copy appears that claims attestation. The remaining work (Key Attestation, extend signed verify payload) is a deliberate **protocol program**, not a missed hygiene fix.
+
+**Verification class.** Static/docs/UI review (done); physical device only for honest-client KeyInfo mapping (covered under MOB-006 evidence).
 
 ---
 
@@ -227,7 +235,7 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed |
-| **Disposition (proposed)** | Fix |
+| **Disposition** | **Fixed** — PR [#383](https://github.com/mgagp/ezkey/pull/383) (redacted seed logs + debug panel; opt-in raw dump flag) |
 | **MASVS** | STORAGE, PRIVACY, CODE |
 
 **Issue.** `useEnrollmentWizard.handleQrScanned` logs raw QR JSON and parsed payload under `__DEV__`. Invalid QR path `console.warn`s raw value. Pending debug panel can show payload previews when flag enabled.
@@ -251,19 +259,24 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed |
-| **Disposition (proposed)** | Defer with honest positioning (or promote program if EXP1 priority) |
+| **Disposition** | **Honest positioning verified (2026-07-19)**; implementation remains **deferred program** (`R-2026-0001`) |
 | **MASVS** | NETWORK |
 | **NIST lens** | Limited phishing / MITM resistance vs verifier-name binding models |
 
-**Issue.** `httpClient` uses platform TLS trust. QR may supply `authUrl` (HTTPS required except loopback). Hostile root CA / MDM can MITM; protocol signatures still protect pending/respond content integrity, but enrollment bootstrap and metadata confidentiality suffer.
+**Issue.** `httpClient` uses platform TLS trust. QR may supply `authUrl` (HTTPS required except loopback). Hostile root CA / MDM can MITM; protocol signatures still protect pending/respond content integrity.
 
-**Evidence.**
-- `httpClient.ts`, `urlValidation.ts`
-- Coming Soon / i18n pinning copy; retrofit `R-2026-0001-mobile-certificate-pinning-spki.md`
+**2026-07-19 verification (documentary).**
 
-**Recommended action.** Keep as explicit product decision; if pursued, SPKI TOFU at bind + controlled rotation (existing design notes).
+| Surface | Result |
+| --- | --- |
+| Implementation | No pinning in `httpClient.ts` — expected |
+| Product framing | Coming Soon + release notes describe pinning as **planned** TOFU-style, not as shipped |
+| Design canon | `product-docs/global/legacy-retrofit/R-2026-0001-mobile-certificate-pinning-spki.md` documents intended SPKI+TOFU approach |
+| Overclaim check | No living claim that mobile currently pins certificates |
 
-**Verification class.** Design/docs now; MITM lab later (Scenario C from May assessment).
+**Conclusion for future campaigns:** Absence of pinning is a known deferred feature with honest UX/docs. Re-open only if product copy claims pinning is active, or when promoting the pinning program to implementation.
+
+**Verification class.** Design/docs (done); MITM lab remains optional future Scenario C.
 
 ---
 
@@ -273,7 +286,7 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed (coverage gap) |
-| **Disposition (proposed)** | Fix (add instrumentation + device evidence plan) |
+| **Disposition** | **Fixed** — PR [#386](https://github.com/mgagp/ezkey/pull/386) (androidTest + StrongBox evidence on Pixel 7 Pro → `STRONG`) |
 | **MASVS** | CRYPTO, CODE |
 
 **Issue.** JVM tests cover `SealedSecretEnvelope` and `IntegrationKeyVerifier` only. Zero `androidTest`. Maestro pilots approve flows but do not assert StrongBox tier, Keystore delete, or CryptoObject binding. Jest mocks native crypto.
@@ -292,7 +305,7 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed |
-| **Disposition (proposed)** | Fix |
+| **Disposition** | **Fixed** — PR [#384](https://github.com/mgagp/ezkey/pull/384) (shared `claimPendingAttempt`) |
 | **MASVS** | CODE (maintainability → security drift) |
 
 **Issue.** `EnrollmentDetailScreen.handleCheckPending` reimplements pending request + Ed25519 verify already present in `usePendingAuth.loadPendingAttempt`. Future security fixes can land in one path only.
@@ -313,7 +326,7 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P3 |
 | **Confidence** | Confirmed |
-| **Disposition (proposed)** | Fix |
+| **Disposition** | **Fixed** — PR [#385](https://github.com/mgagp/ezkey/pull/385) |
 | **MASVS** | CODE |
 
 **Issue.** Examples:
@@ -333,14 +346,22 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P3 |
 | **Confidence** | Confirmed (absence) |
-| **Disposition (proposed)** | Defer |
+| **Disposition** | **No overclaim found (2026-07-19)**; resilience controls remain **intentionally deferred** |
 | **MASVS** | RESILIENCE |
 
-**Issue.** No rooted-device, Play Integrity, or runtime tamper controls. Acceptable if positioned honestly for current market; not acceptable if claimed.
+**Issue.** No rooted-device, Play Integrity, or runtime tamper controls. Acceptable if positioned honestly; not acceptable if claimed.
 
-**Recommended action.** Keep deferred; do not displace P1 lifecycle/crypto-binding work.
+**2026-07-19 verification (documentary).**
 
-**Verification class.** Product positioning review.
+| Surface | Result |
+| --- | --- |
+| PRD / SECURITY_POSTURE / public site spot check | No Play Integrity / DeviceCheck / “tamper-proof phone” product claim |
+| Mobile docs | Emphasize protocol + Keystore; May assessment already framed integrity as honest boundary |
+| Code | No root/jailbreak detection layer in `ezkey_mobile` — expected for deferred scope |
+
+**Conclusion for future campaigns:** Do not treat “missing Play Integrity” as a regression or missed Lot A fix. Re-open only if marketing claims endpoint attestation-grade integrity, or when starting a deliberate resilience program.
+
+**Verification class.** Product positioning review (done).
 
 ---
 
@@ -350,14 +371,24 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed (by design) |
-| **Disposition (proposed)** | Defer / document; optional UX hardening |
+| **Disposition** | **Enrollment host visibility verified (2026-07-19)**; residual trust-on-issuer is **intentional self-hosted model** |
 | **MASVS** | AUTH, NETWORK |
 
-**Issue.** A syntactically valid HTTPS QR can point the app at an attacker Auth API. Bind signature then proves that **that** host’s integration key — not organizational identity beyond TLS. Aligns with self-hosted trust model; still a phishing-adjacent enrollment risk.
+**Issue.** A syntactically valid HTTPS QR can point the app at an attacker Auth API. Bind signature then proves that **that** host’s integration key — not organizational identity beyond TLS.
 
-**Recommended action.** Clear enrollment confirmation UI (host, instance name); future pinning/TOFU; do not pretend PKI/CA chain exists (already documented).
+**2026-07-19 verification (UX + docs).**
 
-**Verification class.** Manual UX / hostile QR scenario (May Scenario B).
+| Surface | Result |
+| --- | --- |
+| Enrollment wizard | Shows **Server** URL after bind when available (`EnrollmentWizardScreen` `showServerUrl` / `serverUrl`) |
+| Enrollment detail | Shows installation `authUrl` in technical server block |
+| URL policy | `validateAuthUrl` requires HTTPS except loopback / emulator aliases |
+| Protocol docs | `MOBILE_DEVELOPER_GUIDE.md` “no end-to-end PKI/CA chain” trust-model boundary explicit |
+| Pinning | Not present (MOB-005) — does not silently claim host authenticity beyond TLS + bind crypto |
+
+**Conclusion for future campaigns:** The recommended UX hardening (show host) is present. Do not re-file MOB-010 as “app hides enrollment target.” Remaining risk is inherent to QR→HTTPS self-hosted bootstrap until pinning/TOFU (MOB-005 / `R-2026-0001`) lands. Hostile-QR lab (May Scenario B) remains optional active validation, not a documentary defect.
+
+**Verification class.** Static UX/docs (done); optional manual hostile QR scenario later.
 
 ---
 
@@ -393,21 +424,32 @@ These are **not** findings; they are strengths that should be preserved:
 
 ## 9. Prioritized action backlog
 
-### Lot A — recommended first hygiene/program cycle (this HITL pass)
+### Lot A — first hygiene cycle — **closed 2026-07-19**
 
-1. **MOB-001** — Local auth binding honesty / CryptoObject direction  
-2. **MOB-002** — Delete Keystore keys on enrollment wipe  
-3. **MOB-004** — Redact QR / debug secret logging  
-4. **MOB-007** — Deduplicate pending claim path  
-5. **MOB-006** — Native instrumentation + StrongBox evidence checklist  
-6. **MOB-008** — Living doc path / staleness cleanup  
+Durable closeout (decisions, PR links, StrongBox evidence) lives in
+[`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md).
+Ephemeral cold-agent handoff prompts were retired after merge; do not re-create them for closed rows.
 
-### Lot B — product decisions (may become `I-*` / `TB-*`)
+| Finding | Outcome | Evidence |
+| --- | --- | --- |
+| **MOB-001** | Track A completed (wording/docs); Track B deferred | Commit `4a1cd705` (2026-07-18); CryptoObject remains future program |
+| **MOB-002** | Fixed | PR [#381](https://github.com/mgagp/ezkey/pull/381) |
+| **MOB-004** | Fixed | PR [#383](https://github.com/mgagp/ezkey/pull/383) |
+| **MOB-007** | Fixed | PR [#384](https://github.com/mgagp/ezkey/pull/384) |
+| **MOB-006** | Fixed | PR [#386](https://github.com/mgagp/ezkey/pull/386); Pixel 7 Pro tier `STRONG` |
+| **MOB-008** | Fixed | PR [#385](https://github.com/mgagp/ezkey/pull/385) |
 
-- **MOB-003** — Attestation / signed tier (program) vs wording-only  
-- **MOB-005** — SPKI TOFU pinning program  
-- **MOB-010** — Enrollment UX host confirmation  
-- **MOB-009** — Integrity APIs (deferred)
+### Lot B — documentary / claim-honesty verification — **closed 2026-07-19**
+
+Operator-facing and product-positioning checks for items that never received Lot A handoffs. Full investigation notes: **§13**. Future mini-campaigns must read §13 before re-opening these as defects.
+
+| Finding | Documentary / UX verdict | Residual product/protocol work |
+| --- | --- | --- |
+| **MOB-003** | Admin UI + docs honest (client-reported, not attested) | Attestation / signed-tier binding — future program |
+| **MOB-005** | Pinning framed as planned, not shipped | SPKI TOFU — `R-2026-0001` / future program |
+| **MOB-009** | No integrity overclaim found | Play Integrity / tamper — intentionally deferred |
+| **MOB-010** | Enrollment host / auth URL shown in UX | Trust-on-issuer inherent until pinning; optional hostile-QR lab |
+| **MOB-001 Track B** | Track A wording still adequate | CryptoObject — future program (phone required) |
 
 ## 10. Claim verdict (product-facing)
 
@@ -416,20 +458,21 @@ These are **not** findings; they are strengths that should be preserved:
 | “Cryptographic continuity across enrollment and authentication” | **Supported** |
 | “Device private keys in Android Keystore; StrongBox when available” | **Supported with caveats** (fallback; not server-proven) |
 | “Long-lived enrollment secrets sealed at rest on Android” | **Supported** for current reference path |
-| “Local biometric/device confirmation protects approvals” | **Conditionally supported** — honest-client UX only today |
+| “Local biometric/device confirmation protects approvals” | **Conditionally supported** — honest-client UX only today (MOB-001 Track A); Keystore-bound auth still deferred |
 | “Backend verifies StrongBox” | **Unsupported** — do not claim |
 | “Pinning / phishing resistance comparable to WebAuthn” | **Unsupported** — do not claim |
-| “Deleting an enrollment removes all local crypto material” | **Currently unsupported** — MOB-002 |
+| “Deleting an enrollment removes local Keystore material” | **Supported** for intended wipe path (MOB-002); delete is fail-open if Keystore delete fails |
 
 ## 11. Methodology next steps
 
-1. Operator HITL on Lot A via [`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md).  
-2. One cold-agent [`HANDOFF-*.md`](../../product-docs/global/backlog/handoffs/) per **accepted** finding.  
-3. Promote only P0/P1 protocol redesigns (e.g. attestation, pinning, CryptoObject key model) to `I-*` / `TB-*` when scope exceeds hygiene.  
+1. Lot A closed — see campaign note `2026-07-16-pass-1.md` (canonical remediation register for that pass).  
+2. Lot B **claim-honesty / documentary** verification closed 2026-07-19 — see §13. Do not re-investigate Admin UI tier honesty, pinning positioning, integrity non-claims, or enrollment host visibility without new evidence.  
+3. Promote only **protocol/product** redesigns (attestation, pinning implementation, CryptoObject key model, integrity APIs) to `I-*` / `TB-*` when the operator chooses to fund them.  
 4. Optional future active scenarios: May assessment Scenarios A–D (device extraction, hostile QR, MITM, replay lab).
 
 ## 12. Related documents
 
+- Campaign closeout: [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
 - [`mobile-security-assessment-2026-05.md`](mobile-security-assessment-2026-05.md)
 - [`mobile-p1-sensitive-storage-investigation-2026-05.md`](mobile-p1-sensitive-storage-investigation-2026-05.md)
 - [`../CRYPTO.md`](../CRYPTO.md)
@@ -438,4 +481,23 @@ These are **not** findings; they are strengths that should be preserved:
 - [`../AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md)
 - [`../../ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md`](../../ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md)
 - [`../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md`](../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md)
+- [`../../ezkey_mobile/docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md`](../../ezkey_mobile/docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md)
 - [`../../product-docs/global/legacy-retrofit/R-2026-0001-mobile-certificate-pinning-spki.md`](../../product-docs/global/legacy-retrofit/R-2026-0001-mobile-certificate-pinning-spki.md)
+
+## 13. Lot B documentary verification closeout (2026-07-19)
+
+**Purpose.** Items that were never handed off as Lot A code fixes were still **investigated** for operator-facing honesty and product positioning, so a later model-driven mini-campaign does not waste time on already-resolved documentary questions.
+
+**Method.** Static review of Admin UI locales/components, mobile i18n / enrollment UX, living crypto docs, and (spot) public/PRD non-claims. No new protocol implementation.
+
+| ID | Question asked | Verdict | Where recorded |
+| --- | --- | --- | --- |
+| MOB-003 | Is Admin UI / docs transparent that storage tier is client-reported? | **Yes — adequate** | Finding §6 MOB-003 verification table |
+| MOB-005 | Does product claim pinning exists today? | **No — honest roadmap** | Finding §6 MOB-005 |
+| MOB-009 | Does product claim Play Integrity / tamper-proof phone? | **No overclaim** | Finding §6 MOB-009 |
+| MOB-010 | Does enrollment UX show the target host / auth URL? | **Yes — present** | Finding §6 MOB-010 |
+| MOB-001 Track A | Does Security screen still disclose app-enforced (not Keystore-bound) confirmation? | **Yes — still honest** | Finding §6 MOB-001 |
+
+**Assessment status after this note.** Lot A remediation **closed**. Lot B **documentary / claim-honesty** lane **closed**. Remaining open work is **explicitly deferred program** (CryptoObject, attestation, pinning implementation, integrity APIs) — not uninvestigated gaps.
+
+**Anti-false-positive rule for agents.** If a finding ID appears above with a 2026-07-19 documentary verdict of adequate / no overclaim / host visible, treat a re-discovery of the same static facts as **already historized**. Escalate only on **new copy**, **new code paths**, or an operator decision to fund the deferred program.
