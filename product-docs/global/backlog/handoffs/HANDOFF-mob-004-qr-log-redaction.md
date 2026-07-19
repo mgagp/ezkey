@@ -1,6 +1,6 @@
 # Handoff — MOB-004 QR and debug secret redaction
 
-**Status:** implemented on `mobile` (awaiting commit/PR)  
+**Status:** implemented — PR [#383](https://github.com/mgagp/ezkey/pull/383)  
 **Finding:** MOB-004 (P2)  
 **Assessment:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)  
 **Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
