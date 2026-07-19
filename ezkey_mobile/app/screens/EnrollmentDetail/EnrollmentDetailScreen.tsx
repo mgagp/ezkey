@@ -18,10 +18,7 @@ import {useTranslation} from 'react-i18next';
 import {useEnrollments, useMarkEnrollmentPendingChecked} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
-import {authAttemptsApi} from '../../services/api/authAttempts';
-import {buildPendingPayload} from '../../services/crypto/authAttemptPayload';
-import {cryptoService} from '../../services/crypto';
-import {generateProofToken} from '../../utils/generateProofToken';
+import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentDetail'>;
 
@@ -93,60 +90,25 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         console.warn('[EnrollmentDetail] Failed to persist last verification timestamp:', storageError);
       }
 
-      const enrollmentKeyId = enrollment.id.toString();
-      await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
-      const deviceProofToken = await generateProofToken();
-      const deviceProofTokenSigned = await cryptoService.sign(enrollmentKeyId, deviceProofToken);
-      const response = await authAttemptsApi.pending(
-        {
-          enrollmentId: enrollment.id,
-          enrollmentProofToken: enrollment.enrollmentProofToken,
-          deviceProofToken,
-          deviceProofTokenSigned,
-        },
-        enrollment.installation?.authUrl,
-      );
+      const result = await claimPendingAttempt(enrollment, {checkedAt});
 
-      if (!response) {
+      if (result.kind === 'none') {
         setInlineFeedback(t('pendingAuth.noPending'));
         return;
       }
 
-      const integrationPublicKey = enrollment.integrationPublicKey;
-      if (!integrationPublicKey) {
-        setInlineFeedback(t('pendingAuth.missingPendingPublicKey'));
-        return;
-      }
-
-      const pendingPayload = buildPendingPayload(
-        response.authAttemptProofToken,
-        response.authAttemptChallengeRequired ?? false,
-        response.contextTitle,
-        response.contextMessage,
-      );
-      const signatureValid = await cryptoService.verify(
-        pendingPayload,
-        response.authAttemptProofTokenSignedByIntegration,
-        integrationPublicKey,
-      );
-      if (!signatureValid) {
-        setInlineFeedback(t('pendingAuth.invalidPendingSignature'));
+      if (result.kind === 'fail_closed') {
+        setInlineFeedback(
+          result.reason === 'missing_integration_public_key'
+            ? t('pendingAuth.missingPendingPublicKey')
+            : t('pendingAuth.invalidPendingSignature'),
+        );
         return;
       }
 
       navigation.navigate('PendingAuth', {
         enrollmentId,
-        initialAttempt: {
-          authAttemptId: String(response.authAttemptId),
-          authAttemptProofToken: response.authAttemptProofToken,
-          authAttemptProofTokenSignedByIntegration: response.authAttemptProofTokenSignedByIntegration,
-          challengeRequired: response.authAttemptChallengeRequired,
-          integrationName: enrollment.integrationName,
-          tenantName: enrollment.tenantName,
-          createdAt: checkedAt,
-          contextTitle: response.contextTitle,
-          contextMessage: response.contextMessage,
-        },
+        initialAttempt: result.attempt,
       });
     } catch (error) {
       setInlineFeedback(extractErrorMessage(error));

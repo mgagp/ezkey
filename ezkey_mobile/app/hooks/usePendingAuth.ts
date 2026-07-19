@@ -21,18 +21,15 @@ import axios from 'axios';
 import {useTranslation} from 'react-i18next';
 import {useEnrollmentById, useMarkEnrollmentPendingChecked} from './useEnrollments';
 import {authAttemptsApi} from '../services/api/authAttempts';
-import {
-  buildPendingPayload,
-  buildRespondPayload,
-  buildRespondResultPayload,
-} from '../services/crypto/authAttemptPayload';
+import {buildRespondPayload, buildRespondResultPayload} from '../services/crypto/authAttemptPayload';
 import {cryptoService} from '../services/crypto';
 import {requiresProtectedApproval} from '../services/security/approvalRequirement';
+import {
+  claimPendingAttempt,
+  ClaimPendingDiagnostics,
+} from '../services/pendingAuth/claimPendingAttempt';
 import {PendingAttempt} from '../services/pendingAuth/types';
 import {securityPreferenceStorage} from '../services/storage/securityPreferenceStorage';
-import {StoredEnrollment} from '../services/storage/enrollmentStorage';
-import {generateProofToken} from '../utils/generateProofToken';
-import {sha256HexUtf8} from '../utils/sha256HexUtf8';
 import {useEnrollmentStore} from '../state/enrollmentStore';
 import {env} from '../config/env';
 
@@ -253,117 +250,63 @@ export function usePendingAuth(
       } catch (storageError) {
         console.warn('[PendingAuth] Failed to persist last verification timestamp:', storageError);
       }
-      setDebugInfo({lastStep: 'start', capturedAtIso: debugSnapshotAt});
-      const enrollmentKeyId = enrollment.id.toString();
-      // Ensure EC P-256 key pair exists for this enrollment
-      await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
-      setDebugInfo(prev =>
-        prev
-          ? {...prev, lastStep: 'after_ensure'}
-          : {lastStep: 'after_ensure', capturedAtIso: debugSnapshotAt},
-      );
-      const deviceProofToken = await generateProofToken();
-      const deviceProofTokenSigned = await cryptoService.sign(enrollmentKeyId, deviceProofToken);
-      const response = await authAttemptsApi.pending(
-        {
-          enrollmentId: enrollment.id,
-          enrollmentProofToken: enrollment.enrollmentProofToken,
-          deviceProofToken,
-          deviceProofTokenSigned,
-        },
-        enrollment.installation?.authUrl,
-      );
 
-      if (!response) {
+      const applyDiagnostics = (diagnostics?: ClaimPendingDiagnostics) => {
+        if (!diagnostics) {
+          return {};
+        }
+        // MOB-004: hashes + lengths + short prefixes only — never full pending payload / proof token.
+        return {
+          integrationPublicKeyLength: diagnostics.integrationPublicKeyLength,
+          integrationPublicKeyPrefix: diagnostics.integrationPublicKeyPrefix,
+          integrationPublicKeySha256Utf8Hex: diagnostics.integrationPublicKeySha256Utf8Hex,
+          pendingPayloadLength: diagnostics.pendingPayloadLength,
+          pendingPayloadSha256Utf8Hex: diagnostics.pendingPayloadSha256Utf8Hex,
+          signatureLength: diagnostics.signatureLength,
+          signatureSha256Utf8Hex: diagnostics.signatureSha256Utf8Hex,
+          signaturePrefix: diagnostics.signaturePrefix,
+          signatureValid: diagnostics.signatureValid,
+        };
+      };
+
+      const result = await claimPendingAttempt(enrollment, {
+        checkedAt: debugSnapshotAt,
+        onStep: (step, diagnostics) => {
+          setDebugInfo(prev => ({
+            ...(prev ?? {capturedAtIso: debugSnapshotAt}),
+            lastStep: step,
+            capturedAtIso: prev?.capturedAtIso ?? debugSnapshotAt,
+            ...applyDiagnostics(diagnostics),
+          }));
+        },
+      });
+
+      if (result.kind === 'none') {
         handleNoPendingResult();
         return;
       }
-      setDebugInfo(prev =>
-        prev
-          ? {...prev, lastStep: 'after_pending'}
-          : {lastStep: 'after_pending', capturedAtIso: debugSnapshotAt},
-      );
 
-      // Verify integration signature over canonical payload (NFC + proofToken|challenge|title|message)
-      const integrationPublicKey = enrollment.integrationPublicKey;
-      if (!integrationPublicKey) {
-        setGlobalError(t('pendingAuth.missingPendingPublicKey'));
+      if (result.kind === 'fail_closed') {
+        setGlobalError(
+          result.reason === 'missing_integration_public_key'
+            ? t('pendingAuth.missingPendingPublicKey')
+            : t('pendingAuth.invalidPendingSignature'),
+        );
         setAttempt(undefined);
-        return;
-      }
-      const pendingPayload = buildPendingPayload(
-        response.authAttemptProofToken,
-        response.authAttemptChallengeRequired ?? false,
-        response.contextTitle,
-        response.contextMessage,
-      );
-      const pendingPayloadSha256Utf8Hex = sha256HexUtf8(pendingPayload);
-      const signature = response.authAttemptProofTokenSignedByIntegration ?? '';
-      const signatureSha256Utf8Hex = sha256HexUtf8(signature);
-      const integrationPublicKeySha256Utf8Hex = sha256HexUtf8(integrationPublicKey);
-      // MOB-004: hashes + lengths + short prefixes only — never full pending payload / proof token.
-      setDebugInfo(prev =>
-        prev
-          ? {
-              ...prev,
-              lastStep: 'before_verify',
-              integrationPublicKeyLength: integrationPublicKey?.length,
-              integrationPublicKeyPrefix: integrationPublicKey?.slice(0, 24) ?? '',
-              integrationPublicKeySha256Utf8Hex,
-              pendingPayloadLength: pendingPayload.length,
-              pendingPayloadSha256Utf8Hex,
-              signatureLength: signature.length,
-              signatureSha256Utf8Hex,
-              signaturePrefix: signature.slice(0, 24),
-            }
-          : {
-              lastStep: 'before_verify',
-              capturedAtIso: debugSnapshotAt,
-              integrationPublicKeyLength: integrationPublicKey?.length,
-              integrationPublicKeyPrefix: integrationPublicKey?.slice(0, 24) ?? '',
-              integrationPublicKeySha256Utf8Hex,
-              pendingPayloadLength: pendingPayload.length,
-              pendingPayloadSha256Utf8Hex,
-              signatureLength: signature.length,
-              signatureSha256Utf8Hex,
-              signaturePrefix: signature.slice(0, 24),
-            },
-      );
-      const signatureValid = await cryptoService.verify(
-        pendingPayload,
-        response.authAttemptProofTokenSignedByIntegration,
-        integrationPublicKey,
-      );
-      setDebugInfo(prev =>
-        prev
-          ? {...prev, lastStep: 'after_verify', signatureValid}
-          : {lastStep: 'after_verify', signatureValid, capturedAtIso: debugSnapshotAt},
-      );
-      if (!signatureValid) {
-        setGlobalError(t('pendingAuth.invalidPendingSignature'));
-        setAttempt(undefined);
+        if (result.diagnostics) {
+          setDebugInfo(prev => ({
+            ...(prev ?? {capturedAtIso: debugSnapshotAt, lastStep: 'after_verify'}),
+            lastStep: prev?.lastStep ?? 'after_verify',
+            capturedAtIso: prev?.capturedAtIso ?? debugSnapshotAt,
+            ...applyDiagnostics(result.diagnostics),
+          }));
+        }
         return;
       }
 
-      setAttempt({
-        authAttemptId: String(response.authAttemptId),
-        authAttemptProofToken: response.authAttemptProofToken,
-        authAttemptProofTokenSignedByIntegration:
-          response.authAttemptProofTokenSignedByIntegration,
-        challengeRequired: response.authAttemptChallengeRequired,
-        integrationName: enrollment.integrationName,
-        tenantName: enrollment.tenantName,
-        createdAt: new Date().toISOString(),
-        contextTitle: response.contextTitle,
-        contextMessage: response.contextMessage,
-      });
+      setAttempt(result.attempt);
       setChallengeInput('');
       setFormError(undefined);
-      setDebugInfo(prev =>
-        prev
-          ? {...prev, lastStep: 'after_verify'}
-          : {lastStep: 'after_verify', capturedAtIso: debugSnapshotAt},
-      );
     } catch (error) {
       const msg = extractErrorMessage(error);
       setDebugInfo(prev =>
