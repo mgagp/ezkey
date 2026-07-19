@@ -2,7 +2,31 @@
 
 For agents working anywhere in the repo. For module-specific conventions and patterns, see the `AGENTS.md` in each module (e.g. `ezkey-admin-ui/AGENTS.md`, `ezkey-admin-api/AGENTS.md`, `sites/ezkey-org/AGENTS.md` for the public static site and Cloudflare Pages context).
 
-For full product and technical context, read **PRD.md**, **README.md**, **docs/PROJECT_POSITIONING.md**, and **docs/ENDPOINT.md** at the start of a new session.
+## Cold-start context (tiered)
+
+Do **not** ritual-read full `docs/ENDPOINT.md`, root `PRD.md`, or `docs/PROJECT_POSITIONING.md` at session start. Always-applied Cursor rules already carry most operating contracts. Load product and domain docs **by tier**:
+
+| Tier | When | What to load |
+|------|------|--------------|
+| **0 — Compass** | Every session | This file + always-applied rules. Use the domain pointer table below. No bulk file ritual. |
+| **1 — Product framing** | Identity, scope, open-ended work, or "what is Ezkey" | [`product-docs/global/product-intent.md`](product-docs/global/product-intent.md). Optionally skim [`README.md`](README.md) § What Exists Today. |
+| **2 — Domain on demand** | After work direction is clear | Section-scoped reads only (see pointer table). |
+
+Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon per [`product-docs/GOVERNANCE.md`](product-docs/GOVERNANCE.md)).
+
+### Domain pointer table
+
+| Need | Read |
+|------|------|
+| Product intent, thesis, audience | [`product-docs/global/product-intent.md`](product-docs/global/product-intent.md) |
+| Priority / what to implement next | [`product-docs/global/operational-readiness-prioritization-2026-09.md`](product-docs/global/operational-readiness-prioritization-2026-09.md), [`product-docs/global/backlog/index.md`](product-docs/global/backlog/index.md) |
+| Protocol crypto (Auth API ↔ mobile / Demo Device) | [`docs/CRYPTO.md`](docs/CRYPTO.md), [`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md); relevant **section** of [`docs/ENDPOINT.md`](docs/ENDPOINT.md) only |
+| Lifecycle / eligibility / multi-entity operator design | Skim [`product-docs/global/lifecycle-model.md`](product-docs/global/lifecycle-model.md), then [`docs/LIFECYCLE_GOVERNANCE.md`](docs/LIFECYCLE_GOVERNANCE.md) when designing |
+| Admin UI conventions | [`ezkey-admin-ui/AGENTS.md`](ezkey-admin-ui/AGENTS.md) |
+| Mobile-primary work | [`ezkey_mobile/AGENTS.md`](ezkey_mobile/AGENTS.md), [`ezkey_mobile/docs/README.md`](ezkey_mobile/docs/README.md) |
+| New idea / method lane | [`product-docs/methodology/minimum-viable-method.md`](product-docs/methodology/minimum-viable-method.md) or [`session-start-guide.md`](product-docs/methodology/session-start-guide.md), then Fresh-session bootstrap below |
+| API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
+| Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
 
 ## Terminology guardrail (phase vs milestone)
 
@@ -20,12 +44,9 @@ operable-release target), read first:
 
 ## Fresh-session workflow bootstrap (product-docs method)
 
-When a new session starts and the user is bringing a new idea, use this lightweight bootstrap before deep analysis:
+When a new session starts and the user is bringing a **new idea**, use this bootstrap before deep analysis. Prefer the shortest reliable entry first: [`product-docs/methodology/minimum-viable-method.md`](product-docs/methodology/minimum-viable-method.md) or [`session-start-guide.md`](product-docs/methodology/session-start-guide.md). Deepen with the methodology pack only as the lane requires.
 
-1. Read:
-   - `product-docs/methodology/README.md`
-   - `product-docs/methodology/workflow-overview.md`
-   - `product-docs/methodology/testing-strategy-in-workflow.md`
+1. Orient (as needed): `product-docs/methodology/workflow-overview.md`, `testing-strategy-in-workflow.md`.
 2. Position the idea through:
    - vision note (`V-*`) in `product-docs/global/vision/`,
    - backlog idea (`I-*`) in `product-docs/global/backlog/ideas/`,
@@ -55,6 +76,7 @@ Recommended skill sequence for this method:
 - `grill-me`
 - `plan-incubation` when the operator wants a live working plan first
 - `tracer-bullet-promote`
+- `github-issue-promote` when a program slice needs GitHub visibility (read `github-issues-workflow.md`; labels mandatory)
 - `component-design-pack`
 - `test-strategy-planner`
 - `quality-gatekeeper`
@@ -63,7 +85,7 @@ Recommended skill sequence for this method:
 - `legacy-plan-miner`
 - `retrofit-curator`
 
-This bootstrap does not replace existing module-specific rules; it defines the default ideation-to-delivery path.
+This bootstrap does not replace existing module-specific rules; it defines the default ideation-to-delivery path. The always-applied rule [`.cursor/rules/product-docs-workflow-bootstrap.mdc`](.cursor/rules/product-docs-workflow-bootstrap.mdc) points here — do not maintain a second full copy of this procedure.
 
 ## Public methodology explorer ordering
 

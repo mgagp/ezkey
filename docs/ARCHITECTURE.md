@@ -100,7 +100,7 @@ This backend ownership of state is one of the reasons Ezkey remains understandab
 ## Related Documentation
 
 - [`../README.md`](../README.md) - Short project overview and quick start.
-- [`../PRD.md`](../PRD.md) - Product requirements and product framing.
+- [`../product-docs/global/product-intent.md`](../product-docs/global/product-intent.md) - Product intent (canonical). Root [`../PRD.md`](../PRD.md) is a stub.
 - [`PROJECT_POSITIONING.md`](PROJECT_POSITIONING.md) - Strategic positioning and project philosophy.
 - [`ENDPOINT.md`](ENDPOINT.md) - API reference.
 - [`CRYPTO.md`](CRYPTO.md) - Cryptographic implementation details.

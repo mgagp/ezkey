@@ -2,22 +2,13 @@
 
 ## Project Context
 This is a multi-module Spring Boot project providing an open-source cryptographic MFA platform with a backend-first trust model.
-For overall product requirements and functional constraints, always refer to the top-level file `PRD.md`.
+For overall product intent and functional constraints, refer to `product-docs/global/product-intent.md` (canonical). Root `PRD.md` is a discoverability stub that points there.
 For build, setup, and project organization, refer to `README.md`.
+For cold-start context loading (tiered; no full `docs/ENDPOINT.md` ritual), refer to root `AGENTS.md` § Cold-start context.
 
 ## Product-Docs Workflow
 
-When the task starts from a new product or design idea, align with the `product-docs` methodology:
-
-1. Read:
-   - `product-docs/methodology/README.md`
-   - `product-docs/methodology/workflow-overview.md`
-   - `product-docs/methodology/testing-strategy-in-workflow.md`
-2. Materialize durable direction into:
-   - vision notes (`V-*`) under `product-docs/global/vision/`
-   - backlog ideas (`I-*`) under `product-docs/global/backlog/ideas/`
-   - tracer bullets (`TB-*`) when a bounded execution slice is ready
-3. Keep lifecycle and traceability explicit.
+When the task starts from a new product or design idea, follow root `AGENTS.md` § **Fresh-session workflow bootstrap** (single full procedure). Shortest entry: `product-docs/methodology/minimum-viable-method.md` or `session-start-guide.md`.
 
 ### Plan incubation vs retrofit
 
@@ -142,7 +133,7 @@ src/main/java/org/ezkey/{domain}/
 /*
  * Ezkey - Open Source Cryptographic MFA Platform
  *
- * Copyright (c) 2025 Ezkey contributors
+ * Copyright (c) 2026 Ezkey contributors
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * [Component Type]: [ComponentName]
@@ -177,7 +168,7 @@ src/main/java/org/ezkey/{domain}/
 
 ### Code Generation
 - When generating code, respect existing package structure
-- Always check `PRD.md` to ensure new code aligns with product requirements
+- Always check `product-docs/global/product-intent.md` to ensure new code aligns with product intent
 - Always check `README.md` for project structure, build, and conventions
 - When asked for changes, show full modified classes instead of just snippets
 - Ensure that code compiles and follows project conventions

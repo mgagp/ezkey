@@ -52,12 +52,13 @@ For stack details, modes, and test-oriented workflow:
 
 ## Documentation
 
-- [`PRD.md`](PRD.md) - Product requirements and product framing.
+- [`product-docs/global/product-intent.md`](product-docs/global/product-intent.md) — Product intent (canonical). Root [`PRD.md`](PRD.md) is a stub that points here.
 - [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) - Strategic positioning and project philosophy.
 - [`docs/README.md`](docs/README.md) - Documentation index.
 - [`docs/ECOSYSTEM_REPOSITORIES.md`](docs/ECOSYSTEM_REPOSITORIES.md) - Planned integration repos (SMS, directory sync shells) beside the core monorepo.
 - [`docs/ADMIN_UI.md`](docs/ADMIN_UI.md) - Admin UI purpose, operator roles, capabilities, and documentation boundaries.
-- [`docs/ENDPOINT.md`](docs/ENDPOINT.md) - API reference.
+- [`docs/ENDPOINT.md`](docs/ENDPOINT.md) - API reference (section-scoped; not a cold-start dump).
+- [`docs/CRYPTO.md`](docs/CRYPTO.md) - Device vs integration signing algorithms.
 - [`docs/RECOVERY_CODES_LIFECYCLE_ANALYSIS.md`](docs/RECOVERY_CODES_LIFECYCLE_ANALYSIS.md) - Recovery-code lifecycle analysis and recommended regeneration model.
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) - Development workflow.
 - [`docs/OPERATIONAL.md`](docs/OPERATIONAL.md) - Operational and deployment guidance.
@@ -66,6 +67,7 @@ For stack details, modes, and test-oriented workflow:
 - [`ezkey-admin-ui/README.md`](ezkey-admin-ui/README.md) - Admin UI overview and local usage.
 - [`ezkey_mobile/README.md`](ezkey_mobile/README.md) - Mobile application notes.
 - [`ezkey-cli-python/README.md`](ezkey-cli-python/README.md) - CLI usage.
+- [`AGENTS.md`](AGENTS.md) - Cold-start compass and agent operating notes.
 
 ## Security and Compliance
 
