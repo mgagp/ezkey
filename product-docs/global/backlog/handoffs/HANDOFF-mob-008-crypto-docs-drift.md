@@ -1,6 +1,6 @@
 # Handoff — MOB-008 Crypto documentation path drift
 
-**Status:** implemented on `fix/mob-008-crypto-docs-drift` (pending commit/PR)  
+**Status:** implemented — PR [#385](https://github.com/mgagp/ezkey/pull/385)  
 **Finding:** MOB-008 (P3)  
 **Assessment:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)  
 **Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
