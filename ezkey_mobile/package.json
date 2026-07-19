@@ -28,6 +28,7 @@
     "android:assemble:debug": "cd android && ./gradlew assembleDebug",
     "android:install:debug": "cd android && ./gradlew installDebug",
     "android:install:debug:clean": "bash scripts/build-install-debug-clean.sh",
+    "android:test:instrumented:crypto": "bash scripts/run-android-instrumented-crypto-tests.sh",
     "android:assemble:release": "cd android && ./gradlew assembleRelease",
     "android:bundle:release": "cd android && ./gradlew bundleRelease",
     "lint": "eslint .",

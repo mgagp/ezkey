@@ -59,9 +59,17 @@ per-enrollment private signing key remains on the keystore signing path.
 
 ## Testing Notes
 
-- Android modules can be unit-tested with Robolectric or instrumentation tests targeting the Keystore API.
-- iOS modules should include XCTests verifying key generation and signing round trips using the Bridge module.
-- Use Detox or end-to-end tests to validate the JavaScript ↔ native contract during enrollment and pending-auth flows.
+- JVM unit tests cover envelope / Ed25519 helpers under `android/app/src/test/kotlin/…`.
+- Instrumentation (`androidTest`) covers `EzkeyCryptoModule` Keystore lifecycle (MOB-006):
+  enrollment key create / public key / sign, `deleteKeyPair`, seal/unseal via the module, and
+  storage-tier membership (`NONE` / `STANDARD` / `STRONG`). Run with
+  `yarn android:test:instrumented:crypto` (JDK 17 via `scripts/resolve-android-jdk.sh`).
+- StrongBox `STRONG` tier and StrongBox→Keystore fallback evidence are **manual / physical device**
+  only — see [`MOBILE_STRONGBOX_MANUAL_CHECKLIST.md`](MOBILE_STRONGBOX_MANUAL_CHECKLIST.md).
+  Do not claim CI StrongBox.
+- iOS modules should include XCTests verifying key generation and signing round trips using the Bridge module
+  (later milestone; not current Android-first parity debt).
+- Maestro pilots UI approve paths; they do not assert hardware tier.
 
 @since 2025
 
