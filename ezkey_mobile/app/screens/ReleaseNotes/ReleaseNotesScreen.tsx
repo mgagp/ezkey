@@ -12,7 +12,7 @@ import {useTranslation} from 'react-i18next';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 
 const releaseNoteKeyOrder = ['includedItem1', 'includedItem2', 'includedItem3'] as const;
-const comingNextKeyOrder = ['comingNextItem1', 'comingNextItem2', 'comingNextItem3'] as const;
+const comingNextKeyOrder = ['comingNextItem1', 'comingNextItem2'] as const;
 const noteKeyOrder = ['note1'] as const;
 
 /**

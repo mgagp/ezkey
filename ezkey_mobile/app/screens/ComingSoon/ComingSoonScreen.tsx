@@ -11,7 +11,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 
-const roadmapSectionKeys = ['auth', 'pinning', 'language'] as const;
+const roadmapSectionKeys = ['auth', 'pinning'] as const;
 
 /**
  * Presents a concise, expectation-setting roadmap for near-term mobile improvements.

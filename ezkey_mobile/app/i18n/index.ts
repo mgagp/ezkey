@@ -39,6 +39,10 @@ export const changeAppLanguage = async (locale: SupportedLocale) => {
   const nextLocale = normalizeLocale(locale);
   await localeStorage.setLocale(nextLocale);
 
+  if (i18n.isInitialized && i18n.language !== nextLocale) {
+    await i18n.changeLanguage(nextLocale);
+  }
+
   return nextLocale;
 };
 

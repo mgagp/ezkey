@@ -1,6 +1,5 @@
 import React, {useEffect, useState} from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,7 +25,7 @@ const localeLabels: Record<SupportedLocale, string> = {
 /**
  * Manual language picker for the app.
  *
- * The selected locale is saved immediately and applied after the next app restart.
+ * The selected locale is saved and applied immediately via i18next.
  *
  * @since 2025
  */
@@ -62,7 +61,6 @@ export const LanguageScreen: React.FC = () => {
     try {
       const nextLocale = await changeAppLanguage(locale);
       setSelectedLocale(nextLocale);
-      Alert.alert(t('locale.restartRequiredTitle'), t('locale.restartRequiredMessage'));
     } finally {
       setPendingLocale(undefined);
     }

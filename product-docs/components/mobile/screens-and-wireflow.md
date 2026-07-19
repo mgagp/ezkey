@@ -73,7 +73,8 @@ flowchart LR
 
 ## Accessibility and Internationalization
 
-- All user-facing content is in **English** (per module rule). Additional locales can be added following the mobile corpus guidance.
+- User-facing content supports **English and French** (English default; manual Settings → Language).
+  Locale changes apply immediately via i18next (`changeAppLanguage`); preference is also persisted for cold start.
 - Primary actions are reachable with standard system gestures; focus handling follows platform conventions.
 
 ## Visual Identity

@@ -173,7 +173,7 @@ for request context and respond submission, then returns control to Enrollment D
 | --- | --- | --- | --- |
 | Settings | Single hub for app-adjacent actions | Does not participate in enrollment/auth protocol flow directly | Routes to About, Language, Security, Danger Zone, and Licenses. |
 | Security | Local security preference for this phone | Secondary preference surface, but security-sensitive when lowering protection | Downgrading from protected mode to standard now requires device confirmation before the new value is saved. |
-| Language | Manual language selection | Secondary preference only | Persists English/French selection and asks for app restart to apply the change everywhere. |
+| Language | Manual language selection | Secondary preference only | Persists English/French selection and applies it immediately via i18next (no app restart). |
 | About | App metadata and project context | Informational only | Shows version, native build timestamp, MIT/open-source note, and link to `ezkey.org`. |
 | Danger Zone | Destructive local maintenance | Explicitly separated to avoid accidental deletion in the main flow | Supports deleting one enrollment or clearing all local enrollment data. |
 | Licenses | Third-party package inventory | Compliance/information surface only | Reads generated JSON snapshot from `yarn license:app-data`. |
