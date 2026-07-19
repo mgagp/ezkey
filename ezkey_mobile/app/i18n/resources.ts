@@ -47,7 +47,7 @@ export const resources = {
         confirmationBody:
           'Ask for device confirmation before approving or denying a request.',
         current: 'Current setting',
-        unavailableTitle: 'Biometric confirmation unavailable',
+        unavailableTitle: 'Device confirmation unavailable',
         unavailableBody:
           'This device does not currently support the stronger device confirmation mode required for protected approvals.',
         preferenceNoteEyebrow: 'This phone',
@@ -55,9 +55,9 @@ export const resources = {
         preferenceNoteBody:
           'When enabled, this phone asks for device confirmation before it approves or denies requests. Android may use strong biometrics or the device credential, depending on what is available.',
         declarativeNoteEyebrow: 'Current version',
-        declarativeNoteTitle: 'This protection is currently declarative',
+        declarativeNoteTitle: 'This protection is enforced by the app',
         declarativeNoteBody:
-          'In the current version, the app requests local device confirmation before responding, but the backend does not yet receive a cryptographic proof that this local authentication was inseparably bound to the signature itself.',
+          'The app asks for local device confirmation before responding. The signing key itself does not require that confirmation, and the backend receives no cryptographic proof that it occurred or was bound to the signature.',
         settingChangeCancelled:
           'The change was canceled. Protected confirmation remains enabled.',
         settingChangeUnavailable:
@@ -85,8 +85,6 @@ export const resources = {
           'Further work is planned on authentication policy, local-auth rules, and stronger cryptographic validation boundaries.',
         comingNextItem2:
           'Certificate pinning is planned in a lightweight Ezkey form, starting with trust on first use during enrollment and a controlled refresh path later if the pin changes.',
-        comingNextItem3:
-          'The language experience should also improve over time so changing language does not keep feeling tied to an app restart.',
         notesTitle: 'Important notes',
         note1: 'This publication is intended for a limited experimental audience.',
       },
@@ -106,24 +104,15 @@ export const resources = {
           body:
             'Certificate pinning is planned in a pragmatic lightweight form. The initial direction is trust on first use during enrollment, followed by a controlled refresh path if the pin no longer matches, so later authentication cycles get meaningful network trust hardening without pretending to reach the most extreme pinning model.',
         },
-        language: {
-          title: 'Language switching without restart',
-          body:
-            'The current language flow still asks for an app restart. A future UX improvement should make language changes feel smoother and more immediate while keeping the app stable and predictable.',
-        },
         footer:
           'Ezkey Mobile is intentionally aiming for practical, explicit security improvements rather than over-claiming perfection. Future work will continue in that same spirit.',
       },
       locale: {
         title: 'Language',
-        intro:
-          'Choose the app language. Changes are saved immediately and applied after the next app restart.',
+        intro: 'Choose the app language. Changes are saved and applied immediately.',
         english: 'English',
         french: 'French',
         current: 'Current language',
-        restartRequiredTitle: 'Restart required',
-        restartRequiredMessage:
-          'Close and reopen the app to apply the selected language everywhere.',
       },
       about: {
         accessibilityLabel: 'About Ezkey Authenticator',
@@ -385,7 +374,7 @@ export const resources = {
         confirmationBody:
           'Demande une confirmation de l’appareil avant d’approuver ou de refuser une demande.',
         current: 'Réglage actuel',
-        unavailableTitle: 'Confirmation biométrique indisponible',
+        unavailableTitle: 'Confirmation de l’appareil indisponible',
         unavailableBody:
           'Cet appareil ne prend pas actuellement en charge le mode de confirmation renforcée requis pour les approbations protégées.',
         preferenceNoteEyebrow: 'Ce téléphone',
@@ -393,9 +382,9 @@ export const resources = {
         preferenceNoteBody:
           'Lorsque ce mode est activé, ce téléphone demande une confirmation de l’appareil avant d’approuver ou de refuser une demande. Android peut utiliser une biométrie forte ou le code de l’appareil selon ce qui est disponible.',
         declarativeNoteEyebrow: 'Version actuelle',
-        declarativeNoteTitle: 'Cette protection reste actuellement déclarative',
+        declarativeNoteTitle: 'Cette protection est appliquée par l’application',
         declarativeNoteBody:
-          'Dans la version actuelle, l’application demande une confirmation locale de l’appareil avant de répondre, mais le backend ne reçoit pas encore de preuve cryptographique que cette authentification locale était inséparable de la signature elle-même.',
+          'L’application demande une confirmation locale de l’appareil avant de répondre. La clé de signature elle-même n’exige pas cette confirmation et le backend ne reçoit aucune preuve cryptographique qu’elle a eu lieu ou qu’elle était liée à la signature.',
         settingChangeCancelled:
           'Le changement a été annulé. La confirmation renforcée reste activée.',
         settingChangeUnavailable:
@@ -424,8 +413,6 @@ export const resources = {
           'Du travail supplémentaire est prévu sur la policy d’authentification, les règles de réauthentification locale et des frontières de validation cryptographique plus fortes.',
         comingNextItem2:
           'Le certificate pinning est prévu sous une forme légère à la manière Ezkey, en commençant par un trust on first use pendant l’enrôlement et un parcours contrôlé de rafraîchissement si le pin change par la suite.',
-        comingNextItem3:
-          'L’expérience de changement de langue devrait aussi s’améliorer avec le temps pour ne plus dépendre autant d’un redémarrage de l’application.',
         notesTitle: 'Notes importantes',
         note1: 'Cette publication s’adresse à un auditoire expérimental limité.',
       },
@@ -445,24 +432,16 @@ export const resources = {
           body:
             'Le certificate pinning est prévu sous une forme légère et assumée. La direction initiale est un trust on first use pendant l’enrôlement, suivi d’un petit cycle de rafraîchissement contrôlé si le pin ne correspond plus, afin de renforcer utilement la confiance réseau des cycles d’authentification suivants sans prétendre atteindre le modèle de pinning le plus extrême.',
         },
-        language: {
-          title: 'Changement de langue sans redémarrage',
-          body:
-            'Le parcours actuel de changement de langue demande encore un redémarrage de l’application. Une amélioration UX future devrait rendre ce changement plus fluide et plus immédiat, tout en gardant l’application stable et prévisible.',
-        },
         footer:
           'Ezkey Mobile vise volontairement des améliorations de sécurité pratiques et explicites plutôt que des promesses excessives. La suite du travail restera dans ce même esprit.',
       },
       locale: {
         title: 'Langue',
         intro:
-          'Choisissez la langue de l’application. Les changements sont enregistrés immédiatement et appliqués après le prochain redémarrage.',
+          'Choisissez la langue de l’application. Les changements sont enregistrés et appliqués immédiatement.',
         english: 'Anglais',
         french: 'Français',
         current: 'Langue actuelle',
-        restartRequiredTitle: 'Redémarrage requis',
-        restartRequiredMessage:
-          'Fermez puis rouvrez l’application pour appliquer la langue choisie partout.',
       },
       about: {
         accessibilityLabel: 'À propos de l’authentificateur Ezkey',

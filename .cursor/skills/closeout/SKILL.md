@@ -73,7 +73,7 @@ A closeout invitation is **not** automatic permission to create `I-*`, `TB-*`, `
 host project — never a substitute for `I-*` / `TB-*` closeout.
 
 **Suggest or open an issue** when any of these apply: monorepo PR expected; dual-repo or public
-mirror sync; coordination across PRs; operator wants a GitHub anchor. **Skip by default** for Lane C
+mirror sync; coordination across PRs; operator wants a GitHub anchor. **Skip by default** for
 hygiene with a single small PR.
 
 **Timing:** at implementation start (preferred) or **retroactively** at closeout/PR — both are valid.

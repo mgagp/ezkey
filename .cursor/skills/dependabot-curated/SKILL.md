@@ -11,7 +11,8 @@ Turn a weekly Dependabot PR backlog into **few risk-tiered lots**, decide them w
 HITL, merge each PR individually (Dependabot provenance preserved), and run **one session
 closeout** validation ladder. Minimize recurring human time without silent auto-merge.
 
-This is **Lane C hygiene** — same weight class as `doctor-curated` / `java-doctor-curated`. Do
+This is **hygiene**, not a methodology lane — the same weight class as `doctor-curated` /
+`java-doctor-curated`. Do
 **not** invent `I-*` / `TB-*` for the weekly routine. Materialize backlog only when a **specific**
 bump is disruptive and deliberately deferred (investigation cost should not be lost).
 

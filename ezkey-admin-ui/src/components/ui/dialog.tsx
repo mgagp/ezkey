@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { type ReactNode, useEffect, useId } from 'react';
+import { createPortal } from 'react-dom';
 
 interface DialogProps {
   open: boolean;
@@ -25,7 +26,8 @@ const sizeClasses: Record<NonNullable<DialogProps['size']>, string> = {
 
 /**
  * Modal dialog with neo-brutalism styling.
- * Closes on backdrop click or Escape key unless `dismissible` is set to false.
+ * Renders via portal to `document.body` so stacking is not trapped by ancestors
+ * (e.g. sticky sidebar). Closes on backdrop click or Escape unless `dismissible` is false.
  */
 export function Dialog({
   open,
@@ -40,14 +42,16 @@ export function Dialog({
 
   useEffect(() => {
     if (!open || !dismissible) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose, dismissible]);
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
@@ -72,7 +76,9 @@ export function Dialog({
           >
             {title}
           </h2>
-          {headerActions != null ? <div className="flex items-center gap-1 shrink-0">{headerActions}</div> : null}
+          {headerActions != null ? (
+            <div className="flex items-center gap-1 shrink-0">{headerActions}</div>
+          ) : null}
           <button
             type="button"
             onClick={onClose}
@@ -84,6 +90,7 @@ export function Dialog({
         </div>
         <div className="p-5 overflow-y-auto">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

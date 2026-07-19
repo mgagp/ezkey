@@ -82,7 +82,7 @@ flowchart TD
 | 3 | Enrollment Detail | App submits pending | `POST /api/v1/auth-attempts/pending` | None yet | None before response | Either request payload or empty result |
 | 4 | Enrollment Detail | App validates pending result | None | `PendingAttempt` created in memory only if signature passes | Pending payload signature verified with stored integration public key | Stay on detail when empty; navigate to Pending Authentication when request exists |
 | 5 | Pending Authentication | User reviews context and chooses approve or deny | None | User intent stored in component state | Local challenge presence check when required | Respond can start |
-| 6 | Pending Authentication | App signs canonical respond payload | None | Respond signature prepared in memory | When protected mode is active, Android requires strong biometric or device-credential confirmation before the signature is produced | Respond request ready |
+| 6 | Pending Authentication | App signs canonical respond payload | None | Respond signature prepared in memory | When protected mode is active, the app shows strong biometric or device-credential confirmation, then signs with the enrollment Keystore key; key use is not bound to that confirmation | Respond request ready |
 | 7 | Pending Authentication | App submits respond | `POST /api/v1/auth-attempts/respond` | None yet | None before response | Respond result received |
 | 8 | Pending Authentication | App validates respond result | None | Volatile local `RecentAuthResult` summary updated for this enrollment | Result signature verified with stored integration public key | App returns immediately to Enrollment Detail, which displays the latest response summary |
 
@@ -100,7 +100,7 @@ flowchart TD
 | Missing respond-result signature | Pending Authentication after respond | Outcome cannot be trusted | Global error shown | No trusted outcome displayed |
 | Invalid respond-result signature | Pending Authentication after respond | Outcome cannot be trusted | Global error shown | No trusted outcome displayed |
 | Verified failed result | Pending Authentication after respond | Attempt ended unsuccessfully | Detail screen shows the latest failed response summary | User can review it and start any future check from Enrollment Detail |
-| Protected mode downgraded in Settings | Security screen | User tries to switch from protected mode to standard mode | No backend call | Preference would lower local protection | Android requires strong biometric or device-credential confirmation before the new value is saved | Protection remains enabled if the user cancels |
+| Protected mode downgraded in Settings | Security screen | User tries to switch from protected mode to standard mode | No backend call | Preference would lower local protection | The app requires strong biometric or device-credential confirmation before saving the new value | Protection remains enabled if the user cancels |
 
 ## Screen Transition Tables
 

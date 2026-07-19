@@ -59,6 +59,11 @@ meant to be linked from trust-facing material without inflating the top-level pi
   passkey compatibility layer, and makes no SOC 2 / formal-attestation equivalence claim.
 - **It does not depend on, or guarantee, any third-party channel.** SMS and email are optional,
   operator-triggered, peripheral capabilities; Ezkey is fully operational without them.
+- **It does not claim guaranteed delivery of every audit event.** Audit writes use a dedicated
+  transaction and are sealed when persisted, but write/seal failures are absorbed so business
+  operations are not blocked (**fail-open**). Tamper-evidence applies to rows that were stored;
+  omission at the source is a separate concern (tracked in
+  [`I-2026-07-18-audit-log-fail-open-exception-swallow`](../product-docs/global/backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md)).
 
 ## What Ezkey aims to do (planned, if adoption justifies)
 
@@ -91,6 +96,7 @@ accepts the host-boundary limit described above.
 |---|---|
 | "Tamper-**evident** audit chain with a planned off-box verifiable export." | "Tamper-proof" / "immutable" (while export is unbuilt). |
 | "Detects accidental corruption and DB-level tampering via nightly cryptographic validation." | "Detects any tampering, including by a compromised host." |
+| "Audit rows that were stored are sealed and tamper-evident; write failures are logged and do not block business operations." | "Guaranteed audit delivery for every security-relevant operation" / "comprehensive audit trail with no omissions." |
 | "Self-hosted, opinionated, stronger than passwords and classic TOTP for backend-oriented contexts." | Formal attestation chains, SOC 2 equivalence, or certification-grade assurance. |
 
 ## Traceability
@@ -100,6 +106,8 @@ accepts the host-boundary limit described above.
 - Integrity strategy vision: `product-docs/global/vision/V-2026-0004-integrity-validation-strategy.md`
 - Export SPI vision (Phase 2): `product-docs/global/vision/V-2026-06-28-audit-archive-export-spi.md`
 - Export SPI backlog idea: `product-docs/global/backlog/ideas/I-2026-06-28-audit-archive-export-spi.md`
+- Audit write fail-open / delivery honesty:
+  [`../product-docs/global/backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md`](../product-docs/global/backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md)
 - Runtime alert reference: [`ALERTS.md`](ALERTS.md)
 - Product identity: [`PROJECT_POSITIONING.md`](PROJECT_POSITIONING.md)
 

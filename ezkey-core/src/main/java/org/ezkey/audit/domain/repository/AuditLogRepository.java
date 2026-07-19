@@ -39,6 +39,17 @@ public interface AuditLogRepository
   boolean existsByCreatedAtBefore(OffsetDateTime cutoffDate);
 
   /**
+   * Allocates the next {@code audit_log_id} from the named sequence before insert.
+   *
+   * <p>Used by the single-INSERT HMAC seal path so the identity is known when building the
+   * canonical form (no post-insert UPDATE).
+   *
+   * @return next sequence value
+   */
+  @Query(value = "SELECT nextval('ezkey_audit_log_id_seq')", nativeQuery = true)
+  Long nextAuditLogId();
+
+  /**
    * Delete audit logs older than the specified date.
    *
    * @param cutoffDate cutoff date for deletion

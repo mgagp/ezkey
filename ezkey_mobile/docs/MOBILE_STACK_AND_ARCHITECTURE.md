@@ -18,7 +18,7 @@ screen-by-screen behavior already covered by the flow and mapping documents.
 | React runtime | React 19.2.3 | Rendering model used by the current workspace manifest | Keep React and React Native versions aligned with `package.json` and the RN-renderer constraint. |
 | Language | TypeScript | Typed mobile domain and service layer | Thin wrapper types sit above generated DTOs. |
 | Navigation | React Navigation stack | Simple screen-to-screen mobile flow control | Current stack includes Home, Enrollment, Pending, and supporting screens. |
-| Localization | `i18next` plus `react-i18next` | Static message catalog, manual EN/FR language selection, and predictable fallback behavior | English is the default locale; locale preference is persisted locally and applied on next app restart. |
+| Localization | `i18next` plus `react-i18next` | Static message catalog, manual EN/FR language selection, and predictable fallback behavior | English is the default locale; locale preference is persisted locally and applied immediately via `i18n.changeLanguage` (also reloaded on cold start). |
 | Remote data orchestration | React Query | Query/mutation lifecycle and cache invalidation | Used for enrollments hydration and local mutation coordination. |
 | Local UI state | Zustand | Lightweight cross-screen state for selected enrollment | Small surface, no large global state machine. |
 | HTTP contract client | Orval-generated Auth API client plus local facades | Keep contract aligned with OpenAPI while preserving mobile-friendly wrappers | `app/services/api/types.ts` stays intentionally thin. |

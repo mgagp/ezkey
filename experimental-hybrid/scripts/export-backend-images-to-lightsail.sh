@@ -48,6 +48,10 @@ EXPORT_DIR="${EXPORT_DIR:-${REPO_ROOT}/docker/export}"
 SSH_HOST="${LIGHTSAIL_SSH_HOST:-ezkey}"
 LIGHTSAIL_REMOTE_DIR="${LIGHTSAIL_REMOTE_DIR:-~/ezkey/experimental-hybrid/lightsail}"
 LIGHTSAIL_LOCAL_DIR="${REPO_ROOT}/experimental-hybrid/lightsail"
+# Remote repository root that hosts the files the Lightsail compose bind-mounts with ../../ paths
+# (docker/postgres/init, scripts/db, docker/generate-encryption-keys.sh). Derived from the remote
+# lightsail dir so a custom LIGHTSAIL_REMOTE_DIR still resolves correctly.
+REMOTE_REPO_ROOT="${LIGHTSAIL_REMOTE_DIR}/../.."
 
 INCLUDE_MIGRATION="1"
 INCLUDE_DEMO_ACME=""
@@ -129,6 +133,21 @@ run() {
   "$@"
 }
 
+# Sync the host-side files that the Lightsail docker-compose.yml bind-mounts through ../../ paths.
+# These are NOT the three operator files (docker-compose.yml, Caddyfile, clean-start.sh); they are
+# the PostgreSQL role-init script, the DML grants applied by the db-grants service, and the master
+# key generator used by clean-start. Without them, a fresh postgres init has no application roles
+# and Flyway fails with "password authentication failed for user ezkey_migrate". See the
+# postgresql-application-role-split work (TB-2026-07-16).
+sync_host_mounts() {
+  echo ""
+  echo "→ sync host-mounted files (postgres init, db grants, keygen) → ${SSH_HOST}:${REMOTE_REPO_ROOT}"
+  run ssh "${SSH_HOST}" "mkdir -p ${REMOTE_REPO_ROOT}/docker/postgres/init ${REMOTE_REPO_ROOT}/scripts/db"
+  run scp "${REPO_ROOT}/docker/postgres/init/"*.sh "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/postgres/init/"
+  run scp "${REPO_ROOT}/docker/generate-encryption-keys.sh" "${SSH_HOST}:${REMOTE_REPO_ROOT}/docker/"
+  run scp "${REPO_ROOT}/scripts/db/"* "${SSH_HOST}:${REMOTE_REPO_ROOT}/scripts/db/"
+}
+
 echo "=========================================="
 echo "  Export backend images → Lightsail"
 echo "  SSH: ${SSH_HOST}"
@@ -198,6 +217,7 @@ if [[ -n "$SYNC_OPERATOR_FILES" && -z "$DO_CLEAN_START" ]]; then
     fi
     run scp "$src" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${f}"
   done
+  sync_host_mounts
 fi
 
 if [[ -n "$REMOTE_UP" && -z "$DO_CLEAN_START" ]]; then
@@ -220,6 +240,7 @@ if [[ -n "$DO_CLEAN_START" ]]; then
     fi
     run scp "$src" "${SSH_HOST}:${LIGHTSAIL_REMOTE_DIR}/${f}"
   done
+  sync_host_mounts
   echo ""
   echo "→ remote clean-start (destructive: docker compose down -v, keygen, up)"
   run ssh "${SSH_HOST}" "set -euo pipefail; cd ${LIGHTSAIL_REMOTE_DIR} && bash clean-start.sh"

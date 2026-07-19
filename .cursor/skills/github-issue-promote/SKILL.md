@@ -17,8 +17,7 @@ second source of truth.
 - **Exit when:** issue exists with **all required labels**, traceability body, verification output,
   and `#NNN` recorded in canonical metadata.
 - **Read first (mandatory):** [`product-docs/methodology/github-issues-workflow.md`](../../product-docs/methodology/github-issues-workflow.md)
-- **Not needed when:** hygiene-only Lane C work with a single small PR and operator did not ask for
-  an issue.
+- **Not needed when:** hygiene-only work with a single small PR and the operator did not ask for an issue.
 
 ## Required labels (non-negotiable)
 

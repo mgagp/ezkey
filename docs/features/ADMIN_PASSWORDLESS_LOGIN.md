@@ -282,7 +282,7 @@ ezkey.admin.auth.passwordless.mode=opt-in  # or enforced
 | **Password Reuse** | ❌ High risk | ✅ Not applicable |
 | **Database Breach** | ⚠️ Hashes exposed | ✅ No passwords stored |
 | **Man-in-the-Middle** | ⚠️ Requires TLS | ✅ Cryptographic signatures |
-| **Device Loss** | ⚠️ Password + device | ⚠️ Device only (biometric protected) |
+| **Device Loss** | ⚠️ Password + device | ⚠️ Device only (optional app-enforced local confirmation; not Keystore-auth-bound) |
 | **Replay Attacks** | ⚠️ Token theft risk | ✅ Unique signatures per attempt |
 | **Session Hijacking** | ⚠️ Bearer token theft | ⚠️ Bearer token theft (same) |
 
@@ -310,7 +310,7 @@ ezkey.admin.auth.passwordless.mode=opt-in  # or enforced
 
 **A04:2021 – Insecure Design**
 - ✅ Passwordless is security-by-design principle
-- ✅ Defense in depth: device + biometric + cryptography
+- ✅ Defense in depth: enrolled device key + cryptographic signatures, with optional honest-client local confirmation UX
 
 ### 4.3 NIST SP 800-63B Compliance
 

@@ -14,7 +14,7 @@ Serves four public-facing sources:
 
 - `methodology/` — the full methodology pack (workflow, values, tracer bullets, quality gates, …).
 - `templates/` — artifact templates (vision notes, backlog ideas, tracer bullet briefs, …).
-- `skills/` — a derived public skills layer generated from `.cursor/skills/` during site preparation.
+- `skills/` — a curated, derived public skills layer generated from selected `.cursor/skills/` during site preparation.
 - `glossary.md` — single-file glossary.
 
 Publication boundary:
@@ -59,7 +59,10 @@ This is **Phase 1** (MVP visual foundation). See [.github/prompts/plan-methodolo
 
 `server.js` exposes pure functions (`buildTree`, `renderDoc`, `extractToc`) on top of which Express is a thin transport layer. This keeps the future static pre-build (Phase 4) trivial: a `build.js` script can reuse the same functions without Express.
 
-Before the site serves or builds the corpus, it also prepares a small derived public skills layer under `product-docs/site/.generated/skills/`. The source of truth remains `.cursor/skills/`; the generated layer exists only to improve site discoverability and public explanation.
+Before the site serves or builds the corpus, it also prepares a small, explicitly allowlisted
+public skills layer under `product-docs/site/.generated/skills/`. The source of truth remains
+`.cursor/skills/`; the generated layer exists only to improve site discoverability and public
+explanation without publishing every source-project automation.
 
 The same build pipeline is the preferred place to add a methodology download pack, because that
 keeps packaging explicit, small, and tied to already-curated public inputs.

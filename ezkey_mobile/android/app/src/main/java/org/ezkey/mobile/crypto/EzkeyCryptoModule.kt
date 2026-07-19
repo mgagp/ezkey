@@ -332,7 +332,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       if (!canUseProtectedSigningNow()) {
         promise.reject(
             ERROR_CODE_AUTH_UNAVAILABLE,
-            "Biometric confirmation is not available on this device",
+            "Device confirmation is not available on this phone",
         )
         return
       }
@@ -692,7 +692,8 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     private const val APP_SEAL_KEY_ALIAS = "ezkey_app_seal_v1"
     private const val SECURITY_LEVEL_CONFIRM_BEFORE_APPROVALS = "confirm-before-approvals"
     private const val BIOMETRIC_PROMPT_TITLE = "Confirm request"
-    private const val BIOMETRIC_PROMPT_SUBTITLE = "Use biometrics to approve or deny this request"
+    private const val BIOMETRIC_PROMPT_SUBTITLE =
+        "Confirm with biometrics or your device PIN, pattern, or password"
     private const val SECURITY_DOWNGRADE_PROMPT_TITLE = "Confirm security change"
     private const val SECURITY_DOWNGRADE_PROMPT_SUBTITLE =
         "Use your device to turn off approval confirmation"

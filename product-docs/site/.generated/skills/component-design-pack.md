@@ -4,7 +4,7 @@
   <p class="skills-eyebrow">Workflow skill</p>
   <p class="skill-detail-summary">Builds component-focused design briefs for impacted boundaries, mappings, validation rules, and error handling. Use after tracer bullet definition and before implementation.</p>
   <div class="skill-chip-row">
-    <span class="skill-chip">Order 05</span>
+    <span class="skill-chip">Order 06</span>
     <span class="skill-chip">Source of truth: <code>.cursor/skills/component-design-pack/SKILL.md</code></span>
     <span class="skill-chip">Call next: <a href="#/skills/test-strategy-planner.md">test-strategy-planner</a>, <a href="#/skills/quality-gatekeeper.md">quality-gatekeeper</a></span>
   </div>

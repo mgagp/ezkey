@@ -52,6 +52,8 @@ Wave B closeout ML:
 | `I-2026-07-17-alert-resolved-retention-purge` | Alert resolved-row retention and purge (no DELETE today by design) | `captured` | `P3` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `audit` | `2026-07-17` |
 | `I-2026-07-17-keyset-blob-admin-first-bootstrap` | Keyset blob: Admin-first bootstrap before peripheral SELECT-only | `captured` | `P3` | `core`, `core-security`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-17` |
 | `I-2026-07-17-desktop-authenticator-reference-app` | Desktop authenticator reference app (mobile-like enrollment and approval) | `captured` | `P3` | `desktop-authenticator`, `demo-device`, `auth-api`, `docs`, `mobile` | `2026-07-17` |
+| `I-2026-07-18-audit-log-fail-open-exception-swallow` | Audit-log write fail-open (exception swallow) and delivery honesty | `captured` | `P2` | `core`, `audit`, `admin-api`, `auth-api`, `integration-api`, `docs`, `security` | `2026-07-18` |
+| `I-2026-07-18-authentication-wait-evolution` | Authentication wait evolution | `incubating` | `P2` | `core`, `admin-api`, `integration-api`, `sdk`, `infra`, `docs` | `2026-07-18` |
 
 ## Tracer bullets (draft / ready / in progress)
 
@@ -65,6 +67,7 @@ Wave B closeout ML:
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence` | Audit-log peripheral INSERT-only via sequence pre-allocation for the HMAC seal | `2026-07-18` | TB `TB-2026-07-18-audit-log-insert-only-hmac-seal`. Single-INSERT seal; peripherals SELECT+INSERT only; functional + `AuditIntegrityElectiveTest` + `verify-grants.sh` green. Resolves `TB-2026-07-16` follow-up. |
 | `I-2026-0021` | PostgreSQL application role and table permissions matrix | `2026-07-18` | Commit `568f1423` / TB `TB-2026-07-16-postgresql-application-role-split`. `ezkey_migrate` + three runtime roles; Docker/grants wiring; clean-start, grant verification, standard/elective suites, and real-mobile flow passed. |
 | `I-2026-07-15-sec-021-recovery-token-privilege-boundary` | SEC-021 recovery token privilege boundary | `2026-07-15` | `#357` / TB `TB-2026-07-15-sec-021-recovery-token-privilege-boundary`. Purpose `SESSION`\|`RECOVERY`; session auth rejects recovery; reset + deactivate-after-use. |
 | `I-2026-07-15-sec-022-api-key-object-authorization` | SEC-022/023 API key object authorization | `2026-07-15` | `#362` / TB `TB-2026-07-15-sec-022-api-key-object-authorization`. Tenant Admin cannot get/list/revoke foreign-tenant API keys (`canAccessIntegration`). |

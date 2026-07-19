@@ -82,24 +82,28 @@ Why this posture is used now:
 
 Documentation must therefore avoid claiming `biometric-only` behavior unless a future implementation explicitly removes the device-credential fallback.
 
-## Declarative guarantee boundary
+## App-enforced guarantee boundary
 
-The current local confirmation posture must be described honestly as declarative at the protocol boundary.
+The current local confirmation posture must be described honestly as app-enforced at the protocol
+boundary.
 
 What is true today:
 
 - the Android app can require local device confirmation before `respond`
 - the app then signs with the enrollment key from `Android Keystore`
-- this improves real local UX security on an honest client
+- this provides meaningful local UX protection on an honest client
 
 What is not yet true today:
 
+- the enrollment key does not require user authentication for each use
+- the confirmation prompt and signing operation are sequential app actions, not one
+  `BiometricPrompt.CryptoObject` operation
 - the backend does not receive a cryptographic proof that the local authentication step was inseparably bound to the signature operation itself
 - the current `respond` contract does not provide server-verified attestation of that local-auth condition
 
 That means the current feature should be described as:
 
-- meaningful local protection
+- meaningful honest-client UX protection
 - honest client-enforced behavior
 - useful future audit context candidate
 
