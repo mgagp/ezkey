@@ -18,7 +18,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Keyboard} from 'react-native';
 import axios from 'axios';
-import {Buffer} from 'buffer';
 import {useTranslation} from 'react-i18next';
 import {useEnrollmentById, useMarkEnrollmentPendingChecked} from './useEnrollments';
 import {authAttemptsApi} from '../services/api/authAttempts';
@@ -84,8 +83,6 @@ export type PendingAuthDebugInfo = {
   pendingPayloadLength?: number;
   /** SHA-256 hex of pendingPayload UTF-8; compare to Auth API log PENDING_PAYLOAD_DIAG payloadSha256Utf8Hex. */
   pendingPayloadSha256Utf8Hex?: string;
-  pendingPayloadBase64?: string;
-  pendingPayloadPreview?: string;
   signatureLength?: number;
   /** SHA-256 hex of integration signature Base64 string (UTF-8); compare PENDING_SIGNATURE_DIAG. */
   signatureSha256Utf8Hex?: string;
@@ -301,10 +298,10 @@ export function usePendingAuth(
         response.contextMessage,
       );
       const pendingPayloadSha256Utf8Hex = sha256HexUtf8(pendingPayload);
-      const payloadBase64 = Buffer.from(pendingPayload, 'utf8').toString('base64');
       const signature = response.authAttemptProofTokenSignedByIntegration ?? '';
       const signatureSha256Utf8Hex = sha256HexUtf8(signature);
       const integrationPublicKeySha256Utf8Hex = sha256HexUtf8(integrationPublicKey);
+      // MOB-004: hashes + lengths + short prefixes only — never full pending payload / proof token.
       setDebugInfo(prev =>
         prev
           ? {
@@ -315,8 +312,6 @@ export function usePendingAuth(
               integrationPublicKeySha256Utf8Hex,
               pendingPayloadLength: pendingPayload.length,
               pendingPayloadSha256Utf8Hex,
-              pendingPayloadBase64: payloadBase64,
-              pendingPayloadPreview: pendingPayload.slice(0, 180),
               signatureLength: signature.length,
               signatureSha256Utf8Hex,
               signaturePrefix: signature.slice(0, 24),
@@ -329,8 +324,6 @@ export function usePendingAuth(
               integrationPublicKeySha256Utf8Hex,
               pendingPayloadLength: pendingPayload.length,
               pendingPayloadSha256Utf8Hex,
-              pendingPayloadBase64: payloadBase64,
-              pendingPayloadPreview: pendingPayload.slice(0, 180),
               signatureLength: signature.length,
               signatureSha256Utf8Hex,
               signaturePrefix: signature.slice(0, 24),

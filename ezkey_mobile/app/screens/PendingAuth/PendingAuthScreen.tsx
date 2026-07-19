@@ -120,12 +120,6 @@ export const PendingAuthScreen: React.FC<Props> = ({route, navigation}) => {
                   {t('pendingAuth.debugPendingPayloadSha', {value: debugInfo.pendingPayloadSha256Utf8Hex})}
                 </Text>
               )}
-              {debugInfo.pendingPayloadPreview != null && (
-                <Text style={styles.debugLine} selectable>{t('pendingAuth.debugPendingPayloadPreview', {value: debugInfo.pendingPayloadPreview})}</Text>
-              )}
-              {debugInfo.pendingPayloadBase64 != null && (
-                <Text style={styles.debugLine} selectable>{t('pendingAuth.debugPendingPayloadBase64', {value: debugInfo.pendingPayloadBase64})}</Text>
-              )}
               {debugInfo.signatureLength != null && (
                 <Text style={styles.debugLine}>{t('pendingAuth.debugSignatureLength', {value: debugInfo.signatureLength})}</Text>
               )}

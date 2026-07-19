@@ -82,4 +82,10 @@ export const env = {
   enrollmentSeedBypassEnabled: parseBool(Config.EZKEY_ENROLLMENT_SEED_BYPASS_ENABLED, false),
   enrollmentSeedBypassAck: parseText(Config.EZKEY_ENROLLMENT_SEED_BYPASS_ACK),
   enrollmentSeedBypassQrPayload: parseText(Config.EZKEY_ENROLLMENT_SEED_BYPASS_QR_PAYLOAD),
+  /**
+   * When true, enrollment seed ingest may log plaintext QR / seed blobs (MOB-004 opt-in).
+   * Default false — redacted summaries only. Independent of {@code __DEV__} and of F2a enable.
+   * Release preflight forbids true. See {@code docs/MOBILE_TEST_AUTOMATION_PRODUCTION_CLEAN.md}.
+   */
+  enrollmentSeedRawDump: parseBool(Config.EZKEY_ENROLLMENT_SEED_RAW_DUMP, false),
 };

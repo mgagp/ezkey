@@ -30,6 +30,7 @@ import {readIsDebugBuild} from '../config/buildFlavor';
 import {integrationKeyAlgorithmBindError} from '../utils/integrationKeyAlgorithm';
 import {buildInstallation, resolveEnrollmentAuthUrl} from '../utils/installationMetadata';
 import {isControlledEnrollmentBypassAvailable} from '../utils/controlledEnrollmentBypass';
+import {logEnrollmentSeedIngest} from '../utils/enrollmentSeedLogRedaction';
 import {parseQrPayload} from '../utils/qrPayload';
 import {
   buildBindPayload,
@@ -452,15 +453,16 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
   const ingestSeedPayload = useCallback(
     (value: string, source: EnrollmentSeedSource) => {
       const normalizedValue = normalizeSeedPayload(value);
-      if (__DEV__) {
-        console.log('[EnrollmentWizard] Raw QR value:', JSON.stringify(value));
-        console.log('[EnrollmentWizard] Normalized QR value:', JSON.stringify(normalizedValue));
-      }
       try {
         const parsed = parseQrPayload(normalizedValue);
-        if (__DEV__) {
-          console.log('[EnrollmentWizard] Parsed QR payload:', JSON.stringify(parsed));
-        }
+        logEnrollmentSeedIngest({
+          source,
+          rawValue: value,
+          normalizedValue,
+          parsed,
+          diagnosticsEnabled: __DEV__,
+          rawDumpEnabled: env.enrollmentSeedRawDump,
+        });
         setSeedSource(source);
         setAuthUrl(parsed.authUrl);
         setBindForm(() => ({
@@ -473,14 +475,14 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         const rawMessage = error instanceof Error ? error.message : String(error);
         const message = localizeQrError(rawMessage);
         setScannerVisible(false);
-        console.warn(
-          '[EnrollmentWizard] Invalid QR payload:',
-          rawMessage,
-          '| raw:',
-          JSON.stringify(value),
-          '| normalized:',
-          JSON.stringify(normalizedValue),
-        );
+        logEnrollmentSeedIngest({
+          source,
+          rawValue: value,
+          normalizedValue,
+          parseErrorMessage: rawMessage,
+          diagnosticsEnabled: __DEV__,
+          rawDumpEnabled: env.enrollmentSeedRawDump,
+        });
         Alert.alert(
           t('enrollmentWizard.invalidQrTitle'),
           t('enrollmentWizard.invalidQrBody', {details: message}),

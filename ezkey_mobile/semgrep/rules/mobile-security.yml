@@ -12,6 +12,17 @@ rules:
     message: Avoid logging sensitive auth/crypto data (token/signature/challenge/secret/key).
     pattern-regex: '(?i)console[.](log|warn|error|info|debug).*(enrollmentProofToken|proofToken|integrationPublicKey|signature)'
 
+  # MOB-004: catch the historical default __DEV__ QR dump labels (and similar regressions).
+  # Intentional opt-in dumps use "Seed raw dump enabled" via enrollmentSeedLogRedaction.ts only.
+  - id: ezkey-js-no-default-enrollment-seed-raw-console
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      Do not log raw enrollment QR/seed payloads by default (MOB-004).
+      Use app/utils/enrollmentSeedLogRedaction.ts; plaintext dumps require
+      EZKEY_ENROLLMENT_SEED_RAW_DUMP (release-preflight forbidden).
+    pattern-regex: 'console[.](log|warn|error|info|debug)\([^\n]*(Raw QR value|Normalized QR value|Parsed QR payload|\| raw:)'
+
   - id: ezkey-js-asyncstorage-sensitive-key
     languages: [javascript, typescript]
     severity: ERROR
