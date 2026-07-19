@@ -14,6 +14,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {EnrollmentSummary} from '../api/types';
 import {hydrateInstallationMetadata} from '../../utils/installationMetadata';
+import {nativeCrypto} from '../crypto/nativeCrypto';
 import {
   DEFAULT_ENROLLMENT_APPROVAL_POLICY,
   EnrollmentApprovalPolicy,
@@ -94,6 +95,27 @@ class EnrollmentStorage {
 
   private integrationPublicKeyStorageKey(id: string) {
     return `${INTEGRATION_PUBLIC_KEY_KEY_PREFIX}.${id}`;
+  }
+
+  /**
+   * Best-effort removal of the per-enrollment EC key pair from the native keystore.
+   *
+   * Fail-open: Keystore delete failures are logged and do not block metadata or sealed-secret
+   * cleanup. The user already initiated a local wipe; residual key material is worse than a
+   * blocked wipe when the native call fails.
+   *
+   * @param enrollmentId Enrollment identifier whose keystore alias should be deleted.
+   */
+  private async deleteKeyPairBestEffort(enrollmentId: string): Promise<void> {
+    try {
+      await nativeCrypto.deleteKeyPair(enrollmentId);
+    } catch (error) {
+      console.warn(
+        '[enrollmentStorage] Failed to delete enrollment key pair (continuing wipe):',
+        enrollmentId,
+        error,
+      );
+    }
   }
 
   private stripSensitiveFields(record: StoredEnrollment): PersistedEnrollmentMetadata {
@@ -293,12 +315,15 @@ class EnrollmentStorage {
   }
 
   /**
-   * Removes enrollment metadata.
+   * Removes enrollment metadata, sealed secrets, and the native keystore key pair.
+   *
+   * Native key deletion is best-effort (fail-open): storage cleanup always proceeds.
    *
    * @param id Enrollment identifier.
    * @since 2025
    */
   async deleteEnrollment(id: string) {
+    await this.deleteKeyPairBestEffort(id);
     const items = await this.listEnrollments();
     const nextItems = items.filter(item => item.id !== id);
     await this.secure.removeItem(this.proofTokenStorageKey(id));
@@ -338,14 +363,16 @@ class EnrollmentStorage {
   }
 
   /**
-   * Clears all enrollment data from storage.
+   * Clears all enrollment data from storage and best-effort deletes native key pairs.
    *
-   * Useful for development/testing or complete reset scenarios.
+   * Useful for development/testing or complete reset scenarios. Native key deletion is
+   * fail-open: sealed-secret and metadata cleanup always proceeds.
    *
    * @since 2025
    */
   async clearAll() {
     const items = await this.listEnrollments();
+    await Promise.all(items.map(item => this.deleteKeyPairBestEffort(item.id)));
     await Promise.all(
       items.flatMap(item => [
         this.secure.removeItem(this.proofTokenStorageKey(item.id)),

@@ -207,7 +207,7 @@ revocation, or readiness states that it cannot prove.
 | `installation` object | Enrollment save or silent metadata refresh | When metadata is stale or incomplete | Enrollment deletion / clear all | Subordinate to the enrollment record, but explicit in the local model. |
 | Pending attempt | Pending response passes signature verification | Re-check overwrites it | Empty result, failed state, leaving screen, or new load cycle | In-memory only. |
 | Respond intent | User starts entering challenge or taps approve/deny | User edits challenge input or retries | After result or retry cycle | In-memory only. |
-| Device key pair | First verify or first later ensure call for that enrollment | Not meaningfully updated in normal flow | External keystore reset or app/device reset | Managed outside AsyncStorage. |
+| Device key pair | First verify or first later ensure call for that enrollment | Not meaningfully updated in normal flow | Individual delete or clear-all (best-effort `nativeCrypto.deleteKeyPair`); also external keystore / app / device reset | Managed in Android Keystore outside AsyncStorage. Wipe paths remove the alias fail-open so storage cleanup is never blocked. |
 
 ## Source-of-Truth Matrix
 
