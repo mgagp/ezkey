@@ -1,26 +1,29 @@
 # Hygiene campaign notes
 
-Peripheral HITL decision tracks for punctual **doctor-curated** passes (Admin UI React and Java),
-weekly **Dependabot** triage, and punctual **mobile protocol / crypto** assessment follow-ups.
+Peripheral HITL decision tracks for punctual **doctor-curated** passes (Admin UI React, Java,
+mobile static analysis), weekly **Dependabot** triage, **security-pentest** campaigns, and
+mandate-driven **assessment-curated** white-box investigation follow-ups.
 
 These folders are **not** product vision, ADR, or backlog execution. They record per-campaign triage
 (fix / suppress / skip / defer, or Dependabot merge / hold / defer) so cold sessions can see *why* a
 finding or dependency PR was acted on or left alone — without inventing `I-*` / `TB-*` / GitHub
 issues per routine item.
 
-Doctor lanes share the operating model: curator shortlist → small lot → interactive HITL →
-campaign note → hygiene branch + PR. Dependabot uses the same HITL shape with risk-tiered PR lots
-and a session closeout validation ladder. Mobile protocol / crypto uses the same one-finding-at-a-time
-HITL shape after a formal assessment register. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
+Doctor / Dependabot / pentest lanes start from **tool shortlists**. **assessment-curated** starts
+from an operator **mandate** + white-box assessment register, then the same one-finding-at-a-time
+HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 
 ## Lanes
 
 | Path | Keyword | Role |
 |------|---------|------|
+| [`assessment-curated/`](assessment-curated/) | `assessment-curated` | **Method canon** — mandate → assessment → HITL → handoff |
+| [`mobile-protocol-security/`](mobile-protocol-security/) | `assessment-curated` (instance) | Mobile protocol / crypto assessment campaigns |
 | [`react-doctor/`](react-doctor/) | `doctor-curated` | Admin UI React Doctor curated passes |
 | [`java-doctor/`](java-doctor/) | `java-doctor-curated` | Java SpotBugs / Semgrep / PMD curated passes |
+| [`mobile-doctor/`](mobile-doctor/) | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated passes |
 | [`dependabot/`](dependabot/) | `dependabot-curated` | Weekly Dependabot PR triage and batched merges |
-| [`mobile-protocol-security/`](mobile-protocol-security/) | _(assessment HITL)_ | Mobile protocol / crypto white-box assessment follow-ups |
+| [`security-pentest/`](security-pentest/) | `security-pentest-curated` | Live API / DAST-style security campaigns |
 
 ## Hygiene vs program
 

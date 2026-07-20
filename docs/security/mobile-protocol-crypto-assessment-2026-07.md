@@ -1,6 +1,7 @@
 # Ezkey Mobile Protocol and Crypto Security Assessment
 
 **Date:** 2026-07-16  
+**Pass-2 re-verification:** 2026-07-19  
 **Scope:** Android-first reference app (`ezkey_mobile`), Auth API enrollment/authentication protocol, shared crypto contracts  
 **Method:** Non-intrusive white-box review (repository source, docs, existing tests). No active exploitation, no device extraction, no hostile network injection against live deployments.  
 **Prior assessment:** [`mobile-security-assessment-2026-05.md`](mobile-security-assessment-2026-05.md)  
@@ -12,6 +13,8 @@ Ezkey’s protocol design for enrollment (`bind`/`verify`) and authentication (`
 
 **Lot A (2026-07 hygiene cycle) is closed** — see §9 and the campaign note. **Lot B documentary / claim-honesty checks were completed 2026-07-19** — see §13; do not reopen those as “Admin UI overclaim” or “missing positioning” defects without new evidence.
 
+**Pass-2 (2026-07-19)** is an additive white-box delta on the same July register — see **§14**. It does **not** reopen closed Lot A remediations or Lot B documentary verdicts. It adds new lifecycle / identity / platform findings (MOB-011–MOB-016) discovered by re-reading the current tree after Lot A merged.
+
 Residual **product/protocol** gaps that remain intentional or deferred (not false positives):
 
 1. Local “protected approval” remains **UX-gated**, not Keystore-enforced (MOB-001 Track B / CryptoObject — future program).
@@ -20,7 +23,7 @@ Residual **product/protocol** gaps that remain intentional or deferred (not fals
 4. Device integrity / tamper resistance remains minimal (MOB-009 — deferred; no overclaim found).
 5. QR enrollment bootstrap remains trust-on-issuer (MOB-010 — by design; host is shown in UX).
 
-None of the confirmed findings, by themselves, constitute a remote authentication bypass of an honest enrolled device over ordinary TLS.
+None of the confirmed findings, by themselves, constitute a remote authentication bypass of an honest enrolled device over ordinary TLS. Pass-2 P1 items are **local multi-installation isolation** and **Android platform key-lifecycle** risks — not remote protocol breaks.
 
 ## 2. Assessment method and standards mapping
 
@@ -184,21 +187,11 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | **Disposition** | **Fixed** — PR [#381](https://github.com/mgagp/ezkey/pull/381) (fail-open Keystore delete on wipe) |
 | **MASVS** | CRYPTO (key lifecycle), STORAGE |
 
-**Issue.** `nativeCrypto.deleteKeyPair` is implemented but never called from `enrollmentStorage.deleteEnrollment`, `clearAll`, `useDeleteEnrollment`, or Danger Zone. Local delete removes metadata + sealed secrets, leaving `ezkey_enrollment_{id}` signable if metadata/secrets were restored or another bug rehydrated identity.
+**Issue (historized — fixed in Lot A).** At assessment open, `nativeCrypto.deleteKeyPair` was implemented but never called from wipe paths. Local delete removed metadata + sealed secrets while leaving `ezkey_enrollment_{id}` in Keystore.
 
-**Evidence.**
-- `deleteKeyPair` in `EzkeyCryptoModule.kt` / `nativeCrypto.ts`
-- `enrollmentStorage.deleteEnrollment` / `clearAll` — secure remove + metadata only
-- `DangerZoneScreen.tsx` — calls `clearAll` without key deletion
-- `useEnrollments.ts` — delete mutation → storage only
+**Current code (post-PR #381).** `enrollmentStorage.deleteEnrollment` / `clearAll` call `deleteKeyPairBestEffort` (fail-open: storage cleanup always proceeds). Treat the Issue/Evidence bullets above as **pre-fix** narrative; do not re-open as an active defect.
 
-**Attack path.** Residual key material after “delete”; forensic / malware reuse if enrollment identifiers and proof material reappear; confusing lifecycle for re-enrollment on same id.
-
-**Impact.** Incomplete crypto lifecycle; weakens “data removed from this device” operator expectation.
-
-**Recommended action.** Call `deleteKeyPair` on single delete and clear-all (best-effort, log failures); add unit/hook tests that assert the native delete call; optional instrumentation test that alias is gone.
-
-**Verification class.** Unit (mock native delete called); **emulator/instrumentation** preferred; physical device optional.
+**Verification class.** Unit (mock native delete called) — covered; emulator/instrumentation preferred for alias absence.
 
 ---
 
@@ -238,18 +231,11 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | **Disposition** | **Fixed** — PR [#383](https://github.com/mgagp/ezkey/pull/383) (redacted seed logs + debug panel; opt-in raw dump flag) |
 | **MASVS** | STORAGE, PRIVACY, CODE |
 
-**Issue.** `useEnrollmentWizard.handleQrScanned` logs raw QR JSON and parsed payload under `__DEV__`. Invalid QR path `console.warn`s raw value. Pending debug panel can show payload previews when flag enabled.
+**Issue (historized — fixed in Lot A).** At assessment open, `__DEV__` QR ingest and some debug paths could dump enrollment proof material.
 
-**Evidence.**
-- `useEnrollmentWizard.ts` ~L407–433
-- `usePendingAuth.ts` debug snapshot fields
-- Semgrep rules exist but do not cover guarded `__DEV__` QR dumps
+**Current code (post-PR #383).** Seed ingest uses `enrollmentSeedLogRedaction.ts`; raw dumps require explicit `EZKEY_ENROLLMENT_SEED_RAW_DUMP`. Pending debug panel keeps hashes / lengths / short prefixes only. Do not re-open as an active defect without new logging paths.
 
-**Impact.** Pilot / QA logcat and screenshots can leak `enrollmentProofToken`.
-
-**Recommended action.** Redact tokens; require explicit extra flag for raw dumps; tighten debug panel redaction.
-
-**Verification class.** Unit/static (Semgrep rule + test); optional `verify-android-sensitive-storage.sh` / logcat on device.
+**Verification class.** Unit/static (redaction tests); optional logcat on device.
 
 ---
 
@@ -289,13 +275,11 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | **Disposition** | **Fixed** — PR [#386](https://github.com/mgagp/ezkey/pull/386) (androidTest + StrongBox evidence on Pixel 7 Pro → `STRONG`) |
 | **MASVS** | CRYPTO, CODE |
 
-**Issue.** JVM tests cover `SealedSecretEnvelope` and `IntegrationKeyVerifier` only. Zero `androidTest`. Maestro pilots approve flows but do not assert StrongBox tier, Keystore delete, or CryptoObject binding. Jest mocks native crypto.
+**Issue (historized — fixed in Lot A).** At assessment open there was no `androidTest` coverage for Keystore paths.
 
-**Impact.** Regressions in the trust boundary can ship unnoticed; undermines assurance narrative.
+**Current code (post-PR #386).** `EzkeyCryptoModuleInstrumentedTest` covers generate/sign/delete, seal/unseal via module, and tier enum membership. Physical Pixel 7 Pro evidence recorded `STRONG` (client-reported; not attestation). Emulator green ≠ StrongBox proof. Residual: no instrumented Ed25519 `verify()` via RN module; no CryptoObject path (MOB-001 Track B).
 
-**Recommended action.** Add focused instrumentation tests (key gen flags, delete alias, seal via module); document StrongBox-capable manual checklist; extend Maestro only where stable.
-
-**Verification class.** Emulator for generic Keystore; **physical StrongBox phone** for STRONG tier and StrongBox fallback.
+**Verification class.** Emulator for generic Keystore; **physical StrongBox phone** for STRONG tier (checklist).
 
 ---
 
@@ -308,15 +292,11 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | **Disposition** | **Fixed** — PR [#384](https://github.com/mgagp/ezkey/pull/384) (shared `claimPendingAttempt`) |
 | **MASVS** | CODE (maintainability → security drift) |
 
-**Issue.** `EnrollmentDetailScreen.handleCheckPending` reimplements pending request + Ed25519 verify already present in `usePendingAuth.loadPendingAttempt`. Future security fixes can land in one path only.
+**Issue (historized — fixed in Lot A).** At assessment open, Detail and Pending Auth duplicated pending-claim orchestration.
 
-**Evidence.**
-- `EnrollmentDetailScreen.tsx` ~L78–164
-- `usePendingAuth.ts` `loadPendingAttempt`
+**Current code (post-PR #384).** Both paths call shared `claimPendingAttempt`. Do not re-open as an active defect; residual UI mapping duplication around fail-closed copy is maintainability-only (see §14.4).
 
-**Recommended action.** Single shared pending-claim helper used by Detail navigation and Pending screen auto-load.
-
-**Verification class.** Unit tests on shared helper; existing hook tests extended.
+**Verification class.** Unit tests on shared helper — present.
 
 ---
 
@@ -329,12 +309,9 @@ Confidence: **Confirmed** = source-evident; **Hypothesis** = needs dynamic/devic
 | **Disposition** | **Fixed** — PR [#385](https://github.com/mgagp/ezkey/pull/385) |
 | **MASVS** | CODE |
 
-**Issue.** Examples:
-- `docs/CRYPTO.md` still cites `com/ezkeymobile/...` paths; implementation is `org.ezkey.mobile.crypto`
-- Historical protocol audit plan (`.github/prompts/plan-authProtocolSecurityAudit.prompt.md`) is partially stale (e.g. respond rate limiting now exists)
-- May P1 investigation doc describes pre-seal storage truth and can confuse cold agents if read without date context
+**Issue (historized — fixed in Lot A).** Living crypto docs cited stale package paths; historical audit prompt was partially stale.
 
-**Recommended action.** Patch living docs; leave historical plans clearly marked; add “superseded by seal model” banner to May P1 note if still linked.
+**Current code (post-PR #385).** `docs/CRYPTO.md` points at `org.ezkey.mobile.crypto`. Historical prompts remain marked stale where applicable. Do not re-open without new living-doc drift.
 
 **Verification class.** Docs review only.
 
@@ -451,6 +428,21 @@ Operator-facing and product-positioning checks for items that never received Lot
 | **MOB-010** | Enrollment host / auth URL shown in UX | Trust-on-issuer inherent until pinning; optional hostile-QR lab |
 | **MOB-001 Track B** | Track A wording still adequate | CryptoObject — future program (phone required) |
 
+### Pass-2 — open HITL lot (2026-07-19)
+
+Full evidence: **§14**. Decision register:
+[`product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md).
+No remediations authorized until operator HITL.
+
+| Finding | Severity | Status |
+| --- | --- | --- |
+| **MOB-011** | P1 | Open — installation-scoped identity |
+| **MOB-012** | P1 | Open — `setUnlockedDeviceRequired` API gate |
+| **MOB-013** | P1/P2 | Open — no silent key regen on pending/respond |
+| **MOB-014** | P2 | Open — malformed pending ≠ empty |
+| **MOB-015** | P2 | Open — unseal failure visibility |
+| **MOB-016** | P2 | Open — orphan Keystore cleanup |
+
 ## 10. Claim verdict (product-facing)
 
 | Statement | Verdict |
@@ -462,17 +454,20 @@ Operator-facing and product-positioning checks for items that never received Lot
 | “Backend verifies StrongBox” | **Unsupported** — do not claim |
 | “Pinning / phishing resistance comparable to WebAuthn” | **Unsupported** — do not claim |
 | “Deleting an enrollment removes local Keystore material” | **Supported** for intended wipe path (MOB-002); delete is fail-open if Keystore delete fails |
+| “Multiple independent Ezkey installations coexist safely on one phone” | **Unsupported today** — local identity is enrollment-id-only (MOB-011); installation metadata exists but does not scope Keystore aliases or sealed-secret keys |
 
 ## 11. Methodology next steps
 
 1. Lot A closed — see campaign note `2026-07-16-pass-1.md` (canonical remediation register for that pass).  
 2. Lot B **claim-honesty / documentary** verification closed 2026-07-19 — see §13. Do not re-investigate Admin UI tier honesty, pinning positioning, integrity non-claims, or enrollment host visibility without new evidence.  
-3. Promote only **protocol/product** redesigns (attestation, pinning implementation, CryptoObject key model, integrity APIs) to `I-*` / `TB-*` when the operator chooses to fund them.  
-4. Optional future active scenarios: May assessment Scenarios A–D (device extraction, hostile QR, MITM, replay lab).
+3. **Pass-2 opened 2026-07-19** — see §14 and campaign note `2026-07-19-pass-2.md`. HITL one finding at a time; do not auto-create `I-*` / `TB-*` per MOB row.  
+4. Promote only **protocol/product** redesigns (installation-scoped identity, CryptoObject, attestation, pinning implementation, integrity APIs) to `I-*` / `TB-*` when the operator chooses to fund them.  
+5. Optional future active scenarios: May assessment Scenarios A–D (device extraction, hostile QR, MITM, replay lab).
 
 ## 12. Related documents
 
-- Campaign closeout: [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
+- Campaign closeout (pass-1): [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
+- Campaign HITL (pass-2): [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md)
 - [`mobile-security-assessment-2026-05.md`](mobile-security-assessment-2026-05.md)
 - [`mobile-p1-sensitive-storage-investigation-2026-05.md`](mobile-p1-sensitive-storage-investigation-2026-05.md)
 - [`../CRYPTO.md`](../CRYPTO.md)
@@ -483,6 +478,7 @@ Operator-facing and product-positioning checks for items that never received Lot
 - [`../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md`](../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md)
 - [`../../ezkey_mobile/docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md`](../../ezkey_mobile/docs/MOBILE_STRONGBOX_MANUAL_CHECKLIST.md)
 - [`../../product-docs/global/legacy-retrofit/R-2026-0001-mobile-certificate-pinning-spki.md`](../../product-docs/global/legacy-retrofit/R-2026-0001-mobile-certificate-pinning-spki.md)
+- Local-auth per enrollment (related deferred program): [`../../product-docs/global/backlog/ideas/I-2026-0001-mobile-respond-local-auth-per-enrollment.md`](../../product-docs/global/backlog/ideas/I-2026-0001-mobile-respond-local-auth-per-enrollment.md)
 
 ## 13. Lot B documentary verification closeout (2026-07-19)
 
@@ -501,3 +497,243 @@ Operator-facing and product-positioning checks for items that never received Lot
 **Assessment status after this note.** Lot A remediation **closed**. Lot B **documentary / claim-honesty** lane **closed**. Remaining open work is **explicitly deferred program** (CryptoObject, attestation, pinning implementation, integrity APIs) — not uninvestigated gaps.
 
 **Anti-false-positive rule for agents.** If a finding ID appears above with a 2026-07-19 documentary verdict of adequate / no overclaim / host visible, treat a re-discovery of the same static facts as **already historized**. Escalate only on **new copy**, **new code paths**, or an operator decision to fund the deferred program.
+
+## 14. Pass-2 delta — white-box re-verification (2026-07-19)
+
+**Purpose.** Full re-read of the current Android-first crypto/protocol implementation after Lot A remediations merged. Record **new** defects and maintainability signals; keep closed MOB-002/004/006/007/008 and Lot B documentary rows historized.
+
+**Method.** Source + docs + existing tests only. Platform lens: Android Keystore / StrongBox / BiometricPrompt docs, including the published `setUnlockedDeviceRequired` Android 12–14 warning. No active exploit, MITM lab, or rooted extraction.
+
+**Campaign note:** [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md)
+
+### 14.1 Positive controls re-confirmed
+
+| Control | Status | Evidence |
+| --- | --- | --- |
+| Fail-closed `integrationKeyAlgorithm == ed25519` on bind | Present | `integrationKeyAlgorithm.ts`; `useEnrollmentWizard` |
+| Ed25519 verify of bind / verify-result / pending / respond-result before trust | Present | wizard + `claimPendingAttempt` + `usePendingAuth` |
+| Canonical pending includes challenge + context (NFC) | Present | `authAttemptPayload.ts` ↔ `AuthAttemptSignaturePayload` |
+| Respond signs `proofToken\|accepted` (not enrollment proof token) | Present | `buildRespondPayload`; backend rebuild |
+| Device proof token CSPRNG via native module | Present | `EzkeyCryptoModule.generateProofToken` |
+| User-initiated pending only | Present | Detail / Pending Auth; no background poll loop |
+| Sealed enrollment secrets + cleartext strip from AsyncStorage collection | Present | `secureStorage` + `enrollmentStorage` |
+| Keystore delete on wipe (fail-open) | Present | MOB-002 fix |
+| Shared pending-claim helper | Present | MOB-007 fix |
+| Private key material not exported to JS | Present | module exports public key + signatures only |
+| StrongBox requested with documented fallback | Present | `generateEnrollmentEcKeyPair` / `createAppSealKey` |
+| AES-GCM seal with logical-key AAD + fresh IV | Present | `SealedSecretEnvelope` (+ JVM tests) |
+| Backup disabled | Present | `android:allowBackup="false"` |
+| Custom ECDSA low-S / Ed25519 SPKI / Conscrypt | **Justified keep** | wire parity with `ezkey-core` / Demo Device |
+
+### 14.2 New findings register
+
+Severity/confidence scale unchanged from §6.
+
+---
+
+#### MOB-011 — Local enrollment identity is not installation-scoped
+
+| Field | Value |
+| --- | --- |
+| **Severity** | P1 |
+| **Confidence** | Confirmed |
+| **Disposition** | **Open — pass-2 HITL** (identity migration; likely program if accepted) |
+| **MASVS** | STORAGE, CRYPTO, AUTH |
+| **Protocol stage** | Persist after verify; all later pending/respond/delete |
+
+**Issue.** Auth API / DB `enrollment_id` values are **installation-local** integers (`GENERATED ALWAYS AS IDENTITY`). The mobile app uses `String(enrollmentId)` as:
+
+- `StoredEnrollment.id`,
+- sealed-secret logical keys (`ezkey-mobile/enrollment-proof-token.{id}`, `…/integration-public-key.{id}`),
+- Android Keystore alias `ezkey_enrollment_{id}`,
+- React Query / navigation / wipe keys.
+
+`Installation` is derived from normalized `authUrl` and stored nested in metadata, but **does not participate** in those identity surfaces. Two independent Ezkey installations can both issue enrollment `1`.
+
+**Evidence.**
+- `useEnrollmentWizard.buildDraft` — `id: String(rawId)`
+- `enrollmentStorage.proofTokenStorageKey` / `integrationPublicKeyStorageKey`
+- `EzkeyCryptoModule.getEnrollmentAlias`
+- `saveEnrollment` filters/overwrites by `item.id === record.id` only
+- Key generation short-circuits if alias already exists (`containsAlias` → resolve true)
+
+**Attack / failure path.** Enroll on installation A (id `1`), then enroll on installation B (also id `1`): B reuses A’s EC key (or races), overwrites sealed proof token + integration public key, removes A’s metadata row. Independent lifecycle and crypto isolation fail for a supported multi-installation product shape.
+
+**Impact.** Destructive local state loss; private-key reuse across independent trust zones; not a remote bypass of A without A’s protocol material, but breaks MFA-app isolation expectations.
+
+**Fail posture.** Fail-open for overwrite (second save wins).
+
+**Recommended action.** Installation-scoped local identity (e.g. normalized installation id + enrollment id) for storage keys, Keystore aliases, query keys, and wipe; keep numeric `enrollmentId` for API bodies; plan AAD/alias migration carefully.
+
+**Verification class.** Unit tests for collision save/list/delete; instrumentation for distinct aliases; manual two-installation enroll.
+
+---
+
+#### MOB-012 — `setUnlockedDeviceRequired(true)` on Android 12–14 without user-auth binding
+
+| Field | Value |
+| --- | --- |
+| **Severity** | P1 |
+| **Confidence** | Confirmed |
+| **Disposition** | **Open — pass-2 HITL** (platform gate hygiene; small fix candidate) |
+| **MASVS** | CRYPTO, PLATFORM, RESILIENCE |
+| **Android** | [KeyGenParameterSpec.Builder.setUnlockedDeviceRequired](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder#setUnlockedDeviceRequired(boolean)) |
+
+**Issue.** Official Android docs warn of critical bugs on Android 12–14 (API 31–34) when using `setUnlockedDeviceRequired(true)`, and recommend enabling it only on Android 15+ unless keys also use `setUserAuthenticationRequired(true)`. Ezkey enables the flag from API 30 (`R`) for **both** enrollment EC keys and the app AES seal key, while `setUserAuthenticationRequired(false)`.
+
+Documented platform defects include: generation/use failure without secure lock screen; **automatic deletion** of these keys when the user removes the secure lock screen; weak-biometric / shared-profile unlock not re-authorizing keys.
+
+**Evidence.**
+- `EzkeyCryptoModule.generateEnrollmentEcKeyPair` — `setUnlockedDeviceRequired(true)` when `SDK_INT >= R`
+- `EzkeyCryptoModule.createAppSealKey` — same gate
+- `minSdkVersion = 24`, `targetSdkVersion = 36` — runtime OS, not target SDK, determines the bug surface
+
+**Impact.** On affected devices, lock-screen removal or related platform bugs can permanently destroy enrollment signing keys (backend still bound to old public key) and/or the app seal key (all sealed proof tokens / integration keys become undecryptable). Combined with silent list collapse (MOB-015) and silent key regeneration (MOB-013), the failure mode is easy to misdiagnose.
+
+**Fail posture.** Platform-driven key destruction — app cannot recover without re-enrollment.
+
+**Recommended action.** Gate `setUnlockedDeviceRequired(true)` to API 35+ (`VANILLA_ICE_CREAM`) for the current non-auth-bound design; omit on 12–14. Revisit when MOB-001 Track B introduces user-auth-required keys.
+
+**Verification class.** Static + device matrix (API 33/34 vs 35+); lock-screen removal scenario on a test device.
+
+---
+
+#### MOB-013 — Pending/respond call `ensureEnrollmentKeyPair` (silent replacement on missing alias)
+
+| Field | Value |
+| --- | --- |
+| **Severity** | P1 (with MOB-011/012) / P2 (isolation) |
+| **Confidence** | Confirmed |
+| **Disposition** | **Open — pass-2 HITL** |
+| **MASVS** | CRYPTO, AUTH |
+| **Protocol stage** | Pending claim; respond signing |
+
+**Issue.** After verify, the backend is permanently bound to the device public key submitted at enrollment. Yet `claimPendingAttempt` and `usePendingAuth.handleRespond` call `cryptoService.ensureEnrollmentKeyPair`, which **generates a new Keystore key** when the alias is absent. A replacement key cannot satisfy the server; signatures fail. Under MOB-011, “ensure” may also attach the wrong installation’s existing alias. Under MOB-012, lock-screen key deletion converts a diagnosable “key unavailable” into opaque protocol failures after silent regen.
+
+**Evidence.**
+- `claimPendingAttempt.ts` — `ensureEnrollmentKeyPair` before generate/sign device proof token
+- `usePendingAuth.ts` — `ensureEnrollmentKeyPair` before `signForRespond`
+- `cryptoService.ensureEnrollmentKeyPair` → `nativeCrypto.generateEnrollmentKeyPair`
+- Native: if alias missing → create; if present → return true without ownership check
+
+**Recommended action.** Split lifecycle: **create** only in enrollment verify path; **require** existing key on pending/respond and fail closed with a re-enrollment signal if missing/invalidated. Never auto-rotate without a backend protocol that registers a new public key.
+
+**Verification class.** Unit: mock missing key → assert no generate on pending/respond; instrumentation for absent-alias fail-closed.
+
+---
+
+#### MOB-014 — Malformed pending HTTP 200 mapped to empty (not fail-closed)
+
+| Field | Value |
+| --- | --- |
+| **Severity** | P2 |
+| **Confidence** | Confirmed |
+| **Disposition** | **Open — pass-2 HITL** |
+| **MASVS** | AUTH, NETWORK |
+| **Protocol stage** | Pending response acceptance |
+
+**Issue.** `authAttemptsApi.pending` treats a non-204 response whose body fails `isUsablePendingResponse` (missing/empty proof token or integration signature fields) as `undefined` — the same outcome as legitimate **204 No Content**. Callers therefore show “no pending” instead of a tamper/contract failure. Contrast: when fields are present but Ed25519 verify fails, `claimPendingAttempt` correctly fail-closes.
+
+**Evidence.**
+- `authAttempts.ts` `isUsablePendingResponse` + `pending` return path
+- `claimPendingAttempt` only reaches signature verify when a usable body is returned
+
+**Impact.** Under hostile TLS trust (MOB-005) or a buggy proxy, stripping signature fields can hide a real pending attempt rather than surface integrity failure. Does not forge a valid approve without the device key.
+
+**Fail posture.** Fail-open toward empty UX.
+
+**Recommended action.** Discriminate malformed 200 from 204; surface fail-closed error; add unit coverage.
+
+**Verification class.** Unit tests on `authAttemptsApi.pending` / claim orchestration.
+
+---
+
+#### MOB-015 — Secret unseal / parse failure collapses enrollment list
+
+| Field | Value |
+| --- | --- |
+| **Severity** | P2 |
+| **Confidence** | Confirmed |
+| **Disposition** | **Open — pass-2 HITL** |
+| **MASVS** | STORAGE, RESILIENCE |
+| **Protocol stage** | Local rehydration |
+
+**Issue.** `listEnrollments` wraps parse + secure rehydration in a broad `catch` that returns `[]` on failure. Missing sealed proof token or integration key causes individual records to be **silently omitted** (DEV warn only). Seal-key loss (MOB-012) or envelope corruption therefore presents as “no enrollments” rather than “broken enrollment needs re-enroll.”
+
+**Evidence.**
+- `enrollmentStorage.listEnrollments` catch → `[]`
+- `attachProofToken` / `attachIntegrationPublicKey` return `undefined` when material missing
+- App seal key `ezkey_app_seal_v1` is never deleted on clear-all (related lifecycle honesty gap)
+
+**Recommended action.** Surface broken enrollment rows; narrow catch scopes; consider explicit seal-key wipe policy on Danger Zone clear-all.
+
+**Verification class.** Unit tests for corrupt envelope / missing secret / seal failure paths.
+
+---
+
+#### MOB-016 — Orphan Keystore enrollment keys after failed verify
+
+| Field | Value |
+| --- | --- |
+| **Severity** | P2 |
+| **Confidence** | Confirmed |
+| **Disposition** | **Open — pass-2 HITL** |
+| **MASVS** | CRYPTO (key lifecycle) |
+| **Protocol stage** | Enrollment verify |
+
+**Issue.** `finalizeEnrollment` calls `ensureEnrollmentKeyPair` **before** Auth API verify and before persistence. If verify fails, verify-result signature fails, or save fails, the Keystore alias remains with no `StoredEnrollment`. Combined with MOB-011 short-circuit reuse and MOB-013 pending ensure, orphans become sticky.
+
+**Evidence.**
+- `useEnrollmentWizard.finalizeEnrollment` — key create → sign → verify API → result verify → save
+- Native generation returns early if alias exists
+
+**Recommended action.** Best-effort `deleteKeyPair` in verify failure paths when save never succeeded; or create key only after a dry-run challenge validation if product allows; test orphan cleanup.
+
+**Verification class.** Hook/unit with mocked failed verify asserting delete; instrumentation optional.
+
+---
+
+### 14.3 Maintainability / hygiene signals (not remote auth defects)
+
+| ID | Severity | Signal | Simplest remedy |
+| --- | --- | --- | --- |
+| MQ-01 | P2 | `securityLevel` param on `generateEnrollmentKeyPair` documented but unused; unused Kotlin constant | Remove until MOB-001 Track B, or implement |
+| MQ-02 | P3 | JS handles `EZK_KEY_INVALIDATED` but Android never emits it | Emit on `KeyPermanentlyInvalidatedException` or remove branch |
+| MQ-03 | P2 | `parseAuthApiProblemDetail` unused; hooks use ad-hoc `message`/`error` | Shared error helper preferring RFC 9457 `detail` |
+| MQ-04 | P3 | `SealedSecretEnvelope.fromJson` regex parser | Prefer `JSONObject` if envelope evolves |
+| MQ-05 | P2 | Jest `sealSecret` mock embeds plaintext; incomplete native stub | Align mock with production envelope shape |
+| MQ-06 | P3 | Split `cryptoService` vs direct `nativeCrypto` for seal/delete/proof-token | Document facade policy or thin passthroughs |
+| MQ-07 | P3 | Triplicated `extractErrorMessage` / duplicated `nfcOrEmpty` | Single TS helpers |
+| MQ-08 | — | iOS RSA module API-incompatible with TS bridge | **Deferred scope** (Android-first); stub/reject or rewrite — not a current Android defect |
+
+**Do not “fix” for elegance:** ECDSA low-S DER codec, Ed25519 raw SPKI + Conscrypt, native proof-token CSPRNG — justified by Auth API wire parity.
+
+### 14.4 Pass-2 prioritized HITL lot (proposed)
+
+Keep lot small (3–6). Suggested first review order:
+
+| # | Finding | Severity | Why first |
+| --- | --- | --- | --- |
+| 1 | **MOB-011** | P1 | Multi-installation identity collision; foundation for other key lifecycle bugs |
+| 2 | **MOB-012** | P1 | Platform-documented key destruction risk on still-common OS versions |
+| 3 | **MOB-013** | P1/P2 | Silent regen hides MOB-011/012 and produces opaque Auth API failures |
+| 4 | **MOB-014** | P2 | Small, localized fail-closed fix with clear tests |
+| 5 | **MOB-015** | P2 | Operator-visible resilience when seal/key material fails |
+| 6 | **MOB-016** | P2 | Completes enrollment key lifecycle hygiene |
+
+Deferred programs remain out of this hygiene lot unless the operator funds them: MOB-001 Track B, MOB-003 attestation, MOB-005 pinning (`R-2026-0001`), MOB-009 integrity.
+
+### 14.5 Evidence matrix (pass-2 only)
+
+| Finding | Static/source | Unit | Emulator/instrumentation | Physical device |
+| --- | --- | --- | --- | --- |
+| MOB-011 | Yes | Required for fix | Distinct aliases | Optional two-install |
+| MOB-012 | Yes + Android docs | N/A | Useful on API 33/34 | Lock-removal scenario |
+| MOB-013 | Yes | Required for fix | Absent-alias path | Optional |
+| MOB-014 | Yes | Required for fix | No | No |
+| MOB-015 | Yes | Required for fix | Optional | Optional |
+| MOB-016 | Yes | Required for fix | Optional | No |
+
+### 14.6 Anti-false-positive reminder
+
+Do **not** treat historized §6 evidence for MOB-002/004/006/007/008 as current defects. Do **not** reopen Lot B documentary rows (§13) without new copy/code. Pass-2 IDs start at **MOB-011**.
