@@ -24,6 +24,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Lifecycle / eligibility / multi-entity operator design | Skim [`product-docs/global/lifecycle-model.md`](product-docs/global/lifecycle-model.md), then [`docs/LIFECYCLE_GOVERNANCE.md`](docs/LIFECYCLE_GOVERNANCE.md) when designing |
 | Admin UI conventions | [`ezkey-admin-ui/AGENTS.md`](ezkey-admin-ui/AGENTS.md) |
 | Mobile-primary work | [`ezkey_mobile/AGENTS.md`](ezkey_mobile/AGENTS.md), [`ezkey_mobile/docs/README.md`](ezkey_mobile/docs/README.md) |
+| Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
 | New idea / method lane | [`product-docs/methodology/minimum-viable-method.md`](product-docs/methodology/minimum-viable-method.md) or [`session-start-guide.md`](product-docs/methodology/session-start-guide.md), then Fresh-session bootstrap below |
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
 | Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
@@ -391,6 +392,35 @@ yarn doctor:curated
 - HITL and operating rules: `ezkey_mobile/AGENTS.md` § Mobile doctor-curated pass
 - Authority: `product-docs/global/mobile-doctor-curated-evaluation-2026-07-11.md`,
   `I-2026-07-11-mobile-doctor-curated-hygiene`, `TB-2026-07-11-mobile-doctor-curated-mvp`
+
+## Assessment curated keyword
+
+- For **mandate-driven white-box hygiene** (focused investigation → assessment register →
+  one-finding HITL → handoff), the shared keyword is **`assessment-curated`**.
+- Purpose: punctual deep look when OSS doctor/pentest shortlists are the wrong entry signal (e.g.
+  mobile crypto/protocol, Java transactional boundaries). **Not** a methodology program lane and
+  **not** a substitute for `doctor-curated` / `dependabot-curated` / `security-pentest-curated`.
+- Method canon: [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md)
+- Cursor skill: [`.cursor/skills/assessment-curated/SKILL.md`](.cursor/skills/assessment-curated/SKILL.md)
+- Copilot mirror: `.github/copilot-instructions.md` § Assessment curated
+- Campaign template + handoff template live next to the method README.
+- Topic-lane instance (first): `product-docs/global/hygiene/mobile-protocol-security/`
+- Do **not** invent `I-*` / `TB-*` / GitHub issues per finding; promote only when the operator
+  funds a program-sized redesign.
+
+### HITL contract (mandatory for cold agents)
+
+When the operator asks for an **`assessment-curated`** pass:
+
+1. Lock mandate: surface, attention axes, non-goals.
+2. Produce or update a durable assessment register with a small lot (usually 3–6).
+3. Open/amend a dated campaign note under `product-docs/global/hygiene/<lane>/`.
+4. **One finding at a time:** briefing with code citations + observation scenario + options →
+   wait → decision → handoff if work leaves the session → amend campaign note.
+5. Delete completed handoffs on closeout; consolidate PR links into the campaign note.
+6. If the operator only asks **how to invoke** / how to phrase a kickoff: summarize
+   `product-docs/global/hygiene/assessment-curated/README.md` § **How to invoke (operator cheat sheet)**
+   (paste-ready examples). Do not start a full assessment unless they also give a mandate.
 
 ## UI Test Autonomy
 

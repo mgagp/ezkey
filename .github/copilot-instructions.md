@@ -6,6 +6,41 @@ For overall product intent and functional constraints, refer to `product-docs/gl
 For build, setup, and project organization, refer to `README.md`.
 For cold-start context loading (tiered; no full `docs/ENDPOINT.md` ritual), refer to root `AGENTS.md` § Cold-start context.
 
+## Code hygiene keywords
+
+When the operator names a hygiene keyword, follow the matching section in root `AGENTS.md` (and the
+linked skill/README). Do **not** invent `I-*` / `TB-*` per routine finding.
+
+| Keyword | Entry |
+| --- | --- |
+| `doctor-curated` | Admin UI React Doctor curated pass — `AGENTS.md` § Admin UI lint-polish |
+| `java-doctor-curated` | Java SpotBugs/Semgrep/PMD curated pass — `AGENTS.md` § Java doctor-curated |
+| `mobile-doctor-curated` | Ezkey Mobile static-analysis curated pass — `AGENTS.md` § Mobile doctor-curated |
+| `dependabot-curated` | Weekly Dependabot triage — `AGENTS.md` § Dependabot curated; skill `.cursor/skills/dependabot-curated/` |
+| `security-pentest-curated` | Live API / DAST-style campaigns — `product-docs/global/hygiene/security-pentest/` |
+| **`assessment-curated`** | Mandate-driven white-box assessment → HITL → handoff — `AGENTS.md` § Assessment curated; canon `product-docs/global/hygiene/assessment-curated/README.md`; skill `.cursor/skills/assessment-curated/SKILL.md` |
+
+Hygiene index: `product-docs/global/hygiene/README.md`. Hygiene vs program:
+`product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`.
+
+### Assessment curated
+
+When the operator says **`assessment-curated`** (or asks for a focused investigation pass outside
+doctor/Dependabot/pentest tool lanes):
+
+1. Read `product-docs/global/hygiene/assessment-curated/README.md` and run skill
+   `.cursor/skills/assessment-curated/SKILL.md` when available in the agent.
+2. Lock mandate (surface / attention axes / non-goals), write or update an assessment register,
+   open a dated campaign note under `product-docs/global/hygiene/<topic-lane>/`.
+3. Walk findings **one at a time** (briefing + code citations + options → decision → handoff).
+4. Do not create methodology backlog artifacts per finding unless the operator funds a program.
+
+If the operator only asks **how to invoke** an assessment-curated session, summarize
+`product-docs/global/hygiene/assessment-curated/README.md` § **How to invoke (operator cheat sheet)**
+(paste-ready kickoff examples). Do not start exploring until they provide or confirm a mandate.
+
+First instance: `product-docs/global/hygiene/mobile-protocol-security/`.
+
 ## Product-Docs Workflow
 
 When the task starts from a new product or design idea, follow root `AGENTS.md` § **Fresh-session workflow bootstrap** (single full procedure). Shortest entry: `product-docs/methodology/minimum-viable-method.md` or `session-start-guide.md`.
