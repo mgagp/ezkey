@@ -1,6 +1,6 @@
 # Contributing to Ezkey
 
-Thank you for your interest in contributing. This document summarises how we work and the values that guide analysis and design decisions. For build, setup, and project organisation, see **README.md**. For product and functional context, see **PRD.md**.
+Thank you for your interest in contributing. This document summarises how we work and the values that guide analysis and design decisions. For build, setup, and project organisation, see **README.md**. For product intent, see **`product-docs/global/product-intent.md`** (root **PRD.md** is a stub).
 
 ## Project values (analysis and design)
 
@@ -16,10 +16,10 @@ These values guide feature analysis, design, and implementation across the proje
 ## Where to read more
 
 - **README.md** — Overview, build, and setup
-- **PRD.md** — Product requirements and principles
-- **docs/ENDPOINT.md** — API endpoints and behaviour
+- **product-docs/global/product-intent.md** — Product intent (canonical); root **PRD.md** is a stub
+- **docs/ENDPOINT.md** — API endpoints and behaviour (section-scoped)
+- **AGENTS.md** (root and per-module) — Cold-start compass and agent patterns
 - **.github/copilot-instructions.md** — Code style and conventions for AI-assisted development
-- **AGENTS.md** (root and per-module) — Agent notes and patterns
 
 ## Contribution workflow
 

@@ -123,7 +123,7 @@ Key properties:
 - One-time proof tokens limit replay.
 - Signatures bind requests and responses to the correct flow.
 - Enrollment and authentication are both modeled as cryptographic processes, not just API calls with business flags.
-- Mobile secure storage can strengthen device key handling when available.
+- Mobile secure storage can strengthen device key handling and local secret persistence when available, but those layers must be described honestly. In the current Android reference app, per-enrollment private keys live in `Android Keystore` with `StrongBox` requested when available, while long-lived local secrets such as `enrollmentProofToken` and `integrationPublicKey` are sealed at rest through a separate app-level `Android Keystore` AES path rather than being unsealed by the device signing key. See [`docs/CRYPTO.md`](../../docs/CRYPTO.md) and the [mobile component pack](../components/mobile/README.md).
 - The backend remains the authoritative source of state and verification.
 
 Component-level realization of this trust model is described in:
@@ -184,4 +184,4 @@ Ezkey is succeeding when:
 - [`architecture-overview.md`](architecture-overview.md) — architectural view and component boundaries.
 - [`design-principles.md`](design-principles.md) — cross-product principles.
 - [`lifecycle-model.md`](lifecycle-model.md) — global entity lifecycle rules.
-- Legacy repository references: [`../../README.md`](../../README.md), [`../../PRD.md`](../../PRD.md), [`../../docs/PROJECT_POSITIONING.md`](../../docs/PROJECT_POSITIONING.md), [`../../docs/ENDPOINT.md`](../../docs/ENDPOINT.md).
+- Repository entry points: [`../../README.md`](../../README.md), [`../../PRD.md`](../../PRD.md) (stub → this document), [`../../docs/PROJECT_POSITIONING.md`](../../docs/PROJECT_POSITIONING.md), [`../../docs/ENDPOINT.md`](../../docs/ENDPOINT.md) (section-scoped API reference), [`../../AGENTS.md`](../../AGENTS.md) (cold-start compass).

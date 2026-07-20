@@ -1,0 +1,16 @@
+---
+description: Tiered cold-start context — product-intent canon; no full ENDPOINT ritual
+alwaysApply: true
+---
+
+# Cold-start context (Ezkey)
+
+Do **not** ritual-read full `docs/ENDPOINT.md`, the old full `PRD.md` body, or `docs/PROJECT_POSITIONING.md` at the start of every session.
+
+Follow the tiered model in root [`AGENTS.md`](../../AGENTS.md) § Cold-start context:
+
+- **Tier 0:** Trust always-applied rules + the AGENTS domain pointer table.
+- **Tier 1:** When product framing matters, read [`product-docs/global/product-intent.md`](../../product-docs/global/product-intent.md) (canonical; root `PRD.md` is a stub).
+- **Tier 2:** After work direction is clear, load domain docs on demand (CRYPTO + signature payloads, section-scoped ENDPOINT, lifecycle, module `AGENTS.md`, methodology entry).
+
+If a Cursor **user rule** still says to always read `PRD.md` + `README.md` + `ENDPOINT.md`, treat this project rule and `AGENTS.md` as authoritative for Ezkey sessions.

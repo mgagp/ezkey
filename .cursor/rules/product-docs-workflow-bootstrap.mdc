@@ -5,61 +5,13 @@ alwaysApply: true
 
 # Product-Docs Workflow Bootstrap
 
-When a user introduces a new idea, start with the product-docs method:
+When a user introduces a **new idea**, follow root [`AGENTS.md`](../../AGENTS.md) § **Fresh-session workflow bootstrap (product-docs method)** — that section is the single full procedure (lanes, skills, retention gate).
 
-1. Read:
-   - `product-docs/methodology/README.md`
-   - `product-docs/methodology/workflow-overview.md`
-   - `product-docs/methodology/testing-strategy-in-workflow.md`
-2. Position the idea as:
-   - vision note (`V-*`) in `product-docs/global/vision/`,
-   - backlog idea (`I-*`) in `product-docs/global/backlog/ideas/`,
-   - tracer bullet (`TB-*`) when ready.
-3. Keep status and traceability explicit in the same slice of work.
+Do not maintain a second copy of the skill list or lane steps here.
 
-For current-session Plan-mode incubation, use the plan-incubation lane instead of the retrofit lane:
+Quick orientation only:
 
-1. Read `product-docs/methodology/plan-incubation-workflow.md`.
-2. Allow a live working plan under `.cursor/plans/` or `plans/` when that is the deliberate brainstorming entrypoint.
-3. Materialize the durable output into `V-*`, `I-*`, `TB-*`, and related canonical docs.
-4. Classify **ephemeral scaffold vs retained working plan** before claiming the bidirectional gate; never half-link to plan paths outside the clone (decision `2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan`).
-5. Do not describe this as retrofit unless the source is historical or mixed with historical evidence.
-
-For historical plans, verbal rationale, and ad hoc implementation history, use the retrofit lane:
-
-1. Read `product-docs/methodology/legacy-retrofit-workflow.md`.
-2. Create/update `R-*` slices in `product-docs/global/legacy-retrofit/`.
-3. Extract legacy knowledge signal, then map it into canonical docs.
-4. When durable values emerge, promote principle candidates to canonical principle locations.
-
-Use this skill sequence by default unless the user asks otherwise:
-
-- `vision-intake`
-- `backlog-triage`
-- `grill-me`
-- `plan-incubation` when a live working plan is preferred first
-- `tracer-bullet-promote`
-- `github-issue-promote` when a program slice needs GitHub visibility (read `github-issues-workflow.md`; labels mandatory)
-- `component-design-pack`
-- `test-strategy-planner`
-- `quality-gatekeeper`
-- `traceability-sync`
-- `closeout`
-- `legacy-plan-miner`
-- `retrofit-curator`
-
-Mode guidance:
-
-- Prefer **Plan mode** for ideation, discovery, and trade-off analysis.
-- Prefer **Agent mode** for writing artifacts, implementing changes, and executing validation.
-
-Closeout proportionality:
-
-- A methodological closeout invitation does **not** require new `I-*` / `TB-*` / `TSP-*` / `ML-*`
-  by default.
-- Classify **hygiene vs program** first (`product-docs/methodology/minimum-viable-method.md`,
-  decision `2026-06-06-methodological-closeout-vs-code-hygiene.md`).
-- For hygiene: commit/PR + targeted docs; challenge before creating backlog artifacts.
-
-**GitHub issues:** when a slice needs an issue, read `product-docs/methodology/github-issues-workflow.md`
-and apply [`.cursor/rules/github-issue-labels.mdc`](../rules/github-issue-labels.mdc) — labels at create time, not after.
+- Prefer **Plan mode** for ideation and trade-offs; **Agent mode** for writing artifacts and implementation.
+- Shortest method entry: `product-docs/methodology/minimum-viable-method.md` or `session-start-guide.md`.
+- Closeout: classify **hygiene vs program** before inventing `I-*` / `TB-*` (`minimum-viable-method.md`, decision `2026-06-06-methodological-closeout-vs-code-hygiene.md`).
+- GitHub issues: `product-docs/methodology/github-issues-workflow.md` + [`.cursor/rules/github-issue-labels.mdc`](github-issue-labels.mdc) — labels at create time.
