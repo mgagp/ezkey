@@ -3,16 +3,27 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-20-mobile-installation-scoped-enrollment-identity`
-- **Status:** `ready`
+- **Status:** `active`
 - **Related idea:** `I-2026-07-20-mobile-installation-scoped-enrollment-identity`
 - **Lane:** `D`
 - **Posture:** `single-pass`
-- **Prerequisite TB:** `TB-2026-07-20-mobile-installation-trust-zone-canon` (must exit first)
+- **Prerequisite TB:** `TB-2026-07-20-mobile-installation-trust-zone-canon` (must exit first) — **done**
 - **GitHub issue:** _(none yet)_
 - **Created at:** `2026-07-20`
 - **Updated at:** `2026-07-20`
 - **Captured by:** Marc (Grill Me MOB-011, 2026-07-20)
 - **Absorbs findings:** MOB-011, MOB-013, MOB-016
+
+## Progress (2026-07-20)
+
+Implemented on branch `feature/mobile-installation-trust-zone`:
+
+- `deriveLocalEnrollmentId` / `resolveServerEnrollmentId` (O3 Keystore-safe handles)
+- Wizard `buildDraft` (7A) + finalize uses local id for Keystore; server id for Auth API; orphan delete on verify/save failure (MOB-016)
+- Pending/respond `requireEnrollmentKeyPair` (MOB-013 — no silent generate)
+- Unit tests: identity, storage A/B collision, claim missing-key
+
+**Still before closeout:** Pixel clean install + enroll smoke; optional instrumentation distinct aliases; assessment disposition close when validated on device.
 
 ## Objective
 

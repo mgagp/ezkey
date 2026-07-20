@@ -24,10 +24,12 @@ jest.mock('../../services/api/authAttempts', () => ({
 
 jest.mock('../../services/crypto', () => ({
   cryptoService: {
+    requireEnrollmentKeyPair: jest.fn(),
     ensureEnrollmentKeyPair: jest.fn(),
     sign: jest.fn(),
     signForRespond: jest.fn(),
     verify: jest.fn(),
+    deleteEnrollmentKeyPair: jest.fn(),
   },
 }));
 
@@ -209,6 +211,7 @@ beforeEach(() => {
     authAttemptProofTokenResultSignedByIntegration: 'respond-result-sig',
   });
 
+  mockCryptoService.requireEnrollmentKeyPair.mockResolvedValue(undefined);
   mockCryptoService.ensureEnrollmentKeyPair.mockResolvedValue(true);
   mockCryptoService.sign.mockResolvedValue('device-sig');
   mockCryptoService.signForRespond.mockResolvedValue('respond-sig');

@@ -17,7 +17,7 @@ jest.mock('../../api/authAttempts', () => ({
 
 jest.mock('../../crypto', () => ({
   cryptoService: {
-    ensureEnrollmentKeyPair: jest.fn(),
+    requireEnrollmentKeyPair: jest.fn(),
     sign: jest.fn(),
     verify: jest.fn(),
   },
@@ -50,13 +50,14 @@ const mockGenerateProofToken = jest.mocked(generateProofToken);
 const mockSha256HexUtf8 = jest.mocked(sha256HexUtf8);
 
 const sampleEnrollment: StoredEnrollment = {
-  id: 'enr-1',
-  integrationId: 'int-1',
+  id: 'iaaaaaaaaaaaaaaaa_e1',
+  integrationId: '1',
   integrationName: 'Acme',
   tenantName: 'ACME Corp',
   createdAt: '2026-01-01T00:00:00.000Z',
   lastActivityAt: '2026-01-01T00:00:00.000Z',
   enrollmentProofToken: 'enrollment-token',
+  enrollmentId: '1',
   integrationPublicKey: 'integration-pubkey',
   installation: {
     id: 'https://auth.example.com',
@@ -70,7 +71,7 @@ const sampleEnrollment: StoredEnrollment = {
 describe('claimPendingAttempt', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockCryptoService.ensureEnrollmentKeyPair.mockResolvedValue(true);
+    mockCryptoService.requireEnrollmentKeyPair.mockResolvedValue(undefined);
     mockGenerateProofToken.mockResolvedValue('device-proof-token');
     mockCryptoService.sign.mockResolvedValue('device-proof-sig');
     mockBuildPendingPayload.mockReturnValue('pending-payload');
@@ -103,7 +104,7 @@ describe('claimPendingAttempt', () => {
 
     expect(mockAuthAttemptsApi.pending).toHaveBeenCalledWith(
       {
-        enrollmentId: 'enr-1',
+        enrollmentId: '1',
         enrollmentProofToken: 'enrollment-token',
         deviceProofToken: 'device-proof-token',
         deviceProofTokenSigned: 'device-proof-sig',
@@ -200,6 +201,18 @@ describe('claimPendingAttempt', () => {
       'before_verify',
       'after_verify',
     ]);
+  });
+
+  it('requires an existing key and does not generate when the alias is missing', async () => {
+    mockCryptoService.requireEnrollmentKeyPair.mockRejectedValue(
+      Object.assign(new Error('ENROLLMENT_KEY_MISSING'), {name: 'ENROLLMENT_KEY_MISSING'}),
+    );
+
+    await expect(claimPendingAttempt(sampleEnrollment)).rejects.toMatchObject({
+      name: 'ENROLLMENT_KEY_MISSING',
+    });
+    expect(mockAuthAttemptsApi.pending).not.toHaveBeenCalled();
+    expect(mockGenerateProofToken).not.toHaveBeenCalled();
   });
 
   it('propagates Auth API network errors to the caller', async () => {

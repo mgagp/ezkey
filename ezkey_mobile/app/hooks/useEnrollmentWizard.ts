@@ -29,9 +29,11 @@ import {env} from '../config/env';
 import {readIsDebugBuild} from '../config/buildFlavor';
 import {integrationKeyAlgorithmBindError} from '../utils/integrationKeyAlgorithm';
 import {buildInstallation, resolveEnrollmentAuthUrl} from '../utils/installationMetadata';
+import {deriveLocalEnrollmentId} from '../utils/localEnrollmentIdentity';
 import {isControlledEnrollmentBypassAvailable} from '../utils/controlledEnrollmentBypass';
 import {logEnrollmentSeedIngest} from '../utils/enrollmentSeedLogRedaction';
 import {parseQrPayload} from '../utils/qrPayload';
+import {normalizeInstallationId} from '../utils/urlValidation';
 import {
   buildBindPayload,
   buildVerifyDevicePayload,
@@ -43,7 +45,12 @@ import {
 // ---------------------------------------------------------------------------
 
 type EnrollmentDraft = {
+  /** Installation-scoped local enrollment handle (storage / Keystore / navigation). */
   id: string;
+  /** Auth API enrollment id for this installation (wire bodies). */
+  serverEnrollmentId: string;
+  /** Normalized Auth URL trust-zone id. */
+  installationId: string;
   integrationId: string;
   integrationName: string;
   tenantName?: string;
@@ -189,12 +196,22 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
     (
       response: BindEnrollmentResponse,
       request: {enrollmentId: string; enrollmentProofToken: string},
-    ): EnrollmentDraft => {
+      trustZoneAuthUrl: string | undefined,
+    ): EnrollmentDraft | undefined => {
       const rawId = response.enrollmentId ?? request.enrollmentId;
-      const enrollmentId = String(rawId);
+      const serverEnrollmentId = String(rawId);
+      const installationId =
+        normalizeInstallationId(trustZoneAuthUrl) ??
+        resolveEnrollmentAuthUrl(trustZoneAuthUrl);
+      if (!installationId) {
+        return undefined;
+      }
+      const localId = deriveLocalEnrollmentId(installationId, serverEnrollmentId);
       return {
-        id: enrollmentId,
-        integrationId: enrollmentId,
+        id: localId,
+        serverEnrollmentId,
+        installationId,
+        integrationId: serverEnrollmentId,
         integrationName: response.integrationName ?? t('enrollmentWizard.integrationFallback'),
         tenantName: response.tenantName ?? undefined,
         tenantId: response.tenantId,
@@ -263,7 +280,16 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
           setScannerVisible(false);
           return;
         }
-        const nextDraft = buildDraft(response, {enrollmentId, enrollmentProofToken});
+        const nextDraft = buildDraft(
+          response,
+          {enrollmentId, enrollmentProofToken},
+          urlForBind ?? env.configuredApiBaseUrl,
+        );
+        if (!nextDraft) {
+          setBindError(t('enrollmentWizard.missingAuthUrl'));
+          setScannerVisible(false);
+          return;
+        }
         setDraft(nextDraft);
         setScannerVisible(false);
       } catch (error) {
@@ -286,26 +312,30 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
       setChallengeError(t('enrollmentWizard.challengeLength'));
       return;
     }
-    const enrollmentId = draft.id.toString();
+    const localEnrollmentId = draft.id;
+    const serverEnrollmentId = draft.serverEnrollmentId;
     const now = new Date().toISOString();
     const effectiveAuthUrl = resolveEnrollmentAuthUrl(authUrl);
     setIsSubmitting(true);
+    let keyMaterialCreated = false;
     try {
-      await cryptoService.ensureEnrollmentKeyPair(enrollmentId);
-      const publicKey = await cryptoService.getPublicKey(enrollmentId);
+      await cryptoService.ensureEnrollmentKeyPair(localEnrollmentId);
+      keyMaterialCreated = true;
+      const publicKey = await cryptoService.getPublicKey(localEnrollmentId);
       const devicePrivateKeyStorageTier =
-        await cryptoService.getEnrollmentPrivateKeyStorageTier(enrollmentId);
+        await cryptoService.getEnrollmentPrivateKeyStorageTier(localEnrollmentId);
       const challengeNum = Number(challengeResponse);
+      const serverEnrollmentNumber = Number(serverEnrollmentId);
       const verifyDevicePayload = buildVerifyDevicePayload(
         draft.enrollmentProofToken,
-        Number(draft.id),
+        serverEnrollmentNumber,
         challengeNum,
         publicKey,
       );
-      const proofTokenSigned = await cryptoService.sign(enrollmentId, verifyDevicePayload);
+      const proofTokenSigned = await cryptoService.sign(localEnrollmentId, verifyDevicePayload);
       const verifyResponse = await enrollmentsApi.verify(
         {
-          enrollmentId: draft.id,
+          enrollmentId: serverEnrollmentId,
           devicePublicKey: publicKey,
           enrollmentProofTokenSigned: proofTokenSigned,
           challengeResponse,
@@ -315,7 +345,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
       );
       const verifyResultPayload = buildVerifyResultPayload(
         draft.enrollmentProofToken,
-        Number(draft.id),
+        serverEnrollmentNumber,
         'VERIFIED',
         verifyResponse.enrollmentVerifyMessage,
       );
@@ -325,6 +355,8 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         draft.integrationPublicKey,
       );
       if (!verifyResultOk) {
+        await cryptoService.deleteEnrollmentKeyPair(localEnrollmentId).catch(() => {});
+        keyMaterialCreated = false;
         setChallengeError(t('enrollmentWizard.invalidEnrollmentResult'));
         setEnrollmentChallenge('');
         return;
@@ -340,7 +372,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         }
       }
       const record: StoredEnrollment = {
-        id: draft.id,
+        id: localEnrollmentId,
         integrationId: draft.integrationId,
         integrationName: draft.integrationName,
         tenantName: draft.tenantName,
@@ -350,7 +382,7 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         lastActivityAt: now,
         favorited: false,
         enrollmentProofToken: draft.enrollmentProofToken,
-        enrollmentId: enrollmentId,
+        enrollmentId: serverEnrollmentId,
         integrationPublicKey: draft.integrationPublicKey,
         enrollmentName: draft.enrollmentName,
         deviceLabel: draft.deviceLabel,
@@ -358,11 +390,15 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
         installation,
       };
       await saveEnrollment.mutateAsync(record);
+      keyMaterialCreated = false;
       setDraft(undefined);
       setSeedSource(undefined);
       setEnrollmentChallenge('');
       popToTop();
     } catch (error) {
+      if (keyMaterialCreated) {
+        await cryptoService.deleteEnrollmentKeyPair(localEnrollmentId).catch(() => {});
+      }
       const message = extractErrorMessage(error);
       setChallengeError(message);
       setEnrollmentChallenge('');

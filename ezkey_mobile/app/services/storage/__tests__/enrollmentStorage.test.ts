@@ -464,4 +464,73 @@ describe('enrollmentStorage', () => {
     expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
     warnSpy.mockRestore();
   });
+
+  it('keeps two enrollments with the same server id when local ids differ by installation', async () => {
+    const {deriveLocalEnrollmentId} = require('../../../utils/localEnrollmentIdentity');
+    const idA = deriveLocalEnrollmentId('https://auth-a.example.com', 1);
+    const idB = deriveLocalEnrollmentId('https://auth-b.example.com', 1);
+    let storedJson: string | null = null;
+    mockAsyncStorage.getItem.mockImplementation(async () => storedJson);
+    mockAsyncStorage.setItem.mockImplementation(async (_key, value) => {
+      storedJson = value as string;
+    });
+    mockSecureStorage.getItem.mockImplementation(async key => {
+      if (key === `ezkey-mobile/enrollment-proof-token.${idA}`) {
+        return 'token-a';
+      }
+      if (key === `ezkey-mobile/integration-public-key.${idA}`) {
+        return 'pk-a';
+      }
+      if (key === `ezkey-mobile/enrollment-proof-token.${idB}`) {
+        return 'token-b';
+      }
+      if (key === `ezkey-mobile/integration-public-key.${idB}`) {
+        return 'pk-b';
+      }
+      return undefined;
+    });
+
+    await enrollmentStorage.saveEnrollment({
+      id: idA,
+      integrationId: '1',
+      integrationName: 'A',
+      createdAt: '2026-07-20T00:00:00.000Z',
+      lastActivityAt: '2026-07-20T00:00:00.000Z',
+      enrollmentProofToken: 'token-a',
+      enrollmentId: '1',
+      integrationPublicKey: 'pk-a',
+      installation: {
+        id: 'https://auth-a.example.com',
+        authUrl: 'https://auth-a.example.com',
+        name: 'A',
+      },
+    });
+    await enrollmentStorage.saveEnrollment({
+      id: idB,
+      integrationId: '1',
+      integrationName: 'B',
+      createdAt: '2026-07-20T00:00:00.000Z',
+      lastActivityAt: '2026-07-20T00:00:00.000Z',
+      enrollmentProofToken: 'token-b',
+      enrollmentId: '1',
+      integrationPublicKey: 'pk-b',
+      installation: {
+        id: 'https://auth-b.example.com',
+        authUrl: 'https://auth-b.example.com',
+        name: 'B',
+      },
+    });
+
+    const persisted = JSON.parse(storedJson as string);
+    expect(persisted).toHaveLength(2);
+    expect(persisted.map((row: {id: string}) => row.id).sort()).toEqual([idA, idB].sort());
+    expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
+      `ezkey-mobile/enrollment-proof-token.${idA}`,
+      'token-a',
+    );
+    expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
+      `ezkey-mobile/enrollment-proof-token.${idB}`,
+      'token-b',
+    );
+  });
 });

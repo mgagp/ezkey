@@ -43,9 +43,8 @@ export type Installation = {
  * trust zone (`installation`). Nested persistence of that object is packaging;
  * conceptually the trust zone owns the enrollment set.
  *
- * Note: `id` is still the local primary key used for navigation/storage and today
- * still mirrors the server enrollment id — installation-scoped local identity is
- * the follow-on MOB-011 program slice.
+ * Note: {@code id} is the installation-scoped local enrollment handle (storage, Keystore,
+ * navigation). Persist Auth API numeric id in {@code enrollmentId} on {@code StoredEnrollment}.
  */
 export type EnrollmentSummary = {
   id: string;
