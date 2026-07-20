@@ -75,9 +75,38 @@ describe('normalizeInstallationId', () => {
     );
   });
 
-  it('preserves distinct non-empty paths', () => {
+  it('treats case, trailing slash, and :443 as the same trust zone', () => {
+    const canon = 'https://ezkey.acme.com';
+    expect(normalizeInstallationId('https://ezkey.acme.com')).toBe(canon);
+    expect(normalizeInstallationId('https://ezkey.acme.com/')).toBe(canon);
+    expect(normalizeInstallationId('https://EZKEY.ACME.COM:443')).toBe(canon);
+    expect(normalizeInstallationId('HTTPS://ezkey.acme.com:443/')).toBe(canon);
+  });
+
+  it('preserves distinct non-empty paths as distinct trust zones', () => {
     expect(normalizeInstallationId('https://ezkey.acme.com/auth')).toBe(
       'https://ezkey.acme.com/auth',
     );
+    expect(normalizeInstallationId('https://ezkey.acme.com/auth/')).toBe(
+      'https://ezkey.acme.com/auth',
+    );
+    expect(normalizeInstallationId('https://ezkey.acme.com')).not.toBe(
+      normalizeInstallationId('https://ezkey.acme.com/auth'),
+    );
+  });
+
+  it('preserves non-default ports as distinct trust zones', () => {
+    expect(normalizeInstallationId('https://ezkey.acme.com:8443')).toBe(
+      'https://ezkey.acme.com:8443',
+    );
+    expect(normalizeInstallationId('https://ezkey.acme.com:8443')).not.toBe(
+      normalizeInstallationId('https://ezkey.acme.com'),
+    );
+  });
+
+  it('returns undefined for invalid Auth URLs (no fake installation id)', () => {
+    expect(normalizeInstallationId('http://ezkey.acme.com')).toBeUndefined();
+    expect(normalizeInstallationId('not-a-url')).toBeUndefined();
+    expect(normalizeInstallationId(null)).toBeUndefined();
   });
 });

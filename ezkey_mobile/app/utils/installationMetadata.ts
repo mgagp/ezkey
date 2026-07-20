@@ -5,7 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for full license information.
  *
  * Module: installationMetadata
- * Description: Canonical Ezkey installation metadata derivation for local enrollment presentation.
+ * Description: Trust-zone installation identity and branding derivation for enrollments
+ *              that belong to a normalized Auth API URL installation.
  * @since 2025
  */
 
@@ -74,6 +75,40 @@ function normalizeInstallation(input?: Partial<Installation>): Partial<Installat
   };
 }
 
+/**
+ * Resolves the trust-zone id for an enrollment carrier.
+ *
+ * Never substitutes the local enrollment `id` for installation identity — that
+ * would collapse distinct trust zones onto server enrollment ids.
+ *
+ * @param record Enrollment or legacy carrier with optional installation fields.
+ * @return Normalized installation id, or undefined when the trust zone is unknown.
+ * @since 2026
+ */
+export function resolveEnrollmentTrustZoneId(
+  record: InstallationCarrier,
+): string | undefined {
+  const normalizedInstallation = normalizeInstallation(record.installation);
+  const effectiveAuthUrl = resolveEnrollmentAuthUrl(
+    normalizedInstallation.authUrl ?? record.authUrl,
+  );
+
+  const fromNestedId = normalizedInstallation.id
+    ? normalizeInstallationId(normalizedInstallation.id) ??
+      normalizeText(normalizedInstallation.id)
+    : undefined;
+  if (fromNestedId) {
+    return fromNestedId;
+  }
+
+  const fromLegacyId = normalizeText(record.installationId);
+  if (fromLegacyId) {
+    return normalizeInstallationId(fromLegacyId) ?? fromLegacyId;
+  }
+
+  return normalizeInstallationId(effectiveAuthUrl);
+}
+
 export function buildInstallation(
   authUrl: string,
   instanceInfo?: PublicInstanceInfoResponse,
@@ -81,7 +116,8 @@ export function buildInstallation(
 ): Installation {
   const installationId = normalizeInstallationId(authUrl);
   const installationHost = getInstallationHost(authUrl);
-  const installationName = normalizeText(instanceInfo?.instanceName) ?? installationHost ?? DEFAULT_INSTALLATION_NAME;
+  const installationName =
+    normalizeText(instanceInfo?.instanceName) ?? installationHost ?? DEFAULT_INSTALLATION_NAME;
 
   return {
     id: installationId ?? authUrl,
@@ -98,12 +134,10 @@ export const buildInstallationSummary = buildInstallation;
 
 export function hydrateInstallationMetadata<T extends InstallationCarrier>(record: T): T {
   const normalizedInstallation = normalizeInstallation(record.installation);
-  const effectiveAuthUrl = resolveEnrollmentAuthUrl(normalizedInstallation.authUrl ?? record.authUrl);
-  const installationId =
-    normalizedInstallation.id ??
-    normalizeText(record.installationId) ??
-    normalizeInstallationId(effectiveAuthUrl) ??
-    normalizeText(record.id);
+  const effectiveAuthUrl = resolveEnrollmentAuthUrl(
+    normalizedInstallation.authUrl ?? record.authUrl,
+  );
+  const installationId = resolveEnrollmentTrustZoneId(record);
   const installationHost =
     normalizedInstallation.host ??
     normalizeText(record.installationHost) ??
@@ -135,7 +169,10 @@ export function hydrateInstallationMetadata<T extends InstallationCarrier>(recor
   };
 }
 
-export function isInstallationMetadataStale(record: InstallationCarrier, now: number = Date.now()): boolean {
+export function isInstallationMetadataStale(
+  record: InstallationCarrier,
+  now: number = Date.now(),
+): boolean {
   const lastRefreshedAt =
     normalizeInstallation(record.installation).lastRefreshedAt ??
     normalizeText(record.installationLastRefreshedAt);
@@ -153,7 +190,10 @@ export function isInstallationMetadataStale(record: InstallationCarrier, now: nu
 
 export function needsInstallationMetadataRefresh(record: InstallationCarrier): boolean {
   const installation = normalizeInstallation(record.installation);
-  const installationHost = installation.host ?? normalizeText(record.installationHost) ?? getInstallationHost(installation.authUrl ?? record.authUrl);
+  const installationHost =
+    installation.host ??
+    normalizeText(record.installationHost) ??
+    getInstallationHost(installation.authUrl ?? record.authUrl);
   const installationName = installation.name ?? normalizeText(record.installationName);
   const installationDescription =
     installation.description ?? normalizeText(record.installationDescription);

@@ -111,6 +111,58 @@ describe('hydrateInstallationMetadata', () => {
       lastRefreshedAt: undefined,
     });
   });
+
+  it('never uses the local enrollment id as the trust-zone id', () => {
+    jest.resetModules();
+    jest.doMock('react-native-config', () => ({
+      __esModule: true,
+      default: {},
+    }));
+    const hydrateInstallationMetadata = require('../installationMetadata')
+      .hydrateInstallationMetadata as <T>(record: T) => T & {
+      installation?: {id: string};
+    };
+
+    const result = hydrateInstallationMetadata({
+      id: '1',
+    });
+
+    expect(result.installation).toBeUndefined();
+  });
+});
+
+describe('resolveEnrollmentTrustZoneId', () => {
+  const loadResolveEnrollmentTrustZoneId = (config: Record<string, string> = {}) => {
+    jest.resetModules();
+    jest.doMock('react-native-config', () => ({
+      __esModule: true,
+      default: config,
+    }));
+
+    return require('../installationMetadata').resolveEnrollmentTrustZoneId as (record: {
+      id?: string;
+      authUrl?: string;
+      installationId?: string;
+      installation?: {id?: string; authUrl?: string};
+    }) => string | undefined;
+  };
+
+  it('resolves from normalized authUrl without falling back to enrollment id', () => {
+    const resolveEnrollmentTrustZoneId = loadResolveEnrollmentTrustZoneId();
+
+    expect(
+      resolveEnrollmentTrustZoneId({
+        id: '1',
+        authUrl: 'https://EZKEY.Example.com:443/',
+      }),
+    ).toBe('https://ezkey.example.com');
+  });
+
+  it('returns undefined when only an enrollment id is present and no Auth URL is configured', () => {
+    const resolveEnrollmentTrustZoneId = loadResolveEnrollmentTrustZoneId();
+
+    expect(resolveEnrollmentTrustZoneId({id: '1'})).toBeUndefined();
+  });
 });
 
 describe('needsInstallationMetadataRefresh', () => {
