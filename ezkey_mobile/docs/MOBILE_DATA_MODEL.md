@@ -15,8 +15,8 @@ persists, derives, and displays those values locally.
 | Concept | Purpose | Source | Persisted | Sensitive |
 | --- | --- | --- | --- | --- |
 | `PublicInstanceInfoResponse` | Public installation branding metadata from Auth API | `instanceInfoApi.get(...)` | Indirectly, after normalization into installation summary fields | No |
-| `Installation` | Canonical local trust-zone object for an Ezkey installation | Derived from normalized `authUrl` and optional public instance-info response | Yes, nested inside each enrollment record | No |
-| `EnrollmentSummary` | Core local view of an enrolled device and its business metadata | Local mobile contract layer in `app/services/api/types.ts` | Yes | Mostly no |
+| `Installation` | Local **trust zone** for one Ezkey site (identity = normalized Auth URL) | Derived from normalized `authUrl`; optional `instance-info` enriches display only | Yes, nested inside each enrollment record (pragmatic packaging) | No |
+| `EnrollmentSummary` | Core local view of an enrolled device that **belongs to** one installation | Local mobile contract layer in `app/services/api/types.ts` | Yes | Mostly no |
 | `StoredEnrollment` | Runtime enrollment record used by Home, Detail, and auth flows | `EnrollmentSummary` plus secure proof-token material and integration verification metadata | Yes, after secure rehydration | Yes, because it contains `enrollmentProofToken` and `integrationPublicKey` |
 | Enrollment draft | Temporary bind-stage object before enrollment is verified | Enrollment Wizard bind response mapping | No | Yes |
 | Pending attempt | In-memory auth attempt returned by `pending` | Pending Authentication screen | No | Yes |
@@ -48,24 +48,30 @@ flowchart TD
   DeviceCrypto --> RespondIntent
 ```
 
-The durable center of the local model is `StoredEnrollment`. Everything else is either a thinner contract view
-(`EnrollmentSummary`, `Installation`) or transient flow state (`EnrollmentDraft`, pending attempt,
-respond intent).
+**Product posture:** an Ezkey **installation** is a trust zone. Every enrollment **belongs to** exactly one
+installation. The durable persisted *record* is still `StoredEnrollment` (one row per enrolled device), but that
+record is owned by its installation trust zone — installation is not decoration around an enrollment-centric model.
 
-## Installation Metadata
+Pragmatic packaging: the app nests `installation` inside each enrollment row rather than maintaining a separate
+installation table. That is a storage convenience, not a claim that the installation is conceptually subordinate to
+the enrollment lifecycle.
 
-Installation metadata exists to make Home and Detail truthful and human-readable without turning the mobile app into
-an admin client. The app derives it from the effective Auth API URL and refreshes it opportunistically through the
-public `instance-info` endpoint.
+Transient flow state (`EnrollmentDraft`, pending attempt, respond intent) remains in-memory only.
 
-`Installation` is the mobile app's first-class local representation of an Ezkey site / trust zone. The object is
-persisted inside each enrollment record because the installation remains subordinate to the enrollment lifecycle, but
-the object itself is explicit and canonical. The identity anchor is always the normalized Auth API URL, never the
-mutable public branding returned by `instance-info`.
+## Installation Trust Zone
+
+`Installation` is the mobile app’s first-class local representation of an Ezkey site / trust zone. Its **identity
+anchor is always the normalized Auth API URL** (`normalizeInstallationId` / `validateAuthUrl`). Mutable public
+branding from `instance-info` (`name`, `description`, `aboutUrl`) enriches Home and Detail only; it never replaces
+URL identity and must never be treated as a cryptographic trust anchor.
+
+There is **no installation UUID**. Uniqueness of a trust zone is the normalization contract (host case, trailing
+slash, implicit HTTPS `:443`, distinct non-empty paths). Equivalent normalized URLs are the same installation even
+when branding was missing on one enrollment path.
 
 | Field/concept | Meaning | Source | Persisted | Displayed where |
 | --- | --- | --- | --- | --- |
-| `installation.id` | Normalized stable installation identifier | Derived from `authUrl` via URL normalization | Yes | Not shown directly |
+| `installation.id` | Canonical trust-zone identifier (= normalized Auth URL) | `normalizeInstallationId(authUrl)` | Yes | Not shown directly |
 | `installation.authUrl` | Effective Auth API base URL for the installation | QR payload override or global environment fallback | Yes | Detail screen technical server block |
 | `installation.host` | Host component of the effective Auth API URL | Derived from `authUrl` | Yes | Home installation headers, Detail hint |
 | `installation.name` | Human-facing installation name | Public instance-info response or host fallback | Yes | Home installation headers, Detail identity zone |
@@ -73,23 +79,25 @@ mutable public branding returned by `instance-info`.
 | `installation.aboutUrl` | About URL for the installation | Public instance-info response | Yes | Not currently displayed in primary flow |
 | `installation.lastRefreshedAt` | Timestamp for local metadata freshness | Local refresh process | Yes | Not shown directly |
 
-Important rule: installation metadata is local presentation metadata attached to an enrollment. The app refreshes it
-silently when stale, but it is still subordinate to the enrollment record and not treated as a standalone persisted
-entity.
+Display fields may refresh silently when stale. Identity fields (`id`, `authUrl`) stay tied to URL normalization.
 
 ## Installation Association Pipeline
 
-The association from enrollment to installation is intentional and specification-driven:
+Enrollment → installation association is ownership, not optional UI decoration:
 
 1. Resolve the effective `authUrl` from the QR payload override or the configured mobile environment fallback.
-2. Normalize that URL with the same rules used by `validateAuthUrl()` / `normalizeInstallationId()`.
+2. Normalize that URL with `validateAuthUrl()` / `normalizeInstallationId()` — that value **is** the trust-zone id.
 3. Build or hydrate the `Installation` object from the normalized URL plus any cached or freshly fetched public
-  instance-info metadata.
-4. Persist the resulting `installation` object inside `StoredEnrollment`.
+  instance-info metadata (branding only).
+4. Persist the resulting `installation` object inside `StoredEnrollment` (nested packaging).
 5. Group Home data by `installation.id`, then by tenant metadata inside each installation.
 
-The important invariant is that two enrollments with equivalent normalized Auth API URLs belong to the same
-installation, even if they arrived independently and even if branding was missing during one of the flows.
+Invariant: two enrollments with equivalent normalized Auth API URLs belong to the **same** trust zone. Two distinct
+normalized URLs are **independent** trust zones and must not encroach on each other (crypto/storage handle scoping
+is tracked under MOB-011 / `I-2026-07-20-mobile-installation-scoped-enrollment-identity` — not yet complete).
+
+**Known debt (activity 2):** local enrollment `id` and Keystore/seal handles still follow the server `enrollmentId`
+alone today. That contradicts full trust-zone isolation and is the follow-on tracer bullet after this canon.
 
 ## Enrollment Summary and Stored Enrollment
 
@@ -98,10 +106,10 @@ proof token and integration verification material needed for later auth flows.
 
 | Aspect | `EnrollmentSummary` | `StoredEnrollment` | Notes |
 | --- | --- | --- | --- |
-| Identity | `id`, `integrationId` | same | `id` is the main local enrollment identifier used in navigation and storage. |
+| Identity | `id`, `integrationId` | same | `id` is the main local enrollment identifier used in navigation and storage (today still equals server enrollment id — see known debt above). |
 | Integration display | `integrationName` | same | Primary end-user label across Home, Detail, and Pending flows. |
 | Tenant grouping | `tenantName`, `tenantId`, `tenantDescription` | same | Supports tenant grouping in Home. |
-| Installation association | `installation` object | same | Hydrated from `authUrl` and public instance info. |
+| Trust-zone ownership | `installation` object | same | Enrollment belongs to this installation; identity = normalized Auth URL. |
 | Activity timestamps | `createdAt`, `lastActivityAt` | same | Current app uses these as the minimal durable activity snapshot. |
 | Favorites | `favorited` | same | A purely local ordering preference. |
 | Server routing | `installation.authUrl` | same | Allows per-installation server targeting. |
@@ -204,7 +212,7 @@ revocation, or readiness states that it cannot prove.
 | --- | --- | --- | --- | --- |
 | Enrollment draft | Bind response passes algorithm and signature checks | Bind is retried or bind form is rescanned | Wizard cancel, verify completion, or bind reset | Purely in-memory workflow state. |
 | `StoredEnrollment` | Verify-result signature passes and save mutation succeeds | Installation metadata refresh, future local edits, favorite changes | Individual delete or clear-all destructive action | Core durable local record. |
-| `installation` object | Enrollment save or silent metadata refresh | When metadata is stale or incomplete | Enrollment deletion / clear all | Subordinate to the enrollment record, but explicit in the local model. |
+| `installation` object | Enrollment save or silent metadata refresh | When branding metadata is stale or incomplete | Enrollment deletion / clear all | Trust zone the enrollment belongs to; nested for packaging; identity is normalized Auth URL. |
 | Pending attempt | Pending response passes signature verification | Re-check overwrites it | Empty result, failed state, leaving screen, or new load cycle | In-memory only. |
 | Respond intent | User starts entering challenge or taps approve/deny | User edits challenge input or retries | After result or retry cycle | In-memory only. |
 | Device key pair | First verify or first later ensure call for that enrollment | Not meaningfully updated in normal flow | Individual delete or clear-all (best-effort `nativeCrypto.deleteKeyPair`); also external keystore / app / device reset | Managed in Android Keystore outside AsyncStorage. Wipe paths remove the alias fail-open so storage cleanup is never blocked. |

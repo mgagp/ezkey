@@ -1,22 +1,22 @@
 # Handoff — MOB-016 orphan Keystore cleanup after failed enrollment verify
 
-**Status:** `open` — **fix authorized**  
-**Lane:** Mobile protocol security hygiene (pass-2)  
+**Status:** `superseded` — **defer (absorbed)** into MOB-011 program activity 2 (2026-07-20 Grill Me)  
+**Lane:** Mobile protocol security hygiene (pass-2) → program  
 **Finding:** MOB-016 (P2, Confirmed)  
 **Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../hygiene/mobile-protocol-security/2026-07-19-pass-2.md)  
 **Assessment register:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md) §14.2 MOB-016
 
-Use this prompt to start a **new Cursor session** that **implements** MOB-016.
+**Canonical implementation:** [`I-2026-07-20-mobile-installation-scoped-enrollment-identity`](../ideas/I-2026-07-20-mobile-installation-scoped-enrollment-identity.md) /
+[`TB-2026-07-20-mobile-installation-scoped-enrollment-identity`](../TB-2026-07-20-mobile-installation-scoped-enrollment-identity.md)
+(after trust-zone canon TB). Do **not** open a standalone MOB-016 hygiene PR.
 
-**Preferred order:** after **MOB-011** (scoped aliases) and ideally after **MOB-013** (pending/respond no longer create keys — wizard remains the sole create path). If 011/013 are not on the branch, stop and report unless the operator explicitly waives the prerequisite.
-
-Do not bundle MOB-012/014/015 unless asked.
+This file is retained as an evidence / scenario pointer only.
 
 ---
 
-## Operator decisions (already made)
+## Operator decisions (revised 2026-07-20)
 
-1. **Disposition:** **fix** (hygiene).
+1. **Disposition:** **defer (absorbed)** — orphan cleanup is part of the first-principles identity/crypto design (keys still created before verify; cleanup on failure is mandatory in that slice).
 2. HITL briefing accepted 2026-07-19: Keystore key created before verify/save leaves orphans on failure; cleanup required when persistence never succeeded.
 
 ---
