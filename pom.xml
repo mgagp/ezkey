@@ -67,7 +67,8 @@
 		<!-- SEC-019: targeted BOM overrides (July 2026 Security Challenge advisories) -->
 		<postgresql.version>42.7.12</postgresql.version>
 		<logback.version>1.5.38</logback.version>
-		<tomcat.version>11.0.23</tomcat.version>
+		<tomcat.version>11.0.24</tomcat.version>
+
 		<jackson-bom.version>3.1.5</jackson-bom.version>
 		<jackson-2-bom.version>2.21.5</jackson-2-bom.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
