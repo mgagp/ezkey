@@ -558,7 +558,7 @@
 				<spring-boot.build-image.builder>paketobuildpacks/builder-noble-java-tiny</spring-boot.build-image.builder>
 				<spring-boot.build-image.environment.BP_NATIVE_IMAGE>true</spring-boot.build-image.environment.BP_NATIVE_IMAGE>
 				<!-- Centralize GraalVM Native Build Tools version -->
-				<native.maven.plugin.version>1.1.4</native.maven.plugin.version>
+				<native.maven.plugin.version>1.1.5</native.maven.plugin.version>
 			</properties>
 		</profile>
 
