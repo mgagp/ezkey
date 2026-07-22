@@ -17,6 +17,7 @@ import {buildPendingPayload} from '../crypto/authAttemptPayload';
 import {cryptoService} from '../crypto';
 import {StoredEnrollment} from '../storage/enrollmentStorage';
 import {generateProofToken} from '../../utils/generateProofToken';
+import {resolveServerEnrollmentId} from '../../utils/localEnrollmentIdentity';
 import {sha256HexUtf8} from '../../utils/sha256HexUtf8';
 import {PendingAttempt} from './types';
 
@@ -101,14 +102,14 @@ export async function claimPendingAttempt(
   onStep?.('start');
 
   const enrollmentKeyId = enrollment.id.toString();
-  await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
+  await cryptoService.requireEnrollmentKeyPair(enrollmentKeyId);
   onStep?.('after_ensure');
 
   const deviceProofToken = await generateProofToken();
   const deviceProofTokenSigned = await cryptoService.sign(enrollmentKeyId, deviceProofToken);
   const response = await authAttemptsApi.pending(
     {
-      enrollmentId: enrollment.id,
+      enrollmentId: resolveServerEnrollmentId(enrollment),
       enrollmentProofToken: enrollment.enrollmentProofToken,
       deviceProofToken,
       deviceProofTokenSigned,

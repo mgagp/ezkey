@@ -436,12 +436,12 @@ No remediations authorized until operator HITL.
 
 | Finding | Severity | Status |
 | --- | --- | --- |
-| **MOB-011** | P1 | Open — installation-scoped identity |
+| **MOB-011** | P1 | Defer (program) — trust-zone canon then scoped identity I/TB |
 | **MOB-012** | P1 | Open — `setUnlockedDeviceRequired` API gate |
-| **MOB-013** | P1/P2 | Open — no silent key regen on pending/respond |
+| **MOB-013** | P1/P2 | Defer (absorbed into MOB-011 activity 2) |
 | **MOB-014** | P2 | Open — malformed pending ≠ empty |
 | **MOB-015** | P2 | Open — unseal failure visibility |
-| **MOB-016** | P2 | Open — orphan Keystore cleanup |
+| **MOB-016** | P2 | Defer (absorbed into MOB-011 activity 2) |
 
 ## 10. Claim verdict (product-facing)
 
@@ -454,7 +454,7 @@ No remediations authorized until operator HITL.
 | “Backend verifies StrongBox” | **Unsupported** — do not claim |
 | “Pinning / phishing resistance comparable to WebAuthn” | **Unsupported** — do not claim |
 | “Deleting an enrollment removes local Keystore material” | **Supported** for intended wipe path (MOB-002); delete is fail-open if Keystore delete fails |
-| “Multiple independent Ezkey installations coexist safely on one phone” | **Unsupported today** — local identity is enrollment-id-only (MOB-011); installation metadata exists but does not scope Keystore aliases or sealed-secret keys |
+| “Multiple independent Ezkey installations coexist safely on one phone” | **Unsupported today** — local identity is enrollment-id-only (MOB-011); **program funded** 2026-07-20 (`I-2026-07-20-mobile-installation-trust-zone-canon` → scoped-enrollment-identity) |
 
 ## 11. Methodology next steps
 
@@ -537,7 +537,7 @@ Severity/confidence scale unchanged from §6.
 | --- | --- |
 | **Severity** | P1 |
 | **Confidence** | Confirmed |
-| **Disposition** | **Open — pass-2 HITL** (identity migration; likely program if accepted) |
+| **Disposition** | **Defer (program)** — Grill Me 2026-07-20; see `I-2026-07-20-mobile-installation-trust-zone-canon` then `I-2026-07-20-mobile-installation-scoped-enrollment-identity` (absorbs MOB-013/016) |
 | **MASVS** | STORAGE, CRYPTO, AUTH |
 | **Protocol stage** | Persist after verify; all later pending/respond/delete |
 
@@ -563,7 +563,7 @@ Severity/confidence scale unchanged from §6.
 
 **Fail posture.** Fail-open for overwrite (second save wins).
 
-**Recommended action.** Installation-scoped local identity (e.g. normalized installation id + enrollment id) for storage keys, Keystore aliases, query keys, and wipe; keep numeric `enrollmentId` for API bodies; plan AAD/alias migration carefully.
+**Recommended action.** Program (2026-07-20): (1) trust-zone canon — enrollment belongs to normalized Auth URL installation; (2) installation-scoped local identity + Keystore/seal handles (O3 preferred), draft-scoped identity (7A), absorb MOB-013/016. Keep numeric `enrollmentId` for API bodies. Outside production — full first-principles design, not a minimal hygiene patch. See `I-2026-07-20-mobile-installation-trust-zone-canon` and `I-2026-07-20-mobile-installation-scoped-enrollment-identity`.
 
 **Verification class.** Unit tests for collision save/list/delete; instrumentation for distinct aliases; manual two-installation enroll.
 
@@ -604,7 +604,7 @@ Documented platform defects include: generation/use failure without secure lock 
 | --- | --- |
 | **Severity** | P1 (with MOB-011/012) / P2 (isolation) |
 | **Confidence** | Confirmed |
-| **Disposition** | **Open — pass-2 HITL** |
+| **Disposition** | **Defer (absorbed)** — into `I-2026-07-20-mobile-installation-scoped-enrollment-identity` / matching TB (Grill Me 2026-07-20) |
 | **MASVS** | CRYPTO, AUTH |
 | **Protocol stage** | Pending claim; respond signing |
 
@@ -677,7 +677,7 @@ Documented platform defects include: generation/use failure without secure lock 
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed |
-| **Disposition** | **Open — pass-2 HITL** |
+| **Disposition** | **Defer (absorbed)** — into `I-2026-07-20-mobile-installation-scoped-enrollment-identity` / matching TB (Grill Me 2026-07-20) |
 | **MASVS** | CRYPTO (key lifecycle) |
 | **Protocol stage** | Enrollment verify |
 

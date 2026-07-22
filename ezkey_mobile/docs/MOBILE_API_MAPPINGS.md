@@ -147,16 +147,18 @@ metadata continues through the AsyncStorage-backed enrollment collection.
 | `StoredEnrollment.integrationPublicKey` | Bind response | Pending and respond verification | Securely rehydrated for future integration-signature checks. |
 | `StoredEnrollment.enrollmentProofToken` | Draft proof token | Pending flow | Sensitive enrollment token rehydrated from secure storage into the runtime local record. |
 | `StoredEnrollment.installation.authUrl` | QR or resolved installation URL | All subsequent API calls | Allows per-installation server targeting. |
-| `StoredEnrollment.installation` | `instanceInfoApi.get(...)` plus URL derivation | Home and Detail | Supports installation grouping and display as a first-class object. |
+| `StoredEnrollment.installation` | `instanceInfoApi.get(...)` plus URL derivation | Home and Detail | Trust zone the enrollment belongs to; supports grouping and display. |
 
 ### Installation Association and Refresh Mapping
 
 The mobile app does not wait for the backend to send a dedicated installation DTO during bind or verify. Instead it
-builds the local `Installation` object intentionally from the enrollment context.
+builds the local `Installation` trust zone from the enrollment context. Each enrollment **belongs to** that trust
+zone; nested persistence is packaging. Identity is the normalized Auth URL (no installation UUID). Hydration must
+never invent a trust-zone id from the local enrollment id alone.
 
 | Local installation field | Derived from | Stage | Notes |
 | --- | --- | --- | --- |
-| `installation.id` | Normalized effective `authUrl` | Enrollment verify and later hydration | Canonical trust-zone identity used for grouping. |
+| `installation.id` | Normalized effective `authUrl` | Enrollment verify and later hydration | Canonical trust-zone identity used for grouping and ownership. |
 | `installation.authUrl` | QR payload override or configured base URL | Enrollment verify and later hydration | Canonical routing base URL for later Auth API calls. |
 | `installation.host` | Normalized effective `authUrl` | Enrollment verify and later hydration | Used for fallback display and ambiguity hints. |
 | `installation.name` | `instanceInfo.instanceName` or host fallback | Enrollment verify and background refresh | Display-layer metadata only, not a cryptographic anchor. |
@@ -167,7 +169,7 @@ builds the local `Installation` object intentionally from the enrollment context
 Association pipeline:
 
 1. Resolve the effective `authUrl` from QR or environment fallback.
-2. Normalize it into the canonical installation identity.
+2. Normalize it into the canonical installation trust-zone identity.
 3. Build `installation` immediately, even if only host fallback metadata is available.
 4. Enrich it with `GET /api/v1/public/instance-info` when the call succeeds.
 5. Refresh stale installations opportunistically by installation ID so all enrollments sharing the same
