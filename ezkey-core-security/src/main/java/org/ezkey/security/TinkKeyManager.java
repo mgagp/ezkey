@@ -8,6 +8,7 @@ import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KeysetManager;
 import com.google.crypto.tink.KeysetReader;
 import com.google.crypto.tink.KeysetWriter;
+import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.subtle.AesGcmJce;
 import jakarta.annotation.PostConstruct;
@@ -376,7 +377,7 @@ public class TinkKeyManager implements KeyManagementOperations {
       keysetLock.readLock().lock();
     }
     try {
-      return keysetHandle.getPrimitive(Aead.class);
+      return keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
     } catch (GeneralSecurityException e) {
       throw new IllegalStateException("Unable to obtain AEAD primitive from keyset", e);
     } finally {
@@ -542,7 +543,7 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   private void verifyKeyset() throws GeneralSecurityException {
-    Aead aead = keysetHandle.getPrimitive(Aead.class);
+    Aead aead = keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
     String testData = "verification-test";
     byte[] ciphertext = aead.encrypt(testData.getBytes(StandardCharsets.UTF_8), null);
     byte[] plaintext = aead.decrypt(ciphertext, null);
