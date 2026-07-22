@@ -521,7 +521,10 @@ describe('enrollmentStorage', () => {
       },
     });
 
-    const persisted = JSON.parse(storedJson as string);
+    if (storedJson == null) {
+      throw new Error('expected persisted enrollments JSON after dual save');
+    }
+    const persisted = JSON.parse(storedJson);
     expect(persisted).toHaveLength(2);
     expect(persisted.map((row: {id: string}) => row.id).sort()).toEqual([idA, idB].sort());
     expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
