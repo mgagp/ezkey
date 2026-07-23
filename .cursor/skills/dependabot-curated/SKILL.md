@@ -60,23 +60,28 @@ not a mandatory top-level sort.
 
    ```bash
    gh pr list --author "app/dependabot" --state open --limit 50 \
-     --json number,title,url,mergeable,statusCheckRollup
+     --json number,title,url,mergeable,labels,statusCheckRollup
    ```
 
    On Windows when `gh` is not on PATH: `"C:\Program Files\GitHub CLI\gh.exe"`.
 
-2. Classify each PR **T1–T4** from the title SemVer digits and ecosystem path. Surface ambiguity
-   to the operator (e.g. icon library minor spanning several patch bumps → T3).
-3. Propose **3–6 lots max** for the session (80/20). Prefer fewer lots over one-PR theater.
-4. Present a **short lots overview**, then **HITL one lot at a time** — wait for Go / No-Go /
-   hold / defer before merging that lot or presenting the next. Do **not** ask for a bulk
-   `1A, 2B, 3B…` reply as the primary vehicle.
-5. On **Go:** merge each green PR in the lot individually (`gh pr merge <n> --squash` or the
+2. **Split deferred first:** any PR labeled `deferred:*` (notably `deferred:later-train`) goes under
+   **Already deferred — skip HITL** in the overview. Do **not** put them in weekly lots or re-ask
+   Go/No-Go unless the operator explicitly reopens that train. Non-Dependabot parked PRs with the
+   same label (e.g. a migration-idea PR) may be mentioned once for traceability.
+3. Classify each **remaining** PR **T1–T4** from the title SemVer digits and ecosystem path.
+   Surface ambiguity to the operator (e.g. icon library minor spanning several patch bumps → T3).
+4. Propose **3–6 lots max** for the session (80/20). Prefer fewer lots over one-PR theater.
+5. Present a **short lots overview** (deferred block first, then active lots), then **HITL one lot
+   at a time** — wait for Go / No-Go / hold / defer before merging that lot or presenting the next.
+   Do **not** ask for a bulk `1A, 2B, 3B…` reply as the primary vehicle.
+6. On **Go:** merge each green PR in the lot individually (`gh pr merge <n> --squash` or the
    repo’s usual merge method). Do not force unresolved conflicts into the lot.
-6. On **Defer:** leave open or close with a rationale comment. If investigation cost should not be
-   lost, create **one** `I-*` for that dependency (program deferral), not a Dependabot methodology
-   program.
-7. After all lot decisions: run **session closeout**, then write
+7. On **Defer:** leave open or close with a rationale comment; apply `deferred:later-train` (or a
+   more specific `deferred:*` label) when the PR should stay out of weekly lots for weeks/months.
+   If investigation cost should not be lost, create **one** `I-*` for that dependency (program
+   deferral), not a Dependabot methodology program.
+8. After all lot decisions: run **session closeout**, then write
    `product-docs/global/hygiene/dependabot/YYYY-MM-DD-pass-N.md` from the template.
 
 ## Session closeout validation ladder
@@ -128,12 +133,21 @@ are already **T4 hard escalators** — this checklist is the operational tail of
 
 ## HITL contract (mandatory for cold agents)
 
-1. List and classify; propose lots overview (3–6).
+1. List and classify; peel off `deferred:*` first; propose lots overview (3–6 active lots).
 2. Iterate **one lot at a time**: members, tier, blast radius, CI status, open question → wait
    for Go / No-Go / hold / defer.
 3. Record final decisions in the campaign note after HITL closes (table is fine *there*).
 4. Execute session closeout proportional to the highest accepted tier.
 5. Do not invent `I-*` / `TB-*` for routine merged patches.
+
+## Deferred labels
+
+| Label | Meaning |
+|-------|---------|
+| `deferred:later-train` | Parked for a later release-train / disruptor review. Skip weekly lots until the operator reopens. |
+
+Create with: `gh label create "deferred:later-train" --description "…" --color "6E7781"` (once per repo).
+Standing parked set is recorded in [`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md).
 
 ## Windows shell notes
 

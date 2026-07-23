@@ -351,6 +351,8 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 - **Primary axis:** SemVer risk + known disruptors. **Secondary axis:** ecosystem / surface
   (Maven, Admin UI, mobile, SDK, Actions). Defer disruptive bumps with a PR comment and, when
   investigation cost must persist, a single `I-*` (e.g. TypeScript 7 → later release train).
+  Long-lived parks use GitHub label **`deferred:later-train`** (see dependabot hygiene README) so
+  weekly passes skip HITL on those PRs.
 - Config that reduces future atomization: [`.github/dependabot.yml`](.github/dependabot.yml)
   groups. Do not invent methodology backlog for the weekly Dependabot habit itself.
 
@@ -359,11 +361,13 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 When the operator asks for a **`dependabot-curated`** pass:
 
 1. List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
-2. Classify each PR T1–T4; propose **3–6 lots** (overview only).
+2. Peel off any PR labeled `deferred:*` (skip weekly lots); classify remaining PRs T1–T4; propose
+   **3–6 lots** (overview only).
 3. **Before any merge — interactive HITL loop (mandatory):** iterate **one lot at a time**
    (members, tier, blast radius, CI status) → wait for Go / No-Go / hold / defer on **that** lot
    before merging or presenting the next. Do not replace this with a bulk options matrix.
-4. On Go: merge each green PR in the lot individually. On defer: comment; optional one `I-*` if
+4. On Go: merge each green PR in the lot individually. On defer: comment; apply
+   `deferred:later-train` when the PR should stay out of weekly lots; optional one `I-*` if
    the investigation should not be lost.
 5. Session closeout proportional to highest accepted tier (always `./scripts/build.sh`; stack /
    functional / Playwright per skill ladder; T1-only shortcut allowed when recorded).

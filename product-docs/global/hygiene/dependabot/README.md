@@ -14,6 +14,17 @@ without inventing `I-*` / `TB-*` for routine bumps.
 | [`TEMPLATE.md`](TEMPLATE.md) | Copy for each new campaign |
 | `YYYY-MM-DD-pass-N.md` | Dated instance (lots table + validation evidence) |
 
+## Standing deferrals (`deferred:later-train`)
+
+PRs labeled **`deferred:later-train`** are **out of weekly lot HITL**. Cold agents list them once
+under *Already deferred — skip HITL*, then triage only unlabeled (or non-deferred) Dependabot PRs.
+
+| PRs | Topic | Re-evaluate when |
+|-----|--------|------------------|
+| `#337`, `#342`, `#347` | TypeScript 7 (SDK + Admin UI group + migration idea) | TS 7.1 / typescript-eslint Node API readiness (~months), not routine weekly passes |
+
+To park a new disruptor for weeks/months: comment + `gh pr edit <n> --add-label deferred:later-train`.
+
 ## Related
 
 - Hygiene index: [`../README.md`](../README.md)
