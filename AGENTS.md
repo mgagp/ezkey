@@ -164,6 +164,11 @@ including unit tests. When Cursor's agent shell is PowerShell, invoke it via exp
 `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'`. Do not use `.cmd` build wrappers.
 See `.cursor/rules/maven-build.mdc` for the authoritative rule.
 
+**Non-negotiable quality gate:** a top-level reactor build is mandatory for Java changes. Do not
+classify Checkstyle/reactor failures as "parasitic" or bypass them with module-only shortcuts.
+Checkstyle is a cornerstone guardrail against formatting and convention drift, and the
+reactor-built `checkstyle-config` dependency is part of that contract.
+
 **Docker-only alternative:** `./scripts/build-docker.sh` runs Spotless apply in a bind-mounted
 container plus the `build-validation` Docker target (see `docs/DEVELOPMENT.md`).
 

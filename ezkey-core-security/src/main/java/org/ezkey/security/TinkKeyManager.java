@@ -8,6 +8,7 @@ import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KeysetManager;
 import com.google.crypto.tink.KeysetReader;
 import com.google.crypto.tink.KeysetWriter;
+import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.subtle.AesGcmJce;
 import jakarta.annotation.PostConstruct;
@@ -376,7 +377,7 @@ public class TinkKeyManager implements KeyManagementOperations {
       keysetLock.readLock().lock();
     }
     try {
-      return keysetHandle.getPrimitive(Aead.class);
+      return keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
     } catch (GeneralSecurityException e) {
       throw new IllegalStateException("Unable to obtain AEAD primitive from keyset", e);
     } finally {
@@ -526,6 +527,39 @@ public class TinkKeyManager implements KeyManagementOperations {
             + "for PostgreSQL BIGINT with CHECK >= 0 constraint.");
   }
 
+  private static long getUnsignedPrimaryKeyId(KeysetHandle handle) {
+    return toUnsignedLong(handle.getPrimary().getId());
+  }
+
+  private static Set<Long> collectUnsignedKeyIds(KeysetHandle handle) {
+    java.util.Set<Long> ids = new java.util.LinkedHashSet<>();
+    for (int i = 0; i < handle.size(); i++) {
+      ids.add(toUnsignedLong(handle.getAt(i).getId()));
+    }
+    return ids;
+  }
+
+  private static int findNewSignedKeyIdOrThrow(KeysetHandle handle, Set<Long> existingKeyIds)
+      throws GeneralSecurityException {
+    for (int i = 0; i < handle.size(); i++) {
+      int signedKeyId = handle.getAt(i).getId();
+      long unsignedKeyId = toUnsignedLong(signedKeyId);
+      if (!existingKeyIds.contains(unsignedKeyId)) {
+        return signedKeyId;
+      }
+    }
+    throw new GeneralSecurityException("Failed to find new key after keyset update");
+  }
+
+  private static boolean containsSignedKeyId(KeysetHandle handle, int signedKeyId) {
+    for (int i = 0; i < handle.size(); i++) {
+      if (handle.getAt(i).getId() == signedKeyId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public long getCurrentPrimaryKeyId() {
     keysetLock.readLock().lock();
     try {
@@ -534,7 +568,7 @@ public class TinkKeyManager implements KeyManagementOperations {
             "Tink encryption not initialized. "
                 + "Check that master key file exists and encryption is enabled.");
       }
-      long signedKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+      long signedKeyId = keysetHandle.getPrimary().getId();
       return toUnsignedLong(signedKeyId);
     } finally {
       keysetLock.readLock().unlock();
@@ -542,7 +576,7 @@ public class TinkKeyManager implements KeyManagementOperations {
   }
 
   private void verifyKeyset() throws GeneralSecurityException {
-    Aead aead = keysetHandle.getPrimitive(Aead.class);
+    Aead aead = keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
     String testData = "verification-test";
     byte[] ciphertext = aead.encrypt(testData.getBytes(StandardCharsets.UTF_8), null);
     byte[] plaintext = aead.decrypt(ciphertext, null);
@@ -649,7 +683,7 @@ public class TinkKeyManager implements KeyManagementOperations {
       KeysetReader reader = JsonKeysetReader.withInputStream(fis);
       KeysetHandle handle = KeysetHandle.read(reader, masterAead);
 
-      long signedPrimaryKeyId = handle.getKeysetInfo().getPrimaryKeyId();
+      long signedPrimaryKeyId = handle.getPrimary().getId();
       long unsignedPrimaryKeyId = toUnsignedLong(signedPrimaryKeyId);
       logger.info(
           "✅ Keyset decrypted successfully. Primary key ID: {} (signed: {})",
@@ -759,40 +793,25 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
 
     logger.info("🔄 Starting key rotation...");
-    long signedOldPrimaryKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+    long signedOldPrimaryKeyId = keysetHandle.getPrimary().getId();
     long oldPrimaryKeyIdUnsigned = toUnsignedLong(signedOldPrimaryKeyId);
     logger.info(
         "Current primary key ID: {} (unsigned: {})",
         signedOldPrimaryKeyId,
         Long.toUnsignedString(oldPrimaryKeyIdUnsigned));
 
-    @SuppressWarnings("deprecation")
-    var existingKeyIds =
-        keysetHandle.getKeysetInfo().getKeyInfoList().stream()
-            .map(keyInfo -> toUnsignedLong(keyInfo.getKeyId()))
-            .collect(java.util.stream.Collectors.toSet());
+    var existingKeyIds = collectUnsignedKeyIds(keysetHandle);
     logger.debug("Existing key IDs before rotation: {}", existingKeyIds);
 
     com.google.crypto.tink.KeyTemplate template = getKeyTemplate();
     KeysetManager manager = KeysetManager.withKeysetHandle(keysetHandle);
     KeysetManager rotatedManager = manager.add(template);
 
-    @SuppressWarnings("deprecation")
-    var newKeysetInfo = rotatedManager.getKeysetHandle().getKeysetInfo();
     int signedNewKeyIdInt =
-        newKeysetInfo.getKeyInfoList().stream()
-            .filter(
-                keyInfo -> {
-                  long keyInfoUnsigned = toUnsignedLong(keyInfo.getKeyId());
-                  return !existingKeyIds.contains(keyInfoUnsigned);
-                })
-            .findFirst()
-            .map(keyInfo -> keyInfo.getKeyId())
-            .orElseThrow(
-                () -> new GeneralSecurityException("Failed to find new key after rotation"));
+        findNewSignedKeyIdOrThrow(rotatedManager.getKeysetHandle(), existingKeyIds);
 
     KeysetHandle rotatedHandle = rotatedManager.setPrimary(signedNewKeyIdInt).getKeysetHandle();
-    long signedNewPrimaryKeyId = rotatedHandle.getKeysetInfo().getPrimaryKeyId();
+    long signedNewPrimaryKeyId = rotatedHandle.getPrimary().getId();
     long newPrimaryKeyId = toUnsignedLong(signedNewPrimaryKeyId);
     logger.info(
         "New primary key ID: {} (unsigned: {})",
@@ -846,36 +865,23 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
 
     logger.info("🔄 Adding new key to keyset (without promotion)...");
-    long signedCurrentPrimaryKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+    long signedCurrentPrimaryKeyId = keysetHandle.getPrimary().getId();
     long currentPrimaryKeyIdUnsigned = toUnsignedLong(signedCurrentPrimaryKeyId);
     logger.info(
         "Current primary key ID (will remain primary): {} (unsigned: {})",
         signedCurrentPrimaryKeyId,
         Long.toUnsignedString(currentPrimaryKeyIdUnsigned));
 
-    @SuppressWarnings("deprecation")
-    var existingKeyIds =
-        keysetHandle.getKeysetInfo().getKeyInfoList().stream()
-            .map(keyInfo -> toUnsignedLong(keyInfo.getKeyId()))
-            .collect(java.util.stream.Collectors.toSet());
+    var existingKeyIds = collectUnsignedKeyIds(keysetHandle);
     logger.debug("Existing key IDs before adding: {}", existingKeyIds);
 
     com.google.crypto.tink.KeyTemplate template = getKeyTemplate();
     KeysetManager manager = KeysetManager.withKeysetHandle(keysetHandle);
     KeysetManager updatedManager = manager.add(template);
 
-    @SuppressWarnings("deprecation")
-    var newKeysetInfo = updatedManager.getKeysetHandle().getKeysetInfo();
-    long newKeyId =
-        newKeysetInfo.getKeyInfoList().stream()
-            .filter(
-                keyInfo -> {
-                  long keyInfoUnsigned = toUnsignedLong(keyInfo.getKeyId());
-                  return !existingKeyIds.contains(keyInfoUnsigned);
-                })
-            .findFirst()
-            .map(keyInfo -> toUnsignedLong(keyInfo.getKeyId()))
-            .orElseThrow(() -> new GeneralSecurityException("Failed to find new key after adding"));
+    int signedNewKeyId =
+        findNewSignedKeyIdOrThrow(updatedManager.getKeysetHandle(), existingKeyIds);
+    long newKeyId = toUnsignedLong(signedNewKeyId);
 
     KeysetHandle updatedHandle = updatedManager.getKeysetHandle();
     String keysetPath = properties.getKeysetFile();
@@ -932,7 +938,7 @@ public class TinkKeyManager implements KeyManagementOperations {
         toSignedLong(keyId),
         Long.toUnsignedString(keyId));
 
-    long signedOldPrimaryKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+    long signedOldPrimaryKeyId = keysetHandle.getPrimary().getId();
     long oldPrimaryKeyIdUnsigned = toUnsignedLong(signedOldPrimaryKeyId);
     logger.info(
         "Current primary key ID: {} (unsigned: {})",
@@ -940,10 +946,7 @@ public class TinkKeyManager implements KeyManagementOperations {
         Long.toUnsignedString(oldPrimaryKeyIdUnsigned));
 
     int signedKeyIdInt = toSignedInt(keyId);
-    @SuppressWarnings("deprecation")
-    boolean keyExists =
-        keysetHandle.getKeysetInfo().getKeyInfoList().stream()
-            .anyMatch(keyInfo -> keyInfo.getKeyId() == signedKeyIdInt);
+    boolean keyExists = containsSignedKeyId(keysetHandle, signedKeyIdInt);
 
     if (!keyExists) {
       throw new GeneralSecurityException(
@@ -953,7 +956,7 @@ public class TinkKeyManager implements KeyManagementOperations {
 
     KeysetManager manager = KeysetManager.withKeysetHandle(keysetHandle);
     KeysetHandle promotedHandle = manager.setPrimary(signedKeyIdInt).getKeysetHandle();
-    long newPrimaryKeyId = toUnsignedLong(promotedHandle.getKeysetInfo().getPrimaryKeyId());
+    long newPrimaryKeyId = getUnsignedPrimaryKeyId(promotedHandle);
     if (newPrimaryKeyId != keyId) {
       throw new GeneralSecurityException(
           "Key promotion failed. Expected primary: %s, actual: %s"
@@ -1091,30 +1094,13 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
   }
 
-  @SuppressWarnings("deprecation")
   public List<Long> getAllKeyIds() {
     keysetLock.readLock().lock();
     try {
       if (!isInitialized()) {
         throw new IllegalStateException("Tink encryption not initialized");
       }
-      var keysetInfo = keysetHandle.getKeysetInfo();
-      return keysetInfo.getKeyInfoList().stream()
-          .map(keyInfo -> toUnsignedLong(keyInfo.getKeyId()))
-          .toList();
-    } finally {
-      keysetLock.readLock().unlock();
-    }
-  }
-
-  @SuppressWarnings("deprecation")
-  public Object getKeysetInfo() {
-    keysetLock.readLock().lock();
-    try {
-      if (!isInitialized()) {
-        throw new IllegalStateException("Tink encryption not initialized");
-      }
-      return keysetHandle.getKeysetInfo();
+      return new java.util.ArrayList<>(collectUnsignedKeyIds(keysetHandle));
     } finally {
       keysetLock.readLock().unlock();
     }
@@ -1160,7 +1146,7 @@ public class TinkKeyManager implements KeyManagementOperations {
       this.keysetHandle = com.google.crypto.tink.CleartextKeysetHandle.read(reader);
       this.databaseKeysetVersion = keysetBlob.getVersion() != null ? keysetBlob.getVersion() : 0;
 
-      long signedPrimaryKeyId = keysetHandle.getKeysetInfo().getPrimaryKeyId();
+      long signedPrimaryKeyId = keysetHandle.getPrimary().getId();
       long unsignedPrimaryKeyId = toUnsignedLong(signedPrimaryKeyId);
       logger.info(
           "✅ Keyset loaded from database. Primary key ID: {} (signed: {}), version: {}",

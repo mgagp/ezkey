@@ -212,6 +212,8 @@ src/main/java/org/ezkey/{domain}/
 - Run quality checks: `mvn checkstyle:check`
 - Build verification: `mvn clean verify`
 - Follow Google Java Style Guide (`google_checks.xml`)
+- For Java changes, run validation from repository root so Checkstyle is executed in the full
+  reactor with `checkstyle-config`; do not treat Checkstyle/reactor failures as optional.
 
 ### Git Standards
 - Use conventional commit messages:
