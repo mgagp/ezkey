@@ -31,6 +31,7 @@ jest.mock('../../services/crypto', () => ({
   cryptoService: {
     verify: jest.fn(),
     ensureEnrollmentKeyPair: jest.fn(),
+    deleteEnrollmentKeyPair: jest.fn(),
     getPublicKey: jest.fn(),
     getEnrollmentPrivateKeyStorageTier: jest.fn(),
     sign: jest.fn(),

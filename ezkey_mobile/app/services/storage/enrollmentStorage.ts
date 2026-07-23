@@ -30,15 +30,20 @@ const INTEGRATION_PUBLIC_KEY_KEY_PREFIX = 'ezkey-mobile/integration-public-key';
 /**
  * Local representation of enrollment records including proof tokens.
  *
- * With EC P-256, device keys are stored through the native platform keystore path per enrollment,
- * so no device alias needs to be stored. Installation routing and branding metadata now live in the
- * nested `installation` object and legacy flattened installation fields are normalized on read.
+ * With EC P-256, device keys are stored through the native platform keystore path per
+ * installation-scoped local enrollment id. Installation routing and branding metadata live in the
+ * nested `installation` object; legacy flattened installation fields are normalized on read.
  *
  * @since 2025
  */
 export type StoredEnrollment = EnrollmentSummary & {
   enrollmentProofToken: string;
-  enrollmentId?: string; // Enrollment ID used for key derivation (for backward compatibility)
+  /**
+   * Auth API / DB enrollment id for the installation trust zone.
+   * Wire bodies use this value; {@link EnrollmentSummary.id} is the local handle
+   * (installation-scoped) used for Keystore aliases, seal keys, and navigation.
+   */
+  enrollmentId?: string;
   integrationPublicKey?: string;
   integrationDescription?: string;
   enrollmentName?: string;

@@ -143,10 +143,12 @@ export const validateAuthUrl = (value: string | undefined | null): string | unde
 };
 
 /**
- * Builds the canonical installation identity from a raw Auth API URL.
+ * Builds the canonical installation trust-zone identity from a raw Auth API URL.
  *
- * The installation identity mirrors `validateAuthUrl()` because Ezkey installations are grouped
- * by their normalized trust-zone URL, not by mutable branding labels.
+ * Product posture: one Ezkey installation = one normalized Auth URL. There is no
+ * installation UUID. Branding labels never participate in this identity.
+ * Equivalence classes: host case, trailing slash, implicit HTTPS port 443;
+ * distinct non-empty paths remain distinct trust zones.
  *
  * @param value Raw Auth API URL.
  * @return Canonical installation identifier or undefined when invalid.

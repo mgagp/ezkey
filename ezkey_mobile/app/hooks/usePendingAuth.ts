@@ -386,7 +386,7 @@ export function usePendingAuth(
       });
       try {
         const enrollmentKeyId = enrollment.id.toString();
-        await cryptoService.ensureEnrollmentKeyPair(enrollmentKeyId);
+        await cryptoService.requireEnrollmentKeyPair(enrollmentKeyId);
         const securityPreference = await securityPreferenceStorage.getSecurityLevel();
         const shouldProtectRespond = requiresProtectedApproval({
           enrollmentApprovalPolicy: enrollment.approvalPolicy,

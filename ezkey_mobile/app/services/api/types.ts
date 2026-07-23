@@ -21,11 +21,14 @@ export type PublicInstanceInfoResponse = {
 /**
  * Canonical local representation of an Ezkey installation trust zone.
  *
- * The installation identity is derived from the normalized Auth API URL. Public
- * instance-info fields enrich presentation only; they are not a cryptographic
- * trust anchor.
+ * Product posture: an installation is a trust zone. Enrollments belong to it.
+ * Identity is always the normalized Auth API URL (`normalizeInstallationId`).
+ * Public instance-info fields enrich presentation only; they are not a
+ * cryptographic trust anchor and must never replace URL identity.
+ * There is no installation UUID.
  */
 export type Installation = {
+  /** Canonical trust-zone id (= normalized Auth API URL). */
   id: string;
   authUrl?: string;
   host?: string;
@@ -35,6 +38,14 @@ export type Installation = {
   lastRefreshedAt?: string;
 };
 
+/**
+ * Local enrollment summary. Each enrollment belongs to one {@link Installation}
+ * trust zone (`installation`). Nested persistence of that object is packaging;
+ * conceptually the trust zone owns the enrollment set.
+ *
+ * Note: {@code id} is the installation-scoped local enrollment handle (storage, Keystore,
+ * navigation). Persist Auth API numeric id in {@code enrollmentId} on {@code StoredEnrollment}.
+ */
 export type EnrollmentSummary = {
   id: string;
   integrationId: string;
@@ -45,6 +56,7 @@ export type EnrollmentSummary = {
   createdAt: string;
   lastActivityAt: string;
   favorited?: boolean;
+  /** Trust zone this enrollment belongs to (normalized Auth URL identity). */
   installation?: Installation;
 };
 

@@ -1,23 +1,20 @@
 # Handoff — MOB-011 installation-scoped local enrollment identity
 
-**Status:** `open` — analysis / design only (2026-07-19)  
-**Lane:** Mobile protocol security hygiene (pass-2) → possible **program** promotion after Grill Me  
-**Finding:** MOB-011 (P1, Confirmed)  
+**Status:** `closed` — Grill Me + analysis complete (2026-07-20); backlog promoted  
+**Lane:** Mobile protocol security hygiene (pass-2) → **program** (two sequential activities)  
+**Finding:** MOB-011 (P1, Confirmed) — disposition **defer (program)**  
 **Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../hygiene/mobile-protocol-security/2026-07-19-pass-2.md)  
 **Assessment register:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md) §14.2 MOB-011
 
-Use this prompt to start a **new Cursor session** for a **mini Grill Me + complementary analysis/design** on MOB-011.  
-Do **not** implement remediations in that session unless the operator explicitly changes scope after decisions are recorded.
+## Backlog (canonical next)
 
----
+1. [`I-2026-07-20-mobile-installation-trust-zone-canon`](../ideas/I-2026-07-20-mobile-installation-trust-zone-canon.md) /
+   [`TB-2026-07-20-mobile-installation-trust-zone-canon`](../TB-2026-07-20-mobile-installation-trust-zone-canon.md)
+2. [`I-2026-07-20-mobile-installation-scoped-enrollment-identity`](../ideas/I-2026-07-20-mobile-installation-scoped-enrollment-identity.md) /
+   [`TB-2026-07-20-mobile-installation-scoped-enrollment-identity`](../TB-2026-07-20-mobile-installation-scoped-enrollment-identity.md)
+   (absorbs MOB-013 + MOB-016)
 
-## Operator intent for this session
-
-1. Read this handoff and the assessment finding.
-2. Run a **mini Grill Me** (skill `.cursor/skills/grill-me/SKILL.md`) on the observation and on candidate identity models.
-3. Produce a short **analysis-design note** (options, migration pressure, fail-open/fail-closed, what stays hygiene vs what becomes `I-*` / `TB-*`).
-4. Return a clear recommendation for the pass-2 HITL decision on MOB-011: **fix** (hygiene-sized) / **defer** (program) / **suppress** / **skip** — with rationale.
-5. Do **not** create `I-*` / `TB-*` / GitHub issue unless the operator explicitly asks after Grill Me.
+Do **not** implement remediations from this handoff file; execute via the TBs above.
 
 ---
 
@@ -47,7 +44,22 @@ Concrete collision scenario:
 
 ---
 
-## Evidence map (read these first)
+## Grill Me decisions (2026-07-20) — summary
+
+| Topic | Decision |
+| --- | --- |
+| Product claim | Multi-install end-to-end including crypto |
+| Installation identity | Normalized Auth URL only (no installation UUID) |
+| Model posture | Enrollment belongs to installation trust zone |
+| Crypto | No special per-zone crypto layer; handles must share uniqueness with the model |
+| Draft timing | **7A** — scoped local identity from `buildDraft`; Keystore in finalize |
+| Shape | **O3** preferred; O4 acceptable |
+| Sequencing | Canon TB → identity/crypto TB (absorbs MOB-013/016) |
+| Disposition | **defer (program)**; outside production → full first-principles design |
+
+---
+
+## Evidence map (historical — still valid)
 
 ### Backend — enrollment IDs are installation-local
 
@@ -77,84 +89,7 @@ Concrete collision scenario:
   - `getEnrollmentAlias` → `ezkey_enrollment_$enrollmentId`
   - `generateEnrollmentKeyPair` — if `containsAlias(alias)` → resolve `true` and return (no ownership / installation check).
 
-### Related pass-2 findings (do not “fix” here; note coupling)
+### Related pass-2 findings
 
-- **MOB-013** — pending/respond `ensureEnrollmentKeyPair` can silently generate or attach the wrong alias under collision.
-- **MOB-016** — orphan keys after failed verify stick harder when aliases are enrollment-id-only.
-- **MOB-012** — platform key loss interacts badly with non-scoped aliases (misdiagnosis risk).
-
----
-
-## Product / methodology constraints
-
-- Pass-2 is **Lane D hygiene**. Do not auto-spawn one `I-*`/`TB-*` per MOB row.
-- MOB-011 is explicitly called out in the campaign note as a **candidate for program promotion** (installation-scoped identity migration).
-- Keep numeric `enrollmentId` in Auth API request/response bodies — servers do not know a mobile composite id.
-- Sealed-secret AAD / logical key names and Keystore aliases are a **migration** surface if identity format changes; call this out in Grill Me.
-- iOS parity is deferred unless the design note needs a one-line future stub.
-- No OpenAPI / Auth API contract change is required for a pure local-identity scoping fix (confirm or refute in analysis).
-- No commit/PR unless the operator asks after HITL.
-
----
-
-## Mini Grill Me — pressure questions (start here)
-
-Adapt from `.cursor/skills/grill-me/SKILL.md`. Keep answers concrete.
-
-1. What must remain true for multi-installation on one phone to be a supported product claim?
-2. Is `StoredEnrollment.id === String(serverEnrollmentId)` an accidental leak of DB identity into local crypto namespace, or an intentional simplification that should be retired?
-3. Should local identity be `(installationId, enrollmentId)`, a single composite string, or a mobile-generated UUID with server id kept as a field only?
-4. Where must the composite appear (Keystore alias, seal logical keys / AAD, AsyncStorage collection id, React Query keys, navigation params, wipe paths) — and where must the raw server id remain?
-5. What happens on upgrade for existing installs that already have `ezkey_enrollment_1` and `…proof-token.1`?
-6. Fail-open vs fail-closed: if two records would collide under the old scheme, should save refuse, migrate, or overwrite with loud error?
-7. Does `buildDraft` need installation scoping at bind time (before verify), or only at persist — and what does early Keystore create imply?
-8. How does this interact with MOB-013 (`ensure` on pending/respond) and MOB-016 (orphans)?
-9. Minimal evidence that would **disprove** that this is a real product risk (e.g. product explicitly forbids multi-install on one device)?
-10. Hygiene-sized first slice vs full program: what is the smallest reversible change that stops new collisions without a complete storage rewrite?
-
-Record decision pressure points and open questions before proposing a preferred model.
-
----
-
-## Expected deliverables from the analysis session
-
-1. **Short design options matrix** (2–4 options) with blast radius and migration cost.
-2. **Recommended next disposition** for pass-2 HITL on MOB-011.
-3. If program: draft outline only for a future `I-*` (title + problem + non-goals) — do not create the file unless asked.
-4. If hygiene fix: bounded slice description (files, tests, migration stance) — do not implement unless asked.
-5. Update suggestion (text only is fine) for the campaign note § MOB-011 rationale after operator decides.
-
-Optional durable write location if the operator wants a retained working note in-repo:
-
-- Prefer appending under the campaign note rationale, or a short note linked from the handoff — avoid half-linked plans outside the clone.
-
----
-
-## Suggested first agent turns
-
-1. Read: this handoff, assessment §14.2 MOB-011, `MOBILE_DATA_MODEL.md` (Installation + StoredEnrollment), `useEnrollmentWizard.ts` (`buildDraft` / `finalizeEnrollment`), `enrollmentStorage.ts` (`saveEnrollment` + key helpers), `EzkeyCryptoModule.kt` (`getEnrollmentAlias` / `containsAlias` short-circuit).
-2. Run mini Grill Me with the operator (one pressure cluster at a time if they prefer HITL style).
-3. Converge on options + recommendation; stop before coding.
-
----
-
-## Out of scope for this handoff session
-
-- Implementing Keystore/storage migration
-- Fixing MOB-012 / MOB-013 / MOB-014 / MOB-015 / MOB-016 in the same change set
-- Active exploit / MITM lab
-- Reopening closed Lot A / Lot B findings
-- Auth API / OpenAPI changes (unless analysis proves they are required — unexpected)
-
----
-
-## Paste-ready starter message (for the other agent)
-
-```text
-Read product-docs/global/backlog/handoffs/HANDOFF-mob-011-installation-scoped-identity.md end-to-end.
-Then read docs/security/mobile-protocol-crypto-assessment-2026-07.md §14.2 MOB-011 and the evidence files listed in the handoff.
-
-Task: complementary analysis-design + mini Grill Me on MOB-011 (wizard enrollment identity is not installation-scoped). Preserve the collision scenario in the handoff. Do not implement code. Do not create I-*/TB-* unless I explicitly ask after we finish Grill Me.
-
-Start Grill Me with questions 1–3 from the handoff, one cluster at a time, and wait for my answers before proposing a preferred identity model.
-```
+- **MOB-013** / **MOB-016** — absorbed into activity 2 program TB.
+- **MOB-012** — remains a separate hygiene handoff.

@@ -55,19 +55,48 @@ class CryptoService {
   }
 
   /**
-   * Ensures an EC P-256 key pair exists for the given enrollment, generating it if necessary.
+   * Creates an EC P-256 key pair for the local enrollment handle if absent (enrollment wizard only).
    *
    * The key pair is stored through the native platform keystore integration.
-   * Each enrollment gets its own key pair.
+   * Pass the installation-scoped local enrollment id (not the raw server id alone).
    *
-   * @param enrollmentId The enrollment ID to ensure the key pair for.
+   * @param localEnrollmentId Local enrollment handle (Keystore alias suffix).
    * @return Whether the key pair exists after the call.
    * @since 2025
    */
-  async ensureEnrollmentKeyPair(
-    enrollmentId: string,
-  ): Promise<boolean> {
-    return nativeCrypto.generateEnrollmentKeyPair(enrollmentId);
+  async ensureEnrollmentKeyPair(localEnrollmentId: string): Promise<boolean> {
+    return nativeCrypto.generateEnrollmentKeyPair(localEnrollmentId);
+  }
+
+  /**
+   * Requires an existing enrollment key pair — never generates (MOB-013).
+   *
+   * Pending/respond must fail closed when the alias is missing; the Auth API is
+   * already bound to the public key submitted at verify.
+   *
+   * @param localEnrollmentId Local enrollment handle (Keystore alias suffix).
+   * @throws Error with message {@code ENROLLMENT_KEY_MISSING} when the key is absent.
+   * @since 2026
+   */
+  async requireEnrollmentKeyPair(localEnrollmentId: string): Promise<void> {
+    try {
+      await nativeCrypto.getPublicKey(localEnrollmentId);
+    } catch {
+      const error = new Error('ENROLLMENT_KEY_MISSING');
+      error.name = 'ENROLLMENT_KEY_MISSING';
+      throw error;
+    }
+  }
+
+  /**
+   * Best-effort delete of the enrollment key pair (orphan cleanup / wipe).
+   *
+   * @param localEnrollmentId Local enrollment handle (Keystore alias suffix).
+   * @return Whether native delete reported success.
+   * @since 2026
+   */
+  async deleteEnrollmentKeyPair(localEnrollmentId: string): Promise<boolean> {
+    return nativeCrypto.deleteKeyPair(localEnrollmentId);
   }
 
   canUseProtectedSigning(): Promise<boolean> {

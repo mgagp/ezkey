@@ -1,20 +1,23 @@
 # Handoff — MOB-013 no silent key replacement on pending/respond
 
-**Status:** `open` — **fix authorized in principle**; implement **after** MOB-011 then MOB-012  
-**Lane:** Mobile protocol security hygiene (pass-2)  
+**Status:** `superseded` — **defer (absorbed)** into MOB-011 program activity 2 (2026-07-20 Grill Me)  
+**Lane:** Mobile protocol security hygiene (pass-2) → program  
 **Finding:** MOB-013 (P1 with MOB-011/012 context / P2 in isolation, Confirmed)  
 **Campaign:** [`product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../hygiene/mobile-protocol-security/2026-07-19-pass-2.md)  
 **Assessment register:** [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md) §14.2 MOB-013
 
-Use this prompt to start a **new Cursor session** that **implements** MOB-013 only when MOB-011 and MOB-012 are already merged (or clearly complete on the branch).  
-If those predecessors are not done, stop and tell the operator — do not invent a temporary identity model or unlocked-device gate inside this PR.
+**Canonical implementation:** [`I-2026-07-20-mobile-installation-scoped-enrollment-identity`](../ideas/I-2026-07-20-mobile-installation-scoped-enrollment-identity.md) /
+[`TB-2026-07-20-mobile-installation-scoped-enrollment-identity`](../TB-2026-07-20-mobile-installation-scoped-enrollment-identity.md)
+(after trust-zone canon TB). Do **not** open a standalone MOB-013 hygiene PR.
+
+This file is retained as an evidence / scenario pointer only.
 
 ---
 
-## Operator decisions (already made)
+## Operator decisions (revised 2026-07-20)
 
-1. **Disposition:** **fix** (hygiene).
-2. **Implementation order (mandatory):** **MOB-011 → MOB-012 → MOB-013**.
+1. **Disposition:** **defer (absorbed)** — same chantier as installation-scoped identity (not a separate hygiene fix).
+2. Prior “fix after MOB-011 → MOB-012” ordering is superseded for MOB-013; MOB-012 remains a separate open handoff.
 3. HITL briefing for MOB-013 was accepted 2026-07-19 (silent `ensure` on pending/respond is wrong once the server is bound to a public key).
 
 ---
