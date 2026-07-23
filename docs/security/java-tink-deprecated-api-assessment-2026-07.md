@@ -29,7 +29,7 @@ Tink version declarations:
 | --- | --- | --- | --- | --- | ---: | --- | --- |
 | TINK-DEP-001 | Deprecated primitive acquisition path | P1 | High | `KeysetHandle.getPrimitive(Class<P>)` | 2 | `KeysetHandle.getPrimitive(RegistryConfiguration.get(), Class<P>)` | High |
 | TINK-DEP-002 | Deprecated keyset metadata access path | P1 | High | `KeysetHandle.getKeysetInfo()` | 14+ | `getPrimary().getId()`, `size()`, `getAt(i).getId()`, `getAt(i).isPrimary()` | Medium |
-| TINK-DEP-003 | Deprecated API leak in manager public contract | P2 | High | `TinkKeyManager.getKeysetInfo()` returns deprecated proto-backed info | 1 method contract | Introduce non-deprecated DTO/snapshot API; keep compatibility shim temporarily | Medium |
+| TINK-DEP-003 | Deprecated keyset IO path still used by `TinkKeyManager` | P2 | High | `KeysetHandle.read(KeysetReader, Aead)` / `KeysetHandle.write(KeysetWriter, Aead)` | 2 call sites | Defer to backlog item `I-2026-07-22-tink-keyset-serialization-api-migration` | Low (analysis complete; implementation blocked on Tink public surface) |
 
 ## Evidence
 
@@ -69,12 +69,18 @@ Replacement validated:
 
 Current usage:
 
-- Public method `TinkKeyManager.getKeysetInfo()` exposes a deprecated API shape upstream.
+- `TinkKeyManager` still calls the deprecated public keyset IO surface for encrypted keyset
+  persistence: `KeysetHandle.read(KeysetReader, Aead)` and `KeysetHandle.write(KeysetWriter, Aead)`.
 
-Risk:
+Analysis result:
 
-- Keeps callers coupled to deprecated/proto-oriented contract.
-- Increases future migration cost and may spread additional deprecated usages.
+- The obvious public alternatives in `KeysetHandle` are also deprecated in 1.23.0.
+- The `Configuration`-accepting overloads exist but are not public from our module boundary.
+- The remaining work is therefore a **real migration problem**, not a mechanical quick win.
+
+Disposition:
+
+- Deferred to backlog item `I-2026-07-22-tink-keyset-serialization-api-migration`.
 
 ## Not deprecated in this pass (checked)
 
@@ -108,10 +114,10 @@ Recommended minimum before/with fixes:
 
 1. TINK-DEP-001 (P1) - primitive acquisition migration.
 2. TINK-DEP-002 (P1) - keyset info migration in rotation and lookup paths.
-3. TINK-DEP-003 (P2) - contract cleanup for outward-facing `getKeysetInfo()`.
+3. TINK-DEP-003 (P2) - keyset IO migration in `TinkKeyManager` (deferred to backlog).
 
 ## Open questions for decision
 
-1. Should `TINK-DEP-003` be done now (same pass) or deferred to avoid API ripple?
-2. For `TINK-DEP-002`, do we accept a small internal helper abstraction to keep the code readable?
-3. Do we gate all three items behind one PR, or split by risk (P1 first, P2 later)?
+1. What is the intended public migration path for encrypted keyset persistence in Tink?
+2. Can Ezkey preserve the current at-rest encryption model without introducing a weaker storage mode?
+3. If no clean public replacement exists, do we pin Tink, wrap the persistence path, or take a design-pack slice first?
