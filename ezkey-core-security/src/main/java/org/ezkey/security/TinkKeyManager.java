@@ -1106,19 +1106,6 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
   }
 
-  @SuppressWarnings("deprecation")
-  public Object getKeysetInfo() {
-    keysetLock.readLock().lock();
-    try {
-      if (!isInitialized()) {
-        throw new IllegalStateException("Tink encryption not initialized");
-      }
-      return keysetHandle.getKeysetInfo();
-    } finally {
-      keysetLock.readLock().unlock();
-    }
-  }
-
   public Aead getMasterAead() {
     return masterAead;
   }
