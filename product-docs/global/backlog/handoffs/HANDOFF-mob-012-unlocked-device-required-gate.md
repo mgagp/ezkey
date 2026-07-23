@@ -138,7 +138,10 @@ Record decision pressure points, then propose the smallest safe fix shape.
 - MOB-001 Track B / CryptoObject
 - MOB-011 / MOB-013 / MOB-015 remediations
 - Active exploit lab
-- Raising `minSdk` to 35 as a substitute for gating (unless operator explicitly wants that product decision)
+- Raising `minSdk` to **35** as a substitute for the runtime gate (wrong tool; would exclude most of the Play park)
+- Raising `minSdk` to the **product floor (API 31 / Android 12+)** — that is a **separate** change set.
+  Policy canon: [`ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../../../../ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md).
+  Do not fold the Gradle bump into MOB-012.
 
 ---
 

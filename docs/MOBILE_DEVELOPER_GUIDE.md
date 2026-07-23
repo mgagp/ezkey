@@ -42,6 +42,11 @@ This guide targets:
 - Android-first implementations that can rely on Android Keystore.
 - Implementers who need a concrete protocol guide rather than a product overview.
 
+The Ezkey **reference** app’s product Android OS floor is Android **12+** (API **31**). See
+[`ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md).
+Third-party clients may choose a different floor; the protocol does not require API 31, but the
+reference app’s security posture does.
+
 This guide does not focus on:
 
 - Admin API provisioning workflows.
