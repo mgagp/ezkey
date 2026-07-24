@@ -436,12 +436,12 @@ No remediations authorized until operator HITL.
 
 | Finding | Severity | Status |
 | --- | --- | --- |
-| **MOB-011** | P1 | Defer (program) — trust-zone canon then scoped identity I/TB |
+| **MOB-011** | P1 | **Fixed** — PR [#401](https://github.com/mgagp/ezkey/pull/401); TB closed 2026-07-23 |
 | **MOB-012** | P1 | Open — `setUnlockedDeviceRequired` API gate |
-| **MOB-013** | P1/P2 | Defer (absorbed into MOB-011 activity 2) |
+| **MOB-013** | P1/P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
 | **MOB-014** | P2 | Open — malformed pending ≠ empty |
 | **MOB-015** | P2 | Open — unseal failure visibility |
-| **MOB-016** | P2 | Defer (absorbed into MOB-011 activity 2) |
+| **MOB-016** | P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
 
 ## 10. Claim verdict (product-facing)
 
@@ -454,7 +454,7 @@ No remediations authorized until operator HITL.
 | “Backend verifies StrongBox” | **Unsupported** — do not claim |
 | “Pinning / phishing resistance comparable to WebAuthn” | **Unsupported** — do not claim |
 | “Deleting an enrollment removes local Keystore material” | **Supported** for intended wipe path (MOB-002); delete is fail-open if Keystore delete fails |
-| “Multiple independent Ezkey installations coexist safely on one phone” | **Unsupported today** — local identity is enrollment-id-only (MOB-011); **program funded** 2026-07-20 (`I-2026-07-20-mobile-installation-trust-zone-canon` → scoped-enrollment-identity) |
+| “Multiple independent Ezkey installations coexist safely on one phone” | **Supported** for local crypto/storage isolation (installation-scoped handles — PR [#401](https://github.com/mgagp/ezkey/pull/401)); residual platform/UX risks remain under MOB-012 / MOB-015 |
 
 ## 11. Methodology next steps
 
@@ -537,35 +537,20 @@ Severity/confidence scale unchanged from §6.
 | --- | --- |
 | **Severity** | P1 |
 | **Confidence** | Confirmed |
-| **Disposition** | **Defer (program)** — Grill Me 2026-07-20; see `I-2026-07-20-mobile-installation-trust-zone-canon` then `I-2026-07-20-mobile-installation-scoped-enrollment-identity` (absorbs MOB-013/016) |
+| **Disposition** | **Fixed** — PR [#401](https://github.com/mgagp/ezkey/pull/401); `TB-2026-07-20-mobile-installation-scoped-enrollment-identity` closed 2026-07-23 (absorbs MOB-013/016) |
 | **MASVS** | STORAGE, CRYPTO, AUTH |
 | **Protocol stage** | Persist after verify; all later pending/respond/delete |
 
-**Issue.** Auth API / DB `enrollment_id` values are **installation-local** integers (`GENERATED ALWAYS AS IDENTITY`). The mobile app uses `String(enrollmentId)` as:
+**Issue (historized — fixed in program TB).** Auth API / DB `enrollment_id` values are **installation-local** integers (`GENERATED ALWAYS AS IDENTITY`). At assessment open, the mobile app used `String(enrollmentId)` as:
 
 - `StoredEnrollment.id`,
 - sealed-secret logical keys (`ezkey-mobile/enrollment-proof-token.{id}`, `…/integration-public-key.{id}`),
 - Android Keystore alias `ezkey_enrollment_{id}`,
 - React Query / navigation / wipe keys.
 
-`Installation` is derived from normalized `authUrl` and stored nested in metadata, but **does not participate** in those identity surfaces. Two independent Ezkey installations can both issue enrollment `1`.
+`Installation` was derived from normalized `authUrl` and stored nested in metadata, but **did not participate** in those identity surfaces. Two independent Ezkey installations could both issue enrollment `1`.
 
-**Evidence.**
-- `useEnrollmentWizard.buildDraft` — `id: String(rawId)`
-- `enrollmentStorage.proofTokenStorageKey` / `integrationPublicKeyStorageKey`
-- `EzkeyCryptoModule.getEnrollmentAlias`
-- `saveEnrollment` filters/overwrites by `item.id === record.id` only
-- Key generation short-circuits if alias already exists (`containsAlias` → resolve true)
-
-**Attack / failure path.** Enroll on installation A (id `1`), then enroll on installation B (also id `1`): B reuses A’s EC key (or races), overwrites sealed proof token + integration public key, removes A’s metadata row. Independent lifecycle and crypto isolation fail for a supported multi-installation product shape.
-
-**Impact.** Destructive local state loss; private-key reuse across independent trust zones; not a remote bypass of A without A’s protocol material, but breaks MFA-app isolation expectations.
-
-**Fail posture.** Fail-open for overwrite (second save wins).
-
-**Recommended action.** Program (2026-07-20): (1) trust-zone canon — enrollment belongs to normalized Auth URL installation; (2) installation-scoped local identity + Keystore/seal handles (O3 preferred), draft-scoped identity (7A), absorb MOB-013/016. Keep numeric `enrollmentId` for API bodies. Outside production — full first-principles design, not a minimal hygiene patch. See `I-2026-07-20-mobile-installation-trust-zone-canon` and `I-2026-07-20-mobile-installation-scoped-enrollment-identity`.
-
-**Verification class.** Unit tests for collision save/list/delete; instrumentation for distinct aliases; manual two-installation enroll.
+**Current code (post-PR #401).** `deriveLocalEnrollmentId(installationId, serverEnrollmentId)` scopes local id / Keystore / seals; Auth API bodies keep numeric `enrollmentId`. Do not re-open as an active defect without new collision evidence.
 
 ---
 
@@ -604,21 +589,13 @@ Documented platform defects include: generation/use failure without secure lock 
 | --- | --- |
 | **Severity** | P1 (with MOB-011/012) / P2 (isolation) |
 | **Confidence** | Confirmed |
-| **Disposition** | **Defer (absorbed)** — into `I-2026-07-20-mobile-installation-scoped-enrollment-identity` / matching TB (Grill Me 2026-07-20) |
+| **Disposition** | **Fixed** (absorbed) — PR [#401](https://github.com/mgagp/ezkey/pull/401); same TB as MOB-011 |
 | **MASVS** | CRYPTO, AUTH |
 | **Protocol stage** | Pending claim; respond signing |
 
-**Issue.** After verify, the backend is permanently bound to the device public key submitted at enrollment. Yet `claimPendingAttempt` and `usePendingAuth.handleRespond` call `cryptoService.ensureEnrollmentKeyPair`, which **generates a new Keystore key** when the alias is absent. A replacement key cannot satisfy the server; signatures fail. Under MOB-011, “ensure” may also attach the wrong installation’s existing alias. Under MOB-012, lock-screen key deletion converts a diagnosable “key unavailable” into opaque protocol failures after silent regen.
+**Issue (historized — fixed with MOB-011 program).** Pending/respond called `ensureEnrollmentKeyPair`, which generated a new Keystore key when the alias was missing — opaque protocol failures and hidden MOB-011/012 failures.
 
-**Evidence.**
-- `claimPendingAttempt.ts` — `ensureEnrollmentKeyPair` before generate/sign device proof token
-- `usePendingAuth.ts` — `ensureEnrollmentKeyPair` before `signForRespond`
-- `cryptoService.ensureEnrollmentKeyPair` → `nativeCrypto.generateEnrollmentKeyPair`
-- Native: if alias missing → create; if present → return true without ownership check
-
-**Recommended action.** Split lifecycle: **create** only in enrollment verify path; **require** existing key on pending/respond and fail closed with a re-enrollment signal if missing/invalidated. Never auto-rotate without a backend protocol that registers a new public key.
-
-**Verification class.** Unit: mock missing key → assert no generate on pending/respond; instrumentation for absent-alias fail-closed.
+**Current code (post-PR #401).** `requireEnrollmentKeyPair` fail-closes when the alias is absent; key create remains enrollment-verify only.
 
 ---
 
@@ -677,19 +654,13 @@ Documented platform defects include: generation/use failure without secure lock 
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed |
-| **Disposition** | **Defer (absorbed)** — into `I-2026-07-20-mobile-installation-scoped-enrollment-identity` / matching TB (Grill Me 2026-07-20) |
+| **Disposition** | **Fixed** (absorbed) — PR [#401](https://github.com/mgagp/ezkey/pull/401); same TB as MOB-011 |
 | **MASVS** | CRYPTO (key lifecycle) |
 | **Protocol stage** | Enrollment verify |
 
-**Issue.** `finalizeEnrollment` calls `ensureEnrollmentKeyPair` **before** Auth API verify and before persistence. If verify fails, verify-result signature fails, or save fails, the Keystore alias remains with no `StoredEnrollment`. Combined with MOB-011 short-circuit reuse and MOB-013 pending ensure, orphans become sticky.
+**Issue (historized — fixed with MOB-011 program).** Key create before verify/save left sticky Keystore orphans on failure paths.
 
-**Evidence.**
-- `useEnrollmentWizard.finalizeEnrollment` — key create → sign → verify API → result verify → save
-- Native generation returns early if alias exists
-
-**Recommended action.** Best-effort `deleteKeyPair` in verify failure paths when save never succeeded; or create key only after a dry-run challenge validation if product allows; test orphan cleanup.
-
-**Verification class.** Hook/unit with mocked failed verify asserting delete; instrumentation optional.
+**Current code (post-PR #401).** Best-effort `deleteEnrollmentKeyPair` on verify/save failure when persistence never succeeded.
 
 ---
 
@@ -727,12 +698,12 @@ Deferred programs remain out of this hygiene lot unless the operator funds them:
 
 | Finding | Static/source | Unit | Emulator/instrumentation | Physical device |
 | --- | --- | --- | --- | --- |
-| MOB-011 | Yes | Required for fix | Distinct aliases | Optional two-install |
+| MOB-011 | Yes | Done (collision + identity) | Deferred optional | Done (Pixel multi-install smoke) |
 | MOB-012 | Yes + Android docs | N/A | Useful on API 33/34 | Lock-removal scenario |
-| MOB-013 | Yes | Required for fix | Absent-alias path | Optional |
+| MOB-013 | Yes | Done (no silent generate) | Deferred optional | Covered by unit + smoke |
 | MOB-014 | Yes | Required for fix | No | No |
 | MOB-015 | Yes | Required for fix | Optional | Optional |
-| MOB-016 | Yes | Required for fix | Optional | No |
+| MOB-016 | Yes | Done (orphan delete paths) | Optional | No |
 
 ### 14.6 Anti-false-positive reminder
 

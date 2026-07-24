@@ -3,27 +3,29 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-20-mobile-installation-scoped-enrollment-identity`
-- **Status:** `active`
+- **Status:** `done`
 - **Related idea:** `I-2026-07-20-mobile-installation-scoped-enrollment-identity`
 - **Lane:** `D`
 - **Posture:** `single-pass`
 - **Prerequisite TB:** `TB-2026-07-20-mobile-installation-trust-zone-canon` (must exit first) — **done**
-- **GitHub issue:** _(none yet)_
+- **GitHub issue:** _(none — canon sufficient)_
 - **Created at:** `2026-07-20`
-- **Updated at:** `2026-07-20`
+- **Updated at:** `2026-07-23`
+- **Closed at:** `2026-07-23`
 - **Captured by:** Marc (Grill Me MOB-011, 2026-07-20)
 - **Absorbs findings:** MOB-011, MOB-013, MOB-016
 
-## Progress (2026-07-20)
+## Progress / closeout (2026-07-23)
 
-Implemented on branch `feature/mobile-installation-trust-zone`:
+Implemented and merged via PR [#401](https://github.com/mgagp/ezkey/pull/401) (`feature/mobile-installation-trust-zone`):
 
 - `deriveLocalEnrollmentId` / `resolveServerEnrollmentId` (O3 Keystore-safe handles)
 - Wizard `buildDraft` (7A) + finalize uses local id for Keystore; server id for Auth API; orphan delete on verify/save failure (MOB-016)
 - Pending/respond `requireEnrollmentKeyPair` (MOB-013 — no silent generate)
 - Unit tests: identity, storage A/B collision, claim missing-key
+- Operator Pixel clean-install + multi-install enroll smoke — **passed** (2026-07-23)
 
-**Still before closeout:** Pixel clean install + enroll smoke; optional instrumentation distinct aliases; assessment disposition close when validated on device.
+**Deferred:** dedicated Android instrumentation asserting distinct Keystore aliases — optional; covered by unit collision tests + device smoke. Revisit only if a Keystore-alias encoding regression is suspected.
 
 ## Objective
 
@@ -76,33 +78,38 @@ save semantics, no silent pending/respond ensure (MOB-013), orphan cleanup after
 
 ## Evidence plan
 
-| Layer | Required |
-| --- | --- |
-| Unit | Collision save/list/delete; draft identity; ensure-no-silent-generate |
-| Instrumentation | Distinct Keystore aliases for two installation ids |
-| Manual | Two-installation enroll on device/emulator when practical |
-| Docs | Data model + any crypto/storage notes; assessment register dispositions |
-| Traceability | Campaign pass-2 decisions → done/absorbed |
+| Layer | Required | Result |
+| --- | --- | --- |
+| Unit | Collision save/list/delete; draft identity; ensure-no-silent-generate | Done |
+| Instrumentation | Distinct Keystore aliases for two installation ids | Deferred (optional) |
+| Manual | Two-installation enroll on device | Done (Pixel smoke, operator) |
+| Docs | Data model + crypto/storage notes; assessment dispositions | Done at closeout |
+| Traceability | Campaign pass-2 decisions → Fixed for MOB-011/013/016 | Done at closeout |
 
 ## Quality gates
 
 - **Analysis gate:** Grill Me locked; prerequisite TB exited.
 - **Design gate:** No OpenAPI change; installation remains normalized URL; no half-scoped handles.
-- **Implementation gate:** Mobile validate/tests + instrumentation as listed; fail-closed on
-  identity ambiguity.
+- **Implementation gate:** Mobile validate/tests + device smoke; fail-closed on identity ambiguity.
 
 ## Exit criteria
 
-1. A/B collision scenario cannot reuse key, overwrite seals, or drop the other zone’s row.
-2. Auth API requests still send numeric `enrollmentId`.
-3. Pending/respond do not silently create enrollment keys.
-4. Failed verify/save does not leave sticky orphans without cleanup.
+1. A/B collision scenario cannot reuse key, overwrite seals, or drop the other zone’s row. — **met**
+2. Auth API requests still send numeric `enrollmentId`. — **met**
+3. Pending/respond do not silently create enrollment keys. — **met**
+4. Failed verify/save does not leave sticky orphans without cleanup. — **met**
 5. Assessment MOB-011 / MOB-013 / MOB-016 dispositions updated; pass-2 campaign rationale closed for
-   those rows.
+   those rows. — **met** (2026-07-23)
+
+## Residual risks
+
+- MOB-012 (unlocked-device gate) can still destroy Keystore material on Android 12–14; fail-closed
+  pending/respond (MOB-013 fix) surfaces that as missing key rather than silent regen.
+- MOB-015 still collapses some storage failures to empty list — separate hygiene handoff.
 
 ## Links
 
 - Idea: [`ideas/I-2026-07-20-mobile-installation-scoped-enrollment-identity.md`](ideas/I-2026-07-20-mobile-installation-scoped-enrollment-identity.md)
 - Prerequisite TB: [`TB-2026-07-20-mobile-installation-trust-zone-canon.md`](TB-2026-07-20-mobile-installation-trust-zone-canon.md)
 - Campaign: [`../hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../hygiene/mobile-protocol-security/2026-07-19-pass-2.md)
-  (ephemeral MOB-011/013/016 handoffs deleted after promotion; observation scenario lives in the campaign note)
+- PR: [#401](https://github.com/mgagp/ezkey/pull/401)

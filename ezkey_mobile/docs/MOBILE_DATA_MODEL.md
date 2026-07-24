@@ -93,8 +93,8 @@ Enrollment → installation association is ownership, not optional UI decoration
 5. Group Home data by `installation.id`, then by tenant metadata inside each installation.
 
 Invariant: two enrollments with equivalent normalized Auth API URLs belong to the **same** trust zone. Two distinct
-normalized URLs are **independent** trust zones and must not encroach on each other (crypto/storage handle scoping
-is tracked under MOB-011 / `I-2026-07-20-mobile-installation-scoped-enrollment-identity` — not yet complete).
+normalized URLs are **independent** trust zones and must not encroach on each other (crypto/storage handles are
+installation-scoped — MOB-011 / `I-2026-07-20-mobile-installation-scoped-enrollment-identity`, closed 2026-07-23).
 
 **Identity contract (MOB-011 activity 2):** `StoredEnrollment.id` is the installation-scoped local
 handle (`deriveLocalEnrollmentId`). Auth API bodies use `StoredEnrollment.enrollmentId` (server

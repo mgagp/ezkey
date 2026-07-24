@@ -78,8 +78,9 @@ phone; it does not yet change Keystore alias derivation (that is the follow-on i
 
 Grill Me 2026-07-20 locked the product posture. Tracer bullet
 [`TB-2026-07-20-mobile-installation-trust-zone-canon`](../TB-2026-07-20-mobile-installation-trust-zone-canon.md)
-closed 2026-07-20. Next: execute
-[`TB-2026-07-20-mobile-installation-scoped-enrollment-identity`](../TB-2026-07-20-mobile-installation-scoped-enrollment-identity.md).
+closed 2026-07-20. Follow-on
+[`TB-2026-07-20-mobile-installation-scoped-enrollment-identity`](../TB-2026-07-20-mobile-installation-scoped-enrollment-identity.md)
+**done** 2026-07-23 (PR [#401](https://github.com/mgagp/ezkey/pull/401)).
 
 ## Links
 

@@ -3,17 +3,19 @@
 ## Metadata
 
 - **ID:** `I-2026-07-20-mobile-installation-scoped-enrollment-identity`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P1`
 - **Created at:** `2026-07-20`
-- **Updated at:** `2026-07-20`
-- **Last reviewed at:** `2026-07-20`
+- **Updated at:** `2026-07-23`
+- **Last reviewed at:** `2026-07-23`
+- **Closed at:** `2026-07-23`
 - **Progression markers:** `P1-operability`
 - **Component tags:** `mobile`
 - **Lane:** `D`
 - **Captured by:** Marc (Grill Me on MOB-011 handoff, 2026-07-20)
-- **GitHub issue:** _(none yet)_
+- **GitHub issue:** _(none — canon sufficient)_
 - **Prerequisite:** `I-2026-07-20-mobile-installation-trust-zone-canon` (complete first)
+- **Delivered by:** [`TB-2026-07-20-mobile-installation-scoped-enrollment-identity`](../TB-2026-07-20-mobile-installation-scoped-enrollment-identity.md) / PR [#401](https://github.com/mgagp/ezkey/pull/401)
 
 ## Intent
 
@@ -83,16 +85,22 @@ Design as if the app had been built correctly with today’s knowledge — not a
 - Encoding mistakes for Keystore aliases (raw URLs unsafe) — require documented safe derivation +
   tests.
 
+## Closeout (2026-07-23)
+
+- **Evidence:** unit collision / identity / no-silent-ensure tests; operator Pixel multi-install smoke.
+- **Deferred:** optional Keystore instrumentation for distinct aliases (unit + smoke accepted).
+- **Residual:** MOB-012 platform key lifecycle; MOB-015 list-collapse hygiene (separate handoffs).
+- **Next:** pass-2 remaining open items (MOB-012 / 014 / 015); no further work on this idea.
+
 ## Promotion notes
 
-Grill Me 2026-07-20 complete. Execute only after
-`I-2026-07-20-mobile-installation-trust-zone-canon` / its TB exit criteria. Tracer bullet:
-[`TB-2026-07-20-mobile-installation-scoped-enrollment-identity`](../TB-2026-07-20-mobile-installation-scoped-enrollment-identity.md).
+Grill Me 2026-07-20 complete. Tracer bullet:
+[`TB-2026-07-20-mobile-installation-scoped-enrollment-identity`](../TB-2026-07-20-mobile-installation-scoped-enrollment-identity.md) — **done** 2026-07-23.
 
 ## Links
 
 - Assessment §14.2 MOB-011 / MOB-013 / MOB-016:
   [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)
 - Campaign: [`2026-07-19-pass-2.md`](../../hygiene/mobile-protocol-security/2026-07-19-pass-2.md)
-  (ephemeral MOB-011/013/016 handoffs deleted after promotion)
 - Prerequisite: [`I-2026-07-20-mobile-installation-trust-zone-canon`](I-2026-07-20-mobile-installation-trust-zone-canon.md)
+- PR: [#401](https://github.com/mgagp/ezkey/pull/401)
