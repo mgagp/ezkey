@@ -437,7 +437,7 @@ No remediations authorized until operator HITL.
 | Finding | Severity | Status |
 | --- | --- | --- |
 | **MOB-011** | P1 | **Fixed** — PR [#401](https://github.com/mgagp/ezkey/pull/401); TB closed 2026-07-23 |
-| **MOB-012** | P1 | Open — `setUnlockedDeviceRequired` API gate |
+| **MOB-012** | P1 | **Fixed** — gate API 35+ only (2026-07-23 HITL); forward-only for existing keys |
 | **MOB-013** | P1/P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
 | **MOB-014** | P2 | Open — malformed pending ≠ empty |
 | **MOB-015** | P2 | Open — unseal failure visibility |
@@ -454,7 +454,7 @@ No remediations authorized until operator HITL.
 | “Backend verifies StrongBox” | **Unsupported** — do not claim |
 | “Pinning / phishing resistance comparable to WebAuthn” | **Unsupported** — do not claim |
 | “Deleting an enrollment removes local Keystore material” | **Supported** for intended wipe path (MOB-002); delete is fail-open if Keystore delete fails |
-| “Multiple independent Ezkey installations coexist safely on one phone” | **Supported** for local crypto/storage isolation (installation-scoped handles — PR [#401](https://github.com/mgagp/ezkey/pull/401)); residual platform/UX risks remain under MOB-012 / MOB-015 |
+| “Multiple independent Ezkey installations coexist safely on one phone” | **Supported** for local crypto/storage isolation (installation-scoped handles — PR [#401](https://github.com/mgagp/ezkey/pull/401)); residual list-collapse UX under MOB-015 |
 
 ## 11. Methodology next steps
 
@@ -560,26 +560,13 @@ Severity/confidence scale unchanged from §6.
 | --- | --- |
 | **Severity** | P1 |
 | **Confidence** | Confirmed |
-| **Disposition** | **Open — pass-2 HITL** (platform gate hygiene; small fix candidate) |
+| **Disposition** | **Fixed** — 2026-07-23 HITL: `setUnlockedDeviceRequired(true)` only when `SDK_INT >= 35` (`VANILLA_ICE_CREAM`) on enrollment EC + app seal; forward-only (no Keystore rewrite); no CryptoObject / user-auth |
 | **MASVS** | CRYPTO, PLATFORM, RESILIENCE |
 | **Android** | [KeyGenParameterSpec.Builder.setUnlockedDeviceRequired](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder#setUnlockedDeviceRequired(boolean)) |
 
-**Issue.** Official Android docs warn of critical bugs on Android 12–14 (API 31–34) when using `setUnlockedDeviceRequired(true)`, and recommend enabling it only on Android 15+ unless keys also use `setUserAuthenticationRequired(true)`. Ezkey enables the flag from API 30 (`R`) for **both** enrollment EC keys and the app AES seal key, while `setUserAuthenticationRequired(false)`.
+**Issue (historized — fixed).** Official Android docs warn of critical bugs on Android 12–14 (API 31–34) when using `setUnlockedDeviceRequired(true)`, and recommend enabling it only on Android 15+ unless keys also use `setUserAuthenticationRequired(true)`. At assessment open, Ezkey enabled the flag from API 30 (`R`) for **both** enrollment EC keys and the app AES seal key, while `setUserAuthenticationRequired(false)`.
 
-Documented platform defects include: generation/use failure without secure lock screen; **automatic deletion** of these keys when the user removes the secure lock screen; weak-biometric / shared-profile unlock not re-authorizing keys.
-
-**Evidence.**
-- `EzkeyCryptoModule.generateEnrollmentEcKeyPair` — `setUnlockedDeviceRequired(true)` when `SDK_INT >= R`
-- `EzkeyCryptoModule.createAppSealKey` — same gate
-- `minSdkVersion = 24`, `targetSdkVersion = 36` — runtime OS, not target SDK, determines the bug surface
-
-**Impact.** On affected devices, lock-screen removal or related platform bugs can permanently destroy enrollment signing keys (backend still bound to old public key) and/or the app seal key (all sealed proof tokens / integration keys become undecryptable). Combined with silent list collapse (MOB-015) and silent key regeneration (MOB-013), the failure mode is easy to misdiagnose.
-
-**Fail posture.** Platform-driven key destruction — app cannot recover without re-enrollment.
-
-**Recommended action.** Gate `setUnlockedDeviceRequired(true)` to API 35+ (`VANILLA_ICE_CREAM`) for the current non-auth-bound design; omit on 12–14. Revisit when MOB-001 Track B introduces user-auth-required keys.
-
-**Verification class.** Static + device matrix (API 33/34 vs 35+); lock-screen removal scenario on a test device.
+**Current code (post-MOB-012).** `shouldRequireUnlockedDevice()` gates the flag to API 35+ in `generateEnrollmentEcKeyPair` and `createAppSealKey`. Existing keys are not migrated. Revisit when MOB-001 Track B introduces user-auth-required keys.
 
 ---
 
@@ -699,7 +686,7 @@ Deferred programs remain out of this hygiene lot unless the operator funds them:
 | Finding | Static/source | Unit | Emulator/instrumentation | Physical device |
 | --- | --- | --- | --- | --- |
 | MOB-011 | Yes | Done (collision + identity) | Deferred optional | Done (Pixel multi-install smoke) |
-| MOB-012 | Yes + Android docs | N/A | Useful on API 33/34 | Lock-removal scenario |
+| MOB-012 | Yes + Android docs | N/A | Done (`unlockedDeviceRequired` vs API 35 gate) | Optional lock-removal on 33/34 |
 | MOB-013 | Yes | Done (no silent generate) | Deferred optional | Covered by unit + smoke |
 | MOB-014 | Yes | Required for fix | No | No |
 | MOB-015 | Yes | Required for fix | Optional | Optional |

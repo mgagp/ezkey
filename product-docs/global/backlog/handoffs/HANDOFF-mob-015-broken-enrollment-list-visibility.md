@@ -13,7 +13,7 @@ Use this prompt to start a **new Cursor session** that:
 
 Do not invent final copy or Home layout before that Grill Me cluster closes. Storage-layer discrimination (broken vs missing vs parse failure) can be prototyped in parallel, but **UI shapes and user actions wait for operator answers**.
 
-Soft preference: land after MOB-012 if practical (fewer seal-key loss false empties), but MOB-015 is still valid without 012. Do not bundle MOB-011/013/014/016 unless asked.
+Soft preference: land after MOB-012 if practical (fewer seal-key loss false empties) — MOB-012 is **Fixed** 2026-07-23, so this preference is satisfied. Do not bundle MOB-011/013/014/016 unless asked.
 
 ---
 

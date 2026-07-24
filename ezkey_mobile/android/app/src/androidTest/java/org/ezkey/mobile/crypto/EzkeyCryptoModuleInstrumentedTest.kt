@@ -12,6 +12,8 @@
 
 package org.ezkey.mobile.crypto
 
+import android.os.Build
+import android.security.keystore.KeyInfo
 import android.util.Base64
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -20,6 +22,7 @@ import com.facebook.react.bridge.BridgeReactContext
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
 import java.security.KeyStore
+import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
 import java.util.UUID
@@ -27,6 +30,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -147,6 +151,36 @@ class EzkeyCryptoModuleInstrumentedTest {
     assertTrue(
         "tier must be one of NONE/STANDARD/STRONG, got: $tier",
         tier in setOf("NONE", "STANDARD", "STRONG"),
+    )
+  }
+
+  /**
+   * MOB-012: with user-auth off, unlocked-device-required is only set on Android 15+ (API 35+).
+   * KeyInfo exposes the flag from API 31.
+   */
+  @Test
+  fun enrollmentKey_unlockedDeviceRequired_matchesAndroid15Gate() {
+    Assume.assumeTrue(
+        "KeyInfo.isUnlockedDeviceRequired requires API 31+",
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+    )
+
+    val enrollmentId = newEnrollmentId()
+    val generatePromise = CapturingPromise()
+    module.generateEnrollmentKeyPair(enrollmentId, null, generatePromise)
+    assertEquals(true, generatePromise.requireResolved())
+
+    val alias = "ezkey_enrollment_$enrollmentId"
+    val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+    val privateKey = keyStore.getKey(alias, null) as PrivateKey
+    val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
+    val keyInfo = factory.getKeySpec(privateKey, KeyInfo::class.java)
+    val expected = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
+
+    assertEquals(
+        "unlockedDeviceRequired should follow API 35+ gate (MOB-012)",
+        expected,
+        keyInfo.isUnlockedDeviceRequired,
     )
   }
 
