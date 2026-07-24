@@ -439,7 +439,7 @@ No remediations authorized until operator HITL.
 | **MOB-011** | P1 | **Fixed** — PR [#401](https://github.com/mgagp/ezkey/pull/401); TB closed 2026-07-23 |
 | **MOB-012** | P1 | **Fixed** — gate API 35+ only (2026-07-23 HITL); forward-only for existing keys |
 | **MOB-013** | P1/P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
-| **MOB-014** | P2 | **Fixed** — malformed pending HTTP 200 fail-closed (2026-07-24) |
+| **MOB-014** | P2 | **Fixed** — PR [#405](https://github.com/mgagp/ezkey/pull/405); malformed pending HTTP 200 fail-closed (2026-07-24) |
 | **MOB-015** | P2 | Open — unseal failure visibility |
 | **MOB-016** | P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
 
