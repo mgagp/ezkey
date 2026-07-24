@@ -10,6 +10,7 @@
  */
 
 jest.mock('../../api/authAttempts', () => ({
+  MALFORMED_PENDING_RESPONSE: 'MALFORMED_PENDING_RESPONSE',
   authAttemptsApi: {
     pending: jest.fn(),
   },
@@ -35,7 +36,7 @@ jest.mock('../../../utils/sha256HexUtf8', () => ({
   sha256HexUtf8: jest.fn(),
 }));
 
-import {authAttemptsApi} from '../../api/authAttempts';
+import {authAttemptsApi, MALFORMED_PENDING_RESPONSE} from '../../api/authAttempts';
 import {cryptoService} from '../../crypto';
 import {buildPendingPayload} from '../../crypto/authAttemptPayload';
 import {generateProofToken} from '../../../utils/generateProofToken';
@@ -85,6 +86,20 @@ describe('claimPendingAttempt', () => {
     const result = await claimPendingAttempt(sampleEnrollment);
 
     expect(result).toEqual({kind: 'none'});
+    expect(mockCryptoService.verify).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when pending returns a malformed HTTP 200 body', async () => {
+    const malformedError = new Error('Malformed pending authentication response');
+    malformedError.name = MALFORMED_PENDING_RESPONSE;
+    mockAuthAttemptsApi.pending.mockRejectedValue(malformedError);
+
+    const result = await claimPendingAttempt(sampleEnrollment);
+
+    expect(result).toEqual({
+      kind: 'fail_closed',
+      reason: 'malformed_pending_response',
+    });
     expect(mockCryptoService.verify).not.toHaveBeenCalled();
   });
 

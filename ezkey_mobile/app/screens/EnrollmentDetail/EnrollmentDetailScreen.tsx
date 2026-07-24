@@ -101,7 +101,9 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         setInlineFeedback(
           result.reason === 'missing_integration_public_key'
             ? t('pendingAuth.missingPendingPublicKey')
-            : t('pendingAuth.invalidPendingSignature'),
+            : result.reason === 'malformed_pending_response'
+              ? t('pendingAuth.malformedPendingResponse')
+              : t('pendingAuth.invalidPendingSignature'),
         );
         return;
       }

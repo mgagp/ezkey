@@ -12,7 +12,10 @@
  * @since 2026
  */
 
-import {authAttemptsApi} from '../api/authAttempts';
+import {
+  authAttemptsApi,
+  MALFORMED_PENDING_RESPONSE,
+} from '../api/authAttempts';
 import {buildPendingPayload} from '../crypto/authAttemptPayload';
 import {cryptoService} from '../crypto';
 import {StoredEnrollment} from '../storage/enrollmentStorage';
@@ -56,12 +59,17 @@ export type ClaimPendingStep =
  *
  * @since 2026
  */
+export type ClaimPendingFailClosedReason =
+  | 'missing_integration_public_key'
+  | 'invalid_pending_signature'
+  | 'malformed_pending_response';
+
 export type ClaimPendingResult =
   | {kind: 'none'}
   | {kind: 'attempt'; attempt: PendingAttempt}
   | {
       kind: 'fail_closed';
-      reason: 'missing_integration_public_key' | 'invalid_pending_signature';
+      reason: ClaimPendingFailClosedReason;
       diagnostics?: ClaimPendingDiagnostics;
     };
 
@@ -107,15 +115,27 @@ export async function claimPendingAttempt(
 
   const deviceProofToken = await generateProofToken();
   const deviceProofTokenSigned = await cryptoService.sign(enrollmentKeyId, deviceProofToken);
-  const response = await authAttemptsApi.pending(
-    {
-      enrollmentId: resolveServerEnrollmentId(enrollment),
-      enrollmentProofToken: enrollment.enrollmentProofToken,
-      deviceProofToken,
-      deviceProofTokenSigned,
-    },
-    enrollment.installation?.authUrl,
-  );
+
+  let response;
+  try {
+    response = await authAttemptsApi.pending(
+      {
+        enrollmentId: resolveServerEnrollmentId(enrollment),
+        enrollmentProofToken: enrollment.enrollmentProofToken,
+        deviceProofToken,
+        deviceProofTokenSigned,
+      },
+      enrollment.installation?.authUrl,
+    );
+  } catch (error) {
+    if (error instanceof Error && error.name === MALFORMED_PENDING_RESPONSE) {
+      return {
+        kind: 'fail_closed',
+        reason: 'malformed_pending_response',
+      };
+    }
+    throw error;
+  }
 
   if (!response) {
     return {kind: 'none'};

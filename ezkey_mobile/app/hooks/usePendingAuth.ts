@@ -288,11 +288,13 @@ export function usePendingAuth(
       }
 
       if (result.kind === 'fail_closed') {
-        setGlobalError(
+        const failClosedMessage =
           result.reason === 'missing_integration_public_key'
             ? t('pendingAuth.missingPendingPublicKey')
-            : t('pendingAuth.invalidPendingSignature'),
-        );
+            : result.reason === 'malformed_pending_response'
+              ? t('pendingAuth.malformedPendingResponse')
+              : t('pendingAuth.invalidPendingSignature');
+        setGlobalError(failClosedMessage);
         setAttempt(undefined);
         if (result.diagnostics) {
           setDebugInfo(prev => ({
