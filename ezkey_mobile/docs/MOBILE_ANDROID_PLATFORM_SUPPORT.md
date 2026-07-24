@@ -10,7 +10,7 @@ This document makes the Android OS support floor for the Ezkey **reference** mob
 Related:
 
 - Build values today: `ezkey_mobile/android/build.gradle` (`minSdkVersion`, `targetSdkVersion`)
-- Crypto Keystore flag hygiene (separate): MOB-012 / `HANDOFF-mob-012-unlocked-device-required-gate.md`
+- Crypto Keystore flag hygiene (separate): MOB-012 — **Fixed** 2026-07-23 (API 35+ gate in `EzkeyCryptoModule`)
 - Play operations: `MOBILE_PLAY_PUBLISHING.md`, `MOBILE_PLAY_RELEASE_READINESS_AUDIT.md`
 
 ---
@@ -101,7 +101,7 @@ Upload AAB --> minSdk baked in manifest/metadata
 | Topic | Mechanism | Change set |
 | --- | --- | --- |
 | **This policy** | Who we support / `minSdk` 31 | Product docs now; Gradle bump later |
-| **MOB-012** | Runtime: enable `setUnlockedDeviceRequired(true)` only on API **35+** (avoid Android 12–14 platform bugs) | Separate hygiene fix; **must not** be “solved” by setting `minSdk` 35 |
+| **MOB-012** | Runtime: enable `setUnlockedDeviceRequired(true)` only on API **35+** (avoid Android 12–14 platform bugs) | **Fixed** 2026-07-23 — do **not** “solve” by setting `minSdk` 35 |
 
 An app with `minSdk` 31 still runs on Android 12–14; MOB-012 remains relevant on those OS versions.
 
@@ -134,13 +134,13 @@ without inventing a separate workflow lane.
 
 | # | Work | Handoff | Notes |
 | --- | --- | --- | --- |
-| 1 | Runtime Keystore `setUnlockedDeviceRequired` gate | [`HANDOFF-mob-012-unlocked-device-required-gate.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mob-012-unlocked-device-required-gate.md) | **Not** a minSdk raise; keep separate |
-| 2 | Raise Gradle `minSdk` **24 → 31** + Play ship checklist | [`HANDOFF-mobile-android-minsdk-31.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-android-minsdk-31.md) | Closes policy vs code debt |
-| 3 | In-app unsupported-OS UX | [`HANDOFF-mobile-unsupported-os-ux.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-unsupported-os-ux.md) | After (or with) #2 |
-| 4 | Annual floor review | [`HANDOFF-mobile-platform-support-annual-review.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-platform-support-annual-review.md) | Dormant until **2027-07** (or earlier if asked) |
+| 1 | Raise Gradle `minSdk` **24 → 31** + Play ship checklist | [`HANDOFF-mobile-android-minsdk-31.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-android-minsdk-31.md) | Closes policy vs code debt |
+| 2 | In-app unsupported-OS UX | [`HANDOFF-mobile-unsupported-os-ux.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-unsupported-os-ux.md) | After (or with) #1 |
+| 3 | Annual floor review | [`HANDOFF-mobile-platform-support-annual-review.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-platform-support-annual-review.md) | Dormant until **2027-07** (or earlier if asked) |
 
-Suggested session order after crypto pass-2 MOB items: **MOB-012 → minSdk 31 → unsupported-OS UX**.
-Annual review is calendar-driven, not part of that chain.
+MOB-012 (unlocked-device Keystore gate) is **done** — see campaign pass-2 / assessment §14.2.
+
+Suggested session order: **minSdk 31 → unsupported-OS UX**. Annual review is calendar-driven.
 
 Do **not** create `I-*` / `TB-*` solely for this policy document. Promote to methodology backlog only
 if a future floor change becomes a multi-sprint program.

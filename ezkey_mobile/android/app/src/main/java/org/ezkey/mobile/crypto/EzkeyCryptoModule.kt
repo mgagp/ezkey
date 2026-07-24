@@ -86,6 +86,18 @@ private fun keyInfoIsStrongBoxBacked(keyInfo: KeyInfo): Boolean {
 }
 
 /**
+ * Whether new Keystore keys should set {@code setUnlockedDeviceRequired(true)}.
+ *
+ * Android documents critical bugs on API 31–34 when this flag is used without
+ * {@code setUserAuthenticationRequired(true)}. Ezkey keeps user-auth off today (MOB-001 Track B
+ * deferred), so enable the flag only on Android 15+ (API 35+). Existing keys are not rewritten
+ * (MOB-012 forward-only).
+ */
+private fun shouldRequireUnlockedDevice(): Boolean {
+  return Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
+}
+
+/**
  * React Native module providing EC P-256 key generation, retrieval, signing, and deletion.
  *
  * Uses Android Keystore and requests StrongBox on supported devices.
@@ -210,7 +222,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
             .setDigests(KeyProperties.DIGEST_SHA256)
             .setUserAuthenticationRequired(false)
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+    if (shouldRequireUnlockedDevice()) {
       builder.setUnlockedDeviceRequired(true)
     }
 
@@ -668,7 +680,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
             .setKeySize(256)
             .setUserAuthenticationRequired(false)
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+    if (shouldRequireUnlockedDevice()) {
       builder.setUnlockedDeviceRequired(true)
     }
 

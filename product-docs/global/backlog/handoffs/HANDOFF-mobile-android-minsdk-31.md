@@ -3,10 +3,10 @@
 **Status:** `open` — **fix authorized** (product policy already locked)  
 **Lane:** Mobile product / release hygiene (not a MOB-* finding)  
 **Policy canon:** [`ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../../../../ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md)  
-**Related:** MOB-012 is a **different** change (runtime Keystore gate). Do **not** set `minSdk` to 35.
+**Related:** MOB-012 (runtime Keystore unlocked-device gate) is **Fixed** 2026-07-23 — do **not** set `minSdk` to 35 as a substitute.
 
 Use this prompt to start a **new Cursor session** that implements the Gradle floor bump and ship hygiene.
-Suggested queue: after or parallel to MOB-012; **before** the unsupported-OS in-app UX handoff.
+Suggested queue: **before** the unsupported-OS in-app UX handoff.
 
 ---
 
@@ -43,7 +43,7 @@ When this binary is the one you publish to Play:
 
 ### Explicitly out of scope
 
-- MOB-012 `setUnlockedDeviceRequired` gate
+- MOB-012 `setUnlockedDeviceRequired` gate (already Fixed — do not re-open here)
 - In-app unsupported-OS screen (see [`HANDOFF-mobile-unsupported-os-ux.md`](HANDOFF-mobile-unsupported-os-ux.md))
 - Raising `minSdk` above 31
 - iOS minimum version
@@ -76,6 +76,6 @@ ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md end-to-end.
 
 Task: raise Gradle minSdkVersion from 24 to 31 to match the product floor (Android 12+).
 Align stale API 24 docs. Smoke on API 31. Complete the ship checklist items that apply in-repo;
-leave Play Console copy as operator notes if Console is not available. Do not implement MOB-012
+leave Play Console copy as operator notes if Console is not available. Do not re-implement MOB-012
 or the unsupported-OS in-app UX. Do not create I-*/TB-*. Do not commit until I ask.
 ```
