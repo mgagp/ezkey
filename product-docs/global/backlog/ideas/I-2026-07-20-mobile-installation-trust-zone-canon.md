@@ -85,6 +85,6 @@ closed 2026-07-20. Next: execute
 
 - Assessment: [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md) §14.2 MOB-011
 - Campaign: [`product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../hygiene/mobile-protocol-security/2026-07-19-pass-2.md)
-- Handoff (analysis closed): [`HANDOFF-mob-011-installation-scoped-identity.md`](../handoffs/HANDOFF-mob-011-installation-scoped-identity.md)
+  (ephemeral MOB-011 analysis handoff deleted after promotion)
 - Follow-on idea: [`I-2026-07-20-mobile-installation-scoped-enrollment-identity`](I-2026-07-20-mobile-installation-scoped-enrollment-identity.md)
 - Mobile data model: [`ezkey_mobile/docs/MOBILE_DATA_MODEL.md`](../../../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md)

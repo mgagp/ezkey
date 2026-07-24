@@ -104,5 +104,5 @@ save semantics, no silent pending/respond ensure (MOB-013), orphan cleanup after
 
 - Idea: [`ideas/I-2026-07-20-mobile-installation-scoped-enrollment-identity.md`](ideas/I-2026-07-20-mobile-installation-scoped-enrollment-identity.md)
 - Prerequisite TB: [`TB-2026-07-20-mobile-installation-trust-zone-canon.md`](TB-2026-07-20-mobile-installation-trust-zone-canon.md)
-- Handoff: [`handoffs/HANDOFF-mob-011-installation-scoped-identity.md`](handoffs/HANDOFF-mob-011-installation-scoped-identity.md)
 - Campaign: [`../hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../hygiene/mobile-protocol-security/2026-07-19-pass-2.md)
+  (ephemeral MOB-011/013/016 handoffs deleted after promotion; observation scenario lives in the campaign note)

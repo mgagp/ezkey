@@ -94,5 +94,5 @@ Grill Me 2026-07-20 complete. Execute only after
 - Assessment §14.2 MOB-011 / MOB-013 / MOB-016:
   [`docs/security/mobile-protocol-crypto-assessment-2026-07.md`](../../../../docs/security/mobile-protocol-crypto-assessment-2026-07.md)
 - Campaign: [`2026-07-19-pass-2.md`](../../hygiene/mobile-protocol-security/2026-07-19-pass-2.md)
-- Handoff: [`HANDOFF-mob-011-installation-scoped-identity.md`](../handoffs/HANDOFF-mob-011-installation-scoped-identity.md)
+  (ephemeral MOB-011/013/016 handoffs deleted after promotion)
 - Prerequisite: [`I-2026-07-20-mobile-installation-trust-zone-canon`](I-2026-07-20-mobile-installation-trust-zone-canon.md)
