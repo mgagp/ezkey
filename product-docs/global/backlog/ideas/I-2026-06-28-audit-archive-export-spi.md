@@ -6,8 +6,8 @@
 - **Status:** `incubating`
 - **Priority:** `P3`
 - **Created at:** `2026-06-28`
-- **Updated at:** `2026-06-28`
-- **Last reviewed at:** `2026-06-28`
+- **Updated at:** `2026-07-23`
+- **Last reviewed at:** `2026-07-23`
 - **Phase tags:** `P3-future` (post-September-2026 R1)
 - **Component tags:** `core`, `admin-api`, `admin-ui`, `audit`, `infra`, `docs`, peripheral (`ezkey-archive-s3`, `ezkey-archive-cloudflare-r2`)
 - **Captured by:** Marc
@@ -51,6 +51,20 @@ vendor**; reference adapters (S3, Cloudflare R2) live in peripheral repos.
   - Auto-export without operator/retention policy; multi-adapter routing in the first slice.
   - Pulling this into the September 2026 R1 critical path.
   - Replacing the self-contained no-export mode (must remain a fully supported deployment posture).
+  - Treating Git-backed archival as the sole integrity control for live data.
+
+## Candidate implementation hints (non-normative)
+
+These hints preserve useful direction from prior working notes without locking the SPI to one stack.
+
+- **Export bundle shape (candidate):** detached archive bundle as `NDJSON` plus a `manifest.json`
+  carrying integrity metadata (`entryCount`, first/last entry ids, digest, key-version marker,
+  checkpoint references, export timestamp).
+- **Optional evidence mirror (candidate):** a Git-backed mirror (signed tags/commits) may be used by
+  an adapter as an additional chain-of-custody layer after export; this is complementary and must
+  not replace in-DB HMAC + chain protection of live data.
+- **Operator tooling (candidate):** `ezkey-cli` subcommands for bundle export/verification can provide
+  pragmatic operational UX, while the core API and lifecycle FSM remain storage-vendor-neutral.
 
 ## Key assumptions
 

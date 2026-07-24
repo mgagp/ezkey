@@ -19,6 +19,15 @@ These analogies are **orientation tools**, not permission matrices. Authoritativ
 
 **Channel send actions (email, SMS):** adapter/SMTP **configuration** = Global Admin (TI). **Send** in enrolment/activation workflows = **Global Admin or Tenant Admin** — whichever role operates that workflow in the deployment geometry below.
 
+## Admin UI copy posture
+
+Use a simple role-aware vs role-agnostic split for operator-facing copy:
+
+- **Post-login shell identity is role-aware** (for example, Global Admin vs Tenant Admin labels in the main console chrome).
+- **Pre-auth product messaging is role-agnostic** (shared login-level positioning that does not assume operator role before session context exists).
+
+When copy can become inaccurate across scopes, prefer neutral wording such as "within your scope" over tenant-only phrasing.
+
 ## Deployment operator geometries
 
 Ezkey supports **two common adopter shapes**. Both are valid product postures; neither requires platform “profile code” (`V-2026-0010`). Phase 2 profile elaboration documents which geometry applies to a given installation.

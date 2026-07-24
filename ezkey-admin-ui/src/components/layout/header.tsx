@@ -73,7 +73,7 @@ export function Header({ title }: HeaderProps) {
             onClick={() => setLanguage('en')}
             data-testid="app-language-en"
             className={i18n.language.startsWith('en') ? 'text-sm font-bold text-fg' : 'text-sm text-fg-muted hover:text-fg'}
-            aria-label="English"
+            aria-label={t('common:language.english')}
           >
             EN
           </button>
@@ -83,7 +83,7 @@ export function Header({ title }: HeaderProps) {
             onClick={() => setLanguage('fr')}
             data-testid="app-language-fr"
             className={i18n.language.startsWith('fr') ? 'text-sm font-bold text-fg' : 'text-sm text-fg-muted hover:text-fg'}
-            aria-label="Français"
+            aria-label={t('common:language.french')}
           >
             FR
           </button>

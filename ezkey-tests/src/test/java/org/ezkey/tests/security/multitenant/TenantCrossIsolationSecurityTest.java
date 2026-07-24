@@ -448,11 +448,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
 
     assertThat(response.getStatusCode()).isEqualTo(200);
 
-    // Paginated response: content + page; fallback to root array for legacy API
+    // Paginated response: strict contract (content + page)
     List<Map<String, Object>> apiKeys = response.jsonPath().getList("content");
-    if (apiKeys == null) {
-      apiKeys = response.jsonPath().getList("$");
-    }
     assertThat(apiKeys).isNotNull();
 
     // Verify all API keys belong to Tenant A integrations (skip nulls from JSON parsing)
@@ -657,11 +654,8 @@ public class TenantCrossIsolationSecurityTest extends AbstractSecurityTest {
             .extract()
             .response();
 
-    // Paginated response: content + page; fallback to root array for legacy API
+    // Paginated response: strict contract (content + page)
     List<Map<String, Object>> apiKeys = response.jsonPath().getList("content");
-    if (apiKeys == null) {
-      apiKeys = response.jsonPath().getList("$");
-    }
     assertThat(apiKeys).isNotNull();
 
     // Extract integration IDs from API keys (filter nulls from JSON parsing)

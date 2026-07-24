@@ -59,6 +59,10 @@
   "help": {
     "ariaLabel": "Help: {{title}}"
   },
+  "language": {
+    "english": "English",
+    "french": "French"
+  },
   "dateRange": {
     "full": "Full range",
     "today": "Today",

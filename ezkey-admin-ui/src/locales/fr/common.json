@@ -59,6 +59,10 @@
   "help": {
     "ariaLabel": "Aide : {{title}}"
   },
+  "language": {
+    "english": "Anglais",
+    "french": "Français"
+  },
   "dateRange": {
     "full": "Toute la période",
     "today": "Aujourd'hui",

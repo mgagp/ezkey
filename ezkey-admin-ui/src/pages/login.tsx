@@ -297,7 +297,7 @@ export default function LoginPage() {
             onClick={() => setLanguage('en')}
             data-testid="login-language-en"
             className={i18n.language.startsWith('en') ? 'font-bold text-sidebar-bg' : 'text-fg-muted hover:text-fg'}
-            aria-label="English"
+            aria-label={t('common:language.english')}
           >
             EN
           </button>
@@ -307,7 +307,7 @@ export default function LoginPage() {
             onClick={() => setLanguage('fr')}
             data-testid="login-language-fr"
             className={i18n.language.startsWith('fr') ? 'font-bold text-sidebar-bg' : 'text-fg-muted hover:text-fg'}
-            aria-label="Français"
+            aria-label={t('common:language.french')}
           >
             FR
           </button>

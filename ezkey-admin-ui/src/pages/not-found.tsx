@@ -20,7 +20,7 @@ export default function NotFoundPage() {
             onClick={() => setLanguage('en')}
             data-testid="not-found-language-en"
             className={i18n.language.startsWith('en') ? 'font-bold text-fg' : 'text-fg-muted hover:text-fg'}
-            aria-label="English"
+            aria-label={t('language.english')}
           >
             EN
           </button>
@@ -30,7 +30,7 @@ export default function NotFoundPage() {
             onClick={() => setLanguage('fr')}
             data-testid="not-found-language-fr"
             className={i18n.language.startsWith('fr') ? 'font-bold text-fg' : 'text-fg-muted hover:text-fg'}
-            aria-label="Français"
+            aria-label={t('language.french')}
           >
             FR
           </button>
