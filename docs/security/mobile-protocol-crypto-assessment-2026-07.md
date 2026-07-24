@@ -439,7 +439,7 @@ No remediations authorized until operator HITL.
 | **MOB-011** | P1 | **Fixed** — PR [#401](https://github.com/mgagp/ezkey/pull/401); TB closed 2026-07-23 |
 | **MOB-012** | P1 | **Fixed** — gate API 35+ only (2026-07-23 HITL); forward-only for existing keys |
 | **MOB-013** | P1/P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
-| **MOB-014** | P2 | Open — malformed pending ≠ empty |
+| **MOB-014** | P2 | **Fixed** — malformed pending HTTP 200 fail-closed (2026-07-24) |
 | **MOB-015** | P2 | Open — unseal failure visibility |
 | **MOB-016** | P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
 
@@ -592,23 +592,23 @@ Severity/confidence scale unchanged from §6.
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed |
-| **Disposition** | **Open — pass-2 HITL** |
+| **Disposition** | **Fixed** (2026-07-24) |
 | **MASVS** | AUTH, NETWORK |
 | **Protocol stage** | Pending response acceptance |
 
-**Issue.** `authAttemptsApi.pending` treats a non-204 response whose body fails `isUsablePendingResponse` (missing/empty proof token or integration signature fields) as `undefined` — the same outcome as legitimate **204 No Content**. Callers therefore show “no pending” instead of a tamper/contract failure. Contrast: when fields are present but Ed25519 verify fails, `claimPendingAttempt` correctly fail-closes.
+**Issue (historical).** `authAttemptsApi.pending` treated a non-204 response whose body failed `isUsablePendingResponse` as `undefined` — the same outcome as legitimate **204 No Content**. Callers showed “no pending” instead of a tamper/contract failure.
+
+**Current code.** HTTP 204 → `undefined` / `{kind: 'none'}`. Non-204 unusable body → `MALFORMED_PENDING_RESPONSE` → `{kind: 'fail_closed', reason: 'malformed_pending_response'}` with dedicated UX. Ed25519 verify path unchanged for usable bodies.
 
 **Evidence.**
-- `authAttempts.ts` `isUsablePendingResponse` + `pending` return path
-- `claimPendingAttempt` only reaches signature verify when a usable body is returned
+- `authAttempts.ts` `isUsablePendingResponse` + `pending` fail-closed throw
+- `claimPendingAttempt` maps malformed pending to `fail_closed` (never `none`)
 
-**Impact.** Under hostile TLS trust (MOB-005) or a buggy proxy, stripping signature fields can hide a real pending attempt rather than surface integrity failure. Does not forge a valid approve without the device key.
+**Impact (historical).** Under hostile TLS trust (MOB-005) or a buggy proxy, stripping signature fields could hide a real pending attempt. Does not forge a valid approve without the device key.
 
-**Fail posture.** Fail-open toward empty UX.
+**Fail posture.** Fail-closed for malformed pending success responses.
 
-**Recommended action.** Discriminate malformed 200 from 204; surface fail-closed error; add unit coverage.
-
-**Verification class.** Unit tests on `authAttemptsApi.pending` / claim orchestration.
+**Verification class.** Unit tests on `authAttemptsApi.pending` / `claimPendingAttempt`; Pixel release enrollment + auth smoke 2026-07-24.
 
 ---
 
@@ -688,7 +688,7 @@ Deferred programs remain out of this hygiene lot unless the operator funds them:
 | MOB-011 | Yes | Done (collision + identity) | Deferred optional | Done (Pixel multi-install smoke) |
 | MOB-012 | Yes + Android docs | N/A | Done (`unlockedDeviceRequired` vs API 35 gate) | Optional lock-removal on 33/34 |
 | MOB-013 | Yes | Done (no silent generate) | Deferred optional | Covered by unit + smoke |
-| MOB-014 | Yes | Required for fix | No | No |
+| MOB-014 | Yes | Done (204 vs malformed 200; claim fail_closed) | No | Done (Pixel release enrollment + auth smoke) |
 | MOB-015 | Yes | Required for fix | Optional | Optional |
 | MOB-016 | Yes | Done (orphan delete paths) | Optional | No |
 

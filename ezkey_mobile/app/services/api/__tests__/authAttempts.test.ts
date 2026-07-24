@@ -1,4 +1,4 @@
-import {authAttemptsApi} from '../authAttempts';
+import {authAttemptsApi, MALFORMED_PENDING_RESPONSE} from '../authAttempts';
 import {pending, respond} from '../generated/auth-api/authentication-attempts/authentication-attempts';
 import type {
   PendingAuthRequest,
@@ -15,6 +15,20 @@ jest.mock('../generated/auth-api/authentication-attempts/authentication-attempts
 const mockedPending = pending as jest.Mock;
 const mockedRespond = respond as jest.Mock;
 
+const usablePendingBody: PendingAuthResponse = {
+  authAttemptId: 123,
+  authAttemptProofToken: 'attempt-proof-token',
+  authAttemptProofTokenSignedByIntegration: 'signed-proof',
+  authAttemptChallengeRequired: true,
+};
+
+const samplePendingRequest: PendingAuthRequest = {
+  enrollmentId: '123',
+  enrollmentProofToken: 'proof-token',
+  deviceProofToken: 'device-proof-token',
+  deviceProofTokenSigned: 'signed-device-proof',
+};
+
 describe('authAttemptsApi', () => {
   beforeEach(() => {
     mockedPending.mockReset();
@@ -22,25 +36,13 @@ describe('authAttemptsApi', () => {
   });
 
   it('pending hits the pending endpoint with normalized payload', async () => {
-    const payload: PendingAuthRequest = {
-      enrollmentId: '123',
-      enrollmentProofToken: 'proof-token',
-      deviceProofToken: 'device-proof-token',
-      deviceProofTokenSigned: 'signed-device-proof',
-    };
-    const responseData: PendingAuthResponse = {
-      authAttemptId: 123,
-      authAttemptProofToken: 'attempt-proof-token',
-      authAttemptProofTokenSignedByIntegration: 'signed-proof',
-      authAttemptChallengeRequired: true,
-    };
     mockedPending.mockResolvedValueOnce({
-      data: responseData,
+      data: usablePendingBody,
       status: 200,
       headers: new Headers(),
     });
 
-    const result = await authAttemptsApi.pending(payload);
+    const result = await authAttemptsApi.pending(samplePendingRequest);
 
     expect(mockedPending).toHaveBeenCalledWith(
       {
@@ -51,7 +53,60 @@ describe('authAttemptsApi', () => {
       },
       undefined,
     );
-    expect(result).toEqual(responseData);
+    expect(result).toEqual(usablePendingBody);
+  });
+
+  it('pending returns undefined for HTTP 204 No Content', async () => {
+    mockedPending.mockResolvedValueOnce({
+      data: undefined,
+      status: 204,
+      headers: new Headers(),
+    });
+
+    await expect(authAttemptsApi.pending(samplePendingRequest)).resolves.toBeUndefined();
+  });
+
+  it('pending fails closed when HTTP 200 body is missing required fields', async () => {
+    mockedPending.mockResolvedValueOnce({
+      data: {
+        authAttemptId: 123,
+        authAttemptProofToken: 'attempt-proof-token',
+      },
+      status: 200,
+      headers: new Headers(),
+    });
+
+    await expect(authAttemptsApi.pending(samplePendingRequest)).rejects.toMatchObject({
+      name: MALFORMED_PENDING_RESPONSE,
+    });
+  });
+
+  it('pending fails closed when HTTP 200 body has empty signature fields', async () => {
+    mockedPending.mockResolvedValueOnce({
+      data: {
+        authAttemptId: 123,
+        authAttemptProofToken: '',
+        authAttemptProofTokenSignedByIntegration: '',
+      },
+      status: 200,
+      headers: new Headers(),
+    });
+
+    await expect(authAttemptsApi.pending(samplePendingRequest)).rejects.toMatchObject({
+      name: MALFORMED_PENDING_RESPONSE,
+    });
+  });
+
+  it('pending fails closed when HTTP 200 body is not an object', async () => {
+    mockedPending.mockResolvedValueOnce({
+      data: null,
+      status: 200,
+      headers: new Headers(),
+    });
+
+    await expect(authAttemptsApi.pending(samplePendingRequest)).rejects.toMatchObject({
+      name: MALFORMED_PENDING_RESPONSE,
+    });
   });
 
   it('pending passes authUrl as baseURL config when provided', async () => {
@@ -151,4 +206,3 @@ describe('authAttemptsApi', () => {
     expect(result).toEqual(responseData);
   });
 });
-

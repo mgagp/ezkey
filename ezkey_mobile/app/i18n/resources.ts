@@ -249,6 +249,8 @@ export const resources = {
         missingPendingPublicKey:
           'Enrollment missing integration public key; cannot verify pending response.',
         invalidPendingSignature: 'Invalid integration signature on pending response.',
+        malformedPendingResponse:
+          'Pending response was incomplete or malformed; cannot continue safely.',
         enterChallenge: 'Enter the 2-digit code from the admin console.',
         missingRespondPublicKey:
           'Enrollment missing integration public key; cannot verify respond response.',
@@ -587,6 +589,8 @@ export const resources = {
         missingPendingPublicKey:
           'L’enrôlement ne contient pas de clé publique d’intégration; impossible de vérifier la réponse pending.',
         invalidPendingSignature: 'Signature d’intégration invalide sur la réponse pending.',
+        malformedPendingResponse:
+          'La réponse pending était incomplète ou mal formée; impossible de continuer en sécurité.',
         enterChallenge: 'Entrez le code à 2 chiffres depuis la console d’administration.',
         missingRespondPublicKey:
           'L’enrôlement ne contient pas de clé publique d’intégration; impossible de vérifier la réponse respond.',

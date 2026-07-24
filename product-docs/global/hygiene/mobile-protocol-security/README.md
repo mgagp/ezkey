@@ -48,7 +48,7 @@ Follow `assessment-curated` ceremony. Local reminders:
 
 | Pass | Status | Notes |
 | --- | --- | --- |
-| [`2026-07-19-pass-2.md`](2026-07-19-pass-2.md) | **Open** | MOB-011/012/013/016 Fixed; MOB-014/015 still open |
+| [`2026-07-19-pass-2.md`](2026-07-19-pass-2.md) | **Open** | MOB-011/012/013/014/016 Fixed; MOB-015 still open |
 | [`2026-07-16-pass-1.md`](2026-07-16-pass-1.md) | **Closed** | Lot A remediations done; Lot B documentary / claim-honesty verified 2026-07-19 (assessment §13); do not reopen without new evidence |
 
 ## Related

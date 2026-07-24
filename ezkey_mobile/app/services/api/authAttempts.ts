@@ -23,6 +23,26 @@ import {
 } from './generated/auth-api/authentication-attempts/authentication-attempts';
 
 /**
+ * Error {@code name} thrown when pending returns a success status with an unusable body.
+ * Distinct from HTTP 204 (no pending), which resolves to {@code undefined}.
+ *
+ * @since 2026
+ */
+export const MALFORMED_PENDING_RESPONSE = 'MALFORMED_PENDING_RESPONSE';
+
+/**
+ * Builds the fail-closed error for a pending HTTP success whose body fails usability checks.
+ *
+ * @returns Error with {@link MALFORMED_PENDING_RESPONSE} as {@code name}
+ * @since 2026
+ */
+export function createMalformedPendingResponseError(): Error {
+  const error = new Error('Malformed pending authentication response');
+  error.name = MALFORMED_PENDING_RESPONSE;
+  return error;
+}
+
+/**
  * Lightweight wrapper around the authentication attempt endpoints exposed to the mobile application.
  *
  * @since 2025
@@ -50,9 +70,14 @@ export const authAttemptsApi = {
    * The payload must contain the cryptographic assertions described in `docs/features/AUTH_SECURITY.md` to prevent
    * enumeration and replay attacks.
    *
+   * HTTP 204 resolves to {@code undefined} (no pending). A non-204 success whose body fails
+   * {@link authAttemptsApi.isUsablePendingResponse} throws {@link MALFORMED_PENDING_RESPONSE}
+   * so callers fail closed instead of treating malformed payloads as empty.
+   *
    * @param payload Pending auth request encapsulating proof tokens and signatures.
    * @param authUrl Optional per-enrollment Auth API base URL. When provided, overrides the global default.
-   * @return Pending authentication attempt payload including integration signatures.
+   * @return Pending authentication attempt payload including integration signatures, or {@code undefined} for 204.
+   * @throws Error named {@link MALFORMED_PENDING_RESPONSE} when the body is present but unusable.
    * @since 2025
    */
   pending: async (payload: PendingAuthRequest, authUrl?: string) => {
@@ -71,9 +96,11 @@ export const authAttemptsApi = {
       return undefined;
     }
 
-    return authAttemptsApi.isUsablePendingResponse(response.data)
-      ? response.data
-      : undefined;
+    if (authAttemptsApi.isUsablePendingResponse(response.data)) {
+      return response.data;
+    }
+
+    throw createMalformedPendingResponseError();
   },
   /**
    * Submits the device decision (approve or reject) for a specific authentication attempt.
