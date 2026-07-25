@@ -11,8 +11,8 @@
 ## Context
 
 - **Platform**: React Native 0.85.2; Android product floor **API 31+** (Android 12+) per
-  [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md) (Gradle may still list a
-  lower `minSdk` until the dedicated bump); iOS 15.1+ planned later, not short-term parity.
+  [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md) (`minSdkVersion` **31**);
+  iOS 15.1+ planned later, not short-term parity.
 - **Language**: TypeScript with strict compiler options
 - **Security references**:
   - [`docs/CRYPTO.md`](../../docs/CRYPTO.md) - canonical cryptographic wording and current guarantees

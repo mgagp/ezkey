@@ -23,11 +23,11 @@ React Native companion app for Ezkey MFA. Core flows only: enroll, list enrollme
 - Do **not** add `react-native-worklets/plugin` to `babel.config.js` while the project is on **Babel 8**: the Worklets plugin still pulls Babel-7-era presets and fails the JS bundle (`Requires Babel "^7.0.0-0", but was loaded with "8.0.1"`). Revisit when Software Mansion ships Babel 8–compatible Worklets, or when a real frame-processor/`'worklet'` path needs that transform. The enrollment QR path (`useBarcodeScannerOutput` / ML Kit) does not require the plugin today.
 - For VisionCamera **5.1+**, resolve a concrete device with `useCameraDevice('back')` before mounting `<Camera />`. Passing the position string `device="back"` can throw while the device list is still empty (`This device does not have any "back" Cameras!`) and trip `AppErrorBoundary`.
 - Treat the current mobile product and security posture as **Android-first**. iOS is a later planned milestone, not a short-term parity target, so do not report missing iOS parity as a current defect unless documentation overclaims it.
-- **Android platform support floor:** product policy is Android **12+** (`minSdk` **31**). Canon:
-  `docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`. Gradle may still be lower until a dedicated bump —
-  do not treat `minSdk 24` as the product floor. **Annual review** of that doc is due **2027-07**
-  (habit title: Platform support floor — annual review). Do not “fix” MOB-012 by raising `minSdk`
-  to 35; that finding is a runtime Keystore flag gate.
+- **Android platform support floor:** Android **12+** (`minSdk` **31**) in product policy and
+  Gradle (`android/build.gradle`). Canon: `docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`.
+  **Annual review** of that doc is due **2027-07** (habit title: Platform support floor — annual
+  review). Do not “fix” MOB-012 by raising `minSdk` to 35; that finding is a runtime Keystore
+  flag gate.
 
 ## Mobile test operator segmentation
 

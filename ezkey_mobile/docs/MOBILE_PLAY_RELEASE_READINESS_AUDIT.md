@@ -18,13 +18,12 @@ The Android project already has a credible Play-oriented foundation, especially 
 
 - `compileSdkVersion = 36` in `ezkey_mobile/android/build.gradle`
 - `targetSdkVersion = 36` in `ezkey_mobile/android/build.gradle`
-- `minSdkVersion = 24` in `ezkey_mobile/android/build.gradle` — **legacy vs product policy**
-  (policy floor is API **31** / Android 12+; see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md))
+- `minSdkVersion = 31` in `ezkey_mobile/android/build.gradle` — matches product floor (Android 12+;
+  see [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md))
 - Android Gradle Plugin `8.12.0` and Kotlin `2.1.20` are already configured in the workspace
 
-Conclusion: modern `targetSdk`/`compileSdk` are fine for Play submission shape. Closing the
-**policy vs Gradle** gap (`24` → `31`) is a dedicated follow-up, not a blocker for understanding
-target API readiness.
+Conclusion: modern `targetSdk`/`compileSdk` and policy-aligned `minSdk` are fine for Play
+submission shape.
 
 ### Release signing path exists
 
@@ -176,4 +175,4 @@ The project is not yet ready to declare Play release readiness complete because:
 - [ ] Data Safety answers prepared from the real permission/data behavior
 - [ ] Product name for the Play listing finalized
 - [ ] Explicit decision taken on release-now versus upgrade-first
-- [ ] Confirm [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md) (floor API 31); if this release raises `minSdk`, verify Play filtering / release-notes expectations
+- [x] Confirm [`MOBILE_ANDROID_PLATFORM_SUPPORT.md`](MOBILE_ANDROID_PLATFORM_SUPPORT.md) (floor API 31); Gradle `minSdkVersion` is **31**. Before publishing that binary: release notes say Android 12+; Play listing / Data Safety / support text must not claim older OS support.
