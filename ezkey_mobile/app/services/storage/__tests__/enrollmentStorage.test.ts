@@ -4,6 +4,8 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     getItem: jest.fn(),
     setItem: jest.fn(),
     removeItem: jest.fn(),
+    getAllKeys: jest.fn(),
+    removeMany: jest.fn(),
   },
 }));
 
@@ -18,6 +20,7 @@ jest.mock('../secureStorage', () => ({
 jest.mock('../../crypto/nativeCrypto', () => ({
   nativeCrypto: {
     deleteKeyPair: jest.fn(),
+    deleteAppSealKey: jest.fn(),
   },
 }));
 
@@ -29,6 +32,7 @@ import {secureStorage} from '../secureStorage';
 const mockAsyncStorage = jest.mocked(AsyncStorage);
 const mockSecureStorage = jest.mocked(secureStorage);
 const mockDeleteKeyPair = jest.mocked(nativeCrypto.deleteKeyPair);
+const mockDeleteAppSealKey = jest.mocked(nativeCrypto.deleteAppSealKey);
 
 describe('enrollmentStorage', () => {
   beforeEach(() => {
@@ -36,10 +40,13 @@ describe('enrollmentStorage', () => {
     mockAsyncStorage.getItem.mockResolvedValue(null);
     mockAsyncStorage.setItem.mockResolvedValue();
     mockAsyncStorage.removeItem.mockResolvedValue();
+    mockAsyncStorage.getAllKeys.mockResolvedValue([]);
+    mockAsyncStorage.removeMany.mockResolvedValue();
     mockSecureStorage.getItem.mockResolvedValue(undefined);
     mockSecureStorage.setItem.mockResolvedValue();
     mockSecureStorage.removeItem.mockResolvedValue();
     mockDeleteKeyPair.mockResolvedValue(true);
+    mockDeleteAppSealKey.mockResolvedValue(true);
   });
 
   it('rehydrates a nested installation object from legacy flat storage records', async () => {
@@ -463,6 +470,194 @@ describe('enrollmentStorage', () => {
     );
     expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
     warnSpy.mockRestore();
+  });
+
+  describe('listEnrollmentsDetailed (MOB-015 failure discrimination)', () => {
+    const rowOne = {
+      id: 'enrollment-1',
+      integrationId: 'integration-1',
+      integrationName: 'Admin Console',
+      createdAt: '2026-05-01T12:00:00.000Z',
+      lastActivityAt: '2026-05-01T12:00:00.000Z',
+      approvalPolicy: 'not-required',
+    };
+    const rowTwo = {
+      id: 'enrollment-2',
+      integrationId: 'integration-2',
+      integrationName: 'Support Console',
+      createdAt: '2026-05-02T12:00:00.000Z',
+      lastActivityAt: '2026-05-02T12:00:00.000Z',
+      approvalPolicy: 'not-required',
+    };
+
+    const healthySecureValuesFor = (id: string, key: string) => {
+      if (key === `ezkey-mobile/enrollment-proof-token.${id}`) {
+        return `token-${id}`;
+      }
+      if (key === `ezkey-mobile/integration-public-key.${id}`) {
+        return `pk-${id}`;
+      }
+      return undefined;
+    };
+
+    it('marks a row with a missing proof token as broken instead of dropping it', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify([rowOne, rowTwo]));
+      mockSecureStorage.getItem.mockImplementation(async key => {
+        if (key.includes('enrollment-1')) {
+          return undefined;
+        }
+        return healthySecureValuesFor('enrollment-2', key);
+      });
+
+      const result = await enrollmentStorage.listEnrollmentsDetailed();
+
+      expect(result.collectionError).toBe(false);
+      expect(result.enrollments).toEqual([expect.objectContaining({id: 'enrollment-2'})]);
+      expect(result.broken).toEqual([
+        expect.objectContaining({
+          id: 'enrollment-1',
+          reason: 'missing_proof_token',
+          metadata: expect.objectContaining({integrationName: 'Admin Console'}),
+        }),
+      ]);
+    });
+
+    it('marks a row as broken when secret rehydration throws (e.g. unseal failure)', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify([rowOne, rowTwo]));
+      mockSecureStorage.getItem.mockImplementation(async key => {
+        if (key.includes('enrollment-1')) {
+          throw new Error('unseal failed');
+        }
+        return healthySecureValuesFor('enrollment-2', key);
+      });
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      const result = await enrollmentStorage.listEnrollmentsDetailed();
+
+      expect(result.enrollments).toEqual([expect.objectContaining({id: 'enrollment-2'})]);
+      expect(result.broken).toEqual([
+        expect.objectContaining({id: 'enrollment-1', reason: 'secret_rehydration_failed'}),
+      ]);
+      warnSpy.mockRestore();
+    });
+
+    it('reports a collection error for corrupt JSON and keeps the payload on disk', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue('{not-valid-json');
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      const result = await enrollmentStorage.listEnrollmentsDetailed();
+
+      expect(result).toEqual({enrollments: [], broken: [], collectionError: true});
+      expect(mockAsyncStorage.removeItem).not.toHaveBeenCalled();
+      expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('returns a clean empty result when no collection exists', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue(null);
+
+      const result = await enrollmentStorage.listEnrollmentsDetailed();
+
+      expect(result).toEqual({enrollments: [], broken: [], collectionError: false});
+    });
+
+    it('does not expose legacy cleartext secrets on broken row metadata', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue(
+        JSON.stringify([{...rowOne, integrationPublicKey: 'legacy-pk'}]),
+      );
+      mockSecureStorage.getItem.mockImplementation(async key => {
+        if (key.startsWith('ezkey-mobile/enrollment-proof-token.')) {
+          throw new Error('unseal failed');
+        }
+        return undefined;
+      });
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      const result = await enrollmentStorage.listEnrollmentsDetailed();
+
+      expect(result.broken[0].metadata).not.toHaveProperty('integrationPublicKey');
+      expect(result.broken[0].metadata).not.toHaveProperty('enrollmentProofToken');
+      warnSpy.mockRestore();
+    });
+
+    it('preserves broken rows in the persisted collection when saving another enrollment', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify([rowOne]));
+      // enrollment-1 secrets are unusable, but its metadata must survive a save of enrollment-2.
+      mockSecureStorage.getItem.mockResolvedValue(undefined);
+
+      await enrollmentStorage.saveEnrollment({
+        id: 'enrollment-2',
+        integrationId: 'integration-2',
+        integrationName: 'Support Console',
+        createdAt: '2026-05-02T12:00:00.000Z',
+        lastActivityAt: '2026-05-02T12:00:00.000Z',
+        enrollmentProofToken: 'token-2',
+        integrationPublicKey: 'pk-2',
+      });
+
+      const [, payload] = mockAsyncStorage.setItem.mock.calls.at(-1) ?? [];
+      const persisted = JSON.parse(payload as string) as Array<{id: string}>;
+      expect(persisted.map(item => item.id).sort()).toEqual(['enrollment-1', 'enrollment-2']);
+    });
+  });
+
+  describe('clearAll true local reset (MOB-015)', () => {
+    it('deletes the app seal key after clearing enrollment data', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue(
+        JSON.stringify([
+          {
+            id: 'enrollment-1',
+            integrationId: 'integration-1',
+            integrationName: 'Admin Console',
+            createdAt: '2026-05-01T12:00:00.000Z',
+            lastActivityAt: '2026-05-01T12:00:00.000Z',
+          },
+        ]),
+      );
+
+      await enrollmentStorage.clearAll();
+
+      expect(mockDeleteAppSealKey).toHaveBeenCalledTimes(1);
+      expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
+    });
+
+    it('continues clear-all when app seal key deletion fails', async () => {
+      mockDeleteAppSealKey.mockRejectedValue(new Error('keystore unavailable'));
+      mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify([]));
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      await expect(enrollmentStorage.clearAll()).resolves.toBeUndefined();
+
+      expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[enrollmentStorage] Failed to delete app seal key (continuing wipe):',
+        expect.any(Error),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('sweeps orphaned enrollment secret entries even when the collection is corrupt', async () => {
+      mockAsyncStorage.getItem.mockResolvedValue('{not-valid-json');
+      mockAsyncStorage.getAllKeys.mockResolvedValue([
+        'ezkey-mobile/enrollments',
+        'ezkey-mobile/enrollment-proof-token.orphan-1',
+        'ezkey-mobile/sealed-secret.ezkey-mobile/enrollment-proof-token.orphan-1',
+        'ezkey-mobile/sealed-secret.ezkey-mobile/integration-public-key.orphan-1',
+        'ezkey-mobile/locale',
+      ]);
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      await enrollmentStorage.clearAll();
+
+      expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
+      expect(mockAsyncStorage.removeMany).toHaveBeenCalledWith([
+        'ezkey-mobile/enrollment-proof-token.orphan-1',
+        'ezkey-mobile/sealed-secret.ezkey-mobile/enrollment-proof-token.orphan-1',
+        'ezkey-mobile/sealed-secret.ezkey-mobile/integration-public-key.orphan-1',
+      ]);
+      expect(mockDeleteAppSealKey).toHaveBeenCalledTimes(1);
+      warnSpy.mockRestore();
+    });
   });
 
   it('keeps two enrollments with the same server id when local ids differ by installation', async () => {

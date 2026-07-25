@@ -154,6 +154,45 @@ signing key, while a separate app-level Android Keystore AES key protects sealed
 delegate. Those are complementary protections, not a single per-enrollment "StrongBox unseals all local app data"
 design.
 
+## Enrollment Rehydration Outcomes and Local Failure Honesty (MOB-015)
+
+Observed problem: rehydration used to collapse every local failure into a healthy-looking result —
+a corrupt collection payload returned an empty list, and a row whose secret was missing or whose
+sealed envelope failed to unseal was silently filtered out. Broken storage presented as "no
+enrollments", inviting a duplicate enrollment while the real state stayed invisible.
+
+Decision (Grill Me, 2026-07-25): listing is discriminated, and the app maps every internal
+technical failure to a single user-facing state — "unusable on this device" — instead of exposing
+failure taxonomy to the user.
+
+| Outcome | Meaning | UI consequence |
+| --- | --- | --- |
+| Healthy enrollment | Metadata plus proof token and integration key fully rehydrated | Normal row; auth flows available |
+| Broken enrollment | Metadata readable but a secret is missing or unsealing threw | Row stays visible with an "unusable" treatment and a remove action; no auth actions |
+| Collection error | The whole collection payload is unreadable (corrupt JSON) | Dedicated "saved data unusable" state on Home — never the first-use welcome |
+
+Rules that follow from the decision:
+
+- **Fail-open visibility, fail-closed auth.** Broken rows are shown (metadata is display-safe,
+  secrets are never exposed), but they can never sign or respond to anything.
+- **Internal reasons stay internal.** The per-row reason (`missing_proof_token`,
+  `missing_integration_public_key`, `secret_rehydration_failed`) exists for logs, `__DEV__`, and
+  tests only; production copy never mentions JSON, keys, or unsealing.
+- **Mutations preserve broken rows.** Save, delete, installation-metadata refresh, and
+  last-activity updates operate on the raw persisted metadata, so a broken sibling row is never
+  silently dropped by an unrelated write.
+- **A corrupt collection is kept on disk.** Recovery is the explicit Danger Zone clear-all, not a
+  silent auto-wipe.
+- **Clear-all is a true local reset.** It deletes per-enrollment keys and secrets, sweeps orphaned
+  secret entries (covers the corrupt-collection case), and deletes the app-level seal key
+  `ezkey_app_seal_v1` so re-enrollment starts from a fresh seal key — a dead seal key must not
+  survive the reset and poison future enrollments.
+- **Recovery path is re-enrollment.** The server-side enrollment is untouched by local breakage;
+  the user removes the broken row and asks their administrator for a new enrollment QR.
+
+Provenance: mobile protocol security hygiene pass 2, MOB-015 —
+[campaign note](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md).
+
 ## Pending Authentication Attempt Model
 
 The pending auth model is intentionally transient. A pending attempt is displayed only after the app has verified the

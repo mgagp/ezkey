@@ -13,7 +13,12 @@
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {instanceInfoApi} from '../services/api/instanceInfo';
-import {enrollmentStorage, StoredEnrollment} from '../services/storage/enrollmentStorage';
+import type {Installation} from '../services/api/types';
+import {
+  enrollmentStorage,
+  EnrollmentListResult,
+  StoredEnrollment,
+} from '../services/storage/enrollmentStorage';
 import {
   buildInstallation,
   isInstallationMetadataStale,
@@ -24,13 +29,15 @@ import {
 /**
  * Fetches enrollments from local metadata storage plus secure proof-token rehydration.
  *
- * No seeding logic - enrollments must be created through the normal enrollment flow.
+ * Returns the discriminated MOB-015 result so storage/crypto failure is never presented to the
+ * UI as a healthy empty list: unusable rows arrive as broken descriptors, and a corrupt
+ * collection arrives as a collection-level error.
  *
- * @return List of persisted enrollments rehydrated with proof tokens from secure storage.
+ * @return Healthy enrollments, broken descriptors, and the collection-level error flag.
  * @since 2025
  */
-const fetchEnrollments = async (): Promise<StoredEnrollment[]> => {
-  return enrollmentStorage.listEnrollments();
+const fetchEnrollments = async (): Promise<EnrollmentListResult> => {
+  return enrollmentStorage.listEnrollmentsDetailed();
 };
 
 const refreshInstallationMetadata = async (
@@ -66,8 +73,7 @@ const refreshInstallationMetadata = async (
     return false;
   }
 
-  const nextItems = [...enrollments];
-  let updated = false;
+  const updates: Array<{id: string; installation: Installation}> = [];
 
   for (const installation of staleByInstallation.values()) {
     try {
@@ -80,23 +86,20 @@ const refreshInstallationMetadata = async (
       );
 
       installation.indices.forEach(index => {
-        nextItems[index] = {
-          ...nextItems[index],
-          installation: nextInstallation,
-        };
+        updates.push({id: enrollments[index].id, installation: nextInstallation});
       });
-      updated = true;
     } catch (error) {
       console.warn('[useEnrollments] Failed to refresh installation metadata:', error);
     }
   }
 
-  if (!updated) {
+  if (updates.length === 0) {
     return false;
   }
 
-  await enrollmentStorage.replaceAll(nextItems);
-  return true;
+  // Targeted metadata update (not a full replace) so rows whose secrets are currently
+  // unusable are not dropped from the persisted collection (MOB-015).
+  return enrollmentStorage.updateInstallationMetadata(updates);
 };
 
 /**
@@ -122,8 +125,9 @@ export const useEnrollmentById = (id: string) =>
   useQuery({
     queryKey: ['enrollments', id],
     queryFn: async () => {
-      const items = await fetchEnrollments();
-      return items.find(item => item.id === id);
+      const result = await fetchEnrollments();
+      // Healthy rows only: enrollments with unusable secrets stay fail-closed for auth flows.
+      return result.enrollments.find(item => item.id === id);
     },
   });
 
@@ -171,13 +175,16 @@ export const useMarkEnrollmentPendingChecked = () => {
         return;
       }
 
-      queryClient.setQueryData<StoredEnrollment[] | undefined>(['enrollments'], current => {
+      queryClient.setQueryData<EnrollmentListResult | undefined>(['enrollments'], current => {
         if (!current) {
           return current;
         }
-        return current.map(item =>
-          item.id === variables.id ? {...item, lastActivityAt: variables.checkedAt} : item,
-        );
+        return {
+          ...current,
+          enrollments: current.enrollments.map(item =>
+            item.id === variables.id ? {...item, lastActivityAt: variables.checkedAt} : item,
+          ),
+        };
       });
       queryClient.setQueryData<StoredEnrollment | undefined>(['enrollments', variables.id], current => {
         if (!current) {

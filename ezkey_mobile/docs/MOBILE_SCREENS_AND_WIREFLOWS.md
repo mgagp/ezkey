@@ -62,6 +62,7 @@ Its structure emphasizes installation and tenant grouping so the user understand
 | User action | Effect | Next state/navigation |
 | --- | --- | --- |
 | Tap enrollment card | Select enrollment and open details | Navigates to Enrollment Detail |
+| Tap `Remove` on an unusable row | Confirmation, then deletes the broken enrollment locally | Stays on Home; row disappears |
 | Tap installation header | Toggle expansion of installation group | Stays on Home |
 | Tap `+` button | Start enrollment flow | Navigates to Enrollment Wizard |
 
@@ -70,6 +71,18 @@ Its structure emphasizes installation and tenant grouping so the user understand
 | Loading | Full-screen spinner | Wait for persisted enrollments to hydrate |
 | Empty | Welcome card and QR hint | User is directed to start enrollment |
 | Populated | Grouped list by installation and tenant | User can inspect and select a specific enrollment |
+| Unusable rows present | Broken enrollments render inline in their group with an "Unusable" badge, a short plain-language line, and a `Remove` action | User sees honestly that the enrollment exists but cannot work on this device |
+| Unusable local data | Warning notice ("saved enrollment data is unusable") above any remaining rows; shown when all rows are broken or the collection is unreadable | User is directed to remove/re-enroll or clear all data from the Danger Zone — never mistaken for the first-use welcome |
+
+### Home local-failure honesty (MOB-015)
+
+The empty welcome state and the unusable-local-data state must never collide: the welcome copy is
+reserved for a genuinely empty device. Any storage or crypto failure surfaces as visible unusable
+rows (fail-open visibility) while authentication remains impossible on those rows (fail-closed
+auth). Copy avoids "compromise/breach" language and never mentions internal taxonomy — see
+[MOBILE_DATA_MODEL.md § Enrollment Rehydration Outcomes](MOBILE_DATA_MODEL.md#enrollment-rehydration-outcomes-and-local-failure-honesty-mob-015)
+and the
+[campaign note](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md).
 
 ## Enrollment Wizard
 
@@ -131,6 +144,7 @@ device the user is about to use, and exposes the single primary action `Check pe
 | --- | --- | --- |
 | Loading | Full-screen spinner | Wait for enrollments query to hydrate |
 | Missing enrollment | Error text and `Back to Home` button | User must recover by returning to Home |
+| Unusable enrollment (MOB-015) | Identity block plus "Unusable on this device" banner, `Remove from this device` action, and `Back to Home`; `Check pending` is not offered | User can identify the enrollment, remove it, and re-enroll via a new QR from their administrator — no auth action is possible |
 | Normal detail view | Identity card plus primary action | User can intentionally trigger a pending check |
 
 ## Pending Authentication

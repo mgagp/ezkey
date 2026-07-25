@@ -23,13 +23,16 @@ import {
 import {useNavigation} from '@react-navigation/native';
 import {useTranslation} from 'react-i18next';
 import {useDeleteEnrollment, useEnrollments} from '../../hooks/useEnrollments';
-import {enrollmentStorage, StoredEnrollment} from '../../services/storage/enrollmentStorage';
+import {
+  enrollmentStorage,
+  EnrollmentMetadataRecord,
+} from '../../services/storage/enrollmentStorage';
 import {borderRadius, colors, spacing, typography} from '../../config/theme';
 import {shouldShowInstallationHostHint} from '../../utils/installationMetadata';
 
 const RECENT_ACTIVITY_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
-const sortEnrollments = (items: StoredEnrollment[]) =>
+const sortEnrollments = (items: EnrollmentMetadataRecord[]) =>
   [...items].sort((left, right) => {
     if (left.favorited && !right.favorited) {
       return -1;
@@ -40,7 +43,7 @@ const sortEnrollments = (items: StoredEnrollment[]) =>
     return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
 
-const getEnrollmentDisplayName = (enrollment: StoredEnrollment) =>
+const getEnrollmentDisplayName = (enrollment: EnrollmentMetadataRecord) =>
   enrollment.enrollmentName?.trim() ||
   enrollment.deviceLabel?.trim() ||
   enrollment.integrationName;
@@ -105,7 +108,7 @@ const formatRelativeAge = (
 };
 
 const buildRecencyLabel = (
-  enrollment: StoredEnrollment,
+  enrollment: EnrollmentMetadataRecord,
   t: (key: string, options?: Record<string, string | number>) => string,
   now: number = Date.now(),
 ) => {
@@ -122,7 +125,7 @@ const buildRecencyLabel = (
   return t('dangerZone.enrollmentDateUnavailable');
 };
 
-const wasRecentlyActive = (enrollment: StoredEnrollment, now: number = Date.now()) => {
+const wasRecentlyActive = (enrollment: EnrollmentMetadataRecord, now: number = Date.now()) => {
   const lastActivityAt = Date.parse(enrollment.lastActivityAt);
   if (Number.isNaN(lastActivityAt)) {
     return false;
@@ -132,7 +135,7 @@ const wasRecentlyActive = (enrollment: StoredEnrollment, now: number = Date.now(
 };
 
 const buildDeleteMessage = (
-  enrollment: StoredEnrollment,
+  enrollment: EnrollmentMetadataRecord,
   t: (key: string, options?: Record<string, string | number>) => string,
 ) => {
   const lines = [
@@ -176,16 +179,26 @@ const buildDeleteMessage = (
 export const DangerZoneScreen: React.FC = () => {
   const {t} = useTranslation();
   const navigation = useNavigation();
-  const {data: enrollments, isLoading, refetch} = useEnrollments();
+  const {data, isLoading, refetch} = useEnrollments();
   const deleteMutation = useDeleteEnrollment();
   const [clearAllPending, setClearAllPending] = useState(false);
+  const brokenIds = useMemo(
+    () => new Set((data?.broken ?? []).map(item => item.id)),
+    [data],
+  );
+  // Unusable enrollments stay deletable here — the explicit recovery path of the
+  // MOB-015 locked UI contract.
   const sortedEnrollments = useMemo(
-    () => sortEnrollments(enrollments ?? []),
-    [enrollments],
+    () =>
+      sortEnrollments([
+        ...(data?.enrollments ?? []),
+        ...(data?.broken ?? []).map(item => item.metadata),
+      ]),
+    [data],
   );
 
   const handleDelete = useCallback(
-    (enrollment: StoredEnrollment) => {
+    (enrollment: EnrollmentMetadataRecord) => {
       Alert.alert(
         t('dangerZone.deleteTitle'),
         buildDeleteMessage(enrollment, t),
@@ -290,6 +303,9 @@ export const DangerZoneScreen: React.FC = () => {
               <View style={styles.rowInfo}>
                 <View style={styles.rowTitleLine}>
                   <Text style={styles.rowTitle}>{displayName}</Text>
+                  {brokenIds.has(item.id) ? (
+                    <Text style={styles.unusableBadge}>{t('dangerZone.unusableBadge')}</Text>
+                  ) : null}
                   {item.favorited ? <Text style={styles.favoriteBadge}>{t('dangerZone.favorite')}</Text> : null}
                 </View>
                 <Text style={styles.rowMeta}>{item.integrationName}</Text>
@@ -384,6 +400,17 @@ const styles = StyleSheet.create({
   },
   rowRecencyRecent: {
     color: colors.errorLight,
+  },
+  unusableBadge: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.warning,
+    backgroundColor: 'rgba(245, 194, 107, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 194, 107, 0.35)',
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
   },
   favoriteBadge: {
     fontSize: typography.fontSize.xs,

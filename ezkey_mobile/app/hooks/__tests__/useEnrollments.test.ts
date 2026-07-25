@@ -13,9 +13,11 @@
 jest.mock('../../services/storage/enrollmentStorage', () => ({
   enrollmentStorage: {
     listEnrollments: jest.fn(),
+    listEnrollmentsDetailed: jest.fn(),
     saveEnrollment: jest.fn(),
     deleteEnrollment: jest.fn(),
     updateEnrollmentLastActivity: jest.fn(),
+    updateInstallationMetadata: jest.fn(),
     replaceAll: jest.fn(),
   },
 }));
@@ -52,7 +54,10 @@ import {
   useMarkEnrollmentPendingChecked,
   useRefreshInstallationMetadata,
 } from '../useEnrollments';
-import type {StoredEnrollment} from '../../services/storage/enrollmentStorage';
+import type {
+  EnrollmentListResult,
+  StoredEnrollment,
+} from '../../services/storage/enrollmentStorage';
 
 const mockStorage = jest.mocked(enrollmentStorage);
 const mockInstanceInfoApi = jest.mocked(instanceInfoApi);
@@ -125,6 +130,12 @@ const sampleEnrollment: StoredEnrollment = {
   installation: baseInstallation,
 };
 
+const asListResult = (
+  enrollments: StoredEnrollment[],
+  broken: EnrollmentListResult['broken'] = [],
+  collectionError = false,
+): EnrollmentListResult => ({enrollments, broken, collectionError});
+
 // ---------------------------------------------------------------------------
 // useEnrollments
 // ---------------------------------------------------------------------------
@@ -134,29 +145,50 @@ describe('useEnrollments', () => {
     jest.clearAllMocks();
   });
 
-  it('fetches all enrollments from storage', async () => {
-    mockStorage.listEnrollments.mockResolvedValue([sampleEnrollment]);
+  it('fetches the discriminated enrollment result from storage', async () => {
+    mockStorage.listEnrollmentsDetailed.mockResolvedValue(asListResult([sampleEnrollment]));
 
     const {result} = renderHook(() => useEnrollments());
-    let data: StoredEnrollment[] | undefined;
+    let data: EnrollmentListResult | undefined;
     await act(async () => {
       ({data} = await result.current.refetch());
     });
 
-    expect(mockStorage.listEnrollments).toHaveBeenCalled();
-    expect(data).toEqual([sampleEnrollment]);
+    expect(mockStorage.listEnrollmentsDetailed).toHaveBeenCalled();
+    expect(data).toEqual(asListResult([sampleEnrollment]));
   });
 
-  it('exposes an empty array when storage returns no records', async () => {
-    mockStorage.listEnrollments.mockResolvedValue([]);
+  it('exposes an empty result when storage returns no records', async () => {
+    mockStorage.listEnrollmentsDetailed.mockResolvedValue(asListResult([]));
 
     const {result} = renderHook(() => useEnrollments());
-    let data: StoredEnrollment[] | undefined;
+    let data: EnrollmentListResult | undefined;
     await act(async () => {
       ({data} = await result.current.refetch());
     });
 
-    expect(data).toEqual([]);
+    expect(data).toEqual(asListResult([]));
+  });
+
+  it('surfaces broken rows and collection errors instead of a healthy empty list', async () => {
+    const {enrollmentProofToken: _token, ...brokenMetadata} = sampleEnrollment;
+    mockStorage.listEnrollmentsDetailed.mockResolvedValue(
+      asListResult(
+        [],
+        [{id: 'enr-1', reason: 'secret_rehydration_failed', metadata: brokenMetadata}],
+        true,
+      ),
+    );
+
+    const {result} = renderHook(() => useEnrollments());
+    let data: EnrollmentListResult | undefined;
+    await act(async () => {
+      ({data} = await result.current.refetch());
+    });
+
+    expect(data?.broken).toHaveLength(1);
+    expect(data?.broken[0].reason).toBe('secret_rehydration_failed');
+    expect(data?.collectionError).toBe(true);
   });
 });
 
@@ -170,7 +202,7 @@ describe('useEnrollmentById', () => {
   });
 
   it('returns the matching enrollment when the id is found', async () => {
-    mockStorage.listEnrollments.mockResolvedValue([sampleEnrollment]);
+    mockStorage.listEnrollmentsDetailed.mockResolvedValue(asListResult([sampleEnrollment]));
 
     const {result} = renderHook(() => useEnrollmentById('enr-1'));
     let data: StoredEnrollment | undefined;
@@ -182,9 +214,24 @@ describe('useEnrollmentById', () => {
   });
 
   it('returns undefined when no enrollment matches the given id', async () => {
-    mockStorage.listEnrollments.mockResolvedValue([sampleEnrollment]);
+    mockStorage.listEnrollmentsDetailed.mockResolvedValue(asListResult([sampleEnrollment]));
 
     const {result} = renderHook(() => useEnrollmentById('unknown-id'));
+    let data: StoredEnrollment | undefined;
+    await act(async () => {
+      ({data} = await result.current.refetch());
+    });
+
+    expect(data).toBeUndefined();
+  });
+
+  it('stays fail-closed: does not resolve an enrollment whose secrets are unusable', async () => {
+    const {enrollmentProofToken: _token, ...brokenMetadata} = sampleEnrollment;
+    mockStorage.listEnrollmentsDetailed.mockResolvedValue(
+      asListResult([], [{id: 'enr-1', reason: 'missing_proof_token', metadata: brokenMetadata}]),
+    );
+
+    const {result} = renderHook(() => useEnrollmentById('enr-1'));
     let data: StoredEnrollment | undefined;
     await act(async () => {
       ({data} = await result.current.refetch());
@@ -309,9 +356,11 @@ describe('useMarkEnrollmentPendingChecked', () => {
 
     // Verify the captured updater correctly applies the new timestamp
     const updater = listKeyCall![1] as (
-      current: StoredEnrollment[] | undefined,
-    ) => StoredEnrollment[] | undefined;
-    expect(updater([sampleEnrollment])?.[0].lastActivityAt).toBe(checkedAt);
+      current: EnrollmentListResult | undefined,
+    ) => EnrollmentListResult | undefined;
+    expect(updater(asListResult([sampleEnrollment]))?.enrollments[0].lastActivityAt).toBe(
+      checkedAt,
+    );
 
     // Verify the guard: do not update when the list key has no cached data
     expect(updater(undefined)).toBeUndefined();
@@ -411,7 +460,7 @@ describe('useRefreshInstallationMetadata', () => {
       aboutUrl: null,
     });
     mockBuildInstallation.mockReturnValue({...baseInstallation});
-    mockStorage.replaceAll.mockResolvedValue(undefined);
+    mockStorage.updateInstallationMetadata.mockResolvedValue(true);
 
     const {result} = renderHook(() => useRefreshInstallationMetadata());
     await act(async () => {
@@ -419,7 +468,11 @@ describe('useRefreshInstallationMetadata', () => {
     });
 
     expect(mockInstanceInfoApi.get).toHaveBeenCalledTimes(1);
-    expect(mockStorage.replaceAll).toHaveBeenCalledTimes(1);
+    expect(mockStorage.updateInstallationMetadata).toHaveBeenCalledTimes(1);
+    expect(mockStorage.updateInstallationMetadata).toHaveBeenCalledWith([
+      {id: 'enr-1', installation: {...baseInstallation}},
+      {id: 'enr-2', installation: {...baseInstallation}},
+    ]);
   });
 
   it('handles a failing API call gracefully and returns false without throwing', async () => {
@@ -436,7 +489,7 @@ describe('useRefreshInstallationMetadata', () => {
     });
 
     expect(returnValue).toBe(false);
-    expect(mockStorage.replaceAll).not.toHaveBeenCalled();
+    expect(mockStorage.updateInstallationMetadata).not.toHaveBeenCalled();
   });
 
   it('persists updated enrollment records and returns true on a successful refresh', async () => {
@@ -455,7 +508,7 @@ describe('useRefreshInstallationMetadata', () => {
       aboutUrl: null,
     });
     mockBuildInstallation.mockReturnValue(updatedInstallation);
-    mockStorage.replaceAll.mockResolvedValue(undefined);
+    mockStorage.updateInstallationMetadata.mockResolvedValue(true);
 
     const {result} = renderHook(() => useRefreshInstallationMetadata());
 
@@ -465,8 +518,8 @@ describe('useRefreshInstallationMetadata', () => {
     });
 
     expect(returnValue).toBe(true);
-    expect(mockStorage.replaceAll).toHaveBeenCalledWith([
-      {...sampleEnrollment, installation: updatedInstallation},
+    expect(mockStorage.updateInstallationMetadata).toHaveBeenCalledWith([
+      {id: sampleEnrollment.id, installation: updatedInstallation},
     ]);
   });
 
@@ -480,7 +533,7 @@ describe('useRefreshInstallationMetadata', () => {
       aboutUrl: null,
     });
     mockBuildInstallation.mockReturnValue({...baseInstallation});
-    mockStorage.replaceAll.mockResolvedValue(undefined);
+    mockStorage.updateInstallationMetadata.mockResolvedValue(true);
 
     const {result, queryClient} = renderHook(() => useRefreshInstallationMetadata());
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');

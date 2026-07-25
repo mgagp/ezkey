@@ -24,6 +24,8 @@ type NativeModuleShape = {
   signWithAuthentication(enrollmentId: string, data: string): Promise<string>;
   verify(data: string, signatureBase64: string, publicKeyBase64: string): Promise<boolean>;
   deleteKeyPair(enrollmentId: string): Promise<boolean>;
+  /** Deletes the app-level seal key (clear-all true reset). Resolves false when absent or unsupported. */
+  deleteAppSealKey(): Promise<boolean>;
   /** UTC ISO-8601 string set at native build time (Android `BuildConfig`); iOS uses bundle mtime proxy. */
   getBuildTimestamp(): Promise<string>;
   /** Same wire format as `SignatureService.generateProofToken()`; uses platform CSPRNG (no `RNGetRandomValues`). */
@@ -68,6 +70,10 @@ const fallback: NativeModuleShape = {
     throw new Error(
       'EzkeyCryptoModule is not linked. Unable to delete key pair.',
     );
+  },
+  async deleteAppSealKey(): Promise<boolean> {
+    // Platforms without the Android app seal key have nothing to delete.
+    return false;
   },
   async getBuildTimestamp(): Promise<string> {
     throw new Error('EzkeyCryptoModule is not linked. Unable to read build timestamp.');
@@ -120,6 +126,8 @@ export const nativeCrypto = {
     fallback.verify(data, signatureBase64, publicKeyBase64),
   deleteKeyPair: (enrollmentId: string) =>
     cryptoModule?.deleteKeyPair?.(enrollmentId) ?? fallback.deleteKeyPair(enrollmentId),
+  deleteAppSealKey: () =>
+    cryptoModule?.deleteAppSealKey?.() ?? fallback.deleteAppSealKey(),
   getBuildTimestamp: () =>
     cryptoModule?.getBuildTimestamp?.() ?? fallback.getBuildTimestamp(),
   generateProofToken: () =>

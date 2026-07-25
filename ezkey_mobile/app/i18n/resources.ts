@@ -144,6 +144,7 @@ export const resources = {
           'Removes every enrollment from this device at once. Use individual delete above when you only need to remove one.',
         installationFallback: 'Ezkey installation',
         favorite: 'Favorite',
+        unusableBadge: 'Unusable',
         today: 'today',
         oneDayAgo: '1 day ago',
         daysAgo: '{{count}} days ago',
@@ -316,6 +317,19 @@ export const resources = {
         collapseInstallation: 'Collapses this installation section',
         expandInstallation: 'Expands this installation section',
         openEnrollmentDetails: 'Opens enrollment details',
+        brokenBadge: 'Unusable',
+        brokenRowSubtitle:
+          'This enrollment can no longer be used on this device. Remove it, then ask your administrator for a new enrollment QR code.',
+        brokenRowRemove: 'Remove',
+        brokenRemoveCancel: 'Cancel',
+        brokenRemoveConfirmTitle: 'Remove enrollment',
+        brokenRemoveConfirmMessage:
+          'This removes "{{name}}" from this device. To use it again, ask your administrator for a new enrollment QR code.',
+        brokenRowAccessibility: 'Enrollment {{name}} is unusable on this device',
+        brokenRowRemoveAccessibility: 'Removes unusable enrollment {{name}} from this device',
+        unusableLocalTitle: 'Saved enrollment data is unusable',
+        unusableLocalSubtitle:
+          'The enrollments saved on this device can no longer be used. Remove them, then ask your administrator for a new enrollment QR code. You can also clear all local data from the Danger Zone screen.',
       },
       enrollmentDetail: {
         loading: 'Loading enrollment details',
@@ -333,6 +347,10 @@ export const resources = {
         recentActionRejected: 'Rejected',
         recentActionFailed: 'Failed',
         recentActionAt: 'Completed {{value}}',
+        unusableTitle: 'Unusable on this device',
+        unusableBody:
+          'The secure data for this enrollment can no longer be used on this device, so it cannot approve sign-ins anymore. Remove it, then ask your administrator for a new enrollment QR code.',
+        removeEnrollment: 'Remove from this device',
       },
     },
   },
@@ -483,6 +501,7 @@ export const resources = {
           'Supprime tous les enrôlements de cet appareil en une seule fois. Utilisez la suppression individuelle ci-dessus si vous ne devez en retirer qu’un.',
         installationFallback: 'Installation Ezkey',
         favorite: 'Favori',
+        unusableBadge: 'Inutilisable',
         today: 'aujourd’hui',
         oneDayAgo: 'il y a 1 jour',
         daysAgo: 'il y a {{count}} jours',
@@ -658,6 +677,20 @@ export const resources = {
         collapseInstallation: 'Replie cette section d’installation',
         expandInstallation: 'Déplie cette section d’installation',
         openEnrollmentDetails: 'Ouvre les détails de l’enrôlement',
+        brokenBadge: 'Inutilisable',
+        brokenRowSubtitle:
+          'Cet enrôlement ne peut plus être utilisé sur cet appareil. Retirez-le, puis demandez un nouveau code QR d’enrôlement à votre administrateur.',
+        brokenRowRemove: 'Retirer',
+        brokenRemoveCancel: 'Annuler',
+        brokenRemoveConfirmTitle: 'Retirer l’enrôlement',
+        brokenRemoveConfirmMessage:
+          'Ceci retire « {{name}} » de cet appareil. Pour l’utiliser à nouveau, demandez un nouveau code QR d’enrôlement à votre administrateur.',
+        brokenRowAccessibility: 'L’enrôlement {{name}} est inutilisable sur cet appareil',
+        brokenRowRemoveAccessibility:
+          'Retire de cet appareil l’enrôlement inutilisable {{name}}',
+        unusableLocalTitle: 'Les données d’enrôlement enregistrées sont inutilisables',
+        unusableLocalSubtitle:
+          'Les enrôlements enregistrés sur cet appareil ne peuvent plus être utilisés. Retirez-les, puis demandez un nouveau code QR d’enrôlement à votre administrateur. Vous pouvez aussi tout effacer depuis l’écran Zone dangereuse.',
       },
       enrollmentDetail: {
         loading: 'Chargement des détails de l’enrôlement',
@@ -675,6 +708,10 @@ export const resources = {
         recentActionRejected: 'Rejetée',
         recentActionFailed: 'Échouée',
         recentActionAt: 'Traitée {{value}}',
+        unusableTitle: 'Inutilisable sur cet appareil',
+        unusableBody:
+          'Les données sécurisées de cet enrôlement ne peuvent plus être utilisées sur cet appareil ; il ne peut donc plus approuver de connexions. Retirez-le, puis demandez un nouveau code QR d’enrôlement à votre administrateur.',
+        removeEnrollment: 'Retirer de cet appareil',
       },
     },
   },

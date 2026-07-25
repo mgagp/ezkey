@@ -47,6 +47,16 @@ lot.” Write it into the assessment header and the campaign note metadata.
 6. **Amend** — update the campaign decisions table and rationale; update assessment dispositions
    when fixes land.
 
+### Design reinjection gate (before deleting a handoff)
+
+When the fix session (e.g. a Grill Me inside the handoff) produces a **durable UX contract or
+product posture** — not just a patch recipe — consolidation into the campaign note alone is **not**
+sufficient closeout. Reinject the design decisions into the **component's living documentation**
+(data model, screens/wireflows, functional flows, module notes) first, then delete the handoff.
+The campaign note stays the HITL provenance record; it is not the design canon. Add a short
+reinjection checklist (target doc + section + content) to the handoff as soon as the design lock
+happens, so closeout cannot skip it. First instance: MOB-015 (2026-07-25).
+
 ## HITL briefing shape (per item)
 
 - One-sentence verdict.

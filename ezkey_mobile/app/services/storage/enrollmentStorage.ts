@@ -12,7 +12,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {EnrollmentSummary} from '../api/types';
+import {EnrollmentSummary, Installation} from '../api/types';
 import {hydrateInstallationMetadata} from '../../utils/installationMetadata';
 import {nativeCrypto} from '../crypto/nativeCrypto';
 import {
@@ -26,6 +26,8 @@ import type {SecurityLevel} from './securityPreferenceStorage';
 const ENROLLMENT_COLLECTION_KEY = 'ezkey-mobile/enrollments';
 const ENROLLMENT_PROOF_TOKEN_KEY_PREFIX = 'ezkey-mobile/enrollment-proof-token';
 const INTEGRATION_PUBLIC_KEY_KEY_PREFIX = 'ezkey-mobile/integration-public-key';
+/** Mirror of the sealed-secret AsyncStorage prefix owned by secureStorage (clear-all sweep only). */
+const SEALED_SECRET_KEY_PREFIX = 'ezkey-mobile/sealed-secret';
 
 /**
  * Local representation of enrollment records including proof tokens.
@@ -52,9 +54,56 @@ export type StoredEnrollment = EnrollmentSummary & {
   securityLevel?: SecurityLevel;
 };
 
-type PersistedEnrollmentMetadata = Omit<StoredEnrollment, 'enrollmentProofToken'> & {
+/**
+ * Enrollment metadata as persisted in AsyncStorage: display-safe fields without rehydrated secrets.
+ *
+ * Also the record shape handed to the UI for enrollments whose secrets are unusable — those rows
+ * must stay visible per the MOB-015 locked UI contract instead of silently disappearing.
+ *
+ * @since 2026
+ */
+export type EnrollmentMetadataRecord = Omit<StoredEnrollment, 'enrollmentProofToken'> & {
   enrollmentProofToken?: string;
   integrationPublicKey?: string;
+};
+
+type PersistedEnrollmentMetadata = EnrollmentMetadataRecord;
+
+/**
+ * Internal diagnostic reason for an unusable enrollment row.
+ *
+ * Production UI collapses every reason into a single "unusable on this device" state; the
+ * discrimination exists for logs, `__DEV__`, and tests only (MOB-015 locked UI contract).
+ *
+ * @since 2026
+ */
+export type BrokenEnrollmentReason =
+  | 'missing_proof_token'
+  | 'missing_integration_public_key'
+  | 'secret_rehydration_failed';
+
+/**
+ * Descriptor for a persisted enrollment whose local secrets could not be rehydrated.
+ *
+ * @since 2026
+ */
+export type BrokenEnrollment = {
+  id: string;
+  reason: BrokenEnrollmentReason;
+  metadata: EnrollmentMetadataRecord;
+};
+
+/**
+ * Discriminated listing result: local storage/crypto failure is never presented as a healthy
+ * empty list (MOB-015).
+ *
+ * @since 2026
+ */
+export type EnrollmentListResult = {
+  enrollments: StoredEnrollment[];
+  broken: BrokenEnrollment[];
+  /** True when the whole enrollment collection payload is unreadable (corrupt JSON). */
+  collectionError: boolean;
 };
 
 type StorageDelegate = {
@@ -123,7 +172,7 @@ class EnrollmentStorage {
     }
   }
 
-  private stripSensitiveFields(record: StoredEnrollment): PersistedEnrollmentMetadata {
+  private stripSensitiveFields(record: PersistedEnrollmentMetadata): PersistedEnrollmentMetadata {
     const {
       enrollmentProofToken: _enrollmentProofToken,
       integrationPublicKey: _integrationPublicKey,
@@ -131,6 +180,51 @@ class EnrollmentStorage {
       ...metadata
     } = record;
     return metadata;
+  }
+
+  private toBrokenEnrollment(
+    record: PersistedEnrollmentMetadata,
+    reason: BrokenEnrollmentReason,
+  ): BrokenEnrollment {
+    return {
+      id: record.id,
+      reason,
+      metadata: {
+        ...this.stripSensitiveFields(record),
+        approvalPolicy: normalizeEnrollmentApprovalPolicy(record.approvalPolicy),
+      },
+    };
+  }
+
+  /**
+   * Reads and parses the raw persisted metadata collection for write paths.
+   *
+   * Unlike {@link listEnrollmentsDetailed}, no secret rehydration happens here, so rows whose
+   * secrets are currently unusable are preserved by mutations instead of being silently dropped.
+   *
+   * @return Persisted metadata records; empty array when absent or unreadable.
+   */
+  private async readMetadataRecords(): Promise<PersistedEnrollmentMetadata[]> {
+    const payload = await this.metadata.getItem(ENROLLMENT_COLLECTION_KEY);
+    if (!payload) {
+      return [];
+    }
+    try {
+      const candidate = JSON.parse(payload) as unknown;
+      if (!Array.isArray(candidate)) {
+        return [];
+      }
+      return (candidate as PersistedEnrollmentMetadata[]).map(item =>
+        hydrateInstallationMetadata(item),
+      );
+    } catch (error) {
+      console.warn('[enrollmentStorage] Unreadable enrollment collection during write:', error);
+      return [];
+    }
+  }
+
+  private async persistRawMetadata(records: PersistedEnrollmentMetadata[]) {
+    await this.metadata.setItem(ENROLLMENT_COLLECTION_KEY, JSON.stringify(records));
   }
 
   private async attachProofToken(
@@ -191,46 +285,98 @@ class EnrollmentStorage {
   }
 
   /**
-   * Lists all persisted enrollments.
+   * Lists persisted enrollments with explicit failure discrimination (MOB-015).
    *
-    * Rehydrates the nested installation object even when older local records still use flattened
-    * installation fields.
-    *
-    * @return Array of stored enrollments.
+   * A corrupt collection payload or per-row secret failure is never collapsed into a healthy
+   * empty list: unusable rows are returned as {@link BrokenEnrollment} descriptors and a corrupt
+   * collection sets {@link EnrollmentListResult#collectionError}. The corrupt payload stays on
+   * disk so Danger Zone clear-all remains the explicit recovery path.
+   *
+   * @return Healthy enrollments, broken descriptors, and the collection-level error flag.
+   * @since 2026
+   */
+  async listEnrollmentsDetailed(): Promise<EnrollmentListResult> {
+    const payload = await this.metadata.getItem(ENROLLMENT_COLLECTION_KEY);
+    if (!payload) {
+      return {enrollments: [], broken: [], collectionError: false};
+    }
+
+    let parsed: PersistedEnrollmentMetadata[];
+    try {
+      const candidate = JSON.parse(payload) as unknown;
+      if (!Array.isArray(candidate)) {
+        throw new Error('Enrollment collection payload is not an array');
+      }
+      parsed = candidate as PersistedEnrollmentMetadata[];
+    } catch (error) {
+      console.warn('[enrollmentStorage] Unreadable enrollment collection (kept on disk):', error);
+      return {enrollments: [], broken: [], collectionError: true};
+    }
+
+    const hydratedItems = parsed.map(item => hydrateInstallationMetadata(item));
+    const enrollments: StoredEnrollment[] = [];
+    const broken: BrokenEnrollment[] = [];
+
+    for (const item of hydratedItems) {
+      try {
+        const withProofToken = await this.attachProofToken(item);
+        if (!withProofToken) {
+          broken.push(this.toBrokenEnrollment(item, 'missing_proof_token'));
+          continue;
+        }
+        const withIntegrationKey = await this.attachIntegrationPublicKey(withProofToken);
+        if (!withIntegrationKey) {
+          broken.push(this.toBrokenEnrollment(item, 'missing_integration_public_key'));
+          continue;
+        }
+        enrollments.push(withIntegrationKey);
+      } catch (error) {
+        console.warn(
+          '[enrollmentStorage] Secret rehydration failed (marking enrollment unusable):',
+          item.id,
+          error,
+        );
+        broken.push(this.toBrokenEnrollment(item, 'secret_rehydration_failed'));
+      }
+    }
+
+    const healthyById = new Map(enrollments.map(item => [item.id, item]));
+    const requiresMetadataRewrite = hydratedItems.some(
+      item =>
+        healthyById.has(item.id) &&
+        (Object.hasOwn(item, 'enrollmentProofToken') ||
+          Object.hasOwn(item, 'integrationPublicKey') ||
+          Object.hasOwn(item, 'securityLevel') ||
+          !Object.hasOwn(item, 'approvalPolicy')),
+    );
+    if (requiresMetadataRewrite) {
+      // Legacy cleanup only rewrites rows that fully rehydrated; broken rows keep their
+      // persisted metadata untouched so no recoverable material is destroyed.
+      const nextRaw = hydratedItems.map(item => {
+        const healthy = healthyById.get(item.id);
+        return healthy
+          ? this.stripSensitiveFields(hydrateInstallationMetadata(healthy))
+          : item;
+      });
+      await this.persistRawMetadata(nextRaw);
+    }
+
+    return {enrollments, broken, collectionError: false};
+  }
+
+  /**
+   * Lists all persisted enrollments that fully rehydrated (healthy rows only).
+   *
+   * Rehydrates the nested installation object even when older local records still use flattened
+   * installation fields. Callers that must surface unusable rows use
+   * {@link listEnrollmentsDetailed} instead.
+   *
+   * @return Array of stored enrollments.
    * @since 2025
    */
   async listEnrollments(): Promise<StoredEnrollment[]> {
-    const payload = await this.metadata.getItem(ENROLLMENT_COLLECTION_KEY);
-    if (!payload) {
-      return [];
-    }
-    try {
-      const parsed = JSON.parse(payload) as PersistedEnrollmentMetadata[];
-      const hydratedItems = parsed.map(item => hydrateInstallationMetadata(item));
-      const withProofTokens = await Promise.all(
-        hydratedItems.map(item => this.attachProofToken(item)),
-      );
-      const withIntegrationKeys = await Promise.all(
-        withProofTokens
-          .filter((item): item is StoredEnrollment => item != null)
-          .map(item => this.attachIntegrationPublicKey(item)),
-      );
-      const nextItems = withIntegrationKeys.filter((item): item is StoredEnrollment => item != null);
-      const requiresMetadataRewrite = hydratedItems.some(
-        item =>
-          Object.hasOwn(item, 'enrollmentProofToken') ||
-          Object.hasOwn(item, 'integrationPublicKey') ||
-          Object.hasOwn(item, 'securityLevel') ||
-          !Object.hasOwn(item, 'approvalPolicy'),
-      );
-      if (requiresMetadataRewrite) {
-        await this.persistMetadataRecords(nextItems);
-      }
-      return nextItems;
-    } catch (error) {
-      console.warn('[enrollmentStorage] Failed to parse enrollment cache:', error);
-      return [];
-    }
+    const result = await this.listEnrollmentsDetailed();
+    return result.enrollments;
   }
 
   /**
@@ -248,18 +394,18 @@ class EnrollmentStorage {
       this.integrationPublicKeyStorageKey(record.id),
       record.integrationPublicKey ?? '',
     );
-    const items = await this.listEnrollments();
-    const nextItems = items
-      .filter(item => item.id !== record.id)
-      .concat(
-        hydrateInstallationMetadata({
-          ...record,
-          approvalPolicy: normalizeEnrollmentApprovalPolicy(
-            record.approvalPolicy ?? DEFAULT_ENROLLMENT_APPROVAL_POLICY,
-          ),
-        }),
-      );
-    await this.persistMetadataRecords(nextItems);
+    // Raw metadata read so rows with currently unusable secrets survive the rewrite (MOB-015).
+    const items = await this.readMetadataRecords();
+    const nextRecord = this.stripSensitiveFields(
+      hydrateInstallationMetadata({
+        ...record,
+        approvalPolicy: normalizeEnrollmentApprovalPolicy(
+          record.approvalPolicy ?? DEFAULT_ENROLLMENT_APPROVAL_POLICY,
+        ),
+      }),
+    );
+    const nextItems = items.filter(item => item.id !== record.id).concat(nextRecord);
+    await this.persistRawMetadata(nextItems);
   }
 
   /**
@@ -277,7 +423,7 @@ class EnrollmentStorage {
         ),
       }),
     );
-    const currentItems = await this.listEnrollments();
+    const currentItems = await this.readMetadataRecords();
     const nextIds = new Set(nextItems.map(item => item.id));
 
     await Promise.all(
@@ -329,11 +475,13 @@ class EnrollmentStorage {
    */
   async deleteEnrollment(id: string) {
     await this.deleteKeyPairBestEffort(id);
-    const items = await this.listEnrollments();
+    // Raw metadata read so this also removes rows whose secrets are unusable, and never
+    // silently drops sibling broken rows from the collection (MOB-015).
+    const items = await this.readMetadataRecords();
     const nextItems = items.filter(item => item.id !== id);
     await this.secure.removeItem(this.proofTokenStorageKey(id));
     await this.secure.removeItem(this.integrationPublicKeyStorageKey(id));
-    await this.persistMetadataRecords(nextItems);
+    await this.persistRawMetadata(nextItems);
   }
 
   /**
@@ -345,38 +493,93 @@ class EnrollmentStorage {
    * @since 2025
    */
   async updateEnrollmentLastActivity(id: string, lastActivityAt: string) {
-    const items = await this.listEnrollments();
-    let updatedRecord: StoredEnrollment | undefined;
+    const items = await this.readMetadataRecords();
+    let updatedRaw: PersistedEnrollmentMetadata | undefined;
     const nextItems = items.map(item => {
       if (item.id !== id) {
         return item;
       }
 
-      updatedRecord = {
+      updatedRaw = {
         ...item,
         lastActivityAt,
       };
-      return updatedRecord;
+      return updatedRaw;
     });
 
-    if (!updatedRecord) {
+    if (!updatedRaw) {
       return undefined;
     }
 
-    await this.persistMetadataRecords(nextItems);
-    return updatedRecord;
+    await this.persistRawMetadata(nextItems);
+
+    // Rehydrate only the updated row; rows whose secrets are unusable resolve to undefined,
+    // which is fine because they cannot run pending checks in the first place (MOB-015).
+    try {
+      const withProofToken = await this.attachProofToken(updatedRaw);
+      if (!withProofToken) {
+        return undefined;
+      }
+      return await this.attachIntegrationPublicKey(withProofToken);
+    } catch (error) {
+      console.warn(
+        '[enrollmentStorage] Secret rehydration failed after last-activity update:',
+        id,
+        error,
+      );
+      return undefined;
+    }
   }
 
   /**
-   * Clears all enrollment data from storage and best-effort deletes native key pairs.
+   * Applies refreshed installation metadata to persisted records by enrollment id.
    *
-   * Useful for development/testing or complete reset scenarios. Native key deletion is
-   * fail-open: sealed-secret and metadata cleanup always proceeds.
+   * Operates on raw metadata so rows whose secrets are currently unusable keep their persisted
+   * record instead of being dropped by a full healthy-list replace (MOB-015).
+   *
+   * @param updates Enrollment id / refreshed installation pairs.
+   * @return True when at least one record was updated.
+   * @since 2026
+   */
+  async updateInstallationMetadata(
+    updates: Array<{id: string; installation: Installation}>,
+  ): Promise<boolean> {
+    if (updates.length === 0) {
+      return false;
+    }
+
+    const records = await this.readMetadataRecords();
+    const installationsById = new Map(updates.map(update => [update.id, update.installation]));
+    let changed = false;
+    const nextItems = records.map(record => {
+      const installation = installationsById.get(record.id);
+      if (!installation) {
+        return record;
+      }
+      changed = true;
+      return {...record, installation};
+    });
+
+    if (!changed) {
+      return false;
+    }
+
+    await this.persistRawMetadata(nextItems);
+    return true;
+  }
+
+  /**
+   * Clears all enrollment data from storage and best-effort deletes native key material.
+   *
+   * True local reset per the MOB-015 locked UI contract: also sweeps orphaned enrollment secret
+   * entries (recovers from a corrupt collection) and deletes the app-level seal key
+   * `ezkey_app_seal_v1` so re-enrollment starts from a fresh seal key. All native deletions are
+   * fail-open: storage cleanup always proceeds and failures stay observable in logs.
    *
    * @since 2025
    */
   async clearAll() {
-    const items = await this.listEnrollments();
+    const items = await this.readMetadataRecords();
     await Promise.all(items.map(item => this.deleteKeyPairBestEffort(item.id)));
     await Promise.all(
       items.flatMap(item => [
@@ -385,6 +588,47 @@ class EnrollmentStorage {
       ]),
     );
     await this.metadata.removeItem(ENROLLMENT_COLLECTION_KEY);
+    await this.sweepEnrollmentSecretRemnants();
+    await this.deleteAppSealKeyBestEffort();
+  }
+
+  /**
+   * Best-effort sweep of enrollment secret entries that id-based cleanup could not reach,
+   * e.g. when the collection payload was corrupt and enrollment ids were unknown.
+   */
+  private async sweepEnrollmentSecretRemnants(): Promise<void> {
+    try {
+      const keys = await this.metadata.getAllKeys();
+      const prefixes = [
+        `${ENROLLMENT_PROOF_TOKEN_KEY_PREFIX}.`,
+        `${INTEGRATION_PUBLIC_KEY_KEY_PREFIX}.`,
+        `${SEALED_SECRET_KEY_PREFIX}.${ENROLLMENT_PROOF_TOKEN_KEY_PREFIX}.`,
+        `${SEALED_SECRET_KEY_PREFIX}.${INTEGRATION_PUBLIC_KEY_KEY_PREFIX}.`,
+      ];
+      const remnants = keys.filter(key => prefixes.some(prefix => key.startsWith(prefix)));
+      if (remnants.length > 0) {
+        await this.metadata.removeMany(remnants);
+      }
+    } catch (error) {
+      console.warn(
+        '[enrollmentStorage] Failed to sweep enrollment secret remnants (continuing wipe):',
+        error,
+      );
+    }
+  }
+
+  /**
+   * Best-effort deletion of the shared app seal key on clear-all (fail-open, observable).
+   */
+  private async deleteAppSealKeyBestEffort(): Promise<void> {
+    try {
+      await nativeCrypto.deleteAppSealKey();
+    } catch (error) {
+      console.warn(
+        '[enrollmentStorage] Failed to delete app seal key (continuing wipe):',
+        error,
+      );
+    }
   }
 }
 
