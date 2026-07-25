@@ -86,13 +86,34 @@ Upload AAB --> minSdk baked in manifest/metadata
 | **You set `minSdk` in Gradle and ship an AAB** | The floor becomes **distribution metadata**. There is no separate Play “policy form” for OS floor beyond what the binary declares (plus store listing copy you write yourself). |
 | **User tries to install** | If device API &lt; app `minSdk`, Play **does not offer** the install (device incompatible). |
 | **User already has an older build; you publish a higher `minSdk`** | Play **does not offer that update** on too-old OS versions. The user **keeps the last compatible build** until they upgrade the OS, clear the app, or sideload. |
-| **App already running on a soon-to-be-unsupported OS** | Play does **not** show an in-app “update your OS” screen by itself. That requires an **explicit in-app check** (`Build.VERSION.SDK_INT`) — a later work item. |
+| **App already running on a soon-to-be-unsupported OS** | Play does **not** show an in-app “update your OS” screen by itself. Ezkey ships its own in-app gate — see *In-app unsupported-OS gate* below. |
 
 ### `minSdk` vs `targetSdk` / `compileSdk`
 
 - **`minSdk`**: who may **install** (and receive updates of that binary).
 - **`targetSdk` / `compileSdk`**: modern behavior and Play **publish** requirements for new uploads.
   Ezkey already uses a modern target (36). That does **not** define the support floor.
+
+---
+
+## In-app unsupported-OS gate
+
+`minSdk` blocks Play installs and updates, but a device can still run the app below the floor via
+sideload, an old leftover build, or a debug artifact. The app therefore owns an explicit runtime
+gate so operators never enroll or authenticate from an out-of-support OS without being told.
+
+| Condition | Behavior |
+| --- | --- |
+| API level ≥ **31** | Normal app: navigation and Auth API flows mount |
+| API level &lt; **31** | `UnsupportedOsScreen` replaces the whole app shell; no navigation, no enroll/pending calls |
+| API level unresolvable, or non-Android | Treated as supported (fail-open; iOS is out of scope for this gate) |
+
+- Floor constant and predicate: [`app/utils/androidOsSupport.ts`](../app/utils/androidOsSupport.ts)
+  (`ANDROID_PRODUCT_MIN_SDK`) — keep in sync with Gradle `minSdkVersion`.
+- Gate placement: [`app/providers/AppProviders.tsx`](../app/providers/AppProviders.tsx), after i18n
+  initialization so the message renders in the operator's language (EN + FR).
+- Copy stays honest and non-alarmist: state the floor, then one next step (update Android, or use
+  another device). It is a support statement, not a security warning.
 
 ---
 
@@ -135,7 +156,7 @@ without inventing a separate workflow lane.
 | # | Work | Route / evidence | Notes |
 | --- | --- | --- | --- |
 | 1 | Raise Gradle `minSdk` **24 → 31** + Play ship checklist | Completed in [PR #407](https://github.com/mgagp/ezkey/pull/407) | **Done** (Gradle + in-repo ship notes) |
-| 2 | In-app unsupported-OS UX | [`HANDOFF-mobile-unsupported-os-ux.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-unsupported-os-ux.md) | Next; Play already blocks fresh installs &lt; 31 |
+| 2 | In-app unsupported-OS UX | Implemented — see *In-app unsupported-OS gate* above | **Done** (gate + EN/FR screen; Play still blocks fresh installs &lt; 31) |
 | 3 | Annual floor review | [`HANDOFF-mobile-platform-support-annual-review.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-platform-support-annual-review.md) | Dormant until **2027-07** (or earlier if asked) |
 
 MOB-012 (unlocked-device Keystore gate) is **done** — see campaign pass-2 / assessment §14.2.
