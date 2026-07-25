@@ -3,7 +3,7 @@
 **Status:** `open` — **fix authorized** after (or with) the minSdk 31 bump  
 **Lane:** Mobile product / release hygiene (not a MOB-* finding)  
 **Policy canon:** [`ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md`](../../../../ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md)  
-**Prerequisite handoff:** [`HANDOFF-mobile-android-minsdk-31.md`](HANDOFF-mobile-android-minsdk-31.md)
+**Prerequisite:** `minSdk` 31 implemented in [PR #407](https://github.com/mgagp/ezkey/pull/407)
 
 Use this prompt to start a **new Cursor session** for clear operator-facing behavior when the
 running device is below the product floor. Prefer **after** `minSdk` is 31 (Play already blocks
@@ -52,7 +52,7 @@ out of support.
 
 ### Out of scope
 
-- Changing `minSdk` (owned by minsdk-31 handoff)
+- Changing `minSdk` (already completed in PR #407)
 - MOB-012 Keystore flag gate
 - Forcing Play Console listing edits (operator; already on minsdk ship checklist)
 - iOS
@@ -74,7 +74,7 @@ out of support.
 Read product-docs/global/backlog/handoffs/HANDOFF-mobile-unsupported-os-ux.md and
 ezkey_mobile/docs/MOBILE_ANDROID_PLATFORM_SUPPORT.md.
 
-Confirm minSdk 31 is already implemented (HANDOFF-mobile-android-minsdk-31); if not, stop and report.
+Confirm `minSdkVersion = 31` in `ezkey_mobile/android/build.gradle`; if not, stop and report.
 
 Task: add a sober in-app gate when Build.VERSION.SDK_INT < 31 that blocks MFA use and tells the
 user to update the OS or use another device (EN+FR). Do not change minSdk. Do not implement

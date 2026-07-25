@@ -132,9 +132,9 @@ without inventing a separate workflow lane.
 
 ## Follow-ups (actionable handoffs)
 
-| # | Work | Handoff | Notes |
+| # | Work | Route / evidence | Notes |
 | --- | --- | --- | --- |
-| 1 | Raise Gradle `minSdk` **24 → 31** + Play ship checklist | [`HANDOFF-mobile-android-minsdk-31.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-android-minsdk-31.md) | **Done** (Gradle + in-repo ship notes) |
+| 1 | Raise Gradle `minSdk` **24 → 31** + Play ship checklist | Completed in [PR #407](https://github.com/mgagp/ezkey/pull/407) | **Done** (Gradle + in-repo ship notes) |
 | 2 | In-app unsupported-OS UX | [`HANDOFF-mobile-unsupported-os-ux.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-unsupported-os-ux.md) | Next; Play already blocks fresh installs &lt; 31 |
 | 3 | Annual floor review | [`HANDOFF-mobile-platform-support-annual-review.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-platform-support-annual-review.md) | Dormant until **2027-07** (or earlier if asked) |
 
