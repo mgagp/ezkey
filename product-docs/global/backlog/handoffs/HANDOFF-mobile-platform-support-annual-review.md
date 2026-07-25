@@ -23,7 +23,8 @@ Use this prompt only when running the **annual** (or ad hoc) floor review — no
 2. Check Android Security Bulletin / EOL coverage for majors at/below the floor.
 3. Re-check React Native / dependency `minSdk` constraints.
 4. Decide: keep / raise / stage — update canon + Gradle in the same conversation if raising.
-5. If raising: clone pattern from `HANDOFF-mobile-android-minsdk-31.md` for the new value.
+5. If raising: create an ephemeral implementation handoff following [`README.md`](README.md), then
+   delete it after reinjecting durable decisions into the policy canon and recording PR evidence.
 
 ---
 

@@ -40,7 +40,7 @@ Source class: Google Play / Android Studio cumulative distribution (devices that
 
 | Floor `minSdk` | OS | Approx. coverage | Approx. excluded | Reading |
 | --- | --- | --- | --- | --- |
-| 24 (code today) | Android 7+ | ~99% | ~1% | Too low for MFA posture |
+| 24 (historical Gradle default) | Android 7+ | ~99% | ~1% | Too low for MFA posture |
 | 29 | Android 10+ | ~91% | ~9% | Drops Android 9-; possible interim bump |
 | 30 | Android 11+ | ~83% | ~17% | Still broad |
 | **31 (policy)** | **Android 12+** | **~69%** | **~31%** | **2026 product floor** |
@@ -60,16 +60,16 @@ Ezkey’s cryptographic-device posture.
 
 ---
 
-## Policy vs code (implementation debt)
+## Policy vs code
 
-| Layer | Today (2026-07-22) | Policy target |
-| --- | --- | --- |
-| Product / docs | This document | Android 12+ / API 31 |
-| Gradle `minSdkVersion` | **24** | **31** (dedicated follow-up — not done in the docs slice) |
-| `targetSdkVersion` / `compileSdkVersion` | **36** | Keep modern for Play publish requirements |
+| Layer | Value |
+| --- | --- |
+| Product / docs | This document — Android 12+ / API 31 |
+| Gradle `minSdkVersion` | **31** (aligned with policy) |
+| `targetSdkVersion` / `compileSdkVersion` | **36** (Play publish requirements) |
 
-Until Gradle is raised, debug/sideload builds may still run on older APIs. **Play filtering to the
-policy floor only applies after a published AAB with `minSdk` 31.**
+Debug, sideload, and Play builds from this tree refuse install on API &lt; 31. **Play device-catalog
+filtering for end users applies after a published AAB that declares `minSdk` 31.**
 
 ---
 
@@ -100,7 +100,7 @@ Upload AAB --> minSdk baked in manifest/metadata
 
 | Topic | Mechanism | Change set |
 | --- | --- | --- |
-| **This policy** | Who we support / `minSdk` 31 | Product docs now; Gradle bump later |
+| **This policy** | Who we support / `minSdk` 31 | Docs + Gradle aligned |
 | **MOB-012** | Runtime: enable `setUnlockedDeviceRequired(true)` only on API **35+** (avoid Android 12–14 platform bugs) | **Fixed** 2026-07-23 — do **not** “solve” by setting `minSdk` 35 |
 
 An app with `minSdk` 31 still runs on Android 12–14; MOB-012 remains relevant on those OS versions.
@@ -132,10 +132,10 @@ without inventing a separate workflow lane.
 
 ## Follow-ups (actionable handoffs)
 
-| # | Work | Handoff | Notes |
+| # | Work | Route / evidence | Notes |
 | --- | --- | --- | --- |
-| 1 | Raise Gradle `minSdk` **24 → 31** + Play ship checklist | [`HANDOFF-mobile-android-minsdk-31.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-android-minsdk-31.md) | Closes policy vs code debt |
-| 2 | In-app unsupported-OS UX | [`HANDOFF-mobile-unsupported-os-ux.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-unsupported-os-ux.md) | After (or with) #1 |
+| 1 | Raise Gradle `minSdk` **24 → 31** + Play ship checklist | Completed in [PR #407](https://github.com/mgagp/ezkey/pull/407) | **Done** (Gradle + in-repo ship notes) |
+| 2 | In-app unsupported-OS UX | [`HANDOFF-mobile-unsupported-os-ux.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-unsupported-os-ux.md) | Next; Play already blocks fresh installs &lt; 31 |
 | 3 | Annual floor review | [`HANDOFF-mobile-platform-support-annual-review.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-platform-support-annual-review.md) | Dormant until **2027-07** (or earlier if asked) |
 
 MOB-012 (unlocked-device Keystore gate) is **done** — see campaign pass-2 / assessment §14.2.
