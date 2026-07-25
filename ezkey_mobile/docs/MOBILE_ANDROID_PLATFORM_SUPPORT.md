@@ -156,7 +156,7 @@ without inventing a separate workflow lane.
 | # | Work | Route / evidence | Notes |
 | --- | --- | --- | --- |
 | 1 | Raise Gradle `minSdk` **24 → 31** + Play ship checklist | Completed in [PR #407](https://github.com/mgagp/ezkey/pull/407) | **Done** (Gradle + in-repo ship notes) |
-| 2 | In-app unsupported-OS UX | Implemented — see *In-app unsupported-OS gate* above | **Done** (gate + EN/FR screen; Play still blocks fresh installs &lt; 31) |
+| 2 | In-app unsupported-OS UX | Completed in [PR #408](https://github.com/mgagp/ezkey/pull/408); contract in *In-app unsupported-OS gate* above | **Done** (gate + EN/FR screen; Play still blocks fresh installs &lt; 31) |
 | 3 | Annual floor review | [`HANDOFF-mobile-platform-support-annual-review.md`](../../product-docs/global/backlog/handoffs/HANDOFF-mobile-platform-support-annual-review.md) | Dormant until **2027-07** (or earlier if asked) |
 
 MOB-012 (unlocked-device Keystore gate) is **done** — see campaign pass-2 / assessment §14.2.
