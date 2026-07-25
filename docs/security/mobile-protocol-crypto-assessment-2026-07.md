@@ -618,7 +618,7 @@ Severity/confidence scale unchanged from §6.
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed |
-| **Disposition** | **Fixed** — pass-2 closeout 2026-07-25 |
+| **Disposition** | **Fixed** — PR [#406](https://github.com/mgagp/ezkey/pull/406); pass-2 closeout 2026-07-25 |
 | **MASVS** | STORAGE, RESILIENCE |
 | **Protocol stage** | Local rehydration |
 
