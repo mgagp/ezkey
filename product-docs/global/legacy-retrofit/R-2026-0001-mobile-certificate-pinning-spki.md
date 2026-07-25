@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `R-2026-0001`
-- **Status:** `mapped`
+- **Status:** `integrated`
 - **Source type:** `plan`
 - **Capture date:** `2026-05-08`
 - **Owner:** product + AI collaboration
@@ -11,7 +11,8 @@
 
 ## Source batch
 
-- `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md` — active plan (~540 lines), with executive summary, todos, recommended Ezkey posture, and Android-first phasing.
+- `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md` — historical working plan (~540 lines),
+  now retired after canonical rematerialization (`2026-07-25`).
 
 ## Trigger
 
@@ -45,10 +46,22 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D2) re-articulated the desi
 
 | Canonical destination | Mapping action | Status |
 |-----------------------|----------------|--------|
-| `product-docs/global/vision/product-orientation-notes.md` (`V-2026-0006`) | Captures the orientation note (Ezkey-style pinning posture) | **integrated** in this slice |
-| `product-docs/components/mobile/MOBILE_CRYPTO_REFERENCE.md` and similar component design notes | To extend with the SPKI pinning + TOFU + recovery boundary | gap (pending follow-up) |
-| `product-docs/global/architecture-decisions.md` | Candidate ADR for the pinning + recovery boundary if the design crystallizes during implementation | gap (pending follow-up) |
-| Audit chain extension on `admin-api` | New audit event types for pin transition; nightly correlation batch | gap (pending follow-up) |
+| `product-docs/global/vision/V-2026-0006-mobile-certificate-pinning.md` | Expanded strategic canon (middle path, complexity line, StrongBox/passkeys non-equivalence boundary, open convergence items). | integrated |
+| `product-docs/global/backlog/ideas/I-2026-07-25-mobile-certificate-pinning-middle-path.md` | Created active analysis home for ongoing refinements and strategy convergence. | integrated |
+| `docs/MOBILE_DEVELOPER_GUIDE.md` / `docs/SECURITY_POSTURE.md` / `ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md` | StrongBox/pinning honesty boundary already documented and aligned with this posture. | integrated |
+| `product-docs/global/architecture-decisions.md` | Candidate ADR for the pinning + recovery boundary if design crystallizes during implementation. | deferred |
+| Audit chain extension on `admin-api` | New audit event types for pin transition; nightly correlation batch. | deferred |
+
+## Changes applied
+
+- [x] `product-docs/global/vision/V-2026-0006-mobile-certificate-pinning.md` — rematerialized
+  durable strategic posture and explicit non-claims.
+- [x] `product-docs/global/backlog/ideas/I-2026-07-25-mobile-certificate-pinning-middle-path.md`
+  — created incubating idea for ongoing convergence.
+- [x] `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md` — source retired after
+  rematerialization.
+- [ ] `product-docs/global/architecture-decisions.md` — deferred until protocol shape stabilizes.
+- [ ] Admin-api audit extension docs — deferred pending implementation slice.
 
 ## Confidence and residual gaps
 
@@ -68,13 +81,13 @@ User dictation (blitz `_blitz-2026-05-08-2.md`, item D2) re-articulated the desi
 
 ## Next action
 
-- Complete component-doc mapping gaps (mobile crypto reference, recovery contract sketch).
-- Propose an `I-*` for Auth API recovery contract + mobile state schema when retrofit mapping is done.
+- Use `I-2026-07-25-mobile-certificate-pinning-middle-path` as the active convergence lane for
+  recovery contract canon and mobile installation-level trust-state details.
 - Coordinate with `V-2026-0008` (Auth API versioning) at design-pack time, not as a grill blocker.
 
 ## Links
 
-- Source plan: `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md`
+- Source plan (retired 2026-07-25): `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md`
 - Derived vision: `V-2026-0006`
 - Adjacency: `V-2026-0001` / `I-2026-0001` (per-enrollment local-auth posture; same audience and lifecycle), `V-2026-0008` (API versioning, related to Auth API surface evolution)
 - Methodology: [`legacy-retrofit-workflow.md`](../../methodology/legacy-retrofit-workflow.md)

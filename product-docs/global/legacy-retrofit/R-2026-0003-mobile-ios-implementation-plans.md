@@ -22,7 +22,7 @@
 
 - Searched: `plans/`, `.cursor/plans/`, `ezkey_mobile/docs/`, `product-docs/components/mobile/`, `product-docs/global/`, GitHub issues
 - Found relevant: 7 `mobile_ios_phase_*.plan.md` files under `plans/`; supporting context in `ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md`, `NATIVE_MODULES.md`, `MOBILE_STACK_AND_ARCHITECTURE.md`
-- Excluded: `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md` (iOS mentioned for Phase 5 of pinning, already covered by R-2026-0001); no GitHub issues found on the iOS topic
+- Excluded: historical source `.cursor/plans/auth_api_spki_pinning_recovery_analysis.plan.md` (retired 2026-07-25; iOS mentioned for Phase 5 of pinning, already covered by R-2026-0001); no GitHub issues found on the iOS topic
 
 ## Extracted decisions and invariants
 
