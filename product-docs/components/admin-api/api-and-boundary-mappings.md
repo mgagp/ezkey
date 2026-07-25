@@ -55,6 +55,10 @@ Login response (non-error):
 | Admin metadata | `adminType`, `username` | enum name + string | — |
 | Expiry | `expiresAt` | UTC ISO-8601 | Always `Z` suffix with microsecond precision. |
 
+Audit note for pending mode: the two-call pending branch is recorded as `login_mfa_requested`
+with `SUCCESS` (step accepted, no session yet). Legacy rows may still carry `login_pending` and
+remain valid for historical queries. (Source: R-2026-07-25-audit-vs-auth-expiry)
+
 ### Field Mapping — Passwordless-Wait
 
 | DTO field | Domain concept | Transformation | Notes |

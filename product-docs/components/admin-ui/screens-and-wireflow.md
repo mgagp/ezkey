@@ -98,6 +98,13 @@ flowchart LR
 - **Route.** `/audit-logs`.
 - **Primary actor.** Both roles.
 - **Purpose.** Search audit entries; inspect chain checkpoints and lifecycle observability (Global Admin).
+- **Reading model.** `eventType` answers what happened; `eventStatus` answers how that audited step
+    ended (`SUCCESS`, `FAILURE`, `ERROR`); `eventAction` is the stable filter/export key for
+    automation and SIEM.
+- **Role rule.** Global Admin and Tenant Admin use the same column semantics; role only changes row
+    visibility scope, not interpretation.
+
+(Source: R-2026-07-25-audit-vs-auth-expiry)
 
 ### Encryption Keys
 

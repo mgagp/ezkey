@@ -60,4 +60,4 @@ It did **not** fill the gap for **non-admin** auth attempts tied to integrations
 
 ---
 
-*This note complemented the older plan [`audit_vs_auth_expiry.plan.md`](../../../audit_vs_auth_expiry.plan.md) (admin MFA / UI help), which targeted a different surface.*
+*This note complemented an older admin MFA/UI-help working plan whose durable signal is now captured in `product-docs/global/legacy-retrofit/R-2026-07-25-audit-vs-auth-expiry.md` (different surface from this auth-attempt batch topic).*
