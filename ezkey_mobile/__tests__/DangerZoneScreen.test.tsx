@@ -26,7 +26,7 @@ describe('DangerZoneScreen', () => {
     jest.clearAllMocks();
     mockUseDeleteEnrollment.mockReturnValue(baseDeleteMutation as never);
     mockUseEnrollments.mockReturnValue({
-      data: [],
+      data: {enrollments: [], broken: [], collectionError: false},
       isLoading: false,
       refetch: jest.fn(),
     } as never);
@@ -34,7 +34,10 @@ describe('DangerZoneScreen', () => {
 
   it('renders enriched enrollment cards and sorts favorites first', async () => {
     mockUseEnrollments.mockReturnValue({
-      data: [
+      data: {
+        broken: [],
+        collectionError: false,
+        enrollments: [
         {
           id: 'older-non-favorite',
           integrationId: 'integration-2',
@@ -67,7 +70,8 @@ describe('DangerZoneScreen', () => {
           createdAt: '2026-04-20T10:00:00.000Z',
           lastActivityAt: new Date().toISOString(),
         },
-      ],
+        ],
+      },
       isLoading: false,
       refetch: jest.fn(),
     } as never);
@@ -100,25 +104,29 @@ describe('DangerZoneScreen', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
 
     mockUseEnrollments.mockReturnValue({
-      data: [
-        {
-          id: 'favorite-recent',
-          integrationId: 'integration-1',
-          integrationName: 'Admin Console',
-          tenantName: 'Tenant Red',
-          installation: {
-            id: 'https://login.red.example',
-            authUrl: 'https://login.red.example',
-            name: 'Ezkey installation',
-            host: 'login.red.example',
+      data: {
+        broken: [],
+        collectionError: false,
+        enrollments: [
+          {
+            id: 'favorite-recent',
+            integrationId: 'integration-1',
+            integrationName: 'Admin Console',
+            tenantName: 'Tenant Red',
+            installation: {
+              id: 'https://login.red.example',
+              authUrl: 'https://login.red.example',
+              name: 'Ezkey installation',
+              host: 'login.red.example',
+            },
+            enrollmentName: 'Pixel 7 Pro',
+            favorited: true,
+            enrollmentProofToken: 'token-1',
+            createdAt: '2026-04-20T10:00:00.000Z',
+            lastActivityAt: new Date().toISOString(),
           },
-          enrollmentName: 'Pixel 7 Pro',
-          favorited: true,
-          enrollmentProofToken: 'token-1',
-          createdAt: '2026-04-20T10:00:00.000Z',
-          lastActivityAt: new Date().toISOString(),
-        },
-      ],
+        ],
+      },
       isLoading: false,
       refetch: jest.fn(),
     } as never);

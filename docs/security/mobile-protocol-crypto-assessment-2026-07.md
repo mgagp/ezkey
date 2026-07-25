@@ -440,7 +440,7 @@ No remediations authorized until operator HITL.
 | **MOB-012** | P1 | **Fixed** — gate API 35+ only (2026-07-23 HITL); forward-only for existing keys |
 | **MOB-013** | P1/P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
 | **MOB-014** | P2 | **Fixed** — PR [#405](https://github.com/mgagp/ezkey/pull/405); malformed pending HTTP 200 fail-closed (2026-07-24) |
-| **MOB-015** | P2 | Open — unseal failure visibility |
+| **MOB-015** | P2 | **Fixed** — broken-enrollment list honesty + clearAll seal wipe |
 | **MOB-016** | P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
 
 ## 10. Claim verdict (product-facing)
@@ -454,7 +454,7 @@ No remediations authorized until operator HITL.
 | “Backend verifies StrongBox” | **Unsupported** — do not claim |
 | “Pinning / phishing resistance comparable to WebAuthn” | **Unsupported** — do not claim |
 | “Deleting an enrollment removes local Keystore material” | **Supported** for intended wipe path (MOB-002); delete is fail-open if Keystore delete fails |
-| “Multiple independent Ezkey installations coexist safely on one phone” | **Supported** for local crypto/storage isolation (installation-scoped handles — PR [#401](https://github.com/mgagp/ezkey/pull/401)); residual list-collapse UX under MOB-015 |
+| “Multiple independent Ezkey installations coexist safely on one phone” | **Supported** for local crypto/storage isolation (installation-scoped handles — PR [#401](https://github.com/mgagp/ezkey/pull/401)); list-collapse UX fixed under MOB-015 |
 
 ## 11. Methodology next steps
 
@@ -618,20 +618,20 @@ Severity/confidence scale unchanged from §6.
 | --- | --- |
 | **Severity** | P2 |
 | **Confidence** | Confirmed |
-| **Disposition** | **Open — pass-2 HITL** |
+| **Disposition** | **Fixed** — pass-2 closeout 2026-07-25 |
 | **MASVS** | STORAGE, RESILIENCE |
 | **Protocol stage** | Local rehydration |
 
-**Issue.** `listEnrollments` wraps parse + secure rehydration in a broad `catch` that returns `[]` on failure. Missing sealed proof token or integration key causes individual records to be **silently omitted** (DEV warn only). Seal-key loss (MOB-012) or envelope corruption therefore presents as “no enrollments” rather than “broken enrollment needs re-enroll.”
+**Issue (historized — fixed).** `listEnrollments` wrapped parse + secure rehydration in a broad `catch` that returned `[]` on failure. Missing sealed proof token or integration key caused individual records to be **silently omitted** (DEV warn only). Seal-key loss or envelope corruption presented as “no enrollments” rather than “broken enrollment needs re-enroll.”
 
-**Evidence.**
+**Evidence (pre-fix).**
 - `enrollmentStorage.listEnrollments` catch → `[]`
 - `attachProofToken` / `attachIntegrationPublicKey` return `undefined` when material missing
-- App seal key `ezkey_app_seal_v1` is never deleted on clear-all (related lifecycle honesty gap)
+- App seal key `ezkey_app_seal_v1` was never deleted on clear-all
 
-**Recommended action.** Surface broken enrollment rows; narrow catch scopes; consider explicit seal-key wipe policy on Danger Zone clear-all.
+**Closeout 2026-07-25.** `listEnrollmentsDetailed` returns healthy + broken descriptors + collection error; Home/Detail/Danger Zone surface one human “unusable on this device” state; `clearAll` deletes `ezkey_app_seal_v1`; design reinjected into living mobile docs (campaign note is provenance). Pixel functional relecture OK.
 
-**Verification class.** Unit tests for corrupt envelope / missing secret / seal failure paths.
+**Verification class.** Unit tests for corrupt envelope / missing secret / seal failure paths — done.
 
 ---
 
@@ -689,7 +689,7 @@ Deferred programs remain out of this hygiene lot unless the operator funds them:
 | MOB-012 | Yes + Android docs | N/A | Done (`unlockedDeviceRequired` vs API 35 gate) | Optional lock-removal on 33/34 |
 | MOB-013 | Yes | Done (no silent generate) | Deferred optional | Covered by unit + smoke |
 | MOB-014 | Yes | Done (204 vs malformed 200; claim fail_closed) | No | Done (Pixel release enrollment + auth smoke) |
-| MOB-015 | Yes | Required for fix | Optional | Optional |
+| MOB-015 | Yes | Done (broken rows + collection error + clearAll seal wipe) | No | Done (Pixel functional relecture) |
 | MOB-016 | Yes | Done (orphan delete paths) | Optional | No |
 
 ### 14.6 Anti-false-positive reminder

@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import type {StoredEnrollment} from '../services/storage/enrollmentStorage';
+import type {EnrollmentMetadataRecord} from '../services/storage/enrollmentStorage';
 import type {Installation} from '../services/api/types';
 import {
   hydrateInstallationMetadata,
@@ -19,24 +19,23 @@ import {
 /**
  * Group of enrollments belonging to a single tenant.
  *
- * @param tenantId Optional tenant identifier
- * @param tenantName Display name of the tenant
- * @param tenantDescription Optional tenant description
- * @param enrollments Enrollments in this tenant group
+ * Rows are display-safe metadata records so enrollments whose secrets are unusable (MOB-015)
+ * can be grouped and rendered alongside healthy ones.
+ *
  * @since 2025
  */
 export type TenantGroup = {
   tenantId?: number;
   tenantName: string;
   tenantDescription?: string;
-  enrollments: StoredEnrollment[];
+  enrollments: EnrollmentMetadataRecord[];
 };
 
 export type InstallationGroup = {
   installation: Installation;
   showHostHint: boolean;
   tenantGroups: TenantGroup[];
-  ungroupedEnrollments: StoredEnrollment[];
+  ungroupedEnrollments: EnrollmentMetadataRecord[];
 };
 
 function normalizeTenantName(name: string | null | undefined): string | undefined {
@@ -60,7 +59,7 @@ function normalizeTenantDescription(desc: string | null | undefined): string | u
  * @return Sorted array
  * @since 2025
  */
-function sortEnrollmentsWithinGroup(items: StoredEnrollment[]): StoredEnrollment[] {
+function sortEnrollmentsWithinGroup(items: EnrollmentMetadataRecord[]): EnrollmentMetadataRecord[] {
   return [...items].sort((left, right) => {
     if (left.favorited && !right.favorited) return -1;
     if (!left.favorited && right.favorited) return 1;
@@ -92,7 +91,7 @@ function sortTenantGroups(left: TenantGroup, right: TenantGroup): number {
   return (left.tenantId ?? 0) - (right.tenantId ?? 0);
 }
 
-function buildInstallationGroup(enrollment: StoredEnrollment): Pick<InstallationGroup, 'installation' | 'showHostHint'> {
+function buildInstallationGroup(enrollment: EnrollmentMetadataRecord): Pick<InstallationGroup, 'installation' | 'showHostHint'> {
   const hydrated = hydrateInstallationMetadata(enrollment);
   const installation = hydrated.installation ?? {
     id: hydrated.id,
@@ -112,8 +111,8 @@ function buildInstallationGroup(enrollment: StoredEnrollment): Pick<Installation
  * @return Ordered list of installation groups
  * @since 2025
  */
-export function groupEnrollmentsByInstallation(enrollments: StoredEnrollment[]): InstallationGroup[] {
-  const grouped = new Map<string, StoredEnrollment[]>();
+export function groupEnrollmentsByInstallation(enrollments: EnrollmentMetadataRecord[]): InstallationGroup[] {
+  const grouped = new Map<string, EnrollmentMetadataRecord[]>();
 
   for (const enrollment of enrollments) {
     const hydrated = hydrateInstallationMetadata(enrollment);
@@ -125,8 +124,8 @@ export function groupEnrollmentsByInstallation(enrollments: StoredEnrollment[]):
 
   const groups = Array.from(grouped.values()).map(items => {
     const [first] = items;
-    const tenantGroups = new Map<string, StoredEnrollment[]>();
-    const ungroupedEnrollments: StoredEnrollment[] = [];
+    const tenantGroups = new Map<string, EnrollmentMetadataRecord[]>();
+    const ungroupedEnrollments: EnrollmentMetadataRecord[] = [];
 
     items.forEach(item => {
       const tenantName = normalizeTenantName(item.tenantName);

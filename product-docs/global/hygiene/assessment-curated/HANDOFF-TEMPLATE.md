@@ -7,7 +7,9 @@
 **Assessment:** path + section
 
 Use this prompt to start a **new Cursor session**. Default: do **not** implement unless status says
-fix authorized. Delete this file on PR/closeout after consolidating into the campaign note.
+fix authorized. Delete this file on PR/closeout after consolidating into the campaign note — and,
+if the session locked a durable UX contract or product posture, only after reinjecting those design
+decisions into the component's living docs (see README § Design reinjection gate).
 
 ---
 

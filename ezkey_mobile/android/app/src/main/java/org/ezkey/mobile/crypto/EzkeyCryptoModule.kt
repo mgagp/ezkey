@@ -641,6 +641,34 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
+   * Deletes the app-level seal key so a Danger Zone clear-all is a true local reset (MOB-015).
+   *
+   * A dead or corrupted seal key otherwise survives clear-all and can poison re-enrollment,
+   * because every sealed secret on this device is wrapped by this single key.
+   *
+   * @param promise Promise resolved with true when the alias was present and deleted, false when absent.
+   * @since 2026
+   */
+  @ReactMethod
+  fun deleteAppSealKey(promise: Promise) {
+    try {
+      val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+      if (keyStore.containsAlias(APP_SEAL_KEY_ALIAS)) {
+        keyStore.deleteEntry(APP_SEAL_KEY_ALIAS)
+        promise.resolve(true)
+      } else {
+        promise.resolve(false)
+      }
+    } catch (error: GeneralSecurityException) {
+      promise.reject(ERROR_CODE_DELETE, error)
+    } catch (error: IOException) {
+      promise.reject(ERROR_CODE_DELETE, error)
+    } catch (error: IllegalStateException) {
+      promise.reject(ERROR_CODE_DELETE, error)
+    }
+  }
+
+  /**
    * Generates the Android Keystore alias for an enrollment.
    *
    * @param enrollmentId The enrollment ID.

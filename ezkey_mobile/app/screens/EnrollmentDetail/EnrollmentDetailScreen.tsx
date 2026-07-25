@@ -11,11 +11,23 @@
  */
 
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Button, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Button,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import axios from 'axios';
 import {useTranslation} from 'react-i18next';
-import {useEnrollments, useMarkEnrollmentPendingChecked} from '../../hooks/useEnrollments';
+import {
+  useDeleteEnrollment,
+  useEnrollments,
+  useMarkEnrollmentPendingChecked,
+} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {claimPendingAttempt} from '../../services/pendingAuth/claimPendingAttempt';
@@ -32,6 +44,7 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
   const {t} = useTranslation();
   const {enrollmentId} = route.params;
   const {data, isLoading} = useEnrollments();
+  const deleteEnrollment = useDeleteEnrollment();
   const markEnrollmentPendingChecked = useMarkEnrollmentPendingChecked();
   const selectedId = useEnrollmentStore(store => store.selectedId);
   const recentAuthResult = useEnrollmentStore(store =>
@@ -45,14 +58,22 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
     if (!targetId || !data) {
       return undefined;
     }
-    return data.find(item => item.id === targetId);
+    return data.enrollments.find(item => item.id === targetId);
+  }, [data, targetId]);
+
+  const brokenEnrollment = useMemo(() => {
+    if (!targetId || !data) {
+      return undefined;
+    }
+    return data.broken.find(item => item.id === targetId);
   }, [data, targetId]);
 
   useEffect(() => {
-    if (enrollment) {
-      navigation.setOptions({title: enrollment.integrationName});
+    const title = enrollment?.integrationName ?? brokenEnrollment?.metadata.integrationName;
+    if (title) {
+      navigation.setOptions({title});
     }
-  }, [enrollment, navigation]);
+  }, [enrollment, brokenEnrollment, navigation]);
 
   const extractErrorMessage = useCallback(
     (error: unknown) => {
@@ -135,6 +156,67 @@ export const EnrollmentDetailScreen: React.FC<Props> = ({route, navigation}) => 
         collapsable={false}
         accessibilityLabel={t('enrollmentDetail.loading')}>
         <ActivityIndicator accessibilityLabel={t('common.loading')} />
+      </View>
+    );
+  }
+
+  if (!enrollment && brokenEnrollment) {
+    // Fail-open visibility, fail-closed auth: the enrollment stays identifiable but no
+    // pending/respond action is offered (MOB-015 locked UI contract).
+    const metadata = brokenEnrollment.metadata;
+    const handleRemove = () => {
+      Alert.alert(
+        t('home.brokenRemoveConfirmTitle'),
+        t('home.brokenRemoveConfirmMessage', {name: metadata.integrationName}),
+        [
+          {text: t('home.brokenRemoveCancel'), style: 'cancel'},
+          {
+            text: t('home.brokenRowRemove'),
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteEnrollment.mutateAsync(metadata.id);
+                navigation.popToTop();
+              } catch (error) {
+                console.warn('[EnrollmentDetail] Failed to remove unusable enrollment:', error);
+              }
+            },
+          },
+        ],
+      );
+    };
+
+    return (
+      <View style={styles.container} testID="ezkey.e2e.enrollmentDetail.unusable">
+        <View style={styles.identityZone}>
+          <Text style={styles.installationLine}>
+            {metadata.installation?.name ?? t('enrollmentDetail.installationFallback')}
+          </Text>
+          {metadata.tenantName ? (
+            <Text style={styles.tenantLine}>{metadata.tenantName}</Text>
+          ) : null}
+          <Text style={styles.integrationName}>{metadata.integrationName}</Text>
+          {metadata.enrollmentName ? (
+            <Text style={styles.deviceLine}>{metadata.enrollmentName}</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.unusableBanner}>
+          <Text style={styles.unusableTitle}>{t('enrollmentDetail.unusableTitle')}</Text>
+          <Text style={styles.unusableBody}>{t('enrollmentDetail.unusableBody')}</Text>
+        </View>
+
+        <TouchableOpacity
+          testID="ezkey.e2e.enrollmentDetail.removeUnusable"
+          style={styles.removeButton}
+          onPress={handleRemove}
+          disabled={deleteEnrollment.isPending}
+          accessibilityRole="button"
+          accessibilityLabel={t('enrollmentDetail.removeEnrollment')}>
+          <Text style={styles.removeLabel}>{t('enrollmentDetail.removeEnrollment')}</Text>
+        </TouchableOpacity>
+
+        <Button title={t('enrollmentDetail.backToHome')} onPress={() => navigation.popToTop()} />
       </View>
     );
   }
@@ -389,6 +471,37 @@ const styles = StyleSheet.create({
   recentActionMeta: {
     fontSize: 13,
     color: '#9aa3b6',
+  },
+  unusableBanner: {
+    backgroundColor: 'rgba(245, 194, 107, 0.08)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#f5c26b',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  unusableTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#f5c26b',
+  },
+  unusableBody: {
+    fontSize: 14,
+    color: '#dfe6f7',
+    lineHeight: 20,
+  },
+  removeButton: {
+    backgroundColor: '#c24b4b',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  removeLabel: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   missingContainer: {
     flex: 1,

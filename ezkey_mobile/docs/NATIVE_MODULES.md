@@ -42,6 +42,18 @@ general encrypt/decrypt or wrap/unwrap API for all local mobile secrets. In the 
 `enrollmentProofToken` and `integrationPublicKey` are sealed through a dedicated app-level Keystore AES key, while the
 per-enrollment private signing key remains on the keystore signing path.
 
+## App Seal Key Lifecycle (MOB-015)
+
+The app-level AES/GCM seal key (`ezkey_app_seal_v1`) is shared by every sealed secret on the
+device. It is created lazily on first seal, and — decision from the MOB-015 Grill Me
+(2026-07-25) — **deleted on Danger Zone clear-all** via `deleteAppSealKey`, so clear-all is a true
+local reset. Rationale: per-row enrollment deletion cannot recover from a dead or corrupted seal
+key, because the next enrollment would seal against the same broken key; wiping it forces a fresh
+seal key on re-enrollment. Deletion is fail-open: a native failure is logged and never blocks the
+rest of the wipe. On platforms without the Android seal-key model, the bridge resolves `false`
+(nothing to delete). Provenance:
+[campaign note](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md).
+
 ## Security Alignment
 
 - EC P-256 key format matches [`docs/CRYPTO.md`](../../docs/CRYPTO.md): PKCS#8 private key, X.509 public key, ECDSA-SHA256 signatures in ASN.1 DER format, Base64 transport.

@@ -102,6 +102,27 @@ flowchart TD
 | Verified failed result | Pending Authentication after respond | Attempt ended unsuccessfully | Detail screen shows the latest failed response summary | User can review it and start any future check from Enrollment Detail |
 | Protected mode downgraded in Settings | Security screen | User tries to switch from protected mode to standard mode | No backend call | Preference would lower local protection | The app requires strong biometric or device-credential confirmation before saving the new value | Protection remains enabled if the user cancels |
 
+## Local Rehydration Failure Flow (MOB-015)
+
+Local storage or crypto failure — unreadable enrollment collection, missing secure secret, or a
+sealed-secret envelope that fails to unseal — is a distinct exception family: nothing is wrong on
+the server, only this device's copy is unusable. The design posture is fail-open visibility with
+fail-closed authentication, and one plain-language user state ("unusable on this device") for
+every internal cause.
+
+| Exception case | Where it occurs | Technical meaning | User-visible handling | Recovery path |
+| --- | --- | --- | --- | --- |
+| Enrollment secret missing or unsealable | Home / Enrollment Detail rehydration | Proof token or integration key cannot be rehydrated for that row | Row stays visible with an "Unusable" badge and remove action; Detail shows the unusable state without `Check pending` | Remove the row, then re-enroll via a new QR from the administrator |
+| All rows unusable | Home rehydration | Every persisted row failed secret rehydration | "Saved enrollment data is unusable" notice above the broken rows — never the first-use welcome | Remove rows individually or clear all data in the Danger Zone |
+| Enrollment collection unreadable | Home rehydration | Collection JSON cannot be parsed; payload is kept on disk | Same "saved data unusable" notice with no rows | Danger Zone clear-all (true reset: also wipes orphaned secrets and the app seal key), then re-enroll |
+| Dead app seal key after wipe | Danger Zone clear-all | A corrupted `ezkey_app_seal_v1` would poison future sealed secrets | None (internal guarantee) | Clear-all deletes the seal key so re-enrollment regenerates a fresh one |
+
+Internal failure reasons are logged (and shown in `__DEV__` builds only); production copy never
+exposes JSON, key, or unsealing vocabulary and never uses breach/compromise language. Provenance:
+[campaign note](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md);
+model detail:
+[MOBILE_DATA_MODEL.md § Enrollment Rehydration Outcomes](MOBILE_DATA_MODEL.md#enrollment-rehydration-outcomes-and-local-failure-honesty-mob-015).
+
 ## Screen Transition Tables
 
 | Event | Source screen | Destination screen | Condition |

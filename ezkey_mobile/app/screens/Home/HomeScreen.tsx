@@ -14,6 +14,7 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,9 +25,13 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {useTranslation} from 'react-i18next';
-import {useEnrollments, useRefreshInstallationMetadata} from '../../hooks/useEnrollments';
+import {
+  useDeleteEnrollment,
+  useEnrollments,
+  useRefreshInstallationMetadata,
+} from '../../hooks/useEnrollments';
 import {RootStackParamList} from '../../navigation/types';
-import {StoredEnrollment} from '../../services/storage/enrollmentStorage';
+import {EnrollmentMetadataRecord} from '../../services/storage/enrollmentStorage';
 import {useEnrollmentStore} from '../../state/enrollmentStore';
 import {
   groupEnrollmentsByInstallation,
@@ -41,7 +46,7 @@ import {borderRadius, colors, spacing, typography} from '../../config/theme';
  * @return Sorted enrollment array.
  * @since 2025
  */
-const sortEnrollments = (items: StoredEnrollment[]) =>
+const sortEnrollments = (items: EnrollmentMetadataRecord[]) =>
   [...items].sort((left, right) => {
     if (left.favorited && !right.favorited) {
       return -1;
@@ -67,14 +72,30 @@ export const HomeScreen: React.FC = () => {
   const refreshInstallationMetadata = useRefreshInstallationMetadata();
   const {isPending: isRefreshingInstallationMetadata, mutate: refreshInstallations} =
     refreshInstallationMetadata;
+  const deleteEnrollment = useDeleteEnrollment();
   const setSelected = useEnrollmentStore(store => store.setSelected);
   const [expandedInstallations, setExpandedInstallations] = useState<string[]>([]);
 
+  const healthyEnrollments = data?.enrollments;
+  const brokenEnrollments = data?.broken;
+  const collectionError = data?.collectionError ?? false;
+
+  const brokenIds = useMemo(
+    () => new Set((brokenEnrollments ?? []).map(item => item.id)),
+    [brokenEnrollments],
+  );
+
   const installationGroups = useMemo(() => {
-    if (!data || data.length === 0) return [];
-    const sorted = sortEnrollments(data);
-    return groupEnrollmentsByInstallation(sorted);
-  }, [data]);
+    const rows: EnrollmentMetadataRecord[] = [
+      ...(healthyEnrollments ?? []),
+      ...(brokenEnrollments ?? []).map(item => item.metadata),
+    ];
+    if (rows.length === 0) return [];
+    return groupEnrollmentsByInstallation(sortEnrollments(rows));
+  }, [healthyEnrollments, brokenEnrollments]);
+
+  const showUnusableLocalNotice =
+    collectionError || ((healthyEnrollments?.length ?? 0) === 0 && brokenIds.size > 0);
 
   useEffect(() => {
     if (installationGroups.length === 0) {
@@ -107,22 +128,40 @@ export const HomeScreen: React.FC = () => {
   }, [installationGroups]);
 
   useEffect(() => {
-    if (!data || data.length === 0 || isRefreshingInstallationMetadata) {
+    if (!healthyEnrollments || healthyEnrollments.length === 0 || isRefreshingInstallationMetadata) {
       return;
     }
 
-    refreshInstallations(data);
-  }, [data, isRefreshingInstallationMetadata, refreshInstallations]);
+    refreshInstallations(healthyEnrollments);
+  }, [healthyEnrollments, isRefreshingInstallationMetadata, refreshInstallations]);
 
   const navigateToWizard = () => navigation.navigate('EnrollmentWizard');
   const navigateToReleaseNotes = () => navigation.navigate('ReleaseNotes');
 
   const handleSelect = useCallback(
-    (enrollment: StoredEnrollment) => {
+    (enrollment: EnrollmentMetadataRecord) => {
       setSelected(enrollment.id);
       navigation.navigate('EnrollmentDetail', {enrollmentId: enrollment.id});
     },
     [navigation, setSelected],
+  );
+
+  const handleRemoveBroken = useCallback(
+    (enrollment: EnrollmentMetadataRecord) => {
+      Alert.alert(
+        t('home.brokenRemoveConfirmTitle'),
+        t('home.brokenRemoveConfirmMessage', {name: enrollment.integrationName}),
+        [
+          {text: t('home.brokenRemoveCancel'), style: 'cancel'},
+          {
+            text: t('home.brokenRowRemove'),
+            style: 'destructive',
+            onPress: () => deleteEnrollment.mutate(enrollment.id),
+          },
+        ],
+      );
+    },
+    [deleteEnrollment, t],
   );
 
   const toggleInstallation = useCallback((installationId: string) => {
@@ -157,8 +196,9 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.releaseBannerBody}>{t('home.releaseBannerBody')}</Text>
             <Text style={styles.releaseBannerLink}>{t('home.releaseBannerAction')}</Text>
           </TouchableOpacity>
+          {showUnusableLocalNotice ? <UnusableLocalDataNotice /> : null}
           {installationGroups.length === 0 ? (
-            <EmptyState />
+            collectionError ? null : <EmptyState />
           ) : (
             installationGroups.map(group => (
               <InstallationSection
@@ -167,6 +207,8 @@ export const HomeScreen: React.FC = () => {
                 expanded={expandedInstallations.includes(group.installation.id)}
                 onToggle={toggleInstallation}
                 onSelectEnrollment={handleSelect}
+                brokenIds={brokenIds}
+                onRemoveBroken={handleRemoveBroken}
               />
             ))
           )}
@@ -210,6 +252,28 @@ const EmptyState: React.FC = () => {
   );
 };
 
+/**
+ * Honest local-state notice rendered when saved enrollment data is unusable (all rows broken or
+ * the collection is unreadable). Deliberately distinct from the first-use welcome empty state so
+ * storage/crypto failure never presents as "no enrollments" (MOB-015 locked UI contract).
+ *
+ * @since 2026
+ */
+const UnusableLocalDataNotice: React.FC = () => {
+  const {t} = useTranslation();
+
+  return (
+    <View
+      style={styles.unusableNotice}
+      testID="ezkey.e2e.home.unusableLocalData"
+      accessibilityRole="text"
+      accessibilityLabel={t('home.unusableLocalTitle')}>
+      <Text style={styles.unusableNoticeTitle}>{t('home.unusableLocalTitle')}</Text>
+      <Text style={styles.unusableNoticeBody}>{t('home.unusableLocalSubtitle')}</Text>
+    </View>
+  );
+};
+
 type TenantSectionHeaderProps = {
   tenantName: string;
   tenantDescription?: string;
@@ -245,7 +309,9 @@ type InstallationSectionProps = {
   group: InstallationGroup;
   expanded: boolean;
   onToggle: (installationId: string) => void;
-  onSelectEnrollment: (enrollment: StoredEnrollment) => void;
+  onSelectEnrollment: (enrollment: EnrollmentMetadataRecord) => void;
+  brokenIds: Set<string>;
+  onRemoveBroken: (enrollment: EnrollmentMetadataRecord) => void;
 };
 
 const InstallationSection: React.FC<InstallationSectionProps> = ({
@@ -253,6 +319,8 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
   expanded,
   onToggle,
   onSelectEnrollment,
+  brokenIds,
+  onRemoveBroken,
 }) => {
   const {t} = useTranslation();
 
@@ -291,6 +359,8 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
                   key={enrollment.id}
                   enrollment={enrollment}
                   onPress={onSelectEnrollment}
+                  broken={brokenIds.has(enrollment.id)}
+                  onRemove={onRemoveBroken}
                 />
               ))}
             </View>
@@ -300,6 +370,8 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
               key={enrollment.id}
               enrollment={enrollment}
               onPress={onSelectEnrollment}
+              broken={brokenIds.has(enrollment.id)}
+              onRemove={onRemoveBroken}
             />
           ))}
         </View>
@@ -309,35 +381,66 @@ const InstallationSection: React.FC<InstallationSectionProps> = ({
 };
 
 type EnrollmentListItemProps = {
-  enrollment: StoredEnrollment;
-  onPress: (enrollment: StoredEnrollment) => void;
+  enrollment: EnrollmentMetadataRecord;
+  onPress: (enrollment: EnrollmentMetadataRecord) => void;
+  broken: boolean;
+  onRemove: (enrollment: EnrollmentMetadataRecord) => void;
 };
 
 /**
  * Renders enrollment metadata within the home list.
  *
+ * Enrollments whose local secrets are unusable stay visible with an honest "unusable" treatment
+ * and a remove action instead of silently disappearing (MOB-015 locked UI contract).
+ *
  * @param enrollment Enrollment to display.
  * @param onPress Callback invoked when the item is selected.
+ * @param broken True when the enrollment's local secrets are unusable.
+ * @param onRemove Callback invoked when the user removes a broken enrollment.
  * @since 2025
  */
-const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({enrollment, onPress}) => {
+const EnrollmentListItem: React.FC<EnrollmentListItemProps> = ({
+  enrollment,
+  onPress,
+  broken,
+  onRemove,
+}) => {
   const {t} = useTranslation();
 
   return (
     <TouchableOpacity
       testID={`ezkey.e2e.home.enrollment.${enrollment.id}`}
-      style={styles.card}
+      style={[styles.card, broken && styles.cardBroken]}
       onPress={() => onPress(enrollment)}
       accessibilityRole="button"
-      accessibilityLabel={enrollment.integrationName}
+      accessibilityLabel={
+        broken
+          ? t('home.brokenRowAccessibility', {name: enrollment.integrationName})
+          : enrollment.integrationName
+      }
       accessibilityHint={t('home.openEnrollmentDetails')}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{enrollment.integrationName}</Text>
+        {broken ? <Text style={styles.brokenBadge}>{t('home.brokenBadge')}</Text> : null}
       </View>
       {enrollment.enrollmentName ? (
         <Text style={styles.cardSubtitle}>{enrollment.enrollmentName}</Text>
       ) : null}
-      {enrollment.integrationDescription ? (
+      {broken ? (
+        <>
+          <Text style={styles.brokenSubtitle}>{t('home.brokenRowSubtitle')}</Text>
+          <TouchableOpacity
+            testID={`ezkey.e2e.home.enrollment.${enrollment.id}.remove`}
+            style={styles.brokenRemoveButton}
+            onPress={() => onRemove(enrollment)}
+            accessibilityRole="button"
+            accessibilityLabel={t('home.brokenRowRemoveAccessibility', {
+              name: enrollment.integrationName,
+            })}>
+            <Text style={styles.brokenRemoveLabel}>{t('home.brokenRowRemove')}</Text>
+          </TouchableOpacity>
+        </>
+      ) : enrollment.integrationDescription ? (
         <Text numberOfLines={2} style={styles.cardDescription}>
           {enrollment.integrationDescription}
         </Text>
@@ -482,6 +585,58 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.textMuted,
     lineHeight: 18,
+  },
+  unusableNotice: {
+    backgroundColor: 'rgba(245, 194, 107, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 194, 107, 0.35)',
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  unusableNoticeTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.warning,
+  },
+  unusableNoticeBody: {
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  cardBroken: {
+    borderWidth: 1,
+    borderColor: 'rgba(245, 194, 107, 0.45)',
+  },
+  brokenBadge: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.warning,
+    backgroundColor: 'rgba(245, 194, 107, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 194, 107, 0.35)',
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+  brokenSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  brokenRemoveButton: {
+    marginTop: spacing.md,
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.error,
+  },
+  brokenRemoveLabel: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.textOnPrimary,
   },
   emptyState: {
     flex: 1,
