@@ -3,10 +3,10 @@
 ## Metadata
 
 - **ID:** `TB-2026-0001`
-- **Status:** `draft`
+- **Status:** `active` — capability matrix delivered 2026-07-26; awaiting operator decision on promoting `I-2026-0001` to `ready`
 - **Related idea:** `I-2026-0001`
 - **Created at:** `2026-05-07`
-- **Updated at:** `2026-05-07`
+- **Updated at:** `2026-07-26`
 - **Captured by:** Marc
 
 ## Objective
@@ -39,13 +39,33 @@ Produce a validated discovery slice that clarifies Android local-auth and key-li
 
 ## Evidence plan
 
-- Documented Android capability matrix (what can and cannot be bound to key usage).
+- Documented Android capability matrix (what can and cannot be bound to key usage). **Delivered
+  2026-07-26:** [`ezkey_mobile/docs/MOBILE_ANDROID_LOCAL_AUTH_CAPABILITY_MATRIX.md`](../../../../ezkey_mobile/docs/MOBILE_ANDROID_LOCAL_AUTH_CAPABILITY_MATRIX.md).
 - Option comparison with trade-offs and re-enrollment risk.
 - Three-tier policy granularity model and merge rule, cross-linked to the installation trust-zone canon.
 - Documented signed bind-attribute transport direction for future installation/enrollment policy delivery.
 - Updated backlog idea status and explicit recommendation.
 - Test plan slice validated and refined for implementation stage.
 - Grill Me analysis: `TB-2026-0001-grill-me.md`.
+
+## Capability matrix — key takeaways (2026-07-26)
+
+Full detail in the capability matrix doc linked above. Headline findings that matter for sequencing:
+
+- Every Keystore attribute relevant to auth-binding is fixed at key-generation time; none are
+  runtime-alterable on an existing key. A Level 2 → Level 3 move is always a re-key event.
+- Biometric-enrollment invalidation (`KeyPermanentlyInvalidatedException`) only fires for keys
+  requiring auth on **every** use (timeout `0`) — but that is exactly the posture Ezkey's own living
+  design note already recommends (per-action confirmation, no long grace window). The recommended
+  UX posture and the most invalidation-exposed key configuration are the same one. This is a real,
+  quantified cost, not a hypothetical edge case.
+- StrongBox and auth-binding are independent, compatible flags — no new fallback shape needed beyond
+  the existing `StrongBoxUnavailableException` retry pattern.
+- Ezkey's Android 12+ (API 31) floor already exceeds every API level these Keystore features
+  require, so there is no additional OS-fragmentation risk beyond what MOB-012 already handles.
+- A biometric-only strict tier (no device-credential fallback) is expressible but would fail key
+  generation outright on devices with no strong biometric enrolled — any future strict tier needs an
+  explicit, honest failure path, not a silent downgrade.
 
 ## Quality gates
 

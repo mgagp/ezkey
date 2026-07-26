@@ -60,12 +60,22 @@ re-enrollment lock-in.
 
 Move this idea to `ready` only after:
 
-1. A concise Android capability matrix is documented (auth-bound keys, StrongBox interactions, invalidation behavior).
-2. At least two design options are compared (preference-only vs key-bound enforcement).
-3. Re-enrollment risk is explicitly characterized for each option.
-4. A minimal test plan slice is defined across unit, functional, and UI layers.
+1. A concise Android capability matrix is documented (auth-bound keys, StrongBox interactions, invalidation behavior). — **Done 2026-07-26:** [`ezkey_mobile/docs/MOBILE_ANDROID_LOCAL_AUTH_CAPABILITY_MATRIX.md`](../../../../ezkey_mobile/docs/MOBILE_ANDROID_LOCAL_AUTH_CAPABILITY_MATRIX.md).
+2. At least two design options are compared (preference-only vs key-bound enforcement). — **Done** (`TB-2026-0001-grill-me.md` Options A/B/C/D).
+3. Re-enrollment risk is explicitly characterized for each option. — **Done**, sharpened by the capability matrix (every Level 2→3 move is a re-key event; per-action posture is the most invalidation-exposed configuration).
+4. A minimal test plan slice is defined across unit, functional, and UI layers. — **Done** (`I-2026-0001-test-plan-slice.md`).
 5. The three-tier granularity model and merge rule are documented, and the sequencing
-   recommendation (capability matrix + audit-first before any Level 3 key-binding) is explicit.
+   recommendation (capability matrix + audit-first before any Level 3 key-binding) is explicit. — **Done.**
+
+**2026-07-26 status note:** all five criteria above are now satisfied. Promoting this idea to
+`ready` is an operator decision, not an automatic next step — `ready` should mean "implementation
+scope is well-understood enough to schedule," and the first schedulable increment is still narrow
+(the audit-first `respond` extension, Workstream 1 in the living doc), not the full three-tier
+policy.
+
+**Decision (2026-07-26):** stay `incubating` for now. The discovery evidence is complete, but the
+operator wants more reflection time before making this formally schedulable. Re-visit this decision
+without redoing the discovery work above — it does not need to be repeated.
 
 ## Links
 
@@ -74,6 +84,7 @@ Move this idea to `ready` only after:
 - Related component docs:
   - `../../../../ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md`
   - `../../../../ezkey_mobile/docs/MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md` — three-tier model, merge rule, signed bind-attribute direction (2026-07-26)
+  - `../../../../ezkey_mobile/docs/MOBILE_ANDROID_LOCAL_AUTH_CAPABILITY_MATRIX.md` — Android capability matrix (2026-07-26)
   - `../../../../docs/MOBILE_DEVELOPER_GUIDE.md`
   - `../../../../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md` — bind payload extension point for a future policy attribute
   - `../../../../docs/security/mobile-p1-sensitive-storage-investigation-2026-05.md`

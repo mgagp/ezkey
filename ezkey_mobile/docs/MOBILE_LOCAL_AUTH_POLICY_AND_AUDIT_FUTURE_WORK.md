@@ -689,6 +689,35 @@ named target instead of rediscovering the shape from scratch. The current mobile
 slice (`TB-2026-0001`) stays scoped to capability matrix + granularity model + transport direction,
 not implementation.
 
+### Posture vocabulary (extends existing product wording)
+
+The Settings screen already uses `Standard` and `Confirm before approvals` (internally `Protected`)
+for today's two postures (`securitySubtitleStandard` / `securitySubtitleProtected` in
+`app/i18n/resources.ts`). A third word is needed only once Level 3 (Keystore-enforced, auth-bound
+keys) actually ships — **not now**. The natural next word, consistent with the existing pair, is
+`Strict`: `Standard` (no local gate) → `Protected` (today — app-orchestrated `BiometricPrompt`) →
+`Strict` (future — Keystore/`CryptoObject`-enforced). This is recorded here as a naming reservation,
+not a UI change; no code or copy is touched by this note.
+
+### First implementation slice recommendation (Workstream 1)
+
+Per the capability matrix
+(`ezkey_mobile/docs/MOBILE_ANDROID_LOCAL_AUTH_CAPABILITY_MATRIX.md`), the lowest-risk next
+increment is Workstream 1 (audit-first `respond` extension), not Level 3. If and when that slice is
+scheduled, adopt **Option B** from "What Could Be Reported in a Future `respond` Extension" above,
+generalized to the three-tier model in this addendum:
+
+- `installationPolicyRequiredAuth`
+- `enrollmentPolicyRequiredAuth`
+- `userPreferenceRequiredAuth`
+- `effectiveLocalAuthRequired`
+- `localAuthPerformed`
+
+Option C's extra `localAuthSource` / `localAuthMethod` fields remain a reasonable later addition,
+not required for the first slice. This keeps the increment small: declarative fields only, no
+Keystore change, no OpenAPI contract change beyond additive optional fields on the existing
+`respond` request.
+
 ### Why StrongBox/CryptoObject key-binding is not a "quick win"
 
 A related question that surfaced in the same discussion: could the local preference simply be
