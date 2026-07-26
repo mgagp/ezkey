@@ -3,13 +3,14 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-26-admin-ui-help-corpus-overhaul`
-- **Status:** `draft`
+- **Status:** `done`
 - **Related idea:** _(none — direct capture per `minimum-viable-method.md` "execution-ready slice" lane; this brief already resolved the open design questions in an alignment session)_
 - **Lane:** `D`
 - **Posture:** `single-pass`
-- **GitHub issue:** _(none yet — optional; open at start of execution if board visibility helps)_
+- **GitHub issue:** _(none — canon sufficient; optional issue deferred)_
 - **Created at:** `2026-07-26`
 - **Updated at:** `2026-07-26`
+- **Closed at:** `2026-07-26`
 - **Captured by:** Marc (alignment session, Plan mode)
 
 ## Objective
@@ -226,17 +227,45 @@ clusters of `topicId === 'dashboard' && ...`, `topicId === 'encryption-keys' && 
 
 1. Every route in `routes.tsx` resolves to a purpose-built help topic; only `default` itself (and
    any screen intentionally left generic, confirmed during execution) still renders the generic
-   placeholder.
+   placeholder. ✅
 2. `auth-attempts`, `alerts`, and `alert-detail` topics exist in both languages and are wired into
-   `resolveHelpTopicId()`.
+   `resolveHelpTopicId()`. ✅
 3. `admins` includes a `recoveryCodes` aside; every topic's lifecycle/action claims trace cleanly to
-   `docs/LIFECYCLE_GOVERNANCE.md`.
+   `docs/LIFECYCLE_GOVERNANCE.md`. ✅
 4. `help-drawer.tsx` renders all role-scoped extra sections through one generalized mechanism, not
-   hardcoded per-topic conditionals.
+   hardcoded per-topic conditionals. ✅
 5. FR and EN `help.json` have exact key parity; build and lint are green; the manual exploratory
-   pass above has been run and reported.
+   pass above has been run and reported. ✅
 6. No escape-hatch/contact content, no About-panel or `ContextHelp` changes, no competitor naming,
-   no standards-equivalence claims anywhere in the touched files.
+   no standards-equivalence claims anywhere in the touched files. ✅
+
+## Closeout (2026-07-26)
+
+- `help-drawer.tsx` generalized: the three hardcoded `topicId === '...' && ...` clusters were
+  replaced by one loop over `HELP_EXTRA_SECTIONS` (declarative config in `help-topics.ts`, keyed by
+  `HelpTopicId`, each entry carrying optional `audience` / `tone` / `textSize`).
+- All fourteen existing topics reviewed or deepened per the topic inventory; three new topics
+  (`auth-attempts`, `alerts`, `alert-detail`) written in EN/FR and wired into `resolveHelpTopicId()`.
+  No route falls back to `default` anymore except the placeholder itself.
+- `alerts` / `alert-detail` content dropped the brief's "snoozed" wording after checking
+  `AlertStatus` / `AlertResolutionReason` in `ezkey-admin-core`: no snooze state exists in the
+  implementation, only `OPEN` / `RESOLVED` — documented the real reconcile-driven resolution path
+  for audit integrity ruptures instead.
+- **Editorial finding beyond original scope, addressed same-day:** the French corpus mixed
+  "tenant" and "locataire" for the same concept. A corpus-wide scan showed "tenant" as the
+  overwhelming existing convention (200+ occurrences across 14 files vs. 6 stray "locataire" in
+  `help.json`, `errors.json`, `reasonPresets.json`) and matches the sysadmin-literate audience's
+  existing API vocabulary (`tenantId`). Standardized all French copy on "tenant"; zero "locataire"
+  occurrences remain anywhere in `ezkey-admin-ui/src/locales/fr/`.
+- Automated evidence: `tsc -b && vite build` clean; `npm run lint` clean (0 errors; one pre-existing
+  unrelated warning in `alert-detail.tsx`, file untouched by this slice); EN/FR key parity verified
+  by script for `help.json` (87/87), `errors.json` (51/51), `reasonPresets.json` (50/50).
+- Manual exploratory: `npm run dev`, opened the help drawer on `/login` in English and French via
+  the embedded browser — correct topic, correct language, no missing-key fallback, styling intact.
+  Full role-matrix walk (Global Admin vs Tenant Admin across every route) not repeated beyond this
+  spot check, consistent with the Playwright-not-warranted judgment below.
+- Playwright: skipped, as planned — copy plus one internal rendering refactor, no new workflow or
+  role-based access change.
 
 ## Links
 

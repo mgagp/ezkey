@@ -1,7 +1,7 @@
 import { useEffect, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleHelp, X } from 'lucide-react';
-import type { HelpTopicId } from '@/lib/help-topics';
+import { HELP_EXTRA_SECTIONS, type HelpTopicId } from '@/lib/help-topics';
 
 interface HelpDrawerProps {
   open: boolean;
@@ -46,6 +46,7 @@ export function HelpDrawer({
 
   const base = `topics.${topicId}`;
   const demoExtraText = t(`${base}.demoExtra`, { defaultValue: '' });
+  const extraSections = HELP_EXTRA_SECTIONS[topicId] ?? [];
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -103,50 +104,26 @@ export function HelpDrawer({
           </p>
           <div className="whitespace-pre-wrap">{t(`${base}.body`)}</div>
 
-          {topicId === 'dashboard' && (
-            <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg-muted">
-              {t('topics.dashboard.authHealth')}
-            </p>
-          )}
-
-          {topicId === 'dashboard' && isGlobalAdmin && (
-            <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
-              {t('topics.dashboard.globalContext')}
-            </p>
-          )}
-          {topicId === 'dashboard' && !isGlobalAdmin && (
-            <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
-              {t('topics.dashboard.tenantContext')}
-            </p>
-          )}
-
-          {topicId === 'encryption-keys' && isGlobalAdmin && (
-            <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
-              {t('topics.encryption-keys.globalOps')}
-            </p>
-          )}
-          {topicId === 'encryption-keys' && (
-            <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg-muted text-xs leading-relaxed">
-              {t('topics.encryption-keys.developerContext')}
-            </p>
-          )}
-
-          {topicId === 'audit-logs' && (
-            <>
-              <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
-                {t('topics.audit-logs.eventTypeVsStatus')}
+          {extraSections.map((section) => {
+            if (section.audience === 'global' && !isGlobalAdmin) return null;
+            if (section.audience === 'tenant' && isGlobalAdmin) return null;
+            const toneClass = section.tone === 'muted' ? 'text-fg-muted' : 'text-fg';
+            const sizeClass = section.textSize === 'xs' ? 'text-xs leading-relaxed' : '';
+            return (
+              <p
+                key={section.key}
+                className={[
+                  'whitespace-pre-wrap border-t-2 border-fg/15 pt-4',
+                  toneClass,
+                  sizeClass,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {t(`${base}.${section.key}`)}
               </p>
-              <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg-muted">
-                {t('topics.audit-logs.statusLegend')}
-              </p>
-              <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg">
-                {t('topics.audit-logs.mfaAndLogin')}
-              </p>
-              <p className="whitespace-pre-wrap border-t-2 border-fg/15 pt-4 text-fg-muted text-sm">
-                {t('topics.audit-logs.integrityNote')}
-              </p>
-            </>
-          )}
+            );
+          })}
 
           {showDemoExtra && demoExtraText.trim() !== '' && (
             <div className="border-2 border-accent bg-accent/10 p-3 shadow-[3px_3px_0_0_var(--color-accent-dark)]">

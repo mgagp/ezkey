@@ -12,11 +12,14 @@ export type HelpTopicId =
   | 'integration-detail'
   | 'enrollments'
   | 'enrollment-detail'
+  | 'auth-attempts'
   | 'api-keys'
   | 'api-key-detail'
   | 'admins'
   | 'encryption-keys'
-  | 'audit-logs';
+  | 'audit-logs'
+  | 'alerts'
+  | 'alert-detail';
 
 /**
  * Resolves the active help topic from the current pathname. Extend as new screens receive authored help.
@@ -31,10 +34,59 @@ export function resolveHelpTopicId(pathname: string): HelpTopicId {
   if (path.startsWith('/integrations/')) return 'integration-detail';
   if (path === '/enrollments') return 'enrollments';
   if (path.startsWith('/enrollments/')) return 'enrollment-detail';
+  if (path === '/auth-attempts') return 'auth-attempts';
   if (path === '/api-keys') return 'api-keys';
   if (path.startsWith('/api-keys/')) return 'api-key-detail';
   if (path === '/admins') return 'admins';
   if (path === '/encryption-keys') return 'encryption-keys';
   if (path === '/audit-logs') return 'audit-logs';
+  if (path === '/alerts') return 'alerts';
+  if (path.startsWith('/alerts/')) return 'alert-detail';
   return 'default';
 }
+
+/**
+ * One extra help-drawer section beyond the standard `summary` / `body` pair, rendered as its own
+ * divider block under `topics.<topicId>.<key>` in the `help` i18n namespace.
+ */
+export interface HelpExtraSection {
+  /** i18n key under the topic (rendered as `topics.<topicId>.<key>`). */
+  key: string;
+  /** Restricts rendering to one admin type. Omit to show the section to both roles. */
+  audience?: 'global' | 'tenant';
+  /** Muted (secondary) text tone. Defaults to regular foreground text. */
+  tone?: 'default' | 'muted';
+  /** Smaller, denser text for asides such as developer-only notes. Defaults to the drawer's base size. */
+  textSize?: 'xs';
+}
+
+/**
+ * Declarative extra-section configuration per topic, replacing hardcoded per-topic conditionals in
+ * `HelpDrawer`. Topics not listed here render only `summary` and `body`.
+ */
+export const HELP_EXTRA_SECTIONS: Partial<Record<HelpTopicId, HelpExtraSection[]>> = {
+  dashboard: [
+    { key: 'authHealth', tone: 'muted' },
+    { key: 'globalContext', audience: 'global' },
+    { key: 'tenantContext', audience: 'tenant' },
+  ],
+  integrations: [
+    { key: 'globalScope', audience: 'global' },
+    { key: 'tenantScope', audience: 'tenant' },
+  ],
+  enrollments: [
+    { key: 'globalScope', audience: 'global' },
+    { key: 'tenantScope', audience: 'tenant' },
+  ],
+  admins: [{ key: 'recoveryCodes' }],
+  'encryption-keys': [
+    { key: 'globalOps', audience: 'global' },
+    { key: 'developerContext', tone: 'muted', textSize: 'xs' },
+  ],
+  'audit-logs': [
+    { key: 'eventTypeVsStatus' },
+    { key: 'statusLegend', tone: 'muted' },
+    { key: 'mfaAndLogin' },
+    { key: 'integrityNote', tone: 'muted' },
+  ],
+};
