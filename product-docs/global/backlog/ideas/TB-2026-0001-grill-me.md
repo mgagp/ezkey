@@ -6,6 +6,9 @@ Stress-test the discovery tracer bullet before design lock-in.
 
 ## Critical questions
 
+0. What is the right policy granularity for Ezkey's market position — local user preference only,
+   per-enrollment, per-installation (organization-owned), or all three with an explicit "strongest
+   tier wins" merge rule? (2026-07-26 addendum — see Option D below.)
 1. What must be true in Android key capabilities for per-enrollment local-auth enforcement to avoid forced re-enrollment?
 2. Can local-auth requirements be changed post-enrollment without invalidating the enrollment signing key?
 3. Which key attributes are fixed at generation time versus configurable at runtime?
@@ -52,6 +55,13 @@ Stress-test the discovery tracer bullet before design lock-in.
 4. **When to involve backend**:
    - keep phase 1 local-only,
    - design explicit extension points for future backend policy.
+5. **Policy scope (2026-07-26 addendum)**:
+   - local-preference-only keeps the org out of the decision entirely,
+   - per-enrollment-only lets a tenant admin scope policy per business relationship but has no
+     "floor" concept for a whole installation,
+   - per-installation (organization-owned) gives a Global Admin a way to impose a security floor
+     across all enrollments issued by that instance, which matters for the SME-adopter market
+     Ezkey targets — but requires DB, Admin API, and Admin UI surface in a later increment.
 
 ## Design options
 
@@ -99,6 +109,28 @@ Stress-test the discovery tracer bullet before design lock-in.
 - More states to explain and test.
 - Requires disciplined phase management.
 
+### Option D — Installation-scoped (organization) policy via signed bind attribute (documented direction, not V1)
+
+- The Ezkey installation (Global Admin, instance-level concern — consistent with the Global Admin
+  vs Tenant Admin split) sets a minimum local-auth requirement for all enrollments it issues.
+- Transport: a new attribute in the enrollment **bind** payload, signed by the integration's
+  Ed25519 key alongside the existing tenant/enrollment metadata (`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`
+  § Bind response) — no new crypto primitive, reuses the signature the mobile app already verifies.
+- Effective decision generalizes the existing rule to: `installationPolicyRequiresAuth OR
+  enrollmentPolicyRequiresAuth OR userPreferenceRequiresAuth` (strongest tier wins).
+- Consequence chain if funded later: DB representation (installation-scoped policy), Admin API
+  surface, Admin UI control. **Not** committed in this tracer bullet — named so the discovery slice
+  does not foreclose it.
+
+**Pros**
+- Anchors on the already-canonical installation trust zone (`I-2026-07-20-mobile-installation-trust-zone-canon`), which is now a complete crypto isolation boundary end to end — signing key alias (MOB-011), local enrollment id (MOB-011), and at-rest seal key (`MOB-017` / `ADR-MOB-0006`, PR #412, 2026-07-26) are all installation-scoped; no new mobile identity concept.
+- Reuses an existing signed payload instead of a new protocol primitive.
+- Gives organizations a real security floor without removing the end user's ability to raise their own bar locally.
+
+**Cons**
+- Real DB/Admin API/Admin UI scope once implemented — a separate, later increment, not this slice.
+- Adds a third source of truth to reconcile in the merge rule (manageable — same OR-based pattern already used for two tiers).
+
 ## Recommended next clarifications
 
 1. Build an Android capability matrix for auth-bound keys vs runtime policy changes.
@@ -110,3 +142,11 @@ Stress-test the discovery tracer bullet before design lock-in.
 ## Recommendation
 
 Proceed with **Option A** for first implementation slice, with explicit architecture notes preparing a future move to Option C if stronger local assurance is needed.
+
+**2026-07-26 addendum.** Option D (installation-scoped policy) is a **documented future direction**,
+not part of the first implementation slice. Recommended sequencing, from lowest to highest risk:
+
+1. Android capability matrix (this tracer bullet's core deliverable) — no code risk.
+2. Audit-first `respond` extension (declarative fields; living doc Workstream 1) — low risk, no key-lifecycle change.
+3. Policy representation work: generalize the merge rule to three tiers and prepare the installation-level model in docs/data-model terms only (no DB/API/UI yet).
+4. Only then, if funded: Option D transport (signed bind attribute) and/or Option B/C key-bound enforcement (Level 3, MOB-001 Track B) — the highest-risk step, requiring the capability matrix from step 1 first.

@@ -12,6 +12,7 @@ This document is useful when future work touches any of the following:
 - local device confirmation before `respond`
 - user-controlled security preferences in the mobile app
 - future enrollment policy delivered by the backend
+- future installation-owned (organization) policy — see the 2026-07-26 addendum below
 - protocol and audit-log extensions for `respond`
 - the difference between declarative audit context and strong server-verifiable security guarantees
 
@@ -600,6 +601,116 @@ Goal:
 - define how it combines with user preference and how it is audited
 
 This remains a separate future phase, but the current mobile model has been prepared for it.
+
+## Addendum (2026-07-26) — A Third Policy Tier: Installation-Owned Policy
+
+A follow-up discussion widened Workstream 3 from a single "enrollment policy" concept to a
+**three-tier** model. This section preserves that reasoning so it is not lost before the tracer
+bullet (`TB-2026-0001`) resumes.
+
+### Why a third tier
+
+The original framing already separated a **local user preference** from a **future enrollment
+policy**. That framing under-represents one real actor: an Ezkey **installation** — a specific
+on-prem or hosted deployment, typically operated by one adopting organization — may legitimately
+want to impose a security floor across *all* enrollments it issues, independent of what any single
+enrollment or end user decides. Authentication is never anyone's core business except Ezkey's; the
+end user generally wants friction-free authentication, while the adopting organization may
+legitimately want a stronger guarantee. Both are real and neither should be assumed away.
+
+This third tier does not require a new mobile identity concept. It reuses the installation as a
+**trust zone**, already canonical since `I-2026-07-20-mobile-installation-trust-zone-canon`: every
+enrollment already belongs to exactly one installation trust zone, identified by its normalized
+Auth API URL.
+
+### The generalized model
+
+| Tier | Owner | Scope | Status today |
+| --- | --- | --- | --- |
+| User preference | End user | This phone, all enrollments on it | Implemented (`Security` settings) |
+| Enrollment policy | Future: backend / tenant admin | One enrollment | Modeled, always `not-required` (stub) |
+| Installation policy | Future: backend / Global Admin | All enrollments issued by one installation | Not modeled |
+
+The existing merge rule generalizes cleanly from two inputs to three, preserving the same
+"strongest wins" intuition:
+
+```
+effectiveLocalAuthRequired =
+    installationPolicyRequiresAuth
+    OR enrollmentPolicyRequiresAuth
+    OR userPreferenceRequiresAuth
+```
+
+This is consistent with the Global Admin vs Tenant Admin split already used elsewhere in the
+product: an installation-level floor is naturally a **Global Admin** (instance-level) concern,
+while a per-enrollment override remains closer to a **Tenant Admin** (business-relationship)
+concern. Neither role is designed in this addendum — only the conceptual anchor is recorded.
+
+**Note (2026-07-26) — the installation trust-zone anchor just got stronger.** A same-day hygiene
+fix, `MOB-017` (`ADR-MOB-0006` in `product-docs/components/mobile/design-decisions.md`, merged via
+PR #412), scoped the Android app-level AES seal key to the installation trust zone instead of the
+whole app (previously one shared `ezkey_app_seal_v1` key for every installation on the phone; now
+one `ezkey_seal_{installationScopeId}` key per installation). Combined with the existing MOB-011
+installation-scoped signing-key aliases and local enrollment ids, the installation trust zone is
+now isolated end to end at the crypto layer: signing key, local identity, **and** at-rest seal key
+are all installation-scoped. This does not change anything in this addendum's design — it
+**strengthens** the case for anchoring a future installation-owned policy tier on that same trust
+zone, since it is now a complete isolation boundary rather than an identity label only. At the time
+of this edit that fix is merged to `origin/main` (PR #412) but not yet present in this branch's
+working tree; no conflict is expected since it does not touch this document's other content.
+
+### How installation policy would reach the device
+
+If and when installation policy becomes backend-owned, the most natural transport is **not** a new
+protocol message. The enrollment **bind** response already carries integration-signed, non-crypto
+metadata (tenant id/name/description, enrollment name) inside one Ed25519-signed payload (see
+`docs/ENROLLMENT_SIGNATURE_PAYLOAD.md` § Bind response). A policy attribute would sit alongside
+those fields, verified by the mobile app the same way it already verifies the rest of the bind
+payload — no new signature scheme, no new key material.
+
+That gives the mobile app an **honest, tamper-evident** signal at bind time about the policy that
+applied when the enrollment was created, with the same trust boundary as everything else at bind:
+it proves what the installation's integration key asserted, not an attested runtime fact.
+
+### Consequence chain if this is funded later
+
+Making installation policy real (backend-owned, not just a mobile-side placeholder) would require,
+in this order:
+
+1. A DB representation for installation-scoped policy (new column or small table, at whatever
+   granularity the design settles on — one flag first, before any tiered vocabulary).
+2. An Admin API surface to read and write that policy (Global Admin scope).
+3. An Admin UI control surfacing it (consistent with the Global Admin vs Tenant Admin split).
+4. The bind-payload extension described above, plus mobile-side merge logic generalized to three
+   tiers.
+
+**This addendum does not commit to that chain.** It exists so a future design pass starts from a
+named target instead of rediscovering the shape from scratch. The current mobile-only discovery
+slice (`TB-2026-0001`) stays scoped to capability matrix + granularity model + transport direction,
+not implementation.
+
+### Why StrongBox/CryptoObject key-binding is not a "quick win"
+
+A related question that surfaced in the same discussion: could the local preference simply be
+strengthened to *require* a Keystore-enforced, auth-bound key (Level 3 in the ladder above,
+StrongBox-eligible) instead of today's Level 2 (app-orchestrated `BiometricPrompt`)? Technically
+yes — Android supports `setUserAuthenticationRequired(true)` together with
+`setIsStrongBoxBacked(true)` on the same key. But this is the single highest-risk step in the whole
+roadmap, not a quick win, because:
+
+- Biometric enrollment changes (adding/removing a fingerprint, changing the device credential)
+  **permanently invalidate** an auth-bound key (`KeyPermanentlyInvalidatedException`) — the app
+  must detect this and drive the user through key regeneration or re-enrollment.
+- Android version fragmentation is already a live concern for this exact key generator (see
+  `MOB-012` — `setUnlockedDeviceRequired` gated to API 35+ for unrelated reasons); adding
+  auth-binding reopens that fragmentation surface.
+- An earlier attempt to make the enrollment key itself auth-bound produced functional breakage in
+  this codebase (see Historical Trace above) — this is empirically confirmed, not theoretical.
+
+The defensible next steps, in order, are the Android capability matrix (`TB-2026-0001`) and the
+audit-first `respond` extension (Workstream 1) — both zero key-lifecycle risk. Level 3 key-binding
+(Workstream 2) should only be scheduled after the capability matrix quantifies the real migration
+cost.
 
 ## Current Practical Posture
 
