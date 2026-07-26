@@ -23,14 +23,14 @@
   "authorization": {
     "admin-not-allowed": "Cette opération administrateur n'est pas autorisée.",
     "admin-limit-violation": "Cette opération violerait les limites applicables aux administrateurs.",
-    "tenant-not-allowed": "Cette opération sur le locataire n'est pas autorisée.",
-    "tenant-inactive": "Impossible d'utiliser les ressources d'un locataire inactif.",
+    "tenant-not-allowed": "Cette opération sur le tenant n'est pas autorisée.",
+    "tenant-inactive": "Impossible d'utiliser les ressources d'un tenant inactif.",
     "access-denied": "Vous n'avez pas l'autorisation d'effectuer cette action."
   },
   "domain": {
     "integration-has-enrollments": "Impossible de supprimer cette intégration tant qu'il existe des enrôlements. Retirez ou révoquez les enrôlements d'abord.",
     "pending-encryption-key-exists": "Une clé de chiffrement en attente existe déjà. Promouvez-la ou utilisez la promotion immédiate avant d'en introduire une autre.",
-    "integration-code-already-exists": "Une intégration avec ce code existe déjà pour ce locataire.",
+    "integration-code-already-exists": "Une intégration avec ce code existe déjà pour ce tenant.",
     "integration-lifecycle-state": "Cette action n'est pas valide pour l'état du cycle de vie actuel de l'intégration.",
     "system-integration-lifecycle": "L'intégration système est réservée à l'authentification multifacteur des administrateurs et ne peut pas être modifiée ainsi.",
     "api-key-limit-exceeded": "Le nombre maximal de clés API actives pour cette intégration est atteint.",
@@ -58,7 +58,7 @@
     "missing-email": "L'adresse e-mail est obligatoire pour la création d'un administrateur global.",
     "missing-first-name": "Le prénom est obligatoire pour la création d'un administrateur global.",
     "missing-last-name": "Le nom est obligatoire pour la création d'un administrateur global.",
-    "missing-tenant-id": "L'identifiant du locataire est obligatoire pour la création d'un administrateur de locataire.",
+    "missing-tenant-id": "L'identifiant du tenant est obligatoire pour la création d'un administrateur de tenant.",
     "invalid-request": "La requête n'est pas valide.",
     "admin-inactive": "Cet administrateur est inactif.",
     "missing-proof-token": "Le jeton de preuve d'enrôlement n'est pas disponible pour cet administrateur.",
