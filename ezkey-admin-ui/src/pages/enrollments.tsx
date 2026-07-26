@@ -11,6 +11,7 @@ import { type ColumnDef } from '@/components/data-table/data-table';
 import { PaginatedTable } from '@/components/data-table/paginated-table';
 import { EnrollmentListLifecycleDialog, type EnrollmentLifecycleAction } from '@/components/feature/enrollment-list-lifecycle-dialog';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
+import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -231,9 +232,9 @@ function EnrollmentCreateDialog({
             {t('create.successMessage', { name: createdEnrollmentName ?? 'created' })}
           </Alert>
 
-          <p className="text-xs text-fg-muted leading-relaxed border-l-2 border-fg/25 pl-3 py-0.5">
+          <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
             {t('create.previewNotice')}
-          </p>
+          </IntegratedDeliveryNotice>
 
           <div className="space-y-3">
             <p className="text-xs font-black uppercase tracking-widest text-fg-muted">

@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
 import { fetchApi } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { isValidRecoveryCodeFormat, normalizeRecoveryCodeInput } from '@/lib/recovery-code-format';
@@ -307,9 +308,9 @@ export function LoginRecoverySection({
           <Alert variant="info">
             {t('login:recovery.adminLoginDistinctionNote')}
           </Alert>
-          <p className="text-xs text-fg-muted leading-snug border-l-2 border-fg/25 pl-3 py-0.5">
+          <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
             {t('login:recovery.previewNotice')}
-          </p>
+          </IntegratedDeliveryNotice>
         </section>
 
         {/* 2. Bind credentials: QR + challenge / manual (side by side from md+) */}

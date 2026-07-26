@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
 import { fetchApi } from '@/lib/api-client';
 import { getTranslatedApiError } from '@/lib/api-error-i18n';
 import { enrollmentPayloadToQrDataUrl } from '@/lib/enrollment-qr-data-url';
@@ -218,9 +219,9 @@ export function LoginActivationSection({
               username: activationResult.username ?? '',
             })}
           </Alert>
-          <Alert variant="warning" title={t('login:activation.previewNoticeTitle')}>
+          <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summaryBootstrap')}>
             {t('login:activation.previewNotice')}
-          </Alert>
+          </IntegratedDeliveryNotice>
           <Alert variant="info" title={t('login:activation.recoveryCodesDeferredTitle')}>
             {t('login:activation.recoveryCodesDeferredBody')}
           </Alert>

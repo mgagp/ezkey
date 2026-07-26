@@ -8,6 +8,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { DemoReasonBadges } from '@/components/feature/demo-reason-badges';
 import { EnrollmentFkLink } from '@/components/feature/fk-detail-links';
+import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { AppShell } from '@/components/layout/app-shell';
@@ -252,9 +253,9 @@ function OnboardingDialog({
           <Alert variant="info">
             {t('onboarding.alertShare')}
           </Alert>
-          <p className="text-xs text-fg-muted leading-relaxed border-l-2 border-fg/25 pl-3 py-0.5">
+          <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
             {t('onboarding.previewNotice')}
-          </p>
+          </IntegratedDeliveryNotice>
 
           {/* Proof Token */}
           <div className="space-y-1.5">

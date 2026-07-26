@@ -59,6 +59,10 @@
   "help": {
     "ariaLabel": "Aide : {{title}}"
   },
+  "integratedDelivery": {
+    "summary": "Livraison intégrée",
+    "summaryBootstrap": "Livraison intégrée (bootstrap)"
+  },
   "language": {
     "english": "Anglais",
     "french": "Français"

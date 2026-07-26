@@ -11,15 +11,18 @@
   configuration only.
 - **Signals:** Grilling D7 (2026-05-19) — disclaimers become product positioning, not "coming
   soon" warnings; PME may drag-drop QR or paste codes outside Ezkey; automation deferred. Global
-  Admin configures SMTP (TI posture — `operator-alignment-guide.md`).
+  Admin configures SMTP (TI posture — `operator-alignment-guide.md`). **2026-07-25:** integrated
+  delivery posture executed in Admin UI via
+  `TB-2026-07-25-integrated-delivery-posture`; SMTP-assisted half remains on `I-2026-0023`.
 - **Potential impact:** `admin-api`, `admin-ui`, `infra` (SMTP), `docs`, contextual help,
-  `I-2026-0023` (R1 slice).
-- **Next step:** design pack + `I-2026-0023`; update `CONFIGURATION.md` for mail properties
-  when implementing.
+  `I-2026-0023` (R1 slice), `TB-2026-07-25-integrated-delivery-posture` (posture-only).
+- **Next step:** close posture TB; design pack + SMTP properties in `CONFIGURATION.md` when
+  implementing the mail half of `I-2026-0023`.
 - **Captured by:** Marc
 
 ## Related artifacts
 
 - `I-2026-0023` — Email channel R1: optional operator-triggered delivery
+- `TB-2026-07-25-integrated-delivery-posture` — Integrated delivery Admin UI posture
 - `V-2026-0007` — SMS integration strategy (contrast: out-of-core adapter model)
 - `V-2026-0010` — Per-installation profile elaboration

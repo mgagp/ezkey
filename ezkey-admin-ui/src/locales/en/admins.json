@@ -38,7 +38,7 @@
     "title": "Onboarding — {{username}}",
     "errorLoad": "Could not load onboarding credentials.",
     "alertShare": "Share these credentials with the admin to set up their EZKey mobile app.",
-    "previewNotice": "Technology preview: this dialog shows the enrollment proof token, binding challenge, and QR together for convenience. Ezkey does not automatically deliver email or SMS in this flow yet. This hosted build is a demonstrator, not a production security baseline. Until dedicated integrations exist, capture the QR with your usual tool, send the image to the new admin through your usual channel, and send the 6-digit binding challenge in a separate SMS through your usual operator process.",
+    "previewNotice": "Integrated delivery: this dialog shows the enrollment proof token, binding challenge, and QR in the Admin UI so Ezkey works without email or SMS adapters. For stronger assurance, you may split them across your own channels (for example, send a screenshot of the QR by email and the 6-digit binding challenge by SMS or chat). Optional SMTP-assisted delivery can be configured later when the email channel is available.",
     "enrollmentProofToken": "Enrollment Proof Token",
     "copyToken": "Copy Token",
     "copied": "Copied!",
