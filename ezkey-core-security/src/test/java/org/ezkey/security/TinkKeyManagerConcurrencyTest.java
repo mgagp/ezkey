@@ -17,6 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.google.crypto.tink.Aead;
+import com.google.crypto.tink.CleartextKeysetHandle;
+import com.google.crypto.tink.JsonKeysetWriter;
+import com.google.crypto.tink.KeyTemplates;
+import com.google.crypto.tink.KeysetHandle;
+import com.google.crypto.tink.subtle.AesGcmJce;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
@@ -183,6 +190,49 @@ class TinkKeyManagerConcurrencyTest {
     }
   }
 
+  @Test
+  @DisplayName("new encrypted keyset reader loads legacy JSON encrypted files")
+  void initialize_whenLegacyEncryptedKeysetFileExists_loadsIt(@TempDir Path tempDir)
+      throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    byte[] masterKey = writeMasterKey(masterKeyPath);
+    long expectedPrimaryKeyId = writeLegacyEncryptedKeyset(keysetPath, masterKey);
+
+    TinkKeyManager manager =
+        initializeManager(masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.FILE, null);
+
+    try {
+      assertEquals(expectedPrimaryKeyId, manager.getCurrentPrimaryKeyId());
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @DisplayName("new database keyset reader loads legacy outer-encrypted JSON blobs")
+  void initialize_whenLegacyDatabaseKeysetBlobExists_loadsIt(@TempDir Path tempDir)
+      throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    byte[] masterKey = writeMasterKey(masterKeyPath);
+    LegacyDatabaseKeyset legacyKeyset = legacyEncryptedDatabaseKeyset(masterKey);
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>(legacyKeyset.blob());
+
+    TinkKeyManager manager =
+        initializeManager(
+            masterKeyPath,
+            keysetPath,
+            TinkProperties.Keyset.StorageMode.DATABASE,
+            versionedRepository(storedBlob));
+
+    try {
+      assertEquals(legacyKeyset.primaryKeyId(), manager.getCurrentPrimaryKeyId());
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
   private static KeysetBlobRepository slowVersionRepository(int sleepMs) {
     KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
     when(repository.findKeyset()).thenReturn(Optional.empty());
@@ -232,10 +282,38 @@ class TinkKeyManagerConcurrencyTest {
     return manager;
   }
 
-  private static void writeMasterKey(Path masterKeyPath) throws Exception {
+  private static byte[] writeMasterKey(Path masterKeyPath) throws Exception {
     byte[] masterKey = new byte[32];
     new SecureRandom().nextBytes(masterKey);
     Files.writeString(masterKeyPath, Base64.getEncoder().encodeToString(masterKey));
+    return masterKey;
+  }
+
+  @SuppressWarnings("deprecation")
+  private static long writeLegacyEncryptedKeyset(Path keysetPath, byte[] masterKey)
+      throws Exception {
+    Aead masterAead = new AesGcmJce(masterKey);
+    KeysetHandle legacyHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    try (var outputStream = Files.newOutputStream(keysetPath)) {
+      legacyHandle.write(JsonKeysetWriter.withOutputStream(outputStream), masterAead);
+    }
+    return Integer.toUnsignedLong(legacyHandle.getPrimary().getId());
+  }
+
+  @SuppressWarnings("deprecation")
+  private static LegacyDatabaseKeyset legacyEncryptedDatabaseKeyset(byte[] masterKey)
+      throws Exception {
+    Aead masterAead = new AesGcmJce(masterKey);
+    KeysetHandle legacyHandle = KeysetHandle.generateNew(KeyTemplates.get("AES256_GCM"));
+    byte[] keysetJson;
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+      CleartextKeysetHandle.write(legacyHandle, JsonKeysetWriter.withOutputStream(outputStream));
+      keysetJson = outputStream.toByteArray();
+    }
+    KeysetBlob blob = new KeysetBlob(masterAead.encrypt(keysetJson, null), "TEST_LEGACY");
+    blob.setVersion(1L);
+    return new LegacyDatabaseKeyset(
+        blob, Integer.toUnsignedLong(legacyHandle.getPrimary().getId()));
   }
 
   private static ObjectProvider<KeysetBlobRepository> fixedProvider(KeysetBlobRepository repo) {
@@ -267,6 +345,8 @@ class TinkKeyManagerConcurrencyTest {
     copy.setVersion(source.getVersion());
     return copy;
   }
+
+  private record LegacyDatabaseKeyset(KeysetBlob blob, long primaryKeyId) {}
 
   private record TinkFixture(TinkKeyManager manager) {
     static TinkFixture hybridWithRepository(Path tempDir, KeysetBlobRepository repository)

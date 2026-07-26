@@ -29,7 +29,7 @@ Tink version declarations:
 | --- | --- | --- | --- | --- | ---: | --- | --- |
 | TINK-DEP-001 | Deprecated primitive acquisition path | P1 | High | `KeysetHandle.getPrimitive(Class<P>)` | 2 | `KeysetHandle.getPrimitive(RegistryConfiguration.get(), Class<P>)` | High |
 | TINK-DEP-002 | Deprecated keyset metadata access path | P1 | High | `KeysetHandle.getKeysetInfo()` | 14+ | `getPrimary().getId()`, `size()`, `getAt(i).getId()`, `getAt(i).isPrimary()` | Medium |
-| TINK-DEP-003 | Deprecated keyset IO path still used by `TinkKeyManager` | P2 | High | `KeysetHandle.read(KeysetReader, Aead)` / `KeysetHandle.write(KeysetWriter, Aead)` | 2 call sites | Defer to backlog item `I-2026-07-22-tink-keyset-serialization-api-migration` | Low (analysis complete; implementation blocked on Tink public surface) |
+| TINK-DEP-003 | Deprecated keyset IO path still used by `TinkKeyManager` | P2 | High | `KeysetHandle.read(KeysetReader, Aead)` / `KeysetHandle.write(KeysetWriter, Aead)` plus deprecated JSON keyset reader/writer classes on the DB codec | 3 production call/class usages | `TinkJsonProtoKeysetFormat` encrypted-keyset and cleartext-keyset APIs | Closed (behavior-preserving migration implemented; broader DB envelope redesign optional) |
 
 ## Evidence
 
@@ -67,7 +67,7 @@ Replacement validated:
 
 ### TINK-DEP-003
 
-Current usage:
+Original usage:
 
 - `TinkKeyManager` still calls the deprecated public keyset IO surface for encrypted keyset
   persistence: `KeysetHandle.read(KeysetReader, Aead)` and `KeysetHandle.write(KeysetWriter, Aead)`.
@@ -75,12 +75,25 @@ Current usage:
 Analysis result:
 
 - The obvious public alternatives in `KeysetHandle` are also deprecated in 1.23.0.
-- The `Configuration`-accepting overloads exist but are not public from our module boundary.
-- The remaining work is therefore a **real migration problem**, not a mechanical quick win.
+- The `Configuration`-accepting overloads on `KeysetHandle` exist but are not public from our module
+  boundary.
+- A public replacement exists via `TinkJsonProtoKeysetFormat`:
+  - `parseEncryptedKeyset(String, Aead, byte[], Configuration)`
+  - `serializeEncryptedKeyset(KeysetHandle, Aead, byte[], Configuration)`
+- The no-`Configuration` format overloads are deprecated; use `RegistryConfiguration.get()`
+  explicitly.
 
 Disposition:
 
-- Deferred to backlog item `I-2026-07-22-tink-keyset-serialization-api-migration`.
+- Migrated in `TinkKeyManager` for encrypted JSON keyset file load/save.
+- Characterized with a test that loads a legacy encrypted JSON keyset written through the old API.
+- Database `KeysetBlob` still uses the existing outer master-AEAD wrapper around cleartext keyset
+  JSON, but the cleartext JSON codec no longer depends on deprecated `JsonKeysetReader` /
+  `JsonKeysetWriter` classes.
+- Compatibility tests cover both legacy encrypted JSON keyset files and legacy outer-encrypted DB
+  blobs.
+- A possible future design/PoC remains: store Tink's encrypted-keyset envelope directly in the DB
+  blob instead of Ezkey's current outer master-AEAD wrapper.
 
 ## Not deprecated in this pass (checked)
 
@@ -121,3 +134,13 @@ Recommended minimum before/with fixes:
 1. What is the intended public migration path for encrypted keyset persistence in Tink?
 2. Can Ezkey preserve the current at-rest encryption model without introducing a weaker storage mode?
 3. If no clean public replacement exists, do we pin Tink, wrap the persistence path, or take a design-pack slice first?
+
+## Closeout update (2026-07-26)
+
+- Replacement path found and implemented in `TinkKeyManager`.
+- `TinkKeyManager` production compile with `maven.compiler.showDeprecation=true` no longer reports
+  Tink keyset serialization deprecations.
+- Targeted validation: `TinkKeyManagerConcurrencyTest` passed with 5 tests.
+- `ApiKeyControllerTest` Mockito/JPA Criteria stubbing was corrected so the full reactor test
+  compilation path remains green.
+- Full validation: `mvn install -DskipTests` passed.
