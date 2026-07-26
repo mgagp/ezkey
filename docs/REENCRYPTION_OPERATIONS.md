@@ -10,8 +10,8 @@ For ciphertext format and rotation mechanics, see [ENCRYPTION_KEY_ROTATION_IMPLE
 
 - **PRIMARY** — Current key from the Tink keyset; all **new** encryption uses this key.
 - **ENABLED (non-PRIMARY)** — Older keys still needed to **decrypt** existing rows until those rows are migrated.
-- **Re-encryption batch** — One unit of work in table `ezkey_reencryption_batch`: migrate ciphertext for a **single target** (database table + column) from one **old** non-PRIMARY key to the **current PRIMARY** key. Batches are only created when at least one row still uses that old key for that column (see `ENC:{keyId}:%` prefix in code). For **`ezkey_auth_attempt`**, when **`auth-attempt-shard-count` &gt; 1**, multiple batch rows may exist per `(old key, column)` — one per **shard** — each covering rows with `mod(auth_attempt_id, shard_count) = shard_index` (shard fields are `NULL` for legacy/non-sharded batches).
-- **Targets** — Discovered from `Reencryptable` entities in code (currently four `(table, column)` pairs across `ezkey_enrollment` and `ezkey_auth_attempt`). The destination key is always the **current PRIMARY** resolved from the keyset.
+- **Re-encryption batch** — One unit of work in table `ezkey_reencryption_batch`: migrate ciphertext for a **single target** (database table + column) from one **old** non-PRIMARY key to the **current PRIMARY** key. Batches are only created when at least one row still uses that old key for that column — an indexed equality lookup on the target's companion `*_encryption_key_id` column (see §1.2), not a `LIKE 'ENC:{keyId}:%'` scan on the ciphertext. For **`ezkey_auth_attempt`**, when **`auth-attempt-shard-count` &gt; 1**, multiple batch rows may exist per `(old key, column)` — one per **shard** — each covering rows with `mod(auth_attempt_id, shard_count) = shard_index` (shard fields are `NULL` for legacy/non-sharded batches).
+- **Targets** — Discovered from `Reencryptable` entities in code (currently four `(table, column)` pairs: `ezkey_enrollment.integration_private_key`, `ezkey_enrollment.enrollment_proof_token`, `ezkey_auth_attempt.auth_attempt_proof_token`, `ezkey_api_key.secret_key_hash`). The destination key is always the **current PRIMARY** resolved from the keyset.
 
 The batch list is a **work queue** plus **historical rows** (completed batches are retained unless archived elsewhere).
 
@@ -23,10 +23,24 @@ Re-encryption is split across focused services (see `ezkey-core`):
 |-----------|------|
 | `ReencryptionService` | Orchestration only: scheduler, manual triggers; delegates creation, processing, and the parallel runner. |
 | `ReencryptionBatchCreationService` | Creates batch rows (`REQUIRES_NEW`); owns `discoverReencryptableTargets()` and primary-key resolution. |
-| `ReencryptionTargetQueryService` | Single implementation of `countRecordsEncryptedWithKey` / `fetchRecords` using the `ENC:{keyId}:%` prefix. |
+| `ReencryptionTargetQueryService` | Single implementation of `countRecordsEncryptedWithKey` / `fetchRecords` using the indexed `*_encryption_key_id` companion column (§1.2), not a `ENC:{keyId}:%` prefix scan. |
 | `ReencryptionBatchProcessingService` | Processes one batch per transaction (`REQUIRES_NEW`). |
 | `ReencryptionBatchParallelRunner` | Optional parallel batch execution; mutex per **table** (enrollment and non-sharded auth attempts) or per **`table|column|shard_index`** when auth-attempt sharding is enabled (see §9). |
-| `KeyUsageVerificationService` | Admin-facing **derived** lifecycle snapshot: same target list as batch creation + prefix counts + non-`COMPLETED` batch detection. |
+| `KeyUsageVerificationService` | Admin-facing **derived** lifecycle snapshot: same target list as batch creation + indexed key-id counts + non-`COMPLETED` batch detection. |
+
+### 1.2 Indexed key-id discovery (I-2026-0029 / `TB-2026-07-26`)
+
+Each re-encryptable ciphertext column has a companion, indexed `*_encryption_key_id BIGINT` column
+(nullable — `NULL` means the value is currently stored as plaintext, e.g. encryption disabled) that
+references `ezkey_encryption_key(key_id)`. It is populated by `EncryptionEntityListener` on initial
+encrypt (parsed from the `ENC:{keyId}:` prefix) and kept in sync by `ReencryptionRecordCipher` on
+every re-encrypt. `ReencryptionTargetQueryService.countRecordsEncryptedWithKey` /
+`fetchRecords` query this column with an equality predicate (`= :keyId`) instead of a
+`LIKE 'ENC:{keyId}:%'` scan on the `TEXT` ciphertext column, using a composite B-tree index
+`(*_encryption_key_id, {primary_key})` for `O(log n)` lookup and stable keyset pagination. This
+replaces a full-table-scan pattern that degraded as ciphertext columns grew. See
+[ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md §4.4.2](./ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md#442-why-include-key-id)
+for the ciphertext prefix format this column is derived from.
 
 **Drained vs parallelism:** “Drained” (no tracked ciphertext rows and no incomplete migration batches for that old key) is **orthogonal** to parallel workers. Table-level serialization avoids same-row contention across column batches; it does not replace checking batch queue state for lifecycle eligibility.
 
@@ -74,7 +88,7 @@ Therefore, **batches created in step 2 are not necessarily processed in the same
 
 ## 5. Admin UI (encryption keys page)
 
-- **Tracked** column — prefix-based counts on the same targets as batches: **`PRIMARY`** = current ciphertext volume on that key (sanity check / trend); **`ENABLED`** = migration backlog. Em dash for `PENDING` / `DISABLED`. **Migration baseline** and **re-encrypted cumulative** counts appear in key detail (`recordsEncrypted` / `recordsReencrypted` semantics).
+- **Tracked** column — indexed key-id counts (§1.2) on the same targets as batches: **`PRIMARY`** = current ciphertext volume on that key (sanity check / trend); **`ENABLED`** = migration backlog. Em dash for `PENDING` / `DISABLED`. **Migration baseline** and **re-encrypted cumulative** counts appear in key detail (`recordsEncrypted` / `recordsReencrypted` semantics).
 - **Re-encrypt** (per ENABLED key in the table) — maps to `POST .../{keyId}/reencrypt`.
 - **Re-encryption Batches** section — **Create Batches** → `create-batches`; **Trigger Full Re-encryption** → `reencrypt/trigger`; row **Resume** → `resume` for `PENDING` or `FAILED` batches.
 

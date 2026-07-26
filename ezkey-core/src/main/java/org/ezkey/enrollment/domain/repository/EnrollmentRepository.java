@@ -239,34 +239,44 @@ public interface EnrollmentRepository
       String enrollmentProofTokenHash, Boolean active);
 
   /**
-   * Counts enrollments with encrypted integration private key matching the prefix pattern.
+   * Counts enrollments whose integration private key was encrypted with the given key id.
    *
    * <p>Used for re-encryption batch operations to identify records encrypted with a specific key.
+   * Indexed equality lookup on {@code integration_private_key_encryption_key_id}, replacing the
+   * historical {@code LIKE 'ENC:{keyId}:%'} prefix scan (I-2026-0029).
    *
-   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param keyId the encryption key id
    * @return count of matching records
    */
-  @NativeQuery("SELECT COUNT(*) FROM ezkey_enrollment WHERE integration_private_key LIKE :prefix")
-  int countByEncryptedIntegrationPrivateKeyLike(@Param("prefix") String prefix);
+  @NativeQuery(
+      "SELECT COUNT(*) FROM ezkey_enrollment WHERE integration_private_key_encryption_key_id ="
+          + " :keyId")
+  int countByIntegrationPrivateKeyEncryptionKeyId(@Param("keyId") Long keyId);
 
   /**
-   * Counts enrollments with encrypted enrollment proof token matching the prefix pattern.
+   * Counts enrollments whose enrollment proof token was encrypted with the given key id.
    *
    * <p>Used for re-encryption batch operations to identify records encrypted with a specific key.
+   * Indexed equality lookup on {@code enrollment_proof_token_encryption_key_id}, replacing the
+   * historical {@code LIKE 'ENC:{keyId}:%'} prefix scan (I-2026-0029).
    *
-   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param keyId the encryption key id
    * @return count of matching records
    */
-  @NativeQuery("SELECT COUNT(*) FROM ezkey_enrollment WHERE enrollment_proof_token LIKE :prefix")
-  int countByEncryptedEnrollmentProofTokenLike(@Param("prefix") String prefix);
+  @NativeQuery(
+      "SELECT COUNT(*) FROM ezkey_enrollment WHERE enrollment_proof_token_encryption_key_id ="
+          + " :keyId")
+  int countByEnrollmentProofTokenEncryptionKeyId(@Param("keyId") Long keyId);
 
   /**
-   * Finds enrollments with encrypted integration private key matching the prefix pattern.
+   * Finds enrollments whose integration private key was encrypted with the given key id.
    *
    * <p>Used for re-encryption batch operations to fetch records for processing. Results are ordered
-   * by enrollment_id for resumable batch processing.
+   * by enrollment_id for resumable batch processing. Indexed equality lookup on {@code
+   * integration_private_key_encryption_key_id}, replacing the historical {@code LIKE
+   * 'ENC:{keyId}:%'} prefix scan (I-2026-0029).
    *
-   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param keyId the encryption key id
    * @param lastId the last processed enrollment ID (for resumability), or null to start from
    *     beginning
    * @param limit maximum number of records to return
@@ -275,21 +285,23 @@ public interface EnrollmentRepository
   @NativeQuery(
       """
       SELECT * FROM ezkey_enrollment
-      WHERE integration_private_key LIKE :prefix
+      WHERE integration_private_key_encryption_key_id = :keyId
         AND (:lastId IS NULL OR enrollment_id > :lastId)
       ORDER BY enrollment_id ASC
       LIMIT :limit
       """)
-  List<Enrollment> findEncryptedIntegrationPrivateKeyLike(
-      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
+  List<Enrollment> findByIntegrationPrivateKeyEncryptionKeyId(
+      @Param("keyId") Long keyId, @Param("lastId") Integer lastId, @Param("limit") int limit);
 
   /**
-   * Finds enrollments with encrypted enrollment proof token matching the prefix pattern.
+   * Finds enrollments whose enrollment proof token was encrypted with the given key id.
    *
    * <p>Used for re-encryption batch operations to fetch records for processing. Results are ordered
-   * by enrollment_id for resumable batch processing.
+   * by enrollment_id for resumable batch processing. Indexed equality lookup on {@code
+   * enrollment_proof_token_encryption_key_id}, replacing the historical {@code LIKE
+   * 'ENC:{keyId}:%'} prefix scan (I-2026-0029).
    *
-   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param keyId the encryption key id
    * @param lastId the last processed enrollment ID (for resumability), or null to start from
    *     beginning
    * @param limit maximum number of records to return
@@ -298,13 +310,13 @@ public interface EnrollmentRepository
   @NativeQuery(
       """
       SELECT * FROM ezkey_enrollment
-      WHERE enrollment_proof_token LIKE :prefix
+      WHERE enrollment_proof_token_encryption_key_id = :keyId
         AND (:lastId IS NULL OR enrollment_id > :lastId)
       ORDER BY enrollment_id ASC
       LIMIT :limit
       """)
-  List<Enrollment> findEncryptedEnrollmentProofTokenLike(
-      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
+  List<Enrollment> findByEnrollmentProofTokenEncryptionKeyId(
+      @Param("keyId") Long keyId, @Param("lastId") Integer lastId, @Param("limit") int limit);
 
   /**
    * Finds enrollments with the same integration, name, and status.

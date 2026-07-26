@@ -141,6 +141,18 @@ public class ApiKey implements Reencryptable {
   private String secretKeyHash;
 
   /**
+   * Encryption key id used to encrypt {@link #secretKeyHash}, parsed from its {@code ENC:{keyId}:}
+   * prefix.
+   *
+   * <p>Populated by {@code EncryptionEntityListener} on initial encrypt and by {@code
+   * ReencryptionRecordCipher} on re-encrypt. {@code null} when the value is stored as plaintext
+   * (encryption disabled). Enables indexed re-encryption discovery (I-2026-0029), replacing a
+   * {@code LIKE 'ENC:{keyId}:%'} scan on the ciphertext column.
+   */
+  @Column(name = "secret_key_hash_encryption_key_id")
+  private Long secretKeyHashEncryptionKeyId;
+
+  /**
    * Transient plaintext BCrypt hash used for encryption at flush time and decrypt-on-read cache.
    */
   @Transient private String secretKeyHashPlaintext;
@@ -321,6 +333,18 @@ public class ApiKey implements Reencryptable {
   public void setSecretKeyHash(String secretKeyHash) {
     this.secretKeyHashPlaintext = secretKeyHash;
     this.secretKeyHash = secretKeyHash;
+  }
+
+  /**
+   * Gets the encryption key id used to encrypt {@link #secretKeyHash} (I-2026-0029).
+   *
+   * <p>No corresponding business setter: only {@code EncryptionEntityListener} and {@code
+   * ReencryptionRecordCipher} write this field, via {@link #setEncryptionKeyId(String, Long)}.
+   *
+   * @return the encryption key id, or null when the value is stored as plaintext
+   */
+  public Long getSecretKeyHashEncryptionKeyId() {
+    return secretKeyHashEncryptionKeyId;
   }
 
   private static EncryptionOperations getEncryptionOperations() {
@@ -521,6 +545,15 @@ public class ApiKey implements Reencryptable {
     if ("secret_key_hash".equals(columnName)) {
       this.secretKeyHash = encryptedValue;
       this.secretKeyHashPlaintext = null;
+      return;
+    }
+    throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
+  }
+
+  @Override
+  public void setEncryptionKeyId(String columnName, Long keyId) {
+    if ("secret_key_hash".equals(columnName)) {
+      this.secretKeyHashEncryptionKeyId = keyId;
       return;
     }
     throw new IllegalArgumentException("Unknown encrypted field: " + columnName);

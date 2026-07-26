@@ -1097,19 +1097,32 @@ ENC:1234567:AbCdEf1234567890...
 
 The key ID in the prefix enables:
 
-1. **SQL Queries for Key Rotation**: Identify records encrypted with specific keys
+1. **Re-encryption Discovery**: Identify records encrypted with a specific key. Each
+   re-encryptable ciphertext column (`ezkey_enrollment.integration_private_key`,
+   `ezkey_enrollment.enrollment_proof_token`, `ezkey_auth_attempt.auth_attempt_proof_token`,
+   `ezkey_api_key.secret_key_hash`) has a companion, indexed `*_encryption_key_id BIGINT` column
+   (nullable, `NULL` = plaintext) populated from this prefix by `EncryptionEntityListener` on
+   initial encrypt and by `ReencryptionRecordCipher` on re-encrypt (I-2026-0029,
+   `TB-2026-07-26`). Discovery uses an equality lookup on that indexed column instead of a
+   `LIKE 'ENC:{keyId}:%'` scan on the ciphertext column:
    ```sql
-   -- Find all records encrypted with key ID 1234567
-   SELECT * FROM ezkey_enrollment 
-   WHERE integration_private_key LIKE 'ENC:1234567:%';
+   -- Find all records encrypted with key ID 1234567 (indexed equality, not LIKE)
+   SELECT * FROM ezkey_enrollment
+   WHERE integration_private_key_encryption_key_id = 1234567;
    ```
+   A `LIKE 'ENC:{keyId}:%'` prefix scan on the ciphertext column cannot use a standard B-tree index
+   (the wildcard is not a fixed prefix once the key ID digit count varies) and forces a full table
+   scan as the table grows. The composite index `(*_encryption_key_id, {primary_key})` supports
+   `O(log n)` lookup plus efficient keyset pagination for batch fetch.
 
-2. **Batch Re-encryption**: Select records for re-encryption with new keys
+2. **Batch Re-encryption**: Select records for re-encryption with new keys via the same indexed
+   column, ordered by primary key for stable pagination:
    ```sql
-   -- Find records with oldest key ID for rotation
-   SELECT * FROM ezkey_enrollment 
-   WHERE integration_private_key LIKE 'ENC:1234567:%'
-   ORDER BY created_at;
+   -- Find records with a given key ID for rotation, paginated by primary key
+   SELECT * FROM ezkey_enrollment
+   WHERE integration_private_key_encryption_key_id = 1234567
+   ORDER BY enrollment_id
+   LIMIT :batchSize;
    ```
 
 3. **Audit Trail**: Track which key was used for each encryption operation

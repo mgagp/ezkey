@@ -41,6 +41,7 @@ import org.ezkey.authattempt.domain.repository.AuthAttemptRepository;
 import org.ezkey.config.TinkProperties;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.integration.domain.entity.ApiKey;
 import org.ezkey.integration.domain.repository.ApiKeyRepository;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
@@ -238,6 +239,8 @@ class ReencryptionServiceTest {
     verify(encryptionOperations).encrypt("plaintext-data");
     // Note: save() is no longer called here, records are batch saved in processBatch()
     // Note: setEncryptedField is called internally, verified by the save() call
+    // I-2026-0029: the companion encryption_key_id column must track the NEW key, not the old one.
+    assertEquals(newKey.getKeyId(), enrollment.getIntegrationPrivateKeyEncryptionKeyId());
   }
 
   @Test
@@ -260,6 +263,33 @@ class ReencryptionServiceTest {
     verify(encryptionOperations).decrypt("ENC:1111111111:encrypted-token");
     verify(encryptionOperations).encrypt("plaintext-token");
     // Note: save() is no longer called here, records are batch saved in processBatch()
+    // I-2026-0029: the companion encryption_key_id column must track the NEW key, not the old one.
+    assertEquals(newKey.getKeyId(), authAttempt.getAuthAttemptProofTokenEncryptionKeyId());
+  }
+
+  @Test
+  @DisplayName("reencryptRecord() - Should successfully re-encrypt ApiKey secret_key_hash")
+  void reencryptRecord_ShouldSuccessfullyReencryptApiKey() {
+    // Arrange: I-2026-0029 scope amendment (2026-07-26) — ezkey_api_key.secret_key_hash joined
+    // the four indexed re-encryption targets.
+    ApiKey apiKey = new ApiKey();
+    apiKey.setApiKeyId(789);
+    apiKey.setEncryptedField("secret_key_hash", "ENC:1111111111:encrypted-hash");
+    when(encryptionOperations.decrypt("ENC:1111111111:encrypted-hash"))
+        .thenReturn("plaintext-hash");
+    when(encryptionOperations.encrypt("plaintext-hash"))
+        .thenReturn("ENC:2222222222:reencrypted-hash");
+
+    // Act
+    ReencryptionBatch apiKeyBatch = createBatch("ezkey_api_key", "secret_key_hash");
+    ReencryptionRecordCipher.ReencryptResult result = invokeReencryptRecord(apiKeyBatch, apiKey);
+
+    // Assert
+    assertTrue(result.reencrypted());
+    assertNotNull(result.modifiedRecord());
+    verify(encryptionOperations).decrypt("ENC:1111111111:encrypted-hash");
+    verify(encryptionOperations).encrypt("plaintext-hash");
+    assertEquals(newKey.getKeyId(), apiKey.getSecretKeyHashEncryptionKeyId());
   }
 
   @Test
@@ -365,11 +395,12 @@ class ReencryptionServiceTest {
     batch.setStatus(BatchStatus.PENDING);
     batch.setRecordsTotal(1);
     when(batchRepository.save(any(ReencryptionBatch.class))).thenReturn(batch);
-    when(enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(anyString(), any(), anyInt()))
+    when(enrollmentRepository.findByIntegrationPrivateKeyEncryptionKeyId(
+            anyLong(), any(), anyInt()))
         .thenReturn(List.of());
     // Count says old-key ciphertext still exists, but fetch returned nothing: do not reconcile away
     // the gap or the batch would complete in one shot (reconciliation + completion).
-    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike("ENC:1111111111:%"))
+    when(enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(1111111111L))
         .thenReturn(1);
 
     // Act
@@ -392,7 +423,8 @@ class ReencryptionServiceTest {
     Enrollment enrollment2 = createMockEnrollment(2, "ENC:1111111111:data2");
 
     when(batchRepository.save(any(ReencryptionBatch.class))).thenReturn(batch);
-    when(enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(anyString(), any(), anyInt()))
+    when(enrollmentRepository.findByIntegrationPrivateKeyEncryptionKeyId(
+            anyLong(), any(), anyInt()))
         .thenReturn(List.of(enrollment1, enrollment2))
         .thenReturn(List.of());
 
@@ -427,7 +459,8 @@ class ReencryptionServiceTest {
     Enrollment enrollment = createMockEnrollment(1, "ENC:1111111111:data");
 
     when(batchRepository.save(any(ReencryptionBatch.class))).thenReturn(batch);
-    when(enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(anyString(), any(), anyInt()))
+    when(enrollmentRepository.findByIntegrationPrivateKeyEncryptionKeyId(
+            anyLong(), any(), anyInt()))
         .thenReturn(List.of(enrollment))
         .thenReturn(List.of());
 
@@ -462,9 +495,10 @@ class ReencryptionServiceTest {
     batch.setRecordsSkipped(0);
 
     when(batchRepository.save(any(ReencryptionBatch.class))).thenReturn(batch);
-    when(enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(anyString(), any(), anyInt()))
+    when(enrollmentRepository.findByIntegrationPrivateKeyEncryptionKeyId(
+            anyLong(), any(), anyInt()))
         .thenReturn(List.of());
-    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike("ENC:1111111111:%"))
+    when(enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(1111111111L))
         .thenReturn(0);
     when(keyRepository.save(any(EncryptionKey.class))).thenReturn(oldKey);
 
@@ -490,7 +524,8 @@ class ReencryptionServiceTest {
     Enrollment enrollment2 = createMockEnrollment(2, "ENC:1111111111:data2");
 
     when(batchRepository.save(any(ReencryptionBatch.class))).thenReturn(batch);
-    when(enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(anyString(), any(), anyInt()))
+    when(enrollmentRepository.findByIntegrationPrivateKeyEncryptionKeyId(
+            anyLong(), any(), anyInt()))
         .thenReturn(List.of(enrollment1, enrollment2))
         .thenReturn(List.of());
 
@@ -529,7 +564,8 @@ class ReencryptionServiceTest {
     Enrollment enrollment2 = createMockEnrollment(20, "ENC:1111111111:data2");
 
     when(batchRepository.save(any(ReencryptionBatch.class))).thenReturn(batch);
-    when(enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(anyString(), any(), anyInt()))
+    when(enrollmentRepository.findByIntegrationPrivateKeyEncryptionKeyId(
+            anyLong(), any(), anyInt()))
         .thenReturn(List.of(enrollment1, enrollment2))
         .thenReturn(List.of());
 
@@ -560,7 +596,8 @@ class ReencryptionServiceTest {
     Enrollment enrollment2 = createMockEnrollment(2, "ENC:2222222222:already-reencrypted");
 
     when(batchRepository.save(any(ReencryptionBatch.class))).thenReturn(batch);
-    when(enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(anyString(), any(), anyInt()))
+    when(enrollmentRepository.findByIntegrationPrivateKeyEncryptionKeyId(
+            anyLong(), any(), anyInt()))
         .thenReturn(List.of(enrollment1, enrollment2))
         .thenReturn(List.of());
 
@@ -587,7 +624,7 @@ class ReencryptionServiceTest {
   @DisplayName("countRecordsEncryptedWithKey() - Should count Enrollment integration_private_key")
   void countRecordsEncryptedWithKey_ShouldCountEnrollmentIntegrationPrivateKey() {
     // Arrange
-    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike("ENC:1111111111:%"))
+    when(enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(1111111111L))
         .thenReturn(42);
 
     // Act
@@ -597,14 +634,14 @@ class ReencryptionServiceTest {
 
     // Assert
     assertEquals(42, count);
-    verify(enrollmentRepository).countByEncryptedIntegrationPrivateKeyLike("ENC:1111111111:%");
+    verify(enrollmentRepository).countByIntegrationPrivateKeyEncryptionKeyId(1111111111L);
   }
 
   @Test
   @DisplayName("countRecordsEncryptedWithKey() - Should count Enrollment enrollment_proof_token")
   void countRecordsEncryptedWithKey_ShouldCountEnrollmentProofToken() {
     // Arrange
-    when(enrollmentRepository.countByEncryptedEnrollmentProofTokenLike("ENC:1111111111:%"))
+    when(enrollmentRepository.countByEnrollmentProofTokenEncryptionKeyId(1111111111L))
         .thenReturn(15);
 
     // Act
@@ -614,15 +651,15 @@ class ReencryptionServiceTest {
 
     // Assert
     assertEquals(15, count);
-    verify(enrollmentRepository).countByEncryptedEnrollmentProofTokenLike("ENC:1111111111:%");
+    verify(enrollmentRepository).countByEnrollmentProofTokenEncryptionKeyId(1111111111L);
   }
 
   @Test
   @DisplayName("countRecordsEncryptedWithKey() - Should count AuthAttempt auth_attempt_proof_token")
   void countRecordsEncryptedWithKey_ShouldCountAuthAttemptProofToken() {
     // Arrange
-    when(authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
-            eq("ENC:1111111111:%"), isNull(), isNull()))
+    when(authAttemptRepository.countByAuthAttemptProofTokenEncryptionKeyId(
+            eq(1111111111L), isNull(), isNull()))
         .thenReturn(33);
 
     // Act
@@ -633,7 +670,7 @@ class ReencryptionServiceTest {
     // Assert
     assertEquals(33, count);
     verify(authAttemptRepository)
-        .countByEncryptedAuthAttemptProofTokenLike(eq("ENC:1111111111:%"), isNull(), isNull());
+        .countByAuthAttemptProofTokenEncryptionKeyId(eq(1111111111L), isNull(), isNull());
   }
 
   @Test
@@ -656,9 +693,9 @@ class ReencryptionServiceTest {
 
     // Assert
     assertEquals(0, count);
-    verify(enrollmentRepository, never()).countByEncryptedIntegrationPrivateKeyLike(anyString());
+    verify(enrollmentRepository, never()).countByIntegrationPrivateKeyEncryptionKeyId(anyLong());
     verify(authAttemptRepository, never())
-        .countByEncryptedAuthAttemptProofTokenLike(anyString(), any(), any());
+        .countByAuthAttemptProofTokenEncryptionKeyId(anyLong(), any(), any());
   }
 
   @Test
@@ -673,18 +710,19 @@ class ReencryptionServiceTest {
   }
 
   @Test
-  @DisplayName("countRecordsEncryptedWithKey() - Should use correct prefix format")
-  void countRecordsEncryptedWithKey_ShouldUseCorrectPrefixFormat() {
-    // Arrange
-    ArgumentCaptor<String> prefixCaptor = ArgumentCaptor.forClass(String.class);
-    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike(prefixCaptor.capture()))
+  @DisplayName("countRecordsEncryptedWithKey() - Should pass the key id through unchanged")
+  void countRecordsEncryptedWithKey_ShouldPassKeyIdThroughUnchanged() {
+    // Arrange: indexed equality lookup (I-2026-0029) takes the key id directly, no prefix string
+    // construction like the historical LIKE 'ENC:{keyId}:%' scan.
+    ArgumentCaptor<Long> keyIdCaptor = ArgumentCaptor.forClass(Long.class);
+    when(enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(keyIdCaptor.capture()))
         .thenReturn(5);
 
     // Act
     invokeCountRecordsEncryptedWithKey("ezkey_enrollment", "integration_private_key", 12345L);
 
     // Assert
-    assertEquals("ENC:12345:%", prefixCaptor.getValue());
+    assertEquals(12345L, keyIdCaptor.getValue());
   }
 
   // ===== PRIORITY 1: discoverReencryptableTargets() Tests =====
@@ -878,18 +916,18 @@ class ReencryptionServiceTest {
     when(keyManagementOperations.getCurrentPrimaryKeyId()).thenReturn(9999999999L);
 
     // Mock: Each old key has records to re-encrypt
-    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike("ENC:1111111111:%"))
+    when(enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(1111111111L))
         .thenReturn(5);
-    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike("ENC:2222222222:%"))
+    when(enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(2222222222L))
         .thenReturn(3);
-    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike("ENC:3333333333:%"))
+    when(enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(3333333333L))
         .thenReturn(2);
 
-    when(enrollmentRepository.countByEncryptedEnrollmentProofTokenLike("ENC:1111111111:%"))
+    when(enrollmentRepository.countByEnrollmentProofTokenEncryptionKeyId(1111111111L))
         .thenReturn(5);
-    when(enrollmentRepository.countByEncryptedEnrollmentProofTokenLike("ENC:2222222222:%"))
+    when(enrollmentRepository.countByEnrollmentProofTokenEncryptionKeyId(2222222222L))
         .thenReturn(3);
-    when(enrollmentRepository.countByEncryptedEnrollmentProofTokenLike("ENC:3333333333:%"))
+    when(enrollmentRepository.countByEnrollmentProofTokenEncryptionKeyId(3333333333L))
         .thenReturn(2);
 
     // Mock: Save batches
@@ -977,14 +1015,14 @@ class ReencryptionServiceTest {
     when(keyManagementOperations.isInitialized()).thenReturn(true);
     when(keyManagementOperations.getCurrentPrimaryKeyId()).thenReturn(9999999999L);
 
-    when(enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike(anyString())).thenReturn(0);
-    when(enrollmentRepository.countByEncryptedEnrollmentProofTokenLike(anyString())).thenReturn(0);
+    when(enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(anyLong())).thenReturn(0);
+    when(enrollmentRepository.countByEnrollmentProofTokenEncryptionKeyId(anyLong())).thenReturn(0);
 
-    when(authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
-            eq("ENC:1111111111:%"), eq(0), eq(2)))
+    when(authAttemptRepository.countByAuthAttemptProofTokenEncryptionKeyId(
+            eq(1111111111L), eq(0), eq(2)))
         .thenReturn(10);
-    when(authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
-            eq("ENC:1111111111:%"), eq(1), eq(2)))
+    when(authAttemptRepository.countByAuthAttemptProofTokenEncryptionKeyId(
+            eq(1111111111L), eq(1), eq(2)))
         .thenReturn(0);
 
     ArgumentCaptor<ReencryptionBatch> batchCaptor =
