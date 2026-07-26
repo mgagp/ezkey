@@ -579,13 +579,18 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
-   * Seals plaintext with the app-level AES/GCM key stored in Android Keystore. The logical key is
-   * bound as AAD to prevent ciphertext replay under another storage identifier.
+   * Seals plaintext with an installation-scoped AES/GCM key stored in Android Keystore (MOB-017).
+   * The logical key is bound as AAD to prevent ciphertext replay under another storage identifier.
+   *
+   * @param installationScopeId Keystore-safe installation trust-zone id (see
+   *     {@code deriveInstallationScopeId} in `localEnrollmentIdentity.ts`); each installation gets
+   *     its own seal key, so this call never touches another installation's secrets.
    */
   @ReactMethod
-  fun sealSecret(logicalKey: String, plaintext: String, promise: Promise) {
+  fun sealSecret(installationScopeId: String, logicalKey: String, plaintext: String, promise: Promise) {
     try {
-      val envelope = SealedSecretEnvelope.seal(getOrCreateAppSealKey(), logicalKey, plaintext)
+      val alias = getSealKeyAlias(installationScopeId)
+      val envelope = SealedSecretEnvelope.seal(getOrCreateSealKey(alias), logicalKey, plaintext)
       promise.resolve(envelope.toJson())
     } catch (error: GeneralSecurityException) {
       promise.reject(ERROR_CODE_SEAL_SECRET, error)
@@ -597,13 +602,21 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
-   * Unseals a JSON envelope previously produced by {@link #sealSecret(String, String, Promise)}.
+   * Unseals a JSON envelope previously produced by
+   * {@link #sealSecret(String, String, String, Promise)}. {@code installationScopeId} must match
+   * the value used to seal, or the lookup resolves a different (or absent) Keystore key.
    */
   @ReactMethod
-  fun unsealSecret(logicalKey: String, sealedPayload: String, promise: Promise) {
+  fun unsealSecret(
+      installationScopeId: String,
+      logicalKey: String,
+      sealedPayload: String,
+      promise: Promise,
+  ) {
     try {
+      val alias = getSealKeyAlias(installationScopeId)
       val envelope = SealedSecretEnvelope.fromJson(sealedPayload)
-      promise.resolve(SealedSecretEnvelope.unseal(getOrCreateAppSealKey(), logicalKey, envelope))
+      promise.resolve(SealedSecretEnvelope.unseal(getOrCreateSealKey(alias), logicalKey, envelope))
     } catch (error: GeneralSecurityException) {
       promise.reject(ERROR_CODE_UNSEAL_SECRET, error)
     } catch (error: IllegalArgumentException) {
@@ -641,24 +654,34 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
   }
 
   /**
-   * Deletes the app-level seal key so a Danger Zone clear-all is a true local reset (MOB-015).
+   * Deletes every installation-scoped seal key so a Danger Zone clear-all is a true local reset
+   * (MOB-015, extended for MOB-017's per-installation seal keys).
    *
-   * A dead or corrupted seal key otherwise survives clear-all and can poison re-enrollment,
-   * because every sealed secret on this device is wrapped by this single key.
+   * A dead or corrupted seal key otherwise survives clear-all and can poison re-enrollment for
+   * that installation, because every sealed secret for one trust zone is wrapped by its own key.
+   * Sweeps by alias prefix rather than requiring the caller to enumerate installation ids, so a
+   * seal key can never be missed or orphaned even if the JS-side installation list is stale.
    *
-   * @param promise Promise resolved with true when the alias was present and deleted, false when absent.
+   * @param promise Promise resolved with true when at least one seal-key alias was present and
+   *     deleted, false when none were found.
    * @since 2026
    */
   @ReactMethod
-  fun deleteAppSealKey(promise: Promise) {
+  fun deleteAllSealKeys(promise: Promise) {
     try {
       val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
-      if (keyStore.containsAlias(APP_SEAL_KEY_ALIAS)) {
-        keyStore.deleteEntry(APP_SEAL_KEY_ALIAS)
-        promise.resolve(true)
-      } else {
-        promise.resolve(false)
+      val sealAliases = mutableListOf<String>()
+      val aliasEnumeration = keyStore.aliases()
+      while (aliasEnumeration.hasMoreElements()) {
+        val alias = aliasEnumeration.nextElement()
+        if (alias.startsWith(SEAL_KEY_ALIAS_PREFIX)) {
+          sealAliases.add(alias)
+        }
       }
+      for (alias in sealAliases) {
+        keyStore.deleteEntry(alias)
+      }
+      promise.resolve(sealAliases.isNotEmpty())
     } catch (error: GeneralSecurityException) {
       promise.reject(ERROR_CODE_DELETE, error)
     } catch (error: IOException) {
@@ -679,28 +702,41 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     return "ezkey_enrollment_$enrollmentId"
   }
 
-  private fun getOrCreateAppSealKey(): SecretKey {
+  /**
+   * Generates the Android Keystore alias for an installation-scoped seal key (MOB-017).
+   *
+   * @param installationScopeId Keystore-safe installation trust-zone id, already hashed on the JS
+   *     side by {@code deriveInstallationScopeId} — this method does not re-derive or validate it.
+   * @return The keystore alias.
+   * @since 2026
+   */
+  private fun getSealKeyAlias(installationScopeId: String): String {
+    return "$SEAL_KEY_ALIAS_PREFIX$installationScopeId"
+  }
+
+  private fun getOrCreateSealKey(alias: String): SecretKey {
     val keyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
-    if (keyStore.containsAlias(APP_SEAL_KEY_ALIAS)) {
-      val entry = keyStore.getEntry(APP_SEAL_KEY_ALIAS, null) as? KeyStore.SecretKeyEntry
+    if (keyStore.containsAlias(alias)) {
+      val entry = keyStore.getEntry(alias, null) as? KeyStore.SecretKeyEntry
       return entry?.secretKey
-          ?: throw IllegalStateException("App seal key entry missing for alias $APP_SEAL_KEY_ALIAS")
+          ?: throw IllegalStateException("Seal key entry missing for alias $alias")
     }
 
-    return createAppSealKey(requestStrongBox = true)
+    return createSealKey(alias, requestStrongBox = true)
   }
 
   /**
-   * Creates the app-level AES/GCM seal key, preferring StrongBox when requested.
+   * Creates an installation-scoped AES/GCM seal key, preferring StrongBox when requested.
    *
+   * @param alias Keystore alias for this installation's seal key
    * @param requestStrongBox when true, set StrongBox-backed and fall back once if unavailable
    * @return newly generated Keystore secret key
    */
-  private fun createAppSealKey(requestStrongBox: Boolean): SecretKey {
+  private fun createSealKey(alias: String, requestStrongBox: Boolean): SecretKey {
     val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEY_STORE)
     val builder =
         KeyGenParameterSpec.Builder(
-                APP_SEAL_KEY_ALIAS,
+                alias,
                 KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
             )
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
@@ -723,9 +759,9 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
       if (!requestStrongBox) {
         throw error
       }
-      Log.w(TAG, "StrongBox unavailable for app seal key; falling back to regular Keystore")
-      deleteAliasIfPresent(APP_SEAL_KEY_ALIAS)
-      createAppSealKey(requestStrongBox = false)
+      Log.w(TAG, "StrongBox unavailable for seal key $alias; falling back to regular Keystore")
+      deleteAliasIfPresent(alias)
+      createSealKey(alias, requestStrongBox = false)
     }
   }
 
@@ -785,7 +821,7 @@ class EzkeyCryptoModule(reactContext: ReactApplicationContext) :
     private const val ERROR_CODE_UNSEAL_SECRET = "EZK_UNSEAL_SECRET_ERROR"
     private const val ERROR_CODE_AUTH_CANCELLED = "EZK_AUTH_CANCELLED"
     private const val ERROR_CODE_AUTH_UNAVAILABLE = "EZK_AUTH_UNAVAILABLE"
-    private const val APP_SEAL_KEY_ALIAS = "ezkey_app_seal_v1"
+    private const val SEAL_KEY_ALIAS_PREFIX = "ezkey_seal_"
     private const val SECURITY_LEVEL_CONFIRM_BEFORE_APPROVALS = "confirm-before-approvals"
     private const val BIOMETRIC_PROMPT_TITLE = "Confirm request"
     private const val BIOMETRIC_PROMPT_SUBTITLE =

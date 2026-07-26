@@ -15,6 +15,8 @@ Ezkey’s protocol design for enrollment (`bind`/`verify`) and authentication (`
 
 **Pass-2 (2026-07-19)** is an additive white-box delta on the same July register — see **§14**. It does **not** reopen closed Lot A remediations or Lot B documentary verdicts. It adds new lifecycle / identity / platform findings (MOB-011–MOB-016) discovered by re-reading the current tree after Lot A merged.
 
+**Pass-3 (2026-07-26, closed)** is an additive white-box delta prompted by an operator re-read of the mobile key-architecture narrative after MOB-011 — see **§15**. It added one new finding, MOB-017 (single app-level AES seal key vs installation-scoped seal key), fixed the same day as `ADR-MOB-0006`, and does not reopen pass-1 or pass-2 closed rows.
+
 Residual **product/protocol** gaps that remain intentional or deferred (not false positives):
 
 1. Local “protected approval” remains **UX-gated**, not Keystore-enforced (MOB-001 Track B / CryptoObject — future program).
@@ -443,6 +445,15 @@ No remediations authorized until operator HITL.
 | **MOB-015** | P2 | **Fixed** — broken-enrollment list honesty + clearAll seal wipe |
 | **MOB-016** | P2 | **Fixed** (absorbed) — same PR / TB as MOB-011 |
 
+### Pass-3 — closed (2026-07-26)
+
+Full evidence: **§15**. Decision register:
+[`product-docs/global/hygiene/mobile-protocol-security/2026-07-26-pass-3.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-26-pass-3.md).
+
+| Finding | Severity | Status |
+| --- | --- | --- |
+| **MOB-017** | P3 | **Fixed** (2026-07-26) — `I-2026-07-26-mobile-installation-scoped-seal-key` / `TB-2026-07-26-mobile-installation-scoped-seal-key`; implemented as `ADR-MOB-0006`; unit (225/225) and Android instrumented (7/7, physical device) suites green |
+
 ## 10. Claim verdict (product-facing)
 
 | Statement | Verdict |
@@ -463,11 +474,13 @@ No remediations authorized until operator HITL.
 3. **Pass-2 opened 2026-07-19** — see §14 and campaign note `2026-07-19-pass-2.md`. HITL one finding at a time; do not auto-create `I-*` / `TB-*` per MOB row.  
 4. Promote only **protocol/product** redesigns (installation-scoped identity, CryptoObject, attestation, pinning implementation, integrity APIs) to `I-*` / `TB-*` when the operator chooses to fund them.  
 5. Optional future active scenarios: May assessment Scenarios A–D (device extraction, hostile QR, MITM, replay lab).
+6. **Pass-3 opened and closed 2026-07-26** — see §15 and campaign note `2026-07-26-pass-3.md`. Single finding (MOB-017); Grill Me HITL decided fix, implemented same day as `ADR-MOB-0006`.
 
 ## 12. Related documents
 
 - Campaign closeout (pass-1): [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-16-pass-1.md)
 - Campaign HITL (pass-2): [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-19-pass-2.md)
+- Campaign HITL (pass-3): [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-26-pass-3.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-26-pass-3.md)
 - [`mobile-security-assessment-2026-05.md`](mobile-security-assessment-2026-05.md)
 - [`mobile-p1-sensitive-storage-investigation-2026-05.md`](mobile-p1-sensitive-storage-investigation-2026-05.md)
 - [`../CRYPTO.md`](../CRYPTO.md)
@@ -695,3 +708,84 @@ Deferred programs remain out of this hygiene lot unless the operator funds them:
 ### 14.6 Anti-false-positive reminder
 
 Do **not** treat historized §6 evidence for MOB-002/004/006/007/008 as current defects. Do **not** reopen Lot B documentary rows (§13) without new copy/code. Pass-2 IDs start at **MOB-011**.
+
+## 15. Pass-3 delta — installation-scoped seal key (2026-07-26)
+
+**Purpose.** The operator revisited the mobile crypto key-architecture narrative after the MOB-011
+installation-scoped identity program, asking whether the app should move from "one StrongBox key
+per enrollment" to "one StrongBox key per installation" as a middle path between the historical
+per-enrollment RSA model and the current single-key model. Re-reading the current tree shows the
+premise needs correction before any redesign: **signing keys never became a single key** (that
+alternative was rejected in `ADR-MOB-0002` from the start and remains per-enrollment,
+installation-scoped since MOB-011); the **only** genuine single-key artifact is the app-level AES
+seal key added by `ADR-MOB-0004`, which protects two secondary secrets, not device identity.
+
+**Campaign note:** [`../../product-docs/global/hygiene/mobile-protocol-security/2026-07-26-pass-3.md`](../../product-docs/global/hygiene/mobile-protocol-security/2026-07-26-pass-3.md)
+
+### 15.1 New finding
+
+---
+
+#### MOB-017 — Single app-level AES seal key is not installation-scoped
+
+| Field | Value |
+| --- | --- |
+| **Severity** | P3 |
+| **Confidence** | Confirmed |
+| **Disposition** | **Fixed** (2026-07-26, greenfield cutover) — `TB-2026-07-26-mobile-installation-scoped-seal-key`; implemented as `ADR-MOB-0006`; validated (unit 225/225, Android instrumented 7/7 on physical device) |
+| **MASVS** | STORAGE, CRYPTO |
+| **Protocol stage** | Local at-rest storage of `enrollmentProofToken` / `integrationPublicKey` (not signing, not protocol wire material) |
+
+**Issue.** `EzkeyCryptoModule.getOrCreateAppSealKey()` provisions exactly one AES-256-GCM key
+(`ezkey_app_seal_v1`) for the entire app, shared across every installation trust zone on the device.
+`ADR-MOB-0004`'s alternatives analysis (2026-05-03) considered "one key per enrollment" (rejected —
+Keystore slot pressure) but never evaluated "one key per installation," which sits between the two
+extremes the operator originally had in mind and matches the existing installation trust-zone model
+(`MOBILE_DATA_MODEL.md`) at a granularity that does not recreate the slot-pressure concern (expected
+1-3 installations per device rather than N enrollments).
+
+**Not in scope / already correct.** Device signing keys (`ezkey_enrollment_{localId}` in
+`EzkeyCryptoModule.kt`) are unaffected by this finding: they are already one independently generated
+EC P-256 keypair per enrollment, with the alias installation-scoped since MOB-011. There is no key
+derivation chain (no HKDF/ECDH) anywhere in the current implementation — each key is generated
+independently by `KeyPairGenerator` / `KeyGenerator`, never derived from another key.
+
+**Existing mitigation.** `logicalKey` AAD scoping in `SealedSecretEnvelope.seal()`/`unseal()` already
+binds each sealed envelope to its installation-scoped local enrollment id
+(`ENROLLMENT_PROOF_TOKEN_KEY_PREFIX + '.' + id`, `INTEGRATION_PUBLIC_KEY_KEY_PREFIX + '.' + id` in
+`enrollmentStorage.ts`), so a coding bug that supplies the wrong logical key already fails closed
+today at a finer grain (per enrollment) than "per installation." This tempers the incremental value
+of the candidate fix: real but modest defense-in-depth against an in-process bug or compromised
+dependency invoking the native seal/unseal bridge across installation boundaries — not a strong new
+adversarial isolation guarantee, since an attacker who already controls that call site can supply
+the correct installation id for its target.
+
+**Fix implemented.** One AES seal key per installation (`ezkey_seal_{installationScopeId}`, alias
+derivation mirroring `getEnrollmentAlias`), threaded through `sealSecret`/`unsealSecret` and renamed
+`deleteAppSealKey` → `deleteAllSealKeys` (sweeps every installation's alias by prefix). TS storage
+choke points (`saveEnrollment`, `replaceAll`, `deleteEnrollment`, `clearAll` via `enrollmentStorage.ts`)
+resolve `installationScopeId` from the record's nested `installation` and pass it through
+`secureStorage.ts` / `nativeCrypto.ts`. Local storage hardening only — no Auth API / OpenAPI change,
+per the same boundary `ADR-MOB-0004` already declared. Canon: `ADR-MOB-0006` in
+[`product-docs/components/mobile/design-decisions.md`](../../product-docs/components/mobile/design-decisions.md).
+
+**Verification.** Unit tests updated for per-installation seal scoping (`secureStorage.test.ts`,
+`enrollmentStorage.test.ts`, `localEnrollmentIdentity.test.ts` — 225/225 passing). Android
+instrumented suite extended with `sealSecret_isIsolatedPerInstallationScope_MOB017` (two
+installation scopes cannot unseal each other's ciphertext) and
+`deleteAllSealKeys_removesEveryInstallationSealAlias_MOB017` (sweep removes every installation's
+alias); 7/7 passing on a physical Pixel 7 Pro (API 15/VANILLA_ICE_CREAM gate exercised).
+
+---
+
+### 15.2 Pass-3 HITL lot
+
+| # | Finding | Severity | Why reviewed |
+| --- | --- | --- | --- |
+| 1 | **MOB-017** | P3 | Operator-initiated re-read of key architecture; candidate middle path between per-enrollment and single-key models |
+
+### 15.3 Anti-false-positive reminder
+
+Do **not** treat this finding as evidence that device signing keys were ever consolidated into a
+single key — `ADR-MOB-0002` rejected that from the start and it was never implemented. Pass-3 scope
+is the app-level AES seal key only. Pass-3 IDs start at **MOB-017**.

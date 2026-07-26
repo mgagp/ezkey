@@ -13,6 +13,7 @@ This document records architecture and design decisions **scoped to the mobile a
 | [ADR-MOB-0003](#adr-mob-0003-fail-closed-on-signature-checks) | Fail-closed on signature and algorithm checks | accepted | 2025-08-05 |
 | [ADR-MOB-0004](#adr-mob-0004-android-app-level-sealed-secrets) | Android app-level sealed secrets for long-lived enrollment values | accepted | 2026-05-03 |
 | [ADR-MOB-0005](#adr-mob-0005-ios-native-layer-rebuilt-from-clean-scaffold) | iOS native layer rebuilt from clean scaffold, existing code discarded | accepted | 2026-05-24 |
+| [ADR-MOB-0006](#adr-mob-0006-per-installation-android-seal-key) | Per-installation Android seal key, replacing the single app-level seal key | accepted | 2026-07-26 |
 
 ## ADR-MOB-0001 — No background polling for authentication attempts
 
@@ -198,3 +199,81 @@ The existing iOS-specific native code in `ezkey_mobile/ios/` is treated as disca
 - `ezkey_mobile/ios/` — existing native-specific content deleted before Phase 2 begins.
 - Phases 2–7 of the iOS rebuild plan proceed from clean scaffold.
 - Reference: [`../../../product-docs/global/legacy-retrofit/R-2026-0003-mobile-ios-implementation-plans.md`](../../../product-docs/global/legacy-retrofit/R-2026-0003-mobile-ios-implementation-plans.md).
+
+## ADR-MOB-0006 — Per-installation Android seal key
+
+### Metadata
+
+- **ID:** ADR-MOB-0006.
+- **Date:** 2026-07-26.
+- **Status:** accepted.
+- **Scope:** component:mobile, platform:Android.
+
+### Context
+
+ADR-MOB-0004 introduced a single app-level AES seal key (`ezkey_app_seal_v1`) to protect `enrollmentProofToken` and
+`integrationPublicKey` at rest, evaluating "one key per enrollment" as the main alternative and rejecting it for
+key-slot pressure. It did not evaluate a middle ground scoped to the installation trust zone. Since ADR-MOB-0004,
+MOB-011 made every other local handle (device signing key alias, local enrollment id) installation-scoped, so the
+seal key was the only remaining app-wide artifact: one Android device enrolled against two distinct Ezkey
+installations (two normalized Auth API URLs) sealed both installations' secrets under the same Keystore key. A
+mobile-protocol-security assessment pass (MOB-017, `docs/security/mobile-protocol-crypto-assessment-2026-07.md` §15)
+identified this gap and a Grill Me session with the maintainer reached a fix decision.
+
+### Decision
+
+Each installation trust zone gets its own AES/GCM seal key in `Android Keystore`, alias
+`ezkey_seal_{installationScopeId}` where `installationScopeId` is the same Keystore-safe hash of the normalized Auth
+API URL already used inside `deriveLocalEnrollmentId` (MOB-011). `sealSecret` / `unsealSecret` on
+`EzkeyCryptoModule` take `installationScopeId` as an explicit parameter; `enrollmentStorage.ts` resolves it from the
+record's nested `installation` object before calling through `secureStorage.ts`. `deleteAppSealKey` is replaced by
+`deleteAllSealKeys`, which sweeps every `ezkey_seal_*` alias present in Keystore so Danger Zone clear-all remains a
+true local reset regardless of how many installations were enrolled. This is a **greenfield cutover**: no migration
+path exists for secrets sealed under the old shared `ezkey_app_seal_v1` key — same posture as MOB-011, since the
+product has no production fleet yet.
+
+### Alternatives Considered
+
+- **Keep the single app-level seal key (status quo).** Rejected — the only remaining app-wide crypto artifact after
+  MOB-011, inconsistent with the installation-isolation direction already applied to signing keys and storage
+  handles; low but real risk of an in-process bug or partial compromise crossing installation trust zones.
+- **One seal key per enrollment (re-litigate ADR-MOB-0004's rejected alternative).** Rejected again — real-world
+  installation counts per device are small (operator estimate: 1–3), but enrollment counts per installation can be
+  larger; per-enrollment seal keys would recreate the Keystore slot-pressure problem ADR-MOB-0004 avoided.
+- **Migrate secrets sealed under the old app-level key.** Rejected — no production fleet exists yet, so a migration
+  path adds real implementation and test cost for zero current user impact; treated as a breaking local change
+  instead, consistent with MOB-011.
+
+### Consequences
+
+- **Positive.** Closes the last app-wide crypto artifact; installation trust zones are now isolated end-to-end
+  (signing keys, local enrollment ids, and seal keys are all installation-scoped). Bounded, realistic Keystore slot
+  cost given small real-world installation counts per device.
+- **Negative.** `EzkeyCryptoModule.sealSecret` / `unsealSecret` and the `StorageDelegate` interface gained an
+  `installationScopeId` parameter, touching `nativeCrypto.ts`, `secureStorage.ts`, and `enrollmentStorage.ts`.
+  Records without a resolvable installation (rare edge case — no explicit `installation`, no `authUrl`, no
+  configured API base URL) fall back to a shared `DEFAULT_SEAL_SCOPE_ID`, which is not a regression since every
+  enrollment previously shared one seal key regardless.
+- **Boundary.** This remains local at-rest hardening, not server-side attestation. It is a defense-in-depth
+  improvement layered on top of the existing enrollment-scoped AAD (`logicalKey` already includes the
+  installation-scoped local enrollment id), not a new adversarial isolation guarantee — the AAD already provided
+  fail-closed authentication per enrollment under the previous shared key.
+
+### Impact
+
+- `EzkeyCryptoModule.kt` (Android native seal/unseal/delete methods and alias derivation).
+- `nativeCrypto.ts`, `secureStorage.ts`, `enrollmentStorage.ts` (installation-scoped seal parameter threading).
+- Reference: [`../../../ezkey_mobile/docs/NATIVE_MODULES.md`](../../../ezkey_mobile/docs/NATIVE_MODULES.md),
+  [`../../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md`](../../../ezkey_mobile/docs/MOBILE_DATA_MODEL.md),
+  [`../../../ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md`](../../../ezkey_mobile/docs/MOBILE_CRYPTO_REFERENCE.md).
+
+### Related Decisions
+
+- Supersedes the single-key posture from [ADR-MOB-0004](#adr-mob-0004-android-app-level-sealed-secrets) (historical
+  reasoning there is not rewritten; this ADR documents the alternative ADR-MOB-0004 never evaluated).
+- Builds on the installation-scoping precedent from
+  [ADR-MOB-0002](#adr-mob-0002-ec-p256-keys-on-native-keystore) and MOB-011
+  (`I-2026-07-20-mobile-installation-scoped-enrollment-identity`).
+- Provenance: `I-2026-07-26-mobile-installation-scoped-seal-key`,
+  `TB-2026-07-26-mobile-installation-scoped-seal-key`,
+  [MOB-017 campaign note](../../global/hygiene/mobile-protocol-security/2026-07-26-pass-3.md).

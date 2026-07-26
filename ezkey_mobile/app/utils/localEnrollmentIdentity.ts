@@ -24,9 +24,30 @@ import type {StoredEnrollment} from '../services/storage/enrollmentStorage';
 export const ENROLLMENT_KEY_MISSING = 'ENROLLMENT_KEY_MISSING';
 
 /**
+ * Derives a Keystore-safe installation trust-zone scope id.
+ *
+ * Format: {@code i{16-hex-sha256(installationId)}} — alphanumeric only, suitable both as an
+ * Android Keystore alias suffix (signing keys, MOB-011) and as an app seal-key alias suffix
+ * (MOB-017 — installation-scoped seal key, replacing the single app-wide `ezkey_app_seal_v1`).
+ * Reused by {@link deriveLocalEnrollmentId} so both handles share the same installation hash.
+ *
+ * @param installationId Canonical trust-zone id (normalized Auth URL).
+ * @return Keystore-safe installation scope id.
+ * @throws Error when the input is empty.
+ * @since 2026
+ */
+export function deriveInstallationScopeId(installationId: string): string {
+  const zone = installationId.trim();
+  if (!zone) {
+    throw new Error('installationId is required to derive an installation scope id');
+  }
+  return `i${sha256(zone).slice(0, 16)}`;
+}
+
+/**
  * Derives a Keystore-safe, installation-scoped local enrollment id (O3).
  *
- * Format: {@code i{16-hex-sha256(installationId)}_e{serverEnrollmentId}}
+ * Format: {@code {installationScopeId}_e{serverEnrollmentId}}
  * — alphanumeric plus underscore only, suitable for Android Keystore alias suffixes.
  *
  * @param installationId Canonical trust-zone id (normalized Auth URL).
@@ -39,13 +60,11 @@ export function deriveLocalEnrollmentId(
   installationId: string,
   serverEnrollmentId: string | number,
 ): string {
-  const zone = installationId.trim();
   const server = String(serverEnrollmentId).trim();
-  if (!zone || !server) {
+  if (!server) {
     throw new Error('installationId and serverEnrollmentId are required for local enrollment id');
   }
-  const installHash = sha256(zone).slice(0, 16);
-  return `i${installHash}_e${server}`;
+  return `${deriveInstallationScopeId(installationId)}_e${server}`;
 }
 
 /**

@@ -120,7 +120,7 @@ This wording boundary is intentional and should remain explicit in both product 
 This distinction is easy to blur, so document it explicitly:
 
 - `Android Keystore` / `StrongBox` primarily protect **cryptographic keys** and key operations
-- on Android, the app now uses a dedicated app-level AES key from `Android Keystore` to seal small persisted secret values before storing ciphertext envelopes in AsyncStorage
+- on Android, the app uses a dedicated per-installation AES key from `Android Keystore` to seal small persisted secret values before storing ciphertext envelopes in AsyncStorage
 - on other platforms, the secure-storage delegate still protects those small persisted secret values directly
 - these are complementary layers, not the same thing
 
@@ -128,13 +128,19 @@ In the current Ezkey Android reference app:
 
 - each enrollment has its own EC P-256 private signing key in `Android Keystore`
 - `StrongBox` is requested when the device can satisfy it
-- the app also provisions one app-level AES seal key in `Android Keystore` for long-lived local secrets such as `enrollmentProofToken` and `integrationPublicKey`
+- the app also provisions one AES seal key per installation trust zone in `Android Keystore` (alias
+  `ezkey_seal_{installationScopeId}`, MOB-017) for long-lived local secrets such as `enrollmentProofToken` and
+  `integrationPublicKey`; two installations on the same phone use two independent seal keys
 - AsyncStorage stores only sealed envelopes for those Android secrets; plaintext is rehydrated on demand
 - the current implementation does **not** use the enrollment private key itself as a master unsealing key for all
   other mobile secrets
 
 This sealed-secrets model is scoped to the Android reference path. It should still be described conservatively: it is a
-local at-rest hardening layer, not server-side attestation or FIDO2/WebAuthn equivalence.
+local at-rest hardening layer, not server-side attestation or FIDO2/WebAuthn equivalence. Installation-scoped seal keys
+give defense-in-depth against an in-process bug or partial compromise reaching across trust zones; the existing
+enrollment-scoped AAD (`logicalKey` includes the installation-scoped local enrollment id) already provided fail-closed
+authentication per enrollment even under the previous single app-wide seal key, so this is an incremental hardening,
+not a claim of new adversarial isolation.
 
 ## Device private key storage tier (`verify`)
 

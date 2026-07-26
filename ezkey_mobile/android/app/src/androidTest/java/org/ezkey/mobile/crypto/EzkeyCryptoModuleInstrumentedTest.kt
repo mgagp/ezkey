@@ -63,6 +63,11 @@ class EzkeyCryptoModuleInstrumentedTest {
       promise.await()
     }
     enrollmentIds.clear()
+
+    // Sweep any seal keys this test class created so runs do not accumulate Keystore entries.
+    val sealCleanupPromise = CapturingPromise()
+    module.deleteAllSealKeys(sealCleanupPromise)
+    sealCleanupPromise.await()
   }
 
   @Test
@@ -119,18 +124,60 @@ class EzkeyCryptoModuleInstrumentedTest {
 
   @Test
   fun sealSecretAndUnsealSecret_roundTripViaModule() {
+    val installationScopeId = "i${UUID.randomUUID()}".replace("-", "")
     val logicalKey = "mob-006-seal-${UUID.randomUUID()}"
     val plaintext = "enrollment-proof-token-sample"
 
     val sealPromise = CapturingPromise()
-    module.sealSecret(logicalKey, plaintext, sealPromise)
+    module.sealSecret(installationScopeId, logicalKey, plaintext, sealPromise)
     val sealedJson = sealPromise.requireResolved() as String
     assertTrue("sealed envelope JSON should be non-empty", sealedJson.isNotBlank())
     assertTrue("envelope should look like JSON", sealedJson.startsWith("{"))
 
     val unsealPromise = CapturingPromise()
-    module.unsealSecret(logicalKey, sealedJson, unsealPromise)
+    module.unsealSecret(installationScopeId, logicalKey, sealedJson, unsealPromise)
     assertEquals(plaintext, unsealPromise.requireResolved())
+  }
+
+  @Test
+  fun sealSecret_isIsolatedPerInstallationScope_MOB017() {
+    val installationA = "i${UUID.randomUUID()}".replace("-", "")
+    val installationB = "i${UUID.randomUUID()}".replace("-", "")
+    val logicalKey = "mob-017-seal-${UUID.randomUUID()}"
+    val plaintext = "enrollment-proof-token-sample"
+
+    val sealPromise = CapturingPromise()
+    module.sealSecret(installationA, logicalKey, plaintext, sealPromise)
+    val sealedJson = sealPromise.requireResolved() as String
+
+    // Unsealing installation A's envelope under installation B's seal key must fail: each
+    // installation trust zone owns a distinct Keystore AES key (MOB-017).
+    val crossZoneUnsealPromise = CapturingPromise()
+    module.unsealSecret(installationB, logicalKey, sealedJson, crossZoneUnsealPromise)
+    crossZoneUnsealPromise.requireRejectedCode()
+
+    val sameZoneUnsealPromise = CapturingPromise()
+    module.unsealSecret(installationA, logicalKey, sealedJson, sameZoneUnsealPromise)
+    assertEquals(plaintext, sameZoneUnsealPromise.requireResolved())
+  }
+
+  @Test
+  fun deleteAllSealKeys_removesEveryInstallationSealAlias_MOB017() {
+    val installationA = "i${UUID.randomUUID()}".replace("-", "")
+    val installationB = "i${UUID.randomUUID()}".replace("-", "")
+    val logicalKey = "mob-017-clear-${UUID.randomUUID()}"
+
+    module.sealSecret(installationA, logicalKey, "value-a", CapturingPromise())
+    module.sealSecret(installationB, logicalKey, "value-b", CapturingPromise())
+    assertTrue("seal key A should exist", keyStoreContains("ezkey_seal_$installationA"))
+    assertTrue("seal key B should exist", keyStoreContains("ezkey_seal_$installationB"))
+
+    val deletePromise = CapturingPromise()
+    module.deleteAllSealKeys(deletePromise)
+    assertEquals(true, deletePromise.requireResolved())
+
+    assertFalse("seal key A should be removed", keyStoreContains("ezkey_seal_$installationA"))
+    assertFalse("seal key B should be removed", keyStoreContains("ezkey_seal_$installationB"))
   }
 
   @Test
@@ -180,12 +227,23 @@ class EzkeyCryptoModuleInstrumentedTest {
     assertEquals(
         "unlockedDeviceRequired should follow API 35+ gate (MOB-012)",
         expected,
-        keyInfo.isUnlockedDeviceRequired,
+        keyInfoIsUnlockedDeviceRequired(keyInfo),
     )
   }
 
   companion object {
     private const val TAG = "EzkeyCryptoTest"
+  }
+
+  /**
+   * Reflective call to [KeyInfo.isUnlockedDeviceRequired] (API 31+). Some Android SDK stub jars
+   * used for compilation do not expose this member directly even at `compileSdk` 36, mirroring the
+   * same reflective pattern already used for `getSecurityLevel` / `isStrongBoxBacked` in
+   * [EzkeyCryptoModule].
+   */
+  private fun keyInfoIsUnlockedDeviceRequired(keyInfo: KeyInfo): Boolean {
+    val method = KeyInfo::class.java.getMethod("isUnlockedDeviceRequired")
+    return method.invoke(keyInfo) as Boolean
   }
 
   private fun newEnrollmentId(): String {

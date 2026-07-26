@@ -14,6 +14,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {EnrollmentSummary, Installation} from '../api/types';
 import {hydrateInstallationMetadata} from '../../utils/installationMetadata';
+import {deriveInstallationScopeId} from '../../utils/localEnrollmentIdentity';
 import {nativeCrypto} from '../crypto/nativeCrypto';
 import {
   DEFAULT_ENROLLMENT_APPROVAL_POLICY,
@@ -28,6 +29,30 @@ const ENROLLMENT_PROOF_TOKEN_KEY_PREFIX = 'ezkey-mobile/enrollment-proof-token';
 const INTEGRATION_PUBLIC_KEY_KEY_PREFIX = 'ezkey-mobile/integration-public-key';
 /** Mirror of the sealed-secret AsyncStorage prefix owned by secureStorage (clear-all sweep only). */
 const SEALED_SECRET_KEY_PREFIX = 'ezkey-mobile/sealed-secret';
+/**
+ * Seal-key scope used when a record's installation trust zone cannot be resolved (MOB-017).
+ *
+ * Only reached for rows without a recoverable installation (no explicit `installation`, no
+ * `authUrl`, and no configured API base URL to fall back on) — not the normal path, since
+ * {@link hydrateInstallationMetadata} resolves an installation id for every enrollment created
+ * through the current wizard. Sharing one fallback scope for this edge case is not a regression:
+ * today every enrollment already shares a single app-wide seal key.
+ */
+const DEFAULT_SEAL_SCOPE_ID = 'default';
+
+/**
+ * Resolves the installation-scoped seal-key id for a record (MOB-017).
+ *
+ * @param installation Nested installation trust zone, when resolved.
+ * @return Keystore-safe seal-key scope id.
+ */
+function resolveSealScopeId(installation?: Installation): string {
+  const installationId = installation?.id?.trim();
+  if (!installationId) {
+    return DEFAULT_SEAL_SCOPE_ID;
+  }
+  return deriveInstallationScopeId(installationId);
+}
 
 /**
  * Local representation of enrollment records including proof tokens.
@@ -107,8 +132,8 @@ export type EnrollmentListResult = {
 };
 
 type StorageDelegate = {
-  setItem(key: string, value: string): Promise<void>;
-  getItem(key: string): Promise<string | undefined>;
+  setItem(key: string, value: string, installationScopeId: string): Promise<void>;
+  getItem(key: string, installationScopeId: string): Promise<string | undefined>;
   removeItem(key: string): Promise<void>;
 };
 
@@ -231,7 +256,8 @@ class EnrollmentStorage {
     record: PersistedEnrollmentMetadata,
   ): Promise<StoredEnrollment | undefined> {
     const secureKey = this.proofTokenStorageKey(record.id);
-    const secureProofToken = await this.secure.getItem(secureKey);
+    const sealScopeId = resolveSealScopeId(record.installation);
+    const secureProofToken = await this.secure.getItem(secureKey, sealScopeId);
     const legacyProofToken = record.enrollmentProofToken;
     const enrollmentProofToken = secureProofToken ?? legacyProofToken;
 
@@ -243,7 +269,7 @@ class EnrollmentStorage {
     }
 
     if (!secureProofToken && legacyProofToken) {
-      await this.secure.setItem(secureKey, legacyProofToken);
+      await this.secure.setItem(secureKey, legacyProofToken, sealScopeId);
     }
 
     return {
@@ -257,7 +283,8 @@ class EnrollmentStorage {
     record: StoredEnrollment,
   ): Promise<StoredEnrollment | undefined> {
     const secureKey = this.integrationPublicKeyStorageKey(record.id);
-    const secureIntegrationPublicKey = await this.secure.getItem(secureKey);
+    const sealScopeId = resolveSealScopeId(record.installation);
+    const secureIntegrationPublicKey = await this.secure.getItem(secureKey, sealScopeId);
     const legacyIntegrationPublicKey = record.integrationPublicKey;
     const integrationPublicKey = secureIntegrationPublicKey ?? legacyIntegrationPublicKey;
 
@@ -269,7 +296,7 @@ class EnrollmentStorage {
     }
 
     if (!secureIntegrationPublicKey && legacyIntegrationPublicKey) {
-      await this.secure.setItem(secureKey, legacyIntegrationPublicKey);
+      await this.secure.setItem(secureKey, legacyIntegrationPublicKey, sealScopeId);
     }
 
     return {
@@ -389,10 +416,16 @@ class EnrollmentStorage {
    * @since 2025
    */
   async saveEnrollment(record: StoredEnrollment) {
-    await this.secure.setItem(this.proofTokenStorageKey(record.id), record.enrollmentProofToken);
+    const sealScopeId = resolveSealScopeId(record.installation);
+    await this.secure.setItem(
+      this.proofTokenStorageKey(record.id),
+      record.enrollmentProofToken,
+      sealScopeId,
+    );
     await this.secure.setItem(
       this.integrationPublicKeyStorageKey(record.id),
       record.integrationPublicKey ?? '',
+      sealScopeId,
     );
     // Raw metadata read so rows with currently unusable secrets survive the rewrite (MOB-015).
     const items = await this.readMetadataRecords();
@@ -428,7 +461,11 @@ class EnrollmentStorage {
 
     await Promise.all(
       nextItems.map(item =>
-        this.secure.setItem(this.proofTokenStorageKey(item.id), item.enrollmentProofToken),
+        this.secure.setItem(
+          this.proofTokenStorageKey(item.id),
+          item.enrollmentProofToken,
+          resolveSealScopeId(item.installation),
+        ),
       ),
     );
     await Promise.all(
@@ -436,6 +473,7 @@ class EnrollmentStorage {
         this.secure.setItem(
           this.integrationPublicKeyStorageKey(item.id),
           item.integrationPublicKey ?? '',
+          resolveSealScopeId(item.installation),
         ),
       ),
     );
@@ -572,9 +610,9 @@ class EnrollmentStorage {
    * Clears all enrollment data from storage and best-effort deletes native key material.
    *
    * True local reset per the MOB-015 locked UI contract: also sweeps orphaned enrollment secret
-   * entries (recovers from a corrupt collection) and deletes the app-level seal key
-   * `ezkey_app_seal_v1` so re-enrollment starts from a fresh seal key. All native deletions are
-   * fail-open: storage cleanup always proceeds and failures stay observable in logs.
+   * entries (recovers from a corrupt collection) and deletes every installation-scoped seal key
+   * (MOB-017) so re-enrollment starts from a fresh seal key. All native deletions are fail-open:
+   * storage cleanup always proceeds and failures stay observable in logs.
    *
    * @since 2025
    */
@@ -589,7 +627,7 @@ class EnrollmentStorage {
     );
     await this.metadata.removeItem(ENROLLMENT_COLLECTION_KEY);
     await this.sweepEnrollmentSecretRemnants();
-    await this.deleteAppSealKeyBestEffort();
+    await this.deleteAllSealKeysBestEffort();
   }
 
   /**
@@ -618,14 +656,15 @@ class EnrollmentStorage {
   }
 
   /**
-   * Best-effort deletion of the shared app seal key on clear-all (fail-open, observable).
+   * Best-effort deletion of every installation-scoped seal key on clear-all (fail-open,
+   * observable). MOB-017.
    */
-  private async deleteAppSealKeyBestEffort(): Promise<void> {
+  private async deleteAllSealKeysBestEffort(): Promise<void> {
     try {
-      await nativeCrypto.deleteAppSealKey();
+      await nativeCrypto.deleteAllSealKeys();
     } catch (error) {
       console.warn(
-        '[enrollmentStorage] Failed to delete app seal key (continuing wipe):',
+        '[enrollmentStorage] Failed to delete seal keys (continuing wipe):',
         error,
       );
     }

@@ -65,7 +65,11 @@ class SecureStorageDelegate {
     return record.password;
   }
 
-  async setItem(key: string, value: string) {
+  /**
+   * @param installationScopeId Installation trust-zone scope for the AES seal key on Android
+   *     (MOB-017 — `deriveInstallationScopeId`); unused on the Keychain (non-Android) path.
+   */
+  async setItem(key: string, value: string, installationScopeId: string) {
     if (!this.shouldUseAndroidSealedSecrets()) {
       await this.keychain.setGenericPassword(key, value, {
         service: serviceFor(key),
@@ -74,19 +78,23 @@ class SecureStorageDelegate {
       return;
     }
 
-    const sealedPayload = await this.crypto.sealSecret(key, value);
+    const sealedPayload = await this.crypto.sealSecret(installationScopeId, key, value);
     await this.metadata.setItem(sealedStorageKeyFor(key), sealedPayload);
     await this.keychain.resetGenericPassword({service: serviceFor(key)});
   }
 
-  async getItem(key: string): Promise<string | undefined> {
+  /**
+   * @param installationScopeId Installation trust-zone scope for the AES seal key on Android
+   *     (MOB-017); must match the scope used on {@link setItem} for this key, or unsealing fails.
+   */
+  async getItem(key: string, installationScopeId: string): Promise<string | undefined> {
     if (!this.shouldUseAndroidSealedSecrets()) {
       return this.readLegacyKeychainValue(key);
     }
 
     const sealedPayload = await this.metadata.getItem(sealedStorageKeyFor(key));
     if (sealedPayload) {
-      return this.crypto.unsealSecret(key, sealedPayload);
+      return this.crypto.unsealSecret(installationScopeId, key, sealedPayload);
     }
 
     const legacyValue = await this.readLegacyKeychainValue(key);
@@ -94,7 +102,7 @@ class SecureStorageDelegate {
       return undefined;
     }
 
-    await this.setItem(key, legacyValue);
+    await this.setItem(key, legacyValue, installationScopeId);
     return legacyValue;
   }
 

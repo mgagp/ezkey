@@ -24,14 +24,22 @@ type NativeModuleShape = {
   signWithAuthentication(enrollmentId: string, data: string): Promise<string>;
   verify(data: string, signatureBase64: string, publicKeyBase64: string): Promise<boolean>;
   deleteKeyPair(enrollmentId: string): Promise<boolean>;
-  /** Deletes the app-level seal key (clear-all true reset). Resolves false when absent or unsupported. */
-  deleteAppSealKey(): Promise<boolean>;
+  /**
+   * Deletes every installation-scoped seal key (clear-all true reset, MOB-015/MOB-017). Resolves
+   * false when none were present or on platforms without the Android seal-key model.
+   */
+  deleteAllSealKeys(): Promise<boolean>;
   /** UTC ISO-8601 string set at native build time (Android `BuildConfig`); iOS uses bundle mtime proxy. */
   getBuildTimestamp(): Promise<string>;
   /** Same wire format as `SignatureService.generateProofToken()`; uses platform CSPRNG (no `RNGetRandomValues`). */
   generateProofToken(): Promise<string>;
-  sealSecret(logicalKey: string, plaintext: string): Promise<string>;
-  unsealSecret(logicalKey: string, sealedPayload: string): Promise<string>;
+  /** installationScopeId scopes the AES seal key to one installation trust zone (MOB-017). */
+  sealSecret(installationScopeId: string, logicalKey: string, plaintext: string): Promise<string>;
+  unsealSecret(
+    installationScopeId: string,
+    logicalKey: string,
+    sealedPayload: string,
+  ): Promise<string>;
 };
 
 const {EzkeyCryptoModule} = NativeModules;
@@ -71,8 +79,8 @@ const fallback: NativeModuleShape = {
       'EzkeyCryptoModule is not linked. Unable to delete key pair.',
     );
   },
-  async deleteAppSealKey(): Promise<boolean> {
-    // Platforms without the Android app seal key have nothing to delete.
+  async deleteAllSealKeys(): Promise<boolean> {
+    // Platforms without the Android seal-key model have nothing to delete.
     return false;
   },
   async getBuildTimestamp(): Promise<string> {
@@ -126,8 +134,8 @@ export const nativeCrypto = {
     fallback.verify(data, signatureBase64, publicKeyBase64),
   deleteKeyPair: (enrollmentId: string) =>
     cryptoModule?.deleteKeyPair?.(enrollmentId) ?? fallback.deleteKeyPair(enrollmentId),
-  deleteAppSealKey: () =>
-    cryptoModule?.deleteAppSealKey?.() ?? fallback.deleteAppSealKey(),
+  deleteAllSealKeys: () =>
+    cryptoModule?.deleteAllSealKeys?.() ?? fallback.deleteAllSealKeys(),
   getBuildTimestamp: () =>
     cryptoModule?.getBuildTimestamp?.() ?? fallback.getBuildTimestamp(),
   generateProofToken: () =>
@@ -135,12 +143,12 @@ export const nativeCrypto = {
   getEnrollmentPrivateKeyStorageTier: (enrollmentId: string) =>
     cryptoModule?.getEnrollmentPrivateKeyStorageTier?.(enrollmentId) ??
     fallback.getEnrollmentPrivateKeyStorageTier(enrollmentId),
-  sealSecret: (logicalKey: string, plaintext: string) =>
-    cryptoModule?.sealSecret?.(logicalKey, plaintext) ??
-    fallback.sealSecret(logicalKey, plaintext),
-  unsealSecret: (logicalKey: string, sealedPayload: string) =>
-    cryptoModule?.unsealSecret?.(logicalKey, sealedPayload) ??
-    fallback.unsealSecret(logicalKey, sealedPayload),
+  sealSecret: (installationScopeId: string, logicalKey: string, plaintext: string) =>
+    cryptoModule?.sealSecret?.(installationScopeId, logicalKey, plaintext) ??
+    fallback.sealSecret(installationScopeId, logicalKey, plaintext),
+  unsealSecret: (installationScopeId: string, logicalKey: string, sealedPayload: string) =>
+    cryptoModule?.unsealSecret?.(installationScopeId, logicalKey, sealedPayload) ??
+    fallback.unsealSecret(installationScopeId, logicalKey, sealedPayload),
 };
 
 export type NativeCrypto = typeof nativeCrypto;
