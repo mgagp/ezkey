@@ -19,7 +19,7 @@
         "securityReview": "Revue de sécurité demandée",
         "contractEnded": "Fin de contrat ou d'abonnement",
         "reactivationMaintenance": "Réactivation après maintenance",
-        "tenantRestoreRequest": "Demande du locataire pour rétablir l'accès"
+        "tenantRestoreRequest": "Demande du tenant pour rétablir l'accès"
       }
     },
     "admin_lifecycle": {

@@ -71,7 +71,11 @@ Wave B closeout ML:
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+<<<<<<< HEAD
 | `I-2026-07-22-tink-keyset-serialization-api-migration` | Tink keyset serialization API migration | `2026-07-26` | `TinkKeyManager` file + DB keyset codecs migrated to `TinkJsonProtoKeysetFormat`; legacy compatibility tests green; `ApiKeyControllerTest` stubbing fixed; full install green. |
+=======
+| `TB-2026-07-26-admin-ui-help-corpus-overhaul` | Admin UI contextual help corpus — comprehensive FR/EN pass | `2026-07-26` | 17 topics (3 new); generalized role-scoped rendering (`HELP_EXTRA_SECTIONS`); French corpus-wide "tenant" vs "locataire" standardization. |
+>>>>>>> origin/main
 | `TB-2026-07-25-integrated-delivery-posture` | Integrated delivery posture (Admin UI) | `2026-07-25` | Posture notices + collapsed disclosure + help + canon; SMTP half remains on `I-2026-0023`. |
 | `I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence` | Audit-log peripheral INSERT-only via sequence pre-allocation for the HMAC seal | `2026-07-18` | TB `TB-2026-07-18-audit-log-insert-only-hmac-seal`. Single-INSERT seal; peripherals SELECT+INSERT only; functional + `AuditIntegrityElectiveTest` + `verify-grants.sh` green. Resolves `TB-2026-07-16` follow-up. |
 | `I-2026-0021` | PostgreSQL application role and table permissions matrix | `2026-07-18` | Commit `568f1423` / TB `TB-2026-07-16-postgresql-application-role-split`. `ezkey_migrate` + three runtime roles; Docker/grants wiring; clean-start, grant verification, standard/elective suites, and real-mobile flow passed. |
