@@ -3,11 +3,11 @@
 ## Metadata
 
 - **ID:** `I-2026-0029`
-- **Status:** `ready`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-06-28`
-- **Updated at:** `2026-06-28`
-- **Last reviewed at:** `2026-06-28`
+- **Updated at:** `2026-07-26`
+- **Last reviewed at:** `2026-07-26`
 - **Phase tags:** `P2-hardening`
 - **Component tags:** `core`, `admin-api`, `infra`, `docs`
 - **Feature anchor:** `F-encryption-key-rotation`
@@ -53,6 +53,7 @@ These constraints **narrow scope** and avoid accidental migration complexity:
   | `ezkey_enrollment` | `integration_private_key` | `integration_private_key_encryption_key_id` |
   | `ezkey_enrollment` | `enrollment_proof_token` | `enrollment_proof_token_encryption_key_id` |
   | `ezkey_auth_attempt` | `auth_attempt_proof_token` | `auth_attempt_proof_token_encryption_key_id` |
+  | `ezkey_api_key` | `secret_key_hash` | `secret_key_hash_encryption_key_id` |
   | ~~`ezkey_auth_attempt`~~ | ~~`device_proof_token`~~ | **Removed from scope** — ADR-0007 / `TB-2026-07-06`: hash-only (`device_proof_token_hash` only, no ciphertext column). |
 
 - **`FOREIGN KEY`** to `ezkey_encryption_key(key_id)` on each column.
@@ -80,6 +81,22 @@ These constraints **narrow scope** and avoid accidental migration complexity:
 See
 [`../grill-sessions/2026-06-28-reencryption-key-id-columns-grill-me.md`](../grill-sessions/2026-06-28-reencryption-key-id-columns-grill-me.md).
 
+## Scope amendment (2026-07-26) — fourth target added
+
+During TB promotion, code inspection of `ReencryptionTargetQueryService`,
+`KeyUsageVerificationService`, and `ReencryptionBatchCreationService.discoverReencryptableTargets()`
+found that `ezkey_api_key.secret_key_hash` is **also** a `LIKE 'ENC:{keyId}:%'` discovery target
+(widened to `TEXT` in `V17__api_key_secret_hash_text_for_encryption.sql` precisely to carry the
+Tink `ENC:` prefix), tracked through the same `Reencryptable` interface and the same
+`EncryptionEntityListener` write path as the enrollment and auth-attempt columns. Neither the
+original scope table nor the 2026-06-28 grill session mentioned this column — it was missed when
+the idea was first captured.
+
+This does **not** reopen the grill: decisions **G3–G10** (derived `BIGINT` column, FK to
+`ezkey_encryption_key`, per-column metadata, composite index, unchanged ciphertext format) apply
+uniformly to any encrypted column using the `ENC:{keyId}:` prefix, including `secret_key_hash`. The
+scope table above is corrected to list all **four** real targets before TB implementation.
+
 ## Requirements (R1 at implementation)
 
 - **R1:** No re-encryption count/fetch uses `LIKE` on ciphertext for key discovery in production
@@ -93,14 +110,38 @@ See
 
 ## Promotion notes
 
-- **Next step:** promote to **`TB-*`** when an implementation slot opens (after or parallel to
-  integrity Wave B — operator priority is **before first prod**, not necessarily next sprint).
-- **Suggested TB slices:** (1) Flyway + entity mapping; (2) write path; (3) repository/query refactor
-  + tests; (4) docs — or single TB if bounded.
-- **Traceability:** link TB to `F-encryption-key-rotation` spec-test row in Admin API component pack.
+- **Promoted:** `2026-07-26` → [`TB-2026-07-26-reencryption-indexed-encryption-key-id-columns.md`](../TB-2026-07-26-reencryption-indexed-encryption-key-id-columns.md), single-pass posture (schema +
+  write path + query refactor + tests + docs in one bounded slice, covering all four columns
+  including the `secret_key_hash` scope amendment above).
+- **Traceability:** linked TB to `F-encryption-key-rotation` spec-test row in Admin API component
+  pack ([`product-docs/components/admin-api/spec-test-traceability.md`](../../../components/admin-api/spec-test-traceability.md))
+  and the global matrix ([`product-docs/global/spec-test-traceability.md`](../../spec-test-traceability.md)).
+
+## Closeout (2026-07-26)
+
+- **Status:** `done`. All requirements **R1–R4** satisfied; see TB
+  [Exit criteria](../TB-2026-07-26-reencryption-indexed-encryption-key-id-columns.md#exit-criteria)
+  for the evidence-to-requirement mapping.
+- **Evidence:** Maven baseline green (`./scripts/build.sh`, full reactor incl. `ezkey-core` unit
+  tests: `EncryptionEntityListenerTest`, `ReencryptionServiceTest` — 452 `ezkey-core` tests, 0
+  failures); clean-start functional suite (146 tests, 0 failures, 2 skipped); elective suite (15
+  tests, 0 failures, 1 skipped — HA-only `ShedLockDistributedTest` case), including
+  `ReencryptionFullTriggerConcurrentActivityElectiveTest` (live key rotation → 4 batches created and
+  settled). Post-run DB spot-check on the clean-start stack confirmed **100% population** of all
+  four `*_encryption_key_id` columns (176 enrollment rows, 108 auth attempts, 58 API keys) and
+  confirmed FK/composite-index presence, including on both `ezkey_auth_attempt` monthly partitions
+  (parent-index cascade).
+- **Deferred / residual:** none. No production backfill needed (pre-release schema, per operator
+  constraint). `NOT NULL` on the new columns intentionally deferred until encryption-required
+  becomes mandatory in every supported deployment posture (see TB § Design decision).
+- **Docs updated:** `docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md` §4.4.2,
+  `docs/REENCRYPTION_OPERATIONS.md` (new §1.2), `docs/ENDPOINT.md` (encryption key object field
+  description), `docs/SPEC_ENCRYPTION_KEY_LIFECYCLE_STRATEGY.md` §5.6.
+- **GitHub issue:** none opened (single-pass internal slice, no board visibility need identified).
 
 ## Links
 
+- TB: [`TB-2026-07-26-reencryption-indexed-encryption-key-id-columns.md`](../TB-2026-07-26-reencryption-indexed-encryption-key-id-columns.md)
 - Grill: [`../grill-sessions/2026-06-28-reencryption-key-id-columns-grill-me.md`](../grill-sessions/2026-06-28-reencryption-key-id-columns-grill-me.md)
 - Operations: [`../../../docs/REENCRYPTION_OPERATIONS.md`](../../../docs/REENCRYPTION_OPERATIONS.md)
 - Rotation design: [`../../../docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md`](../../../docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md)

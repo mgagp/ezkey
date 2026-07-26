@@ -87,6 +87,7 @@ public class ReencryptionRecordCipher {
     String reencrypted = encryptionOperations.encrypt(plaintext);
 
     record.setEncryptedField(column, reencrypted);
+    record.setEncryptionKeyId(column, batch.getNewKey().getKeyId());
 
     return new ReencryptResult(true, record);
   }

@@ -71,6 +71,23 @@ public interface Reencryptable {
   void setEncryptedField(String columnName, String encryptedValue);
 
   /**
+   * Sets the indexed {@code *_encryption_key_id} companion column (I-2026-0029) for an encrypted
+   * field, by database column name of the ciphertext column.
+   *
+   * <p>Called alongside {@link #setEncryptedField(String, String)} during re-encryption so the
+   * ciphertext and its key id stay in sync in the same write. Implementations that do not have a
+   * companion key-id column for a given field may treat this as a no-op, but all current {@code
+   * Reencryptable} entities (enrollment, auth attempt, API key) have one for every re-encryptable
+   * column.
+   *
+   * @param columnName database column name of the ciphertext column (e.g.,
+   *     "integration_private_key")
+   * @param keyId the new encryption key id
+   * @throws IllegalArgumentException if column name is not supported
+   */
+  void setEncryptionKeyId(String columnName, Long keyId);
+
+  /**
    * Gets the entity ID for progress tracking during batch re-encryption.
    *
    * @return entity ID (as Long for consistency)

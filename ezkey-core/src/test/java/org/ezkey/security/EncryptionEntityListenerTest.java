@@ -1,6 +1,7 @@
 package org.ezkey.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -101,5 +102,64 @@ class EncryptionEntityListenerTest {
     assertEquals(CIPHERTEXT, persistentField.get(apiKey));
     verify(encryptionOperations).encrypt(eq(bcryptPlaintext));
     assertTrue(((String) persistentField.get(apiKey)).startsWith("ENC:"));
+  }
+
+  /**
+   * I-2026-0029: after {@code encrypt()} writes a fresh {@code ENC:{keyId}:} ciphertext, the
+   * companion indexed {@code *_encryption_key_id} column must be populated from the same value (via
+   * {@code parseKeyIdFromPrefix}), not left null.
+   */
+  @Test
+  void encrypt_populatesIntegrationPrivateKeyEncryptionKeyIdFromCiphertextPrefix()
+      throws Exception {
+    when(encryptionOperations.parseKeyIdFromPrefix(CIPHERTEXT)).thenReturn(1L);
+
+    Enrollment enrollment = new Enrollment(1, "test-enrollment", "proof-token-for-listener");
+    enrollment.setIntegrationPrivateKey("MIIplain-integration-private-key-simulated");
+
+    listener.encrypt(enrollment);
+
+    Field keyIdField = Enrollment.class.getDeclaredField("integrationPrivateKeyEncryptionKeyId");
+    keyIdField.setAccessible(true);
+    assertEquals(1L, keyIdField.get(enrollment));
+  }
+
+  /** I-2026-0029: same companion-column contract for the API key secret hash field. */
+  @Test
+  void encrypt_populatesApiKeySecretHashEncryptionKeyIdFromCiphertextPrefix() throws Exception {
+    when(encryptionOperations.parseKeyIdFromPrefix(CIPHERTEXT)).thenReturn(1L);
+
+    ApiKey apiKey = new ApiKey();
+    apiKey.setApiKeyId(42);
+    apiKey.setSecretKeyHash("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy");
+
+    listener.encrypt(apiKey);
+
+    Field keyIdField = ApiKey.class.getDeclaredField("secretKeyHashEncryptionKeyId");
+    keyIdField.setAccessible(true);
+    assertEquals(1L, keyIdField.get(apiKey));
+  }
+
+  /**
+   * I-2026-0029: when encryption is unavailable, the value is stored as plaintext and the companion
+   * key-id column must stay {@code null} — same rows a {@code LIKE 'ENC:{keyId}:%'} predicate would
+   * have already excluded.
+   */
+  @Test
+  void encrypt_leavesEncryptionKeyIdNullWhenEncryptionUnavailable() throws Exception {
+    when(encryptionOperations.isEncryptionAvailable()).thenReturn(false);
+
+    Enrollment enrollment = new Enrollment(1, "test-enrollment", "proof-token-for-listener");
+    enrollment.setIntegrationPrivateKey("MIIplain-integration-private-key-simulated");
+
+    listener.encrypt(enrollment);
+
+    Field persistentField = Enrollment.class.getDeclaredField("encryptedIntegrationPrivateKey");
+    persistentField.setAccessible(true);
+    assertEquals("MIIplain-integration-private-key-simulated", persistentField.get(enrollment));
+
+    Field keyIdField = Enrollment.class.getDeclaredField("integrationPrivateKeyEncryptionKeyId");
+    keyIdField.setAccessible(true);
+    assertNull(keyIdField.get(enrollment));
   }
 }

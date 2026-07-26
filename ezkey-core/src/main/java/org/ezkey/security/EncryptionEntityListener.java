@@ -3,6 +3,7 @@ package org.ezkey.security;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import java.util.Map;
 import java.util.function.Supplier;
 import org.ezkey.authattempt.domain.entity.AuthAttempt;
 import org.ezkey.enrollment.domain.entity.Enrollment;
@@ -39,6 +40,18 @@ public class EncryptionEntityListener implements ApplicationContextAware {
 
   /** Transient field name for {@link Enrollment#integrationPrivateKey} (diagnostics only). */
   private static final String INTEGRATION_PRIVATE_KEY_TRANSIENT = "integrationPrivateKey";
+
+  /**
+   * Maps each encrypted persistent field name to its companion indexed key-id field name
+   * (I-2026-0029). Populated whenever the persistent field is written, so the two columns always
+   * stay in sync (see {@link #updateEncryptionKeyIdField}).
+   */
+  private static final Map<String, String> KEY_ID_FIELD_BY_PERSISTENT_FIELD =
+      Map.of(
+          "encryptedIntegrationPrivateKey", "integrationPrivateKeyEncryptionKeyId",
+          "encryptedEnrollmentProofToken", "enrollmentProofTokenEncryptionKeyId",
+          "encryptedAuthAttemptProofToken", "authAttemptProofTokenEncryptionKeyId",
+          "secretKeyHash", "secretKeyHashEncryptionKeyId");
 
   /** Static field for encryption operations used by unmanaged JPA callbacks. */
   private static EncryptionOperations encryptionOperations;
@@ -264,18 +277,21 @@ public class EncryptionEntityListener implements ApplicationContextAware {
       AtRestEncryptionAccess.requireEncryptionAvailableForPersist(operations, context);
       logger.debug("Encryption unavailable, storing plaintext for {}", context);
       setFieldValue(entity, persistentFieldName, plaintext);
+      updateEncryptionKeyIdField(entity, persistentFieldName, operations, plaintext);
       return;
     }
 
     if (operations.isEncrypted(plaintext)) {
       logger.trace("Field {} already encrypted for {}", transientFieldName, context);
       setFieldValue(entity, persistentFieldName, plaintext);
+      updateEncryptionKeyIdField(entity, persistentFieldName, operations, plaintext);
       return;
     }
 
     try {
       String encrypted = operations.encrypt(plaintext);
       setFieldValue(entity, persistentFieldName, encrypted);
+      updateEncryptionKeyIdField(entity, persistentFieldName, operations, encrypted);
       logger.debug("Encrypted {}", context);
       logIntegrationPrivateKeyDiagnostics(
           entity, transientFieldName, persistentFieldName, plaintext, operations, "afterEncrypt");
@@ -283,6 +299,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
       logger.error("Failed to encrypt {}", context, exception);
       AtRestEncryptionAccess.handleEncryptFailure(operations, context, exception);
       setFieldValue(entity, persistentFieldName, plaintext);
+      updateEncryptionKeyIdField(entity, persistentFieldName, operations, plaintext);
     }
   }
 
@@ -395,7 +412,37 @@ public class EncryptionEntityListener implements ApplicationContextAware {
     }
   }
 
-  private void setFieldValue(Object entity, String fieldName, String value) {
+  /**
+   * Keeps the indexed {@code *_encryption_key_id} companion column (I-2026-0029) in sync with
+   * whatever value was just written to the ciphertext column.
+   *
+   * <p>{@code null} when {@code storedValue} does not match the {@code ENC:{keyId}:} format
+   * (plaintext-at-rest, e.g. encryption disabled/unavailable) — same rows that a {@code LIKE
+   * 'ENC:{keyId}:%'} predicate would already exclude today.
+   *
+   * @param entity the entity being persisted
+   * @param persistentFieldName the ciphertext field name just written (e.g. {@code
+   *     encryptedIntegrationPrivateKey})
+   * @param operations encryption operations used to parse the key id, or null if unavailable
+   * @param storedValue the value just written to the persistent field
+   */
+  private void updateEncryptionKeyIdField(
+      Object entity,
+      String persistentFieldName,
+      EncryptionOperations operations,
+      String storedValue) {
+    String keyIdFieldName = KEY_ID_FIELD_BY_PERSISTENT_FIELD.get(persistentFieldName);
+    if (keyIdFieldName == null) {
+      return;
+    }
+    Long keyId =
+        (operations != null && storedValue != null && operations.isEncrypted(storedValue))
+            ? operations.parseKeyIdFromPrefix(storedValue)
+            : null;
+    setFieldValue(entity, keyIdFieldName, keyId);
+  }
+
+  private void setFieldValue(Object entity, String fieldName, Object value) {
     try {
       java.lang.reflect.Field field = entity.getClass().getDeclaredField(fieldName);
       field.setAccessible(true);

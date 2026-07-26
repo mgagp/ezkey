@@ -63,4 +63,17 @@ public interface EncryptionOperations {
    * @return decrypted plaintext, or the original value when decryption is unavailable
    */
   String decrypt(String encryptedValue);
+
+  /**
+   * Parses the encryption key id embedded in an encrypted value's {@code ENC:keyId:} prefix.
+   *
+   * <p>Used to populate the indexed {@code *_encryption_key_id} companion columns (I-2026-0029) so
+   * re-encryption discovery can use an equality lookup instead of a {@code LIKE} scan on the
+   * ciphertext column.
+   *
+   * @param encryptedValue the encrypted value to parse
+   * @return the key id if the value matches the encrypted format, or {@code null} otherwise
+   *     (including when the value is plaintext)
+   */
+  Long parseKeyIdFromPrefix(String encryptedValue);
 }

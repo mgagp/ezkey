@@ -218,9 +218,11 @@ This keeps the UI responsive while preserving correctness for sensitive actions.
 
 Phase A verification **must** reuse the same building blocks as batch creation and processing:
 
-- **Prefix counts:** [`ReencryptionTargetQueryService`](c:/github/ezkey/ezkey-core/src/main/java/org/ezkey/security/ReencryptionTargetQueryService.java) is the single implementation of
-  `countRecordsEncryptedWithKey(table, column, keyId)` and `fetchRecords(...)` for the `ENC:{keyId}:%`
-  contract.
+- **Indexed key-id counts:** [`ReencryptionTargetQueryService`](c:/github/ezkey/ezkey-core/src/main/java/org/ezkey/security/ReencryptionTargetQueryService.java) is the single implementation of
+  `countRecordsEncryptedWithKey(table, column, keyId)` and `fetchRecords(...)`. Since I-2026-0029 /
+  `TB-2026-07-26`, both query the target's indexed `*_encryption_key_id BIGINT` companion column with
+  an equality predicate, not a `LIKE 'ENC:{keyId}:%'` scan on the ciphertext (see
+  `docs/REENCRYPTION_OPERATIONS.md` §1.2).
 - **Target inventory:** [`ReencryptionBatchCreationService#discoverReencryptableTargets()`](c:/github/ezkey/ezkey-core/src/main/java/org/ezkey/security/ReencryptionBatchCreationService.java) is the current source of
   `(table, column)` pairs derived from `Reencryptable` entities. A future `ReencryptionTargetRegistry`
   may extract this list to avoid drift; until then, lifecycle code should call the same discovery API

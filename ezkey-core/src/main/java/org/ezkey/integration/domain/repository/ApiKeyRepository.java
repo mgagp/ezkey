@@ -228,19 +228,26 @@ public interface ApiKeyRepository
   List<ApiKey> findByIntegration_Tenant_TenantId(@Param("tenantId") Integer tenantId);
 
   /**
-   * Counts API keys with encrypted secret hash matching the prefix pattern.
+   * Counts API keys whose secret key hash was encrypted with the given key id.
    *
-   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * <p>Indexed equality lookup on {@code secret_key_hash_encryption_key_id}, replacing the
+   * historical {@code LIKE 'ENC:{keyId}:%'} prefix scan (I-2026-0029).
+   *
+   * @param keyId the encryption key id
    * @return count of matching records
    */
-  @NativeQuery("SELECT COUNT(*) FROM ezkey_api_key WHERE secret_key_hash LIKE :prefix")
-  int countByEncryptedSecretKeyHashLike(@Param("prefix") String prefix);
+  @NativeQuery(
+      "SELECT COUNT(*) FROM ezkey_api_key WHERE secret_key_hash_encryption_key_id = :keyId")
+  int countBySecretKeyHashEncryptionKeyId(@Param("keyId") Long keyId);
 
   /**
-   * Finds API keys with encrypted secret hash matching the prefix pattern for re-encryption
+   * Finds API keys whose secret key hash was encrypted with the given key id, for re-encryption
    * batches.
    *
-   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * <p>Indexed equality lookup on {@code secret_key_hash_encryption_key_id}, replacing the
+   * historical {@code LIKE 'ENC:{keyId}:%'} prefix scan (I-2026-0029).
+   *
+   * @param keyId the encryption key id
    * @param lastId the last processed API key ID, or null to start from the beginning
    * @param limit maximum number of records to return
    * @return list of matching API keys ordered by primary key
@@ -248,11 +255,11 @@ public interface ApiKeyRepository
   @NativeQuery(
       """
       SELECT * FROM ezkey_api_key
-      WHERE secret_key_hash LIKE :prefix
+      WHERE secret_key_hash_encryption_key_id = :keyId
         AND (:lastId IS NULL OR api_key_id > :lastId)
       ORDER BY api_key_id ASC
       LIMIT :limit
       """)
-  List<ApiKey> findEncryptedSecretKeyHashLike(
-      @Param("prefix") String prefix, @Param("lastId") Integer lastId, @Param("limit") int limit);
+  List<ApiKey> findBySecretKeyHashEncryptionKeyId(
+      @Param("keyId") Long keyId, @Param("lastId") Integer lastId, @Param("limit") int limit);
 }

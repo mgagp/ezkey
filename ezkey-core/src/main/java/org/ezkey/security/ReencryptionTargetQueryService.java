@@ -46,99 +46,105 @@ public class ReencryptionTargetQueryService {
    * Counts rows still encrypted with {@code keyId} for the target, optionally restricted to a shard
    * ({@code mod(auth_attempt_id, shardCount) = shardIndex}) for {@code ezkey_auth_attempt}.
    *
+   * <p>Uses an indexed equality lookup on the target's {@code *_encryption_key_id} column
+   * (I-2026-0029), replacing the historical {@code LIKE 'ENC:{keyId}:%'} prefix scan on the
+   * ciphertext column.
+   *
    * @param shardIndex shard index when {@code shardCount != null}; otherwise ignored
    * @param shardCount when non-null ({@code >= 2}), applies shard filter on auth attempts; null for
    *     full-table counts (lifecycle / enrollment)
    */
   public int countRecordsEncryptedWithKey(
       String table, String column, Long keyId, Integer shardIndex, Integer shardCount) {
-    String keyPrefix = "ENC:" + keyId + ":%";
     return switch (table) {
-      case "ezkey_enrollment" -> countEnrollmentRecords(column, keyPrefix);
-      case "ezkey_auth_attempt" ->
-          countAuthAttemptRecords(column, keyPrefix, shardIndex, shardCount);
-      case "ezkey_api_key" -> countApiKeyRecords(column, keyPrefix);
+      case "ezkey_enrollment" -> countEnrollmentRecords(column, keyId);
+      case "ezkey_auth_attempt" -> countAuthAttemptRecords(column, keyId, shardIndex, shardCount);
+      case "ezkey_api_key" -> countApiKeyRecords(column, keyId);
       default -> 0;
     };
   }
 
-  private int countEnrollmentRecords(String column, String keyPrefix) {
+  private int countEnrollmentRecords(String column, Long keyId) {
     return switch (column) {
       case "integration_private_key" ->
-          enrollmentRepository.countByEncryptedIntegrationPrivateKeyLike(keyPrefix);
+          enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(keyId);
       case "enrollment_proof_token" ->
-          enrollmentRepository.countByEncryptedEnrollmentProofTokenLike(keyPrefix);
+          enrollmentRepository.countByEnrollmentProofTokenEncryptionKeyId(keyId);
       default -> 0;
     };
   }
 
   private int countAuthAttemptRecords(
-      String column, String keyPrefix, Integer shardIndex, Integer shardCount) {
+      String column, Long keyId, Integer shardIndex, Integer shardCount) {
     return switch (column) {
       case "auth_attempt_proof_token" ->
-          authAttemptRepository.countByEncryptedAuthAttemptProofTokenLike(
-              keyPrefix, shardIndex, shardCount);
+          authAttemptRepository.countByAuthAttemptProofTokenEncryptionKeyId(
+              keyId, shardIndex, shardCount);
       default -> 0;
     };
   }
 
-  private int countApiKeyRecords(String column, String keyPrefix) {
+  private int countApiKeyRecords(String column, Long keyId) {
     return switch (column) {
-      case "secret_key_hash" -> apiKeyRepository.countByEncryptedSecretKeyHashLike(keyPrefix);
+      case "secret_key_hash" -> apiKeyRepository.countBySecretKeyHashEncryptionKeyId(keyId);
       default -> 0;
     };
   }
 
+  /**
+   * Fetches a page of records still encrypted with {@code batch.getOldKey()} for the batch target.
+   *
+   * <p>Uses an indexed equality lookup on the target's {@code *_encryption_key_id} column
+   * (I-2026-0029), replacing the historical {@code LIKE 'ENC:{keyId}:%'} prefix scan.
+   */
   public List<? extends Reencryptable> fetchRecords(
       ReencryptionBatch batch, Long lastRecordId, int batchSize) {
-    String keyPrefix = "ENC:" + batch.getOldKey().getKeyId() + ":%";
+    Long keyId = batch.getOldKey().getKeyId();
     Integer lastId = lastRecordId != null ? lastRecordId.intValue() : null;
     Integer shardIndex = batch.getShardIndex();
     Integer shardCount = batch.getShardCount();
 
     return switch (batch.getTargetTable()) {
       case "ezkey_enrollment" ->
-          fetchEnrollmentRecords(batch.getTargetColumn(), keyPrefix, lastId, batchSize);
+          fetchEnrollmentRecords(batch.getTargetColumn(), keyId, lastId, batchSize);
       case "ezkey_auth_attempt" ->
           fetchAuthAttemptRecords(
-              batch.getTargetColumn(), keyPrefix, lastId, batchSize, shardIndex, shardCount);
-      case "ezkey_api_key" ->
-          fetchApiKeyRecords(batch.getTargetColumn(), keyPrefix, lastId, batchSize);
+              batch.getTargetColumn(), keyId, lastId, batchSize, shardIndex, shardCount);
+      case "ezkey_api_key" -> fetchApiKeyRecords(batch.getTargetColumn(), keyId, lastId, batchSize);
       default -> List.of();
     };
   }
 
   private List<Enrollment> fetchEnrollmentRecords(
-      String column, String keyPrefix, Integer lastId, int limit) {
+      String column, Long keyId, Integer lastId, int limit) {
     return switch (column) {
       case "integration_private_key" ->
-          enrollmentRepository.findEncryptedIntegrationPrivateKeyLike(keyPrefix, lastId, limit);
+          enrollmentRepository.findByIntegrationPrivateKeyEncryptionKeyId(keyId, lastId, limit);
       case "enrollment_proof_token" ->
-          enrollmentRepository.findEncryptedEnrollmentProofTokenLike(keyPrefix, lastId, limit);
+          enrollmentRepository.findByEnrollmentProofTokenEncryptionKeyId(keyId, lastId, limit);
       default -> List.of();
     };
   }
 
   private List<AuthAttempt> fetchAuthAttemptRecords(
       String column,
-      String keyPrefix,
+      Long keyId,
       Integer lastId,
       int limit,
       Integer shardIndex,
       Integer shardCount) {
     return switch (column) {
       case "auth_attempt_proof_token" ->
-          authAttemptRepository.findEncryptedAuthAttemptProofTokenLike(
-              keyPrefix, lastId, shardIndex, shardCount, limit);
+          authAttemptRepository.findByAuthAttemptProofTokenEncryptionKeyId(
+              keyId, lastId, shardIndex, shardCount, limit);
       default -> List.of();
     };
   }
 
-  private List<ApiKey> fetchApiKeyRecords(
-      String column, String keyPrefix, Integer lastId, int limit) {
+  private List<ApiKey> fetchApiKeyRecords(String column, Long keyId, Integer lastId, int limit) {
     return switch (column) {
       case "secret_key_hash" ->
-          apiKeyRepository.findEncryptedSecretKeyHashLike(keyPrefix, lastId, limit);
+          apiKeyRepository.findBySecretKeyHashEncryptionKeyId(keyId, lastId, limit);
       default -> List.of();
     };
   }

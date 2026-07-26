@@ -299,11 +299,13 @@ public interface AuthAttemptRepository
       @Param("newStatus") AuthAttemptStatus newStatus);
 
   /**
-   * Counts auth attempts with encrypted auth attempt proof token matching the prefix pattern.
+   * Counts auth attempts whose auth attempt proof token was encrypted with the given key id.
    *
    * <p>Used for re-encryption batch operations to identify records encrypted with a specific key.
+   * Indexed equality lookup on {@code auth_attempt_proof_token_encryption_key_id}, replacing the
+   * historical {@code LIKE 'ENC:{keyId}:%'} prefix scan (I-2026-0029).
    *
-   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param keyId the encryption key id
    * @param shardIndex when {@code shardCount} is set, {@code mod(auth_attempt_id, shardCount) =
    *     shardIndex}; ignored when {@code shardCount} is null
    * @param shardCount when non-null ({@code >= 2}), restricts to that shard; null for full table
@@ -312,21 +314,23 @@ public interface AuthAttemptRepository
   @NativeQuery(
       """
       SELECT COUNT(*) FROM ezkey_auth_attempt
-      WHERE auth_attempt_proof_token LIKE :prefix
+      WHERE auth_attempt_proof_token_encryption_key_id = :keyId
         AND (:shardCount IS NULL OR mod(auth_attempt_id, :shardCount) = :shardIndex)
       """)
-  int countByEncryptedAuthAttemptProofTokenLike(
-      @Param("prefix") String prefix,
+  int countByAuthAttemptProofTokenEncryptionKeyId(
+      @Param("keyId") Long keyId,
       @Param("shardIndex") Integer shardIndex,
       @Param("shardCount") Integer shardCount);
 
   /**
-   * Finds auth attempts with encrypted auth attempt proof token matching the prefix pattern.
+   * Finds auth attempts whose auth attempt proof token was encrypted with the given key id.
    *
    * <p>Used for re-encryption batch operations to fetch records for processing. Results are ordered
-   * by auth_attempt_id for resumable batch processing.
+   * by auth_attempt_id for resumable batch processing. Indexed equality lookup on {@code
+   * auth_attempt_proof_token_encryption_key_id}, replacing the historical {@code LIKE
+   * 'ENC:{keyId}:%'} prefix scan (I-2026-0029).
    *
-   * @param prefix the encryption prefix pattern (e.g., "ENC:1:%")
+   * @param keyId the encryption key id
    * @param lastId the last processed auth attempt ID (for resumability), or null to start from
    *     beginning
    * @param shardIndex when {@code shardCount} is set, {@code mod(auth_attempt_id, shardCount) =
@@ -338,14 +342,14 @@ public interface AuthAttemptRepository
   @NativeQuery(
       """
       SELECT * FROM ezkey_auth_attempt
-      WHERE auth_attempt_proof_token LIKE :prefix
+      WHERE auth_attempt_proof_token_encryption_key_id = :keyId
         AND (:lastId IS NULL OR auth_attempt_id > :lastId)
         AND (:shardCount IS NULL OR mod(auth_attempt_id, :shardCount) = :shardIndex)
       ORDER BY auth_attempt_id ASC
       LIMIT :limit
       """)
-  List<AuthAttempt> findEncryptedAuthAttemptProofTokenLike(
-      @Param("prefix") String prefix,
+  List<AuthAttempt> findByAuthAttemptProofTokenEncryptionKeyId(
+      @Param("keyId") Long keyId,
       @Param("lastId") Integer lastId,
       @Param("shardIndex") Integer shardIndex,
       @Param("shardCount") Integer shardCount,

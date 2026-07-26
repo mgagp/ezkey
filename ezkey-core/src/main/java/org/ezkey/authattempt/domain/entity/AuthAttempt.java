@@ -77,6 +77,18 @@ public class AuthAttempt implements Reencryptable {
   @Column(name = "auth_attempt_proof_token", columnDefinition = "TEXT", nullable = false)
   private String encryptedAuthAttemptProofToken;
 
+  /**
+   * Encryption key id used to encrypt {@link #encryptedAuthAttemptProofToken}, parsed from its
+   * {@code ENC:{keyId}:} prefix.
+   *
+   * <p>Populated by {@code EncryptionEntityListener} on initial encrypt and by {@code
+   * ReencryptionRecordCipher} on re-encrypt. {@code null} when the value is stored as plaintext
+   * (encryption disabled). Enables indexed re-encryption discovery (I-2026-0029), replacing a
+   * {@code LIKE 'ENC:{keyId}:%'} scan on the ciphertext column.
+   */
+  @Column(name = "auth_attempt_proof_token_encryption_key_id")
+  private Long authAttemptProofTokenEncryptionKeyId;
+
   @Column(name = "auth_attempt_proof_token_hash", length = 128, unique = true)
   private String authAttemptProofTokenHash;
 
@@ -372,6 +384,19 @@ public class AuthAttempt implements Reencryptable {
     this.authAttemptProofTokenHash = authAttemptProofTokenHash;
   }
 
+  /**
+   * Gets the encryption key id used to encrypt {@link #encryptedAuthAttemptProofToken}
+   * (I-2026-0029).
+   *
+   * <p>No corresponding business setter: only {@code EncryptionEntityListener} and {@code
+   * ReencryptionRecordCipher} write this field, via {@link #setEncryptionKeyId(String, Long)}.
+   *
+   * @return the encryption key id, or null when the value is stored as plaintext
+   */
+  public Long getAuthAttemptProofTokenEncryptionKeyId() {
+    return authAttemptProofTokenEncryptionKeyId;
+  }
+
   public String getDeviceProofTokenHash() {
     return deviceProofTokenHash;
   }
@@ -417,6 +442,15 @@ public class AuthAttempt implements Reencryptable {
     if ("auth_attempt_proof_token".equals(columnName)) {
       this.encryptedAuthAttemptProofToken = encryptedValue;
       this.authAttemptProofToken = null; // Clear transient to force re-decryption
+      return;
+    }
+    throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
+  }
+
+  @Override
+  public void setEncryptionKeyId(String columnName, Long keyId) {
+    if ("auth_attempt_proof_token".equals(columnName)) {
+      this.authAttemptProofTokenEncryptionKeyId = keyId;
       return;
     }
     throw new IllegalArgumentException("Unknown encrypted field: " + columnName);

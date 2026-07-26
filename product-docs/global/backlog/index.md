@@ -39,7 +39,6 @@ Wave B closeout ML:
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
 | `I-2026-06-28-audit-archive-export-spi` | Audit archive export SPI: sealed-batch detachment + vendor-neutral immutable retention | `incubating` | `P3` | `core`, `admin-api`, `admin-ui`, `audit`, `infra`, `docs`, peripheral | `2026-06-28` |
-| `I-2026-0029` | Re-encryption: indexed encryption key id columns (replace LIKE scans) | `ready` | `P2` | `core`, `admin-api`, `infra`, `docs` | `2026-06-28` |
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (Spring Boot + operator UI) | `parked` | `P3` | `admin-api`, `admin-ui`, `docs`, ecosystem GitHub, `sdk-java` | `2026-07-05` |
 | `I-2026-07-05-enrollment-integration-key-cycling` | Enrollment integration key cycling via auth-exchange hooks | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `docs`, `crypto` | `2026-07-05` |
 | `I-2026-0032` | Proof token hash-only storage (tiered hardening) | `incubating` | `P1` | `core`, `auth-api`, `admin-api`, `docs`, `crypto` | `2026-07-06` |
@@ -72,6 +71,7 @@ Wave B closeout ML:
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-0029` | Re-encryption: indexed encryption key id columns (replace LIKE scans) | `2026-07-26` | TB `TB-2026-07-26-reencryption-indexed-encryption-key-id-columns`. Four `*_encryption_key_id BIGINT` columns (enrollment ×2, auth_attempt, api_key) + FKs to `ezkey_encryption_key` + composite indexes (V19); `EncryptionEntityListener`/`ReencryptionRecordCipher` write path; `ReencryptionTargetQueryService` equality lookups replace `LIKE 'ENC:{keyId}:%'`. Maven baseline, functional suite (146 tests), and elective suite (15 tests, incl. `ReencryptionFullTriggerConcurrentActivityElectiveTest`) green on clean-start; DB spot-check confirms 100% key-id population across all four columns. |
 | `I-2026-07-22-tink-keyset-serialization-api-migration` | Tink keyset serialization API migration | `2026-07-26` | `TinkKeyManager` file + DB keyset codecs migrated to `TinkJsonProtoKeysetFormat`; legacy compatibility tests green; `ApiKeyControllerTest` stubbing fixed; full install green. |
 | `TB-2026-07-26-admin-ui-help-corpus-overhaul` | Admin UI contextual help corpus — comprehensive FR/EN pass | `2026-07-26` | 17 topics (3 new); generalized role-scoped rendering (`HELP_EXTRA_SECTIONS`); French corpus-wide "tenant" vs "locataire" standardization. |
 | `TB-2026-07-25-integrated-delivery-posture` | Integrated delivery posture (Admin UI) | `2026-07-25` | Posture notices + collapsed disclosure + help + canon; SMTP half remains on `I-2026-0023`. |

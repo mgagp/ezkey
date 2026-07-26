@@ -107,6 +107,18 @@ public class Enrollment implements Reencryptable {
   @Column(name = "enrollment_proof_token", columnDefinition = "TEXT", nullable = false)
   private String encryptedEnrollmentProofToken;
 
+  /**
+   * Encryption key id used to encrypt {@link #encryptedEnrollmentProofToken}, parsed from its
+   * {@code ENC:{keyId}:} prefix.
+   *
+   * <p>Populated by {@code EncryptionEntityListener} on initial encrypt and by {@code
+   * ReencryptionRecordCipher} on re-encrypt. {@code null} when the value is stored as plaintext
+   * (encryption disabled). Enables indexed re-encryption discovery (I-2026-0029), replacing a
+   * {@code LIKE 'ENC:{keyId}:%'} scan on the ciphertext column.
+   */
+  @Column(name = "enrollment_proof_token_encryption_key_id")
+  private Long enrollmentProofTokenEncryptionKeyId;
+
   /** SHA-256 hash of the enrollment proof token for secure lookup and uniqueness validation. */
   @Column(name = "enrollment_proof_token_hash", length = 128, unique = true)
   private String enrollmentProofTokenHash;
@@ -130,6 +142,18 @@ public class Enrollment implements Reencryptable {
    */
   @Column(name = "integration_private_key", columnDefinition = "TEXT", nullable = false)
   private String encryptedIntegrationPrivateKey;
+
+  /**
+   * Encryption key id used to encrypt {@link #encryptedIntegrationPrivateKey}, parsed from its
+   * {@code ENC:{keyId}:} prefix.
+   *
+   * <p>Populated by {@code EncryptionEntityListener} on initial encrypt and by {@code
+   * ReencryptionRecordCipher} on re-encrypt. {@code null} when the value is stored as plaintext
+   * (encryption disabled). Enables indexed re-encryption discovery (I-2026-0029), replacing a
+   * {@code LIKE 'ENC:{keyId}:%'} scan on the ciphertext column.
+   */
+  @Column(name = "integration_private_key_encryption_key_id")
+  private Long integrationPrivateKeyEncryptionKeyId;
 
   /**
    * Decrypted EC P-256 private key for integration communication (transient, not persisted).
@@ -472,6 +496,32 @@ public class Enrollment implements Reencryptable {
     this.enrollmentProofTokenHash = enrollmentProofTokenHash;
   }
 
+  /**
+   * Gets the encryption key id used to encrypt {@link #encryptedIntegrationPrivateKey}
+   * (I-2026-0029).
+   *
+   * <p>No corresponding business setter: only {@code EncryptionEntityListener} and {@code
+   * ReencryptionRecordCipher} write this field, via {@link #setEncryptionKeyId(String, Long)}.
+   *
+   * @return the encryption key id, or null when the value is stored as plaintext
+   */
+  public Long getIntegrationPrivateKeyEncryptionKeyId() {
+    return integrationPrivateKeyEncryptionKeyId;
+  }
+
+  /**
+   * Gets the encryption key id used to encrypt {@link #encryptedEnrollmentProofToken}
+   * (I-2026-0029).
+   *
+   * <p>No corresponding business setter: only {@code EncryptionEntityListener} and {@code
+   * ReencryptionRecordCipher} write this field, via {@link #setEncryptionKeyId(String, Long)}.
+   *
+   * @return the encryption key id, or null when the value is stored as plaintext
+   */
+  public Long getEnrollmentProofTokenEncryptionKeyId() {
+    return enrollmentProofTokenEncryptionKeyId;
+  }
+
   public OffsetDateTime getCreatedAt() {
     return createdAt;
   }
@@ -640,6 +690,20 @@ public class Enrollment implements Reencryptable {
       case "enrollment_proof_token":
         this.encryptedEnrollmentProofToken = encryptedValue;
         this.enrollmentProofToken = null; // Clear transient to force re-decryption
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
+    }
+  }
+
+  @Override
+  public void setEncryptionKeyId(String columnName, Long keyId) {
+    switch (columnName) {
+      case "integration_private_key":
+        this.integrationPrivateKeyEncryptionKeyId = keyId;
+        break;
+      case "enrollment_proof_token":
+        this.enrollmentProofTokenEncryptionKeyId = keyId;
         break;
       default:
         throw new IllegalArgumentException("Unknown encrypted field: " + columnName);
