@@ -33,6 +33,9 @@ Define the minimum test strategy for the discovery and design slice of `I-2026-0
   - negative flow where policy requirement cannot be met, with clear user outcome.
 - **Optional scenario(s):**
   - backend policy hook simulation (if contract work starts in same slice).
+  - installation-level policy scenario (two enrollments under the same installation, one under
+    another) — deferred until installation-owned policy has a DB/Admin API representation; not
+    part of this discovery slice (see `I-2026-0001` 2026-07-26 scope update).
 - **Rationale:** validates real end-to-end behavior on Docker stack with Demo Device context.
 
 ## Elective tests
