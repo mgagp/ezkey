@@ -8,6 +8,7 @@
 - **Lane:** `D`
 - **Posture:** `single-pass`
 - **GitHub issue:** _(none — hygiene lane, see `product-docs/methodology/github-issues-workflow.md` for when a GitHub issue helps)_
+- **Pull request:** [`#412`](https://github.com/mgagp/ezkey/pull/412) (branch `hygiene/mob-017-installation-scoped-seal-key`)
 - **Created at:** `2026-07-26`
 - **Updated at:** `2026-07-26`
 - **Captured by:** Marc (Grill Me MOB-017, 2026-07-26)

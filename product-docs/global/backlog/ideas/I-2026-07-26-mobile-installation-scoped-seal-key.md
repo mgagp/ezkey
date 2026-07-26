@@ -12,7 +12,8 @@
 - **Component tags:** `mobile`
 - **Lane:** `D`
 - **Captured by:** Marc (Grill Me on MOB-017, 2026-07-26)
-- **GitHub issue:** _(none yet)_
+- **GitHub issue:** _(none — hygiene lane; see PR below)_
+- **Pull request:** [`#412`](https://github.com/mgagp/ezkey/pull/412)
 
 ## Intent
 
@@ -93,7 +94,9 @@ Grill Me 2026-07-26 (MOB-017) locked the corrected framing and the fix decision 
 cutover posture. Implemented the same day under tracer bullet
 [`TB-2026-07-26-mobile-installation-scoped-seal-key`](../TB-2026-07-26-mobile-installation-scoped-seal-key.md)
 (status `done`) as `ADR-MOB-0006`; validated with unit (225/225) and Android instrumented (7/7,
-physical device) test suites.
+physical device) test suites, plus manual multi-installation functional testing on a physical
+device. Opened as [PR #412](https://github.com/mgagp/ezkey/pull/412) on branch
+`hygiene/mob-017-installation-scoped-seal-key`.
 
 ## Links
 
