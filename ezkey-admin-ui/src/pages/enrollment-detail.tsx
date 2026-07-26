@@ -9,6 +9,7 @@ import { ReasonFieldRow } from '@/components/feature/reason-field-row';
 import { DevicePrivateKeyTierBadge } from '@/components/feature/device-private-key-tier-badge';
 import { EnrollmentStatusBadge } from '@/components/feature/enrollment-status-badge';
 import { AdminFkLink } from '@/components/feature/fk-detail-links';
+import { IntegratedDeliveryNotice } from '@/components/feature/integrated-delivery-notice';
 import { OperationalWarning } from '@/components/feature/operational-warning';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -900,9 +901,9 @@ export default function EnrollmentDetailPage() {
                 enrollment.enrollmentStatus === 'CREATED' ||
                 enrollment.enrollmentStatus === 'BOUND'
               ) && (
-                <p className="text-xs text-fg-muted leading-relaxed border-l-2 border-fg/25 pl-3 py-0.5">
+                <IntegratedDeliveryNotice summary={t('common:integratedDelivery.summary')}>
                   {t('detail.credentialsPreviewNotice')}
-                </p>
+                </IntegratedDeliveryNotice>
               )}
 
               {/* Proof Token */}

@@ -28,6 +28,8 @@ Use a simple role-aware vs role-agnostic split for operator-facing copy:
 
 When copy can become inaccurate across scopes, prefer neutral wording such as "within your scope" over tenant-only phrasing.
 
+**Integrated delivery:** showing enrollment QR and binding challenge in the Admin UI without SMTP or SMS is a **valid product posture**, not a temporary preview. In the Admin UI, the educational note is a **collapsed disclosure** by default (summary label; expand for full guidance). Operators may still split materials across their own channels; optional SMTP-assisted delivery remains a later configuration path (`V-2026-0005`, `I-2026-0023`, `TB-2026-07-25-integrated-delivery-posture`).
+
 ## Deployment operator geometries
 
 Ezkey supports **two common adopter shapes**. Both are valid product postures; neither requires platform “profile code” (`V-2026-0010`). Phase 2 profile elaboration documents which geometry applies to a given installation.

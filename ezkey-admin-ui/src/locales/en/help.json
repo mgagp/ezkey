@@ -18,7 +18,7 @@
     "login": {
       "title": "Signing in",
       "summary": "EZKey Admin uses passwordless approval on your enrolled device.",
-      "body": "Enter your admin username and submit. Approve the request in the EZKey mobile app when prompted. If you enabled “challenge code”, a two-digit code may appear here and on the device — they must match.\n\nSessions use a bearer token stored for this browser tab only.",
+      "body": "Enter your admin username and submit. Approve the request in the EZKey mobile app when prompted. If you enabled “challenge code”, a two-digit code may appear here and on the device — they must match.\n\nSessions use a bearer token stored for this browser tab only.\n\nActivation and recovery screens may show enrollment QR and binding challenge on screen (integrated delivery): Ezkey works without email or SMS adapters. You may still split those materials across your own channels for stronger assurance. Optional SMTP-assisted delivery can be configured later when the email channel is available.",
       "demoExtra": ""
     },
     "dashboard": {
@@ -57,13 +57,13 @@
     "enrollments": {
       "title": "Enrollments",
       "summary": "User-device bindings that enable MFA authentication for an integration.",
-      "body": "Each enrollment links one user's device to an integration. The lifecycle goes through Created → Bound → Verified. Only Verified + active enrollments can process authentication attempts.\n\nAn enrollment is \"operational\" when it is Verified, active, and its full parent chain (integration and tenant) is also active. If an integration is retired or a tenant is deactivated, all their enrollments show an operational warning even though their own status is Verified.\n\nUse status and active filters to narrow the list. A warning triangle in the status column indicates a parent-chain degradation.",
+      "body": "Each enrollment links one user's device to an integration. The lifecycle goes through Created → Bound → Verified. Only Verified + active enrollments can process authentication attempts.\n\nAn enrollment is \"operational\" when it is Verified, active, and its full parent chain (integration and tenant) is also active. If an integration is retired or a tenant is deactivated, all their enrollments show an operational warning even though their own status is Verified.\n\nUse status and active filters to narrow the list. A warning triangle in the status column indicates a parent-chain degradation.\n\nIntegrated delivery: create and detail screens may show QR and binding challenge in the Admin UI so the instance works without email or SMS. Splitting those materials across your own channels (screenshot, SMS, chat) is a valid operator practice. Optional SMTP-assisted delivery can be configured later when the email channel is available.",
       "demoExtra": ""
     },
     "enrollment-detail": {
       "title": "Enrollment detail",
       "summary": "One user-device binding, its lifecycle actions, and associated cryptographic material.",
-      "body": "This screen shows the enrollment status, contact information, key tier, and proof token. Test Authentication lets you trigger a live MFA request to the enrolled device — the button is disabled when the enrollment is not operational.\n\nDeactivating suspends authentication without permanent changes; reactivating restores it immediately. Revoking is permanent and requires a reason — the device key is invalidated and a new enrollment must be created. Deleting completely removes the record and also requires a reason.\n\nRevoke is preferred over delete for security-motivated actions because it preserves a complete audit trail. Delete should be reserved for test data cleanup or erasure requests.",
+      "body": "This screen shows the enrollment status, contact information, key tier, and proof token. Test Authentication lets you trigger a live MFA request to the enrolled device — the button is disabled when the enrollment is not operational.\n\nDeactivating suspends authentication without permanent changes; reactivating restores it immediately. Revoking is permanent and requires a reason — the device key is invalidated and a new enrollment must be created. Deleting completely removes the record and also requires a reason.\n\nRevoke is preferred over delete for security-motivated actions because it preserves a complete audit trail. Delete should be reserved for test data cleanup or erasure requests.\n\nWhen bind material is still available, integrated delivery shows proof token, QR, and binding challenge here without requiring email or SMS adapters. You may split those materials across your own channels for stronger assurance.",
       "demoExtra": ""
     },
     "api-keys": {
@@ -81,7 +81,7 @@
     "admins": {
       "title": "Administrators",
       "summary": "Global and Tenant administrators who manage Ezkey via the Admin UI.",
-      "body": "Global Admins manage instance-level resources (encryption keys, all tenants). Tenant Admins are scoped to one tenant and manage its integrations, enrollments, and API keys.\n\nEach admin authenticates using MFA via their enrolled device. A Tenant Admin's access depends on their parent tenant being active — if the tenant is deactivated, the admin is shown as not operational even if their account is marked active.\n\nDeactivating an admin blocks their login without deleting their account. Use this for offboarding or temporary suspension. A reason is recorded for the audit trail.",
+      "body": "Global Admins manage instance-level resources (encryption keys, all tenants). Tenant Admins are scoped to one tenant and manage its integrations, enrollments, and API keys.\n\nEach admin authenticates using MFA via their enrolled device. A Tenant Admin's access depends on their parent tenant being active — if the tenant is deactivated, the admin is shown as not operational even if their account is marked active.\n\nDeactivating an admin blocks their login without deleting their account. Use this for offboarding or temporary suspension. A reason is recorded for the audit trail.\n\nOnboarding dialogs use integrated delivery: proof token, QR, and binding challenge appear in the Admin UI without email or SMS adapters. Splitting those materials across your own channels remains a valid practice; optional SMTP-assisted delivery can be configured later when the email channel is available.",
       "demoExtra": ""
     },
     "encryption-keys": {

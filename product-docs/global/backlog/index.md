@@ -34,7 +34,7 @@ Wave B closeout ML:
 | `I-2026-0018` | Profile generator skill: elaboration document to runtime configs | `captured` | `P2` | `docs (product-docs)`, `methodology`, `skills`, `infra` | `2026-05-08` |
 | `I-2026-0020` | Integration ecosystem shell catalog & publish workflow | `captured` | `P2` | `docs`, GitHub ecosystem, `product-docs (traceability)` | `2026-05-11` |
 | `I-2026-0022` | Admin API scheduled jobs catalog (living document) | `incubating` | `P2` | `admin-api`, `docs` | `2026-05-24` |
-| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
+| `I-2026-0023` | Email channel R1: optional operator-triggered delivery | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-07-25` |
 | `I-2026-0024` | SMS channel R1: HTTP adapter SPI + optional operator send | `incubating` | `P2` | `admin-api`, `admin-ui`, `infra`, `docs` | `2026-05-24` |
 | `I-2026-0025` | Auth API protocol capability versioning | `incubating` | `P2` | `auth-api`, `mobile`, `admin-api`, `docs` | `2026-05-24` |
 | `I-2026-05-31-mobile-android-stack-followups` | Mobile Android stack follow-ups (post-#177) | `incubating` | `P2` | `mobile`, `android`, `ezkey-tests` | `2026-05-31` |
@@ -71,6 +71,7 @@ Wave B closeout ML:
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `TB-2026-07-25-integrated-delivery-posture` | Integrated delivery posture (Admin UI) | `2026-07-25` | Posture notices + collapsed disclosure + help + canon; SMTP half remains on `I-2026-0023`. |
 | `I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence` | Audit-log peripheral INSERT-only via sequence pre-allocation for the HMAC seal | `2026-07-18` | TB `TB-2026-07-18-audit-log-insert-only-hmac-seal`. Single-INSERT seal; peripherals SELECT+INSERT only; functional + `AuditIntegrityElectiveTest` + `verify-grants.sh` green. Resolves `TB-2026-07-16` follow-up. |
 | `I-2026-0021` | PostgreSQL application role and table permissions matrix | `2026-07-18` | Commit `568f1423` / TB `TB-2026-07-16-postgresql-application-role-split`. `ezkey_migrate` + three runtime roles; Docker/grants wiring; clean-start, grant verification, standard/elective suites, and real-mobile flow passed. |
 | `I-2026-07-15-sec-021-recovery-token-privilege-boundary` | SEC-021 recovery token privilege boundary | `2026-07-15` | `#357` / TB `TB-2026-07-15-sec-021-recovery-token-privilege-boundary`. Purpose `SESSION`\|`RECOVERY`; session auth rejects recovery; reset + deactivate-after-use. |

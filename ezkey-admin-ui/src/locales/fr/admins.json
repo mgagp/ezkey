@@ -38,7 +38,7 @@
     "title": "Intégration — {{username}}",
     "errorLoad": "Impossible de charger les identifiants d'intégration.",
     "alertShare": "Partagez ces identifiants avec l'administrateur pour configurer l'application mobile EZKey.",
-    "previewNotice": "Préversion technique : cette boîte affiche le jeton de preuve, le défi de liaison et le code QR ensemble pour faciliter la démonstration. Ezkey n'envoie pas encore automatiquement les courriels ou les SMS dans ce flux. Cette instance hébergée sert de démonstrateur, pas comme référence de sécurité de production. En attendant des intégrations dédiées, capturez le QR avec votre outil habituel, envoyez l'image au nouvel administrateur par votre canal habituel, puis transmettez le défi à six chiffres dans un SMS séparé selon votre processus opérateur.",
+    "previewNotice": "Livraison intégrée : cette boîte affiche le jeton de preuve, le défi de liaison et le code QR dans l'interface d'administration pour qu'Ezkey fonctionne sans adaptateur courriel ni SMS. Pour une assurance plus forte, vous pouvez les séparer sur vos propres canaux (par exemple, envoyer une capture du QR par courriel et le défi à six chiffres par SMS ou messagerie). Une livraison assistée par SMTP pourra être configurée plus tard lorsque le canal courriel sera disponible.",
     "enrollmentProofToken": "Jeton de preuve d'enrôlement",
     "copyToken": "Copier le jeton",
     "copied": "Copié !",
