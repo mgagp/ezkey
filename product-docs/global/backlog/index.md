@@ -57,6 +57,7 @@ Wave B closeout ML:
 | `I-2026-07-18-authentication-wait-evolution` | Authentication wait evolution | `incubating` | `P2` | `core`, `admin-api`, `integration-api`, `sdk`, `infra`, `docs` | `2026-07-18` |
 | `I-2026-07-25-mobile-certificate-pinning-middle-path` | Mobile certificate pinning middle path | `incubating` | `P2` | `mobile`, `auth-api`, `admin-api`, `docs`, `security` | `2026-07-25` |
 | `I-2026-07-25-reencryption-batch-resilience-and-ops` | Re-encryption batch resilience and ops hardening | `incubating` | `P2` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `security` | `2026-07-25` |
+| `I-2026-07-26-tink-native-keyset-blob-envelope` | Tink-native keyset blob envelope | `incubating` | `P2` | `core-security`, `core`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-26` |
 
 ## Tracer bullets (draft / ready / in progress)
 
