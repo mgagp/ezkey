@@ -62,6 +62,7 @@ Wave B closeout ML:
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
+| `TB-2026-07-26-admin-ui-help-corpus-overhaul` | Admin UI contextual help corpus — comprehensive FR/EN pass | `draft` | _(none — direct capture)_ |
 | `TB-2026-07-12` | Security pentest curated MVP | `draft` | `I-2026-07-12-security-pentest-curated-hygiene` |
 | `TB-2026-07-11` | Java doctor-curated curator MVP | `active` | `I-2026-07-11-java-doctor-curated-hygiene` (#326) |
 | `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `active` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
