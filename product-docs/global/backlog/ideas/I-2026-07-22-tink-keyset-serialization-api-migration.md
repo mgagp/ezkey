@@ -3,15 +3,16 @@
 ## Metadata
 
 - **ID:** `I-2026-07-22-tink-keyset-serialization-api-migration`
-- **Status:** `incubating`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-07-22`
-- **Updated at:** `2026-07-22`
-- **Last reviewed at:** `2026-07-22`
+- **Updated at:** `2026-07-26`
+- **Last reviewed at:** `2026-07-26`
 - **Progression markers:** `tink-deprecation-migration`, `crypto-at-rest`
 - **Component tags:** `core-security`, `crypto`, `docs`
 - **Lane:** `D` (security / hardening)
 - **Captured by:** Marc
+- **Completed at:** `2026-07-26`
 - **Assessment trace:** [`docs/security/java-tink-deprecated-api-assessment-2026-07.md`](../../../../docs/security/java-tink-deprecated-api-assessment-2026-07.md)
 
 ## Intent
@@ -67,23 +68,57 @@ The same investigation also showed that the obvious `associated data` / `noSecre
 public surface are deprecated as well, and the overloads that accept `Configuration` are not public
 from our code path. That means this item is a **real migration problem**, not a cosmetic cleanup.
 
+Follow-up inspection on 2026-07-26 found the public configuration-aware replacement surface:
+
+- `TinkJsonProtoKeysetFormat.parseEncryptedKeyset(String, Aead, byte[], Configuration)`
+- `TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(KeysetHandle, Aead, byte[], Configuration)`
+
+This path preserves the JSON encrypted-keyset file representation and keeps the current master-AEAD
+encryption-at-rest model. The no-`Configuration` variants are also deprecated; Ezkey must use the
+explicit `RegistryConfiguration.get()` overloads.
+
 ## Questions to resolve before implementation
 
-1. What is the intended public migration path in Tink for encrypted keyset persistence from our
-   module boundary?
-2. Can Ezkey keep the current encryption-at-rest model without introducing a new public API leak or
-   a semantically weaker storage mode?
-3. If the answer is “not cleanly”, do we pin the current Tink version and document the exception, or
-   do we design a wrapper/adapter layer in Ezkey for the persistence path?
+1. ~~What is the intended public migration path in Tink for encrypted keyset persistence from our
+  module boundary?~~ Use `TinkJsonProtoKeysetFormat` encrypted-keyset APIs with explicit
+  `RegistryConfiguration.get()`.
+2. ~~Can Ezkey keep the current encryption-at-rest model without introducing a new public API leak
+  or a semantically weaker storage mode?~~ Yes for the file path: the keyset remains a JSON
+  encrypted keyset protected by the existing master AEAD and empty associated data.
+3. ~~Should the database `KeysetBlob` codec also move away from deprecated JSON reader/writer
+  classes?~~ Yes. The DB blob keeps its current outer `masterAead.encrypt(cleartextJson)` envelope,
+  but the cleartext JSON keyset serialization now uses `TinkJsonProtoKeysetFormat`.
+4. Should the database `KeysetBlob` representation eventually store Tink's encrypted-keyset
+  envelope directly instead of the current outer `masterAead.encrypt(cleartextJson)` wrapper? This
+  remains a possible future PoC/design question, not required for the deprecation migration.
+
+## Implementation note (2026-07-26)
+
+- `TinkKeyManager` file load/save now uses the non-deprecated, configuration-aware
+  `TinkJsonProtoKeysetFormat` encrypted-keyset APIs.
+- The associated data remains empty to preserve the old `KeysetHandle.read/write(..., masterAead)`
+  semantics.
+- Database `KeysetBlob` load/save keeps the existing outer master-AEAD envelope, but replaces
+  deprecated `JsonKeysetReader` / `JsonKeysetWriter` usage with `TinkJsonProtoKeysetFormat` cleartext
+  keyset APIs.
+- `TinkKeyManagerConcurrencyTest` includes compatibility characterization tests for:
+  - legacy encrypted JSON keyset files written with the old API;
+  - legacy DB blobs containing outer-encrypted cleartext JSON keysets written with the old API.
+- Targeted validation passed with 5 tests:
+  `mvn -pl ezkey-core-security -am -Dtest=TinkKeyManagerConcurrencyTest -Dsurefire.failIfNoSpecifiedTests=false test`.
+- Production deprecation check passed for `ezkey-core-security`:
+  `mvn -pl ezkey-core-security -am -DskipTests -Dmaven.compiler.showDeprecation=true clean compile`.
+- Formatting and Checkstyle passed (`mvn spotless:apply`, `mvn checkstyle:check`).
+- `ApiKeyControllerTest` Mockito/JPA Criteria stubbing was corrected so test compilation stays
+  compatible with the full reactor install path.
+- Full reactor install passed: `mvn install -DskipTests`.
 
 ## Promotion notes
 
-- This item should stay `incubating` until a non-deprecated, public, and behavior-preserving path is
-  identified.
-- Promote to `ready` when the replacement mechanism is chosen and the change slice is small enough
-  for a bounded PR.
-- If the investigation reveals a genuine design gap in Tink's public surface, this item may need a
-  short design-pack / tracer-bullet step before implementation.
+- Closed on this `I-*` because the migration stayed bounded and behavior-preserving. No `TB-*` was
+  required.
+- A separate PoC/design slice may be opened later if Ezkey wants to change the database keyset blob
+  envelope itself, rather than only the deprecated Tink serialization APIs.
 
 ## Links
 

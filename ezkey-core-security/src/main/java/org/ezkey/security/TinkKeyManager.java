@@ -1,22 +1,18 @@
 package org.ezkey.security;
 
 import com.google.crypto.tink.Aead;
-import com.google.crypto.tink.JsonKeysetReader;
-import com.google.crypto.tink.JsonKeysetWriter;
+import com.google.crypto.tink.InsecureSecretKeyAccess;
 import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KeysetManager;
-import com.google.crypto.tink.KeysetReader;
-import com.google.crypto.tink.KeysetWriter;
 import com.google.crypto.tink.RegistryConfiguration;
+import com.google.crypto.tink.TinkJsonProtoKeysetFormat;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.subtle.AesGcmJce;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -66,6 +62,7 @@ import org.springframework.stereotype.Component;
 public class TinkKeyManager implements KeyManagementOperations {
 
   private static final Logger logger = LoggerFactory.getLogger(TinkKeyManager.class);
+  private static final byte[] KEYSET_ASSOCIATED_DATA = new byte[0];
 
   private final TinkProperties properties;
   private final KeysetBlobRepository keysetBlobRepository;
@@ -679,9 +676,11 @@ public class TinkKeyManager implements KeyManagementOperations {
       throw new IllegalStateException("Keyset file is empty: " + normalizedPath);
     }
 
-    try (FileInputStream fis = new FileInputStream(keysetFile)) {
-      KeysetReader reader = JsonKeysetReader.withInputStream(fis);
-      KeysetHandle handle = KeysetHandle.read(reader, masterAead);
+    try {
+      String encryptedKeysetJson = Files.readString(keysetFile.toPath(), StandardCharsets.UTF_8);
+      KeysetHandle handle =
+          TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
+              encryptedKeysetJson, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
 
       long signedPrimaryKeyId = handle.getPrimary().getId();
       long unsignedPrimaryKeyId = toUnsignedLong(signedPrimaryKeyId);
@@ -715,10 +714,10 @@ public class TinkKeyManager implements KeyManagementOperations {
       }
     }
 
-    try (FileOutputStream fos = new FileOutputStream(keysetFile)) {
-      KeysetWriter writer = JsonKeysetWriter.withOutputStream(fos);
-      newKeyset.write(writer, masterAead);
-    }
+    String encryptedKeysetJson =
+        TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
+            newKeyset, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
+    Files.writeString(keysetFile.toPath(), encryptedKeysetJson, StandardCharsets.UTF_8);
 
     if (!isWindows()) {
       setSecureFilePermissions(keysetFile.toPath());
@@ -1017,10 +1016,10 @@ public class TinkKeyManager implements KeyManagementOperations {
       }
     }
 
-    try (FileOutputStream fos = new FileOutputStream(keysetFile)) {
-      KeysetWriter writer = JsonKeysetWriter.withOutputStream(fos);
-      handle.write(writer, masterAead);
-    }
+    String encryptedKeysetJson =
+        TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
+            handle, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
+    Files.writeString(keysetFile.toPath(), encryptedKeysetJson, StandardCharsets.UTF_8);
 
     if (!isWindows()) {
       setSecureFilePermissions(keysetFile.toPath());
@@ -1142,8 +1141,8 @@ public class TinkKeyManager implements KeyManagementOperations {
       byte[] decryptedJson = masterAead.decrypt(encryptedData, null);
       String keysetJson = new String(decryptedJson, StandardCharsets.UTF_8);
 
-      KeysetReader reader = JsonKeysetReader.withString(keysetJson);
-      this.keysetHandle = com.google.crypto.tink.CleartextKeysetHandle.read(reader);
+      this.keysetHandle =
+          TinkJsonProtoKeysetFormat.parseKeyset(keysetJson, InsecureSecretKeyAccess.get());
       this.databaseKeysetVersion = keysetBlob.getVersion() != null ? keysetBlob.getVersion() : 0;
 
       long signedPrimaryKeyId = keysetHandle.getPrimary().getId();
@@ -1186,11 +1185,9 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
 
     try {
-      java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-      com.google.crypto.tink.CleartextKeysetHandle.write(
-          keysetHandle, JsonKeysetWriter.withOutputStream(baos));
-      byte[] keysetJson = baos.toByteArray();
-      byte[] encryptedData = masterAead.encrypt(keysetJson, null);
+      String keysetJson =
+          TinkJsonProtoKeysetFormat.serializeKeyset(keysetHandle, InsecureSecretKeyAccess.get());
+      byte[] encryptedData = masterAead.encrypt(keysetJson.getBytes(StandardCharsets.UTF_8), null);
 
       KeysetBlob keysetBlob =
           keysetBlobRepository.findKeyset().orElse(new KeysetBlob(encryptedData, updatedBy));

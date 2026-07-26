@@ -398,74 +398,77 @@ class ApiKeyControllerTest {
       assertEquals(1, response.getBody().getContent().size());
     }
 
-      @Test
-      @DisplayName("Should scope listAllApiKeys to tenant integrations for TenantAdmin")
-      void shouldScopeListAllApiKeysForTenantAdmin() {
-        // Arrange
-        EzkeyAdmin tenantAdmin = createMockAdmin();
-        tenantAdmin.setAdminType(EzkeyAdmin.AdminType.TENANT_ADMIN);
-        org.ezkey.integration.domain.entity.Tenant tenant =
+    @Test
+    @DisplayName("Should scope listAllApiKeys to tenant integrations for TenantAdmin")
+    void shouldScopeListAllApiKeysForTenantAdmin() {
+      // Arrange
+      EzkeyAdmin tenantAdmin = createMockAdmin();
+      tenantAdmin.setAdminType(EzkeyAdmin.AdminType.TENANT_ADMIN);
+      org.ezkey.integration.domain.entity.Tenant tenant =
           new org.ezkey.integration.domain.entity.Tenant();
-        tenant.setTenantId(777);
-        tenantAdmin.setTenant(tenant);
-        when(adminRepository.findById(1)).thenReturn(Optional.of(tenantAdmin));
+      tenant.setTenantId(777);
+      tenantAdmin.setTenant(tenant);
+      when(adminRepository.findById(1)).thenReturn(Optional.of(tenantAdmin));
 
-        List<ApiKey> mockApiKeys = Collections.singletonList(createMockApiKey(1));
-        Pageable pageable = PageRequest.of(0, 20);
-        @SuppressWarnings("unchecked")
-        org.springframework.data.jpa.domain.Specification<ApiKey>[] capturedSpec =
+      List<ApiKey> mockApiKeys = Collections.singletonList(createMockApiKey(1));
+      Pageable pageable = PageRequest.of(0, 20);
+      @SuppressWarnings("unchecked")
+      org.springframework.data.jpa.domain.Specification<ApiKey>[] capturedSpec =
           new org.springframework.data.jpa.domain.Specification[1];
-        when(apiKeyRepository.findAll(
-            isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
+      when(apiKeyRepository.findAll(
+              isA(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
           .thenAnswer(
-            invocation -> {
-            capturedSpec[0] = invocation.getArgument(0);
-            return new PageImpl<>(mockApiKeys, pageable, 1);
-            });
+              invocation -> {
+                capturedSpec[0] = invocation.getArgument(0);
+                return new PageImpl<>(mockApiKeys, pageable, 1);
+              });
 
-        // Act
-        ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =
+      // Act
+      ResponseEntity<org.springframework.data.domain.Page<ApiKeyResponseDto>> response =
           controller.listAllApiKeys(null, null, null, pageable);
 
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().getContent().size());
-        assertNotNull(capturedSpec[0]);
+      // Assert
+      assertEquals(HttpStatus.OK, response.getStatusCode());
+      assertNotNull(response.getBody());
+      assertEquals(1, response.getBody().getContent().size());
+      assertNotNull(capturedSpec[0]);
 
-        jakarta.persistence.criteria.CriteriaBuilder cb =
+      jakarta.persistence.criteria.CriteriaBuilder cb =
           org.mockito.Mockito.mock(jakarta.persistence.criteria.CriteriaBuilder.class);
-        jakarta.persistence.criteria.CriteriaQuery<?> query =
+      jakarta.persistence.criteria.CriteriaQuery<?> query =
           org.mockito.Mockito.mock(jakarta.persistence.criteria.CriteriaQuery.class);
-        @SuppressWarnings("unchecked")
-        jakarta.persistence.criteria.Root<ApiKey> root =
+      @SuppressWarnings("unchecked")
+      jakarta.persistence.criteria.Root<ApiKey> root =
           org.mockito.Mockito.mock(jakarta.persistence.criteria.Root.class);
-        @SuppressWarnings("unchecked")
-        jakarta.persistence.criteria.Path<Integration> integrationPath =
+      @SuppressWarnings("unchecked")
+      jakarta.persistence.criteria.Path<Integration> integrationPath =
           org.mockito.Mockito.mock(jakarta.persistence.criteria.Path.class);
-        @SuppressWarnings("unchecked")
-        jakarta.persistence.criteria.Path<org.ezkey.integration.domain.entity.Tenant> tenantPath =
+      @SuppressWarnings("unchecked")
+      jakarta.persistence.criteria.Path<org.ezkey.integration.domain.entity.Tenant> tenantPath =
           org.mockito.Mockito.mock(jakarta.persistence.criteria.Path.class);
-        @SuppressWarnings("unchecked")
-        jakarta.persistence.criteria.Path<Integer> tenantIdPath =
+      @SuppressWarnings("unchecked")
+      jakarta.persistence.criteria.Path<Integer> tenantIdPath =
           org.mockito.Mockito.mock(jakarta.persistence.criteria.Path.class);
-        jakarta.persistence.criteria.Predicate tenantPredicate =
+      jakarta.persistence.criteria.Predicate tenantPredicate =
           org.mockito.Mockito.mock(jakarta.persistence.criteria.Predicate.class);
 
-        org.mockito.Mockito.when(root.get("integration")).thenReturn(integrationPath);
-        org.mockito.Mockito.when(integrationPath.get("tenant")).thenReturn(tenantPath);
-        org.mockito.Mockito.when(tenantPath.get("tenantId")).thenReturn(tenantIdPath);
-        org.mockito.Mockito.when(cb.equal(tenantIdPath, 777)).thenReturn(tenantPredicate);
-        org.mockito.Mockito.when(cb.and(org.mockito.ArgumentMatchers.<jakarta.persistence.criteria.Predicate>any()))
+      org.mockito.Mockito.when(root.<Integration>get("integration")).thenReturn(integrationPath);
+      org.mockito.Mockito.when(
+              integrationPath.<org.ezkey.integration.domain.entity.Tenant>get("tenant"))
+          .thenReturn(tenantPath);
+      org.mockito.Mockito.when(tenantPath.<Integer>get("tenantId")).thenReturn(tenantIdPath);
+      org.mockito.Mockito.when(cb.equal(tenantIdPath, 777)).thenReturn(tenantPredicate);
+      org.mockito.Mockito.when(
+              cb.and(org.mockito.ArgumentMatchers.<jakarta.persistence.criteria.Predicate>any()))
           .thenReturn(tenantPredicate);
 
-        capturedSpec[0].toPredicate(root, query, cb);
+      capturedSpec[0].toPredicate(root, query, cb);
 
-        org.mockito.Mockito.verify(root).get("integration");
-        org.mockito.Mockito.verify(integrationPath).get("tenant");
-        org.mockito.Mockito.verify(tenantPath).get("tenantId");
-        org.mockito.Mockito.verify(cb).equal(tenantIdPath, 777);
-      }
+      org.mockito.Mockito.verify(root).get("integration");
+      org.mockito.Mockito.verify(integrationPath).get("tenant");
+      org.mockito.Mockito.verify(tenantPath).get("tenantId");
+      org.mockito.Mockito.verify(cb).equal(tenantIdPath, 777);
+    }
   }
 
   @Nested

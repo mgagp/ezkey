@@ -57,6 +57,7 @@ Wave B closeout ML:
 | `I-2026-07-18-authentication-wait-evolution` | Authentication wait evolution | `incubating` | `P2` | `core`, `admin-api`, `integration-api`, `sdk`, `infra`, `docs` | `2026-07-18` |
 | `I-2026-07-25-mobile-certificate-pinning-middle-path` | Mobile certificate pinning middle path | `incubating` | `P2` | `mobile`, `auth-api`, `admin-api`, `docs`, `security` | `2026-07-25` |
 | `I-2026-07-25-reencryption-batch-resilience-and-ops` | Re-encryption batch resilience and ops hardening | `incubating` | `P2` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `security` | `2026-07-25` |
+| `I-2026-07-26-tink-native-keyset-blob-envelope` | Tink-native keyset blob envelope | `incubating` | `P2` | `core-security`, `core`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-26` |
 
 ## Tracer bullets (draft / ready / in progress)
 
@@ -71,6 +72,7 @@ Wave B closeout ML:
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-07-22-tink-keyset-serialization-api-migration` | Tink keyset serialization API migration | `2026-07-26` | `TinkKeyManager` file + DB keyset codecs migrated to `TinkJsonProtoKeysetFormat`; legacy compatibility tests green; `ApiKeyControllerTest` stubbing fixed; full install green. |
 | `TB-2026-07-26-admin-ui-help-corpus-overhaul` | Admin UI contextual help corpus — comprehensive FR/EN pass | `2026-07-26` | 17 topics (3 new); generalized role-scoped rendering (`HELP_EXTRA_SECTIONS`); French corpus-wide "tenant" vs "locataire" standardization. |
 | `TB-2026-07-25-integrated-delivery-posture` | Integrated delivery posture (Admin UI) | `2026-07-25` | Posture notices + collapsed disclosure + help + canon; SMTP half remains on `I-2026-0023`. |
 | `I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence` | Audit-log peripheral INSERT-only via sequence pre-allocation for the HMAC seal | `2026-07-18` | TB `TB-2026-07-18-audit-log-insert-only-hmac-seal`. Single-INSERT seal; peripherals SELECT+INSERT only; functional + `AuditIntegrityElectiveTest` + `verify-grants.sh` green. Resolves `TB-2026-07-16` follow-up. |

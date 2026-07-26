@@ -113,6 +113,7 @@ diff. Do **not** remove peripheral INSERT/UPDATE before the readiness path exist
 - Role matrix: [`docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md`](../../../../docs/DATABASE_ROLE_PERMISSIONS_MATRIX.md)
 - Related TB: [`../TB-2026-07-16-postgresql-application-role-split.md`](../TB-2026-07-16-postgresql-application-role-split.md)
 - Related idea (DB roles): [`I-2026-0021-postgresql-application-role-permissions-matrix.md`](I-2026-0021-postgresql-application-role-permissions-matrix.md)
+- Related idea (keyset blob format): [`I-2026-07-26-tink-native-keyset-blob-envelope.md`](I-2026-07-26-tink-native-keyset-blob-envelope.md)
 - Sibling open follow-up on same TB: audit-log HMAC INSERT-only redesign (preferred sequence allocate)
 - Code: `org.ezkey.security.TinkKeyManager` (`saveKeysetToDatabase`, startup `STARTUP_FILE_SYNC` /
   `STARTUP_NEW_KEYSET`); entity `KeysetBlob` (singleton id=1)
