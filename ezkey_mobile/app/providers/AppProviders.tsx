@@ -4,8 +4,10 @@ import {NavigationContainer} from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {AppNavigator} from '../navigation';
 import {AppErrorBoundary} from '../components/AppErrorBoundary';
+import {UnsupportedOsScreen} from '../screens/UnsupportedOs';
 import {colors} from '../config/theme';
 import {initializeI18n} from '../i18n';
+import {isAndroidOsSupported} from '../utils/androidOsSupport';
 
 const createQueryClient = () =>
   new QueryClient({
@@ -20,6 +22,7 @@ const createQueryClient = () =>
 export const AppProviders: React.FC = () => {
   const [queryClient] = useState(createQueryClient);
   const [ready, setReady] = useState(false);
+  const osSupported = isAndroidOsSupported();
 
   useEffect(() => {
     let active = true;
@@ -42,16 +45,18 @@ export const AppProviders: React.FC = () => {
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        {ready ? (
-          <NavigationContainer>
-            <AppNavigator />
-          </NavigationContainer>
-        ) : (
+        {!ready ? (
           <View
             style={styles.loadingContainer}
             accessibilityLabel="Loading application shell">
             <ActivityIndicator color={colors.primaryLight} accessibilityLabel="Loading" />
           </View>
+        ) : !osSupported ? (
+          <UnsupportedOsScreen />
+        ) : (
+          <NavigationContainer>
+            <AppNavigator />
+          </NavigationContainer>
         )}
       </QueryClientProvider>
     </AppErrorBoundary>

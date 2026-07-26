@@ -107,6 +107,14 @@ export const resources = {
         footer:
           'Ezkey Mobile is intentionally aiming for practical, explicit security improvements rather than over-claiming perfection. Future work will continue in that same spirit.',
       },
+      unsupportedOs: {
+        accessibilityLabel: 'Unsupported Android version',
+        title: 'Android version not supported',
+        body:
+          'Ezkey Authenticator requires Android 12 or newer (API {{minSdk}}+). This device runs an older version, so MFA on this phone is out of support.',
+        nextStep:
+          'Update Android on this device, or use another phone that meets the requirement.',
+      },
       locale: {
         title: 'Language',
         intro: 'Choose the app language. Changes are saved and applied immediately.',
@@ -462,6 +470,14 @@ export const resources = {
         },
         footer:
           'Ezkey Mobile vise volontairement des améliorations de sécurité pratiques et explicites plutôt que des promesses excessives. La suite du travail restera dans ce même esprit.',
+      },
+      unsupportedOs: {
+        accessibilityLabel: 'Version Android non prise en charge',
+        title: 'Version Android non prise en charge',
+        body:
+          'Ezkey Authenticator nécessite Android 12 ou plus récent (API {{minSdk}}+). Cet appareil utilise une version plus ancienne ; la MFA n’est donc pas prise en charge sur ce téléphone.',
+        nextStep:
+          'Mettez à jour Android sur cet appareil, ou utilisez un autre téléphone qui répond à cette exigence.',
       },
       locale: {
         title: 'Langue',
