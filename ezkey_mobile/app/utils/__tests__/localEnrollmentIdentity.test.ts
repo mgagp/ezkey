@@ -9,10 +9,32 @@
  */
 
 import {
+  deriveInstallationScopeId,
   deriveLocalEnrollmentId,
   resolveServerEnrollmentId,
 } from '../localEnrollmentIdentity';
 import type {StoredEnrollment} from '../../services/storage/enrollmentStorage';
+
+describe('deriveInstallationScopeId', () => {
+  it('produces distinct scope ids for distinct installations', () => {
+    const a = deriveInstallationScopeId('https://auth-a.example.com');
+    const b = deriveInstallationScopeId('https://auth-b.example.com');
+    expect(a).not.toBe(b);
+    expect(a).toMatch(/^i[0-9a-f]{16}$/);
+    expect(b).toMatch(/^i[0-9a-f]{16}$/);
+  });
+
+  it('is stable for the same installation id and matches the local enrollment id prefix', () => {
+    const zone = 'https://ezkey.acme.com';
+    const scope = deriveInstallationScopeId(zone);
+    const localId = deriveLocalEnrollmentId(zone, 1);
+    expect(localId).toBe(`${scope}_e1`);
+  });
+
+  it('rejects empty input', () => {
+    expect(() => deriveInstallationScopeId('')).toThrow();
+  });
+});
 
 describe('deriveLocalEnrollmentId', () => {
   it('produces distinct local ids for the same server enrollment on two installations', () => {

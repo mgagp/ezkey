@@ -49,9 +49,9 @@ describe('secureStorage', () => {
       nativeCryptoLinked: true,
     });
 
-    await storage.setItem('secret-key', 'secret-value');
+    await storage.setItem('secret-key', 'secret-value', 'i-scope-1');
 
-    expect(crypto.sealSecret).toHaveBeenCalledWith('secret-key', 'secret-value');
+    expect(crypto.sealSecret).toHaveBeenCalledWith('i-scope-1', 'secret-key', 'secret-value');
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/sealed-secret.secret-key',
       '{"version":1,"algorithm":"AES/GCM/NoPadding"}',
@@ -77,9 +77,10 @@ describe('secureStorage', () => {
       nativeCryptoLinked: true,
     });
 
-    await expect(storage.getItem('secret-key')).resolves.toBe('secret-value');
+    await expect(storage.getItem('secret-key', 'i-scope-1')).resolves.toBe('secret-value');
 
     expect(crypto.unsealSecret).toHaveBeenCalledWith(
+      'i-scope-1',
       'secret-key',
       '{"version":1,"algorithm":"AES/GCM/NoPadding"}',
     );
@@ -102,9 +103,9 @@ describe('secureStorage', () => {
       nativeCryptoLinked: true,
     });
 
-    await expect(storage.getItem('secret-key')).resolves.toBe('legacy-value');
+    await expect(storage.getItem('secret-key', 'i-scope-1')).resolves.toBe('legacy-value');
 
-    expect(crypto.sealSecret).toHaveBeenCalledWith('secret-key', 'legacy-value');
+    expect(crypto.sealSecret).toHaveBeenCalledWith('i-scope-1', 'secret-key', 'legacy-value');
     expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/sealed-secret.secret-key',
       '{"version":1,"algorithm":"AES/GCM/NoPadding"}',
@@ -128,8 +129,8 @@ describe('secureStorage', () => {
       nativeCryptoLinked: true,
     });
 
-    await storage.setItem('secret-key', 'ios-value');
-    await expect(storage.getItem('secret-key')).resolves.toBe('ios-value');
+    await storage.setItem('secret-key', 'ios-value', 'i-scope-1');
+    await expect(storage.getItem('secret-key', 'i-scope-1')).resolves.toBe('ios-value');
     await storage.removeItem('secret-key');
 
     expect(mockKeychain.setGenericPassword).toHaveBeenCalledWith('secret-key', 'ios-value', {

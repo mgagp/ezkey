@@ -20,19 +20,21 @@ jest.mock('../secureStorage', () => ({
 jest.mock('../../crypto/nativeCrypto', () => ({
   nativeCrypto: {
     deleteKeyPair: jest.fn(),
-    deleteAppSealKey: jest.fn(),
+    deleteAllSealKeys: jest.fn(),
   },
 }));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {nativeCrypto} from '../../crypto/nativeCrypto';
+import {deriveInstallationScopeId} from '../../../utils/localEnrollmentIdentity';
 import {enrollmentStorage} from '../enrollmentStorage';
 import {secureStorage} from '../secureStorage';
 
 const mockAsyncStorage = jest.mocked(AsyncStorage);
 const mockSecureStorage = jest.mocked(secureStorage);
 const mockDeleteKeyPair = jest.mocked(nativeCrypto.deleteKeyPair);
-const mockDeleteAppSealKey = jest.mocked(nativeCrypto.deleteAppSealKey);
+const mockDeleteAllSealKeys = jest.mocked(nativeCrypto.deleteAllSealKeys);
+const DEFAULT_SEAL_SCOPE_ID = 'default';
 
 describe('enrollmentStorage', () => {
   beforeEach(() => {
@@ -46,7 +48,7 @@ describe('enrollmentStorage', () => {
     mockSecureStorage.setItem.mockResolvedValue();
     mockSecureStorage.removeItem.mockResolvedValue();
     mockDeleteKeyPair.mockResolvedValue(true);
-    mockDeleteAppSealKey.mockResolvedValue(true);
+    mockDeleteAllSealKeys.mockResolvedValue(true);
   });
 
   it('rehydrates a nested installation object from legacy flat storage records', async () => {
@@ -83,13 +85,16 @@ describe('enrollmentStorage', () => {
       aboutUrl: undefined,
       lastRefreshedAt: undefined,
     });
+    const acmeScopeId = deriveInstallationScopeId('https://ezkey.example.com');
     expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/enrollment-proof-token.enrollment-1',
       'token-1',
+      acmeScopeId,
     );
     expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/integration-public-key.enrollment-1',
       'integration-public-key-1',
+      acmeScopeId,
     );
     expect(mockAsyncStorage.setItem).toHaveBeenCalledTimes(1);
     const [, rewrittenPayload] = mockAsyncStorage.setItem.mock.calls[0];
@@ -122,13 +127,16 @@ describe('enrollmentStorage', () => {
       },
     });
 
+    const redScopeId = deriveInstallationScopeId('https://login.red.example');
     expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/enrollment-proof-token.enrollment-1',
       'token-1',
+      redScopeId,
     );
     expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/integration-public-key.enrollment-1',
       'integration-public-key-1',
+      redScopeId,
     );
     expect(mockAsyncStorage.setItem).toHaveBeenCalledTimes(1);
     const [, payload] = mockAsyncStorage.setItem.mock.calls[0];
@@ -296,10 +304,12 @@ describe('enrollmentStorage', () => {
     expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/enrollment-proof-token.enrollment-next',
       'next-token',
+      DEFAULT_SEAL_SCOPE_ID,
     );
     expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
       'ezkey-mobile/integration-public-key.enrollment-next',
       'next-integration-public-key',
+      DEFAULT_SEAL_SCOPE_ID,
     );
     expect(mockSecureStorage.removeItem).toHaveBeenCalledWith(
       'ezkey-mobile/enrollment-proof-token.enrollment-legacy',
@@ -601,8 +611,8 @@ describe('enrollmentStorage', () => {
     });
   });
 
-  describe('clearAll true local reset (MOB-015)', () => {
-    it('deletes the app seal key after clearing enrollment data', async () => {
+  describe('clearAll true local reset (MOB-015 / MOB-017)', () => {
+    it('deletes every installation-scoped seal key after clearing enrollment data', async () => {
       mockAsyncStorage.getItem.mockResolvedValue(
         JSON.stringify([
           {
@@ -617,12 +627,12 @@ describe('enrollmentStorage', () => {
 
       await enrollmentStorage.clearAll();
 
-      expect(mockDeleteAppSealKey).toHaveBeenCalledTimes(1);
+      expect(mockDeleteAllSealKeys).toHaveBeenCalledTimes(1);
       expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
     });
 
-    it('continues clear-all when app seal key deletion fails', async () => {
-      mockDeleteAppSealKey.mockRejectedValue(new Error('keystore unavailable'));
+    it('continues clear-all when seal key deletion fails', async () => {
+      mockDeleteAllSealKeys.mockRejectedValue(new Error('keystore unavailable'));
       mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify([]));
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 
@@ -630,7 +640,7 @@ describe('enrollmentStorage', () => {
 
       expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('ezkey-mobile/enrollments');
       expect(warnSpy).toHaveBeenCalledWith(
-        '[enrollmentStorage] Failed to delete app seal key (continuing wipe):',
+        '[enrollmentStorage] Failed to delete seal keys (continuing wipe):',
         expect.any(Error),
       );
       warnSpy.mockRestore();
@@ -655,7 +665,7 @@ describe('enrollmentStorage', () => {
         'ezkey-mobile/sealed-secret.ezkey-mobile/enrollment-proof-token.orphan-1',
         'ezkey-mobile/sealed-secret.ezkey-mobile/integration-public-key.orphan-1',
       ]);
-      expect(mockDeleteAppSealKey).toHaveBeenCalledTimes(1);
+      expect(mockDeleteAllSealKeys).toHaveBeenCalledTimes(1);
       warnSpy.mockRestore();
     });
   });
@@ -725,10 +735,12 @@ describe('enrollmentStorage', () => {
     expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
       `ezkey-mobile/enrollment-proof-token.${idA}`,
       'token-a',
+      deriveInstallationScopeId('https://auth-a.example.com'),
     );
     expect(mockSecureStorage.setItem).toHaveBeenCalledWith(
       `ezkey-mobile/enrollment-proof-token.${idB}`,
       'token-b',
+      deriveInstallationScopeId('https://auth-b.example.com'),
     );
   });
 });
