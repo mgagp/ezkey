@@ -14,8 +14,8 @@ import java.util.List;
 import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.dto.AuditLogResponseDto;
 import org.mapstruct.Mapper;
-import org.mapstruct.MappingConstants;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants;
 
 /**
  * MapStruct mapper for audit log entity-DTO conversions.

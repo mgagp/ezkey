@@ -481,8 +481,7 @@ class AuditReasonPropagationTest {
   private void setupAdminSecurityContext() {
     Authentication auth = org.mockito.Mockito.mock(Authentication.class);
     when(auth.isAuthenticated()).thenReturn(true);
-    when(auth.getAuthorities())
-        .thenAnswer(_ -> List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+    when(auth.getAuthorities()).thenAnswer(_ -> List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
     when(auth.getPrincipal()).thenReturn(new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
     SecurityContextHolder.getContext().setAuthentication(auth);
 

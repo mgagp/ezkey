@@ -249,8 +249,7 @@ class TinkKeyManagerConcurrencyTest {
     KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
     when(repository.findKeyset()).thenAnswer(_ -> Optional.ofNullable(storedBlob.get()));
     when(repository.findVersion())
-        .thenAnswer(
-            _ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
+        .thenAnswer(_ -> Optional.ofNullable(storedBlob.get()).map(KeysetBlob::getVersion));
     when(repository.save(any(KeysetBlob.class)))
         .thenAnswer(
             invocation -> {
