@@ -329,7 +329,7 @@ public class EnrollmentService {
       EnrollmentStatus status = (EnrollmentStatus) tuple.get(0);
       Boolean active = (Boolean) tuple.get(1);
       long cnt = (Long) tuple.get(2);
-      counts.computeIfAbsent(status, k -> new HashMap<>()).put(active, cnt);
+      counts.computeIfAbsent(status, _ -> new HashMap<>()).put(active, cnt);
     }
     return EnrollmentDashboardStats.fromStatusActiveCounts(counts);
   }

@@ -132,7 +132,7 @@ class ApiKeyControllerTest {
     lenient()
         .when(integrationRepository.findAllByIdWithTenant(any()))
         .thenAnswer(
-            invocation -> {
+            _ -> {
               Integration integration = new Integration();
               integration.setId(123);
               integration.setName("Acme Integration");

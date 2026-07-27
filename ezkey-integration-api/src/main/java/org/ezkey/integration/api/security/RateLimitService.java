@@ -92,7 +92,7 @@ public class RateLimitService {
    */
   public boolean canCreateAuthAttempt(String apiKeyId) {
     Bucket bucket =
-        createAttemptBuckets.get("create:" + apiKeyId, k -> createCreateAttemptBucket());
+        createAttemptBuckets.get("create:" + apiKeyId, _ -> createCreateAttemptBucket());
     boolean allowed = bucket.tryConsume(1);
 
     meterRegistry
@@ -123,7 +123,7 @@ public class RateLimitService {
    * @return {@code true} if the operation is within limits
    */
   public boolean canWaitAuthAttempt(String apiKeyId) {
-    Bucket bucket = waitAttemptBuckets.get("wait:" + apiKeyId, k -> createWaitAttemptBucket());
+    Bucket bucket = waitAttemptBuckets.get("wait:" + apiKeyId, _ -> createWaitAttemptBucket());
     boolean allowed = bucket.tryConsume(1);
 
     meterRegistry

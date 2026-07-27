@@ -23,6 +23,8 @@ Naming Conventions
 - Use PascalCase for class names (e.g., UserController, OrderService).
 - Use camelCase for method and variable names (e.g., findUserById, isOrderValid).
 - Use ALL_CAPS for constants (e.g., MAX_RETRY_ATTEMPTS, DEFAULT_PAGE_SIZE).
+- Unused lambda parameters must be the unnamed variable `_` (Checkstyle
+  `UnusedLambdaParameterShouldBeUnnamed`; see `.cursor/rules/java-unused-lambda-unnamed.mdc`).
 
 Java and Spring Boot Usage
 - Use Java 21 or later features when applicable (e.g., records, sealed classes, pattern matching).

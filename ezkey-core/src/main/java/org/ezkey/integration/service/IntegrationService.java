@@ -143,7 +143,7 @@ public class IntegrationService {
       Pageable pageable) {
 
     Specification<Integration> spec =
-        (root, query, cb) -> {
+        (root, _, cb) -> {
           List<Predicate> predicates = new ArrayList<>();
 
           // Filter by name (partial match, case-insensitive)

@@ -284,7 +284,7 @@ public class AlertService {
       OffsetDateTime createdBefore,
       Pageable pageable) {
     Specification<Alert> spec =
-        (root, query, cb) -> {
+        (root, _, cb) -> {
           List<Predicate> predicates = new ArrayList<>();
           if (status != null) {
             predicates.add(cb.equal(root.get("status"), status));

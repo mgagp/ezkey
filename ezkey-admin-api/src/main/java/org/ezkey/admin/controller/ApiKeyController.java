@@ -391,7 +391,7 @@ public class ApiKeyController {
 
     final Integer tenantId = tenantIdForScope;
     Specification<ApiKey> spec =
-        (root, query, cb) -> {
+        (root, _, cb) -> {
           List<Predicate> predicates = new ArrayList<>();
           if (tenantId != null) {
             predicates.add(
@@ -479,7 +479,7 @@ public class ApiKeyController {
     boolean filterActive = active != null ? active : true;
 
     Specification<ApiKey> spec =
-        (root, query, cb) -> {
+        (root, _, cb) -> {
           List<Predicate> predicates = new ArrayList<>();
           predicates.add(cb.equal(root.get("integration").get("id"), integrationId));
           predicates.add(cb.equal(root.get("active"), filterActive));

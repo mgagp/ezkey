@@ -41,7 +41,7 @@ public class AdminCorsConfig {
    */
   @Bean
   public CorsConfigurationSource corsConfigurationSource(AdminCorsProperties props) {
-    return request -> {
+    return _ -> {
       List<String> origins = props.getAllowedOrigins();
       if (origins == null || origins.isEmpty()) {
         return null;

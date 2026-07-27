@@ -228,7 +228,7 @@ public class TenantController {
     }
 
     Specification<Tenant> spec =
-        (root, query, cb) -> {
+        (root, _, cb) -> {
           List<Predicate> predicates = new ArrayList<>();
           if (tenantName != null && !tenantName.isBlank()) {
             String pattern = "%" + tenantName.trim().toLowerCase() + "%";

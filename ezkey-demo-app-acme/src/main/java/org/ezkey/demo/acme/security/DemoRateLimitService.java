@@ -77,7 +77,7 @@ public class DemoRateLimitService {
       return new RateLimitDecision(true, 0, clientId);
     }
 
-    Bucket bucket = bucketCache.get(operation + ":" + clientId, key -> createBucket(config));
+    Bucket bucket = bucketCache.get(operation + ":" + clientId, _ -> createBucket(config));
     ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
     if (probe.isConsumed()) {
       return new RateLimitDecision(true, 0, clientId);

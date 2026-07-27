@@ -131,7 +131,7 @@ public class ReencryptionBatchParallelRunner {
    */
   private void processBatchIsolatedByTargetTable(ReencryptionBatch batch) {
     String key = mutexKeyForBatch(batch);
-    Object lock = batchMutexLocks.computeIfAbsent(key, t -> new Object());
+    Object lock = batchMutexLocks.computeIfAbsent(key, _ -> new Object());
     synchronized (lock) {
       batchProcessingService.processBatchInternal(batch);
     }

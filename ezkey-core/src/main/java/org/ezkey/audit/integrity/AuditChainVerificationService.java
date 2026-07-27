@@ -340,7 +340,7 @@ public class AuditChainVerificationService {
   /** Recomputes the entries_digest for a given time window from current audit log data. */
   private String computeEntriesDigest(OffsetDateTime windowStart, OffsetDateTime windowEnd) {
     Specification<org.ezkey.audit.domain.entity.AuditLog> spec =
-        (root, query, cb) ->
+        (root, _, cb) ->
             cb.and(
                 cb.greaterThanOrEqualTo(root.get("createdAt"), windowStart),
                 cb.lessThan(root.get("createdAt"), windowEnd));

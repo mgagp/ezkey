@@ -124,7 +124,7 @@ public class OpenApiConfig {
    */
   @Bean
   public OperationCustomizer sortParameterExplodeCustomizer() {
-    return (operation, handlerMethod) -> {
+    return (operation, _) -> {
       if (operation.getParameters() == null) {
         return operation;
       }

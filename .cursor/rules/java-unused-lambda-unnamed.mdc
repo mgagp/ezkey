@@ -1,0 +1,23 @@
+---
+description: Unused Java lambda parameters must use unnamed '_' (Checkstyle-enforced)
+globs: "**/*.java"
+alwaysApply: false
+---
+
+# Unused lambda parameters → `_`
+
+When a lambda parameter is unused in the body, declare it as the Java unnamed variable `_`
+(JDK 22+; Ezkey uses JDK 25).
+
+```java
+// Bad — unused named parameter (Checkstyle: UnusedLambdaParameterShouldBeUnnamed)
+(root, query, cb) -> cb.equal(root.get("id"), id)
+cache.get(key, k -> new Bucket())
+
+// Good
+(root, _, cb) -> cb.equal(root.get("id"), id)
+cache.get(key, _ -> new Bucket())
+```
+
+Enforced by Checkstyle module `UnusedLambdaParameterShouldBeUnnamed` in
+`checkstyle-config/src/main/resources/checkstyle.xml`. Do not suppress routinely; rename instead.

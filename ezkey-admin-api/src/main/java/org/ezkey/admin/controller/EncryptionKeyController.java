@@ -170,7 +170,7 @@ public class EncryptionKeyController {
           @PageableDefault(size = 20, sort = "introducedAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
     Specification<EncryptionKey> spec =
-        (root, query, cb) -> {
+        (root, _, cb) -> {
           List<Predicate> predicates = new ArrayList<>();
           if (keyStatus != null && !keyStatus.isBlank()) {
             try {
@@ -394,7 +394,7 @@ public class EncryptionKeyController {
           Pageable pageable) {
 
     Specification<ReencryptionBatch> spec =
-        (root, query, cb) -> {
+        (root, _, cb) -> {
           List<Predicate> predicates = new ArrayList<>();
           if (status != null && !status.isBlank()) {
             try {

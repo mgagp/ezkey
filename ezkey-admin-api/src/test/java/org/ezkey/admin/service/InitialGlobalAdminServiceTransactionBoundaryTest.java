@@ -111,7 +111,7 @@ class InitialGlobalAdminServiceTransactionBoundaryTest {
     @Bean
     LockProvider lockProvider() {
       SimpleLock lock = Mockito.mock(SimpleLock.class);
-      return lockConfiguration -> Optional.of(lock);
+      return _ -> Optional.of(lock);
     }
 
     @Bean

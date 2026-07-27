@@ -138,7 +138,7 @@ public class AuditLogService {
   public void log(AuditLog auditLog) {
     try {
       requiresNewTx.execute(
-          status -> {
+          _ -> {
             if (auditLog.getInstanceId() == null) {
               auditLog.setInstanceId(auditHmacService.getInstanceId());
             }
@@ -382,7 +382,7 @@ public class AuditLogService {
 
   private Specification<AuditLog> visibleToRequester(
       Integer requesterTenantId, Integer filterTenantId) {
-    return (root, query, cb) -> {
+    return (root, _, cb) -> {
       if (requesterTenantId != null) {
         return cb.equal(root.get("tenantId"), requesterTenantId);
       }
@@ -394,7 +394,7 @@ public class AuditLogService {
   }
 
   private Specification<AuditLog> olderThan(OffsetDateTime createdAt, Long auditLogId) {
-    return (root, query, cb) ->
+    return (root, _, cb) ->
         cb.or(
             cb.lessThan(root.get("createdAt"), createdAt),
             cb.and(
@@ -403,7 +403,7 @@ public class AuditLogService {
   }
 
   private Specification<AuditLog> newerThan(OffsetDateTime createdAt, Long auditLogId) {
-    return (root, query, cb) ->
+    return (root, _, cb) ->
         cb.or(
             cb.greaterThan(root.get("createdAt"), createdAt),
             cb.and(

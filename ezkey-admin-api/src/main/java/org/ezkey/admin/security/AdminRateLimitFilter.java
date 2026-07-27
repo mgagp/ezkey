@@ -222,7 +222,7 @@ public class AdminRateLimitFilter implements Filter {
   private RateLimitResult checkRateLimit(String clientId) {
     String bucketKey = "login:" + clientId;
 
-    Bucket bucket = bucketCache.get(bucketKey, key -> createBucket());
+    Bucket bucket = bucketCache.get(bucketKey, _ -> createBucket());
 
     if (bucket.tryConsume(1)) {
       return new RateLimitResult(true, 0);
@@ -289,7 +289,7 @@ public class AdminRateLimitFilter implements Filter {
     }
 
     AtomicInteger failureCount =
-        failureCountMap.computeIfAbsent(clientId, k -> new AtomicInteger(0));
+        failureCountMap.computeIfAbsent(clientId, _ -> new AtomicInteger(0));
     int failures = failureCount.incrementAndGet();
 
     logger.debug("Failed login attempt {} for IP: {}", failures, clientId);

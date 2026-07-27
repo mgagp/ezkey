@@ -127,7 +127,7 @@ public class AdminOperationsRateLimitService {
    */
   public boolean canCreateApiKey(String adminId) {
     String bucketKey = "api_key_create:" + adminId;
-    Bucket bucket = apiKeyCreateBuckets.get(bucketKey, key -> createApiKeyCreateBucket());
+    Bucket bucket = apiKeyCreateBuckets.get(bucketKey, _ -> createApiKeyCreateBucket());
 
     boolean allowed = bucket.tryConsume(1);
 
@@ -156,7 +156,7 @@ public class AdminOperationsRateLimitService {
    */
   public boolean canResetEnrollment(String tokenOrAdminId) {
     String bucketKey = "enrollment_reset:" + tokenOrAdminId;
-    Bucket bucket = enrollmentResetBuckets.get(bucketKey, key -> createEnrollmentResetBucket());
+    Bucket bucket = enrollmentResetBuckets.get(bucketKey, _ -> createEnrollmentResetBucket());
 
     boolean allowed = bucket.tryConsume(1);
 
@@ -199,7 +199,7 @@ public class AdminOperationsRateLimitService {
    */
   public boolean canRevokeApiKey(String adminId) {
     String bucketKey = "api_key_revoke:" + adminId;
-    Bucket bucket = apiKeyRevokeBuckets.get(bucketKey, key -> createApiKeyRevokeBucket());
+    Bucket bucket = apiKeyRevokeBuckets.get(bucketKey, _ -> createApiKeyRevokeBucket());
 
     boolean allowed = bucket.tryConsume(1);
 
@@ -239,7 +239,7 @@ public class AdminOperationsRateLimitService {
    */
   public boolean canUpdateApiKey(String adminId) {
     String bucketKey = "api_key_update:" + adminId;
-    Bucket bucket = apiKeyUpdateBuckets.get(bucketKey, key -> createApiKeyUpdateBucket());
+    Bucket bucket = apiKeyUpdateBuckets.get(bucketKey, _ -> createApiKeyUpdateBucket());
 
     boolean allowed = bucket.tryConsume(1);
 

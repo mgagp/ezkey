@@ -106,7 +106,7 @@ public class RateLimitService {
    */
   public boolean canCreateAuthAttempt(String apiKeyId) {
     String bucketKey = "create:" + apiKeyId;
-    Bucket bucket = createAttemptBuckets.get(bucketKey, key -> createCreateAttemptBucket());
+    Bucket bucket = createAttemptBuckets.get(bucketKey, _ -> createCreateAttemptBucket());
 
     boolean allowed = bucket.tryConsume(1);
 
@@ -136,7 +136,7 @@ public class RateLimitService {
    */
   public boolean canWaitAuthAttempt(String apiKeyId) {
     String bucketKey = "wait:" + apiKeyId;
-    Bucket bucket = waitAttemptBuckets.get(bucketKey, key -> createWaitAttemptBucket());
+    Bucket bucket = waitAttemptBuckets.get(bucketKey, _ -> createWaitAttemptBucket());
 
     boolean allowed = bucket.tryConsume(1);
 

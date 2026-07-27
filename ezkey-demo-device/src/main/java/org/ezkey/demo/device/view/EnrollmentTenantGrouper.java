@@ -41,7 +41,7 @@ public final class EnrollmentTenantGrouper {
       String tenantDescription = normalizeTenantDescription(enrollment.tenantDescription());
 
       TenantKey key = new TenantKey(tenantId, tenantName, tenantDescription);
-      grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(enrollment);
+      grouped.computeIfAbsent(key, _ -> new ArrayList<>()).add(enrollment);
     }
 
     Comparator<Record> enrollmentComparator =

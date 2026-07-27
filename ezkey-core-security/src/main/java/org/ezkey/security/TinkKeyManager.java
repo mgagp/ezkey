@@ -1064,7 +1064,7 @@ public class TinkKeyManager implements KeyManagementOperations {
     OffsetDateTime cutoffDate = OffsetDateTime.now().minusDays(retentionDays);
     File[] backupFiles =
         backupDir.listFiles(
-            (dir, name) -> name.startsWith("keyset-backup-") && name.endsWith(".json.encrypted"));
+            (_, name) -> name.startsWith("keyset-backup-") && name.endsWith(".json.encrypted"));
 
     if (backupFiles == null) {
       return;

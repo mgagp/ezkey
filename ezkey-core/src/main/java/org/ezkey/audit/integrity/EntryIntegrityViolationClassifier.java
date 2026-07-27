@@ -200,7 +200,7 @@ public class EntryIntegrityViolationClassifier {
   }
 
   private static Specification<AuditLog> buildRangeSpec(OffsetDateTime from, OffsetDateTime to) {
-    return (root, query, cb) ->
+    return (root, _, cb) ->
         cb.and(
             cb.greaterThanOrEqualTo(root.get("createdAt"), from),
             cb.lessThan(root.get("createdAt"), to));

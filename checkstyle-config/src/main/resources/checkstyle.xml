@@ -207,6 +207,8 @@
         <module name="IllegalCatch">
             <property name="illegalClassNames" value="java.lang.Exception, java.lang.Throwable, java.lang.RuntimeException"/>
         </module>
+        <!-- Java 22+ unnamed variables: unused lambda parameters must be '_' -->
+        <module name="UnusedLambdaParameterShouldBeUnnamed"/>
 
         <!-- ===================================================================== -->
         <!-- CLASS DESIGN                                                          -->

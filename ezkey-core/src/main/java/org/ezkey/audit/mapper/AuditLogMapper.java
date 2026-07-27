@@ -15,6 +15,7 @@ import org.ezkey.audit.domain.entity.AuditLog;
 import org.ezkey.audit.dto.AuditLogResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
+import org.mapstruct.Mapping;
 
 /**
  * MapStruct mapper for audit log entity-DTO conversions.
@@ -37,6 +38,11 @@ public interface AuditLogMapper {
    * @param auditLog the entity to convert
    * @return response DTO
    */
+  @Mapping(target = "adminUsername", ignore = true)
+  @Mapping(target = "targetAdminUsername", ignore = true)
+  @Mapping(target = "integrationName", ignore = true)
+  @Mapping(target = "enrollmentName", ignore = true)
+  @Mapping(target = "tenantName", ignore = true)
   AuditLogResponseDto toResponseDto(AuditLog auditLog);
 
   /**

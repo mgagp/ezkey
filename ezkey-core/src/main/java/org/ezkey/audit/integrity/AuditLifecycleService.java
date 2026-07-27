@@ -1118,7 +1118,7 @@ public class AuditLifecycleService {
   /** Counts audit log entries whose createdAt falls within the given range. */
   private long countEntriesInRange(OffsetDateTime from, OffsetDateTime to) {
     Specification<AuditLog> spec =
-        (root, query, cb) ->
+        (root, _, cb) ->
             cb.and(
                 cb.greaterThanOrEqualTo(root.get("createdAt"), from),
                 cb.lessThan(root.get("createdAt"), to));

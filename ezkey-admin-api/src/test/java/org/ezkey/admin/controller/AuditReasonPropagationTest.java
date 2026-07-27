@@ -482,7 +482,7 @@ class AuditReasonPropagationTest {
     Authentication auth = org.mockito.Mockito.mock(Authentication.class);
     when(auth.isAuthenticated()).thenReturn(true);
     when(auth.getAuthorities())
-        .thenAnswer(inv -> List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        .thenAnswer(_ -> List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
     when(auth.getPrincipal()).thenReturn(new AdminPrincipal(1, AdminType.GLOBAL_ADMIN, null, null));
     SecurityContextHolder.getContext().setAuthentication(auth);
 
