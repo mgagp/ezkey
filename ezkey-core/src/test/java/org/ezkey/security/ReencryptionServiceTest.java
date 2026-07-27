@@ -431,9 +431,9 @@ class ReencryptionServiceTest {
     when(encryptionOperations.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionOperations.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
     when(enrollmentRepository.findByIdForReencryptionUpdate(1))
-        .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
+        .thenAnswer(_ -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
     when(enrollmentRepository.findByIdForReencryptionUpdate(2))
-        .thenAnswer(inv -> Optional.of(createMockEnrollment(2, "ENC:1111111111:data2")));
+        .thenAnswer(_ -> Optional.of(createMockEnrollment(2, "ENC:1111111111:data2")));
     when(enrollmentRepository.save(any(Enrollment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -467,7 +467,7 @@ class ReencryptionServiceTest {
     when(encryptionOperations.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionOperations.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
     when(enrollmentRepository.findByIdForReencryptionUpdate(1))
-        .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data")));
+        .thenAnswer(_ -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data")));
     when(enrollmentRepository.save(any(Enrollment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(keyRepository.save(any(EncryptionKey.class))).thenReturn(oldKey);
@@ -534,9 +534,9 @@ class ReencryptionServiceTest {
     when(encryptionOperations.decrypt("ENC:1111111111:data2"))
         .thenThrow(new RuntimeException("Decryption failed"));
     when(enrollmentRepository.findByIdForReencryptionUpdate(1))
-        .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
+        .thenAnswer(_ -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
     when(enrollmentRepository.findByIdForReencryptionUpdate(2))
-        .thenAnswer(inv -> Optional.of(createMockEnrollment(2, "ENC:1111111111:data2")));
+        .thenAnswer(_ -> Optional.of(createMockEnrollment(2, "ENC:1111111111:data2")));
     // Note: save() may not be called if no records are successfully re-encrypted
     lenient()
         .when(enrollmentRepository.save(any(Enrollment.class)))
@@ -572,9 +572,9 @@ class ReencryptionServiceTest {
     when(encryptionOperations.decrypt(anyString())).thenReturn("plaintext");
     when(encryptionOperations.encrypt("plaintext")).thenReturn("ENC:2222222222:reencrypted");
     when(enrollmentRepository.findByIdForReencryptionUpdate(10))
-        .thenAnswer(inv -> Optional.of(createMockEnrollment(10, "ENC:1111111111:data1")));
+        .thenAnswer(_ -> Optional.of(createMockEnrollment(10, "ENC:1111111111:data1")));
     when(enrollmentRepository.findByIdForReencryptionUpdate(20))
-        .thenAnswer(inv -> Optional.of(createMockEnrollment(20, "ENC:1111111111:data2")));
+        .thenAnswer(_ -> Optional.of(createMockEnrollment(20, "ENC:1111111111:data2")));
     when(enrollmentRepository.save(any(Enrollment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -604,7 +604,7 @@ class ReencryptionServiceTest {
     when(encryptionOperations.decrypt("ENC:1111111111:data1")).thenReturn("plaintext1");
     when(encryptionOperations.encrypt("plaintext1")).thenReturn("ENC:2222222222:reencrypted1");
     when(enrollmentRepository.findByIdForReencryptionUpdate(1))
-        .thenAnswer(inv -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
+        .thenAnswer(_ -> Optional.of(createMockEnrollment(1, "ENC:1111111111:data1")));
     lenient()
         .when(enrollmentRepository.save(any(Enrollment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));

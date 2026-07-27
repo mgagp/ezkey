@@ -16,7 +16,6 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -322,9 +321,10 @@ public class RateLimitFilter implements Filter {
     RateLimitProperties.EndpointConfig config = getConfigForEndpoint(bucketKey);
 
     Bandwidth limit =
-        Bandwidth.classic(
-            config.getRequests(),
-            Refill.intervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes())));
+        Bandwidth.builder()
+            .capacity(config.getRequests())
+            .refillIntervally(config.getRequests(), Duration.ofMinutes(config.getWindowMinutes()))
+            .build();
 
     return Bucket.builder().addLimit(limit).build();
   }

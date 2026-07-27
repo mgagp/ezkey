@@ -100,7 +100,6 @@ class AuditChainVerificationServiceTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @SuppressWarnings("unchecked")
   void verifyChain_singleGenesisCheckpoint_intact_returnsOk() {
     AuditLog entry = buildSignedEntry(1L);
     stubAuditLogs(List.of(entry));
@@ -152,7 +151,6 @@ class AuditChainVerificationServiceTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @SuppressWarnings("unchecked")
   void verifyChain_digestMismatch_detectsViolation() {
     AuditLog originalEntry = buildSignedEntry(1L);
     AuditChainCheckpoint checkpoint = buildGenesisCheckpoint(List.of(originalEntry));
@@ -311,7 +309,6 @@ class AuditChainVerificationServiceTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   void verifyChain_subSecondFromExcludesFirstGridCheckpoint_reportsLeadingGap() {
     // ADR-0008 / EXP1 pitfall: wall-clock from with nanos excludes windowStart == exact grid.
     AuditLog entry = buildSignedEntry(1L);
@@ -337,7 +334,6 @@ class AuditChainVerificationServiceTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   void verifyChain_gridAlignedFrom_includesFirstCheckpoint_intact() {
     AuditLog entry = buildSignedEntry(1L);
     AuditChainCheckpoint first = buildGenesisCheckpoint(List.of(entry));
@@ -365,7 +361,6 @@ class AuditChainVerificationServiceTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @SuppressWarnings("unchecked")
   void verifyChain_requestedRangeWiderThanCheckpoints_whenFullExtent_noBoundaryGaps() {
     AuditLog entry = buildSignedEntry(1L);
     AuditChainCheckpoint checkpoint = buildGenesisCheckpoint(List.of(entry));
@@ -395,7 +390,6 @@ class AuditChainVerificationServiceTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @SuppressWarnings("unchecked")
   void verifyChain_requestedRangeInsideExtent_reportsLeadingAndTrailingGaps() {
     AuditLog entry = buildSignedEntry(1L);
     AuditChainCheckpoint first = buildGenesisCheckpoint(List.of(entry));
@@ -440,7 +434,6 @@ class AuditChainVerificationServiceTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @SuppressWarnings("unchecked")
   void verifyChain_chainHmacTampered_detectsViolation() {
     AuditLog entry = buildSignedEntry(1L);
     AuditChainCheckpoint checkpoint = buildGenesisCheckpoint(List.of(entry));

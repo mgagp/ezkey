@@ -57,7 +57,6 @@ public class EnrollmentExpiredCleanupScheduler {
 
   private final EnrollmentRepository enrollmentRepository;
   private final AuditLogService auditLogService;
-  private final EnrollmentProperties enrollmentProperties;
 
   public EnrollmentExpiredCleanupScheduler(
       EnrollmentRepository enrollmentRepository,
@@ -65,7 +64,6 @@ public class EnrollmentExpiredCleanupScheduler {
       EnrollmentProperties enrollmentProperties) {
     this.enrollmentRepository = enrollmentRepository;
     this.auditLogService = auditLogService;
-    this.enrollmentProperties = enrollmentProperties;
   }
 
   /**

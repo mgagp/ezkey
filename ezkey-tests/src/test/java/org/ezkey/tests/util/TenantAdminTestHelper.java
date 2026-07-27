@@ -99,7 +99,6 @@ public class TenantAdminTestHelper {
       TestDataFactory testDataFactory,
       CryptoApiClient cryptoApiClient) {
     this.dockerStackConfig = dockerStackConfig;
-    this.testDataFactory = testDataFactory;
     this.cryptoApiClient = cryptoApiClient;
   }
 

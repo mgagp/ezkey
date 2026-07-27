@@ -5,6 +5,7 @@ package org.ezkey.demo.device.service;
  *
  * @since 2025
  */
+@SuppressWarnings("serial")
 public class InvalidAuthApiUrlException extends RuntimeException {
 
   /**

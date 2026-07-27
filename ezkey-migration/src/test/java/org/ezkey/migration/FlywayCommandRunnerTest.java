@@ -83,7 +83,7 @@ class FlywayCommandRunnerTest {
     }
 
     @SuppressWarnings("unused")
-	public Integer getLastExitCode() {
+    public Integer getLastExitCode() {
       return lastExitCode;
     }
   }

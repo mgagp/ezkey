@@ -27,7 +27,7 @@ class EnrollmentDashboardStatsTest {
       EnrollmentStatus status = (EnrollmentStatus) triplets[i];
       Boolean active = (Boolean) triplets[i + 1];
       Long count = (Long) triplets[i + 2];
-      result.computeIfAbsent(status, k -> new HashMap<>()).put(active, count);
+      result.computeIfAbsent(status, _ -> new HashMap<>()).put(active, count);
     }
     return result;
   }

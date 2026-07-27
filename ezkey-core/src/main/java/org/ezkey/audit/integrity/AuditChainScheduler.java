@@ -82,7 +82,6 @@ public class AuditChainScheduler {
   private final AuditChainCheckpointRepository checkpointRepository;
   private final AuditLogRepository auditLogRepository;
   private final AuditHmacService auditHmacService;
-  private final AuditLogService auditLogService;
   private final AlertService alertService;
   private final ScheduledJobLastRunService jobLastRunService;
 
@@ -109,7 +108,6 @@ public class AuditChainScheduler {
     this.checkpointRepository = checkpointRepository;
     this.auditLogRepository = auditLogRepository;
     this.auditHmacService = auditHmacService;
-    this.auditLogService = auditLogService;
     this.alertService = alertService;
     this.jobLastRunService = jobLastRunService;
   }

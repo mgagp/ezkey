@@ -137,7 +137,6 @@ public class EnrollmentService {
 
   private final EnrollmentRepository enrollmentRepository;
   private final SignatureService signatureService;
-  private final EzkeyCoreProperties ezkeyCoreProperties;
   private final EnrollmentProperties enrollmentProperties;
   private final IntegrationRepository integrationRepository;
   private final EntityEligibilityService eligibilityService;
@@ -169,7 +168,6 @@ public class EnrollmentService {
       EnrollmentVerifyService verifyService) {
     this.enrollmentRepository = enrollmentRepository;
     this.signatureService = signatureService;
-    this.ezkeyCoreProperties = ezkeyCoreProperties;
     this.enrollmentProperties = enrollmentProperties;
     this.integrationRepository = integrationRepository;
     this.eligibilityService = eligibilityService;

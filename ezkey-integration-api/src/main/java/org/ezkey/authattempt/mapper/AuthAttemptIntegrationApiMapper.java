@@ -19,8 +19,8 @@ import org.ezkey.authattempt.dto.AuthAttemptDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
 import org.mapstruct.Mapper;
-import org.mapstruct.ReportingPolicy;
 import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
 /**
  * MapStruct mapper interface for converting between AuthAttempt entities and DTOs in the
