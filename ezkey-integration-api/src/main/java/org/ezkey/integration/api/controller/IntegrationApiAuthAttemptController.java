@@ -114,7 +114,6 @@ public class IntegrationApiAuthAttemptController {
   private final AuditLogService auditLogService;
   private final RateLimitService rateLimitService;
   private final EnrollmentRepository enrollmentRepository;
-  private final AccessControlService accessControlService;
   private final IntegrationRepository integrationRepository;
   private final AuditEntityFkResolver auditEntityFkResolver;
 
@@ -136,7 +135,6 @@ public class IntegrationApiAuthAttemptController {
       AuditLogService auditLogService,
       RateLimitService rateLimitService,
       EnrollmentRepository enrollmentRepository,
-      AccessControlService accessControlService,
       IntegrationRepository integrationRepository,
       AuditEntityFkResolver auditEntityFkResolver) {
     this.authAttemptService = authAttemptService;
@@ -144,7 +142,6 @@ public class IntegrationApiAuthAttemptController {
     this.auditLogService = auditLogService;
     this.rateLimitService = rateLimitService;
     this.enrollmentRepository = enrollmentRepository;
-    this.accessControlService = accessControlService;
     this.integrationRepository = integrationRepository;
     this.auditEntityFkResolver = auditEntityFkResolver;
   }

@@ -20,6 +20,7 @@ import org.ezkey.authattempt.dto.AuthAttemptWaitRequestDto;
 import org.ezkey.authattempt.dto.AuthAttemptWaitResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
+import org.mapstruct.Mapping;
 
 /**
  * MapStruct mapper interface for converting between AuthAttempt entities and DTOs in the
@@ -72,6 +73,11 @@ public interface AuthAttemptIntegrationApiMapper {
    * @param entity the AuthAttempt entity to convert
    * @return the corresponding AuthAttemptDto
    */
+  @Mapping(target = "integrationId", ignore = true)
+  @Mapping(target = "integrationName", ignore = true)
+  @Mapping(target = "enrollmentName", ignore = true)
+  @Mapping(target = "tenantId", ignore = true)
+  @Mapping(target = "tenantName", ignore = true)
   AuthAttemptDto toDto(AuthAttempt entity);
 
   /**

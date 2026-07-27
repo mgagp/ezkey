@@ -64,7 +64,6 @@ public class TenantAdminTestHelper {
       STATE_DIR + "/tenant-admin-%d-token.json";
 
   private final DockerStackConfig dockerStackConfig;
-  private final TestDataFactory testDataFactory;
   private final CryptoApiClient cryptoApiClient;
 
   // Synchronization lock to prevent parallel enrollment for same tenant

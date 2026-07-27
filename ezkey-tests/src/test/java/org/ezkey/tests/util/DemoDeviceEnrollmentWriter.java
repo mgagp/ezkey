@@ -94,34 +94,6 @@ public class DemoDeviceEnrollmentWriter {
   }
 
   /**
-   * Checks if a Docker container exists.
-   *
-   * @param containerName container name to check
-   * @return true if container exists, false otherwise
-   */
-  private boolean containerExists(String containerName) {
-    try {
-      ProcessBuilder processBuilder = new ProcessBuilder("docker", "inspect", containerName);
-      processBuilder.redirectErrorStream(true);
-      Process process = processBuilder.start();
-
-      // Consume output to avoid blocking.
-      try (BufferedReader reader =
-          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-        while (reader.readLine() != null) {
-          // no-op
-        }
-      }
-
-      int exitCode = process.waitFor();
-      return exitCode == 0;
-    } catch (Exception e) {
-      log.debug("Container {} does not exist: {}", containerName, e.getMessage());
-      return false;
-    }
-  }
-
-  /**
    * Checks if a Docker container is running (not just exists).
    *
    * @param containerName container name to check

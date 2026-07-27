@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.ezkey.tests.security.AbstractSecurityTest;
 import org.ezkey.tests.tags.TestTags;
-import org.ezkey.tests.util.CryptoApiClient.EcP256KeyPair;
 import org.ezkey.tests.util.DatabaseHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -389,9 +388,6 @@ public class KeyRotationSyncWindowTest extends AbstractSecurityTest {
     assertThat(proofToken).isNotNull().isNotEmpty();
 
     // Step 2: Bind enrollment via Auth API (this uses the proof token)
-    configureForAuthApi(dockerStackConfig);
-
-    EcP256KeyPair deviceKeyPair = cryptoApiClient.generateKeyPair();
     configureForAuthApi(dockerStackConfig);
 
     Map<String, Object> bindRequest = new HashMap<>();

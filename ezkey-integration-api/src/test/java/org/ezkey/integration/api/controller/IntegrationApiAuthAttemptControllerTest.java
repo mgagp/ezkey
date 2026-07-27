@@ -74,7 +74,6 @@ class IntegrationApiAuthAttemptControllerTest {
             auditLogService,
             rateLimitService,
             enrollmentRepository,
-            accessControlService,
             integrationRepository,
             auditEntityFkResolver);
   }

@@ -157,8 +157,6 @@ public class EnrollmentFlowSecurityTest extends AbstractSecurityTest {
   public void testInvalidEnrollmentProofToken() {
     // Skip if admin token not available
     try {
-      String adminToken = authTokenManager.getAdminToken();
-
       // Create enrollment
       configureForAdminApi(dockerStackConfig);
       Integer integrationId = testDataFactory.createIntegration();
