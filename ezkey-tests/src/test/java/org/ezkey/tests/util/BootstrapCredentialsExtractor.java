@@ -43,9 +43,9 @@ import tools.jackson.databind.node.ObjectNode;
  * inspect}. Supported names are the standard stack ({@code ezkey-admin-api}) and HA ({@code
  * ezkey-admin-api-1} / {@code ezkey-admin-api-2}). Override with environment variable {@code
  * EZKEY_ADMIN_DOCKER_CONTAINER} if your compose uses a different {@code container_name}. If the JVM
- * cannot find the {@code docker} executable (common on Windows when running Maven outside Git Bash),
- * set {@link DockerCliLocator#ENV_DOCKER_CLI} to the full path of {@code docker.exe} (see {@link
- * DockerCliLocator}).
+ * cannot find the {@code docker} executable (common on Windows when running Maven outside Git
+ * Bash), set {@link DockerCliLocator#ENV_DOCKER_CLI} to the full path of {@code docker.exe} (see
+ * {@link DockerCliLocator}).
  *
  * <p><b>Log Format Parsed:</b>
  *
