@@ -316,7 +316,7 @@ public class EnrollmentService {
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
     CriteriaQuery<Tuple> cq = cb.createTupleQuery();
     Root<Enrollment> root = cq.from(Enrollment.class);
-    cq.multiselect(root.get("status"), root.get("active"), cb.count(root));
+    cq.select(cb.tuple(root.get("status"), root.get("active"), cb.count(root)));
     Predicate tenantPredicate = buildEnrollmentDashboardPredicate(root, cq, cb, tenantId);
     if (tenantPredicate != null) {
       cq.where(tenantPredicate);

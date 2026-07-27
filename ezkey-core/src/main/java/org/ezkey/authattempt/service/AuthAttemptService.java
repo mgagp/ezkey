@@ -278,7 +278,7 @@ public class AuthAttemptService {
     CriteriaBuilder cb = entityManager.getCriteriaBuilder();
     CriteriaQuery<Tuple> cq = cb.createTupleQuery();
     Root<AuthAttempt> root = cq.from(AuthAttempt.class);
-    cq.multiselect(root.get("authAttemptStatus"), cb.count(root));
+    cq.select(cb.tuple(root.get("authAttemptStatus"), cb.count(root)));
     cq.where(
         buildAuthAttemptFilterPredicate(
             root, cq, cb, null, null, null, createdAfter, null, tenantId));

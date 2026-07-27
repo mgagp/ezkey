@@ -19,6 +19,8 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 |------|---------|------|
 | [`assessment-curated/`](assessment-curated/) | `assessment-curated` | **Method canon** — mandate → assessment → HITL → handoff |
 | [`mobile-protocol-security/`](mobile-protocol-security/) | `assessment-curated` (instance) | Mobile protocol / crypto assessment campaigns |
+| [`java-tink-deprecations/`](java-tink-deprecations/) | `assessment-curated` (instance) | Java Tink deprecated API migration campaigns |
+| [`java-jpa-deprecations/`](java-jpa-deprecations/) | `assessment-curated` (instance) | Java JPA / Spring Data deprecated API inventory |
 | [`react-doctor/`](react-doctor/) | `doctor-curated` | Admin UI React Doctor curated passes |
 | [`java-doctor/`](java-doctor/) | `java-doctor-curated` | Java SpotBugs / Semgrep / PMD curated passes |
 | [`mobile-doctor/`](mobile-doctor/) | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated passes |
