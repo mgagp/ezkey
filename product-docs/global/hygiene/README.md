@@ -21,6 +21,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`mobile-protocol-security/`](mobile-protocol-security/) | `assessment-curated` (instance) | Mobile protocol / crypto assessment campaigns |
 | [`java-tink-deprecations/`](java-tink-deprecations/) | `assessment-curated` (instance) | Java Tink deprecated API migration campaigns |
 | [`java-jpa-deprecations/`](java-jpa-deprecations/) | `assessment-curated` (instance) | Java JPA / Spring Data deprecated API inventory |
+| [`java-json-deprecations/`](java-json-deprecations/) | `assessment-curated` (instance) | Java JSON / Jackson 3 deprecated tree APIs |
 | [`java-native-compilation/`](java-native-compilation/) | `assessment-curated` (instance) | Java GraalVM / native-image residual cleanup |
 | [`react-doctor/`](react-doctor/) | `doctor-curated` | Admin UI React Doctor curated passes |
 | [`java-doctor/`](java-doctor/) | `java-doctor-curated` | Java SpotBugs / Semgrep / PMD curated passes |

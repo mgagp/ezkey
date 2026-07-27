@@ -227,7 +227,7 @@ public class AuthTokenManager {
     try {
       ObjectMapper mapper = new ObjectMapper();
       ObjectNode jsonNode = (ObjectNode) mapper.readTree(tokenPath.toFile());
-      return jsonNode.get("token").asText();
+      return jsonNode.get("token").asString();
     } catch (Exception e) {
       log.warn("Failed to load token from file: {}", e.getMessage());
       return null;

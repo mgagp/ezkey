@@ -1110,7 +1110,7 @@ public class AdminBootstrapService {
     try {
       ObjectMapper mapper = new ObjectMapper();
       ObjectNode jsonNode = (ObjectNode) mapper.readTree(tokenPath.toFile());
-      return jsonNode.get("token").asText();
+      return jsonNode.get("token").asString();
     } catch (Exception e) {
       log.warn("Failed to load token from file: {}", e.getMessage());
       return null;
@@ -1196,8 +1196,8 @@ public class AdminBootstrapService {
         return null;
       }
 
-      String privateKey = jsonNode.get("privateKey").asText();
-      String publicKey = jsonNode.get("publicKey").asText();
+      String privateKey = jsonNode.get("privateKey").asString();
+      String publicKey = jsonNode.get("publicKey").asString();
       int keySize =
           jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // EC P-256 default
 
@@ -1225,8 +1225,8 @@ public class AdminBootstrapService {
       ObjectNode jsonNode = (ObjectNode) mapper.readTree(credentialsPath.toFile());
 
       Integer enrollmentId = jsonNode.get("enrollmentId").asInt();
-      String privateKey = jsonNode.get("privateKey").asText();
-      String publicKey = jsonNode.get("publicKey").asText();
+      String privateKey = jsonNode.get("privateKey").asString();
+      String publicKey = jsonNode.get("publicKey").asString();
       int keySize =
           jsonNode.has("keySize") ? jsonNode.get("keySize").asInt() : 256; // EC P-256 default
 

@@ -688,7 +688,7 @@ public class BootstrapCredentialsExtractor {
         .putArray("recoveryCodes")
         .addAll(
             credentials.recoveryCodes().stream()
-                .map(code -> mapper.getNodeFactory().textNode(code))
+                .map(code -> mapper.getNodeFactory().stringNode(code))
                 .toList());
 
     mapper.writerWithDefaultPrettyPrinter().writeValue(credentialsPath.toFile(), jsonNode);
@@ -708,12 +708,12 @@ public class BootstrapCredentialsExtractor {
     ObjectNode jsonNode = (ObjectNode) mapper.readTree(credentialsPath.toFile());
 
     Integer enrollmentId = jsonNode.get("enrollmentId").asInt();
-    String enrollmentProofToken = jsonNode.get("enrollmentProofToken").asText();
+    String enrollmentProofToken = jsonNode.get("enrollmentProofToken").asString();
     Integer enrollmentChallengeCode = jsonNode.get("enrollmentChallengeCode").asInt();
 
     List<String> recoveryCodes = new ArrayList<>();
     if (jsonNode.has("recoveryCodes")) {
-      jsonNode.get("recoveryCodes").forEach(code -> recoveryCodes.add(code.asText()));
+      jsonNode.get("recoveryCodes").forEach(code -> recoveryCodes.add(code.asString()));
     }
 
     return new BootstrapCredentials(

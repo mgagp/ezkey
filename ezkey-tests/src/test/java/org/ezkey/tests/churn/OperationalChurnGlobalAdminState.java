@@ -41,8 +41,8 @@ public record OperationalChurnGlobalAdminState(String username, String bearerTok
     try {
       ObjectMapper mapper = new ObjectMapper();
       ObjectNode node = (ObjectNode) mapper.readTree(STATE_FILE.toFile());
-      String u = node.path("username").asText(null);
-      String t = node.path("bearerToken").asText(null);
+      String u = node.path("username").asString(null);
+      String t = node.path("bearerToken").asString(null);
       if (u == null || u.isBlank() || t == null || t.isBlank()) {
         return null;
       }

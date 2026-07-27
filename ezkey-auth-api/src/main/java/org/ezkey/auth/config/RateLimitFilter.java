@@ -266,8 +266,8 @@ public class RateLimitFilter implements Filter {
       if (idNode.isNumber()) {
         return idNode.intValue();
       }
-      if (idNode.isTextual()) {
-        return Integer.parseInt(idNode.asText());
+      if (idNode.isString()) {
+        return Integer.parseInt(idNode.asString());
       }
       return null;
     } catch (Exception e) {
@@ -303,8 +303,8 @@ public class RateLimitFilter implements Filter {
       if (idNode.isNumber()) {
         return idNode.intValue();
       }
-      if (idNode.isTextual()) {
-        return Integer.parseInt(idNode.asText());
+      if (idNode.isString()) {
+        return Integer.parseInt(idNode.asString());
       }
       return null;
     } catch (Exception e) {

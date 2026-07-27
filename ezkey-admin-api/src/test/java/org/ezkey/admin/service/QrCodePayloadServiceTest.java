@@ -53,8 +53,8 @@ class QrCodePayloadServiceTest {
       // Assert
       assertNotNull(payload);
       JsonNode json = objectMapper.readTree(payload);
-      assertEquals("4", json.get("enrollmentId").asText());
-      assertEquals("test-proof-token-abc123", json.get("enrollmentProofToken").asText());
+      assertEquals("4", json.get("enrollmentId").asString());
+      assertEquals("test-proof-token-abc123", json.get("enrollmentProofToken").asString());
       assertFalse(json.has("authUrl"), "authUrl should not be present when not configured");
     }
 
@@ -108,10 +108,10 @@ class QrCodePayloadServiceTest {
 
       // Assert
       JsonNode json = objectMapper.readTree(payload);
-      assertEquals("42", json.get("enrollmentId").asText());
-      assertEquals("proof-token-xyz", json.get("enrollmentProofToken").asText());
+      assertEquals("42", json.get("enrollmentId").asString());
+      assertEquals("proof-token-xyz", json.get("enrollmentProofToken").asString());
       assertTrue(json.has("authUrl"), "authUrl should be present when configured");
-      assertEquals("https://ezkey.acme.com:8080", json.get("authUrl").asText());
+      assertEquals("https://ezkey.acme.com:8080", json.get("authUrl").asString());
     }
 
     @Test
@@ -127,7 +127,7 @@ class QrCodePayloadServiceTest {
 
       // Assert
       JsonNode json = objectMapper.readTree(payload);
-      assertEquals("https://ezkey.acme.com:8080", json.get("authUrl").asText());
+      assertEquals("https://ezkey.acme.com:8080", json.get("authUrl").asString());
     }
   }
 
@@ -165,7 +165,7 @@ class QrCodePayloadServiceTest {
 
       // Assert
       JsonNode json = objectMapper.readTree(payload);
-      assertEquals(tokenWithSpecialChars, json.get("enrollmentProofToken").asText());
+      assertEquals(tokenWithSpecialChars, json.get("enrollmentProofToken").asString());
     }
 
     @Test
@@ -181,7 +181,7 @@ class QrCodePayloadServiceTest {
       // Assert
       JsonNode json = objectMapper.readTree(payload);
       assertTrue(
-          json.get("enrollmentId").isTextual(),
+          json.get("enrollmentId").isString(),
           "enrollmentId should be a JSON string for mobile parser compatibility");
     }
   }
