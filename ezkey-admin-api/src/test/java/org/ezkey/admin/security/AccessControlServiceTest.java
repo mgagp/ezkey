@@ -259,16 +259,6 @@ class AccessControlServiceTest {
   }
 
   /**
-   * Creates an admin authentication context.
-   *
-   * @return authentication with ROLE_ADMIN
-   */
-  private Authentication createAdminAuthentication() {
-    return new UsernamePasswordAuthenticationToken(
-        "admin", "password", java.util.List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
-  }
-
-  /**
    * Creates a global admin authentication context.
    *
    * @return authentication with ROLE_GLOBAL_ADMIN

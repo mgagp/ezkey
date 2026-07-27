@@ -43,6 +43,7 @@ package org.ezkey.admin.exception;
  * @author Ezkey contributors
  * @since 2025
  */
+@SuppressWarnings("serial")
 public class EnrollmentLinkedAsAdminException extends RuntimeException {
 
   /**

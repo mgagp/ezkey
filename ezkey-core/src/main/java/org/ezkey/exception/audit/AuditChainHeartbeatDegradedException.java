@@ -23,6 +23,7 @@ package org.ezkey.exception.audit;
  * @author Ezkey contributors
  * @since 2026
  */
+@SuppressWarnings("serial")
 public class AuditChainHeartbeatDegradedException extends RuntimeException {
 
   /**

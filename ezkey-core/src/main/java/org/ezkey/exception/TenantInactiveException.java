@@ -13,6 +13,7 @@ package org.ezkey.exception;
  * <p>This exception is shared across admin and core business flows so the same tenant-state rule
  * can map consistently across API surfaces.
  */
+@SuppressWarnings("serial")
 public class TenantInactiveException extends RuntimeException {
 
   public TenantInactiveException(String message) {

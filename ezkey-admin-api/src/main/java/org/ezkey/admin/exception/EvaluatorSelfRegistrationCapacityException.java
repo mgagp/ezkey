@@ -15,6 +15,7 @@ package org.ezkey.admin.exception;
  *
  * <p>Uses a single public message for daily cap and per-IP success limits.
  */
+@SuppressWarnings("serial")
 public class EvaluatorSelfRegistrationCapacityException extends RuntimeException {
 
   /** Generic client-facing message (no enumeration of limit type). */

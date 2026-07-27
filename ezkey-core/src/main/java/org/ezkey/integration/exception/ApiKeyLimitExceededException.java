@@ -8,6 +8,7 @@
 package org.ezkey.integration.exception;
 
 /** Raised when an integration has already reached its maximum number of active API keys. */
+@SuppressWarnings("serial")
 public class ApiKeyLimitExceededException extends RuntimeException {
 
   public ApiKeyLimitExceededException(String message) {

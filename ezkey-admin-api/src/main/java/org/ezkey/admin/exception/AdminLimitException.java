@@ -47,6 +47,7 @@ package org.ezkey.admin.exception;
  * @since 2025
  * @see org.springframework.http.ProblemDetail
  */
+@SuppressWarnings("serial")
 public class AdminLimitException extends RuntimeException {
 
   /**

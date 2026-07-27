@@ -33,6 +33,7 @@ package org.ezkey.exception;
  * @since 2025
  * @see org.ezkey.authattempt.service.AuthAttemptService
  */
+@SuppressWarnings("serial")
 public class NoPendingAuthAttemptException extends RuntimeException {
 
   /**

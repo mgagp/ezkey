@@ -8,6 +8,7 @@
 package org.ezkey.integration.exception;
 
 /** Raised when an operation tries to modify the lifecycle of the protected system integration. */
+@SuppressWarnings("serial")
 public class SystemIntegrationLifecycleException extends RuntimeException {
 
   public SystemIntegrationLifecycleException(String message) {

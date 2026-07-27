@@ -27,6 +27,7 @@ package org.ezkey.integration.exception;
  * @author Ezkey contributors
  * @since 2025
  */
+@SuppressWarnings("serial")
 public class IntegrationCodeAlreadyExistsException extends RuntimeException {
 
   private final String code;

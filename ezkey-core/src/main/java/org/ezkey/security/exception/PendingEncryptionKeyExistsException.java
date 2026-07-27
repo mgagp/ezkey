@@ -25,6 +25,7 @@ package org.ezkey.security.exception;
  * @author Ezkey contributors
  * @since 2025
  */
+@SuppressWarnings("serial")
 public class PendingEncryptionKeyExistsException extends RuntimeException {
 
   private final Long pendingKeyId;

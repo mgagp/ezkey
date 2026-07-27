@@ -8,6 +8,7 @@
 package org.ezkey.integration.exception;
 
 /** Raised when an integration lifecycle operation is not valid for the current state. */
+@SuppressWarnings("serial")
 public class IntegrationLifecycleStateException extends RuntimeException {
 
   public IntegrationLifecycleStateException(String message) {

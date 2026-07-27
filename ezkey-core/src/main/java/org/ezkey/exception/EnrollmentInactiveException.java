@@ -55,6 +55,7 @@ package org.ezkey.exception;
  * @author Ezkey contributors
  * @since 2025
  */
+@SuppressWarnings("serial")
 public class EnrollmentInactiveException extends RuntimeException {
 
   /**

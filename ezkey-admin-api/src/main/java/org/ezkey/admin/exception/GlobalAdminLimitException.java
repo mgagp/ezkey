@@ -15,6 +15,7 @@ package org.ezkey.admin.exception;
  * https://ezkey.io/problems/admin-provisioning/global-admin-limit-reached} with extension property
  * {@code parameters.maxGlobalAdmins}.
  */
+@SuppressWarnings("serial")
 public final class GlobalAdminLimitException extends RuntimeException {
 
   private final int maxGlobalAdmins;
