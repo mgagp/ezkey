@@ -199,16 +199,6 @@ All Python dependencies use permissive licenses:
 - **Rationale**: Build-time only, permissive license
 - **Mitigation**: Not distributed, build tool only
 
-#### GraalVM (Native Builds)
-
-**GraalVM Community Edition**
-- **License**: GPLv2 + Classpath Exception
-- **Risk Level**: LOW (if used)
-- **Rationale**: 
-  - Classpath Exception allows distribution
-  - Only relevant if native binaries are distributed
-- **Mitigation**: Include license text if distributing native binaries
-
 ### Mobile Platform Dependencies
 
 #### Android Build Tools
@@ -234,7 +224,6 @@ All Gradle plugins use Apache 2.0 or MIT licenses:
 
 **GPL with Classpath Exception**:
 - Eclipse Temurin (GPLv2 + CP Exception) - ✅ Compatible
-- GraalVM (GPLv2 + CP Exception) - ✅ Compatible (if used)
 
 **Mitigation Strategy**:
 - ✅ Automated detection in CI/CD pipeline

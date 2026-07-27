@@ -43,7 +43,3 @@ Ajouter `base_url_m2m_api` = `http://localhost:7080` dans l'environnement Postma
 ### Rate limiting en mémoire (non distribué)
 
 Chaque instance (admin-api, m2m-api) maintient ses propres buckets Caffeine. Un même API key a donc des quotas indépendants par service. Acceptable pour le MVP ; envisager un backend partagé (Redis) quand le volume le justifiera.
-
-### Pas de compilation native
-
-Le module est structurellement simple et bien positionné pour une future compilation native (peu de dépendances, stateless). La configuration GraalVM sera ajoutée dans une phase ultérieure après résolution des problèmes JPA/Hibernate connus.

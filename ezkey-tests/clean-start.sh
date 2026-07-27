@@ -9,8 +9,7 @@
 # 5. Extracts bootstrap credentials
 # 6. Initializes admin token
 #
-# Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--prod-safe]
-#   --native: Use native compiled images instead of JVM images (requires pre-built native images)
+# Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--prod-safe]
 #   --ha: Use HA stack with 2 instances of each API behind HAProxy load balancers
 #   --mvn-bootstrap: Enable Maven-based bootstrap steps (default: disabled, Docker bootstrap-init handles this)
 #   --no-proxy: Do not start Caddy in front of APIs (default: Caddy is enabled for prod-like security headers on the proxy path)
@@ -28,7 +27,6 @@
 #   - Docker and Docker Compose installed and running
 #   - Maven installed (only if --mvn-bootstrap is used)
 #   - Scripts must be run from ezkey-tests directory
-#   - If using --native: Native images must be built separately before running
 #   - If using --ha: HA stack will be started (for testing ShedLock distributed locking)
 
 set -e
@@ -37,7 +35,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DOCKER_DIR="${PROJECT_ROOT}/docker"
 TEST_STATE_DIR="${SCRIPT_DIR}/.ezkey-test"
-NATIVE_MODE=""
 HA_MODE=""
 MVN_BOOTSTRAP=""
 # Default: include Caddy (docker-compose.with-proxy.yml) so the dev stack matches security-hardened proxy behavior.
@@ -49,9 +46,6 @@ SPRING_PROFILES=""
 # Parse flags
 for arg in "$@"; do
     case "$arg" in
-        --native)
-            NATIVE_MODE="--native"
-            ;;
         --ha)
             HA_MODE="--ha"
             ;;
@@ -72,29 +66,19 @@ for arg in "$@"; do
             ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./clean-start.sh [--native] [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--prod-safe]"
+            echo "Usage: ./clean-start.sh [--ha] [--mvn-bootstrap] [--no-proxy] [--with-proxy] [--jmx] [--prod-safe]"
             exit 1
             ;;
     esac
 done
-
-# Validate incompatible options
-if [ -n "$NATIVE_MODE" ] && [ -n "$HA_MODE" ]; then
-    echo "❌ Error: --native and --ha options are incompatible"
-    echo "   HA mode currently only supports regular Spring Boot builds"
-    exit 1
-fi
 
 # Compute Spring profiles for Docker startup.
 # Defaults:
 # - docker: base production-like docker profile (required for bootstrap export configuration)
 # - docker-dev: local diagnostics (Actuator exposed on management ports)
 # - docker-test: permissive test mode (rate limiting disabled)
-# - native: native image profile (only when --native is used)
 if [ -n "$PROD_SAFE" ]; then
     SPRING_PROFILES="docker"
-elif [ -n "$NATIVE_MODE" ]; then
-    SPRING_PROFILES="docker,docker-dev,docker-test,native"
 else
     SPRING_PROFILES="docker,docker-dev,docker-test"
 fi
@@ -121,10 +105,6 @@ echo ""
 if [ -n "$HA_MODE" ]; then
     echo "Step 1/7: Stopping Docker Compose HA stack (including volumes)..."
     COMPOSE_FILE="${DOCKER_DIR}/docker-compose.ha.yml"
-    COMPOSE_EXTRA=""
-elif [ -n "$NATIVE_MODE" ]; then
-    echo "Step 1/7: Stopping Docker Compose stack (including volumes) - Native mode..."
-    COMPOSE_FILE="${DOCKER_DIR}/docker-compose.native.yml"
     COMPOSE_EXTRA=""
 else
     echo "Step 1/7: Stopping Docker Compose stack (including volumes)..."
@@ -155,28 +135,15 @@ fi
 
 # Also try to stop the other compose files if they exist (for cleanup)
 if [ -n "$HA_MODE" ]; then
-    # Stop standard (and with-proxy) and native stacks if running
+    # Stop standard stack (and with-proxy) if running
     if [ -f "${DOCKER_DIR}/docker-compose.yml" ]; then
         ${DOCKER_COMPOSE} -f "${DOCKER_DIR}/docker-compose.yml" -f "${DOCKER_DIR}/docker-compose.with-proxy.yml" down -v 2>/dev/null || true
-    fi
-    if [ -f "${DOCKER_DIR}/docker-compose.native.yml" ] && [ "${COMPOSE_FILE}" != "${DOCKER_DIR}/docker-compose.native.yml" ]; then
-        ${DOCKER_COMPOSE} -f "${DOCKER_DIR}/docker-compose.native.yml" down -v 2>/dev/null || true
     fi
 else
     # Stop HA stack if running
     HA_COMPOSE_FILE="${DOCKER_DIR}/docker-compose.ha.yml"
     if [ -f "${HA_COMPOSE_FILE}" ] && [ "${COMPOSE_FILE}" != "${HA_COMPOSE_FILE}" ]; then
         ${DOCKER_COMPOSE} -f "${HA_COMPOSE_FILE}" down -v 2>/dev/null || true
-    fi
-    # Stop other mode if running (and with-proxy for standard stack)
-    if [ -n "$NATIVE_MODE" ]; then
-        if [ -f "${DOCKER_DIR}/docker-compose.yml" ]; then
-            ${DOCKER_COMPOSE} -f "${DOCKER_DIR}/docker-compose.yml" -f "${DOCKER_DIR}/docker-compose.with-proxy.yml" down -v 2>/dev/null || true
-        fi
-    else
-        if [ -f "${DOCKER_DIR}/docker-compose.native.yml" ]; then
-            ${DOCKER_COMPOSE} -f "${DOCKER_DIR}/docker-compose.native.yml" down -v 2>/dev/null || true
-        fi
     fi
 fi
 
@@ -205,8 +172,6 @@ echo ""
 # Step 3: Generate master encryption key
 if [ -n "$HA_MODE" ]; then
     echo "Step 3/7: Generating master encryption key (HA mode)..."
-elif [ -n "$NATIVE_MODE" ]; then
-    echo "Step 3/7: Generating master encryption key (Native mode)..."
 else
     echo "Step 3/7: Generating master encryption key..."
 fi
@@ -216,8 +181,6 @@ if [ -f "${DOCKER_DIR}/generate-encryption-keys.sh" ]; then
     if [ -n "$HA_MODE" ]; then
         # For HA mode, use HA volume name (shared between instances)
         bash "${DOCKER_DIR}/generate-encryption-keys.sh" --ha --force
-    elif [ -n "$NATIVE_MODE" ]; then
-        bash "${DOCKER_DIR}/generate-encryption-keys.sh" --native --force
     else
         bash "${DOCKER_DIR}/generate-encryption-keys.sh" --force
     fi
@@ -233,8 +196,6 @@ echo ""
 if [ -n "$HA_MODE" ]; then
     echo "Step 4/7: Starting Docker Compose HA stack with profiles (${SPRING_PROFILES})..."
     echo "  HA mode: 2 instances of each API behind HAProxy load balancers"
-elif [ -n "$NATIVE_MODE" ]; then
-    echo "Step 4/7: Starting Docker Compose stack with profiles (${SPRING_PROFILES}) - Native mode..."
 elif [ -n "$WITH_PROXY" ]; then
     echo "Step 4/7: Starting Docker Compose stack with profiles (${SPRING_PROFILES}) - Caddy reverse proxy..."
 else
@@ -253,14 +214,8 @@ if [ -n "$HA_MODE" ]; then
         exit 1
     fi
 elif [ -f "${DOCKER_DIR}/start.sh" ]; then
-    if [ -n "$NATIVE_MODE" ]; then
-        echo "  Starting stack with SPRING_PROFILES_ACTIVE=${SPRING_PROFILES}..."
-        echo "  Using native compiled images..."
-        SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start.sh" ${NATIVE_MODE} ${WITH_PROXY}
-    else
-        echo "  Starting stack with SPRING_PROFILES_ACTIVE=${SPRING_PROFILES}..."
-        SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start.sh" ${WITH_PROXY}
-    fi
+    echo "  Starting stack with SPRING_PROFILES_ACTIVE=${SPRING_PROFILES}..."
+    SPRING_PROFILES_ACTIVE="${SPRING_PROFILES}" bash "${DOCKER_DIR}/start.sh" ${WITH_PROXY}
     echo "  ✅ Docker stack started"
 else
     echo "  ❌ Error: start.sh not found at ${DOCKER_DIR}/start.sh"
@@ -339,9 +294,6 @@ if [ -n "$HA_MODE" ]; then
     echo "  - Admin API: http://localhost:9080 (via HAProxy)"
     echo "  - Auth API: http://localhost:8080 (via HAProxy)"
     echo "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8085/stats (Auth)"
-elif [ -n "$NATIVE_MODE" ]; then
-    echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (NATIVE mode)"
-    echo "  - Images: Using native compiled images (ezkey-auth-api-native, ezkey-integration-api-native)"
 elif [ -n "$WITH_PROXY" ]; then
     echo "  - Docker stack: Running with profiles (${SPRING_PROFILES}) (Caddy reverse proxy)"
     echo "  - Admin API (via Caddy): http://localhost:19080"
@@ -389,16 +341,6 @@ echo "  Ad-hoc filtering (by test groups):"
 echo "    mvn test -pl ezkey-tests -Dgroups=encryption"
 echo "    mvn test -pl ezkey-tests -DexcludedGroups=time-dependent"
 echo ""
-if [ -n "$NATIVE_MODE" ]; then
-    echo "📦 Native Mode Information:"
-    echo "  - Using native compiled images (ezkey-auth-api-native, ezkey-integration-api-native)"
-    echo "  - Faster startup time (~2-3 seconds vs ~15-20 seconds)"
-    echo "  - Lower memory usage (~50-100MB vs ~200-300MB)"
-    echo "  - To rebuild native images:"
-    echo "    mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -Dmaven.test.skip=true"
-    echo "    mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -Dmaven.test.skip=true"
-    echo ""
-fi
 echo "💡 Useful Commands:"
 if [ -n "$HA_MODE" ]; then
     echo "  - View logs: cd ../docker && ./manage-ha.sh logs"
@@ -411,11 +353,8 @@ else
     echo "  - View logs: cd ../docker && ./manage.sh logs"
     echo "  - Stop stack: cd ../docker && ./manage.sh stop"
     echo "  - View status: cd ../docker && ./manage.sh status"
-    if [ -z "$NATIVE_MODE" ]; then
-        echo "  - Start with native images: ./clean-start.sh --native"
-        echo "  - Start with HA stack: ./clean-start.sh --ha"
-        echo "  - Caddy in front of APIs is default (security headers on proxy); opt out: ./clean-start.sh --no-proxy"
-    fi
+    echo "  - Start with HA stack: ./clean-start.sh --ha"
+    echo "  - Caddy in front of APIs is default (security headers on proxy); opt out: ./clean-start.sh --no-proxy"
 fi
 echo ""
 

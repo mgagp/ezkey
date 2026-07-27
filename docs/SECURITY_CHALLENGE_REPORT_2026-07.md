@@ -284,25 +284,25 @@ and repository-specific static analysis remain the evidence for the source-level
 ### SEC-020 — Native Auth API exposes metrics and info without authentication
 
 **Severity:** LOW  
-**Confidence:** High for the native-compose topology  
+**Confidence:** High for the former native-compose topology (surface removed)  
 **OWASP:** A05 Security Misconfiguration  
 **CWE:** CWE-200 Exposure of Sensitive Information
 
 #### Evidence
 
-- `ezkey-auth-api/src/main/java/org/ezkey/auth/config/SecurityConfig.java` lines 65–70 permits all
-  requests.
-- `ezkey-auth-api/src/main/resources/application-native.properties` lines 37–42 exposes
-  `health,metrics,info`.
-- `docker/docker-compose.native.yml` publishes management port `8085` to the host.
+Historical (pre-removal) topology:
 
-The normal Docker profile exposes health only, so this is topology-specific rather than a default
+- Auth API `SecurityConfig` permits all requests on the public Auth API surface.
+- Former `application-native.properties` exposed `health,metrics,info`.
+- Former `docker/docker-compose.native.yml` published management port `8085` to the host.
+
+The normal Docker profile exposes health only, so this was topology-specific rather than a default
 release-wide defect.
 
 #### Impact
 
-Unauthenticated callers who can reach the native management port can enumerate runtime metrics and
-application information. This is reconnaissance value, not a direct authentication bypass.
+Unauthenticated callers who could reach the native management port could enumerate runtime metrics
+and application information. This was reconnaissance value, not a direct authentication bypass.
 
 #### Recommended remediation
 
@@ -313,11 +313,9 @@ application information. This is reconnaissance value, not a direct authenticati
 
 #### Remediation status
 
-**Closed.** The native Auth API profile now exposes only `health`; the Admin API native profile was
-aligned as same-class hardening. Native Compose keeps the management ports published so existing
-host and container health checks remain compatible, but `/actuator/metrics` and `/actuator/info`
-are no longer exposed by the default native profiles. Richer Actuator diagnostics remain available
-only through the explicit local `docker-dev` override path. PR #374.
+**Closed / obsolete.** Initially hardened in PR #374 (health-only on native profiles). The GraalVM
+native compose/profile surface was later removed entirely in the 2026-07 `assessment-curated`
+hygiene pass (`java-native-compilation`), so the finding's topology no longer exists in-tree.
 
 ---
 
@@ -745,8 +743,8 @@ None of these candidates is presented as a demonstrated authentication bypass.
 
 ### Deployment hardening
 
-13. **SEC-020:** closed — native Auth/Admin profiles expose health only; richer diagnostics remain
-    explicit local `docker-dev` behavior.
+13. **SEC-020:** closed / obsolete — former native Auth/Admin profiles and compose stack removed
+    (2026-07 hygiene); richer diagnostics remain explicit local `docker-dev` behavior on the JVM stack.
 14. Tighten the documented dev/demo versus production boundary described in section 5.
 
 SEC-021, SEC-022, and SEC-017 are program-level security corrections. SEC-019, SEC-020, and the

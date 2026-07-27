@@ -62,7 +62,6 @@ Ezkey implements a comprehensive license management strategy to ensure complianc
 5. **Container Infrastructure**
    - Docker base images (eclipse-temurin, alpine, maven)
    - Buildpacks (paketobuildpacks)
-   - GraalVM (if used for native builds)
 
 6. **Mobile Platform Tools**
    - Gradle plugins (Android)

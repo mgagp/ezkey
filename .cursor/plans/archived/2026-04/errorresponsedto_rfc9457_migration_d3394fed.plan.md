@@ -14,7 +14,7 @@ todos:
     content: "Vague 3: CryptoGlobalExceptionHandler + CryptoControllerTest; grep ezkey-tests pour crypto"
     status: completed
   - id: wave4-remove-dto
-    content: "Vague 4: supprimer ErrorResponseDto; grep Java vide; régénération OpenAPI par mainteneur (nettoyage AdminNativeConfiguration optionnel — native hors scope release 1)"
+    content: "Vague 4: supprimer ErrorResponseDto; grep Java vide; régénération OpenAPI par mainteneur"
     status: completed
 isProject: false
 ---
@@ -28,9 +28,9 @@ isProject: false
 | Wave | Outcome |
 |------|---------|
 | 1 | `GlobalExceptionHandler` migrated to `ProblemDetail`; `AdminApiProblemCatalog`; `GlobalExceptionHandlerSystemTenantTest` updated |
-| 2 | `ValidationExceptionHandler` legacy handlers → RFC 9457; `IntegrationController` Springdoc uses `ProblemDetail`; `AuditReasonJustificationTest` asserts `type`/`detail`; `ErrorResponseDto` removed from `AdminNativeConfiguration` |
+| 2 | `ValidationExceptionHandler` legacy handlers → RFC 9457; `IntegrationController` Springdoc uses `ProblemDetail`; `AuditReasonJustificationTest` asserts `type`/`detail` |
 | 3 | `CryptoGlobalExceptionHandler` + `CryptoApiProblemCatalog`; `CryptoControllerTest` uses `application/problem+json` and `$.type` |
-| 4 | `ezkey-core/.../ErrorResponseDto.java` deleted; no remaining `ErrorResponseDto` references in `*.java`; CLI comment adjusted; `ezkey-admin-api/NATIVE_BUILD.md` updated |
+| 4 | `ezkey-core/.../ErrorResponseDto.java` deleted; no remaining `ErrorResponseDto` references in `*.java`; CLI comment adjusted |
 
 **Optional follow-up:** Historical analysis markdown or OpenAPI `*.backup` copies may still mention `ErrorResponseDto`; safe to ignore or prune opportunistically.
 
@@ -46,7 +46,6 @@ isProject: false
 | Définition                                | `[ezkey-core/src/main/java/org/ezkey/dto/ErrorResponseDto.java](ezkey-core/src/main/java/org/ezkey/dto/ErrorResponseDto.java)`                           | DTO legacy: `code`, `message`, `timestamp`, `path`                                                                                                                                                                                                                                                                       |
 | Admin API — handlers                      | `[ezkey-admin-api/.../GlobalExceptionHandler.java](ezkey-admin-api/src/main/java/org/ezkey/exception/GlobalExceptionHandler.java)`                       | 5 handlers encore en `ErrorResponseDto`: `SystemTenantNotConfigured`, `RateLimitExceeded`, `ResourceNotFound`, `RuntimeException`, `Exception`                                                                                                                                                                           |
 | Admin API — handlers                      | `[ezkey-admin-api/.../ValidationExceptionHandler.java](ezkey-admin-api/src/main/java/org/ezkey/exception/ValidationExceptionHandler.java)`               | **Coexistence**: plusieurs chemins déjà en `ResponseEntity<ProblemDetail>` (vagues domaine précédentes), **9 handlers** encore en `ErrorResponseDto`: `MethodArgumentNotValid`, `IllegalArgument`, `IllegalState`, `OptimisticLockingFailure`, `HttpMessageNotReadable`, `DataIntegrityViolation`, `ConstraintViolation` |
-| Admin API — config native (hors priorité) | `[ezkey-admin-api/.../AdminNativeConfiguration.java](ezkey-admin-api/src/main/java/org/ezkey/admin/config/AdminNativeConfiguration.java)`                | Enregistrements réflexion / Jackson (historique GraalVM). **Ne pas traiter comme contrainte** pour cette migration — voir § « Compilation native » ci-dessous.                                                                                                                                                           |
 | Admin API — Springdoc                     | `[ezkey-admin-api/.../IntegrationController.java](ezkey-admin-api/src/main/java/org/ezkey/admin/controller/IntegrationController.java)`                  | Seul contrôleur avec `@Schema(implementation = ErrorResponseDto.class)` sur réponses d’erreur (réponses 4xx liées intégrations / clés)                                                                                                                                                                                   |
 | Crypto API                                | `[ezkey-crypto-api/.../CryptoGlobalExceptionHandler.java](ezkey-crypto-api/src/main/java/org/ezkey/crypto/controller/CryptoGlobalExceptionHandler.java)` | Tous les handlers en `ErrorResponseDto`                                                                                                                                                                                                                                                                                  |
 
@@ -99,12 +98,6 @@ flowchart LR
 3. **Réponses** — `ResponseEntity<ProblemDetail>` avec statuts inchangés par rapport aux handlers actuels (principe: **changement de forme du corps**, pas de sémantique HTTP sauf décision explicite).
 4. **OpenAPI** — Mettre à jour les annotations Springdoc sur les contrôleurs en même temps que les handlers qu’ils documentent (ex. `ProblemDetail` à la place de `ErrorResponseDto`). Puis **régénération des specs** par le mainteneur après clean start.
 
-### Compilation native (GraalVM / AOT) — hors objectif release 1
-
-- La **compilation native a été laissée de côté** et pourrait **être retirée entièrement** à moyen terme. Ce n’est **pas un objectif à compléter** pour finaliser cette migration RFC 9457.
-- **Release 1** : ne pas bloquer ou alourdir le travail sur des hints AOT, validation d’image native, ou symétrie `ProblemDetail` vs `ErrorResponseDto` dans `AdminNativeConfiguration`. On peut être **agressif** : supprimer les références mortes à `ErrorResponseDto` dans cette config si ça simplifie le grep / le ménage, **sans** obligation de re-tester une build native.
-- Le coût éventuel de rattraper ou supprimer la chaîne native reste une **décision à moyen terme**, distincte de la livraison des APIs standardisées.
-
 ---
 
 ## 3) Vagues proposées (scope, tests unitaires, tests fonctionnels)
@@ -116,7 +109,7 @@ Hypothèse de travail convenue: **Docker arrêté** → baseline Maven complète
 - **Scope**: Migrer les 5 méthodes de `[GlobalExceptionHandler.java](ezkey-admin-api/src/main/java/org/ezkey/exception/GlobalExceptionHandler.java)` vers `ProblemDetail`; ajuster javadoc; s’appuyer sur `AdminApiProblemCatalog` pour `type`/`title`/`detail` sanitizés.
 - **Tests unitaires**: `[GlobalExceptionHandlerSystemTenantTest.java](ezkey-admin-api/src/test/java/org/ezkey/exception/GlobalExceptionHandlerSystemTenantTest.java)` — remplacer assertions sur `getCode()` par assertions RFC (`getType()`, `getStatus()`, `getDetail()` ou équivalent). Ajouter des tests ciblés si d’autres branches (404/429) ne sont pas couvertes.
 - **Tests fonctionnels**: Impact direct limité (erreurs génériques / 404). Recommandation: exécuter au minimum les tests Admin qui déclenchent 404/500 contrôlés si présents; sinon smoke `ezkey-tests` sur un sous-ensemble security lié admin, ou suite P0 selon temps.
-- **Livrable**: plus aucune référence `ErrorResponseDto` dans ce fichier. Pas d’exigence de toucher `AdminNativeConfiguration` tant que le DTO existe encore ailleurs (nettoyage optionnel en vague 4, sans validation native).
+- **Livrable**: plus aucune référence `ErrorResponseDto` dans ce fichier.
 
 ### Vague 2 — Admin API: handlers legacy dans `ValidationExceptionHandler`
 
@@ -133,7 +126,7 @@ Hypothèse de travail convenue: **Docker arrêté** → baseline Maven complète
 
 ### Vague 4 — Suppression du DTO et nettoyage final
 
-- **Scope**: Supprimer `[ErrorResponseDto.java](ezkey-core/src/main/java/org/ezkey/dto/ErrorResponseDto.java)`; `grep` global sur `ErrorResponseDto` doit être vide pour `*.java`. **Optionnel** : retirer les hints devenus inutiles dans `[AdminNativeConfiguration.java](ezkey-admin-api/src/main/java/org/ezkey/admin/config/AdminNativeConfiguration.java)` (cohérence du code, pas de contrainte native — voir § « Compilation native »). Vérifier qu’aucune doc générée / exemple ne référence l’ancien schéma de manière contradictoire (docs non générées: seulement si nécessaire au fil du projet).
+- **Scope**: Supprimer `[ErrorResponseDto.java](ezkey-core/src/main/java/org/ezkey/dto/ErrorResponseDto.java)`; `grep` global sur `ErrorResponseDto` doit être vide pour `*.java`. Vérifier qu’aucune doc générée / exemple ne référence l’ancien schéma de manière contradictoire (docs non générées: seulement si nécessaire au fil du projet).
 - **Tests unitaires**: Build reactor complet + tous les modules touchés.
 - **Tests fonctionnels**: Campagne `ezkey-tests` plus large (ou complète) pour valider qu’aucun client HTTP ne dépendait encore de `code`/`message` legacy.
 - **OpenAPI / SDK**: Régénération des specs et propagation aux artefacts (`specs/`, `ezkey-sdk`, etc.) **par le mainteneur** après clean start (`[.cursor/rules/openapi-specs.mdc](.cursor/rules/openapi-specs.mdc)`).

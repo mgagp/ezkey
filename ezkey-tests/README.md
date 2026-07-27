@@ -106,8 +106,8 @@ The Docker stack includes a dedicated CLI container (`cli-test`) to run the Ezke
 consistent, Linux-only environment. This container is part of the developer experience and the
 functional CLI test strategy.
 
-If you run the native or HA stacks, set `EZKEY_CLI_CONTAINER_NAME` so tests can locate the CLI
-container (e.g., `ezkey-cli-test-native` or `ezkey-cli-test-ha`).
+If you run the HA stack, set `EZKEY_CLI_CONTAINER_NAME` so tests can locate the CLI
+container (e.g., `ezkey-cli-test-ha`).
 
 ```bash
 # Run CLI commands inside the container

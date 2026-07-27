@@ -1,13 +1,12 @@
 # Ezkey Tests - Clean Start Script (PowerShell)
 # Performs a clean startup of the Docker stack for testing.
-# Usage: .\clean-start.ps1 [-Native] [-Ha] [-MvnBootstrap] [-Jmx] [-ProdSafe]
+# Usage: .\clean-start.ps1 [-Ha] [-MvnBootstrap] [-Jmx] [-ProdSafe]
 #
 # Optional environment for Docker Compose (auth-api):
 #   $env:EZKEY_DEMO_MITM_SIGNATURE_ENABLED = 'true'|'false'  — maps to ezkey.demo.mitm-signature-enabled.
 #   Default when unset: true (demo-friendly), except -ProdSafe defaults to false. See docs/DEMO_MITM_SIGNATURE.md.
 
 param(
-    [switch]$Native,
     [switch]$Ha,
     [switch]$MvnBootstrap,
     [switch]$Jmx,
@@ -22,16 +21,8 @@ $ProjectRoot = Split-Path -Parent $ScriptDir
 $DockerDir = Join-Path $ProjectRoot "docker"
 $TestStateDir = Join-Path $ScriptDir ".ezkey-test"
 
-if ($Native -and $Ha) {
-    Write-Host "Error: -Native and -Ha options are incompatible" -ForegroundColor Red
-    Write-Host "   HA mode currently only supports regular Spring Boot builds"
-    exit 1
-}
-
 if ($ProdSafe) {
     $springProfiles = "docker"
-} elseif ($Native) {
-    $springProfiles = "docker,docker-dev,docker-test,native"
 } else {
     $springProfiles = "docker,docker-dev,docker-test"
 }
@@ -69,9 +60,6 @@ Write-Host ""
 if ($Ha) {
     Write-Host "Step 1/7: Stopping Docker Compose HA stack (including volumes)..."
     $composeFile = Join-Path $DockerDir "docker-compose.ha.yml"
-} elseif ($Native) {
-    Write-Host "Step 1/7: Stopping Docker Compose stack (including volumes) - Native mode..."
-    $composeFile = Join-Path $DockerDir "docker-compose.native.yml"
 } else {
     Write-Host "Step 1/7: Stopping Docker Compose stack (including volumes)..."
     $composeFile = Join-Path $DockerDir "docker-compose.yml"
@@ -94,18 +82,11 @@ if (Test-Path $composeFile) {
 # Also try to stop other compose files for cleanup
 if ($Ha) {
     $otherFiles = @(
-        (Join-Path $DockerDir "docker-compose.yml"),
-        (Join-Path $DockerDir "docker-compose.native.yml")
+        (Join-Path $DockerDir "docker-compose.yml")
     )
 } else {
-    if ($Native) {
-        $otherModeFile = Join-Path $DockerDir "docker-compose.yml"
-    } else {
-        $otherModeFile = Join-Path $DockerDir "docker-compose.native.yml"
-    }
     $otherFiles = @(
-        (Join-Path $DockerDir "docker-compose.ha.yml"),
-        $otherModeFile
+        (Join-Path $DockerDir "docker-compose.ha.yml")
     )
 }
 
@@ -144,8 +125,6 @@ Write-Host ""
 # Step 3: Generate master encryption key
 if ($Ha) {
     Write-Host "Step 3/7: Generating master encryption key (HA mode)..."
-} elseif ($Native) {
-    Write-Host "Step 3/7: Generating master encryption key (Native mode)..."
 } else {
     Write-Host "Step 3/7: Generating master encryption key..."
 }
@@ -156,8 +135,6 @@ $KeyGenScript = Join-Path $DockerDir "generate-encryption-keys.ps1"
 if (Test-Path $KeyGenScript) {
     if ($Ha) {
         & $KeyGenScript -Ha
-    } elseif ($Native) {
-        & $KeyGenScript -Native
     } else {
         & $KeyGenScript
     }
@@ -174,8 +151,6 @@ Write-Host ""
 if ($Ha) {
     Write-Host "Step 4/7: Starting Docker Compose HA stack with profiles ($springProfiles)..."
     Write-Host "  HA mode: 2 instances of each API behind HAProxy load balancers"
-} elseif ($Native) {
-    Write-Host "Step 4/7: Starting Docker Compose stack with profiles ($springProfiles) - Native mode..."
 } else {
     Write-Host "Step 4/7: Starting Docker Compose stack with profiles ($springProfiles)..."
 }
@@ -210,12 +185,7 @@ if ($Ha) {
     $startScript = Join-Path $DockerDir "start.ps1"
     if (Test-Path $startScript) {
         Write-Host "  Starting stack with SPRING_PROFILES_ACTIVE=$springProfiles..."
-        if ($Native) {
-            Write-Host "  Using native compiled images..."
-            & $startScript -Native
-        } else {
-            & $startScript
-        }
+        & $startScript
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         Write-Host "  Docker stack started"
     } else {
@@ -294,9 +264,6 @@ if ($Ha) {
     Write-Host "  - Admin API: http://localhost:9080 (via HAProxy)"
     Write-Host "  - Auth API: http://localhost:8080 (via HAProxy)"
     Write-Host "  - HAProxy Stats: http://localhost:9081/stats (Admin), http://localhost:8085/stats (Auth)"
-} elseif ($Native) {
-    Write-Host "  - Docker stack: Running with profiles ($springProfiles) (NATIVE mode)"
-    Write-Host "  - Images: Using native compiled images (ezkey-auth-api-native, ezkey-integration-api-native)"
 } else {
     Write-Host "  - Docker stack: Running with profiles ($springProfiles)"
 }
@@ -338,16 +305,6 @@ Write-Host "  Ad-hoc filtering (by test groups):"
 Write-Host "    mvn test -pl ezkey-tests -Dgroups=encryption"
 Write-Host "    mvn test -pl ezkey-tests -DexcludedGroups=time-dependent"
 Write-Host ""
-if ($Native) {
-    Write-Host "Native Mode Information:"
-    Write-Host "  - Using native compiled images (ezkey-auth-api-native, ezkey-integration-api-native)"
-    Write-Host "  - Faster startup time (~2-3 seconds vs ~15-20 seconds)"
-    Write-Host "  - Lower memory usage (~50-100MB vs ~200-300MB)"
-    Write-Host "  - To rebuild native images:"
-    Write-Host "    mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
-    Write-Host "    mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests"
-    Write-Host ""
-}
 Write-Host "Useful Commands:"
 if ($Ha) {
     Write-Host "  - View logs: cd ..\docker ; .\manage-ha.ps1 logs"
@@ -360,9 +317,6 @@ if ($Ha) {
     Write-Host "  - View logs: cd ..\docker ; .\manage.ps1 logs"
     Write-Host "  - Stop stack: cd ..\docker ; .\manage.ps1 stop"
     Write-Host "  - View status: cd ..\docker ; .\manage.ps1 status"
-    if (-not $Native) {
-        Write-Host "  - Start with native images: .\clean-start.ps1 -Native"
-        Write-Host "  - Start with HA stack: .\clean-start.ps1 -Ha"
-    }
+    Write-Host "  - Start with HA stack: .\clean-start.ps1 -Ha"
 }
 Write-Host ""

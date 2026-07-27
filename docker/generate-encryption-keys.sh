@@ -4,8 +4,7 @@
 # Generates master key file in Docker volume for Tink encryption.
 # This script should be run before first startup or when master key is missing.
 #
-# Usage: ./docker/generate-encryption-keys.sh [--native] [--ha] [--experimental-lightsail]
-#   --native: Generate keys for native stack (uses ezkey-native_encryption-secrets-native volume)
+# Usage: ./docker/generate-encryption-keys.sh [--ha] [--experimental-lightsail]
 #   --ha: Generate keys for HA stack (uses ezkey-ha_encryption-secrets-ha volume)
 #   --experimental-lightsail: Generate keys for experimental-hybrid Lightsail compose
 #     (project name ezkey-experimental-lightsail; volume ezkey-experimental-lightsail_encryption-secrets)
@@ -17,7 +16,6 @@
 
 set -e
 
-NATIVE_MODE=""
 HA_MODE=""
 EXPERIMENTAL_LIGHTSAIL_MODE=""
 FORCE_MODE=""
@@ -26,10 +24,6 @@ VOLUME_NAME="ezkey_encryption-secrets"
 # Parse flags
 for arg in "$@"; do
     case "$arg" in
-        --native)
-            NATIVE_MODE="1"
-            VOLUME_NAME="ezkey-native_encryption-secrets-native"
-            ;;
         --ha)
             HA_MODE="1"
             VOLUME_NAME="ezkey-ha_encryption-secrets-ha"
@@ -43,29 +37,21 @@ for arg in "$@"; do
             ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: ./generate-encryption-keys.sh [--native] [--ha] [--experimental-lightsail] [--force]"
+            echo "Usage: ./generate-encryption-keys.sh [--ha] [--experimental-lightsail] [--force]"
             exit 1
             ;;
     esac
 done
 
 # Validate incompatible options
-if [ -n "$NATIVE_MODE" ] && [ -n "$HA_MODE" ]; then
-    echo "❌ Error: --native and --ha options are incompatible"
+if [ -n "$EXPERIMENTAL_LIGHTSAIL_MODE" ] && [ -n "$HA_MODE" ]; then
+    echo "❌ Error: --experimental-lightsail cannot be combined with --ha"
     exit 1
-fi
-if [ -n "$EXPERIMENTAL_LIGHTSAIL_MODE" ]; then
-    if [ -n "$NATIVE_MODE" ] || [ -n "$HA_MODE" ]; then
-        echo "❌ Error: --experimental-lightsail cannot be combined with --native or --ha"
-        exit 1
-    fi
 fi
 
 echo "🔑 Ezkey Encryption Keys Generator (Docker)"
 if [ -n "$HA_MODE" ]; then
     echo "   Mode: High Availability (HA)"
-elif [ -n "$NATIVE_MODE" ]; then
-    echo "   Mode: Native"
 elif [ -n "$EXPERIMENTAL_LIGHTSAIL_MODE" ]; then
     echo "   Mode: experimental-hybrid Lightsail (compose project ezkey-experimental-lightsail)"
 fi
@@ -81,7 +67,6 @@ fi
 # Check if volume exists, create if not
 # Note: Docker Compose prefixes volume names with project name (from docker-compose.yml "name: ezkey")
 # So the actual volume name is "ezkey_encryption-secrets" (project prefix + volume name)
-# For native mode: "ezkey-native_encryption-secrets-native"
 # The volume will be created automatically by docker-compose if it doesn't exist,
 # but we check/create it here to ensure it exists before generating keys
 if ! docker volume inspect "$VOLUME_NAME" > /dev/null 2>&1; then

@@ -552,17 +552,6 @@
 	</build>
 
 	<profiles>
-		<profile>
-			<id>native</id>
-			<properties>
-				<!-- Buildpacks native image settings for all Boot apps -->
-				<spring-boot.build-image.builder>paketobuildpacks/builder-noble-java-tiny</spring-boot.build-image.builder>
-				<spring-boot.build-image.environment.BP_NATIVE_IMAGE>true</spring-boot.build-image.environment.BP_NATIVE_IMAGE>
-				<!-- Centralize GraalVM Native Build Tools version -->
-				<native.maven.plugin.version>1.1.5</native.maven.plugin.version>
-			</properties>
-		</profile>
-
 		<!--
 			Profile used for Docker image builds and other environments
 			where we explicitly want to skip all Checkstyle execution.

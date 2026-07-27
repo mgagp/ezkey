@@ -76,23 +76,6 @@ Plans are organized by completion date (YYYY-MM format) to maintain chronologica
 
 ---
 
-### 2026-04 - Native compilation strategy (Spring Boot 4 bounded spike)
-
-**Completion Date:** April 15, 2026  
-**Status:** Archived after bounded execution; build-time progress confirmed, runtime native path not
-validated for operational use.
-
-| File | Purpose | Status |
-|------|---------|--------|
-| **2026-04/native_compilation_strategy_30b657e5.plan.md** | Rationalize Spring Boot 4 native strategy around Auth + Integration, remove Admin native support, align compose and validation path | Archived - native runtime still not viable |
-
-**Outcome summary:**
-
-- Repository cleanup and tooling alignment were completed.
-- Root Maven validation, targeted AOT, and native image builds succeeded.
-- Auth API and Integration API still failed at runtime in the native Docker stack.
-- Canonical closure note: `docs/NATIVE_INITIATIVE_STATUS_2026-04.md`.
-
 ### 2026-04 - Dashboard badge drill-downs (clickable stats → lists / audit)
 
 **Completion Date:** April 14, 2026  

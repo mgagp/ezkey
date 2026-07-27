@@ -41,11 +41,10 @@ import tools.jackson.databind.node.ObjectNode;
  *
  * <p><b>Container names:</b> The extractor resolves the Admin API container via {@code docker
  * inspect}. Supported names are the standard stack ({@code ezkey-admin-api}) and HA ({@code
- * ezkey-admin-api-1} / {@code ezkey-admin-api-2}). Native mode keeps the Admin API on the same JVM
- * container name. Override with environment variable {@code EZKEY_ADMIN_DOCKER_CONTAINER} if your
- * compose uses a different {@code container_name}. If the JVM cannot find the {@code docker}
- * executable (common on Windows when running Maven outside Git Bash), set {@link
- * DockerCliLocator#ENV_DOCKER_CLI} to the full path of {@code docker.exe} (see {@link
+ * ezkey-admin-api-1} / {@code ezkey-admin-api-2}). Override with environment variable {@code
+ * EZKEY_ADMIN_DOCKER_CONTAINER} if your compose uses a different {@code container_name}. If the JVM
+ * cannot find the {@code docker} executable (common on Windows when running Maven outside Git Bash),
+ * set {@link DockerCliLocator#ENV_DOCKER_CLI} to the full path of {@code docker.exe} (see {@link
  * DockerCliLocator}).
  *
  * <p><b>Log Format Parsed:</b>
@@ -198,7 +197,7 @@ public class BootstrapCredentialsExtractor {
   }
 
   /**
-   * Detects which Admin API container to use (HA, standard JAR stack, or native image stack).
+   * Detects which Admin API container to use (HA or standard JAR stack).
    *
    * @return Container name to use for reading logs
    * @throws IllegalStateException if no valid container is found

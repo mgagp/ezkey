@@ -71,11 +71,11 @@ in the living tree.
 | ID | Title | Severity | Confidence | Disposition |
 | --- | --- | --- | --- | --- |
 | NAT-001 | Auth + Integration Java RuntimeHints and `META-INF/native-image` on classpath | P1 | High | Closed (removed 2026-07-26) |
-| NAT-002 | Maven `-Pnative` profiles (parent + auth + integration) | P1 | High | Open |
-| NAT-003 | Admin API orphaned native remnants (`application-native.properties`, `NATIVE_BUILD.md`) | P2 | High | Open |
-| NAT-004 | Docker / clean-start / keygen `--native` ops surface | P1 | High | Open |
-| NAT-005 | Native/AOT build and debug scripts under `scripts/` | P2 | High | Open |
-| NAT-006 | Living documentation corpus and scattered native how-to references | P2 | High | Open |
+| NAT-002 | Maven `-Pnative` profiles (parent + auth + integration + core) | P1 | High | Closed (removed 2026-07-26) |
+| NAT-003 | Admin API orphaned native remnants (`application-native.properties`, `NATIVE_BUILD.md`) | P2 | High | Closed (removed 2026-07-26) |
+| NAT-004 | Docker / clean-start / keygen `--native` ops surface | P1 | High | Closed (removed 2026-07-26) |
+| NAT-005 | Native/AOT build and debug scripts under `scripts/` | P2 | High | Closed (removed 2026-07-26) |
+| NAT-006 | Living documentation corpus and scattered native how-to references | P2 | High | Closed (removed 2026-07-26; archives included per operator) |
 
 ## Evidence (brief)
 

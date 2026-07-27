@@ -2,11 +2,10 @@
 
 # Ezkey Docker Start Script
 # This script builds Docker images and starts the EZ Key stack
-# Usage: start.sh [--parallel] [--no-cache] [--debug-cache] [--native] [--with-proxy]
+# Usage: start.sh [--parallel] [--no-cache] [--debug-cache] [--with-proxy]
 #   --parallel: Build images in parallel (default: sequential for easier log examination)
 #   --no-cache: Force rebuild without using cache (default: uses BuildKit cache for optimization)
 #   --debug-cache: Build only the first service (migration) and stop - for cache validation
-#   --native: Use native compiled images instead of JVM images (requires pre-built native images)
 #   --with-proxy: Add Caddy reverse proxy; APIs use EZKEY_TRUSTED_PROXIES_CIDRS for client IP (ports 19080, 18080, 17080)
 
 set -e
@@ -15,7 +14,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_PARALLEL=""
 BUILD_NO_CACHE=""
 DEBUG_CACHE=""
-NATIVE_MODE=""
 WITH_PROXY=""
 
 # Parse flags (all parameters are optional)
@@ -29,9 +27,6 @@ for arg in "$@"; do
             ;;
         --debug-cache)
             DEBUG_CACHE="1"
-            ;;
-        --native)
-            NATIVE_MODE="1"
             ;;
         --with-proxy)
             WITH_PROXY="1"
@@ -54,28 +49,13 @@ if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-test" && ! contains_pr
     export SPRING_PROFILES_ACTIVE="docker,${SPRING_PROFILES_ACTIVE}"
 fi
 
-# Select compose file based on mode
-if [ -n "$NATIVE_MODE" ]; then
-    BASE_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.native.yml"
-    echo "🔧 Native mode: Using docker-compose.native.yml"
-    echo "   Note: Native images must be built separately before using this mode"
-    echo "   Build commands:"
-    echo "     mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -Dmaven.test.skip=true"
-    echo "     mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -Dmaven.test.skip=true"
-    echo ""
-else
-    BASE_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
-fi
+BASE_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
 
 COMPOSE_ARGS="-f ${BASE_COMPOSE_FILE}"
 
 # If docker-dev profile is active, auto-include the local diagnostics override to publish management ports.
 if contains_profile "${SPRING_PROFILES_ACTIVE:-}" "docker-dev"; then
-    if [ -n "$NATIVE_MODE" ]; then
-        DEV_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.native.docker-dev.yml"
-    else
-        DEV_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.docker-dev.yml"
-    fi
+    DEV_OVERRIDE_FILE="${SCRIPT_DIR}/docker-compose.docker-dev.yml"
 
     if [ -f "${DEV_OVERRIDE_FILE}" ]; then
         COMPOSE_ARGS="${COMPOSE_ARGS} -f ${DEV_OVERRIDE_FILE}"

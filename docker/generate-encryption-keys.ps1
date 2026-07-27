@@ -1,24 +1,15 @@
 # Ezkey Encryption Keys Generator for Docker (PowerShell)
 # Generates master key file in Docker volume for Tink encryption.
-# Usage: .\generate-encryption-keys.ps1 [-Native] [-Ha]
+# Usage: .\generate-encryption-keys.ps1 [-Ha]
 
 param(
-    [switch]$Native,
     [switch]$Ha
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-if ($Native -and $Ha) {
-    Write-Host "Error: -Native and -Ha options are incompatible" -ForegroundColor Red
-    exit 1
-}
-
 $VolumeName = "ezkey_encryption-secrets"
-if ($Native) {
-    $VolumeName = "ezkey-native_encryption-secrets-native"
-}
 if ($Ha) {
     $VolumeName = "ezkey-ha_encryption-secrets-ha"
 }
@@ -26,8 +17,6 @@ if ($Ha) {
 Write-Host "Ezkey Encryption Keys Generator (Docker)"
 if ($Ha) {
     Write-Host "   Mode: High Availability (HA)"
-} elseif ($Native) {
-    Write-Host "   Mode: Native"
 }
 Write-Host "=========================================="
 Write-Host ""

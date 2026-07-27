@@ -256,7 +256,7 @@ Check container logs for errors.
 
 **Solution**:
 1. Ensure Docker stack has completed startup
-2. Check Admin API logs: `docker logs ezkey-admin-api | grep "GLOBAL ADMIN"` (standard and native stack)
+2. Check Admin API logs: `docker logs ezkey-admin-api | grep "GLOBAL ADMIN"`
 3. Verify bootstrap completed: Look for "✅ Global Admin Enrollment created"
 4. Run extraction test manually: `mvn test -pl ezkey-tests -Dtest=BootstrapCredentialsExtractionTest`
 

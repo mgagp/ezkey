@@ -14,32 +14,14 @@ If you are following the main project quick start, use `./ezkey-tests/clean-star
 
 ### Start the Stack
 
-**Default Mode (Spring Boot JVM):**
 ```bash
 ./docker/start.sh
 ```
 
 On Windows, use Bash as well, for example through Git Bash.
 
-**Native Mode (GraalVM Native Images):**
-```bash
-./docker/start.sh --native
-```
-
-**Note**: Native mode requires pre-built native images for Auth API and Integration API. Admin API stays on the JVM in native mode. Build the native images first:
-```bash
-# Build native images
-mvn spring-boot:build-image -pl ezkey-auth-api -Pnative \
-    -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests
-mvn spring-boot:build-image -pl ezkey-integration-api -Pnative \
-   -Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests
-
-# Then start with --native flag
-./docker/start.sh --native
-```
-
 That's it! The script will:
-1. Build all Docker images (or use native images if --native flag is used)
+1. Build all Docker images
 2. Start PostgreSQL database
 3. Run database migrations
 4. Start all API services
@@ -334,76 +316,6 @@ docker-compose restart admin-api
 docker-compose down -v
 ```
 
-## Native Image Mode
-
-### Overview
-
-The Docker stack supports two execution modes:
-- **Default Mode (JVM)**: Uses standard Spring Boot JAR files running on JVM
-- **Native Mode**: Uses GraalVM native images for faster startup and lower memory usage
-
-### Building Native Images
-
-Before using native mode, you must build the native images:
-
-```bash
-# Build admin-api native image
-mvn spring-boot:build-image -pl ezkey-admin-api -Pnative \
-    -Dspring-boot.build-image.imageName=ezkey-admin-api-native -DskipTests
-
-# Build auth-api native image
-mvn spring-boot:build-image -pl ezkey-auth-api -Pnative \
-    -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests
-```
-
-**Note**: Native image builds require significant time (10-30 minutes) and resources. Consider building in CI/CD or during off-hours.
-
-### Using Native Mode
-
-Once native images are built, start the stack with the `--native` flag:
-
-```bash
-# Linux/Mac
-./docker/start.sh --native
-
-# Windows (PowerShell)
-# From a PowerShell prompt in the repo root (recommended):
-powershell -NoProfile -ExecutionPolicy Bypass -File .\docker\start.ps1 --native
-# Or run directly from PowerShell:
-.\docker\start.ps1 --native
-```
-
-This uses `docker-compose.native.yml` which references the pre-built native images instead of building from source.
-
-### Performance Comparison
-
-**Startup Time:**
-- JVM Mode: ~20-30 seconds (admin-api), ~15-20 seconds (auth-api)
-- Native Mode: ~3-5 seconds (admin-api), ~2-3 seconds (auth-api)
-
-**Memory Usage:**
-- JVM Mode: ~300-400MB (admin-api), ~200-300MB (auth-api)
-- Native Mode: ~80-120MB (admin-api), ~50-100MB (auth-api)
-
-**Cold Start (AWS Lambda):**
-- JVM Mode: ~8-12 seconds (admin-api), ~5-10 seconds (auth-api)
-- Native Mode: ~200-800ms (admin-api), ~100-500ms (auth-api)
-
-### Native Mode Limitations
-
-1. **Build Time**: Native images take significantly longer to build (10-30 minutes vs 2-5 minutes)
-2. **Build Resources**: Requires more CPU and memory during build
-3. **Debugging**: Native images are harder to debug than JVM images
-4. **Compatibility**: Some Java features may not work in native mode (check GraalVM documentation)
-
-### Switching Between Modes
-
-You can switch between modes by:
-1. Stopping the current stack: `./docker/manage.sh stop`
-2. Starting with desired mode: `./docker/start.sh` (JVM) or `./docker/start.sh --native` (Native)
-
-**Note**: Both modes use the same PostgreSQL database and volumes, so data persists across mode switches.
-
 ## Environment Variables
 
 ### Database Configuration
@@ -436,7 +348,7 @@ All services use the `docker` Spring profile by default, which loads configurati
 **Optional: `docker-dev` (Local Docker Diagnostics)**
 - Enables a richer (but still reasonable) Actuator surface for local analysis
 - Intended for local Docker usage only (never expose publicly)
-- Recommended for profiling memory/heap via `/actuator/metrics` while iterating on native build tradeoffs
+- Recommended for profiling memory/heap via `/actuator/metrics`
  - Uses a dedicated management port: `8085` (not published by default)
 
 **Optional: `docker-test` (Test Mode)**

@@ -1,16 +1,14 @@
 # Ezkey Docker Start Script for PowerShell
 # This script builds Docker images and starts the EZ Key stack
-# Usage: .\start.ps1 [-Parallel] [-NoCache] [-DebugCache] [-Native]
+# Usage: .\start.ps1 [-Parallel] [-NoCache] [-DebugCache]
 #   -Parallel: Build images in parallel (default: sequential for easier log examination)
 #   -NoCache: Force rebuild without using cache (default: uses BuildKit cache for optimization)
 #   -DebugCache: Build only the first service (migration) and stop - for cache validation
-#   -Native: Use native compiled images instead of JVM images (requires pre-built native images)
 
 param(
     [switch]$Parallel,
     [switch]$NoCache,
-    [switch]$DebugCache,
-    [switch]$Native
+    [switch]$DebugCache
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,17 +17,6 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ComposeFile = Join-Path $ScriptDir "docker-compose.yml"
 $DevOverrideFile = Join-Path $ScriptDir "docker-compose.docker-dev.yml"
 $JmxOverrideFile = Join-Path $ScriptDir "docker-compose.docker-dev.jmx.yml"
-
-if ($Native) {
-    $ComposeFile = Join-Path $ScriptDir "docker-compose.native.yml"
-    $DevOverrideFile = Join-Path $ScriptDir "docker-compose.native.docker-dev.yml"
-    Write-Host "Native mode: Using docker-compose.native.yml"
-    Write-Host "   Note: Native images must be built separately before using this mode"
-    Write-Host "   Build commands:"
-    Write-Host "     mvn spring-boot:build-image -pl ezkey-auth-api -Pnative -Dspring-boot.build-image.imageName=ezkey-auth-api-native -DskipTests"
-    Write-Host "     mvn spring-boot:build-image -pl ezkey-integration-api -Pnative -Dspring-boot.build-image.imageName=ezkey-integration-api-native -DskipTests"
-    Write-Host ""
-}
 
 # Ensure docker base profile is active when using docker-dev or docker-test.
 if ($env:SPRING_PROFILES_ACTIVE) {

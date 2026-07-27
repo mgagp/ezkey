@@ -214,7 +214,6 @@ License metadata included in Docker images:
 ### Build Tools
 
 - **Buildpacks**: Apache 2.0 (build-time only)
-- **GraalVM**: GPLv2 + Classpath Exception (if used for native builds)
 
 ### Mobile Platform Tools
 

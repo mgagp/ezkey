@@ -22,8 +22,6 @@
 - `c:\github\ezkey-worktree2\ezkey-admin-api\pom.xml` — ajout de la dépendance JavaMelody Spring Boot 4.
 - `c:\github\ezkey-worktree2\ezkey-auth-api\pom.xml` — ajout de la dépendance JavaMelody Spring Boot 4.
 - `c:\github\ezkey-worktree2\ezkey-integration-api\pom.xml` — ajout de la dépendance JavaMelody Spring Boot 4.
-- `c:\github\ezkey-worktree2\ezkey-admin-api\src\main\resources\application-native.properties` — ajouter l’exposition du endpoint `monitoring` et les propriétés JavaMelody pertinentes pour admin-api.
-- `c:\github\ezkey-worktree2\ezkey-auth-api\src\main\resources\application-native.properties` — ajouter l’exposition du endpoint `monitoring` et les propriétés JavaMelody pertinentes pour auth-api.
 - `c:\github\ezkey-worktree2\ezkey-integration-api\config\application-docker.properties` — vrai point de config Docker de integration-api; y ajouter l’exposition `monitoring` et les propriétés JavaMelody.
 - `c:\github\ezkey-worktree2\ezkey-admin-api\src\main\java\org\ezkey\admin\config\SecurityConfig.java` — référence de sécurité montrant pourquoi le mode management endpoint évite d’ouvrir `/monitoring` sur le port métier.
 - `c:\github\ezkey-worktree2\ezkey-auth-api\src\main\java\org\ezkey\auth\config\SecurityConfig.java` — référence du modèle de sécurité permissif auth-api.

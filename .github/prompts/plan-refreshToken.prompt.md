@@ -401,5 +401,5 @@ The recommended **sliding expiration** and **configurable TTL** have been implem
 - **Config:** `ezkey.admin.token.expiration-hours=2` (default 2h). Used for initial token TTL at login and for the sliding window on each validated request.
 - **AdminTokenRotationProperties:** New `expirationHours` (default 2); `AdminAuthService` uses it in `generateAndPersistToken()`.
 - **AdminTokenValidationService:** `updateTokenLastUsed()` now extends `expiresAt` to `now + expirationHours` for normal admin tokens; recovery tokens (prefix `ezkey_recovery_`) are not extended.
-- **Application config:** Property added in `application.properties`, `application-docker.properties`, `application-windows.properties`, `application-native.properties`.
+- **Application config:** Property added in `application.properties`, `application-docker.properties`, `application-windows.properties`.
 - **Tests:** `AdminTokenValidationServiceTest` updated (constructor + sliding tests: normal token extended, recovery token not extended).

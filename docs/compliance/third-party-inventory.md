@@ -128,13 +128,6 @@ This document provides a comprehensive inventory of all third-party dependencies
   - Purpose: Native image builds
   - Distribution: Build-time only
 
-### GraalVM (Native Builds)
-
-- **GraalVM Community Edition**
-  - License: GPLv2 + Classpath Exception
-  - Purpose: Native image compilation
-  - Distribution: Only if native binaries are distributed
-
 ## Mobile Platform Dependencies
 
 ### Android Build Tools (Gradle)

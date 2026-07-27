@@ -201,12 +201,7 @@ Les deux changements partagent le même vecteur (simplification du modèle `Inte
 3. **`docs/ENCRYPTION_KEY_ROTATION_IMPLEMENTATION.md`**
    - Ligne ~1975 : snippet SQL d'exemple contient `INSERT INTO ezkey_integration (integration_logo, ...)` — mettre à jour pour refléter le nouveau schéma sans `integration_logo`
 
-4. **`docs/NATIVE_COMPILATION_REVIEW_SUMMARY.md`**
-   - Ligne ~18 : liste des entités JPA mentionne `IntegrationI18n` — retirer
-   - Lignes ~141–142 : liste des DTOs mentionne `IntegrationI18nCreateDto` et `IntegrationI18nResponseDto` — retirer
-   - Ligne ~200 : liste mentionne `IntegrationI18n` — retirer
-
-5. **`docs/PAGINATION_AUDIT_REPORT.md`**
+4. **`docs/PAGINATION_AUDIT_REPORT.md`**
    - Ligne ~126 : description du filtre `integrationName` dit *(partial match, case-insensitive via i18n join)* — changer en *(partial match, case-insensitive on `integration_name`)* maintenant que c'est une colonne directe
 
 6. **`docs/features/SECURITY_MULTI_TENANT.md`**

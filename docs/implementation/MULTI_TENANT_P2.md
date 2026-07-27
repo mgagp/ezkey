@@ -202,7 +202,7 @@
 
 ### **1. Compilation Native**
 - ✅ **Status :** Compatible
-- 📝 **Note :** Les nouvelles entités et services sont compatibles avec GraalVM
+- 📝 **Note :** Les nouvelles entités et services suivent les conventions JPA / Spring du module
 - 🔧 **Action :** Vérification des métadonnées native lors de la Phase 3
 
 ### **2. Tests Unitaires**
