@@ -1,9 +1,12 @@
 package org.ezkey.demo.device.controller;
 
+import jakarta.servlet.http.HttpSession;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.ezkey.demo.device.service.AuthApiService;
 import org.ezkey.demo.device.service.AuthAttemptPayloadUtil;
+import org.ezkey.demo.device.service.ClaimedPendingAuth;
 import org.ezkey.demo.device.service.DeviceCryptoService;
 import org.ezkey.demo.device.service.DeviceCryptoService.ECP256DeviceKeyPair;
 import org.ezkey.demo.device.service.EnrollmentAuthApiUrlResolver;
@@ -12,6 +15,7 @@ import org.ezkey.demo.device.service.EnrollmentStoreService;
 import org.ezkey.demo.device.service.EnrollmentStoreService.Record;
 import org.ezkey.demo.device.service.EnrollmentVerifyPayloadUtil;
 import org.ezkey.demo.device.service.InvalidAuthApiUrlException;
+import org.ezkey.demo.device.service.PendingAuthClaimSession;
 import org.ezkey.demo.device.view.EnrollmentTenantGrouper;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingRequestDto;
 import org.ezkey.demodevice.generated.dto.AuthAttemptPendingResponseDto;
@@ -43,6 +47,10 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
  *   <li>Authentication request polling and response submission
  *   <li>Challenge-response validation when required
  * </ul>
+ *
+ * <p>Pending auth is read-once on Auth API. After a successful claim, this controller keeps the
+ * claim in the HTTP session so a second GET (double navigation, re-check, refresh) can re-show
+ * Approve/Deny without calling pending again.
  *
  * <p>The controller manages the mobile device's cryptographic state and communicates with the Ezkey
  * Auth API to complete the enrollment and authentication flows.
@@ -364,7 +372,8 @@ public class EzkeyAppController {
   }
 
   @GetMapping("/enrollments/{enrollmentId}/auth")
-  public String enrollmentAuth(@PathVariable("enrollmentId") Integer enrollmentId, Model model) {
+  public String enrollmentAuth(
+      @PathVariable("enrollmentId") Integer enrollmentId, Model model, HttpSession session) {
     model.addAttribute("pageTitle", "Authentication");
     model.addAttribute("enrollmentId", enrollmentId);
     try {
@@ -381,6 +390,19 @@ public class EzkeyAppController {
       model.addAttribute("integrationName", rec.integrationName());
       model.addAttribute("integrationDescription", rec.integrationDescription());
       model.addAttribute("integrationLogo", rec.integrationLogo());
+
+      // Rehydrate after read-once claim (second GET / refresh) — do not call pending again
+      Optional<ClaimedPendingAuth> openClaim =
+          PendingAuthClaimSession.findOpen(
+              session, enrollmentId, Instant.now(), PendingAuthClaimSession.DEFAULT_TTL);
+      if (openClaim.isPresent()) {
+        logger.info(
+            "Rehydrating claimed pending auth attempt {} for enrollment {} from session",
+            openClaim.get().authAttemptId(),
+            enrollmentId);
+        applyClaimedPendingToModel(model, openClaim.get());
+        return "phone/ezkey/auth_pending";
+      }
 
       // Generate device proof token for pending request
       String deviceProofToken = cryptoService.generateProofToken();
@@ -424,13 +446,16 @@ public class EzkeyAppController {
           model.addAttribute("error", "Invalid integration signature");
           return "phone/ezkey/auth";
         }
-        // Store auth attempt info in session for respond
-        model.addAttribute("authAttemptId", pendingResponse.getAuthAttemptId());
-        model.addAttribute("authAttemptProofToken", pendingResponse.getAuthAttemptProofToken());
-        model.addAttribute("challengeRequired", pendingResponse.getAuthAttemptChallengeRequired());
-        model.addAttribute("contextTitle", pendingResponse.getContextTitle());
-        model.addAttribute("contextMessage", pendingResponse.getContextMessage());
-        model.addAttribute("hasPendingAuth", true);
+        ClaimedPendingAuth claim =
+            ClaimedPendingAuth.of(
+                enrollmentId,
+                pendingResponse.getAuthAttemptId(),
+                pendingResponse.getAuthAttemptProofToken(),
+                Boolean.TRUE.equals(pendingResponse.getAuthAttemptChallengeRequired()),
+                pendingResponse.getContextTitle(),
+                pendingResponse.getContextMessage());
+        PendingAuthClaimSession.store(session, claim);
+        applyClaimedPendingToModel(model, claim);
 
         return "phone/ezkey/auth_pending";
       } else {
@@ -462,7 +487,10 @@ public class EzkeyAppController {
       @RequestParam("approved") Boolean approved,
       @RequestParam(value = "challengeResponse", required = false) String challengeResponse,
       @RequestParam("authAttemptProofToken") String authAttemptProofToken,
-      Model model) {
+      Model model,
+      HttpSession session) {
+    // Leaving the pending UI — clear session claim whether respond succeeds or fails
+    PendingAuthClaimSession.clear(session, enrollmentId);
     model.addAttribute("pageTitle", "Authentication Response");
     model.addAttribute("enrollmentId", enrollmentId);
     try {
@@ -603,5 +631,21 @@ public class EzkeyAppController {
       model.addAttribute("message", "Authentication response failed: " + e.getMessage());
     }
     return "phone/ezkey/auth_result";
+  }
+
+  /**
+   * Copies a session-backed or freshly claimed pending into the Thymeleaf model for {@code
+   * auth_pending}.
+   *
+   * @param model Spring MVC model
+   * @param claim open claimed pending
+   */
+  private static void applyClaimedPendingToModel(Model model, ClaimedPendingAuth claim) {
+    model.addAttribute("authAttemptId", claim.authAttemptId());
+    model.addAttribute("authAttemptProofToken", claim.authAttemptProofToken());
+    model.addAttribute("challengeRequired", claim.challengeRequired());
+    model.addAttribute("contextTitle", claim.contextTitle());
+    model.addAttribute("contextMessage", claim.contextMessage());
+    model.addAttribute("hasPendingAuth", true);
   }
 }

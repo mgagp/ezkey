@@ -106,7 +106,9 @@
       <div class="mt-auto">
         <a class="btn-primary"
            th:href="@{'/phone/ezkey/enrollments/' + ${enrollmentId} + '/auth'}"
-           data-testid="demo-device-auth-recheck">Check for Authentication Requests</a>
+           data-testid="demo-device-auth-recheck"
+           id="demo-device-auth-recheck"
+           onclick="return demoDeviceArmPendingCheck(this);">Check for Authentication Requests</a>
         <a class="btn-primary" th:href="@{/phone/ezkey}" style="background: rgba(255,255,255,.1);" data-testid="demo-device-back-to-enrollments">Back to Enrollments</a>
       </div>
     </div>
@@ -116,6 +118,20 @@
        aria-label="Back to enrollments"
        data-testid="demo-device-auth-back"></a>
   </div>
+  <script>
+    // One-shot arm: reduce double-GET while Auth API is slow (e.g. keyset reload).
+    // Session claim cache still covers any second GET that does land.
+    function demoDeviceArmPendingCheck(link) {
+      if (link.getAttribute('data-armed') === '1') {
+        return false;
+      }
+      link.setAttribute('data-armed', '1');
+      link.setAttribute('aria-disabled', 'true');
+      link.style.pointerEvents = 'none';
+      link.style.opacity = '0.65';
+      return true;
+    }
+  </script>
 </body>
 </html>
 
