@@ -66,7 +66,7 @@
 		<spring-boot.version>4.1.0</spring-boot.version>
 		<!-- SEC-019: targeted BOM overrides (July 2026 Security Challenge advisories) -->
 		<postgresql.version>42.7.12</postgresql.version>
-		<logback.version>1.5.38</logback.version>
+		<logback.version>1.6.1</logback.version>
 		<tomcat.version>11.0.24</tomcat.version>
 
 		<jackson-bom.version>3.1.5</jackson-bom.version>
