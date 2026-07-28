@@ -118,7 +118,7 @@ honest closeout.
 - no new uncertainty that would block a cold agent from resuming.
 
 **Closeout:** clear commit message, optional GitHub issue/PR, update `AGENTS.md` or module docs when
-the pin/policy should outlive the PR. Do **not** add `I-*` / `TB-*` / `TSP-*` / `ML-*` unless the
+the pin/policy should outlive the PR. Do **not** add `I-*` / `TB-*` / `TSP-*` unless the
 operator explicitly confirms after your challenge.
 
 ### Program signals (canonical artifacts justified)
@@ -128,8 +128,11 @@ operator explicitly confirms after your challenge.
 - new failure modes or config strategies that future work must rediscover;
 - cross-module coordination or explicit Lane A / B / C / D / E program intent.
 
-**Closeout:** use the appropriate artifact set (`I-*`, `TB-*`, `TSP-*`, `ML-*`, methodology
-decision) proportional to the program — not reflexively all of them.
+**Closeout:** use the appropriate artifact set (`I-*`, `TB-*`, `TSP-*`, methodology decision)
+proportional to the program — not reflexively all of them. Program-execution narrative (evidence,
+deferred items, residual risks) belongs in the `TB-*`/`I-*` Closeout section; a reusable process
+lesson belongs in a methodology decision (see
+[`decisions/2026-07-28-retire-method-log-artifact-type.md`](decisions/2026-07-28-retire-method-log-artifact-type.md)).
 
 ### Program slice exit sequence (before commit or PR)
 

@@ -33,12 +33,14 @@ Finalize a work slice so progress remains auditable and easy to resume.
 
 If the slice is **hygiene-only** (no open `I-*`/`TB-*` for this work), classify per § Hygiene vs program below and commit with targeted docs only.
 
-See also `product-docs/methodology/minimum-viable-method.md` § *Program slice exit sequence* and
-`product-docs/global/backlog/method-logs/ML-2026-06-18-closeout-skill-before-commit-gap.md`.
+See also `product-docs/methodology/minimum-viable-method.md` § *Program slice exit sequence*.
 
 ## Hygiene vs program (classify before materializing)
 
-A closeout invitation is **not** automatic permission to create `I-*`, `TB-*`, `TSP-*`, or `ML-*`.
+A closeout invitation is **not** automatic permission to create `I-*`, `TB-*`, or `TSP-*`. A
+reusable process lesson from this slice belongs in a methodology decision, not a standalone log
+file (see
+`product-docs/methodology/decisions/2026-07-28-retire-method-log-artifact-type.md`).
 
 1. **Classify** the slice as **code hygiene** or **program** using
    `product-docs/methodology/minimum-viable-method.md` (section *Hygiene vs program closeout*) and

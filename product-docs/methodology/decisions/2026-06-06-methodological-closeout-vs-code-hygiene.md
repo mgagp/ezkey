@@ -21,6 +21,17 @@ toolchain hygiene** applying a validated recipe, not a new discovery program.
 The over-materialization was corrected (artifacts removed; hygiene closed with commit + `AGENTS.md`
 updates only).
 
+## Historical interpretation note
+
+This record preserves `ML-*` as it was named on the decision date: a program-path option alongside
+`I-*`/`TB-*`/`TSP-*`. `ML-*` never received its own nomenclature entry, template, or workflow-stage
+row, and was retired as a distinct artifact family in
+[`2026-07-28-retire-method-log-artifact-type.md`](2026-07-28-retire-method-log-artifact-type.md).
+The substance of **this** decision — classify hygiene vs program before materializing canonical
+artifacts — is unaffected; only the `ML-*` option within the program path is superseded. Read
+"`ML-*`" below as historical; current guidance routes that content to a `TB-*`/`I-*` Closeout
+section (program narrative) or a new methodology decision (reusable process lesson).
+
 ## Source signal
 
 - "Close this properly" or "methodological closeout" does not automatically mean "create canonical

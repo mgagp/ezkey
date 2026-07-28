@@ -90,11 +90,13 @@ remain stale or empty.
 Decision test: **who updates this, when, and what happens if it stays empty or stale for 30 days?**
 
 **Closeout invitations:** when an operator asks for a "methodological closeout" or full traceability,
-do not treat that as automatic permission to create `I-*`, `TB-*`, `TSP-*`, or `ML-*`. Classify
+do not treat that as automatic permission to create `I-*`, `TB-*`, or `TSP-*`. Classify
 **code hygiene** vs **program** first (see
 [`minimum-viable-method.md`](minimum-viable-method.md#hygiene-vs-program-closeout) and
 [`decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`](decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md)).
-Hygiene earns a commit/PR and targeted docs — not a new backlog family.
+Hygiene earns a commit/PR and targeted docs — not a new backlog family. Reusable process lessons
+go in a methodology decision, not a standalone log file (see
+[`decisions/2026-07-28-retire-method-log-artifact-type.md`](decisions/2026-07-28-retire-method-log-artifact-type.md)).
 
 ### 7. Evidence before automation
 

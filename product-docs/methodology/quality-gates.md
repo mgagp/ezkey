@@ -13,8 +13,10 @@ This document defines lightweight but explicit gates that protect analysis quali
 - Living documents, registries, or skills have earned their maintenance cost.
 - Closure distinguishes corpus integration, product implementation, and residual backlog.
 - Closeout invitations are classified as **hygiene** or **program** before creating new `I-*`,
-  `TB-*`, `TSP-*`, or `ML-*` artifacts (see
+  `TB-*`, or `TSP-*` artifacts (see
   [`decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`](decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md)).
+  Reusable process lessons are recorded as a methodology decision, not a standalone log file (see
+  [`decisions/2026-07-28-retire-method-log-artifact-type.md`](decisions/2026-07-28-retire-method-log-artifact-type.md)).
 
 ### 1) Analysis gate
 
