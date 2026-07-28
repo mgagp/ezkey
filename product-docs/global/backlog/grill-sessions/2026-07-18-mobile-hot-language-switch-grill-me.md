@@ -83,11 +83,11 @@ _All resolved → G1–G6._
 ## Outcome
 
 Grill complete 2026-07-18. Idea promoted to
-[`TB-2026-07-18-mobile-hot-language-switch`](../ideas/TB-2026-07-18-mobile-hot-language-switch.md)
+[`TB-2026-07-18-mobile-hot-language-switch`](../TB-2026-07-18-mobile-hot-language-switch.md)
 (`draft`, `single-pass`). Ready for implementation when the operator starts the coding slice.
 
 ## Links
 
 - [`../ideas/I-2026-07-18-mobile-hot-language-switch.md`](../ideas/I-2026-07-18-mobile-hot-language-switch.md)
-- [`../ideas/TB-2026-07-18-mobile-hot-language-switch.md`](../ideas/TB-2026-07-18-mobile-hot-language-switch.md)
+- [`../TB-2026-07-18-mobile-hot-language-switch.md`](../TB-2026-07-18-mobile-hot-language-switch.md)
 - Implementation: `ezkey_mobile/app/i18n/index.ts`, `LanguageScreen.tsx`, `AppNavigator.tsx`

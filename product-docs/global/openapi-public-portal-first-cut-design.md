@@ -224,7 +224,7 @@ No open question remains that blocks closing this dossier at the first-cut level
 
 ## Links
 
-- Tracer bullet: [`backlog/ideas/TB-2026-0003-openapi-public-portal-first-cut.md`](backlog/ideas/TB-2026-0003-openapi-public-portal-first-cut.md)
+- Tracer bullet: [`backlog/TB-2026-0003-openapi-public-portal-first-cut.md`](backlog/TB-2026-0003-openapi-public-portal-first-cut.md)
 - Backlog: [`backlog/ideas/I-2026-0026-openapi-exposure-and-api-portal-posture.md`](backlog/ideas/I-2026-0026-openapi-exposure-and-api-portal-posture.md)
 - Candidate review: [`openapi-portal-candidate-review.md`](openapi-portal-candidate-review.md)
 - Exposure matrix: [`openapi-exposure-matrix.md`](openapi-exposure-matrix.md)

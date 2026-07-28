@@ -64,7 +64,7 @@ Introduce a pragmatic, repeatable Android real-device functional test capability
 
 ## Promotion notes
 
-Promoted to tracer bullet pilot on `2026-05-08`: **`TB-2026-0002`** (`product-docs/global/backlog/ideas/TB-2026-0002-android-real-device-functional-pilot.md`). Execution and exit criteria are owned by that brief.
+Promoted to tracer bullet pilot on `2026-05-08`: **`TB-2026-0002`** (`product-docs/global/backlog/TB-2026-0002-android-real-device-functional-pilot.md`). Execution and exit criteria are owned by that brief.
 
 **Execution (`2026-05-08`):** Maestro flows, Bash runner, and `ezkey.e2e.*` testIDs landed under `ezkey_mobile/maestro/` and `ezkey_mobile/scripts/run-real-device-pilot-maestro.sh`. **TB exit #2 validated on hardware** (single pending/respond slice).
 

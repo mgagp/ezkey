@@ -1,4 +1,4 @@
-# Grill Me Analysis — `TB-2026-0001`
+# Grill Me Analysis — `TB-2026-0001-mobile-local-auth-capability-discovery`
 
 ## Purpose
 

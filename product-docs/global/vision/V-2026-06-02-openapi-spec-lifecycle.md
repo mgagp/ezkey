@@ -57,6 +57,6 @@ that Ezkey can:
 
 - Source working plan: [`plan-openApiSpecLifecycle.prompt.md`](../../../.github/prompts/plan-openApiSpecLifecycle.prompt.md)
 - Backlog idea: [`I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation`](../backlog/ideas/I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation.md)
-- First tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice`](../backlog/ideas/TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
+- First tracer bullet: [`TB-2026-06-02-auth-api-cloudflare-schema-first-slice`](../backlog/TB-2026-06-02-auth-api-cloudflare-schema-first-slice.md)
 - Existing exposure posture: [`openapi-exposure-matrix.md`](../openapi-exposure-matrix.md)
 - Prior portal/exposure direction: `V-2026-0014`, `I-2026-0026`, `TB-2026-0003`

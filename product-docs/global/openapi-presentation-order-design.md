@@ -396,7 +396,7 @@ mechanism as Auth API §3.3). Regenerate via `scripts/update-specs.sh`; review A
 
 ## 5. Phase 2 implementation backlog (summary)
 
-Full task list: [`TB-2026-06-02-openapi-presentation-order-phase2.md`](backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md).
+Full task list: [`TB-2026-06-02-openapi-presentation-order-phase2.md`](backlog/TB-2026-06-02-openapi-presentation-order-phase2.md).
 
 | Step | Action | Status |
 | --- | --- | --- |

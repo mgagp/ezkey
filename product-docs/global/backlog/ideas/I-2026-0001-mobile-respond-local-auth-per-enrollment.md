@@ -61,9 +61,9 @@ re-enrollment lock-in.
 Move this idea to `ready` only after:
 
 1. A concise Android capability matrix is documented (auth-bound keys, StrongBox interactions, invalidation behavior). — **Done 2026-07-26:** [`ezkey_mobile/docs/MOBILE_ANDROID_LOCAL_AUTH_CAPABILITY_MATRIX.md`](../../../../ezkey_mobile/docs/MOBILE_ANDROID_LOCAL_AUTH_CAPABILITY_MATRIX.md).
-2. At least two design options are compared (preference-only vs key-bound enforcement). — **Done** (`TB-2026-0001-grill-me.md` Options A/B/C/D).
+2. At least two design options are compared (preference-only vs key-bound enforcement). — **Done** ([`grill-sessions/2026-05-07-mobile-local-auth-capability-discovery-grill-me.md`](../grill-sessions/2026-05-07-mobile-local-auth-capability-discovery-grill-me.md) Options A/B/C/D).
 3. Re-enrollment risk is explicitly characterized for each option. — **Done**, sharpened by the capability matrix (every Level 2→3 move is a re-key event; per-action posture is the most invalidation-exposed configuration).
-4. A minimal test plan slice is defined across unit, functional, and UI layers. — **Done** (`I-2026-0001-test-plan-slice.md`).
+4. A minimal test plan slice is defined across unit, functional, and UI layers. — **Done** ([`test-plans/TSP-2026-05-07-mobile-local-auth-per-enrollment-discovery.md`](../test-plans/TSP-2026-05-07-mobile-local-auth-per-enrollment-discovery.md)).
 5. The three-tier granularity model and merge rule are documented, and the sequencing
    recommendation (capability matrix + audit-first before any Level 3 key-binding) is explicit. — **Done.**
 

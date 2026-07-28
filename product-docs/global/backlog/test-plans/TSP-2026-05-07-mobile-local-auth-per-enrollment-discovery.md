@@ -6,7 +6,7 @@ Define the minimum test strategy for the discovery and design slice of `I-2026-0
 
 ## Metadata
 
-- **Target:** `I-2026-0001`
+- **Target:** `I-2026-0001-mobile-respond-local-auth-per-enrollment`
 - **Date:** `2026-05-07`
 - **Owner:** `product + ai collaboration`
 - **Captured by:** Marc

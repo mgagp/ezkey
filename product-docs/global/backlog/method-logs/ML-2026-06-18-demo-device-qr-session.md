@@ -35,7 +35,7 @@ After a converged discussion (incident diagnosis + scope agreement), the agent m
 
 - `product-docs/global/backlog/ideas/I-2026-06-18-demo-device-qr-auth-url-parity.md`
 - `product-docs/global/backlog/grill-sessions/2026-06-18-demo-device-qr-auth-url-grill-me.md`
-- `product-docs/global/backlog/ideas/TB-2026-06-18-demo-device-qr-auth-url-parity.md`
+- `product-docs/global/backlog/TB-2026-06-18-demo-device-qr-auth-url-parity.md`
 - `product-docs/methodology/case-study-ezkey.md` (dual-repo delivery pattern)
 
 **Also created:** `.cursor/plans/demo-device-qr-auth-url-parity.plan.md`

@@ -97,7 +97,7 @@ Post-close hygiene (Jackson + standalone sync) is **out of TB scope** — tracke
 ## Backlog index / cross-links updated
 
 - [`index.md`](../index.md) — recently completed rows for QR parity and hygiene tracks; #182 note corrected on #191 row.
-- [`TB-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity-first-cut.md`](../ideas/TB-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity-first-cut.md) — #182 no longer open.
+- [`TB-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity-first-cut.md`](../TB-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity-first-cut.md) — #182 no longer open.
 - [`TB-2026-05-28-admin-ui-orval-upgrade.md`](../TB-2026-05-28-admin-ui-orval-upgrade.md) — post-program 8.18 hygiene checkpoint.
 
 ---

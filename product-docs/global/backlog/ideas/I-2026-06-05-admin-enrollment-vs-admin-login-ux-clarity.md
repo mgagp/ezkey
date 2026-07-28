@@ -100,7 +100,7 @@ Promotion gate reached on `2026-06-05` via:
 - GitHub branch: `feature/191-i-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity` (merged)
 - Vision: `product-docs/global/vision/V-2026-06-05-admin-enrollment-vs-admin-login-state-model.md`
 - Session synthesis: `product-docs/global/backlog/grill-sessions/2026-06-05-admin-enrollment-vs-login-state-clarification-grill-me.md`
-- Tracer bullet: `product-docs/global/backlog/ideas/TB-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity-first-cut.md`
+- Tracer bullet: `product-docs/global/backlog/TB-2026-06-05-admin-enrollment-vs-admin-login-ux-clarity-first-cut.md`
 - Lifecycle canon: `docs/LIFECYCLE_GOVERNANCE.md`
 - Related code anchors:
   - `ezkey-admin-api/src/main/java/org/ezkey/admin/service/AdminProvisioningService.java`

@@ -48,4 +48,4 @@ Grill complete. Slice closed 2026-06-18: `I-*` and `TB-*` → `done`. See TB § 
 ## Links
 
 - [`../ideas/I-2026-06-18-demo-device-qr-auth-url-parity.md`](../ideas/I-2026-06-18-demo-device-qr-auth-url-parity.md)
-- [`../ideas/TB-2026-06-18-demo-device-qr-auth-url-parity.md`](../ideas/TB-2026-06-18-demo-device-qr-auth-url-parity.md)
+- [`../TB-2026-06-18-demo-device-qr-auth-url-parity.md`](../TB-2026-06-18-demo-device-qr-auth-url-parity.md)

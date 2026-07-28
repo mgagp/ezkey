@@ -5,12 +5,13 @@
 This is the capability-matrix deliverable required to promote `I-2026-0001` (see its Promotion
 notes) and to close the first exit criterion of `TB-2026-0001`. It answers, with citations to
 Android's own API documentation and to the current `EzkeyCryptoModule.kt` implementation, the
-questions raised in `TB-2026-0001-grill-me.md`: what is fixed at key-generation time versus
-configurable at runtime, what invalidates a key, and how StrongBox interacts with auth-binding.
+questions raised in the grill session (`2026-05-07-mobile-local-auth-capability-discovery-grill-me.md`):
+what is fixed at key-generation time versus configurable at runtime, what invalidates a key, and
+how StrongBox interacts with auth-binding.
 
 This document is **research and current-state analysis**, not a design decision. It feeds the
-decision already recorded in `TB-2026-0001-grill-me.md` (Option A for V1; Level 3 key-binding
-deferred until this matrix exists — it now does).
+decision already recorded in that grill session (Option A for V1; Level 3 key-binding deferred
+until this matrix exists — it now does).
 
 ## Reference floor
 
@@ -104,7 +105,7 @@ Ezkey does not control the hardware/enrollment state of adopters' phones, so a b
 requirement would need an explicit, honest failure path (e.g. block enrollment on that device rather
 than silently fall back to a weaker posture).
 
-## 5. Answers to `TB-2026-0001-grill-me.md` critical questions (this matrix as evidence)
+## 5. Answers to the grill session's critical questions (this matrix as evidence)
 
 | # | Question | Answer from this matrix |
 | --- | --- | --- |
@@ -130,8 +131,8 @@ than silently fall back to a weaker posture).
 
 ## Related
 
-- `product-docs/global/backlog/ideas/TB-2026-0001-mobile-local-auth-capability-discovery.md`
-- `product-docs/global/backlog/ideas/TB-2026-0001-grill-me.md`
+- `product-docs/global/backlog/TB-2026-0001-mobile-local-auth-capability-discovery.md`
+- `product-docs/global/backlog/grill-sessions/2026-05-07-mobile-local-auth-capability-discovery-grill-me.md`
 - `product-docs/global/backlog/ideas/I-2026-0001-mobile-respond-local-auth-per-enrollment.md`
 - `MOBILE_LOCAL_AUTH_POLICY_AND_AUDIT_FUTURE_WORK.md`
 - `docs/security/mobile-protocol-crypto-assessment-2026-07.md` § MOB-001, MOB-012

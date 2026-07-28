@@ -154,7 +154,7 @@ Add this block at the end of each retained working plan after ingestion:
 - Status: materialized on `YYYY-MM-DD`.
 - Vision: `product-docs/global/vision/V-...`
 - Backlog idea: `product-docs/global/backlog/ideas/I-...`
-- Tracer bullet: `product-docs/global/backlog/ideas/TB-...` (if any)
+- Tracer bullet: `product-docs/global/backlog/TB-...` (if any; lives at `backlog/` root, not under `ideas/`)
 - Design / other canon: `product-docs/global/...` (if any)
 - GitHub issue / branch: `#NNN`, `feature/NNN-...` (if implementation started)
 - Methodology gate: retained-plan bidirectional traceability completed

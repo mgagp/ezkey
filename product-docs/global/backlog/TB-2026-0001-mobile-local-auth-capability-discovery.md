@@ -46,7 +46,7 @@ Produce a validated discovery slice that clarifies Android local-auth and key-li
 - Documented signed bind-attribute transport direction for future installation/enrollment policy delivery.
 - Updated backlog idea status and explicit recommendation.
 - Test plan slice validated and refined for implementation stage.
-- Grill Me analysis: `TB-2026-0001-grill-me.md`.
+- Grill Me analysis: [`grill-sessions/2026-05-07-mobile-local-auth-capability-discovery-grill-me.md`](grill-sessions/2026-05-07-mobile-local-auth-capability-discovery-grill-me.md).
 
 ## Capability matrix — key takeaways (2026-07-26)
 

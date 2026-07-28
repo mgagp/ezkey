@@ -49,5 +49,5 @@ Grill complete. Promoted to `TB-2026-05-23-exp1-anonymous-evaluator-signup-first
 ## Links
 
 - [`../ideas/I-2026-05-23-exp1-anonymous-evaluator-onboarding.md`](../ideas/I-2026-05-23-exp1-anonymous-evaluator-onboarding.md)
-- [`../ideas/TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut.md`](../ideas/TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut.md)
+- [`../TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut.md`](../TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut.md)
 - [`../../vision/V-2026-05-23-anonymous-evaluator-self-registration.md`](../../vision/V-2026-05-23-anonymous-evaluator-self-registration.md)

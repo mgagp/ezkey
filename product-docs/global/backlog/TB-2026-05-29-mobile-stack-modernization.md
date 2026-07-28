@@ -224,5 +224,5 @@ See `ML-2026-05-29-mobile-stack-modernization.md` retrospective synthesis. Highl
 
 - [`I-2026-05-29-mobile-stack-modernization.md`](ideas/I-2026-05-29-mobile-stack-modernization.md)
 - [`ML-2026-05-29-mobile-stack-modernization.md`](method-logs/ML-2026-05-29-mobile-stack-modernization.md)
-- [`TB-2026-0002`](ideas/TB-2026-0002-android-real-device-functional-pilot.md) — Maestro pilot
+- [`TB-2026-0002`](TB-2026-0002-android-real-device-functional-pilot.md) — Maestro pilot
 - Archived review: `.github/prompts/archived/2026-05/plan-mobileDependencyReview.prompt.md`

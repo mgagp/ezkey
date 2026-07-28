@@ -166,7 +166,7 @@ Use a **deck** or seeded PRNG so the distribution is explicit and replayable.
 
 ## Traceability
 
-- Tracer bullet: `product-docs/global/backlog/ideas/TB-2026-0002-android-real-device-functional-pilot.md`
+- Tracer bullet: `product-docs/global/backlog/TB-2026-0002-android-real-device-functional-pilot.md`
 - Idea: `product-docs/global/backlog/ideas/I-2026-0019-android-real-device-mobile-functional-tests.md`
 - Follow-ups: `product-docs/global/backlog/ideas/I-2026-05-31-mobile-android-stack-followups.md`
 - Test plan slice: `product-docs/global/backlog/test-plans/TSP-2026-06-26-mobile-real-device-churn-harness.md`

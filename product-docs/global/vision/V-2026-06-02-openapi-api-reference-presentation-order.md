@@ -62,7 +62,7 @@ Promoted to `accepted` on **2026-06-03** after PR `#181` demonstrated:
 
 - Design: [`openapi-presentation-order-design.md`](../openapi-presentation-order-design.md)
 - Backlog: [`I-2026-06-02-openapi-api-reference-presentation-order`](../backlog/ideas/I-2026-06-02-openapi-api-reference-presentation-order.md) (`done`)
-- Tracer bullet: [`TB-2026-06-02-openapi-presentation-order-phase2`](../backlog/ideas/TB-2026-06-02-openapi-presentation-order-phase2.md) (`done`)
+- Tracer bullet: [`TB-2026-06-02-openapi-presentation-order-phase2`](../backlog/TB-2026-06-02-openapi-presentation-order-phase2.md) (`done`)
 - Delivery: GitHub PR [`#181`](https://github.com/mgagp/ezkey/pull/181) (merged 2026-06-03)
 - Follow-on (Lane D): [`V-2026-06-03-admin-api-openapi-intra-tag-journey-order`](../vision/V-2026-06-03-admin-api-openapi-intra-tag-journey-order.md) — intra-tag Admin path order (`draft`)
 - Spec lifecycle (orthogonal): [`V-2026-06-02-openapi-spec-lifecycle.md`](V-2026-06-02-openapi-spec-lifecycle.md)
