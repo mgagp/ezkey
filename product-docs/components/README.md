@@ -83,4 +83,14 @@ When that threshold is met:
 3. Seed content from the component's existing README and docs.
 4. Register the pack in this index and update [`../global/features-and-phases.md`](../global/features-and-phases.md) to reference it where appropriate.
 
+**ADR address is stable even before full instantiation.** The `design-decisions.md` address for a
+component is fixed by its name, not by whether the rest of the pack skeleton exists yet. When a
+legacy-documentation triage session (or any other work) surfaces a genuine component-scoped design
+decision and that component's pack has not reached the instantiation threshold above, create the
+single `design-decisions.md` file for that component (using the
+[architecture decision template](../templates/architecture-decision.template.md)) rather than
+parking the decision in `global/` or leaving it only cross-linked from its original location. The
+rest of the skeleton is filled in later, when the threshold is met. See
+[`../methodology/decisions/2026-07-28-legacy-documentation-default-gravity-to-adr.md`](../methodology/decisions/2026-07-28-legacy-documentation-default-gravity-to-adr.md).
+
 Full change-workflow rules live in [`../GOVERNANCE.md`](../GOVERNANCE.md).

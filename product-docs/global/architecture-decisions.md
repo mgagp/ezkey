@@ -26,6 +26,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0007](#adr-0007-proof-token-storage-hash-only-where-protocol-allows) | Proof token storage: hash-only where protocol allows | accepted | 2026-07-06 |
 | [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path) | Tink keyset sync: concurrent read path for at-rest encryption | accepted | 2026-07-09 |
 | [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid) | Detective integrity windows align to checkpoint grid | accepted | 2026-07-10 |
+| [ADR-0010](#adr-0010-rate-limiting-scoped-by-actor-identity-not-by-ip) | Rate limiting scoped by actor identity, not by IP, across device and M2M surfaces | accepted | 2026-05-08 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -515,3 +516,95 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
 - Vision: [`V-2026-0004`](vision/V-2026-0004-integrity-validation-strategy.md).
 - Parent delivery: `I-2026-0006` / nightly batch B1.
 - Tink keyset concurrent read path: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
+
+## ADR-0010 — Rate limiting scoped by actor identity, not by IP
+
+### Metadata
+
+- **ID:** ADR-0010.
+- **Date:** 2026-05-08.
+- **Status:** accepted.
+- **Scope:** global (Auth API, Admin API, Integration API rate-limit surfaces).
+- **Owners:** Platform architecture.
+
+### Context
+
+Ezkey exposes rate-limited surfaces to three distinct kinds of caller: a mobile device polling and
+responding to its own auth attempts, an integration (M2M) using an API key that is shared across many
+end users, and an admin session performing sensitive mutations or logging in. A single client IP is
+not a safe key for two of these three: an integration's API key is used by a backend server on behalf
+of many different end users, so every one of those users' auth-attempt creations shares the same
+egress IP — an IP-keyed bucket would throttle unrelated users together, or (behind shared NAT/load
+balancers) throttle unrelated integrations together. Grill session
+[`blitz-2026-05-08-2-D1`](backlog/grill-sessions/blitz-2026-05-08-2-D1-rate-limit-registry-grill-me.md)
+and backlog analysis [`I-2026-0008`](backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md) also
+found no single numeric baseline that fits device polling, integration throughput, and admin
+mutations at once — forcing one band would misrepresent product semantics.
+
+### Decision
+
+Rate limiting is organized into four policy families, each keyed by the identity that actually
+identifies the abusive actor for that surface, not by client IP alone:
+
+| Family | Audience | Key dimension |
+| --- | --- | --- |
+| **D — Device auth** | Mobile / device | `enrollment-id`, `auth-attempt-id`, or `client-ip` for anonymous pre-enrollment calls |
+| **I — Integration throughput** | API key (M2M) | Per API key id |
+| **A — Admin sensitive ops** | Admin session | Per admin id or recovery token |
+| **L — Admin login** | Public admin auth | Client IP (no authenticated identity exists yet at this surface) |
+
+No single global numeric baseline is defined. Each new public or high-abuse endpoint is assigned one
+of these four families and its own `CONFIGURATION.md`-documented property prefix instead of a shared
+constant. The full inventory of current surfaces, defaults, and per-profile overrides is maintained
+in [`rate-limit-baseline-policy.md`](rate-limit-baseline-policy.md) — that document is the living
+inventory; this ADR records why IP is deliberately not the default key and why no single baseline was
+adopted.
+
+### Alternatives Considered
+
+- **One global numeric baseline (e.g. N requests / window per IP) applied everywhere.** Rejected —
+  misrepresents product semantics; would either be too loose for `respond` (critical, 1/5 min) or too
+  strict for legitimate integration throughput.
+- **Key every surface by client IP for simplicity.** Rejected — breaks for API key (M2M) traffic,
+  where many end users share one integration's egress path; also fragile behind shared NAT.
+- **Unify `RateLimitService` implementations across Admin API and Integration API into one shared
+  module.** Deferred, not rejected — the known duplication (both non-distributed, Caffeine-backed) is
+  documented, but no measurable simplification was found to justify the refactor at R1 (`#1`
+  pragmatism — no refactor for refactor's sake).
+
+### Consequences
+
+- **Positive.** Each surface's abuse-resistance key matches who can actually abuse it; integration
+  traffic scales per key, not per shared IP; admin login retains IP-based brute-force resistance where
+  no authenticated identity exists yet.
+- **Negative.** Four families plus per-surface property prefixes are more surface area than one
+  constant; operators must consult `rate-limit-baseline-policy.md` or module `CONFIGURATION.md` rather
+  than a single number.
+- **Neutral.** Rate-limit buckets remain per-instance (Caffeine, via Bucket4j); not distributed. Noted
+  as acceptable at current scale; Redis-backed distribution is called out in Integration service
+  Javadoc as a future option if scale warrants it.
+
+### Impact
+
+- **Affected components:** `auth-api` (`RateLimitFilter`), `admin-api` (`AdminRateLimitFilter`,
+  `AdminOperationsRateLimitService`, API-key auth-attempt paths), `integration-api`
+  (`RateLimitService`).
+- **Affected features:** enrollment bind/verify, auth-attempt pending/respond, API key create/wait,
+  admin login, admin sensitive operations (API key create/revoke/update, enrollment reset).
+- **Backlog:** [`I-2026-0008`](backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md) (closed).
+
+### Validation
+
+- Inventory-level validation only (no code unification): the mapping of surface → family → key
+  strategy is kept current in [`rate-limit-baseline-policy.md`](rate-limit-baseline-policy.md) and
+  cross-checked against each module's `CONFIGURATION.md` and filter/service implementation.
+- Historical incident: an unrelated, never-implemented `ezkey.admin.rate-limit.api-key.*` property
+  family was found disabled/inconsistent across profiles during a later documentation-triage pass —
+  see [`../../ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md`](../../ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md).
+  That incident does not change this decision; it is a config-naming collision on top of the policy
+  described here.
+
+### Related Decisions
+
+- None yet at component scope; component packs for Auth API and Integration API do not exist yet
+  (see [`../components/README.md`](../components/README.md)).

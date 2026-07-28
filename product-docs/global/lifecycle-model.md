@@ -4,36 +4,23 @@
 
 This document describes the global lifecycle model for Ezkey entities: how they relate to each other, how operational status propagates through the hierarchy, and which rules govern reversible and irreversible actions.
 
-It is the **global companion** to component-level `data-model-and-persistence.md` documents. Detailed per-entity rules, action matrices, and operational scenarios live in the legacy [`../../docs/LIFECYCLE_GOVERNANCE.md`](../../docs/LIFECYCLE_GOVERNANCE.md); this document summarizes the model and links into it.
+It is the **global companion** to component-level `data-model-and-persistence.md` documents.
+Detailed per-entity rules, action matrices, and operational scenarios live in the canonical detailed
+reference [`../../docs/LIFECYCLE_GOVERNANCE.md`](../../docs/LIFECYCLE_GOVERNANCE.md); this document
+summarizes the model and links into it. See
+[`../GOVERNANCE.md`](../GOVERNANCE.md#content-ownership-map) for why that document is canonical
+rather than "legacy" despite its physical location.
 
 ## Entity Hierarchy
 
-```mermaid
-flowchart TD
-    globalAdmin[Global Admin]
-    tenantAdmin[Tenant Admin]
-    tenant[Tenant]
-    integration[Integration]
-    enrollment[Enrollment]
-    apiKey[API Key]
-    authAttempt[Auth Attempt]
-    encryptionKey[Encryption Key]
-    recoveryCodes[Recovery Codes]
+- A **tenant** contains **integrations**; an integration contains **enrollments** and **API keys**.
+- **Global Admin** and **Tenant Admin** manage tenants, hold their own MFA **enrollment**, and have
+  **recovery codes**.
+- An enrollment produces **auth attempts**.
+- An **encryption key** protects data across tenants, integrations, and enrollments (an orthogonal
+  concern, not a hierarchy parent).
 
-    globalAdmin -- manages --> tenant
-    tenantAdmin -- manages --> tenant
-    globalAdmin -- "MFA binding" --> enrollment
-    tenantAdmin -- "MFA binding" --> enrollment
-    globalAdmin -- has --> recoveryCodes
-    tenantAdmin -- has --> recoveryCodes
-    tenant -- contains --> integration
-    integration -- contains --> enrollment
-    integration -- contains --> apiKey
-    enrollment -- produces --> authAttempt
-    encryptionKey -. "protects data across" .-> tenant
-    encryptionKey -. "protects data across" .-> integration
-    encryptionKey -. "protects data across" .-> enrollment
-```
+Full diagram: [`../../docs/LIFECYCLE_GOVERNANCE.md`](../../docs/LIFECYCLE_GOVERNANCE.md#1-the-ezkey-domain-at-a-glance) §1.
 
 ## Eligibility Chain
 
@@ -98,11 +85,11 @@ This table summarizes lifecycle shapes at a glance. For full per-entity rules, a
 
 - Admin identity lifecycle and admin MFA enrollment lifecycle are **independent**. Deactivating an admin does not revoke their enrollment; revoking their enrollment does not delete their admin identity.
 - Tenant deactivation blocks all child operations through the eligibility chain without modifying child storage.
-- Retirement of an integration triggers a bulk revocation of revocable enrollments, then marks the integration as retired. Details: legacy doc and component pack.
+- Retirement of an integration triggers a bulk revocation of revocable enrollments, then marks the integration as retired. Details: detailed reference doc and component pack.
 
 ## Related Documents
 
 - [`architecture-overview.md`](architecture-overview.md)
 - [`architecture-decisions.md`](architecture-decisions.md)
 - [`features-and-phases.md`](features-and-phases.md)
-- Legacy: [`../../docs/LIFECYCLE_GOVERNANCE.md`](../../docs/LIFECYCLE_GOVERNANCE.md), [`../../docs/ENDPOINT.md`](../../docs/ENDPOINT.md).
+- Detailed reference (canonical): [`../../docs/LIFECYCLE_GOVERNANCE.md`](../../docs/LIFECYCLE_GOVERNANCE.md); endpoint semantics: [`../../docs/ENDPOINT.md`](../../docs/ENDPOINT.md).

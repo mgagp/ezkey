@@ -12,6 +12,7 @@ This document records architecture and design decisions **scoped to the Admin AP
 | [ADR-API-0002](#adr-api-0002-constructor-injection-no-autowired) | Constructor injection only; no `@Autowired` | accepted | 2025-07-01 |
 | [ADR-API-0003](#adr-api-0003-transactional-boundary-on-service-entry-points) | `@Transactional` on service entry points, not helper methods | accepted | 2025-12-20 |
 | [ADR-API-0004](#adr-api-0004-generated-openapi-never-hand-edited) | Generated OpenAPI artifacts are never hand-edited | accepted | 2025-10-05 |
+| [ADR-API-0005](#adr-api-0005-system-tenant-identified-by-flag-not-by-name) | System tenant identified by `is_system_tenant` flag, not by name | accepted | 2026-03-27 |
 
 ## ADR-API-0001 — Passwordless-only admin authentication
 
@@ -151,3 +152,58 @@ Hand-edits to generated OpenAPI artifacts under `specs/` reliably create contrac
 - All endpoints and DTOs.
 - Orval-generated clients in the Admin UI.
 - Reference: [`../../../.cursor/rules/openapi-specs.mdc`](../../../.cursor/rules/openapi-specs.mdc).
+
+## ADR-API-0005 — System tenant identified by flag, not by name
+
+### Metadata
+
+- **ID:** ADR-API-0005.
+- **Date:** 2026-03-27.
+- **Status:** accepted.
+- **Scope:** component:admin-api.
+
+### Context
+
+The initial schema (`V1__core_domain_and_multi_tenant.sql`) seeded the system tenant as an ordinary
+row in `ezkey_tenant` and located it by matching `tenant_name = 'Ezkey System'` in both the seed
+script and `AdminBootstrapService`. This tied a structural identity (the one tenant that hosts
+global administrators) to a display string. If an operator changed `ezkey.organization.name`
+before a flag-based lookup existed, a name-based bootstrap query would no longer find the row it
+depends on — the V1 migration already carries a forward-looking comment anticipating this fix.
+
+### Decision
+
+Migration `V5__operations_tenant_integration_enrollment.sql` adds a boolean `is_system_tenant`
+column to `ezkey_tenant`, backfills it once by name for the existing seed row, and enforces
+exactly one system tenant with a partial unique index
+(`idx_tenant_system_tenant_unique ... WHERE is_system_tenant = TRUE`). `AdminBootstrapService`
+resolves the system tenant exclusively through `TenantRepository.findByIsSystemTenantTrue()`
+(`createSystemIntegration()`, `syncSystemTenantFromOrganization()`). `ezkey.organization.name` is
+now purely a **display** value synced onto the flagged tenant at startup; it no longer participates
+in identity resolution.
+
+### Alternatives Considered
+
+- **Keep name-based lookup and document the rename risk.** Rejected — an operational footgun that
+  requires operators to remember an undocumented coupling between a config property and bootstrap
+  correctness.
+- **Use a fixed, hardcoded tenant id (e.g. always id 1).** Rejected — fragile across environments
+  where seed order or id sequences differ (e.g. restored databases, HA bootstrap races).
+
+### Consequences
+
+- **Positive.** Renaming the organization (`ezkey.organization.name`) is safe at any time; the
+  partial unique index makes "more than one system tenant" a database-level impossibility rather
+  than an application-level assumption.
+- **Negative.** None identified; the flag and index are a strict improvement over the name-based
+  lookup they replaced.
+
+### Impact
+
+- `AdminBootstrapService` (bootstrap and idempotent re-sync on every startup).
+- `TenantRepository.findByIsSystemTenantTrue()`.
+- Migration `V5__operations_tenant_integration_enrollment.sql`.
+
+### Related Decisions
+
+- None yet at global scope; this is a component-local structural fix, not a cross-cutting policy.

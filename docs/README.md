@@ -22,6 +22,9 @@ If you are new to the repository, read these first:
 - [ARCHITECTURE.md](ARCHITECTURE.md): system architecture, module relationships, and trust boundaries.
 - [ENDPOINT.md](ENDPOINT.md): canonical Admin API and Auth API endpoint behavior.
 - [CRYPTO.md](CRYPTO.md): shared cryptographic model, payload rules, and wording guardrails.
+- [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md): canonical enrollment bind/verify signature payload construction (what is signed, with what key, in what order).
+- [AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md): canonical auth-attempt pending/respond signature payload construction.
+- [LIFECYCLE_GOVERNANCE.md](LIFECYCLE_GOVERNANCE.md): entity hierarchy, eligibility chain, and reversible/irreversible action rules across all Ezkey domain entities.
 - [DEVELOPMENT.md](DEVELOPMENT.md): build, test, and development workflow.
 - [OPERATIONAL.md](OPERATIONAL.md): deployment, operations, and production posture.
 - [configuration/README.md](configuration/README.md): index for configuration properties and per-module configuration docs.

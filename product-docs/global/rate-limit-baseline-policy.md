@@ -5,6 +5,12 @@
 Canonical **analysis output** for cross-cutting rate-limit posture across Ezkey API modules. Records
 what is limited today, why overrides exist, and whether a single numeric baseline is justified.
 
+**Why (decision record):** the choice to key by actor identity (API key id, enrollment id, admin id)
+rather than by client IP, and to not adopt a single global baseline, is recorded as
+[`ADR-0010`](architecture-decisions.md#adr-0010-rate-limiting-scoped-by-actor-identity-not-by-ip).
+This document is the living **inventory** (current surfaces, defaults, per-profile overrides); the
+ADR is the **rationale**.
+
 **Grilled:** Blitz 2026-05-08-2 D1 ([`backlog/grill-sessions/blitz-2026-05-08-2-D1-rate-limit-registry-grill-me.md`](backlog/grill-sessions/blitz-2026-05-08-2-D1-rate-limit-registry-grill-me.md)).
 
 **Backlog:** [`I-2026-0008`](backlog/ideas/I-2026-0008-rate-limit-baseline-analysis.md) — **closed** (policy + CONFIGURATION alignment; no code unification R1).
@@ -142,7 +148,7 @@ See module `CONFIGURATION.md` profile tables for authoritative values.
 | Item | Status |
 |------|--------|
 | `ezkey.admin.rate-limit.recovery.*` in some `application*.properties` | **Not bound** to `AdminRateLimitProperties` — dead config keys; remove or implement in a future slice |
-| `ezkey.admin.rate-limit.api-key.*` | Documented as **unused** in docker comments — API key usage uses `ezkey.api-key.rate-limit.*` |
+| `ezkey.admin.rate-limit.api-key.*` | Documented as **unused** in docker comments — API key usage uses `ezkey.api-key.rate-limit.*`. Incident detail: [`ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md`](../../ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md) |
 | Integration vs Admin duplicate `RateLimitService` | **Known duplication** — deferred extraction (#1); document together via this policy |
 | Distributed rate limits | **Per-instance** (Caffeine); acceptable R1; Redis noted in Integration service Javadoc when scale warrants |
 
@@ -165,5 +171,6 @@ See module `CONFIGURATION.md` profile tables for authoritative values.
 | [`ezkey-admin-api/CONFIGURATION.md`](../../ezkey-admin-api/CONFIGURATION.md) | Admin API properties |
 | [`ezkey-integration-api/CONFIGURATION.md`](../../ezkey-integration-api/CONFIGURATION.md) | Integration API properties |
 | [`ezkey-admin-api/README_RATE_LIMITING.md`](../../ezkey-admin-api/README_RATE_LIMITING.md) | Tuning examples |
+| [`ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md`](../../ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md) | Historical incident: unused `ezkey.admin.rate-limit.api-key.*` config-naming collision |
 | [`admin-ui-paginated-screens-matrix.md`](admin-ui-paginated-screens-matrix.md) | Volume tiers (complementary) |
 | [`sql-business-limits-policy.md`](sql-business-limits-policy.md) | Repository-layer limits (complementary) |

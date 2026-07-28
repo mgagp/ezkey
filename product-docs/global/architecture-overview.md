@@ -129,4 +129,4 @@ See [`design-principles.md`](design-principles.md) for the principles that shape
 - [`design-principles.md`](design-principles.md)
 - [`lifecycle-model.md`](lifecycle-model.md)
 - [`architecture-decisions.md`](architecture-decisions.md)
-- Legacy: [`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md), [`../../docs/CRYPTO.md`](../../docs/CRYPTO.md), [`../../docs/ENDPOINT.md`](../../docs/ENDPOINT.md).
+- Detailed reference (canonical): [`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md), [`../../docs/CRYPTO.md`](../../docs/CRYPTO.md), [`../../docs/ENDPOINT.md`](../../docs/ENDPOINT.md).

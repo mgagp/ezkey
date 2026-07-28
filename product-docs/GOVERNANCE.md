@@ -75,12 +75,28 @@ flowchart LR
 - Orval-generated clients in [`../ezkey-admin-ui/src/generated/`](../ezkey-admin-ui/src/generated/) and [`../ezkey_mobile/app/services/api/generated/`](../ezkey_mobile/app/services/api/generated/) are regenerated, not hand-edited.
 - The documentation corpus references these artifacts; it does not duplicate them.
 
-### 8. Vocabulary is shared through the glossary
+### 8. Legacy documentation triage defaults to ADR extraction
+
+- When a scattered, module-level, or legacy `docs/` document is reviewed and found to contain a genuine design decision (a "why X over Y" rationale), the default destination is an ADR: `components/<pack>/design-decisions.md` when the decision is scoped to one component, or `global/architecture-decisions.md` when it is cross-cutting.
+- This address is stable even when the component pack is not yet fully instantiated (see [`components/README.md`](components/README.md)) — create the single `design-decisions.md` entry rather than leaving the decision homeless or only cross-linked from its original location.
+- Operational content (tuning guides, troubleshooting notes, historical incident logs) may stay in place with a pointer to the new ADR; it does not need to move.
+- "Keep in place and cross-link" is not a substitute for ADR extraction when the content is a design decision rather than operational guidance. See [`methodology/decisions/2026-07-28-legacy-documentation-default-gravity-to-adr.md`](methodology/decisions/2026-07-28-legacy-documentation-default-gravity-to-adr.md).
+
+### 9. Vocabulary is shared through the glossary
 
 - Any term that has a specific product meaning (for example `Enrollment`, `Eligibility chain`, `Proof token`) must be defined in [`glossary.md`](glossary.md).
 - When a new term appears in two or more documents, add it to the glossary.
 
 ## Content Ownership Map
+
+Not every durable document is an ADR or a backlog artifact. A third species — **foundational
+reference / model canon** — describes a structuring domain model or protocol (entity lifecycle,
+cryptographic exchange sequencing) rather than a point decision or a task. It earns canonical status
+by the same test as an ADR (a reader who gets it wrong would make a structurally incorrect design
+decision), but its canonical location is a **declaration**, not necessarily a path under
+`product-docs/`: Core Rule 1 is satisfied by naming the existing location unambiguously below, even
+when relocating it would be disproportionate (see
+[`methodology/decisions/2026-07-28-foundational-reference-canon-not-legacy.md`](methodology/decisions/2026-07-28-foundational-reference-canon-not-legacy.md)).
 
 | Concept | Canonical location |
 | ------- | ------------------ |
@@ -99,6 +115,8 @@ flowchart LR
 | Component errors | `components/<pack>/exception-and-error-model.md` |
 | Component ADRs | `components/<pack>/design-decisions.md` |
 | Component traceability | `components/<pack>/spec-test-traceability.md` |
+| Entity lifecycle governance (detailed reference) | [`../docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md) — canonical, not legacy; [`global/lifecycle-model.md`](global/lifecycle-model.md) is its compact companion |
+| Cryptographic protocol / signature payload reference | [`../docs/CRYPTO.md`](../docs/CRYPTO.md), [`../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) — canonical, not legacy; too many cross-repository and source-code referrers to relocate (see [`methodology/decisions/2026-07-28-foundational-reference-canon-not-legacy.md`](methodology/decisions/2026-07-28-foundational-reference-canon-not-legacy.md)) |
 
 ## Typical Change Workflows
 
@@ -137,9 +155,10 @@ flowchart LR
 
 ### Retiring documentation
 
-1. Mark the target section as `deprecated` with a link to the replacement.
-2. Update cross-references to point at the replacement.
-3. Remove the deprecated document or section only when no link to it remains.
+1. If the content includes a design decision not yet captured as an ADR, extract it first into the correct `design-decisions.md` (see Core Rule 8).
+2. Mark the target section as `deprecated` with a link to the replacement.
+3. Update cross-references to point at the replacement.
+4. Remove the deprecated document or section only when no link to it remains.
 
 ## AI Agent Etiquette
 

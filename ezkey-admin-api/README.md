@@ -44,9 +44,11 @@ The “system tenant” represents the organization hosting this Ezkey instance.
 - Properties: `ezkey.organization.name`, `ezkey.organization.description`
 - Class: `org.ezkey.admin.config.OrganizationProperties`
 
-Important: bootstrap currently looks up the system tenant by name. If you change
-`ezkey.organization.name`, the database must contain a tenant with the same name (otherwise
-bootstrap fails).
+The system tenant is identified by the `is_system_tenant` flag (`TenantRepository.findByIsSystemTenantTrue()`),
+not by name. `ezkey.organization.name` only drives the display name synced onto that tenant at
+startup (`AdminBootstrapService.syncSystemTenantFromOrganization()`); renaming it does not break
+bootstrap. Rationale and history:
+[`ADR-API-0005`](../product-docs/components/admin-api/design-decisions.md#adr-api-0005-system-tenant-identified-by-flag-not-by-name).
 
 ## Documentation index
 
@@ -54,16 +56,3 @@ bootstrap fails).
 - `README_RATE_LIMITING.md`: rate limiting strategy and configuration
 
 Token cleanup + rotation are documented in `docs/ADMIN_API_SECURITY_GUIDE.md` (Token Management).
-
-## Deprecated documents
-
-These files are kept only as short stubs to avoid breaking older references:
-
-- `ADMIN_ZERO_MIGRATION_ANALYSIS.md`
-- `ADMIN_ZERO_OPTION_B_IMPLEMENTATION.md`
-
-The current source of truth is:
-
-- `ezkey-core/src/main/resources/db/migration/V3__create_system_tenant_and_admin_zero.sql`
-- `org.ezkey.admin.service.InitialGlobalAdminService`
-- `org.ezkey.admin.service.AdminBootstrapService`

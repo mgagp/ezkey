@@ -1,5 +1,14 @@
 # API Key Authentication Rate Limiting - Not Implemented
 
+**Scope note:** this document covers a **historical config-naming collision** only
+(`ezkey.admin.rate-limit.api-key.*`, dead/unread). For the **current cross-module rate-limit
+model** — including how API key usage is rate-limited by **API key id** (not IP) on both Admin
+API and Integration API — see
+[`../product-docs/global/rate-limit-baseline-policy.md`](../product-docs/global/rate-limit-baseline-policy.md)
+(inventory) and
+[`ADR-0010`](../product-docs/global/architecture-decisions.md#adr-0010-rate-limiting-scoped-by-actor-identity-not-by-ip)
+(why actor identity, not IP).
+
 ## Issue
 
 The configuration `ezkey.admin.rate-limit.api-key.*` exists in `application.properties` but is **NOT implemented** in the codebase. This caused confusion when tests started failing with HTTP 429 errors.

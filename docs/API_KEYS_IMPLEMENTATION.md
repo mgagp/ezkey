@@ -7,6 +7,13 @@ This document summarizes the implementation of the API Keys authentication syste
 **Implementation Date:** October 2025  
 **Status:** ✅ Complete and Functional
 
+**Historical scope note:** this summary predates the **Integration API** module (port 7080) and
+still shows an early, since-abandoned rate-limit config (`ezkey.admin.rate-limit.api-key.*`) as if
+implemented — it never was (see [`../ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md`](../ezkey-admin-api/API_KEY_RATE_LIMIT_NOTE.md)).
+For current API key usage guidance across both Admin API and Integration API, see
+[`API_KEYS_GUIDE.md`](API_KEYS_GUIDE.md); for the current cross-module rate-limit model, see
+[`../product-docs/global/rate-limit-baseline-policy.md`](../product-docs/global/rate-limit-baseline-policy.md).
+
 ---
 
 ## What Was Implemented
@@ -91,12 +98,12 @@ Rate Limiting → Bearer Token Auth → API Key Auth
 
 ### 5. Configuration
 
-**Rate Limiting:**
+**Rate Limiting:** the config below (`ezkey.admin.rate-limit.api-key.*`) was proposed at the time
+but was **never implemented** — no filter/service ever read it, and it has since been disabled by
+default. Actual API key **operation** rate limiting uses `ezkey.api-key.rate-limit.*` (per API key
+id, not IP), documented in [`../product-docs/global/rate-limit-baseline-policy.md`](../product-docs/global/rate-limit-baseline-policy.md).
+
 ```properties
-ezkey.admin.rate-limit.api-key.enabled=true
-ezkey.admin.rate-limit.api-key.requests=1000
-ezkey.admin.rate-limit.api-key.window-minutes=60
-ezkey.admin.rate-limit.api-key.key-strategy=integration-key
 ezkey.admin.api-key.max-active-per-integration=5
 ```
 
@@ -198,7 +205,8 @@ ezkey.admin.api-key.max-active-per-integration=5
 - Tracks revoking admin
 
 ✅ **Rate Limiting**
-- 1000 requests/hour per key
+- Per-API-key-id limits on auth-attempt operations (`ezkey.api-key.rate-limit.*`), not the
+  `ezkey.admin.rate-limit.api-key.*` config shown above (never implemented)
 - Prevents abuse
 - Returns 429 with Retry-After
 
