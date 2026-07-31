@@ -254,11 +254,7 @@
         <module name="JavadocType">
             <property name="scope" value="protected"/>
         </module>
-        <module name="JavadocStyle">
-            <property name="checkFirstSentence" value="true"/>
-            <property name="checkEmptyJavadoc" value="true"/>
-            <property name="checkHtml" value="true"/>
-        </module>
+        <!-- JavadocStyle removed in Checkstyle 13.9 (#20610); SummaryJavadoc below covers summary. -->
         <module name="MissingJavadocMethod">
             <property name="scope" value="public"/>
             <property name="allowedAnnotations" value="Override,Test,BeforeEach,AfterEach,BeforeAll,AfterAll"/>

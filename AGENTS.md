@@ -178,9 +178,15 @@ container plus the `build-validation` Docker target (see `docs/DEVELOPMENT.md`).
 
 ## Java Javadoc and Checkstyle (`@param` on types)
 
-Checkstyle `JavadocType` validates Javadoc on **classes, interfaces, enums, and record types**. Tags such as `@param`, `@return`, and `@throws` belong on **methods and constructors** (validated by `JavadocMethod`), not on the type itself. Putting `@param` on a class or `record` produces `Unused @param tag … [JavadocType]`.
+Checkstyle `JavadocType` validates Javadoc on **classes, interfaces, enums, and record types**.
 
-**Do:** summarize the type in its class Javadoc; put per-parameter descriptions on the **constructor** (or on fields / accessors as appropriate). See `.cursor/rules/javadoc-type-param.mdc`.
+- **Classes / interfaces / enums:** do **not** put `@param`, `@return`, or `@throws` on the type
+  itself (`Unused @param tag … [JavadocType]`). Document parameters on constructors or methods
+  (`JavadocMethod`).
+- **Records (Checkstyle 13.9+):** document each **record component** with `@param` on the **type**
+  Javadoc. Missing component tags fail the build.
+
+See `.cursor/rules/javadoc-type-param.mdc`.
 
 ---
 
@@ -346,10 +352,10 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 
 - For weekly Dependabot dependency-update triage, the shared keyword is **`dependabot-curated`**.
 - Purpose: a **punctual curated pass** that classifies open Dependabot PRs into risk-tiered lots
-  (T1 patch → T4 major/disruptor), runs interactive HITL per lot, merges PRs individually after CI
-  green, then runs a **session closeout** validation ladder. **Not** silent auto-merge and **not**
-  a full `I-*` / `TB-*` program for routine bumps. Sibling hygiene lanes: `doctor-curated` and
-  `java-doctor-curated` above.
+  (T1 patch → T4 major/disruptor), decides them via HITL **or** (when the operator grants it)
+  **autonomous validation mode**, applies bumps, then runs a **session closeout** validation
+  ladder with evidence. **Not** silent auto-merge and **not** a full `I-*` / `TB-*` program for
+  routine bumps. Sibling hygiene lanes: `doctor-curated` and `java-doctor-curated` above.
 - Skill: [`.cursor/skills/dependabot-curated/SKILL.md`](.cursor/skills/dependabot-curated/SKILL.md).
 - Campaign decision notes: `product-docs/global/hygiene/dependabot/` (template + dated pass
   instances). Index: `product-docs/global/hygiene/README.md`.
@@ -361,22 +367,29 @@ When the operator asks for a **`java-doctor-curated`** improvement pass:
 - Config that reduces future atomization: [`.github/dependabot.yml`](.github/dependabot.yml)
   groups. Do not invent methodology backlog for the weekly Dependabot habit itself.
 
-### HITL contract (mandatory for cold agents)
+### HITL contract (default for cold agents)
 
 When the operator asks for a **`dependabot-curated`** pass:
 
 1. List open Dependabot PRs (`gh pr list --author "app/dependabot" --state open`).
 2. Peel off any PR labeled `deferred:*` (skip weekly lots); classify remaining PRs T1–T4; propose
    **3–6 lots** (overview only).
-3. **Before any merge — interactive HITL loop (mandatory):** iterate **one lot at a time**
-   (members, tier, blast radius, CI status) → wait for Go / No-Go / hold / defer on **that** lot
-   before merging or presenting the next. Do not replace this with a bulk options matrix.
-4. On Go: merge each green PR in the lot individually. On defer: comment; apply
-   `deferred:later-train` when the PR should stay out of weekly lots; optional one `I-*` if
-   the investigation should not be lost.
-5. Session closeout proportional to highest accepted tier (always `./scripts/build.sh`; stack /
+3. **Default — interactive HITL:** iterate **one lot at a time** (members, tier, blast radius, CI
+   status) → wait for Go / No-Go / hold / defer on **that** lot before merging or presenting the
+   next. Do not replace this with a bulk options matrix.
+4. **Autonomous validation mode** (opt-in): when the operator explicitly delegates validation /
+   waives per-lot Go (e.g. “full ladder yourself”, “autonomous”), proceed on T1–T3 without waiting;
+   still pause on T4 / hard escalators unless also waived. Prefer hygiene branch
+   `hygiene/dependabot-YYYY-MM-DD` with **one commit per lot**, run the full closeout ladder
+   yourself (build → clean-start → functional → Playwright when Admin UI runtime/Vite touched),
+   and present evidence in the campaign note + session report. Details: skill
+   `dependabot-curated` § *Autonomous validation mode*.
+5. On Go / autonomous proceed: apply the lot (per-PR squash-merge **or** hygiene-branch lot
+   commit). On defer: comment; apply `deferred:later-train` when the PR should stay out of weekly
+   lots; optional one `I-*` if the investigation should not be lost.
+6. Session closeout proportional to highest accepted tier (always `./scripts/build.sh`; stack /
    functional / Playwright per skill ladder; T1-only shortcut allowed when recorded).
-6. Write a dated campaign note under `product-docs/global/hygiene/dependabot/` (copy `TEMPLATE.md`).
+7. Write a dated campaign note under `product-docs/global/hygiene/dependabot/` (copy `TEMPLATE.md`).
 
 ## Mobile doctor-curated keyword
 

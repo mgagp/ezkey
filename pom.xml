@@ -65,11 +65,11 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<spring-boot.version>4.1.0</spring-boot.version>
 		<!-- SEC-019: targeted BOM overrides (July 2026 Security Challenge advisories) -->
-		<postgresql.version>42.7.12</postgresql.version>
-		<logback.version>1.5.38</logback.version>
+		<postgresql.version>42.7.13</postgresql.version>
+		<logback.version>1.6.1</logback.version>
 		<tomcat.version>11.0.24</tomcat.version>
 
-		<jackson-bom.version>3.1.5</jackson-bom.version>
+		<jackson-bom.version>3.2.1</jackson-bom.version>
 		<jackson-2-bom.version>2.22.1</jackson-2-bom.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<springdoc.version>3.0.3</springdoc.version>
@@ -81,7 +81,7 @@
 		<pmd.version>3.28.0</pmd.version>
 		<jacoco.version>0.8.15</jacoco.version>
 		<zxing.version>3.5.4</zxing.version>
-		<spotless.version>3.8.0</spotless.version>
+		<spotless.version>3.9.0</spotless.version>
 		<bucket4j.version>8.19.0</bucket4j.version>
 		<caffeine.version>3.2.4</caffeine.version>
 		<license-maven-plugin.version>2.7.1</license-maven-plugin.version>
@@ -206,15 +206,29 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!-- Force engine + annotations alignment: Jackson 3.2 needs annotations 2.22+
+			     (JsonApplyView). Springdoc/swagger still pulls annotations 2.21 transitively;
+			     Boot may leave tools.jackson-core behind the forced databind pin. -->
 			<dependency>
 				<groupId>tools.jackson.core</groupId>
 				<artifactId>jackson-databind</artifactId>
 				<version>${jackson-bom.version}</version>
 			</dependency>
 			<dependency>
+				<groupId>tools.jackson.core</groupId>
+				<artifactId>jackson-core</artifactId>
+				<version>${jackson-bom.version}</version>
+			</dependency>
+			<dependency>
 				<groupId>com.fasterxml.jackson.core</groupId>
 				<artifactId>jackson-databind</artifactId>
 				<version>${jackson-2-bom.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.fasterxml.jackson.core</groupId>
+				<artifactId>jackson-annotations</artifactId>
+				<!-- Annotations drop the patch digit (jackson-2-bom property jackson.version.annotations). -->
+				<version>2.22</version>
 			</dependency>
 
 
@@ -267,7 +281,7 @@
     					<dependency>
       						<groupId>com.puppycrawl.tools</groupId>
       						<artifactId>checkstyle</artifactId>
-      						<version>13.8.0</version> <!-- Override default -->
+      						<version>13.9.0</version> <!-- Override default -->
     					</dependency>
 						<dependency>
 							<groupId>org.ezkey</groupId>

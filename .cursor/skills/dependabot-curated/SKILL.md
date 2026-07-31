@@ -72,17 +72,55 @@ not a mandatory top-level sort.
 3. Classify each **remaining** PR **T1–T4** from the title SemVer digits and ecosystem path.
    Surface ambiguity to the operator (e.g. icon library minor spanning several patch bumps → T3).
 4. Propose **3–6 lots max** for the session (80/20). Prefer fewer lots over one-PR theater.
-5. Present a **short lots overview** (deferred block first, then active lots), then **HITL one lot
-   at a time** — wait for Go / No-Go / hold / defer before merging that lot or presenting the next.
-   Do **not** ask for a bulk `1A, 2B, 3B…` reply as the primary vehicle.
-6. On **Go:** merge each green PR in the lot individually (`gh pr merge <n> --squash` or the
-   repo’s usual merge method). Do not force unresolved conflicts into the lot.
+5. Present a **short lots overview** (deferred block first, then active lots).
+   - **Default (HITL):** then **HITL one lot at a time** — wait for Go / No-Go / hold / defer
+     before merging that lot or presenting the next. Do **not** ask for a bulk `1A, 2B, 3B…`
+     reply as the primary vehicle.
+   - **Autonomous validation mode** (see below): after the overview, proceed without waiting for
+     per-lot Go when the operator explicitly delegated autonomy for this pass.
+6. On **Go** (or autonomous proceed): apply the lot (see **Apply modes**), then continue.
 7. On **Defer:** leave open or close with a rationale comment; apply `deferred:later-train` (or a
    more specific `deferred:*` label) when the PR should stay out of weekly lots for weeks/months.
    If investigation cost should not be lost, create **one** `I-*` for that dependency (program
    deferral), not a Dependabot methodology program.
 8. After all lot decisions: run **session closeout**, then write
    `product-docs/global/hygiene/dependabot/YYYY-MM-DD-pass-N.md` from the template.
+
+## Autonomous validation mode
+
+When the operator says they want a **more autonomous** Dependabot pass (keywords such as
+`autonomous validation`, `délègue la validation`, `full ladder yourself`, or an explicit waiver of
+per-lot HITL Go), cold agents **must**:
+
+1. Still list, classify, peel `deferred:*`, and publish a short lots overview in the campaign note.
+2. **Skip waiting** for per-lot Go/No-Go for T1–T3 lots that have a clear blast-radius story.
+   Keep HITL (or hold) only for **T4 / hard escalators** unless the operator also waived those.
+3. Prefer a **hygiene branch** with **one commit per lot** (plus companion fix commits when a bump
+   breaks build/config). Push the branch and open one hygiene PR (or report the branch URL).
+4. **Own the validation ladder** end-to-end for the highest accepted tier — do not stop at
+   “CI green on Dependabot” or hand the stack/Playwright back to the operator by default.
+5. Deliver a **brief evidence report**: lots table, commands run, pass/fail counts, deferred set,
+   and any companion fixes discovered during the pass.
+6. Record `Operator: … (+ agent, autonomous validation mode)` in the campaign note metadata.
+
+Default weekly mode remains interactive HITL. Autonomy is **opt-in per session**, not silent
+auto-merge of Dependabot PRs to `main`.
+
+## Apply modes
+
+| Mode | When | How |
+|------|------|-----|
+| **Per-PR squash-merge to `main`** | Classic weekly HITL; preserves Dependabot provenance | `gh pr merge <n> --squash` per PR after lot Go |
+| **Hygiene branch + lot commits** | Operator asks for one branch / lot-by-lot review, or autonomous mode | Branch `hygiene/dependabot-YYYY-MM-DD`; squash or manually apply each Dependabot branch into **one commit per lot**; companion fixes as follow-up commits; one PR to `main`; then close superseded Dependabot PRs |
+
+When applying multiple Dependabot branches that touch the same file (e.g. `pom.xml`), prefer
+manual version edits or sequential squash-then-commit — do not leave overlapping uncommitted
+squash merges.
+
+**Checkstyle companion tip:** `./scripts/build.sh` runs `checkstyle:check` **before** reactor
+`install`. If this pass changes `checkstyle-config` XML, install that module first
+(`mvn install -pl checkstyle-config -DskipTests`) or the check still loads the previous jar from
+`~/.m2`.
 
 ## Session closeout validation ladder
 
@@ -126,18 +164,25 @@ are already **T4 hard escalators** — this checklist is the operational tail of
 ## Merge rules
 
 - Lots = **decision + validation batches**, not umbrella rewrite commits.
-- Merge Dependabot PRs **individually** after lot approval (preserves provenance and per-PR CI).
-- **Never** auto-merge without operator Go on that lot.
+- **HITL mode:** merge Dependabot PRs **individually** after lot approval (preserves provenance
+  and per-PR CI).
+- **Autonomous / hygiene-branch mode:** lot commits on `hygiene/dependabot-YYYY-MM-DD`, one PR;
+  close superseded Dependabot PRs after merge to `main`.
+- **Never** silent auto-merge to `main` without either per-lot Go **or** an explicit autonomous
+  validation waiver for that session.
 - Do not raise `open-pull-requests-limit` casually; prefer Dependabot **groups** in
   `.github/dependabot.yml` to reduce future atomization.
 
-## HITL contract (mandatory for cold agents)
+## HITL contract (default for cold agents)
 
 1. List and classify; peel off `deferred:*` first; propose lots overview (3–6 active lots).
 2. Iterate **one lot at a time**: members, tier, blast radius, CI status, open question → wait
-   for Go / No-Go / hold / defer.
-3. Record final decisions in the campaign note after HITL closes (table is fine *there*).
-4. Execute session closeout proportional to the highest accepted tier.
+   for Go / No-Go / hold / defer — **unless** autonomous validation mode was granted for the
+   session (then proceed for T1–T3 and only pause on T4 / hard escalators).
+3. Record final decisions in the campaign note after the session (table is fine *there*).
+4. Execute session closeout proportional to the highest accepted tier; in autonomous mode the
+   agent runs the ladder and presents evidence (do not defer stack/Playwright to the operator by
+   default when Docker and scripts are available).
 5. Do not invent `I-*` / `TB-*` for routine merged patches.
 
 ## Deferred labels
