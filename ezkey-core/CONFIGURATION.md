@@ -126,12 +126,12 @@ version check so encrypt/decrypt does not serialize on DB sync. See
 | `ezkey.encryption.reencryption.max-batches-per-run` | `int` | `100` | optionnel | Maximum batches processed per scheduled execution. |
 | `ezkey.encryption.reencryption.max-duration-minutes` | `int` | `60` | optionnel | Maximum wall-clock duration per execution in minutes. |
 | `ezkey.encryption.reencryption.auto-retry-failed` | `boolean` | `true` | optionnel | Automatically retry failed batches. |
-| `ezkey.encryption.reencryption.parallel-batch-workers` | `int` | `1` | optionnel | Parallel workers for distinct batches. With 2 physical tables, up to 2 batches may run in parallel. |
+| `ezkey.encryption.reencryption.parallel-batch-workers` | `int` | `1` (Java) / Admin config **`4`** | optionnel | Parallel workers for distinct batches. Pair with `auth-attempt-shard-count` (`workers >= shards`). Enrollment is table-mutex serialized; auth-attempt shards run concurrently when sharding is on. |
 | `ezkey.encryption.reencryption.parallel-batch-queue-capacity` | `int` | `100` | optionnel | Queue capacity for the parallel executor (back-pressure). |
 | `ezkey.encryption.reencryption.temporal-batch-sizing-enabled` | `boolean` | `false` | optionnel | When true, the first fetch uses `recent-data-chunk-size`; subsequent slices use `stale-data-chunk-size`. |
 | `ezkey.encryption.reencryption.recent-data-chunk-size` | `int` | `250` | optionnel | Chunk size for the first slice (leading edge). |
 | `ezkey.encryption.reencryption.stale-data-chunk-size` | `int` | `1000` | optionnel | Chunk size after the cursor has advanced (resume). |
-| `ezkey.encryption.reencryption.auth-attempt-shard-count` | `int` | `1` | optionnel | Parallel shards for `ezkey_auth_attempt` re-encryption (mod by shard count). Values 4–8 suit Docker deployments. |
+| `ezkey.encryption.reencryption.auth-attempt-shard-count` | `int` | `1` (Java) / Admin config **`4`** | optionnel | Parallel shards for `ezkey_auth_attempt` re-encryption (`mod(auth_attempt_id, N)`). `1` = off. Typical Admin pairing **4/4**; upper ops band **8**. See `docs/REENCRYPTION_OPERATIONS.md` §9. |
 
 **Exemple Docker minimal :**
 

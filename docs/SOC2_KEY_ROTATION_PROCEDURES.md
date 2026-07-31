@@ -246,6 +246,11 @@ ezkey.encryption.reencryption.max-duration-minutes=60
 
 # Auto-retry failed batches (default: true)
 ezkey.encryption.reencryption.auto-retry-failed=true
+
+# Auth-attempt throughput (Admin Docker defaults: 4 workers + 4 shards)
+# See docs/REENCRYPTION_OPERATIONS.md §9 — pair workers >= auth-attempt-shard-count
+ezkey.encryption.reencryption.parallel-batch-workers=4
+ezkey.encryption.reencryption.auth-attempt-shard-count=4
 ```
 
 #### Monitoring
