@@ -27,8 +27,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>When parallel workers &gt; 1, a mutex key is derived per batch: {@code ezkey_enrollment} uses
  * the table name only (two encrypted columns on the same row); {@code ezkey_auth_attempt} without
- * sharding uses the table name only (same); {@code ezkey_auth_attempt} with {@code shard_count &gt;
- * 1} uses {@code table|column|shard_index} so parallel shard workers do not share one lock.
+ * sharding uses the table name only (single encrypted column {@code auth_attempt_proof_token});
+ * {@code ezkey_auth_attempt} with {@code shard_count &gt; 1} uses {@code table|column|shard_index}
+ * so parallel shard workers do not share one lock.
  */
 @Component
 public class ReencryptionBatchParallelRunner {
@@ -138,8 +139,8 @@ public class ReencryptionBatchParallelRunner {
   }
 
   /**
-   * Enrollment: one lock per table. Auth attempt without sharding: one lock per table (serializes
-   * the two encrypted columns). Auth attempt with sharding: one lock per (table, column, shard).
+   * Enrollment: one lock per table. Auth attempt without sharding: one lock per table (single
+   * encrypted column). Auth attempt with sharding: one lock per (table, column, shard).
    */
   static String mutexKeyForBatch(ReencryptionBatch batch) {
     String table = batch.getTargetTable();
