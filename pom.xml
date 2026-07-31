@@ -206,15 +206,29 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!-- Force engine + annotations alignment: Jackson 3.2 needs annotations 2.22+
+			     (JsonApplyView). Springdoc/swagger still pulls annotations 2.21 transitively;
+			     Boot may leave tools.jackson-core behind the forced databind pin. -->
 			<dependency>
 				<groupId>tools.jackson.core</groupId>
 				<artifactId>jackson-databind</artifactId>
 				<version>${jackson-bom.version}</version>
 			</dependency>
 			<dependency>
+				<groupId>tools.jackson.core</groupId>
+				<artifactId>jackson-core</artifactId>
+				<version>${jackson-bom.version}</version>
+			</dependency>
+			<dependency>
 				<groupId>com.fasterxml.jackson.core</groupId>
 				<artifactId>jackson-databind</artifactId>
 				<version>${jackson-2-bom.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.fasterxml.jackson.core</groupId>
+				<artifactId>jackson-annotations</artifactId>
+				<!-- Annotations drop the patch digit (jackson-2-bom property jackson.version.annotations). -->
+				<version>2.22</version>
 			</dependency>
 
 
