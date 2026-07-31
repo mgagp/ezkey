@@ -178,9 +178,15 @@ container plus the `build-validation` Docker target (see `docs/DEVELOPMENT.md`).
 
 ## Java Javadoc and Checkstyle (`@param` on types)
 
-Checkstyle `JavadocType` validates Javadoc on **classes, interfaces, enums, and record types**. Tags such as `@param`, `@return`, and `@throws` belong on **methods and constructors** (validated by `JavadocMethod`), not on the type itself. Putting `@param` on a class or `record` produces `Unused @param tag … [JavadocType]`.
+Checkstyle `JavadocType` validates Javadoc on **classes, interfaces, enums, and record types**.
 
-**Do:** summarize the type in its class Javadoc; put per-parameter descriptions on the **constructor** (or on fields / accessors as appropriate). See `.cursor/rules/javadoc-type-param.mdc`.
+- **Classes / interfaces / enums:** do **not** put `@param`, `@return`, or `@throws` on the type
+  itself (`Unused @param tag … [JavadocType]`). Document parameters on constructors or methods
+  (`JavadocMethod`).
+- **Records (Checkstyle 13.9+):** document each **record component** with `@param` on the **type**
+  Javadoc. Missing component tags fail the build.
+
+See `.cursor/rules/javadoc-type-param.mdc`.
 
 ---
 

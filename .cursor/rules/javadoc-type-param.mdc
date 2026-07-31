@@ -1,5 +1,5 @@
 ---
-description: Checkstyle JavadocType rejects @param/@return/@throws on class, interface, enum, or record type Javadoc
+description: Checkstyle JavadocType — no @param on class/interface/enum; records document components on the type (Checkstyle 13.9+)
 globs: "**/*.java"
 alwaysApply: true
 ---
@@ -8,7 +8,7 @@ alwaysApply: true
 
 The build runs Checkstyle `JavadocType` on types (classes, interfaces, enums, `record` declarations) and `JavadocMethod` on methods and constructors.
 
-## Do not use `@param` on type-level Javadoc
+## Classes, interfaces, enums — do not use `@param` on type-level Javadoc
 
 **Invalid for this codebase (fails with `Unused @param tag for '…' [JavadocType]`):**
 
@@ -27,8 +27,26 @@ public class MyDto {
 2. **Use field Javadoc** (`/** ... */` above each field) when fields are not constructor parameters.
 3. **Use a short type summary only** (`/** ... */` on the class) with no `@param` lines.
 
-Java `record` components are not method parameters on the *type*; document the **canonical constructor** or use `@param` on accessors only if you add explicit Javadoc there (still under `JavadocMethod`).
+## Records — document components on the type (Checkstyle 13.9+)
+
+From **Checkstyle 13.9**, `JavadocType` expects `@param` tags on the **record type** Javadoc for each
+record component (missing tags fail the build). That is the opposite of the class/enum rule above.
+
+```java
+/**
+ * Claim snapshot.
+ *
+ * @param enrollmentId enrollment that claimed the attempt
+ * @param authAttemptId claimed auth attempt id
+ * @since 2026
+ */
+public record ClaimedPendingAuth(Integer enrollmentId, Integer authAttemptId) {}
+```
+
+Factory methods and explicit constructors still use `@param` under `JavadocMethod` as usual.
 
 ## Why this repeats
 
-Authors often mirror “parameter list” style on the class because it reads like a struct. Checkstyle treats `@param` as meaningful only where a Java method or constructor has formal parameters, so type-level `@param` tags are always “unused” for `JavadocType`.
+Authors often mirror “parameter list” style on ordinary classes. For **classes / interfaces /
+enums**, Checkstyle still treats type-level `@param` as unused. For **records**, Checkstyle 13.9+
+treats component `@param` tags on the type as required — follow that exception.
