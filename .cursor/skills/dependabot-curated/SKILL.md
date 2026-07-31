@@ -7,9 +7,11 @@ disable-model-invocation: true
 
 ## Purpose
 
-Turn a weekly Dependabot PR backlog into **few risk-tiered lots**, decide them with interactive
-HITL, merge each PR individually (Dependabot provenance preserved), and run **one session
-closeout** validation ladder. Minimize recurring human time without silent auto-merge.
+Turn a weekly Dependabot PR backlog into **few risk-tiered lots**, decide them (HITL by default,
+or autonomous validation when the operator opts in), **merge the existing Dependabot PRs** in each
+lot (so GitHub closes them as you go), and run **one session closeout** validation ladder.
+Minimize recurring human time without silent auto-merge and without re-applying the same bumps on
+a second branch.
 
 This is **hygiene**, not a methodology lane — the same weight class as `doctor-curated` /
 `java-doctor-curated`. Do
@@ -88,34 +90,43 @@ not a mandatory top-level sort.
 
 ## Autonomous validation mode
 
-When the operator says they want a **more autonomous** Dependabot pass (keywords such as
-`autonomous validation`, `délègue la validation`, `full ladder yourself`, or an explicit waiver of
-per-lot HITL Go), cold agents **must**:
+Autonomy means **who owns the validation ladder and evidence**, not **how bumps land on
+`main`**.
 
-1. Still list, classify, peel `deferred:*`, and publish a short lots overview in the campaign note.
-2. **Skip waiting** for per-lot Go/No-Go for T1–T3 lots that have a clear blast-radius story.
-   Keep HITL (or hold) only for **T4 / hard escalators** unless the operator also waived those.
-3. Prefer a **hygiene branch** with **one commit per lot** (plus companion fix commits when a bump
-   breaks build/config). Push the branch and open one hygiene PR (or report the branch URL).
+When the operator opts in (keywords such as `autonomous validation`, `délègue la validation`,
+`full ladder yourself`, or an explicit waiver of per-lot HITL Go), cold agents **must**:
+
+1. Still list, classify, peel `deferred:*`, and record a short lots overview in the campaign note.
+2. **Skip waiting** for per-lot Go/No-Go for T1–T3 lots with a clear blast-radius story.
+   Keep HITL (or hold) only for **T4 / hard escalators** unless those are also waived.
+3. **Default apply path stays:** merge the **existing Dependabot PRs** in the lot individually
+   (`gh pr merge <n> --squash` or the repo’s usual method) so GitHub closes them as you go.
 4. **Own the validation ladder** end-to-end for the highest accepted tier — do not stop at
-   “CI green on Dependabot” or hand the stack/Playwright back to the operator by default.
+   “Dependabot CI green” or hand clean-start / functional / Playwright back to the operator when
+   Docker and scripts are available.
 5. Deliver a **brief evidence report**: lots table, commands run, pass/fail counts, deferred set,
    and any companion fixes discovered during the pass.
 6. Record `Operator: … (+ agent, autonomous validation mode)` in the campaign note metadata.
 
-Default weekly mode remains interactive HITL. Autonomy is **opt-in per session**, not silent
-auto-merge of Dependabot PRs to `main`.
+If a lot needs companion fixes that cannot land cleanly on the Dependabot PR (conflicts, config
+migration, classpath pins), use the **hygiene-branch exception** below — then close superseded
+Dependabot PRs after the hygiene PR merges.
+
+Default weekly mode remains interactive HITL. Autonomy is **opt-in per session**.
 
 ## Apply modes
 
 | Mode | When | How |
 |------|------|-----|
-| **Per-PR squash-merge to `main`** | Classic weekly HITL; preserves Dependabot provenance | `gh pr merge <n> --squash` per PR after lot Go |
-| **Hygiene branch + lot commits** | Operator asks for one branch / lot-by-lot review, or autonomous mode | Branch `hygiene/dependabot-YYYY-MM-DD`; squash or manually apply each Dependabot branch into **one commit per lot**; companion fixes as follow-up commits; one PR to `main`; then close superseded Dependabot PRs |
+| **Merge existing Dependabot PRs (default)** | Normal lots, including autonomous validation | After lot decision, `gh pr merge <n> --squash` (or usual method) **per PR in the lot**. GitHub closes those PRs. Provenance preserved. |
+| **Hygiene branch (exception)** | Operator explicitly wants one reviewable PR, or Dependabot branches cannot merge cleanly and need companion fixes | Branch `hygiene/dependabot-YYYY-MM-DD`; apply bumps as lot commits; open one PR; after it lands on `main`, **close superseded Dependabot PRs** with “already integrated via #NNN” |
 
-When applying multiple Dependabot branches that touch the same file (e.g. `pom.xml`), prefer
-manual version edits or sequential squash-then-commit — do not leave overlapping uncommitted
-squash merges.
+Do **not** treat “lots” or “autonomy” as a signal to re-copy Dependabot bumps onto a second branch
+by default — that is what creates duplicate open PRs.
+
+When a hygiene branch is required and multiple Dependabot branches touch the same file (e.g.
+`pom.xml`), prefer manual version edits or sequential squash-then-commit — do not leave overlapping
+uncommitted squash merges.
 
 **Checkstyle companion tip:** `./scripts/build.sh` runs `checkstyle:check` **before** reactor
 `install`. If this pass changes `checkstyle-config` XML, install that module first
@@ -163,11 +174,12 @@ are already **T4 hard escalators** — this checklist is the operational tail of
 
 ## Merge rules
 
-- Lots = **decision + validation batches**, not umbrella rewrite commits.
-- **HITL mode:** merge Dependabot PRs **individually** after lot approval (preserves provenance
-  and per-PR CI).
-- **Autonomous / hygiene-branch mode:** lot commits on `hygiene/dependabot-YYYY-MM-DD`, one PR;
-  close superseded Dependabot PRs after merge to `main`.
+- Lots = **decision + validation batches**, not a reason to re-implement bumps elsewhere.
+- **Default apply:** merge the **existing Dependabot PRs** in the lot individually after the lot
+  decision (preserves provenance; GitHub closes those PRs).
+- **Hygiene branch:** exception only — explicit operator request for one reviewable PR, or
+  unmergeable Dependabot branches that need companion fixes. After land, close superseded
+  Dependabot PRs manually.
 - **Never** silent auto-merge to `main` without either per-lot Go **or** an explicit autonomous
   validation waiver for that session.
 - Do not raise `open-pull-requests-limit` casually; prefer Dependabot **groups** in

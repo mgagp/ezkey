@@ -25,6 +25,21 @@ under *Already deferred — skip HITL*, then triage only unlabeled (or non-defer
 
 To park a new disruptor for weeks/months: comment + `gh pr edit <n> --add-label deferred:later-train`.
 
+## Preferred weekly posture (lots without duplication)
+
+**Default apply path:** triage into risk lots, then **merge the existing Dependabot PRs** in that
+lot (individually, after CI / local validation for the lot). That closes GitHub PRs as you go and
+avoids duplicate open PRs.
+
+**Hygiene-branch path** (re-apply bumps onto `hygiene/dependabot-…`): only when the operator wants
+a single reviewable PR with companion fixes, or when Dependabot branches cannot merge cleanly.
+After the hygiene PR lands on `main`, **close superseded Dependabot PRs** with a short
+“already integrated via #NNN” comment — they will not auto-close.
+
+**Autonomous validation:** opt-in phrase for cold agents is documented in the skill
+(`dependabot-curated` § *Autonomous validation mode*). Autonomy means the agent owns the closeout
+ladder and evidence; it does **not** mean inventing a second integration path by default.
+
 ## Related
 
 - Hygiene index: [`../README.md`](../README.md)

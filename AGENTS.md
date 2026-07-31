@@ -379,14 +379,15 @@ When the operator asks for a **`dependabot-curated`** pass:
    next. Do not replace this with a bulk options matrix.
 4. **Autonomous validation mode** (opt-in): when the operator explicitly delegates validation /
    waives per-lot Go (e.g. “full ladder yourself”, “autonomous”), proceed on T1–T3 without waiting;
-   still pause on T4 / hard escalators unless also waived. Prefer hygiene branch
-   `hygiene/dependabot-YYYY-MM-DD` with **one commit per lot**, run the full closeout ladder
-   yourself (build → clean-start → functional → Playwright when Admin UI runtime/Vite touched),
-   and present evidence in the campaign note + session report. Details: skill
-   `dependabot-curated` § *Autonomous validation mode*.
-5. On Go / autonomous proceed: apply the lot (per-PR squash-merge **or** hygiene-branch lot
-   commit). On defer: comment; apply `deferred:later-train` when the PR should stay out of weekly
-   lots; optional one `I-*` if the investigation should not be lost.
+   still pause on T4 / hard escalators unless also waived. **Still merge the existing Dependabot
+   PRs in each lot** so GitHub closes them — autonomy does not mean re-applying bumps on a second
+   branch. Run the full closeout ladder yourself and present evidence. Hygiene-branch re-apply is
+   only for explicit single-PR review or unmergeable Dependabot branches + companion fixes; then
+   close superseded PRs after land. Details: skill `dependabot-curated` § *Autonomous validation
+   mode*.
+5. On Go / autonomous proceed: merge each green Dependabot PR in the lot individually. On defer:
+   comment; apply `deferred:later-train` when the PR should stay out of weekly lots; optional one
+   `I-*` if the investigation should not be lost.
 6. Session closeout proportional to highest accepted tier (always `./scripts/build.sh`; stack /
    functional / Playwright per skill ladder; T1-only shortcut allowed when recorded).
 7. Write a dated campaign note under `product-docs/global/hygiene/dependabot/` (copy `TEMPLATE.md`).
