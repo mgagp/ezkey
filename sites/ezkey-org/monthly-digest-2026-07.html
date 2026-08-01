@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Monthly digest: July 2026 in review — Ezkey">
+    <meta property="og:description" content="A distilled digest of Ezkey's July 2026 work: security closed in volume, hygiene turned into lanes, and documentation consolidation under way.">
+    <meta property="og:url" content="https://ezkey.org/monthly-digest-2026-07.html">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ezkey">
+    <meta property="og:image" content="https://ezkey.org/logo.svg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Monthly digest: July 2026 in review — Ezkey">
+    <meta name="twitter:description" content="A distilled digest of Ezkey's July 2026 work: security closed in volume, hygiene turned into lanes, and documentation consolidation under way.">
+    <meta name="twitter:image" content="https://ezkey.org/logo.svg">
+    <link rel="canonical" href="https://ezkey.org/monthly-digest-2026-07.html">
+    <link rel="alternate" hreflang="en" href="https://ezkey.org/monthly-digest-2026-07.html">
+    <link rel="alternate" hreflang="fr" href="https://ezkey.org/fr/monthly-digest-2026-07.html">
+    <link rel="alternate" hreflang="x-default" href="https://ezkey.org/monthly-digest-2026-07.html">
+    <title>Monthly digest: July 2026 in review — Ezkey</title>
+    <meta name="description" content="A distilled digest of Ezkey's July 2026 work: security closed in volume, hygiene turned into lanes, and documentation consolidation under way.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; line-height: 1.65; }
+        .shell { max-width: 820px; margin: 0 auto; padding: 28px 20px 48px; }
+        .nav-top, footer { color: rgba(255,255,255,0.9); font-size: 0.92rem; }
+        .nav-top { margin-bottom: 20px; }
+        .nav-top a, footer a { color: rgba(255,255,255,0.95); text-decoration: underline; }
+        article { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,0.18); padding: 40px 36px 48px; }
+        .doc-meta { color: #555; font-size: 0.85rem; margin-bottom: 16px; }
+        .hero-title { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #667eea; }
+        .hero-title .label { color: #667eea; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 8px; text-transform: uppercase; }
+        h1 { color: #111; font-size: 1.72rem; line-height: 1.25; margin-bottom: 12px; }
+        .tagline { color: #444; font-size: 1.05rem; font-weight: 600; }
+        h2 { color: #667eea; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 28px 0 10px; }
+        p { font-size: 0.98rem; margin-bottom: 12px; }
+        .lead { font-size: 1.02rem; color: #222; }
+        ul { margin: 0 0 12px 22px; }
+        li { font-size: 0.96rem; margin-bottom: 6px; }
+        .closing { margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08)); border-left: 4px solid #667eea; border-radius: 12px; }
+        .doc-link-sibling { font-size: 0.92rem; margin-top: 14px; }
+        footer { margin-top: 24px; text-align: center; }
+        @media (max-width: 600px) { article { padding: 28px 20px 36px; } }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <p class="nav-top"><a href="/monthly-digest.html">Monthly digests</a> &middot; <a href="/fr/monthly-digest-2026-07.html">Lire en francais</a></p>
+        <article>
+            <p class="doc-meta">Monthly digest &middot; July 2026</p>
+            <header class="hero-title">
+                <p class="label">July 2026 in review</p>
+                <h1>Hardening, hygiene systems, and documentation under review</h1>
+                <p class="tagline">A distilled look at July: security closed in volume, maintenance turned into lanes, and the written corpus began a quieter consolidation.</p>
+            </header>
+
+            <h2>In short</h2>
+            <p class="lead">July was intense and security-heavy. A structured challenge closed many concrete weaknesses across recovery, authorization, actuators, crypto paths, and fail-closed posture. In parallel, routine hygiene became institutionalized — dedicated curated passes for Java, the admin console, mobile, and dependency triage — so maintenance is no longer a burst habit. Documentation volume was high, but much of it was consolidation: retiring stale notes, promoting durable decisions, and tightening what is loaded by default. That review has only started; it may take a larger share of attention ahead.</p>
+
+            <h2>Documentation &amp; methodology</h2>
+            <p>The working method reached another published revision. Cold-start guidance was tiered around product intent so less material is loaded by default. Ephemeral plans, completed handoffs, and a distinct method-log artifact type were retired or rematerialized into canon; durable decisions were extracted from aging notes. Assessment lanes for deep security reviews took shape, and a public essay on continuous code hygiene was published. The intent of the consolidation work is corpus health — less duplication and scatter — not a thicker methodological stack.</p>
+
+            <h2>Code hygiene</h2>
+            <p>Hygiene stopped being ad hoc. The month institutionalized curated passes — static analysis shortlists with human triage for Java and the admin console, a sibling mobile pipeline, and a weekly Dependabot triage habit with risk tiers and closeout evidence. Dependency and toolchain bumps continued across Maven, Admin UI, and mobile, alongside cleanup of obsolete native-image surface and adaptations to newer Checkstyle and Jackson APIs. The public continuous-hygiene essay matches the practice: small lots, explicit decisions, no zero-warning campaigns.</p>
+
+            <h2>Admin UI</h2>
+            <p>Operator-facing work continued on audit integrity investigation: clearer summaries, timeline polish, and verification flows that distinguish checking the trail from running a broader validation. Contextual help was rewritten as a coherent corpus with role-aware rendering. Smaller quality passes improved dialog accessibility (portal rendering), dashboard enrollment status clarity, alerts list readability, and deep-link hygiene from the curated React pass.</p>
+
+            <h2>Mobile app</h2>
+            <p>Mobile security and platform hardening dominated. Device cryptography and enrollment storage were tightened (Keystore lifecycle, installation-scoped secrets, fail-closed pending responses, production-clean release gates). The app now refuses unsupported Android versions and adopts Android 12+ as the support floor. Stack maintenance continued (camera, navigation, Orval), language switching no longer requires a restart, and a mobile doctor-curated hygiene pipeline landed alongside stronger real-device test harnesses.</p>
+
+            <h2>Backend &amp; API contracts</h2>
+            <p>Security and integrity were the headline. Beyond the challenge closures, work completed more of the audit-trail verification story for operators, sealed peripheral audit inserts more carefully, encrypted sensitive API-key material at rest, and rejected weak ECDSA signatures. Re-encryption discovery moved to indexed key identifiers, keyset access was modernized, and PostgreSQL roles were split so migration credentials are not what the APIs run as day to day. Fail-fast posture for required encryption and trusted-proxy configuration was strengthened for Docker and evaluation deployments.</p>
+
+            <h2>The rest worth mentioning</h2>
+            <ul>
+                <li><strong>Public site:</strong> continuous code-hygiene essay published; methodology explorer kept in step with the method revision.</li>
+                <li><strong>Demo device &amp; labs:</strong> signature parity fixes and session rehydration for claimed pending auth; operational diagnostic scripts for the evaluation environment.</li>
+                <li><strong>Infrastructure:</strong> Lightsail image sync helper for host mounts; pentest-curated runner bootstrap.</li>
+                <li><strong>SDK:</strong> patch-level client and generator dependency hygiene.</li>
+            </ul>
+
+            <div class="closing">
+                <p>September's operable-release target remains the horizon. The durable habits of July — security challenge discipline, curated hygiene lanes, integrity that operators can actually investigate — should continue as rhythm, not spectacle. One nuance: the documentation consolidation begun this month may grow into a larger share of the work, as frontier models make heavier corrective scaffolding less necessary and more of a drag — a thread that may deserve its own essay later.</p>
+            </div>
+
+            <p class="doc-link-sibling"><strong>Francais:</strong> <a href="/fr/monthly-digest-2026-07.html">Version francaise de cette note</a></p>
+            <p class="doc-link-sibling"><strong>Back to index:</strong> <a href="/monthly-digest.html">Monthly digests</a></p>
+        </article>
+        <footer><p>Ezkey &middot; <a href="/">ezkey.org</a></p></footer>
+    </div>
+</body>
+</html>
