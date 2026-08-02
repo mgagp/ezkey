@@ -40,7 +40,7 @@ This document provides a comprehensive inventory of all third-party dependencies
 - **ZXing 3.5.3** (Apache 2.0) - QR code generation
 - **Bucket4j 8.15.0** (Apache 2.0) - Rate limiting
 - **Caffeine 3.2.2** (Apache 2.0) - Caching
-- **Google Tink 1.19.0** (Apache 2.0) - Cryptography
+- **Google Tink 1.23.0** (Apache 2.0) - Cryptography and encrypted keyset handling
 - **BouncyCastle** (Bouncy Castle License) - Cryptography
 
 ### License Distribution (Maven)

@@ -1,10 +1,21 @@
-# Ezkey Encryption and Key Rotation Implementation with Tink
+# Ezkey Encryption and Key Rotation Implementation with Tink (Historical)
+
+> **Historical / superseded planning note.** This document predates the current Tink encryption
+> implementation and still contains obsolete statements such as keysets being stored in cleartext.
+> Do not use it as the current source of truth for keyset storage or security posture. Current
+> guidance lives in [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md),
+> [`../ezkey-core/CONFIGURATION.md`](../ezkey-core/CONFIGURATION.md) § Encryption at Rest, and
+> [`../product-docs/global/architecture-decisions.md`](../product-docs/global/architecture-decisions.md)
+> ADR-0008 / ADR-0011.
+>
+> **Cold-agent warning:** search hits below that say "current problem", "cleartext keyset", or
+> "immediate action required" are preserved historical planning context, not current product state.
 
 ## Executive Summary
 
 This document outlines the implementation strategy for securing sensitive data in Ezkey using Google's Tink cryptographic library, with a focus on encryption at rest and automated key rotation to meet SOC2 compliance requirements.
 
-**Status**: In Progress - Partial Implementation  
+**Status**: Superseded historical implementation plan
 **Date**: October 2025  
 **Last Updated**: January 2025  
 **Author**: Ezkey Security Team  

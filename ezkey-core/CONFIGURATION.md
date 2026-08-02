@@ -94,6 +94,11 @@ version check so encrypt/decrypt does not serialize on DB sync. See
 
 #### Keyset Storage (`ezkey.encryption.keyset.*`)
 
+In `DATABASE` and `HYBRID` modes, `ezkey_keyset_blob.keyset_data` stores Tink's
+encrypted-keyset JSON envelope directly. The key material remains encrypted by the configured
+master key; Tink envelope metadata such as key IDs and primary-key status may remain visible and is
+treated as non-secret operational metadata.
+
 | Property | Type | Default | Obligation | Description |
 |---|---|---|---|---|
 | `ezkey.encryption.keyset.storage-mode` | `StorageMode` | `DATABASE` | optionnel | Enum: `FILE` (file only), `DATABASE` (DB as source of truth), `HYBRID` (both, DB preferred). Use `DATABASE` in multi-instance deployments. |

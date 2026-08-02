@@ -45,6 +45,10 @@ meant to be linked from trust-facing material without inflating the top-level pi
 - **Operator-actionable signals.** Integrity problems surface as alerts a Global Admin can triage;
   declared gaps and recovered outages are reconciled in the chain rather than hidden.
 - **Encryption at rest with rotatable keys**, self-hosted control, and inspectable open-source code.
+  Ezkey uses Google Tink for the at-rest keyset and data-encryption primitives. The platform keyset
+  is protected by a file-based master key; both the file keyset and the `ezkey_keyset_blob` database
+  synchronization row use Tink's encrypted-keyset JSON envelope. Tink envelope metadata such as key
+  IDs and primary-key status is treated as non-secret operational metadata, not as a security layer.
 
 ## What Ezkey does not do (current limits, stated honestly)
 
@@ -64,6 +68,9 @@ meant to be linked from trust-facing material without inflating the top-level pi
   operations are not blocked (**fail-open**). Tamper-evidence applies to rows that were stored;
   omission at the source is a separate concern (tracked in
   [`I-2026-07-18-audit-log-fail-open-exception-swallow`](../product-docs/global/backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md)).
+- **It does not rely on hiding Tink keyset metadata.** Key material is secret; key IDs, primary-key
+  status, and similar Tink envelope metadata are not treated as secrets. Ezkey deliberately avoids a
+  second custom envelope whose only purpose would be to hide non-secret metadata.
 
 ## What Ezkey aims to do (planned, if adoption justifies)
 
