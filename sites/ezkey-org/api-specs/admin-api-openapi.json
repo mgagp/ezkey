@@ -8561,6 +8561,11 @@
           "incompleteMigrationBatches": {
             "type": "boolean",
             "description": "True when migration batches for this key are not all completed"
+          },
+          "reencryptionWallClockSeconds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Retrospective parallel-aware wall-clock seconds for a fully drained migration (max per shard group + sum of other completed batches); null unless lifecycleStage is DRAINED and timing is available"
           }
         }
       },

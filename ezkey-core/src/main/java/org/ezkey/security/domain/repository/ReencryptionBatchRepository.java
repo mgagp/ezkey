@@ -152,6 +152,21 @@ public interface ReencryptionBatchRepository
   long countByOldKey_KeyIdAndStatusNot(Long oldKeyId, BatchStatus status);
 
   /**
+   * Find batches for an old key with the given status (e.g. all {@code COMPLETED} batches for a
+   * fully drained migration).
+   *
+   * <p>Used to compute a retrospective, parallel-aware wall-clock duration for the migration off
+   * one old key: sharded batches for the same target overlap in time (contribute a {@code max}),
+   * while non-sharded batches run serially relative to each other (contribute a {@code sum}).
+   *
+   * @param oldKeyId the old encryption key id
+   * @param status status to match (typically {@link
+   *     org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus#COMPLETED})
+   * @return list of matching batches, in no particular order
+   */
+  List<ReencryptionBatch> findByOldKey_KeyIdAndStatus(Long oldKeyId, BatchStatus status);
+
+  /**
    * Find the most recent batch for a target table/column that can be resumed.
    *
    * <p>Used to resume from the last batch if service was interrupted.

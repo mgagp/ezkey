@@ -135,7 +135,8 @@ class EncryptionKeyControllerSecurityWebMvcTest {
                 OffsetDateTime.now(),
                 KeyUsageVerificationService.VERIFICATION_PRIMARY_USAGE,
                 false,
-                false));
+                false,
+                null));
 
     mockMvc.perform(get("/api/v1/encryption-keys/42")).andExpect(status().isOk());
   }

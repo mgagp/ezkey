@@ -84,6 +84,9 @@
     "labelDisabled": "Désactivée",
     "labelRecordsEncrypted": "Référence de migration (à la rétrogradation)",
     "labelRecordsReencrypted": "Re-chiffré (cumul)",
+    "labelReencryptionWallClock": "Durée globale de ré-chiffrement (est.)",
+    "reencryptionWallClockTooltip": "Estimation tenant compte du parallélisme, calculée à partir des horodatages des lots terminés : la durée la plus longue de chaque groupe de fragments, plus la durée des autres lots terminés. Disponible une fois la clé entièrement vidée.",
+    "reencryptionWallClockSeconds": "{{seconds}} s",
     "labelCreatedBy": "Créée par",
     "labelNotes": "Notes"
   },

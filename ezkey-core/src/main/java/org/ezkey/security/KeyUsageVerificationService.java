@@ -7,8 +7,13 @@
 
 package org.ezkey.security;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.ezkey.security.domain.entity.EncryptionKey;
+import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.springframework.stereotype.Service;
@@ -71,7 +76,14 @@ public class KeyUsageVerificationService {
     return switch (key.getKeyStatus()) {
       case PENDING ->
           new KeyUsageSnapshot(
-              LIFECYCLE_PENDING, null, null, verifiedAt, VERIFICATION_NOT_APPLICABLE, false, false);
+              LIFECYCLE_PENDING,
+              null,
+              null,
+              verifiedAt,
+              VERIFICATION_NOT_APPLICABLE,
+              false,
+              false,
+              null);
       case PRIMARY -> computePrimarySnapshot(key, verifiedAt);
       case DISABLED ->
           new KeyUsageSnapshot(
@@ -81,7 +93,8 @@ public class KeyUsageVerificationService {
               verifiedAt,
               VERIFICATION_NOT_APPLICABLE,
               false,
-              false);
+              false,
+              null);
       case ENABLED -> computeEnabledSnapshot(key, verifiedAt);
     };
   }
@@ -114,7 +127,8 @@ public class KeyUsageVerificationService {
         verifiedAt,
         VERIFICATION_PRIMARY_USAGE,
         false,
-        incompleteMigration);
+        incompleteMigration,
+        null);
   }
 
   private KeyUsageSnapshot computeEnabledSnapshot(EncryptionKey key, OffsetDateTime verifiedAt) {
@@ -143,7 +157,8 @@ public class KeyUsageVerificationService {
           verifiedAt,
           VERIFICATION_REMAINS_IN_USE,
           false,
-          incompleteMigration);
+          incompleteMigration,
+          null);
     }
     if (incompleteMigration) {
       return new KeyUsageSnapshot(
@@ -153,10 +168,85 @@ public class KeyUsageVerificationService {
           verifiedAt,
           VERIFICATION_MIGRATION_IN_PROGRESS,
           false,
-          true);
+          true,
+          null);
     }
     return new KeyUsageSnapshot(
-        LIFECYCLE_DRAINED, 0L, 0, verifiedAt, VERIFICATION_VERIFIED_ZERO, true, false);
+        LIFECYCLE_DRAINED,
+        0L,
+        0,
+        verifiedAt,
+        VERIFICATION_VERIFIED_ZERO,
+        true,
+        false,
+        computeDrainedWallClockSeconds(key.getKeyId()));
+  }
+
+  /**
+   * Retrospective, parallel-aware wall-clock duration (whole seconds) for the completed migration
+   * off {@code oldKeyId}.
+   *
+   * @param oldKeyId the old (now drained) encryption key id
+   * @return total estimated seconds, or {@code null} when no completed batch has both a start and
+   *     completion timestamp
+   */
+  private Long computeDrainedWallClockSeconds(Long oldKeyId) {
+    List<ReencryptionBatch> completedBatches =
+        batchRepository.findByOldKey_KeyIdAndStatus(oldKeyId, BatchStatus.COMPLETED);
+    return computeWallClockSeconds(completedBatches);
+  }
+
+  /**
+   * Aggregates completed batch wall-clock durations into a single estimate.
+   *
+   * <p>Sharded batches for the same target (same table, column, and destination key) run in
+   * parallel, so their group contributes the {@code max} duration observed among shard siblings.
+   * Non-sharded batches run serially relative to each other (single-stream target), so they
+   * contribute a {@code sum}. This intentionally mirrors {@code ReencryptionBatchParallelRunner}'s
+   * per-shard mutex model (see {@code docs/REENCRYPTION_OPERATIONS.md}), not raw CPU time.
+   *
+   * @param completedBatches completed batches for one old key (any target/column mix)
+   * @return total estimated wall-clock seconds, or {@code null} when no batch has both a start and
+   *     a completion timestamp
+   */
+  static Long computeWallClockSeconds(List<ReencryptionBatch> completedBatches) {
+    Map<String, Long> shardGroupMaxSeconds = new LinkedHashMap<>();
+    long nonShardedSumSeconds = 0L;
+    boolean anyTimed = false;
+
+    for (ReencryptionBatch batch : completedBatches) {
+      OffsetDateTime started = batch.getStartedAt();
+      OffsetDateTime completed = batch.getCompletedAt();
+      if (started == null || completed == null) {
+        continue;
+      }
+      long seconds = Duration.between(started, completed).getSeconds();
+      if (seconds < 0) {
+        continue;
+      }
+      anyTimed = true;
+      Integer shardCount = batch.getShardCount();
+      if (shardCount != null && shardCount > 1) {
+        String shardGroupKey =
+            batch.getTargetTable()
+                + "|"
+                + batch.getTargetColumn()
+                + "|"
+                + batch.getNewKey().getKeyId();
+        shardGroupMaxSeconds.merge(shardGroupKey, seconds, Math::max);
+      } else {
+        nonShardedSumSeconds += seconds;
+      }
+    }
+
+    if (!anyTimed) {
+      return null;
+    }
+    long total = nonShardedSumSeconds;
+    for (long maxSeconds : shardGroupMaxSeconds.values()) {
+      total += maxSeconds;
+    }
+    return total;
   }
 
   /**
@@ -174,6 +264,11 @@ public class KeyUsageVerificationService {
    *     workflow
    * @param incompleteMigrationBatches true when non-{@link BatchStatus#COMPLETED} batches exist for
    *     this old key
+   * @param reencryptionWallClockSeconds retrospective, parallel-aware wall-clock duration in
+   *     seconds for a fully drained migration (max duration across each shard group plus the sum of
+   *     other completed batches); {@code null} unless {@code lifecycleStage} is {@link
+   *     #LIFECYCLE_DRAINED} and at least one completed batch has both a start and completion
+   *     timestamp
    */
   public record KeyUsageSnapshot(
       String lifecycleStage,
@@ -182,5 +277,6 @@ public class KeyUsageVerificationService {
       OffsetDateTime lastVerifiedAt,
       String verificationState,
       boolean decommissionEligible,
-      boolean incompleteMigrationBatches) {}
+      boolean incompleteMigrationBatches,
+      Long reencryptionWallClockSeconds) {}
 }

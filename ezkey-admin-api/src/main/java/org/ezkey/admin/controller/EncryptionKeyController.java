@@ -794,7 +794,8 @@ public class EncryptionKeyController {
         snap.lastVerifiedAt(),
         snap.verificationState(),
         snap.decommissionEligible(),
-        snap.incompleteMigrationBatches());
+        snap.incompleteMigrationBatches(),
+        snap.reencryptionWallClockSeconds());
   }
 
   private ReencryptionBatchResponse toBatchResponse(ReencryptionBatch batch) {
@@ -845,6 +846,10 @@ public class EncryptionKeyController {
    * @param decommissionEligible true when drained and eligible for a future decommission workflow
    * @param incompleteMigrationBatches true when non-completed migration batches exist for this old
    *     key
+   * @param reencryptionWallClockSeconds retrospective, parallel-aware wall-clock duration in
+   *     seconds for a fully drained migration (max duration across each shard group plus the sum of
+   *     other completed batches); null unless {@code lifecycleStage} is {@code DRAINED} and at
+   *     least one completed batch has timing
    */
   @Schema(description = "Encryption key row with derived lifecycle fields for operators.")
   public record EncryptionKeyResponse(
@@ -885,7 +890,13 @@ public class EncryptionKeyController {
       @Schema(description = "True when drained and ready for a future decommission workflow")
           boolean decommissionEligible,
       @Schema(description = "True when migration batches for this key are not all completed")
-          boolean incompleteMigrationBatches) {}
+          boolean incompleteMigrationBatches,
+      @Schema(
+              description =
+                  "Retrospective parallel-aware wall-clock seconds for a fully drained migration"
+                      + " (max per shard group + sum of other completed batches); null unless"
+                      + " lifecycleStage is DRAINED and timing is available")
+          Long reencryptionWallClockSeconds) {}
 
   /**
    * Response DTO for key rotation operation.

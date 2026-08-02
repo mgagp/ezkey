@@ -9,6 +9,7 @@ package org.ezkey.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.EncryptionKey.KeyStatus;
+import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -123,6 +125,8 @@ class KeyUsageVerificationServiceTest {
             "ezkey_enrollment", "enrollment_proof_token", 4L))
         .thenReturn(0);
     when(batchRepository.countByOldKey_KeyIdAndStatusNot(4L, BatchStatus.COMPLETED)).thenReturn(0L);
+    when(batchRepository.findByOldKey_KeyIdAndStatus(4L, BatchStatus.COMPLETED))
+        .thenReturn(List.of());
 
     KeyUsageVerificationService.KeyUsageSnapshot s = service.computeSnapshot(key);
     assertEquals(KeyUsageVerificationService.LIFECYCLE_DRAINED, s.lifecycleStage());
@@ -130,5 +134,94 @@ class KeyUsageVerificationServiceTest {
     assertEquals(KeyUsageVerificationService.VERIFICATION_VERIFIED_ZERO, s.verificationState());
     assertTrue(s.decommissionEligible());
     assertFalse(s.incompleteMigrationBatches());
+    assertNull(s.reencryptionWallClockSeconds());
+  }
+
+  @Test
+  @DisplayName("DRAINED key computes wall clock: max per shard group + sum of non-sharded batches")
+  void drainedComputesWallClockFromCompletedBatches() {
+    EncryptionKey key =
+        new EncryptionKey(5L, KeyStatus.ENABLED, "AES256_GCM", OffsetDateTime.now(), "SYSTEM");
+    EncryptionKey newKey =
+        new EncryptionKey(1L, KeyStatus.PRIMARY, "AES256_GCM", OffsetDateTime.now(), "SYSTEM");
+    when(batchCreationService.discoverReencryptableTargets()).thenReturn(List.of(t1, t2));
+    when(targetQueryService.countRecordsEncryptedWithKey(
+            "ezkey_enrollment", "integration_private_key", 5L))
+        .thenReturn(0);
+    when(targetQueryService.countRecordsEncryptedWithKey(
+            "ezkey_enrollment", "enrollment_proof_token", 5L))
+        .thenReturn(0);
+    when(batchRepository.countByOldKey_KeyIdAndStatusNot(5L, BatchStatus.COMPLETED)).thenReturn(0L);
+
+    OffsetDateTime t0 = OffsetDateTime.now();
+    List<ReencryptionBatch> completedBatches =
+        List.of(
+            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 2),
+            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 3),
+            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 1),
+            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 4),
+            nonShardedBatch("ezkey_enrollment", "integration_private_key", key, newKey, t0, 5),
+            nonShardedBatch("ezkey_enrollment", "enrollment_proof_token", key, newKey, t0, 2));
+    when(batchRepository.findByOldKey_KeyIdAndStatus(5L, BatchStatus.COMPLETED))
+        .thenReturn(completedBatches);
+
+    KeyUsageVerificationService.KeyUsageSnapshot s = service.computeSnapshot(key);
+    assertEquals(KeyUsageVerificationService.LIFECYCLE_DRAINED, s.lifecycleStage());
+    // shard group max (4s) + non-sharded sum (5s + 2s) = 11s
+    assertEquals(11L, s.reencryptionWallClockSeconds());
+  }
+
+  @Test
+  @DisplayName("Wall clock aggregator returns null when no completed batch has timing")
+  void wallClockNullWhenNoTiming() {
+    EncryptionKey oldKey =
+        new EncryptionKey(6L, KeyStatus.ENABLED, "AES256_GCM", OffsetDateTime.now(), "SYSTEM");
+    EncryptionKey newKey =
+        new EncryptionKey(1L, KeyStatus.PRIMARY, "AES256_GCM", OffsetDateTime.now(), "SYSTEM");
+    ReencryptionBatch untimed = new ReencryptionBatch();
+    untimed.setTargetTable("ezkey_enrollment");
+    untimed.setTargetColumn("integration_private_key");
+    untimed.setOldKey(oldKey);
+    untimed.setNewKey(newKey);
+
+    Long result = KeyUsageVerificationService.computeWallClockSeconds(List.of(untimed));
+    assertNull(result);
+  }
+
+  private static ReencryptionBatch shardBatch(
+      String table,
+      String column,
+      EncryptionKey oldKey,
+      EncryptionKey newKey,
+      int shardCount,
+      OffsetDateTime start,
+      long durationSeconds) {
+    ReencryptionBatch batch = new ReencryptionBatch();
+    batch.setTargetTable(table);
+    batch.setTargetColumn(column);
+    batch.setOldKey(oldKey);
+    batch.setNewKey(newKey);
+    batch.setShardCount(shardCount);
+    batch.setShardIndex(0);
+    batch.setStartedAt(start);
+    batch.setCompletedAt(start.plusSeconds(durationSeconds));
+    return batch;
+  }
+
+  private static ReencryptionBatch nonShardedBatch(
+      String table,
+      String column,
+      EncryptionKey oldKey,
+      EncryptionKey newKey,
+      OffsetDateTime start,
+      long durationSeconds) {
+    ReencryptionBatch batch = new ReencryptionBatch();
+    batch.setTargetTable(table);
+    batch.setTargetColumn(column);
+    batch.setOldKey(oldKey);
+    batch.setNewKey(newKey);
+    batch.setStartedAt(start);
+    batch.setCompletedAt(start.plusSeconds(durationSeconds));
+    return batch;
   }
 }

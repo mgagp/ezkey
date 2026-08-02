@@ -84,6 +84,9 @@
     "labelDisabled": "Disabled",
     "labelRecordsEncrypted": "Migration baseline (at demotion)",
     "labelRecordsReencrypted": "Re-encrypted (cumulative)",
+    "labelReencryptionWallClock": "Re-encryption wall time (est.)",
+    "reencryptionWallClockTooltip": "Parallel-aware estimate from completed batch timestamps: the longest shard in each shard group, plus the duration of other completed batches. Available once the key is fully drained.",
+    "reencryptionWallClockSeconds": "{{seconds}} s",
     "labelCreatedBy": "Created by",
     "labelNotes": "Notes"
   },
