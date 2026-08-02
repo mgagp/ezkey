@@ -352,7 +352,7 @@ public class AuthAttemptController {
     Integer adminIdForAudit = principal != null ? principal.adminId() : null;
 
     // Check rate limiting for API keys
-    String apiKeyId = extractApiKeyId(httpRequest);
+    String apiKeyId = extractApiKeyId();
     if (apiKeyId != null && !rateLimitService.canCreateAuthAttempt(apiKeyId)) {
       throw new RateLimitExceededException("CREATE_AUTH_ATTEMPT", 100, 0, 15);
     }
@@ -360,7 +360,7 @@ public class AuthAttemptController {
     // Resolve effective enrollment ID from enrollmentId and/or userIdentifier
     Integer effectiveEnrollmentId;
     try {
-      effectiveEnrollmentId = resolveEnrollmentId(request, apiKeyId != null, httpRequest);
+      effectiveEnrollmentId = resolveEnrollmentId(request, apiKeyId != null);
     } catch (AuthAttemptCreateValidationException e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -376,7 +376,7 @@ public class AuthAttemptController {
 
     // Check enrollment ownership for API keys
     if (apiKeyId != null) {
-      validateEnrollmentOwnership(effectiveEnrollmentId, apiKeyId);
+      validateEnrollmentOwnership(effectiveEnrollmentId);
     }
 
     // Validate tenant scoping for admins: admin must have access to the enrollment
@@ -504,13 +504,11 @@ public class AuthAttemptController {
    *
    * @param request the auth attempt create request DTO
    * @param isApiKeyAuth true if authenticated via API key
-   * @param httpRequest the HTTP request (for path in error details)
    * @return the resolved enrollment ID
    * @throws AuthAttemptCreateValidationException if validation fails (missing identifiers, not
    *     found, multi-device, or consistency mismatch)
    */
-  private Integer resolveEnrollmentId(
-      AuthAttemptCreateRequestDto request, boolean isApiKeyAuth, HttpServletRequest httpRequest) {
+  private Integer resolveEnrollmentId(AuthAttemptCreateRequestDto request, boolean isApiKeyAuth) {
     Integer enrollmentId = request.enrollmentId();
     String userIdentifier =
         request.userIdentifier() != null && !request.userIdentifier().isBlank()
@@ -561,7 +559,7 @@ public class AuthAttemptController {
       }
       if (enrollments.size() > 1) {
         throw new AuthAttemptCreateValidationException(
-            "Multiple enrollments for this user. Please specify enrollmentId or deviceHint.");
+            "Multiple enrollments for this user. Please specify enrollmentId.");
       }
       return enrollments.get(0).getEnrollmentId();
     }
@@ -650,7 +648,7 @@ public class AuthAttemptController {
     Integer adminIdForAudit = principal != null ? principal.adminId() : null;
 
     // Check rate limiting for API keys
-    String apiKeyId = extractApiKeyId(httpRequest);
+    String apiKeyId = extractApiKeyId();
     if (apiKeyId != null && !rateLimitService.canWaitAuthAttempt(apiKeyId)) {
       throw new RateLimitExceededException("CANCEL_AUTH_ATTEMPT", 200, 0, 15);
     }
@@ -804,7 +802,7 @@ public class AuthAttemptController {
       HttpServletRequest httpRequest) {
 
     // Check rate limiting for API keys
-    String apiKeyId = extractApiKeyId(httpRequest);
+    String apiKeyId = extractApiKeyId();
     if (apiKeyId != null && !rateLimitService.canWaitAuthAttempt(apiKeyId)) {
       throw new RateLimitExceededException("WAIT_AUTH_ATTEMPT", 200, 0, 15);
     }
@@ -836,6 +834,7 @@ public class AuthAttemptController {
     } catch (AuthAttemptWaitValidationException e) {
       throw e;
     } catch (Exception e) {
+      logger.error("Unexpected error waiting for auth attempt {}", id, e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
@@ -843,10 +842,9 @@ public class AuthAttemptController {
   /**
    * Extracts API key ID from the authentication context for rate limiting.
    *
-   * @param request the HTTP request
    * @return the API key ID if present, null otherwise
    */
-  private String extractApiKeyId(HttpServletRequest request) {
+  private String extractApiKeyId() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
     // Check if this is an API key authentication
@@ -894,11 +892,10 @@ public class AuthAttemptController {
    * to their associated integration, preventing cross-integration access.
    *
    * @param enrollmentId the enrollment ID to validate
-   * @param apiKeyId the API key ID (for logging purposes)
    * @throws AuthorizationDeniedException if the enrollment doesn't belong to the API key's
    *     integration
    */
-  private void validateEnrollmentOwnership(Integer enrollmentId, String apiKeyId) {
+  private void validateEnrollmentOwnership(Integer enrollmentId) {
     // Extract the integration ID from the API key authentication context
     Integer apiKeyIntegrationId = extractIntegrationId();
 

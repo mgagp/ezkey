@@ -24,6 +24,7 @@ HITL shape. See root [`AGENTS.md`](../../AGENTS.md) for keywords.
 | [`java-json-deprecations/`](java-json-deprecations/) | `assessment-curated` (instance) | Java JSON / Jackson 3 deprecated tree APIs |
 | [`java-bucket4j-deprecations/`](java-bucket4j-deprecations/) | `assessment-curated` (instance) | Java Bucket4j deprecated bandwidth / refill APIs |
 | [`java-native-compilation/`](java-native-compilation/) | `assessment-curated` (instance) | Java GraalVM / native-image residual cleanup |
+| [`java-controller-dead-paths/`](java-controller-dead-paths/) | `assessment-curated` (instance) | Java controller dead / phantom path hygiene |
 | [`react-doctor/`](react-doctor/) | `doctor-curated` | Admin UI React Doctor curated passes |
 | [`java-doctor/`](java-doctor/) | `java-doctor-curated` | Java SpotBugs / Semgrep / PMD curated passes |
 | [`mobile-doctor/`](mobile-doctor/) | `mobile-doctor-curated` | Ezkey Mobile static-analysis curated passes |

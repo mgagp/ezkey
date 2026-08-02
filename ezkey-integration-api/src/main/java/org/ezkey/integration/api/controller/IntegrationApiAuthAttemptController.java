@@ -46,7 +46,6 @@ import org.ezkey.exception.auth.AuthAttemptCreateValidationException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.AuthAttemptWaitValidationException;
 import org.ezkey.integration.api.constants.IntegrationApiAuditConstants;
-import org.ezkey.integration.api.security.AccessControlService;
 import org.ezkey.integration.api.security.RateLimitService;
 import org.ezkey.integration.api.util.AuditHelper;
 import org.ezkey.integration.domain.entity.Integration;
@@ -56,7 +55,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -99,7 +97,6 @@ import org.springframework.web.bind.annotation.RestController;
  * @see AuthAttemptService
  * @see AuthAttemptIntegrationApiMapper
  * @see RateLimitService
- * @see AccessControlService
  */
 @RestController
 @RequestMapping("/api/v1/auth-attempts")
@@ -124,8 +121,7 @@ public class IntegrationApiAuthAttemptController {
    * @param authAttemptMapper the MapStruct mapper for entity/DTO conversions
    * @param auditLogService the audit log service for security monitoring
    * @param rateLimitService the rate limiting service for API key operations
-   * @param enrollmentRepository the enrollment repository for ownership validation
-   * @param accessControlService the access control service for auth attempt access checks
+   * @param enrollmentRepository the enrollment repository for resolve-time ownership checks
    * @param integrationRepository the integration repository for tenant resolution in audit logs
    * @param auditEntityFkResolver resolves audit foreign keys only when referenced rows exist
    */
@@ -230,25 +226,6 @@ public class IntegrationApiAuthAttemptController {
               .errorMessage(e.getMessage())
               .build());
       throw e;
-    }
-
-    // Validate enrollment ownership against the API key's integration
-    try {
-      validateEnrollmentOwnership(effectiveEnrollmentId, apiKeyId);
-    } catch (AuthorizationDeniedException e) {
-      auditLogService.log(
-          AuditHelper.createIntegrationApiAudit(
-                  context,
-                  EventType.AUTH_ATTEMPT_CREATED,
-                  IntegrationApiAuditConstants.AUTH_ATTEMPT_CREATION_FAILED)
-              .eventStatus(EventStatus.FAILURE)
-              .enrollmentId(auditEntityFkResolver.enrollmentIdForAuditOrNull(effectiveEnrollmentId))
-              .integrationId(
-                  auditEntityFkResolver.integrationIdForAuditOrNull(
-                      resolveIntegrationIdFromEnrollment(effectiveEnrollmentId)))
-              .errorMessage(e.getMessage())
-              .build());
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
     Integer auditTenantId = resolveTenantIdFromEnrollment(effectiveEnrollmentId);
@@ -705,39 +682,6 @@ public class IntegrationApiAuthAttemptController {
               + ").");
     }
     return enrollmentId;
-  }
-
-  /**
-   * Validates that the given enrollment belongs to the API key's integration.
-   *
-   * @param enrollmentId enrollment to validate
-   * @param apiKeyId API key identifier (for log context)
-   * @throws AuthorizationDeniedException if ownership check fails
-   * @throws ResourceNotFoundException if the enrollment does not exist
-   */
-  private void validateEnrollmentOwnership(Integer enrollmentId, String apiKeyId) {
-    Integer apiKeyIntegrationId = extractIntegrationId();
-
-    if (apiKeyIntegrationId == null) {
-      logger.warn("API key auth present but integration ID could not be extracted");
-      throw new AuthorizationDeniedException("Unable to verify API key integration ownership");
-    }
-
-    Enrollment enrollment =
-        enrollmentRepository
-            .findById(enrollmentId)
-            .orElseThrow(() -> new ResourceNotFoundException("Enrollment", enrollmentId));
-
-    if (!enrollment.getIntegrationId().equals(apiKeyIntegrationId)) {
-      logger.warn(
-          "API key from integration {} attempted to create auth attempt for enrollment {}"
-              + " belonging to integration {}",
-          apiKeyIntegrationId,
-          enrollmentId,
-          enrollment.getIntegrationId());
-      throw new AuthorizationDeniedException(
-          "API key cannot create auth attempts for enrollments belonging to other integrations");
-    }
   }
 
   /**
