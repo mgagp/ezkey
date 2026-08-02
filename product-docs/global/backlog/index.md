@@ -10,12 +10,11 @@ This index provides a lightweight list of active ideas and their current state.
 
 → [`../operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
 
-**Summary (2026-07-05):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C alerts list polish **done**
-([`TB-2026-07-03-admin-ui-alerts-list-polish.md`](backlog/TB-2026-07-03-admin-ui-alerts-list-polish.md)).
-Dashboard widget signal model **done** — [`I-2026-0030`](ideas/I-2026-0030-admin-dashboard-widget-signal-model-review.md)
-(enrollment invalid/revoked split + signal-model doc; closed on `I-*` without retroactive `TB-*`).
-Audit chain checkpoints matrix row **done** — [`TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish.md`](backlog/TB-2026-07-05-admin-ui-audit-chain-checkpoints-polish.md) (Wave C closed).
-Wave B closeout ML:
+**Summary (2026-08-02):** Wave B integrity cluster R1 **closed** (GitHub #269). Wave C operator UI
+residuals **closed** (alerts list polish, dashboard signal model, audit-chain checkpoints). Wave D
+EXP1 soak is the release compass next gate. Canon sync this pass closed two delivered-but-stale
+items (`I-2026-07-10`, `TB-2026-07-06` Tier 0). Wave B closeout:
+[`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
 
 ## Active ideas
 
@@ -48,9 +47,8 @@ Wave B closeout ML:
 | `I-2026-07-07-auth-attempt-challenge-protection` | Auth attempt challenge protection strategy (lifecycle minimization) | `ready` | `P1` | `core`, `auth-api` | `2026-07-07` |
 | `I-2026-07-05-distilled-admin-platform-starter` | Distilled admin platform starter (Spring Boot + operator UI) | `parked` | `P3` | `admin-api`, `admin-ui`, `docs`, ecosystem GitHub, `sdk-java` | `2026-07-05` |
 | `I-2026-07-05-enrollment-integration-key-cycling` | Enrollment integration key cycling via auth-exchange hooks | `incubating` | `P3` | `auth-api`, `core`, `mobile`, `docs`, `crypto` | `2026-07-05` |
-| `I-2026-0032` | Proof token hash-only storage (tiered hardening) | `incubating` | `P1` | `core`, `auth-api`, `admin-api`, `docs`, `crypto` | `2026-07-06` |
+| `I-2026-0032` | Proof token hash-only storage (tiered hardening) | `incubating` | `P1` | `core`, `auth-api`, `admin-api`, `docs`, `crypto` | `2026-08-02` |
 | `I-2026-07-10-admin-recovery-codes-exhausted-label-ux` | Admin recovery codes: exhausted-set vs initial-issuance label UX | `captured` | `P3` | `admin-ui`, `admin-api`, `docs` | `2026-07-09` |
-| `I-2026-07-10-nightly-integrity-boundary-false-positives` | Nightly integrity: boundary false positives (grid align + alert honesty) | `active` | `P1` | `core`, `admin-api`, `admin-ui`, `audit`, `docs` | `2026-07-10` |
 | `I-2026-07-11-api-key-expires-at-edit` | API key PATCH: edit or clear `expiresAt` | `captured` | `P2` | `admin-api`, `admin-ui`, `core`, `docs` | `2026-07-11` |
 | `I-2026-07-11-java-doctor-curated-hygiene` | Java doctor-curated continuous hygiene (SpotBugs + Semgrep + narrow PMD) | `ready` | `P3` | `core`, `admin-api`, `auth-api`, `integration-api`, `docs`, `tooling` | `2026-07-11` |
 | `I-2026-07-11-mobile-doctor-curated-hygiene` | Mobile doctor-curated continuous hygiene (react-doctor + Semgrep + Detekt) | `ready` | `P3` | `mobile`, `android`, `docs`, `tooling` | `2026-07-11` |
@@ -58,7 +56,7 @@ Wave B closeout ML:
 | `I-2026-07-17-admin-enrollment-reset-missing-authorization-header-500` | Admin enrollment reset: missing Authorization header returns 500 instead of 401 | `captured` | `P1` | `admin-api`, `security`, `testing`, `docs` | `2026-07-17` |
 | `I-2026-07-17-alert-resolved-retention-purge` | Alert resolved-row retention and purge (no DELETE today by design) | `captured` | `P3` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `audit` | `2026-07-17` |
 | `I-2026-07-17-keyset-blob-admin-first-bootstrap` | Keyset blob: Admin-first bootstrap before peripheral SELECT-only | `captured` | `P3` | `core`, `core-security`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-07-17` |
-| `I-2026-07-17-desktop-authenticator-reference-app` | Desktop authenticator reference app (mobile-like enrollment and approval) | `captured` | `P3` | `desktop-authenticator`, `demo-device`, `auth-api`, `docs`, `mobile` | `2026-07-17` |
+| `I-2026-07-17-desktop-authenticator-reference-app` | Desktop authenticator reference app (mobile-like enrollment and approval) | `incubating` | `P3` | `desktop-authenticator`, `demo-device`, `auth-api`, `docs`, `mobile` | `2026-07-18` |
 | `I-2026-07-14-admin-ui-native-html-dialog` | Admin UI native HTML `<dialog>` migration | `triaged` | `P2` | `admin-ui` | `2026-07-14` |
 | `I-2026-07-18-audit-log-fail-open-exception-swallow` | Audit-log write fail-open (exception swallow) and delivery honesty | `captured` | `P2` | `core`, `audit`, `admin-api`, `auth-api`, `integration-api`, `docs`, `security` | `2026-07-18` |
 | `I-2026-07-18-authentication-wait-evolution` | Authentication wait evolution | `incubating` | `P2` | `core`, `admin-api`, `integration-api`, `sdk`, `infra`, `docs` | `2026-07-18` |
@@ -70,23 +68,24 @@ Wave B closeout ML:
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
-| `TB-2026-07-12` | Security pentest curated MVP | `draft` | `I-2026-07-12-security-pentest-curated-hygiene` |
+| `TB-2026-07-12` | Security pentest curated MVP | `active` | `I-2026-07-12-security-pentest-curated-hygiene` |
 | `TB-2026-07-11` | Java doctor-curated curator MVP | `active` | `I-2026-07-11-java-doctor-curated-hygiene` (#326) |
 | `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `active` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
 | `TB-2026-07-07-auth-attempt-challenge-protection-phase-b` | Auth attempt challenge protection — phase B | `promoted` | `I-2026-07-07-auth-attempt-challenge-protection` |
-| `TB-2026-07-06` | Device proof token hash-only storage (Tier 0) | `active` | `I-2026-0032` (#296) |
 | `TB-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` | Enforce challenge presence on `passwordless-wait` | `promoted` | `I-2026-06-23-admin-auth-passwordless-wait-challenge-enforcement` |
 | `TB-2026-06-02-auth-api-cloudflare-schema-first-slice` | Auth API Cloudflare schema-first slice | `draft` | `I-2026-06-02-openapi-spec-lifecycle-and-cloudflare-validation` |
 | `TB-2026-05-25-admin-api-key-acceptance-flag` | Admin API key acceptance flag | `ready-for-implementation` | `I-2026-0004` |
 | `TB-2026-05-23-exp1-anonymous-evaluator-signup-first-cut` | EXP1 anonymous evaluator signup — first cut | `under-review` | `I-2026-05-23-exp1-anonymous-evaluator-onboarding` |
 | `TB-2026-0004-mobile-ios-phase2-apple-stack-baseline` | Mobile iOS phase 2 — Apple stack baseline | `draft` | `I-2026-0027` |
 | `TB-2026-0002-android-real-device-functional-pilot` | Android real-device functional pilot (Maestro) | `in progress` | `I-2026-0019` |
-| `TB-2026-0001-mobile-local-auth-capability-discovery` | Mobile local-auth capability discovery | `active` | `I-2026-0001-mobile-respond-local-auth-per-enrollment` |
 
 ## Recently completed
 
 | ID | Title | Closed date | Notes |
 |----|-------|-------------|-------|
+| `I-2026-07-10-nightly-integrity-boundary-false-positives` | Nightly integrity: boundary false positives (grid align + alert honesty) | `2026-07-11` | PR `#318` / `#315`. Delivered on `I-*` (no `TB-*`). Canon status synced 2026-08-02 after merge closeout gap. ADR-0009 + design-pack pitfall. |
+| `TB-2026-07-06` | Device proof token hash-only storage (Tier 0) | `2026-07-07` | PR `#297` / `#296`. Parent `I-2026-0032` stays `incubating` for Tier 1 / Tier 2. Canon status synced 2026-08-02. |
+| `TB-2026-0001` | Mobile local-auth capability discovery | `2026-07-26` | Android capability matrix + three-tier policy direction delivered. Parent `I-2026-0001` stays `incubating` pending operator `ready` decision. Canon status synced 2026-08-02. |
 | `I-2026-0029` | Re-encryption: indexed encryption key id columns (replace LIKE scans) | `2026-07-26` | TB `TB-2026-07-26-reencryption-indexed-encryption-key-id-columns`. Four `*_encryption_key_id BIGINT` columns (enrollment ×2, auth_attempt, api_key) + FKs to `ezkey_encryption_key` + composite indexes (V19); `EncryptionEntityListener`/`ReencryptionRecordCipher` write path; `ReencryptionTargetQueryService` equality lookups replace `LIKE 'ENC:{keyId}:%'`. Maven baseline, functional suite (146 tests), and elective suite (15 tests, incl. `ReencryptionFullTriggerConcurrentActivityElectiveTest`) green on clean-start; DB spot-check confirms 100% key-id population across all four columns. |
 | `I-2026-07-22-tink-keyset-serialization-api-migration` | Tink keyset serialization API migration | `2026-07-26` | `TinkKeyManager` file + DB keyset codecs migrated to `TinkJsonProtoKeysetFormat`; legacy compatibility tests green; `ApiKeyControllerTest` stubbing fixed; full install green. |
 | `TB-2026-07-26-admin-ui-help-corpus-overhaul` | Admin UI contextual help corpus — comprehensive FR/EN pass | `2026-07-26` | 17 topics (3 new); generalized role-scoped rendering (`HELP_EXTRA_SECTIONS`); French corpus-wide "tenant" vs "locataire" standardization. |
@@ -95,7 +94,7 @@ Wave B closeout ML:
 | `I-2026-07-20-mobile-installation-scoped-enrollment-identity` | Installation-scoped local enrollment identity | `2026-07-23` | TB `TB-2026-07-20-mobile-installation-scoped-enrollment-identity` / PR #401. Collision-free local identity and crypto/storage handles scoped to the installation trust zone; no silent Keystore ensure on pending/respond; orphan-key cleanup after failed verify. |
 | `I-2026-07-20-mobile-installation-trust-zone-canon` | Mobile installation trust-zone canon | `2026-07-20` | TB `TB-2026-07-20-mobile-installation-trust-zone-canon`. Installation identified by normalized Auth API URL as the trust zone every enrollment belongs to; foundation for collision-free multi-installation. |
 | `I-2026-07-18-audit-log-peripheral-insert-only-hmac-sequence` | Audit-log peripheral INSERT-only via sequence pre-allocation for the HMAC seal | `2026-07-18` | TB `TB-2026-07-18-audit-log-insert-only-hmac-seal`. Single-INSERT seal; peripherals SELECT+INSERT only; functional + `AuditIntegrityElectiveTest` + `verify-grants.sh` green. Resolves `TB-2026-07-16` follow-up. |
-| `I-2026-07-18-mobile-hot-language-switch` | Mobile language switch without app restart | `2026-07-18` | TB `TB-2026-07-18-mobile-hot-language-switch` (`draft`, `single-pass`). Runtime EN/FR switch in Settings, no restart required. |
+| `I-2026-07-18-mobile-hot-language-switch` | Mobile language switch without app restart | `2026-07-18` | TB `TB-2026-07-18-mobile-hot-language-switch` (`promoted`, `single-pass`). Runtime EN/FR switch in Settings, no restart required. |
 | `I-2026-0021` | PostgreSQL application role and table permissions matrix | `2026-07-18` | Commit `568f1423` / TB `TB-2026-07-16-postgresql-application-role-split`. `ezkey_migrate` + three runtime roles; Docker/grants wiring; clean-start, grant verification, standard/elective suites, and real-mobile flow passed. |
 | `I-2026-07-15-sec-021-recovery-token-privilege-boundary` | SEC-021 recovery token privilege boundary | `2026-07-15` | `#357` / TB `TB-2026-07-15-sec-021-recovery-token-privilege-boundary`. Purpose `SESSION`\|`RECOVERY`; session auth rejects recovery; reset + deactivate-after-use. |
 | `I-2026-07-15-sec-022-api-key-object-authorization` | SEC-022/023 API key object authorization | `2026-07-15` | `#362` / TB `TB-2026-07-15-sec-022-api-key-object-authorization`. Tenant Admin cannot get/list/revoke foreign-tenant API keys (`canAccessIntegration`). |

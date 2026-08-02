@@ -3,10 +3,11 @@
 ## Metadata
 
 - **ID:** `TB-2026-0001`
-- **Status:** `active` — capability matrix delivered 2026-07-26; awaiting operator decision on promoting `I-2026-0001` to `ready`
+- **Status:** `done` — discovery evidence complete 2026-07-26; parent `I-2026-0001` stays `incubating` pending operator schedule decision
 - **Related idea:** `I-2026-0001`
 - **Created at:** `2026-05-07`
-- **Updated at:** `2026-07-26`
+- **Updated at:** `2026-08-02`
+- **Closed at:** `2026-07-26`
 - **Captured by:** Marc
 
 ## Objective
@@ -84,3 +85,10 @@ Full detail in the capability matrix doc linked above. Headline findings that ma
 5. the sequencing recommendation is explicit: capability matrix + audit-first `respond` extension
    come before any Level 3 (Keystore/CryptoObject auth-bound key) work, which is the highest-risk
    workstream, not a quick win.
+
+## Closeout (2026-07-26 / canon synced 2026-08-02)
+
+All five exit criteria met via capability matrix + three-tier policy docs + grill options + TSP.
+Recommended first schedulable increment remains the audit-first `respond` extension (Workstream 1),
+not Level 3 key-binding. Parent idea `I-2026-0001` stays `incubating` by operator decision
+(reflection before `ready`); discovery does not need to be repeated.

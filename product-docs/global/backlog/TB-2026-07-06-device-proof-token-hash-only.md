@@ -3,16 +3,18 @@
 ## Metadata
 
 - **ID:** `TB-2026-07-06-device-proof-token-hash-only`
-- **Status:** `ready` → `active` (implementation branch `feature/296-i-2026-0032-device-proof-token-hash-only`)
+- **Status:** `done`
 - **Related idea:** `I-2026-0032-proof-token-hash-only-storage`
 - **Parent context:** Tier 0 of proof-token hash-only program; ADR-0007
 - **Lane:** `D`
 - **Posture:** `single-pass`
-- **GitHub issue:** `#296`
+- **GitHub issue:** `#296` (closed)
 - **Issue labels:** `lane:d`, `type:security`, `component:core`, `component:auth-api`, `component:migration`, `priority:p1`, `status:ready`
 - **GitHub branch:** `feature/296-i-2026-0032-device-proof-token-hash-only`
+- **GitHub PR:** `#297` (merged 2026-07-07)
 - **Created at:** `2026-07-06`
-- **Updated at:** `2026-07-06`
+- **Updated at:** `2026-08-02`
+- **Closed at:** `2026-07-07`
 - **Captured by:** Marc (plan incubation handoff)
 
 ## Objective
@@ -99,6 +101,14 @@ See [`test-plans/TSP-2026-07-06-device-proof-token-hash-only.md`](test-plans/TSP
 2. No production code path decrypts or re-encrypts device proof token.
 3. Pending → respond E2E passes on clean-start with Demo Device.
 4. ADR-0007 validation section updated with execution evidence.
+
+## Closeout (2026-07-07 / canon synced 2026-08-02)
+
+- **Delivered:** Flyway drop of `device_proof_token`; claim path writes hash only; re-encryption
+  targets no longer include the column; unit coverage via `AuthAttemptDeviceProofTokenHashTest`.
+- **Evidence:** PR `#297` merged; issue `#296` closed; ADR-0007 remains the storage verdict home.
+- **Parent idea:** `I-2026-0032` stays open for Tier 1 / Tier 2; this TB closes Tier 0 only.
+- **Deferred:** enrollment / auth-attempt proof-token hash-only (separate slices under the parent).
 
 ## Links
 

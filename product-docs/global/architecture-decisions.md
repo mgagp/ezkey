@@ -342,7 +342,9 @@ not bcrypt, because lookup is by the token value itself.
 
 ### Validation
 
-- Tier 0: see [`TSP-2026-07-06-device-proof-token-hash-only.md`](backlog/test-plans/TSP-2026-07-06-device-proof-token-hash-only.md).
+- Tier 0: **executed** 2026-07-07 (PR `#297` / issue `#296`); see
+  [`TSP-2026-07-06-device-proof-token-hash-only.md`](backlog/test-plans/TSP-2026-07-06-device-proof-token-hash-only.md)
+  and TB closeout on [`TB-2026-07-06-device-proof-token-hash-only.md`](backlog/TB-2026-07-06-device-proof-token-hash-only.md).
 - Manual: clean-start → pending claim → respond; DB hash present, no `device_proof_token` column.
 
 ### Related Decisions
@@ -509,6 +511,8 @@ that **operator-facing rupture alerts must distinguish coverage findings from cr
 - Unit: sub-second window end does not produce leading undeclared gap on a contiguous checkpoint grid.
 - Regression: real interior gap and digest mismatch still raise/touch `AUDIT_INTEGRITY_RUPTURE`.
 - EXP1: after deploy, next nightly run leaves no new zero-violation rupture alert.
+- **Execution:** PR `#318` / issue `#315` merged and closed 2026-07-11; backlog idea
+  `I-2026-07-10-nightly-integrity-boundary-false-positives` marked `done` (canon synced 2026-08-02).
 
 ### Related Decisions
 

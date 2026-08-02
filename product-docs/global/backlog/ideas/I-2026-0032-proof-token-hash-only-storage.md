@@ -3,16 +3,16 @@
 ## Metadata
 
 - **ID:** `I-2026-0032`
-- **Status:** `incubating` (Tier 0 promoted → `TB-2026-07-06-device-proof-token-hash-only`, status `ready`)
+- **Status:** `incubating` (Tier 0 done via `TB-2026-07-06`; Tier 1 / Tier 2 remain)
 - **Priority:** `P1`
 - **Created at:** `2026-07-06`
-- **Updated at:** `2026-07-06`
-- **Last reviewed at:** `2026-07-06`
+- **Updated at:** `2026-08-02`
+- **Last reviewed at:** `2026-08-02`
 - **Progression markers:** `P2-hardening`
 - **Component tags:** `core`, `auth-api`, `admin-api`, `docs`, `crypto`
 - **Lane:** `D`
 - **Captured by:** Marc (plan incubation handoff)
-- **GitHub issue:** `#296`
+- **GitHub issue:** `#296` (closed with Tier 0; reopen or new issue for Tier 1+)
 - **Issue labels:** `lane:d`, `type:security`, `component:core`, `component:auth-api`, `component:migration`, `priority:p1`, `status:ready`
 - **GitHub branch:** `feature/296-i-2026-0032-device-proof-token-hash-only`
 
@@ -61,10 +61,13 @@ Reduce breach impact and operational complexity for proof-token persistence by m
 
 ## Promotion notes
 
-- **Tier 0:** promoted 2026-07-06 → `TB-2026-07-06-device-proof-token-hash-only` (`ready`).
+- **Tier 0:** promoted 2026-07-06 → `TB-2026-07-06-device-proof-token-hash-only`; **done** 2026-07-07
+  (PR `#297` / issue `#296`). Canon status synced 2026-08-02.
 - **Tier 1:** promote to new `TB-*` only after show-once enrollment policy and verify-request
   protocol change are accepted.
 - **Tier 2:** remains design-only until pull-model delivery constraints are resolved.
+- **Parent status:** stay `incubating` until Tier 1 / Tier 2 are either delivered, parked, or
+  explicitly dropped; do not mark this idea `done` on Tier 0 alone.
 
 ## Links
 

@@ -3,17 +3,19 @@
 ## Metadata
 
 - **ID:** `I-2026-07-10-nightly-integrity-boundary-false-positives`
-- **Status:** `active`
+- **Status:** `done`
 - **Priority:** `P1`
 - **Created at:** `2026-07-10`
-- **Updated at:** `2026-07-10`
-- **Last reviewed at:** `2026-07-10`
+- **Updated at:** `2026-08-02`
+- **Last reviewed at:** `2026-08-02`
+- **Closed at:** `2026-07-11`
 - **Progression markers:** `P3-operable-release`
 - **Component tags:** `core`, `admin-api`, `admin-ui`, `audit`, `docs`
 - **Lane:** `D`
 - **Captured by:** maintainer + agent (EXP1 investigation 2026-07-09)
-- **GitHub issue:** `#315`
+- **GitHub issue:** `#315` (closed)
 - **Issue labels:** `lane:d`, `type:fix`, `component:core`, `component:admin-api`, `component:admin-ui`, `priority:p1`, `status:ready`
+- **GitHub PR:** `#318` (merged 2026-07-11)
 
 ## Intent
 
@@ -70,8 +72,17 @@ grid and make operator-facing summaries honest about undeclared gaps vs crypto v
 
 ## Promotion notes
 
-Challenge complete via EXP1 DB + code analysis (2026-07-09). Ready for implementation without a
-separate Grill Me session. Prefer a bounded Lane D fix on one branch; no new vision note.
+Challenge complete via EXP1 DB + code analysis (2026-07-09). Implemented without a separate Grill Me
+or `TB-*` (bounded Lane D single-pass on `I-*`).
+
+## Closeout (2026-07-11 / canon synced 2026-08-02)
+
+- **Delivered:** detective `windowEnd` aligned to checkpoint grid; boundary-only undeclared gaps no
+  longer raise `AUDIT_INTEGRITY_RUPTURE`; Admin UI list summary honest for gap-only status;
+  ADR-0009 + design-pack pitfall note.
+- **Evidence:** unit coverage on scheduler/verification; PR `#318` merged; issue `#315` closed.
+- **Residual:** historical EXP1 OPEN false-positive alerts remain for manual resolve (by design).
+- **Next:** Wave D EXP1 soak continues to watch nightly quietness; no further code debt on this idea.
 
 ## Links
 
