@@ -436,13 +436,13 @@ CREATE TABLE ezkey_keyset_blob (
 -- ============================================================================
 
 COMMENT ON TABLE ezkey_keyset_blob IS 
-'Stores encrypted Tink keyset as database blob for distributed synchronization. Single-row table (id=1 enforced by constraint). Keyset is encrypted with master key before storage.';
+'Stores Tink encrypted-keyset JSON envelope as database blob for distributed synchronization. Single-row table (id=1 enforced by constraint). Key material is encrypted with the master key.';
 
 COMMENT ON COLUMN ezkey_keyset_blob.id IS 
 'Primary key, always 1 (single-row table enforced by constraint).';
 
 COMMENT ON COLUMN ezkey_keyset_blob.keyset_data IS 
-'Encrypted Tink keyset JSON blob. Encrypted with master key using AES-256-GCM before storage.';
+'Tink encrypted-keyset JSON envelope. Key material is encrypted with the master key; non-secret keyset metadata may remain visible.';
 
 COMMENT ON COLUMN ezkey_keyset_blob.last_updated_at IS 
 'Timestamp of last keyset update. Used for change detection and synchronization.';

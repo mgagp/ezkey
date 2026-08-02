@@ -196,6 +196,7 @@ The key is created at `C:\ProgramData\ezkey\secrets\master.key` by default.
 
 ### Docker Mode: DATABASE
 - **Source of Truth:** PostgreSQL database (`ezkey_keyset_blob` table)
+- **Blob Format:** Tink encrypted-keyset JSON envelope protected by the master key
 - **Local Cache:** File-based fallback (`/etc/ezkey/keysets/keyset.json.encrypted`)
 - **Synchronization:** Admin API updates database, other instances reload from DB
 - **Use Case:** Multi-instance deployments, distributed systems

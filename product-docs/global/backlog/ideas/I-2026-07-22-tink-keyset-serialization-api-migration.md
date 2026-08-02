@@ -88,9 +88,11 @@ explicit `RegistryConfiguration.get()` overloads.
 3. ~~Should the database `KeysetBlob` codec also move away from deprecated JSON reader/writer
   classes?~~ Yes. The DB blob keeps its current outer `masterAead.encrypt(cleartextJson)` envelope,
   but the cleartext JSON keyset serialization now uses `TinkJsonProtoKeysetFormat`.
-4. Should the database `KeysetBlob` representation eventually store Tink's encrypted-keyset
+4. ~~Should the database `KeysetBlob` representation eventually store Tink's encrypted-keyset
   envelope directly instead of the current outer `masterAead.encrypt(cleartextJson)` wrapper? This
-  remains a possible future PoC/design question, not required for the deprecation migration.
+  remains a possible future PoC/design question, not required for the deprecation migration.~~
+  Resolved by `I-2026-07-26`: the database blob now stores Tink's encrypted-keyset envelope directly
+  as a clean-start pre-production cutover.
 
 ## Implementation note (2026-07-26)
 
@@ -112,6 +114,12 @@ explicit `RegistryConfiguration.get()` overloads.
 - `ApiKeyControllerTest` Mockito/JPA Criteria stubbing was corrected so test compilation stays
   compatible with the full reactor install path.
 - Full reactor install passed: `mvn install -DskipTests`.
+
+## Supersession note (2026-08-02)
+
+`I-2026-07-26-tink-native-keyset-blob-envelope` later migrated the database `KeysetBlob` format to
+Tink's encrypted-keyset JSON envelope directly. The outer-encrypted DB blob references above are
+historical evidence for the 2026-07-26 deprecation migration, not the current storage model.
 
 ## Promotion notes
 

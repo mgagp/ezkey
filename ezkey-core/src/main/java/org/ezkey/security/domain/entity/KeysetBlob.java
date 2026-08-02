@@ -25,7 +25,8 @@ import java.time.OffsetDateTime;
  * keyset across all application instances.
  *
  * <p><b>Single-Row Design:</b> This table contains exactly one row (id=1) enforced by database
- * constraint. The keyset data is encrypted with the master key before storage.
+ * constraint. The keyset data is stored as Tink's encrypted-keyset JSON envelope, protected by the
+ * master key.
  *
  * <p><b>Synchronization:</b> All instances check last_updated_at to detect changes and reload the
  * keyset when needed. The version field provides optimistic locking for concurrent updates.
@@ -56,10 +57,10 @@ public class KeysetBlob {
   private Integer id = SINGLETON_ID;
 
   /**
-   * Encrypted Tink keyset JSON blob.
+   * Tink encrypted-keyset JSON blob.
    *
-   * <p>The keyset is encrypted with the master key using AES-256-GCM before storage. This ensures
-   * the keyset remains secure even if database is compromised.
+   * <p>The key material is encrypted with the master key through Tink's encrypted-keyset envelope.
+   * The envelope may expose non-secret keyset metadata such as key IDs and primary-key status.
    */
   @Column(name = "keyset_data", nullable = false, columnDefinition = "BYTEA")
   private byte[] keysetData;
