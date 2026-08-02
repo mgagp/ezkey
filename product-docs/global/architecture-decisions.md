@@ -27,6 +27,7 @@ Each decision is recorded with enough context to be understood years later: why 
 | [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path) | Tink keyset sync: concurrent read path for at-rest encryption | accepted | 2026-07-09 |
 | [ADR-0009](#adr-0009-detective-integrity-windows-align-to-checkpoint-grid) | Detective integrity windows align to checkpoint grid | accepted | 2026-07-10 |
 | [ADR-0010](#adr-0010-rate-limiting-scoped-by-actor-identity-not-by-ip) | Rate limiting scoped by actor identity, not by IP, across device and M2M surfaces | accepted | 2026-05-08 |
+| [ADR-0011](#adr-0011-tink-native-database-keyset-envelope) | Tink-native database keyset envelope | accepted | 2026-08-02 |
 
 ## ADR-0001 — Backend-first cryptographic protocol
 
@@ -608,3 +609,89 @@ adopted.
 
 - None yet at component scope; component packs for Auth API and Integration API do not exist yet
   (see [`../components/README.md`](../components/README.md)).
+
+## ADR-0011 — Tink-native database keyset envelope
+
+### Metadata
+
+- **ID:** ADR-0011.
+- **Date:** 2026-08-02.
+- **Status:** accepted.
+- **Scope:** global (core encryption / `TinkKeyManager` / `ezkey_keyset_blob`).
+- **Owners:** Platform architecture / security.
+
+### Context
+
+Ezkey uses Google Tink for at-rest encryption. A file-based 256-bit master key creates the master
+AEAD; the active Tink keyset produces the data-encryption AEAD used by encrypted entity fields.
+After the 2026-07 Tink deprecation migration, file keysets used Tink's encrypted-keyset JSON
+envelope through `TinkJsonProtoKeysetFormat`, but the database synchronization blob still used an
+Ezkey-specific wrapper: serialize the cleartext keyset JSON, encrypt those bytes with the master
+AEAD, and store the resulting opaque ciphertext in `ezkey_keyset_blob.keyset_data`.
+
+That historical wrapper was cryptographically sound, but it created two persisted keyset envelope
+models and made the database representation less aligned with Tink's public keyset-format facade.
+Its extra opacity also risked being over-valued as a security property. The relevant security line is
+that key material is secret and must remain encrypted; keyset metadata such as key IDs, primary-key
+status, and output-prefix information is operational metadata and is not treated as secret in Ezkey's
+threat model.
+
+### Decision
+
+Store `ezkey_keyset_blob.keyset_data` as Tink's encrypted-keyset JSON envelope directly, using the
+existing master AEAD, empty associated data, and `RegistryConfiguration.get()` overloads. Keep the
+database column as `BYTEA`, keep the file keyset format unchanged, and do not change data ciphertexts,
+algorithms, master-key source, rotation ownership, or `DATABASE` / `HYBRID` reload semantics.
+
+This is a clean-start pre-production cutover. Existing production deployments do not need a legacy
+dual-read migration because there are no production installations to preserve at this point.
+
+### Alternatives Considered
+
+- **Keep the outer Ezkey wrapper.** Rejected for the current release line. It remained viable crypto,
+  but it preserved custom envelope semantics after Tink provided a public encrypted-keyset format
+  facade and left future readers to reconcile two keyset persistence models.
+- **Add a second custom encryption layer around the Tink envelope.** Rejected. Hiding non-secret
+  metadata would mostly move the trust problem to another wrapping key and risk security theater.
+- **Add dual-read legacy compatibility.** Rejected for this pre-production cutover. Clean-start is
+  acceptable, while dual-read logic would add format ambiguity and migration surface before any
+  production installation exists.
+- **Use contextual associated data for the DB blob.** Deferred. Empty associated data preserves the
+  prior Tink file semantics and avoids backup / restore / environment-cloning brittleness. Contextual
+  AD can be revisited only if a concrete binding requirement appears.
+
+### Consequences
+
+- **Positive.** File and database keyset persistence now use the same Tink encrypted-keyset concept;
+  keyset serialization no longer carries an Ezkey-specific outer envelope; future Tink evolution is
+  easier to follow; cold readers can inspect the database blob shape without inferring custom crypto
+  semantics.
+- **Negative.** Tink envelope metadata such as key IDs and primary-key status is visible to a reader
+  with database access. Ezkey treats that as non-secret operational metadata, not as key material.
+- **Neutral.** The database schema remains unchanged; application ciphertexts and re-encryption
+  posture are unchanged; old outer-encrypted DB blobs are not a supported current representation.
+
+### Impact
+
+- **Affected components:** `ezkey-core-security` (`TinkKeyManager`), `ezkey-core`
+  (`KeysetBlob`), Admin API / Auth API / Integration API in `DATABASE` or `HYBRID` storage modes.
+- **Affected features:** [`F-encryption-key-rotation`](features-and-phases.md#f-encryption-key-rotation).
+- **Backlog:** [`I-2026-07-26-tink-native-keyset-blob-envelope`](backlog/ideas/I-2026-07-26-tink-native-keyset-blob-envelope.md).
+- **Configuration pointer:** [`../../ezkey-core/CONFIGURATION.md`](../../ezkey-core/CONFIGURATION.md)
+  (Encryption at Rest / Keyset Storage).
+
+### Validation
+
+- Unit: `TinkKeyManagerConcurrencyTest` characterizes the Tink-native DB blob shape, visible
+  envelope metadata, Tink parse round-trip, tamper rejection, legacy DB blob clean-start posture,
+  and DB reload after rotation.
+- Build: `mvn spotless:apply`, `mvn checkstyle:check`, `mvn clean`, and
+  `mvn install -DskipTests` passed from the repository root.
+- Operational smoke: `ezkey-tests/clean-start.sh --no-proxy` produced a healthy Docker stack;
+  PostgreSQL inspection confirmed `encryptedKeyset` and `keysetInfo` in `ezkey_keyset_blob`; live
+  smoke tests passed with `mvn test -pl ezkey-tests -P smoke-tests`.
+
+### Related Decisions
+
+- Tink keyset concurrent read / reload path: [ADR-0008](#adr-0008-tink-keyset-sync-concurrent-read-path).
+- Proof-token storage tiers on related encrypted data surfaces: [ADR-0007](#adr-0007-proof-token-storage-hash-only-where-protocol-allows).

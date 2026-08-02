@@ -1,7 +1,6 @@
 package org.ezkey.security;
 
 import com.google.crypto.tink.Aead;
-import com.google.crypto.tink.InsecureSecretKeyAccess;
 import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KeysetManager;
@@ -1138,11 +1137,11 @@ public class TinkKeyManager implements KeyManagementOperations {
 
       KeysetBlob keysetBlob = keysetBlobOpt.get();
       byte[] encryptedData = keysetBlob.getKeysetData();
-      byte[] decryptedJson = masterAead.decrypt(encryptedData, null);
-      String keysetJson = new String(decryptedJson, StandardCharsets.UTF_8);
+      String encryptedKeysetJson = new String(encryptedData, StandardCharsets.UTF_8);
 
       this.keysetHandle =
-          TinkJsonProtoKeysetFormat.parseKeyset(keysetJson, InsecureSecretKeyAccess.get());
+          TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
+              encryptedKeysetJson, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
       this.databaseKeysetVersion = keysetBlob.getVersion() != null ? keysetBlob.getVersion() : 0;
 
       long signedPrimaryKeyId = keysetHandle.getPrimary().getId();
@@ -1185,9 +1184,10 @@ public class TinkKeyManager implements KeyManagementOperations {
     }
 
     try {
-      String keysetJson =
-          TinkJsonProtoKeysetFormat.serializeKeyset(keysetHandle, InsecureSecretKeyAccess.get());
-      byte[] encryptedData = masterAead.encrypt(keysetJson.getBytes(StandardCharsets.UTF_8), null);
+      String encryptedKeysetJson =
+          TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
+              keysetHandle, masterAead, KEYSET_ASSOCIATED_DATA, RegistryConfiguration.get());
+      byte[] encryptedData = encryptedKeysetJson.getBytes(StandardCharsets.UTF_8);
 
       KeysetBlob keysetBlob =
           keysetBlobRepository.findKeyset().orElse(new KeysetBlob(encryptedData, updatedBy));

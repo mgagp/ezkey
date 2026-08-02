@@ -3,38 +3,63 @@
 ## Metadata
 
 - **ID:** `I-2026-07-26-tink-native-keyset-blob-envelope`
-- **Status:** `incubating`
+- **Status:** `done`
 - **Priority:** `P2`
 - **Created at:** `2026-07-26`
-- **Updated at:** `2026-07-26`
-- **Last reviewed at:** `2026-07-26`
+- **Updated at:** `2026-08-02`
+- **Last reviewed at:** `2026-08-02`
 - **Progression markers:** `crypto-at-rest`, `tink-keyset-storage`, `design-poc`
 - **Component tags:** `core-security`, `core`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto`
 - **Lane:** `D` (security / hardening)
 - **Captured by:** Marc
 - **Related:** [`I-2026-07-22-tink-keyset-serialization-api-migration`](I-2026-07-22-tink-keyset-serialization-api-migration.md), [`I-2026-07-17-keyset-blob-admin-first-bootstrap`](I-2026-07-17-keyset-blob-admin-first-bootstrap.md)
+- **Decision:** [`ADR-0011`](../../architecture-decisions.md#adr-0011-tink-native-database-keyset-envelope)
+- **Closeout:** [`ML-2026-08-02`](../method-logs/ML-2026-08-02-tink-native-keyset-envelope-closeout.md)
 
-## Intent
+## Outcome
+
+Implemented on 2026-08-02. `ezkey_keyset_blob.keyset_data` now stores Tink's
+encrypted-keyset JSON envelope directly, using the existing master AEAD and empty associated data.
+The database schema remains `BYTEA`; the runtime keyset, data ciphertext format, algorithms,
+rotation owner, and file keyset format are unchanged.
+
+The decision treats Tink envelope metadata such as key IDs and primary-key status as non-secret
+operational metadata. This avoids treating the former outer-wrapper opacity as a security control
+and avoids adding a second custom envelope that would only move the wrapping-key problem.
+
+Because Ezkey has no production installation to preserve, the cutover is clean-start only for the
+database blob format. Legacy outer-encrypted database blobs are intentionally not a compatibility
+contract for the new representation; clean deployments should create a fresh `ezkey_keyset_blob`.
+
+Validation evidence:
+
+- `TinkKeyManagerConcurrencyTest` now characterizes the Tink-native DB blob shape, visible envelope
+  metadata, Tink parse round-trip, tamper rejection, legacy DB blob cutover posture, and database
+  reload after rotation.
+- Targeted validation passed:
+  `mvn -pl ezkey-core-security -am -Dtest=TinkKeyManagerConcurrencyTest -Dsurefire.failIfNoSpecifiedTests=false test`.
+
+## Original Intent
 
 Evaluate whether `ezkey_keyset_blob.keyset_data` should store Tink's encrypted-keyset envelope
 directly instead of Ezkey's current outer `masterAead.encrypt(cleartextJsonKeyset)` wrapper, while
 preserving the pragmatic goals of the existing design: self-hosted operation, shared master-key
 semantics, HA keyset synchronization, and clear Admin-owned key rotation.
 
-This is a design/PoC idea, not a follow-on implementation requirement for the completed Tink
-deprecation migration. A valid outcome is either **keep the current DB envelope** or **promote a
-bounded migration to the Tink-native envelope** after evidence.
+This began as a design/PoC idea, not a follow-on implementation requirement for the completed Tink
+deprecation migration. The evidence-supported outcome was a bounded clean-start migration to the
+Tink-native envelope.
 
 ## Problem and value
 
-- **Problem:** After the Tink keyset serialization migration, Ezkey has two behavior-preserving but
+- **Resolved problem:** After the Tink keyset serialization migration, Ezkey had two behavior-preserving but
   conceptually different persisted keyset envelopes:
   - file storage uses Tink's encrypted-keyset JSON envelope via `TinkJsonProtoKeysetFormat`;
-  - database storage keeps Ezkey's existing envelope: serialize cleartext keyset JSON, encrypt the
+  - database storage kept Ezkey's existing envelope: serialize cleartext keyset JSON, encrypt the
     JSON bytes with `masterAead`, and store the result in `KeysetBlob.keysetData`.
-- **Expected value:** Determine whether aligning the database blob to Tink's encrypted-keyset
+- **Delivered value:** Aligning the database blob to Tink's encrypted-keyset
   envelope improves design quality, future Tink compatibility, and operator/documentation clarity
-  enough to justify the migration and compatibility work before Ezkey reaches a full release.
+  before Ezkey reaches a full release.
 
 ## Context and historical read
 
@@ -56,12 +81,12 @@ The design question is therefore not "fix a weak cryptographic posture". It is w
 now take advantage of its pre-release window to use Tink's keyset concepts more directly and reduce
 custom envelope semantics.
 
-## Current model vs candidate model
+## Historical model vs implemented model
 
-| Surface | Current model | Candidate model |
+| Surface | Historical model | Implemented model |
 | --- | --- | --- |
 | Keyset file | Tink encrypted-keyset JSON envelope | unchanged |
-| Keyset DB blob | `masterAead.encrypt(cleartextJsonKeyset)` | Tink encrypted-keyset JSON or proto envelope bytes |
+| Keyset DB blob | `masterAead.encrypt(cleartextJsonKeyset)` | Tink encrypted-keyset JSON envelope bytes |
 | Master key | Base64 256-bit file -> `AesGcmJce` master AEAD | unchanged unless a separate design chooses otherwise |
 | Data ciphertexts | produced by Tink AEAD from the active `KeysetHandle` | unchanged |
 | Rotation owner | Admin-driven keyset mutation | unchanged |

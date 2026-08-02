@@ -87,13 +87,11 @@ Disposition:
 
 - Migrated in `TinkKeyManager` for encrypted JSON keyset file load/save.
 - Characterized with a test that loads a legacy encrypted JSON keyset written through the old API.
-- Database `KeysetBlob` still uses the existing outer master-AEAD wrapper around cleartext keyset
-  JSON, but the cleartext JSON codec no longer depends on deprecated `JsonKeysetReader` /
-  `JsonKeysetWriter` classes.
-- Compatibility tests cover both legacy encrypted JSON keyset files and legacy outer-encrypted DB
-  blobs.
-- A possible future design/PoC remains: store Tink's encrypted-keyset envelope directly in the DB
-  blob instead of Ezkey's current outer master-AEAD wrapper.
+- At the time of this assessment, database `KeysetBlob` still used the existing outer master-AEAD
+  wrapper around cleartext keyset JSON, but the cleartext JSON codec no longer depended on
+  deprecated `JsonKeysetReader` / `JsonKeysetWriter` classes.
+- Supersession: `I-2026-07-26-tink-native-keyset-blob-envelope` later migrated the database blob to
+  Tink's encrypted-keyset JSON envelope directly as a clean-start pre-production cutover.
 
 ## Not deprecated in this pass (checked)
 

@@ -11,9 +11,12 @@
 package org.ezkey.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -22,10 +25,14 @@ import com.google.crypto.tink.CleartextKeysetHandle;
 import com.google.crypto.tink.JsonKeysetWriter;
 import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
+import com.google.crypto.tink.RegistryConfiguration;
+import com.google.crypto.tink.TinkJsonProtoKeysetFormat;
 import com.google.crypto.tink.subtle.AesGcmJce;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Base64;
@@ -191,6 +198,76 @@ class TinkKeyManagerConcurrencyTest {
   }
 
   @Test
+  @DisplayName("database keyset blob stores a Tink encrypted-keyset envelope")
+  void saveKeysetToDatabase_storesTinkEncryptedKeysetEnvelope(@TempDir Path tempDir)
+      throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    byte[] masterKey = writeMasterKey(masterKeyPath);
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>();
+
+    TinkKeyManager manager =
+        initializeManager(
+            masterKeyPath,
+            keysetPath,
+            TinkProperties.Keyset.StorageMode.DATABASE,
+            versionedRepository(storedBlob));
+
+    try {
+      KeysetBlob blob = storedBlob.get();
+      assertNotNull(blob);
+
+      String blobJson = new String(blob.getKeysetData(), StandardCharsets.UTF_8);
+      assertTrue(blobJson.contains("\"encryptedKeyset\""));
+      assertTrue(blobJson.contains("\"keysetInfo\""));
+      assertTrue(blobJson.contains("\"primaryKeyId\""));
+
+      Aead masterAead = new AesGcmJce(masterKey);
+      assertThrows(
+          GeneralSecurityException.class, () -> masterAead.decrypt(blob.getKeysetData(), null));
+
+      KeysetHandle parsed =
+          TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
+              blobJson, masterAead, new byte[0], RegistryConfiguration.get());
+      assertEquals(
+          manager.getCurrentPrimaryKeyId(), Integer.toUnsignedLong(parsed.getPrimary().getId()));
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
+  @DisplayName("tampered database encrypted-keyset envelope is rejected")
+  void loadKeysetFromDatabase_whenEncryptedEnvelopeIsTampered_keepsCurrentKeyset(
+      @TempDir Path tempDir) throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    writeMasterKey(masterKeyPath);
+    AtomicReference<KeysetBlob> storedBlob = new AtomicReference<>();
+
+    TinkKeyManager manager =
+        initializeManager(
+            masterKeyPath,
+            keysetPath,
+            TinkProperties.Keyset.StorageMode.DATABASE,
+            versionedRepository(storedBlob));
+
+    try {
+      long primaryKeyId = manager.getCurrentPrimaryKeyId();
+      KeysetBlob tamperedBlob = copyBlob(storedBlob.get());
+      String tamperedJson =
+          tamperEncryptedKeyset(new String(tamperedBlob.getKeysetData(), StandardCharsets.UTF_8));
+      tamperedBlob.setKeysetData(tamperedJson.getBytes(StandardCharsets.UTF_8));
+      storedBlob.set(tamperedBlob);
+
+      assertFalse(manager.loadKeysetFromDatabase());
+      assertEquals(primaryKeyId, manager.getCurrentPrimaryKeyId());
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
+  @Test
   @DisplayName("new encrypted keyset reader loads legacy JSON encrypted files")
   void initialize_whenLegacyEncryptedKeysetFileExists_loadsIt(@TempDir Path tempDir)
       throws Exception {
@@ -210,8 +287,8 @@ class TinkKeyManagerConcurrencyTest {
   }
 
   @Test
-  @DisplayName("new database keyset reader loads legacy outer-encrypted JSON blobs")
-  void initialize_whenLegacyDatabaseKeysetBlobExists_loadsIt(@TempDir Path tempDir)
+  @DisplayName("database keyset reader no longer treats legacy outer-encrypted blobs as current")
+  void initialize_whenLegacyDatabaseKeysetBlobExists_createsTinkNativeBlob(@TempDir Path tempDir)
       throws Exception {
     Path masterKeyPath = tempDir.resolve("master.key");
     Path keysetPath = tempDir.resolve("keyset.json.encrypted");
@@ -227,7 +304,10 @@ class TinkKeyManagerConcurrencyTest {
             versionedRepository(storedBlob));
 
     try {
-      assertEquals(legacyKeyset.primaryKeyId(), manager.getCurrentPrimaryKeyId());
+      assertNotEquals(legacyKeyset.primaryKeyId(), manager.getCurrentPrimaryKeyId());
+      String blobJson = new String(storedBlob.get().getKeysetData(), StandardCharsets.UTF_8);
+      assertTrue(blobJson.contains("\"encryptedKeyset\""));
+      assertTrue(blobJson.contains("\"keysetInfo\""));
     } finally {
       manager.shutdownKeysetCheckExecutor();
     }
@@ -343,6 +423,17 @@ class TinkKeyManagerConcurrencyTest {
     KeysetBlob copy = new KeysetBlob(source.getKeysetData(), source.getUpdatedBy());
     copy.setVersion(source.getVersion());
     return copy;
+  }
+
+  private static String tamperEncryptedKeyset(String encryptedKeysetJson) {
+    int fieldIndex = encryptedKeysetJson.indexOf("\"encryptedKeyset\"");
+    int colonIndex = encryptedKeysetJson.indexOf(':', fieldIndex);
+    int valueStart = encryptedKeysetJson.indexOf('"', colonIndex) + 1;
+    char original = encryptedKeysetJson.charAt(valueStart);
+    char replacement = original == 'A' ? 'B' : 'A';
+    return encryptedKeysetJson.substring(0, valueStart)
+        + replacement
+        + encryptedKeysetJson.substring(valueStart + 1);
   }
 
   private record LegacyDatabaseKeyset(KeysetBlob blob, long primaryKeyId) {}

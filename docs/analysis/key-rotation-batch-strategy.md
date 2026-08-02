@@ -7,7 +7,7 @@ This note summarizes the recent design discussion about Ezkey's Tink-based envel
 ## Envelope Encryption Recap
 
 - **Master Key (Level 1)**: Stored outside the app directory (e.g., `/etc/ezkey/secrets/master.key`), used to derive the master AEAD.
-- **Keyset / DEK (Level 2)**: Encrypted with the master AEAD and saved on disk (`/etc/ezkey/keysets/keyset.json.encrypted`). Multiple key versions may coexist.
+- **Keyset / DEK (Level 2)**: Encrypted with the master AEAD using Tink's encrypted-keyset JSON envelope. The file keyset (`/etc/ezkey/keysets/keyset.json.encrypted`) and the database synchronization row (`ezkey_keyset_blob.keyset_data`) use the same Tink envelope concept. Multiple key versions may coexist; keyset metadata such as key IDs and primary-key status is operational metadata, not key material.
 - **Sensitive Data (Level 3)**: Database values such as `integrationPrivateKey`, proof tokens, etc., encrypted via the AEAD returned by the keyset handle.
 
 ```mermaid
