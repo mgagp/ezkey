@@ -8565,7 +8565,7 @@
           "reencryptionWallClockSeconds": {
             "type": "integer",
             "format": "int64",
-            "description": "Retrospective parallel-aware wall-clock seconds for a fully drained migration (max per shard group + sum of other completed batches); null unless lifecycleStage is DRAINED and timing is available"
+            "description": "Retrospective wall-clock seconds for a fully drained migration, computed by merging completed batches' actual time windows (overlapping work counts once); null unless lifecycleStage is DRAINED and timing is available"
           }
         }
       },

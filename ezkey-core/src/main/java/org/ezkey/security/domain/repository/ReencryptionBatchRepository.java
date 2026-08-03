@@ -155,9 +155,10 @@ public interface ReencryptionBatchRepository
    * Find batches for an old key with the given status (e.g. all {@code COMPLETED} batches for a
    * fully drained migration).
    *
-   * <p>Used to compute a retrospective, parallel-aware wall-clock duration for the migration off
-   * one old key: sharded batches for the same target overlap in time (contribute a {@code max}),
-   * while non-sharded batches run serially relative to each other (contribute a {@code sum}).
+   * <p>Used to compute a retrospective wall-clock duration for the migration off one old key by
+   * merging each batch's actual {@code [startedAt, completedAt]} time window (see {@code
+   * KeyUsageVerificationService#computeWallClockSeconds}) rather than assuming sharded batches
+   * always ran fully in parallel.
    *
    * @param oldKeyId the old encryption key id
    * @param status status to match (typically {@link

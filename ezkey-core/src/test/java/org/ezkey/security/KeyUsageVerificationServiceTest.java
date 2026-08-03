@@ -138,7 +138,9 @@ class KeyUsageVerificationServiceTest {
   }
 
   @Test
-  @DisplayName("DRAINED key computes wall clock: max per shard group + sum of non-sharded batches")
+  @DisplayName(
+      "DRAINED key computes wall clock by merging overlapping batch time windows, not by"
+          + " assuming all shard siblings ran fully in parallel")
   void drainedComputesWallClockFromCompletedBatches() {
     EncryptionKey key =
         new EncryptionKey(5L, KeyStatus.ENABLED, "AES256_GCM", OffsetDateTime.now(), "SYSTEM");
@@ -153,22 +155,57 @@ class KeyUsageVerificationServiceTest {
         .thenReturn(0);
     when(batchRepository.countByOldKey_KeyIdAndStatusNot(5L, BatchStatus.COMPLETED)).thenReturn(0L);
 
+    // Mirrors an observed production pattern: 3 of 4 shards run fully in parallel from t0 (10s
+    // each), but the 4th shard queues behind worker-pool contention and only starts once the
+    // others finish, running sequentially afterward (10s more). Two short non-sharded batches run
+    // fully within the first parallel window. A naive "max per shard group" estimate would report
+    // 10s (plus the 3s non-sharded sum = 13s); merging actual time windows correctly reports 20s.
     OffsetDateTime t0 = OffsetDateTime.now();
     List<ReencryptionBatch> completedBatches =
         List.of(
-            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 2),
-            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 3),
-            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 1),
-            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 4),
-            nonShardedBatch("ezkey_enrollment", "integration_private_key", key, newKey, t0, 5),
-            nonShardedBatch("ezkey_enrollment", "enrollment_proof_token", key, newKey, t0, 2));
+            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 10),
+            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 10),
+            shardBatch("ezkey_auth_attempt", "auth_attempt_proof_token", key, newKey, 4, t0, 10),
+            shardBatch(
+                "ezkey_auth_attempt",
+                "auth_attempt_proof_token",
+                key,
+                newKey,
+                4,
+                t0.plusSeconds(10),
+                10),
+            nonShardedBatch("ezkey_enrollment", "integration_private_key", key, newKey, t0, 2),
+            nonShardedBatch("ezkey_enrollment", "enrollment_proof_token", key, newKey, t0, 1));
     when(batchRepository.findByOldKey_KeyIdAndStatus(5L, BatchStatus.COMPLETED))
         .thenReturn(completedBatches);
 
     KeyUsageVerificationService.KeyUsageSnapshot s = service.computeSnapshot(key);
     assertEquals(KeyUsageVerificationService.LIFECYCLE_DRAINED, s.lifecycleStage());
-    // shard group max (4s) + non-sharded sum (5s + 2s) = 11s
-    assertEquals(11L, s.reencryptionWallClockSeconds());
+    assertEquals(20L, s.reencryptionWallClockSeconds());
+  }
+
+  @Test
+  @DisplayName("Wall clock merge sums non-overlapping windows and collapses overlapping ones")
+  void wallClockMergesOverlappingWindowsAndSumsGaps() {
+    OffsetDateTime t0 = OffsetDateTime.now();
+    EncryptionKey oldKey =
+        new EncryptionKey(7L, KeyStatus.ENABLED, "AES256_GCM", OffsetDateTime.now(), "SYSTEM");
+    EncryptionKey newKey =
+        new EncryptionKey(1L, KeyStatus.PRIMARY, "AES256_GCM", OffsetDateTime.now(), "SYSTEM");
+
+    // [t0, t0+5] and [t0+2, t0+8] overlap -> merges into [t0, t0+8] (8s).
+    // [t0+20, t0+25] is a separate, non-overlapping window (5s).
+    // Total: 8 + 5 = 13s.
+    List<ReencryptionBatch> batches =
+        List.of(
+            nonShardedBatch("ezkey_enrollment", "integration_private_key", oldKey, newKey, t0, 5),
+            nonShardedBatch(
+                "ezkey_enrollment", "enrollment_proof_token", oldKey, newKey, t0.plusSeconds(2), 6),
+            nonShardedBatch(
+                "ezkey_api_key", "secret_key_hash", oldKey, newKey, t0.plusSeconds(20), 5));
+
+    Long result = KeyUsageVerificationService.computeWallClockSeconds(batches);
+    assertEquals(13L, result);
   }
 
   @Test

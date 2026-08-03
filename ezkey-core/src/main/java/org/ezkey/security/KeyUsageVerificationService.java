@@ -9,9 +9,9 @@ package org.ezkey.security;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import org.ezkey.security.domain.entity.EncryptionKey;
 import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
@@ -197,57 +197,57 @@ public class KeyUsageVerificationService {
   }
 
   /**
-   * Aggregates completed batch wall-clock durations into a single estimate.
+   * Aggregates completed batch wall-clock durations into a single estimate by merging each batch's
+   * {@code [startedAt, completedAt]} time window.
    *
-   * <p>Sharded batches for the same target (same table, column, and destination key) run in
-   * parallel, so their group contributes the {@code max} duration observed among shard siblings.
-   * Non-sharded batches run serially relative to each other (single-stream target), so they
-   * contribute a {@code sum}. This intentionally mirrors {@code ReencryptionBatchParallelRunner}'s
-   * per-shard mutex model (see {@code docs/REENCRYPTION_OPERATIONS.md}), not raw CPU time.
+   * <p>Batches whose windows overlap (or touch back to back) contribute a single combined span;
+   * batches that ran with a gap between them contribute separate spans that are summed. This
+   * reflects whatever concurrency the worker pool actually achieved for this key, rather than
+   * assuming sharded batches always ran fully in parallel: worker-pool contention with other
+   * targets (e.g. {@code ezkey_enrollment}, {@code ezkey_api_key} batches sharing the same bounded
+   * {@code reencryptionBatchExecutor}) can leave one shard queued and running after its siblings
+   * complete (see {@code ReencryptionBatchParallelRunner} and {@code
+   * docs/REENCRYPTION_OPERATIONS.md}). A naive "max duration per shard group" estimate would
+   * under-report the real wall time in that case; merging actual time windows does not.
    *
    * @param completedBatches completed batches for one old key (any target/column mix)
    * @return total estimated wall-clock seconds, or {@code null} when no batch has both a start and
    *     a completion timestamp
    */
   static Long computeWallClockSeconds(List<ReencryptionBatch> completedBatches) {
-    Map<String, Long> shardGroupMaxSeconds = new LinkedHashMap<>();
-    long nonShardedSumSeconds = 0L;
-    boolean anyTimed = false;
-
+    List<TimeWindow> windows = new ArrayList<>();
     for (ReencryptionBatch batch : completedBatches) {
       OffsetDateTime started = batch.getStartedAt();
       OffsetDateTime completed = batch.getCompletedAt();
-      if (started == null || completed == null) {
+      if (started == null || completed == null || completed.isBefore(started)) {
         continue;
       }
-      long seconds = Duration.between(started, completed).getSeconds();
-      if (seconds < 0) {
-        continue;
-      }
-      anyTimed = true;
-      Integer shardCount = batch.getShardCount();
-      if (shardCount != null && shardCount > 1) {
-        String shardGroupKey =
-            batch.getTargetTable()
-                + "|"
-                + batch.getTargetColumn()
-                + "|"
-                + batch.getNewKey().getKeyId();
-        shardGroupMaxSeconds.merge(shardGroupKey, seconds, Math::max);
-      } else {
-        nonShardedSumSeconds += seconds;
-      }
+      windows.add(new TimeWindow(started, completed));
     }
-
-    if (!anyTimed) {
+    if (windows.isEmpty()) {
       return null;
     }
-    long total = nonShardedSumSeconds;
-    for (long maxSeconds : shardGroupMaxSeconds.values()) {
-      total += maxSeconds;
+    windows.sort(Comparator.comparing(TimeWindow::start));
+
+    Duration total = Duration.ZERO;
+    OffsetDateTime mergedStart = windows.get(0).start();
+    OffsetDateTime mergedEnd = windows.get(0).end();
+    for (int i = 1; i < windows.size(); i++) {
+      TimeWindow window = windows.get(i);
+      if (window.start().isAfter(mergedEnd)) {
+        total = total.plus(Duration.between(mergedStart, mergedEnd));
+        mergedStart = window.start();
+        mergedEnd = window.end();
+      } else if (window.end().isAfter(mergedEnd)) {
+        mergedEnd = window.end();
+      }
     }
-    return total;
+    total = total.plus(Duration.between(mergedStart, mergedEnd));
+    return total.getSeconds();
   }
+
+  /** One batch's processing time window, used to merge overlapping spans. */
+  private record TimeWindow(OffsetDateTime start, OffsetDateTime end) {}
 
   /**
    * Point-in-time lifecycle evidence for one encryption key.
@@ -264,11 +264,11 @@ public class KeyUsageVerificationService {
    *     workflow
    * @param incompleteMigrationBatches true when non-{@link BatchStatus#COMPLETED} batches exist for
    *     this old key
-   * @param reencryptionWallClockSeconds retrospective, parallel-aware wall-clock duration in
-   *     seconds for a fully drained migration (max duration across each shard group plus the sum of
-   *     other completed batches); {@code null} unless {@code lifecycleStage} is {@link
-   *     #LIFECYCLE_DRAINED} and at least one completed batch has both a start and completion
-   *     timestamp
+   * @param reencryptionWallClockSeconds retrospective wall-clock duration in seconds for a fully
+   *     drained migration, computed by merging completed batches' actual {@code [startedAt,
+   *     completedAt]} time windows (see {@link #computeWallClockSeconds}); {@code null} unless
+   *     {@code lifecycleStage} is {@link #LIFECYCLE_DRAINED} and at least one completed batch has
+   *     both a start and completion timestamp
    */
   public record KeyUsageSnapshot(
       String lifecycleStage,
