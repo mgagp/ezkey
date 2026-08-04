@@ -89,8 +89,13 @@ public class ReencryptionBatchCreationService {
 
   /**
    * Creates one or more {@link ReencryptionBatch} rows for a single (old key, target) pair when
-   * needed. For {@link #EZKEY_AUTH_ATTEMPT_TABLE} and {@code authAttemptShardCount &gt; 1}, creates
-   * one batch per shard; otherwise a single non-sharded batch.
+   * needed.
+   *
+   * <p>For {@link #EZKEY_AUTH_ATTEMPT_TABLE} when {@code authAttemptShardCount &gt; 1}, uses an
+   * <em>effective</em> shard count {@code min(configured, totalRecords)} so small backlogs are not
+   * advertised as {@code x/4} when only a few residue classes have rows. Empty residue classes are
+   * skipped; if at most one non-empty class remains after probing, falls back to a single
+   * non-sharded batch. Enrollment and other tables are never sharded.
    *
    * @return batches inserted in this call (empty if nothing created)
    */
@@ -100,60 +105,9 @@ public class ReencryptionBatchCreationService {
     String column = target.column();
     List<ReencryptionBatch> created = new ArrayList<>();
 
-    int configuredShards = tinkProperties.getReencryption().getAuthAttemptShardCount();
-    boolean useSharding = EZKEY_AUTH_ATTEMPT_TABLE.equals(table) && configuredShards > 1;
-
-    if (useSharding) {
-      for (int shardIndex = 0; shardIndex < configuredShards; shardIndex++) {
-        List<ReencryptionBatch> activeBatches =
-            batchRepository.findActiveBatchesByTargetAndOldKey(
-                table, column, oldKey.getKeyId(), shardIndex, configuredShards);
-        if (!activeBatches.isEmpty()) {
-          logger.debug(
-              "Active batch already exists for {}.{} shard {}/{} with old key {}",
-              table,
-              column,
-              shardIndex,
-              configuredShards,
-              oldKey.getKeyId());
-          continue;
-        }
-
-        int recordCount =
-            targetQueryService.countRecordsEncryptedWithKey(
-                table, column, oldKey.getKeyId(), shardIndex, configuredShards);
-        if (recordCount == 0) {
-          logger.debug(
-              "No records for shard {}/{} encrypted with key {} in {}.{}",
-              shardIndex,
-              configuredShards,
-              oldKey.getKeyId(),
-              table,
-              column);
-          continue;
-        }
-
-        ReencryptionBatch batch =
-            new ReencryptionBatch(
-                table,
-                column,
-                oldKey,
-                primaryKey,
-                recordCount,
-                createdBy,
-                shardIndex,
-                configuredShards);
-        batchRepository.save(batch);
-        created.add(batch);
-        logAndAuditBatchCreated(batch, table, column, oldKey, primaryKey, recordCount);
-      }
-      return created;
-    }
-
-    List<ReencryptionBatch> activeBatches =
-        batchRepository.findActiveBatchesByTargetAndOldKey(
-            table, column, oldKey.getKeyId(), null, null);
-    if (!activeBatches.isEmpty()) {
+    List<ReencryptionBatch> anyActive =
+        batchRepository.findAnyActiveBatchesByTargetAndOldKey(table, column, oldKey.getKeyId());
+    if (!anyActive.isEmpty()) {
       logger.debug(
           "Active batch already exists for {}.{} with old key {}",
           table,
@@ -162,14 +116,92 @@ public class ReencryptionBatchCreationService {
       return created;
     }
 
-    int recordCount =
+    int totalRecords =
         targetQueryService.countRecordsEncryptedWithKey(table, column, oldKey.getKeyId());
-    if (recordCount == 0) {
+    if (totalRecords == 0) {
       logger.debug(
           "No records found encrypted with key {} in {}.{}", oldKey.getKeyId(), table, column);
       return created;
     }
 
+    int configuredShards = tinkProperties.getReencryption().getAuthAttemptShardCount();
+    boolean shardingConfigured = EZKEY_AUTH_ATTEMPT_TABLE.equals(table) && configuredShards > 1;
+    int effectiveShards = shardingConfigured ? Math.min(configuredShards, totalRecords) : 1;
+
+    if (effectiveShards <= 1) {
+      return createNonShardedBatch(
+          table, column, oldKey, primaryKey, totalRecords, createdBy, created);
+    }
+
+    if (effectiveShards < configuredShards) {
+      logger.info(
+          "Auth-attempt re-encryption for key {} on {}.{}: effective shard count {} "
+              + "(configured {}, total records {})",
+          oldKey.getKeyId(),
+          table,
+          column,
+          effectiveShards,
+          configuredShards,
+          totalRecords);
+    }
+
+    List<NonEmptyShard> nonEmptyShards = new ArrayList<>();
+    for (int shardIndex = 0; shardIndex < effectiveShards; shardIndex++) {
+      int recordCount =
+          targetQueryService.countRecordsEncryptedWithKey(
+              table, column, oldKey.getKeyId(), shardIndex, effectiveShards);
+      if (recordCount == 0) {
+        logger.debug(
+            "No records for shard {}/{} encrypted with key {} in {}.{}",
+            shardIndex,
+            effectiveShards,
+            oldKey.getKeyId(),
+            table,
+            column);
+        continue;
+      }
+      nonEmptyShards.add(new NonEmptyShard(shardIndex, recordCount));
+    }
+
+    if (nonEmptyShards.size() <= 1) {
+      logger.info(
+          "Auth-attempt re-encryption for key {} on {}.{}: falling back to non-sharded batch "
+              + "(effective shards {}, non-empty residue classes {})",
+          oldKey.getKeyId(),
+          table,
+          column,
+          effectiveShards,
+          nonEmptyShards.size());
+      return createNonShardedBatch(
+          table, column, oldKey, primaryKey, totalRecords, createdBy, created);
+    }
+
+    for (NonEmptyShard shard : nonEmptyShards) {
+      ReencryptionBatch batch =
+          new ReencryptionBatch(
+              table,
+              column,
+              oldKey,
+              primaryKey,
+              shard.recordCount(),
+              createdBy,
+              shard.shardIndex(),
+              effectiveShards);
+      batchRepository.save(batch);
+      created.add(batch);
+      logAndAuditBatchCreated(batch, table, column, oldKey, primaryKey, shard.recordCount());
+    }
+    return created;
+  }
+
+  private List<ReencryptionBatch> createNonShardedBatch(
+      String table,
+      String column,
+      EncryptionKey oldKey,
+      EncryptionKey primaryKey,
+      int recordCount,
+      String createdBy,
+      List<ReencryptionBatch> created) {
     ReencryptionBatch batch =
         new ReencryptionBatch(table, column, oldKey, primaryKey, recordCount, createdBy);
     batchRepository.save(batch);
@@ -177,6 +209,14 @@ public class ReencryptionBatchCreationService {
     logAndAuditBatchCreated(batch, table, column, oldKey, primaryKey, recordCount);
     return created;
   }
+
+  /**
+   * One non-empty auth-attempt shard slot discovered during batch creation.
+   *
+   * @param shardIndex residue class index {@code 0..effectiveShards-1}
+   * @param recordCount rows in that residue class still encrypted with the old key
+   */
+  private record NonEmptyShard(int shardIndex, int recordCount) {}
 
   private void logAndAuditBatchCreated(
       ReencryptionBatch batch,

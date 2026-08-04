@@ -273,9 +273,11 @@ public class TinkProperties {
     private int staleDataChunkSize = 1000;
 
     /**
-     * Number of parallel shards for {@code ezkey_auth_attempt} re-encryption batches ({@code
+     * Configured ceiling for parallel shards on {@code ezkey_auth_attempt} re-encryption ({@code
      * mod(auth_attempt_id, N) = shard_index}). When {@code 1}, auth-attempt batches are a single
-     * stream (same as legacy). Values such as 4–8 suit typical Docker deployments.
+     * stream (same as legacy). Batch creation may use a smaller effective {@code N} when the
+     * remaining row count is below this ceiling. Values such as 4–8 suit typical Docker
+     * deployments.
      */
     private int authAttemptShardCount = 1;
 

@@ -143,7 +143,8 @@ class EncryptionKeyControllerTest {
                         ts,
                         KeyUsageVerificationService.VERIFICATION_PRIMARY_USAGE,
                         false,
-                        false);
+                        false,
+                        null);
                 case ENABLED ->
                     new KeyUsageVerificationService.KeyUsageSnapshot(
                         KeyUsageVerificationService.LIFECYCLE_ENABLED_IN_USE,
@@ -152,7 +153,8 @@ class EncryptionKeyControllerTest {
                         ts,
                         KeyUsageVerificationService.VERIFICATION_REMAINS_IN_USE,
                         false,
-                        false);
+                        false,
+                        null);
                 default ->
                     new KeyUsageVerificationService.KeyUsageSnapshot(
                         KeyUsageVerificationService.LIFECYCLE_PENDING,
@@ -161,7 +163,8 @@ class EncryptionKeyControllerTest {
                         ts,
                         KeyUsageVerificationService.VERIFICATION_NOT_APPLICABLE,
                         false,
-                        false);
+                        false,
+                        null);
               };
             });
   }
