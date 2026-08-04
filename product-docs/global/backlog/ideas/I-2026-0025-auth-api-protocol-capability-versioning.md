@@ -33,3 +33,9 @@ See [`../grill-sessions/blitz-2026-05-08-2-D7-auth-api-versioning-grill-me.md`](
 
 - Vision: `V-2026-0008`
 - Grill: `../grill-sessions/blitz-2026-05-08-2-D7-auth-api-versioning-grill-me.md`
+- Complementary (not overlapping) mobile-release track: advisory installation version/compat
+  discovery is a separate, non-authoritative signal explored in
+  [`I-2026-08-02-mobile-installation-version-and-compat-discovery`](I-2026-08-02-mobile-installation-version-and-compat-discovery.md);
+  distribution-anchored client-update guidance is explored in
+  [`I-2026-08-02-mobile-client-update-mechanism`](I-2026-08-02-mobile-client-update-mechanism.md).
+  Neither idea changes this idea's scope or contract.

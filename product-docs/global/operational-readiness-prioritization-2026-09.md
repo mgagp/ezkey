@@ -165,6 +165,7 @@ stop/start scenarios).
 | `I-2026-0004` | Promoted P1 — API-key auth configurability; orthogonal to integrity. |
 | `I-2026-0011` | Bootstrap activation-code default — operability; schedule after Wave B if bootstrap blocks EXP1. |
 | `I-2026-0021` | **Done 2026-07-18** — PostgreSQL migrate/runtime role split delivered and validated; linked P3 hardening remains non-blocking. |
+| `V-2026-08-02-mobile-official-play-release-posture` and its four `I-2026-08-02-mobile-*` ideas | Mobile Play official-release track (exit experimental messaging, Play compliance gate, client update mechanism, installation version/compat discovery). Explicitly **not** a claim on the September operable-release scope — the two tracks address different product surfaces (backend integrity/alerting vs. mobile app distribution posture) and can proceed independently. |
 
 ## What “operable release quality” means here
 
