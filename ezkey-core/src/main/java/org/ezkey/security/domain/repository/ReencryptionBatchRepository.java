@@ -123,6 +123,27 @@ public interface ReencryptionBatchRepository
       @Param("shardCount") Integer shardCount);
 
   /**
+   * Find any active batch (PENDING or IN_PROGRESS) for a target and old key, regardless of shard
+   * columns.
+   *
+   * <p>Used as a creation guard so an effective shard count that differs from a previous attempt
+   * cannot insert a second active set for the same migration target.
+   *
+   * @param targetTable the target table name
+   * @param targetColumn the target column name
+   * @param oldKeyId the old encryption key ID
+   * @return list of active batches for the specified target and old key
+   */
+  @Query(
+      "SELECT b FROM ReencryptionBatch b WHERE b.targetTable = :targetTable "
+          + "AND b.targetColumn = :targetColumn AND b.oldKey.keyId = :oldKeyId "
+          + "AND b.status IN ('PENDING', 'IN_PROGRESS')")
+  List<ReencryptionBatch> findAnyActiveBatchesByTargetAndOldKey(
+      @Param("targetTable") String targetTable,
+      @Param("targetColumn") String targetColumn,
+      @Param("oldKeyId") Long oldKeyId);
+
+  /**
    * Find batches by old and new key IDs.
    *
    * <p>Used to track all batches involved in migrating from one key to another.
