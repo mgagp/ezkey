@@ -15,6 +15,12 @@ residuals **closed** (alerts list polish, dashboard signal model, audit-chain ch
 EXP1 soak is the release compass next gate. Canon sync this pass closed two delivered-but-stale
 items (`I-2026-07-10`, `TB-2026-07-06` Tier 0). Wave B closeout:
 [`method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md`](method-logs/ML-2026-07-03-wave-b-integrity-cluster-closeout.md).
+Same pass materialized a **parallel** mobile Play official-release track (state-of-play from the
+current limited-experimental Android release): vision
+[`V-2026-08-02-mobile-official-play-release-posture`](../vision/V-2026-08-02-mobile-official-play-release-posture.md)
+and four backlog ideas below — this track does not claim September operability scope; see
+[`operational-readiness-prioritization-2026-09.md`](../operational-readiness-prioritization-2026-09.md)
+§ Parallel tracks.
 
 ## Active ideas
 
@@ -63,6 +69,10 @@ items (`I-2026-07-10`, `TB-2026-07-06` Tier 0). Wave B closeout:
 | `I-2026-07-25-mobile-certificate-pinning-middle-path` | Mobile certificate pinning middle path | `incubating` | `P2` | `mobile`, `auth-api`, `admin-api`, `docs`, `security` | `2026-07-25` |
 | `I-2026-07-25-reencryption-batch-resilience-and-ops` | Re-encryption batch resilience and ops hardening | `incubating` | `P2` | `core`, `admin-api`, `admin-ui`, `infra`, `docs`, `security` | `2026-07-25` |
 | `I-2026-07-26-tink-native-keyset-blob-envelope` | Tink-native keyset blob envelope | `done` | `P2` | `core-security`, `core`, `admin-api`, `auth-api`, `integration-api`, `infra`, `docs`, `crypto` | `2026-08-02` |
+| `I-2026-08-02-mobile-exit-experimental-messaging` | Mobile: exit experimental release messaging | `incubating` | `P2` | `mobile`, `docs` | `2026-08-02` |
+| `I-2026-08-02-mobile-play-official-compliance-gate` | Mobile: Play official release compliance gate | `incubating` | `P2` | `mobile`, `docs` | `2026-08-02` |
+| `I-2026-08-02-mobile-client-update-mechanism` | Mobile: client app-update mechanism | `incubating` | `P3` | `mobile`, `docs` | `2026-08-02` |
+| `I-2026-08-02-mobile-installation-version-and-compat-discovery` | Mobile: installation product-version and compatibility discovery | `incubating` | `P3` | `mobile`, `auth-api`, `admin-api`, `core`, `docs`, `security` | `2026-08-02` |
 
 ## Tracer bullets (draft / ready / in progress)
 
