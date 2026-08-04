@@ -196,16 +196,16 @@
   },
   "rotateDialog": {
     "title": "Rotation de la clé de chiffrement",
-    "successTitle": "Clé tournée avec succès",
-    "newPrimary": "Nouvelle clé primaire :",
+    "successTitle": "Rotation de clé démarrée",
+    "newPrimary": "ID de la nouvelle clé (en attente) :",
     "done": "Terminé",
-    "warning": "Cela va générer une nouvelle clé AES et la promouvoir en primaire. Un job de re-chiffrement en arrière-plan migrera les enregistrements existants.",
+    "warning": "Ceci introduit une nouvelle clé de chiffrement. Elle devient primaire automatiquement après un court délai de synchronisation; le rechiffrement des enregistrements existants vers la nouvelle clé est une étape distincte (tâche planifiée ou déclenchement manuel).",
     "reasonLabel": "Raison (min. 10 caractères)",
     "reasonPlaceholder": "Rotation trimestrielle planifiée",
     "cancel": "Annuler",
     "submit": "Tourner la clé",
     "submitting": "Rotation…",
-    "toastSuccess": "Clé tournée — nouvelle primaire : #{{id}}",
+    "toastSuccess": "Rotation de clé démarrée — nouvelle clé #{{id}} en attente de promotion",
     "errorRotate": "Échec de la rotation"
   }
 }

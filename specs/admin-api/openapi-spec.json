@@ -1480,7 +1480,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Key rotation completed successfully",
+            "description": "New key introduced with PENDING status; it will be promoted to primary automatically once the synchronization window elapses",
             "content": {
               "*/*": {
                 "schema": {
@@ -6711,10 +6711,12 @@
         "properties": {
           "newPrimaryKeyId": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "ID of the newly introduced key. Status is PENDING at response time; the key becomes PRIMARY automatically once the synchronization window elapses."
           },
           "message": {
-            "type": "string"
+            "type": "string",
+            "description": "Human-readable message describing the current state and next step"
           }
         }
       },

@@ -2020,7 +2020,7 @@ Ezkey uses encryption at rest with Tink cryptographic library. Encryption keys a
 Optional query parameter: `reason` (10–500 characters) for audit.
 
 **Responses:**
-- **200 OK:** Body includes `newPrimaryKeyId` and success message (new key is often `PENDING` until the sync window elapses).
+- **200 OK:** Body includes `newPrimaryKeyId` (the newly introduced key's ID) and a message describing the current state. The key is `PENDING`, not yet primary; a scheduled job promotes it to `PRIMARY` automatically once the sync window elapses. Re-encrypting existing records to the new key is a separate step (scheduled job or manual trigger).
 - **409 Conflict:** RFC 9457 `ProblemDetail` (`type`, `title`, `status`, `detail`, `path`) when a `PENDING` key already exists and another introduction is not allowed yet.
 - **500 Internal Server Error:** Unexpected failure; body may include a legacy error payload for this endpoint.
 
