@@ -211,7 +211,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
             && (operations == null || !operations.isEncrypted(fromPersistent))) {
           plaintext = fromPersistent;
         }
-      } catch (Exception e) {
+      } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
         logger.warn(
             "Fallback read of enrollment proof token from persistent field failed for {}, "
                 + "skipping encryption of proof token",
@@ -231,7 +231,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
             && (operations == null || !operations.isEncrypted(fromPersistent))) {
           plaintext = fromPersistent;
         }
-      } catch (Exception e) {
+      } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
         logger.warn(
             "Fallback read of API key secret hash from persistent field failed for {}, "
                 + "skipping encryption of secret hash",
@@ -254,7 +254,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
             && (operations == null || !operations.isEncrypted(fromPersistent))) {
           plaintext = fromPersistent;
         }
-      } catch (Exception e) {
+      } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
         logger.warn(
             "Fallback read of integration private key from persistent field failed for {}, "
                 + "skipping encryption of integration private key",
@@ -295,7 +295,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
       logger.debug("Encrypted {}", context);
       logIntegrationPrivateKeyDiagnostics(
           entity, transientFieldName, persistentFieldName, plaintext, operations, "afterEncrypt");
-    } catch (Exception exception) {
+    } catch (IllegalArgumentException | IllegalStateException | SecurityException exception) {
       logger.error("Failed to encrypt {}", context, exception);
       AtRestEncryptionAccess.handleEncryptFailure(operations, context, exception);
       setFieldValue(entity, persistentFieldName, plaintext);
@@ -396,7 +396,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
           java.lang.reflect.Field field = superClass.getDeclaredField(fieldName);
           field.setAccessible(true);
           return (String) field.get(entity);
-        } catch (Exception exception) {
+        } catch (ReflectiveOperationException | ClassCastException | SecurityException exception) {
           logger.debug(
               "Failed to read field {} on {}",
               fieldName,
@@ -405,7 +405,7 @@ public class EncryptionEntityListener implements ApplicationContextAware {
         }
       }
       return null;
-    } catch (Exception exception) {
+    } catch (ReflectiveOperationException | ClassCastException | SecurityException exception) {
       logger.debug(
           "Failed to read field {} on {}", fieldName, entity.getClass().getSimpleName(), exception);
       return null;
@@ -455,7 +455,10 @@ public class EncryptionEntityListener implements ApplicationContextAware {
           field.setAccessible(true);
           field.set(entity, value);
           return;
-        } catch (Exception exception) {
+        } catch (ReflectiveOperationException
+            | IllegalArgumentException
+            | IllegalStateException
+            | SecurityException exception) {
           logger.error(
               "Failed to write field {} on {}",
               fieldName,
@@ -463,7 +466,10 @@ public class EncryptionEntityListener implements ApplicationContextAware {
               exception);
         }
       }
-    } catch (Exception exception) {
+    } catch (ReflectiveOperationException
+        | IllegalArgumentException
+        | IllegalStateException
+        | SecurityException exception) {
       logger.error(
           "Failed to write field {} on {}",
           fieldName,

@@ -162,7 +162,7 @@ public class AuditLogService {
             auditLogRepository.save(auditLog);
             return null;
           });
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to save audit log: {}", e.getMessage(), e);
     }
   }

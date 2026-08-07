@@ -80,7 +80,7 @@ public class ReencryptionBatchParallelRunner {
       for (ReencryptionBatch batch : batches) {
         try {
           batchProcessingService.processBatchInternal(batch);
-        } catch (Exception e) {
+        } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
           logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
           onFailure.onFailure(batch, e);
         }

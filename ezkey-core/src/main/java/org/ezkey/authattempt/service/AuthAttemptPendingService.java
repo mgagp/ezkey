@@ -12,6 +12,7 @@ package org.ezkey.authattempt.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import org.ezkey.authattempt.domain.AuthAttemptPendingRequest;
 import org.ezkey.authattempt.domain.AuthAttemptPendingResponse;
@@ -399,7 +400,7 @@ public class AuthAttemptPendingService {
         sb.append(String.format("%02x", b));
       }
       return sb.toString();
-    } catch (Exception e) {
+    } catch (NoSuchAlgorithmException e) {
       return "sha256_error";
     }
   }

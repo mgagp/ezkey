@@ -87,7 +87,7 @@ public class NightlyIntegrityValidationScheduler {
         scope = result.scope();
       }
       jobLastRunService.recordSuccess(ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Nightly integrity validation batch failed: {}", e.getMessage(), e);
       jobLastRunService.recordFailure(
           ScheduledJobKey.NIGHTLY_INTEGRITY_VALIDATION, scope, e.getMessage());

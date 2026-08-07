@@ -25,6 +25,7 @@ import org.ezkey.service.EntityEligibilityService;
 import org.ezkey.signature.SignatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -201,7 +202,7 @@ public class EnrollmentVerifyService {
             enrollment.getIntegrationId(),
             enrollment.getExpiresAt(),
             "enrollment_expired_verify_rejected");
-      } catch (Exception e) {
+      } catch (DataAccessException | IllegalArgumentException | IllegalStateException e) {
         logger.warn(
             "Failed to mark enrollment {} as EXPIRED and emit audit (client will still get 400):"
                 + " {}",

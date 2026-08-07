@@ -77,7 +77,7 @@ public final class IntegrityRuptureIncidentFingerprint {
     try {
       String canonicalJson = OBJECT_MAPPER.writeValueAsString(root);
       return AuditEntryIntegrityConciliationService.sha256Hex(canonicalJson);
-    } catch (Exception e) {
+    } catch (RuntimeException e) { // CHECKSTYLE IGNORE IllegalCatch
       throw new IllegalStateException("Could not serialize integrity rupture fingerprint", e);
     }
   }

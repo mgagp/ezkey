@@ -142,7 +142,7 @@ public class ReencryptionBatchProcessingService {
               pendingApiKeyIds.add(apiKey.getApiKeyId());
             }
           }
-        } catch (Exception ex) {
+        } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
           logger.warn(
               "Failed to classify record in batch {}: {}", batch.getBatchId(), ex.getMessage());
           recordsFailed++;
@@ -155,7 +155,7 @@ public class ReencryptionBatchProcessingService {
           rowPersistence.persistEnrollmentReencryption(batch, enrollmentId);
           recordsDone++;
           recordRowMetric(batch);
-        } catch (Exception ex) {
+        } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
           logger.warn(
               "Failed to persist re-encrypted enrollment {} in batch {}: {}",
               enrollmentId,
@@ -169,7 +169,7 @@ public class ReencryptionBatchProcessingService {
           rowPersistence.persistAuthAttemptReencryption(batch, authAttemptId);
           recordsDone++;
           recordRowMetric(batch);
-        } catch (Exception ex) {
+        } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
           logger.warn(
               "Failed to persist re-encrypted auth attempt {} in batch {}: {}",
               authAttemptId,
@@ -183,7 +183,7 @@ public class ReencryptionBatchProcessingService {
           rowPersistence.persistApiKeyReencryption(batch, apiKeyId);
           recordsDone++;
           recordRowMetric(batch);
-        } catch (Exception ex) {
+        } catch (Exception ex) { // CHECKSTYLE IGNORE IllegalCatch
           logger.warn(
               "Failed to persist re-encrypted API key {} in batch {}: {}",
               apiKeyId,

@@ -177,7 +177,7 @@ public class AuditChainScheduler {
 
       jobLastRunService.recordSuccess(
           ScheduledJobKey.AUDIT_CHAIN_CHECKPOINT, "Lookback " + lookbackMinutes + " min");
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to create audit chain checkpoints: {}", e.getMessage(), e);
     }
   }
@@ -245,7 +245,7 @@ public class AuditChainScheduler {
             "AUDIT_CHAIN_GAP_PENDING:" + latest.getCheckpointId(),
             eventDetails);
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to check for pre-lookback gap: {}", e.getMessage(), e);
     }
   }

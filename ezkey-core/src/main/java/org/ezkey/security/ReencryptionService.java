@@ -127,7 +127,7 @@ public class ReencryptionService {
           try {
             batchProcessingService.processBatchInternal(batch);
             batchesProcessed++;
-          } catch (Exception e) {
+          } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
             logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
             batchProcessingService.markBatchFailed(batch, e.getMessage());
           }
@@ -154,7 +154,7 @@ public class ReencryptionService {
 
       String scope = buildReencryptionScope(batchesProcessed);
       jobLastRunService.recordSuccess(ScheduledJobKey.REENCRYPTION, scope);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to process re-encryption batches", e);
       jobLastRunService.recordFailure(
           ScheduledJobKey.REENCRYPTION, "Batch re-encryption cycle", e.getMessage());
