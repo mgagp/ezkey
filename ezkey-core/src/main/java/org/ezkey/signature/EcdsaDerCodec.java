@@ -21,11 +21,11 @@ final class EcdsaDerCodec {
   /**
    * Decodes an ECDSA DER signature into {@code r} and {@code s} components.
    *
-   * <p><b>Security Note:</b> This method uses a broad {@code catch (RuntimeException)} intentionally
-   * to handle malformed or malicious DER input safely. Any parsing exception (e.g.,
+   * <p><b>Security Note:</b> This method uses a broad {@code catch (RuntimeException)}
+   * intentionally to handle malformed or malicious DER input safely. Any parsing exception (e.g.,
    * {@code ArrayIndexOutOfBoundsException}, {@code IllegalArgumentException}) returns {@code null}
-   * without revealing structural details about the failure. This prevents attackers from probing the
-   * parser to infer valid signature structure.
+   * without revealing structural details about the failure. This prevents attackers from probing
+   * the parser to infer valid signature structure.
    *
    * @param der DER-encoded ECDSA signature bytes
    * @return array of [r, s] as {@code BigInteger}, or {@code null} if decoding fails
