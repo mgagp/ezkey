@@ -11,6 +11,7 @@ package org.ezkey.signature;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -59,6 +60,8 @@ public class SignatureService {
   /**
    * Generates an Ed25519 key pair for integration signing. Private key is PKCS#8 (standard Base64);
    * public key is raw 32 bytes (Base64URL without padding).
+   *
+   * @throws RuntimeException if Ed25519 algorithm is unavailable or key generation fails
    */
   public Ed25519KeyPair generateEd25519KeyPair() {
     try {
@@ -70,7 +73,7 @@ public class SignatureService {
       byte[] raw = Arrays.copyOfRange(spki, spki.length - 32, spki.length);
       String pub = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
       return new Ed25519KeyPair(priv, pub);
-    } catch (Exception e) {
+    } catch (GeneralSecurityException e) {
       throw new RuntimeException("Ed25519 key pair generation failed", e);
     }
   }
@@ -78,6 +81,11 @@ public class SignatureService {
   /**
    * Signs UTF-8 data with an Ed25519 PKCS#8 private key (standard Base64). Returns Base64URL
    * without padding over the raw 64-byte signature.
+   *
+   * @param data the data to sign (UTF-8 encoded)
+   * @param base64Pkcs8PrivateKey Ed25519 private key in PKCS#8 format (standard Base64)
+   * @return Base64URL-encoded signature (64 bytes, no padding)
+   * @throws RuntimeException if key is malformed, algorithm unavailable, or signing fails
    */
   public String signIntegrationPayload(String data, String base64Pkcs8PrivateKey) {
     Objects.requireNonNull(data, "Data cannot be null");
@@ -91,7 +99,7 @@ public class SignatureService {
       sig.update(data.getBytes(StandardCharsets.UTF_8));
       byte[] signature = sig.sign();
       return Base64.getUrlEncoder().withoutPadding().encodeToString(signature);
-    } catch (Exception e) {
+    } catch (IllegalArgumentException | GeneralSecurityException e) {
       throw new RuntimeException("Failed to sign integration payload", e);
     }
   }
@@ -99,6 +107,16 @@ public class SignatureService {
   /**
    * Verifies an Ed25519 signature over exact UTF-8 data. Public key and signature are Base64URL
    * without padding (raw 32- and 64-byte values). Accepts standard Base64 for decoding if needed.
+   *
+   * <p><b>Security Note:</b> This method uses a broad {@code catch (Exception)} intentionally to
+   * avoid leaking information about <em>why</em> verification failed. Distinguishing between
+   * "malformed key", "invalid signature", or "encoding error" would constitute a side-channel that
+   * attackers could exploit. All verification failures return {@code false} with minimal logging.
+   *
+   * @param data the data that was signed (UTF-8)
+   * @param signatureBase64Url Base64URL signature (64 bytes, no padding)
+   * @param publicKeyBase64Url Base64URL public key (32 bytes, no padding)
+   * @return {@code true} if signature is valid, {@code false} otherwise
    */
   public boolean verifyIntegrationSignature(
       String data, String signatureBase64Url, String publicKeyBase64Url) {
@@ -118,7 +136,7 @@ public class SignatureService {
       verifier.initVerify(publicKey);
       verifier.update(data.getBytes(StandardCharsets.UTF_8));
       return verifier.verify(sigRaw);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.debug("Ed25519 integration signature verification failed", e);
       return false;
     }
@@ -145,6 +163,11 @@ public class SignatureService {
   /**
    * Signs UTF-8 data with an EC P-256 PKCS#8 private key. Returns standard Base64 over DER ECDSA
    * signature, with {@code s} normalized to low-S for Conscrypt/Android parity.
+   *
+   * @param data the data to sign (UTF-8 encoded)
+   * @param base64Pkcs8PrivateKey EC P-256 private key in PKCS#8 format (standard Base64)
+   * @return Base64-encoded DER ECDSA signature
+   * @throws RuntimeException if key is malformed, algorithm unavailable, or signing fails
    */
   public String signEcdsaSha256(String data, String base64Pkcs8PrivateKey) {
     Objects.requireNonNull(data, "Data cannot be null");
@@ -168,7 +191,7 @@ public class SignatureService {
         der = EcdsaDerCodec.encodeSignature(rs[0], s);
       }
       return Base64.getEncoder().encodeToString(der);
-    } catch (Exception e) {
+    } catch (IllegalArgumentException | IllegalStateException | GeneralSecurityException e) {
       throw new RuntimeException("Failed to generate ECDSA signature", e);
     }
   }
@@ -176,6 +199,16 @@ public class SignatureService {
   /**
    * Verifies ECDSA-SHA256 (DER) over UTF-8 data using an EC P-256 X.509 public key (standard Base64
    * SPKI).
+   *
+   * <p><b>Security Note:</b> This method uses a broad {@code catch (Exception)} intentionally to
+   * avoid leaking information about <em>why</em> verification failed. Distinguishing between
+   * "malformed key", "invalid signature", or "encoding error" would constitute a side-channel that
+   * attackers could exploit. All verification failures return {@code false} with minimal logging.
+   *
+   * @param data the data that was signed (UTF-8)
+   * @param signatureBase64 Base64-encoded DER ECDSA signature
+   * @param base64PublicKey EC P-256 public key in X.509 SPKI format (standard Base64)
+   * @return {@code true} if signature is valid, {@code false} otherwise
    */
   public boolean validateSignature(String data, String signatureBase64, String base64PublicKey) {
     try {
@@ -191,7 +224,7 @@ public class SignatureService {
       verifier.initVerify(publicKey);
       verifier.update(data.getBytes(StandardCharsets.UTF_8));
       return verifier.verify(signatureBytes);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.debug("ECDSA signature validation failed", e);
       return false;
     }
@@ -225,7 +258,12 @@ public class SignatureService {
     return validateSignature(data, signatureBase64, base64PublicKey);
   }
 
-  /** Generates an EC P-256 key pair (PKCS#8 private, SPKI public), standard Base64. */
+  /**
+   * Generates an EC P-256 key pair (PKCS#8 private, SPKI public), standard Base64.
+   *
+   * @return EC P-256 key pair with Base64-encoded keys
+   * @throws RuntimeException if EC algorithm is unavailable or key generation fails
+   */
   public ECP256KeyPair generateECP256KeyPair() {
     try {
       KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
@@ -234,7 +272,7 @@ public class SignatureService {
       String priv = Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded());
       String pub = Base64.getEncoder().encodeToString(kp.getPublic().getEncoded());
       return new ECP256KeyPair(priv, pub);
-    } catch (Exception e) {
+    } catch (GeneralSecurityException e) {
       throw new RuntimeException("EC P-256 key pair generation failed", e);
     }
   }
@@ -277,31 +315,35 @@ public class SignatureService {
     }
   }
 
+  /**
+   * Generates a cryptographically secure random challenge with the specified number of digits.
+   *
+   * @param digits number of digits (1-6)
+   * @return random challenge with exactly {@code digits} digits (no leading zeros)
+   * @throws IllegalArgumentException if digits is not in range 1-6
+   */
   public Integer generateSecureChallenge(int digits) {
     if (digits < 1 || digits > 6) {
       throw new IllegalArgumentException(
           "Challenge digits must be between 1 and 6, got: " + digits);
     }
-    try {
-      int minValue = (int) Math.pow(10, digits - 1);
-      int maxValue = (int) Math.pow(10, digits) - 1;
-      return minValue + secureRandom.nextInt(maxValue - minValue + 1);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to generate secure challenge", e);
-    }
+    int minValue = (int) Math.pow(10, digits - 1);
+    int maxValue = (int) Math.pow(10, digits) - 1;
+    return minValue + secureRandom.nextInt(maxValue - minValue + 1);
   }
 
+  /**
+   * Generates a proof token consisting of random bytes and salt, encoded as Base64URL.
+   *
+   * @return proof token in format "randomPart.saltPart" (Base64URL, no padding)
+   */
   public String generateProofToken() {
-    try {
-      byte[] randomBytes = new byte[PROOF_TOKEN_RANDOM_BYTES];
-      secureRandom.nextBytes(randomBytes);
-      byte[] salt = new byte[PROOF_TOKEN_SALT_BYTES];
-      secureRandom.nextBytes(salt);
-      String randomPart = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
-      String saltPart = Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
-      return randomPart + "." + saltPart;
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to generate proof token", e);
-    }
+    byte[] randomBytes = new byte[PROOF_TOKEN_RANDOM_BYTES];
+    secureRandom.nextBytes(randomBytes);
+    byte[] salt = new byte[PROOF_TOKEN_SALT_BYTES];
+    secureRandom.nextBytes(salt);
+    String randomPart = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    String saltPart = Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
+    return randomPart + "." + saltPart;
   }
 }

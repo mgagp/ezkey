@@ -358,4 +358,33 @@ class SignatureServiceTest {
     assertTrue(
         signatureService.verifyIntegrationSignature(payload, sig, pair.base64UrlPublicKey()));
   }
+
+  @Test
+  @DisplayName("Should throw RuntimeException for malformed private key in signIntegrationPayload")
+  void testSignWithMalformedPrivateKey() {
+    // Arrange
+    String malformedKey = "not-valid-base64!@#$";
+    String payload = "test data";
+
+    // Act & Assert
+    assertThrows(
+        RuntimeException.class,
+        () -> signatureService.signIntegrationPayload(payload, malformedKey),
+        "Should throw RuntimeException for malformed Base64 private key");
+  }
+
+  @Test
+  @DisplayName("Should throw RuntimeException for corrupted Ed25519 key in signIntegrationPayload")
+  void testSignWithCorruptedEd25519Key() {
+    // Arrange
+    // Valid Base64 but not a valid PKCS#8 Ed25519 key
+    String corruptedKey = Base64.getEncoder().encodeToString(new byte[32]);
+    String payload = "test data";
+
+    // Act & Assert
+    assertThrows(
+        RuntimeException.class,
+        () -> signatureService.signIntegrationPayload(payload, corruptedKey),
+        "Should throw RuntimeException for corrupted Ed25519 key");
+  }
 }
