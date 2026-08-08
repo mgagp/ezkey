@@ -37,7 +37,7 @@ is a **human mandate + white-box assessment**, not an OSS linter shortlist.
 - Campaign template: [`…/TEMPLATE.md`](../../product-docs/global/hygiene/assessment-curated/TEMPLATE.md)
 - Handoff template: [`…/HANDOFF-TEMPLATE.md`](../../product-docs/global/hygiene/assessment-curated/HANDOFF-TEMPLATE.md)
 - Hygiene index: [`product-docs/global/hygiene/README.md`](../../product-docs/global/hygiene/README.md)
-- Hygiene vs program: [`product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`](../../product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md)
+- Hygiene vs program: [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) § *Three rules worth keeping*
 - Root keyword: `AGENTS.md` § Assessment curated
 - Copilot mirror: `.github/copilot-instructions.md` § Assessment curated
 

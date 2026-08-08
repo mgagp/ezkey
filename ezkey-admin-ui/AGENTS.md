@@ -285,7 +285,7 @@ Use **start.sh** to build and run the Admin UI in Docker:
 - Keyword for humans and agents: **`doctor-curated`**.
 - Purpose: a **punctual lint/polish pass** for Admin UI React code. This is intentionally **not** a CI gate and **not** a zero-warning exercise.
 - **Same operating model as Java `java-doctor-curated`:** curator shortlist → small lot → interactive HITL → campaign note → hygiene branch + PR. Sibling lane: root `AGENTS.md` § Java doctor-curated.
-- **Trace (hygiene, not program):** do **not** create `I-*` / `TB-*` / `TSP-*` for a routine doctor-curated cleanup. Prefer a **dedicated branch + PR** (optional GitHub issue only if board visibility helps). Aligns with root `AGENTS.md` lightweight hygiene workflow and `product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`.
+- **Trace (hygiene, not program):** do **not** create `I-*` / `TB-*` / `TSP-*` for a routine doctor-curated cleanup. Prefer a **dedicated branch + PR** (optional GitHub issue only if board visibility helps). Aligns with root `AGENTS.md` lightweight hygiene workflow and `product-docs/methodology/README.md` § *Three rules worth keeping*.
 - **Campaign decision notes (HITL):** `product-docs/global/hygiene/react-doctor/` (template + dated pass instances). Do **not** invent `I-*` / `TB-*` / GitHub issues per finding.
 - Default commands from `ezkey-admin-ui/`:
   - `npm run doctor:curated`

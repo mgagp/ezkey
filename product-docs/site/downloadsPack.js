@@ -6,8 +6,6 @@ import { readMethodologyVersion } from './methodologyVersion.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = __dirname;
-const PROJECT_ROOT = path.resolve(SITE_DIR, '..', '..');
-const SKILLS_SOURCE_DIR = path.join(PROJECT_ROOT, '.cursor', 'skills');
 
 export const GENERATED_DOWNLOADS_DIR = path.join(SITE_DIR, '.generated', 'downloads');
 export const DOWNLOAD_PACK_FILENAME = 'ezkey-methodology-pack.zip';
@@ -34,10 +32,6 @@ export function prepareDownloadPack({ tree, resolveCorpusPath }) {
     const abs = resolveCorpusPath(urlPath);
     if (!abs || !fs.existsSync(abs)) continue;
     addLocalFile(zip, abs, toWorkspaceStarterTarget(urlPath));
-  }
-
-  if (fs.existsSync(SKILLS_SOURCE_DIR)) {
-    zip.addLocalFolder(SKILLS_SOURCE_DIR, `${PACK_ROOT}/workspace-starter/.cursor/skills`);
   }
 
   if (fs.existsSync(VERSION_FILE)) {
@@ -121,7 +115,6 @@ function buildPackManifest(publicFiles) {
       'workspace-starter/product-docs/methodology/**',
       'workspace-starter/product-docs/templates/**',
       'workspace-starter/product-docs/glossary.md',
-      'workspace-starter/.cursor/skills/**',
     ],
   };
 }
@@ -134,16 +127,14 @@ This archive is the smallest high-value local distribution of the Ezkey methodol
 It contains two usage paths:
 
 1. \`reference/\` — read, review, and adapt the public methodology pack locally.
-2. \`workspace-starter/\` — copy the methodology into a repo or workspace with optional agent-oriented skill files.
+2. \`workspace-starter/\` — copy the methodology into a repo or workspace.
 
 ## Folder guide
 
-- \`reference/methodology/\` — public methodology pack.
-- \`reference/templates/\` — reusable templates.
-- \`reference/skills/\` — derived public skills reference.
+- \`reference/methodology/\` — the core methodology document and release notes.
+- \`reference/templates/\` — the four reusable templates.
 - \`reference/glossary.md\` — glossary.
 - \`workspace-starter/product-docs/\` — starter documentation structure to place in a repo.
-- \`workspace-starter/.cursor/skills/\` — canonical operational skill files for editor/agent use.
 
 Open \`INSTALL.md\` next.
 `;
@@ -158,16 +149,14 @@ Use this when you want a local copy for reading, review, or adaptation.
 
 1. Unzip the archive.
 2. Open the \`reference/\` folder.
-3. Start with \`reference/methodology/README.md\` and \`reference/skills/README.md\`.
+3. Start with \`reference/methodology/README.md\` — the whole method fits in that one document.
 
 ## Option 2 - Workspace starter
 
 Use this when you want to adopt the methodology inside an existing repo or a new workspace.
 
 1. Copy \`workspace-starter/product-docs/\` into your target repository.
-2. If you want agent/editor skill support, also copy \`workspace-starter/.cursor/skills/\`.
-3. Keep the copied methodology docs as your local source of truth for process and templates.
-4. Treat the skill files as operational assets; they are not the primary public explanatory corpus.
+2. Keep the copied methodology docs as your local source of truth for process and templates.
 
 ## Notes
 

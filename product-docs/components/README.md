@@ -66,8 +66,6 @@ Do not update a component pack merely because a file changed in the correspondin
 refactors, copy-only edits, generated artifact refreshes, and exploratory notes do not create a
 component-pack obligation unless they change durable component truth.
 
-See [`../methodology/decisions/2026-05-25-component-packs-methodological-status.md`](../methodology/decisions/2026-05-25-component-packs-methodological-status.md).
-
 ## How to Add a New Component Pack
 
 Do not create a component pack for every module by inventory pressure alone. Instantiate a new pack
@@ -90,7 +88,6 @@ decision and that component's pack has not reached the instantiation threshold a
 single `design-decisions.md` file for that component (using the
 [architecture decision template](../templates/architecture-decision.template.md)) rather than
 parking the decision in `global/` or leaving it only cross-linked from its original location. The
-rest of the skeleton is filled in later, when the threshold is met. See
-[`../methodology/decisions/2026-07-28-legacy-documentation-default-gravity-to-adr.md`](../methodology/decisions/2026-07-28-legacy-documentation-default-gravity-to-adr.md).
+rest of the skeleton is filled in later, when the threshold is met.
 
 Full change-workflow rules live in [`../GOVERNANCE.md`](../GOVERNANCE.md).

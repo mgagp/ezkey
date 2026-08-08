@@ -6,7 +6,6 @@
  *
  *   dist/
  *   ├── index.html                       (home shell, hydratable)
- *   ├── map/index.html                   (cognitive map view)
  *   ├── glossary/index.html              (single-file corpus entry)
  *   ├── <urlPath without .md>/index.html (per-doc pre-rendered shells)
  *   ├── api/
@@ -57,7 +56,7 @@ const CF_ANALYTICS_TOKEN = process.env.CF_ANALYTICS_TOKEN || '';
 const SITE_TITLE = 'methodology explorer';
 const SITE_TITLE_SUFFIX = ' · methodology explorer';
 const SITE_DESCRIPTION =
-  'Public explorer for a documentation-first methodology: workflow, design canon, templates, skills, and glossary.';
+  'Public explorer for a deliberately small, documentation-first methodology: one core document, templates, and a glossary.';
 const SITE_NAME = 'methodology explorer';
 
 const ANALYTICS_SNIPPET = CF_ANALYTICS_TOKEN
@@ -330,18 +329,7 @@ function build() {
   );
   sitemapEntries.unshift({ loc: `${SITE_ORIGIN}/`, lastmod: new Date().toISOString() });
 
-  // 6. Map shell (also JS-driven; we just emit the wrapper).
-  writeText(
-    path.join(DIST_DIR, 'map', 'index.html'),
-    renderShell({
-      title: `Workflow map${SITE_TITLE_SUFFIX}`,
-      description: 'Cognitive map of a documentation-first methodology workflow.',
-      canonical: `${SITE_ORIGIN}/map/`,
-      contentHtml: '<div id="home" class="home"><p class="loading">Loading map…</p></div>',
-    }),
-  );
-
-  // 7. sitemap.xml + robots.txt
+  // 6. sitemap.xml + robots.txt
   writeText(path.join(DIST_DIR, 'sitemap.xml'), renderSitemap(sitemapEntries));
   writeText(
     path.join(DIST_DIR, 'robots.txt'),
