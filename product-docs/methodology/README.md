@@ -123,9 +123,9 @@ corpus itself, not only to code.
 
 An optional visibility layer, not a second source of truth — the artifact above remains canonical.
 When you open an issue, apply all five label groups (`lane:*`, `type:*`, `component:*`,
-`priority:*`, `status:*`) at create time; see
-[`.cursor/rules/github-issue-labels.mdc`](../../.cursor/rules/github-issue-labels.mdc). Link back
-to the `I-*`/`TB-*` in the issue body instead of duplicating its content.
+`priority:*`, `status:*`) at create time; in the source repository this is enforced by
+`.cursor/rules/github-issue-labels.mdc`. Link back to the `I-*`/`TB-*` in the issue body instead
+of duplicating its content.
 
 ## Templates
 

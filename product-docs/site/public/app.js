@@ -26,7 +26,6 @@ import { renderMermaidIn } from './mermaid-loader.js';
 import { decorateGlossaryIn, setupGlossaryTooltips } from './glossary.js';
 import { setupSearchShortcut, openSearch } from './search.js';
 import { setupPresentationShortcuts } from './presentation.js';
-import { renderMap } from './map.js';
 import {
   fetchTree,
   fetchPhases,
@@ -376,15 +375,9 @@ function handleRoute() {
   // flashing the home view.
   if (!hash && isStatic) {
     const pathname = window.location.pathname || '/';
-    if (pathname === '/map' || pathname === '/map/') { showMap(); return; }
     if (pathname === '/' || pathname === '/index.html') { showHome(); return; }
     const corpusPath = slugToCorpusPath.get(pathname);
     if (corpusPath) { loadDoc(corpusPath, ''); return; }
-  }
-  // Special route: cognitive map.
-  if (hash === '#/map' || hash.startsWith('#/map?')) {
-    showMap();
-    return;
   }
   // Format: #/<corpus-path>(?<query>)?  where query may include h, track, step.
   const m = /^#\/([^?]+)(?:\?(.*))?$/.exec(hash);
@@ -417,20 +410,6 @@ function parseQuery(qs) {
   return out;
 }
 
-function showMap() {
-  currentPath = null;
-  setActiveTreeNode(null);
-  els.breadcrumb.innerHTML = '';
-  els.toc.innerHTML = '<p class="toc-empty">Cognitive map view.</p>';
-  if (els.phaseRibbon) {
-    els.phaseRibbon.hidden = true;
-    els.phaseRibbon.innerHTML = '';
-  }
-  renderMap(els.doc);
-  document.title = 'Workflow map · ezkey methodology';
-  teardownScrollSpy();
-}
-
 function showHome() {
   currentPath = null;
   setActiveTreeNode(null);
@@ -450,7 +429,7 @@ function showHome() {
         <div id="home" class="home">
           <h1>ezkey · methodology</h1>
           <p class="lede">Pick a document on the left to start exploring.</p>
-          <p class="home-shortcut">Or jump straight to <a href="#/methodology/README.md">methodology/README.md</a> · <a href="#/skills/README.md">skills/README.md</a>.</p>
+          <p class="home-shortcut">Or jump straight to <a href="#/methodology/README.md">methodology/README.md</a> · <a href="#/glossary">glossary</a>.</p>
         </div>`;
       els.doc.innerHTML = tpl;
     }

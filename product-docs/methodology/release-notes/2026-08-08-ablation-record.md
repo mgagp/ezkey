@@ -2,10 +2,10 @@
 
 ## Status
 
-**Pending publication.** This is the factual substrate for a future `v2.0.0` release and the
-matching republication of `methodology.ezkey.org` — both are follow-up work, not part of this
-record. `methodology-version.properties` still declares `1.2.0`; the public site stays frozen at
-that version until the republication effort lands.
+**Published as methodology v2.0.0.** The corpus cut landed in commit `a9d65cc4`. The public
+explorer (`methodology.ezkey.org`) and the apex pointer pages (`ezkey.org/methodology.html`,
+`ezkey.org/fr/methodologie.html`) were rebuilt around the condensed corpus in the same
+republication effort. `methodology-version.properties` declares `2.0.0`.
 
 ## Why
 
@@ -24,7 +24,7 @@ watch what a cold agent visibly needs back.
 | Templates | 20 | 4 (`vision-note`, `backlog-idea`, `tracer-bullet-brief`, `architecture-decision`) |
 | Methodology-workflow skills | 14 | 0 |
 | Operational skills (unchanged) | 3 | 3 (`dependabot-curated`, `monthly-digest`, `assessment-curated`) |
-| Rich HTML view | 1 (~1,450 lines) | 0 (regenerated at republication) |
+| Rich HTML view | 1 (~1,450 lines) | 0 (apex pages are short pointers to the explorer) |
 | **Approximate total weight** | **~10,500 lines / ~61,000 words** | **~650 lines** |
 
 Roughly a 93% reduction.
@@ -47,7 +47,8 @@ Roughly a 93% reduction.
   `test-strategy-planner`, `quality-gatekeeper`, `traceability-sync`, `closeout`,
   `legacy-plan-miner`, `retrofit-curator`, `methodology-release`.
 - 16 of 20 templates (kept the 4 mapped directly to a documentary level).
-- The rich HTML view (`view/index.html`).
+- The rich HTML view (`view/index.html`) and its apex publication script
+  (`scripts/publish-methodology-view.ps1`).
 
 ## What was folded into the condensed core, and where
 
@@ -67,23 +68,19 @@ Lane taxonomy (A/B/C/D/E), the skill-sequence diagrams, and the finite-state "en
 next/not needed when" scaffolding for each lane were not folded anywhere — the article's verdict
 was that this is exactly the class of structure a competent Plan-mode session already provides.
 
-## Accepted breakage (follow-up, not fixed here)
+## Public surfaces after republication
 
-- `scripts/publish-methodology-view.ps1` — depends on the deleted rich view; broken until
-  republication regenerates one from the condensed corpus.
-- `product-docs/site/` (explorer build: `build.js`, `server.js`, `skillsPublic.js`, `.generated/`,
-  `tracks.json`, `phases.json`) — its skills allowlist and generated pages point at deleted method
-  skills and docs; rebuilt as part of the same republication effort.
-- The deployed public site (`methodology.ezkey.org`, `sites/ezkey-org/methodology.html` and the
-  French mirror) stays frozen at `v1.2.0` until then.
-- Dated artifacts under `product-docs/global/**` (backlog items, hygiene campaign notes, legacy
-  retrofit slices, method logs) keep their now-dead links to deleted decisions and docs. They are
-  historical records of what was true when they were written, not live navigation — updating them
-  would be new ceremony, not ablation.
+- **`methodology.ezkey.org`** — explorer rebuilt for the condensed corpus: one guided **Read**
+  track, search, download pack; no skills layer, no workflow-phase ribbon, no cognitive map.
+- **`ezkey.org/methodology.html`** / **`/fr/methodologie.html`** — short hand-written pointers to
+  the explorer (the generated rich view is gone).
+- Dated artifacts under `product-docs/global/**` may still mention deleted decisions and docs.
+  They are historical records of what was true when they were written, not live navigation —
+  updating them would be new ceremony, not ablation.
 
 ## Observation protocol
 
-Per the plan this record closes out: work normally for the coming sessions. When a cold agent
-visibly misses something the deleted corpus used to carry, note it before re-adding — and re-add
-only as a line in [`../README.md`](../README.md), never as a new file. That running list, plus this
-record, is the intended input for the follow-up article and the `v2.0.0` republication.
+Work normally for the coming sessions. When a cold agent visibly misses something the deleted
+corpus used to carry, note it before re-adding — and re-add only as a line in
+[`../README.md`](../README.md), never as a new file. That running list, plus this record, is the
+intended input for further calibration.
