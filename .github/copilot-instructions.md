@@ -21,7 +21,7 @@ linked skill/README). Do **not** invent `I-*` / `TB-*` per routine finding.
 | **`assessment-curated`** | Mandate-driven white-box assessment → HITL → handoff — `AGENTS.md` § Assessment curated; canon `product-docs/global/hygiene/assessment-curated/README.md`; skill `.cursor/skills/assessment-curated/SKILL.md` |
 
 Hygiene index: `product-docs/global/hygiene/README.md`. Hygiene vs program:
-`product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`.
+`product-docs/methodology/README.md` § *Three rules worth keeping*.
 
 ### Assessment curated
 
@@ -43,18 +43,17 @@ First instance: `product-docs/global/hygiene/mobile-protocol-security/`.
 
 ## Product-Docs Workflow
 
-When the task starts from a new product or design idea, follow root `AGENTS.md` § **Fresh-session workflow bootstrap** (single full procedure). Shortest entry: `product-docs/methodology/minimum-viable-method.md` or `session-start-guide.md`.
+When the task starts from a new product or design idea, read
+`product-docs/methodology/README.md` — the whole method (documentary levels, discoverability,
+values compass, three rules worth keeping) fits in that one document since the 2026-08 ablation.
 
-### Plan incubation vs retrofit
+### Plan mode first
 
-Treat a **current-session working plan** under `.cursor/plans/` or `plans/` as a legitimate incubation artifact, not as legacy retrofit by default.
-
-- Use working plans for freeform brainstorming, tool comparison, and early convergence.
-- When the workflow uses explicit project skills, use `plan-incubation` for this lane.
-- Materialize the durable output into `V-*`, `I-*`, `TB-*`, and related canonical docs.
-- Do not describe this as retrofit unless the source is genuinely historical or mixed with historical evidence.
-
-Use the **retrofit lane** only for historical plans, verbal history, or ad hoc implementation history that must be mined and reintegrated into canonical docs via `R-*` artifacts.
+Use Plan mode for freeform brainstorming, tool comparison, and early convergence. A working plan
+under `.cursor/plans/` or `plans/` is scaffolding by default: materialize the durable output into
+`V-*`, `I-*`, `TB-*` and only promote the plan file itself into the repository when it still
+carries option space the canon should not flatten (see the methodology README § *Ephemeral
+scaffold vs. retained plan*).
 
 ## Code Style
 

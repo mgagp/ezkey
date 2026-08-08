@@ -12,8 +12,7 @@ This note is the single contract for:
 - how humans and cold agents should treat harness code during review and doctor passes.
 
 Related: GitHub [#254](https://github.com/mgagp/ezkey/issues/254) (F2a), `TB-2026-0002`,
-[`maestro/README.md`](../maestro/README.md), methodology decision
-`product-docs/methodology/decisions/2026-07-13-test-only-surfaces-need-mechanical-gates.md`.
+[`maestro/README.md`](../maestro/README.md).
 
 ## Non-negotiables
 

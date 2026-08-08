@@ -7,17 +7,18 @@ alwaysApply: true
 
 When the task includes **opening a GitHub issue** (issue, ticket, billet, `#NNN` visibility):
 
-1. **Read first:** [`product-docs/methodology/github-issues-workflow.md`](../../product-docs/methodology/github-issues-workflow.md) (taxonomy + checklist).
-2. **Run skill:** [`.cursor/skills/github-issue-promote/SKILL.md`](../skills/github-issue-promote/SKILL.md).
-3. **Apply five label groups** on every new issue (minimum one label per group):
-   - `lane:*`
-   - `type:*`
-   - `component:*` (one or more)
-   - `priority:*`
-   - `status:*`
-4. **Create with `--label` flags** on `gh issue create` — do not leave labeling for a follow-up unless the operator explicitly defers it.
-5. **Verify** before reporting done: `gh issue view <N> --json labels` (or `gh issue edit` to add missing labels).
-6. **Back-reference canon:** update `I-*` / `TB-*` metadata with `- **GitHub issue:** \`#NNN\``.
+1. **Apply five label groups** on every new issue (minimum one label per group):
+   - `lane:*` — `lane:a` (default ideation-to-delivery), `lane:b` (plan-incubation), `lane:c`
+     (legacy retrofit), `lane:d` (post-delivery change), `lane:e` (methodology feedback)
+   - `type:*` — `type:feat`, `type:fix`, `type:refactor`, `type:test`, `type:docs`, `type:chore`,
+     `type:security`
+   - `component:*` (one or more) — e.g. `component:admin-api`, `component:admin-ui`,
+     `component:mobile`, `component:core`, `component:methodology`
+   - `priority:*` — `priority:p0` (blocks release) … `priority:p3` (backlog, no urgency)
+   - `status:*` — `status:needs-challenge`, `status:ready`, `status:blocked`
+2. **Create with `--label` flags** on `gh issue create` — do not leave labeling for a follow-up unless the operator explicitly defers it.
+3. **Verify** before reporting done: `gh issue view <N> --json labels` (or `gh issue edit` to add missing labels).
+4. **Back-reference canon:** update `I-*` / `TB-*` metadata with `- **GitHub issue:** \`#NNN\``.
 
 On Windows when `gh` is not on PATH, use `"C:\Program Files\GitHub CLI\gh.exe"` (see root `AGENTS.md`).
 

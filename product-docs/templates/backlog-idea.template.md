@@ -8,9 +8,7 @@
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`
 - **Last reviewed at:** `YYYY-MM-DD`
-- **Progression markers:** `<marker-id>, ...` — default list: `P0-foundations` … `P4-compliance-readiness` (see [`../methodology/nomenclature.md`](../methodology/nomenclature.md))
-- **Component tags:** `<component>, ...` — prefer the project's documented component vocabulary; see nomenclature and any project case study
-- **Lane:** `A` / `B` / `D`
+- **Component tags:** `<component>, ...` _(optional)_ — a small, stable vocabulary matching real ownership boundaries
 - **Captured by:** `<name or initials of the human contributor>`
 - **GitHub issue:** `#NNN` _(optional)_
 

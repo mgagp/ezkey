@@ -80,7 +80,7 @@ flowchart LR
 - When a scattered, module-level, or legacy `docs/` document is reviewed and found to contain a genuine design decision (a "why X over Y" rationale), the default destination is an ADR: `components/<pack>/design-decisions.md` when the decision is scoped to one component, or `global/architecture-decisions.md` when it is cross-cutting.
 - This address is stable even when the component pack is not yet fully instantiated (see [`components/README.md`](components/README.md)) — create the single `design-decisions.md` entry rather than leaving the decision homeless or only cross-linked from its original location.
 - Operational content (tuning guides, troubleshooting notes, historical incident logs) may stay in place with a pointer to the new ADR; it does not need to move.
-- "Keep in place and cross-link" is not a substitute for ADR extraction when the content is a design decision rather than operational guidance. See [`methodology/decisions/2026-07-28-legacy-documentation-default-gravity-to-adr.md`](methodology/decisions/2026-07-28-legacy-documentation-default-gravity-to-adr.md).
+- "Keep in place and cross-link" is not a substitute for ADR extraction when the content is a design decision rather than operational guidance.
 
 ### 9. Vocabulary is shared through the glossary
 
@@ -95,8 +95,7 @@ cryptographic exchange sequencing) rather than a point decision or a task. It ea
 by the same test as an ADR (a reader who gets it wrong would make a structurally incorrect design
 decision), but its canonical location is a **declaration**, not necessarily a path under
 `product-docs/`: Core Rule 1 is satisfied by naming the existing location unambiguously below, even
-when relocating it would be disproportionate (see
-[`methodology/decisions/2026-07-28-foundational-reference-canon-not-legacy.md`](methodology/decisions/2026-07-28-foundational-reference-canon-not-legacy.md)).
+when relocating it would be disproportionate.
 
 | Concept | Canonical location |
 | ------- | ------------------ |
@@ -116,7 +115,7 @@ when relocating it would be disproportionate (see
 | Component ADRs | `components/<pack>/design-decisions.md` |
 | Component traceability | `components/<pack>/spec-test-traceability.md` |
 | Entity lifecycle governance (detailed reference) | [`../docs/LIFECYCLE_GOVERNANCE.md`](../docs/LIFECYCLE_GOVERNANCE.md) — canonical, not legacy; [`global/lifecycle-model.md`](global/lifecycle-model.md) is its compact companion |
-| Cryptographic protocol / signature payload reference | [`../docs/CRYPTO.md`](../docs/CRYPTO.md), [`../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) — canonical, not legacy; too many cross-repository and source-code referrers to relocate (see [`methodology/decisions/2026-07-28-foundational-reference-canon-not-legacy.md`](methodology/decisions/2026-07-28-foundational-reference-canon-not-legacy.md)) |
+| Cryptographic protocol / signature payload reference | [`../docs/CRYPTO.md`](../docs/CRYPTO.md), [`../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`](../docs/ENROLLMENT_SIGNATURE_PAYLOAD.md), [`../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md`](../docs/AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) — canonical, not legacy; too many cross-repository and source-code referrers to relocate |
 
 ## Typical Change Workflows
 

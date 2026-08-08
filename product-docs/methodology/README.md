@@ -1,229 +1,138 @@
-# Methodology Pack
+# Ezkey Methodology
 
-This folder defines a lightweight operating method used to move from product ideation to implementation.
+## Ablation note (2026-08)
 
-It is designed for mixed collaboration:
+This pack was condensed from roughly 10,000 lines (21 workflow documents, 32 dated decisions, 14
+skills, a rich HTML view) to this single document, following the same ablation principle Anthropic
+engineer Boris Cherny describes for system prompts: delete, then watch what a cold agent actually
+needs. Everything that was ceremony compensating for weaker models is gone. What is left is the
+three things IDE/agent Plan mode does not carry on its own. Git history is the archive — nothing
+was moved to an `archive/` folder. See [`release-notes/`](release-notes/) for the version record.
 
-- human to human,
-- human to AI,
-- AI to AI (through bounded context documents and specialized skills).
+## Posture: Plan mode first
 
-The method is intentionally **repository-native**. External trackers, branches, pull requests, and
-release tools can be linked in when they add coordination value, but the durable product reasoning
-must remain understandable from the documentation corpus itself.
+Use IDE/agent **Plan mode** for research, challenging assumptions, and comparing alternatives.
+That capability improves with every model release, funded and refined at a scale no single project
+can match. This methodology is not a competing workflow — it exists only to carry what a Plan mode
+session, by design, does not: continuity across sessions and months.
 
-## Why this exists
+## The three things this methodology carries
 
-When a documentation system already has strong product and component documentation, this pack adds
-the missing connective tissue:
+### 1. Documentary levels
 
-- how ideas are captured,
-- how they are challenged and refined,
-- how they are promoted into delivery work,
-- how quality and traceability are enforced with minimal ceremony.
+Four artifact types, each with its own lifecycle:
 
-## Reading order
+| Prefix | Artifact | Status vocabulary |
+| --- | --- | --- |
+| `V-*` | Vision note — directional product orientation | `draft` → `under-review` → `promoted` / `archived` |
+| `I-*` | Backlog idea — a concrete idea not yet execution-ready | `captured` → `triaged` → `incubating` → `ready` → `active` → `done` / `parked` / `archived` / `dropped` |
+| `TB-*` | Tracer bullet — a bounded, execution-ready vertical slice | `draft` → `under-review` → `promoted` / `archived` |
+| `ADR-*` | Architecture or design decision | `proposed` / `accepted` / `superseded-by-<ADR-id>` / `deprecated` |
 
-`README.md` stays first in the explorer navigation. After that, keep the pack ordered by the
-reader journey rather than alphabetically.
+**Identifiers:** `<Prefix>-YYYY-MM-DD-<slug>.md`. The date avoids collisions across parallel work;
+the slug keeps the subject discoverable. No counter or index file to consult before creating one.
 
-If you only need the fastest reliable entry, start with [`minimum-viable-method.md`](minimum-viable-method.md).
+**Priority (when it matters):** `P0` critical blocker · `P1` most pressing / foundational · `P2`
+standard · `P3` comfort, safe to defer.
 
-### Entry and orientation
+**Choose the lightest artifact that protects the decision:**
 
-1. `minimum-viable-method.md`
-2. `workflow-overview.md`
-3. `session-start-guide.md`
-4. `artifact-identity-and-review.md`
+| Situation | Artifact |
+| --- | --- |
+| Small local change, clear intent | None — fix and validate directly |
+| New idea, unclear value or scope | `I-*` |
+| Directional or product-wide question | `V-*` |
+| Execution-ready, non-trivial slice | `TB-*` |
+| A design choice with real trade-offs | `ADR-*`, next to the code it governs |
 
-### Core working method
+A `V-*` is not itself the final decision — when the direction is settled, canonize the substance
+in the durable doc it belongs to (roadmap, design principles, an `ADR-*`) and move the vision note
+to `promoted`. A `TB-*` follows the same pattern for execution learnings.
 
-1. `analysis-and-design-canon.md`
-2. `design-judgment-principles.md`
-3. `tracer-bullet-method.md`
-4. `testing-strategy-in-workflow.md`
-5. `quality-gates.md`
+When an artifact is archived because its substance moved into a successor rather than being
+dropped, record it both ways: `Superseded by: <id>` on the old one, `Supersedes: <id>` on the new
+one.
 
-### Specialized lanes and workflow variants
+### 2. Bidirectional discoverability
 
-1. `plan-incubation-workflow.md`
-2. `legacy-retrofit-workflow.md`
-3. `blitz-intake-pattern.md`
-4. `github-issues-workflow.md` — label taxonomy and mandatory checklist; agent skill:
-   `.cursor/skills/github-issue-promote/SKILL.md`
-5. `multi-branch-workflow.md`
-6. `release-management-workflow.md`
-7. `methodology-publication-and-versioning.md`
+Every artifact carries enough metadata that a cold agent — no memory of the prior session — can
+resume from the corpus alone:
 
-### Reference context
+- **ID, status, created/updated dates.**
+- **Captured by:** the human who originated the idea, not the agent that wrote the file.
+- **Links**, both directions: an `I-*` points forward to the `TB-*` it produced and back to the
+  `V-*` it came from, if any; code comments and commit messages may cite the artifact ID they
+  implement.
 
-1. `methodological-values.md`
-2. `ai-collaboration-model.md`
-3. `nomenclature.md`
+This is the property Plan mode does not have by default: a session started cold has no way to know
+what a session three months ago decided, unless the corpus carries it.
 
-### Example and institutional memory
+### 3. The values compass
 
-1. `case-study-ezkey.md` — concrete instantiation inside this repository's source project.
-2. `decisions/` — rationale and historical record for non-obvious methodology choices.
-3. `release-notes/` — published SemVer snapshots for the public methodology product.
+Not rules to apply mechanically — a compass for when no precise rule applies:
 
-## Versioning and publication
+- **Proportional rigor.** Use the lightest process that still protects the quality of the decision.
+  Ask: *what concrete risk does this extra artifact or gate reduce?*
+- **Simplicity and pragmatism (80/20).** Target roughly 80% of the value with 20% of the
+  complexity.
+- **Essential vs. accidental complexity.** Essential complexity is fine when the problem genuinely
+  requires it. An abstraction or process layer that does not materially improve the outcome does
+  not belong.
+- **One canonical place per concept.** Link to the source of truth; never silently duplicate it.
+- **Fail-open vs. fail-closed at real boundaries.** When a control can fail, name whether the
+  primary path *continues* (fail-open — keep the failure observable) or *stops* (fail-closed — when
+  continuing would silently weaken a claimed guarantee). A one-line compass, not a ceremony for
+  every call site.
+- **Stay in the chosen stack.** Prefer the idioms developers already expect; a new dependency or
+  framework needs explicit justification.
 
-The publishable methodology product uses **independent semantic versioning**, declared in
-[`../methodology-version.properties`](../methodology-version.properties). See
-[`methodology-publication-and-versioning.md`](methodology-publication-and-versioning.md) for the
-publication workflow and release-note conventions.
+## Three rules worth keeping
 
-- Product direction and intent remain in `../global/`.
-- Component implementation details remain in `../components/`.
-- This pack defines process and collaboration mechanics.
-- Rationale for non-obvious methodology choices lives in `decisions/`.
-- Project-specific taxonomies, examples, and terminology belong in `case-study-ezkey.md` when they
-  clarify the method without making the generic docs carry project-local coupling.
-- Artifact identity and review conventions live in
-  [`artifact-identity-and-review.md`](artifact-identity-and-review.md).
-- Release readiness and Evergreen release-branch posture live in
-  [`release-management-workflow.md`](release-management-workflow.md).
+The rest of the corpus is gone, but these three survived the ablation because real sessions kept
+needing them and they were too easy to miss buried on page four of a workflow document.
 
-## Scope boundaries
+### Hygiene vs. program
 
-When this methodology is published as a standalone product, publish the **method** and its
-teaching surfaces, not the source project's active delivery corpus.
+An invitation to "close this methodologically" is not, by itself, permission to create `I-*` or
+`TB-*` artifacts. Classify first:
 
-- Publishable by default: `methodology/`, `templates/`, derived public `skills/`, `glossary.md`,
-  rich views, and methodology decisions explicitly marked `public: true`.
-- Not publishable by default: instantiated Ezkey delivery artifacts under `product-docs/global/`,
-  component implementation packs under `product-docs/components/`, backlog / roadmap / vision
-  execution records, and editor-local `.cursor/` assets.
-- If a project artifact contains a reusable methodological lesson, promote or restate that lesson in
-  a method-level document or decision instead of publishing the project artifact itself.
-- Public methodology docs may reference the source project as a case study, but they must remain
-  navigable and understandable without access to Ezkey-only working documents.
+- **Hygiene** — a known recipe, one bounded change, no new contract with consumers: a commit or PR
+  plus a targeted doc touch (`AGENTS.md`, a module README) is enough. No new artifact.
+- **Program** — multi-step, a new contract, cross-module coordination, or genuinely new
+  uncertainty: `I-*` and/or `TB-*`, proportional to the program, not reflexively all of them.
 
-## Core principle
+If asked for full artifacts and the work is hygiene-shaped, say so and propose the lighter path
+before proceeding.
 
-Use the lightest process that still preserves:
+### Ephemeral scaffold vs. retained plan
 
-- analytical rigor,
-- design consistency,
-- end-to-end traceability,
-- clear handoff quality between humans and AI agents.
+A Plan-mode working file is scaffolding by default. When its signal is fully captured in a
+`V-*`/`I-*`/`TB-*`, do not copy it into the repository just to satisfy a traceability habit, and
+never link a corpus document to a path outside the clone. Promote a plan file into the repository
+only when it still carries option space, rejected alternatives, or execution notes the canon
+should not flatten.
 
-## Fast routing
+### Closed uncertainty stays closed
 
-Use this quick routing before reading deeper:
+Once an uncertainty has been addressed and recorded, treat it as closed. Do not reopen it without a
+genuinely new signal. Re-reading settled ground "for alignment" produces summary on summary, not
+clarity — recognizing when something is already sufficient is a discipline worth applying to the
+corpus itself, not only to code.
 
-- New idea or normal product work: start with **Lane A**.
-- Freeform exploration first, canonical docs later: start with **Lane B**.
-- Historical plans or verbal history to mine: start with **Lane C**.
-- Existing implemented behavior that now needs change: start with **Lane D**.
-- Method improvement itself: start with **Lane E**.
+## GitHub issues (optional)
 
-Then use [`session-start-guide.md`](session-start-guide.md) for the detailed prompts and skill
-sequence.
+An optional visibility layer, not a second source of truth — the artifact above remains canonical.
+When you open an issue, apply all five label groups (`lane:*`, `type:*`, `component:*`,
+`priority:*`, `status:*`) at create time; see
+[`.cursor/rules/github-issue-labels.mdc`](../../.cursor/rules/github-issue-labels.mdc). Link back
+to the `I-*`/`TB-*` in the issue body instead of duplicating its content.
 
-If the full method still feels too large for the current topic, use
-[`minimum-viable-method.md`](minimum-viable-method.md) as the lightweight front door.
+## Templates
 
-Apply [`design-judgment-principles.md`](design-judgment-principles.md) when the methodology needs a
-method-level tie-breaker for design trade-offs.
+Four kept, under [`../templates/`](../templates/): `vision-note`, `backlog-idea`,
+`tracer-bullet-brief`, `architecture-decision`. Copy, fill in, delete sections that do not apply.
 
-In this repository's source project, the product-specific companion canon remains in
-`product-docs/global/design-principles.md` — especially for Ezkey-local principles that should not
-be promoted wholesale into the public methodology product.
+## Versioning
 
-Apply [`methodological-values.md`](methodological-values.md) when judging the workflow itself:
-whether a gate is proportional, whether an artifact deserves to be living, whether a skill should
-exist, and whether a closeout is honest enough to resume later.
-
-For **closeout invitations** (operator asks to "close methodologically"), classify hygiene vs program
-before creating new backlog artifacts — see
-[`decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`](decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md)
-and [`minimum-viable-method.md`](minimum-viable-method.md#hygiene-vs-program-closeout).
-
-## Source-project hooks
-
-This README stays method-first. When you are applying the methodology inside this repository's
-source project, the most relevant project-local companions live under `../global/` and
-`../components/`.
-
-For example, Admin UI role visibility and **deployment operator geometries** are documented in
-`product-docs/global/operator-alignment-guide.md`, with related cross-cutting artifacts in
-`product-docs/global/admin-ui-paginated-screens-matrix.md`,
-`product-docs/global/rate-limit-baseline-policy.md`,
-`product-docs/global/ezkey-system-identity-sensitivity-report.md`, and
-`product-docs/global/sql-business-limits-policy.md`. (Former
-`product-docs/global/api-controllers-registry.md` downscoped — see
-[`decisions/2026-05-24-controllers-registry-downscope.md`](decisions/2026-05-24-controllers-registry-downscope.md).)
-
-## Rich view
-
-For a visual companion to this methodology pack — workflow diagram, artifact types, parallel lanes,
-naming conventions, and skills reference — open [`view/index.html`](view/index.html).
-
-The public explorer also packages a deliberately curated, derived **Skills** section sourced from
-`.cursor/skills/`, so reusable collaboration mechanics stay discoverable without making every
-editor-local or source-project skill part of the public method.
-
-The next distribution direction is a generated **download pack** for local reuse, with an explicit
-preference for packaging before any installer-style automation. See
-[`decisions/2026-05-29-download-pack-first-for-methodology-distribution.md`](decisions/2026-05-29-download-pack-first-for-methodology-distribution.md).
-
-See [`decisions/2026-05-24-rich-views.md`](decisions/2026-05-24-rich-views.md) for the rationale
-and convention governing rich views across the whole documentation corpus.
-
-## Quick start prompts
-
-Use these prompts in a fresh session to trigger the method quickly.
-
-### 0) Start with the smallest rigorous path
-
-`Use the Minimum Viable Method for this topic. First classify the lane, then create only the next necessary artifact.`
-
-### 1) Start from a raw idea
-
-`Use vision-intake, then backlog-triage for this new idea. Create V-* and I-* entries in product-docs.`
-
-### 2) Stress-test before design lock-in
-
-`Run grill-me on I-* or TB-* and produce critical questions, top risks, and 2-3 design options with recommendation.`
-
-### 3) Start with a live working plan first
-
-`Use plan-incubation. Start in Plan mode for freeform option exploration, create a working plan, then materialize the durable output into V-* and/or I-* without treating it as retrofit.`
-
-### 4) Promote to bounded execution
-
-`If ready, use tracer-bullet-promote and test-strategy-planner to create TB-* and a test-plan slice.`
-
-### 5) Prepare component-level design
-
-`Use component-design-pack for impacted components and link boundaries, mappings, validation, and error paths.`
-
-### 6) Gate and close
-
-`Run quality-gatekeeper, then traceability-sync and closeout for explicit status transitions and residual risks.`
-
-### 7) Retrofit historical plans
-
-`Run legacy-plan-miner on selected historical plans, then retrofit-curator to map signal into canonical product-docs targets.`
-
-### 8) Retrofit from verbal history
-
-`Start legacy knowledge retrofit from verbal briefing. Use source type verbal, create R-*, then map signal into canonical docs.`
-
-### 9) Run a blitz intake (multi-item capture session)
-
-`Run a blitz intake. I will dictate several items; capture verbatim, classify by batch, materialize V-*/I-*/R-* in English, and archive the scratch board to blitz-archive (do not delete).`
-
-### 10) Start from a delivered feature that now needs change
-
-`Start a post-delivery change inception. Diagnose whether this is a direct technical fix or requires re-entry through TB, I, or V, then use only the necessary artifacts.`
-
-### 11) Improve the methodology itself
-
-`Start a methodology feedback lane from this session. Record the process decision under methodology/decisions, preserve the key verbatim signal, and update the smallest affected methodology files.`
-
-### 12) Publish a methodology release
-
-`Run methodology-release. Review changes since the last methodology version, recommend the SemVer bump, draft the release note, and update methodology-version.properties.`
+Independent SemVer in [`../methodology-version.properties`](../methodology-version.properties);
+see [`release-notes/`](release-notes/) for published snapshots.
