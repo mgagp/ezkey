@@ -448,7 +448,7 @@ public class IntegrationController {
               .build());
       throw e;
 
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Integration creation failed unexpectedly", e);
       auditLogService.log(
           AuditHelper.createAdminAudit(

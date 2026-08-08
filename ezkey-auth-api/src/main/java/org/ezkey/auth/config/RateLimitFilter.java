@@ -269,7 +269,7 @@ public class RateLimitFilter implements Filter {
         return Integer.parseInt(idNode.asString());
       }
       return null;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return null;
     }
   }
@@ -306,7 +306,7 @@ public class RateLimitFilter implements Filter {
         return Integer.parseInt(idNode.asString());
       }
       return null;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return null;
     }
   }

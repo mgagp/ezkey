@@ -139,7 +139,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         }
       } catch (IllegalArgumentException e) {
         logger.warn("❌ Malformed HTTP Basic Auth header: {}", e.getMessage());
-      } catch (Exception e) {
+      } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
         logger.error("❌ Error processing API key authentication: {}", e.getMessage(), e);
       }
     }

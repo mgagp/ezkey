@@ -57,7 +57,7 @@ public class DeviceCryptoService {
       String priv = Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded());
       String pub = Base64.getEncoder().encodeToString(kp.getPublic().getEncoded());
       return new ECP256DeviceKeyPair(priv, pub);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to generate device key pair", e);
       throw new IllegalStateException("Unable to generate EC P-256 key pair", e);
     }
@@ -97,7 +97,7 @@ public class DeviceCryptoService {
         der = EcdsaDerCodec.encodeSignature(rs[0], s);
       }
       return Base64.getEncoder().encodeToString(der);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to sign data", e);
       throw new IllegalStateException("Signing failure", e);
     }
@@ -122,7 +122,7 @@ public class DeviceCryptoService {
       String randomPart = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
       String saltPart = Base64.getUrlEncoder().withoutPadding().encodeToString(salt);
       return randomPart + "." + saltPart;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Failed to generate proof token", e);
       throw new IllegalStateException("Unable to generate proof token", e);
     }
@@ -143,7 +143,7 @@ public class DeviceCryptoService {
         return verifyEd25519(data, sigRaw, pubRaw);
       }
       return verifyEcdsa(data, signatureEncoded, publicKeyEncoded);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Signature validation failed", e);
       return false;
     }
@@ -160,7 +160,7 @@ public class DeviceCryptoService {
       verifier.initVerify(publicKey);
       verifier.update(data.getBytes(StandardCharsets.UTF_8));
       return verifier.verify(sigRaw);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.debug("Ed25519 verify failed", e);
       return false;
     }
@@ -180,7 +180,7 @@ public class DeviceCryptoService {
       verifier.initVerify(publicKey);
       verifier.update(data.getBytes(StandardCharsets.UTF_8));
       return verifier.verify(signatureBytes);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.debug("ECDSA verify failed", e);
       return false;
     }

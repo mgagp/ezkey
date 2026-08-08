@@ -94,7 +94,7 @@ public class QrCodePayloadService {
       }
 
       return json;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       throw new IllegalStateException("Failed to compose QR code payload", e);
     }
   }

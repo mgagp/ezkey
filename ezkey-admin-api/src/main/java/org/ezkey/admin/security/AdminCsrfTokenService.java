@@ -9,7 +9,9 @@
 package org.ezkey.admin.security;
 
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import javax.crypto.Mac;
@@ -73,7 +75,7 @@ public class AdminCsrfTokenService {
       mac.init(new SecretKeySpec(sha256(plainSessionToken), HMAC_ALGORITHM));
       byte[] signature = mac.doFinal(noncePart.getBytes(StandardCharsets.US_ASCII));
       return Base64.getUrlEncoder().withoutPadding().encodeToString(signature);
-    } catch (Exception e) {
+    } catch (NoSuchAlgorithmException | InvalidKeyException e) {
       throw new IllegalStateException("Unable to sign Admin CSRF token", e);
     }
   }
@@ -81,7 +83,7 @@ public class AdminCsrfTokenService {
   private byte[] sha256(String value) {
     try {
       return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-    } catch (Exception e) {
+    } catch (NoSuchAlgorithmException e) {
       throw new IllegalStateException("Unable to hash Admin session token", e);
     }
   }

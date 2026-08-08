@@ -300,7 +300,7 @@ public class IntegrationApiAuthAttemptController {
               .build());
       throw e;
 
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
                   context,
@@ -398,7 +398,7 @@ public class IntegrationApiAuthAttemptController {
       return ResponseEntity.notFound().build();
     } catch (AuthAttemptWaitValidationException e) {
       throw e;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Unexpected error waiting for auth attempt {}", id, e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
@@ -500,7 +500,7 @@ public class IntegrationApiAuthAttemptController {
               .build());
       throw e;
 
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditHelper.createIntegrationApiAudit(
                   context,
@@ -732,7 +732,7 @@ public class IntegrationApiAuthAttemptController {
     try {
       AuthAttempt attempt = authAttemptService.getById(authAttemptId);
       return resolveIntegrationIdFromEnrollment(attempt.getEnrollmentId());
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return null;
     }
   }
@@ -754,7 +754,7 @@ public class IntegrationApiAuthAttemptController {
     try {
       AuthAttempt attempt = authAttemptService.getById(authAttemptId);
       return resolveTenantIdFromEnrollment(attempt.getEnrollmentId());
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return null;
     }
   }

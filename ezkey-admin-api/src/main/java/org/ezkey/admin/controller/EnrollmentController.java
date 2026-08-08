@@ -602,7 +602,7 @@ public class EnrollmentController {
               .build());
 
       return ResponseEntity.badRequest().build();
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,
@@ -779,7 +779,7 @@ public class EnrollmentController {
 
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.notFound().build();
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }

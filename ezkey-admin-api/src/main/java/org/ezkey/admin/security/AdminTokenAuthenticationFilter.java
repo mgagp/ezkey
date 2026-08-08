@@ -162,7 +162,7 @@ public class AdminTokenAuthenticationFilter extends OncePerRequestFilter {
             tenantId,
             integrationId);
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Error validating token: {}", e.getMessage(), e);
     }
   }

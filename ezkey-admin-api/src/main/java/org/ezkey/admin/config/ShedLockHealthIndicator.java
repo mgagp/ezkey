@@ -86,7 +86,7 @@ public class ShedLockHealthIndicator implements HealthIndicator {
           .withDetail("activeLockCount", activeLocks)
           .withDetail("totalLockCount", locks.size())
           .build();
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       LOG.warn("Failed to retrieve ShedLock health details", e);
       return Health.down().withException(e).build();
     }

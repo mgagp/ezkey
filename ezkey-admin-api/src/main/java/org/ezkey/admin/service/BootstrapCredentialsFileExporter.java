@@ -102,7 +102,7 @@ public class BootstrapCredentialsFileExporter {
                 existingEnrollmentId);
             return;
           }
-        } catch (Exception e) {
+        } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
           logger.warn(
               "Failed to read existing bootstrap credentials file, will overwrite: {}",
               e.getMessage());

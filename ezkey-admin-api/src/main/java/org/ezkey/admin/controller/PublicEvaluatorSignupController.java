@@ -105,7 +105,7 @@ public class PublicEvaluatorSignupController {
               .build());
 
       return ResponseEntity.status(201).body(response);
-    } catch (RuntimeException ex) {
+    } catch (RuntimeException ex) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context,

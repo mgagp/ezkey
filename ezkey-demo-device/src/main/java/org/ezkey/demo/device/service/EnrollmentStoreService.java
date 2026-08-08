@@ -71,7 +71,7 @@ public class EnrollmentStoreService {
       Path file = rootDir.resolve(record.enrollmentId() + ".json");
       byte[] json = objectMapper.writeValueAsBytes(record);
       Files.write(file, json);
-    } catch (Exception e) {
+    } catch (IOException e) {
       logger.error("Failed to save enrollment {}", record.enrollmentId(), e);
       throw new IllegalStateException("Cannot save enrollment", e);
     }
@@ -85,7 +85,7 @@ public class EnrollmentStoreService {
       }
       byte[] json = Files.readAllBytes(file);
       return Optional.of(objectMapper.readValue(json, Record.class));
-    } catch (Exception e) {
+    } catch (IOException e) {
       logger.error("Failed to load enrollment {}", enrollmentId, e);
       return Optional.empty();
     }

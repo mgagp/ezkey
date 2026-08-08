@@ -261,7 +261,7 @@ public class AccessControlService {
         logger.debug("API key access to auth attempt {}: {}", authAttemptId, canAccess);
       }
       return canAccess;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error(
           "Error checking access to auth attempt {}: {}", authAttemptId, e.getMessage(), e);
       return false;
@@ -309,7 +309,7 @@ public class AccessControlService {
 
       // Check if integration belongs to tenant admin's tenant
       return canAccessIntegrationForTenant(auth, integrationId);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error(
           "Error checking tenant access to auth attempt {}: {}", authAttemptId, e.getMessage(), e);
       return false;
@@ -346,7 +346,7 @@ public class AccessControlService {
 
       // Check if integration belongs to tenant admin's tenant
       return canAccessIntegrationForTenant(auth, integrationId);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error(
           "Error checking tenant access to enrollment {}: {}", enrollmentId, e.getMessage(), e);
       return false;
@@ -390,7 +390,7 @@ public class AccessControlService {
           integrationTenantId,
           matches);
       return matches;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error(
           "Error checking tenant access to integration {}: {}", integrationId, e.getMessage(), e);
       return false;
@@ -425,7 +425,7 @@ public class AccessControlService {
 
       logger.warn("Authentication principal is not an Integer: {}", principal);
       return false;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Error checking integration access: {}", e.getMessage(), e);
       return false;
     }

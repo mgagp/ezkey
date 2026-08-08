@@ -13,7 +13,9 @@ package org.ezkey.admin.service;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import org.ezkey.admin.dto.response.DashboardAlertItemDto;
 import org.ezkey.admin.dto.response.DashboardAuth24hStatsDto;
 import org.ezkey.admin.dto.response.DashboardEnrollmentStatsDto;
@@ -173,7 +175,7 @@ public class DashboardService {
       dto.setIntegrityJobs(integrityJobsFuture.join());
       dto.setOperationalJobs(operationalJobsFuture.join());
       dto.setIntegrityConfigSummary(integrityConfigFuture.join());
-    } catch (Exception e) {
+    } catch (CompletionException | CancellationException e) {
       logger.error("Dashboard overview build failed", e);
       throw new RuntimeException("Failed to build dashboard overview", e);
     }

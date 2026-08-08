@@ -214,7 +214,7 @@ public class EzkeyAppController {
       String userMessage =
           toBindErrorMessage(e.getStatusCode().value(), e.getResponseBodyAsString());
       model.addAttribute("error", userMessage);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Bind failed for enrollment {}", enrollmentId, e);
       model.addAttribute("error", "Bind failed: " + e.getMessage());
     }
@@ -359,7 +359,7 @@ public class EzkeyAppController {
             "error",
             "Verification failed: No response from server. Please start over from the beginning.");
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       // Verification failed - remove enrollment from store
       storeService.delete(enrollmentId);
       logger.error("Verify failed for enrollment {} - removed from store", enrollmentId, e);
@@ -464,7 +464,7 @@ public class EzkeyAppController {
         model.addAttribute("hasPendingAuth", false);
         return "phone/ezkey/auth";
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Authentication check failed for enrollment {}", enrollmentId, e);
 
       // Check if it's an expired authentication attempt
@@ -622,7 +622,7 @@ public class EzkeyAppController {
         model.addAttribute("failed", true);
         model.addAttribute("message", "Failed to submit authentication response");
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error(
           "Auth response failed for enrollment {} authAttempt {}", enrollmentId, authAttemptId, e);
       model.addAttribute("success", false);

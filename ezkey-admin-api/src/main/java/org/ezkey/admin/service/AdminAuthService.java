@@ -588,7 +588,7 @@ public class AdminAuthService {
 
       return token.getAdmin();
 
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return null;
     }
   }
@@ -637,7 +637,7 @@ public class AdminAuthService {
         token.setActive(false);
         tokenRepository.save(token);
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       // Best-effort logout: never fail the API surface; token TTL remains the backstop.
       logger.warn("Logout token invalidation failed", e);
     }

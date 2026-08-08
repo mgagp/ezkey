@@ -53,7 +53,7 @@ final class EcdsaDerCodec {
       byte[] sBytes = Arrays.copyOfRange(der, pos, pos + sLen);
       BigInteger s = new BigInteger(1, sBytes);
       return new BigInteger[] {r, s};
-    } catch (RuntimeException e) {
+    } catch (RuntimeException e) { // CHECKSTYLE IGNORE IllegalCatch
       return null;
     }
   }

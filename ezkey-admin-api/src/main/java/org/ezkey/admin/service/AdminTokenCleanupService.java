@@ -116,7 +116,7 @@ public class AdminTokenCleanupService {
         logger.debug("✅ No expired bearer tokens to clean");
       }
 
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Error during token cleanup: {}", e.getMessage(), e);
     }
   }

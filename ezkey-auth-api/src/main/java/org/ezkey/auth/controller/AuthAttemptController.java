@@ -357,7 +357,7 @@ public class AuthAttemptController {
               .build());
 
       return ResponseEntity.ok(authAttemptMapper.toAuthAttemptRespondResponseDto(response));
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.AUTH_ATTEMPT_RESPOND)

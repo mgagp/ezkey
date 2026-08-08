@@ -33,6 +33,7 @@ import org.ezkey.security.domain.entity.KeysetBlob;
 import org.ezkey.security.domain.repository.KeysetBlobRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
 /**
@@ -177,7 +178,7 @@ public class TinkKeyManager implements KeyManagementOperations {
           if (loadedFromDatabase) {
             logger.info("✅ Keyset loaded from database");
           }
-        } catch (Exception e) {
+        } catch (DataAccessException | IllegalStateException e) {
           logger.warn(
               "Failed to load keyset from database, falling back to file: {}", e.getMessage());
           logger.debug("Database keyset load error", e);
@@ -211,7 +212,10 @@ public class TinkKeyManager implements KeyManagementOperations {
             try {
               saveKeysetToDatabase("STARTUP_FILE_SYNC");
               logger.info("✅ Keyset synchronized to database from file");
-            } catch (Exception e) {
+            } catch (GeneralSecurityException
+                | IOException
+                | DataAccessException
+                | IllegalStateException e) {
               logger.warn("Failed to sync keyset to database: {}", e.getMessage());
             }
           }
@@ -231,7 +235,10 @@ public class TinkKeyManager implements KeyManagementOperations {
             try {
               saveKeysetToDatabase("STARTUP_NEW_KEYSET");
               logger.info("✅ New keyset saved to database");
-            } catch (Exception e) {
+            } catch (GeneralSecurityException
+                | IOException
+                | DataAccessException
+                | IllegalStateException e) {
               logger.warn("Failed to save new keyset to database: {}", e.getMessage());
             }
           }
@@ -247,7 +254,10 @@ public class TinkKeyManager implements KeyManagementOperations {
               + "To enable encryption, run: sudo ./scripts/generate-master-key.sh (Linux/Mac) "
               + "or .\\scripts\\generate-master-key.ps1 (Windows as Administrator)",
           e);
-    } catch (Exception e) {
+    } catch (GeneralSecurityException
+        | IOException
+        | IllegalArgumentException
+        | SecurityException e) {
       logger.error(
           "Failed to initialize Tink encryption. Encryption will be disabled. "
               + "Application will continue without encryption at rest.",
@@ -426,7 +436,7 @@ public class TinkKeyManager implements KeyManagementOperations {
         if (dbVersion.isPresent() && dbVersion.get() > databaseKeysetVersion) {
           shouldReloadFromDatabase = true;
         }
-      } catch (Exception e) {
+      } catch (DataAccessException | IllegalStateException e) {
         logger.warn(
             "Failed to check keyset version in database. Using cached keyset. Error: {}",
             e.getMessage());
@@ -442,7 +452,7 @@ public class TinkKeyManager implements KeyManagementOperations {
         if (keysetFile.exists() && keysetFile.lastModified() > keysetFileLastModified) {
           shouldReloadFromFile = true;
         }
-      } catch (Exception e) {
+      } catch (SecurityException e) {
         logger.warn(
             "Failed to check keyset file modification time. Using cached keyset. Error: {}",
             e.getMessage());
@@ -468,7 +478,7 @@ public class TinkKeyManager implements KeyManagementOperations {
               logger.info("✅ Keyset reloaded from database successfully");
             }
           }
-        } catch (Exception e) {
+        } catch (DataAccessException | IllegalStateException e) {
           logger.warn(
               "Failed to reload keyset from database. Using cached keyset. Error: {}",
               e.getMessage());
@@ -491,7 +501,10 @@ public class TinkKeyManager implements KeyManagementOperations {
               logger.info("✅ Keyset reloaded from file successfully");
             }
           }
-        } catch (Exception e) {
+        } catch (GeneralSecurityException
+            | IOException
+            | IllegalStateException
+            | SecurityException e) {
           logger.warn(
               "Failed to reload keyset file. Using cached keyset. Error: {}", e.getMessage());
           logger.debug("Keyset reload error", e);
@@ -833,7 +846,10 @@ public class TinkKeyManager implements KeyManagementOperations {
       try {
         saveKeysetToDatabaseUnlocked("KEY_ROTATION");
         logger.info("✅ Rotated keyset saved to database");
-      } catch (Exception e) {
+      } catch (GeneralSecurityException
+          | IOException
+          | DataAccessException
+          | IllegalStateException e) {
         logger.error("Failed to save rotated keyset to database: {}", e.getMessage());
       }
     }
@@ -899,7 +915,10 @@ public class TinkKeyManager implements KeyManagementOperations {
       try {
         saveKeysetToDatabaseUnlocked("KEY_ADDED_PENDING");
         logger.info("✅ Updated keyset (with new pending key) saved to database");
-      } catch (Exception e) {
+      } catch (GeneralSecurityException
+          | IOException
+          | DataAccessException
+          | IllegalStateException e) {
         logger.error("Failed to save updated keyset to database: {}", e.getMessage());
       }
     }
@@ -978,7 +997,10 @@ public class TinkKeyManager implements KeyManagementOperations {
       try {
         saveKeysetToDatabaseUnlocked("KEY_PROMOTED_PRIMARY");
         logger.info("✅ Keyset with promoted primary key saved to database");
-      } catch (Exception e) {
+      } catch (GeneralSecurityException
+          | IOException
+          | DataAccessException
+          | IllegalStateException e) {
         logger.error("Failed to save keyset to database after promotion: {}", e.getMessage());
       }
     }
@@ -1081,7 +1103,7 @@ public class TinkKeyManager implements KeyManagementOperations {
             logger.debug("Deleted old backup: {}", backup.getName());
           }
         }
-      } catch (Exception e) {
+      } catch (IllegalArgumentException | SecurityException e) {
         logger.warn("Failed to delete old backup: {}", backup.getName(), e);
       }
     }
@@ -1152,7 +1174,7 @@ public class TinkKeyManager implements KeyManagementOperations {
           signedPrimaryKeyId,
           databaseKeysetVersion);
       return true;
-    } catch (Exception e) {
+    } catch (GeneralSecurityException | DataAccessException | IllegalArgumentException e) {
       logger.error("Failed to load keyset from database: {}", e.getMessage());
       logger.debug("Database keyset load error", e);
       return false;
@@ -1196,13 +1218,18 @@ public class TinkKeyManager implements KeyManagementOperations {
       keysetBlob.setLastUpdatedAt(OffsetDateTime.now());
 
       KeysetBlob saved = keysetBlobRepository.save(keysetBlob);
-      this.databaseKeysetVersion = saved.getVersion() != null ? saved.getVersion() : 0;
+      if (saved == null) {
+        logger.warn("Keyset repository returned null on save; defaulting database version to 0");
+        this.databaseKeysetVersion = 0;
+      } else {
+        this.databaseKeysetVersion = saved.getVersion() != null ? saved.getVersion() : 0;
+      }
 
       logger.info(
           "✅ Keyset saved to database (version: {}, updated by: {})",
           databaseKeysetVersion,
           updatedBy);
-    } catch (Exception e) {
+    } catch (GeneralSecurityException | DataAccessException | IllegalStateException e) {
       logger.error("Failed to save keyset to database: {}", e.getMessage());
       throw e;
     }
