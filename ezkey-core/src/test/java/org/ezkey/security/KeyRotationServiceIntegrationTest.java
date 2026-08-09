@@ -409,4 +409,44 @@ class KeyRotationServiceIntegrationTest {
         () -> keyRotationService.introduceNewKey("TEST_USER"),
         "Should reject new key when PENDING key exists");
   }
+
+  @Test
+  @DisplayName("Should contain runtime failure in scheduled rotation check and emit failure audit")
+  void shouldContainRuntimeFailureInScheduledRotationCheckAndEmitFailureAudit() {
+    // Arrange
+    tinkProperties.getRotation().setEnabled(true);
+    org.mockito.Mockito.when(keyManagementOperations.isInitialized()).thenReturn(true);
+
+    // Trigger correction path in isRotationDue(), then fail with runtime exception.
+    EncryptionKey primaryKey1 = new EncryptionKey();
+    primaryKey1.setKeyId(PRIMARY_KEY_ID_1);
+    primaryKey1.setKeyStatus(KeyStatus.PRIMARY);
+    primaryKey1.setAlgorithm("AES256_GCM");
+    primaryKey1.setIntroducedAt(OffsetDateTime.now().minusDays(120));
+    primaryKey1.setCreatedBy("TEST");
+    keyRepository.save(primaryKey1);
+
+    EncryptionKey primaryKey2 = new EncryptionKey();
+    primaryKey2.setKeyId(PRIMARY_KEY_ID_2);
+    primaryKey2.setKeyStatus(KeyStatus.PRIMARY);
+    primaryKey2.setAlgorithm("AES256_GCM");
+    primaryKey2.setIntroducedAt(OffsetDateTime.now().minusDays(100));
+    primaryKey2.setCreatedBy("TEST");
+    keyRepository.save(primaryKey2);
+
+    org.mockito.Mockito.when(keyManagementOperations.getCurrentPrimaryKeyId())
+        .thenThrow(new IllegalStateException("simulated runtime failure"));
+
+    // Act + Assert: scheduled boundary must contain failure and not propagate.
+    assertDoesNotThrow(() -> keyRotationService.checkAndRotate());
+
+    org.mockito.ArgumentCaptor<org.ezkey.audit.domain.entity.AuditLog> auditCaptor =
+        org.mockito.ArgumentCaptor.forClass(org.ezkey.audit.domain.entity.AuditLog.class);
+    org.mockito.Mockito.verify(auditLogService).log(auditCaptor.capture());
+    org.ezkey.audit.domain.entity.AuditLog auditLog = auditCaptor.getValue();
+
+    assertEquals(org.ezkey.audit.domain.EventType.REENCRYPTION_FAILED, auditLog.getEventType());
+    assertEquals("scheduled_rotation_check", auditLog.getEventAction());
+    assertEquals(org.ezkey.audit.domain.EventStatus.ERROR, auditLog.getEventStatus());
+  }
 }

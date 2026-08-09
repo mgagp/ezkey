@@ -369,7 +369,10 @@ public class KeyRotationService {
       }
     } catch (PendingEncryptionKeyExistsException e) {
       logger.info("Rotation skipped: {}", e.getMessage());
-    } catch (GeneralSecurityException | IOException e) {
+    } catch (GeneralSecurityException
+        | IOException
+        | DataAccessException
+        | IllegalStateException e) {
       logger.error("Failed to check/perform key rotation", e);
       auditLogService.log(
           AuditLog.builder()
