@@ -10,6 +10,7 @@
 
 package org.ezkey.database.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -18,6 +19,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceException;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -77,5 +79,17 @@ class PartitionSchedulerServiceTest {
         Pattern.matches("ezkey_auth_attempt_\\d{4}_\\d{2}", partitionCaptor.getAllValues().get(0)));
     assertTrue(
         Pattern.matches("ezkey_audit_log_\\d{4}_\\d{2}", partitionCaptor.getAllValues().get(1)));
+  }
+
+  @Test
+  @DisplayName("createNextMonthPartitions contains partition query persistence failures")
+  void createNextMonthPartitions_WhenPartitionQueryFails_DoesNotPropagate() {
+    when(entityManager.createNativeQuery(any(String.class))).thenReturn(nativeQuery);
+    when(nativeQuery.setParameter(any(String.class), any())).thenReturn(nativeQuery);
+    when(nativeQuery.getSingleResult()).thenThrow(new PersistenceException("database unavailable"));
+
+    assertDoesNotThrow(() -> service.createNextMonthPartitions());
+
+    verify(nativeQuery).getSingleResult();
   }
 }
