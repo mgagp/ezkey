@@ -219,6 +219,10 @@ Generated output should be reviewed for obvious scope drift and reported in the 
 - Use the browser suite when a change materially affects Admin UI behavior or the Admin UI ↔ Demo Device flow.
 - Do **not** treat browser tests as mandatory for every trivial UI tweak.
 - See `ezkey-admin-ui/AGENTS.md` for the concrete commands and execution modes.
+- **Cursor MCP browser:** use `http://localhost:…` (not `127.0.0.1`) on Windows; Demo Device path is
+  `/phone/ezkey` → enrollment → Approve → `[data-testid=demo-device-back-to-enrollments]`; full
+  recipe in `AGENT_UI_VALIDATION.md` § *Step 4 — MCP browser*. Demo Device handshake notes also
+  live in `ezkey-demo-device/AGENTS.md`.
 
 ## Admin UI lint-polish keyword
 

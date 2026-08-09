@@ -65,12 +65,16 @@ export async function loginViaDemoDevice(
     await demoPage.getByTestId('demo-device-approve-button').click();
     await expect(demoPage.getByTestId('demo-device-auth-result')).toBeVisible();
     await expect(demoPage.getByTestId('demo-device-result-success')).toBeVisible();
+    await demoPage.getByTestId('demo-device-back-to-enrollments').click();
+    await expect(demoPage).toHaveURL(/\/phone\/ezkey\/?$/);
     await expect(adminPage).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
     await expect(adminPage.getByTestId('app-shell')).toBeVisible();
   } else {
     await demoPage.getByTestId('demo-device-deny-button').click();
     await expect(demoPage.getByTestId('demo-device-auth-result')).toBeVisible();
     await expect(demoPage.getByTestId('demo-device-result-denied')).toBeVisible();
+    await demoPage.getByTestId('demo-device-back-to-enrollments').click();
+    await expect(demoPage).toHaveURL(/\/phone\/ezkey\/?$/);
     await expect(adminPage.getByTestId('login-rejected-state')).toBeVisible({ timeout: 60_000 });
   }
 

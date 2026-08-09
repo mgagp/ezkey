@@ -318,11 +318,20 @@ Unless the operator explicitly asks to skip the briefing/HITL, do not jump strai
 
 ### Cursor IDE browser (MCP) spot checks
 
-Agents using the embedded browser tools should mirror the **same sequencing as Playwright**, not invent a parallel protocol:
+Agents using the embedded browser tools should mirror the **same sequencing as Playwright**, not invent a parallel protocol. Full recipe + pitfalls:
+[`docs/testing/AGENT_UI_VALIDATION.md`](../docs/testing/AGENT_UI_VALIDATION.md) § *Step 4 — MCP browser*.
 
-- After `browser_navigate`, take **`browser_snapshot` with `interactive: true`** when you need clickable element refs; a non-interactive snapshot can look nearly empty on first paint.
-- **Passwordless login + Demo Device**: drive `POST` login from the Admin UI, wait until the UI shows the waiting state, then on the Demo Device open **`/phone/ezkey/enrollments/{id}/auth`** (same pattern as `e2e/support/auth-flow.ts`: repeated navigations / reloads until the pending shell appears). Relying only on a single “Check for Authentication Requests” click may not refresh the accessibility tree the way a full navigation does in every runtime.
-- URLs and ports match the Playwright harness: Admin UI (`EZKEY_ADMIN_UI_URL`, often dev `http://127.0.0.1:5173` or preview `http://127.0.0.1:4173`), Demo Device (`EZKEY_DEMO_DEVICE_URL`, default `http://127.0.0.1:8083`), bootstrap admin **`admin.docker`** (`EZKEY_ADMIN_UI_TEST_USERNAME`).
+- After `browser_navigate`, take **`browser_snapshot` with `interactive: true`** when you need clickable element refs; a non-interactive snapshot can look nearly empty on first paint. Re-snapshot after Demo Device route changes — the a11y tree can lag the screenshot.
+- **Hostname:** use **`http://localhost:<port>`** for Admin UI and Demo Device in the Cursor browser. On Windows, Vite often listens on **IPv6 `::1` only**; `http://127.0.0.1:5173` then returns `ERR_CONNECTION_REFUSED` even when the app is up. Confirm `npm run dev` is running and note the printed port if not 5173.
+- **Passwordless login + Demo Device** (mirror `e2e/support/auth-flow.ts`):
+  1. Admin UI `/login` → username **`admin.docker`** → submit → waiting state (`login-waiting-state`).
+  2. New tab → `http://localhost:8083/phone/ezkey` (if `about:blank`, lock tab and navigate again).
+  3. Open the **`admin.docker`** enrollment link → auth page; reload until **Approve** / **Deny**.
+  4. **Approve** → confirm success → click `[data-testid="demo-device-back-to-enrollments"]` (primary **Back to Enrollments**; not the side-exit).
+  5. Admin UI should land on `/dashboard`. **Logout** when the smoke is complete.
+- Prefer `data-testid` over locale-specific labels (`Login with EZKey` / `Connexion avec EZKey`).
+- URLs: Admin UI (`EZKEY_ADMIN_UI_URL`, often `http://localhost:5173` or preview `http://localhost:4173`), Demo Device (`EZKEY_DEMO_DEVICE_URL`, default `http://localhost:8083`), bootstrap admin **`admin.docker`** (`EZKEY_ADMIN_UI_TEST_USERNAME`).
+- Rare empty pending while Admin UI countdown still runs: Cancel → restart login → reload Demo Device auth immediately. Do not treat infrequent races as a standing bug-hunt.
 - When MCP proves flaky, treat **`./scripts/run-ui-tests.sh`** (or `PLAYWRIGHT_SKIP_WEBSERVER=1` against an already-running dev server) as the **ground-truth** device-backed check.
 
 ### Autonomy and recommendations

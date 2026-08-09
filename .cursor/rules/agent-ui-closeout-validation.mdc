@@ -34,10 +34,14 @@ Authoritative recipe: [`docs/testing/AGENT_UI_VALIDATION.md`](../../docs/testing
 
 | Setting | Value |
 |---------|--------|
-| Admin UI | `http://localhost:5173` (dev) or `http://127.0.0.1:4173` |
+| Admin UI | `http://localhost:5173` (dev) or `http://localhost:4173` (preview) |
 | Demo Device | `http://localhost:8083` |
 | Bootstrap admin | `admin.docker` |
-| Demo Device auth URL | `http://localhost:8083/phone/ezkey/enrollments/1/auth` |
+| Demo Device entry | `http://localhost:8083/phone/ezkey` → enrollment link → auth |
+| After Approve | `[data-testid=demo-device-back-to-enrollments]`, then Admin UI logout when smoke done |
+
+Prefer **`localhost`** over `127.0.0.1` in the Cursor MCP browser (Vite IPv6 `::1` bind on Windows).
+Full two-tab recipe: recipe doc § *Step 4 — MCP browser*.
 
 ## Do not
 
@@ -45,6 +49,7 @@ Authoritative recipe: [`docs/testing/AGENT_UI_VALIDATION.md`](../../docs/testing
 - Hand-edit generated OpenAPI or Orval output.
 - Default to MCP browser for copy-only or single-column label tweaks.
 - Loop Demo Device polling indefinitely — retry a few times, then report blocker.
+- Stop the Demo Device tab on the success screen without **Back to Enrollments**.
 
 ## GitHub visibility
 

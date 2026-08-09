@@ -50,6 +50,24 @@ mvn test -pl ezkey-demo-device -Dtest=EnrollmentStoreRecordJsonRoundtripTest
 - Generated package: `org.ezkey.demodevice.generated.dto`.
 - Hand-written HTTP: `AuthApiService` (WebClient + generated DTOs).
 
+## Agent-assisted Admin UI login (clean-start)
+
+When an agent (Cursor MCP browser or similar) must approve passwordless Admin UI login for the
+bootstrap Global Admin:
+
+1. Prefer **`http://localhost:8083/phone/ezkey`** (hostname **`localhost`**, not `127.0.0.1`, when
+   using the Cursor embedded browser on Windows).
+2. Open the **`admin.docker`** enrollment card (`data-testid="demo-device-enrollment-link"`), then
+   the auth page; reload until **Approve** / **Deny** appear while the Admin UI waiting countdown
+   is still live.
+3. After **Approve** and the success result, click
+   `[data-testid="demo-device-back-to-enrollments"]` (primary **Back to Enrollments**). The side-exit
+   control (`demo-device-auth-back`) is a secondary escape hatch — do not prefer it for the
+   standard handshake.
+4. Full Admin UI ↔ Demo Device recipe for agents:
+   [`docs/testing/AGENT_UI_VALIDATION.md`](../docs/testing/AGENT_UI_VALIDATION.md) § *Step 4 — MCP browser*
+   (Playwright mirror: `ezkey-admin-ui/e2e/support/auth-flow.ts`).
+
 ## Running
 
 **Clean-start stack (monorepo):** demo device on http://localhost:8083, Auth API via Docker internal URL.
