@@ -4,7 +4,7 @@
 
 This directory contains utility scripts for Ezkey project management, including OpenAPI specification management and database migration tools.
 
-**Portable Bash first:** prefer `./scripts/*.sh` from Git Bash on Windows, Linux, or macOS. Legacy `.bat` siblings may still exist for some tools; they are not the canonical path for agents or cross-platform workflows.
+**Portable Bash only:** use `./scripts/*.sh` from Git Bash on Windows, Linux, or macOS. Do not add `.bat` / `.ps1` / `.cmd` wrappers for repo tooling.
 
 ## Maven build (Java reactor)
 
@@ -108,14 +108,9 @@ provisioning and authorization policy.
 
 These scripts use the modern Spring Boot Maven plugin approach with `mvn spring-boot:run`.
 
-#### Bash Script (Linux/macOS/Git Bash)
+#### Bash (Linux/macOS/Git Bash)
 ```bash
 ./scripts/ezkey-flyway.sh [COMMAND]
-```
-
-#### Windows Batch Script
-```cmd
-scripts\ezkey-flyway.bat [COMMAND]
 ```
 
 #### Available Commands
@@ -128,14 +123,9 @@ scripts\ezkey-flyway.bat [COMMAND]
 
 These scripts build and run the executable JAR directly, suitable for production deployments.
 
-#### Bash Script (Linux/macOS/Git Bash)
+#### Bash (Linux/macOS/Git Bash)
 ```bash
 ./scripts/ezkey-flyway-jar.sh [COMMAND]
-```
-
-#### Windows Batch Script
-```cmd
-scripts\ezkey-flyway-jar.bat [COMMAND]
 ```
 
 #### Available Commands
@@ -150,7 +140,7 @@ Both script modes provide:
 - **Automatic JAR building** : Builds migration JAR if not present
 - **Spring Boot integration** : Uses the new `EzkeyCoreApp` application
 - **Command-line interface** : Supports all Flyway commands
-- **Cross-platform** : Works on Windows, Linux, and macOS
+- **Cross-platform** : Works on Windows (Git Bash), Linux, and macOS
 - **Error handling** : Proper error messages and exit codes
 
 ## OpenAPI Specification Management
@@ -161,29 +151,16 @@ Ezkey now uses a centralized approach for managing OpenAPI specifications. All s
 
 ### Synchronization Scripts
 
-#### Bash script (canonical — Windows Git Bash, Linux, macOS)
+#### Bash script (Windows Git Bash, Linux, macOS)
 ```bash
 ./scripts/update-specs.sh [OPTIONS]
 ```
-
-#### Windows batch script (legacy)
-```cmd
-scripts\update-specs.bat [OPTIONS]
-```
-
-Prefer `update-specs.sh` from Git Bash on Windows for parity with Linux and macOS.
 
 #### Available Options
 - `--admin-only` : Update only admin-api specification
 - `--auth-only` : Update only auth-api specification
 - `--all` : Update all specifications (default)
 - `--help` : Display help
-
-### Legacy Scripts (Deprecated)
-
-The old scripts are still available but deprecated:
-- `update-openapi-specs.sh` - Use `update-specs.sh` instead
-- `update-openapi-specs.bat` - Use `update-specs.bat` instead
 
 ## Additional Scripts
 
@@ -267,12 +244,8 @@ ezkey-sdk/
 
 scripts/
 ├── ezkey-flyway.sh            # Migration script (Spring Boot mode)
-├── ezkey-flyway.bat           # Migration script Windows (Spring Boot mode)
 ├── ezkey-flyway-jar.sh        # Migration script (JAR mode)
-├── ezkey-flyway-jar.bat       # Migration script Windows (JAR mode)
-├── update-specs.sh            # Main bash script
-├── update-specs.bat           # Windows script
-├── setup-centralized-specs.sh # Initial setup script
+├── update-specs.sh            # OpenAPI sync from live APIs
 └── README.md                  # This documentation
 ```
 

@@ -68,19 +68,8 @@ The HA stack runs **2 instances** of each API (admin-api and auth-api) behind **
 
 ### Start the HA Stack
 
-**Linux/Mac:**
 ```bash
 ./docker/start-ha.sh
-```
-
-**Windows PowerShell:**
-```powershell
-.\docker\start-ha.ps1
-```
-
-**Windows CMD:**
-```cmd
-docker\start-ha.bat
 ```
 
 The script will:
@@ -191,23 +180,12 @@ See the [HAProxy Statistics](#haproxy-statistics) section below for detailed inf
 
 ### Start Services
 ```bash
-# Linux/Mac
 ./docker/manage-ha.sh start
-
-# Windows PowerShell
-.\docker\manage-ha.ps1 start
-
-# Windows CMD
-docker\manage-ha.bat start
 ```
 
 ### Stop Services
 ```bash
-# Linux/Mac
 ./docker/manage-ha.sh stop
-
-# Windows
-docker\manage-ha.bat stop
 ```
 
 ### View Logs
@@ -223,22 +201,13 @@ docker\manage-ha.bat stop
 
 ### Check Status
 ```bash
-# Linux/Mac
 ./docker/manage-ha.sh status
-
-# Windows
-docker\manage-ha.bat status
 ```
 
 ### Clean Everything
 ```bash
-# Linux/Mac
 ./docker/manage-ha.sh clean
-
-# Windows
-docker\manage-ha.bat clean
 ```
-
 **Warning**: The `clean` command removes all containers, networks, and volumes, including database data.
 
 ## Verifying HA Setup

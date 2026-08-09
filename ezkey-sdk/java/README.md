@@ -16,11 +16,7 @@ The Ezkey Java SDK provides easy integration with Ezkey Admin and Auth APIs for 
 ### 1. Build the SDK
 
 ```bash
-# Linux/Mac
-./build.sh
-
-# Windows
-build.cmd
+mvn -f ezkey-sdk/java/pom.xml package
 ```
 
 ### 2. Add to Your Project

@@ -322,11 +322,7 @@ This test validates:
 
 **Activation**:
 ```bash
-# Linux/Mac
 SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh
-
-# Windows PowerShell
-$env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
 ```
 
 **Note**: The profile is set at stack startup and persists for the lifetime of the Docker stack. To change modes, restart the stack.

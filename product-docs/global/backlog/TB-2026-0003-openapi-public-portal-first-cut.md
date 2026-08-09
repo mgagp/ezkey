@@ -18,7 +18,7 @@ Deliver the first validated public portal slice for Ezkey API documentation: an 
 - `sites/ezkey-org/` as the public portal host surface.
 - Static `ReDoc CE` rendering of Ezkey OpenAPI specs.
 - Portal information architecture for `Admin API`, `Auth API`, and optional `Integration API`.
-- Lightweight update of `scripts/update-specs.sh` and `scripts/update-specs.bat` so `Integration API` joins the centralized generated-spec workflow.
+- Lightweight update of `scripts/update-specs.sh` so `Integration API` joins the centralized generated-spec workflow.
 - First prod-like hardening path for raw `/api-docs` and embedded Swagger UI exposure on public API hosts.
 - Documentation updates that make the public portal the normative public reference posture.
 

@@ -42,11 +42,7 @@ The Ezkey Docker stack supports two testing modes, allowing you to choose betwee
 **Activation**: Set `SPRING_PROFILES_ACTIVE` environment variable
 
 ```bash
-# Linux/Mac
 SPRING_PROFILES_ACTIVE=docker-dev ./docker/start.sh
-
-# Windows PowerShell
-$env:SPRING_PROFILES_ACTIVE="docker-dev"; .\docker\start.ps1
 ```
 
 **Characteristics**:
@@ -64,11 +60,7 @@ $env:SPRING_PROFILES_ACTIVE="docker-dev"; .\docker\start.ps1
 
 **Activation**: Set `SPRING_PROFILES_ACTIVE` environment variable
 ```bash
-# Linux/Mac
 SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh
-
-# Windows PowerShell
-$env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
 ```
 
 **Characteristics**:
@@ -221,8 +213,7 @@ docker logs ezkey-auth-api | grep "rate-limit"
 - `docker/docker-compose.yml` - Supports `SPRING_PROFILES_ACTIVE` environment variable
 - `ezkey-auth-api/config/application-docker-test.properties` - Test mode configuration
 - `ezkey-admin-api/config/application-docker-test.properties` - Test mode configuration
-- `docker/start.sh` - Documentation update
-- `docker/start.ps1` - Documentation update
+- `docker/start.sh` - Stack entrypoint (supports profile env vars)
 - `docker/README.md` - Profile documentation
 
 ---

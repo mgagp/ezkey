@@ -46,7 +46,7 @@ generation pipeline must be validated from end to end before closing the session
 
 ### 1. Extend update-specs scripts
 
-Extend `scripts/update-specs.sh` and `scripts/update-specs.bat` to also copy/symlink the admin-api
+Extend `scripts/update-specs.sh` to also copy/symlink the admin-api
 spec into `ezkey-admin-ui/openapi-spec.json` — one additional block after the existing SDK
 propagation, in both `--admin-only` and `--all` modes.
 

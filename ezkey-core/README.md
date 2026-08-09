@@ -72,11 +72,8 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--repair"
 
 #### Option 2: Using Scripts
 ```bash
-# From project root
+# From project root (Git Bash on Windows, Linux, or macOS)
 ./scripts/ezkey-flyway.sh
-
-# Or on Windows
-scripts\ezkey-flyway.bat
 ```
 
 ## Development
@@ -193,14 +190,7 @@ Migrations are configured to:
 
 ### Installation
 
-The `ezkey-flyway` scripts are available at the project root:
-- `ezkey-flyway.bat` (Windows)
-- `ezkey-flyway.sh` (Linux/Mac)
-
-For Linux/Mac, make the script executable:
-```bash
-chmod +x ezkey-flyway.sh
-```
+The Flyway helper lives at [`scripts/ezkey-flyway.sh`](../scripts/ezkey-flyway.sh) (Git Bash on Windows, Linux, or macOS).
 
 ### Usage
 
@@ -217,29 +207,17 @@ chmod +x ezkey-flyway.sh
 
 **Default migration:**
 ```bash
-# Windows
-ezkey-flyway.bat
-
-# Linux/Mac
-./ezkey-flyway.sh
+./scripts/ezkey-flyway.sh
 ```
 
 **Display migration information:**
 ```bash
-# Windows
-ezkey-flyway.bat --info
-
-# Linux/Mac
-./ezkey-flyway.sh --info
+./scripts/ezkey-flyway.sh --info
 ```
 
 **Repair migration history:**
 ```bash
-# Windows
-ezkey-flyway.bat --repair
-
-# Linux/Mac
-./ezkey-flyway.sh --repair
+./scripts/ezkey-flyway.sh --repair
 ```
 
 ### Technical Operation

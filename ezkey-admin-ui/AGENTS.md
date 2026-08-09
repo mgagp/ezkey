@@ -289,7 +289,6 @@ Use **start.sh** to build and run the Admin UI in Docker:
 - **Campaign decision notes (HITL):** `product-docs/global/hygiene/react-doctor/` (template + dated pass instances). Do **not** invent `I-*` / `TB-*` / GitHub issues per finding.
 - Default commands from `ezkey-admin-ui/`:
   - `npm run doctor:curated`
-  - `scripts\doctor-curated.cmd` on Windows
 - Output lives under `logs/react-doctor/`:
   - `react-doctor.raw.json` — full raw tool output
   - `react-doctor.curated.json` — filtered summary for follow-up analysis

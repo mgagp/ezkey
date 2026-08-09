@@ -213,29 +213,17 @@ docker run --rm -v ezkey_bootstrap-artifacts:/data alpine cat /data/device-crede
 
 ### Start Services
 ```bash
-# Linux/Mac
 ./docker/manage.sh start
-
-# Windows
-docker\manage.bat start
 ```
 
 ### Stop Services
 ```bash
-# Linux/Mac
 ./docker/manage.sh stop
-
-# Windows
-docker\manage.bat stop
 ```
 
 ### Restart Services
 ```bash
-# Linux/Mac
 ./docker/manage.sh restart
-
-# Windows
-docker\manage.bat restart
 ```
 
 ### View Logs
@@ -251,29 +239,17 @@ docker\manage.bat restart
 
 ### Check Status
 ```bash
-# Linux/Mac
 ./docker/manage.sh status
-
-# Windows
-docker\manage.bat status
 ```
 
 ### Build Images
 ```bash
-# Linux/Mac
 ./docker/manage.sh build
-
-# Windows
-docker\manage.bat build
 ```
 
 ### Clean Everything
 ```bash
-# Linux/Mac
 ./docker/manage.sh clean
-
-# Windows
-docker\manage.bat clean
 ```
 
 **Warning**: The `clean` command removes all containers, networks, and volumes, including database data.
@@ -362,11 +338,7 @@ All services use the `docker` Spring profile by default, which loads configurati
 To start the stack in test mode (permissive rate limiting):
 
 ```bash
-# Linux/Mac
 SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh
-
-# Windows PowerShell
-$env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
 ```
 
 **Note:** The profile is set at stack startup and persists for the lifetime of the Docker stack. To change modes, restart the stack with the desired profile.
@@ -376,21 +348,13 @@ $env:SPRING_PROFILES_ACTIVE="docker,docker-test"; .\docker\start.ps1
 To start the stack with richer Actuator diagnostics for local development:
 
 ```bash
-# Linux/Mac
 SPRING_PROFILES_ACTIVE=docker-dev ./docker/start.sh
-
-# Windows PowerShell
-$env:SPRING_PROFILES_ACTIVE="docker-dev"; .\docker\start.ps1
 ```
 
 To access Actuator from the host on the separate management port (local only), use the compose override:
 
 ```bash
-# Linux/Mac
 SPRING_PROFILES_ACTIVE=docker-dev docker compose -f docker/docker-compose.yml -f docker/docker-compose.docker-dev.yml up -d
-
-# Windows PowerShell
-$env:SPRING_PROFILES_ACTIVE="docker-dev"; docker compose -f docker\docker-compose.yml -f docker\docker-compose.docker-dev.yml up -d
 ```
 
 #### VisualVM (JMX) - Local Docker Only
@@ -405,11 +369,7 @@ and Auth API JVMs via JMX. This is DEV ONLY and intentionally unauthenticated / 
 **Start with JMX enabled (Docker dev):**
 
 ```bash
-# Linux/Mac
 SPRING_PROFILES_ACTIVE=docker,docker-dev EZKEY_ENABLE_JMX=true ./docker/start.sh
-
-# Windows PowerShell
-$env:SPRING_PROFILES_ACTIVE="docker,docker-dev"; $env:EZKEY_ENABLE_JMX="true"; .\docker\start.ps1
 ```
 
 **VisualVM connection:**

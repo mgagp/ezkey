@@ -16,11 +16,7 @@ The Ezkey Python SDK provides easy integration with Ezkey Admin and Auth APIs fo
 ### 1. Build the SDK
 
 ```bash
-# Linux/Mac
-./build.sh
-
-# Windows
-build.cmd
+pip install .
 ```
 
 ### 2. Install the SDK

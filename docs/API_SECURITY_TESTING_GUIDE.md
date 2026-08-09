@@ -17,27 +17,27 @@ This guide provides comprehensive instructions for testing the security implemen
 - **Test Integration ID**: The ID of an integration to use for testing
 
 ### 3. Tools Required
-- **PowerShell** (for Windows automated testing)
+- **Bash** (`scripts/test-api-security.sh` via Git Bash on Windows)
 - **curl** (for manual testing)
 - **Postman** (optional, for GUI testing)
 
 ## Automated Testing
 
-### PowerShell Script Testing
+### Bash Script Testing
 
-The `scripts/test-api-security.ps1` script provides comprehensive automated testing.
+The `scripts/test-api-security.sh` script provides comprehensive automated testing.
 
 #### Basic Usage
 
-```powershell
+```bash
 # Check if server is running
-.\scripts\test-api-security.ps1 -CheckServerOnly
+./scripts/test-api-security.sh --check-server-only
 
 # Run all tests with credentials
-.\scripts\test-api-security.ps1 -ApiKey "your_api_key" -AdminToken "your_admin_token"
+./scripts/test-api-security.sh -k "your_api_key" -t "your_admin_token"
 
 # Run tests with custom server URL
-.\scripts\test-api-security.ps1 -BaseUrl "http://localhost:9080" -ApiKey "your_api_key" -AdminToken "your_admin_token"
+./scripts/test-api-security.sh -u "http://localhost:9080" -k "your_api_key" -t "your_admin_token"
 ```
 
 #### Test Categories

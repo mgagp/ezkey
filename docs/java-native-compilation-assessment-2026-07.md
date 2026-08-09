@@ -44,7 +44,7 @@ in the living tree.
 | Spring native profile props | `application-native.properties` (auth + **admin**) | Admin has props without `AdminNativeConfiguration` (already removed) |
 | Maven | Parent `pom.xml` profile `native`; auth + integration module `-Pnative` blocks | `native-maven-plugin` skip=true; buildpack `BP_NATIVE_IMAGE` |
 | Docker | `docker/docker-compose.native.yml`, `docker-compose.native.docker-dev.yml` | Separate project name `ezkey-native` |
-| Ops scripts | `docker/start.sh` / `start.ps1` `--native`; `ezkey-tests/clean-start.sh` / `.ps1`; `generate-encryption-keys.* --native` | Still wires native compose + volume names |
+| Ops scripts | `docker/start.sh --native`; `ezkey-tests/clean-start.sh`; `generate-encryption-keys.sh --native` | Still wires native compose + volume names |
 | Build/debug | `scripts/build-native-aot.sh`, `test-native-build.sh`, `measure-native-memory.*`, `debug-aot-*.sh` | Spike tooling |
 
 ### Living documentation (implies or teaches native)

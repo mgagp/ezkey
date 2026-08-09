@@ -93,7 +93,7 @@ Note importante sur la config OpenAPI dans `OpenApiConfig.java` : le `securitySc
 
 Après implémentation et démarrage de l'Admin API localement :
 
-- **L'utilisateur** exécute `scripts/update-specs.sh --admin-only` (ou `scripts/update-specs.bat`) pour extraire le nouveau `specs/admin-api/openapi-spec.json`
+- **L'utilisateur** exécute `scripts/update-specs.sh --admin-only` pour extraire le nouveau `specs/admin-api/openapi-spec.json`
 - Le script crée automatiquement un backup, télécharge la spec live depuis `http://localhost:9080/api-docs`, la formate, et la distribue vers `ezkey-demo-app-acme/` et `ezkey-sdk/`
 
 ### 9. Mise à jour Collection Postman
