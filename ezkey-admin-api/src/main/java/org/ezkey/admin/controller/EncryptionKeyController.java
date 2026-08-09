@@ -318,7 +318,7 @@ public class EncryptionKeyController {
                       .toJson())
               .build());
       throw e;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Manual key rotation failed", e);
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -483,7 +483,7 @@ public class EncryptionKeyController {
                     .body(
                         new BatchResumeResponse(
                             batchId, "Batch resume accepted; progress in batches table"));
-              } catch (Exception e) {
+              } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
                 logger.error("Failed to enqueue resume for batch {}", batchId, e);
                 auditLogService.log(
                     AuditHelper.createAdminAudit(
@@ -572,7 +572,7 @@ public class EncryptionKeyController {
           .body(
               new ReencryptionTriggerResponse(
                   0, List.of(), "Re-encryption failed: " + e.getMessage()));
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Full re-encryption enqueue failed", e);
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -672,7 +672,7 @@ public class EncryptionKeyController {
           .body(
               new ReencryptionKeyResponse(
                   keyId, 0, List.of(), "Re-encryption failed: " + e.getMessage()));
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Re-encryption for key {} enqueue failed", keyId, e);
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -750,7 +750,7 @@ public class EncryptionKeyController {
       return ResponseEntity.ok(
           new BatchCreationResponse(
               batchesCreated, "Created " + batchesCreated + " re-encryption batches"));
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Batch creation failed", e);
       auditLogService.log(
           AuditHelper.createAdminAudit(

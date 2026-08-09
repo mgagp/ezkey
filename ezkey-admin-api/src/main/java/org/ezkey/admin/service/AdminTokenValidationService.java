@@ -133,7 +133,7 @@ public class AdminTokenValidationService {
       } else {
         logger.warn("❌ Invalid token");
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Error validating token: {}", e.getMessage());
     }
 
@@ -172,7 +172,7 @@ public class AdminTokenValidationService {
         logger.debug("✅ Updated last used and expiration for token");
         return Optional.ofNullable(adminToken.getExpiresAt());
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Error updating token timestamp: {}", e.getMessage());
     }
     return Optional.empty();

@@ -1241,7 +1241,7 @@ public class AdminProvisioningController {
           e.getMessage() != null ? e.getMessage() : "Invalid request.",
           "invalid-request",
           "Invalid Request");
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }

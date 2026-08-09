@@ -197,7 +197,7 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
       } catch (IllegalArgumentException e) {
         // Invalid Base64 or malformed credentials
         logger.warn("❌ Malformed HTTP Basic Auth header: {}", e.getMessage());
-      } catch (Exception e) {
+      } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
         // Catch-all for unexpected errors
         logger.error("❌ Error processing API key authentication: {}", e.getMessage(), e);
       }

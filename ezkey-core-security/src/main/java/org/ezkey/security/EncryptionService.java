@@ -12,6 +12,7 @@ import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -142,7 +143,7 @@ public class EncryptionService implements EncryptionOperations {
       long keyId = keyManager.getCurrentPrimaryKeyId();
       String keyIdStr = Long.toUnsignedString(keyId);
       return "ENC:" + keyIdStr + ":" + encryptedBase64;
-    } catch (Exception e) {
+    } catch (GeneralSecurityException | IllegalStateException e) {
       logger.error("Encryption failed", e);
       throw new IllegalStateException("Encryption failed", e);
     }
@@ -210,7 +211,7 @@ public class EncryptionService implements EncryptionOperations {
       return encryptedValue;
     } catch (GeneralSecurityException e) {
       return handleDecryptionFailureWithSync(encryptedValue, ciphertextBase64, keyId, e);
-    } catch (Exception e) {
+    } catch (IllegalStateException e) {
       logger.warn("Decryption failed, returning original value: {}", e.getMessage());
       logger.debug("Decryption error details", e);
       return encryptedValue;
@@ -255,7 +256,7 @@ public class EncryptionService implements EncryptionOperations {
           logger.info(
               "Key {} exists in database with status {}", Long.toUnsignedString(keyId), status);
         }
-      } catch (Exception e) {
+      } catch (DataAccessException | IllegalStateException e) {
         logger.debug("Failed to check key in database: {}", e.getMessage());
       }
     }
@@ -284,7 +285,9 @@ public class EncryptionService implements EncryptionOperations {
                 "✅ Decryption succeeded after keyset reload for key {}",
                 Long.toUnsignedString(keyIdValue));
             return new String(pt, StandardCharsets.UTF_8);
-          } catch (Exception retryException) {
+          } catch (GeneralSecurityException
+              | IllegalArgumentException
+              | IllegalStateException retryException) {
             logger.warn(
                 "Decryption still failed after keyset reload (attempt {}): {}",
                 retry + 1,

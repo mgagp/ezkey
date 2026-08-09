@@ -12,6 +12,7 @@ package org.ezkey.enrollment.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,6 +24,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
+import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
 import org.ezkey.integration.domain.entity.EzkeyAdmin;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminLifecycleStatus;
 import org.ezkey.integration.domain.entity.EzkeyAdmin.AdminType;
@@ -36,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 @ExtendWith(MockitoExtension.class)
 class EnrollmentBindServiceEligibilityTest {
@@ -96,5 +99,38 @@ class EnrollmentBindServiceEligibilityTest {
 
     verify(ezkeyAdminRepository).findByEnrollmentId(101);
     verify(enrollmentRepository, never()).findAndLockUnreadById(101);
+  }
+
+  @Test
+  @DisplayName("bind returns invitation expired when expired cleanup cannot be persisted")
+  void bindExpiredEnrollment_WhenCleanupFails_StillReturnsInvitationExpired() {
+    EnrollmentBindRequest request = new EnrollmentBindRequest();
+    request.setEnrollmentId(202);
+    request.setEnrollmentProofToken("expired-proof-token");
+
+    OffsetDateTime expiresAt = OffsetDateTime.now().minusMinutes(1);
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(202);
+    enrollment.setStatus(EnrollmentStatus.CREATED);
+    enrollment.setIntegrationId(7);
+    enrollment.setCreatedAt(OffsetDateTime.now().minusHours(1));
+    enrollment.setExpiresAt(expiresAt);
+
+    when(enrollmentRepository.findByEnrollmentIdAndEnrollmentProofTokenHash(
+            202, org.ezkey.security.SensitiveDataHasher.sha256Hex("expired-proof-token")))
+        .thenReturn(Optional.of(enrollment));
+    doThrow(new DataAccessResourceFailureException("repository unavailable"))
+        .when(enrollmentTxHelper)
+        .markExpiredAndEmitAudit(202, 7, expiresAt, "enrollment_expired_bind_rejected");
+
+    EnrollmentInvitationExpiredException exception =
+        assertThrows(
+            EnrollmentInvitationExpiredException.class, () -> enrollmentBindService.bind(request));
+
+    assertEquals("Enrollment invitation has expired", exception.getMessage());
+    verify(enrollmentTxHelper)
+        .markExpiredAndEmitAudit(202, 7, expiresAt, "enrollment_expired_bind_rejected");
+    verify(integrationRepository, never()).findById(7);
+    verify(enrollmentRepository, never()).findAndLockUnreadById(202);
   }
 }

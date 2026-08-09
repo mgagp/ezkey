@@ -61,6 +61,13 @@
     </module>
 
     <module name="TreeWalker">
+        <!-- Inline suppression comments: CHECKSTYLE IGNORE IllegalCatch -->
+        <module name="SuppressWithNearbyCommentFilter">
+            <property name="commentFormat" value="CHECKSTYLE IGNORE IllegalCatch"/>
+            <property name="checkFormat" value="IllegalCatch"/>
+            <property name="influenceFormat" value="0"/>
+        </module>
+
         <!-- ===================================================================== -->
         <!-- NAMING CONVENTIONS                                                    -->
         <!-- ===================================================================== -->

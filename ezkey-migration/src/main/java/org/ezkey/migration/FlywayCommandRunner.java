@@ -12,6 +12,7 @@
 package org.ezkey.migration;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.MigrationInfoService;
 import org.slf4j.Logger;
@@ -125,7 +126,7 @@ public class FlywayCommandRunner implements CommandLineRunner {
       logger.info("Flyway operation '{}' completed successfully", operation);
       exitWithCode(0);
 
-    } catch (Exception e) {
+    } catch (FlywayException e) {
       logger.error("Flyway operation '{}' failed: {}", operation, e.getMessage(), e);
       exitWithCode(1);
     }
@@ -264,7 +265,7 @@ public class FlywayCommandRunner implements CommandLineRunner {
     try {
       flyway.clean();
       logger.info("Database clean completed successfully");
-    } catch (Exception e) {
+    } catch (FlywayException e) {
       logger.error(
           "Clean operation failed. It may be disabled in configuration for safety: {}",
           e.getMessage());

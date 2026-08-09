@@ -12,6 +12,7 @@ package org.ezkey.database.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -153,7 +154,7 @@ public class PartitionSchedulerService {
 
       logger.info("✅ Partition creation check completed");
 
-    } catch (Exception e) {
+    } catch (PersistenceException | IllegalArgumentException | IllegalStateException e) {
       logger.error("❌ Error creating partitions: {}", e.getMessage(), e);
     }
   }
@@ -206,7 +207,7 @@ public class PartitionSchedulerService {
         logger.debug("ℹ️ Partition {} already exists for table: {}", partitionName, tableName);
       }
 
-    } catch (Exception e) {
+    } catch (PersistenceException | IllegalArgumentException | IllegalStateException e) {
       logger.error(
           "❌ Error creating partition {} for table {}: {}",
           partitionName,

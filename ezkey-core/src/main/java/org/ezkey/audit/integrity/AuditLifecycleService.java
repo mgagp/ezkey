@@ -986,7 +986,7 @@ public class AuditLifecycleService {
         return null;
       }
       return normalizeUtc(OffsetDateTime.parse(node.asString()));
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       throw new IllegalArgumentException(
           "Unable to parse " + field + " from alert payload: " + e.getMessage());
     }

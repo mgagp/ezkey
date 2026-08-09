@@ -228,7 +228,7 @@ public class AdminAuthController {
               .eventDetails("Activation blocked: " + e.getMessage())
               .build());
       return ResponseEntity.badRequest().body(AdminActivationResponseDto.error(e.getMessage()));
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditHelper.createAdminAudit(
                   context, EventType.ADMIN_ACTIVATION, AdminAuditConstants.ACTIVATION_ERROR, null)
@@ -538,7 +538,7 @@ public class AdminAuthController {
 
       sessionCookieService.clearSessionCookie(httpResponse);
       return ResponseEntity.ok().build();
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       return ResponseEntity.badRequest().build();
     }
   }
@@ -891,7 +891,7 @@ public class AdminAuthController {
               new AdminRecoveryResponseDto(
                   org.ezkey.admin.service.AdminRecoveryService.GENERIC_RECOVERY_FAILURE_MESSAGE));
 
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Recovery error for admin: {} - {}", request.username(), e.getMessage(), e);
 
       Integer errorTenantId = resolveAdminTenantId(request.username());

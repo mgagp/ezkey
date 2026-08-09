@@ -44,12 +44,6 @@
     <!-- Suppress import order checks temporarily -->
     <suppress checks="ImportOrder"/>
 
-    <!-- Suppress unused imports temporarily -->
-    <suppress checks="UnusedImports"/>
-
-    <!-- Suppress star imports temporarily -->
-<!--     <suppress checks="AvoidStarImport"/> -->
-
     <!-- ===================================================================== -->
     <!-- JAVADOC SUPPRESSIONS (TO BE ADDED GRADUALLY)                         -->
     <!-- ===================================================================== -->
@@ -115,15 +109,8 @@
     <!-- CODE QUALITY SUPPRESSIONS (TO BE FIXED PRIORITY)                     -->
     <!-- ===================================================================== -->
 
-    <!-- Suppress IllegalCatch temporarily (needs proper exception handling) -->
-    <suppress checks="IllegalCatch"/>
-
     <!-- Suppress MagicNumber for existing code -->
     <suppress checks="MagicNumber"/>
-
-    <!-- Suppress HiddenField for setter parameters -->
-    <suppress checks="HiddenField"
-              message=".*parameter.*"/>
 
     <!-- ===================================================================== -->
     <!-- ENTITY AND JPA SUPPRESSIONS                                          -->
@@ -168,57 +155,7 @@
     <!-- STYLE SUPPRESSIONS                                                    -->
     <!-- ===================================================================== -->
 
-    <!-- Suppress TodoComment temporarily -->
-    <suppress checks="TodoComment"/>
-
     <!-- Suppress FinalParameters for all methods (too many violations) -->
     <suppress checks="FinalParameters"/>
 
-    <!-- ===================================================================== -->
-    <!-- MIGRATION NOTES                                                       -->
-    <!-- ===================================================================== -->
-    <!--
-    PRIORITY 1 (Critical - Security & Bugs):
-    - IllegalCatch: Replace with specific exceptions
-    - HiddenField: Review setter/constructor conflicts
-
-    PRIORITY 2 (Code Quality):
-    - MagicNumber: Extract constants
-    - ConstantName: Rename logger to LOGGER
-    - Javadoc: Add documentation for public APIs
-
-    PRIORITY 3 (Style):
-    - NewlineAtEndOfFile: Bulk convert CRLF to LF
-    - ImportOrder: Use IDE auto-format
-    - LineLength: Refactor long lines
-    - RegexpHeader: Add license headers
-
-    PRIORITY 4 (Nice to have):
-    - TodoComment: Clean up TODOs
-    - FinalParameters: Add final modifier
-    -->
-
-    <!-- ===================================================================== -->
-    <!-- TEMPORARY MODULE-SCOPED SUPPRESSIONS                                  -->
-    <!-- ===================================================================== -->
-    <!-- Admin API: temporarily suppress style-only issues on AdminAuthController
-         Rationale: unblock CI while we align IDE formatters; fix planned by reformatting the file.
-         Scope: only this file; only LineLength and whitespace formatting checks. -->
-    <suppress
-        checks="LineLength|WhitespaceAfter|WhitespaceAround"
-        files=".*[\\/]ezkey-admin-api[\\/]src[\\/]main[\\/]java[\\/]org[\\/]ezkey[\\/]admin[\\/]controller[\\/]AdminAuthController\.java$"/>
-
-    <!-- Admin API: temporarily suppress LineLength for all admin controllers.
-         Rationale: @ApiResponse/@Operation/@Parameter OpenAPI annotations consistently exceed
-         120 characters across all controllers; this is a style-only issue not affecting
-         correctness. Planned fix: reformat all controllers in a dedicated style cleanup commit. -->
-    <suppress
-        checks="LineLength"
-        files=".*[\\/]ezkey-admin-api[\\/]src[\\/]main[\\/]java[\\/]org[\\/]ezkey[\\/]admin[\\/]controller[\\/].*\.java$"/>
-
-    <!-- Suppress IllegalCatch for FlywayCommandRunner -->
-    <suppress
-        files="FlywayCommandRunner.java"
-        checks="IllegalCatch"
-        message="Catching 'Exception' is not allowed."/>
 </suppressions>

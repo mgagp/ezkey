@@ -173,7 +173,7 @@ public class TenantController {
       return ResponseEntity.created(URI.create("/api/v1/tenants/" + tenant.getTenantId()))
           .body(response);
 
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.warn("Tenant creation failed: {}", e.getMessage());
       auditLogService.log(
           AuditHelper.createAdminAudit(

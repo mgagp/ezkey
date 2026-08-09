@@ -299,7 +299,7 @@ public class AdminEnrollmentController {
       return ResponseEntity.badRequest()
           .body(EnrollmentResetResponseDto.error("Invalid request: " + e.getMessage()));
 
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Enrollment reset failed (unexpected): {}", e.getMessage(), e);
       Integer tenantId =
           authenticatedAdmin != null && authenticatedAdmin.getTenant() != null

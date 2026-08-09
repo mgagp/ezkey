@@ -343,7 +343,7 @@ public class CryptoController {
           errorMessage = "Encryption failed: " + e.getMessage();
         }
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       // Log the full exception for debugging
       logger.error("Exception during encryption operation", e);
       // Catch any unexpected exceptions and return error information
@@ -470,7 +470,7 @@ public class CryptoController {
           }
         }
       }
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       // Log the full exception for debugging
       logger.error("Exception during decryption operation", e);
       // Catch any unexpected exceptions and return error information
@@ -489,7 +489,7 @@ public class CryptoController {
             keyId = Long.toUnsignedString(keyIdLong);
             encryptedFormat = "ENC:keyID:Base64";
           }
-        } catch (Exception ignored) {
+        } catch (Exception ignored) { // CHECKSTYLE IGNORE IllegalCatch
           // Ignore errors when trying to extract keyId
         }
       }

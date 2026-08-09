@@ -269,7 +269,7 @@ public class EnrollmentController {
               .build());
 
       throw e;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_BIND)
@@ -450,7 +450,7 @@ public class EnrollmentController {
               .build());
 
       throw e;
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       auditLogService.log(
           AuditLog.builder()
               .eventType(EventType.ENROLLMENT_VERIFY)

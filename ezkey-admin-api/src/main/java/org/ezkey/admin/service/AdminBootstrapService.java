@@ -202,7 +202,7 @@ public class AdminBootstrapService {
         createGlobalAdminEnrollment(systemIntegration);
       }
 
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("❌ Failed to bootstrap admin MFA: {}", e.getMessage(), e);
       throw new RuntimeException("Admin MFA bootstrap failed", e);
     }

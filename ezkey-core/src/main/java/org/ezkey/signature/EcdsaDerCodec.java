@@ -18,6 +18,18 @@ final class EcdsaDerCodec {
 
   private EcdsaDerCodec() {}
 
+  /**
+   * Decodes an ECDSA DER signature into {@code r} and {@code s} components.
+   *
+   * <p><b>Security Note:</b> This method uses a broad {@code catch (RuntimeException)}
+   * intentionally to handle malformed or malicious DER input safely. Any parsing exception (e.g.,
+   * {@code ArrayIndexOutOfBoundsException}, {@code IllegalArgumentException}) returns {@code null}
+   * without revealing structural details about the failure. This prevents attackers from probing
+   * the parser to infer valid signature structure.
+   *
+   * @param der DER-encoded ECDSA signature bytes
+   * @return array of [r, s] as {@code BigInteger}, or {@code null} if decoding fails
+   */
   static BigInteger[] decodeSignature(byte[] der) {
     try {
       if (der.length < 8 || der[0] != 0x30) {
@@ -48,7 +60,7 @@ final class EcdsaDerCodec {
       byte[] sBytes = Arrays.copyOfRange(der, pos, pos + sLen);
       BigInteger s = new BigInteger(1, sBytes);
       return new BigInteger[] {r, s};
-    } catch (RuntimeException e) {
+    } catch (RuntimeException e) { // CHECKSTYLE IGNORE IllegalCatch
       return null;
     }
   }

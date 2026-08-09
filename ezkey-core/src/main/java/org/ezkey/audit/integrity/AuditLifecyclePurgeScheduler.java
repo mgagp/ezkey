@@ -75,7 +75,7 @@ public class AuditLifecyclePurgeScheduler {
           automationResult.purgeableCount());
       int deleted = auditLogService.purgeLifecycleEligibleLogs(purgeCutoff);
       logger.info("Audit lifecycle purge completed. Deleted {} records", deleted);
-    } catch (Exception e) {
+    } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
       logger.error("Audit lifecycle purge failed: {}", e.getMessage(), e);
     }
   }

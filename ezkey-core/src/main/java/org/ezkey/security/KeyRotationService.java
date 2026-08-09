@@ -11,6 +11,8 @@
 package org.ezkey.security;
 
 import jakarta.annotation.PostConstruct;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -27,6 +29,7 @@ import org.ezkey.security.domain.repository.EncryptionKeyRepository;
 import org.ezkey.security.exception.PendingEncryptionKeyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -146,7 +149,7 @@ public class KeyRotationService {
       } else {
         logger.debug("Keyset and database are in sync ({} keys found in database)", keyCount);
       }
-    } catch (Exception e) {
+    } catch (DataAccessException | IllegalStateException e) {
       logger.error(
           "❌ Failed to synchronize keyset on startup. Key rotation may not work correctly. "
               + "Error: {}",
@@ -194,7 +197,7 @@ public class KeyRotationService {
       for (EncryptionKey pendingKey : pendingKeys) {
         promotePendingToPrimary(pendingKey);
       }
-    } catch (Exception e) {
+    } catch (DataAccessException | IllegalStateException e) {
       logger.error("Failed to check/promote pending keys: {}", e.getMessage());
       logger.debug("Pending key promotion error", e);
     }
@@ -239,7 +242,7 @@ public class KeyRotationService {
           "✅ Tink keyset updated: key {} is now PRIMARY (old primary was {})",
           Long.toUnsignedString(pendingKey.getKeyId()),
           oldPrimaryKeyId != null ? Long.toUnsignedString(oldPrimaryKeyId) : "none");
-    } catch (Exception e) {
+    } catch (GeneralSecurityException | IOException e) {
       logger.error(
           "❌ Failed to promote key {} in Tink keyset: {}",
           Long.toUnsignedString(pendingKey.getKeyId()),
@@ -364,7 +367,12 @@ public class KeyRotationService {
       } else {
         logger.debug("Rotation not due yet, skipping");
       }
-    } catch (Exception e) {
+    } catch (PendingEncryptionKeyExistsException e) {
+      logger.info("Rotation skipped: {}", e.getMessage());
+    } catch (GeneralSecurityException
+        | IOException
+        | DataAccessException
+        | IllegalStateException e) {
       logger.error("Failed to check/perform key rotation", e);
       auditLogService.log(
           AuditLog.builder()
@@ -462,7 +470,7 @@ public class KeyRotationService {
    * @throws Exception if rotation fails
    */
   @Transactional
-  public long introduceNewKey(String createdBy) throws Exception {
+  public long introduceNewKey(String createdBy) throws GeneralSecurityException, IOException {
     return introduceNewKey(createdBy, false);
   }
 
@@ -477,7 +485,8 @@ public class KeyRotationService {
    * @throws Exception if rotation fails
    */
   @Transactional
-  public long introduceNewKey(String createdBy, boolean immediatePromotion) throws Exception {
+  public long introduceNewKey(String createdBy, boolean immediatePromotion)
+      throws GeneralSecurityException, IOException {
     logger.info(
         "🔄 Introducing new encryption key (triggered by: {}, immediate: {})",
         createdBy,
@@ -911,7 +920,7 @@ public class KeyRotationService {
       // Backup is handled by the key management implementation during keyset save.
       // This method is here for future extensibility if needed
       logger.debug("Backup will be created during keyset save (reason: {})", reason);
-    } catch (Exception e) {
+    } catch (IllegalStateException e) {
       logger.warn("Failed to create backup: {}", e.getMessage());
       // Don't throw - backup failure shouldn't block rotation
     }

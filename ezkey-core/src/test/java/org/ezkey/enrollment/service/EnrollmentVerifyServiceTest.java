@@ -12,6 +12,8 @@ package org.ezkey.enrollment.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +23,7 @@ import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyRequest;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
+import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
 import org.ezkey.exception.auth.EnrollmentVerifyStateConflictException;
 import org.ezkey.integration.domain.repository.EzkeyAdminRepository;
 import org.ezkey.service.EntityEligibilityService;
@@ -34,6 +37,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 /**
  * Unit tests for {@link EnrollmentVerifyService} state validation and error messages.
@@ -143,5 +147,40 @@ class EnrollmentVerifyServiceTest {
         exception.getMessage().contains("revoked"),
         "Message should mention revoked: " + exception.getMessage());
     verify(enrollmentTxHelper).markInvalidAndClear(100);
+  }
+
+  @Test
+  @DisplayName("verify() - When expired cleanup fails should still return expired invitation")
+  void verify_WhenExpiredCleanupFails_ShouldThrowExpiredInvitationMessage() {
+    OffsetDateTime expiresAt = OffsetDateTime.now().minusMinutes(1);
+    Enrollment enrollment = new Enrollment();
+    enrollment.setEnrollmentId(100);
+    enrollment.setIntegrationId(7);
+    enrollment.setStatus(EnrollmentStatus.BOUND);
+    enrollment.setEnrollmentProofToken("token");
+    enrollment.setEnrollmentChallenge(123456);
+    enrollment.setCreatedAt(OffsetDateTime.now().minusHours(1));
+    enrollment.setExpiresAt(expiresAt);
+
+    when(enrollmentRepository.findById(100)).thenReturn(Optional.of(enrollment));
+    doThrow(new DataAccessResourceFailureException("repository unavailable"))
+        .when(enrollmentTxHelper)
+        .markExpiredAndEmitAudit(100, 7, expiresAt, "enrollment_expired_verify_rejected");
+
+    EnrollmentVerifyFailedException exception =
+        assertThrows(
+            EnrollmentVerifyFailedException.class,
+            () -> enrollmentVerifyService.verify(verifyRequest));
+
+    assertTrue(
+        exception.getMessage().contains("Enrollment invitation has expired"),
+        "Message should preserve expired-invitation contract: " + exception.getMessage());
+    verify(enrollmentTxHelper)
+        .markExpiredAndEmitAudit(100, 7, expiresAt, "enrollment_expired_verify_rejected");
+    verify(signatureService, never())
+        .validateSignature(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any());
   }
 }
