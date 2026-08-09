@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
     // Avoid two React copies (breaks context) when dependencies resolve differently per chunk.
     dedupe: ['react', 'react-dom'],
