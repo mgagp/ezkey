@@ -121,8 +121,7 @@ class EnrollmentBindServiceEligibilityTest {
         .thenReturn(Optional.of(enrollment));
     doThrow(new DataAccessResourceFailureException("repository unavailable"))
         .when(enrollmentTxHelper)
-        .markExpiredAndEmitAudit(
-            202, 7, expiresAt, "enrollment_expired_bind_rejected");
+        .markExpiredAndEmitAudit(202, 7, expiresAt, "enrollment_expired_bind_rejected");
 
     EnrollmentInvitationExpiredException exception =
         assertThrows(

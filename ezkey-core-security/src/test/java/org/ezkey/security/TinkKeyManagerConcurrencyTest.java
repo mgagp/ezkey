@@ -450,10 +450,7 @@ class TinkKeyManagerConcurrencyTest {
 
     TinkKeyManager manager =
         initializeManager(
-            masterKeyPath,
-            keysetPath,
-            TinkProperties.Keyset.StorageMode.DATABASE,
-            repository);
+            masterKeyPath, keysetPath, TinkProperties.Keyset.StorageMode.DATABASE, repository);
 
     try {
       IllegalStateException exception =

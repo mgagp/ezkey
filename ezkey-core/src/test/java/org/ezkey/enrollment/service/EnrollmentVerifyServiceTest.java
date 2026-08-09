@@ -165,12 +165,12 @@ class EnrollmentVerifyServiceTest {
     when(enrollmentRepository.findById(100)).thenReturn(Optional.of(enrollment));
     doThrow(new DataAccessResourceFailureException("repository unavailable"))
         .when(enrollmentTxHelper)
-        .markExpiredAndEmitAudit(
-            100, 7, expiresAt, "enrollment_expired_verify_rejected");
+        .markExpiredAndEmitAudit(100, 7, expiresAt, "enrollment_expired_verify_rejected");
 
     EnrollmentVerifyFailedException exception =
         assertThrows(
-            EnrollmentVerifyFailedException.class, () -> enrollmentVerifyService.verify(verifyRequest));
+            EnrollmentVerifyFailedException.class,
+            () -> enrollmentVerifyService.verify(verifyRequest));
 
     assertTrue(
         exception.getMessage().contains("Enrollment invitation has expired"),
