@@ -35,12 +35,18 @@ Default ports (host):
 
 | Service | URL |
 |---------|-----|
-| Admin API | `http://localhost:9080` |
-| Admin UI (dev) | `http://127.0.0.1:5173` or preview `http://127.0.0.1:4173` |
-| Demo Device | `http://127.0.0.1:8083` |
+| Admin API | `http://localhost:9080` (management health often `:9081/actuator/health`) |
+| Admin UI (dev) | `http://localhost:5173` or preview `http://localhost:4173` |
+| Demo Device | `http://localhost:8083` |
 
 Bootstrap Global Admin username: **`admin.docker`** (passwordless MFA via Demo Device enrollment
 created during bootstrap).
+
+**Cursor MCP browser hostname rule (Windows):** prefer **`http://localhost:<port>`**, not
+`http://127.0.0.1:<port>`. Vite often binds **IPv6 `::1` only**; the embedded browser’s IPv4
+`127.0.0.1` then fails with `ERR_CONNECTION_REFUSED` even when `curl`/Playwright via `localhost`
+succeed. Confirm the Admin UI is actually listening (`npm run dev` in `ezkey-admin-ui`) and note
+the printed port if Vite falls back to **5174/5175** because 5173 is already taken.
 
 ---
 
@@ -152,32 +158,59 @@ MCP is a pragmatic smoke tool for agent closeout.
 
 ### Prerequisites
 
-Same as clean-start baseline (Step 0). Admin UI dev server on port **5173** (Vite proxy to Admin API
-9080) is fine.
+Same as clean-start baseline (Step 0). Admin UI via `npm run dev` (Vite proxy to Admin API **9080**)
+must be up; default port **5173** (see hostname / port notes above). Demo Device from clean-start
+on **8083** with pre-seeded **`admin.docker`** enrollment.
 
-### Two-tab sequence (mirror Playwright)
+### Two-tab sequence (mirror Playwright `e2e/support/auth-flow.ts`)
 
-1. **Tab A — Admin UI:** navigate to `http://localhost:5173/login`.
-2. Fill username **`admin.docker`** (see MCP pitfalls below), submit login → page shows waiting
-   state (Cancel button; minimal interactive snapshot).
-3. **Tab B — Demo Device:** open `http://localhost:8083/phone/ezkey/enrollments/1/auth` in a
-   **new tab** (`newTab: true`). Repeat navigation until **Approve** / **Deny** appear (pending
-   claim). If you see only “Check for Authentication Requests” / “No pending”, the admin login may
-   have expired — cancel Tab A, restart login, then reload Tab B immediately.
-4. Click **Approve** on Demo Device → Tab A should land on `/dashboard` as **Global Admin**.
-5. Spot-check list routes for the slice, e.g. `/integrations`, `/enrollments` — confirm operator
-   labels (not raw FK IDs) and role-based tenant column for Global Admin.
+Canonical agent path — do **not** invent a parallel protocol:
+
+1. **Prereq check:** Admin UI responds on `http://localhost:<ui-port>/login`; Demo Device on
+   `http://localhost:8083/phone/ezkey`. Prefer **`localhost`**, not `127.0.0.1` (see above).
+2. **Tab A — Admin UI:** navigate to `/login`. Take **`browser_snapshot` with `interactive: true`**
+   before filling (first paint can look empty). Prefer `data-testid` when present
+   (`login-username-input`, `login-submit-button`, `login-waiting-state`). Locale may be EN
+   (**Login with EZKey**) or FR (**Connexion avec EZKey**) — same control.
+3. Fill username **`admin.docker`** (`browser_fill` **`value`**). Leave challenge **off** unless the
+   scenario requires it. Submit → wait until waiting state (Cancel + countdown).
+4. **Tab B — Demo Device:** open `http://localhost:8083/phone/ezkey` in a **new tab**
+   (`newTab: true`). If the tab stays on `about:blank`, **lock that tab** and navigate again.
+   Open the **`admin.docker`** enrollment card (`demo-device-enrollment-link`), then the auth URL
+   (often `/phone/ezkey/enrollments/{id}/auth`). Prefer the list → enrollment link path over
+   hard-coding enrollment id `1` when the list is available.
+5. Re-snapshot **interactive** after route change (a11y tree can lag behind the screenshot). Poll /
+   reload the auth URL until **Approve** / **Deny** appear (`demo-device-approve-button`), while
+   Tab A is still waiting. Do **not** poll after the Admin UI countdown expires.
+6. Click **Approve** → confirm Demo Device success (`Authentication Successful` /
+   `demo-device-result-success`), then click **`[data-testid="demo-device-back-to-enrollments"]`**
+   (primary CTA **Back to Enrollments**). Do **not** use the side-exit control
+   (`demo-device-auth-back` / “Exit to enrollments list”) unless the primary CTA is missing.
+7. **Tab A** should land on `/dashboard` as **Global Admin**. Spot-check list routes for the slice
+   when that is the goal (e.g. `/integrations`, `/enrollments`).
+8. **Logout** when the smoke is done (**Déconnexion** / Logout) → confirm `/login` again.
 
 Optional: open **New Enrollment** dialog on Enrollments to confirm create workflow still loads.
+
+### Empty pending while Admin UI still waits (rare)
+
+If Tab A still shows a live countdown but Tab B shows no pending after a few reloads: **Cancel** on
+Admin UI, restart login, then immediately reopen / reload the Demo Device auth URL. Treat this as a
+**timing / claim race**, not a standing maintenance bug to chase unless it becomes frequent.
 
 ### MCP pitfalls (observed)
 
 | Issue | Mitigation |
 |-------|------------|
+| `ERR_CONNECTION_REFUSED` on `127.0.0.1:5173` | Use **`http://localhost:5173`** (IPv6 `::1` bind). |
+| Vite on unexpected port | Read the `npm run dev` “Local:” URL; do not assume 5173. |
+| `newTab: true` lands on `about:blank` | Lock the new tab; navigate again to the Demo Device URL. |
 | `browser_fill` failed with `text` param | Use **`value`**, not `text`. |
 | `browser_type` appends text | Prefer `browser_fill`, or Ctrl+A then type. |
 | Login / pending timing | Start Demo Device poll **while** Admin UI is waiting; do not poll after expiry. |
-| Snapshot lags route change | Take a second snapshot after navigation if content looks stale. |
+| Snapshot lags route change | Second **interactive** snapshot before Approve / Deny. |
+| Hard-coded `/enrollments/1/auth` only | Prefer `/phone/ezkey` → enrollment link (Playwright). |
+| Stop on “Authentication Successful” | Always **Back to Enrollments** before leaving Tab B. |
 | Demo Device `unhealthy` in `docker ps` | Smoke can still work; investigate healthcheck separately. |
 
 ### Representative checks (operator lists)
