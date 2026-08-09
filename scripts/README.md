@@ -18,6 +18,21 @@ Diagnostics only: `./scripts/build.sh --diagnose-only`
 
 Docker-only alternative (no host JDK/Maven): `./scripts/build-docker.sh`. See [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md).
 
+## Git fast-forward helper
+
+Deterministic helper to update the current branch from an upstream branch using fetch + ff-only.
+It refuses dirty working trees and stops on divergence.
+
+```bash
+./scripts/git-ff-only.sh
+```
+
+Optional upstream argument:
+
+```bash
+./scripts/git-ff-only.sh origin/release/x.y
+```
+
 ## Java doctor-curated (punctual hygiene)
 
 Keyword: **`java-doctor-curated`**. Report-only shortlist (SpotBugs + Semgrep + narrow PMD); not a

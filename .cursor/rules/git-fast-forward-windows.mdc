@@ -1,0 +1,22 @@
+---
+description: Reliable fast-forward workflow on Windows agent shells
+alwaysApply: true
+---
+
+# Fast-forward workflow (fetch + ff-only)
+
+When the user asks to fast-forward the current branch onto an upstream branch:
+
+- Use the helper script: `./scripts/git-ff-only.sh [upstream]`.
+- On Windows PowerShell/CMD/agent shells, launch through Git Bash only:
+  - `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/git-ff-only.sh [upstream]'`
+
+Do not decompose this workflow into multiple ad-hoc shell commands unless explicitly asked to debug the script itself.
+
+Guardrails:
+
+- No rebase.
+- No merge commits.
+- No push.
+- No destructive git commands.
+- Stop on first script failure and relay the exact error text.
