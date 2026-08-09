@@ -1219,11 +1219,9 @@ public class TinkKeyManager implements KeyManagementOperations {
 
       KeysetBlob saved = keysetBlobRepository.save(keysetBlob);
       if (saved == null) {
-        logger.warn("Keyset repository returned null on save; defaulting database version to 0");
-        this.databaseKeysetVersion = 0;
-      } else {
-        this.databaseKeysetVersion = saved.getVersion() != null ? saved.getVersion() : 0;
+        throw new IllegalStateException("Keyset repository returned null on save");
       }
+      this.databaseKeysetVersion = saved.getVersion() != null ? saved.getVersion() : 0;
 
       logger.info(
           "✅ Keyset saved to database (version: {}, updated by: {})",

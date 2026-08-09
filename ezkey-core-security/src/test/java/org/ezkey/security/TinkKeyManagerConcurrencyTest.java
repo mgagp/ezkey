@@ -436,6 +436,37 @@ class TinkKeyManagerConcurrencyTest {
         + encryptedKeysetJson.substring(valueStart + 1);
   }
 
+  @Test
+  @DisplayName("saveKeysetToDatabase throws IllegalStateException when repository returns null")
+  void saveKeysetToDatabase_whenRepositoryReturnsNull_throwsIllegalStateException(
+      @TempDir Path tempDir) throws Exception {
+    Path masterKeyPath = tempDir.resolve("master.key");
+    Path keysetPath = tempDir.resolve("keyset.json.encrypted");
+    writeMasterKey(masterKeyPath);
+
+    KeysetBlobRepository repository = Mockito.mock(KeysetBlobRepository.class);
+    when(repository.findKeyset()).thenReturn(Optional.empty());
+    when(repository.save(any(KeysetBlob.class))).thenReturn(null);
+
+    TinkKeyManager manager =
+        initializeManager(
+            masterKeyPath,
+            keysetPath,
+            TinkProperties.Keyset.StorageMode.DATABASE,
+            repository);
+
+    try {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class, () -> manager.saveKeysetToDatabase("TEST_NULL_SAVE"));
+      assertTrue(
+          exception.getMessage().contains("repository returned null"),
+          "Exception message should mention null repository return");
+    } finally {
+      manager.shutdownKeysetCheckExecutor();
+    }
+  }
+
   private record LegacyDatabaseKeyset(KeysetBlob blob, long primaryKeyId) {}
 
   private record TinkFixture(TinkKeyManager manager) {
