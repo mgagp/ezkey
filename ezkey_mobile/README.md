@@ -110,7 +110,7 @@ yarn android:bundle:release
 - `ezkey_mobile/openapi-spec.json` is the mobile project's local, versioned copy of the Auth API spec.
 - This file exists so the mobile sub-project remains autonomous and reproducible.
 - Do not edit `openapi-spec.json` manually.
-- The only supported way to refresh this file is the centralized update script at [`scripts/update-specs.sh`](../scripts/update-specs.sh) or [`scripts/update-specs.bat`](../scripts/update-specs.bat).
+- The only supported way to refresh this file is the centralized update script at [`scripts/update-specs.sh`](../scripts/update-specs.sh).
 - The expected workflow is human-driven: start the Docker stack cleanly, wait for the APIs to be up, then run the centralized spec update script to fetch, format, and dispatch the latest specs into each sub-project.
 - After the mobile spec has been refreshed, regenerate the local client with `yarn generate:api`.
 - The generated models under `app/services/api/generated/auth-api/model/` are the contract source of truth for Auth API DTOs.

@@ -195,4 +195,4 @@ Values below marked **Admin config** come from `ezkey-admin-api/config/applicati
 
 ## 11. OpenAPI
 
-REST DTOs for encryption keys and re-encryption are generated from the running Admin API (`./scripts/update-specs.sh` / `scripts\update-specs.bat` after a clean Docker start). Do not hand-edit files under `specs/`.
+REST DTOs for encryption keys and re-encryption are generated from the running Admin API (`./scripts/update-specs.sh` after a clean Docker start). Do not hand-edit files under `specs/`.

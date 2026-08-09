@@ -6,7 +6,7 @@ This document describes how the mobile app maps between the Auth API contract an
 
 ## Contract Artifacts Policy
 
-- The local `openapi-spec.json` is a **versioned copy** of the Auth API spec. Refresh it only via `scripts/update-specs.sh` or `scripts/update-specs.bat` after a clean Docker stack.
+- The local `openapi-spec.json` is a **versioned copy** of the Auth API spec. Refresh it only via `scripts/update-specs.sh` after a clean Docker stack.
 - Generated DTOs under `app/services/api/generated/auth-api/model/` are the **source of truth** for Auth API contract types. Never hand-edit.
 - `app/services/api/types.ts` stays thin — local domain types and UI-friendly wrapper shapes only.
 

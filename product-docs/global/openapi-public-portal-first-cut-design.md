@@ -19,7 +19,7 @@ The first cut is intentionally a **bounded one-shot implementation slice**, not 
 - Public site pages under `sites/ezkey-org/` for the API portal.
 - Static `ReDoc CE` integration pattern compatible with Cloudflare Pages.
 - Static publication of public-portal OpenAPI specs for `Admin API`, `Auth API`, and optional `Integration API`.
-- Lightweight extension of `scripts/update-specs.sh` and `scripts/update-specs.bat` so `Integration API` has the same centralized publication path as `Admin API` and `Auth API`.
+- Lightweight extension of `scripts/update-specs.sh` so `Integration API` has the same centralized publication path as `Admin API` and `Auth API`.
 - First hardening step that removes raw Springdoc as a public reference surface on `EXP1` API hostnames.
 - Minimal documentation updates to make the portal the public reference entry point.
 
@@ -109,7 +109,7 @@ Why these route shapes:
 - `Admin API` and `Auth API` can be wired immediately from the existing generated-spec workflow.
 - `Integration API` must join through one explicit publication path in the same slice so the portal does not encode an accidental asymmetry forever.
 - The current scripts prove the pattern already; the expected change is intentionally **small**:
-  - add `Integration API` URL handling to `scripts/update-specs.sh` and `scripts/update-specs.bat`;
+  - add `Integration API` URL handling to `scripts/update-specs.sh`;
   - create and maintain `specs/integration-api/openapi-spec.json`;
   - update `specs/README.md` so the centralized spec workflow documents the new surface.
 - `Crypto API` remains outside this publication set.

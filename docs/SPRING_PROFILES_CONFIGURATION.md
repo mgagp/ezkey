@@ -49,10 +49,14 @@ java -jar ezkey-admin-api.jar
 - Master key: `C:\ProgramData\ezkey\secrets\master.key` (Windows filesystem)
 - Keyset: `C:\ProgramData\ezkey\keysets\keyset.json.encrypted` (Windows filesystem)
 
-**Generate keys:**
-```powershell
-.\scripts\generate-master-key.ps1
+**Generate keys (Git Bash, Windows native profile — dev only):**
+```bash
+mkdir -p /c/ProgramData/ezkey/secrets /c/ProgramData/ezkey/keysets
+openssl rand -base64 32 > /c/ProgramData/ezkey/secrets/master.key
+chmod 600 /c/ProgramData/ezkey/secrets/master.key
 ```
+
+For Linux/macOS host installs, use [`scripts/generate-master-key.sh`](../scripts/generate-master-key.sh). For Docker, prefer [`docker/generate-encryption-keys.sh`](../docker/generate-encryption-keys.sh).
 
 ---
 
@@ -180,12 +184,11 @@ The key is created at `/etc/ezkey/secrets/master.key` inside the Docker volume `
 
 ### Windows Mode
 
-```powershell
-# Run as Administrator
-.\scripts\generate-master-key.ps1
-
-# Or with custom paths
-.\scripts\generate-master-key.ps1 -OutputDir "C:\MySecrets" -KeysetsDir "C:\MyKeysets"
+```bash
+# Git Bash — default Windows native paths (dev only)
+mkdir -p /c/ProgramData/ezkey/secrets /c/ProgramData/ezkey/keysets
+openssl rand -base64 32 > /c/ProgramData/ezkey/secrets/master.key
+chmod 600 /c/ProgramData/ezkey/secrets/master.key
 ```
 
 The key is created at `C:\ProgramData\ezkey\secrets\master.key` by default.
@@ -230,15 +233,16 @@ This automatically:
 
 ### Windows Clean Start
 
-```powershell
-# 1. Generate master key
-.\scripts\generate-master-key.ps1
+```bash
+# 1. Generate master key (Git Bash)
+mkdir -p /c/ProgramData/ezkey/secrets /c/ProgramData/ezkey/keysets
+openssl rand -base64 32 > /c/ProgramData/ezkey/secrets/master.key
 
 # 2. Start PostgreSQL locally (if using docker compose for DB)
 # OR ensure PostgreSQL is running on localhost:5432
 
 # 3. Run the application
-$env:SPRING_PROFILES_ACTIVE = "windows"
+export SPRING_PROFILES_ACTIVE=windows
 java -jar ezkey-admin-api.jar
 ```
 
@@ -301,10 +305,9 @@ Both Docker and Windows modes require PostgreSQL:
 ./docker/generate-encryption-keys.sh
 ```
 
-**Windows:**
-```powershell
-# Regenerate master key
-.\scripts\generate-master-key.ps1
+**Windows (Git Bash, native profile):**
+```bash
+openssl rand -base64 32 > /c/ProgramData/ezkey/secrets/master.key
 ```
 
 ### "Encryption paths mismatch"
@@ -372,5 +375,4 @@ To migrate from Windows mode to Docker mode:
 - **Auth API Docker Profile:** [ezkey-auth-api/config/application-docker.properties](../ezkey-auth-api/config/application-docker.properties)
 - **Auth API Windows Profile:** [ezkey-auth-api/config/application-windows.properties](../ezkey-auth-api/config/application-windows.properties)
 - **Master Key Generation Script (Linux/Mac):** [scripts/generate-master-key.sh](../scripts/generate-master-key.sh)
-- **Master Key Generation Script (Windows):** [scripts/generate-master-key.ps1](../scripts/generate-master-key.ps1)
 - **Docker Key Generation Script:** [docker/generate-encryption-keys.sh](../docker/generate-encryption-keys.sh)

@@ -179,7 +179,7 @@ This section supersedes the vague “clarify `expires_at` after VERIFIED” bull
 
 1. From repo root: `mvn spotless:apply`, then unit tests (`mvn test` excluding functional module per project conventions).
 2. Clean start Docker stack so Admin API reflects changes.
-3. Run `scripts/update-specs.sh` (or `scripts\update-specs.bat` on Windows) to refresh OpenAPI JSON from live `/api-docs`.
+3. Run `scripts/update-specs.sh` to refresh OpenAPI JSON from live `/api-docs`.
 
 ### Phase 2 — Admin UI (only after Phase 1b)
 

@@ -17,11 +17,8 @@ The Ezkey JavaScript/TypeScript SDK provides easy integration with Ezkey Admin a
 ### 1. Build the SDK
 
 ```bash
-# Linux/Mac
-./build.sh
-
-# Windows
-build.cmd
+npm install
+npm run build
 ```
 
 ### 2. Use in Your Project

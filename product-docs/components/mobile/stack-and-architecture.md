@@ -39,7 +39,7 @@ app/
   state/              Zustand stores.
 ```
 
-The `app/services/api/generated/auth-api/model/` directory is the **source of truth for Auth API DTOs** and is regenerated through Orval from the local `openapi-spec.json`. Never hand-edit generated files. The spec is refreshed only via the root `scripts/update-specs.sh` or `scripts/update-specs.bat` after a clean Docker stack run.
+The `app/services/api/generated/auth-api/model/` directory is the **source of truth for Auth API DTOs** and is regenerated through Orval from the local `openapi-spec.json`. Never hand-edit generated files. The spec is refreshed only via the root `scripts/update-specs.sh` after a clean Docker stack run.
 
 ## Architectural View
 

@@ -15,3 +15,4 @@ alwaysApply: true
 	- Expected shell family includes `MINGW`/`MSYS`, not `Linux` from WSL.
 - **Maven baseline:** `./scripts/build.sh` from Git Bash is the single canonical Java validation entrypoint on all platforms. From PowerShell (e.g. Cursor agent shell), use `& "C:\Program Files\Git\bin\bash.exe" -lc './scripts/build.sh'`. Do not introduce or rely on `.cmd` / `.bat` build wrappers.
 - **Avoid Windows-only script formats** (`.cmd`, `.bat`, `.ps1`) for repo tooling unless there is no portable Bash equivalent. Prefer one Bash script that works on Windows (Git Bash), Linux, and macOS.
+- **Known keepers (do not purge casually):** Android `ezkey_mobile/android/gradlew.bat` (Gradle wrapper); interim mobile Maestro harnesses under `ezkey_mobile/scripts/*.ps1` until that orthogonal workstream ports them.

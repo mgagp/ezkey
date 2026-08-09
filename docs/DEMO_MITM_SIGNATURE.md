@@ -27,7 +27,7 @@ This feature is intended for **presentations and security training**, not produc
   `EZKEY_DEMO_MITM_SIGNATURE_ENABLED` with default **`true`** for local stacks so a **clean start** is demo-ready.  
   Override: `EZKEY_DEMO_MITM_SIGNATURE_ENABLED=false docker compose ...` (or export before `start.sh`).
 
-- **`ezkey-tests/clean-start.sh`** / **`clean-start.ps1`**: unless you already exported the variable, the script sets  
+- **`ezkey-tests/clean-start.sh`**: unless you already exported the variable, the script sets  
   - **`true`** when **not** using `--prod-safe` / `-ProdSafe` (default demo-friendly),  
   - **`false`** when using **`--prod-safe`** / **`-ProdSafe`** (closer to production).
 

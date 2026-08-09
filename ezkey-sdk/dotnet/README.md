@@ -16,13 +16,8 @@ The Ezkey .NET SDK provides easy integration with Ezkey Admin and Auth APIs for 
 ### 1. Build the SDK
 
 ```bash
-# Linux/Mac
-./build.sh
-
-# Windows
-build.cmd
+dotnet build
 ```
-
 ### 2. Install the SDK
 
 ```bash

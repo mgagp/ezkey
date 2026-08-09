@@ -1,35 +1,48 @@
-## Why we recommend PowerShell on Windows
+## Windows tooling: Git Bash, not PowerShell scripts
 
-**Support policy:** PowerShell **5.1 is acceptable**, and **PowerShell 7+ is recommended** for the best experience.
+**Support policy:** On Windows, Ezkey repo tooling is **Bash-first** via **Git for Windows** (`C:\Program Files\Git\bin\bash.exe`). Do not use WSL's `bash.exe` for repo scripts unless explicitly requested.
 
-Project note: Choosing PowerShell for Windows scripts is a development and maintenance decision. This document explains the rationale briefly.
+Historical note: this document once recommended PowerShell wrappers such as `docker/start.ps1`. Those `.ps1` / `.bat` / `.cmd` wrappers were removed in favor of a single portable Bash surface shared with Linux and macOS.
 
-- **Consistency & maintenance**: The Windows script maintained in the repository is `docker/start.ps1`. Documenting and referencing that script avoids duplication (`.ps1` vs `start.bat`) and reduces the risk of divergence.
-- **Advanced capabilities**: PowerShell handles named parameters, structured error handling, exit codes, and logging more reliably than batch scripts. Patterns used in `start.ps1` (for example `-Parallel`, `-NoCache`, `-DebugCache`) are hard to reproduce faithfully in `*.bat`.
-- **Reliable environment handling**: Environment variables and profiles (for example `$env:SPRING_PROFILES_ACTIVE`, `EZKEY_ENABLE_JMX`) are manipulated natively and clearly in PowerShell.
-- **Security & reproducibility**: The recommended invocation includes `-ExecutionPolicy Bypass` for reproducible developer runs; this is explicit and documented for operators.
-- **Cross-platform (PowerShell Core)**: `pwsh` (PowerShell Core) runs on Linux and macOS as well, which can simplify sharing scripts across environments when appropriate.
-- **Lower operational risk**: Complex scenarios (parsing, encoding, timeouts, subprocess behavior) are fragile in `cmd`/batch; PowerShell reduces these risks and the support burden.
+### Recommended command (Windows)
 
-### Recommended command (Windows PowerShell)
+From the repository root, prefer Git Bash:
 
-Run from the repository root in a PowerShell session:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\\docker\\start.ps1
+```bash
+./docker/start.sh
 ```
 
-If you use PowerShell Core (`pwsh`):
+From PowerShell or CMD (agent shells often use PowerShell), invoke Git Bash explicitly:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\\docker\\start.ps1
+& "C:\Program Files\Git\bin\bash.exe" -lc './docker/start.sh'
 ```
 
-### Where to find this note
+Useful flags (same on all platforms):
 
-- This note is a technical reference for developers and operators. The project README files link to this document to explain the reasoning behind the recommendation.
+```bash
+./docker/start.sh --parallel
+./docker/start.sh --no-cache
+SPRING_PROFILES_ACTIVE=docker,docker-test ./docker/start.sh
+```
+
+### Environment variables
+
+Set variables in the Bash session (or prefix the command), for example:
+
+```bash
+export SPRING_PROFILES_ACTIVE=docker,docker-dev
+export EZKEY_ENABLE_JMX=true
+./docker/start.sh
+```
+
+### Exceptions
+
+- Android Gradle wrapper: `ezkey_mobile/android/gradlew.bat` (toolchain).
+- A small set of interim mobile Maestro harness scripts under `ezkey_mobile/scripts/*.ps1` (orthogonal workstream).
+
+See [`.cursor/rules/shell-preferences.mdc`](../.cursor/rules/shell-preferences.mdc) and [`docker/README.md`](../docker/README.md).
 
 ---
 
-_Created: 2026-01-13_
-
+_Updated: 2026-08-09_

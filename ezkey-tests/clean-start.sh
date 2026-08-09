@@ -83,7 +83,7 @@ else
     SPRING_PROFILES="docker,docker-dev,docker-test"
 fi
 
-# Export JMX flag so docker/start.sh and docker/start.ps1 can include JMX override.
+# Export JMX flag so docker/start.sh can include JMX override.
 if [ -n "$ENABLE_JMX" ]; then
     export EZKEY_ENABLE_JMX=true
 fi
