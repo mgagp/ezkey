@@ -20,7 +20,7 @@ import axios from 'axios';
 import {useTranslation} from 'react-i18next';
 import {useSaveEnrollment} from './useEnrollments';
 import {enrollmentsApi} from '../services/api/enrollments';
-import {instanceInfoApi} from '../services/api/instanceInfo';
+import {fetchVerifiedInstanceInfo} from '../services/api/instanceInfo';
 import {BindEnrollmentResponse} from '../services/api/types';
 import {cryptoService} from '../services/crypto';
 import {DEFAULT_ENROLLMENT_APPROVAL_POLICY} from '../services/security/approvalRequirement';
@@ -363,12 +363,18 @@ export function useEnrollmentWizard(popToTop: () => void): EnrollmentWizardState
       }
       let installation =
         effectiveAuthUrl != null ? buildInstallation(effectiveAuthUrl, undefined, now) : undefined;
-      if (effectiveAuthUrl) {
-        try {
-          const instanceInfo = await instanceInfoApi.get(effectiveAuthUrl);
+      if (effectiveAuthUrl && draft.enrollmentProofToken && draft.integrationPublicKey) {
+        const instanceInfo = await fetchVerifiedInstanceInfo({
+          authUrl: effectiveAuthUrl,
+          enrollmentProofToken: draft.enrollmentProofToken,
+          integrationPublicKey: draft.integrationPublicKey,
+        });
+        if (instanceInfo) {
           installation = buildInstallation(effectiveAuthUrl, instanceInfo, now);
-        } catch (error) {
-          console.warn('[EnrollmentWizard] Failed to fetch installation metadata:', error);
+        } else {
+          console.warn(
+            '[EnrollmentWizard] Signed installation metadata unavailable; keeping host-only branding',
+          );
         }
       }
       const record: StoredEnrollment = {

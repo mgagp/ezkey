@@ -3,10 +3,10 @@
 ## Metadata
 
 - **ID:** `TB-2026-08-09-mobile-signed-instance-info`
-- **Status:** `draft`
+- **Status:** `under-review`
 - **Related idea:** `I-2026-08-09-mobile-signed-instance-info-integrity`
 - **GitHub issue:** none
-- **GitHub branch:** _(set when implementation starts)_
+- **GitHub branch:** `feature/tb-2026-08-09-mobile-signed-instance-info`
 - **GitHub PR:** none
 - **Created at:** `2026-08-09`
 - **Updated at:** `2026-08-09`

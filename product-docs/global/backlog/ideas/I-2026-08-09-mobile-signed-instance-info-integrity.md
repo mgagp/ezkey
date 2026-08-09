@@ -3,7 +3,7 @@
 ## Metadata
 
 - **ID:** `I-2026-08-09-mobile-signed-instance-info-integrity`
-- **Status:** `ready`
+- **Status:** `active`
 - **Priority:** `P2`
 - **Created at:** `2026-08-09`
 - **Updated at:** `2026-08-09`

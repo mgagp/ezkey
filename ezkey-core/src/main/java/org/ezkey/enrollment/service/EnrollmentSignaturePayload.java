@@ -5,7 +5,8 @@
  * Licensed under the MIT License. See LICENSE file in the project root for license information.
  *
  * Canonical payload builder for enrollment bind (integration-signed), verify request (device-signed),
- * and verify response (integration-signed). See docs/ENROLLMENT_SIGNATURE_PAYLOAD.md.
+ * verify response (integration-signed), and enrolled instance-info (integration-signed). See
+ * docs/ENROLLMENT_SIGNATURE_PAYLOAD.md.
  */
 
 package org.ezkey.enrollment.service;
@@ -116,6 +117,48 @@ public final class EnrollmentSignaturePayload {
     String oc = outcome != null ? outcome.name() : "";
     String msg = AuthAttemptSignaturePayload.nfcOrEmpty(message);
     return pt + SEP + idStr + SEP + oc + SEP + msg;
+  }
+
+  /** Purpose literal included in the enrolled instance-info payload for domain separation. */
+  public static final String INSTANCE_INFO_PURPOSE = "INSTANCE_INFO";
+
+  /**
+   * Builds the payload the integration signs for enrolled instance-info responses.
+   *
+   * <p>Format: {@code
+   * enrollmentProofToken|enrollmentId|INSTANCE_INFO|authApiPublicBaseUrl|instanceName|instanceDescription|aboutUrl}
+   *
+   * @param enrollmentProofToken enrollment proof token (exact string)
+   * @param enrollmentId enrollment id
+   * @param authApiPublicBaseUrl optional public Auth API base URL (exact; null → "")
+   * @param instanceName instance display name (NFC)
+   * @param instanceDescription instance description (NFC)
+   * @param aboutUrl optional about URL (NFC)
+   * @return canonical pipe-separated payload
+   */
+  public static String buildInstanceInfoPayload(
+      String enrollmentProofToken,
+      Integer enrollmentId,
+      String authApiPublicBaseUrl,
+      String instanceName,
+      String instanceDescription,
+      String aboutUrl) {
+    String pt = enrollmentProofToken != null ? enrollmentProofToken : "";
+    String idStr = enrollmentId != null ? String.valueOf(enrollmentId) : "";
+    String authBase = authApiPublicBaseUrl != null ? authApiPublicBaseUrl : "";
+    return pt
+        + SEP
+        + idStr
+        + SEP
+        + INSTANCE_INFO_PURPOSE
+        + SEP
+        + authBase
+        + SEP
+        + nfcOrEmpty(instanceName)
+        + SEP
+        + nfcOrEmpty(instanceDescription)
+        + SEP
+        + nfcOrEmpty(aboutUrl);
   }
 
   private static String nfcOrEmpty(String s) {

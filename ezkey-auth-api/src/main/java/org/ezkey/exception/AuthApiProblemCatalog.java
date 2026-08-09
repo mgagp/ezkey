@@ -26,6 +26,8 @@ public final class AuthApiProblemCatalog {
   public static final String TYPE_ENROLLMENT_INTEGRATION_NOT_FOUND =
       BASE + "/enrollment-integration-not-found";
   public static final String TYPE_ENROLLMENT_VERIFY_FAILED = BASE + "/enrollment-verify-failed";
+  public static final String TYPE_ENROLLMENT_INSTANCE_INFO_FAILED =
+      BASE + "/enrollment-instance-info-failed";
   public static final String TYPE_ENROLLMENT_STATE_CONFLICT = BASE + "/enrollment-state-conflict";
   public static final String TYPE_AUTH_ATTEMPT_BINDING_FAILED =
       BASE + "/auth-attempt-binding-failed";
@@ -65,6 +67,8 @@ public final class AuthApiProblemCatalog {
       "Enrollment could not be completed due to a configuration issue.";
   public static final String DETAIL_ENROLLMENT_VERIFY_FAILED =
       "Verification could not be completed. Check the request and try again.";
+  public static final String DETAIL_ENROLLMENT_INSTANCE_INFO_FAILED =
+      "Installation branding could not be retrieved. Check the request and try again.";
   public static final String DETAIL_ENROLLMENT_STATE_CONFLICT =
       "Enrollment is in a state that does not allow this operation.";
   public static final String DETAIL_AUTH_ATTEMPT_FAILED =

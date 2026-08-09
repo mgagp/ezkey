@@ -589,6 +589,60 @@
         "description": "Verifies the integration Ed25519 signature on the verify HTTP response (`enrollmentVerifyPayloadSignedByIntegration`). End-to-end assurance in Postman."
       },
       "response": []
+    },
+    {
+      "name": "10 enrolled instance-info",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200 or 400\", function () {",
+              "    pm.expect([200, 400]).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set(\"instanceInfoPayloadSignedByIntegration\", jsonData.instanceInfoPayloadSignedByIntegration);",
+              "    pm.environment.set(\"instanceName\", jsonData.instanceName != null ? jsonData.instanceName : \"\");",
+              "    pm.test(\"Response contains signed branding fields\", function () {",
+              "        pm.expect(jsonData).to.have.property('enrollmentId');",
+              "        pm.expect(jsonData).to.have.property('instanceInfoPayloadSignedByIntegration');",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"enrollmentProofToken\": \"{{enrollmentProofToken}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/enrollments/instance-info",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "enrollments",
+            "instance-info"
+          ]
+        },
+        "description": "Returns integration-signed installation branding for an enrolled client (`enrollmentProofToken` only). Verify `instanceInfoPayloadSignedByIntegration` with the stored integration public key before applying branding. See `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md` § Enrolled instance-info."
+      },
+      "response": []
     }
   ],
   "event": [

@@ -299,6 +299,58 @@
           }
         }
       }
+    },
+    "/api/v1/enrollments/instance-info": {
+      "post": {
+        "tags": [
+          "Enrollments"
+        ],
+        "summary": "Get integration-signed installation branding",
+        "description": "Returns instance branding signed with the enrollment integration key for enrolled clients",
+        "operationId": "instanceInfo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentInstanceInfoRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signed installation branding returned successfully",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentInstanceInfoResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or unknown enrollment proof token",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -399,6 +451,69 @@
             "additionalProperties": {}
           }
         }
+      },
+      "EnrollmentInstanceInfoRequestDto": {
+        "type": "object",
+        "description": "Request DTO for integration-signed installation branding",
+        "properties": {
+          "enrollmentProofToken": {
+            "type": "string",
+            "description": "Enrollment proof token for authentication",
+            "example": "abc123-def456-ghi789"
+          }
+        },
+        "required": [
+          "enrollmentProofToken"
+        ]
+      },
+      "EnrollmentInstanceInfoResponseDto": {
+        "type": "object",
+        "description": "Integration-signed installation branding for enrolled clients",
+        "properties": {
+          "enrollmentId": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Enrollment ID that authenticated the request",
+            "example": 123
+          },
+          "authApiPublicBaseUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Public base URL of the Auth API (same as authUrl in enrollment QR JSON when configured)",
+            "example": "https://auth.example.com:8080"
+          },
+          "instanceName": {
+            "type": "string",
+            "description": "Instance / organization display name",
+            "example": "Acme Corporation"
+          },
+          "instanceDescription": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional instance or organization description",
+            "example": "Acme Corp Ezkey MFA"
+          },
+          "aboutUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional URL for About / learn more",
+            "example": "https://www.example.com/about-ezkey"
+          },
+          "instanceInfoPayloadSignedByIntegration": {
+            "type": "string",
+            "description": "Base64URL (no padding) Ed25519 signature over the canonical INSTANCE_INFO payload"
+          }
+        },
+        "required": [
+          "enrollmentId",
+          "instanceInfoPayloadSignedByIntegration"
+        ]
       },
       "EnrollmentBindRequestDto": {
         "type": "object",

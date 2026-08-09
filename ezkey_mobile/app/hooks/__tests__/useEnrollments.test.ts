@@ -23,9 +23,7 @@ jest.mock('../../services/storage/enrollmentStorage', () => ({
 }));
 
 jest.mock('../../services/api/instanceInfo', () => ({
-  instanceInfoApi: {
-    get: jest.fn(),
-  },
+  fetchVerifiedInstanceInfo: jest.fn(),
 }));
 
 jest.mock('../../utils/installationMetadata', () => ({
@@ -39,7 +37,7 @@ import React from 'react';
 import {act, create} from 'react-test-renderer';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {enrollmentStorage} from '../../services/storage/enrollmentStorage';
-import {instanceInfoApi} from '../../services/api/instanceInfo';
+import {fetchVerifiedInstanceInfo} from '../../services/api/instanceInfo';
 import {
   isInstallationMetadataStale,
   needsInstallationMetadataRefresh,
@@ -60,7 +58,7 @@ import type {
 } from '../../services/storage/enrollmentStorage';
 
 const mockStorage = jest.mocked(enrollmentStorage);
-const mockInstanceInfoApi = jest.mocked(instanceInfoApi);
+const mockFetchVerifiedInstanceInfo = jest.mocked(fetchVerifiedInstanceInfo);
 const mockIsStale = jest.mocked(isInstallationMetadataStale);
 const mockNeedsRefresh = jest.mocked(needsInstallationMetadataRefresh);
 const mockBuildInstallation = jest.mocked(buildInstallation);
@@ -127,6 +125,7 @@ const sampleEnrollment: StoredEnrollment = {
   createdAt: '2026-01-01T00:00:00.000Z',
   lastActivityAt: '2026-01-01T00:00:00.000Z',
   enrollmentProofToken: 'token-abc',
+  integrationPublicKey: 'integ-pk',
   installation: baseInstallation,
 };
 
@@ -426,7 +425,7 @@ describe('useRefreshInstallationMetadata', () => {
     });
 
     expect(returnValue).toBe(false);
-    expect(mockInstanceInfoApi.get).not.toHaveBeenCalled();
+    expect(mockFetchVerifiedInstanceInfo).not.toHaveBeenCalled();
   });
 
   it('returns false when no enrollment is stale or needs a refresh', async () => {
@@ -441,7 +440,7 @@ describe('useRefreshInstallationMetadata', () => {
     });
 
     expect(returnValue).toBe(false);
-    expect(mockInstanceInfoApi.get).not.toHaveBeenCalled();
+    expect(mockFetchVerifiedInstanceInfo).not.toHaveBeenCalled();
   });
 
   it('makes exactly one API call when multiple enrollments share the same installation', async () => {
@@ -454,7 +453,7 @@ describe('useRefreshInstallationMetadata', () => {
     mockIsStale.mockReturnValue(true);
     mockNeedsRefresh.mockReturnValue(false);
     mockResolveAuthUrl.mockReturnValue('https://ezkey.example.com');
-    mockInstanceInfoApi.get.mockResolvedValue({
+    mockFetchVerifiedInstanceInfo.mockResolvedValue({
       instanceName: 'Acme EU',
       instanceDescription: 'Primary European Ezkey installation',
       aboutUrl: null,
@@ -467,7 +466,12 @@ describe('useRefreshInstallationMetadata', () => {
       await result.current.mutateAsync([sampleEnrollment, secondEnrollment]);
     });
 
-    expect(mockInstanceInfoApi.get).toHaveBeenCalledTimes(1);
+    expect(mockFetchVerifiedInstanceInfo).toHaveBeenCalledTimes(1);
+    expect(mockFetchVerifiedInstanceInfo).toHaveBeenCalledWith({
+      authUrl: 'https://ezkey.example.com',
+      enrollmentProofToken: 'token-abc',
+      integrationPublicKey: 'integ-pk',
+    });
     expect(mockStorage.updateInstallationMetadata).toHaveBeenCalledTimes(1);
     expect(mockStorage.updateInstallationMetadata).toHaveBeenCalledWith([
       {id: 'enr-1', installation: {...baseInstallation}},
@@ -475,11 +479,11 @@ describe('useRefreshInstallationMetadata', () => {
     ]);
   });
 
-  it('handles a failing API call gracefully and returns false without throwing', async () => {
+  it('handles a failed verified fetch gracefully and returns false without throwing', async () => {
     mockIsStale.mockReturnValue(true);
     mockNeedsRefresh.mockReturnValue(false);
     mockResolveAuthUrl.mockReturnValue('https://ezkey.example.com');
-    mockInstanceInfoApi.get.mockRejectedValue(new Error('Network error'));
+    mockFetchVerifiedInstanceInfo.mockResolvedValue(null);
 
     const {result} = renderHook(() => useRefreshInstallationMetadata());
 
@@ -502,7 +506,7 @@ describe('useRefreshInstallationMetadata', () => {
     mockIsStale.mockReturnValue(true);
     mockNeedsRefresh.mockReturnValue(false);
     mockResolveAuthUrl.mockReturnValue('https://ezkey.example.com');
-    mockInstanceInfoApi.get.mockResolvedValue({
+    mockFetchVerifiedInstanceInfo.mockResolvedValue({
       instanceName: 'Acme EU',
       instanceDescription: 'Updated description',
       aboutUrl: null,
@@ -527,7 +531,7 @@ describe('useRefreshInstallationMetadata', () => {
     mockIsStale.mockReturnValue(true);
     mockNeedsRefresh.mockReturnValue(false);
     mockResolveAuthUrl.mockReturnValue('https://ezkey.example.com');
-    mockInstanceInfoApi.get.mockResolvedValue({
+    mockFetchVerifiedInstanceInfo.mockResolvedValue({
       instanceName: 'Acme EU',
       instanceDescription: null,
       aboutUrl: null,
@@ -545,11 +549,11 @@ describe('useRefreshInstallationMetadata', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({queryKey: ['enrollments']});
   });
 
-  it('does not invalidate the cache when all API calls fail', async () => {
+  it('does not invalidate the cache when verified fetch returns null', async () => {
     mockIsStale.mockReturnValue(true);
     mockNeedsRefresh.mockReturnValue(false);
     mockResolveAuthUrl.mockReturnValue('https://ezkey.example.com');
-    mockInstanceInfoApi.get.mockRejectedValue(new Error('Network error'));
+    mockFetchVerifiedInstanceInfo.mockResolvedValue(null);
 
     const {result, queryClient} = renderHook(() => useRefreshInstallationMetadata());
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
@@ -559,5 +563,25 @@ describe('useRefreshInstallationMetadata', () => {
     });
 
     expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+
+  it('skips refresh when enrollment lacks proof material', async () => {
+    mockIsStale.mockReturnValue(true);
+    mockNeedsRefresh.mockReturnValue(false);
+    mockResolveAuthUrl.mockReturnValue('https://ezkey.example.com');
+    const withoutSecrets: StoredEnrollment = {
+      ...sampleEnrollment,
+      enrollmentProofToken: undefined as unknown as string,
+      integrationPublicKey: undefined,
+    };
+
+    const {result} = renderHook(() => useRefreshInstallationMetadata());
+    let returnValue: boolean | undefined;
+    await act(async () => {
+      returnValue = await result.current.mutateAsync([withoutSecrets]);
+    });
+
+    expect(returnValue).toBe(false);
+    expect(mockFetchVerifiedInstanceInfo).not.toHaveBeenCalled();
   });
 });

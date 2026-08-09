@@ -73,13 +73,13 @@ and four backlog ideas below — this track does not claim September operability
 | `I-2026-08-02-mobile-play-official-compliance-gate` | Mobile: Play official release compliance gate | `incubating` | `P2` | `mobile`, `docs` | `2026-08-02` |
 | `I-2026-08-02-mobile-client-update-mechanism` | Mobile: client app-update mechanism | `incubating` | `P3` | `mobile`, `docs` | `2026-08-02` |
 | `I-2026-08-02-mobile-installation-version-and-compat-discovery` | Mobile: installation product-version and compatibility discovery | `incubating` | `P3` | `mobile`, `auth-api`, `admin-api`, `core`, `docs`, `security` | `2026-08-02` |
-| `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `ready` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-09` |
+| `I-2026-08-09-mobile-signed-instance-info-integrity` | Mobile: signed Public Instance Info integrity | `active` | `P2` | `mobile`, `auth-api`, `core`, `docs`, `security` | `2026-08-09` |
 
 ## Tracer bullets (draft / ready / in progress)
 
 | ID | Title | Status | Related idea |
 |----|-------|--------|--------------|
-| `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `draft` | `I-2026-08-09-mobile-signed-instance-info-integrity` |
+| `TB-2026-08-09-mobile-signed-instance-info` | Signed enrolled instance-info | `under-review` | `I-2026-08-09-mobile-signed-instance-info-integrity` |
 | `TB-2026-07-12` | Security pentest curated MVP | `active` | `I-2026-07-12-security-pentest-curated-hygiene` |
 | `TB-2026-07-11` | Java doctor-curated curator MVP | `active` | `I-2026-07-11-java-doctor-curated-hygiene` (#326) |
 | `TB-2026-07-11-mobile-doctor` | Mobile doctor-curated curator MVP | `active` | `I-2026-07-11-mobile-doctor-curated-hygiene` |
