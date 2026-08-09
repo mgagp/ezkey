@@ -26,7 +26,7 @@ Root [`PRD.md`](PRD.md) is a **stub** that points at `product-intent.md` (canon 
 | Admin UI conventions | [`ezkey-admin-ui/AGENTS.md`](ezkey-admin-ui/AGENTS.md) |
 | Mobile-primary work | [`ezkey_mobile/AGENTS.md`](ezkey_mobile/AGENTS.md), [`ezkey_mobile/docs/README.md`](ezkey_mobile/docs/README.md) |
 | Mandate-driven hygiene assessment (HITL + handoff) | Keyword **`assessment-curated`** → [`product-docs/global/hygiene/assessment-curated/README.md`](product-docs/global/hygiene/assessment-curated/README.md) |
-| New idea / method lane | [`product-docs/methodology/minimum-viable-method.md`](product-docs/methodology/minimum-viable-method.md) or [`session-start-guide.md`](product-docs/methodology/session-start-guide.md), then Fresh-session bootstrap below |
+| New idea / method | [`product-docs/methodology/README.md`](product-docs/methodology/README.md) — the whole method fits in that one document since the 2026-08 ablation |
 | API contract change | Controller + **section** of `docs/ENDPOINT.md` + OpenAPI refresh workflow (see OpenAPI rules) |
 | Strategic positioning / public copy | [`docs/PROJECT_POSITIONING.md`](docs/PROJECT_POSITIONING.md) only when that layer is in scope |
 
@@ -46,85 +46,36 @@ operable-release target), read first:
 
 ## Fresh-session workflow bootstrap (product-docs method)
 
-When a new session starts and the user is bringing a **new idea**, use this bootstrap before deep analysis. Prefer the shortest reliable entry first: [`product-docs/methodology/minimum-viable-method.md`](product-docs/methodology/minimum-viable-method.md) or [`session-start-guide.md`](product-docs/methodology/session-start-guide.md). Deepen with the methodology pack only as the lane requires.
+When a new session starts and the user is bringing a **new idea**, read
+[`product-docs/methodology/README.md`](product-docs/methodology/README.md). The 2026-08 ablation
+condensed the entire method — documentary levels (`V-*`/`I-*`/`TB-*`/`ADR-*`), bidirectional
+discoverability, the values compass, and the three rules worth keeping (hygiene vs. program,
+ephemeral scaffold vs. retained plan, closed uncertainty stays closed) — into that single document.
+There is no separate lane taxonomy or skill sequence to load first: prefer **Plan mode** for
+research and comparing alternatives, then position the idea as a `V-*`, `I-*`, or `TB-*` in
+`product-docs/global/` only when the methodology README's artifact-choice table calls for it.
 
-1. Orient (as needed): `product-docs/methodology/workflow-overview.md`, `testing-strategy-in-workflow.md`.
-2. Position the idea through:
-   - vision note (`V-*`) in `product-docs/global/vision/`,
-   - backlog idea (`I-*`) in `product-docs/global/backlog/ideas/`,
-   - tracer bullet (`TB-*`) when the idea is ready for bounded discovery/execution.
-3. Keep the lifecycle explicit with status transitions and traceability updates.
-
-Parallel lane for current-session plan incubation:
-
-1. Read `product-docs/methodology/plan-incubation-workflow.md`.
-2. If the operator prefers to start in agent Plan mode, allow a live working plan under `.cursor/plans/`, `plans/`, or `.github/prompts/plan-*.prompt.md` as the incubation artifact. Cursor Plan files outside the clone are scaffolding until promoted.
-3. Materialize the durable result into `V-*`, `I-*`, `TB-*`, and related canonical docs once the direction is coherent.
-4. **Classify retention:** ephemeral scaffold (canon alone; no half-links) vs retained working plan (then **pass the bidirectional gate**). See `plan-incubation-workflow.md`, skill `plan-incubation`, and decision `2026-07-11-cursor-plan-ephemeral-vs-retained-working-plan`.
-5. Do not frame this as retrofit unless the source is genuinely historical or mixed with historical evidence.
-
-Parallel lane for historical plan retrofit:
-
-1. Read `product-docs/methodology/legacy-retrofit-workflow.md`.
-2. Use `R-*` retrofit slices in `product-docs/global/legacy-retrofit/`.
-3. Mine legacy knowledge (historical plans and/or verbal briefings), then map high-signal content into canonical docs.
-4. Keep source-to-canonical links explicit and record residual gaps.
-5. Promote durable principle candidates to `product-docs/global/design-principles.md` or to `AGENTS.md` / `.cursor/rules` as appropriate.
-
-Recommended skill sequence for this method:
-
-- `vision-intake`
-- `backlog-triage`
-- `grill-me`
-- `plan-incubation` when the operator wants a live working plan first
-- `tracer-bullet-promote`
-- `github-issue-promote` when a program slice needs GitHub visibility (read `github-issues-workflow.md`; labels mandatory)
-- `component-design-pack`
-- `test-strategy-planner`
-- `quality-gatekeeper`
-- `traceability-sync`
-- `closeout`
-- `legacy-plan-miner`
-- `retrofit-curator`
-
-This bootstrap does not replace existing module-specific rules; it defines the default ideation-to-delivery path. The always-applied rule [`.cursor/rules/product-docs-workflow-bootstrap.mdc`](.cursor/rules/product-docs-workflow-bootstrap.mdc) points here — do not maintain a second full copy of this procedure.
+The always-applied rule
+[`.cursor/rules/product-docs-workflow-bootstrap.mdc`](.cursor/rules/product-docs-workflow-bootstrap.mdc)
+points here — do not maintain a second full copy of this procedure.
 
 ## Public methodology explorer ordering
 
 For curated documentation packs exposed in the methodology explorer (`product-docs/methodology/`,
-`product-docs/templates/`, and the derived public `skills/` corpus), do not default to
-alphabetical ordering when a stable conceptual order exists.
-
-- Keep `README.md` first so each pack opens with orientation.
-- Order the remaining items by reader journey: fastest entry, core flow, specialized variants,
-  reference material, then examples or decision logs.
-- Decision archives and historical records follow primary guidance; they do not precede it.
-- When adding a new methodology doc, template, or skill, place it in the existing conceptual
-  bucket and preserve the established relative order unless a methodology decision explicitly
-  changes the navigation model.
+`product-docs/templates/`), keep `README.md` first in each pack so it opens with orientation.
 
 ## Methodology publication boundary
 
-`product-docs/` plays a dual role in this repository:
+`product-docs/` plays a dual role in this repository: the official Ezkey working documentation
+system, and the source for the publishable methodology product (explorer + download pack).
 
-- official Ezkey methodology and working documentation system,
-- publishable methodology product for the public explorer and download pack.
-
-When working on the public methodology surface, keep that boundary explicit:
-
-- Publish method-level canon only: `product-docs/methodology/`, `product-docs/templates/`,
-  derived public `skills/`, `glossary.md`, rich views, and methodology decisions explicitly marked
-  `public: true`.
+- Publish method-level canon only: `product-docs/methodology/README.md`, `product-docs/templates/`,
+  `product-docs/glossary.md`.
 - Do **not** publish regular Ezkey delivery artifacts from `product-docs/global/`,
   `product-docs/components/`, backlog / roadmap / vision execution records, or editor-local
   `.cursor/` assets as part of the methodology product.
-- Public methodology docs may mention source-project hooks, but they must not depend on those
-  surfaces as live public links.
 - If a source-project artifact contains a reusable methodological lesson, restate or promote that
-  lesson into method-level canon instead of broadening the publication surface ad hoc.
-
-Treat linkability as part of this rule: a public document should not route readers into a
-non-published Ezkey working surface.
+  lesson into the methodology README instead of broadening the publication surface ad hoc.
 
 When a task involves **entity relationships, lifecycle semantics, operational eligibility, parent-child propagation, reversible vs irreversible actions, or operator analysis across multiple entity types**, it is also mandatory to read **`docs/LIFECYCLE_GOVERNANCE.md`** before proposing a design, plan, or implementation direction. Treat that document as the source of truth for how Ezkey models:
 
@@ -480,34 +431,24 @@ instead of creating full methodology artifacts (`I-*`, `TB-*`, `TSP-*`, `ML-*`).
 
 **Challenge rule:** when the operator invites a "methodological closeout" or full traceability,
 classify **hygiene vs program** before materializing backlog artifacts. If hygiene, propose
-commit/PR + targeted docs and explain what would justify `I-*` / `TB-*` / `TSP-*`. See
-`product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md` and
-`product-docs/methodology/minimum-viable-method.md` (section *Hygiene vs program closeout*).
-
-**Program slice exit (before commit):** when open `I-*` or `TB-*` in `product-docs/global/backlog/`
-covers the finished work, run skills **`traceability-sync` → `closeout`** on canonical artifacts
-**before** `git commit` or PR — even if the operator only said “commit.” Hygiene challenge reduces
-over-materialization; this rule prevents under-closure. See
-`minimum-viable-method.md` § *Program slice exit sequence* and method log
-`ML-2026-06-18-closeout-skill-before-commit-gap.md`.
+commit/PR + targeted docs and explain what would justify `I-*` / `TB-*`. See
+[`product-docs/methodology/README.md`](product-docs/methodology/README.md) § *Three rules worth
+keeping*.
 
 **GitHub issue vs canon:** `product-docs` (`I-*` / `TB-*`) is the decision canon; GitHub issues are
 optional visibility (PR board, labels, `Closes #NNN`). Proactively state at start or closeout of a
-program slice whether an issue helps — retroactive issues are valid. See
-`minimum-viable-method.md` § *GitHub issue vs product-docs canon*.
+program slice whether an issue helps — retroactive issues are valid.
 
 ## GitHub issues — labels mandatory on create
 
 When opening a GitHub issue (operator request, program slice visibility, or retroactive board
 anchor):
 
-1. Read [`product-docs/methodology/github-issues-workflow.md`](product-docs/methodology/github-issues-workflow.md).
-2. Run skill [`.cursor/skills/github-issue-promote/SKILL.md`](.cursor/skills/github-issue-promote/SKILL.md).
-3. Apply **all five label groups** via `gh issue create --label ...` (lane, type, component, priority, status).
-4. Verify with `gh issue view <N> --json labels` before reporting the issue URL.
-5. Record `#NNN` (and label list) in `I-*` / `TB-*` metadata.
+1. Apply **all five label groups** via `gh issue create --label ...` (lane, type, component, priority, status) — see [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc).
+2. Verify with `gh issue view <N> --json labels` before reporting the issue URL.
+3. Record `#NNN` (and label list) in `I-*` / `TB-*` metadata.
 
-Rule file: [`.cursor/rules/github-issue-labels.mdc`](.cursor/rules/github-issue-labels.mdc). An unlabeled issue is **incomplete** — same severity as missing TB traceability.
+An unlabeled issue is **incomplete** — same severity as missing TB traceability.
 
 - Keep scope small and local: high-signal fixes first, no broad refactor campaign.
 - Use issue + branch + iterative PR as the default visibility path.

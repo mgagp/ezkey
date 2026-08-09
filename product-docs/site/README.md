@@ -4,17 +4,19 @@ A small site pipeline that serves a documentation-first methodology corpus as a 
 tree on the left, rendered Markdown in the center, in-document TOC on the right.
 
 This started as a local developer tool and now also serves as the source for the published static
-methodology explorer. In this repository, that explorer is published from the Ezkey source
-project, but the site is intended to present the methodology as a method-first surface rather than
-as project documentation wearing a site shell.
+methodology explorer (`methodology.ezkey.org`). Since the 2026-08 radical ablation (methodology
+v2.0.0), the corpus it publishes is deliberately small — one core document, four templates, a
+glossary, and release notes — and the site reflects that: a single guided reading track, search,
+and a download pack. The former skills layer, workflow-phase ribbon, cognitive map, and rich view
+were removed along with the corpus content they navigated.
 
-## Scope (Phase 1)
+## Scope
 
-Serves four public-facing sources:
+Serves three public-facing sources:
 
-- `methodology/` — the full methodology pack (workflow, values, tracer bullets, quality gates, …).
-- `templates/` — artifact templates (vision notes, backlog ideas, tracer bullet briefs, …).
-- `skills/` — a curated, derived public skills layer generated from selected `.cursor/skills/` during site preparation.
+- `methodology/` — the core methodology document and its release notes.
+- `templates/` — the four artifact templates (vision note, backlog idea, tracer-bullet brief,
+  architecture decision).
 - `glossary.md` — single-file glossary.
 
 Publication boundary:
@@ -26,11 +28,9 @@ Publication boundary:
   surfaces as live public links.
 - The build audits public Markdown links and fails if a published document escapes that boundary.
 
-The next intended public-distribution extension is a generated **download pack** so the same site
-pipeline can produce both the hosted explorer and a local adoption archive.
-
-The generated archive lives under `product-docs/site/.generated/downloads/` during local build
-preparation and under `product-docs/site/dist/downloads/` in the static output.
+The build also produces a generated **download pack** (reference copy + workspace starter) under
+`product-docs/site/.generated/downloads/` during preparation and `product-docs/site/dist/downloads/`
+in the static output.
 
 ## Quick start
 
@@ -44,25 +44,19 @@ Then open <http://localhost:4321>.
 
 Use `PORT=5000 npm start` to override the port.
 
-## Roadmap
+Static build for Cloudflare Pages:
 
-This is **Phase 1** (MVP visual foundation). See [.github/prompts/plan-methodologyMicroSite.prompt.md](../../.github/prompts/plan-methodologyMicroSite.prompt.md) for the full plan:
+```bash
+npm run build
+```
 
-- **Phase 1** — 3-pane layout, tree navigation, Markdown rendering, in-document TOC.
-- **Phase 2** — Pedagogical layer: workflow-phase ribbon, persona-driven wizard tracks (Discover / Apply / Present), Mermaid rendering, glossary tooltips.
-- **Phase 3** — Polish: `Ctrl+K` search, presentation mode, cognitive workflow map, step permalinks.
-- **Phase 4** — Static pre-build for Cloudflare Pages exposure.
-- **Phase 5 (next likely extension)** — Generated download pack for local reuse, before any
-  installer-style automation.
+Deploy with `scripts/cloudflare/deploy-methodology-preview.sh` /
+`deploy-methodology-production.sh` from the repository root.
 
 ## Architecture note
 
-`server.js` exposes pure functions (`buildTree`, `renderDoc`, `extractToc`) on top of which Express is a thin transport layer. This keeps the future static pre-build (Phase 4) trivial: a `build.js` script can reuse the same functions without Express.
-
-Before the site serves or builds the corpus, it also prepares a small, explicitly allowlisted
-public skills layer under `product-docs/site/.generated/skills/`. The source of truth remains
-`.cursor/skills/`; the generated layer exists only to improve site discoverability and public
-explanation without publishing every source-project automation.
-
-The same build pipeline is the preferred place to add a methodology download pack, because that
-keeps packaging explicit, small, and tied to already-curated public inputs.
+`server.js` exposes pure functions (`buildTree`, `renderDoc`, `extractToc`) on top of which Express
+is a thin transport layer; `build.js` reuses the same functions to emit the fully static `dist/`
+tree. The navigation tree is derived from the filesystem, so the site follows the corpus as it
+evolves — the guided track (`tracks.json`) and glossary tooltips (`indices.js`) are the only
+hand-curated navigation data.

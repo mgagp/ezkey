@@ -252,7 +252,11 @@ public class EncryptionKeyController {
           "Introduces a new encryption key (typically PENDING until the sync window elapses, then"
               + " promoted to PRIMARY). Global Admin only.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Key rotation completed successfully"),
+    @ApiResponse(
+        responseCode = "200",
+        description =
+            "New key introduced with PENDING status; it will be promoted to primary"
+                + " automatically once the synchronization window elapses"),
     @ApiResponse(responseCode = "401", description = "Not authenticated"),
     @ApiResponse(responseCode = "403", description = "Forbidden (not a Global Admin)"),
     @ApiResponse(
@@ -290,7 +294,10 @@ public class EncryptionKeyController {
               .eventDetails(AuditDetailsBuilder.builder().encryptionKeyId(newPrimaryKeyId).toJson())
               .build());
       return ResponseEntity.ok(
-          new KeyRotationResponse(newPrimaryKeyId, "Key rotation completed successfully"));
+          new KeyRotationResponse(
+              newPrimaryKeyId,
+              "New key introduced with PENDING status; it will be promoted to primary"
+                  + " automatically once the synchronization window elapses"));
     } catch (PendingEncryptionKeyExistsException e) {
       auditLogService.log(
           AuditHelper.createAdminAudit(
@@ -794,7 +801,8 @@ public class EncryptionKeyController {
         snap.lastVerifiedAt(),
         snap.verificationState(),
         snap.decommissionEligible(),
-        snap.incompleteMigrationBatches());
+        snap.incompleteMigrationBatches(),
+        snap.reencryptionWallClockSeconds());
   }
 
   private ReencryptionBatchResponse toBatchResponse(ReencryptionBatch batch) {
@@ -845,6 +853,10 @@ public class EncryptionKeyController {
    * @param decommissionEligible true when drained and eligible for a future decommission workflow
    * @param incompleteMigrationBatches true when non-completed migration batches exist for this old
    *     key
+   * @param reencryptionWallClockSeconds retrospective wall-clock duration in seconds for a fully
+   *     drained migration, computed by merging completed batches' actual time windows (overlapping
+   *     batches count once); null unless {@code lifecycleStage} is {@code DRAINED} and at least one
+   *     completed batch has timing
    */
   @Schema(description = "Encryption key row with derived lifecycle fields for operators.")
   public record EncryptionKeyResponse(
@@ -885,15 +897,34 @@ public class EncryptionKeyController {
       @Schema(description = "True when drained and ready for a future decommission workflow")
           boolean decommissionEligible,
       @Schema(description = "True when migration batches for this key are not all completed")
-          boolean incompleteMigrationBatches) {}
+          boolean incompleteMigrationBatches,
+      @Schema(
+              description =
+                  "Retrospective wall-clock seconds for a fully drained migration, computed by"
+                      + " merging completed batches' actual time windows (overlapping work counts"
+                      + " once); null unless lifecycleStage is DRAINED and timing is available")
+          Long reencryptionWallClockSeconds) {}
 
   /**
    * Response DTO for key rotation operation.
    *
-   * @param newPrimaryKeyId the ID of the newly created primary key after rotation
-   * @param message human-readable message describing the rotation result
+   * <p>Rotation is asynchronous: the returned key is introduced with {@code PENDING} status and is
+   * promoted to {@code PRIMARY} by a scheduled job once the synchronization window elapses (see
+   * {@code ezkey.encryption.rotation.sync-window-seconds}). Callers should not assume the key is
+   * already primary from a 200 response alone.
+   *
+   * @param newPrimaryKeyId the ID of the newly introduced key (PENDING; becomes PRIMARY
+   *     automatically after the synchronization delay)
+   * @param message human-readable message describing the current state and next step
    */
-  public record KeyRotationResponse(Long newPrimaryKeyId, String message) {}
+  public record KeyRotationResponse(
+      @Schema(
+              description =
+                  "ID of the newly introduced key. Status is PENDING at response time; the key"
+                      + " becomes PRIMARY automatically once the synchronization window elapses.")
+          Long newPrimaryKeyId,
+      @Schema(description = "Human-readable message describing the current state and next step")
+          String message) {}
 
   /**
    * Response DTO for re-encryption batch information.

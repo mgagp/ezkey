@@ -7,8 +7,13 @@
 
 package org.ezkey.security;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import org.ezkey.security.domain.entity.EncryptionKey;
+import org.ezkey.security.domain.entity.ReencryptionBatch;
 import org.ezkey.security.domain.entity.ReencryptionBatch.BatchStatus;
 import org.ezkey.security.domain.repository.ReencryptionBatchRepository;
 import org.springframework.stereotype.Service;
@@ -71,7 +76,14 @@ public class KeyUsageVerificationService {
     return switch (key.getKeyStatus()) {
       case PENDING ->
           new KeyUsageSnapshot(
-              LIFECYCLE_PENDING, null, null, verifiedAt, VERIFICATION_NOT_APPLICABLE, false, false);
+              LIFECYCLE_PENDING,
+              null,
+              null,
+              verifiedAt,
+              VERIFICATION_NOT_APPLICABLE,
+              false,
+              false,
+              null);
       case PRIMARY -> computePrimarySnapshot(key, verifiedAt);
       case DISABLED ->
           new KeyUsageSnapshot(
@@ -81,7 +93,8 @@ public class KeyUsageVerificationService {
               verifiedAt,
               VERIFICATION_NOT_APPLICABLE,
               false,
-              false);
+              false,
+              null);
       case ENABLED -> computeEnabledSnapshot(key, verifiedAt);
     };
   }
@@ -114,7 +127,8 @@ public class KeyUsageVerificationService {
         verifiedAt,
         VERIFICATION_PRIMARY_USAGE,
         false,
-        incompleteMigration);
+        incompleteMigration,
+        null);
   }
 
   private KeyUsageSnapshot computeEnabledSnapshot(EncryptionKey key, OffsetDateTime verifiedAt) {
@@ -143,7 +157,8 @@ public class KeyUsageVerificationService {
           verifiedAt,
           VERIFICATION_REMAINS_IN_USE,
           false,
-          incompleteMigration);
+          incompleteMigration,
+          null);
     }
     if (incompleteMigration) {
       return new KeyUsageSnapshot(
@@ -153,11 +168,86 @@ public class KeyUsageVerificationService {
           verifiedAt,
           VERIFICATION_MIGRATION_IN_PROGRESS,
           false,
-          true);
+          true,
+          null);
     }
     return new KeyUsageSnapshot(
-        LIFECYCLE_DRAINED, 0L, 0, verifiedAt, VERIFICATION_VERIFIED_ZERO, true, false);
+        LIFECYCLE_DRAINED,
+        0L,
+        0,
+        verifiedAt,
+        VERIFICATION_VERIFIED_ZERO,
+        true,
+        false,
+        computeDrainedWallClockSeconds(key.getKeyId()));
   }
+
+  /**
+   * Retrospective, parallel-aware wall-clock duration (whole seconds) for the completed migration
+   * off {@code oldKeyId}.
+   *
+   * @param oldKeyId the old (now drained) encryption key id
+   * @return total estimated seconds, or {@code null} when no completed batch has both a start and
+   *     completion timestamp
+   */
+  private Long computeDrainedWallClockSeconds(Long oldKeyId) {
+    List<ReencryptionBatch> completedBatches =
+        batchRepository.findByOldKey_KeyIdAndStatus(oldKeyId, BatchStatus.COMPLETED);
+    return computeWallClockSeconds(completedBatches);
+  }
+
+  /**
+   * Aggregates completed batch wall-clock durations into a single estimate by merging each batch's
+   * {@code [startedAt, completedAt]} time window.
+   *
+   * <p>Batches whose windows overlap (or touch back to back) contribute a single combined span;
+   * batches that ran with a gap between them contribute separate spans that are summed. This
+   * reflects whatever concurrency the worker pool actually achieved for this key, rather than
+   * assuming sharded batches always ran fully in parallel: worker-pool contention with other
+   * targets (e.g. {@code ezkey_enrollment}, {@code ezkey_api_key} batches sharing the same bounded
+   * {@code reencryptionBatchExecutor}) can leave one shard queued and running after its siblings
+   * complete (see {@code ReencryptionBatchParallelRunner} and {@code
+   * docs/REENCRYPTION_OPERATIONS.md}). A naive "max duration per shard group" estimate would
+   * under-report the real wall time in that case; merging actual time windows does not.
+   *
+   * @param completedBatches completed batches for one old key (any target/column mix)
+   * @return total estimated wall-clock seconds, or {@code null} when no batch has both a start and
+   *     a completion timestamp
+   */
+  static Long computeWallClockSeconds(List<ReencryptionBatch> completedBatches) {
+    List<TimeWindow> windows = new ArrayList<>();
+    for (ReencryptionBatch batch : completedBatches) {
+      OffsetDateTime started = batch.getStartedAt();
+      OffsetDateTime completed = batch.getCompletedAt();
+      if (started == null || completed == null || completed.isBefore(started)) {
+        continue;
+      }
+      windows.add(new TimeWindow(started, completed));
+    }
+    if (windows.isEmpty()) {
+      return null;
+    }
+    windows.sort(Comparator.comparing(TimeWindow::start));
+
+    Duration total = Duration.ZERO;
+    OffsetDateTime mergedStart = windows.get(0).start();
+    OffsetDateTime mergedEnd = windows.get(0).end();
+    for (int i = 1; i < windows.size(); i++) {
+      TimeWindow window = windows.get(i);
+      if (window.start().isAfter(mergedEnd)) {
+        total = total.plus(Duration.between(mergedStart, mergedEnd));
+        mergedStart = window.start();
+        mergedEnd = window.end();
+      } else if (window.end().isAfter(mergedEnd)) {
+        mergedEnd = window.end();
+      }
+    }
+    total = total.plus(Duration.between(mergedStart, mergedEnd));
+    return total.getSeconds();
+  }
+
+  /** One batch's processing time window, used to merge overlapping spans. */
+  private record TimeWindow(OffsetDateTime start, OffsetDateTime end) {}
 
   /**
    * Point-in-time lifecycle evidence for one encryption key.
@@ -174,6 +264,11 @@ public class KeyUsageVerificationService {
    *     workflow
    * @param incompleteMigrationBatches true when non-{@link BatchStatus#COMPLETED} batches exist for
    *     this old key
+   * @param reencryptionWallClockSeconds retrospective wall-clock duration in seconds for a fully
+   *     drained migration, computed by merging completed batches' actual {@code [startedAt,
+   *     completedAt]} time windows (see {@link #computeWallClockSeconds}); {@code null} unless
+   *     {@code lifecycleStage} is {@link #LIFECYCLE_DRAINED} and at least one completed batch has
+   *     both a start and completion timestamp
    */
   public record KeyUsageSnapshot(
       String lifecycleStage,
@@ -182,5 +277,6 @@ public class KeyUsageVerificationService {
       OffsetDateTime lastVerifiedAt,
       String verificationState,
       boolean decommissionEligible,
-      boolean incompleteMigrationBatches) {}
+      boolean incompleteMigrationBatches,
+      Long reencryptionWallClockSeconds) {}
 }

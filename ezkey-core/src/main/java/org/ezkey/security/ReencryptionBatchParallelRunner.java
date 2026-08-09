@@ -62,29 +62,44 @@ public class ReencryptionBatchParallelRunner {
   /**
    * Submits batch processing to {@code reencryptionBatchExecutor} and returns immediately (manual
    * HTTP triggers must not block on row crypto).
+   *
+   * <p>Each batch is submitted as its own top-level task on {@code reencryptionBatchExecutor} — it
+   * does <b>not</b> wrap the dispatch-and-wait loop from {@link #runBatches} in a single task on
+   * that same bounded pool. Doing so would permanently occupy one pool thread for the whole
+   * duration of the run (blocked in {@code Future.get()}), leaving only {@code parallelBatchWorkers
+   * - 1} threads actually available to process batches — the exact cause of an observed case where
+   * 3 of 4 configured shard workers ran a shard batch concurrently while the 4th queued and ran
+   * afterward (see {@code docs/REENCRYPTION_OPERATIONS.md}).
    */
   public void runBatchesAsync(List<ReencryptionBatch> batches, BatchFailureCallback onFailure) {
     if (batches.isEmpty()) {
       return;
     }
-    reencryptionBatchExecutor.execute(() -> runBatches(batches, onFailure));
+    int parallel = properties.getReencryption().getParallelBatchWorkers();
+    if (parallel <= 1) {
+      reencryptionBatchExecutor.execute(() -> runSequential(batches, onFailure));
+      return;
+    }
+    for (ReencryptionBatch batch : batches) {
+      reencryptionBatchExecutor.execute(() -> runOneIsolated(batch, onFailure));
+    }
   }
 
   /**
-   * Processes each batch; on failure invokes {@code onFailure} with the batch and exception (caller
-   * typically marks the batch failed).
+   * Processes each batch, blocking the caller thread until all batches finish; on failure invokes
+   * {@code onFailure} with the batch and exception (caller typically marks the batch failed).
+   *
+   * <p>Safe to call from a thread that is <b>not</b> a {@code reencryptionBatchExecutor} worker
+   * (e.g. the {@code @Scheduled} scheduler thread, or a Tomcat request thread for the deprecated
+   * synchronous trigger methods): submitting {@code batches.size()} sub-tasks to the pool and
+   * blocking here does not reduce the pool's effective capacity for those callers. Do <b>not</b>
+   * call this method from within a task already running on {@code reencryptionBatchExecutor} — see
+   * {@link #runBatchesAsync} for why that self-consumes a worker thread.
    */
   public void runBatches(List<ReencryptionBatch> batches, BatchFailureCallback onFailure) {
     int parallel = properties.getReencryption().getParallelBatchWorkers();
     if (parallel <= 1) {
-      for (ReencryptionBatch batch : batches) {
-        try {
-          batchProcessingService.processBatchInternal(batch);
-        } catch (Exception e) { // CHECKSTYLE IGNORE IllegalCatch
-          logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
-          onFailure.onFailure(batch, e);
-        }
-      }
+      runSequential(batches, onFailure);
       return;
     }
 
@@ -107,6 +122,32 @@ public class ReencryptionBatchParallelRunner {
             "Parallel batch failed for {}: {}", batches.get(i).getBatchId(), ex.getMessage(), ex);
         onFailure.onFailure(batches.get(i), ex);
       }
+    }
+  }
+
+  /** Processes batches one at a time on the calling thread. */
+  private void runSequential(List<ReencryptionBatch> batches, BatchFailureCallback onFailure) {
+    for (ReencryptionBatch batch : batches) {
+      try {
+        batchProcessingService.processBatchInternal(batch);
+      } catch (Exception e) {
+        logger.error("Failed to process batch {}: {}", batch.getBatchId(), e.getMessage(), e);
+        onFailure.onFailure(batch, e);
+      }
+    }
+  }
+
+  /**
+   * Processes one batch under its mutex, invoking {@code onFailure} in place on error. Used as a
+   * top-level {@code reencryptionBatchExecutor} task by {@link #runBatchesAsync} so each batch
+   * competes independently for a pool thread (no dispatcher task holding one hostage).
+   */
+  private void runOneIsolated(ReencryptionBatch batch, BatchFailureCallback onFailure) {
+    try {
+      processBatchIsolatedByTargetTable(batch);
+    } catch (Exception e) {
+      logger.error("Parallel batch failed for {}: {}", batch.getBatchId(), e.getMessage(), e);
+      onFailure.onFailure(batch, e);
     }
   }
 

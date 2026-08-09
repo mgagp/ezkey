@@ -5,13 +5,10 @@ alwaysApply: true
 
 # Product-Docs Workflow Bootstrap
 
-When a user introduces a **new idea**, follow root [`AGENTS.md`](../../AGENTS.md) § **Fresh-session workflow bootstrap (product-docs method)** — that section is the single full procedure (lanes, skills, retention gate).
-
-Do not maintain a second copy of the skill list or lane steps here.
+When a user introduces a **new idea**, read [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) — the whole method now fits in that one document (documentary levels, discoverability, values compass, and the three rules worth keeping).
 
 Quick orientation only:
 
-- Prefer **Plan mode** for ideation and trade-offs; **Agent mode** for writing artifacts and implementation.
-- Shortest method entry: `product-docs/methodology/minimum-viable-method.md` or `session-start-guide.md`.
-- Closeout: classify **hygiene vs program** before inventing `I-*` / `TB-*` (`minimum-viable-method.md`, decision `2026-06-06-methodological-closeout-vs-code-hygiene.md`).
-- GitHub issues: `product-docs/methodology/github-issues-workflow.md` + [`.cursor/rules/github-issue-labels.mdc`](github-issue-labels.mdc) — labels at create time.
+- Prefer **Plan mode** for research, challenge, and comparing alternatives; the methodology is support, not a competing workflow.
+- Closeout: classify **hygiene vs program** before inventing `I-*` / `TB-*` — see the methodology README § *Three rules worth keeping*.
+- GitHub issues: [`.cursor/rules/github-issue-labels.mdc`](github-issue-labels.mdc) — labels at create time.

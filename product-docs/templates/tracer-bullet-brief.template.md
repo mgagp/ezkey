@@ -5,10 +5,8 @@
 - **ID:** `TB-YYYY-MM-DD-<slug>`
 - **Status:** `draft` / `under-review` / `promoted` / `archived`
 - **Related idea:** `I-YYYY-MM-DD-<slug>`
-- **Lane:** `A` / `B` / `D`
-- **Posture:** `single-pass` / `iterative`
 - **GitHub issue:** `#NNN` _(optional)_
-- **GitHub branch:** `feature/<NNN>-<i-artifact-id-lowercase>` _(optional; set when implementation starts — see `github-issues-workflow.md`)_
+- **GitHub branch:** `feature/<NNN>-<i-artifact-id-lowercase>` _(optional; set when implementation starts)_
 - **GitHub PR:** `#NNN` _(optional)_
 - **Created at:** `YYYY-MM-DD`
 - **Updated at:** `YYYY-MM-DD`

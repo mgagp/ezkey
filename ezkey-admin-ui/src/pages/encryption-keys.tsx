@@ -348,6 +348,15 @@ function KeyDetailDialog({
             <DetailInfoRow label={t('keyDetail.labelDisabled')} labelClassName="w-40" valueClassName="break-all">{keyData.disabledAt ? formatDate(keyData.disabledAt) : '—'}</DetailInfoRow>
             <DetailInfoRow label={t('keyDetail.labelRecordsEncrypted')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{formatMigrationBaselineDetail(keyData)}</span></DetailInfoRow>
             <DetailInfoRow label={t('keyDetail.labelRecordsReencrypted')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">{keyData.recordsReencrypted ?? 0}</span></DetailInfoRow>
+            <DetailInfoRow label={t('keyDetail.labelReencryptionWallClock')} labelClassName="w-40" valueClassName="break-all">
+              <Tooltip content={t('keyDetail.reencryptionWallClockTooltip')}>
+                <span className="font-mono text-xs">
+                  {keyData.reencryptionWallClockSeconds != null
+                    ? t('keyDetail.reencryptionWallClockSeconds', { seconds: keyData.reencryptionWallClockSeconds })
+                    : '—'}
+                </span>
+              </Tooltip>
+            </DetailInfoRow>
             <DetailInfoRow label={t('keyDetail.labelCreatedBy')} labelClassName="w-40" valueClassName="break-all">{keyData.createdBy ?? '—'}</DetailInfoRow>
             {keyData.notes && <DetailInfoRow label={t('keyDetail.labelNotes')} labelClassName="w-40" valueClassName="break-all"><span className="text-xs text-fg-muted">{keyData.notes}</span></DetailInfoRow>}
           </dl>
@@ -442,7 +451,7 @@ function BatchDetailDialog({
         <DetailInfoRow label={t('batchDetail.labelTargetColumn')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono text-xs">{batch.targetColumn}</span></DetailInfoRow>
         {batch.shardCount != null && batch.shardCount > 1 && batch.shardIndex != null && (
           <DetailInfoRow label={t('batchDetail.labelShard')} labelClassName="w-40" valueClassName="break-all">
-            <span className="font-mono text-xs">{batch.shardIndex} / {batch.shardCount}</span>
+            <span className="font-mono text-xs">{batch.shardIndex + 1} / {batch.shardCount}</span>
           </DetailInfoRow>
         )}
         <DetailInfoRow label={t('batchDetail.labelOldKey')} labelClassName="w-40" valueClassName="break-all"><span className="font-mono">#{batch.oldKeyId}</span></DetailInfoRow>
@@ -756,7 +765,7 @@ function ReencryptionBatchesSection() {
       render: (r) =>
         r.shardCount != null && r.shardCount > 1 && r.shardIndex != null ? (
           <span className="font-mono text-xs">
-            {r.shardIndex}/{r.shardCount}
+            {r.shardIndex + 1}/{r.shardCount}
           </span>
         ) : (
           <span className="text-fg-muted">—</span>

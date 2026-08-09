@@ -6,9 +6,9 @@ This document captures the principles that guide architectural and design trade-
 
 The principles are product-wide. Components may add their own local principles in `design-decisions.md`, but those must not contradict what is here.
 
-This file remains the Ezkey source-project canon. A promoted methodology-level companion now lives
-in `product-docs/methodology/design-judgment-principles.md` for the generic subset that should be
-visible in the published methodology product without relocating this source-project document.
+This file remains the Ezkey source-project canon. The generic, publishable subset of these
+principles is condensed into the values compass in
+[`product-docs/methodology/README.md`](../methodology/README.md).
 
 ## Core Principles
 
@@ -126,8 +126,6 @@ apply the vocabulary where availability, integrity, or honesty of claims are in 
 This principle pairs with **#4** (explicit trust boundaries), **#12** (security as posture), and
 **#1** / **#2** (keep the analysis light). First product capture that elevated the vocabulary:
 [`backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md`](backlog/ideas/I-2026-07-18-audit-log-fail-open-exception-swallow.md).
-Lane E decision:
-[`../methodology/decisions/2026-07-18-fail-open-fail-closed-design-compass.md`](../methodology/decisions/2026-07-18-fail-open-fail-closed-design-compass.md).
 Honesty surface: [`../../docs/SECURITY_POSTURE.md`](../../docs/SECURITY_POSTURE.md).
 
 ## How Principles Apply

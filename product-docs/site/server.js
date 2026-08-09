@@ -20,11 +20,6 @@ import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
 import { buildCorpusIndices, buildGlossary, pickTitle } from './indices.js';
 import { GENERATED_DOWNLOADS_DIR, prepareDownloadPack } from './downloadsPack.js';
-import {
-  GENERATED_SKILLS_DIR,
-  prepareSkillsPublicCorpus,
-  publicSkillRank,
-} from './skillsPublic.js';
 import { readMethodologyVersion } from './methodologyVersion.js';
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
@@ -33,9 +28,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const DOCS_ROOT = path.join(PROJECT_ROOT, 'product-docs');
 
-prepareSkillsPublicCorpus();
-
-// ── Phase 2 corpus metadata (phases / tracks / glossary) ─────────────────────
+// ── Corpus metadata (phases / tracks / glossary) ──────────────────────────────
 
 /** Load a JSON file relative to the site folder; returns null on failure. */
 function loadJson(relPath) {
@@ -63,7 +56,6 @@ export function phaseForPath(urlPath) {
 export const CORPUS = [
   { key: 'methodology', label: 'Methodology', kind: 'dir',  abs: path.join(DOCS_ROOT, 'methodology') },
   { key: 'templates',   label: 'Templates',   kind: 'dir',  abs: path.join(DOCS_ROOT, 'templates')   },
-  { key: 'skills',      label: 'Skills',      kind: 'dir',  abs: GENERATED_SKILLS_DIR },
   { key: 'glossary',    label: 'Glossary',    kind: 'file', abs: path.join(DOCS_ROOT, 'glossary.md') },
 ];
 
@@ -76,25 +68,6 @@ const EXCLUDED_PUBLIC_SOURCE_ROOTS = [
 const PUBLIC_METHODOLOGY_SEQUENCE = [
   'README',
   'release-notes',
-  'methodology-publication-and-versioning',
-  'minimum-viable-method',
-  'workflow-overview',
-  'session-start-guide',
-  'analysis-and-design-canon',
-  'design-judgment-principles',
-  'tracer-bullet-method',
-  'testing-strategy-in-workflow',
-  'quality-gates',
-  'plan-incubation-workflow',
-  'legacy-retrofit-workflow',
-  'blitz-intake-pattern',
-  'github-issues-workflow',
-  'multi-branch-workflow',
-  'methodological-values',
-  'ai-collaboration-model',
-  'nomenclature',
-  'case-study-ezkey',
-  'decisions',
 ];
 
 const PUBLIC_TEMPLATE_SEQUENCE = [
@@ -102,20 +75,7 @@ const PUBLIC_TEMPLATE_SEQUENCE = [
   'vision-note.template',
   'backlog-idea.template',
   'tracer-bullet-brief.template',
-  'test-plan-slice.template',
-  'legacy-plan-retrofit.template',
-  'feature-brief.template',
-  'component-design-brief.template',
-  'functional-workflow.template',
-  'decision-table.template',
-  'mapping-matrix.template',
-  'error-and-exception.template',
-  'persistence-and-lifecycle.template',
-  'screens-and-wireflow.template',
-  'spec-test-traceability.template',
   'architecture-decision.template',
-  'product-intent.template',
-  'roadmap.template',
 ];
 
 const PUBLIC_METHODOLOGY_RANK = new Map(
@@ -216,10 +176,6 @@ function compareEntriesForUiOrder(left, right, urlPrefix) {
 
 function publicUiRank(entry, urlPrefix) {
   const entryName = entry.key.replace(/\.md$/i, '');
-
-  if (urlPrefix === 'skills') {
-    return publicSkillRank(entryName);
-  }
 
   if (urlPrefix === 'methodology') {
     return PUBLIC_METHODOLOGY_RANK.get(entryName) ?? Number.MAX_SAFE_INTEGER;
@@ -364,7 +320,6 @@ export function auditPublicPublicationBoundary(corpus = CORPUS) {
 }
 
 export function rebuildGeneratedPublicArtifacts() {
-  prepareSkillsPublicCorpus();
   auditPublicPublicationBoundary();
   prepareDownloadPack({
     tree: filterTree(buildTree()),

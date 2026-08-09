@@ -84,6 +84,9 @@
     "labelDisabled": "Disabled",
     "labelRecordsEncrypted": "Migration baseline (at demotion)",
     "labelRecordsReencrypted": "Re-encrypted (cumulative)",
+    "labelReencryptionWallClock": "Re-encryption wall time (est.)",
+    "reencryptionWallClockTooltip": "Estimate from completed batch timestamps: overlapping batches (e.g. shards that ran concurrently) count once; batches that ran back to back are added. Available once the key is fully drained.",
+    "reencryptionWallClockSeconds": "{{seconds}} s",
     "labelCreatedBy": "Created by",
     "labelNotes": "Notes"
   },
@@ -193,16 +196,16 @@
   },
   "rotateDialog": {
     "title": "Rotate Encryption Key",
-    "successTitle": "Key rotated successfully",
-    "newPrimary": "New primary key:",
+    "successTitle": "Key rotation started",
+    "newPrimary": "New key ID (pending):",
     "done": "Done",
-    "warning": "This will generate a new AES encryption key and promote it as the primary. A background re-encryption job will start to migrate existing records.",
+    "warning": "This introduces a new encryption key. It becomes primary automatically after a short synchronization delay; re-encrypting existing records to the new key is a separate step (scheduled job or manual trigger).",
     "reasonLabel": "Reason (min 10 chars)",
     "reasonPlaceholder": "Scheduled quarterly key rotation",
     "cancel": "Cancel",
     "submit": "Rotate Key",
     "submitting": "Rotating…",
-    "toastSuccess": "Key rotated — new primary: #{{id}}",
+    "toastSuccess": "Key rotation started — new key #{{id}} pending promotion",
     "errorRotate": "Rotation failed"
   }
 }

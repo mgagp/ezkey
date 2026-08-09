@@ -23,18 +23,16 @@ These values guide feature analysis, design, and implementation across the proje
 
 ## Contribution workflow
 
-Ezkey uses a methodology-first approach. Before writing code, position the work in the product corpus.
+Ezkey uses a lightweight methodology. Before writing code, position the work in the product corpus.
 
 **1 — Capture and triage**  
-New ideas or improvements start as a backlog idea (`I-*`) under `product-docs/global/backlog/ideas/`. The methodology provides lane and skill guidance:
-- `product-docs/methodology/session-start-guide.md` — choose your lane and skill sequence
-- `product-docs/methodology/README.md` — full methodology overview
+New ideas or improvements start as a backlog idea (`I-*`) under `product-docs/global/backlog/ideas/`.
+See `product-docs/methodology/README.md` — the whole method fits in that one document.
 
 **2 — Open a GitHub issue**
 Once the idea passes the "title that stands alone" test, open an issue on `mgagp/ezkey`. Apply **all**
 appropriate labels (`lane:*`, `type:*`, `component:*`, `priority:*`, `status:*`) at create time via
-`gh issue create --label ...`. See `product-docs/methodology/github-issues-workflow.md` and skill
-`.cursor/skills/github-issue-promote/SKILL.md` for the checklist and taxonomy.
+`gh issue create --label ...`. See `.cursor/rules/github-issue-labels.mdc` for the checklist and taxonomy.
 
 **3 — Branch from the issue**  
 Create a branch using the convention:
@@ -44,7 +42,7 @@ feature/<issue-number>-<artifact-slug>
 Example: `feature/152-i-2026-0027-mobile-ios`
 
 **4 — Implement and validate**  
-Follow the tracer bullet (`TB-*`) scope. Use the methodology skills (`component-design-pack`, `test-strategy-planner`, `quality-gatekeeper`) as checkpoints before opening a PR.
+Follow the tracer bullet (`TB-*`) scope, then open a PR.
 
 **5 — Open a pull request**  
 PR title follows conventional commit format: `feat(component): short description (#NNN)`.  
@@ -84,4 +82,5 @@ mvn test -pl ezkey-tests -P all-tests
 
 Postman collections are available under `postman/collections/` for exploratory or manual validation.
 
-For the testing strategy and what layer covers what, read `product-docs/methodology/testing-strategy-in-workflow.md`.
+For the testing strategy and what layer covers what, use judgment proportional to risk (unit tests
+for logic, functional tests for API contracts, Playwright for critical Admin UI workflows).

@@ -136,7 +136,7 @@ treated as non-secret operational metadata.
 | `ezkey.encryption.reencryption.temporal-batch-sizing-enabled` | `boolean` | `false` | optionnel | When true, the first fetch uses `recent-data-chunk-size`; subsequent slices use `stale-data-chunk-size`. |
 | `ezkey.encryption.reencryption.recent-data-chunk-size` | `int` | `250` | optionnel | Chunk size for the first slice (leading edge). |
 | `ezkey.encryption.reencryption.stale-data-chunk-size` | `int` | `1000` | optionnel | Chunk size after the cursor has advanced (resume). |
-| `ezkey.encryption.reencryption.auth-attempt-shard-count` | `int` | `1` (Java) / Admin config **`4`** | optionnel | Parallel shards for `ezkey_auth_attempt` re-encryption (`mod(auth_attempt_id, N)`). `1` = off. Typical Admin pairing **4/4**; upper ops band **8**. See `docs/REENCRYPTION_OPERATIONS.md` §9. |
+| `ezkey.encryption.reencryption.auth-attempt-shard-count` | `int` | `1` (Java) / Admin config **`4`** | optionnel | Configured ceiling for `ezkey_auth_attempt` shards (`mod(auth_attempt_id, N)`). `1` = off. Creation uses `N = min(configured, totalRecords)` and skips empty residue classes (or falls back to one non-sharded batch). Typical Admin pairing **4/4**; upper ops band **8**. See `docs/REENCRYPTION_OPERATIONS.md` §9. |
 
 **Exemple Docker minimal :**
 

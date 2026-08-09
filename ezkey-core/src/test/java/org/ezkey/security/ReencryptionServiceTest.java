@@ -904,11 +904,8 @@ class ReencryptionServiceTest {
     when(keyRepository.findEnabledKeys()).thenReturn(new java.util.ArrayList<>(enabledKeys));
     when(keyRepository.findById(9999999999L)).thenReturn(java.util.Optional.of(primaryKey));
 
-    // Mock: No active batches exist for any old key (using corrected method)
-    // Note: With corrected version, this checks (table, column, oldKeyId) allowing multiple
-    // batches for different old keys targeting the same table/column
-    when(batchRepository.findActiveBatchesByTargetAndOldKey(
-            anyString(), anyString(), anyLong(), any(), any()))
+    // Mock: No active batches exist for any old key (any shard slot)
+    when(batchRepository.findAnyActiveBatchesByTargetAndOldKey(anyString(), anyString(), anyLong()))
         .thenReturn(List.of());
 
     // Mock key management to return PRIMARY key ID
@@ -992,8 +989,8 @@ class ReencryptionServiceTest {
 
   @Test
   @DisplayName(
-      "createBatchesForOldKeys() - Should create one shard batch per auth column when sharding"
-          + " enabled")
+      "createBatchesForOldKeys() - Should create one shard batch per non-empty residue when"
+          + " sharding enabled")
   void createBatchesForOldKeys_ShouldCreateShardedAuthAttemptBatches() {
     reencryptionConfig.setAuthAttemptShardCount(2);
 
@@ -1008,8 +1005,7 @@ class ReencryptionServiceTest {
     when(keyRepository.findEnabledKeys()).thenReturn(new java.util.ArrayList<>(List.of(oldKey1)));
     when(keyRepository.findById(9999999999L)).thenReturn(java.util.Optional.of(primaryKey));
 
-    when(batchRepository.findActiveBatchesByTargetAndOldKey(
-            anyString(), anyString(), anyLong(), any(), any()))
+    when(batchRepository.findAnyActiveBatchesByTargetAndOldKey(anyString(), anyString(), anyLong()))
         .thenReturn(List.of());
 
     when(keyManagementOperations.isInitialized()).thenReturn(true);
@@ -1018,12 +1014,16 @@ class ReencryptionServiceTest {
     when(enrollmentRepository.countByIntegrationPrivateKeyEncryptionKeyId(anyLong())).thenReturn(0);
     when(enrollmentRepository.countByEnrollmentProofTokenEncryptionKeyId(anyLong())).thenReturn(0);
 
+    // Total first (null shard args), then per-residue probes with effective N=2
+    when(authAttemptRepository.countByAuthAttemptProofTokenEncryptionKeyId(
+            eq(1111111111L), isNull(), isNull()))
+        .thenReturn(15);
     when(authAttemptRepository.countByAuthAttemptProofTokenEncryptionKeyId(
             eq(1111111111L), eq(0), eq(2)))
         .thenReturn(10);
     when(authAttemptRepository.countByAuthAttemptProofTokenEncryptionKeyId(
             eq(1111111111L), eq(1), eq(2)))
-        .thenReturn(0);
+        .thenReturn(5);
 
     ArgumentCaptor<ReencryptionBatch> batchCaptor =
         ArgumentCaptor.forClass(ReencryptionBatch.class);
@@ -1038,20 +1038,30 @@ class ReencryptionServiceTest {
     service.createBatchesForOldKeys();
 
     List<ReencryptionBatch> saved = batchCaptor.getAllValues();
-    assertEquals(1, saved.size());
+    assertEquals(2, saved.size());
     assertTrue(
         saved.stream()
             .allMatch(
                 b ->
                     ReencryptionBatchCreationService.EZKEY_AUTH_ATTEMPT_TABLE.equals(
-                        b.getTargetTable())));
-    ReencryptionBatch proofBatch =
+                            b.getTargetTable())
+                        && "auth_attempt_proof_token".equals(b.getTargetColumn())
+                        && Integer.valueOf(2).equals(b.getShardCount())));
+    assertEquals(
+        10,
         saved.stream()
-            .filter(b -> "auth_attempt_proof_token".equals(b.getTargetColumn()))
+            .filter(b -> Integer.valueOf(0).equals(b.getShardIndex()))
             .findFirst()
-            .orElseThrow();
-    assertEquals(2, proofBatch.getShardCount().intValue());
-    assertEquals(0, proofBatch.getShardIndex().intValue());
-    assertEquals(10, proofBatch.getRecordsTotal());
+            .orElseThrow()
+            .getRecordsTotal()
+            .intValue());
+    assertEquals(
+        5,
+        saved.stream()
+            .filter(b -> Integer.valueOf(1).equals(b.getShardIndex()))
+            .findFirst()
+            .orElseThrow()
+            .getRecordsTotal()
+            .intValue());
   }
 }

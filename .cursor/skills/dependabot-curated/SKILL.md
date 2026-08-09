@@ -35,7 +35,7 @@ bump is disruptive and deliberately deferred (investigation cost should not be l
 
 - Lane notes: [`product-docs/global/hygiene/dependabot/README.md`](../../product-docs/global/hygiene/dependabot/README.md)
 - Campaign template: [`product-docs/global/hygiene/dependabot/TEMPLATE.md`](../../product-docs/global/hygiene/dependabot/TEMPLATE.md)
-- Hygiene vs program: [`product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md`](../../product-docs/methodology/decisions/2026-06-06-methodological-closeout-vs-code-hygiene.md)
+- Hygiene vs program: [`product-docs/methodology/README.md`](../../product-docs/methodology/README.md) § *Three rules worth keeping*
 - Dependabot config: [`.github/dependabot.yml`](../../.github/dependabot.yml)
 - Root keyword: `AGENTS.md` § Dependabot curated
 

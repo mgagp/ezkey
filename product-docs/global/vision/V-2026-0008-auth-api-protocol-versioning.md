@@ -19,3 +19,6 @@
 
 - `I-2026-0025` — Auth API protocol capability versioning
 - `V-2026-0001` — Mobile local-auth per enrollment (trigger for first protocol break)
+- `V-2026-08-02-mobile-official-play-release-posture` — complementary mobile release track
+  (advisory installation version/compat discovery, distribution-anchored client-update guidance);
+  does not change this vision's protocol capability negotiation contract
