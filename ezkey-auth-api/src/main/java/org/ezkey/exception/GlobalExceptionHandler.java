@@ -16,6 +16,7 @@ import org.ezkey.exception.auth.AuthAttemptRequestFailedException;
 import org.ezkey.exception.auth.AuthAttemptStateConflictException;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
+import org.ezkey.exception.auth.EnrollmentInstanceInfoFailedException;
 import org.ezkey.exception.auth.EnrollmentIntegrationNotFoundException;
 import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
 import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
@@ -137,6 +138,18 @@ public class GlobalExceptionHandler extends AuthExceptionHandlerBase {
         AuthApiProblemCatalog.TYPE_ENROLLMENT_VERIFY_FAILED,
         AuthApiProblemCatalog.TITLE_BAD_REQUEST,
         AuthApiProblemCatalog.DETAIL_ENROLLMENT_VERIFY_FAILED,
+        pathFrom(request));
+  }
+
+  @ExceptionHandler(EnrollmentInstanceInfoFailedException.class)
+  public ResponseEntity<ProblemDetail> handleEnrollmentInstanceInfoFailed(
+      EnrollmentInstanceInfoFailedException ex, WebRequest request) {
+    LOG.warn("Enrollment instance-info rejected: {}", ex.getMessage());
+    return problemResponse(
+        HttpStatus.BAD_REQUEST,
+        AuthApiProblemCatalog.TYPE_ENROLLMENT_INSTANCE_INFO_FAILED,
+        AuthApiProblemCatalog.TITLE_BAD_REQUEST,
+        AuthApiProblemCatalog.DETAIL_ENROLLMENT_INSTANCE_INFO_FAILED,
         pathFrom(request));
   }
 

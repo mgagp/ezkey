@@ -1,5 +1,6 @@
 import {
   buildBindPayload,
+  buildInstanceInfoPayload,
   buildVerifyDevicePayload,
   buildVerifyResultPayload,
 } from '../enrollmentPayload';
@@ -30,5 +31,32 @@ describe('enrollmentPayload', () => {
   it('buildVerifyResultPayload NFC-normalizes message', () => {
     const p = buildVerifyResultPayload('tok', 9, 'VERIFIED', 'caf\u0301');
     expect(p).toBe(`tok|9|VERIFIED|${'caf\u0301'.normalize('NFC')}`);
+  });
+
+  it('buildInstanceInfoPayload matches server format with INSTANCE_INFO purpose', () => {
+    const p = buildInstanceInfoPayload({
+      enrollmentProofToken: 'pt',
+      enrollmentId: 7,
+      authApiPublicBaseUrl: 'https://auth.example',
+      instanceName: 'caf\u0301e',
+      instanceDescription: 'desc',
+      aboutUrl: 'https://about.example',
+    });
+    expect(p).toBe(
+      `pt|7|INSTANCE_INFO|https://auth.example|${'caf\u0301e'.normalize('NFC')}|desc|https://about.example`,
+    );
+  });
+
+  it('buildInstanceInfoPayload maps null branding segments to empty strings', () => {
+    expect(
+      buildInstanceInfoPayload({
+        enrollmentProofToken: 'pt',
+        enrollmentId: 1,
+        authApiPublicBaseUrl: null,
+        instanceName: null,
+        instanceDescription: null,
+        aboutUrl: null,
+      }),
+    ).toBe('pt|1|INSTANCE_INFO||||');
   });
 });

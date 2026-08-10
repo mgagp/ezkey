@@ -30,7 +30,7 @@ reference mobile app.
 | --- | --- | --- |
 | Which Auth API fields does the mobile app send, store, or display? | [MOBILE_API_MAPPINGS.md](MOBILE_API_MAPPINGS.md) | Primary mapping reference for `bind`, `verify`, `pending`, and `respond`. |
 | How do enrollment and authentication run end to end? | [MOBILE_FUNCTIONAL_FLOWS.md](MOBILE_FUNCTIONAL_FLOWS.md) | Includes nominal and exception paths plus trust checks. |
-| What internal concepts and persisted structures exist in the app? | [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md) | Covers local entities, storage split, and source-of-truth rules. |
+| What internal concepts and persisted structures exist in the app? | [MOBILE_DATA_MODEL.md](MOBILE_DATA_MODEL.md) | Start at **Cornerstone** (installation trust zone + Keystore/seal split); then local entities and source-of-truth rules. |
 | What does each primary screen show and do? | [MOBILE_SCREENS_AND_WIREFLOWS.md](MOBILE_SCREENS_AND_WIREFLOWS.md) | Screen-level responsibilities and navigation model. |
 | How is the mobile app assembled technically? | [MOBILE_STACK_AND_ARCHITECTURE.md](MOBILE_STACK_AND_ARCHITECTURE.md) | Stack, module structure, boundaries, and generation workflow. |
 | How should Ezkey Mobile be positioned conceptually? | [MOBILE_POSITIONING.md](MOBILE_POSITIONING.md) | Product-facing positioning and scope boundaries. |

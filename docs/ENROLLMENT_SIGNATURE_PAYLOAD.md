@@ -51,6 +51,22 @@ The backend verifies `enrollmentProofTokenSigned` with ECDSA-SHA256 over these U
 
 The JSON includes `enrollmentVerifyPayloadSignedByIntegration` (Ed25519) and `enrollmentVerifyMessage` (the message segment). Clients must verify the signature before treating enrollment as complete.
 
+## Enrolled instance-info response (integration signs)
+
+**Payload to sign:**  
+`{enrollmentProofToken}|{enrollmentId}|INSTANCE_INFO|{authApiPublicBaseUrl}|{instanceName}|{instanceDescription}|{aboutUrl}`
+
+- **enrollmentProofToken**: Exact enrollment proof token string (unchanged).
+- **enrollmentId**: Decimal string of the enrollment id (no padding).
+- **INSTANCE_INFO**: Literal purpose tag for domain separation.
+- **authApiPublicBaseUrl**: Exact URL string from configuration, or `""` when null.
+- **instanceName**, **instanceDescription**, **aboutUrl**: NFC-normalized; null becomes `""`.
+
+The JSON includes `instanceInfoPayloadSignedByIntegration` (Base64URL Ed25519) plus the branding
+fields and `enrollmentId`. Enrolled clients reconstruct the payload from the JSON fields and verify
+with the stored integration public key before applying branding. Do not fall back to the unsigned
+public `GET /api/v1/public/instance-info` on the enrolled path.
+
 ## Implementation references
 
 - **Java**: `org.ezkey.enrollment.service.EnrollmentSignaturePayload` (`ezkey-core`).

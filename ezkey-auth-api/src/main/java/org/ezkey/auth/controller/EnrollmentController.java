@@ -24,18 +24,23 @@ import org.ezkey.auth.config.TrustedProxyProperties;
 import org.ezkey.auth.util.AuditHelper;
 import org.ezkey.enrollment.domain.EnrollmentBindRequest;
 import org.ezkey.enrollment.domain.EnrollmentBindResponse;
+import org.ezkey.enrollment.domain.EnrollmentInstanceInfoResponse;
 import org.ezkey.enrollment.domain.EnrollmentStatus;
 import org.ezkey.enrollment.domain.EnrollmentVerifyResponse;
 import org.ezkey.enrollment.domain.entity.Enrollment;
 import org.ezkey.enrollment.domain.repository.EnrollmentRepository;
 import org.ezkey.enrollment.dto.EnrollmentBindRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentBindResponseDto;
+import org.ezkey.enrollment.dto.EnrollmentInstanceInfoRequestDto;
+import org.ezkey.enrollment.dto.EnrollmentInstanceInfoResponseDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyRequestDto;
 import org.ezkey.enrollment.dto.EnrollmentVerifyResponseDto;
 import org.ezkey.enrollment.mapper.EnrollmentAuthMapper;
+import org.ezkey.enrollment.service.EnrollmentInstanceInfoService;
 import org.ezkey.enrollment.service.EnrollmentService;
 import org.ezkey.exception.auth.EnrollmentAlreadyBoundException;
 import org.ezkey.exception.auth.EnrollmentBindingFailedException;
+import org.ezkey.exception.auth.EnrollmentInstanceInfoFailedException;
 import org.ezkey.exception.auth.EnrollmentInvitationExpiredException;
 import org.ezkey.exception.auth.EnrollmentNotAvailableAfterLockException;
 import org.ezkey.exception.auth.EnrollmentVerifyFailedException;
@@ -61,6 +66,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <ul>
  *   <li><b>POST /api/v1/enrollments/bind</b> - Initiate device binding using proof token payload
  *   <li><b>POST /api/v1/enrollments/verify</b> - Complete enrollment verification process
+ *   <li><b>POST /api/v1/enrollments/instance-info</b> - Integration-signed installation branding
  * </ul>
  *
  * <p><b>Usage Context:</b> This is part of the auth-api (port 8080) for mobile device consumption.
@@ -99,10 +105,15 @@ public class EnrollmentController {
   // Rate limiting endpoint constants
   public static final String ENDPOINT_BIND = "/bind";
   public static final String ENDPOINT_VERIFY = "/verify";
+  public static final String ENDPOINT_INSTANCE_INFO = "/instance-info";
   public static final String FULL_PATH_BIND = "/api/v1/enrollments" + ENDPOINT_BIND;
   public static final String FULL_PATH_VERIFY = "/api/v1/enrollments" + ENDPOINT_VERIFY;
+  public static final String FULL_PATH_INSTANCE_INFO =
+      "/api/v1/enrollments" + ENDPOINT_INSTANCE_INFO;
 
   private final EnrollmentService enrollmentService;
+
+  private final EnrollmentInstanceInfoService enrollmentInstanceInfoService;
 
   private final EnrollmentAuthMapper enrollmentMapper;
 
@@ -120,6 +131,7 @@ public class EnrollmentController {
    * Constructs the mobile enrollment controller with required dependencies.
    *
    * @param enrollmentService JPA-based enrollment service
+   * @param enrollmentInstanceInfoService signed enrolled instance-info service
    * @param enrollmentMapper MapStruct mapper for entity-DTO conversions
    * @param auditLogService audit log service for security monitoring
    * @param enrollmentRepository enrollment repository for audit queries
@@ -129,6 +141,7 @@ public class EnrollmentController {
    */
   public EnrollmentController(
       EnrollmentService enrollmentService,
+      EnrollmentInstanceInfoService enrollmentInstanceInfoService,
       EnrollmentAuthMapper enrollmentMapper,
       AuditLogService auditLogService,
       EnrollmentRepository enrollmentRepository,
@@ -136,6 +149,7 @@ public class EnrollmentController {
       EzkeyAdminRepository adminRepository,
       TrustedProxyProperties trustedProxyProperties) {
     this.enrollmentService = enrollmentService;
+    this.enrollmentInstanceInfoService = enrollmentInstanceInfoService;
     this.enrollmentMapper = enrollmentMapper;
     this.auditLogService = auditLogService;
     this.enrollmentRepository = enrollmentRepository;
@@ -486,6 +500,70 @@ public class EnrollmentController {
     return adminRepository
         .findTenantIdByEnrollmentId(enrollmentId)
         .orElseGet(() -> resolveTenantId(enrollmentId));
+  }
+
+  /**
+   * Returns integration-signed installation branding for an enrolled mobile client.
+   *
+   * <p>Requires the enrollment proof token only. The response is signed with the enrollment's
+   * integration Ed25519 private key over the canonical {@code INSTANCE_INFO} payload. Clients must
+   * verify the signature with the stored integration public key before applying branding.
+   *
+   * @param request request containing the enrollment proof token
+   * @return signed branding with HTTP 200, or 400 for invalid proof material
+   */
+  @PostMapping("/instance-info")
+  @Operation(
+      summary = "Get integration-signed installation branding",
+      description =
+          "Returns instance branding signed with the enrollment integration key for enrolled"
+              + " clients")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Signed installation branding returned successfully",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = EnrollmentInstanceInfoResponseDto.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid or unknown enrollment proof token",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = ProblemDetail.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content =
+                @io.swagger.v3.oas.annotations.media.Content(
+                    schema =
+                        @io.swagger.v3.oas.annotations.media.Schema(
+                            implementation = ProblemDetail.class)))
+      })
+  public ResponseEntity<EnrollmentInstanceInfoResponseDto> instanceInfo(
+      @RequestBody EnrollmentInstanceInfoRequestDto request) {
+    if (request == null
+        || request.enrollmentProofToken() == null
+        || request.enrollmentProofToken().isBlank()) {
+      throw new EnrollmentInstanceInfoFailedException(
+          "Enrollment proof token is required for instance-info");
+    }
+
+    EnrollmentInstanceInfoResponse response =
+        enrollmentInstanceInfoService.getSignedInstanceInfo(request.enrollmentProofToken().trim());
+    return ResponseEntity.ok(
+        new EnrollmentInstanceInfoResponseDto(
+            response.enrollmentId(),
+            response.authApiPublicBaseUrl(),
+            response.instanceName(),
+            response.instanceDescription(),
+            response.aboutUrl(),
+            response.instanceInfoPayloadSignedByIntegration()));
   }
 
   /**

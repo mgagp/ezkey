@@ -116,8 +116,8 @@ Keep `incubating` until a `TB-*` is opened from the design pack. Promote toward 
   [`../../../../docs/SPKI_RECOVERY_SIGNATURE_PAYLOAD.md`](../../../../docs/SPKI_RECOVERY_SIGNATURE_PAYLOAD.md)
 - Retrofit foundation:
   [`R-2026-0001-mobile-certificate-pinning-spki`](../../legacy-retrofit/R-2026-0001-mobile-certificate-pinning-spki.md)
-- Adjacent response-integrity track: signed enrolled instance-info / branding (separate delivery;
-  complementary to transport pinning).
+- Adjacent response-integrity track (branding / instance-info, complementary to transport pinning):
+  [I-2026-08-09-mobile-signed-instance-info-integrity.md](I-2026-08-09-mobile-signed-instance-info-integrity.md)
 - Security claim boundary:
   [`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md)
 - StrongBox trust-model boundary:

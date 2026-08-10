@@ -47,6 +47,7 @@ import tools.jackson.databind.ObjectMapper;
  *   <li>POST /api/v1/auth-attempts/respond
  *   <li>POST /api/v1/enrollments/verify
  *   <li>POST /api/v1/enrollments/bind
+ *   <li>POST /api/v1/enrollments/instance-info (shares bind rate-limit config)
  * </ul>
  *
  * <p><b>Rate Limiting Strategy:</b>
@@ -167,6 +168,11 @@ public class RateLimitFilter implements Filter {
 
     // Check for bind endpoint
     if (requestUri.contains(EnrollmentController.FULL_PATH_BIND)) {
+      return true;
+    }
+
+    // Check for enrolled instance-info endpoint
+    if (requestUri.contains(EnrollmentController.FULL_PATH_INSTANCE_INFO)) {
       return true;
     }
 
@@ -341,6 +347,9 @@ public class RateLimitFilter implements Filter {
     } else if (bucketKey.contains(EnrollmentController.FULL_PATH_VERIFY)) {
       return properties.getVerify();
     } else if (bucketKey.contains(EnrollmentController.FULL_PATH_BIND)) {
+      return properties.getBind();
+    } else if (bucketKey.contains(EnrollmentController.FULL_PATH_INSTANCE_INFO)) {
+      // Shares bind client-ip budget (opportunistic branding refresh; low volume)
       return properties.getBind();
     } else if (bucketKey.contains(AuthAttemptController.FULL_PATH_RESPOND)) {
       return properties.getRespond();

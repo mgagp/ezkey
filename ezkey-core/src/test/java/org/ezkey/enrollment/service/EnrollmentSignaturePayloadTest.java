@@ -44,4 +44,25 @@ class EnrollmentSignaturePayloadTest {
         EnrollmentSignaturePayload.buildVerifyResultPayload(
             "tok", 99, EnrollmentSignaturePayload.EnrollmentVerificationOutcome.VERIFIED, "ok"));
   }
+
+  @Test
+  @DisplayName("buildInstanceInfoPayload uses INSTANCE_INFO purpose and NFC text")
+  void buildInstanceInfoPayload_Format() {
+    String payload =
+        EnrollmentSignaturePayload.buildInstanceInfoPayload(
+            "pt", 7, "https://auth.example", "caf\u0301e", "desc", "https://about.example");
+    assertEquals(
+        "pt|7|INSTANCE_INFO|https://auth.example|"
+            + Normalizer.normalize("caf\u0301e", Normalizer.Form.NFC)
+            + "|desc|https://about.example",
+        payload);
+  }
+
+  @Test
+  @DisplayName("buildInstanceInfoPayload maps null branding segments to empty strings")
+  void buildInstanceInfoPayload_NullSegments() {
+    assertEquals(
+        "pt|1|INSTANCE_INFO||||",
+        EnrollmentSignaturePayload.buildInstanceInfoPayload("pt", 1, null, null, null, null));
+  }
 }

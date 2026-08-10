@@ -10,6 +10,68 @@ and the screen/service code paths that move data across enrollment and authentic
 This document does not replace the canonical Auth API DTO definitions. It explains how the mobile app interprets,
 persists, derives, and displays those values locally.
 
+## Cornerstone: Installation Trust Zone and Key Material
+
+This is the foundation of the mobile local model. Read this section first; the tables below elaborate fields and
+lifecycle rules.
+
+**Product posture**
+
+- An Ezkey **installation** is a **trust zone**. Identity is the **normalized Auth API URL** (no installation UUID).
+- Every enrollment **belongs to** exactly one installation.
+- Nested `installation` inside each `StoredEnrollment` row is **pragmatic packaging**, not conceptual subordination.
+- On one phone, two distinct normalized Auth URLs are **independent** trust zones and must not share crypto handles.
+
+```mermaid
+flowchart TB
+  subgraph Phone["One mobile app install"]
+    subgraph ZoneA["Installation trust zone A\nid = normalizeInstallationId(Auth URL A)"]
+      EA1["StoredEnrollment\nlocal id = deriveLocalEnrollmentId(A, serverId)"]
+      EA2["StoredEnrollment"]
+    end
+    subgraph ZoneB["Installation trust zone B\nid = normalizeInstallationId(Auth URL B)"]
+      EB1["StoredEnrollment\nlocal id = deriveLocalEnrollmentId(B, serverId)"]
+    end
+  end
+  Branding["Public instance-info\nname / description / aboutUrl"] -.->|display only\nnever identity| ZoneA
+  Branding -.->|display only\nnever identity| ZoneB
+```
+
+**Key material split (complementary protections, not one master key)**
+
+Two Android Keystore families (StrongBox requested when available) protect different concerns. The per-enrollment
+EC P-256 private key **signs** protocol payloads; it does **not** decrypt other local secrets. A separate
+**per-installation** AES seal key (ADR-MOB-0006 / MOB-017) protects sealed-secret envelopes for
+`enrollmentProofToken` and `integrationPublicKey`.
+
+```mermaid
+flowchart TB
+  subgraph AsyncMeta["AsyncStorage — metadata collection"]
+    Row["StoredEnrollment row\nnested installation + labels +\ntimestamps + routing fields"]
+  end
+  subgraph AsyncSeal["AsyncStorage — sealed-secret envelopes"]
+    Proof["enrollmentProofToken"]
+    IntPk["integrationPublicKey"]
+  end
+  subgraph Keystore["Android Keystore — StrongBox when available"]
+    SignKey["EC P-256 signing key\nper enrollment\nalias = installation-scoped local id"]
+    SealKey["AES/GCM seal key\nper installation\nalias = ezkey_seal_{installationScopeId}"]
+  end
+  SealKey -.->|"unseal at rehydration"| Proof
+  SealKey -.->|"unseal at rehydration"| IntPk
+  Row --> SignKey
+  Row --> SealKey
+  SignKey -->|"sign verify / pending / respond"| Wire["Auth API wire"]
+```
+
+Invariant: signing aliases, local enrollment ids, and seal keys are all **installation-scoped**. Clear-all deletes
+per-enrollment signing keys, sealed envelopes, and every `ezkey_seal_*` alias so re-enrollment starts clean.
+
+Decision anchors: [`ADR-MOB-0002`](../../product-docs/components/mobile/design-decisions.md#adr-mob-0002-ec-p256-keys-on-native-keystore),
+[`ADR-MOB-0004`](../../product-docs/components/mobile/design-decisions.md#adr-mob-0004-android-app-level-sealed-secrets),
+[`ADR-MOB-0006`](../../product-docs/components/mobile/design-decisions.md#adr-mob-0006-per-installation-android-seal-key).
+Product-docs summary: [`data-model-and-persistence.md`](../../product-docs/components/mobile/data-model-and-persistence.md).
+
 ## Concept Inventory
 
 | Concept | Purpose | Source | Persisted | Sensitive |
@@ -26,6 +88,9 @@ persists, derives, and displays those values locally.
 | Local activity snapshot | Minimal locally known timestamps or derived status cues | Persisted enrollment timestamps and runtime auth flow state | Partly | No |
 
 ## Canonical Entity Map
+
+Containment and key-material layers are in [Cornerstone](#cornerstone-installation-trust-zone-and-key-material).
+This map shows how runtime concepts relate during enrollment and auth flows.
 
 ```mermaid
 flowchart TD
@@ -48,15 +113,9 @@ flowchart TD
   DeviceCrypto --> RespondIntent
 ```
 
-**Product posture:** an Ezkey **installation** is a trust zone. Every enrollment **belongs to** exactly one
-installation. The durable persisted *record* is still `StoredEnrollment` (one row per enrolled device), but that
-record is owned by its installation trust zone — installation is not decoration around an enrollment-centric model.
-
-Pragmatic packaging: the app nests `installation` inside each enrollment row rather than maintaining a separate
-installation table. That is a storage convenience, not a claim that the installation is conceptually subordinate to
-the enrollment lifecycle.
-
-Transient flow state (`EnrollmentDraft`, pending attempt, respond intent) remains in-memory only.
+The durable persisted *record* is still `StoredEnrollment` (one row per enrolled device), owned by its installation
+trust zone. Nested packaging is a storage convenience only. Transient flow state (`EnrollmentDraft`, pending
+attempt, respond intent) remains in-memory only.
 
 ## Installation Trust Zone
 

@@ -1,9 +1,13 @@
 /**
  * Canonical payload builders for enrollment bind (integration-signed), verify request (device-signed),
- * and verify response (integration-signed). Matches docs/ENROLLMENT_SIGNATURE_PAYLOAD.md.
+ * verify response (integration-signed), and enrolled instance-info (integration-signed).
+ * Matches docs/ENROLLMENT_SIGNATURE_PAYLOAD.md.
  */
 
 const SEP = '|';
+
+/** Purpose literal for enrolled instance-info domain separation. */
+export const INSTANCE_INFO_PURPOSE = 'INSTANCE_INFO';
 
 function nfcOrEmpty(s: string | null | undefined): string {
   if (s == null) {
@@ -82,4 +86,34 @@ export function buildVerifyResultPayload(
 ): string {
   const msg = nfcOrEmpty(message);
   return [enrollmentProofToken, String(enrollmentId), outcome, msg].join(SEP);
+}
+
+export type InstanceInfoResponseLike = {
+  enrollmentProofToken: string;
+  enrollmentId: number | string;
+  authApiPublicBaseUrl?: string | null;
+  instanceName?: string | null;
+  instanceDescription?: string | null;
+  aboutUrl?: string | null;
+};
+
+/**
+ * Builds the payload the integration signs for enrolled instance-info.
+ */
+export function buildInstanceInfoPayload(response: InstanceInfoResponseLike): string {
+  const pt = response.enrollmentProofToken ?? '';
+  const idStr =
+    response.enrollmentId !== undefined && response.enrollmentId !== null
+      ? String(response.enrollmentId)
+      : '';
+  const authBase = response.authApiPublicBaseUrl ?? '';
+  return [
+    pt,
+    idStr,
+    INSTANCE_INFO_PURPOSE,
+    authBase,
+    nfcOrEmpty(response.instanceName),
+    nfcOrEmpty(response.instanceDescription),
+    nfcOrEmpty(response.aboutUrl),
+  ].join(SEP);
 }

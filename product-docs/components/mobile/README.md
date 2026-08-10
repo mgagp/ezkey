@@ -52,7 +52,7 @@ The mobile app already carries a well-structured documentation set. This pack:
 |----------|---------|
 | [`stack-and-architecture.md`](stack-and-architecture.md) | Stack, module layout, runtime shape. |
 | [`functional-flows.md`](functional-flows.md) | Enrollment, pending retrieval, respond flows. |
-| [`data-model-and-persistence.md`](data-model-and-persistence.md) | Local entities and secure storage. |
+| [`data-model-and-persistence.md`](data-model-and-persistence.md) | Installation trust zone, enrollments, Keystore/StrongBox + seal keys (cornerstone diagrams). |
 | [`screens-and-wireflow.md`](screens-and-wireflow.md) | Primary screens and navigation. |
 | [`api-and-boundary-mappings.md`](api-and-boundary-mappings.md) | Auth API DTO ↔ local mobile models. |
 | [`exception-and-error-model.md`](exception-and-error-model.md) | Error taxonomy and user messaging. |
@@ -62,10 +62,10 @@ The mobile app already carries a well-structured documentation set. This pack:
 ## Reading Order
 
 1. [`stack-and-architecture.md`](stack-and-architecture.md)
-2. [`screens-and-wireflow.md`](screens-and-wireflow.md)
-3. [`functional-flows.md`](functional-flows.md)
-4. [`api-and-boundary-mappings.md`](api-and-boundary-mappings.md)
-5. [`data-model-and-persistence.md`](data-model-and-persistence.md)
+2. [`data-model-and-persistence.md`](data-model-and-persistence.md) — installation trust zone cornerstone
+3. [`screens-and-wireflow.md`](screens-and-wireflow.md)
+4. [`functional-flows.md`](functional-flows.md)
+5. [`api-and-boundary-mappings.md`](api-and-boundary-mappings.md)
 6. [`exception-and-error-model.md`](exception-and-error-model.md)
 7. [`design-decisions.md`](design-decisions.md)
 8. [`spec-test-traceability.md`](spec-test-traceability.md)
