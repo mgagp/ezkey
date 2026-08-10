@@ -2,7 +2,10 @@
 
 This document defines the canonical payload format for integration-signed and device-signed enrollment messages. Backend (`ezkey-core`), demo device, and mobile apps must build and verify payloads identically.
 
-See also [AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) for authentication attempt Pending/Respond.
+See also [AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md](AUTH_ATTEMPT_SIGNATURE_PAYLOAD.md) for authentication
+attempt Pending/Respond, and [SPKI_RECOVERY_SIGNATURE_PAYLOAD.md](SPKI_RECOVERY_SIGNATURE_PAYLOAD.md)
+for trust-zone SPKI pin recovery (and the planned `spkiPinningMode` extension to enrolled
+instance-info when that surface exists).
 
 ## Encoding
 
