@@ -23,6 +23,7 @@ This file is intended for coding agents working in `ezkey-auth-api/`.
 | `GET /api/v1/public/instance-info` | Public instance metadata (branding, optional `authApiPublicBaseUrl`; same JSON as Admin API) |
 | `POST /api/v1/enrollments/bind` | Device claims an enrollment slot (read-once guarantee) |
 | `POST /api/v1/enrollments/verify` | Device completes enrollment with crypto keys |
+| `POST /api/v1/enrollments/instance-info` | Integration-signed installation branding for enrolled clients |
 | `POST /api/v1/auth-attempts/pending` | Device polls for a pending auth request |
 | `POST /api/v1/auth-attempts/respond` | Device responds (accept/reject) to auth request |
 

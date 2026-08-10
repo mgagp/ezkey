@@ -29,6 +29,8 @@ import type {
 import type {
   EnrollmentBindRequestDto,
   EnrollmentBindResponseDto,
+  EnrollmentInstanceInfoRequestDto,
+  EnrollmentInstanceInfoResponseDto,
   EnrollmentVerifyRequestDto,
   EnrollmentVerifyResponseDto,
   ProblemDetail
@@ -241,4 +243,99 @@ export const useVerify = <TError = ErrorType<ProblemDetail>,
         TContext
       > => {
       return useMutation(getVerifyMutationOptions(options), queryClient);
+    }
+    export type instanceInfoResponse200 = {
+  data: EnrollmentInstanceInfoResponseDto
+  status: 200
+}
+
+export type instanceInfoResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type instanceInfoResponse500 = {
+  data: ProblemDetail
+  status: 500
+}
+
+export type instanceInfoResponseSuccess = (instanceInfoResponse200) & {
+  headers: Headers;
+};
+export type instanceInfoResponseError = (instanceInfoResponse400 | instanceInfoResponse500) & {
+  headers: Headers;
+};
+
+export type instanceInfoResponse = (instanceInfoResponseSuccess | instanceInfoResponseError)
+
+export const getInstanceInfoUrl = () => {
+
+
+
+
+  return `/api/v1/enrollments/instance-info`
+}
+
+/**
+ * Returns instance branding signed with the enrollment integration key for enrolled clients
+ * @summary Get integration-signed installation branding
+ */
+export const instanceInfo = async (enrollmentInstanceInfoRequestDto: EnrollmentInstanceInfoRequestDto, options?: RequestInit): Promise<instanceInfoResponse> => {
+
+  return customInstance<instanceInfoResponse>(getInstanceInfoUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(enrollmentInstanceInfoRequestDto)
+  }
+);}
+
+
+
+
+
+export const getInstanceInfoMutationOptions = <TError = ErrorType<ProblemDetail>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,{data: BodyType<EnrollmentInstanceInfoRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,{data: BodyType<EnrollmentInstanceInfoRequestDto>}, TContext> => {
+
+const mutationKey = ['instanceInfo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof instanceInfo>>, {data: BodyType<EnrollmentInstanceInfoRequestDto>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  instanceInfo(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InstanceInfoMutationResult = NonNullable<Awaited<ReturnType<typeof instanceInfo>>>
+    export type InstanceInfoMutationBody = BodyType<EnrollmentInstanceInfoRequestDto>
+    export type InstanceInfoMutationError = ErrorType<ProblemDetail>
+
+    /**
+ * @summary Get integration-signed installation branding
+ */
+export const useInstanceInfo = <TError = ErrorType<ProblemDetail>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof instanceInfo>>, TError,{data: BodyType<EnrollmentInstanceInfoRequestDto>}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof instanceInfo>>,
+        TError,
+        {data: BodyType<EnrollmentInstanceInfoRequestDto>},
+        TContext
+      > => {
+      return useMutation(getInstanceInfoMutationOptions(options), queryClient);
     }

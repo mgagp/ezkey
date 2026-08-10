@@ -96,6 +96,9 @@ class EnrollmentControllerTest {
 
   @MockitoBean private EnrollmentService enrollmentService;
 
+  @MockitoBean
+  private org.ezkey.enrollment.service.EnrollmentInstanceInfoService enrollmentInstanceInfoService;
+
   @MockitoBean private EnrollmentAuthMapper enrollmentMapper;
 
   @MockitoBean private org.ezkey.audit.service.AuditLogService auditLogService;

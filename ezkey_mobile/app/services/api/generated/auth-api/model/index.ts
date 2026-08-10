@@ -24,6 +24,8 @@ export * from './authAttemptRespondResponseDto.ts';
 export * from './authAttemptRespondResponseDtoAuthAttemptResult.ts';
 export * from './enrollmentBindRequestDto.ts';
 export * from './enrollmentBindResponseDto.ts';
+export * from './enrollmentInstanceInfoRequestDto.ts';
+export * from './enrollmentInstanceInfoResponseDto.ts';
 export * from './enrollmentVerifyRequestDto.ts';
 export * from './enrollmentVerifyRequestDtoDevicePrivateKeyStorageTier.ts';
 export * from './enrollmentVerifyResponseDto.ts';

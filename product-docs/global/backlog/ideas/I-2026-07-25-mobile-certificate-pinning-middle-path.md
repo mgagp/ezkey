@@ -6,7 +6,7 @@
 - **Status:** `incubating`
 - **Priority:** `P2`
 - **Created at:** `2026-07-25`
-- **Updated at:** `2026-07-25`
+- **Updated at:** `2026-08-09`
 - **Last reviewed at:** `2026-07-25`
 - **Progression markers:** `P2-hardening`, `P3-distribution`
 - **Component tags:** `mobile`, `auth-api`, `admin-api`, `docs`, `security`
@@ -86,6 +86,8 @@ Keep this idea `incubating` until:
   [`V-2026-0006-mobile-certificate-pinning`](../../vision/V-2026-0006-mobile-certificate-pinning.md)
 - Retrofit foundation:
   [`R-2026-0001-mobile-certificate-pinning-spki`](../../legacy-retrofit/R-2026-0001-mobile-certificate-pinning-spki.md)
+- Adjacent response-integrity track (branding / instance-info, complementary to transport pinning):
+  [`I-2026-08-09-mobile-signed-instance-info-integrity.md`](I-2026-08-09-mobile-signed-instance-info-integrity.md)
 - Security claim boundary:
   [`docs/SECURITY_POSTURE.md`](../../../../docs/SECURITY_POSTURE.md)
 - StrongBox trust-model boundary:

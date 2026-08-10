@@ -6,7 +6,7 @@
 - **Status:** `incubating`
 - **Priority:** `P3`
 - **Created at:** `2026-08-02`
-- **Updated at:** `2026-08-02`
+- **Updated at:** `2026-08-09`
 - **Last reviewed at:** `2026-08-02`
 - **Progression markers:** `P2-hardening`, `P3-distribution`
 - **Component tags:** `mobile`, `auth-api`, `admin-api`, `core`, `docs`, `security`
@@ -129,6 +129,9 @@ Keep `incubating` until:
   [`I-2026-0025-auth-api-protocol-capability-versioning.md`](I-2026-0025-auth-api-protocol-capability-versioning.md)
 - Adjacent mitigation (not a resolution):
   [`I-2026-07-25-mobile-certificate-pinning-middle-path.md`](I-2026-07-25-mobile-certificate-pinning-middle-path.md)
+- Adjacent integrity track for enrolled instance-info refresh (complementary if version fields ride
+  the same metadata family):
+  [`I-2026-08-09-mobile-signed-instance-info-integrity.md`](I-2026-08-09-mobile-signed-instance-info-integrity.md)
 - Fail-open/fail-closed design compass:
   [`design-principles.md`](../../design-principles.md) §17,
   [`../../methodology/decisions/2026-07-18-fail-open-fail-closed-design-compass.md`](../../../methodology/decisions/2026-07-18-fail-open-fail-closed-design-compass.md)

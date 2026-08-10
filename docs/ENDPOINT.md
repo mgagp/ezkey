@@ -132,6 +132,41 @@ Returns the same read-only JSON as the Admin API public instance-info (see **§2
 
 Configure these properties on the Auth API process (e.g. `EZKEY_QR_AUTH_BASE_URL`, `EZKEY_ORGANIZATION_ABOUT_URL` in Docker) so the response matches operator expectations and the Admin API when both are deployed.
 
+### Enrolled instance-info (integration-signed)
+
+**Base path:** `POST http://localhost:8080/api/v1/enrollments/instance-info`
+
+Returns the same branding fields as public instance-info, plus `enrollmentId` and an Ed25519
+signature (`instanceInfoPayloadSignedByIntegration`) over the canonical `INSTANCE_INFO` payload
+(see [ENROLLMENT_SIGNATURE_PAYLOAD.md](ENROLLMENT_SIGNATURE_PAYLOAD.md) § Enrolled instance-info).
+The request authenticates with `enrollmentProofToken` only (hash lookup; anti-enumeration). Rate
+limiting shares the bind endpoint client-IP budget.
+
+**Request**
+```http
+POST /api/v1/enrollments/instance-info
+Content-Type: application/json
+
+{
+  "enrollmentProofToken": "abc123-def456-ghi789"
+}
+```
+
+**Response (200)**
+```json
+{
+  "enrollmentId": 123,
+  "authApiPublicBaseUrl": "https://auth.example.com:8080",
+  "instanceName": "Acme Corporation",
+  "instanceDescription": "Acme Corp Ezkey MFA",
+  "aboutUrl": "https://www.example.com/about-ezkey",
+  "instanceInfoPayloadSignedByIntegration": "Base64URL-Ed25519-signature"
+}
+```
+
+Invalid or unknown proof tokens return RFC 9457 Problem Details **400**
+(`enrollment-instance-info-failed`) with a generic detail (no enumeration hints).
+
 ### a) Retrieve pending request
 
 **POST /api/v1/auth-attempts/pending**

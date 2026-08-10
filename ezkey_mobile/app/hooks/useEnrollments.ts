@@ -12,7 +12,7 @@
  */
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
-import {instanceInfoApi} from '../services/api/instanceInfo';
+import {fetchVerifiedInstanceInfo} from '../services/api/instanceInfo';
 import type {Installation} from '../services/api/types';
 import {
   enrollmentStorage,
@@ -47,7 +47,10 @@ const refreshInstallationMetadata = async (
     return false;
   }
 
-  const staleByInstallation = new Map<string, {authUrl: string; indices: number[]}>();
+  const staleByInstallation = new Map<
+    string,
+    {authUrl: string; indices: number[]; proofToken?: string; integrationPublicKey?: string}
+  >();
 
   enrollments.forEach((enrollment, index) => {
     if (!isInstallationMetadataStale(enrollment) && !needsInstallationMetadataRefresh(enrollment)) {
@@ -63,10 +66,19 @@ const refreshInstallationMetadata = async (
     const existing = staleByInstallation.get(installationId);
     if (existing) {
       existing.indices.push(index);
+      if (!existing.proofToken && enrollment.enrollmentProofToken) {
+        existing.proofToken = enrollment.enrollmentProofToken;
+        existing.integrationPublicKey = enrollment.integrationPublicKey;
+      }
       return;
     }
 
-    staleByInstallation.set(installationId, {authUrl, indices: [index]});
+    staleByInstallation.set(installationId, {
+      authUrl,
+      indices: [index],
+      proofToken: enrollment.enrollmentProofToken,
+      integrationPublicKey: enrollment.integrationPublicKey,
+    });
   });
 
   if (staleByInstallation.size === 0) {
@@ -76,21 +88,33 @@ const refreshInstallationMetadata = async (
   const updates: Array<{id: string; installation: Installation}> = [];
 
   for (const installation of staleByInstallation.values()) {
-    try {
-      const instanceInfo = await instanceInfoApi.get(installation.authUrl);
-      const refreshedAt = new Date().toISOString();
-      const nextInstallation = buildInstallation(
-        installation.authUrl,
-        instanceInfo,
-        refreshedAt,
+    if (!installation.proofToken || !installation.integrationPublicKey) {
+      console.warn(
+        '[useEnrollments] Skipping installation metadata refresh: missing proof material',
       );
-
-      installation.indices.forEach(index => {
-        updates.push({id: enrollments[index].id, installation: nextInstallation});
-      });
-    } catch (error) {
-      console.warn('[useEnrollments] Failed to refresh installation metadata:', error);
+      continue;
     }
+
+    const instanceInfo = await fetchVerifiedInstanceInfo({
+      authUrl: installation.authUrl,
+      enrollmentProofToken: installation.proofToken,
+      integrationPublicKey: installation.integrationPublicKey,
+    });
+    if (!instanceInfo) {
+      // Fail-open on transport / fail-closed on bad signature: keep last good branding.
+      continue;
+    }
+
+    const refreshedAt = new Date().toISOString();
+    const nextInstallation = buildInstallation(
+      installation.authUrl,
+      instanceInfo,
+      refreshedAt,
+    );
+
+    installation.indices.forEach(index => {
+      updates.push({id: enrollments[index].id, installation: nextInstallation});
+    });
   }
 
   if (updates.length === 0) {
@@ -197,7 +221,7 @@ export const useMarkEnrollmentPendingChecked = () => {
 };
 
 /**
- * Opportunistically refreshes stale Ezkey installation metadata from the public instance-info endpoint.
+ * Opportunistically refreshes stale Ezkey installation metadata via signed enrolled instance-info.
  *
  * @return React Query mutation handler for silent installation metadata refresh.
  * @since 2025
