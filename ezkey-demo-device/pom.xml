@@ -53,6 +53,12 @@
 			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
 
+		<!-- Actuator for Docker / Compose health checks (GET /actuator/health) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
 		<!-- Validation API for generated DTOs -->
 		<dependency>
 			<groupId>jakarta.validation</groupId>
