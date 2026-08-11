@@ -132,11 +132,18 @@ function show_status() {
         echo "  ❌ Crypto API: Unhealthy"
     fi
 
-    # Check Demo Device
+    # Check Demo Device (always started by clean-start / docker compose)
     if curl -sf http://localhost:8083/actuator/health > /dev/null 2>&1; then
         echo "  ✅ Demo Device: Healthy"
     else
-        echo "  ⚠️  Demo Device: Not available (optional service)"
+        echo "  ❌ Demo Device: Unhealthy"
+    fi
+
+    # Check Demo App ACME (optional companion; started with the default compose stack)
+    if curl -sf http://localhost:8082/actuator/health > /dev/null 2>&1; then
+        echo "  ✅ Demo App ACME: Healthy"
+    else
+        echo "  ⚠️  Demo App ACME: Not available"
     fi
 }
 
