@@ -157,7 +157,7 @@ Run this checklist in the **same closeout** whenever a merged PR changed a decla
 codegen tool. Merge + CI green is not enough if docs or local `node_modules` stay behind.
 
 1. **Exact pin preserved:** for packages the repo pins without a caret (notably Orval), confirm
-   `package.json` still uses an exact version (`8.22.0`, not `^8.22.0`) after any manual
+   `package.json` still uses an exact version (`8.24.0`, not `^8.24.0`) after any manual
    `npm install` follow-up.
 2. **Documented pins synced:** update version strings in `AGENTS.md` (and any module note that
    restates the pin) in the **same change set** as the bump when the docs call out an exact pin.
