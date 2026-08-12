@@ -1,9 +1,16 @@
 # Multi-Tenancy Strategy Analysis - Ezkey
 
+> **Historical analysis (Jan 2025).** Broader Org/Unit/Party hierarchy ideas in this file were **not**
+> adopted. **Shipped Phase 1** is the flat GlobalAdmin / TenantAdmin / API-key model — see
+> [`docs/features/SECURITY_MULTI_TENANT.md`](../features/SECURITY_MULTI_TENANT.md),
+> [`docs/LIFECYCLE_GOVERNANCE.md`](../LIFECYCLE_GOVERNANCE.md), and
+> [`ezkey-tests/reference/MULTI_TENANT.md`](../../ezkey-tests/reference/MULTI_TENANT.md). Do not
+> treat Org/Unit sections below as living product direction.
+
 **Version:** 1.0  
 **Date:** January 2025  
-**Status:** Analysis Document  
-**Purpose:** Define comprehensive multi-tenancy strategy for Ezkey
+**Status:** Historical analysis (superseded for execution by Phase 1 ship)  
+**Purpose:** Original comprehensive multi-tenancy strategy exploration for Ezkey
 
 ---
 

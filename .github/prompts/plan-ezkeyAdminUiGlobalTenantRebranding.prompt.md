@@ -1,5 +1,8 @@
 # Plan: Admin UI Rebranding — Tenant + Global Admin Support
 
+> **Completed historically.** Living Admin UI is `ezkey-admin-ui/` (`docker-compose.admin-ui.yml`,
+> `./start.sh`). Do not recreate `ezkey-tenant-ui` or `docker-compose.tenant-ui.yml`.
+
 The `ezkey-admin-ui` folder was already renamed via Git. The goal is to: (1) complete the in-file rename sweep removing all "Tenant UI" references, (2) make the sidebar branding dynamic based on `adminType`, (3) add conditional navigation for global-admin-only features, and (4) add an **Encryption Keys** mock page behind a global-admin gate. The login flow and Admins page require no changes — they already work correctly for both roles.
 
 ---

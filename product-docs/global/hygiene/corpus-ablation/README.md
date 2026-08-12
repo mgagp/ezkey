@@ -15,11 +15,12 @@ extracting any remaining essence into existing canonical docs — and after chec
 ## Operating rules
 
 1. One pointed document per iteration → essence → canonical receptacle → delete when ready.
-2. **Go** = the recommended path for that plan (usually delete when liquidable, **plus** cheap
-   in-pass discoverability/subject fixes when those are recommended). Append parking rows for
-   adjacent micro-alignments not included in that Go — burn down when the operator chooses.
-3. Drift **on the pointed document’s subject** that is still blocking a clean delete: include the
-   cheap canon fix in the recommended Go; otherwise park and say so.
+2. **Go** = the **single best package** for corpus realignment **including discoverability** — not
+   a minimal delete. Include cheap in-pass edits now when warranted; include **parking `P-NNN`
+   rows inside that same Go** for adjacent / deferred edits (parking is not an optional aside).
+3. Drift **on the pointed document’s subject** that still blocks a clean delete or would mislead a
+   cold agent: prefer the cheap canon fix **in Go**. Larger or lower-urgency adjacent drift → park
+   **as part of Go**, burn down later when the operator chooses.
 4. Git history is the archive — do not invent `archive/` copies of deleted plans.
 5. **Discoverability check** (each plan): would a cold agent reuse this design without the plan?
    If the signal is easy to miss from `AGENTS.md` / call sites, prefer a **2–4 line pointer** in the

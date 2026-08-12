@@ -121,7 +121,7 @@ flowchart LR
 | Enrollment bind | Enrollment Wizard plus `enrollmentsApi.bind` | QR payload and effective `authUrl` | Bind response draft | No durable local write yet. |
 | Enrollment verify | Enrollment Wizard plus `cryptoService` plus `enrollmentsApi.verify` | User challenge, device public key, device signature | Verify response and persisted enrollment record | Durable write occurs only after verify-result trust check. |
 | Installation refresh | `useRefreshInstallationMetadata` | Persisted enrollments | Refreshed nested installation objects | Uses public instance-info endpoint opportunistically. |
-| Pending load | Pending screen plus `authAttemptsApi.pending` plus `cryptoService` | Enrollment proof token, fresh device proof token, signature | Pending attempt in memory | Request context is shown only after signature verification. |
+| Pending load | Pending screen plus `authAttemptsApi.pending` plus `cryptoService` | Enrollment proof token, signed device proof token (reuse OK on empty **204** polls; uniqueness on claim), signature | Pending attempt in memory | Request context is shown only after signature verification. See `docs/ENDPOINT.md` § Retrieve pending request. |
 | Respond submit | Pending screen plus `authAttemptsApi.respond` plus `cryptoService` | User decision, optional challenge, one-time proof token signature | Trusted latest-response summary on Enrollment Detail | Current implementation does not persist detailed auth history. |
 
 ## Trust Boundaries and Security-Sensitive Responsibilities

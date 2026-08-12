@@ -28,18 +28,25 @@ Do **not** invent `I-*` / `TB-*` per finding.
 1. Operator points at one scaffold (or says continue).
 2. Read it; cross-check code + living docs (do not ritual-read the whole corpus).
 3. Classify:
-   - **Go (park + delete)** — essence already in canon / shipped; optional parking rows.
-   - **Go + in-pass fix** — cheap discoverability or subject-blocking drift; fix then delete.
+   - **Go** — single preferred package (see below).
    - **Keep** — still unique option space (Lane B retained); record under Kept this pass.
    - **Promote then delete** — fold unique substance into V/I/docs first, then delete.
-4. Propose verdict + parking table; **wait for Go / Keep / variant**. Label **Go** as the
-   recommended path (usually delete + cheap in-pass discoverability/subject fix when needed).
-   Offer variants only when useful (e.g. Keep, Go without fix).
-5. On Go: apply that recommended path; append Done (+ parking / Kept) in the active pass note.
+4. Propose **Go** as the **most corpus-adapted package** (discoverability included); **wait for
+   Go / Keep / variant**. Variants (e.g. Keep, Go without fix) only when useful — never present
+   “optional parking” outside Go as if it were separate from the recommendation.
+5. On Go: apply the full package; append Done (+ parking / Kept) in the active pass note.
 
-**Default Go** = recommended path for the pointed plan: delete when liquidable, **including**
-cheap in-pass discoverability/subject fixes when those are part of the recommendation. Adjacent
-microfixes stay in parking unless included in that Go.
+**Go = the one best package** for documentary realignment + discoverability, not a minimal
+delete. Build it with a pragmatic corpus edit budget:
+
+| Include in Go | When |
+|---------------|------|
+| **Delete** the scaffold | Essence shipped / already in canon (or after promote) |
+| **In-pass cheap edits** | Subject-blocking drift **or** discoverability gaps a cold agent would miss — fix **now** (pointers, stale snippets, entry-path links) |
+| **Parking `P-NNN` rows** | Adjacent / larger / lower-urgency edits that should **not** inflate this turn — **still part of Go** (record them; do not leave as “optional aside”) |
+
+Do **not** offer a bare delete as Go when a small doc/discoverability pass is clearly warranted.
+Do **not** treat parking as optional flavoring — if an edit should wait, **park it inside Go**.
 
 ## Discoverability check (mandatory on each plan)
 
@@ -68,13 +75,15 @@ discoverability pointers over re-specification.
 ## Parking
 
 - Append `P-NNN` rows for deferred doc drift found adjacent to the pointed plan.
+- Parking rows proposed in the briefing are **part of the default Go package** when Go is chosen
+  (operator accepts deferred work; burn-down stays deferred until they say so).
 - Burn down when opening that source doc or at campaign closeout.
-- In-pass fixes close the discoverability gap when the operator chooses **Go + fix**.
+- Prefer in-pass over parking when the fix is cheap and closes a cold-agent discoverability gap.
 
 ## Kickoff (paste-ready)
 
 ```text
 corpus-ablation — continue 2026-08 Cursor plans pass.
 Read product-docs/global/hygiene/corpus-ablation/README.md and the skill corpus-ablation.
-One plan per turn; include discoverability check; Go = recommended path (often delete + cheap fix).
+One plan per turn; include discoverability check; Go = best corpus package (in-pass + parking).
 ```

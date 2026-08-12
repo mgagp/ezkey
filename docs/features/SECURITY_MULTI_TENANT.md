@@ -1,5 +1,11 @@
 # Ezkey Admin API Security & Multi-Tenant Architecture
 
+> **Living vs historical:** Admin authentication is **passwordless MFA** with **opaque DB bearer
+> tokens** (immediate revocation). Sections below that sketch password+MFA hybrids, JWT issuance,
+> or Integration Admin as a first-class role are **historical design drafts** — do not treat them as
+> the shipped model. Canon: [`ezkey-tests/reference/MULTI_TENANT.md`](../../ezkey-tests/reference/MULTI_TENANT.md),
+> [`docs/LIFECYCLE_GOVERNANCE.md`](../LIFECYCLE_GOVERNANCE.md), [`docs/ENDPOINT.md`](../ENDPOINT.md).
+
 ## Préambule - Contexte et Vision
 
 Ce document définit la stratégie complète de sécurisation de l'admin-api et l'implémentation d'une architecture multi-tenant pour Ezkey. Le concept central est l'application du principe **"Eat Your Own Dog Food"** : Ezkey utilise sa propre solution MFA pour sécuriser ses propres APIs administratives.

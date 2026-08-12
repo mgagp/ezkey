@@ -310,6 +310,13 @@ The critical distinction is that **admin identity lifecycle and admin MFA enroll
 - Revoking an admin's MFA enrollment invalidates their login credential. Their admin identity remains in the system.
 - To fully lock out an already active admin, you deactivate their identity **and** revoke their MFA enrollment. This two-step approach is intentional — it lets you investigate (deactivate the identity) before making a final decision (revoke the credential).
 
+**Single system integration for admin MFA.** All administrator MFA enrollments bind to the **one**
+system integration (system tenant). Do **not** create per-tenant “system” integrations for audit
+visibility. Audit `tenant_id` for admin MFA bind/verify/pending/respond and for Tenant Admin
+`ADMIN_CREATED` uses the **admin’s tenant** (not the system-integration tenant) so Tenant Admins
+see peer onboarding and MFA auth in their audit view — see Auth API `resolveTenantIdForAudit` and
+`docs/ENDPOINT.md` § Audit log.
+
 **Activation vs. recovery.** Ezkey treats first activation and recovery as separate concepts:
 
 - **Activation** establishes the first normal enrollment for an admin who does not yet have one.

@@ -142,6 +142,11 @@ High-volume tables `ezkey_audit_log` and `ezkey_auth_attempt` are **range-partit
 - **When FK is appropriate:** reference non-partitioned tables (`ezkey_alert`, `ezkey_admin`) or
   use composite FK to partitioned tables only when the dependent row lifecycle matches the target
   (same purge window or `ON DELETE` semantics explicitly designed).
+- **`create_monthly_partition` call pattern:** the SECURITY DEFINER helper (in
+  `V4__partitioning_auth_audit_and_function.sql`) returns **BOOLEAN** (`true` created,
+  `false` already existed). Call it with `SELECT …` + `getSingleResult()` (see
+  `PartitionSchedulerService`). Do **not** use `executeUpdate()` on that SELECT — Hibernate
+  expects no result set and fails with “A result was returned when none was expected”.
 
 Authoritative detail: `docs/DATABASE_PARTITIONING_IMPLEMENTATION.md` (§ Flyway greenfield patterns),
 `.cursor/rules/flyway-partitioned-tables.mdc`.

@@ -2,8 +2,9 @@
 
 Ce document contient des observations et des points à réanalyser ou compléter avant de prendre action. Ces éléments nécessitent une investigation plus approfondie ou une décision architecturale.
 
-**Statut**: En cours d'analyse
-**Date de création**: 2025-12-26
+**Statut**: Archive d'observations (plusieurs items **résolus** — vérifier le statut par section)  
+**Date de création**: 2025-12-26  
+**Canon vivant**: [`ezkey-tests/reference/MULTI_TENANT.md`](../../ezkey-tests/reference/MULTI_TENANT.md), [`docs/ENDPOINT.md`](../ENDPOINT.md) § admins / audit
 
 ---
 
@@ -11,8 +12,8 @@ Ce document contient des observations et des points à réanalyser ou compléter
 
 **Date**: 2025-12-26
 **Observateur**: Utilisateur
-**Endpoint concerné**: `GET /api/v1/admins` (ou équivalent)
-**Statut**: ✅ **RÉSOLU** - 2025-12-26
+**Endpoint concerné**: `GET /api/v1/admins`
+**Statut**: ✅ **RÉSOLU** — `GET /api/v1/admins` avec filtrage automatique par tenant (Option 1). Voir `docs/ENDPOINT.md` § List Administrators et `AdminProvisioningController.listAdmins`.
 
 ### Observation
 

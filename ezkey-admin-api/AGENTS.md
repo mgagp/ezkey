@@ -31,6 +31,17 @@ This file is intended for coding agents working in `ezkey-admin-api/`.
   - recovery codes (hashed in DB; plain text is only available at generation time)
 - Bootstrap log/export policy: `ezkey.admin.mfa.bootstrap.credentials-output-mode` — `full` (default; enrollment secrets + optional `bootstrap-credentials.json`) vs `recovery_primary` (recovery codes + instructions only; skips JSON export for Docker).
 - **Bootstrap transaction:** `@Transactional` must be on `bootstrapAdminMfa()` (entry point), not only on `doBootstrapAdminMfa()`. Passing `this::doBootstrapAdminMfa` to `LockingTaskExecutor` bypasses the proxy; the inner method’s `@Transactional` would not apply. See `docs/plan/JPA_TRANSACTION_DESIGN_NOTES.md`.
+- **ShedLock / HA:** Admin API enables ShedLock (`ShedLockConfiguration`). Scheduled jobs use
+  `@SchedulerLock`; startup bootstrap shares lock name `ADMIN_STARTUP_BOOTSTRAP`. Table:
+  `ezkey_shedlock` (Flyway V5). Strategy: [`docs/HA-JOB-COORDINATION.md`](../docs/HA-JOB-COORDINATION.md);
+  local multi-instance exercise: [`docker/README-HA.md`](../docker/README-HA.md).
+
+## Tenant-scoped list endpoints
+
+Operator collection lists use **automatic tenant filtering from the principal** (same pattern as
+integrations/enrollments): **one** `GET /api/v1/{resource}` — TenantAdmin sees own tenant only;
+GlobalAdmin sees all (optional `tenantId` query where documented, e.g. `GET /api/v1/admins`). Do
+**not** invent path-shaped alternatives like `/admins/tenant/{tenantId}` or `/me/peers` for listing.
 
 ## Logging and secrets
 

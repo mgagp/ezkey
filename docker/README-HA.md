@@ -1,6 +1,6 @@
-# EZ Key Docker HA Deployment
+# Ezkey Docker HA Deployment
 
-This directory contains Docker configuration files and scripts to run the EZ Key stack in High Availability (HA) mode with load balancing for testing ShedLock distributed locking.
+This directory contains Docker configuration files and scripts to run the Ezkey stack in High Availability (HA) mode with load balancing for testing ShedLock distributed locking.
 
 ## Overview
 
@@ -50,12 +50,13 @@ Or start the HA compose stack directly:
 The script will:
 1. Build Docker images for all services
 2. Start PostgreSQL database
-3. Run database migrations (including ShedLock table)
+3. Run database migrations (including ShedLock table `ezkey_shedlock` in V5)
 4. Start 2 instances each of admin-api, auth-api, and integration-api
 5. Start HAProxy load balancers (Admin, Auth, Integration)
 6. Start Crypto API, Demo Device, and Demo App ACME
 7. Wait for all services to be healthy
 8. Run bootstrap-init (Demo Device enrollment seed)
+
 ### Access the Services
 
 Once started, you can access:
@@ -86,7 +87,7 @@ See the [HAProxy Statistics](#haproxy-statistics) section below for detailed inf
 
 ### Migration (migration)
 - **Type**: One-time job
-- **Purpose**: Runs Flyway database migrations (including V26__create_shedlock_table.sql)
+- **Purpose**: Runs Flyway database migrations (including `ezkey_shedlock` from V5)
 - **Depends on**: PostgreSQL (healthy)
 
 ### Admin API Instances
@@ -468,8 +469,7 @@ For production HA deployment, consider:
 ## Related Documentation
 
 - [Main Docker README](README.md) - Standard Docker stack documentation
-- [HA Job Coordination](../docs/HA-JOB-COORDINATION.md) - ShedLock strategy and rationale
-- [ShedLock Implementation Plan](../.cursor/plans/shedlock_ha_schedulers_2ffda450.plan.md) - Implementation details
+- [HA Job Coordination](../docs/HA-JOB-COORDINATION.md) - ShedLock strategy and shipped implementation notes
 
 ## Support
 

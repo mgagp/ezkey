@@ -32,6 +32,13 @@ Hikari). Keeping this material does not help day-to-day JVM delivery and would m
 reader who greps for “native.” Prefer delete + short “not pursued” pointer over archival sprawl
 in the living tree.
 
+### Quarkus (historical, not adopted)
+
+A Cursor plan once sketched a parallel `ezkey-auth-api-quarkus` spike to ease native builds.
+That module was **never** created. Quarkus is **not** an Ezkey framework path: APIs stay on
+**Spring Boot (JVM)**. Native remains a **non-objective**; do not reopen Quarkus as a substitute
+native strategy without a fresh product decision.
+
 ## Surface map
 
 ### Live code / config (still in tree)
@@ -144,4 +151,5 @@ in the living tree.
 
 - React Native mobile native modules
 - Re-attempting GraalVM / Spring AOT in this pass
+- Quarkus (or other framework) migration as a native workaround — see § Quarkus above
 - Rewriting archived Cursor plans

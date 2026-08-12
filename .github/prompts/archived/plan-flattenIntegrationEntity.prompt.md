@@ -165,7 +165,7 @@ Les deux changements partagent le même vecteur (simplification du modèle `Inte
 | **ezkey-admin-api** | `IntegrationCreateRequestDto.java`, `IntegrationResponseDto.java`, supprimer `IntegrationI18nCreateDto.java` et `IntegrationI18nResponseDto.java`, `IntegrationControllerMapper.java` |
 | **ezkey-cli-python** | `commands/admin.py`, `tui/screens/integrations.py`, `tui/screens/integration_detail.py`, `tui/screens/integration_create.py`, `tests/util/database_helper.py`, `tests/integration/test_admin_api_basic.py` |
 | **ezkey-demo-device** | Phase 1: vérification flux enrollment+auth avec logo null; Phase 2: spec regen |
-| **ezkey-tenant-ui** | Phase 2: afficher correctement la liste (`name` au lieu de `i18n`). Refonte complète prévue par l'utilisateur séparément. |
+| **ezkey-admin-ui** (was tenant-ui) | Phase 2: afficher correctement la liste (`name` au lieu de `i18n`). Refonte complète prévue par l'utilisateur séparément. |
 | **Postman** | `EZ Key Integrations admin.postman_collection.json` |
 | **Tests** | `TestDataFactory.java`, `DemoDeviceEnrollmentWriter.java`, `IntegrationManagementSecurityTest.java`, `IntegrationServiceTest.java`, `IntegrationRepositoryTest.java`, `IntegrationServiceMapperTest.java`, `IntegrationResponseDtoTest.java` — supprimer `IntegrationI18nResponseDtoTest.java` et `IntegrationI18nCreateDtoTest.java` |
 
@@ -177,7 +177,7 @@ Les deux changements partagent le même vecteur (simplification du modèle `Inte
 - **Concurrence sur la system integration** : le `PersistentBag` partagé et les deux requêtes read-only custom (`findByIdWithI18nAndTenant`, `findSystemIntegrationReadOnly`) deviennent inutiles après Phase 2 — les méthodes de repository peuvent être simplifiées ou supprimées.
 - **Filtre `integrationName`** : le nom du paramètre query API reste `integrationName` pour ne pas changer le contrat client.
 - **auth-api / EnrollmentBindService** : Phase 1 — retirer `response.setIntegrationLogo(integration.getLogo())` ; retirer `integrationLogo` du DTO (briser le contrat). Phase 2 — remplacer `resolveIntegrationName`/`resolveIntegrationDescription` par `integration.getName()`/`getDescription()` ; retirer `language` de `EnrollmentBindRequest` ; `loadIntegration` → `findById()`.
-- **ezkey_mobile, ezkey-tenant-ui** : on brise les contrats ; l'utilisateur fera les mises à niveau (mobile, tenant UI) tout de suite après. Mode full dev, pas de coexistence.
+- **ezkey_mobile, ezkey-admin-ui** : on brise les contrats ; l'utilisateur fera les mises à niveau (mobile, Admin UI) tout de suite après. Mode full dev, pas de coexistence.
 - **ezkey-demo-device** : Phase 1 — vérifier le flux enrollment + auth avec logo null ; les templates gèrent déjà l'absence de logo. Ajuster si nécessaire pour les tests.
 - **ezkey-demo-app-acme** : pas de gestion directe de l'entité Integration — impact nul.
 - **`integration_name` nullable en base** : intentionnel pour la system integration. La contrainte NOT NULL est portée par le DTO (`@NotBlank`) côté création admin, pas par la DDL.

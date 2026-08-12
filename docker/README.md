@@ -47,6 +47,16 @@ Once started, you can access:
 - Auth API: http://localhost:8080/swagger-ui/index.html
 - Crypto API: http://localhost:9090/swagger-ui/index.html
 
+## High Availability (HA) stack
+
+For **multi-instance** local testing (2× Admin API + 2× Auth API behind HAProxy, ShedLock
+coordination), use the HA compose — not the single-instance stack above.
+
+- Docs: [`README-HA.md`](README-HA.md)
+- Start: `./docker/start-ha.sh` (or from tests: `./ezkey-tests/clean-start.sh --ha`)
+- Ports / stats: [`docs/LOCAL_STACK_PORTS.md`](../docs/LOCAL_STACK_PORTS.md) § HA mode
+- Remaining parity / topology follow-up: `I-2026-0003` (do not treat this README as the backlog)
+
 ## Container timezone and log timestamps
 
 Docker images use **UTC** for their default timezone unless you configure otherwise. The JVM (Spring Boot) and PostgreSQL read the standard **`TZ`** environment variable. If your host clock shows 14:45 in Montréal (Eastern Daylight, UTC−4) while `docker logs` show **18:45**, that is the same instant expressed in **UTC** (14:45 + 4h).

@@ -41,6 +41,29 @@
 | `.cursor/plans/archived/admin_ui_tooltip_strategy_b2ba2d1d.plan.md` | Deleted. Shipped: `Tooltip` + badge/page usage; living copy mostly i18n. In-pass: discoverability pointer in `ezkey-admin-ui/AGENTS.md` § Contextual help (three surfaces + restraint). Parked P-026. |
 | `.cursor/plans/archived/analyse_et_documentation_du_mécanisme_de_synchronisation_keyset_b1c0b075.plan.md` | Deleted. Canon already: CONFIGURATION modes/sync-window, ADR-0008/0011, SECURITY_POSTURE, `KeyRotationSyncWindowTest`. In-pass: HA keyset sync operator summary in `ezkey-core/CONFIGURATION.md` § Encryption at Rest. Parked P-027–P-030. |
 | `.cursor/plans/archived/async_business_approval_realignment.plan.md` | Deleted. Phase 1 already in `docs/CONTEXTUAL_AUTH.md` + ENDPOINT + signature binding. Operator: no Phase 2 / richer-context traces — removed future Business Approvals callout from `CONTEXTUAL_AUTH.md`; fixed stale Security Notes (Pending context is crypto-bound). No parking. |
+| `.cursor/plans/archived/audit_chain_checkpoints_search_api_2580d4ef.plan.md` | Deleted. Shipped: `GET /api/v1/audit-logs/chain-checkpoints` + controller tests; canon in `docs/ENDPOINT.md` § Audit log and chain checkpoint APIs. No new parking. |
+| `.cursor/plans/archived/audit_table_tenant_visibility_0fec2b1b.plan.md` | Deleted. Shipped: tenant-scoped audit list + `tenant_id` population. In-pass: ENDPOINT visibility sentence (Tenant Admin auto-scope; null system rows excluded). |
+| `.cursor/plans/archived/auth_status_mapping_analysis.md` | Deleted. RCA fixes shipped in `AuthAttemptWaitService` + ACME `LoginController`. No in-pass doc; no parking. |
+| `.cursor/plans/archived/challenge_reject_status_confusion_analysis.md` | Deleted. Fix shipped in `AuthAttemptRespondService.validateChallenge` (skip challenge on deny). In-pass: ENDPOINT respond bullet (deny vs challenge / INVALID on accept). |
+| `.cursor/plans/archived/contextual_authentication_differentiator_faff968d.plan.md` | Deleted. Living canon is title+message only (`CONTEXTUAL_AUTH.md` / ENDPOINT); no promote of details/level or “business approval platform” framing. No parking. |
+| `.cursor/plans/archived/dashboard_api_evolution_41a6be06.plan.md` | Deleted. Shipped: `GET /api/v1/dashboard/overview` + Admin UI. In-pass: ENDPOINT § Dashboard overview; AGENTS pointer + signal-model link. |
+| `.cursor/plans/archived/demo_device_tenant_grouping_43ffef3c.plan.md` | Deleted. Shipped: bind tenant fields + `EnrollmentTenantGrouper` / `tenantGroups`. In-pass: ENDPOINT bind example; Demo Device AGENTS § Home screen tenant grouping. |
+| `.cursor/plans/archived/docker_bootstrap_init_3dfba789.plan.md` | Deleted. Shipped: bootstrap-init + credentials export + clean-start Docker-default. In-pass: `ezkey-tests/README.md` Docker-first bootstrap section. Parked P-033. |
+| `.cursor/plans/archived/enrollment_contact_info_analysis_e30bb07a.plan.md` | Deleted. Phases 1–3 shipped (lifecycle timestamps, contact/`userIdentifier`, auth-attempt by userIdentifier). Canon: matrix + ENDPOINT. No parking. |
+| `.cursor/plans/archived/enrollment_delete_api_error_handling_c33e8099.plan.md` | Deleted. Shipped: 409 `cannot-delete-linked-as-admin` + ENDPOINT/error inventory. No parking. |
+| `.cursor/plans/archived/ezkey_tenant_ui_foundation_5954f835.plan.md` | Deleted. Parallel `ezkey-tenant-ui/` retired; unified `ezkey-admin-ui` (GA+TA) is canon. No parking. |
+| `.cursor/plans/archived/fix_postgresql_partition_function_return_type_4d37e7fb.plan.md` | Deleted. Shipped: `create_monthly_partition` `RETURNS BOOLEAN` (V4) + `PartitionSchedulerService` `getSingleResult()`. In-pass: `ezkey-core/AGENTS.md` call-pattern pointer; SECURITY_ANALYSIS / IMPLEMENTATION / STRATEGY_SUMMARY aligned (BOOLEAN + V4 path). No parking. |
+| `.cursor/plans/archived/ha_docker_environment_with_load_balancer_f73ce286.plan.md` | Deleted. Shipped: `docker-compose.ha.yml`, HAProxy cfgs, `start-ha.sh`/`manage-ha.sh`, `README-HA.md`, ShedLock distributed tests, `clean-start.sh --ha`. In-pass: HA pointers in `docker/README.md`, `LOCAL_STACK_PORTS.md`, `ezkey-tests/README.md`. Parked P-034. Parity program remains `I-2026-0003`. |
+| `.cursor/plans/archived/pagination_ux_review_8913dc7b.plan.md` | Deleted. Shipped: `PaginatedTable` (top+bottom), `Pagination` aria-label + Tooltip, list screens migrated. In-pass: `ezkey-admin-ui/AGENTS.md` standard pattern → `usePaginatedFromOrval` + `PaginatedTable`. Parked P-035. |
+| `.cursor/plans/archived/pending_poll_replay_analysis_97cbe46a.plan.md` | Deleted. Decision closed: 204 reuse OK; uniqueness on claim. Canon already in ENDPOINT + Auth AGENTS + `AuthAttemptPendingService`. In-pass: AUTH_SECURITY + mobile architecture docs aligned. Parked P-036. |
+| `.cursor/plans/archived/phase_1_multi-tenant_6ba5f673.plan.md` | Deleted. Phase 1 shipped (AdminPrincipal, scoping, tenants/admins, deactivation, CLI, isolation tests). In-pass: `ezkey-tests/reference/MULTI_TENANT.md` Source/References → living docs. Parked P-037–P-038. |
+| `.cursor/plans/archived/quarkus_migration_evaluation_2cbd3970.plan.md` | Deleted. Quarkus Auth API spike never built; native driver closed (JVM-only Spring Boot). In-pass: “not adopted” note in `docs/java-native-compilation-assessment-2026-07.md`. Parked P-039. |
+| `.cursor/plans/archived/reencryption_batches_pagination_c99e1ff0.plan.md` | Deleted. Shipped: paginated batches list + filters, Admin UI, ENDPOINT, REENCRYPTION §7. In-pass: AGENTS Date range call site + §7 pointer. Parked P-040. |
+| `.cursor/plans/archived/shedlock_ha_schedulers_2ffda450.plan.md` | Deleted. Shipped: ShedLock config, `@SchedulerLock`, `ADMIN_STARTUP_BOOTSTRAP`, `ezkey_shedlock` (V5), HA tests. In-pass: HA-JOB-COORDINATION status/checklist; README-HA V5 + drop plan link; admin-api AGENTS pointer. Parked P-041. |
+| `.cursor/plans/archived/tenant_admin_creation_ux_a859b560.plan.md` | Deleted. Shipped: GA Create Admin tenant selector (exclude system), Zod + payload `tenantId`; TA peer omits. In-pass: `ezkey-admin-ui/AGENTS.md` § Create administrator. Parked P-042. |
+| `.cursor/plans/archived/tenant_enrolment_audit_visibility_37e53453.plan.md` | Deleted. Option A shipped (`effectiveTenantId`, `resolveTenantIdForAudit`); Option B rejected. In-pass: auth-api AGENTS + ENDPOINT attribution. Parked P-043. |
+| `.cursor/plans/archived/tenant_ui_docker_standalone_c11b3c43.plan.md` | Deleted. `ezkey-tenant-ui/` retired; pattern in `ezkey-admin-ui` `start.sh` + Caddy. In-pass: AGENTS — keep UI Docker standalone vs main compose. Parked P-044. |
+| `.cursor/plans/archived/tenantadmin_list_admins_endpoint_cfc16d89.plan.md` | Deleted. Option 1 shipped: `GET /api/v1/admins` auto tenant scope. In-pass: `ezkey-admin-api/AGENTS.md` § Tenant-scoped list endpoints. |
 
 ## Kept this pass (retained)
 
@@ -50,13 +73,30 @@
 
 ## Parking (open)
 
-| ID | Finding | Where | Suggested action |
-|----|---------|-------|------------------|
-| P-026 | `src/lib/help-text.tsx` appears unused after tooltip copy moved to i18n; plan’s “no i18n for tooltips” is obsolete. | `ezkey-admin-ui/src/lib/help-text.tsx` | Delete or rewire when pruning Admin UI help; do not treat as living canon. |
-| P-027 | No dedicated operator runbook / sequence diagrams for keyset sync beyond CONFIGURATION + ADRs. | `docs/` / ops docs when needed | Add only if ops need it; prefer CONFIGURATION + ADR-0008/0011 over a new mega-doc. |
-| P-028 | No dedicated HYBRID file↔DB desync / `KeysetBlobFileSyncTest`-style coverage called out in the old analysis. | `ezkey-tests` / crypto hardening | Consider when hardening HYBRID or file↔DB sync. |
-| P-029 | No metrics/alerting on keyset reload or DB sync failures. | Observability when that lane opens | Add reload/sync failure signals if ops funds it. |
-| P-030 | Separate audit keyset (multi-keyset) — open product idea, not incubated. | Product backlog when prioritized | Promote to `V-*`/`I-*` only if funded. |
+_None — burn-down applied 2026-08-12 (session closeout)._
+
+## Parking (closed 2026-08-12 — burn-down)
+
+| ID | Disposition |
+|----|-------------|
+| P-026 | Fixed: deleted unused `ezkey-admin-ui/src/lib/help-text.tsx` (copy lives in i18n). |
+| P-027 | Closed no-op: prefer `ezkey-core/CONFIGURATION.md` § Encryption + ADR-0008/0011 over a new keyset-sync mega-doc. |
+| P-028 | Deferred: HYBRID file↔DB sync tests when crypto hardening funds it. |
+| P-029 | Deferred product: keyset reload/sync metrics when observability lane opens. |
+| P-030 | Deferred product: multi-keyset / separate audit keyset — promote `V-*`/`I-*` only if funded. |
+| P-033 | Deferred: bootstrap Maven tests as pure validations when test hygiene opens. |
+| P-034 | Fixed: `README-HA.md` Ezkey branding + Auth diagram ports `(8080)`. |
+| P-035 | Fixed: blitz-archive D8/D9 → `PaginatedTable` / AGENTS / matrix (dead plan cite removed). |
+| P-036 | Fixed: `AUTH_SECURITY.md` hygiene banner + RSA→EC wording. |
+| P-037 | Fixed: `multi-tenancy-strategy.md` historical banner → Phase 1 living canon. |
+| P-038 | Fixed: `SECURITY_MULTI_TENANT.md` living-vs-historical banner (opaque bearer / no JWT). |
+| P-039 | Deferred: GraalVM residual burn-down remains on `java-native-compilation-assessment` remediation (separate hygiene lane). |
+| P-040 | Deferred product: COMPLETED re-encryption batch archival/purge if funded. |
+| P-041 | Fixed: `HA-JOB-COORDINATION.md` job inventory + `ShedLockConfiguration` sample alignment. |
+| P-042 | Deferred: Playwright GA create Tenant Admin when UI test budget allows. |
+| P-043 | Fixed: `LIFECYCLE_GOVERNANCE.md` single system integration + audit attribution note. |
+| P-044 | Fixed: rebranding prompt + flattenIntegration archived prompt → `ezkey-admin-ui`. |
+| P-045 | Fixed: `MULTI_TENANT_OBSERVATIONS.md` §1 + header → resolved `GET /admins` + living canon links. |
 
 ## Parking (closed 2026-08-11)
 
@@ -90,11 +130,11 @@
 
 ## Process reminder
 
-- **Default operator Go** = the recommended path for that plan: usually delete when essence is
-  already in canon, **plus** cheap in-pass discoverability/subject fixes when those are part of
-  the recommendation. Adjacent microfixes stay in parking unless included in that Go.
-- **Discoverability:** each iteration must ask whether a cold agent would find the design signal
-  without the plan; prefer 2–4 line `AGENTS.md` pointers over ADR / retained analysis. Skill:
+- **Go** = the **single best package** for corpus realignment **including discoverability**: delete
+  when liquidable, **plus** cheap in-pass fixes when warranted, **plus** parking `P-NNN` rows for
+  deferred adjacent edits (parking is part of Go, not optional flavoring). Skill:
   `.cursor/skills/corpus-ablation/SKILL.md`.
-- Append new parking rows at end of each iteration when a finding is not fixed in-pass.
+- **Discoverability:** each iteration must ask whether a cold agent would find the design signal
+  without the plan; prefer 2–4 line pointers over ADR / retained analysis.
+- Append new parking rows at end of each iteration when a finding is deferred inside Go.
 - Mark rows done by moving them to **Done this pass** (or strike with date) — do not leave stale open items after closeout.

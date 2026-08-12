@@ -213,6 +213,7 @@ Content-Type: application/json
 - **Description**: The mobile device submits the user's response (approved, denied, signature, etc.) for the received authentication request.
 - **Rate limiting**: When rate limiting is enabled (`ezkey.rate-limit.enabled=true`), this endpoint is limited **per auth attempt** (by `authAttemptId` from the request body). Default: 1 request per 5 minutes per `authAttemptId`. If the body is missing or invalid, the limit is applied per client IP. When exceeded, the API returns **429 Too Many Requests** with a `Retry-After` header.
 - **One attempt per auth request**: The backend invalidates the authentication attempt on **first failed validation** (invalid signature, wrong challenge, or missing device key). There is no retry: after one failure the attempt is marked INVALID and the user must start a new authentication flow from the integrating application (e.g. log in again and receive a new pending request).
+- **Deny vs challenge:** When `authAttemptAccepted` is `false`, challenge response is not required after a valid device signature — the attempt is stored as `REJECTED`. Wrong or missing challenge on **accept** still marks the attempt `INVALID`.
 
 **Request**
 ```http
@@ -269,9 +270,14 @@ Content-Type: application/json
   "integrationName": "Acme Bank",
   "integrationDescription": "Acme Bank provides secure online banking services.",
   "enrollmentName": "John's iPhone",
+  "tenantId": 1,
+  "tenantName": "Acme Corporation",
+  "tenantDescription": "Acme Corp primary tenant",
   "enrollmentBindPayloadSignedByIntegration": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 }
 ```
+
+`tenantId`, `tenantName`, and `tenantDescription` come from the enrollment’s integration tenant (nullable if unset). Clients may persist them for multi-tenant enrollment lists (e.g. Demo Device groups by tenant on the home screen).
 
 `integrationPublicKey` is the **raw 32-byte** Ed25519 public key, **Base64URL without padding** (43 characters). `integrationKeyAlgorithm` is a **required** JSON field in the Auth API contract (OpenAPI); for phase 1 it is always the literal string `ed25519` (lowercase). **Clients should treat it as part of the cryptographic contract:** validate that the value is exactly `ed25519` before decoding `integrationPublicKey` or verifying `enrollmentBindPayloadSignedByIntegration`. If the field is missing or any other string is received, **fail closed** (abort enrollment)—do not assume Ed25519 wire format. `enrollmentBindPayloadSignedByIntegration` is an Ed25519 signature over the canonical bind payload; clients must verify it before trusting the integration key (see `docs/ENROLLMENT_SIGNATURE_PAYLOAD.md`). Device keys in verify requests remain **EC P-256** SPKI (standard Base64).
 
@@ -495,11 +501,17 @@ Too many login attempts. Please try again later.
 
 ---
 
+### Dashboard overview
+
+**Base path:** `http://localhost:9080/api/v1/dashboard` (Admin API).
+
+**GET /api/v1/dashboard/overview** — Single aggregated payload for the Admin UI landing page: integration and enrollment stats, auth-attempt 24h totals (including pending), recent audit activity, and (Global Admin) optional open operator alerts such as audit-chain follow-ups. Tenant Admins receive tenant-scoped stats; Global Admins receive instance-wide stats. Prefer this over parallel `size=1` list/`count` storms. Related: `GET /api/v1/auth-attempts/pending-count` (Admin-only) when a live pending tally is needed outside the overview. Widget badge semantics: [`product-docs/components/admin-ui/dashboard-widget-signal-model.md`](../product-docs/components/admin-ui/dashboard-widget-signal-model.md).
+
 ### Audit log and chain checkpoint APIs
 
 **Base path:** `http://localhost:9080/api/v1/audit-logs` (Admin API). Global Admin only for chain and integrity endpoints.
 
-**GET /api/v1/audit-logs** — Paginated audit log list. Optional filters: `eventType` (a single event type enum value), `eventTypeFamily` (all types in a logical family: `ADMIN`, `ENROLLMENT`, `AUTH_ATTEMPT`, `API_KEY`, `SYSTEM`, `ENCRYPTION_KEY`, `REENCRYPTION`, `INTEGRATION`, `TENANT`, `AUDIT_CHAIN`). `eventType` and `eventTypeFamily` are mutually exclusive; sending both returns **400 Bad Request**. Also: `eventStatus`, `apiName`, `enrollmentId`, `adminId`, `targetAdminId`, `tenantId` (Global Admin scope), `createdAfter`, `createdBefore` (ISO-8601), plus standard `page`, `size`, `sort`.
+**GET /api/v1/audit-logs** — Paginated audit log list. Optional filters: `eventType` (a single event type enum value), `eventTypeFamily` (all types in a logical family: `ADMIN`, `ENROLLMENT`, `AUTH_ATTEMPT`, `API_KEY`, `SYSTEM`, `ENCRYPTION_KEY`, `REENCRYPTION`, `INTEGRATION`, `TENANT`, `AUDIT_CHAIN`). `eventType` and `eventTypeFamily` are mutually exclusive; sending both returns **400 Bad Request**. Also: `eventStatus`, `apiName`, `enrollmentId`, `adminId`, `targetAdminId`, `tenantId` (Global Admin scope), `createdAfter`, `createdBefore` (ISO-8601), plus standard `page`, `size`, `sort`. **Visibility:** Tenant Admins automatically see only rows where `tenant_id` matches their tenant (system events with `tenant_id` null are excluded); Global Admins see all logs and may optionally filter with `tenantId` (ignored for Tenant Admins). **Attribution:** Tenant Admin create (`ADMIN_CREATED`) audits the **target admin’s tenant**; Auth API bind/verify/pending/respond for **admin MFA** enrollments (single system integration) also use the admin’s tenant — not the system-integration tenant — so peer onboarding and MFA auth appear in that tenant’s audit view.
 
 **GET /api/v1/audit-logs/chain-checkpoints** — Search audit chain checkpoints with pagination and optional filters. Use primarily for lifecycle observability, anomaly investigation, and archive-confirmation context. Exceptional maintenance workflows may still use this surface when needed.
 

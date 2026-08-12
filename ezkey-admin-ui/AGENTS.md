@@ -51,7 +51,7 @@ src/
   components/
     ui/                 Button, Input, Label, Card, Badge, Alert, Select, Dialog, Textarea
     layout/             AppShell, Sidebar, Header
-    data-table/         DataTable<T>, Pagination
+    data-table/         DataTable<T>, Pagination, PaginatedTable (top+bottom)
     feature/            EnrollmentStatusBadge, AuthAttemptStatusBadge, ReasonQuickPick, ReasonFieldRow (production reason/justification suggestions + shared min-length line; `locales/*/reasonPresets.json` includes phase-2 `encryption_key_rotate` + `audit_chain_justification`), DemoReasonBadges (demo-only)
   pages/                One file per route (see table above)
   routes.tsx            All routes, lazy imports, ProtectedRoute
@@ -90,40 +90,44 @@ The Admin API returns pagination metadata **nested** inside a `page` sub-object:
 
 `usePaginatedQuery` handles this internally. **Never** access `data.totalElements` directly —
 always go through `pagination.totalElements` from the hook, or `data?.page?.totalElements` in
-raw `useQuery` calls (e.g. dashboard stats).
+raw `useQuery` calls when you truly need a one-off page envelope.
+
+### Dashboard overview
+
+- Prefer `GET /api/v1/dashboard/overview` (Orval/query) for landing stats — do **not** reintroduce
+  parallel `size=1` list calls just to read `totalElements`.
+- Badge / headline / drilldown semantics:
+  [`product-docs/components/admin-ui/dashboard-widget-signal-model.md`](../product-docs/components/admin-ui/dashboard-widget-signal-model.md)
+  (`I-2026-0030`).
 
 ### Paginated list (standard pattern)
 
+Prefer **`usePaginatedFromOrval`** + **`PaginatedTable`** for operator lists (see
+[`docs/LIST_DATA_LOADING_DESIGN.md`](docs/LIST_DATA_LOADING_DESIGN.md)). `PaginatedTable` renders
+the same `<Pagination />` **above and below** the table. `Pagination` already uses icon+text,
+`aria-label`, and `Tooltip` from `common.pagination.*` — do not reintroduce bottom-only bars or
+icon-only controls without labels.
+
 ```ts
-const { data, pagination, isLoading, refetch } = usePaginatedQuery<Integration>({
+const { data, pagination, isLoading, refetch } = usePaginatedFromOrval<Integration, …>({
   queryKey: ['integrations', filter],
-  queryFn: ({ page, size, sort }) =>
-    api.get<PageResponse<Integration>>(`/api/v1/integrations?page=${page}&size=${size}&sort=${sort}`),
+  // … Orval list fn + params — see LIST_DATA_LOADING_DESIGN.md
 });
 ```
 
 ```tsx
-<DataTable
+<PaginatedTable
   columns={columns}
   data={data}
   isLoading={isLoading}
-  currentSort={pagination.sort}        // enables active sort indicator
-  onSort={pagination.setSort}          // wires column header clicks
-/>
-<Pagination
-  page={pagination.page}
-  totalPages={pagination.totalPages}
-  totalElements={pagination.totalElements}
-  isFirst={pagination.isFirst}
-  isLast={pagination.isLast}
-  onFirstPage={pagination.firstPage}
-  onLastPage={pagination.lastPage}
-  onPrevPage={pagination.prevPage}
-  onNextPage={pagination.nextPage}
-  pageSize={pagination.size}           // shows size selector (10/20/50/100)
-  onPageSizeChange={pagination.setPageSize}
+  currentSort={pagination.sort}
+  onSort={pagination.setSort}
+  pagination={pagination}
 />
 ```
+
+Use raw `<DataTable />` + `<Pagination />` only for special layouts (e.g. dual controls already
+composed by hand). Default new list screens to `PaginatedTable`.
 
 ### Sortable columns
 
@@ -142,7 +146,7 @@ const columns: ColumnDef<Integration>[] = [
 
 ### Paginated lists: sort is always server-side
 
-For any screen that uses a **paginated** list API (e.g. `usePaginatedFromOrval` + `listTenants`, `search` integrations, etc.), **sort must be sent to the backend**. The API accepts a `sort` parameter and returns the current page of the **globally** ordered result set. Do **not** implement client-side-only sort (e.g. sorting only the current page in memory): that would reorder just the visible segment and mislead users who assume "sort by name" applies to the full list. Wire `currentSort` and `onSort` from the pagination hook to `DataTable` so that clicking a sortable column triggers a new request with the updated `sort` param. If the backend does not support sort for a given list, do not add a `sortKey` to that column.
+For any screen that uses a **paginated** list API (e.g. `usePaginatedFromOrval` + `listTenants`, `search` integrations, etc.), **sort must be sent to the backend**. The API accepts a `sort` parameter and returns the current page of the **globally** ordered result set. Do **not** implement client-side-only sort (e.g. sorting only the current page in memory): that would reorder just the visible segment and mislead users who assume "sort by name" applies to the full list. Wire `currentSort` and `onSort` from the pagination hook into **`PaginatedTable`** (or `DataTable` if composing manually) so that clicking a sortable column triggers a new request with the updated `sort` param. If the backend does not support sort for a given list, do not add a `sortKey` to that column.
 
 Clicking a new column sorts DESC by default; clicking the same column toggles ASC ↔ DESC.
 The active column shows `↑` (ASC) or `↓` (DESC); inactive sortable columns show `⇅`.
@@ -191,6 +195,15 @@ const isGlobalAdmin = session?.adminType === 'GLOBAL_ADMIN';
 {isGlobalAdmin && r.active && <Button ...>Deactivate</Button>}
 ```
 
+### Create administrator (tenant assignment)
+
+- **Global Admin → Tenant Admin:** the Create Admin dialog must require a **tenant** selector and
+  send `tenantId` on `POST /api/v1/admins/tenant`. Exclude the **system tenant**
+  (`isSystemTenant`). If no eligible tenants exist, show create-tenant guidance and disable submit.
+- **Tenant Admin → peer:** do **not** show a tenant selector; omit `tenantId` so the API uses the
+  session tenant.
+- **Deep link:** tenant detail can open `/admins?tenantId=…&createTenantAdmin=1` to prefill.
+
 ### Test Authentication (enrollment-detail pattern)
 
 Trigger a live auth attempt for a VERIFIED enrollment to confirm device binding:
@@ -209,7 +222,7 @@ prevents stale data from a previous user appearing on the next login.
 1. Create `src/pages/my-screen.tsx` → `export default function MyScreenPage()`
 2. Wrap content in `<AppShell title="Screen Name">`
 3. Add a lazy route in `routes.tsx`
-4. Use `usePaginatedQuery` + `DataTable` + `Pagination` for list views
+4. For list views: `usePaginatedFromOrval` + `PaginatedTable` (see § Paginated list)
 
 ### Tier A list conventions (ID column + cross-links)
 
@@ -233,11 +246,13 @@ The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (
 
 ### Date range filters (list / integrity)
 
-When a screen filters by time via Admin API `createdAfter` / `createdBefore` (or the same ISO pair for integrity windows), use shared **`DateRangeFilter`** (`@/components/ui/date-range-filter`) and **`date-range-presets`** (`@/lib/date-range-presets`). Resolve named presets (Today, Yesterday, Last 7/30 days rolling, etc.) in the UI only — do not invent backend period keywords. See existing call sites on Auth Attempts, Audit Logs, and Encryption Keys.
+When a screen filters by time via Admin API `createdAfter` / `createdBefore` (or the same ISO pair for integrity windows), use shared **`DateRangeFilter`** (`@/components/ui/date-range-filter`) and **`date-range-presets`** (`@/lib/date-range-presets`). Resolve named presets (Today, Yesterday, Last 7/30 days rolling, etc.) in the UI only — do not invent backend period keywords. See existing call sites on Auth Attempts, Audit Logs, Encryption Keys, and **Re-encryption batches** (same Encryption Keys page; server filters + `usePaginatedFromOrval` — ops contract in [`docs/REENCRYPTION_OPERATIONS.md`](../docs/REENCRYPTION_OPERATIONS.md) §7).
 
 ## Docker Deployment
 
-Use **start.sh** to build and run the Admin UI in Docker:
+Use **start.sh** to build and run the Admin UI in Docker. Keep this path **standalone**
+(`docker-compose.admin-ui.yml` + `docker/Dockerfile`) — do **not** fold the Node/Vite build into
+the main Java `docker/docker-compose.yml` / daily `clean-start` (would slow every backend cycle).
 
 ```bash
 ./start.sh                    # Test/QA build (demo mode on), http://localhost:3090
