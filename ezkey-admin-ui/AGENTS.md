@@ -163,8 +163,8 @@ wording disambiguates reversible suspend (deactivate).
 
 After a successful create/edit/delete that affects a list, **invalidate that list's query key** so the list refetches and stays in sync. Use the **same key** as the list query so `invalidateQueries` targets the right cache.
 
-- **Orval-generated list hooks** (e.g. tenants): use the **generated query key factory** in invalidations (e.g. `getListTenantsQueryKey()` from `@/generated/admin-api/tenants/tenants`). Orval uses path-based keys (e.g. `['/api/v1/tenants']`); invalidating `['tenants']` does not match and the list will not refresh.
-- **usePaginatedFromOrval / useQuery with custom key**: use the same prefix you pass as `queryKey` (e.g. `['integrations']`, `['enrollments']`). You can use `queryKeys` from `@/lib/query-keys` for consistency.
+- **usePaginatedFromOrval / useQuery with custom key** (standard for operator lists, including tenants): use the same prefix you pass as `queryKey` (e.g. `['tenants']`, `['integrations']`, `['enrollments']`). You can use `queryKeys` from `@/lib/query-keys` for consistency.
+- **Raw Orval-generated list hooks** (rare; path-based keys such as `['/api/v1/…']`): invalidate with the **generated query key factory** from the same module. Invalidating a short custom prefix like `['tenants']` will not match Orval's path key. Operator lists should use `usePaginatedFromOrval` instead — see `docs/LIST_DATA_LOADING_DESIGN.md`.
 - **Optional**: `await queryClient.invalidateQueries(...)` in mutation `onSuccess` so the mutation stays pending until the list refetch completes; the dialog can then close with the list already updated.
 
 ### Detail refresh after mutations
@@ -230,6 +230,10 @@ The shared `Dialog` component (`@/components/ui/dialog`) accepts `dismissible` (
 
 - **List toolbar:** The primary action (Create, New, Rotate Key, etc.) is always on the **right**. Put filters, search, and Refresh on the left; use `ml-auto` on the primary action button (or a right group with `justify-between`) so it stays right-aligned.
 - **Dialogs:** Cancel (or secondary) on the left, primary Submit/Create on the right. Use `flex justify-end gap-2` (or `justify-end pt-2`) for dialog footers.
+
+### Date range filters (list / integrity)
+
+When a screen filters by time via Admin API `createdAfter` / `createdBefore` (or the same ISO pair for integrity windows), use shared **`DateRangeFilter`** (`@/components/ui/date-range-filter`) and **`date-range-presets`** (`@/lib/date-range-presets`). Resolve named presets (Today, Yesterday, Last 7/30 days rolling, etc.) in the UI only — do not invent backend period keywords. See existing call sites on Auth Attempts, Audit Logs, and Encryption Keys.
 
 ## Docker Deployment
 
@@ -382,6 +386,7 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 - **Dev-only:** When `VITE_DEMO_MODE=true` (e.g. in `.env.development`), the UI can show "Fill demo" controls in create dialogs (tenant, integration, enrollment, admin) and allow Ctrl+click on the sidebar brand to toggle a session-level demo indicator.
 - **Production stripping:** All demo-mode code and preset data are **removed** from production builds. In `vite.config.ts`, production builds use `define: { 'import.meta.env.VITE_DEMO_MODE': '"false"' }`, so any branch guarded by `isDemoMode` (or `import.meta.env.VITE_DEMO_MODE === 'true'`) is dead code and tree-shaken. Do not rely on runtime checks for demo features; use the compile-time flag so production bundles never contain demo logic or strings.
 - **Presets:** `src/lib/demo-mode.ts` exports `isDemoMode` and typed preset arrays; they are only referenced from components that render when `isDemoMode && sessionDemoOn`, so they are eliminated in production.
+- **Form placeholder theme:** Create-form example values (i18n `*Placeholder` keys) use the light **Garage du coin** thematic — tenant/org examples and `garageducoin.ca`; admins/enrollments use **Marie Dupont**. Prefer names and brand hints only (no long “luxury garage” copy). Do not reintroduce Acme-style placeholders; match existing `locales/*/tenants|admins|enrollments.json` and `demo-mode.ts`.
 
 ## Contextual help
 
@@ -389,6 +394,7 @@ Agents using the embedded browser tools should mirror the **same sequencing as P
 - **Topics:** `HelpTopicId` and `resolveHelpTopicId()` live in `src/lib/help-topics.ts`. Copy is in the **`help`** i18n namespace (`src/locales/en/help.json`, `src/locales/fr/help.json`) under `topics.<id>.*` — **strict FR+EN parity** for every key you add.
 - **UI:** Header includes a help icon; optional `HelpInlineButton` on specific pages (e.g. integrations list). Use `useHelp()` for `openHelp` / `closeHelp`.
 - **Demo-only paragraphs:** optional `demoExtra` per topic; shown only when demo mode is on and the string is non-empty.
+- **Three help surfaces:** hover `Tooltip` (`components/ui/tooltip.tsx`) for one-sentence domain terms; click `ContextHelp` for short section concepts; `HelpDrawer` for topic-scale guidance. Explain Ezkey vocabulary (statuses, HMAC, key tiers) — not standard UI labels or labeled buttons. Tooltip/ContextHelp strings live in locale namespaces (`*help*` / `help.*` keys), same FR+EN parity rule.
 
 ## Visual Identity: Neo-Brutalism (subtle)
 
